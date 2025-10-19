@@ -122,6 +122,8 @@ class AICopyService:
                 username="AI_BACKUP",
                 email="ai@quipflip.internal",
                 password_hash="not-used-for-ai-player",
+                pseudonym="AI Assistant",
+                pseudonym_canonical="ai assistant",
             )
             # Note: Do not commit here - let caller manage transaction
             logger.info("Created AI backup player account")

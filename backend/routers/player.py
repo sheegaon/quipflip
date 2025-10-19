@@ -13,6 +13,7 @@ from backend.schemas.player import (
     PendingResultsResponse,
     PendingResult,
     CreatePlayerResponse,
+    PlayerStatistics,
 )
 from backend.schemas.phraseset import (
     PhrasesetListResponse,
@@ -23,6 +24,7 @@ from backend.services.player_service import PlayerService
 from backend.services.transaction_service import TransactionService
 from backend.services.round_service import RoundService
 from backend.services.phraseset_service import PhrasesetService
+from backend.services.statistics_service import StatisticsService
 from backend.utils.exceptions import DailyBonusNotAvailableError
 from backend.config import get_settings
 from backend.schemas.auth import RegisterRequest
@@ -319,3 +321,14 @@ async def get_unclaimed_results(
     phraseset_service = PhrasesetService(db)
     payload = await phraseset_service.get_unclaimed_results(player.player_id)
     return UnclaimedResultsResponse(**payload)
+
+
+@router.get("/statistics", response_model=PlayerStatistics)
+async def get_player_statistics(
+    player: Player = Depends(get_current_player),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get comprehensive player statistics including win rates and earnings."""
+    stats_service = StatisticsService(db)
+    stats = await stats_service.get_player_statistics(player.player_id)
+    return stats

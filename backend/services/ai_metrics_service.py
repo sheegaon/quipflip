@@ -175,7 +175,7 @@ class AIMetricsService:
         # Get successful operations
         success_result = await self.db.execute(
             select(func.count(AIMetric.metric_id)).where(
-                and_(*filters, AIMetric.success is True)
+                and_(*filters, AIMetric.success == True)
             )
         )
         successful_operations = success_result.scalar() or 0
@@ -189,7 +189,7 @@ class AIMetricsService:
         # Get average latency
         latency_result = await self.db.execute(
             select(func.avg(AIMetric.latency_ms)).where(
-                and_(*filters, AIMetric.success is True, AIMetric.latency_ms.isnot(None))
+                and_(*filters, AIMetric.success == True, AIMetric.latency_ms.isnot(None))
             )
         )
         avg_latency = latency_result.scalar() or 0.0
@@ -260,7 +260,7 @@ class AIMetricsService:
         # Get correct votes
         correct_result = await self.db.execute(
             select(func.count(AIMetric.metric_id)).where(
-                and_(*filters, AIMetric.vote_correct is True)
+                and_(*filters, AIMetric.vote_correct == True)
             )
         )
         correct_votes = correct_result.scalar() or 0

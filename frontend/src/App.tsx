@@ -9,6 +9,7 @@ import { CopyRound } from './pages/CopyRound';
 import { VoteRound } from './pages/VoteRound';
 import { Results } from './pages/Results';
 import { PhrasesetTracking } from './pages/PhrasesetTracking';
+import Statistics from './pages/Statistics';
 import { ErrorNotification } from './components/ErrorNotification';
 
 // Protected Route wrapper
@@ -76,6 +77,14 @@ const AppRoutes: React.FC = () => {
           element={
             <ProtectedRoute>
               <PhrasesetTracking />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/statistics"
+          element={
+            <ProtectedRoute>
+              <Statistics />
             </ProtectedRoute>
           }
         />

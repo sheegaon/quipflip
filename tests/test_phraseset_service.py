@@ -19,6 +19,8 @@ def _base_player(username: str) -> Player:
         api_key=str(uuid4()),
         username=username,
         username_canonical=username,
+        pseudonym=username.replace("_", " ").title(),
+        pseudonym_canonical=username.lower(),
         email=f"{username}@example.com",
         password_hash=hash_password("TestPassword123!"),
         balance=1000,

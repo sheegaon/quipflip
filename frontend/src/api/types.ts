@@ -303,3 +303,50 @@ export interface GetPromptFeedbackResponse {
   feedback_id: string | null;
   created_at: string | null;
 }
+
+export interface RoleStatistics {
+  role: 'prompt' | 'copy' | 'voter';
+  total_rounds: number;
+  total_earnings: number;
+  average_earnings: number;
+  win_rate: number;
+  total_phrasesets?: number;
+  average_votes_received?: number;
+  correct_votes?: number;
+  vote_accuracy?: number;
+}
+
+export interface EarningsBreakdown {
+  prompt_earnings: number;
+  copy_earnings: number;
+  vote_earnings: number;
+  daily_bonuses: number;
+  total_earnings: number;
+}
+
+export interface PlayFrequency {
+  total_rounds_played: number;
+  days_active: number;
+  rounds_per_day: number;
+  last_active: string;
+  member_since: string;
+}
+
+export interface BestPerformingPhrase {
+  phrase: string;
+  votes: number;
+  earnings: number;
+}
+
+export interface PlayerStatistics {
+  player_id: string;
+  username: string;
+  overall_balance: number;
+  prompt_stats: RoleStatistics;
+  copy_stats: RoleStatistics;
+  voter_stats: RoleStatistics;
+  earnings: EarningsBreakdown;
+  frequency: PlayFrequency;
+  favorite_prompts: string[];
+  best_performing_phrases: BestPerformingPhrase[];
+}

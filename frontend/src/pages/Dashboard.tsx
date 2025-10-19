@@ -138,6 +138,10 @@ export const Dashboard: React.FC = () => {
     navigate('/phrasesets');
   };
 
+  const handleViewStatistics = () => {
+    navigate('/statistics');
+  };
+
   const inProgressPrompts = phrasesetSummary?.in_progress.prompts ?? 0;
   const inProgressCopies = phrasesetSummary?.in_progress.copies ?? 0;
   const hasInProgress = inProgressPrompts + inProgressCopies > 0;
@@ -262,6 +266,22 @@ export const Dashboard: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Statistics */}
+        <div className="tile-card border-2 border-quip-teal p-4 mb-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-display font-semibold text-quip-teal">Your Performance</p>
+              <p className="text-sm text-quip-navy">View detailed statistics and charts</p>
+            </div>
+            <button
+              onClick={handleViewStatistics}
+              className="w-full sm:w-auto bg-quip-teal hover:bg-quip-navy text-white font-bold py-2 px-6 rounded-tile transition-all hover:shadow-tile-sm"
+            >
+              View Statistics
+            </button>
+          </div>
+        </div>
 
         {/* Round Selection */}
         <div className="tile-card p-6 shuffle-enter">
