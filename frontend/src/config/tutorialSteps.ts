@@ -47,13 +47,15 @@ Let's start with a **Prompt Round** where you'll create a creative fill-in-the-b
   prompt_round: {
     id: 'prompt_round',
     title: 'Create a Prompt',
-    message: `In a Prompt Round, you create a fill-in-the-blank sentence.
+    message: `In a Prompt Round, you create a fill-in-the-blank sentence, or a *quip*.
 
 For example: "The best pizza topping is ______"
 
-Then other players will try to write funny or creative answers. The more interesting your prompt, the more coins you can earn!
+You might try writing "peppers and mushrooms" or "green and black olives".
 
-**Try creating your first prompt now.**`,
+Then other players will try to write similar quips based on yours, but *without seeing the prompt*. The more uniquely your answer fits the prompt, the more coins you can earn!
+
+**Try answering your first prompt now.**`,
     target: '.tutorial-prompt-input',
     position: 'top',
     action: 'wait',

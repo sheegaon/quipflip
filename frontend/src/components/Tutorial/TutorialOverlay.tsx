@@ -13,6 +13,50 @@ const CARD_SPACING = 20; // Space between card and target element
 const CARD_DEFAULT_WIDTH = 400; // Default card width (should match CSS)
 const CARD_DEFAULT_HEIGHT = 200; // Approximate card height for vertical positioning
 
+// Simple markdown parser for tutorial messages
+const parseMarkdown = (text: string): React.ReactNode[] => {
+  const lines = text.split('\n');
+  const elements: React.ReactNode[] = [];
+
+  lines.forEach((line, lineIndex) => {
+    // Parse bold (**text**) and italic (*text*) using a combined regex
+    // Match **text** or *text* but not *** (which would be bold + italic start)
+    const parts = line.split(/(\*\*[^*]+?\*\*|\*[^*]+?\*)/g);
+    const parsedLine = parts.map((part, partIndex) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        // Bold text
+        return <strong key={`${lineIndex}-${partIndex}`}>{part.slice(2, -2)}</strong>;
+      } else if (part.startsWith('*') && part.endsWith('*') && !part.startsWith('**')) {
+        // Italic text (single asterisk)
+        return <em key={`${lineIndex}-${partIndex}`}>{part.slice(1, -1)}</em>;
+      }
+      return part;
+    });
+
+    // Render line with appropriate spacing
+    if (line.trim() === '') {
+      // Empty line - add spacing between paragraphs
+      elements.push(<div key={lineIndex} style={{ height: '0.75rem' }} />);
+    } else if (line.trim().startsWith('•')) {
+      // Bullet point
+      elements.push(
+        <div key={lineIndex} style={{ marginLeft: '1rem', marginBottom: '0.25rem' }}>
+          {parsedLine}
+        </div>
+      );
+    } else {
+      // Regular paragraph
+      elements.push(
+        <div key={lineIndex} style={{ marginBottom: '0.25rem' }}>
+          {parsedLine}
+        </div>
+      );
+    }
+  });
+
+  return elements;
+};
+
 const TutorialOverlay: React.FC<TutorialOverlayProps> = ({ onComplete }) => {
   const { isActive, currentStep, advanceStep, skipTutorial, completeTutorial } = useTutorial();
   const [highlightRect, setHighlightRect] = useState<DOMRect | null>(null);
@@ -116,7 +160,7 @@ const TutorialOverlay: React.FC<TutorialOverlayProps> = ({ onComplete }) => {
       >
         <div className="tutorial-card-content">
           <h2 className="tutorial-title">{step.title}</h2>
-          <p className="tutorial-message">{step.message}</p>
+          <div className="tutorial-message">{parseMarkdown(step.message)}</div>
         </div>
 
         <div className="tutorial-actions">

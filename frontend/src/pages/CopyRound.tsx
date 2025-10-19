@@ -122,18 +122,18 @@ export const CopyRound: React.FC = () => {
           <Timer expiresAt={roundData.expires_at} />
         </div>
 
+        {/* Instructions */}
+        <div className="bg-quip-orange bg-opacity-10 border-2 border-quip-orange rounded-tile p-4 mb-6">
+          <p className="text-sm text-quip-navy">
+            <strong>⚠️ Important:</strong> You don't know the prompt! Submit a phrase that could be similar or related to the original phrase.
+          </p>
+        </div>
+
         {/* Original Phrase */}
         <div className="bg-quip-turquoise bg-opacity-5 border-2 border-quip-turquoise rounded-tile p-6 mb-6">
           <p className="text-sm text-quip-teal mb-2 text-center font-medium">Original Phrase:</p>
           <p className="text-3xl text-center font-display font-bold text-quip-turquoise">
             {roundData.original_phrase}
-          </p>
-        </div>
-
-        {/* Instructions */}
-        <div className="bg-quip-orange bg-opacity-10 border-2 border-quip-orange rounded-tile p-4 mb-6">
-          <p className="text-sm text-quip-navy">
-            <strong>⚠️ Important:</strong> You don't know the prompt! Submit a phrase that could be similar or related to the original phrase.
           </p>
         </div>
 
@@ -157,7 +157,7 @@ export const CopyRound: React.FC = () => {
               maxLength={100}
             />
             <p className="text-sm text-quip-teal mt-1">
-              1-5 words (2-100 characters), A-Z and spaces only, must be different from the original
+              1-5 words (4-100 characters), A-Z and spaces only, must be different from the original
             </p>
           </div>
 

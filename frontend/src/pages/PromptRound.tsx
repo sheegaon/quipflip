@@ -158,6 +158,13 @@ export const PromptRound: React.FC = () => {
           <Timer expiresAt={roundData.expires_at} />
         </div>
 
+        {/* Instructions */}
+        <div className="bg-quip-orange bg-opacity-10 border-2 border-quip-orange rounded-tile p-4 mb-6">
+          <p className="text-sm text-quip-navy">
+            <strong>💡 Tip:</strong> Type a word or short phrase that completes the sentence.
+          </p>
+        </div>
+
         {/* Prompt */}
         <div className="bg-quip-navy bg-opacity-5 border-2 border-quip-navy rounded-tile p-6 py-8 mb-6 relative min-h-[120px] flex items-center">
           <p className="text-2xl text-center font-display font-semibold text-quip-navy flex-1 pr-12">
@@ -215,7 +222,7 @@ export const PromptRound: React.FC = () => {
               maxLength={100}
             />
             <p className="text-sm text-quip-teal mt-1">
-              1-5 words (2-100 characters), A-Z and spaces only
+              1-5 words (4-100 characters), A-Z and spaces only
             </p>
           </div>
 

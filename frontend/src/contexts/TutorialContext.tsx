@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import apiClient from '../api/client';
 import type { TutorialProgress, TutorialStatus } from '../api/types';
+import { useGame } from './GameContext';
 
 interface TutorialContextType {
   tutorialStatus: TutorialStatus | null;
@@ -19,6 +20,7 @@ interface TutorialContextType {
 const TutorialContext = createContext<TutorialContextType | undefined>(undefined);
 
 export const TutorialProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isAuthenticated } = useGame();
   const [tutorialStatus, setTutorialStatus] = useState<TutorialStatus | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -76,10 +78,12 @@ export const TutorialProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   }, []);
 
-  // Load tutorial status on mount
+  // Load tutorial status only when authenticated
   useEffect(() => {
-    refreshStatus();
-  }, [refreshStatus]);
+    if (isAuthenticated) {
+      refreshStatus();
+    }
+  }, [isAuthenticated, refreshStatus]);
 
   const isActive = tutorialStatus
     ? !tutorialStatus.tutorial_completed && tutorialStatus.tutorial_progress !== 'not_started'

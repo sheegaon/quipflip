@@ -10,9 +10,10 @@ Quipflip is a FastAPI-based backend service with a stateless REST API architectu
 repo/
 ├── backend/              # FastAPI application, SQLAlchemy models, and services
 │   ├── main.py           # ASGI entrypoint
-│   ├── routers/          # Route modules (players, rounds, phrasesets, health)
-│   ├── services/         # Business logic (rounds, votes, phrasesets, players)
-│   ├── models/           # ORM models (Player, Round, PhraseSet, etc.)
+│   ├── routers/          # Route modules (players, rounds, phrasesets, quests, health)
+│   ├── services/         # Business logic (rounds, votes, phrasesets, players, quests)
+│   ├── models/           # ORM models (Player, Round, PhraseSet, Quest, etc.)
+│   ├── schemas/          # Pydantic request/response schemas
 │   ├── utils/            # Queue/lock abstractions, JSON encoders, helpers
 │   └── migrations/       # Alembic migrations
 ├── frontend/             # React + TypeScript client (Vite powered)
@@ -65,6 +66,7 @@ JWT authentication with short-lived access tokens and 30-day refresh tokens. See
 - UI presentation for all round types
 - Countdown timer display (client-side calculation from `expires_at`)
 - Player dashboard (balance, active rounds, pending results)
+- Quest progress display and reward claiming
 - Round type selection with availability indicators
 - Queue depth display and copy discount notifications
 - Input validation (basic format checks before API call)
@@ -76,6 +78,8 @@ JWT authentication with short-lived access tokens and 30-day refresh tokens. See
 - Player accounts, username recovery, and wallet management
 - Daily login bonus tracking and distribution
 - Tutorial progress tracking and persistence
+- Quest system (16 achievement types with automatic progress tracking)
+- Quest reward distribution and tier progression
 - Phrase validation against NASPA dictionary and semantic similarity
 - Duplicate and similarity detection (copy vs. original, cosine similarity threshold)
 - Queue management (prompt, copy, vote queues)
@@ -86,7 +90,7 @@ JWT authentication with short-lived access tokens and 30-day refresh tokens. See
 - Vote counting and finalization triggers with automatic payout calculation
 - Voting timeline management (3-vote 10-min, 5-vote 60-sec windows)
 - Scoring calculations and payout distribution
-- Transaction logging and audit trail
+- Transaction logging and audit trail (including quest rewards)
 - Anti-cheat enforcement (self-voting prevention, duplicate vote checks)
 - Results preparation and storage
 - One-round-at-a-time constraint enforcement
@@ -109,11 +113,11 @@ See [API.md](API.md) for complete REST API documentation including:
 
 ### Phrase Validation
 - Dictionary: NASPA word list (~191,000 words) for individual word validation
-- Phrase length: 1-5 words (2-100 characters total)
+- Phrase length: 1-5 words (4-100 characters total including spaces)
 - Format: Letters A-Z and spaces only (case-insensitive, stored uppercase)
-- Connecting words: A, AN, THE, I always allowed (count toward 5-word limit)
+- Connecting words: A, I always allowed (count toward 5-word limit)
 - Copy validation: Must differ from original and be semantically distinct (cosine similarity < 0.85)
-- Similarity model: all-MiniLM-L6-v2 (sentence-transformers)
+- Similarity model: all-mpnet-base-v2 (sentence-transformers)
 - See [API.md](API.md#game-configuration) for complete validation rules
 
 ### Phrase Randomization
@@ -160,3 +164,94 @@ Players limited to 10 outstanding prompts where:
 - "Outstanding" = phrasesets in status "open" or "closing" (not yet finalized)
 - Viewing results does not affect count
 - Enforced when calling POST /rounds/prompt
+
+---
+
+## Quest System
+
+### Overview
+
+The quest system provides 16 achievement types that automatically track player progress and award bonus coins. Quests are organized into 4 categories: **Streak**, **Quality**, **Activity**, and **Milestone**.
+
+### Quest Categories & Types
+
+**Streak Quests** (Vote Accuracy):
+- Hot Streak (5 correct votes in a row) - $10
+- Blazing Streak (10 correct votes in a row) - $25
+- Inferno Streak (20 correct votes in a row) - $75
+
+**Quality Quests** (Performance Bonuses):
+- Master Deceiver (75%+ votes on your copy) - $20
+- Clear Original (85%+ votes on the original) - $15
+
+**Activity Quests** (Engagement):
+- Quick Player (5 rounds in 24 hours) - $25
+- Active Player (10 rounds in 24 hours) - $75
+- Power Player (20 rounds in 24 hours) - $200
+- Balanced Player (1 prompt, 2 copies, 10 votes in 24 hours) - $20
+- Week Warrior (7 consecutive day login streak) - $200
+
+**Milestone Quests** (Long-term Goals):
+- Feedback Novice (10 feedback submissions) - $5
+- Feedback Expert (50 feedback submissions) - $25
+- Century Voter (100 total votes) - $50
+- Prompt Master (50 total prompts) - $100
+- Copy Champion (100 total copies) - $75
+- Popular Set (Phraseset receives 20 votes) - $25
+
+### Automatic Progress Tracking
+
+Quest progress is automatically tracked via integration points in existing services:
+
+- **Vote Service**: Updates hot streak quests on each vote, checks milestone votes, triggers quality quests on phraseset finalization
+- **Round Service**: Tracks round completion for activity quests, increments prompt/copy milestones
+- **Player Service**: Updates login streak quest on daily bonus claims
+- **Feedback Router**: Increments feedback contribution quests
+
+### Quest Lifecycle
+
+```
+Quest Created (active)
+  ↓
+Player completes objective → status: "completed"
+  ↓
+Player claims reward → status: "claimed"
+  ↓
+Tiered quests auto-create next tier (if applicable)
+```
+
+### Tier Progression
+
+Some quests automatically unlock higher tiers when claimed:
+- Hot Streak → Blazing Streak → Inferno Streak
+- Quick Player → Active Player → Power Player
+- Feedback Novice → Feedback Expert
+- Round Completion (5) → Round Completion (10) → Round Completion (20)
+
+### Quest Data Model
+
+**Quest Table**:
+- `quest_id` (UUID): Unique identifier
+- `player_id` (UUID): Owner reference
+- `quest_type` (String): Quest template reference
+- `status` (String): active, completed, claimed
+- `progress` (JSON): Flexible progress tracking (current, target, streaks, timestamps, etc.)
+- `reward_amount` (Integer): Coin reward
+- `created_at`, `completed_at`, `claimed_at` (DateTime)
+
+**Quest Template Table**:
+- Pre-seeded with 16 quest configurations
+- Defines name, description, reward, target value, category
+
+### Transaction Integration
+
+Quest rewards create transactions with type `quest_reward_{category}` (e.g., `quest_reward_hot_streak`) for audit trail and balance updates.
+
+### API Endpoints
+
+See [API.md](API.md) for complete quest endpoint documentation:
+- `GET /quests` - List all player quests with counts
+- `GET /quests/active` - Active quests only
+- `GET /quests/claimable` - Completed but unclaimed
+- `GET /quests/{quest_id}` - Single quest details
+- `POST /quests/{quest_id}/claim` - Claim reward

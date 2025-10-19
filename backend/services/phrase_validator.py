@@ -120,6 +120,10 @@ class PhraseValidator:
         if not phrase:
             return False, "Phrase cannot be empty"
 
+        # Check minimum overall length (including spaces)
+        if len(phrase) < 4:
+            return False, "Phrase must be at least 4 characters"
+
         # Check overall length
         if len(phrase) > self.settings.phrase_max_length:
             return False, f"Phrase must be {self.settings.phrase_max_length} characters or less"
