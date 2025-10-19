@@ -14,6 +14,9 @@ from backend.schemas.player import (
     PendingResult,
     CreatePlayerResponse,
     PlayerStatistics,
+    TutorialStatus,
+    UpdateTutorialProgressRequest,
+    UpdateTutorialProgressResponse,
 )
 from backend.schemas.phraseset import (
     PhrasesetListResponse,
@@ -25,6 +28,7 @@ from backend.services.transaction_service import TransactionService
 from backend.services.round_service import RoundService
 from backend.services.phraseset_service import PhrasesetService
 from backend.services.statistics_service import StatisticsService
+from backend.services.tutorial_service import TutorialService
 from backend.utils.exceptions import DailyBonusNotAvailableError
 from backend.config import get_settings
 from backend.schemas.auth import RegisterRequest
@@ -332,3 +336,40 @@ async def get_player_statistics(
     stats_service = StatisticsService(db)
     stats = await stats_service.get_player_statistics(player.player_id)
     return stats
+
+
+@router.get("/tutorial/status", response_model=TutorialStatus)
+async def get_tutorial_status(
+    player: Player = Depends(get_current_player),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get tutorial status for the current player."""
+    tutorial_service = TutorialService(db)
+    return await tutorial_service.get_tutorial_status(player.player_id)
+
+
+@router.post("/tutorial/progress", response_model=UpdateTutorialProgressResponse)
+async def update_tutorial_progress(
+    request: UpdateTutorialProgressRequest,
+    player: Player = Depends(get_current_player),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update tutorial progress for the current player."""
+    tutorial_service = TutorialService(db)
+    tutorial_status = await tutorial_service.update_tutorial_progress(
+        player.player_id, request.progress
+    )
+    return UpdateTutorialProgressResponse(
+        success=True,
+        tutorial_status=tutorial_status,
+    )
+
+
+@router.post("/tutorial/reset", response_model=TutorialStatus)
+async def reset_tutorial(
+    player: Player = Depends(get_current_player),
+    db: AsyncSession = Depends(get_db),
+):
+    """Reset tutorial progress for the current player."""
+    tutorial_service = TutorialService(db)
+    return await tutorial_service.reset_tutorial(player.player_id)
