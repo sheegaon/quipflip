@@ -24,8 +24,42 @@ export const Landing: React.FC = () => {
 
   const handleCreatePlayer = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!registerUsername.trim() || !registerEmail.trim() || !registerPassword.trim()) {
-      setError('Please provide a username, email, and password to create an account.');
+
+    // Frontend validation
+    if (!registerUsername.trim()) {
+      setError('Please provide a username.');
+      return;
+    }
+    if (registerUsername.trim().length < 3) {
+      setError('Username must be at least 3 characters long.');
+      return;
+    }
+    if (registerUsername.trim().length > 80) {
+      setError('Username must be 80 characters or less.');
+      return;
+    }
+
+    if (!registerEmail.trim()) {
+      setError('Please provide an email address.');
+      return;
+    }
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(registerEmail.trim())) {
+      setError('Please provide a valid email address.');
+      return;
+    }
+
+    if (!registerPassword) {
+      setError('Please provide a password.');
+      return;
+    }
+    if (registerPassword.length < 8) {
+      setError('Password must be at least 8 characters long.');
+      return;
+    }
+    if (registerPassword.length > 128) {
+      setError('Password must be 128 characters or less.');
       return;
     }
 
@@ -99,6 +133,9 @@ export const Landing: React.FC = () => {
                   placeholder="Choose a username"
                   className="w-full px-4 py-2 border border-gray-300 rounded-tile focus:outline-none focus:ring-2 focus:ring-quip-turquoise"
                   disabled={isLoading}
+                  autoComplete="username"
+                  minLength={3}
+                  maxLength={80}
                 />
                 <input
                   type="email"
@@ -107,14 +144,18 @@ export const Landing: React.FC = () => {
                   placeholder="Your email"
                   className="w-full px-4 py-2 border border-gray-300 rounded-tile focus:outline-none focus:ring-2 focus:ring-quip-turquoise"
                   disabled={isLoading}
+                  autoComplete="email"
                 />
                 <input
                   type="password"
                   value={registerPassword}
                   onChange={(e) => setRegisterPassword(e.target.value)}
-                  placeholder="Create a password"
+                  placeholder="Create a password (min 8 characters)"
                   className="w-full px-4 py-2 border border-gray-300 rounded-tile focus:outline-none focus:ring-2 focus:ring-quip-turquoise"
                   disabled={isLoading}
+                  autoComplete="new-password"
+                  minLength={8}
+                  maxLength={128}
                 />
                 <button
                   type="submit"
@@ -124,8 +165,8 @@ export const Landing: React.FC = () => {
                   {isLoading ? 'Creating Account...' : 'Create New Account'}
                 </button>
               </form>
-              <p className="text-sm text-quip-teal mt-2">
-                Start with 1,000 Flipcoins
+              <p className="text-xs text-gray-600 mt-2">
+                Username: 3-80 characters • Password: 8-128 characters
               </p>
             </div>
 
@@ -140,6 +181,7 @@ export const Landing: React.FC = () => {
                   placeholder="Email address"
                   className="w-full px-4 py-2 border border-gray-300 rounded-tile focus:outline-none focus:ring-2 focus:ring-quip-turquoise"
                   disabled={isLoading}
+                  autoComplete="email"
                 />
                 <input
                   type="password"
@@ -148,6 +190,7 @@ export const Landing: React.FC = () => {
                   placeholder="Password"
                   className="w-full px-4 py-2 border border-gray-300 rounded-tile focus:outline-none focus:ring-2 focus:ring-quip-turquoise"
                   disabled={isLoading}
+                  autoComplete="current-password"
                 />
                 <button
                   type="submit"
