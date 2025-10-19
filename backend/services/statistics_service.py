@@ -517,7 +517,7 @@ class StatisticsService:
         Returns:
             List of BestPerformingPhrase
         """
-        # Get prompt phrases with votes and earnings in a single query
+        # Get prompt phrases with votes and earnings aggregated by phrase text
         prompt_result = await self.db.execute(
             select(
                 Round.submitted_phrase.label("phrase"),
@@ -550,10 +550,10 @@ class StatisticsService:
                     PhraseSet.status == "finalized"
                 )
             )
-            .group_by(Round.submitted_phrase, PhraseSet.phraseset_id)
+            .group_by(Round.submitted_phrase)
         )
 
-        # Get copy phrases with votes and earnings in a single query
+        # Get copy phrases with votes and earnings aggregated by phrase text
         copy_result = await self.db.execute(
             select(
                 Round.copy_phrase.label("phrase"),
@@ -590,7 +590,7 @@ class StatisticsService:
                     PhraseSet.status == "finalized"
                 )
             )
-            .group_by(Round.copy_phrase, PhraseSet.phraseset_id)
+            .group_by(Round.copy_phrase)
         )
 
         # Combine results
