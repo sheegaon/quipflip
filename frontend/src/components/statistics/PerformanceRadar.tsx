@@ -17,14 +17,20 @@ interface PerformanceRadarProps {
 }
 
 export default function PerformanceRadar({ promptStats, copyStats, voterStats }: PerformanceRadarProps) {
-  // Normalize metrics to 0-100 scale for radar chart
+  // Normalize each metric to 0-100 scale using its own maximum for balanced visualization
   const maxRounds = Math.max(
     promptStats.total_rounds,
     copyStats.total_rounds,
     voterStats.total_rounds,
     1
   );
-  const maxEarnings = Math.max(
+  const maxAvgEarnings = Math.max(
+    promptStats.average_earnings,
+    copyStats.average_earnings,
+    voterStats.average_earnings,
+    1
+  );
+  const maxTotalEarnings = Math.max(
     promptStats.total_earnings,
     copyStats.total_earnings,
     voterStats.total_earnings,
@@ -46,15 +52,15 @@ export default function PerformanceRadar({ promptStats, copyStats, voterStats }:
     },
     {
       metric: 'Avg Earnings',
-      Prompt: (promptStats.average_earnings / maxEarnings) * 100,
-      Copy: (copyStats.average_earnings / maxEarnings) * 100,
-      Voter: (voterStats.average_earnings / maxEarnings) * 100,
+      Prompt: (promptStats.average_earnings / maxAvgEarnings) * 100,
+      Copy: (copyStats.average_earnings / maxAvgEarnings) * 100,
+      Voter: (voterStats.average_earnings / maxAvgEarnings) * 100,
     },
     {
       metric: 'Total Earnings',
-      Prompt: (promptStats.total_earnings / maxEarnings) * 100,
-      Copy: (copyStats.total_earnings / maxEarnings) * 100,
-      Voter: (voterStats.total_earnings / maxEarnings) * 100,
+      Prompt: (promptStats.total_earnings / maxTotalEarnings) * 100,
+      Copy: (copyStats.total_earnings / maxTotalEarnings) * 100,
+      Voter: (voterStats.total_earnings / maxTotalEarnings) * 100,
     },
   ];
 

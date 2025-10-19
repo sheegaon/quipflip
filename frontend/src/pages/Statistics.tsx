@@ -5,6 +5,7 @@ import type { PlayerStatistics } from '../api/types';
 import { Header } from '../components/Header';
 import WinRateChart from '../components/statistics/WinRateChart';
 import EarningsChart from '../components/statistics/EarningsChart';
+import FrequencyChart from '../components/statistics/FrequencyChart';
 import PerformanceRadar from '../components/statistics/PerformanceRadar';
 import TopContentTable from '../components/statistics/TopContentTable';
 
@@ -123,36 +124,7 @@ export default function Statistics() {
           {/* Play Frequency */}
           <div className="tile-card p-6">
             <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Activity Metrics</h2>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-quip-teal">Total Rounds Played</span>
-                <span className="text-2xl font-bold text-quip-navy">
-                  {stats.frequency.total_rounds_played}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-quip-teal">Days Active</span>
-                <span className="text-2xl font-bold text-quip-navy">{stats.frequency.days_active}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-quip-teal">Rounds per Day</span>
-                <span className="text-2xl font-bold text-quip-navy">
-                  {stats.frequency.rounds_per_day.toFixed(1)}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-quip-teal">Member Since</span>
-                <span className="text-sm font-medium text-quip-navy">
-                  {new Date(stats.frequency.member_since).toLocaleDateString()}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-quip-teal">Last Active</span>
-                <span className="text-sm font-medium text-quip-navy">
-                  {new Date(stats.frequency.last_active).toLocaleDateString()}
-                </span>
-              </div>
-            </div>
+            <FrequencyChart frequency={stats.frequency} />
           </div>
         </div>
 
