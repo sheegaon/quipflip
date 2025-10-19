@@ -92,9 +92,8 @@ class StatisticsService:
         # Get all rounds for this role
         round_type = "vote" if role == "voter" else role
 
-        result = await self.db.execute(
-            select(Round)
-            .where(
+        count_result = await self.db.execute(
+            select(func.count(Round.round_id)).where(
                 and_(
                     Round.player_id == player_id,
                     Round.round_type == round_type,
@@ -102,9 +101,7 @@ class StatisticsService:
                 )
             )
         )
-        rounds = list(result.scalars().all())
-
-        total_rounds = len(rounds)
+        total_rounds = count_result.scalar_one()
 
         if total_rounds == 0:
             return RoleStatistics(
@@ -406,18 +403,15 @@ class StatisticsService:
             PlayFrequency metrics
         """
         # Get all rounds
-        result = await self.db.execute(
-            select(Round)
-            .where(
+        count_result = await self.db.execute(
+            select(func.count(Round.round_id)).where(
                 and_(
                     Round.player_id == player_id,
                     Round.status == "submitted"
                 )
             )
         )
-        rounds = list(result.scalars().all())
-
-        total_rounds_played = len(rounds)
+        total_rounds_played = count_result.scalar_one()
 
         if total_rounds_played == 0:
             return PlayFrequency(
