@@ -4,6 +4,7 @@ from sqlalchemy import select, func, case, and_, distinct
 from uuid import UUID
 from datetime import datetime, UTC
 import logging
+import asyncio
 
 from backend.models.player import Player
 from backend.models.round import Round
@@ -45,14 +46,24 @@ class StatisticsService:
         if not player:
             raise ValueError(f"Player not found: {player_id}")
 
-        # Calculate all statistics in parallel where possible
-        prompt_stats = await self._calculate_role_stats(player_id, "prompt")
-        copy_stats = await self._calculate_role_stats(player_id, "copy")
-        voter_stats = await self._calculate_role_stats(player_id, "voter")
-        earnings = await self._calculate_earnings_breakdown(player_id)
-        frequency = await self._calculate_play_frequency(player_id, player.created_at)
-        favorite_prompts = await self._get_favorite_prompts(player_id)
-        best_phrases = await self._get_best_phrases(player_id)
+        # Calculate all statistics concurrently for better performance
+        (
+            prompt_stats,
+            copy_stats,
+            voter_stats,
+            earnings,
+            frequency,
+            favorite_prompts,
+            best_phrases,
+        ) = await asyncio.gather(
+            self._calculate_role_stats(player_id, "prompt"),
+            self._calculate_role_stats(player_id, "copy"),
+            self._calculate_role_stats(player_id, "voter"),
+            self._calculate_earnings_breakdown(player_id),
+            self._calculate_play_frequency(player_id, player.created_at),
+            self._get_favorite_prompts(player_id),
+            self._get_best_phrases(player_id),
+        )
 
         return PlayerStatistics(
             player_id=player_id,
@@ -108,28 +119,70 @@ class StatisticsService:
                 vote_accuracy=0.0 if role == "voter" else None,
             )
 
-        # Get transaction earnings for this role
-        trans_type_map = {
-            "prompt": "prize_payout",
-            "copy": "prize_payout",
-            "voter": "vote_payout",
-        }
-        trans_type = trans_type_map[role]
-
-        # Get all transactions for this role
-        trans_result = await self.db.execute(
-            select(Transaction)
-            .where(
-                and_(
-                    Transaction.player_id == player_id,
-                    Transaction.type == trans_type
+        # Get transaction earnings scoped to this specific role
+        if role == "voter":
+            # For voters, get vote payouts
+            trans_result = await self.db.execute(
+                select(
+                    func.coalesce(func.sum(Transaction.amount), 0).label("total_earnings"),
+                    func.count(Transaction.transaction_id).label("win_count")
+                )
+                .where(
+                    and_(
+                        Transaction.player_id == player_id,
+                        Transaction.type == "vote_payout",
+                        Transaction.amount > 0
+                    )
                 )
             )
-        )
-        transactions = list(trans_result.scalars().all())
+        elif role == "prompt":
+            # For prompts, get prize payouts from phrasesets where this player was the prompter
+            trans_result = await self.db.execute(
+                select(
+                    func.coalesce(func.sum(Transaction.amount), 0).label("total_earnings"),
+                    func.count(Transaction.transaction_id).label("win_count")
+                )
+                .select_from(Transaction)
+                .join(PhraseSet, Transaction.reference_id == PhraseSet.phraseset_id)
+                .join(Round, PhraseSet.prompt_round_id == Round.round_id)
+                .where(
+                    and_(
+                        Transaction.player_id == player_id,
+                        Transaction.type == "prize_payout",
+                        Transaction.amount > 0,
+                        Round.player_id == player_id,
+                        Round.round_type == "prompt"
+                    )
+                )
+            )
+        else:  # copy
+            # For copies, get prize payouts from phrasesets where this player was a copier
+            trans_result = await self.db.execute(
+                select(
+                    func.coalesce(func.sum(Transaction.amount), 0).label("total_earnings"),
+                    func.count(Transaction.transaction_id).label("win_count")
+                )
+                .select_from(Transaction)
+                .join(PhraseSet, Transaction.reference_id == PhraseSet.phraseset_id)
+                .join(
+                    Round,
+                    (PhraseSet.copy_round_1_id == Round.round_id) |
+                    (PhraseSet.copy_round_2_id == Round.round_id)
+                )
+                .where(
+                    and_(
+                        Transaction.player_id == player_id,
+                        Transaction.type == "prize_payout",
+                        Transaction.amount > 0,
+                        Round.player_id == player_id,
+                        Round.round_type == "copy"
+                    )
+                )
+            )
 
-        total_earnings = sum(t.amount for t in transactions if t.amount > 0)
-        wins = sum(1 for t in transactions if t.amount > 0)
+        earnings_stats = trans_result.one()
+        total_earnings = earnings_stats.total_earnings or 0
+        wins = earnings_stats.win_count or 0
         win_rate = (wins / total_rounds * 100) if total_rounds > 0 else 0.0
         average_earnings = total_earnings / total_rounds if total_rounds > 0 else 0.0
 
@@ -171,12 +224,21 @@ class StatisticsService:
 
             # Calculate average votes received
             if role == "prompt":
-                # For prompts, count votes for the original phrase
-                # Need to count how many votes were for the original phrase in each phraseset
-                total_votes = 0
-                phrasesets_result = await self.db.execute(
-                    select(PhraseSet)
+                # For prompts, count votes for the original phrase using aggregated query
+                votes_result = await self.db.execute(
+                    select(
+                        func.count(distinct(PhraseSet.phraseset_id)).label("phraseset_count"),
+                        func.count(Vote.vote_id).label("total_votes")
+                    )
+                    .select_from(PhraseSet)
                     .join(Round, PhraseSet.prompt_round_id == Round.round_id)
+                    .outerjoin(
+                        Vote,
+                        and_(
+                            Vote.phraseset_id == PhraseSet.phraseset_id,
+                            Vote.voted_phrase == PhraseSet.original_phrase
+                        )
+                    )
                     .where(
                         and_(
                             Round.player_id == player_id,
@@ -184,62 +246,42 @@ class StatisticsService:
                         )
                     )
                 )
-                phrasesets = list(phrasesets_result.scalars().all())
-
-                for ps in phrasesets:
-                    # Count votes for original phrase
-                    vote_count_result = await self.db.execute(
-                        select(func.count(Vote.vote_id))
-                        .where(
-                            and_(
-                                Vote.phraseset_id == ps.phraseset_id,
-                                Vote.voted_phrase == ps.original_phrase
-                            )
-                        )
-                    )
-                    total_votes += vote_count_result.scalar() or 0
-
-                average_votes_received = total_votes / len(phrasesets) if phrasesets else 0.0
+                votes_stats = votes_result.one()
+                phraseset_count = votes_stats.phraseset_count or 0
+                total_votes = votes_stats.total_votes or 0
+                average_votes_received = total_votes / phraseset_count if phraseset_count > 0 else 0.0
 
             else:  # copy
-                # For copies, count votes for their copy phrases
-                total_votes = 0
-                count = 0
-
-                # Get all phrasesets where this player was a copier
-                phrasesets_result = await self.db.execute(
-                    select(PhraseSet, Round.copy_phrase)
+                # For copies, count votes for their copy phrases using aggregated query
+                votes_result = await self.db.execute(
+                    select(
+                        func.count(distinct(PhraseSet.phraseset_id)).label("phraseset_count"),
+                        func.count(Vote.vote_id).label("total_votes")
+                    )
+                    .select_from(PhraseSet)
                     .join(
                         Round,
-                        (PhraseSet.copy_round_1_id == Round.round_id) |
-                        (PhraseSet.copy_round_2_id == Round.round_id)
-                    )
-                    .where(
                         and_(
+                            (PhraseSet.copy_round_1_id == Round.round_id) |
+                            (PhraseSet.copy_round_2_id == Round.round_id),
                             Round.player_id == player_id,
                             Round.round_type == "copy",
-                            PhraseSet.status == "finalized"
+                            Round.copy_phrase.isnot(None)
                         )
                     )
-                )
-                phraseset_rows = list(phrasesets_result.all())
-
-                for ps, copy_phrase in phraseset_rows:
-                    if copy_phrase:
-                        # Count votes for this copy phrase
-                        vote_count_result = await self.db.execute(
-                            select(func.count(Vote.vote_id))
-                            .where(
-                                and_(
-                                    Vote.phraseset_id == ps.phraseset_id,
-                                    Vote.voted_phrase == copy_phrase
-                                )
-                            )
+                    .outerjoin(
+                        Vote,
+                        and_(
+                            Vote.phraseset_id == PhraseSet.phraseset_id,
+                            Vote.voted_phrase == Round.copy_phrase
                         )
-                        total_votes += vote_count_result.scalar() or 0
-                        count += 1
-
-                average_votes_received = total_votes / count if count > 0 else 0.0
+                    )
+                    .where(PhraseSet.status == "finalized")
+                )
+                votes_stats = votes_result.one()
+                phraseset_count = votes_stats.phraseset_count or 0
+                total_votes = votes_stats.total_votes or 0
+                average_votes_received = total_votes / phraseset_count if phraseset_count > 0 else 0.0
 
         elif role == "voter":
             # Count correct votes using the Vote.correct field
@@ -278,49 +320,69 @@ class StatisticsService:
         Returns:
             EarningsBreakdown with all sources
         """
-        # Get all positive transactions (earnings)
+        # Use a single aggregated query to categorize and sum all earnings
         result = await self.db.execute(
-            select(Transaction)
+            select(
+                func.sum(case(
+                    (Transaction.type == "daily_bonus", Transaction.amount),
+                    else_=0
+                )).label("daily_bonuses"),
+                func.sum(case(
+                    (Transaction.type == "vote_payout", Transaction.amount),
+                    else_=0
+                )).label("vote_earnings"),
+                func.sum(case(
+                    (
+                        and_(
+                            Transaction.type == "prize_payout",
+                            Round.round_type == "prompt"
+                        ),
+                        Transaction.amount
+                    ),
+                    else_=0
+                )).label("prompt_earnings"),
+                func.sum(case(
+                    (
+                        and_(
+                            Transaction.type == "prize_payout",
+                            Round.round_type == "copy"
+                        ),
+                        Transaction.amount
+                    ),
+                    else_=0
+                )).label("copy_earnings")
+            )
+            .select_from(Transaction)
+            .outerjoin(
+                PhraseSet,
+                and_(
+                    Transaction.reference_id == PhraseSet.phraseset_id,
+                    Transaction.type == "prize_payout"
+                )
+            )
+            .outerjoin(
+                Round,
+                (PhraseSet.prompt_round_id == Round.round_id) |
+                (PhraseSet.copy_round_1_id == Round.round_id) |
+                (PhraseSet.copy_round_2_id == Round.round_id)
+            )
             .where(
                 and_(
                     Transaction.player_id == player_id,
-                    Transaction.amount > 0
+                    Transaction.amount > 0,
+                    # Filter Round to only include rows where this player is involved
+                    (Round.player_id == player_id) | (Round.round_id.is_(None))
                 )
             )
         )
-        transactions = list(result.scalars().all())
 
-        prompt_earnings = 0
-        copy_earnings = 0
-        vote_earnings = 0
-        daily_bonuses = 0
+        earnings_stats = result.one()
 
-        for trans in transactions:
-            if trans.type == "daily_bonus":
-                daily_bonuses += trans.amount
-            elif trans.type == "vote_payout":
-                vote_earnings += trans.amount
-            elif trans.type == "prize_payout":
-                # Need to determine if this was a prompt or copy payout
-                # Check the reference_id (phraseset_id)
-                if trans.reference_id:
-                    ps_result = await self.db.execute(
-                        select(PhraseSet).where(PhraseSet.phraseset_id == trans.reference_id)
-                    )
-                    phraseset = ps_result.scalar_one_or_none()
-                    if phraseset:
-                        # Check if player was prompt or copy
-                        prompt_result = await self.db.execute(
-                            select(Round).where(Round.round_id == phraseset.prompt_round_id)
-                        )
-                        prompt_round = prompt_result.scalar_one_or_none()
-
-                        if prompt_round and prompt_round.player_id == player_id:
-                            prompt_earnings += trans.amount
-                        else:
-                            copy_earnings += trans.amount
-
-        total_earnings = prompt_earnings + copy_earnings + vote_earnings + daily_bonuses
+        daily_bonuses = earnings_stats.daily_bonuses or 0
+        vote_earnings = earnings_stats.vote_earnings or 0
+        prompt_earnings = earnings_stats.prompt_earnings or 0
+        copy_earnings = earnings_stats.copy_earnings or 0
+        total_earnings = daily_bonuses + vote_earnings + prompt_earnings + copy_earnings
 
         return EarningsBreakdown(
             prompt_earnings=prompt_earnings,
@@ -455,17 +517,30 @@ class StatisticsService:
         Returns:
             List of BestPerformingPhrase
         """
-        # Get phrases from prompt and copy rounds with vote counts
-        phrases = []
-
-        # Get prompt phrases
+        # Get prompt phrases with votes and earnings in a single query
         prompt_result = await self.db.execute(
             select(
-                Round.submitted_phrase,
-                PhraseSet.phraseset_id,
-                PhraseSet.vote_count
+                Round.submitted_phrase.label("phrase"),
+                func.count(Vote.vote_id).label("votes"),
+                func.coalesce(func.sum(Transaction.amount), 0).label("earnings")
             )
+            .select_from(Round)
             .join(PhraseSet, PhraseSet.prompt_round_id == Round.round_id)
+            .outerjoin(
+                Vote,
+                and_(
+                    Vote.phraseset_id == PhraseSet.phraseset_id,
+                    Vote.voted_phrase == Round.submitted_phrase
+                )
+            )
+            .outerjoin(
+                Transaction,
+                and_(
+                    Transaction.player_id == player_id,
+                    Transaction.reference_id == PhraseSet.phraseset_id,
+                    Transaction.type == "prize_payout"
+                )
+            )
             .where(
                 and_(
                     Round.player_id == player_id,
@@ -475,51 +550,36 @@ class StatisticsService:
                     PhraseSet.status == "finalized"
                 )
             )
+            .group_by(Round.submitted_phrase, PhraseSet.phraseset_id)
         )
 
-        for row in prompt_result.all():
-            # Get earnings for this phraseset
-            trans_result = await self.db.execute(
-                select(func.sum(Transaction.amount))
-                .where(
-                    and_(
-                        Transaction.player_id == player_id,
-                        Transaction.reference_id == row.phraseset_id,
-                        Transaction.type == "prize_payout"
-                    )
-                )
-            )
-            earnings = trans_result.scalar() or 0
-
-            # Count votes for original phrase
-            vote_result = await self.db.execute(
-                select(func.count(Vote.vote_id))
-                .where(
-                    and_(
-                        Vote.phraseset_id == row.phraseset_id,
-                        Vote.voted_phrase == row.submitted_phrase
-                    )
-                )
-            )
-            votes = vote_result.scalar() or 0
-
-            phrases.append({
-                "phrase": row.submitted_phrase,
-                "votes": votes,
-                "earnings": earnings,
-            })
-
-        # Get copy phrases
+        # Get copy phrases with votes and earnings in a single query
         copy_result = await self.db.execute(
             select(
-                Round.copy_phrase,
-                PhraseSet.phraseset_id,
-                PhraseSet.vote_count
+                Round.copy_phrase.label("phrase"),
+                func.count(Vote.vote_id).label("votes"),
+                func.coalesce(func.sum(Transaction.amount), 0).label("earnings")
             )
+            .select_from(Round)
             .join(
                 PhraseSet,
                 (PhraseSet.copy_round_1_id == Round.round_id) |
                 (PhraseSet.copy_round_2_id == Round.round_id)
+            )
+            .outerjoin(
+                Vote,
+                and_(
+                    Vote.phraseset_id == PhraseSet.phraseset_id,
+                    Vote.voted_phrase == Round.copy_phrase
+                )
+            )
+            .outerjoin(
+                Transaction,
+                and_(
+                    Transaction.player_id == player_id,
+                    Transaction.reference_id == PhraseSet.phraseset_id,
+                    Transaction.type == "prize_payout"
+                )
             )
             .where(
                 and_(
@@ -530,38 +590,23 @@ class StatisticsService:
                     PhraseSet.status == "finalized"
                 )
             )
+            .group_by(Round.copy_phrase, PhraseSet.phraseset_id)
         )
 
-        for row in copy_result.all():
-            # Get earnings for this phraseset
-            trans_result = await self.db.execute(
-                select(func.sum(Transaction.amount))
-                .where(
-                    and_(
-                        Transaction.player_id == player_id,
-                        Transaction.reference_id == row.phraseset_id,
-                        Transaction.type == "prize_payout"
-                    )
-                )
-            )
-            earnings = trans_result.scalar() or 0
-
-            # Count votes for this copy phrase
-            vote_result = await self.db.execute(
-                select(func.count(Vote.vote_id))
-                .where(
-                    and_(
-                        Vote.phraseset_id == row.phraseset_id,
-                        Vote.voted_phrase == row.copy_phrase
-                    )
-                )
-            )
-            votes = vote_result.scalar() or 0
-
+        # Combine results
+        phrases = []
+        for row in prompt_result.all():
             phrases.append({
-                "phrase": row.copy_phrase,
-                "votes": votes,
-                "earnings": earnings,
+                "phrase": row.phrase,
+                "votes": row.votes,
+                "earnings": row.earnings,
+            })
+
+        for row in copy_result.all():
+            phrases.append({
+                "phrase": row.phrase,
+                "votes": row.votes,
+                "earnings": row.earnings,
             })
 
         # Sort by votes first, then earnings
