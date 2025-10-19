@@ -132,11 +132,13 @@ class Settings(BaseSettings):
             old_drivername = drivername
             parsed = parsed.set(drivername="postgresql+asyncpg")
             logger.info(f"Driver normalized: {old_drivername} -> {parsed.drivername}")
-            self.database_url = str(parsed)
+            # Use render_as_string to properly re-encode special characters in password
+            self.database_url = parsed.render_as_string(hide_password=False)
             logger.info(f"Final DATABASE_URL length: {len(self.database_url)}")
         else:
             # Keep the original value when no normalization is required.
-            self.database_url = str(parsed)
+            # Use render_as_string to properly re-encode special characters in password
+            self.database_url = parsed.render_as_string(hide_password=False)
             logger.info(f"No driver normalization needed")
 
         return self
