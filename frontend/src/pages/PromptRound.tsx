@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
+import { useTutorial } from '../contexts/TutorialContext';
 import apiClient, { extractErrorMessage } from '../api/client';
 import { Timer } from '../components/Timer';
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -10,6 +11,7 @@ import type { PromptState } from '../api/types';
 
 export const PromptRound: React.FC = () => {
   const { activeRound, refreshCurrentRound, refreshBalance } = useGame();
+  const { currentStep, advanceStep } = useTutorial();
   const navigate = useNavigate();
   const [phrase, setPhrase] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -108,6 +110,11 @@ export const PromptRound: React.FC = () => {
       // Show success message
       const message = getRandomMessage('promptSubmitted');
       setSuccessMessage(message);
+
+      // Advance tutorial if in prompt_round step
+      if (currentStep === 'prompt_round') {
+        await advanceStep('copy_round');
+      }
 
       // Navigate after brief delay
       setTimeout(() => navigate('/dashboard'), 1500);

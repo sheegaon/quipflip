@@ -19,10 +19,10 @@ const TutorialWelcome: React.FC<TutorialWelcomeProps> = ({ onStart, onSkip }) =>
     <div className="tutorial-welcome-overlay">
       <div className="tutorial-welcome-modal">
         <div className="tutorial-welcome-content">
-          <h1 className="tutorial-welcome-title">Welcome to QuipFlip!</h1>
+          <h1 className="tutorial-welcome-title">Welcome to Quipflip!</h1>
 
           <p className="tutorial-welcome-description">
-            QuipFlip is a creative word game where you can:
+            Quipflip is a creative word game where you can:
           </p>
 
           <ul className="tutorial-welcome-features">

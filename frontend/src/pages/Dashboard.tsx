@@ -158,6 +158,10 @@ export const Dashboard: React.FC = () => {
   const inProgressCopies = phrasesetSummary?.in_progress.copies ?? 0;
   const hasInProgress = inProgressPrompts + inProgressCopies > 0;
 
+  // Hide certain dashboard elements during tutorial to reduce overwhelm
+  const { tutorialStatus } = useTutorial();
+  const isTutorialComplete = tutorialStatus?.tutorial_completed ?? false;
+
   const unclaimedPromptCount = phrasesetSummary?.finalized.unclaimed_prompts ?? 0;
   const unclaimedCopyCount = phrasesetSummary?.finalized.unclaimed_copies ?? 0;
   const totalUnclaimedCount = unclaimedPromptCount + unclaimedCopyCount;
@@ -224,7 +228,7 @@ export const Dashboard: React.FC = () => {
           </div>
         )}
 
-        {hasInProgress && (
+        {isTutorialComplete && hasInProgress && (
           <div className="tile-card border-2 border-quip-navy p-4 mb-6 slide-up-enter">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -281,23 +285,25 @@ export const Dashboard: React.FC = () => {
         )}
 
         {/* Statistics */}
-        <div className="tile-card border-2 border-quip-teal p-4 mb-6">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="font-display font-semibold text-quip-teal">Your Performance</p>
-              <p className="text-sm text-quip-navy">View detailed statistics and charts</p>
+        {isTutorialComplete && (
+          <div className="tile-card border-2 border-quip-teal p-4 mb-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-display font-semibold text-quip-teal">Your Performance</p>
+                <p className="text-sm text-quip-navy">View detailed statistics and charts</p>
+              </div>
+              <button
+                onClick={handleViewStatistics}
+                className="w-full sm:w-auto bg-quip-teal hover:bg-quip-navy text-white font-bold py-2 px-6 rounded-tile transition-all hover:shadow-tile-sm"
+              >
+                View Statistics
+              </button>
             </div>
-            <button
-              onClick={handleViewStatistics}
-              className="w-full sm:w-auto bg-quip-teal hover:bg-quip-navy text-white font-bold py-2 px-6 rounded-tile transition-all hover:shadow-tile-sm"
-            >
-              View Statistics
-            </button>
           </div>
-        </div>
+        )}
 
         {/* Round Selection */}
-        <div className="tile-card p-6 shuffle-enter">
+        <div className="tutorial-dashboard tile-card p-6 shuffle-enter">
           <h2 className="text-xl font-display font-bold mb-4 text-quip-navy">Start a Round</h2>
 
           <div className="space-y-4">

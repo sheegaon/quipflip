@@ -193,9 +193,17 @@ const clearStoredCredentials = () => {
 };
 
 const shouldAttemptRefresh = () => {
-  if (!accessToken) return true;
-  if (!accessTokenExpiresAt) return false;
-  return Date.now() >= accessTokenExpiresAt;
+  // If we have an access token that hasn't expired yet, no need to refresh
+  if (accessToken && accessTokenExpiresAt && Date.now() < accessTokenExpiresAt) {
+    return false;
+  }
+
+  // Only attempt refresh if we have evidence of a previous login (stored username)
+  // This prevents unnecessary refresh attempts on first visit
+  const hasStoredUsername = localStorage.getItem(USERNAME_STORAGE_KEY);
+  if (!hasStoredUsername) return false;
+
+  return true;
 };
 
 let refreshPromise: Promise<string | null> | null = null;
@@ -209,7 +217,7 @@ const performTokenRefresh = async (): Promise<string | null> => {
   refreshPromise = api
     .post<AuthTokenResponse>(
       '/auth/refresh',
-      {},
+      { refresh_token: null },
       {
         headers: {
           'X-Skip-Auth': 'true',
@@ -278,16 +286,20 @@ api.interceptors.response.use(
       originalRequest.url !== '/auth/refresh' &&
       originalRequest.url !== '/auth/logout'
     ) {
-      originalRequest._retry = true;
-      try {
-        const token = await performTokenRefresh();
-        if (token && originalRequest.headers) {
-          originalRequest.headers.Authorization = `Bearer ${token}`;
+      // Only attempt refresh if we have evidence of a previous login
+      const hasStoredUsername = localStorage.getItem(USERNAME_STORAGE_KEY);
+      if (hasStoredUsername) {
+        originalRequest._retry = true;
+        try {
+          const token = await performTokenRefresh();
+          if (token && originalRequest.headers) {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+          }
+          return api(originalRequest);
+        } catch (refreshError) {
+          clearStoredCredentials();
+          return Promise.reject(refreshError);
         }
-        return api(originalRequest);
-      } catch (refreshError) {
-        clearStoredCredentials();
-        return Promise.reject(refreshError);
       }
     }
 

@@ -8,7 +8,7 @@
 
 ## Overview
 
-The QuipFlip tutorial system provides an interactive, guided onboarding experience for new players. It features a progressive tutorial flow that teaches players how to create prompts, write copies, and vote on phrases through actual gameplay with visual overlays and contextual guidance.
+The Quipflip tutorial system provides an interactive, guided onboarding experience for new players. It features a progressive tutorial flow that teaches players how to create prompts, write copies, and vote on phrases through actual gameplay with visual overlays and contextual guidance.
 
 ---
 
@@ -196,7 +196,7 @@ not_started → welcome → dashboard → prompt_round → copy_round → vote_r
 - Responsive design (mobile and desktop)
 - Smooth animations and transitions
 - Spotlight effect with box-shadow
-- Themed colors matching QuipFlip brand
+- Themed colors matching Quipflip brand
 - Accessible contrast ratios
 
 #### Integration Points
