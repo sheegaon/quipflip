@@ -1,7 +1,7 @@
 """Player-related Pydantic schemas."""
 from pydantic import BaseModel
 from datetime import date, datetime
-from typing import Optional
+from typing import Optional, Literal
 from uuid import UUID
 from backend.schemas.base import BaseSchema
 from backend.schemas.auth import AuthTokenResponse
@@ -52,3 +52,63 @@ class CreatePlayerResponse(AuthTokenResponse):
 
     balance: int
     message: str
+
+
+class RoleStatistics(BaseModel):
+    """Statistics for a specific role."""
+    role: Literal["prompt", "copy", "voter"]
+    total_rounds: int
+    total_earnings: int
+    average_earnings: float
+    win_rate: float  # % of rounds that earned positive payout
+    total_phrasesets: Optional[int] = None  # For prompt/copy roles
+    average_votes_received: Optional[float] = None  # For prompt/copy
+    correct_votes: Optional[int] = None  # For voter role
+    vote_accuracy: Optional[float] = None  # For voter role
+
+
+class EarningsBreakdown(BaseModel):
+    """Breakdown of earnings by source."""
+    prompt_earnings: int
+    copy_earnings: int
+    vote_earnings: int
+    daily_bonuses: int
+    total_earnings: int
+
+
+class PlayFrequency(BaseModel):
+    """Play frequency metrics."""
+    total_rounds_played: int
+    days_active: int
+    rounds_per_day: float
+    last_active: datetime
+    member_since: datetime
+
+
+class BestPerformingPhrase(BaseModel):
+    """Top performing phrase data."""
+    phrase: str
+    votes: int
+    earnings: int
+
+
+class PlayerStatistics(BaseModel):
+    """Comprehensive player statistics."""
+    player_id: UUID
+    username: str
+    overall_balance: int
+
+    # Role-specific stats
+    prompt_stats: RoleStatistics
+    copy_stats: RoleStatistics
+    voter_stats: RoleStatistics
+
+    # Earnings
+    earnings: EarningsBreakdown
+
+    # Frequency
+    frequency: PlayFrequency
+
+    # Additional metrics
+    favorite_prompts: list[str]  # Top 5 prompts by earnings
+    best_performing_phrases: list[BestPerformingPhrase]  # Top phrases with vote counts

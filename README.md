@@ -73,6 +73,7 @@ Frontend runs at **http://localhost:5173**
 - Daily login bonuses
 - Prompt feedback system (like/dislike)
 - Phraseset tracking and unclaimed results
+- Comprehensive player statistics with win rates and earnings breakdown
 - Transaction audit trail
 - 20+ REST API endpoints
 - 88% test coverage
@@ -87,13 +88,13 @@ Frontend runs at **http://localhost:5173**
 - All three round types with feedback mechanisms
 - Results viewing with pseudonym display, vote breakdown and prize claiming
 - Phraseset tracking dashboard (by role and status)
+- Interactive statistics page with charts and performance metrics (Recharts)
 - Automatic state polling with request cancellation
 - Error handling & notifications
 - 22% smaller bundle size vs bleeding-edge versions
 
 **🔜 Phase 2 (Planned)**
 - Transaction history endpoint
-- Enhanced statistics
 - Admin API for testing
 
 **🎯 Phase 3+ (Future)**

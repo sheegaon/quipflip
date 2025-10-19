@@ -35,7 +35,7 @@ class TestSinglePlayerJourney:
         player, client = PlayerFactory.create_player()
 
         assert player.balance == 1000
-        assert player.api_key is not None
+        assert player.access_token is not None
 
         # Check balance endpoint
         response = client.get("/player/balance")

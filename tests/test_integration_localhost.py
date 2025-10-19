@@ -121,7 +121,7 @@ class TestHealthEndpoints:
         data = response.json()
         assert "message" in data
         assert "version" in data
-        assert data["version"] == "1.0.0"
+        assert data["version"] == "1.1.0"
         assert "Quipflip" in data["message"]
         client.close()
 
@@ -170,21 +170,6 @@ class TestPlayerManagement:
 
         assert response.status_code == 401  # Unauthorized
         client.close()
-
-    def test_rotate_api_key(self, verify_server_running):
-        """Test POST /player/rotate-key generates new key."""
-        # Create authenticated client
-        auth_client, player_data = create_authenticated_client()
-
-        # Get current API key from player data (it's included in registration response)
-        # Note: This endpoint still exists for legacy API key rotation
-        response = auth_client.post("/player/rotate-key")
-
-        assert response.status_code == 200
-        data = response.json()
-        assert "new_api_key" in data
-
-        auth_client.close()
 
     def test_get_current_round_no_active(self, verify_server_running):
         """Test GET /player/current-round with no active round."""

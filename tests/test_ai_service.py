@@ -418,6 +418,8 @@ class TestAIPlayerManagement:
             player_id=uuid.uuid4(),
             username="AI_BACKUP",
             username_canonical="ai_backup",
+            pseudonym="AI Assistant",
+            pseudonym_canonical="ai assistant",
             email="ai@quipflip.internal",
             password_hash="not-used",
             balance=1000,

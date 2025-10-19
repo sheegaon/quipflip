@@ -325,6 +325,82 @@ Get list of finalized phrasesets awaiting result viewing.
 }
 ```
 
+#### `GET /player/statistics`
+Get comprehensive player statistics including win rates, earnings breakdown, and performance metrics.
+
+**Response:**
+```json
+{
+  "player_id": "uuid",
+  "username": "Prompt Pirate",
+  "overall_balance": 1250,
+  "prompt_stats": {
+    "role": "prompt",
+    "total_rounds": 15,
+    "total_earnings": 450,
+    "average_earnings": 30.0,
+    "win_rate": 66.7,
+    "total_phrasesets": 12,
+    "average_votes_received": 3.5
+  },
+  "copy_stats": {
+    "role": "copy",
+    "total_rounds": 20,
+    "total_earnings": 380,
+    "average_earnings": 19.0,
+    "win_rate": 55.0,
+    "total_phrasesets": 18,
+    "average_votes_received": 2.8
+  },
+  "voter_stats": {
+    "role": "voter",
+    "total_rounds": 50,
+    "total_earnings": 200,
+    "average_earnings": 4.0,
+    "win_rate": 80.0,
+    "correct_votes": 40,
+    "vote_accuracy": 80.0
+  },
+  "earnings": {
+    "prompt_earnings": 450,
+    "copy_earnings": 380,
+    "vote_earnings": 200,
+    "daily_bonuses": 300,
+    "total_earnings": 1330
+  },
+  "frequency": {
+    "total_rounds_played": 85,
+    "days_active": 12,
+    "rounds_per_day": 7.1,
+    "last_active": "2025-01-06T14:30:00Z",
+    "member_since": "2024-12-25T10:00:00Z"
+  },
+  "favorite_prompts": [
+    "my deepest desire is to be (a/an)",
+    "the secret to happiness is (a/an)",
+    "I would never"
+  ],
+  "best_performing_phrases": [
+    {
+      "phrase": "FAMOUS",
+      "votes": 8,
+      "earnings": 150
+    },
+    {
+      "phrase": "CONTENTMENT",
+      "votes": 6,
+      "earnings": 120
+    }
+  ]
+}
+```
+
+**Notes:**
+- Returns comprehensive statistics for all three roles
+- Win rate is percentage of rounds with positive earnings
+- Vote accuracy is percentage of correct votes
+- Best performing phrases ranked by votes received
+
 ---
 
 ### Round Endpoints

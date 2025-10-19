@@ -204,12 +204,16 @@ The frontend is fully functional with:
 
 ## Phase 3: Advanced Features
 
-### Player Statistics Dashboard
-- Win rate by role (prompt/copy/voter)
-- Total earnings over time
-- Favorite prompt categories
-- Average points per contribution
-- Success streak tracking
+### ✅ Player Statistics Dashboard (COMPLETE)
+- ✅ Win rate by role (prompt/copy/voter) with bar charts
+- ✅ Total earnings breakdown with pie charts
+- ✅ Play frequency metrics (rounds per day, days active)
+- ✅ Role performance comparison with radar charts
+- ✅ Top earning prompts and best performing phrases
+- ✅ Interactive charts using Recharts library
+- ✅ Accessible from dashboard via "View Statistics" button
+- ✅ Backend endpoint: GET /player/statistics
+- ✅ Frontend page: /statistics route
 
 ### Social Features
 - Leaderboards (daily/weekly/all-time)
@@ -395,6 +399,7 @@ Create a typed API client using the TypeScript definitions in [API.md](API.md#fr
 - ✅ GET /player/phrasesets (with filtering)
 - ✅ GET /player/phrasesets/summary
 - ✅ GET /player/unclaimed-results
+- ✅ GET /player/statistics
 - ⏸️ POST /player/rotate-key (Phase 2 - UI needed)
 
 **Round Management:**

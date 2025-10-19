@@ -23,6 +23,7 @@ import type {
   PhrasesetDetails,
   ClaimPrizeResponse,
   UnclaimedResultsResponse,
+  PlayerStatistics,
 } from './types';
 
 // Base URL - configure based on environment
@@ -512,6 +513,11 @@ export const apiClient = {
 
   async getPromptFeedback(roundId: string, signal?: AbortSignal): Promise<GetPromptFeedbackResponse> {
     const { data } = await api.get(`/rounds/${roundId}/feedback`, { signal });
+    return data;
+  },
+
+  async getStatistics(signal?: AbortSignal): Promise<PlayerStatistics> {
+    const { data } = await api.get('/player/statistics', { signal });
     return data;
   },
 };

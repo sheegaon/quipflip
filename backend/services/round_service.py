@@ -57,7 +57,7 @@ class RoundService:
                 .distinct()
             )
 
-            base_stmt = select(Prompt).where(Prompt.enabled is True)
+            base_stmt = select(Prompt).where(Prompt.enabled == True)
 
             # Try to get an unseen prompt first
             prompt_stmt = base_stmt.where(Prompt.prompt_id.not_in(seen_prompts_subquery))
