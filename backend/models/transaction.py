@@ -15,8 +15,11 @@ class Transaction(Base):
     player_id = get_uuid_column(ForeignKey("players.player_id"), nullable=False, index=True)
     amount = Column(Integer, nullable=False)  # Negative for charges, positive for payouts
     type = Column(String(50), nullable=False, index=True)
-    # Types: prompt_entry, copy_entry, vote_entry, vote_payout, prize_payout, refund, daily_bonus, system_contribution
-    reference_id = get_uuid_column(nullable=True, index=True)  # References round_id, wordset_id, or vote_id
+    # Types: prompt_entry, copy_entry, vote_entry, vote_payout, prize_payout, refund, daily_bonus, system_contribution,
+    # Quest rewards: quest_reward_hot_streak, quest_reward_deceptive_copy, quest_reward_obvious_original,
+    # quest_reward_round_completion, quest_reward_balanced_player, quest_reward_login_streak,
+    # quest_reward_feedback, quest_reward_milestone
+    reference_id = get_uuid_column(nullable=True, index=True)  # References round_id, wordset_id, vote_id, or quest_id
     balance_after = Column(Integer, nullable=False)  # For audit trail
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False, index=True)
 

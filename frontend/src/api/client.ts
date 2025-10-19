@@ -27,6 +27,9 @@ import type {
   TutorialStatus,
   TutorialProgress,
   UpdateTutorialProgressResponse,
+  Quest,
+  QuestListResponse,
+  ClaimQuestRewardResponse,
 } from './types';
 
 // Base URL - configure based on environment
@@ -536,6 +539,32 @@ export const apiClient = {
 
   async resetTutorial(signal?: AbortSignal): Promise<TutorialStatus> {
     const { data } = await api.post('/player/tutorial/reset', {}, { signal });
+    return data;
+  },
+
+  // Quest endpoints
+  async getQuests(signal?: AbortSignal): Promise<QuestListResponse> {
+    const { data } = await api.get('/quests', { signal });
+    return data;
+  },
+
+  async getActiveQuests(signal?: AbortSignal): Promise<Quest[]> {
+    const { data } = await api.get('/quests/active', { signal });
+    return data;
+  },
+
+  async getClaimableQuests(signal?: AbortSignal): Promise<Quest[]> {
+    const { data } = await api.get('/quests/claimable', { signal });
+    return data;
+  },
+
+  async getQuest(questId: string, signal?: AbortSignal): Promise<Quest> {
+    const { data } = await api.get(`/quests/${questId}`, { signal });
+    return data;
+  },
+
+  async claimQuestReward(questId: string, signal?: AbortSignal): Promise<ClaimQuestRewardResponse> {
+    const { data } = await api.post(`/quests/${questId}/claim`, {}, { signal });
     return data;
   },
 };

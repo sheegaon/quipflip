@@ -183,6 +183,16 @@ class RoundService:
         await self.db.commit()
         await self.db.refresh(round_object)
 
+        # Track quest progress for round completion
+        from backend.services.quest_service import QuestService
+        quest_service = QuestService(self.db)
+        try:
+            await quest_service.increment_round_completion(player.player_id)
+            await quest_service.check_milestone_prompts(player.player_id)
+            await quest_service.check_balanced_player(player.player_id)
+        except Exception as e:
+            logger.error(f"Failed to update quest progress for prompt round: {e}", exc_info=True)
+
         logger.info(f"Submitted phrase for prompt round {round_id}: {phrase}")
         return round_object
 
@@ -410,6 +420,16 @@ class RoundService:
             await self.db.refresh(prompt_round)
         if phraseset:
             await self.db.refresh(phraseset)
+
+        # Track quest progress for round completion
+        from backend.services.quest_service import QuestService
+        quest_service = QuestService(self.db)
+        try:
+            await quest_service.increment_round_completion(player.player_id)
+            await quest_service.check_milestone_copies(player.player_id)
+            await quest_service.check_balanced_player(player.player_id)
+        except Exception as e:
+            logger.error(f"Failed to update quest progress for copy round: {e}", exc_info=True)
 
         logger.info(f"Submitted phrase for copy round {round_id}: {phrase}")
         return round_object

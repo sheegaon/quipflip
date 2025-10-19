@@ -371,3 +371,40 @@ export interface UpdateTutorialProgressResponse {
   success: boolean;
   tutorial_status: TutorialStatus;
 }
+
+// Quest system types
+export type QuestStatus = 'active' | 'completed' | 'claimed';
+export type QuestCategory = 'streak' | 'quality' | 'activity' | 'milestone';
+
+export interface Quest {
+  quest_id: string;
+  quest_type: string;
+  name: string;
+  description: string;
+  status: QuestStatus;
+  progress: Record<string, any>;
+  reward_amount: number;
+  category: QuestCategory;
+  created_at: string;
+  completed_at: string | null;
+  claimed_at: string | null;
+  progress_percentage: number;
+  progress_current: number;
+  progress_target: number;
+}
+
+export interface QuestListResponse {
+  quests: Quest[];
+  total_count: number;
+  active_count: number;
+  completed_count: number;
+  claimed_count: number;
+  claimable_count: number;
+}
+
+export interface ClaimQuestRewardResponse {
+  success: boolean;
+  quest_type: string;
+  reward_amount: number;
+  new_balance: number;
+}
