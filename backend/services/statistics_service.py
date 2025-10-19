@@ -403,18 +403,15 @@ class StatisticsService:
             PlayFrequency metrics
         """
         # Get all rounds
-        result = await self.db.execute(
-            select(Round)
-            .where(
+        count_result = await self.db.execute(
+            select(func.count(Round.round_id)).where(
                 and_(
                     Round.player_id == player_id,
                     Round.status == "submitted"
                 )
             )
         )
-        rounds = list(result.scalars().all())
-
-        total_rounds_played = len(rounds)
+        total_rounds_played = count_result.scalar_one()
 
         if total_rounds_played == 0:
             return PlayFrequency(
