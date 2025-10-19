@@ -1,4 +1,4 @@
-import { TutorialProgress } from '../contexts/TutorialContext';
+import type { TutorialProgress } from '../api/types';
 
 export interface TutorialStep {
   id: TutorialProgress;

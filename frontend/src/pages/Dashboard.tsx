@@ -23,7 +23,7 @@ export const Dashboard: React.FC = () => {
     refreshRoundAvailability,
     claimBonus,
   } = useGame();
-  const { startTutorial, skipTutorial, advanceStep, currentStep } = useTutorial();
+  const { startTutorial, skipTutorial, advanceStep } = useTutorial();
   const navigate = useNavigate();
   const [isRoundExpired, setIsRoundExpired] = useState(false);
 

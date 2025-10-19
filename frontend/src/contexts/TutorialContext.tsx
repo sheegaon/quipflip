@@ -1,21 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import apiClient from '../api/client';
-
-export type TutorialProgress =
-  | 'not_started'
-  | 'welcome'
-  | 'dashboard'
-  | 'prompt_round'
-  | 'copy_round'
-  | 'vote_round'
-  | 'completed';
-
-interface TutorialStatus {
-  tutorial_completed: boolean;
-  tutorial_progress: TutorialProgress;
-  tutorial_started_at: string | null;
-  tutorial_completed_at: string | null;
-}
+import type { TutorialProgress, TutorialStatus } from '../api/types';
 
 interface TutorialContextType {
   tutorialStatus: TutorialStatus | null;
@@ -40,8 +25,8 @@ export const TutorialProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const refreshStatus = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await apiClient.get<TutorialStatus>('/api/players/tutorial/status');
-      setTutorialStatus(response.data);
+      const data = await apiClient.getTutorialStatus();
+      setTutorialStatus(data);
     } catch (error) {
       console.error('Failed to fetch tutorial status:', error);
     } finally {
@@ -52,11 +37,8 @@ export const TutorialProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const updateProgress = useCallback(async (progress: TutorialProgress) => {
     try {
       setLoading(true);
-      const response = await apiClient.post<{ tutorial_status: TutorialStatus }>(
-        '/api/players/tutorial/progress',
-        { progress }
-      );
-      setTutorialStatus(response.data.tutorial_status);
+      const response = await apiClient.updateTutorialProgress(progress);
+      setTutorialStatus(response.tutorial_status);
     } catch (error) {
       console.error('Failed to update tutorial progress:', error);
       throw error;
@@ -84,8 +66,8 @@ export const TutorialProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const resetTutorial = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await apiClient.post<TutorialStatus>('/api/players/tutorial/reset', {});
-      setTutorialStatus(response.data);
+      const data = await apiClient.resetTutorial();
+      setTutorialStatus(data);
     } catch (error) {
       console.error('Failed to reset tutorial:', error);
       throw error;

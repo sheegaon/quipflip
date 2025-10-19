@@ -350,3 +350,24 @@ export interface PlayerStatistics {
   favorite_prompts: string[];
   best_performing_phrases: BestPerformingPhrase[];
 }
+
+export type TutorialProgress =
+  | 'not_started'
+  | 'welcome'
+  | 'dashboard'
+  | 'prompt_round'
+  | 'copy_round'
+  | 'vote_round'
+  | 'completed';
+
+export interface TutorialStatus {
+  tutorial_completed: boolean;
+  tutorial_progress: TutorialProgress;
+  tutorial_started_at: string | null;
+  tutorial_completed_at: string | null;
+}
+
+export interface UpdateTutorialProgressResponse {
+  success: boolean;
+  tutorial_status: TutorialStatus;
+}
