@@ -7,6 +7,7 @@ from sqlalchemy import (
     Date,
     ForeignKey,
     UniqueConstraint,
+    Boolean,
 )
 from sqlalchemy.orm import relationship
 import uuid
@@ -31,6 +32,12 @@ class Player(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     last_login_date = Column(Date, nullable=True)
     active_round_id = get_uuid_column(ForeignKey("rounds.round_id", ondelete="SET NULL"), nullable=True)
+
+    # Tutorial tracking
+    tutorial_completed = Column(Boolean, default=False, nullable=False)
+    tutorial_progress = Column(String(20), default='not_started', nullable=False)
+    tutorial_started_at = Column(DateTime(timezone=True), nullable=True)
+    tutorial_completed_at = Column(DateTime(timezone=True), nullable=True)
 
     __table_args__ = (
         UniqueConstraint("username_canonical", name="uq_players_username_canonical"),

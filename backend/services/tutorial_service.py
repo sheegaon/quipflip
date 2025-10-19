@@ -17,8 +17,8 @@ class TutorialService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def get_tutorial_status(self, player_id: UUID) -> TutorialStatus:
-        """Get the tutorial status for a player."""
+    async def _get_player(self, player_id: UUID) -> Player:
+        """Fetch a player by ID or raise ValueError if not found."""
         result = await self.db.execute(
             select(Player).where(Player.player_id == player_id)
         )
@@ -27,6 +27,10 @@ class TutorialService:
         if not player:
             raise ValueError("Player not found")
 
+        return player
+
+    def _create_tutorial_status(self, player: Player) -> TutorialStatus:
+        """Create a TutorialStatus schema from a Player model."""
         return TutorialStatus(
             tutorial_completed=player.tutorial_completed,
             tutorial_progress=player.tutorial_progress,
@@ -34,17 +38,16 @@ class TutorialService:
             tutorial_completed_at=player.tutorial_completed_at,
         )
 
+    async def get_tutorial_status(self, player_id: UUID) -> TutorialStatus:
+        """Get the tutorial status for a player."""
+        player = await self._get_player(player_id)
+        return self._create_tutorial_status(player)
+
     async def update_tutorial_progress(
         self, player_id: UUID, progress: str
     ) -> TutorialStatus:
         """Update tutorial progress for a player."""
-        result = await self.db.execute(
-            select(Player).where(Player.player_id == player_id)
-        )
-        player = result.scalar_one_or_none()
-
-        if not player:
-            raise ValueError("Player not found")
+        player = await self._get_player(player_id)
 
         # Update progress
         player.tutorial_progress = progress
@@ -65,22 +68,11 @@ class TutorialService:
             f"Updated tutorial progress for player {player_id} to {progress}"
         )
 
-        return TutorialStatus(
-            tutorial_completed=player.tutorial_completed,
-            tutorial_progress=player.tutorial_progress,
-            tutorial_started_at=player.tutorial_started_at,
-            tutorial_completed_at=player.tutorial_completed_at,
-        )
+        return self._create_tutorial_status(player)
 
     async def reset_tutorial(self, player_id: UUID) -> TutorialStatus:
         """Reset tutorial progress for a player."""
-        result = await self.db.execute(
-            select(Player).where(Player.player_id == player_id)
-        )
-        player = result.scalar_one_or_none()
-
-        if not player:
-            raise ValueError("Player not found")
+        player = await self._get_player(player_id)
 
         # Reset all tutorial fields
         player.tutorial_completed = False
@@ -93,9 +85,4 @@ class TutorialService:
 
         logger.info(f"Reset tutorial for player {player_id}")
 
-        return TutorialStatus(
-            tutorial_completed=player.tutorial_completed,
-            tutorial_progress=player.tutorial_progress,
-            tutorial_started_at=player.tutorial_started_at,
-            tutorial_completed_at=player.tutorial_completed_at,
-        )
+        return self._create_tutorial_status(player)

@@ -55,13 +55,13 @@ export const TutorialProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     await updateProgress(step);
   }, [updateProgress]);
 
+  // Both complete and skip end the tutorial by setting progress to 'completed'
   const completeTutorial = useCallback(async () => {
     await updateProgress('completed');
   }, [updateProgress]);
 
-  const skipTutorial = useCallback(async () => {
-    await updateProgress('completed');
-  }, [updateProgress]);
+  // Alias for completeTutorial - semantically clearer when user chooses to skip
+  const skipTutorial = completeTutorial;
 
   const resetTutorial = useCallback(async () => {
     try {

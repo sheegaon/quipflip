@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useTutorial } from '../../contexts/TutorialContext';
 import { getTutorialStep, getPreviousStep } from '../../config/tutorialSteps';
 import './TutorialOverlay.css';
@@ -7,12 +7,28 @@ interface TutorialOverlayProps {
   onComplete?: () => void;
 }
 
+// Position offset constants
+const SPOTLIGHT_PADDING = 8; // Padding around highlighted element
+const CARD_SPACING = 20; // Space between card and target element
+const CARD_DEFAULT_WIDTH = 400; // Default card width (should match CSS)
+const CARD_DEFAULT_HEIGHT = 200; // Approximate card height for vertical positioning
+
 const TutorialOverlay: React.FC<TutorialOverlayProps> = ({ onComplete }) => {
   const { isActive, currentStep, advanceStep, skipTutorial, completeTutorial } = useTutorial();
   const [highlightRect, setHighlightRect] = useState<DOMRect | null>(null);
   const [isVisible, setIsVisible] = useState(false);
+  const [cardDimensions, setCardDimensions] = useState({ width: CARD_DEFAULT_WIDTH, height: CARD_DEFAULT_HEIGHT });
+  const cardRef = useRef<HTMLDivElement>(null);
 
   const step = getTutorialStep(currentStep);
+
+  // Measure card dimensions dynamically
+  useEffect(() => {
+    if (cardRef.current) {
+      const rect = cardRef.current.getBoundingClientRect();
+      setCardDimensions({ width: rect.width, height: rect.height });
+    }
+  }, [step]);
 
   useEffect(() => {
     if (isActive && step) {
@@ -72,10 +88,10 @@ const TutorialOverlay: React.FC<TutorialOverlayProps> = ({ onComplete }) => {
           <div
             className="tutorial-spotlight"
             style={{
-              top: highlightRect.top - 8,
-              left: highlightRect.left - 8,
-              width: highlightRect.width + 16,
-              height: highlightRect.height + 16,
+              top: highlightRect.top - SPOTLIGHT_PADDING,
+              left: highlightRect.left - SPOTLIGHT_PADDING,
+              width: highlightRect.width + SPOTLIGHT_PADDING * 2,
+              height: highlightRect.height + SPOTLIGHT_PADDING * 2,
             }}
           />
         )}
@@ -83,18 +99,19 @@ const TutorialOverlay: React.FC<TutorialOverlayProps> = ({ onComplete }) => {
 
       {/* Tutorial card */}
       <div
+        ref={cardRef}
         className={`tutorial-card tutorial-card-${step.position || 'bottom'}`}
         style={highlightRect ? {
           top: step.position === 'top'
-            ? highlightRect.top - 220
+            ? highlightRect.top - cardDimensions.height - CARD_SPACING
             : step.position === 'bottom'
-            ? highlightRect.bottom + 20
+            ? highlightRect.bottom + CARD_SPACING
             : highlightRect.top,
           left: step.position === 'left'
-            ? highlightRect.left - 320
+            ? highlightRect.left - cardDimensions.width - CARD_SPACING
             : step.position === 'right'
-            ? highlightRect.right + 20
-            : highlightRect.left + highlightRect.width / 2 - 200,
+            ? highlightRect.right + CARD_SPACING
+            : highlightRect.left + highlightRect.width / 2 - cardDimensions.width / 2,
         } : undefined}
       >
         <div className="tutorial-card-content">
