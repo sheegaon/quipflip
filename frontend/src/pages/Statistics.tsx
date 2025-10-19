@@ -5,7 +5,6 @@ import type { PlayerStatistics } from '../api/types';
 import { Header } from '../components/Header';
 import WinRateChart from '../components/statistics/WinRateChart';
 import EarningsChart from '../components/statistics/EarningsChart';
-import FrequencyChart from '../components/statistics/FrequencyChart';
 import PerformanceRadar from '../components/statistics/PerformanceRadar';
 import TopContentTable from '../components/statistics/TopContentTable';
 

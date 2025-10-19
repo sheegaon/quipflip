@@ -1,4 +1,4 @@
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, PieLabelRenderProps } from 'recharts';
 import type { EarningsBreakdown } from '../../api/types';
 
 interface EarningsChartProps {
@@ -28,21 +28,21 @@ export default function EarningsChart({ earnings }: EarningsChartProps) {
     );
   }
 
-  const renderCustomLabel = ({
-    cx,
-    cy,
-    midAngle,
-    innerRadius,
-    outerRadius,
-    percent,
-  }: {
-    cx: number;
-    cy: number;
-    midAngle: number;
-    innerRadius: number;
-    outerRadius: number;
-    percent: number;
-  }) => {
+  const renderCustomLabel = (props: PieLabelRenderProps) => {
+    const { cx, cy, midAngle, innerRadius, outerRadius, percent } = props;
+
+    // Type guards to ensure we have the required numeric values
+    if (
+      typeof cx !== 'number' ||
+      typeof cy !== 'number' ||
+      typeof midAngle !== 'number' ||
+      typeof innerRadius !== 'number' ||
+      typeof outerRadius !== 'number' ||
+      typeof percent !== 'number'
+    ) {
+      return null;
+    }
+
     const RADIAN = Math.PI / 180;
     const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
     const x = cx + radius * Math.cos(-midAngle * RADIAN);

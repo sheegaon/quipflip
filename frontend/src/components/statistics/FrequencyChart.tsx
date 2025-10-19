@@ -1,4 +1,3 @@
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import type { PlayFrequency } from '../../api/types';
 
 interface FrequencyChartProps {
@@ -6,11 +5,6 @@ interface FrequencyChartProps {
 }
 
 export default function FrequencyChart({ frequency }: FrequencyChartProps) {
-  // This is a simplified version - in a real implementation, you might want to
-  // fetch day-by-day data from the backend
-  const data = [
-    { day: 'Average', rounds: frequency.rounds_per_day },
-  ];
 
   return (
     <div className="w-full h-80">
