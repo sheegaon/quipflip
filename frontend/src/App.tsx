@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Analytics } from '@vercel/analytics/react';
 import { GameProvider, useGame } from './contexts/GameContext';
+import { TutorialProvider } from './contexts/TutorialContext';
 import { Landing } from './pages/Landing';
 import { Dashboard } from './pages/Dashboard';
 import { PromptRound } from './pages/PromptRound';
@@ -11,6 +12,7 @@ import { Results } from './pages/Results';
 import { PhrasesetTracking } from './pages/PhrasesetTracking';
 import Statistics from './pages/Statistics';
 import { ErrorNotification } from './components/ErrorNotification';
+import TutorialOverlay from './components/Tutorial/TutorialOverlay';
 
 // Protected Route wrapper
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -30,6 +32,7 @@ const AppRoutes: React.FC = () => {
   return (
     <>
       <ErrorNotification />
+      <TutorialOverlay />
       <Routes>
         <Route path="/" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Landing />} />
         <Route
@@ -104,8 +107,10 @@ function App() {
       }}
     >
       <GameProvider>
-        <AppRoutes />
-        <Analytics />
+        <TutorialProvider>
+          <AppRoutes />
+          <Analytics />
+        </TutorialProvider>
       </GameProvider>
     </Router>
   );

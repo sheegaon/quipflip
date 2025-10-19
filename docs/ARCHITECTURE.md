@@ -69,11 +69,13 @@ JWT authentication with short-lived access tokens and 30-day refresh tokens. See
 - Queue depth display and copy discount notifications
 - Input validation (basic format checks before API call)
 - Polling for round availability and results during idle state
+- Tutorial system with interactive overlay and guided tours
 - State management (see [API.md](API.md#frontend-integration) for details)
 
 ### Backend Responsibilities
 - Player accounts, username recovery, and wallet management
 - Daily login bonus tracking and distribution
+- Tutorial progress tracking and persistence
 - Phrase validation against NASPA dictionary and semantic similarity
 - Duplicate and similarity detection (copy vs. original, cosine similarity threshold)
 - Queue management (prompt, copy, vote queues)

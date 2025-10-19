@@ -87,6 +87,15 @@ The frontend is fully functional with:
    - Count summaries for each category
    - Pagination support
 
+8. ✅ **Tutorial System** (NEW)
+   - Interactive onboarding for new players
+   - Welcome modal with game overview
+   - Step-by-step guided tour through dashboard and rounds
+   - Spotlight effect highlighting key UI elements
+   - Progress tracking with backend persistence
+   - Skip and navigation options
+   - Mobile-responsive overlay design
+
 ### Core Components
 
 ✅ **Timer Component** (COMPLETE)
@@ -196,7 +205,7 @@ The frontend is fully functional with:
 - Sound effects (optional, user toggle)
 - Haptic feedback on mobile
 - Dark mode support
-- Tutorial/onboarding flow
+- ✅ **Tutorial/onboarding flow** (COMPLETE - Interactive guided tour)
 - Keyboard shortcuts
 - Accessibility (ARIA labels, keyboard navigation)
 
@@ -400,6 +409,9 @@ Create a typed API client using the TypeScript definitions in [API.md](API.md#fr
 - ✅ GET /player/phrasesets/summary
 - ✅ GET /player/unclaimed-results
 - ✅ GET /player/statistics
+- ✅ GET /player/tutorial/status
+- ✅ POST /player/tutorial/progress
+- ✅ POST /player/tutorial/reset
 - ⏸️ POST /player/rotate-key (Phase 2 - UI needed)
 
 **Round Management:**

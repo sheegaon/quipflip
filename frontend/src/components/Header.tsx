@@ -25,7 +25,7 @@ export const Header: React.FC = () => {
 
           {/* Right: Flipcoins + Logout */}
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 tutorial-balance">
               <img src="/flipcoin.png" alt="Flipcoin" className="w-10 h-10" />
               <BalanceFlipper
                 value={player.balance}

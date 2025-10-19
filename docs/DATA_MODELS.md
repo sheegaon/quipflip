@@ -7,11 +7,19 @@
 - `api_key` (string, unique, indexed) - UUID v4 for authentication
 - `username` (string, unique) - generated display name
 - `username_canonical` (string, unique) - lowercase form for lookups
+- `pseudonym` (string, indexed) - display name for leaderboards/public views
+- `pseudonym_canonical` (string) - lowercase form for lookups
+- `email` (string, unique) - player email for authentication
+- `password_hash` (string) - bcrypt hashed password
 - `balance` (integer, default 1000) - current balance in whole dollars
 - `created_at` (timestamp)
 - `last_login_date` (date, nullable) - UTC date for daily bonus tracking
 - `active_round_id` (UUID, nullable, references rounds.round_id) - enforces one-round-at-a-time
-- Indexes: `player_id`, `api_key`, `active_round_id`
+- `tutorial_completed` (boolean, default false) - whether player has finished tutorial
+- `tutorial_progress` (string, default 'not_started') - current tutorial step
+- `tutorial_started_at` (timestamp, nullable) - when tutorial was started
+- `tutorial_completed_at` (timestamp, nullable) - when tutorial was completed
+- Indexes: `player_id`, `api_key`, `active_round_id`, `pseudonym`
 
 ### Round (Unified for Prompt, Copy, and Vote)
 - `round_id` (UUID, primary key)
