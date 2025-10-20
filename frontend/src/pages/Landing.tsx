@@ -132,9 +132,6 @@ export const Landing: React.FC = () => {
                   {isLoading ? 'Creating Account...' : 'Create New Account'}
                 </button>
               </form>
-              <p className="text-xs text-gray-600 mt-2">
-                A random username will be assigned to your account • Password: 8-128 characters
-              </p>
             </div>
 
             {/* Returning Player */}
@@ -168,7 +165,7 @@ export const Landing: React.FC = () => {
                 </button>
               </form>
               <p className="text-sm text-gray-600 mt-2">
-                Forgot your password? Email support@quipflip.gg for assistance.
+                Forgot your password? Email tfishman@gmail.com for assistance.
               </p>
             </div>
           </div>

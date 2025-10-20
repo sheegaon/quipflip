@@ -31,7 +31,7 @@ export const Header: React.FC = () => {
         <div className="flex justify-between items-center">
           {/* Left: Logo */}
           <div className="flex items-center">
-            <img src="/quipflip_logo_horizontal_transparent.png" alt="Quipflip" className="h-12 w-auto" />
+            <img src="/large_icon.png" alt="Quipflip" className="h-12 w-auto" />
           </div>
 
           {/* Center: Username (clickable to stats) */}
