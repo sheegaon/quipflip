@@ -469,11 +469,6 @@ export const apiClient = {
     return data;
   },
 
-  async rotateKey(signal?: AbortSignal): Promise<{ new_api_key: string; message: string }> {
-    const { data } = await api.post('/player/rotate-key', {}, { signal });
-    return data;
-  },
-
   // Round endpoints
   async getRoundAvailability(signal?: AbortSignal): Promise<RoundAvailability> {
     const { data } = await api.get('/rounds/available', { signal });

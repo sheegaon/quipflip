@@ -829,10 +829,10 @@ CORS is enabled for all origins in development. For production:
 1. **First visit**: Call `POST /player` → store access and refresh tokens
 2. **Return visit**: Load tokens → call `GET /player/balance`
 3. **Token expires**: Call `POST /auth/refresh` → get new access token
-3. **Check daily bonus**: If `daily_bonus_available` → offer to claim
-4. **Start round**: Check `GET /rounds/available` → start desired round type
-5. **During round**: Display timer, submit word before expiry
-6. **Check results**: Poll `/player/pending-results` → view when ready
+4. **Check daily bonus**: If `daily_bonus_available` → offer to claim
+5. **Start round**: Check `GET /rounds/available` → start desired round type
+6. **During round**: Display timer, submit word before expiry
+7. **Check results**: Poll `/player/pending-results` → view when ready
 
 ### TypeScript Types (Example)
 ```typescript

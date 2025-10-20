@@ -32,8 +32,7 @@ export const PhrasesetTracking: React.FC = () => {
   const {
     player,
     refreshBalance,
-    refreshPhrasesetSummary,
-    refreshUnclaimedResults,
+    refreshDashboard,
     phrasesetSummary,
   } = useGame();
 
@@ -131,8 +130,7 @@ export const PhrasesetTracking: React.FC = () => {
         fetchDetails(selectedSummary),
         fetchPhrasesets(),
         refreshBalance(),
-        refreshPhrasesetSummary(),
-        refreshUnclaimedResults(),
+        refreshDashboard(),
       ]);
       setError(null);
     } catch (err) {

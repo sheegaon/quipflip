@@ -26,11 +26,6 @@ interface GameContextType {
   logout: () => Promise<void>;
   refreshDashboard: () => Promise<void>;
   refreshBalance: () => Promise<void>;
-  refreshCurrentRound: () => Promise<void>;
-  refreshPendingResults: () => Promise<void>;
-  refreshPhrasesetSummary: () => Promise<void>;
-  refreshUnclaimedResults: () => Promise<void>;
-  refreshRoundAvailability: () => Promise<void>;
   claimBonus: () => Promise<void>;
   clearError: () => void;
 }
@@ -154,91 +149,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     [handleAuthError, isAuthenticated, username],
   );
 
-  const refreshCurrentRound = useCallback(
-    async (signal?: AbortSignal) => {
-      if (!isAuthenticated) return;
-      try {
-        const data = await apiClient.getCurrentRound(signal);
-        setActiveRound(data);
-        setError(null);
-      } catch (err) {
-        if (err instanceof Error && err.name === 'CanceledError') return;
-        const message = extractErrorMessage(err) || 'Unable to check your active rounds. Please refresh or try again.';
-        setError(message);
-        handleAuthError(message);
-      }
-    },
-    [handleAuthError, isAuthenticated],
-  );
-
-  const refreshPendingResults = useCallback(
-    async (signal?: AbortSignal) => {
-      if (!isAuthenticated) return;
-      try {
-        const data = await apiClient.getPendingResults(signal);
-        setPendingResults(data.pending);
-        setError(null);
-      } catch (err) {
-        if (err instanceof Error && err.name === 'CanceledError') return;
-        const message = extractErrorMessage(err) || 'Unable to load your results. They may still be processing.';
-        setError(message);
-        handleAuthError(message);
-      }
-    },
-    [handleAuthError, isAuthenticated],
-  );
-
-  const refreshPhrasesetSummary = useCallback(
-    async (signal?: AbortSignal) => {
-      if (!isAuthenticated) return;
-      try {
-        const data = await apiClient.getPhrasesetsSummary(signal);
-        setPhrasesetSummary(data);
-        setError(null);
-      } catch (err) {
-        if (err instanceof Error && err.name === 'CanceledError') return;
-        const message = extractErrorMessage(err) || 'Unable to load your game statistics. Please try refreshing.';
-        setError(message);
-        handleAuthError(message);
-      }
-    },
-    [handleAuthError, isAuthenticated],
-  );
-
-  const refreshUnclaimedResults = useCallback(
-    async (signal?: AbortSignal) => {
-      if (!isAuthenticated) return;
-      try {
-        const data = await apiClient.getUnclaimedResults(signal);
-        setUnclaimedResults(data.unclaimed);
-        setError(null);
-      } catch (err) {
-        if (err instanceof Error && err.name === 'CanceledError') return;
-        const message = extractErrorMessage(err) || 'Unable to check for unclaimed prizes. Please try again later.';
-        setError(message);
-        handleAuthError(message);
-      }
-    },
-    [handleAuthError, isAuthenticated],
-  );
-
-  const refreshRoundAvailability = useCallback(
-    async (signal?: AbortSignal) => {
-      if (!isAuthenticated) return;
-      try {
-        const data = await apiClient.getRoundAvailability(signal);
-        setRoundAvailability(data);
-        setError(null);
-      } catch (err) {
-        if (err instanceof Error && err.name === 'CanceledError') return;
-        const message = extractErrorMessage(err) || 'Unable to check available rounds. Please refresh or try again.';
-        setError(message);
-        handleAuthError(message);
-      }
-    },
-    [handleAuthError, isAuthenticated],
-  );
-
   const claimBonus = useCallback(async () => {
     if (!isAuthenticated) return;
     try {
@@ -292,11 +202,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     logout,
     refreshDashboard,
     refreshBalance,
-    refreshCurrentRound,
-    refreshPendingResults,
-    refreshPhrasesetSummary,
-    refreshUnclaimedResults,
-    refreshRoundAvailability,
     claimBonus,
     clearError,
   };
