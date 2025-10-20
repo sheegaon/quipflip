@@ -248,8 +248,8 @@ export const PhrasesetTracking: React.FC = () => {
           </div>
         )}
 
-        <div className="grid gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-1">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="min-w-0 lg:col-span-1">
             <div className="bg-white rounded-lg shadow p-4">
               <h2 className="text-lg font-semibold text-gray-800 mb-4">Your Past Rounds</h2>
               <PhrasesetList
@@ -260,7 +260,7 @@ export const PhrasesetTracking: React.FC = () => {
               />
             </div>
           </div>
-          <div className="lg:col-span-2">
+          <div className="min-w-0 lg:col-span-2">
             <PhrasesetDetails
               phraseset={details}
               summary={selectedSummary}
