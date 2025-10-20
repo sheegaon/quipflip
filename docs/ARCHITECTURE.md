@@ -51,12 +51,17 @@ JWT authentication with short-lived access tokens and 30-day refresh tokens. See
 - **Deferred Collection**: Prizes are claimed the first time contributors view results (tracked via `result_views`)
 - **Results Content**:
   - For contributors: All votes shown, reveal which phrase was original, points earned, payout amount
-  - For voters: Correct answer revealed immediately after vote submission, \$5 credited if correct. Show voters vote tally thus far and add to status area so players can check back to see final vote tally.
+  - For voters: Correct answer revealed immediately after vote submission, 5f credited if correct. Show voters vote tally thus far and add to status area so players can check back to see final vote tally.
 
 ### Result Timing
-- **For Voters**: Immediate feedback after vote submission (correct/incorrect, original phrase revealed, \$5 payout if correct)
+- **For Voters**: Immediate feedback after vote submission (correct/incorrect, original phrase revealed, 5f payout if correct)
 - **For Contributors**: Results available immediately after voting period closes
 - **Prize Collection**: Requires viewing results screen to credit account
+
+### Currency
+- **Flipcoins (f)**: In-game currency shown with flipcoin icon in UI
+- **Display format**: Flipcoin icon + number (no dollar sign)
+- **Documentation format**: "100f" or "100 Flipcoins"
 
 ---
 
@@ -153,7 +158,7 @@ Calculate scores and payouts → status: "finalized"
 
 When a copy round times out without submission:
 1. Round status set to "abandoned"
-2. Player refunded \$95 (keeps \$5 entry fee as penalty)
+2. Player refunded 95f (keeps 5f entry fee as penalty)
 3. Associated prompt_round returned to queue for reassignment
 4. Same player prevented from getting same prompt_round_id again (24h cooldown)
 5. No limit on how many times a prompt can be abandoned by different players
@@ -176,28 +181,28 @@ The quest system provides 16 achievement types that automatically track player p
 ### Quest Categories & Types
 
 **Streak Quests** (Vote Accuracy):
-- Hot Streak (5 correct votes in a row) - $10
-- Blazing Streak (10 correct votes in a row) - $25
-- Inferno Streak (20 correct votes in a row) - $75
+- Hot Streak (5 correct votes in a row) - 10f
+- Blazing Streak (10 correct votes in a row) - 25f
+- Inferno Streak (20 correct votes in a row) - 75f
 
 **Quality Quests** (Performance Bonuses):
-- Master Deceiver (75%+ votes on your copy) - $20
-- Clear Original (85%+ votes on the original) - $15
+- Master Deceiver (75%+ votes on your copy) - 20f
+- Clear Original (85%+ votes on the original) - 15f
 
 **Activity Quests** (Engagement):
-- Quick Player (5 rounds in 24 hours) - $25
-- Active Player (10 rounds in 24 hours) - $75
-- Power Player (20 rounds in 24 hours) - $200
-- Balanced Player (1 prompt, 2 copies, 10 votes in 24 hours) - $20
-- Week Warrior (7 consecutive day login streak) - $200
+- Quick Player (5 rounds in 24 hours) - 25f
+- Active Player (10 rounds in 24 hours) - 75f
+- Power Player (20 rounds in 24 hours) - 200f
+- Balanced Player (1 prompt, 2 copies, 10 votes in 24 hours) - 20f
+- Week Warrior (7 consecutive day login streak) - 200f
 
 **Milestone Quests** (Long-term Goals):
-- Feedback Novice (10 feedback submissions) - $5
-- Feedback Expert (50 feedback submissions) - $25
-- Century Voter (100 total votes) - $50
-- Prompt Master (50 total prompts) - $100
-- Copy Champion (100 total copies) - $75
-- Popular Set (Phraseset receives 20 votes) - $25
+- Feedback Novice (10 feedback submissions) - 5f
+- Feedback Expert (50 feedback submissions) - 25f
+- Century Voter (100 total votes) - 50f
+- Prompt Master (50 total prompts) - 100f
+- Copy Champion (100 total copies) - 75f
+- Popular Set (Phraseset receives 20 votes) - 25f
 
 ### Automatic Progress Tracking
 

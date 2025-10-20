@@ -14,8 +14,8 @@
 9. ✅ **One-round-at-a-time enforcement** - Via active_round_id in player table
 10. ✅ **Results viewing and prize collection** - Separate claim endpoint for payouts
 11. ✅ **Essential API endpoints** - All endpoints documented in API.md
-12. ✅ **Daily login bonus** - UTC date-based, \$100 once per day (excluding creation date)
-13. ✅ **Copy discount system** - \$90 when prompts_waiting > 10, system contributes \$10
+12. ✅ **Daily login bonus** - UTC date-based, 100f once per day (excluding creation date)
+13. ✅ **Copy discount system** - 90f when prompts_waiting > 10, system contributes 10f
 14. ✅ **Grace period handling** - 5-second backend grace on all submissions
 15. ✅ **Outstanding prompts limit** - Max 10 phrasesets in 'open' or 'closing' status
 16. ✅ **Vote timeline state machine** - 3rd vote (10 min window), 5th vote (60 sec window)
@@ -23,11 +23,14 @@
 18. ✅ **Self-voting prevention** - Filter at assignment time
 19. ✅ **Health check endpoint** - GET /health for monitoring
 20. ✅ **Error standardization** - Consistent JSON error format across all endpoints
-21. ✅ **Suggested usernames** - GET /auth/suggest-username for registration convenience
+21. ✅ **Suggested usernames** - GET /auth/suggest-username for registration convenience (deprecated - usernames now auto-generated)
 22. ✅ **Frontend MVP** - Complete React + TypeScript frontend with all game flows
 23. ✅ **Prompt feedback system** - Like/dislike feedback on prompts
-24. ✅ **Phraseset tracking** - Dashboard to view all phrasesets by role and status
+24. ✅ **Phraseset tracking** - Dashboard to view all phrasesets by role and status (renamed to "Tracking")
 25. ✅ **Unclaimed results** - Separate endpoint for unclaimed prizes with claim functionality
+26. ✅ **Automatic username generation** - Usernames randomly generated, cannot be changed by users
+27. ✅ **Enhanced header navigation** - Username clickable (goes to stats), daily bonus as treasure chest icon
+28. ✅ **Statistics page improvements** - Email address shown alongside username
 
 ### Phase 2 - Polish & Enhancements
 1. ✅ **JWT authentication** - Secure token-based auth with automatic refresh (COMPLETE)
@@ -35,13 +38,14 @@
 3. ✅ **Player statistics system** - Comprehensive win rates, earnings breakdown, performance metrics with charts (COMPLETE)
 4. ✅ **Tutorial/onboarding flow** - Interactive tutorial with guided tours for new players (COMPLETE)
 5. ✅ **Quest/Achievement system** - 16 achievement types with automatic progress tracking and rewards (COMPLETE - Backend done, UI in progress)
-6. **Transaction history endpoint** - GET /player/transactions with pagination
-7. **Advanced rate limiting** - Per-endpoint, per-player rate limits
-8. **Prompt management** - Track usage_count, avg_copy_quality for rotation
-9. **Admin API endpoints** - Manual injection for testing (AI backup simulation)
-10. **Settings page** - User preferences, account management
-11. **Enhanced results visualization** - Charts, graphs, vote distribution graphics
-12. **Dark mode** - Theme toggle with persistent preference
+6. ✅ **UI Enhancement Plan** - Mobile responsiveness, currency icon replacement, navigation improvements (PLANNED in UI_ENHANCEMENT_PLAN.md)
+7. **Transaction history endpoint** - GET /player/transactions with pagination
+8. **Advanced rate limiting** - Per-endpoint, per-player rate limits
+9. **Prompt management** - Track usage_count, avg_copy_quality for rotation
+10. **Admin API endpoints** - Manual injection for testing (AI backup simulation)
+11. **Settings page** - User preferences, account management
+12. **Enhanced results visualization** - Charts, graphs, vote distribution graphics
+13. **Dark mode** - Theme toggle with persistent preference
 
 ### Phase 3 - AI & Advanced Features
 1. 🔄 **AI backup copies** - Automated generation after 10 minutes (IN PROGRESS - service ready, needs scheduler)
@@ -176,7 +180,7 @@ The quest system provides 16 achievement types that automatically track player p
   - Increments feedback contribution quests
 
 ### Reward Economics
-Total available quest rewards: **$1,485** across all 16 quests
+Total available quest rewards: **1,485f** across all 16 quests
 - Encourages sustained engagement (login streaks, activity)
 - Rewards skill (vote accuracy, quality performance)
 - Provides long-term goals (milestones)
