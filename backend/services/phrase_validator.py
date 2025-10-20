@@ -196,7 +196,7 @@ class PhraseValidator:
             overlap = phrase_words & comparison_words
             if overlap:
                 word = next(iter(overlap)).upper()
-                return False, f"Cannot reuse significant word '{word}' from {label}"
+                return False, f"Cannot reuse '{word}' from {label}"
 
             for phrase_word in phrase_words:
                 for comparison_word in comparison_words:

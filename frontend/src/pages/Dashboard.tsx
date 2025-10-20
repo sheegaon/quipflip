@@ -300,7 +300,7 @@ export const Dashboard: React.FC = () => {
               </p>
               {roundAvailability && roundAvailability.phrasesets_waiting > 0 && (
                 <p className="text-xs text-quip-orange-deep mb-3 font-semibold">
-                  {formatWaitingCount(roundAvailability.phrasesets_waiting)} phraseset
+                  {formatWaitingCount(roundAvailability.phrasesets_waiting)} quip set
                   {roundAvailability.phrasesets_waiting > 1 ? 's' : ''} waiting
                 </p>
               )}
@@ -310,7 +310,7 @@ export const Dashboard: React.FC = () => {
                 className="w-full bg-quip-orange hover:bg-quip-orange-deep disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm"
               >
                 {roundAvailability?.can_vote ? 'Start Vote Round' :
-                  roundAvailability?.phrasesets_waiting === 0 ? 'No Quips Available' :
+                  roundAvailability?.phrasesets_waiting === 0 ? 'No Quip Sets Available' :
                   player.balance < 1 ? 'Insufficient Balance' :
                   'Not Available'}
               </button>
