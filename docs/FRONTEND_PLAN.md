@@ -17,7 +17,7 @@ The frontend is fully functional with:
 - Statistics page with comprehensive metrics
 - Tutorial system with interactive guided tours
 
-**Recent Updates (January 2025):**
+**Recent Updates**
 - **Account Creation Simplified**: Username automatically generated (email + password only)
 - **Username Management**: Usernames are random and cannot be changed by users
 - **Header Improvements**:
