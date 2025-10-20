@@ -93,9 +93,47 @@ async def lifespan(app: FastAPI):
     # Auto-seed prompts if database is empty
     await auto_seed_prompts_if_empty()
 
+    # Start AI backup cycle background task
+    ai_backup_task = None
+    try:
+        import asyncio
+        from backend.database import AsyncSessionLocal
+        from backend.services.ai_service import AIService
+        
+        async def ai_backup_cycle():
+            """Background task to run AI backup cycles every 10 minutes."""
+            while True:
+                try:
+                    async with AsyncSessionLocal() as db:
+                        ai_service = AIService(db, validator)
+                        
+                        stats = await ai_service.run_backup_cycle()
+                        if stats["copies_generated"] > 0 or stats["errors"] > 0:
+                            logger.info(f"AI backup cycle completed: {stats}")
+                        
+                except Exception as e:
+                    logger.error(f"AI backup cycle error: {e}")
+                
+                # Wait 10 minutes before next cycle
+                await asyncio.sleep(600)
+        
+        ai_backup_task = asyncio.create_task(ai_backup_cycle())
+        logger.info("AI backup cycle task started (runs every 10 minutes)")
+        
+    except Exception as e:
+        logger.error(f"Failed to start AI backup cycle: {e}")
+
     try:
         yield
     finally:
+        # Cancel AI backup task on shutdown
+        if ai_backup_task:
+            ai_backup_task.cancel()
+            try:
+                await ai_backup_task
+            except asyncio.CancelledError:
+                logger.info("AI backup cycle task cancelled")
+        
         logger.info("Quipflip API Shutting Down")
 
 
