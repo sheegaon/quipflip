@@ -86,7 +86,7 @@ export const VoteRound: React.FC = () => {
   // Show vote result
   if (voteResult) {
     const successMsg = voteResult.correct
-      ? successMessage ?? 'Correct'
+      ? successMessage!
       : 'Better luck next time!';
     return (
       <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center p-4">
