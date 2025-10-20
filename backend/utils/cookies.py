@@ -7,24 +7,25 @@ from backend.config import get_settings
 def set_refresh_cookie(response: Response, token: str, *, expires_days: int | None = None) -> None:
     """Set the refresh token cookie with secure defaults.
 
-    In development, we use SameSite=None to allow cross-origin requests
-    between localhost:5173 (frontend) and localhost:8000 (backend).
+    Note: In development with frontend (localhost:5173) and backend (localhost:8000)
+    on different ports, browsers treat them as same-origin since both are localhost.
+    SameSite=Lax works fine for this scenario and doesn't require HTTPS.
+
+    For true cross-origin scenarios (different domains), you would need:
+    - SameSite=None with Secure=True (requires HTTPS)
+    - Or serve both frontend and backend from the same origin
     """
 
     settings = get_settings()
     days = expires_days or settings.refresh_token_exp_days
     max_age = days * 24 * 60 * 60
 
-    # In development, allow cross-origin cookie sharing (frontend/backend on different ports)
-    # In production, use strict same-site policy
-    is_dev = settings.environment == "development"
-
     response.set_cookie(
         key=settings.refresh_token_cookie_name,
         value=token,
         httponly=True,
-        secure=not is_dev,  # Must be False in dev for SameSite=None to work over HTTP
-        samesite="none" if is_dev else "lax",  # None allows cross-origin in dev
+        secure=settings.environment != "development",  # HTTPS in production only
+        samesite="lax",  # Lax works for localhost:port1 -> localhost:port2
         max_age=max_age,
         expires=max_age,
         path="/",
