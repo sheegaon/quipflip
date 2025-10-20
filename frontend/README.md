@@ -80,19 +80,10 @@ frontend/
 │   │   ├── client.ts     # Axios-based API client
 │   │   └── types.ts      # TypeScript interfaces
 │   ├── components/       # Reusable components
-│   │   ├── ErrorNotification.tsx
-│   │   └── Timer.tsx
+│   ├── config/           # Tutorial steps configuration
 │   ├── contexts/         # React Context for state management
-│   │   └── GameContext.tsx
 │   ├── hooks/            # Custom React hooks
-│   │   └── useTimer.ts
 │   ├── pages/            # Screen components
-│   │   ├── Landing.tsx
-│   │   ├── Dashboard.tsx
-│   │   ├── PromptRound.tsx
-│   │   ├── CopyRound.tsx
-│   │   ├── VoteRound.tsx
-│   │   └── Results.tsx
 │   ├── App.tsx           # Main app component with routing
 │   ├── main.tsx          # Entry point
 │   └── index.css         # Global styles
@@ -114,7 +105,7 @@ The frontend connects to the backend API using the `apiClient` in `src/api/clien
 
 Players authenticate using email and password. JWT access tokens are stored in `localStorage` and automatically included in all requests via Authorization header. Refresh tokens are stored in HTTP-only cookies for security. The frontend automatically refreshes expired access tokens using the refresh token when receiving 401 errors.
 
-Each player has a visible username (chosen during registration, auto-suggested from random pool) and a hidden pseudonym (auto-generated) that other players see in game results.
+Each player has a visible username and a hidden pseudonym (randomly auto-generated during registration). Other players see only the hidden pseudonym in game results.
 
 ### State Management
 
@@ -139,7 +130,7 @@ The `GameContext` manages global state:
 2. **Dashboard** - View balance, claim bonus, select round type, access phraseset tracking
 3. **Round Screens** - Complete prompt/copy/vote rounds with timers and feedback
 4. **Results** - View finalized phrasesets with pseudonym display, vote breakdown and collect payouts
-5. **Phraseset Tracking** - View all your phrasesets organized by role (prompt/copy/vote) and status
+5. **Tracking** - View all your phrasesets organized by role (prompt/copy/vote) and status
 
 ## Key Components
 
