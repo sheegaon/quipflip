@@ -86,14 +86,27 @@ def upgrade() -> None:
         op.create_index('ix_phrasesets_status_vote_count', 'phrasesets', ['status', 'vote_count'], unique=False)
 
     else:
-        # PostgreSQL supports ALTER COLUMN
+        # PostgreSQL supports ALTER COLUMN but rename and type adjustments must happen in
+        # separate steps for portability across server versions.
         op.alter_column('phrasesets', 'wordset_id', new_column_name='phraseset_id')
-        op.alter_column('phrasesets', 'original_word', new_column_name='original_phrase',
-                       type_=sa.String(100), existing_type=sa.String(15))
-        op.alter_column('phrasesets', 'copy_word_1', new_column_name='copy_phrase_1',
-                       type_=sa.String(100), existing_type=sa.String(15))
-        op.alter_column('phrasesets', 'copy_word_2', new_column_name='copy_phrase_2',
-                       type_=sa.String(100), existing_type=sa.String(15))
+
+        for old_name, new_name in (
+            ('original_word', 'original_phrase'),
+            ('copy_word_1', 'copy_phrase_1'),
+            ('copy_word_2', 'copy_phrase_2'),
+        ):
+            op.alter_column(
+                'phrasesets',
+                old_name,
+                new_column_name=new_name,
+                existing_type=sa.String(15),
+            )
+            op.alter_column(
+                'phrasesets',
+                new_name,
+                type_=sa.String(100),
+                existing_type=sa.String(15),
+            )
 
         # Rename indexes (drop and recreate with new names)
         op.drop_index('ix_wordsets_fifth_vote_at', table_name='phrasesets')
@@ -106,19 +119,44 @@ def upgrade() -> None:
 
     # Step 3: Update rounds table columns
     with op.batch_alter_table('rounds', schema=None) as batch_op:
-        batch_op.alter_column('submitted_word', new_column_name='submitted_phrase',
-                            type_=sa.String(100), existing_type=sa.String(15))
-        batch_op.alter_column('original_word', new_column_name='original_phrase',
-                            type_=sa.String(100), existing_type=sa.String(15))
-        batch_op.alter_column('copy_word', new_column_name='copy_phrase',
-                            type_=sa.String(100), existing_type=sa.String(15))
+        for old_name, new_name in (
+            ('submitted_word', 'submitted_phrase'),
+            ('original_word', 'original_phrase'),
+            ('copy_word', 'copy_phrase'),
+        ):
+            batch_op.alter_column(
+                old_name,
+                new_column_name=new_name,
+                existing_type=sa.String(15),
+            )
+            batch_op.alter_column(
+                new_name,
+                type_=sa.String(100),
+                existing_type=sa.String(15),
+            )
         batch_op.alter_column('wordset_id', new_column_name='phraseset_id')
 
     # Step 4: Update votes table
     with op.batch_alter_table('votes', schema=None) as batch_op:
+        # Rename the unique constraint to match the new phraseset terminology
+        batch_op.drop_constraint('uq_player_wordset_vote', type_='unique')
+
         batch_op.alter_column('wordset_id', new_column_name='phraseset_id')
-        batch_op.alter_column('voted_word', new_column_name='voted_phrase',
-                            type_=sa.String(100), existing_type=sa.String(15))
+        batch_op.alter_column(
+            'voted_word',
+            new_column_name='voted_phrase',
+            existing_type=sa.String(15),
+        )
+        batch_op.alter_column(
+            'voted_phrase',
+            type_=sa.String(100),
+            existing_type=sa.String(15),
+        )
+
+        batch_op.create_unique_constraint(
+            'uq_player_phraseset_vote',
+            ['player_id', 'phraseset_id']
+        )
 
     # Step 5: Update result_views table
     with op.batch_alter_table('result_views', schema=None) as batch_op:
@@ -146,18 +184,42 @@ def downgrade() -> None:
 
     # Reverse Step 4: Update votes table
     with op.batch_alter_table('votes', schema=None) as batch_op:
+        batch_op.drop_constraint('uq_player_phraseset_vote', type_='unique')
+
         batch_op.alter_column('phraseset_id', new_column_name='wordset_id')
-        batch_op.alter_column('voted_phrase', new_column_name='voted_word',
-                            type_=sa.String(15), existing_type=sa.String(100))
+        batch_op.alter_column(
+            'voted_phrase',
+            new_column_name='voted_word',
+            existing_type=sa.String(100),
+        )
+        batch_op.alter_column(
+            'voted_word',
+            type_=sa.String(15),
+            existing_type=sa.String(100),
+        )
+
+        batch_op.create_unique_constraint(
+            'uq_player_wordset_vote',
+            ['player_id', 'wordset_id']
+        )
 
     # Reverse Step 3: Update rounds table
     with op.batch_alter_table('rounds', schema=None) as batch_op:
-        batch_op.alter_column('submitted_phrase', new_column_name='submitted_word',
-                            type_=sa.String(15), existing_type=sa.String(100))
-        batch_op.alter_column('original_phrase', new_column_name='original_word',
-                            type_=sa.String(15), existing_type=sa.String(100))
-        batch_op.alter_column('copy_phrase', new_column_name='copy_word',
-                            type_=sa.String(15), existing_type=sa.String(100))
+        for new_name, old_name in (
+            ('submitted_phrase', 'submitted_word'),
+            ('original_phrase', 'original_word'),
+            ('copy_phrase', 'copy_word'),
+        ):
+            batch_op.alter_column(
+                new_name,
+                new_column_name=old_name,
+                existing_type=sa.String(100),
+            )
+            batch_op.alter_column(
+                old_name,
+                type_=sa.String(15),
+                existing_type=sa.String(100),
+            )
         batch_op.alter_column('phraseset_id', new_column_name='wordset_id')
 
     # Reverse Step 2 & 1: Rename phrasesets back to wordsets
@@ -223,12 +285,24 @@ def downgrade() -> None:
         op.drop_index('ix_phrasesets_status_vote_count', table_name='phrasesets')
 
         op.alter_column('phrasesets', 'phraseset_id', new_column_name='wordset_id')
-        op.alter_column('phrasesets', 'original_phrase', new_column_name='original_word',
-                       type_=sa.String(15), existing_type=sa.String(100))
-        op.alter_column('phrasesets', 'copy_phrase_1', new_column_name='copy_word_1',
-                       type_=sa.String(15), existing_type=sa.String(100))
-        op.alter_column('phrasesets', 'copy_phrase_2', new_column_name='copy_word_2',
-                       type_=sa.String(15), existing_type=sa.String(100))
+
+        for new_name, old_name in (
+            ('original_phrase', 'original_word'),
+            ('copy_phrase_1', 'copy_word_1'),
+            ('copy_phrase_2', 'copy_word_2'),
+        ):
+            op.alter_column(
+                'phrasesets',
+                new_name,
+                new_column_name=old_name,
+                existing_type=sa.String(100),
+            )
+            op.alter_column(
+                'phrasesets',
+                old_name,
+                type_=sa.String(15),
+                existing_type=sa.String(100),
+            )
 
         op.rename_table('phrasesets', 'wordsets')
 
