@@ -4,13 +4,13 @@
 
 ### Player
 - `player_id` (UUID, primary key)
-- `username` (string, unique) - generated display name
+- `username` (string, unique) - **automatically generated** random display name (player cannot choose or change)
 - `username_canonical` (string, unique) - lowercase form for lookups
 - `pseudonym` (string, indexed) - display name for leaderboards/public views
 - `pseudonym_canonical` (string) - lowercase form for lookups
 - `email` (string, unique) - player email for authentication
 - `password_hash` (string) - bcrypt hashed password
-- `balance` (integer, default 1000) - current balance in whole dollars
+- `balance` (integer, default 1000) - current balance in Flipcoins (f)
 - `created_at` (timestamp)
 - `last_login_date` (date, nullable) - UTC date for daily bonus tracking
 - `active_round_id` (UUID, nullable, references rounds.round_id) - enforces one-round-at-a-time
@@ -21,6 +21,7 @@
 - Indexes: `player_id`, `active_round_id`, `pseudonym`
 
 **Authentication**: JWT access/refresh tokens (stored in `refresh_tokens` table)
+**Registration**: Email and password only; username is randomly generated and cannot be changed
 
 ### Round (Unified for Prompt, Copy, and Vote)
 - `round_id` (UUID, primary key)

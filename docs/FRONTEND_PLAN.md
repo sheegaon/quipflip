@@ -10,18 +10,26 @@ The frontend is fully functional with:
 - JWT authentication (access + refresh tokens with HTTP-only cookies)
 - All three round types (Prompt, Copy, Vote) with timers and feedback
 - Results viewing and prize claiming
-- Phraseset tracking dashboard
+- Phraseset tracking dashboard (renamed from "PhrasesetTracking" to "Tracking")
 - Prompt feedback system (like/dislike with improved mobile UI)
 - Responsive UI with custom branding and optimized mobile experience
 - Automatic token refresh and error handling
-- Enhanced username display (larger on desktop, matches flipcoin color)
+- Statistics page with comprehensive metrics
+- Tutorial system with interactive guided tours
 
-**Recent Updates:**
-- Prompt feedback buttons smaller on mobile (text-lg) for better UX
-- Prompt box height increased (min-h-[120px]) for better readability
-- Username font size larger on desktop (md:text-lg) and color matches balance (text-quip-turquoise)
+**Recent Updates (January 2025):**
+- **Account Creation Simplified**: Username automatically generated (email + password only)
+- **Username Management**: Usernames are random and cannot be changed by users
+- **Header Improvements**:
+  - Username now clickable (navigates to statistics page)
+  - Header bar height reduced for cleaner look
+  - Daily bonus moved to header as treasure chest icon
+- **Statistics Page Enhanced**: Email address displayed alongside username
+- **Navigation Streamlined**: Removed standalone "Statistics" button from dashboard
+- **Daily Bonus UI**: Treasure chest icon in header (animated when available)
+- **Mobile Responsive**: Optimized header for mobile devices
 
-**Next Steps:** Phase 2 enhancements (Settings page, Transaction history, Enhanced statistics)
+**Next Steps:** Phase 2 enhancements (Enhanced mobile UI, currency icon replacement, navigation improvements per UI_ENHANCEMENT_PLAN.md)
 
 ---
 
@@ -30,21 +38,23 @@ The frontend is fully functional with:
 ### Essential Screens
 
 1. ✅ **Landing / Authentication**
-   - Register new player (POST /player) → receive access + refresh tokens (legacy API key included for fallback)
+   - Register new player with email + password only (POST /player) → username automatically generated
    - Login form for returning players (POST /auth/login)
    - Automatic refresh handling via `/auth/refresh` + HTTP-only cookie
    - Store short-lived access token client-side (localStorage) and rely on refresh token cookie
    - Automatic token refresh on 401 errors with retry logic
+   - No username selection during registration (randomly generated)
 
 2. ✅ **Dashboard / Home**
-   - Display current balance with coin emoji
-   - Show daily bonus notification if available
+   - Display current balance with flipcoin icon
+   - Daily bonus as treasure chest icon in header (not dashboard)
    - Display active round status (if any)
    - Notification badges for pending results and unclaimed prizes
    - Round selection buttons (Prompt / Copy / Vote)
    - Button state based on availability (GET /rounds/available)
-   - Phraseset tracking navigation
+   - Phraseset tracking navigation (page labeled "Tracking")
    - Custom branding with logo and themed colors
+   - No separate "Statistics" section (access via username click in header)
 
 3. ✅ **Prompt Round**
    - Display prompt text with custom styling
@@ -57,7 +67,7 @@ The frontend is fully functional with:
 
 4. ✅ **Copy Round**
    - Display original phrase to copy
-   - Display cost (\$100 or \$90 if discount) with visual indicator
+   - Display cost (100f or 90f if discount) with visual indicator
    - Text input for copy phrase
    - Countdown timer (3 minutes / 180 seconds)
    - Submit button with duplicate detection feedback
@@ -79,13 +89,14 @@ The frontend is fully functional with:
    - Visual vote distribution
    - Navigate between multiple unclaimed results
 
-7. ✅ **Phraseset Tracking** (NEW)
+7. ✅ **Tracking Page** (formerly "Phraseset Tracking")
    - View all phrasesets by role (prompt/copy/vote)
    - Filter by status (pending/open/closing/finalized)
    - Status badges with color coding
    - Click to view details
    - Count summaries for each category
    - Pagination support
+   - Accessed from dashboard navigation
 
 8. ✅ **Tutorial System** (NEW)
    - Interactive onboarding for new players
@@ -146,14 +157,15 @@ The frontend is fully functional with:
 
 ✅ **Implemented Flow:**
 ```
-1. First visit → Register (username/email/password) → Store tokens → Dashboard
+1. First visit → Register (email/password only, username auto-generated) → Store tokens → Dashboard
 2. Return visit → Auto-refresh access token → GET /player/balance → Dashboard
-3. Dashboard → Check daily bonus → Claim if available (separate button)
+3. Dashboard → Daily bonus shows as treasure chest in header → Click to claim
 4. Dashboard → Check active round → Resume if exists (automatic)
 5. Dashboard → Select round type → Start round (disabled if unavailable)
 6. In round → Submit phrase → Provide feedback (prompt only) → Return to dashboard
 7. Dashboard → Notification badge → View unclaimed results → Claim prizes
-8. Dashboard → Phraseset tracking → View all phrasesets by role/status
+8. Dashboard → Tracking page → View all phrasesets by role/status
+9. Header → Click username → Navigate to statistics page (with email shown)
 ```
 
 ---
