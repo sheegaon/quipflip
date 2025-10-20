@@ -493,23 +493,22 @@ async def get_dashboard_data(
             current_round_id=player.active_round_id,
         )
 
-    # Execute all fetches in parallel for maximum performance
-    results = await asyncio.gather(
-        fetch_player_balance(),
-        fetch_current_round(),
-        fetch_pending_results(),
-        fetch_phraseset_summary(),
-        fetch_unclaimed_results(),
-        fetch_round_availability(),
-    )
+    # Execute all fetches sequentially (AsyncSession is not concurrency-safe)
+    # Still faster than 6 separate HTTP requests from the client
+    player_balance = await fetch_player_balance()
+    current_round = await fetch_current_round()
+    pending_results = await fetch_pending_results()
+    phraseset_summary = await fetch_phraseset_summary()
+    unclaimed_results = await fetch_unclaimed_results()
+    round_availability = await fetch_round_availability()
 
     return DashboardDataResponse(
-        player=results[0],
-        current_round=results[1],
-        pending_results=results[2],
-        phraseset_summary=results[3],
-        unclaimed_results=results[4],
-        round_availability=results[5],
+        player=player_balance,
+        current_round=current_round,
+        pending_results=pending_results,
+        phraseset_summary=phraseset_summary,
+        unclaimed_results=unclaimed_results,
+        round_availability=round_availability,
     )
 
 
