@@ -80,14 +80,14 @@ class AuthService:
         """Authenticate a player using email and password."""
         email_normalized = email.strip().lower()
         if not email_normalized:
-            raise AuthError("invalid_credentials")
+            raise AuthError("Email/password combination is invalid")
 
         result = await self.db.execute(
             select(Player).where(Player.email == email_normalized)
         )
         player = result.scalar_one_or_none()
         if not player or not verify_password(password, player.password_hash):
-            raise AuthError("invalid_credentials")
+            raise AuthError("Email/password combination is invalid")
 
         return player
 

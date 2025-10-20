@@ -223,7 +223,7 @@ export const Dashboard: React.FC = () => {
 
           <div className="space-y-4">
             {/* Prompt Round */}
-            <div className="border-2 border-quip-navy rounded-tile p-4 bg-quip-navy bg-opacity-5 hover:bg-opacity-10 transition-all">
+            <div className="tutorial-prompt-round border-2 border-quip-navy rounded-tile p-4 bg-quip-navy bg-opacity-5 hover:bg-opacity-10 transition-all">
               <div className="flex justify-between items-center mb-2">
                 <div className="flex items-center gap-2">
                   <img src="/icon_prompt.svg" alt="" className="w-8 h-8" />

@@ -18,9 +18,9 @@ export const TUTORIAL_STEPS: Record<TutorialProgress, TutorialStep | null> = {
   welcome: {
     id: 'welcome',
     title: 'Welcome to Quipflip!',
-    message: `Quipflip is a creative word game where you'll write prompts, copy phrases, and vote on the best matches.
+    message: `Quipflip is a creative word game where you'll write quips, copy phrases, and vote on the best matches.
 
-Let's take a quick tour to show you how to play and earn coins!`,
+Let's take a quick tour to show you how to play and earn some flipcoins!`,
     position: 'bottom',
     nextStep: 'dashboard',
     showSkip: true,
@@ -38,7 +38,7 @@ Let's take a quick tour to show you how to play and earn coins!`,
 
 Let's start with a **Prompt Round** where you'll create a creative fill-in-the-blank challenge.`,
     target: '.tutorial-dashboard',
-    position: 'top',
+    position: 'bottom',
     nextStep: 'prompt_round',
     showSkip: true,
     showBack: true,
@@ -56,8 +56,8 @@ You might try writing "peppers and mushrooms" or "green and black olives".
 Then other players will try to write similar quips based on yours, but *without seeing the prompt*. The more uniquely your answer fits the prompt, the more coins you can earn!
 
 **Click "Next" to start your first Prompt Round.** The tutorial will resume when you finish.`,
-    target: '.tutorial-prompt-input',
-    position: 'top',
+    target: '.tutorial-prompt-round',
+    position: 'bottom',
     action: 'wait',
     nextStep: 'dashboard', // Return to dashboard, tutorial resumes after completion
     showSkip: true,
