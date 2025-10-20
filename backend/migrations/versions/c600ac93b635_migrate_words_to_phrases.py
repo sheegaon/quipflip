@@ -127,10 +127,6 @@ def upgrade() -> None:
             batch_op.alter_column(
                 old_name,
                 new_column_name=new_name,
-                existing_type=sa.String(15),
-            )
-            batch_op.alter_column(
-                new_name,
                 type_=sa.String(100),
                 existing_type=sa.String(15),
             )
@@ -145,10 +141,6 @@ def upgrade() -> None:
         batch_op.alter_column(
             'voted_word',
             new_column_name='voted_phrase',
-            existing_type=sa.String(15),
-        )
-        batch_op.alter_column(
-            'voted_phrase',
             type_=sa.String(100),
             existing_type=sa.String(15),
         )
@@ -190,10 +182,6 @@ def downgrade() -> None:
         batch_op.alter_column(
             'voted_phrase',
             new_column_name='voted_word',
-            existing_type=sa.String(100),
-        )
-        batch_op.alter_column(
-            'voted_word',
             type_=sa.String(15),
             existing_type=sa.String(100),
         )
@@ -213,10 +201,6 @@ def downgrade() -> None:
             batch_op.alter_column(
                 new_name,
                 new_column_name=old_name,
-                existing_type=sa.String(100),
-            )
-            batch_op.alter_column(
-                old_name,
                 type_=sa.String(15),
                 existing_type=sa.String(100),
             )
