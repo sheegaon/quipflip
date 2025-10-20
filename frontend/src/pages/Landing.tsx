@@ -132,9 +132,6 @@ export const Landing: React.FC = () => {
                   {isLoading ? 'Creating Account...' : 'Create New Account'}
                 </button>
               </form>
-              <p className="text-xs text-gray-600 mt-2">
-                A random username will be assigned to your account • Password: 8-128 characters
-              </p>
             </div>
 
             {/* Returning Player */}

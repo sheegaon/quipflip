@@ -366,6 +366,7 @@ export type TutorialProgress =
   | 'welcome'
   | 'dashboard'
   | 'prompt_round'
+  | 'prompt_round_paused'
   | 'copy_round'
   | 'vote_round'
   | 'completed';
