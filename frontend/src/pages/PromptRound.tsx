@@ -49,6 +49,20 @@ export const PromptRound: React.FC = () => {
           navigate('/dashboard');
         }
       } else {
+        // Special case: If in tutorial and user has any active round, advance tutorial
+        if (currentStep === 'prompt_round' && activeRound?.round_id) {
+          // User has some other active round during tutorial
+          // Skip the prompt round and advance tutorial to next step
+          try {
+            await advanceStep('copy_round');
+            navigate('/dashboard');
+            return;
+          } catch (err) {
+            console.error('Failed to advance tutorial:', err);
+            // Fall through to normal error handling
+          }
+        }
+
         // No active round, start a new one
         try {
           const response = await apiClient.startPromptRound();
@@ -60,6 +74,18 @@ export const PromptRound: React.FC = () => {
             prompt_text: response.prompt_text,
           });
         } catch (err) {
+          // Special handling for tutorial users with existing rounds
+          if (currentStep === 'prompt_round' && extractErrorMessage(err)?.includes('already_in_round')) {
+            try {
+              // Advance tutorial and go back to dashboard
+              await advanceStep('copy_round');
+              navigate('/dashboard');
+              return;
+            } catch (tutorialErr) {
+              console.error('Failed to advance tutorial:', tutorialErr);
+            }
+          }
+          
           setError(extractErrorMessage(err) || 'Unable to start a new prompt round. Please check your balance and try again.');
           setTimeout(() => navigate('/dashboard'), 2000);
         }
@@ -67,7 +93,7 @@ export const PromptRound: React.FC = () => {
     };
 
     initRound();
-  }, [activeRound, navigate]);
+  }, [activeRound, navigate, currentStep, advanceStep]);
 
   const handleFeedback = async (type: 'like' | 'dislike') => {
     if (!roundData || isSubmittingFeedback) return;

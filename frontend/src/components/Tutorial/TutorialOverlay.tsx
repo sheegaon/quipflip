@@ -100,6 +100,41 @@ const TutorialOverlay: React.FC<TutorialOverlayProps> = ({ onComplete }) => {
   }, [isActive, currentStep, step]);
 
   const handleNext = async () => {
+    // Special case: When on prompt_round step, navigate to actual prompt round and pause tutorial
+    if (step?.id === 'prompt_round') {
+      try {
+        // Set tutorial to paused state
+        await advanceStep('prompt_round_paused');
+        // Navigate to prompt round page
+        window.location.href = '/prompt';
+        return;
+      } catch (error) {
+        console.error('Failed to pause tutorial for prompt round:', error);
+        // If pause fails, just navigate directly without pausing tutorial
+        // This allows the user to continue even if backend validation fails
+        window.location.href = '/prompt';
+        return;
+      }
+    }
+
+    // Special case: When on copy_round step, navigate to actual copy round and pause tutorial
+    if (step?.id === 'copy_round') {
+      try {
+        // Set tutorial to paused state
+        await advanceStep('copy_round_paused');
+        // Navigate to copy round page
+        window.location.href = '/copy';
+        return;
+      } catch (error) {
+        console.error('Failed to pause tutorial for copy round:', error);
+        // If pause fails, just navigate directly without pausing tutorial
+        // This allows the user to continue even if backend validation fails
+        window.location.href = '/copy';
+        return;
+      }
+    }
+
+    // Regular tutorial progression
     if (step?.nextStep) {
       await advanceStep(step.nextStep);
     } else {
