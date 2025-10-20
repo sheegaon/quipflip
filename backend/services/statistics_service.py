@@ -68,6 +68,7 @@ class StatisticsService:
         return PlayerStatistics(
             player_id=player_id,
             username=player.username,
+            email=player.email,
             overall_balance=player.balance,
             prompt_stats=prompt_stats,
             copy_stats=copy_stats,

@@ -350,6 +350,7 @@ export interface BestPerformingPhrase {
 export interface PlayerStatistics {
   player_id: string;
   username: string;
+  email: string;
   overall_balance: number;
   prompt_stats: RoleStatistics;
   copy_stats: RoleStatistics;

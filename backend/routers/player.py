@@ -67,14 +67,13 @@ async def create_player(
     auth_service = AuthService(db)
     try:
         player = await auth_service.register_player(
-            username=request.username,
             email=request.email,
             password=request.password,
         )
     except AuthError as exc:
         message = str(exc)
-        if message == "username_taken":
-            raise HTTPException(status_code=409, detail="username_taken") from exc
+        if message == "username_generation_failed":
+            raise HTTPException(status_code=500, detail="username_generation_failed") from exc
         if message == "email_taken":
             raise HTTPException(status_code=409, detail="email_taken") from exc
         if message == "invalid_username":

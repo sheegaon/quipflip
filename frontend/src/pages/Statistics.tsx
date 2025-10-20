@@ -84,7 +84,8 @@ export default function Statistics() {
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <h1 className="text-3xl font-display font-bold text-quip-navy">{stats.username}'s Statistics</h1>
-              <p className="text-quip-teal mt-1">Track your performance and progress</p>
+              <p className="text-quip-teal mt-1">{stats.email}</p>
+              <p className="text-quip-teal text-sm mt-1">Track your performance and progress</p>
             </div>
             <div className="text-right">
               <div className="text-sm text-quip-teal">Current Balance</div>

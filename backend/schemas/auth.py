@@ -13,7 +13,6 @@ EmailLike = constr(pattern=r"[^@\s]+@[^@\s]+\.[^@\s]+", min_length=5, max_length
 class RegisterRequest(BaseModel):
     """Payload for creating a new player account."""
 
-    username: UsernameStr = Field(..., description="Desired username")
     email: EmailLike
     password: PasswordStr
 

@@ -1,30 +1,67 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { BalanceFlipper } from './BalanceFlipper';
+import { TreasureChestIcon } from './TreasureChestIcon';
 
 export const Header: React.FC = () => {
-  const { player, username, logout } = useGame();
+  const { player, username, logout, claimBonus } = useGame();
+  const navigate = useNavigate();
+  const [isClaiming, setIsClaiming] = useState(false);
 
   if (!player) {
     return null;
   }
 
+  const handleClaimBonus = async () => {
+    if (isClaiming) return;
+    setIsClaiming(true);
+    try {
+      await claimBonus();
+    } catch (err) {
+      // Error is already handled in context
+    } finally {
+      setIsClaiming(false);
+    }
+  };
+
   return (
     <div className="bg-white shadow-tile-sm">
-      <div className="max-w-6xl mx-auto px-4 py-4">
+      <div className="max-w-6xl mx-auto px-4 py-3">
         <div className="flex justify-between items-center">
           {/* Left: Logo */}
           <div className="flex items-center">
-            <img src="/quipflip_logo_horizontal_transparent.png" alt="Quipflip" className="h-16 w-auto" />
+            <img src="/quipflip_logo_horizontal_transparent.png" alt="Quipflip" className="h-12 w-auto" />
           </div>
 
-          {/* Center: Username */}
+          {/* Center: Username (clickable to stats) */}
           <div className="flex-1 text-center">
-            <p className="text-sm md:text-lg text-quip-turquoise font-semibold">{player.username || username}</p>
+            <button
+              onClick={() => navigate('/statistics')}
+              className="text-sm md:text-lg text-quip-turquoise font-semibold hover:text-quip-teal transition-colors"
+              title="View your statistics"
+            >
+              {player.username || username}
+            </button>
           </div>
 
-          {/* Right: Flipcoins + Logout */}
+          {/* Right: Daily Bonus + Flipcoins + Logout */}
           <div className="flex items-center gap-4">
+            {/* Daily Bonus Treasure Chest */}
+            {player.daily_bonus_available && (
+              <button
+                onClick={handleClaimBonus}
+                disabled={isClaiming}
+                className="relative group"
+                title={`Claim your $${player.daily_bonus_amount} daily bonus!`}
+              >
+                <TreasureChestIcon
+                  className="w-10 h-10 transition-transform group-hover:scale-110"
+                  isAvailable={true}
+                />
+              </button>
+            )}
+
             <div className="flex items-center gap-2 tutorial-balance">
               <img src="/flipcoin.png" alt="Flipcoin" className="w-10 h-10" />
               <BalanceFlipper
