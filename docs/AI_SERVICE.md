@@ -23,9 +23,9 @@ The Quipflip AI Service provides automated backup copy generation and voting whe
 
 ```
 backend/services/
-├── ai_copy_service.py          # Main orchestrator with provider selection
-├── ai_vote_helper.py           # AI voting logic for phrase identification
-├── ai_metrics_service.py       # Comprehensive metrics tracking
+├── ai_service.py              # Main orchestrator with provider selection
+├── ai_vote_helper.py          # AI voting logic for phrase identification
+├── ai_metrics_service.py      # Comprehensive metrics tracking
 ├── openai_api.py              # OpenAI (GPT-5 Nano) integration
 ├── gemini_api.py              # Gemini (Flash Lite) integration
 └── prompt_builder.py          # Shared prompt construction
@@ -144,13 +144,13 @@ ai_backup_delay_minutes: int = 10
 #### Initialize Service
 
 ```python
-from backend.services.ai_copy_service import AICopyService
+from backend.services.ai_service import AIService
 from backend.services.phrase_validator import PhraseValidator
 from backend.database import get_db
 
 validator = PhraseValidator()
 db = get_db()
-ai_service = AICopyService(db, validator)
+ai_service = AIService(db, validator)
 ```
 
 #### Generate Copy Phrase
@@ -355,7 +355,7 @@ pytest tests/test_ai_service.py -v
 pytest tests/test_ai_service.py::TestAIVoting -v
 
 # Run with coverage
-pytest tests/test_ai_service.py --cov=backend.services.ai_copy_service --cov-report=html
+pytest tests/test_ai_service.py --cov=backend.services.ai_service --cov-report=html
 ```
 
 ### Manual Testing
@@ -552,22 +552,23 @@ alembic upgrade head
 ### 3. Test Setup
 
 ```python
-from backend.services.ai_copy_service import AICopyService
+from backend.services.ai_service import AIService
 from backend.services.phrase_validator import PhraseValidator
+
 
 # Initialize
 async def test_ai_service(db):
-    validator = PhraseValidator(db)
-    ai_service = AICopyService(db, validator)
-    
-    # Generate copy
-    phrase = await ai_service.generate_copy_phrase(
-        original_phrase="test phrase",
-        prompt_text="test prompt"
-    )
-    
-    await db.commit()
-    return phrase
+   validator = PhraseValidator(db)
+   ai_service = AIService(db, validator)
+
+   # Generate copy
+   phrase = await ai_service.generate_copy_phrase(
+      original_phrase="test phrase",
+      prompt_text="test prompt"
+   )
+
+   await db.commit()
+   return phrase
 ```
 
 ### 4. Monitor Performance

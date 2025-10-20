@@ -88,7 +88,7 @@ The AI copy service provides automated backup copy generation when human players
 
 ### Architecture
 ```
-ai_copy_service.py          # Main orchestrator
+ai_service.py          # Main orchestrator
 ├── openai_api.py          # OpenAI provider implementation
 ├── gemini_api.py          # Gemini provider implementation
 └── prompt_builder.py      # Shared prompt construction logic

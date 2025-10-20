@@ -406,7 +406,7 @@ class RoundService:
 
         phraseset = None
         if prompt_round:
-            phraseset = await self._create_phraseset_if_ready(prompt_round)
+            phraseset = await self.create_phraseset_if_ready(prompt_round)
             if phraseset:
                 prompt_round.phraseset_status = "active"
                 await self.activity_service.attach_phraseset_id(
@@ -434,7 +434,7 @@ class RoundService:
         logger.info(f"Submitted phrase for copy round {round_id}: {phrase}")
         return round_object
 
-    async def _create_phraseset_if_ready(self, prompt_round: Round) -> PhraseSet | None:
+    async def create_phraseset_if_ready(self, prompt_round: Round) -> PhraseSet | None:
         """Create phraseset when two copies submitted."""
         result = await self.db.execute(
             select(Round)
