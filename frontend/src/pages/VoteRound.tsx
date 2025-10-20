@@ -15,6 +15,7 @@ export const VoteRound: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [roundData, setRoundData] = useState<VoteState | null>(null);
   const [voteResult, setVoteResult] = useState<VoteResponse | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const hasInitialized = useRef(false);
 
   const { isExpired } = useTimer(roundData?.expires_at || null);
@@ -63,6 +64,7 @@ export const VoteRound: React.FC = () => {
       setIsSubmitting(true);
       setError(null);
       const result = await apiClient.submitVote(roundData.phraseset_id, phrase);
+      setSuccessMessage(result.correct ? getRandomMessage('voteSubmitted') : null);
       setVoteResult(result);
 
       // Navigate after showing results for 3 seconds
@@ -83,7 +85,9 @@ export const VoteRound: React.FC = () => {
 
   // Show vote result
   if (voteResult) {
-    const successMsg = voteResult.correct ? getRandomMessage('voteSubmitted') : 'Better luck next time!';
+    const successMsg = voteResult.correct
+      ? successMessage!
+      : 'Better luck next time!';
     return (
       <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center p-4">
         <div className="max-w-2xl w-full tile-card p-8 text-center flip-enter">
