@@ -15,12 +15,7 @@ export const Dashboard: React.FC = () => {
     pendingResults,
     phrasesetSummary,
     roundAvailability,
-    refreshBalance,
-    refreshCurrentRound,
-    refreshPendingResults,
-    refreshPhrasesetSummary,
-    refreshUnclaimedResults,
-    refreshRoundAvailability,
+    refreshDashboard,
     claimBonus,
   } = useGame();
   const { startTutorial, skipTutorial, advanceStep } = useTutorial();
@@ -45,35 +40,8 @@ export const Dashboard: React.FC = () => {
     return `${activeRound.round_type.charAt(0).toUpperCase()}${activeRound.round_type.slice(1)}`;
   }, [activeRound?.round_type]);
 
-  // Comprehensive refresh function
-  const refreshDashboard = useCallback(async () => {
-    try {
-      await Promise.allSettled([
-        refreshBalance(),
-        refreshCurrentRound(),
-        refreshPendingResults(),
-        refreshPhrasesetSummary(),
-        refreshUnclaimedResults(),
-        refreshRoundAvailability(),
-      ]);
-    } catch (err) {
-      // Error is already handled in context
-    }
-  }, [
-    refreshBalance,
-    refreshCurrentRound,
-    refreshPendingResults,
-    refreshPhrasesetSummary,
-    refreshUnclaimedResults,
-    refreshRoundAvailability,
-  ]);
-
-  // Refresh when component mounts or becomes visible
+  // Refresh when page becomes visible (GameContext already loads data on mount)
   useEffect(() => {
-    // Immediate refresh when component mounts
-    refreshDashboard();
-
-    // Add event listener for when the page becomes visible
     const handleVisibilityChange = () => {
       if (!document.hidden) {
         refreshDashboard();
@@ -109,14 +77,10 @@ export const Dashboard: React.FC = () => {
     }
   }, [activeRoundRoute, navigate]);
 
-  const handleRoundExpired = useCallback(async () => {
+  const handleRoundExpired = useCallback(() => {
     setIsRoundExpired(true);
-    await Promise.all([
-      refreshCurrentRound(),
-      refreshRoundAvailability(),
-      refreshBalance(),
-    ]);
-  }, [refreshBalance, refreshCurrentRound, refreshRoundAvailability]);
+    // Background polling will refresh data automatically
+  }, []);
 
   const handleClaimBonus = async () => {
     try {

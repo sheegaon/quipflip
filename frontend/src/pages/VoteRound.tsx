@@ -9,7 +9,7 @@ import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
 import type { VoteState, VoteResponse } from '../api/types';
 
 export const VoteRound: React.FC = () => {
-  const { activeRound, refreshCurrentRound, refreshBalance, refreshPendingResults } = useGame();
+  const { activeRound } = useGame();
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -38,7 +38,6 @@ export const VoteRound: React.FC = () => {
         // No active round, start a new one
         try {
           const response = await apiClient.startVoteRound();
-          await refreshCurrentRound();
           setRoundData({
             round_id: response.round_id,
             status: 'active',
@@ -55,7 +54,7 @@ export const VoteRound: React.FC = () => {
     };
 
     initRound();
-  }, [activeRound, navigate, refreshCurrentRound]);
+  }, [activeRound, navigate]);
 
   const handleVote = async (phrase: string) => {
     if (!roundData || isSubmitting) return;
@@ -65,9 +64,6 @@ export const VoteRound: React.FC = () => {
       setError(null);
       const result = await apiClient.submitVote(roundData.phraseset_id, phrase);
       setVoteResult(result);
-      await refreshCurrentRound();
-      await refreshBalance();
-      await refreshPendingResults();
 
       // Navigate after showing results for 3 seconds
       setTimeout(() => navigate('/dashboard'), 3000);

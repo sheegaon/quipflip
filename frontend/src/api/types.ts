@@ -278,6 +278,15 @@ export interface UnclaimedResultsResponse {
   total_unclaimed_amount: number;
 }
 
+export interface DashboardData {
+  player: Player;
+  current_round: ActiveRound;
+  pending_results: PendingResult[];
+  phraseset_summary: PhrasesetDashboardSummary;
+  unclaimed_results: UnclaimedResult[];
+  round_availability: RoundAvailability;
+}
+
 export interface ApiError {
   detail: string;
 }

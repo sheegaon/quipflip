@@ -17,18 +17,23 @@ from backend.schemas.player import (
     TutorialStatus,
     UpdateTutorialProgressRequest,
     UpdateTutorialProgressResponse,
+    DashboardDataResponse,
 )
 from backend.schemas.phraseset import (
     PhrasesetListResponse,
     PhrasesetDashboardSummary,
     UnclaimedResultsResponse,
+    UnclaimedResult,
 )
+from backend.schemas.round import RoundAvailability
 from backend.services.player_service import PlayerService
 from backend.services.transaction_service import TransactionService
 from backend.services.round_service import RoundService
 from backend.services.phraseset_service import PhrasesetService
 from backend.services.statistics_service import StatisticsService
 from backend.services.tutorial_service import TutorialService
+from backend.services.vote_service import VoteService
+from backend.services.queue_service import QueueService
 from backend.utils.exceptions import DailyBonusNotAvailableError
 from backend.config import get_settings
 from backend.schemas.auth import RegisterRequest
@@ -37,6 +42,8 @@ from backend.utils.cookies import set_refresh_cookie
 from datetime import datetime, UTC, timedelta
 from sqlalchemy import select
 import logging
+import asyncio
+import random
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -325,6 +332,185 @@ async def get_unclaimed_results(
     phraseset_service = PhrasesetService(db)
     payload = await phraseset_service.get_unclaimed_results(player.player_id)
     return UnclaimedResultsResponse(**payload)
+
+
+@router.get("/dashboard", response_model=DashboardDataResponse)
+async def get_dashboard_data(
+    player: Player = Depends(get_current_player),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get all dashboard data in a single batched request for optimal performance."""
+
+    # Create all service instances
+    player_service = PlayerService(db)
+    round_service = RoundService(db)
+    phraseset_service = PhrasesetService(db)
+    vote_service = VoteService(db)
+
+    # Define async functions that fetch each piece of data
+    async def fetch_player_balance() -> PlayerBalance:
+        bonus_available = await player_service.is_daily_bonus_available(player)
+        outstanding = await player_service.get_outstanding_prompts_count(player.player_id)
+        return PlayerBalance(
+            username=player.username,
+            balance=player.balance,
+            starting_balance=settings.starting_balance,
+            daily_bonus_available=bonus_available,
+            daily_bonus_amount=settings.daily_bonus_amount,
+            last_login_date=player.last_login_date,
+            outstanding_prompts=outstanding,
+        )
+
+    async def fetch_current_round() -> CurrentRoundResponse:
+        if not player.active_round_id:
+            return CurrentRoundResponse(
+                round_id=None,
+                round_type=None,
+                state=None,
+                expires_at=None,
+            )
+
+        round_obj = await db.get(Round, player.active_round_id)
+        if not round_obj or round_obj.status != "active":
+            if round_obj and player.active_round_id == round_obj.round_id:
+                player.active_round_id = None
+                await db.commit()
+                await db.refresh(player)
+            return CurrentRoundResponse(
+                round_id=None,
+                round_type=None,
+                state=None,
+                expires_at=None,
+            )
+
+        expires_at_utc = ensure_utc(round_obj.expires_at)
+        grace_cutoff = expires_at_utc + timedelta(seconds=settings.grace_period_seconds)
+
+        if datetime.now(UTC) > grace_cutoff:
+            transaction_service = TransactionService(db)
+            await round_service.handle_timeout(round_obj.round_id, transaction_service)
+            await db.refresh(player)
+            return CurrentRoundResponse(
+                round_id=None,
+                round_type=None,
+                state=None,
+                expires_at=None,
+            )
+
+        # Build state based on round type
+        state = {
+            "round_id": str(round_obj.round_id),
+            "status": round_obj.status,
+            "expires_at": expires_at_utc.isoformat(),
+            "cost": round_obj.cost,
+        }
+
+        if round_obj.round_type == "prompt":
+            state.update({"prompt_text": round_obj.prompt_text})
+        elif round_obj.round_type == "copy":
+            state.update({
+                "original_phrase": round_obj.original_phrase,
+                "prompt_round_id": str(round_obj.prompt_round_id),
+            })
+        elif round_obj.round_type == "vote":
+            phraseset = await db.get(PhraseSet, round_obj.phraseset_id)
+            if phraseset:
+                phrases = [phraseset.original_phrase, phraseset.copy_phrase_1, phraseset.copy_phrase_2]
+                random.shuffle(phrases)
+                state.update({
+                    "phraseset_id": str(phraseset.phraseset_id),
+                    "prompt_text": phraseset.prompt_text,
+                    "phrases": phrases,
+                })
+
+        return CurrentRoundResponse(
+            round_id=round_obj.round_id,
+            round_type=round_obj.round_type,
+            state=state,
+            expires_at=expires_at_utc,
+        )
+
+    async def fetch_pending_results() -> list[PendingResult]:
+        contributions, _ = await phraseset_service.get_player_phrasesets(
+            player.player_id,
+            role="all",
+            status="finalized",
+            limit=500,
+            offset=0,
+        )
+
+        pending: list[PendingResult] = []
+        for entry in contributions:
+            finalized_at = entry.get("finalized_at")
+            if not finalized_at or not entry.get("phraseset_id"):
+                continue
+            pending.append(
+                PendingResult(
+                    phraseset_id=entry["phraseset_id"],
+                    prompt_text=entry["prompt_text"],
+                    completed_at=ensure_utc(finalized_at),
+                    role=entry["your_role"],
+                    payout_claimed=entry.get("payout_claimed", False),
+                )
+            )
+
+        pending.sort(key=lambda item: item.completed_at, reverse=True)
+        return pending
+
+    async def fetch_phraseset_summary() -> PhrasesetDashboardSummary:
+        summary = await phraseset_service.get_phraseset_summary(player.player_id)
+        return PhrasesetDashboardSummary(**summary)
+
+    async def fetch_unclaimed_results() -> list[UnclaimedResult]:
+        payload = await phraseset_service.get_unclaimed_results(player.player_id)
+        return payload["unclaimed"]
+
+    async def fetch_round_availability() -> RoundAvailability:
+        prompts_waiting = await round_service.get_available_prompts_count(player.player_id)
+        phrasesets_waiting = await vote_service.count_available_wordsets_for_player(player.player_id)
+
+        can_prompt, _ = await player_service.can_start_prompt_round(player)
+        can_copy, _ = await player_service.can_start_copy_round(player)
+        can_vote, _ = await player_service.can_start_vote_round(
+            player,
+            vote_service,
+            available_count=phrasesets_waiting,
+        )
+
+        if prompts_waiting == 0:
+            can_copy = False
+        if phrasesets_waiting == 0:
+            can_vote = False
+
+        return RoundAvailability(
+            can_prompt=can_prompt,
+            can_copy=can_copy,
+            can_vote=can_vote,
+            prompts_waiting=prompts_waiting,
+            phrasesets_waiting=phrasesets_waiting,
+            copy_discount_active=QueueService.is_copy_discount_active(),
+            copy_cost=QueueService.get_copy_cost(),
+            current_round_id=player.active_round_id,
+        )
+
+    # Execute all fetches in parallel for maximum performance
+    results = await asyncio.gather(
+        fetch_player_balance(),
+        fetch_current_round(),
+        fetch_pending_results(),
+        fetch_phraseset_summary(),
+        fetch_unclaimed_results(),
+        fetch_round_availability(),
+    )
+
+    return DashboardDataResponse(
+        player=results[0],
+        current_round=results[1],
+        pending_results=results[2],
+        phraseset_summary=results[3],
+        unclaimed_results=results[4],
+        round_availability=results[5],
+    )
 
 
 @router.get("/statistics", response_model=PlayerStatistics)
