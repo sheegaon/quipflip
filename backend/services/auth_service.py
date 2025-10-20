@@ -40,36 +40,33 @@ class AuthService:
     # ------------------------------------------------------------------
     # Registration
     # ------------------------------------------------------------------
-    async def register_player(self, username: str, email: str, password: str) -> Player:
+    async def register_player(self, email: str, password: str) -> Player:
         """Create a new player with provided credentials."""
         from backend.services.username_service import UsernameService
-
-        normalized_username = normalize_username(username)
-        canonical_username = canonicalize_username(normalized_username)
-        if not canonical_username:
-            raise AuthError("invalid_username")
 
         email_normalized = email.strip().lower()
         password_hash = hash_password(password)
 
-        # Generate unique pseudonym for this player
+        # Generate unique username and pseudonym for this player
         username_service = UsernameService(self.db)
+        username_display, username_canonical = await username_service.generate_unique_username()
         pseudonym_display, pseudonym_canonical = await username_service.generate_unique_username()
 
         try:
             player = await self.player_service.create_player(
-                username=normalized_username,
+                username=username_display,
                 email=email_normalized,
                 password_hash=password_hash,
                 pseudonym=pseudonym_display,
                 pseudonym_canonical=pseudonym_canonical,
             )
-            logger.info("Created player %s via credential signup with pseudonym %s", player.player_id, pseudonym_display)
+            logger.info("Created player %s via credential signup with username %s and pseudonym %s", player.player_id, username_display, pseudonym_display)
             return player
         except ValueError as exc:
             message = str(exc)
             if message == "username_taken":
-                raise AuthError("username_taken") from exc
+                # This should be extremely rare since we generate unique usernames
+                raise AuthError("username_generation_failed") from exc
             if message == "email_taken":
                 raise AuthError("email_taken") from exc
             if message == "invalid_username":

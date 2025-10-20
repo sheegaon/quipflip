@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import apiClient, { extractErrorMessage } from '../api/client';
@@ -6,7 +6,6 @@ import apiClient, { extractErrorMessage } from '../api/client';
 export const Landing: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [registerUsername, setRegisterUsername] = useState('');
   const [registerEmail, setRegisterEmail] = useState('');
   const [registerPassword, setRegisterPassword] = useState('');
   const [loginEmail, setLoginEmail] = useState('');
@@ -15,30 +14,10 @@ export const Landing: React.FC = () => {
   const { startSession } = useGame();
   const navigate = useNavigate();
 
-  // Fetch suggested username on component mount
-  useEffect(() => {
-    apiClient.suggestUsername()
-      .then(response => setRegisterUsername(response.suggested_username))
-      .catch(() => {}); // Silently fail if suggestion fails
-  }, []);
-
   const handleCreatePlayer = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Frontend validation
-    if (!registerUsername.trim()) {
-      setError('Please provide a username.');
-      return;
-    }
-    if (registerUsername.trim().length < 3) {
-      setError('Username must be at least 3 characters long.');
-      return;
-    }
-    if (registerUsername.trim().length > 80) {
-      setError('Username must be 80 characters or less.');
-      return;
-    }
-
     if (!registerEmail.trim()) {
       setError('Please provide an email address.');
       return;
@@ -67,7 +46,6 @@ export const Landing: React.FC = () => {
       setIsLoading(true);
       setError(null);
       const response = await apiClient.createPlayer({
-        username: registerUsername.trim(),
         email: registerEmail.trim(),
         password: registerPassword,
       });
@@ -127,17 +105,6 @@ export const Landing: React.FC = () => {
               <h2 className="text-xl font-semibold mb-4 text-quip-navy">Create an Account</h2>
               <form onSubmit={handleCreatePlayer} className="space-y-3">
                 <input
-                  type="text"
-                  value={registerUsername}
-                  onChange={(e) => setRegisterUsername(e.target.value)}
-                  placeholder="Choose a username"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-tile focus:outline-none focus:ring-2 focus:ring-quip-turquoise"
-                  disabled={isLoading}
-                  autoComplete="username"
-                  minLength={3}
-                  maxLength={80}
-                />
-                <input
                   type="email"
                   value={registerEmail}
                   onChange={(e) => setRegisterEmail(e.target.value)}
@@ -166,7 +133,7 @@ export const Landing: React.FC = () => {
                 </button>
               </form>
               <p className="text-xs text-gray-600 mt-2">
-                Username: 3-80 characters • Password: 8-128 characters
+                A random username will be assigned to your account • Password: 8-128 characters
               </p>
             </div>
 

@@ -373,7 +373,7 @@ export const apiClient = {
 
   // Player endpoints
   async createPlayer(
-    payload: { username: string; email: string; password: string },
+    payload: { email: string; password: string },
     signal?: AbortSignal,
   ): Promise<CreatePlayerResponse> {
     const { data } = await api.post('/player', payload, { signal });

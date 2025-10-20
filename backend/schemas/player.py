@@ -98,6 +98,7 @@ class PlayerStatistics(BaseModel):
     """Comprehensive player statistics."""
     player_id: UUID
     username: str
+    email: str
     overall_balance: int
 
     # Role-specific stats

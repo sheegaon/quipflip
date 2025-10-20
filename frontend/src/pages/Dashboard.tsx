@@ -16,7 +16,6 @@ export const Dashboard: React.FC = () => {
     phrasesetSummary,
     roundAvailability,
     refreshDashboard,
-    claimBonus,
   } = useGame();
   const { startTutorial, skipTutorial, advanceStep } = useTutorial();
   const navigate = useNavigate();
@@ -82,14 +81,6 @@ export const Dashboard: React.FC = () => {
     // Background polling will refresh data automatically
   }, []);
 
-  const handleClaimBonus = async () => {
-    try {
-      await claimBonus();
-    } catch (err) {
-      // Error is already handled in context
-    }
-  };
-
   const handleStartPrompt = () => {
     navigate('/prompt');
   };
@@ -112,10 +103,6 @@ export const Dashboard: React.FC = () => {
 
   const handleClaimResults = () => {
     navigate('/phrasesets');
-  };
-
-  const handleViewStatistics = () => {
-    navigate('/statistics');
   };
 
   const inProgressPrompts = phrasesetSummary?.in_progress.prompts ?? 0;
@@ -225,42 +212,6 @@ export const Dashboard: React.FC = () => {
                 className="w-full sm:w-auto bg-quip-turquoise hover:bg-quip-teal text-white font-bold py-2 px-6 rounded-tile transition-all hover:shadow-tile-sm"
               >
                 Claim Prizes
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Daily Bonus */}
-        {player.daily_bonus_available && (
-          <div className="tile-card bg-quip-orange bg-opacity-10 border-2 border-quip-orange p-4 mb-6 slide-up-enter">
-            <div className="flex justify-between items-center">
-              <div>
-                <p className="font-display font-semibold text-quip-orange-deep">Daily Bonus Available!</p>
-                <p className="text-sm text-quip-teal">Claim your ${player.daily_bonus_amount} bonus</p>
-              </div>
-              <button
-                onClick={handleClaimBonus}
-                className="bg-quip-orange hover:bg-quip-orange-deep text-white font-bold py-2 px-6 rounded-tile transition-all hover:shadow-tile-sm"
-              >
-                Claim
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Statistics */}
-        {isTutorialComplete && (
-          <div className="tile-card border-2 border-quip-teal p-4 mb-6">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="font-display font-semibold text-quip-teal">Your Performance</p>
-                <p className="text-sm text-quip-navy">View detailed statistics and charts</p>
-              </div>
-              <button
-                onClick={handleViewStatistics}
-                className="w-full sm:w-auto bg-quip-teal hover:bg-quip-navy text-white font-bold py-2 px-6 rounded-tile transition-all hover:shadow-tile-sm"
-              >
-                View Statistics
               </button>
             </div>
           </div>
