@@ -20,7 +20,8 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     # Add tutorial tracking columns to players table
-    op.add_column('players', sa.Column('tutorial_completed', sa.Boolean(), nullable=False, server_default='0'))
+    # Use sa.text('false') for PostgreSQL compatibility instead of '0'
+    op.add_column('players', sa.Column('tutorial_completed', sa.Boolean(), nullable=False, server_default=sa.text('false')))
     op.add_column('players', sa.Column('tutorial_progress', sa.String(length=20), nullable=False, server_default='not_started'))
     op.add_column('players', sa.Column('tutorial_started_at', sa.DateTime(timezone=True), nullable=True))
     op.add_column('players', sa.Column('tutorial_completed_at', sa.DateTime(timezone=True), nullable=True))

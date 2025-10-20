@@ -15,6 +15,7 @@ from backend.schemas.quest import (
 )
 from backend.services.quest_service import QuestService, QUEST_CONFIGS
 from backend.services.transaction_service import TransactionService
+from backend.models.quest import QuestType
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,13 @@ router = APIRouter()
 
 def _map_quest_to_response(quest: Quest) -> QuestResponse:
     """Map a Quest model to QuestResponse schema."""
-    config = QUEST_CONFIGS.get(quest.quest_type)
+    # Convert string quest_type from database to QuestType enum for lookup
+    try:
+        quest_type_enum = QuestType(quest.quest_type)
+        config = QUEST_CONFIGS.get(quest_type_enum)
+    except ValueError:
+        # Handle unknown quest types
+        config = None
 
     if not config:
         # Fallback for unknown quest types
@@ -53,6 +60,9 @@ def _map_quest_to_response(quest: Quest) -> QuestResponse:
     # Calculate percentage
     percentage = (current / target * 100) if target > 0 else 0
 
+    # Get category value - handle both enum and string
+    category_value = config["category"].value if hasattr(config["category"], "value") else config["category"]
+
     return QuestResponse(
         quest_id=quest.quest_id,
         quest_type=quest.quest_type,
@@ -61,7 +71,7 @@ def _map_quest_to_response(quest: Quest) -> QuestResponse:
         status=quest.status,
         progress=progress,
         reward_amount=quest.reward_amount,
-        category=config["category"].value,
+        category=category_value,
         created_at=quest.created_at,
         completed_at=quest.completed_at,
         claimed_at=quest.claimed_at,

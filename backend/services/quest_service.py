@@ -177,7 +177,7 @@ class QuestService:
         config = QUEST_CONFIGS[quest_type]
 
         # Check if quest already exists
-        existing = await self.db.execute(
+        existing_result = await self.db.execute(
             select(Quest).where(
                 and_(
                     Quest.player_id == player_id,
@@ -185,9 +185,10 @@ class QuestService:
                 )
             )
         )
-        if existing.scalar_one_or_none():
+        existing_quest = existing_result.scalar_one_or_none()
+        if existing_quest:
             logger.info(f"Quest {quest_type.value} already exists for player {player_id}")
-            return existing.scalar_one()
+            return existing_quest
 
         quest = Quest(
             quest_id=uuid.uuid4(),
@@ -535,6 +536,12 @@ class QuestService:
         if not quest:
             return
 
+        # NOTE: This method still uses COUNT queries because it needs 24-hour sliding windows.
+        # Incremental tracking would require storing all timestamps and filtering them on each call,
+        # which may not be more efficient. Consider caching or periodic background updates if this
+        # becomes a performance bottleneck. For now, we accept the query cost since balanced_player
+        # is checked less frequently than milestone quests (only on round submission).
+
         now = datetime.now(UTC)
         window_start = now - timedelta(hours=24)
 
@@ -655,16 +662,8 @@ class QuestService:
         await self.db.commit()
 
     async def increment_feedback_count(self, player_id: UUID) -> None:
-        """Track feedback contributions."""
-        # Count total feedback
-        result = await self.db.execute(
-            select(func.count()).select_from(PromptFeedback).where(
-                PromptFeedback.player_id == player_id
-            )
-        )
-        total_feedback = result.scalar() or 0
-
-        # Check active feedback quests
+        """Track feedback contributions using incremental updates."""
+        # Get active feedback quests
         quests_result = await self.db.execute(
             select(Quest).where(
                 and_(
@@ -683,9 +682,11 @@ class QuestService:
             progress = quest.progress
             config = QUEST_CONFIGS[QuestType(quest.quest_type)]
 
-            progress["current"] = total_feedback
+            # Increment the counter instead of recounting from database
+            current = progress.get("current", 0)
+            progress["current"] = current + 1
 
-            if total_feedback >= config["target"]:
+            if progress["current"] >= config["target"]:
                 quest.status = QuestStatus.COMPLETED.value
                 quest.completed_at = datetime.now(UTC)
                 logger.info(f"Quest {quest.quest_type} completed for player {player_id}")
@@ -696,53 +697,95 @@ class QuestService:
         await self.db.commit()
 
     async def check_milestone_votes(self, player_id: UUID) -> None:
-        """Check milestone vote quest."""
-        result = await self.db.execute(
-            select(func.count()).select_from(Vote).where(Vote.player_id == player_id)
+        """Check milestone vote quest using incremental tracking."""
+        # Get the active milestone vote quest
+        quest_result = await self.db.execute(
+            select(Quest).where(
+                and_(
+                    Quest.player_id == player_id,
+                    Quest.quest_type == QuestType.MILESTONE_VOTES_100.value,
+                    Quest.status == QuestStatus.ACTIVE.value
+                )
+            )
         )
-        total_votes = result.scalar() or 0
+        quest = quest_result.scalar_one_or_none()
 
-        await self._check_milestone_quest(
-            player_id, QuestType.MILESTONE_VOTES_100, total_votes
-        )
+        if quest:
+            progress = quest.progress
+            config = QUEST_CONFIGS[QuestType.MILESTONE_VOTES_100]
+
+            # Increment the counter instead of recounting from database
+            current = progress.get("current", 0)
+            progress["current"] = current + 1
+
+            if progress["current"] >= config["target"]:
+                quest.status = QuestStatus.COMPLETED.value
+                quest.completed_at = datetime.now(UTC)
+                logger.info(f"Quest {quest.quest_type} completed for player {player_id}")
+
+            quest.progress = progress
+            self.db.add(quest)
+            await self.db.commit()
 
     async def check_milestone_prompts(self, player_id: UUID) -> None:
-        """Check milestone prompt quest."""
-        from backend.models.base import RoundType, RoundStatus
-
-        result = await self.db.execute(
-            select(func.count()).select_from(Round).where(
+        """Check milestone prompt quest using incremental tracking."""
+        quest_result = await self.db.execute(
+            select(Quest).where(
                 and_(
-                    Round.player_id == player_id,
-                    Round.type == RoundType.PROMPT.value,
-                    Round.status == RoundStatus.SUBMITTED.value
+                    Quest.player_id == player_id,
+                    Quest.quest_type == QuestType.MILESTONE_PROMPTS_50.value,
+                    Quest.status == QuestStatus.ACTIVE.value
                 )
             )
         )
-        total_prompts = result.scalar() or 0
+        quest = quest_result.scalar_one_or_none()
 
-        await self._check_milestone_quest(
-            player_id, QuestType.MILESTONE_PROMPTS_50, total_prompts
-        )
+        if quest:
+            progress = quest.progress
+            config = QUEST_CONFIGS[QuestType.MILESTONE_PROMPTS_50]
+
+            # Increment the counter instead of recounting from database
+            current = progress.get("current", 0)
+            progress["current"] = current + 1
+
+            if progress["current"] >= config["target"]:
+                quest.status = QuestStatus.COMPLETED.value
+                quest.completed_at = datetime.now(UTC)
+                logger.info(f"Quest {quest.quest_type} completed for player {player_id}")
+
+            quest.progress = progress
+            self.db.add(quest)
+            await self.db.commit()
 
     async def check_milestone_copies(self, player_id: UUID) -> None:
-        """Check milestone copy quest."""
-        from backend.models.base import RoundType, RoundStatus
-
-        result = await self.db.execute(
-            select(func.count()).select_from(Round).where(
+        """Check milestone copy quest using incremental tracking."""
+        quest_result = await self.db.execute(
+            select(Quest).where(
                 and_(
-                    Round.player_id == player_id,
-                    Round.type == RoundType.COPY.value,
-                    Round.status == RoundStatus.SUBMITTED.value
+                    Quest.player_id == player_id,
+                    Quest.quest_type == QuestType.MILESTONE_COPIES_100.value,
+                    Quest.status == QuestStatus.ACTIVE.value
                 )
             )
         )
-        total_copies = result.scalar() or 0
+        quest = quest_result.scalar_one_or_none()
 
-        await self._check_milestone_quest(
-            player_id, QuestType.MILESTONE_COPIES_100, total_copies
-        )
+        if quest:
+            progress = quest.progress
+            config = QUEST_CONFIGS[QuestType.MILESTONE_COPIES_100]
+
+            # Increment the counter instead of recounting from database
+            current = progress.get("current", 0)
+            progress["current"] = current + 1
+
+            if progress["current"] >= config["target"]:
+                quest.status = QuestStatus.COMPLETED.value
+                quest.completed_at = datetime.now(UTC)
+                logger.info(f"Quest {quest.quest_type} completed for player {player_id}")
+
+            quest.progress = progress
+            self.db.add(quest)
+            await self.db.commit()
 
     async def check_milestone_phraseset_20votes(
         self, player_id: UUID, phraseset_id: UUID, vote_count: int
