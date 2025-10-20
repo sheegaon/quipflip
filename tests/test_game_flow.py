@@ -137,7 +137,6 @@ async def test_daily_bonus_logic(db_session, player_factory):
 
     player2 = PlayerModel(
         player_id=uuid.uuid4(),
-        api_key=str(uuid.uuid4()),
         username="test_daily_bonus",
         username_canonical="test_daily_bonus",
         pseudonym="TestDailyBonus",

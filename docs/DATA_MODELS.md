@@ -4,7 +4,6 @@
 
 ### Player
 - `player_id` (UUID, primary key)
-- `api_key` (string, unique, indexed) - UUID v4 for authentication
 - `username` (string, unique) - generated display name
 - `username_canonical` (string, unique) - lowercase form for lookups
 - `pseudonym` (string, indexed) - display name for leaderboards/public views
@@ -19,7 +18,9 @@
 - `tutorial_progress` (string, default 'not_started') - current tutorial step
 - `tutorial_started_at` (timestamp, nullable) - when tutorial was started
 - `tutorial_completed_at` (timestamp, nullable) - when tutorial was completed
-- Indexes: `player_id`, `api_key`, `active_round_id`, `pseudonym`
+- Indexes: `player_id`, `active_round_id`, `pseudonym`
+
+**Authentication**: JWT access/refresh tokens (stored in `refresh_tokens` table)
 
 ### Round (Unified for Prompt, Copy, and Vote)
 - `round_id` (UUID, primary key)

@@ -17,7 +17,6 @@ def _base_player(username: str) -> Player:
     now = datetime.now(UTC)
     return Player(
         player_id=uuid4(),
-        api_key=str(uuid4()),
         username=username,
         username_canonical=username.lower(),
         pseudonym=username,

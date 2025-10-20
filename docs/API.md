@@ -9,9 +9,7 @@ Production: https://your-app.herokuapp.com
 
 ## Authentication
 
-All endpoints except `/health`, `/`, and the new authentication routes require a valid
-JSON Web Token (JWT) access token. During the transition period, legacy API keys are still
-honored when supplied in the `X-API-Key` header, but new clients should migrate to JWTs.
+All endpoints except `/health` and `/` require a valid JSON Web Token (JWT) access token.
 
 **Access Token Header:**
 ```
@@ -27,11 +25,6 @@ Authorization: Bearer <access_token>
 - Use `POST /player` to register with a username, email, and password.
 - Use `POST /auth/login` with your credentials to obtain fresh tokens.
 - Tokens expire after 15 minutes; call `POST /auth/refresh` (or rely on the cookie) to obtain a new pair.
-
-**Legacy API Keys:**
-- Responses continue to include a `legacy_api_key` for backward compatibility.
-- Supply the key in the `X-API-Key` header if you cannot adopt JWTs immediately.
-- Keys can still be rotated with `POST /player/rotate-key`.
 
 ## Response Format
 
@@ -127,7 +120,6 @@ curl -X POST http://localhost:8000/player \
   "username": "Prompt Pirate",
   "access_token": "<jwt access token>",
   "refresh_token": "<refresh token>",
-  "legacy_api_key": "dff60a88-04c8-4a11-a8d8-874add980d12",
   "expires_in": 900,
   "balance": 1000,
   "message": "Player created! Your account is ready to play. An access token and refresh token have been issued for authentication.",
@@ -135,29 +127,7 @@ curl -X POST http://localhost:8000/player \
 }
 ```
 
-**Important:** Store the refresh token securely. Legacy clients may continue to use `legacy_api_key` as a fallback.
-
-#### `POST /player/rotate-key`
-Rotate API key for security (requires authentication).
-
-**Request:**
-```bash
-curl -X POST http://localhost:8000/player/rotate-key \
-  -H "X-API-Key: your-current-api-key"
-```
-
-**Response:**
-```json
-{
-  "new_api_key": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-  "message": "API key rotated successfully. Use the new key for all future requests. Your old key is now invalid."
-}
-```
-
-**Important:**
-- Your old API key becomes invalid immediately
-- Update all clients with the new key
-- Use if you suspect key compromise
+**Important:** Store the refresh token securely in HTTP-only cookies or secure storage.
 
 ### Authentication Endpoints
 
@@ -180,7 +150,6 @@ curl -X POST http://localhost:8000/auth/login \
   "username": "Prompt Pirate",
   "access_token": "<jwt access token>",
   "refresh_token": "<refresh token>",
-  "legacy_api_key": "dff60a88-04c8-4a11-a8d8-874add980d12",
   "expires_in": 900,
   "token_type": "bearer"
 }
@@ -736,37 +705,37 @@ Explicitly mark a phraseset payout as claimed (idempotent).
 
 ```bash
 # 1. Check balance
-curl -H "X-API-Key: your-key" http://localhost:8000/player/balance
+curl -H "Authorization: Bearer <access_token>" http://localhost:8000/player/balance
 
 # 2. Start prompt round
-curl -X POST -H "X-API-Key: your-key" http://localhost:8000/rounds/prompt
+curl -X POST -H "Authorization: Bearer <access_token>" http://localhost:8000/rounds/prompt
 
 # 3. Submit phrase
-curl -X POST -H "X-API-Key: your-key" \
+curl -X POST -H "Authorization: Bearer <access_token>" \
   -H "Content-Type: application/json" \
   -d '{"phrase":"famous"}' \
   http://localhost:8000/rounds/{round_id}/submit
 
 # 4. Start copy round (as different player)
-curl -X POST -H "X-API-Key: other-key" http://localhost:8000/rounds/copy
+curl -X POST -H "Authorization: Bearer <other_access_token>" http://localhost:8000/rounds/copy
 
 # 5. Submit copy word
-curl -X POST -H "X-API-Key: other-key" \
+curl -X POST -H "Authorization: Bearer <other_access_token>" \
   -H "Content-Type: application/json" \
   -d '{"phrase":"popular"}' \
   http://localhost:8000/rounds/{round_id}/submit
 
 # 6. Start vote round (after 2 copies submitted)
-curl -X POST -H "X-API-Key: voter-key" http://localhost:8000/rounds/vote
+curl -X POST -H "Authorization: Bearer <voter_access_token>" http://localhost:8000/rounds/vote
 
 # 7. Submit vote
-curl -X POST -H "X-API-Key: voter-key" \
+curl -X POST -H "Authorization: Bearer <voter_access_token>" \
   -H "Content-Type: application/json" \
   -d '{"phrase":"FAMOUS"}' \
   http://localhost:8000/phrasesets/{phraseset_id}/vote
 
 # 8. View results (after finalization)
-curl -H "X-API-Key: your-key" http://localhost:8000/phrasesets/{phraseset_id}/results
+curl -H "Authorization: Bearer <access_token>" http://localhost:8000/phrasesets/{phraseset_id}/results
 ```
 
 ---
@@ -857,8 +826,9 @@ CORS is enabled for all origins in development. For production:
 - Handle `expired` by refreshing available rounds
 
 ### Typical User Flow
-1. **First visit**: Call `POST /player` → store API key
-2. **Return visit**: Load API key → call `GET /player/balance`
+1. **First visit**: Call `POST /player` → store access and refresh tokens
+2. **Return visit**: Load tokens → call `GET /player/balance`
+3. **Token expires**: Call `POST /auth/refresh` → get new access token
 3. **Check daily bonus**: If `daily_bonus_available` → offer to claim
 4. **Start round**: Check `GET /rounds/available` → start desired round type
 5. **During round**: Display timer, submit word before expiry
