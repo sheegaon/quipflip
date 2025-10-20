@@ -9,6 +9,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+import uuid
 
 
 # revision identifiers, used by Alembic.
@@ -27,8 +28,20 @@ def upgrade() -> None:
 def downgrade() -> None:
     # Restore api_key column for rollback
     op.add_column('players', sa.Column('api_key', sa.String(36), nullable=True, unique=True))
-    # Populate with UUIDs for existing players
-    op.execute("UPDATE players SET api_key = lower(hex(randomblob(16))) WHERE api_key IS NULL")
+    # Populate with UUIDs for existing players using Python for cross-database compatibility
+    conn = op.get_bind()
+    metadata = sa.MetaData()
+    players = sa.Table('players', metadata,
+                       sa.Column('player_id', sa.String(36), primary_key=True),
+                       sa.Column('api_key', sa.String(36)))
+
+    player_ids = conn.execute(sa.select(players.c.player_id).where(players.c.api_key.is_(None))).scalars().all()
+    for player_id in player_ids:
+        conn.execute(
+            sa.update(players)
+            .where(players.c.player_id == player_id)
+            .values(api_key=str(uuid.uuid4()))
+        )
     # Make it non-nullable after populating
     op.alter_column('players', 'api_key', nullable=False)
     op.create_index('ix_players_api_key', 'players', ['api_key'], unique=True)
