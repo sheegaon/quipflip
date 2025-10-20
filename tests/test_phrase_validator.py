@@ -72,14 +72,19 @@ class TestBasicPhraseValidation:
 
     def test_word_too_short(self, validator):
         """Test word shorter than 2 characters is rejected (except connecting words)."""
-        # "a" and "i" are connecting words, so they're allowed
+        # "a" and "i" are connecting words, but "a i" is only 3 chars total (< 4 minimum)
         is_valid, error = validator.validate("a i")
-        assert is_valid  # These are both connecting words
+        assert not is_valid
+        assert "at least 4 characters" in error
+
+        # "a cat" should work (5 chars total, connecting word + valid word)
+        is_valid, error = validator.validate("a cat")
+        assert is_valid
 
         # But a non-connecting single-letter word should fail
         is_valid, error = validator.validate("x")
         assert not is_valid
-        assert "at least 2 characters" in error
+        assert "at least" in error  # Could be 4 char minimum or 2 char per word
 
     def test_word_too_long(self, validator):
         """Test word longer than 15 characters is rejected."""

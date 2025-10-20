@@ -184,26 +184,8 @@ async def test_get_player_statistics_win_rate(db_session):
 
     now = datetime.now(UTC)
 
-    # Create phraseset for tracking winnings
-    phraseset = PhraseSet(
-        phraseset_id=uuid4(),
-        prompt_round_id=uuid4(),
-        copy_round_1_id=uuid4(),
-        copy_round_2_id=uuid4(),
-        prompt_text="Test prompt",
-        original_phrase="Original",
-        copy_phrase_1="Copy 1",
-        copy_phrase_2="Copy 2",
-        status="finalized",
-        vote_count=5,
-        total_pool=300,
-        created_at=now,
-        finalized_at=now,
-    )
-    db_session.add(phraseset)
-    await db_session.commit()
-
-    # Create prompt rounds - 2 wins, 1 loss
+    # Create prompt rounds first - we'll link 2 to phrasesets for wins
+    prompt_rounds = []
     for i in range(3):
         prompt_round = Round(
             round_id=uuid4(),
@@ -217,11 +199,35 @@ async def test_get_player_statistics_win_rate(db_session):
             submitted_phrase=f"Test phrase {i}",
         )
         db_session.add(prompt_round)
+        prompt_rounds.append(prompt_round)
 
     await db_session.commit()
 
-    # Add 2 winning transactions (positive payouts)
+    # Create 2 phrasesets linked to the first 2 prompt rounds (these will be "wins")
+    phrasesets = []
     for i in range(2):
+        phraseset = PhraseSet(
+            phraseset_id=uuid4(),
+            prompt_round_id=prompt_rounds[i].round_id,  # Link to actual prompt round
+            copy_round_1_id=uuid4(),
+            copy_round_2_id=uuid4(),
+            prompt_text=f"Test prompt {i}",
+            original_phrase=f"Original {i}",
+            copy_phrase_1=f"Copy 1 {i}",
+            copy_phrase_2=f"Copy 2 {i}",
+            status="finalized",
+            vote_count=5,
+            total_pool=300,
+            created_at=now - timedelta(days=i),
+            finalized_at=now - timedelta(days=i),
+        )
+        db_session.add(phraseset)
+        phrasesets.append(phraseset)
+
+    await db_session.commit()
+
+    # Add winning transactions for each phraseset (2 wins total)
+    for i, phraseset in enumerate(phrasesets):
         payout = Transaction(
             transaction_id=uuid4(),
             player_id=player.player_id,
