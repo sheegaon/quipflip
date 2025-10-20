@@ -58,11 +58,12 @@ Then other players will try to write similar quips based on yours, but *without 
 **Click "Next" to start your first Prompt Round.** The tutorial will resume when you finish.`,
     target: '.tutorial-prompt-round',
     position: 'bottom',
-    action: 'wait',
-    nextStep: 'dashboard', // Return to dashboard, tutorial resumes after completion
+    nextStep: 'prompt_round_paused',
     showSkip: true,
     showBack: true,
   },
+
+  prompt_round_paused: null,
 
   copy_round: {
     id: 'copy_round',

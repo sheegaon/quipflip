@@ -10,7 +10,7 @@ import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
 import type { PromptState } from '../api/types';
 
 export const PromptRound: React.FC = () => {
-  const { activeRound } = useGame();
+  const { activeRound, refreshDashboard } = useGame();
   const { currentStep, advanceStep } = useTutorial();
   const navigate = useNavigate();
   const [phrase, setPhrase] = useState('');
@@ -108,10 +108,13 @@ export const PromptRound: React.FC = () => {
       const message = getRandomMessage('promptSubmitted');
       setSuccessMessage(message);
 
-      // Advance tutorial if in prompt_round step
-      if (currentStep === 'prompt_round') {
+      // Advance tutorial if in prompt_round step or paused waiting for completion
+      if (currentStep === 'prompt_round' || currentStep === 'prompt_round_paused') {
         await advanceStep('copy_round');
       }
+
+      // Refresh dashboard data before navigating
+      await refreshDashboard();
 
       // Navigate after brief delay
       setTimeout(() => navigate('/dashboard'), 1500);
@@ -241,7 +244,10 @@ export const PromptRound: React.FC = () => {
 
         {/* Home Button */}
         <button
-          onClick={() => navigate('/dashboard')}
+          onClick={async () => {
+            await refreshDashboard();
+            navigate('/dashboard');
+          }}
           className="w-full mt-4 flex items-center justify-center gap-2 text-quip-teal hover:text-quip-turquoise py-2 font-medium transition-colors"
           title="Back to Dashboard"
         >

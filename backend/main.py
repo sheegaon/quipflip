@@ -16,14 +16,8 @@ logs_dir = Path("logs")
 logs_dir.mkdir(exist_ok=True)
 
 # Set up log file path
-log_file = logs_dir / "quipflip.log"
-
-# Rotate existing log file if it exists and has content
-if log_file.exists() and log_file.stat().st_size > 0:
-    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    rotated_log_file = logs_dir / f"quipflip_{timestamp}.log"
-    log_file.rename(rotated_log_file)
-    print(f"Rotated previous log to: {rotated_log_file.absolute()}")
+timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+log_file = logs_dir / f"quipflip_{timestamp}.log"
 
 # Print log file location to console immediately
 print(f"Logging to: {log_file.absolute()}")
@@ -50,6 +44,15 @@ if not any(isinstance(h, logging.FileHandler) for h in root_logger.handlers):
     file_handler = logging.FileHandler(log_file)
     file_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
     root_logger.addHandler(file_handler)
+
+# Configure Uvicorn's access logger to also write to our log file
+uvicorn_access_logger = logging.getLogger("uvicorn.access")
+uvicorn_access_logger.setLevel(logging.INFO)
+# Add file handler to uvicorn access logger if it doesn't have one
+if not any(isinstance(h, logging.FileHandler) for h in uvicorn_access_logger.handlers):
+    access_file_handler = logging.FileHandler(log_file)
+    access_file_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+    uvicorn_access_logger.addHandler(access_file_handler)
 
 # Test that logging is working
 logger.info("Logging system initialized")
@@ -100,10 +103,10 @@ if not allowed_origins or allowed_origins == [""]:
     # Default origins for development + production fallback
     allowed_origins = [
         "https://quipflip-amber.vercel.app",  # Your production frontend
-        "http://localhost:5173",              # Vite dev server
-        "http://localhost:3000",              # Alternative React dev server
-        "http://127.0.0.1:5173",              # Alternative localhost format
-        "http://127.0.0.1:3000",              # Alternative localhost format
+        "http://localhost:5173",  # Vite dev server
+        "http://localhost:3000",  # Alternative React dev server
+        "http://127.0.0.1:5173",  # Alternative localhost format
+        "http://127.0.0.1:3000",  # Alternative localhost format
     ]
 app.add_middleware(
     CORSMiddleware,
@@ -134,4 +137,3 @@ async def root():
         "environment": settings.environment,
         "docs": "/docs",
     }
-

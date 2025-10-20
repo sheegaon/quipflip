@@ -9,7 +9,7 @@ import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
 import type { VoteState, VoteResponse } from '../api/types';
 
 export const VoteRound: React.FC = () => {
-  const { activeRound } = useGame();
+  const { activeRound, refreshDashboard } = useGame();
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -66,6 +66,9 @@ export const VoteRound: React.FC = () => {
       const result = await apiClient.submitVote(roundData.phraseset_id, phrase);
       setSuccessMessage(result.correct ? getRandomMessage('voteSubmitted') : null);
       setVoteResult(result);
+
+      // Refresh dashboard data before navigating
+      await refreshDashboard();
 
       // Navigate after showing results for 3 seconds
       setTimeout(() => navigate('/dashboard'), 3000);

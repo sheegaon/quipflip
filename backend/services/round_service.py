@@ -205,6 +205,14 @@ class RoundService:
         - Deduct cost immediately
         - Prevent same player from getting abandoned prompt (24h)
         """
+        # Check if queue recovery is needed
+        if QueueService.get_prompts_waiting() == 0:
+            available_count = await self.get_available_prompts_count(player.player_id)
+            if available_count > 0:
+                logger.info(f"Queue empty but {available_count} prompts available in DB, rebuilding queue...")
+                recovered_count = await self._rebuild_prompt_queue(player.player_id)
+                logger.info(f"Queue recovery: found {available_count} available, recovered {recovered_count} prompts")
+
         # Retry logic: try up to 10 times to get a valid prompt
         max_attempts = 10
         prompt_round_id = None
@@ -214,7 +222,12 @@ class RoundService:
             # Get next prompt from queue
             prompt_round_id = QueueService.get_next_prompt()
             if not prompt_round_id:
-                raise ValueError("No prompts available")
+                # Queue is empty, try to rebuild it once more for this player
+                logger.info(f"Queue empty on attempt {attempt + 1}, trying recovery...")
+                recovered_count = await self._rebuild_prompt_queue(player.player_id)
+                if recovered_count == 0:
+                    raise ValueError("No prompts available for this player")
+                continue
 
             # Get prompt round
             prompt_round = await self.db.get(Round, prompt_round_id)
@@ -626,3 +639,31 @@ class RoundService:
         )
 
         return available_count
+
+    async def _rebuild_prompt_queue(self, requesting_player_id: UUID = None):
+        """
+        Rebuild the prompt queue from database when queue is empty but prompts are available.
+        Excludes prompts from the requesting player to avoid infinite loops.
+        """
+        # Find all submitted prompt rounds that don't have complete phrasesets yet
+        # Exclude the requesting player's prompts to prevent them from copying their own
+        query = (
+            select(Round.round_id)
+            .join(PhraseSet, PhraseSet.prompt_round_id == Round.round_id, isouter=True)
+            .where(Round.round_type == "prompt")
+            .where(Round.status == "submitted") 
+            .where(PhraseSet.phraseset_id == None)  # No phraseset yet
+            .order_by(Round.created_at.asc())  # FIFO order
+        )
+        
+        if requesting_player_id:
+            query = query.where(Round.player_id != requesting_player_id)
+            
+        result = await self.db.execute(query)
+        orphaned_prompts = result.scalars().all()
+        
+        for prompt_round_id in orphaned_prompts:
+            QueueService.add_prompt_to_queue(prompt_round_id)
+            
+        logger.info(f"Rebuilt prompt queue with {len(orphaned_prompts)} prompts (excluding player {requesting_player_id})")
+        return len(orphaned_prompts)

@@ -39,6 +39,11 @@ export const Dashboard: React.FC = () => {
     return `${activeRound.round_type.charAt(0).toUpperCase()}${activeRound.round_type.slice(1)}`;
   }, [activeRound?.round_type]);
 
+  // Refresh dashboard data immediately when component mounts
+  useEffect(() => {
+    refreshDashboard();
+  }, [refreshDashboard]);
+
   // Refresh when page becomes visible (GameContext already loads data on mount)
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -265,7 +270,7 @@ export const Dashboard: React.FC = () => {
               </p>
               {roundAvailability && roundAvailability.prompts_waiting > 0 && (
                 <p className="text-xs text-quip-turquoise mb-3 font-semibold">
-                  {formatWaitingCount(roundAvailability.prompts_waiting)} prompt
+                  {formatWaitingCount(roundAvailability.prompts_waiting)} quip
                   {roundAvailability.prompts_waiting > 1 ? 's' : ''} waiting
                 </p>
               )}
@@ -295,7 +300,7 @@ export const Dashboard: React.FC = () => {
               </p>
               {roundAvailability && roundAvailability.phrasesets_waiting > 0 && (
                 <p className="text-xs text-quip-orange-deep mb-3 font-semibold">
-                  {formatWaitingCount(roundAvailability.phrasesets_waiting)} phraseset
+                  {formatWaitingCount(roundAvailability.phrasesets_waiting)} phrase set
                   {roundAvailability.phrasesets_waiting > 1 ? 's' : ''} waiting
                 </p>
               )}

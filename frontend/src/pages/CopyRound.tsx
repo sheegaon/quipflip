@@ -10,7 +10,7 @@ import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
 import type { CopyState } from '../api/types';
 
 export const CopyRound: React.FC = () => {
-  const { activeRound } = useGame();
+  const { activeRound, refreshDashboard } = useGame();
   const { currentStep, advanceStep } = useTutorial();
   const navigate = useNavigate();
   const [phrase, setPhrase] = useState('');
@@ -76,6 +76,9 @@ export const CopyRound: React.FC = () => {
       if (currentStep === 'copy_round') {
         await advanceStep('vote_round');
       }
+
+      // Refresh dashboard data before navigating
+      await refreshDashboard();
 
       // Navigate after brief delay
       setTimeout(() => navigate('/dashboard'), 1500);
@@ -176,7 +179,10 @@ export const CopyRound: React.FC = () => {
 
         {/* Home Button */}
         <button
-          onClick={() => navigate('/dashboard')}
+          onClick={async () => {
+            await refreshDashboard();
+            navigate('/dashboard');
+          }}
           className="w-full mt-4 flex items-center justify-center gap-2 text-quip-teal hover:text-quip-turquoise py-2 font-medium transition-colors"
           title="Back to Dashboard"
         >

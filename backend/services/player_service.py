@@ -186,14 +186,15 @@ class PlayerService:
 
         # Check outstanding prompts
         count = await self.get_outstanding_prompts_count(player.player_id)
-        if count >= settings.max_outstanding_prompts:
-            return False, "max_outstanding_prompts"
+        if count >= settings.max_outstanding_quips:
+            return False, "max_outstanding_quips"
 
         return True, ""
 
     async def can_start_copy_round(self, player: Player) -> tuple[bool, str]:
         """Check if player can start copy round."""
         from backend.services.queue_service import QueueService
+        from backend.services.round_service import RoundService
 
         # Check balance (need to check against current cost)
         copy_cost = QueueService.get_copy_cost()
@@ -204,8 +205,10 @@ class PlayerService:
         if player.active_round_id is not None:
             return False, "already_in_round"
 
-        # Check prompts available
-        if not QueueService.has_prompts_available():
+        # Check prompts available - use database count instead of just queue
+        round_service = RoundService(self.db)
+        available_count = await round_service.get_available_prompts_count(player.player_id)
+        if available_count == 0:
             return False, "no_prompts_available"
 
         return True, ""

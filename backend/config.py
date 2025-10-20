@@ -34,8 +34,8 @@ class Settings(BaseSettings):
     vote_payout_correct: int = 5
     abandoned_penalty: int = 5
     phraseset_prize_pool: int = 300
-    max_outstanding_prompts: int = 10
-    copy_discount_threshold: int = 10  # prompts waiting to trigger discount
+    max_outstanding_quips: int = 10
+    copy_discount_threshold: int = 10  # quips waiting to trigger discount
 
     # Timing
     prompt_round_seconds: int = 180

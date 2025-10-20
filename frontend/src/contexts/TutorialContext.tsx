@@ -86,7 +86,9 @@ export const TutorialProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [isAuthenticated, refreshStatus]);
 
   const isActive = tutorialStatus
-    ? !tutorialStatus.tutorial_completed && tutorialStatus.tutorial_progress !== 'not_started'
+    ? !tutorialStatus.tutorial_completed && 
+      tutorialStatus.tutorial_progress !== 'not_started' &&
+      tutorialStatus.tutorial_progress !== 'prompt_round_paused'
     : false;
 
   const currentStep = tutorialStatus?.tutorial_progress || 'not_started';

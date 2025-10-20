@@ -51,7 +51,7 @@ class QueueService:
         waiting = QueueService.get_prompts_waiting()
         active = waiting > settings.copy_discount_threshold
         if active:
-            logger.debug(f"Copy discount active: {waiting} prompts waiting")
+            logger.debug(f"Copy discount active: {waiting} quips waiting")
         return active
 
     @staticmethod

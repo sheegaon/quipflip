@@ -102,6 +102,12 @@ const TutorialOverlay: React.FC<TutorialOverlayProps> = ({ onComplete }) => {
   const handleNext = async () => {
     if (step?.nextStep) {
       await advanceStep(step.nextStep);
+      
+      // Special handling for prompt_round step - navigate to start a prompt round
+      if (step.id === 'prompt_round' && step.nextStep === 'prompt_round_paused') {
+        // Navigate to prompt round page which will automatically start a new round
+        window.location.href = '/prompt';
+      }
     } else {
       await completeTutorial();
       onComplete?.();
