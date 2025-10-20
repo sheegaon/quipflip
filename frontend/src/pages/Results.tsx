@@ -7,7 +7,7 @@ import { loadingMessages } from '../utils/brandedMessages';
 import type { PhrasesetResults } from '../api/types';
 
 export const Results: React.FC = () => {
-  const { pendingResults, refreshPendingResults, refreshBalance } = useGame();
+  const { pendingResults, refreshDashboard } = useGame();
   const navigate = useNavigate();
   const [selectedPhrasesetId, setSelectedPhrasesetId] = useState<string | null>(null);
   const [results, setResults] = useState<PhrasesetResults | null>(null);
@@ -30,9 +30,8 @@ export const Results: React.FC = () => {
         setError(null);
         const data = await apiClient.getPhrasesetResults(selectedPhrasesetId);
         setResults(data);
-        // Refresh pending results and balance (in case payout was collected)
-        await refreshPendingResults();
-        await refreshBalance();
+        // Refresh dashboard to update pending results and balance (in case payout was collected)
+        await refreshDashboard();
       } catch (err) {
         setError(extractErrorMessage(err) || 'Unable to load the results for this round. It may still be in progress or no longer available.');
       } finally {
