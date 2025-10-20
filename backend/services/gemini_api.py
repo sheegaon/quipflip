@@ -28,7 +28,6 @@ class GeminiError(RuntimeError):
 
 async def generate_copy(
         original_phrase: str,
-        prompt_text: str,
         model: str = "gemini-2.5-flash-lite",
         timeout: int = 30,
 ) -> str:
@@ -55,7 +54,7 @@ async def generate_copy(
 
     try:
         client = genai.Client(api_key=GEMINI_API_KEY)
-        prompt = build_copy_prompt(original_phrase, prompt_text)
+        prompt = build_copy_prompt(original_phrase)
 
         contents = [
             types.Content(

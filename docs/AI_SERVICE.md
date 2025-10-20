@@ -146,8 +146,10 @@ ai_backup_delay_minutes: int = 10
 ```python
 from backend.services.ai_copy_service import AICopyService
 from backend.services.phrase_validator import PhraseValidator
+from backend.database import get_db
 
-validator = PhraseValidator(db)
+validator = PhraseValidator()
+db = get_db()
 ai_service = AICopyService(db, validator)
 ```
 
@@ -178,10 +180,7 @@ async def generate_copy_phrase(
 
 ```python
 try:
-    copy_phrase = await ai_service.generate_copy_phrase(
-        original_phrase="happy birthday",
-        prompt_text="A celebration greeting"
-    )
+    copy_phrase = await ai_service.generate_copy_phrase(original_phrase="happy birthday")
     print(f"AI generated: {copy_phrase}")
     await db.commit()  # Commits both phrase and metrics
 except AICopyError as e:

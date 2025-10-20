@@ -8,6 +8,8 @@ which phrase in a phraseset is the original.
 import os
 import random
 
+from .prompt_builder import build_vote_prompt
+
 try:
     from openai import AsyncOpenAI, OpenAIError
 except ImportError:
@@ -29,39 +31,6 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 class AIVoteError(RuntimeError):
     """Raised when AI vote generation fails."""
-
-
-def _build_vote_prompt(prompt_text: str, phrases: list[str]) -> str:
-    """
-    Build structured prompt for AI vote generation.
-
-    Args:
-        prompt_text: The prompt that the phrases were created for
-        phrases: List of 3 phrases (1 original, 2 copies)
-
-    Returns:
-        A formatted prompt string for AI vote generation
-    """
-    phrases_formatted = "\n".join([f"{i+1}. {phrase}" for i, phrase in enumerate(phrases)])
-
-    return f"""You are playing a word game where you need to identify the original phrase.
-
-Given a prompt and three phrases, one phrase is the ORIGINAL that was submitted by a player,
-and two phrases are COPIES created by other players trying to mimic the original.
-
-Your task: Identify which phrase is most likely the ORIGINAL.
-
-Prompt: "{prompt_text}"
-
-Phrases:
-{phrases_formatted}
-
-Consider:
-- The original is often more natural and straightforward
-- Copies may try too hard or be slightly awkward
-- The original usually best matches the prompt intent
-
-Respond with ONLY the number (1, 2, or 3) of the phrase you believe is the original."""
 
 
 async def generate_vote_choice_openai(
@@ -96,7 +65,7 @@ async def generate_vote_choice_openai(
 
     try:
         client = AsyncOpenAI(api_key=OPENAI_API_KEY, timeout=timeout)
-        prompt = _build_vote_prompt(prompt_text, phrases)
+        prompt = build_vote_prompt(prompt_text, phrases)
 
         response = await client.chat.completions.create(
             model=model,
@@ -166,7 +135,7 @@ async def generate_vote_choice_gemini(
 
     try:
         client = genai.Client(api_key=GEMINI_API_KEY)
-        prompt = _build_vote_prompt(prompt_text, phrases)
+        prompt = build_vote_prompt(prompt_text, phrases)
 
         contents = [
             types.Content(

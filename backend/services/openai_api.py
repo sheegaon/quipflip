@@ -26,7 +26,6 @@ class OpenAIAPIError(RuntimeError):
 
 async def generate_copy(
         original_phrase: str,
-        prompt_text: str,
         model: str = "gpt-5-nano",
         timeout: int = 30,
 ) -> str:
@@ -53,16 +52,15 @@ async def generate_copy(
 
     try:
         client = AsyncOpenAI(api_key=OPENAI_API_KEY, timeout=timeout)
-        prompt = build_copy_prompt(original_phrase, prompt_text)
+        prompt = build_copy_prompt(original_phrase)
 
         response = await client.chat.completions.create(
             model=model,
             messages=[
-                {"role": "system", "content": "You are a creative word game assistant."},
+                {"role": "system", "content": "You are playing a creative word game."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=50,
-            temperature=0.8,
+            max_completion_tokens=50
         )
 
         if not response.choices:

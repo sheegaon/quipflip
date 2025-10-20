@@ -107,9 +107,7 @@ class AICopyService:
             This method should NOT commit or refresh the session.
         """
         # Check if AI player exists
-        result = await self.db.execute(
-            select(Player).where(Player.username == "AI_BACKUP")
-        )
+        result = await self.db.execute(select(Player).where(Player.username == "AI_BACKUP"))
         ai_player = result.scalar_one_or_none()
 
         if not ai_player:
@@ -130,17 +128,12 @@ class AICopyService:
 
         return ai_player
 
-    async def generate_copy_phrase(
-            self,
-            original_phrase: str,
-            prompt_text: str,
-    ) -> str:
+    async def generate_copy_phrase(self, original_phrase: str) -> str:
         """
         Generate a copy phrase using the configured AI provider with metrics tracking.
 
         Args:
             original_phrase: The original phrase to create a copy of
-            prompt_text: The prompt text for context
 
         Returns:
             Generated and validated copy phrase
@@ -166,7 +159,6 @@ class AICopyService:
                     from backend.services.openai_api import generate_copy as openai_generate
                     phrase = await openai_generate(
                         original_phrase=original_phrase,
-                        prompt_text=prompt_text,
                         model=self.settings.ai_copy_openai_model,
                         timeout=self.settings.ai_copy_timeout_seconds,
                     )
@@ -174,7 +166,6 @@ class AICopyService:
                     from backend.services.gemini_api import generate_copy as gemini_generate
                     phrase = await gemini_generate(
                         original_phrase=original_phrase,
-                        prompt_text=prompt_text,
                         model=self.settings.ai_copy_gemini_model,
                         timeout=self.settings.ai_copy_timeout_seconds,
                     )
@@ -184,39 +175,31 @@ class AICopyService:
                 raise AICopyError(f"Failed to generate AI copy: {e}")
 
             # Validate the generated phrase
-            validation_result = await self.validator.validate_phrase(phrase)
-            validation_passed = validation_result.is_valid
+            is_valid, error_message = self.validator.validate(phrase)
 
-            if not validation_passed:
+            if not is_valid:
                 tracker.set_result(
                     phrase,
                     success=False,
-                    prompt_length=len(prompt_text) + len(original_phrase),
                     response_length=len(phrase),
                     validation_passed=False,
                 )
                 raise AICopyError(
-                    f"AI generated invalid phrase: {validation_result.error_message}"
+                    f"AI generated invalid phrase: {error_message}"
                 )
 
             # Track successful generation
             tracker.set_result(
                 phrase,
                 success=True,
-                prompt_length=len(prompt_text) + len(original_phrase),
                 response_length=len(phrase),
                 validation_passed=True,
             )
 
-            logger.info(
-                f"AI ({self.provider}) generated valid copy: '{phrase}' for prompt: '{prompt_text[:50]}...'"
-            )
+            logger.info(f"AI ({self.provider}) generated valid copy: '{phrase}' for original: '{original_phrase}'")
             return phrase
 
-    async def generate_vote_choice(
-            self,
-            phraseset: PhraseSet,
-    ) -> str:
+    async def generate_vote_choice(self, phraseset: PhraseSet) -> str:
         """
         Generate a vote choice using the configured AI provider with metrics tracking.
 

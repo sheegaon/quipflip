@@ -17,11 +17,9 @@ from sqlalchemy import select, func, and_
 from backend.models.ai_metric import AIMetric
 
 
-# Cost estimates per 1000 tokens (approximate)
-COST_PER_1K_TOKENS = {
-    "gpt-5-nano": {"input": 0.00005, "output": 0.00015},
-    "gpt-4": {"input": 0.03, "output": 0.06},
-    "gpt-3.5-turbo": {"input": 0.0015, "output": 0.002},
+# Cost estimates per 1M tokens (approximate)
+COST_PER_1M_TOKENS = {
+    "gpt-5-nano": {"input": 0.05, "output": 0.4},
     "gemini-2.5-flash-lite": {"input": 0.00001, "output": 0.00003},
     "gemini-1.5-pro": {"input": 0.00125, "output": 0.005},
 }
@@ -78,7 +76,7 @@ class AIMetricsService:
         prompt_tokens = prompt_length / 4
         response_tokens = response_length / 4
 
-        costs = COST_PER_1K_TOKENS.get(model, {"input": 0.0001, "output": 0.0003})
+        costs = COST_PER_1M_TOKENS.get(model, {"input": 0.0001, "output": 0.0003})
         input_cost = (prompt_tokens / 1000) * costs["input"]
         output_cost = (response_tokens / 1000) * costs["output"]
 
@@ -304,7 +302,6 @@ class MetricsTracker:
         self.start_time = None
         self.success = False
         self.error_message = None
-        self.prompt_length = None
         self.response_length = None
         self.validation_passed = None
         self.vote_correct = None
@@ -332,7 +329,6 @@ class MetricsTracker:
             success=self.success,
             latency_ms=latency_ms,
             error_message=self.error_message,
-            prompt_length=self.prompt_length,
             response_length=self.response_length,
             validation_passed=self.validation_passed,
             vote_correct=self.vote_correct,
@@ -345,14 +341,12 @@ class MetricsTracker:
             self,
             result: Any,
             success: bool = True,
-            prompt_length: Optional[int] = None,
             response_length: Optional[int] = None,
             validation_passed: Optional[bool] = None,
             vote_correct: Optional[bool] = None,
     ):
         """Set result information for the tracked operation."""
         self.success = success
-        self.prompt_length = prompt_length
         self.response_length = response_length
         self.validation_passed = validation_passed
         self.vote_correct = vote_correct
