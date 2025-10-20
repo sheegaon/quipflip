@@ -7,12 +7,9 @@ with configurable fallback behavior and comprehensive metrics tracking.
 """
 
 import logging
-import os
-from typing import Optional
 from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
-from sqlalchemy.sql.expression import null
+from sqlalchemy import select
 
 from backend.config import get_settings
 from backend.models.player import Player
@@ -69,8 +66,8 @@ class AIService:
         3. Default to OpenAI if both are available
         """
         configured_provider = self.settings.ai_copy_provider.lower()
-        openai_key = os.getenv("OPENAI_API_KEY")
-        gemini_key = os.getenv("GEMINI_API_KEY")
+        openai_key = self.settings.openai_api_key
+        gemini_key = self.settings.gemini_api_key
 
         # Check if configured provider is available
         if configured_provider == "openai" and openai_key:

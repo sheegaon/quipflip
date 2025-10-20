@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     refresh_token_exp_days: int = 30  # Longer-lived refresh tokens
     refresh_token_cookie_name: str = "quipflip_refresh_token"
 
+    # AI Providers
+    openai_api_key: str = ""
+    gemini_api_key: str = ""
+
     # Game Constants (all values in whole dollars)
     starting_balance: int = 1000
     daily_bonus_amount: int = 100

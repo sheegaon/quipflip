@@ -5,9 +5,9 @@ This module provides AI-powered vote generation to help determine
 which phrase in a phraseset is the original.
 """
 
-import os
 import random
 
+from backend.config import get_settings
 from .prompt_builder import build_vote_prompt
 
 try:
@@ -25,8 +25,7 @@ except ImportError:
 
 __all__ = ["AIVoteError", "generate_vote_choice"]
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+settings = get_settings()
 
 
 class AIVoteError(RuntimeError):
@@ -57,14 +56,14 @@ async def generate_vote_choice_openai(
     if AsyncOpenAI is None:
         raise AIVoteError("openai package not installed. Install with: pip install openai")
 
-    if not OPENAI_API_KEY:
+    if not settings.openai_api_key:
         raise AIVoteError("OPENAI_API_KEY environment variable must be set")
 
     if len(phrases) != 3:
         raise AIVoteError(f"Expected 3 phrases, got {len(phrases)}")
 
     try:
-        client = AsyncOpenAI(api_key=OPENAI_API_KEY, timeout=timeout)
+        client = AsyncOpenAI(api_key=settings.openai_api_key, timeout=timeout)
         prompt = build_vote_prompt(prompt_text, phrases)
 
         response = await client.chat.completions.create(
@@ -72,10 +71,7 @@ async def generate_vote_choice_openai(
             messages=[
                 {"role": "system", "content": "You are an expert at identifying original vs copied phrases in word games."},
                 {"role": "user", "content": prompt}
-            ],
-            max_tokens=10,
-            temperature=0.7,
-        )
+            ])
 
         if not response.choices:
             raise AIVoteError("OpenAI API returned no choices")
@@ -127,14 +123,14 @@ async def generate_vote_choice_gemini(
     if genai is None:
         raise AIVoteError("google-genai package not installed. Install with: pip install google-genai")
 
-    if not GEMINI_API_KEY:
+    if not settings.gemini_api_key:
         raise AIVoteError("GEMINI_API_KEY environment variable must be set")
 
     if len(phrases) != 3:
         raise AIVoteError(f"Expected 3 phrases, got {len(phrases)}")
 
     try:
-        client = genai.Client(api_key=GEMINI_API_KEY)
+        client = genai.Client(api_key=settings.gemini_api_key)
         prompt = build_vote_prompt(prompt_text, phrases)
 
         contents = [
