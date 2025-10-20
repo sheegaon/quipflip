@@ -11,6 +11,7 @@ from backend.models.player_abandoned_prompt import PlayerAbandonedPrompt
 from backend.models.prompt_feedback import PromptFeedback
 from backend.models.phraseset_activity import PhrasesetActivity
 from backend.models.refresh_token import RefreshToken
+from backend.models.quest import Quest, QuestTemplate
 
 __all__ = [
     "Player",
@@ -25,4 +26,6 @@ __all__ = [
     "PromptFeedback",
     "PhrasesetActivity",
     "RefreshToken",
+    "Quest",
+    "QuestTemplate",
 ]

@@ -40,7 +40,11 @@ try:
             logger.warning(f"Password contains special characters that might need URL encoding")
             logger.info(f"URL-encoded password length: {len(encoded_password)}")
     else:
-        logger.error("No password found in DATABASE_URL!")
+        # SQLite doesn't use passwords, so this is expected in development
+        if 'sqlite' not in parsed_url.drivername:
+            logger.warning("No password found in DATABASE_URL!")
+        else:
+            logger.debug("Using SQLite (no password required)")
         
 except Exception as e:
     logger.error(f"Failed to parse DATABASE_URL: {e}")

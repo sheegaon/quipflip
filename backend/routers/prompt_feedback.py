@@ -78,6 +78,14 @@ async def submit_prompt_feedback(
             await db.commit()
             logger.info(f"Created feedback for player {player.player_id}, round {round_id}: {request.feedback_type}")
 
+            # Track quest progress for feedback contributions (only for new feedback, not updates)
+            from backend.services.quest_service import QuestService
+            quest_service = QuestService(db)
+            try:
+                await quest_service.increment_feedback_count(player.player_id)
+            except Exception as e:
+                logger.error(f"Failed to update quest progress for feedback: {e}", exc_info=True)
+
         return PromptFeedbackResponse(
             success=True,
             feedback_type=request.feedback_type,

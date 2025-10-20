@@ -32,13 +32,13 @@ async def test_prompt_round_lifecycle(db_session, player_factory):
     assert round.cost == 100
     assert player.balance == 900  # $1000 - $100
 
-    # Submit word
+    # Submit word (minimum 4 characters)
     round = await round_service.submit_prompt_phrase(
-        round.round_id, "cat", player, transaction_service
+        round.round_id, "cats", player, transaction_service
     )
 
     assert round.status == "submitted"
-    assert round.submitted_phrase == "CAT"
+    assert round.submitted_phrase == "CATS"
 
 
 @pytest.mark.asyncio
@@ -185,10 +185,10 @@ async def test_cannot_copy_own_prompt(db_session, player_factory):
     db_session.add(prompt)
     await db_session.commit()
 
-    # Start and submit prompt round
+    # Start and submit prompt round (minimum 4 characters)
     prompt_round = await round_service.start_prompt_round(player, transaction_service)
     await round_service.submit_prompt_phrase(
-        prompt_round.round_id, "cat", player, transaction_service
+        prompt_round.round_id, "cats", player, transaction_service
     )
     await db_session.refresh(player)
 

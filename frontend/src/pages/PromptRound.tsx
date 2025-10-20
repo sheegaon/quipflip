@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
+import { useTutorial } from '../contexts/TutorialContext';
 import apiClient, { extractErrorMessage } from '../api/client';
 import { Timer } from '../components/Timer';
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -10,6 +11,7 @@ import type { PromptState } from '../api/types';
 
 export const PromptRound: React.FC = () => {
   const { activeRound, refreshCurrentRound, refreshBalance } = useGame();
+  const { currentStep, advanceStep } = useTutorial();
   const navigate = useNavigate();
   const [phrase, setPhrase] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -109,6 +111,11 @@ export const PromptRound: React.FC = () => {
       const message = getRandomMessage('promptSubmitted');
       setSuccessMessage(message);
 
+      // Advance tutorial if in prompt_round step
+      if (currentStep === 'prompt_round') {
+        await advanceStep('copy_round');
+      }
+
       // Navigate after brief delay
       setTimeout(() => navigate('/dashboard'), 1500);
     } catch (err) {
@@ -156,6 +163,13 @@ export const PromptRound: React.FC = () => {
         {/* Timer */}
         <div className="flex justify-center mb-6">
           <Timer expiresAt={roundData.expires_at} />
+        </div>
+
+        {/* Instructions */}
+        <div className="bg-quip-orange bg-opacity-10 border-2 border-quip-orange rounded-tile p-4 mb-6">
+          <p className="text-sm text-quip-navy">
+            <strong>💡 Tip:</strong> Type a word or short phrase that completes the sentence.
+          </p>
         </div>
 
         {/* Prompt */}
@@ -215,7 +229,7 @@ export const PromptRound: React.FC = () => {
               maxLength={100}
             />
             <p className="text-sm text-quip-teal mt-1">
-              1-5 words (2-100 characters), A-Z and spaces only
+              1-5 words (4-100 characters), A-Z and spaces only
             </p>
           </div>
 

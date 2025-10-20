@@ -17,8 +17,8 @@ export const TUTORIAL_STEPS: Record<TutorialProgress, TutorialStep | null> = {
 
   welcome: {
     id: 'welcome',
-    title: 'Welcome to QuipFlip!',
-    message: `QuipFlip is a creative word game where you'll write prompts, copy phrases, and vote on the best matches.
+    title: 'Welcome to Quipflip!',
+    message: `Quipflip is a creative word game where you'll write prompts, copy phrases, and vote on the best matches.
 
 Let's take a quick tour to show you how to play and earn coins!`,
     position: 'bottom',
@@ -37,8 +37,8 @@ Let's take a quick tour to show you how to play and earn coins!`,
 • Start new rounds to earn coins
 
 Let's start with a **Prompt Round** where you'll create a creative fill-in-the-blank challenge.`,
-    target: '.tutorial-balance',
-    position: 'bottom',
+    target: '.tutorial-dashboard',
+    position: 'top',
     nextStep: 'prompt_round',
     showSkip: true,
     showBack: true,
@@ -46,18 +46,20 @@ Let's start with a **Prompt Round** where you'll create a creative fill-in-the-b
 
   prompt_round: {
     id: 'prompt_round',
-    title: 'Create a Prompt',
-    message: `In a Prompt Round, you create a fill-in-the-blank sentence.
+    title: 'Answer a Prompt',
+    message: `In a Prompt Round, you answer a fill-in-the-blank sentence, or a *quip*.
 
 For example: "The best pizza topping is ______"
 
-Then other players will try to write funny or creative answers. The more interesting your prompt, the more coins you can earn!
+You might try writing "peppers and mushrooms" or "green and black olives".
 
-**Try creating your first prompt now.**`,
+Then other players will try to write similar quips based on yours, but *without seeing the prompt*. The more uniquely your answer fits the prompt, the more coins you can earn!
+
+**Click "Next" to start your first Prompt Round.** The tutorial will resume when you finish.`,
     target: '.tutorial-prompt-input',
     position: 'top',
     action: 'wait',
-    nextStep: 'copy_round',
+    nextStep: 'dashboard', // Return to dashboard, tutorial resumes after completion
     showSkip: true,
     showBack: true,
   },
@@ -73,11 +75,11 @@ Your job is to write a phrase that could blend in with the original. Make it con
 
 Voters will try to identify the original, so the better you match the style, the more you earn.
 
-**Write your copy phrase now.**`,
+**Click "Next" to start a Copy Round.** The tutorial will resume when you finish.`,
     target: '.tutorial-copy-input',
     position: 'top',
     action: 'wait',
-    nextStep: 'vote_round',
+    nextStep: 'dashboard', // Return to dashboard, tutorial resumes after completion
     showSkip: true,
     showBack: false,
   },

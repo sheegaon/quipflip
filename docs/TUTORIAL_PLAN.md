@@ -60,7 +60,7 @@ Create an interactive tutorial system that guides new players through their firs
 
 ```
 Step 1: Welcome Overlay
-├── "Welcome to QuipFlip! 🎮"
+├── "Welcome to Quipflip! 🎮"
 ├── "You'll play three roles: Prompter, Copier, Voter"
 ├── "Let's start with your first Prompt round!"
 ├── [Start Tutorial] [Skip for now]
@@ -395,7 +395,7 @@ export interface TutorialStep {
 export const TUTORIAL_STEPS: TutorialStep[] = [
   {
     id: 'welcome',
-    title: 'Welcome to QuipFlip! 🎮',
+    title: 'Welcome to Quipflip! 🎮',
     description: 'You\'ll play three roles: Prompter, Copier, and Voter. Let\'s start with your first Prompt round!',
     highlightElement: '[data-tutorial="prompt-button"]',
     position: 'center',
@@ -496,10 +496,10 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
 ## Content & Copy
 
 ### Welcome Modal
-**Title**: "Welcome to QuipFlip! 🎮"
+**Title**: "Welcome to Quipflip! 🎮"
 
 **Body**:
-> In QuipFlip, you'll experience three exciting roles:
+> In Quipflip, you'll experience three exciting roles:
 >
 > 🎯 **Prompter** - Create clever phrases for creative prompts
 > 📝 **Copier** - Mimic phrases without seeing the prompt
@@ -564,7 +564,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
 > ✓ Track your phrasesets and results
 > ✓ View your statistics and progress
 >
-> Ready to become a QuipFlip champion?
+> Ready to become a Quipflip champion?
 
 ---
 

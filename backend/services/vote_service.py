@@ -280,6 +280,19 @@ class VoteService:
 
         await self.db.refresh(vote)
 
+        # Track quest progress for votes
+        from backend.services.quest_service import QuestService
+        quest_service = QuestService(self.db)
+        try:
+            # Update vote streak quest
+            await quest_service.check_and_update_vote_streak(player.player_id, correct)
+            # Check milestone vote quest
+            await quest_service.check_milestone_votes(player.player_id)
+            # Check balanced player quest
+            await quest_service.check_balanced_player(player.player_id)
+        except Exception as e:
+            logger.error(f"Failed to update quest progress for vote: {e}", exc_info=True)
+
         logger.info(
             f"Vote submitted: phraseset={phraseset.phraseset_id}, player={player.player_id}, "
             f"phrase={phrase}, correct={correct}, payout=${payout}"
@@ -414,6 +427,25 @@ class VoteService:
         )
 
         await self.db.commit()
+
+        # Check quest progress for finalized phraseset
+        from backend.services.quest_service import QuestService
+        quest_service = QuestService(self.db)
+        try:
+            # Check deceptive copy and obvious original quests
+            await quest_service.check_deceptive_copy(phraseset.phraseset_id)
+            await quest_service.check_obvious_original(phraseset.phraseset_id)
+
+            # Check if any player's phraseset reached 20 votes milestone
+            if phraseset.vote_count >= 20:
+                # Check for all contributors
+                for player_id in [phraseset.original_player_id, phraseset.copy1_player_id, phraseset.copy2_player_id]:
+                    if player_id:
+                        await quest_service.check_milestone_phraseset_20votes(
+                            player_id, phraseset.phraseset_id, phraseset.vote_count
+                        )
+        except Exception as e:
+            logger.error(f"Failed to update quest progress for finalized phraseset: {e}", exc_info=True)
 
         logger.info(
             f"Finalized phraseset {phraseset.phraseset_id}: "

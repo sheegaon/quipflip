@@ -183,6 +183,16 @@ class RoundService:
         await self.db.commit()
         await self.db.refresh(round_object)
 
+        # Track quest progress for round completion
+        from backend.services.quest_service import QuestService
+        quest_service = QuestService(self.db)
+        try:
+            await quest_service.increment_round_completion(player.player_id)
+            await quest_service.check_milestone_prompts(player.player_id)
+            await quest_service.check_balanced_player(player.player_id)
+        except Exception as e:
+            logger.error(f"Failed to update quest progress for prompt round: {e}", exc_info=True)
+
         logger.info(f"Submitted phrase for prompt round {round_id}: {phrase}")
         return round_object
 
@@ -411,6 +421,16 @@ class RoundService:
         if phraseset:
             await self.db.refresh(phraseset)
 
+        # Track quest progress for round completion
+        from backend.services.quest_service import QuestService
+        quest_service = QuestService(self.db)
+        try:
+            await quest_service.increment_round_completion(player.player_id)
+            await quest_service.check_milestone_copies(player.player_id)
+            await quest_service.check_balanced_player(player.player_id)
+        except Exception as e:
+            logger.error(f"Failed to update quest progress for copy round: {e}", exc_info=True)
+
         logger.info(f"Submitted phrase for copy round {round_id}: {phrase}")
         return round_object
 
@@ -553,31 +573,34 @@ class RoundService:
         """
         Get count of prompts available for copy rounds, excluding player's own prompts.
 
-        This queries all prompt_round_ids in the queue and filters out those belonging
-        to the specified player.
+        This queries the database for prompts waiting for copies, which is more reliable
+        than relying on the queue (which may be empty after a restart).
         """
         from backend.utils import queue_client
 
-        # Get total count from queue
-        total_count = QueueService.get_prompts_waiting()
+        # Count ALL submitted prompt rounds waiting for copies (not yet in a phraseset)
+        result = await self.db.execute(
+            select(func.count(Round.round_id))
+            .join(PhraseSet, PhraseSet.prompt_round_id == Round.round_id, isouter=True)
+            .where(Round.round_type == "prompt")
+            .where(Round.status == "submitted")
+            .where(PhraseSet.phraseset_id == None)  # Exclude prompts that already have phrasesets
+        )
+        total_count = result.scalar() or 0
+
         if total_count == 0:
             return 0
 
-        # Get all prompt round IDs in the queue
-        # Note: This requires iterating the queue which is not efficient
-        # For MVP with in-memory queues, we'll query the database instead
-
         # Count submitted prompt rounds that belong to this player AND don't have phrasesets yet
-        # (only count prompts still waiting for copies, not those already processed)
         result = await self.db.execute(
             select(func.count(Round.round_id))
             .join(PhraseSet, PhraseSet.prompt_round_id == Round.round_id, isouter=True)
             .where(Round.player_id == player_id)
             .where(Round.round_type == "prompt")
             .where(Round.status == "submitted")
-            .where(PhraseSet.phraseset_id == None)  # Exclude prompts that already have phrasesets
+            .where(PhraseSet.phraseset_id == None)
         )
-        player_prompts_count = result.scalar()
+        player_prompts_count = result.scalar() or 0
 
         # Count prompts this player already copied that are still waiting for a second copy
         result = await self.db.execute(
@@ -592,7 +615,7 @@ class RoundService:
             .where(Round.status == "submitted")
             .where(PhraseSet.phraseset_id == None)
         )
-        already_copied_waiting = result.scalar()
+        already_copied_waiting = result.scalar() or 0
 
         # Subtract player's own prompts and any prompts they've already copied
         available_count = max(0, total_count - player_prompts_count - already_copied_waiting)

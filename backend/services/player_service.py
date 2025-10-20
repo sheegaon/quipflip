@@ -145,6 +145,14 @@ class PlayerService:
 
         await self.db.commit()
 
+        # Track quest progress for login streak
+        from backend.services.quest_service import QuestService
+        quest_service = QuestService(self.db)
+        try:
+            await quest_service.check_login_streak(player.player_id)
+        except Exception as e:
+            logger.error(f"Failed to update quest progress for login: {e}", exc_info=True)
+
         logger.info(f"Player {player.player_id} claimed daily bonus: ${settings.daily_bonus_amount}")
         return settings.daily_bonus_amount
 

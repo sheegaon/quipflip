@@ -8,7 +8,7 @@
 3. ✅ **Player pseudonyms** - Auto-generated hidden names shown to other players in results
 4. ✅ **Balance management and transactions** - Full amount deducted immediately, refunds on timeout
 5. ✅ **Core game loop** - Prompt (random assignment), copy, vote with full lifecycle
-6. ✅ **Word validation** - NASPA dictionary (191k words) with 1-5 words, 2-100 chars, A-Z only
+6. ✅ **Word validation** - NASPA dictionary (191k words) with 1-5 words, 4-100 chars, A-Z only
 7. ✅ **Queue system** - FIFO with Redis/in-memory fallback
 8. ✅ **Scoring and payouts** - Proportional distribution with rounding
 9. ✅ **One-round-at-a-time enforcement** - Via active_round_id in player table
@@ -33,14 +33,15 @@
 1. ✅ **JWT authentication** - Secure token-based auth with automatic refresh (COMPLETE)
 2. ✅ **AI copy providers (OpenAI + Gemini)** - Configurable AI backup system (COMPLETE)
 3. ✅ **Player statistics system** - Comprehensive win rates, earnings breakdown, performance metrics with charts (COMPLETE)
-4. **Transaction history endpoint** - GET /player/transactions with pagination
-5. **Advanced rate limiting** - Per-endpoint, per-player rate limits
-6. **Prompt management** - Track usage_count, avg_copy_quality for rotation
-7. **Admin API endpoints** - Manual injection for testing (AI backup simulation)
-8. **Settings page** - User preferences, account management
-9. **Enhanced results visualization** - Charts, graphs, vote distribution graphics
-10. **Tutorial/onboarding flow** - Guide new players through first game
-11. **Dark mode** - Theme toggle with persistent preference
+4. ✅ **Tutorial/onboarding flow** - Interactive tutorial with guided tours for new players (COMPLETE)
+5. ✅ **Quest/Achievement system** - 16 achievement types with automatic progress tracking and rewards (COMPLETE - Backend done, UI in progress)
+6. **Transaction history endpoint** - GET /player/transactions with pagination
+7. **Advanced rate limiting** - Per-endpoint, per-player rate limits
+8. **Prompt management** - Track usage_count, avg_copy_quality for rotation
+9. **Admin API endpoints** - Manual injection for testing (AI backup simulation)
+10. **Settings page** - User preferences, account management
+11. **Enhanced results visualization** - Charts, graphs, vote distribution graphics
+12. **Dark mode** - Theme toggle with persistent preference
 
 ### Phase 3 - AI & Advanced Features
 1. 🔄 **AI backup copies** - Automated generation after 10 minutes (IN PROGRESS - service ready, needs scheduler)
@@ -123,6 +124,93 @@ AI_BACKUP_DELAY_MINUTES=10       # Wait time before AI backup
 3. Implement AI voting for complete backup coverage
 4. Add cost tracking and optimization
 5. A/B testing between providers for quality comparison
+
+---
+
+## Quest System Implementation
+
+### Overview
+The quest system provides 16 achievement types that automatically track player progress and award bonus coins. All quest tracking is fully automated through integration with existing game services.
+
+### Implementation Status
+- ✅ **Database Models** - Quest and QuestTemplate tables with migration
+- ✅ **Quest Service** - Complete implementation with all 16 quest types
+- ✅ **Quest Templates** - Pre-seeded in database with rewards and targets
+- ✅ **API Endpoints** - 5 endpoints for viewing and claiming quests
+- ✅ **Service Integration** - Automatic tracking in vote, round, player, and feedback services
+- ✅ **Transaction Integration** - Quest rewards create proper transaction records
+- ✅ **Frontend API Types** - TypeScript types and API client methods
+- 🔄 **Frontend UI** - Components and pages (IN PROGRESS)
+
+### Quest Categories
+
+**Streak Quests (3 quests)**:
+- Hot Streak (5), Blazing Streak (10), Inferno Streak (20) - Consecutive correct votes
+
+**Quality Quests (2 quests)**:
+- Master Deceiver (75%+ copy votes), Clear Original (85%+ original votes)
+
+**Activity Quests (4 quests)**:
+- Quick/Active/Power Player (5/10/20 rounds in 24h), Balanced Player (varied round types)
+
+**Engagement Quests (1 quest)**:
+- Week Warrior (7 day login streak)
+
+**Milestone Quests (6 quests)**:
+- Feedback contributions, total votes/prompts/copies, popular phrasesets
+
+### Automatic Integration Points
+- **Vote Service** (`vote_service.py:283-294`, `vote_service.py:431-448`)
+  - Updates hot streak after each vote
+  - Checks milestone vote quests
+  - Triggers quality quests on phraseset finalization
+
+- **Round Service** (`round_service.py:186-194`, `round_service.py:424-432`)
+  - Tracks round completion for activity quests
+  - Increments prompt/copy milestone counters
+
+- **Player Service** (`player_service.py:148-154`)
+  - Updates login streak on daily bonus claims
+
+- **Feedback Router** (`prompt_feedback.py:81-87`)
+  - Increments feedback contribution quests
+
+### Reward Economics
+Total available quest rewards: **$1,485** across all 16 quests
+- Encourages sustained engagement (login streaks, activity)
+- Rewards skill (vote accuracy, quality performance)
+- Provides long-term goals (milestones)
+
+### Database Schema
+```sql
+quest_templates (
+  template_id VARCHAR(50) PRIMARY KEY,
+  name VARCHAR(100),
+  description VARCHAR(500),
+  reward_amount INTEGER,
+  target_value INTEGER,
+  category VARCHAR(20)
+)
+
+quests (
+  quest_id UUID PRIMARY KEY,
+  player_id UUID REFERENCES players,
+  quest_type VARCHAR(50),
+  status VARCHAR(20), -- active, completed, claimed
+  progress JSON,      -- flexible tracking per quest type
+  reward_amount INTEGER,
+  created_at, completed_at, claimed_at TIMESTAMP
+)
+```
+
+### API Endpoints
+- `GET /quests` - List all quests with counts (active, completed, claimed)
+- `GET /quests/active` - Get active quests only
+- `GET /quests/claimable` - Get completed but unclaimed quests
+- `GET /quests/{quest_id}` - Get single quest details
+- `POST /quests/{quest_id}/claim` - Claim quest reward
+
+See [QUEST_SYSTEM_PLAN.md](QUEST_SYSTEM_PLAN.md) for complete implementation details.
 
 ---
 
