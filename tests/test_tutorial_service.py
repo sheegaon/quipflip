@@ -8,7 +8,8 @@ from backend.services.tutorial_service import TutorialService
 @pytest.mark.asyncio
 async def test_get_tutorial_status_new_player(db_session, player_factory):
     """New players should have tutorial not started."""
-    player = await player_factory(username="newbie")
+    # Use unique username to avoid collision with other tests
+    player = await player_factory()
 
     service = TutorialService(db_session)
     status = await service.get_tutorial_status(player.player_id)
@@ -22,7 +23,8 @@ async def test_get_tutorial_status_new_player(db_session, player_factory):
 @pytest.mark.asyncio
 async def test_update_tutorial_progress(db_session, player_factory):
     """Updating tutorial progress should set started_at timestamp."""
-    player = await player_factory(username="learner")
+    # Use unique username to avoid collision with other tests
+    player = await player_factory()
 
     service = TutorialService(db_session)
     status = await service.update_tutorial_progress(player.player_id, "welcome")
@@ -36,7 +38,8 @@ async def test_update_tutorial_progress(db_session, player_factory):
 @pytest.mark.asyncio
 async def test_complete_tutorial(db_session, player_factory):
     """Completing tutorial should set completed flag and timestamp."""
-    player = await player_factory(username="graduate")
+    # Use unique username to avoid collision with other tests
+    player = await player_factory()
 
     service = TutorialService(db_session)
 
@@ -55,7 +58,8 @@ async def test_complete_tutorial(db_session, player_factory):
 @pytest.mark.asyncio
 async def test_reset_tutorial(db_session, player_factory):
     """Resetting tutorial should clear all tutorial fields."""
-    player = await player_factory(username="resetuser")
+    # Use unique username to avoid collision with other tests
+    player = await player_factory()
 
     service = TutorialService(db_session)
 
@@ -75,7 +79,8 @@ async def test_reset_tutorial(db_session, player_factory):
 @pytest.mark.asyncio
 async def test_tutorial_progress_steps(db_session, player_factory):
     """Test multiple progress steps through tutorial."""
-    player = await player_factory(username="stepper")
+    # Use unique username to avoid collision with other tests
+    player = await player_factory()
 
     service = TutorialService(db_session)
 
