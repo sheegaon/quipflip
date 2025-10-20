@@ -24,6 +24,7 @@ interface GameContextType {
 
   startSession: (username: string, tokens: AuthTokenResponse) => void;
   logout: () => Promise<void>;
+  refreshDashboard: () => Promise<void>;
   refreshBalance: () => Promise<void>;
   refreshCurrentRound: () => Promise<void>;
   refreshPendingResults: () => Promise<void>;
@@ -102,6 +103,34 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     },
     [logout],
+  );
+
+  const refreshDashboard = useCallback(
+    async (signal?: AbortSignal) => {
+      if (!isAuthenticated) return;
+      try {
+        const data = await apiClient.getDashboardData(signal);
+
+        // Update all dashboard state at once
+        setPlayer(data.player);
+        if (data.player.username && data.player.username !== username) {
+          apiClient.setSession(data.player.username);
+          setUsername(data.player.username);
+        }
+        setActiveRound(data.current_round);
+        setPendingResults(data.pending_results);
+        setPhrasesetSummary(data.phraseset_summary);
+        setUnclaimedResults(data.unclaimed_results);
+        setRoundAvailability(data.round_availability);
+        setError(null);
+      } catch (err) {
+        if (err instanceof Error && err.name === 'CanceledError') return;
+        const errorMessage = extractErrorMessage(err);
+        setError(errorMessage || 'Unable to load dashboard data. Please refresh the page.');
+        handleAuthError(errorMessage);
+      }
+    },
+    [handleAuthError, isAuthenticated, username],
   );
 
   const refreshBalance = useCallback(
@@ -231,50 +260,22 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!isAuthenticated) return;
 
     const controller = new AbortController();
-    refreshBalance(controller.signal);
-    refreshCurrentRound(controller.signal);
-    refreshPendingResults(controller.signal);
-    refreshPhrasesetSummary(controller.signal);
-    refreshUnclaimedResults(controller.signal);
-    refreshRoundAvailability(controller.signal);
+    refreshDashboard(controller.signal);
 
     return () => controller.abort();
-  }, [
-    isAuthenticated,
-    refreshBalance,
-    refreshCurrentRound,
-    refreshPendingResults,
-    refreshPhrasesetSummary,
-    refreshUnclaimedResults,
-    refreshRoundAvailability,
-  ]);
+  }, [isAuthenticated, refreshDashboard]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    const balanceInterval = setInterval(() => {
-      refreshBalance();
-      refreshRoundAvailability();
+    const dashboardInterval = setInterval(() => {
+      refreshDashboard();
     }, 60_000);
 
-    const pendingInterval = setInterval(() => {
-      refreshPendingResults();
-      refreshPhrasesetSummary();
-      refreshUnclaimedResults();
-    }, 90_000);
-
     return () => {
-      clearInterval(balanceInterval);
-      clearInterval(pendingInterval);
+      clearInterval(dashboardInterval);
     };
-  }, [
-    isAuthenticated,
-    refreshBalance,
-    refreshPendingResults,
-    refreshPhrasesetSummary,
-    refreshUnclaimedResults,
-    refreshRoundAvailability,
-  ]);
+  }, [isAuthenticated, refreshDashboard]);
 
   const value: GameContextType = {
     isAuthenticated,
@@ -289,6 +290,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     error,
     startSession,
     logout,
+    refreshDashboard,
     refreshBalance,
     refreshCurrentRound,
     refreshPendingResults,

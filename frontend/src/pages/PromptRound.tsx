@@ -10,7 +10,7 @@ import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
 import type { PromptState } from '../api/types';
 
 export const PromptRound: React.FC = () => {
-  const { activeRound, refreshCurrentRound, refreshBalance } = useGame();
+  const { activeRound } = useGame();
   const { currentStep, advanceStep } = useTutorial();
   const navigate = useNavigate();
   const [phrase, setPhrase] = useState('');
@@ -52,7 +52,6 @@ export const PromptRound: React.FC = () => {
         // No active round, start a new one
         try {
           const response = await apiClient.startPromptRound();
-          await refreshCurrentRound();
           setRoundData({
             round_id: response.round_id,
             status: 'active',
@@ -68,7 +67,7 @@ export const PromptRound: React.FC = () => {
     };
 
     initRound();
-  }, [activeRound, navigate, refreshCurrentRound]);
+  }, [activeRound, navigate]);
 
   const handleFeedback = async (type: 'like' | 'dislike') => {
     if (!roundData || isSubmittingFeedback) return;
@@ -104,8 +103,6 @@ export const PromptRound: React.FC = () => {
 
     try {
       await apiClient.submitPhrase(roundData.round_id, phrase.trim());
-      await refreshCurrentRound();
-      await refreshBalance();
 
       // Show success message
       const message = getRandomMessage('promptSubmitted');

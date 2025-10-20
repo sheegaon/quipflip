@@ -24,12 +24,13 @@ RATE_LIMIT_WINDOW_SECONDS = 60
 RATE_LIMIT_ERROR_MESSAGE = "Rate limit exceeded. Try again later."
 
 
-def _mask_api_key(api_key: str) -> str:
-    if not api_key:
+def _mask_identifier(identifier: str) -> str:
+    """Mask a sensitive identifier for logging (e.g., player_id, token)."""
+    if not identifier:
         return "<missing>"
-    if len(api_key) <= 8:
-        return f"{api_key[:2]}…{api_key[-2:]}"
-    return f"{api_key[:4]}…{api_key[-4:]}"
+    if len(identifier) <= 8:
+        return f"{identifier[:2]}…{identifier[-2:]}"
+    return f"{identifier[:4]}…{identifier[-4:]}"
 
 
 async def _enforce_rate_limit(scope: str, identifier: str | None, limit: int) -> None:
@@ -50,7 +51,7 @@ async def _enforce_rate_limit(scope: str, identifier: str | None, limit: int) ->
     if retry_after is not None:
         headers["Retry-After"] = str(retry_after)
 
-    masked_identifier = _mask_api_key(identifier)
+    masked_identifier = _mask_identifier(identifier)
     logger.warning("Rate limit exceeded for scope=%s identifier=%s", scope, masked_identifier)
     raise HTTPException(status_code=429, detail=RATE_LIMIT_ERROR_MESSAGE, headers=headers or None)
 
@@ -98,7 +99,7 @@ async def enforce_vote_rate_limit(
     applies a stricter rate limit based on the player's ID. This approach:
     - Eliminates duplication of authentication logic
     - Ensures consistent behavior with get_current_player
-    - Prevents bypassing limits by rotating API keys (always uses player_id)
+    - Uses player_id for rate limiting (stable across sessions)
     - Automatically handles authentication errors via get_current_player
     - Returns the player to avoid redundant get_current_player calls in endpoints
     """

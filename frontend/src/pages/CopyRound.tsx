@@ -10,7 +10,7 @@ import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
 import type { CopyState } from '../api/types';
 
 export const CopyRound: React.FC = () => {
-  const { activeRound, refreshCurrentRound, refreshBalance } = useGame();
+  const { activeRound } = useGame();
   const { currentStep, advanceStep } = useTutorial();
   const navigate = useNavigate();
   const [phrase, setPhrase] = useState('');
@@ -40,7 +40,6 @@ export const CopyRound: React.FC = () => {
         // No active round, start a new one
         try {
           const response = await apiClient.startCopyRound();
-          await refreshCurrentRound();
           setRoundData({
             round_id: response.round_id,
             status: 'active',
@@ -57,7 +56,7 @@ export const CopyRound: React.FC = () => {
     };
 
     initRound();
-  }, [activeRound, navigate, refreshCurrentRound]);
+  }, [activeRound, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,8 +67,6 @@ export const CopyRound: React.FC = () => {
 
     try {
       await apiClient.submitPhrase(roundData.round_id, phrase.trim());
-      await refreshCurrentRound();
-      await refreshBalance();
 
       // Show success message
       const message = getRandomMessage('copySubmitted');

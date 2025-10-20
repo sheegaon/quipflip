@@ -30,6 +30,7 @@ import type {
   Quest,
   QuestListResponse,
   ClaimQuestRewardResponse,
+  DashboardData,
 } from './types';
 
 // Base URL - configure based on environment
@@ -460,6 +461,11 @@ export const apiClient = {
 
   async getUnclaimedResults(signal?: AbortSignal): Promise<UnclaimedResultsResponse> {
     const { data } = await api.get('/player/unclaimed-results', { signal });
+    return data;
+  },
+
+  async getDashboardData(signal?: AbortSignal): Promise<DashboardData> {
+    const { data } = await api.get('/player/dashboard', { signal });
     return data;
   },
 

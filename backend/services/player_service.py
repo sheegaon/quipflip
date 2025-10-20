@@ -48,7 +48,6 @@ class PlayerService:
 
         player = Player(
             player_id=uuid.uuid4(),
-            api_key=str(uuid.uuid4()),
             username=normalized_username,
             username_canonical=canonical_username,
             pseudonym=pseudonym,
@@ -78,13 +77,6 @@ class PlayerService:
             if "uq_players_email" in error_message or "email" in error_message:
                 raise ValueError("email_taken") from exc
             raise
-
-    async def get_player_by_api_key(self, api_key: str) -> Player | None:
-        """Get player by API key (for authentication)."""
-        result = await self.db.execute(
-            select(Player).where(Player.api_key == api_key)
-        )
-        return result.scalar_one_or_none()
 
     async def get_player_by_id(self, player_id: UUID) -> Player | None:
         """Get player by ID."""
@@ -247,16 +239,3 @@ class PlayerService:
 
         return True, ""
 
-    async def rotate_api_key(self, player: Player) -> str:
-        """Generate new API key for player (security feature).
-
-        Returns:
-            str: The new API key
-        """
-        old_key = player.api_key
-        new_key = str(uuid.uuid4())
-        player.api_key = new_key
-        await self.db.commit()
-        await self.db.refresh(player)
-        logger.info(f"Rotated API key for player {player.player_id}")
-        return new_key

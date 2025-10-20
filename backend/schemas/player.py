@@ -5,6 +5,8 @@ from typing import Optional, Literal
 from uuid import UUID
 from backend.schemas.base import BaseSchema
 from backend.schemas.auth import AuthTokenResponse
+from backend.schemas.round import RoundAvailability
+from backend.schemas.phraseset import PhrasesetDashboardSummary, UnclaimedResult
 
 
 class PlayerBalance(BaseSchema):
@@ -131,3 +133,24 @@ class UpdateTutorialProgressResponse(BaseModel):
     """Response after updating tutorial progress."""
     success: bool
     tutorial_status: TutorialStatus
+
+
+class DashboardDataResponse(BaseSchema):
+    """Batched dashboard data - all info needed for dashboard in one call."""
+    # From /player/balance
+    player: PlayerBalance
+
+    # From /player/current-round
+    current_round: CurrentRoundResponse
+
+    # From /player/pending-results
+    pending_results: list[PendingResult]
+
+    # From /player/phrasesets/summary
+    phraseset_summary: PhrasesetDashboardSummary
+
+    # From /player/unclaimed-results
+    unclaimed_results: list[UnclaimedResult]
+
+    # From /rounds/available
+    round_availability: RoundAvailability
