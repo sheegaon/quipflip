@@ -24,6 +24,9 @@ import type {
   ClaimPrizeResponse,
   UnclaimedResultsResponse,
   PlayerStatistics,
+  TutorialStatus,
+  TutorialProgress,
+  UpdateTutorialProgressResponse,
 } from './types';
 
 // Base URL - configure based on environment
@@ -518,6 +521,21 @@ export const apiClient = {
 
   async getStatistics(signal?: AbortSignal): Promise<PlayerStatistics> {
     const { data } = await api.get('/player/statistics', { signal });
+    return data;
+  },
+
+  async getTutorialStatus(signal?: AbortSignal): Promise<TutorialStatus> {
+    const { data } = await api.get('/player/tutorial/status', { signal });
+    return data;
+  },
+
+  async updateTutorialProgress(progress: TutorialProgress, signal?: AbortSignal): Promise<UpdateTutorialProgressResponse> {
+    const { data } = await api.post('/player/tutorial/progress', { progress }, { signal });
+    return data;
+  },
+
+  async resetTutorial(signal?: AbortSignal): Promise<TutorialStatus> {
+    const { data } = await api.post('/player/tutorial/reset', {}, { signal });
     return data;
   },
 };

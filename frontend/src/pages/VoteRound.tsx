@@ -149,7 +149,7 @@ export const VoteRound: React.FC = () => {
         )}
 
         {/* Phrase Choices */}
-        <div className="space-y-4 mb-6">
+        <div className="tutorial-vote-options space-y-4 mb-6">
           <p className="text-center text-quip-navy font-display font-semibold mb-4 text-lg">
             Which phrase is the original?
           </p>

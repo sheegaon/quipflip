@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
+import { useTutorial } from '../contexts/TutorialContext';
 import { Timer } from '../components/Timer';
 import { Header } from '../components/Header';
+import TutorialWelcome from '../components/Tutorial/TutorialWelcome';
 
 const formatWaitingCount = (count: number): string => (count > 10 ? 'over 10' : count.toString());
 
@@ -21,8 +23,18 @@ export const Dashboard: React.FC = () => {
     refreshRoundAvailability,
     claimBonus,
   } = useGame();
+  const { startTutorial, skipTutorial, advanceStep } = useTutorial();
   const navigate = useNavigate();
   const [isRoundExpired, setIsRoundExpired] = useState(false);
+
+  const handleStartTutorial = async () => {
+    await startTutorial();
+    await advanceStep('dashboard');
+  };
+
+  const handleSkipTutorial = async () => {
+    await skipTutorial();
+  };
 
   const activeRoundRoute = useMemo(() => {
     return activeRound?.round_type ? `/${activeRound.round_type}` : null;
@@ -162,6 +174,7 @@ export const Dashboard: React.FC = () => {
   return (
     <div className="min-h-screen bg-quip-cream bg-pattern">
       <Header />
+      <TutorialWelcome onStart={handleStartTutorial} onSkip={handleSkipTutorial} />
 
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Active Round Notification */}

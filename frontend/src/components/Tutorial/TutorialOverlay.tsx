@@ -1,0 +1,155 @@
+import React, { useEffect, useState, useRef } from 'react';
+import { useTutorial } from '../../contexts/TutorialContext';
+import { getTutorialStep, getPreviousStep } from '../../config/tutorialSteps';
+import './TutorialOverlay.css';
+
+interface TutorialOverlayProps {
+  onComplete?: () => void;
+}
+
+// Position offset constants
+const SPOTLIGHT_PADDING = 8; // Padding around highlighted element
+const CARD_SPACING = 20; // Space between card and target element
+const CARD_DEFAULT_WIDTH = 400; // Default card width (should match CSS)
+const CARD_DEFAULT_HEIGHT = 200; // Approximate card height for vertical positioning
+
+const TutorialOverlay: React.FC<TutorialOverlayProps> = ({ onComplete }) => {
+  const { isActive, currentStep, advanceStep, skipTutorial, completeTutorial } = useTutorial();
+  const [highlightRect, setHighlightRect] = useState<DOMRect | null>(null);
+  const [isVisible, setIsVisible] = useState(false);
+  const [cardDimensions, setCardDimensions] = useState({ width: CARD_DEFAULT_WIDTH, height: CARD_DEFAULT_HEIGHT });
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  const step = getTutorialStep(currentStep);
+
+  // Measure card dimensions dynamically
+  useEffect(() => {
+    if (cardRef.current) {
+      const rect = cardRef.current.getBoundingClientRect();
+      setCardDimensions({ width: rect.width, height: rect.height });
+    }
+  }, [step]);
+
+  useEffect(() => {
+    if (isActive && step) {
+      setIsVisible(true);
+
+      // Find and highlight target element if specified
+      if (step.target) {
+        const targetElement = document.querySelector(step.target);
+        if (targetElement) {
+          const rect = targetElement.getBoundingClientRect();
+          setHighlightRect(rect);
+
+          // Scroll element into view
+          targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+          setHighlightRect(null);
+        }
+      } else {
+        setHighlightRect(null);
+      }
+    } else {
+      setIsVisible(false);
+      setHighlightRect(null);
+    }
+  }, [isActive, currentStep, step]);
+
+  const handleNext = async () => {
+    if (step?.nextStep) {
+      await advanceStep(step.nextStep);
+    } else {
+      await completeTutorial();
+      onComplete?.();
+    }
+  };
+
+  const handleBack = async () => {
+    const prevStep = getPreviousStep(currentStep);
+    if (prevStep) {
+      await advanceStep(prevStep);
+    }
+  };
+
+  const handleSkip = async () => {
+    await skipTutorial();
+    onComplete?.();
+  };
+
+  if (!isVisible || !step) {
+    return null;
+  }
+
+  return (
+    <div className="tutorial-overlay">
+      {/* Backdrop with spotlight effect */}
+      <div className="tutorial-backdrop">
+        {highlightRect && (
+          <div
+            className="tutorial-spotlight"
+            style={{
+              top: highlightRect.top - SPOTLIGHT_PADDING,
+              left: highlightRect.left - SPOTLIGHT_PADDING,
+              width: highlightRect.width + SPOTLIGHT_PADDING * 2,
+              height: highlightRect.height + SPOTLIGHT_PADDING * 2,
+            }}
+          />
+        )}
+      </div>
+
+      {/* Tutorial card */}
+      <div
+        ref={cardRef}
+        className={`tutorial-card tutorial-card-${step.position || 'bottom'}`}
+        style={highlightRect ? {
+          top: step.position === 'top'
+            ? highlightRect.top - cardDimensions.height - CARD_SPACING
+            : step.position === 'bottom'
+            ? highlightRect.bottom + CARD_SPACING
+            : highlightRect.top,
+          left: step.position === 'left'
+            ? highlightRect.left - cardDimensions.width - CARD_SPACING
+            : step.position === 'right'
+            ? highlightRect.right + CARD_SPACING
+            : highlightRect.left + highlightRect.width / 2 - cardDimensions.width / 2,
+        } : undefined}
+      >
+        <div className="tutorial-card-content">
+          <h2 className="tutorial-title">{step.title}</h2>
+          <p className="tutorial-message">{step.message}</p>
+        </div>
+
+        <div className="tutorial-actions">
+          {step.showBack && (
+            <button
+              onClick={handleBack}
+              className="tutorial-btn tutorial-btn-secondary"
+            >
+              Back
+            </button>
+          )}
+
+          <div className="tutorial-actions-right">
+            {step.showSkip && (
+              <button
+                onClick={handleSkip}
+                className="tutorial-btn tutorial-btn-text"
+              >
+                Skip Tutorial
+              </button>
+            )}
+
+            <button
+              onClick={handleNext}
+              className="tutorial-btn tutorial-btn-primary"
+            >
+              {step.nextStep ? 'Next' : 'Finish'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default TutorialOverlay;

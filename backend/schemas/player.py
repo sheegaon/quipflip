@@ -112,3 +112,22 @@ class PlayerStatistics(BaseModel):
     # Additional metrics
     favorite_prompts: list[str]  # Top 5 prompts by earnings
     best_performing_phrases: list[BestPerformingPhrase]  # Top phrases with vote counts
+
+
+class TutorialStatus(BaseModel):
+    """Tutorial status response."""
+    tutorial_completed: bool
+    tutorial_progress: str
+    tutorial_started_at: Optional[datetime]
+    tutorial_completed_at: Optional[datetime]
+
+
+class UpdateTutorialProgressRequest(BaseModel):
+    """Request to update tutorial progress."""
+    progress: Literal["not_started", "welcome", "dashboard", "prompt_round", "copy_round", "vote_round", "completed"]
+
+
+class UpdateTutorialProgressResponse(BaseModel):
+    """Response after updating tutorial progress."""
+    success: bool
+    tutorial_status: TutorialStatus

@@ -401,6 +401,66 @@ Get comprehensive player statistics including win rates, earnings breakdown, and
 - Vote accuracy is percentage of correct votes
 - Best performing phrases ranked by votes received
 
+#### `GET /player/tutorial/status`
+Get the tutorial status for the current player.
+
+**Response:**
+```json
+{
+  "tutorial_completed": false,
+  "tutorial_progress": "dashboard",
+  "tutorial_started_at": "2025-01-06T10:15:00Z",
+  "tutorial_completed_at": null
+}
+```
+
+**Notes:**
+- `tutorial_progress` values: "not_started", "welcome", "dashboard", "prompt_round", "copy_round", "vote_round", "completed"
+- New players start with "not_started"
+
+#### `POST /player/tutorial/progress`
+Update the tutorial progress for the current player.
+
+**Request:**
+```json
+{
+  "progress": "prompt_round"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "tutorial_status": {
+    "tutorial_completed": false,
+    "tutorial_progress": "prompt_round",
+    "tutorial_started_at": "2025-01-06T10:15:00Z",
+    "tutorial_completed_at": null
+  }
+}
+```
+
+**Errors:**
+- `400 Bad Request` - Invalid progress value
+
+**Notes:**
+- Setting progress to "completed" marks tutorial as complete
+- First non-"not_started" progress sets `tutorial_started_at`
+
+#### `POST /player/tutorial/reset`
+Reset the tutorial progress (useful for testing or replaying tutorial).
+
+**Response:**
+```json
+{
+  "tutorial_completed": false,
+  "tutorial_progress": "not_started",
+  "tutorial_started_at": null,
+  "tutorial_completed_at": null
+}
+```
+
 ---
 
 ### Round Endpoints

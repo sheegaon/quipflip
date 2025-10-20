@@ -1,0 +1,190 @@
+/* Tutorial Overlay Styles */
+.tutorial-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+.tutorial-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  pointer-events: auto;
+}
+
+.tutorial-spotlight {
+  position: absolute;
+  background-color: transparent;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.7);
+  border-radius: 8px;
+  transition: all 0.3s ease-in-out;
+  pointer-events: none;
+  z-index: 10000;
+}
+
+.tutorial-card {
+  position: fixed;
+  width: 400px;
+  max-width: 90vw;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  padding: 24px;
+  pointer-events: auto;
+  z-index: 10001;
+  animation: tutorialFadeIn 0.3s ease-in-out;
+}
+
+@keyframes tutorialFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tutorial-card-content {
+  margin-bottom: 20px;
+}
+
+.tutorial-title {
+  font-size: 24px;
+  font-weight: bold;
+  color: #1a1a1a;
+  margin: 0 0 12px 0;
+}
+
+.tutorial-message {
+  font-size: 16px;
+  line-height: 1.6;
+  color: #4a4a4a;
+  margin: 0;
+  white-space: pre-line;
+}
+
+.tutorial-message strong {
+  color: #2563eb;
+  font-weight: 600;
+}
+
+.tutorial-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.tutorial-actions-right {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-left: auto;
+}
+
+.tutorial-btn {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+  outline: none;
+}
+
+.tutorial-btn-primary {
+  background-color: #2563eb;
+  color: white;
+}
+
+.tutorial-btn-primary:hover {
+  background-color: #1d4ed8;
+}
+
+.tutorial-btn-secondary {
+  background-color: #e5e7eb;
+  color: #374151;
+}
+
+.tutorial-btn-secondary:hover {
+  background-color: #d1d5db;
+}
+
+.tutorial-btn-text {
+  background-color: transparent;
+  color: #6b7280;
+  padding: 10px 12px;
+}
+
+.tutorial-btn-text:hover {
+  color: #374151;
+  background-color: #f3f4f6;
+}
+
+/* Positioning variants */
+.tutorial-card-bottom {
+  /* Default positioning handled by inline styles */
+}
+
+.tutorial-card-top {
+  /* Positioning handled by inline styles */
+}
+
+.tutorial-card-left {
+  /* Positioning handled by inline styles */
+}
+
+.tutorial-card-right {
+  /* Positioning handled by inline styles */
+}
+
+/* Center card when no target */
+.tutorial-card:not([style*="top"]) {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* Mobile responsive */
+@media (max-width: 640px) {
+  .tutorial-card {
+    width: 90vw;
+    max-width: none;
+    padding: 20px;
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+  }
+
+  .tutorial-title {
+    font-size: 20px;
+  }
+
+  .tutorial-message {
+    font-size: 14px;
+  }
+
+  .tutorial-actions {
+    flex-direction: column;
+  }
+
+  .tutorial-actions-right {
+    width: 100%;
+    flex-direction: column-reverse;
+  }
+
+  .tutorial-btn {
+    width: 100%;
+  }
+}

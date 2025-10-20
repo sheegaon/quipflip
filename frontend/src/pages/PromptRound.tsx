@@ -210,7 +210,7 @@ export const PromptRound: React.FC = () => {
               value={phrase}
               onChange={(e) => setPhrase(e.target.value)}
               placeholder="Enter your phrase"
-              className="w-full px-4 py-3 text-lg border-2 border-quip-teal rounded-tile focus:outline-none focus:ring-2 focus:ring-quip-turquoise"
+              className="tutorial-prompt-input w-full px-4 py-3 text-lg border-2 border-quip-teal rounded-tile focus:outline-none focus:ring-2 focus:ring-quip-turquoise"
               disabled={isExpired || isSubmitting}
               maxLength={100}
             />
