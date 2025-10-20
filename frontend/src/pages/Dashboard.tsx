@@ -39,6 +39,11 @@ export const Dashboard: React.FC = () => {
     return `${activeRound.round_type.charAt(0).toUpperCase()}${activeRound.round_type.slice(1)}`;
   }, [activeRound?.round_type]);
 
+  // Force refresh dashboard data when component mounts
+  useEffect(() => {
+    refreshDashboard();
+  }, [refreshDashboard]);
+
   // Refresh when page becomes visible (GameContext already loads data on mount)
   useEffect(() => {
     const handleVisibilityChange = () => {
