@@ -74,7 +74,7 @@ async def get_current_player(
         payload = auth_service.decode_access_token(token)
         player_id_str = payload.get("sub")
         if not player_id_str:
-            raise AuthError("invalid_token")
+            raise AuthError("Invalid token error, please try again")
         player_id = UUID(str(player_id_str))
     except (ValueError, AuthError) as exc:
         detail = "token_expired" if isinstance(exc, AuthError) and str(exc) == "token_expired" else "invalid_token"
