@@ -36,12 +36,16 @@ def downgrade() -> None:
                        sa.Column('api_key', sa.String(36)))
 
     player_ids = conn.execute(sa.select(players.c.player_id).where(players.c.api_key.is_(None))).scalars().all()
-    for player_id in player_ids:
-        conn.execute(
+    if player_ids:
+        update_data = [
+            {"p_id": pid, "new_key": str(uuid.uuid4())} for pid in player_ids
+        ]
+        stmt = (
             sa.update(players)
-            .where(players.c.player_id == player_id)
-            .values(api_key=str(uuid.uuid4()))
+            .where(players.c.player_id == sa.bindparam("p_id"))
+            .values(api_key=sa.bindparam("new_key"))
         )
+        conn.execute(stmt, update_data)
     # Make it non-nullable after populating
     op.alter_column('players', 'api_key', nullable=False)
     op.create_index('ix_players_api_key', 'players', ['api_key'], unique=True)
