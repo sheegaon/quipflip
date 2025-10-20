@@ -9,6 +9,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 
 # revision identifiers, used by Alembic.
@@ -23,12 +24,22 @@ def _uuid_column():
     bind = op.get_bind()
     dialect_name = bind.dialect.name if bind else "postgresql"
     if dialect_name == "postgresql":
-        return sa.UUID()
+        return postgresql.UUID(as_uuid=True)
     return sa.String(length=36)
+
+
+def _json_column():
+    """Return a JSON-capable column that works on SQLite and Postgres."""
+    bind = op.get_bind()
+    dialect_name = bind.dialect.name if bind else "postgresql"
+    if dialect_name == "postgresql":
+        return postgresql.JSONB()
+    return sa.JSON().with_variant(sa.Text(), "sqlite")
 
 
 def upgrade() -> None:
     uuid = _uuid_column()
+    metadata_type = _json_column()
 
     # Create phraseset_activity table
     op.create_table(
@@ -38,7 +49,7 @@ def upgrade() -> None:
         sa.Column("prompt_round_id", uuid, nullable=True),
         sa.Column("activity_type", sa.String(length=50), nullable=False),
         sa.Column("player_id", uuid, nullable=True),
-        sa.Column("metadata", sa.JSON(), nullable=True),
+        sa.Column("metadata", metadata_type, nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.ForeignKeyConstraint(["phraseset_id"], ["phrasesets.phraseset_id"]),
         sa.ForeignKeyConstraint(["prompt_round_id"], ["rounds.round_id"]),
@@ -127,11 +138,15 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    bind = op.get_bind()
+    dialect_name = bind.dialect.name if bind else "postgresql"
+    true_literal = "TRUE" if dialect_name == "postgresql" else "1"
+
     # Revert result_views changes
     op.execute(
-        """
+        f"""
         UPDATE result_views
-        SET payout_claimed = CASE WHEN payout_claimed_at IS NOT NULL THEN 1 ELSE payout_claimed END,
+        SET payout_claimed = CASE WHEN payout_claimed_at IS NOT NULL THEN {true_literal} ELSE payout_claimed END,
             payout_claimed_at = NULL,
             first_viewed_at = NULL
         """
