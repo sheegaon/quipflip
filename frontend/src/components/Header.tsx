@@ -5,13 +5,28 @@ import { BalanceFlipper } from './BalanceFlipper';
 import { TreasureChestIcon } from './TreasureChestIcon';
 
 export const Header: React.FC = () => {
-  const { player, username, logout, claimBonus } = useGame();
+  const { player, username, logout, claimBonus, phrasesetSummary } = useGame();
   const navigate = useNavigate();
   const [isClaiming, setIsClaiming] = useState(false);
 
   if (!player) {
     return null;
   }
+
+  const inProgressPrompts = phrasesetSummary?.in_progress.prompts ?? 0;
+  const inProgressCopies = phrasesetSummary?.in_progress.copies ?? 0;
+  const hasInProgress = inProgressPrompts + inProgressCopies > 0;
+  const showInProgressIndicator = hasInProgress;
+  const inProgressLabelParts: string[] = [];
+  if (inProgressPrompts > 0) {
+    inProgressLabelParts.push(`${inProgressPrompts} prompt${inProgressPrompts === 1 ? '' : 's'}`);
+  }
+  if (inProgressCopies > 0) {
+    inProgressLabelParts.push(`${inProgressCopies} ${inProgressCopies === 1 ? 'copy' : 'copies'}`);
+  }
+  const inProgressLabel = inProgressLabelParts.length
+    ? `In-progress rounds: ${inProgressLabelParts.join(' and ')}`
+    : 'View your in-progress rounds';
 
   const handleClaimBonus = async () => {
     if (isClaiming) return;
@@ -30,8 +45,38 @@ export const Header: React.FC = () => {
       <div className="max-w-6xl mx-auto px-2 py-0 md:px-4 md:py-3">
         <div className="flex justify-between items-center">
           {/* Left: Logo */}
-          <div className="flex items-center">
+          <div className="flex items-center gap-3">
             <img src="/large_icon.png" alt="Quipflip" className="h-10 w-auto" />
+            {showInProgressIndicator && (
+              <button
+                type="button"
+                onClick={() => navigate('/tracking')}
+                className="flex items-center gap-3 rounded-full bg-quip-cream px-3 py-1 text-xs font-semibold text-quip-navy transition-colors hover:bg-quip-teal-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-quip-teal"
+                title={inProgressLabel}
+                aria-label={inProgressLabel}
+              >
+                {inProgressPrompts > 0 && (
+                  <span className="flex items-center gap-1">
+                    <span>{inProgressPrompts}</span>
+                    <img
+                      src="/icon_prompt.svg"
+                      alt="Prompt rounds in progress"
+                      className="h-5 w-5"
+                    />
+                  </span>
+                )}
+                {inProgressCopies > 0 && (
+                  <span className="flex items-center gap-1">
+                    <span>{inProgressCopies}</span>
+                    <img
+                      src="/icon_copy.svg"
+                      alt="Copy rounds in progress"
+                      className="h-5 w-5"
+                    />
+                  </span>
+                )}
+              </button>
+            )}
           </div>
 
           {/* Center: Username (clickable to stats) */}
