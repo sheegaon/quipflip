@@ -119,7 +119,7 @@ class AIService:
                 email="ai@quipflip.internal",
                 password_hash="not-used-for-ai-player",
                 pseudonym="Clever Lexical Runner",
-                pseudonym_canonical="clever lexical runner",
+                pseudonym_canonical="cleverlexicalrunner",
             )
             # Note: Do not commit here - let caller manage transaction
             logger.info("Created AI backup player account")

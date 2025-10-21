@@ -375,6 +375,9 @@ async def get_dashboard_data(
     prompts_waiting = await round_service.get_available_prompts_count(player.player_id)
     phrasesets_waiting = await vote_service.count_available_wordsets_for_player(player.player_id)
 
+    # Make sure the prompt queue reflects database state before checking availability.
+    await round_service.ensure_prompt_queue_populated()
+
     can_prompt, _ = await player_service.can_start_prompt_round(player)
     can_copy, _ = await player_service.can_start_copy_round(player)
     can_vote, _ = await player_service.can_start_vote_round(
