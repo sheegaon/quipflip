@@ -95,8 +95,11 @@ async def lifespan(app: FastAPI):
         from backend.services.ai_service import AIService
         
         async def ai_backup_cycle():
-            """Background task to run AI backup cycles every 10 minutes."""
+            """Background task to run AI backup cycles."""
             while True:
+                # Wait before first cycle
+                await asyncio.sleep(settings.ai_backup_sleep_seconds)
+
                 try:
                     async with AsyncSessionLocal() as db:
                         ai_service = AIService(db, validator)
@@ -107,12 +110,9 @@ async def lifespan(app: FastAPI):
                         
                 except Exception as e:
                     logger.error(f"AI backup cycle error: {e}")
-                
-                # Wait before next cycle
-                await asyncio.sleep(settings.ai_backup_sleep_seconds)
-        
+
         ai_backup_task = asyncio.create_task(ai_backup_cycle())
-        logger.info("AI backup cycle task started (runs every 10 minutes)")
+        logger.info(f"AI backup cycle task started (runs every {settings.ai_backup_sleep_seconds} seconds)")
         
     except Exception as e:
         logger.error(f"Failed to start AI backup cycle: {e}")
