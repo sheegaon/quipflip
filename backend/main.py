@@ -1,34 +1,36 @@
 """FastAPI application entry point."""
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.config import get_settings
 import logging
+from logging.handlers import RotatingFileHandler
 import os
 from pathlib import Path
 from contextlib import asynccontextmanager
-from datetime import datetime
 
+from backend.config import get_settings
 from backend.services.phrase_validator import get_phrase_validator
 from backend.services.prompt_seeder import auto_seed_prompts_if_empty
+from backend.routers import health, player, rounds, phrasesets, prompt_feedback, auth, quests
 
 # Create logs directory if it doesn't exist
 logs_dir = Path("logs")
 logs_dir.mkdir(exist_ok=True)
 
-# Set up log file path
+# Set up log file path (no timestamp - using rotation instead)
 log_file = logs_dir / "quipflip.log"
-
-# Rotate existing log file if it exists and has content
-if log_file.exists() and log_file.stat().st_size > 0:
-    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    rotated_log_file = logs_dir / f"quipflip_{timestamp}.log"
-    log_file.rename(rotated_log_file)
-    print(f"Rotated previous log to: {rotated_log_file.absolute()}")
 
 # Print log file location to console immediately
 print(f"Logging to: {log_file.absolute()}")
 
-# Configure logging with both console and file handlers
+# Create rotating file handler (1MB max size, keep 10 backup files)
+rotating_handler = RotatingFileHandler(
+    log_file,
+    maxBytes=1024*1024,  # 1MB
+    backupCount=10
+)
+rotating_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+
+# Configure logging with both console and rotating file handlers
 # Force=True ensures we override any existing configuration (e.g., from uvicorn)
 logging.basicConfig(
     level=logging.INFO,
@@ -36,20 +38,25 @@ logging.basicConfig(
     handlers=[
         # Console handler (stdout)
         logging.StreamHandler(),
-        # File handler (logs/quipflip.log)
-        logging.FileHandler(log_file),
+        # Rotating file handler
+        rotating_handler,
     ],
     force=True,
 )
 
 logger = logging.getLogger(__name__)
 
-# Add the file handler to the root logger explicitly
+# Add the rotating file handler to the root logger explicitly
 root_logger = logging.getLogger()
-if not any(isinstance(h, logging.FileHandler) for h in root_logger.handlers):
-    file_handler = logging.FileHandler(log_file)
-    file_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
-    root_logger.addHandler(file_handler)
+if not any(isinstance(h, RotatingFileHandler) for h in root_logger.handlers):
+    root_logger.addHandler(rotating_handler)
+
+# Configure Uvicorn's access logger to also write to our rotating log file
+uvicorn_access_logger = logging.getLogger("uvicorn.access")
+uvicorn_access_logger.setLevel(logging.INFO)
+# Add rotating file handler to uvicorn access logger if it doesn't have one
+if rotating_handler not in uvicorn_access_logger.handlers:
+    uvicorn_access_logger.addHandler(rotating_handler)
 
 # Test that logging is working
 logger.info("Logging system initialized")
@@ -114,8 +121,6 @@ app.add_middleware(
 )
 
 # Import and register routers
-from backend.routers import health, player, rounds, phrasesets, prompt_feedback, auth, quests
-
 app.include_router(health.router, tags=["health"])
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(player.router, prefix="/player", tags=["player"])
@@ -134,4 +139,3 @@ async def root():
         "environment": settings.environment,
         "docs": "/docs",
     }
-
