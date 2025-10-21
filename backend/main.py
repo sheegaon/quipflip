@@ -23,11 +23,7 @@ log_file = logs_dir / "quipflip.log"
 print(f"Logging to: {log_file.absolute()}")
 
 # Create rotating file handler (1MB max size, keep 10 backup files)
-rotating_handler = RotatingFileHandler(
-    log_file, 
-    maxBytes=1024*1024,  # 1MB
-    backupCount=10
-)
+rotating_handler = RotatingFileHandler(log_file, maxBytes=1024*1024, backupCount=10)  # 1 MB
 rotating_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
 
 # Configure logging with both console and rotating file handlers
