@@ -396,10 +396,14 @@ class AIService:
             # 2. Were created older than the backup delay
             # 3. Don't have contributions from the AI player (avoid self-votes)
             # 4. Haven't been voted on by the AI player already
+            # 5. Exclude phrasesets from test players
             phraseset_result = await self.db.execute(
                 select(PhraseSet)
+                .join(Round, Round.round_id == PhraseSet.prompt_round_id)
+                .join(Player, Player.player_id == Round.player_id)
                 .where(PhraseSet.status.in_(["open", "closing"]))
                 .where(PhraseSet.created_at <= cutoff_time)
+                .where(~Player.username.like('%test%'))  # Exclude test players
                 .options(
                     selectinload(PhraseSet.prompt_round),
                     selectinload(PhraseSet.copy_round_1),
