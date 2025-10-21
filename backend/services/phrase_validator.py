@@ -110,8 +110,8 @@ class PhraseValidator:
         # Choose similarity approach based on configuration
         if self.settings.use_sentence_transformers:
             try:
-                from sentence_transformers import SentenceTransformer
                 logger.info(f"Loading sentence transformer model: {self.settings.similarity_model}")
+                from sentence_transformers import SentenceTransformer
                 self._similarity_model = SentenceTransformer(self.settings.similarity_model)
                 self._similarity_calculator = None
                 logger.info("Sentence transformer model loaded successfully")

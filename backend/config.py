@@ -53,8 +53,8 @@ class Settings(BaseSettings):
     significant_word_min_length: int = 4
 
     # Similarity Checking
-    use_sentence_transformers: bool = False  # Set to True to use sentence-transformers, False for lightweight similarity
-    similarity_model: str = "paraphrase-MiniLM-L6-v2"  # Sentence transformer model (when use_sentence_transformers=True)
+    use_sentence_transformers: bool = True  # Set to True to use sentence-transformers, False for lightweight similarity
+    similarity_model: str = "paraphrase-MiniLM-L6-v2"  # Sentence transformer model
     prompt_relevance_threshold: float = 0.1  # Cosine similarity threshold for prompt relevance
     similarity_threshold: float = 0.8  # Cosine similarity threshold for rejecting similar phrases
     word_similarity_threshold: float = 0.8  # Minimum ratio for considering words too similar
