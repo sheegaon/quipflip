@@ -55,10 +55,10 @@ cp .env.example .env
 ## Development
 
 ```bash
-# Start development server
-npm run dev
+# Start development server (with option to see on local network)
+npm run dev -- --host
 
-# The app will be available at http://localhost:5173
+# The app will be available at http://localhost:5173 and on your local network
 ```
 
 ## Build

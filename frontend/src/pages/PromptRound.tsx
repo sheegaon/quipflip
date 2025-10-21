@@ -197,12 +197,12 @@ export const PromptRound: React.FC = () => {
 
         {/* Prompt */}
         <div className="bg-quip-navy bg-opacity-5 border-2 border-quip-navy rounded-tile p-6 py-8 mb-6 relative min-h-[120px] flex items-center">
-          <p className="text-2xl text-center font-display font-semibold text-quip-navy flex-1 pr-12">
+          <p className="text-xl md:text-2xl text-center font-display font-semibold text-quip-navy flex-1 pr-12">
             {roundData.prompt_text}
           </p>
 
           {/* Feedback Icons */}
-          <div className="absolute top-4 right-4 flex gap-1.5 md:gap-2">
+          <div className="absolute top-1 md:top-4 right-2 md:right-5 flex gap-1 md:gap-2">
             <button
               onClick={() => handleFeedback('like')}
               disabled={isSubmittingFeedback || roundData.status === 'submitted'}
