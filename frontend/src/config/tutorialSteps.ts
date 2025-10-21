@@ -53,9 +53,8 @@ For example: "The best pizza topping is ______"
 
 You might try writing "peppers and mushrooms" or "green and black olives".
 
-Then other players will try to write similar quips based on yours, but *without seeing the prompt*. The more uniquely your answer fits the prompt, the more coins you can earn!
-
-**Click "Next" to start your first Prompt Round.** The tutorial will resume when you finish.`,
+Then other players will try to write similar quips based on yours, but *without seeing the prompt*. The more uniquely your answer fits the prompt, the more coins you can earn!`,
+      // **Click "Next" to start your first Prompt Round.** The tutorial will resume when you finish.
     target: '.tutorial-prompt-round',
     position: 'bottom',
     nextStep: 'copy_round', // Changed from 'prompt_round_paused' to 'copy_round'
@@ -68,19 +67,17 @@ Then other players will try to write similar quips based on yours, but *without 
   copy_round: {
     id: 'copy_round',
     title: 'Write a Copy',
-    message: `Great job! Now let's try a **Copy Round**.
-
-In a Copy Round, you'll see another player's response to a prompt *without seeing the original prompt*.
+      // Great job! Now let's try a **Copy Round**.
+    message: `In a Copy Round, you'll see another player's response to a prompt *without seeing the original prompt*.
 
 Your job is to write a phrase that could blend in with the original. Make it convincing!
 
-Voters will try to identify the original, so the better you match the style, the more you earn.
-
-**Click "Next" to start a Copy Round.** The tutorial will resume when you finish.`,
+Voters will try to identify the original, so the better you match the style, the more you earn.`,
+      // **Click "Next" to start a Copy Round.** The tutorial will resume when you finish.
     target: '.tutorial-copy-input',
     position: 'top',
     action: 'wait',
-    nextStep: 'dashboard', // Return to dashboard, tutorial resumes after completion
+    nextStep: 'vote_round',
     showSkip: true,
     showBack: false,
   },
@@ -90,13 +87,13 @@ Voters will try to identify the original, so the better you match the style, the
   vote_round: {
     id: 'vote_round',
     title: 'Vote for the Original',
-    message: `Excellent! The final type of round is **Voting**.
+      // Excellent!
+    message: `The final type of round is **Voting**.
 
 You'll see a prompt and three phrases. One is the original, two are copies.
 
-Your goal is to identify which phrase was the original. Choose carefully - correct votes earn coins!
-
-**Make your vote now to complete the tutorial.**`,
+Your goal is to identify which phrase was the original. Choose carefully - correct votes earn coins!`,
+      // **Make your vote now to complete the tutorial.**
     target: '.tutorial-vote-options',
     position: 'top',
     action: 'wait',
