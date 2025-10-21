@@ -65,11 +65,11 @@ class SQLTransactionFilter(logging.Filter):
         # Only filter INFO level messages
         if record.levelno == logging.INFO and hasattr(record, 'getMessage'):
             message = record.getMessage()
-            
+
             # Filter out ROLLBACK, BEGIN, and "generated in" messages completely
             if any(keyword in message for keyword in ['ROLLBACK', 'BEGIN', 'generated in']):
                 return False
-            
+
             # Remove line breaks from SELECT statements but keep the message
             if 'SELECT' in message:
                 # Replace newlines and multiple spaces with single spaces
@@ -77,7 +77,7 @@ class SQLTransactionFilter(logging.Filter):
                 # Modify the record's message
                 record.msg = clean_message
                 record.args = ()
-        
+
         return True
 
 
@@ -118,7 +118,7 @@ async def lifespan(app: FastAPI):
         import asyncio
         from backend.database import AsyncSessionLocal
         from backend.services.ai_service import AIService
-        
+
         async def ai_backup_cycle():
             """Background task to run AI backup cycles."""
             while True:
@@ -128,17 +128,17 @@ async def lifespan(app: FastAPI):
                 try:
                     async with AsyncSessionLocal() as db:
                         ai_service = AIService(db, validator)
-                        
+
                         stats = await ai_service.run_backup_cycle()
                         if stats["copies_generated"] > 0 or stats["errors"] > 0:
                             logger.info(f"AI backup cycle completed: {stats}")
-                        
+
                 except Exception as e:
                     logger.error(f"AI backup cycle error: {e}")
 
         ai_backup_task = asyncio.create_task(ai_backup_cycle())
         logger.info(f"AI backup cycle task started (runs every {settings.ai_backup_sleep_seconds} seconds)")
-        
+
     except Exception as e:
         logger.error(f"Failed to start AI backup cycle: {e}")
 
@@ -152,7 +152,7 @@ async def lifespan(app: FastAPI):
                 await ai_backup_task
             except asyncio.CancelledError:
                 logger.info("AI backup cycle task cancelled")
-        
+
         logger.info("Quipflip API Shutting Down")
 
 
