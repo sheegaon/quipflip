@@ -59,7 +59,23 @@ if rotating_handler not in uvicorn_access_logger.handlers:
     uvicorn_access_logger.addHandler(rotating_handler)
 
 # Test that logging is working
-logger.info("Logging system initialized")
+logger.info("=" * 100)
+logger.info("*" * 20 + " Logging system initialized " + "*" * 20)
+
+
+class SQLTransactionFilter(logging.Filter):
+    def filter(self, record):
+        # Only filter INFO level ROLLBACK and BEGIN messages
+        if record.levelno == logging.INFO and hasattr(record, 'getMessage'):
+            message = record.getMessage()
+            return not any(keyword in message for keyword in ['ROLLBACK', 'BEGIN', 'generated in'])
+        return True
+
+
+# Apply the filter to SQLAlchemy engine logger
+sqlalchemy_logger = logging.getLogger("sqlalchemy.engine.Engine")
+sqlalchemy_logger.addFilter(SQLTransactionFilter())
+
 
 settings = get_settings()
 
