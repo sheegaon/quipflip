@@ -10,6 +10,7 @@ import logging
 from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from backend.config import get_settings
 from backend.models.player import Player
@@ -389,13 +390,17 @@ class AIService:
                     continue
 
             # Find phrasesets waiting for votes that are older than backup delay
-            from sqlalchemy.orm import selectinload
+            # Create subquery to find phrasesets where AI has already voted
+            ai_voted_subquery = (
+                select(Vote.phraseset_id)
+                .where(Vote.player_id == ai_player.player_id)
+            )
             
             # Query for phrasesets that:
             # 1. Are in "open" or "closing" status (accepting votes)
             # 2. Were created older than the backup delay
             # 3. Don't have contributions from the AI player (avoid self-votes)
-            # 4. Haven't been voted on by the AI player already
+            # 4. Haven't been voted on by the AI player already (using subquery)
             # 5. Exclude phrasesets from test players
             phraseset_result = await self.db.execute(
                 select(PhraseSet)
@@ -404,6 +409,7 @@ class AIService:
                 .where(PhraseSet.status.in_(["open", "closing"]))
                 .where(PhraseSet.created_at <= cutoff_time)
                 .where(~Player.username.like('%test%'))  # Exclude test players
+                .where(PhraseSet.phraseset_id.not_in(ai_voted_subquery))  # Exclude already voted
                 .options(
                     selectinload(PhraseSet.prompt_round),
                     selectinload(PhraseSet.copy_round_1),
@@ -415,25 +421,15 @@ class AIService:
             
             waiting_phrasesets = list(phraseset_result.scalars().all())
             
-            # Filter out phrasesets where AI was a contributor or already voted
+            # Filter out phrasesets where AI was a contributor (in-memory check since we need loaded relationships)
             filtered_phrasesets = []
             for phraseset in waiting_phrasesets:
                 # Skip if AI player was a contributor
-                if ai_player.player_id in {
+                if ai_player.player_id not in {
                     phraseset.prompt_round.player_id,
                     phraseset.copy_round_1.player_id,
                     phraseset.copy_round_2.player_id,
                 }:
-                    continue
-                
-                # Skip if AI player already voted
-                ai_vote_result = await self.db.execute(
-                    select(Vote.vote_id)
-                    .where(Vote.phraseset_id == phraseset.phraseset_id)
-                    .where(Vote.player_id == ai_player.player_id)
-                )
-                
-                if ai_vote_result.scalar_one_or_none() is None:
                     filtered_phrasesets.append(phraseset)
             
             stats["phrasesets_checked"] = len(filtered_phrasesets)
