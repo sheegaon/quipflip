@@ -53,9 +53,10 @@ class Settings(BaseSettings):
     significant_word_min_length: int = 4
 
     # Similarity Checking
+    use_sentence_transformers: bool = False  # Set to True to use sentence-transformers, False for lightweight similarity
+    similarity_model: str = "paraphrase-MiniLM-L6-v2"  # Sentence transformer model (when use_sentence_transformers=True)
     prompt_relevance_threshold: float = 0.1  # Cosine similarity threshold for prompt relevance
     similarity_threshold: float = 0.8  # Cosine similarity threshold for rejecting similar phrases
-    similarity_model: str = "paraphrase-MiniLM-L6-v2"  # Sentence transformer model
     word_similarity_threshold: float = 0.8  # Minimum ratio for considering words too similar
 
     # AI Service
@@ -72,20 +73,19 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def validate_all_config(self):
         """Validate security configuration and normalize Postgres URLs."""
-        import logging
         logger = logging.getLogger(__name__)
         
         logger.info("=== CONFIG VALIDATION DEBUG ===")
         
         # Security validation
-        # if self.environment == "production":
-        #     if len(self.secret_key) < 32:
-        #         raise ValueError(
-        #             "secret_key must be at least 32 characters in production. "
-        #             "Generate a secure key with: python -c 'import secrets; print(secrets.token_urlsafe(32))'"
-        #         )
-        #     if self.secret_key == "dev-secret-key-change-in-production":
-        #         raise ValueError("secret_key must be changed from default value in production")
+        if self.environment == "production":
+            if len(self.secret_key) < 32:
+                raise ValueError(
+                    "secret_key must be at least 32 characters in production. "
+                    "Generate a secure key with: python -c 'import secrets; print(secrets.token_urlsafe(32))'"
+                )
+            if self.secret_key == "dev-secret-key-change-in-production":
+                raise ValueError("secret_key must be changed from default value in production")
 
         # Validate JWT algorithm
         if self.jwt_algorithm not in ["HS256", "HS384", "HS512"]:
