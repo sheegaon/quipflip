@@ -23,6 +23,10 @@ from backend.services.round_service import RoundService
 logger = logging.getLogger(__name__)
 
 
+class AIServiceError(RuntimeError):
+    """Raised when AI service fails."""
+
+
 class AICopyError(RuntimeError):
     """Raised when AI copy generation fails."""
 
@@ -41,7 +45,7 @@ class AIService:
 
     def __init__(self, db: AsyncSession, validator: PhraseValidator):
         """
-        Initialize AI copy service.
+        Initialize AI service.
 
         Args:
             db: Database session
@@ -78,6 +82,9 @@ class AIService:
         elif configured_provider == "gemini" and gemini_key:
             logger.info("Using Gemini as AI copy provider")
             return "gemini"
+        elif configured_provider == "none":
+            logger.error("No AI provider configured")
+            raise AIServiceError("AI provider set to 'none' - cannot proceed")
 
         # Fallback logic
         if openai_key:
@@ -93,7 +100,7 @@ class AIService:
 
         # No provider available
         logger.error("No AI provider API keys found (OPENAI_API_KEY or GEMINI_API_KEY)")
-        raise AICopyError("No AI provider configured - set OPENAI_API_KEY or GEMINI_API_KEY")
+        raise AIServiceError("No AI provider configured - set OPENAI_API_KEY or GEMINI_API_KEY")
 
     async def _get_or_create_ai_player(self) -> Player:
         """
