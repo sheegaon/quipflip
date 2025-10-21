@@ -5,7 +5,7 @@ Tests AI copy generation, voting, metrics tracking, and error handling.
 """
 
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import patch, MagicMock
 from datetime import datetime, UTC
 import uuid
 
@@ -21,8 +21,8 @@ from backend.models.ai_metric import AIMetric
 @pytest.fixture
 def mock_validator():
     """Mock phrase validator."""
-    validator = AsyncMock(spec=PhraseValidator)
-    validator.validate_phrase = AsyncMock(return_value=MagicMock(is_valid=True))
+    validator = MagicMock(spec=PhraseValidator)
+    validator.validate.return_value = (True, "")
     return validator
 
 
@@ -98,12 +98,11 @@ class TestAICopyGeneration:
         service = AIService(db_session, mock_validator)
         result = await service.generate_copy_phrase(
             original_phrase="happy birthday",
-            prompt_text="A celebration greeting"
         )
 
         assert result == "joyful celebration"
         mock_openai.assert_called_once()
-        mock_validator.validate_phrase.assert_called_once_with("joyful celebration")
+        mock_validator.validate.assert_called_once_with("joyful celebration")
 
     @pytest.mark.asyncio
     @patch('backend.services.gemini_api.generate_copy')
@@ -122,7 +121,6 @@ class TestAICopyGeneration:
             service = AIService(db_session, mock_validator)
             result = await service.generate_copy_phrase(
                 original_phrase="happy birthday",
-                prompt_text="A celebration greeting"
             )
 
             assert result == "merry festivity"
@@ -136,17 +134,13 @@ class TestAICopyGeneration:
     ):
         """Should raise error when generated phrase fails validation."""
         mock_openai.return_value = "invalid phrase!!!"
-        mock_validator.validate_phrase.return_value = MagicMock(
-            is_valid=False,
-            error_message="Invalid characters"
-        )
+        mock_validator.validate.return_value = (False, "Invalid characters")
 
         service = AIService(db_session, mock_validator)
 
         with pytest.raises(AICopyError, match="Invalid characters"):
             await service.generate_copy_phrase(
                 original_phrase="happy birthday",
-                prompt_text="A celebration greeting"
             )
 
     @pytest.mark.asyncio
@@ -163,7 +157,6 @@ class TestAICopyGeneration:
         with pytest.raises(AICopyError, match="Failed to generate AI copy"):
             await service.generate_copy_phrase(
                 original_phrase="happy birthday",
-                prompt_text="A celebration greeting"
             )
 
 
@@ -217,7 +210,6 @@ class TestAIMetrics:
         service = AIService(db_session, mock_validator)
         await service.generate_copy_phrase(
             original_phrase="happy birthday",
-            prompt_text="A celebration greeting"
         )
 
         # Check that metric was created (but not committed yet)
@@ -239,17 +231,13 @@ class TestAIMetrics:
     ):
         """Should record metrics on failed operation."""
         mock_openai.return_value = "invalid!!!"
-        mock_validator.validate_phrase.return_value = MagicMock(
-            is_valid=False,
-            error_message="Invalid characters"
-        )
+        mock_validator.validate.return_value = (False, "Invalid characters")
 
         service = AIService(db_session, mock_validator)
 
         with pytest.raises(AICopyError):
             await service.generate_copy_phrase(
                 original_phrase="happy birthday",
-                prompt_text="A celebration greeting"
             )
 
         # Check that failure metric was created

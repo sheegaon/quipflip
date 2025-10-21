@@ -77,8 +77,8 @@ class AIMetricsService:
         response_tokens = response_length / 4
 
         costs = COST_PER_1M_TOKENS.get(model, {"input": 0.0001, "output": 0.0003})
-        input_cost = (prompt_tokens / 1000) * costs["input"]
-        output_cost = (response_tokens / 1000) * costs["output"]
+        input_cost = (prompt_tokens / 1_000_000) * costs["input"]
+        output_cost = (response_tokens / 1_000_000) * costs["output"]
 
         return input_cost + output_cost
 

@@ -17,6 +17,8 @@ from backend.models.round import Round
 from backend.models.phraseset import PhraseSet
 from backend.services.phrase_validator import PhraseValidator
 from backend.services.ai_metrics_service import AIMetricsService, MetricsTracker
+from backend.services.player_service import PlayerService
+from backend.services.round_service import RoundService
 
 logger = logging.getLogger(__name__)
 
@@ -110,8 +112,6 @@ class AIService:
 
         if not ai_player:
             # Create AI player
-            from backend.services.player_service import PlayerService
-
             player_service = PlayerService(self.db)
 
             ai_player = await player_service.create_player(
@@ -251,7 +251,6 @@ class AIService:
             tracker.set_result(
                 chosen_phrase,
                 success=True,
-                prompt_length=len(prompt_text) + sum(len(p) for p in phrases),
                 response_length=len(str(choice_index)),
                 vote_correct=vote_correct,
             )
@@ -310,7 +309,7 @@ class AIService:
                 .where(Round.created_at <= cutoff_time)
                 .where(Round.player_id != ai_player.player_id)
                 .where(PhraseSet.phraseset_id.is_(None))  # No phraseset yet
-                .limit(10)  # Process a reasonable batch size
+                .limit(self.settings.ai_backup_batch_size)  # Configurable batch size
             )
             
             waiting_prompts = list(result.scalars().all())
@@ -331,19 +330,15 @@ class AIService:
             stats["prompts_checked"] = len(filtered_prompts)
             logger.info(f"Found {len(filtered_prompts)} prompts waiting for AI backup copies")
             
+            round_service = RoundService(self.db)
+
             # Process each waiting prompt
             for prompt_round in filtered_prompts:
                 try:
                     # Generate AI copy phrase
                     copy_phrase = await self.generate_copy_phrase(prompt_round.submitted_phrase)
-                    
+
                     # Create copy round for AI player
-                    from backend.services.round_service import RoundService
-                    from backend.services.transaction_service import TransactionService
-                    
-                    transaction_service = TransactionService(self.db)
-                    round_service = RoundService(self.db)
-                    
                     # Start copy round for AI player
                     copy_round = Round(
                         round_id=uuid.uuid4(),
