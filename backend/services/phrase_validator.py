@@ -49,23 +49,28 @@ class PhraseValidator:
 
     def __init__(self):
         self.settings = get_settings()
+
         self.dictionary: Set[str] = _load_dictionary()
-        self._similarity_model = None  # Lazy load on first use
         logger.info(f"Loaded dictionary with {len(self.dictionary)} words")
 
-    @property
-    def similarity_model(self):
-        """Lazy load sentence transformer model."""
-        if self._similarity_model is None:
-            try:
-                from sentence_transformers import SentenceTransformer
-                logger.info(f"Loading similarity model: {self.settings.similarity_model}")
-                self._similarity_model = SentenceTransformer(self.settings.similarity_model)
-                logger.info("Similarity model loaded successfully")
-            except Exception as e:
-                logger.error(f"Failed to load similarity model: {e}")
-                raise
-        return self._similarity_model
+        from sentence_transformers import SentenceTransformer
+        logger.info(f"Loading similarity model: {self.settings.similarity_model}")
+        self._similarity_model = SentenceTransformer(self.settings.similarity_model)
+        logger.info("Similarity model loaded successfully")
+
+    # @property
+    # def similarity_model(self):
+    #     """Lazy load sentence transformer model."""
+    #     if self._similarity_model is None:
+    #         try:
+    #             from sentence_transformers import SentenceTransformer
+    #             logger.info(f"Loading similarity model: {self.settings.similarity_model}")
+    #             self._similarity_model = SentenceTransformer(self.settings.similarity_model)
+    #             logger.info("Similarity model loaded successfully")
+    #         except Exception as e:
+    #             logger.error(f"Failed to load similarity model: {e}")
+    #             raise
+    #     return self._similarity_model
 
     def calculate_similarity(self, phrase1: str, phrase2: str) -> float:
         """
@@ -84,7 +89,7 @@ class PhraseValidator:
             phrase2 = phrase2.strip().lower()
 
             # Get embeddings
-            embeddings = self.similarity_model.encode([phrase1, phrase2])
+            embeddings = self._similarity_model.encode([phrase1, phrase2])
 
             # Calculate cosine similarity
             similarity = cosine_similarity([embeddings[0]], [embeddings[1]])[0][0]

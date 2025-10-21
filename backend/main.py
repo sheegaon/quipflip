@@ -68,7 +68,7 @@ class SQLTransactionFilter(logging.Filter):
             message = record.getMessage()
 
             # Filter out ROLLBACK, BEGIN, and "generated in" messages completely
-            if any(keyword in message for keyword in ['ROLLBACK', 'BEGIN', 'generated in']):
+            if any(keyword in message for keyword in ['ROLLBACK', 'BEGIN', 'COMMIT', 'generated in']):
                 return False
 
             # Remove line breaks from SELECT statements but keep the message
