@@ -31,7 +31,7 @@ try:
             logger.warning("No password found in DATABASE_URL!")
         else:
             logger.debug("Using SQLite (no password required)")
-        
+
 except Exception as e:
     logger.error(f"Failed to parse DATABASE_URL: {e}")
     logger.error(f"Raw URL (first 50 chars): {settings.database_url[:50]}...")
@@ -39,8 +39,8 @@ except Exception as e:
 # Determine if we need SSL (for Heroku or other cloud databases)
 connect_args = {}
 needs_ssl = (
-    "heroku" in settings.database_url or 
-    "amazonaws" in settings.database_url or 
+    "heroku" in settings.database_url or
+    "amazonaws" in settings.database_url or
     settings.environment == "production"
 )
 
