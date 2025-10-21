@@ -594,3 +594,14 @@ The Quipflip AI Service is a production-ready system that provides:
 - **Quality**: Phrase validation and vote accuracy monitoring
 
 The service successfully handles both copy generation and voting scenarios, with full metrics tracking for operational excellence. It's ready for production deployment with proper monitoring and cost controls in place.
+
+## TODO
+This entire block for processing waiting phrasesets duplicates a large amount of complex business logic from VoteService (e.g., creating votes, handling payouts, updating vote timelines and phraseset statuses). This is a significant maintainability risk, as any future changes to the voting process will need to be updated in two places.
+
+Instead of duplicating this logic, VoteService should be refactored to support programmatic voting by the AI. For example, you could create a new method in VoteService like submit_ai_vote(self, phraseset: PhraseSet, player: Player, chosen_phrase: str) that encapsulates all the necessary steps.
+
+Additionally, the duplicated code contains several inefficiencies:
+
+Local imports and instantiation in loop: TransactionService is imported and instantiated inside the loop (lines 468-469).
+Unnecessary database queries: The code fetches prompt_round using db.get (line 481) even though it was already eager-loaded and is available via phraseset.prompt_round.
+Refactoring to use a centralized VoteService method will resolve the duplication and fix these performance issues.
