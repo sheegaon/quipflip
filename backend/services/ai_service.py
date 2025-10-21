@@ -19,6 +19,7 @@ from backend.services.phrase_validator import PhraseValidator
 from backend.services.ai_metrics_service import AIMetricsService, MetricsTracker
 from backend.services.player_service import PlayerService
 from backend.services.round_service import RoundService
+from backend.models.vote import Vote
 
 logger = logging.getLogger(__name__)
 
@@ -271,13 +272,15 @@ class AIService:
 
     async def run_backup_cycle(self):
         """
-        Run a backup cycle to provide AI copies for waiting prompts.
+        Run a backup cycle to provide AI copies for waiting prompts and AI votes for waiting phrasesets.
 
         This method:
         1. Finds prompts that have been waiting for copies longer than the backup delay
         2. Generates AI copies for those prompts
         3. Submits the copies as the AI player
-        # TODO find and submit votes for phrasesets waiting for votes
+        4. Finds phrasesets that have been waiting for votes longer than the backup delay
+        5. Generates AI votes for those phrasesets
+        6. Submits the votes as the AI player
 
         Note:
             This is the main entry point for the AI backup system and manages the complete transaction lifecycle.
@@ -299,7 +302,7 @@ class AIService:
 
             # Find prompts waiting for copies that are older than backup delay
             cutoff_time = datetime.now(UTC) - timedelta(minutes=self.settings.ai_backup_delay_minutes)
-            
+
             # Query for submitted prompt rounds that:
             # 1. Don't have a phraseset yet (still waiting for copies)
             # 2. Are older than the backup delay
@@ -339,8 +342,6 @@ class AIService:
             stats["prompts_checked"] = len(filtered_prompts)
             logger.info(f"Found {len(filtered_prompts)} prompts waiting for AI backup copies")
             
-            round_service = RoundService(self.db)
-
             # Process each waiting prompt
             for prompt_round in filtered_prompts:
                 try:
@@ -348,6 +349,8 @@ class AIService:
                     copy_phrase = await self.generate_copy_phrase(prompt_round.submitted_phrase)
 
                     # Create copy round for AI player
+                    round_service = RoundService(self.db)
+
                     # Start copy round for AI player
                     copy_round = Round(
                         round_id=uuid.uuid4(),
@@ -378,10 +381,126 @@ class AIService:
                                 prompt_round.phraseset_status = "active"
                     
                     stats["copies_generated"] += 1
-                    logger.info(f"AI generated backup copy '{copy_phrase}' for prompt '{prompt_round.submitted_phrase}'")
+                    logger.info(f"AI generated copy '{copy_phrase}' for prompt '{prompt_round.submitted_phrase}'")
                     
                 except Exception as e:
                     logger.error(f"Failed to generate AI copy for prompt {prompt_round.round_id}: {e}")
+                    stats["errors"] += 1
+                    continue
+
+            # Find phrasesets waiting for votes that are older than backup delay
+            from sqlalchemy.orm import selectinload
+            
+            # Query for phrasesets that:
+            # 1. Are in "open" or "closing" status (accepting votes)
+            # 2. Were created older than the backup delay
+            # 3. Don't have contributions from the AI player (avoid self-votes)
+            # 4. Haven't been voted on by the AI player already
+            phraseset_result = await self.db.execute(
+                select(PhraseSet)
+                .where(PhraseSet.status.in_(["open", "closing"]))
+                .where(PhraseSet.created_at <= cutoff_time)
+                .options(
+                    selectinload(PhraseSet.prompt_round),
+                    selectinload(PhraseSet.copy_round_1),
+                    selectinload(PhraseSet.copy_round_2),
+                )
+                .order_by(PhraseSet.created_at.asc())  # Process oldest first
+                .limit(self.settings.ai_backup_batch_size)  # Use configured batch size
+            )
+            
+            waiting_phrasesets = list(phraseset_result.scalars().all())
+            
+            # Filter out phrasesets where AI was a contributor or already voted
+            filtered_phrasesets = []
+            for phraseset in waiting_phrasesets:
+                # Skip if AI player was a contributor
+                if ai_player.player_id in {
+                    phraseset.prompt_round.player_id,
+                    phraseset.copy_round_1.player_id,
+                    phraseset.copy_round_2.player_id,
+                }:
+                    continue
+                
+                # Skip if AI player already voted
+                ai_vote_result = await self.db.execute(
+                    select(Vote.vote_id)
+                    .where(Vote.phraseset_id == phraseset.phraseset_id)
+                    .where(Vote.player_id == ai_player.player_id)
+                )
+                
+                if ai_vote_result.scalar_one_or_none() is None:
+                    filtered_phrasesets.append(phraseset)
+            
+            stats["phrasesets_checked"] = len(filtered_phrasesets)
+            logger.info(f"Found {len(filtered_phrasesets)} phrasesets waiting for AI backup votes")
+            
+            # Process each waiting phraseset
+            for phraseset in filtered_phrasesets:
+                try:
+                    # Generate AI vote choice
+                    chosen_phrase = await self.generate_vote_choice(phraseset)
+                    
+                    # Create vote directly (simpler than going through vote service)
+                    # Determine if vote is correct
+                    correct = chosen_phrase == phraseset.original_phrase
+                    payout = self.settings.vote_payout_correct if correct else 0
+                    
+                    # Create vote record
+                    vote = Vote(
+                        vote_id=uuid.uuid4(),
+                        phraseset_id=phraseset.phraseset_id,
+                        player_id=ai_player.player_id,
+                        voted_phrase=chosen_phrase,
+                        correct=correct,
+                        payout=payout,
+                    )
+                    
+                    self.db.add(vote)
+                    await self.db.flush()
+                    
+                    # Give payout if correct (AI gets rewards like normal players)
+                    if correct:
+                        from backend.services.transaction_service import TransactionService
+                        transaction_service = TransactionService(self.db)
+                        await transaction_service.create_transaction(
+                            ai_player.player_id,
+                            payout,
+                            "vote_payout",
+                            vote.vote_id,
+                        )
+                    
+                    # Update phraseset vote count
+                    phraseset.vote_count += 1
+                    
+                    # Update vote timeline markers (copied from vote_service logic)
+                    prompt_round = await self.db.get(Round, phraseset.prompt_round_id)
+                    if (prompt_round and phraseset.vote_count >= 1 and
+                            prompt_round.phraseset_status not in {"closing", "finalized"}):
+                        prompt_round.phraseset_status = "voting"
+
+                    # Mark 3rd vote timestamp
+                    if phraseset.vote_count == 3 and not phraseset.third_vote_at:
+                        phraseset.third_vote_at = datetime.now(UTC)
+                        logger.info(f"Phraseset {phraseset.phraseset_id} reached 3rd vote via AI, 10min window starts")
+
+                    # Mark 5th vote timestamp and change status to closing
+                    if phraseset.vote_count == 5 and not phraseset.fifth_vote_at:
+                        phraseset.fifth_vote_at = datetime.now(UTC)
+                        phraseset.status = "closing"
+                        phraseset.closes_at = datetime.now(UTC) + timedelta(seconds=60)
+                        if prompt_round:
+                            prompt_round.phraseset_status = "closing"
+                        logger.info(f"Phraseset {phraseset.phraseset_id} reached 5th vote via AI, 60sec closing window")
+                    
+                    stats["votes_generated"] += 1
+                    logger.info(
+                        f"AI generated vote '{chosen_phrase}' for phraseset {phraseset.phraseset_id} "
+                        f"({'CORRECT' if correct else 'INCORRECT'}, payout: ${payout})"
+                    )
+                    
+                except Exception as e:
+                    logger.error(f"Failed to generate AI vote for phraseset {phraseset.phraseset_id}: {e}")
                     stats["errors"] += 1
                     continue
             
