@@ -5,10 +5,7 @@ import logging
 from difflib import SequenceMatcher
 from typing import Set
 
-from sklearn.metrics.pairwise import cosine_similarity
-
 from backend.config import get_settings
-from backend.utils.exceptions import InvalidPhraseError, DuplicatePhraseError, PhraseTooSimilarError
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +35,63 @@ def _load_dictionary() -> Set[str]:
         return {line.strip().upper() for line in f if line.strip()}
 
 
+class LightweightSimilarityCalculator:
+    """Lightweight similarity calculator using TF-IDF and string matching."""
+    
+    def __init__(self):
+        from sklearn.feature_extraction.text import TfidfVectorizer
+
+        self.vectorizer = TfidfVectorizer(
+            ngram_range=(1, 2),  # Use unigrams and bigrams
+            lowercase=True,
+            stop_words=None,  # Don't remove stop words for short phrases
+            max_features=1000   # Limit features for efficiency
+        )
+    
+    def calculate_similarity(self, phrase1: str, phrase2: str) -> float:
+        """
+        Calculate similarity using a combination of TF-IDF cosine similarity,
+        Jaccard similarity, and string similarity.
+        """
+        from sklearn.metrics.pairwise import cosine_similarity
+
+        try:
+            # Normalize phrases
+            phrase1 = phrase1.strip().lower()
+            phrase2 = phrase2.strip().lower()
+            
+            if phrase1 == phrase2:
+                return 1.0
+            
+            # TF-IDF cosine similarity
+            tfidf_matrix = self.vectorizer.fit_transform([phrase1, phrase2])
+            tfidf_similarity = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:2])[0][0]
+            
+            # Jaccard similarity (word overlap)
+            words1 = set(phrase1.split())
+            words2 = set(phrase2.split())
+            jaccard_similarity = len(words1 & words2) / len(words1 | words2) if words1 | words2 else 0
+            
+            # String similarity using difflib
+            string_similarity = SequenceMatcher(None, phrase1, phrase2).ratio()
+            
+            # Weighted combination (can be tuned)
+            combined_similarity = (
+                0.5 * tfidf_similarity +
+                0.3 * jaccard_similarity +
+                0.2 * string_similarity
+            )
+            
+            logger.debug(f"Similarity between '{phrase1}' and '{phrase2}': {combined_similarity:.4f}")
+            return float(combined_similarity)
+            
+        except Exception as e:
+            logger.error(f"Error calculating similarity: {e}")
+            # If similarity check fails, be conservative and allow the phrase
+            logger.warning("Similarity check failed, allowing phrase")
+            return 0.0
+
+
 class PhraseValidator:
     """Validates phrases against dictionary and similarity constraints."""
 
@@ -53,28 +107,33 @@ class PhraseValidator:
         self.dictionary: Set[str] = _load_dictionary()
         logger.info(f"Loaded dictionary with {len(self.dictionary)} words")
 
-        from sentence_transformers import SentenceTransformer
-        logger.info(f"Loading similarity model: {self.settings.similarity_model}")
-        self._similarity_model = SentenceTransformer(self.settings.similarity_model)
-        logger.info("Similarity model loaded successfully")
-
-    # @property
-    # def similarity_model(self):
-    #     """Lazy load sentence transformer model."""
-    #     if self._similarity_model is None:
-    #         try:
-    #             from sentence_transformers import SentenceTransformer
-    #             logger.info(f"Loading similarity model: {self.settings.similarity_model}")
-    #             self._similarity_model = SentenceTransformer(self.settings.similarity_model)
-    #             logger.info("Similarity model loaded successfully")
-    #         except Exception as e:
-    #             logger.error(f"Failed to load similarity model: {e}")
-    #             raise
-    #     return self._similarity_model
+        # Choose similarity approach based on configuration
+        if self.settings.use_sentence_transformers:
+            try:
+                logger.info(f"Loading sentence transformer model: {self.settings.similarity_model}")
+                from sentence_transformers import SentenceTransformer
+                self._similarity_model = SentenceTransformer(self.settings.similarity_model)
+                self._similarity_calculator = None
+                logger.info("Sentence transformer model loaded successfully")
+            except ImportError:
+                logger.error("sentence-transformers not installed but use_sentence_transformers=True")
+                logger.info("Falling back to lightweight similarity calculator")
+                self._similarity_model = None
+                self._similarity_calculator = LightweightSimilarityCalculator()
+            except Exception as e:
+                logger.error(f"Failed to load sentence transformer model: {e}")
+                logger.info("Falling back to lightweight similarity calculator")
+                self._similarity_model = None
+                self._similarity_calculator = LightweightSimilarityCalculator()
+        else:
+            # Use lightweight similarity calculator
+            self._similarity_model = None
+            self._similarity_calculator = LightweightSimilarityCalculator()
+            logger.info("Lightweight similarity calculator initialized")
 
     def calculate_similarity(self, phrase1: str, phrase2: str) -> float:
         """
-        Calculate cosine similarity between two phrases using sentence embeddings.
+        Calculate similarity between two phrases using configured method.
 
         Args:
             phrase1: First phrase
@@ -83,24 +142,30 @@ class PhraseValidator:
         Returns:
             Similarity score between 0.0 and 1.0
         """
-        try:
-            # Normalize phrases
-            phrase1 = phrase1.strip().lower()
-            phrase2 = phrase2.strip().lower()
+        if self._similarity_model is not None:
+            # Use sentence transformers
+            try:
+                # Normalize phrases
+                phrase1 = phrase1.strip().lower()
+                phrase2 = phrase2.strip().lower()
 
-            # Get embeddings
-            embeddings = self._similarity_model.encode([phrase1, phrase2])
+                # Get embeddings
+                embeddings = self._similarity_model.encode([phrase1, phrase2])
 
-            # Calculate cosine similarity
-            similarity = cosine_similarity([embeddings[0]], [embeddings[1]])[0][0]
+                # Calculate cosine similarity
+                from sklearn.metrics.pairwise import cosine_similarity
+                similarity = cosine_similarity([embeddings[0]], [embeddings[1]])[0][0]
 
-            logger.debug(f"Similarity between '{phrase1}' and '{phrase2}': {similarity:.4f}")
-            return float(similarity)
-        except Exception as e:
-            logger.error(f"Error calculating similarity: {e}")
-            # If similarity check fails, be conservative and allow the phrase
-            logger.warning("Similarity check failed, allowing phrase")
-            return 0.0
+                logger.debug(f"Similarity between '{phrase1}' and '{phrase2}': {similarity:.4f}")
+                return float(similarity)
+            except Exception as e:
+                logger.error(f"Error calculating similarity with sentence transformers: {e}")
+                # If similarity check fails, be conservative and allow the phrase
+                logger.warning("Sentence transformer similarity check failed, allowing phrase")
+                return 0.0
+        else:
+            # Use lightweight similarity calculator
+            return self._similarity_calculator.calculate_similarity(phrase1, phrase2)
 
     def validate(self, phrase: str) -> tuple[bool, str]:
         """

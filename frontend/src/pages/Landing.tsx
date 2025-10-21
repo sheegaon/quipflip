@@ -85,11 +85,11 @@ export const Landing: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-quip-orange to-quip-turquoise flex items-center justify-center p-4 bg-pattern">
       <div className="max-w-md w-full tile-card p-8 animate-slide-up">
         {/* Logo */}
-        <div className="flex justify-center mb-6">
+        <div className="flex justify-center mb-4">
           <img
-            src="/quipflip_logo_horizontal_transparent.png"
+            src="/quipflip_logo.png"
             alt="Quipflip"
-            className="h-32 w-auto"
+            className="h-auto w-auto"
           />
         </div>
 
