@@ -93,7 +93,18 @@ const extractErrorMessage = (error: any): string => {
         return 'Please check your input and try again.';
       }
       if (typeof detail === 'string') {
-        // Improve common backend error messages
+        // Handle specific backend error codes with user-friendly messages
+        if (detail === 'email_taken') {
+          return 'This email is already registered. Try logging in instead.';
+        }
+        if (detail === 'username_generation_failed') {
+          return 'Unable to create a unique username. Please try again or contact support.';
+        }
+        if (detail === 'invalid_username') {
+          return 'The username format is invalid. Please try again.';
+        }
+        
+        // Improve other common backend error messages
         if (detail.includes('already exists')) {
           return 'This email is already registered. Try logging in instead.';
         }
