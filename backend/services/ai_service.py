@@ -7,7 +7,7 @@ with configurable fallback behavior and comprehensive metrics tracking.
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -271,6 +271,97 @@ class AIService:
 
             return chosen_phrase
 
+    async def _check_and_finalize_phraseset(self, phraseset: PhraseSet):
+        """
+        Check if phraseset should be finalized and finalize it if necessary.
+        
+        This mirrors the logic from VoteService._check_and_finalize() to ensure
+        AI votes trigger proper finalization when conditions are met.
+
+        Conditions for finalization:
+        - 20 votes (max)
+        - OR 5+ votes AND 60 seconds elapsed since 5th vote
+        - OR 3 votes AND 10 minutes elapsed since 3rd vote
+        """
+        should_finalize = False
+        current_time = datetime.now(UTC)
+
+        # Max votes reached
+        if phraseset.vote_count >= 20:
+            should_finalize = True
+            logger.info(f"Phraseset {phraseset.phraseset_id} reached max votes (20) via AI vote")
+
+        # 5+ votes and 60 seconds elapsed
+        elif phraseset.vote_count >= 5 and phraseset.fifth_vote_at:
+            fifth_vote_at = phraseset.fifth_vote_at
+            # Handle timezone-naive datetime from database
+            if fifth_vote_at.tzinfo is None:
+                fifth_vote_at = fifth_vote_at.replace(tzinfo=UTC)
+            
+            elapsed = (current_time - fifth_vote_at).total_seconds()
+            if elapsed >= 60:
+                should_finalize = True
+                logger.info(f"Phraseset {phraseset.phraseset_id} closing window expired (60s) after AI vote")
+
+        # 3 votes and 10 minutes elapsed (no 5th vote)
+        elif phraseset.vote_count >= 3 and phraseset.third_vote_at and not phraseset.fifth_vote_at:
+            third_vote_at = phraseset.third_vote_at
+            # Handle timezone-naive datetime from database
+            if third_vote_at.tzinfo is None:
+                third_vote_at = third_vote_at.replace(tzinfo=UTC)
+                
+            elapsed = (current_time - third_vote_at).total_seconds()
+            if elapsed >= 600:  # 10 minutes
+                should_finalize = True
+                logger.info(f"Phraseset {phraseset.phraseset_id} 10min window expired after AI vote")
+
+        if should_finalize:
+            await self._finalize_phraseset(phraseset)
+
+    async def _finalize_phraseset(self, phraseset: PhraseSet):
+        """
+        Finalize phraseset - calculate and distribute payouts.
+        
+        This mirrors the logic from VoteService._finalize_wordset() to ensure
+        consistent finalization behavior for AI-triggered finalization.
+        """
+        from backend.services.transaction_service import TransactionService
+        from backend.services.scoring_service import ScoringService
+        
+        # Calculate payouts
+        scoring_service = ScoringService(self.db)
+        payouts = await scoring_service.calculate_payouts(phraseset)
+
+        # Create prize transactions for each contributor
+        transaction_service = TransactionService(self.db)
+        for role in ["original", "copy1", "copy2"]:
+            payout_info = payouts[role]
+            if payout_info["payout"] > 0:
+                await transaction_service.create_transaction(
+                    payout_info["player_id"],
+                    payout_info["payout"],
+                    "prize_payout",
+                    phraseset.phraseset_id,
+                )
+
+        # Update phraseset status
+        phraseset.status = "finalized"
+        phraseset.finalized_at = datetime.now(UTC)
+
+        prompt_round = await self.db.get(Round, phraseset.prompt_round_id)
+        if prompt_round:
+            prompt_round.phraseset_status = "finalized"
+
+        # Note: Activity service recording is skipped in AI backup to avoid dependency complexity
+        # The finalization will still be logged via the main logger
+
+        logger.info(
+            f"AI backup finalized phraseset {phraseset.phraseset_id}: "
+            f"original=${payouts['original']['payout']}, "
+            f"copy1=${payouts['copy1']['payout']}, "
+            f"copy2=${payouts['copy2']['payout']}"
+        )
+
     async def run_backup_cycle(self):
         """
         Run a backup cycle to provide AI copies for waiting prompts and AI votes for waiting phrasesets.
@@ -287,7 +378,6 @@ class AIService:
             This is the main entry point for the AI backup system and manages the complete transaction lifecycle.
         """
         import uuid
-        from datetime import UTC
 
         stats = {
             "prompts_checked": 0,
@@ -492,6 +582,9 @@ class AIService:
                         if prompt_round:
                             prompt_round.phraseset_status = "closing"
                         logger.info(f"Phraseset {phraseset.phraseset_id} reached 5th vote via AI, 60sec closing window")
+                    
+                    # Check if phraseset should be finalized after AI vote
+                    await self._check_and_finalize_phraseset(phraseset)
                     
                     stats["votes_generated"] += 1
                     logger.info(
