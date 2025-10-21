@@ -163,23 +163,31 @@ class AuthService:
             raise AuthError("Invalid token error, please try again") from exc
 
     async def exchange_refresh_token(self, raw_token: str) -> tuple[Player, str, str, int]:
-        token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
-        result = await self.db.execute(
-            select(RefreshToken).where(RefreshToken.token_hash == token_hash)
-        )
-        refresh_token = result.scalar_one_or_none()
-        if not refresh_token or not refresh_token.is_active():
-            raise AuthError("Token could not be refreshed, please log in again")
+        try:
+            token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+            result = await self.db.execute(
+                select(RefreshToken).where(RefreshToken.token_hash == token_hash)
+            )
+            refresh_token = result.scalar_one_or_none()
+            if not refresh_token or not refresh_token.is_active():
+                raise AuthError("Token could not be refreshed, please log in again")
 
-        player = await self.player_service.get_player_by_id(refresh_token.player_id)
-        if not player:
-            raise AuthError("Token could not be refreshed, please log in again")
+            player = await self.player_service.get_player_by_id(refresh_token.player_id)
+            if not player:
+                raise AuthError("Token could not be refreshed, please log in again")
 
-        refresh_token.revoked_at = datetime.now(UTC)
+            refresh_token.revoked_at = datetime.now(UTC)
 
-        access_token, expires_in = self.create_access_token(player)
-        new_refresh_token_value = secrets.token_urlsafe(48)
-        new_refresh_expires = datetime.now(UTC) + timedelta(days=self.settings.refresh_token_exp_days)
-        await self._store_refresh_token(player, new_refresh_token_value, new_refresh_expires)
-        await self.db.commit()
-        return player, access_token, new_refresh_token_value, expires_in
+            access_token, expires_in = self.create_access_token(player)
+            new_refresh_token_value = secrets.token_urlsafe(48)
+            new_refresh_expires = datetime.now(UTC) + timedelta(days=self.settings.refresh_token_exp_days)
+            await self._store_refresh_token(player, new_refresh_token_value, new_refresh_expires)
+            await self.db.commit()
+            return player, access_token, new_refresh_token_value, expires_in
+        except AuthError:
+            await self.db.rollback()
+            raise
+        except Exception as exc:  # pragma: no cover - defensive logging
+            await self.db.rollback()
+            logger.error("Unexpected error exchanging refresh token", exc_info=True)
+            raise

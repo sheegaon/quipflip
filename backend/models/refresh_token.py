@@ -26,4 +26,13 @@ class RefreshToken(Base):
     def is_active(self, now: datetime | None = None) -> bool:
         """Return True if token has not expired or been revoked."""
         current_time = now or datetime.now(UTC)
-        return self.revoked_at is None and self.expires_at > current_time
+        expires_at = self.expires_at
+
+        if expires_at is None:
+            return False
+
+        # SQLite stores timestamps without timezone info; normalize to UTC so comparisons work.
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=UTC)
+
+        return self.revoked_at is None and expires_at > current_time
