@@ -258,11 +258,15 @@ export const Dashboard: React.FC = () => {
                   <img src="/icon_copy.svg" alt="" className="w-8 h-8" />
                   <h3 className="font-display font-semibold text-lg text-quip-turquoise">Copy Round</h3>
                 </div>
-                <span className="text-quip-orange-deep font-bold">
-                  -${roundAvailability?.copy_cost || 100}
+                <span className="flex items-center gap-2 text-quip-orange-deep font-bold">
                   {roundAvailability?.copy_discount_active && (
-                    <span className="text-quip-turquoise text-sm ml-1">(discount!)</span>
+                    <img
+                      src="/badge_copy-discount.svg"
+                      alt="Copy discount active"
+                      className="h-7"
+                    />
                   )}
+                  -${roundAvailability?.copy_cost || 100}
                 </span>
               </div>
               <p className="text-sm text-quip-teal mb-1">
