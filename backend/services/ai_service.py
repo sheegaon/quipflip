@@ -67,7 +67,7 @@ class AIService:
         2. Fall back to other provider if configured one is unavailable
         3. Default to OpenAI if both are available
         """
-        configured_provider = self.settings.ai_copy_provider.lower()
+        configured_provider = self.settings.ai_provider.lower()
         openai_key = self.settings.openai_api_key
         gemini_key = self.settings.gemini_api_key
 
@@ -140,9 +140,9 @@ class AIService:
             AICopyError: If generation or validation fails
         """
         model = (
-            self.settings.ai_copy_openai_model
+            self.settings.ai_openai_model
             if self.provider == "openai"
-            else self.settings.ai_copy_gemini_model
+            else self.settings.ai_gemini_model
         )
 
         async with MetricsTracker(
@@ -157,15 +157,15 @@ class AIService:
                     from backend.services.openai_api import generate_copy as openai_generate
                     phrase = await openai_generate(
                         original_phrase=original_phrase,
-                        model=self.settings.ai_copy_openai_model,
-                        timeout=self.settings.ai_copy_timeout_seconds,
+                        model=self.settings.ai_openai_model,
+                        timeout=self.settings.ai_timeout_seconds,
                     )
                 else:  # gemini
                     from backend.services.gemini_api import generate_copy as gemini_generate
                     phrase = await gemini_generate(
                         original_phrase=original_phrase,
-                        model=self.settings.ai_copy_gemini_model,
-                        timeout=self.settings.ai_copy_timeout_seconds,
+                        model=self.settings.ai_gemini_model,
+                        timeout=self.settings.ai_timeout_seconds,
                     )
             except Exception as e:
                 # Wrap API exceptions in AICopyError
@@ -221,9 +221,9 @@ class AIService:
         ]
 
         model = (
-            self.settings.ai_copy_openai_model
+            self.settings.ai_openai_model
             if self.provider == "openai"
-            else self.settings.ai_copy_gemini_model
+            else self.settings.ai_gemini_model
         )
 
         async with MetricsTracker(
@@ -237,9 +237,9 @@ class AIService:
                 prompt_text=prompt_text,
                 phrases=phrases,
                 provider=self.provider,
-                openai_model=self.settings.ai_copy_openai_model,
-                gemini_model=self.settings.ai_copy_gemini_model,
-                timeout=self.settings.ai_copy_timeout_seconds,
+                openai_model=self.settings.ai_openai_model,
+                gemini_model=self.settings.ai_gemini_model,
+                timeout=self.settings.ai_timeout_seconds,
             )
 
             chosen_phrase = phrases[choice_index]

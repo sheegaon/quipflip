@@ -24,10 +24,6 @@ class Settings(BaseSettings):
     refresh_token_exp_days: int = 30  # Longer-lived refresh tokens
     refresh_token_cookie_name: str = "quipflip_refresh_token"
 
-    # AI Providers
-    openai_api_key: str = ""
-    gemini_api_key: str = ""
-
     # Game Constants (all values in whole dollars)
     starting_balance: int = 1000
     daily_bonus_amount: int = 100
@@ -61,13 +57,17 @@ class Settings(BaseSettings):
     similarity_model: str = "all-mpnet-base-v2"  # previously "all-MiniLM-L6-v2"  # Sentence transformer model
     word_similarity_threshold: float = 0.8  # Minimum ratio for considering words too similar
 
-    # AI Copy Service
-    ai_copy_provider: str = "openai"  # Options: "openai" or "gemini"
-    ai_copy_openai_model: str = "gpt-5-nano"  # OpenAI model for copy generation
-    ai_copy_gemini_model: str = "gemini-2.5-flash-lite"  # Gemini model for copy generation
-    ai_copy_timeout_seconds: int = 30  # Timeout for AI API calls
-    ai_backup_delay_minutes: int = 10  # Delay before AI provides backup copies/votes
-    ai_backup_batch_size: int = 10  # Number of prompts to process per backup cycle
+    # AI Providers
+    openai_api_key: str = ""
+    gemini_api_key: str = ""
+
+    # AI Service
+    ai_provider: str = "openai"  # Options: "openai" or "gemini"
+    ai_openai_model: str = "gpt-5-nano"  # OpenAI model for copy generation
+    ai_gemini_model: str = "gemini-2.5-flash-lite"  # Gemini model for copy generation
+    ai_timeout_seconds: int = 30  # Timeout for AI API calls
+    ai_backup_delay_minutes: int = 60  # Delay before AI provides backup copies/votes
+    ai_backup_batch_size: int = 3  # Number of prompts to process per backup cycle
 
     @model_validator(mode="after")
     def validate_all_config(self):

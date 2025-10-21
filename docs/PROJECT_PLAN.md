@@ -97,12 +97,12 @@ ai_service.py          # Main orchestrator
 ### Configuration
 Environment variables in `.env`:
 ```bash
-AI_COPY_PROVIDER=openai           # "openai" or "gemini"
+AI_PROVIDER=openai           # "openai" or "gemini"
 OPENAI_API_KEY=sk-...            # OpenAI API key
 GEMINI_API_KEY=...               # Gemini API key
-AI_COPY_OPENAI_MODEL=gpt-5-nano  # Model override (optional)
-AI_COPY_GEMINI_MODEL=gemini-2.5-flash-lite  # Model override (optional)
-AI_COPY_TIMEOUT_SECONDS=30       # API timeout
+AI_OPENAI_MODEL=gpt-5-nano  # Model override (optional)
+AI_GEMINI_MODEL=gemini-2.5-flash-lite  # Model override (optional)
+AI_TIMEOUT_SECONDS=30       # API timeout
 AI_BACKUP_DELAY_MINUTES=10       # Wait time before AI backup
 ```
 

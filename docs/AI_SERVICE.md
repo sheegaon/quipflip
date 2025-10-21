@@ -111,18 +111,18 @@ backend/models/
 
 ```bash
 # Provider Selection
-AI_COPY_PROVIDER=openai  # Options: "openai" or "gemini"
+AI_PROVIDER=openai  # Options: "openai" or "gemini"
 
 # API Keys (at least one required)
 OPENAI_API_KEY=sk-...
 GEMINI_API_KEY=...
 
 # Model Configuration (optional)
-AI_COPY_OPENAI_MODEL=gpt-5-nano
-AI_COPY_GEMINI_MODEL=gemini-2.5-flash-lite
+AI_OPENAI_MODEL=gpt-5-nano
+AI_GEMINI_MODEL=gemini-2.5-flash-lite
 
 # Service Configuration
-AI_COPY_TIMEOUT_SECONDS=30
+AI_TIMEOUT_SECONDS=30
 AI_BACKUP_DELAY_MINUTES=10
 ```
 
@@ -130,10 +130,10 @@ AI_BACKUP_DELAY_MINUTES=10
 
 ```python
 # AI Copy Service
-ai_copy_provider: str = "openai"
-ai_copy_openai_model: str = "gpt-5-nano"
-ai_copy_gemini_model: str = "gemini-2.5-flash-lite"
-ai_copy_timeout_seconds: int = 30
+ai_provider: str = "openai"
+ai_openai_model: str = "gpt-5-nano"
+ai_gemini_model: str = "gemini-2.5-flash-lite"
+ai_timeout_seconds: int = 30
 ai_backup_delay_minutes: int = 10
 ```
 

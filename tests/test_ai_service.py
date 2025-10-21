@@ -54,17 +54,17 @@ def mock_phraseset():
 class TestAIServiceProviderSelection:
     """Test AI provider selection logic."""
 
-    @patch.dict('os.environ', {'OPENAI_API_KEY': 'sk-test', 'AI_COPY_PROVIDER': 'openai'})
+    @patch.dict('os.environ', {'OPENAI_API_KEY': 'sk-test', 'AI_PROVIDER': 'openai'})
     def test_select_openai_when_configured(self, db_session, mock_validator):
         """Should select OpenAI when configured and API key available."""
         service = AIService(db_session, mock_validator)
         assert service.provider == "openai"
 
-    @patch.dict('os.environ', {'GEMINI_API_KEY': 'test-key', 'AI_COPY_PROVIDER': 'gemini'}, clear=True)
+    @patch.dict('os.environ', {'GEMINI_API_KEY': 'test-key', 'AI_PROVIDER': 'gemini'}, clear=True)
     def test_select_gemini_when_configured(self, db_session, mock_validator):
         """Should select Gemini when configured and API key available."""
         with patch('backend.services.ai_service.get_settings') as mock_settings:
-            mock_settings.return_value.ai_copy_provider = 'gemini'
+            mock_settings.return_value.ai_provider = 'gemini'
             service = AIService(db_session, mock_validator)
             assert service.provider == "gemini"
 
@@ -72,7 +72,7 @@ class TestAIServiceProviderSelection:
     def test_fallback_to_openai_when_gemini_unavailable(self, db_session, mock_validator):
         """Should fallback to OpenAI when Gemini configured but unavailable."""
         with patch('backend.services.ai_service.get_settings') as mock_settings:
-            mock_settings.return_value.ai_copy_provider = 'gemini'
+            mock_settings.return_value.ai_provider = 'gemini'
             service = AIService(db_session, mock_validator)
             assert service.provider == "openai"
 
@@ -114,9 +114,9 @@ class TestAICopyGeneration:
         mock_gemini.return_value = "merry festivity"
 
         with patch('backend.services.ai_service.get_settings') as mock_settings:
-            mock_settings.return_value.ai_copy_provider = 'gemini'
-            mock_settings.return_value.ai_copy_gemini_model = 'gemini-2.5-flash-lite'
-            mock_settings.return_value.ai_copy_timeout_seconds = 30
+            mock_settings.return_value.ai_provider = 'gemini'
+            mock_settings.return_value.ai_gemini_model = 'gemini-2.5-flash-lite'
+            mock_settings.return_value.ai_timeout_seconds = 30
 
             service = AIService(db_session, mock_validator)
             result = await service.generate_copy_phrase(
