@@ -27,11 +27,11 @@ export const Header: React.FC = () => {
 
   return (
     <div className="bg-white shadow-tile-sm">
-      <div className="max-w-6xl mx-auto px-4 py-3">
+      <div className="max-w-6xl mx-auto px-2 py-0 md:px-4 md:py-3">
         <div className="flex justify-between items-center">
           {/* Left: Logo */}
           <div className="flex items-center">
-            <img src="/large_icon.png" alt="Quipflip" className="h-12 w-auto" />
+            <img src="/large_icon.png" alt="Quipflip" className="h-10 w-auto" />
           </div>
 
           {/* Center: Username (clickable to stats) */}
@@ -63,10 +63,10 @@ export const Header: React.FC = () => {
             )}
 
             <div className="flex items-center gap-2 tutorial-balance">
-              <img src="/flipcoin.png" alt="Flipcoin" className="w-10 h-10" />
+              <img src="/flipcoin.png" alt="Flipcoin" className="w-6 h-6" />
               <BalanceFlipper
                 value={player.balance}
-                className="text-3xl font-display font-bold text-quip-turquoise"
+                className="text-xl font-display font-bold text-quip-turquoise"
               />
             </div>
             <button onClick={logout} className="text-quip-teal hover:text-quip-turquoise" title="Logout">
