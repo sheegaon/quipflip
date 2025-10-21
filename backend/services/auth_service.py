@@ -66,11 +66,11 @@ class AuthService:
             message = str(exc)
             if message == "username_taken":
                 # This should be extremely rare since we generate unique usernames
-                raise AuthError("The system could not generate a unique username, please try again") from exc
+                raise AuthError("username_generation_failed") from exc
             if message == "email_taken":
-                raise AuthError("An account with this email already exists") from exc
+                raise AuthError("email_taken") from exc
             if message == "invalid_username":
-                raise AuthError("The chosen username is invalid") from exc
+                raise AuthError("invalid_username") from exc
             raise
 
     # ------------------------------------------------------------------

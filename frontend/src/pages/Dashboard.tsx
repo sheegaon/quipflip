@@ -197,8 +197,9 @@ export const Dashboard: React.FC = () => {
           <h2 className="text-xl font-display font-bold mb-4 text-quip-navy">Start a Round</h2>
 
           <div className="space-y-4">
+
             {/* Prompt Round */}
-            <div className="border-2 border-quip-navy rounded-tile p-4 bg-quip-navy bg-opacity-5 hover:bg-opacity-10 transition-all">
+            <div className="tutorial-prompt-round border-2 border-quip-navy rounded-tile p-4 bg-quip-navy bg-opacity-5 hover:bg-opacity-10 transition-all">
               <div className="flex justify-between items-center mb-2">
                 <div className="flex items-center gap-2">
                   <img src="/icon_prompt.svg" alt="" className="w-8 h-8" />
@@ -222,7 +223,7 @@ export const Dashboard: React.FC = () => {
             </div>
 
             {/* Copy Round */}
-            <div className="border-2 border-quip-turquoise rounded-tile p-4 bg-quip-turquoise bg-opacity-5 hover:bg-opacity-10 transition-all">
+            <div className="tutorial-copy-round border-2 border-quip-turquoise rounded-tile p-4 bg-quip-turquoise bg-opacity-5 hover:bg-opacity-10 transition-all">
               <div className="flex justify-between items-center mb-2">
                 <div className="flex items-center gap-2">
                   <img src="/icon_copy.svg" alt="" className="w-8 h-8" />
@@ -261,7 +262,7 @@ export const Dashboard: React.FC = () => {
             </div>
 
             {/* Vote Round */}
-            <div className="border-2 border-quip-orange rounded-tile p-4 bg-quip-orange bg-opacity-5 hover:bg-opacity-10 transition-all">
+            <div className="tutorial-vote-round border-2 border-quip-orange rounded-tile p-4 bg-quip-orange bg-opacity-5 hover:bg-opacity-10 transition-all">
               <div className="flex justify-between items-center mb-2">
                 <div className="flex items-center gap-2">
                   <img src="/icon_vote.svg" alt="" className="w-8 h-8" />

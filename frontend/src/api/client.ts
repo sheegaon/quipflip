@@ -93,7 +93,48 @@ const extractErrorMessage = (error: any): string => {
         return 'Please check your input and try again.';
       }
       if (typeof detail === 'string') {
-        // Improve common backend error messages
+        // Handle specific backend error codes with user-friendly messages
+        if (detail === 'email_taken') {
+          return 'This email is already registered. Try logging in instead.';
+        }
+        if (detail === 'username_generation_failed') {
+          return 'Unable to create a unique username. Please try again or contact support.';
+        }
+        if (detail === 'invalid_username') {
+          return 'The username format is invalid. Please try again.';
+        }
+        
+        // Round availability errors
+        if (detail === 'no_prompts_available') {
+          return 'No prompts are available for copy rounds right now. Try a prompt round or check back later.';
+        }
+        if (detail === 'no_wordsets_available') {
+          return 'No phrasesets are available for voting right now. Try a prompt or copy round first.';
+        }
+        
+        // Authentication errors
+        if (detail === 'missing_credentials') {
+          return 'Please log in to continue.';
+        }
+        if (detail === 'invalid_authorization_header') {
+          return 'Authentication error. Please log in again.';
+        }
+        if (detail === 'invalid_token') {
+          return 'Your session is invalid. Please log in again.';
+        }
+        if (detail === 'token_expired') {
+          return 'Your session has expired. Please log in again.';
+        }
+        if (detail === 'missing_refresh_token') {
+          return 'Session expired. Please log in again.';
+        }
+        
+        // Vote round errors
+        if (detail === 'No active vote round') {
+          return 'No active voting round found. Please start a new vote round.';
+        }
+        
+        // Improve other common backend error messages
         if (detail.includes('already exists')) {
           return 'This email is already registered. Try logging in instead.';
         }
@@ -112,6 +153,25 @@ const extractErrorMessage = (error: any): string => {
         return detail;
       }
       if (detail && typeof detail === 'object') {
+        // Handle structured error objects (like phrase submission errors)
+        if (detail.error && detail.message) {
+          const errorType = detail.error;
+          const message = detail.message;
+          
+          if (errorType === 'invalid_phrase') {
+            return `Invalid phrase: ${message}. Please try a different phrase.`;
+          }
+          if (errorType === 'duplicate_phrase') {
+            return `This phrase has already been used: ${message}. Please try something different.`;
+          }
+          if (errorType === 'expired') {
+            return `This round has expired: ${message}. Please start a new round.`;
+          }
+          
+          // Fallback to the message if we don't recognize the error type
+          return message || 'Please check your input and try again.';
+        }
+        
         if ('msg' in detail && typeof detail.msg === 'string') {
           return detail.msg;
         }

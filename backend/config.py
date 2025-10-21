@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     redis_url: str = ""
 
     # Application
+    frontend_url: str = "https://quipflip-amber.vercel.app"
     environment: str = "development"
     secret_key: str = "dev-secret-key-change-in-production"  # Must be at least 32 characters in production
     jwt_algorithm: str = "HS256"  # Use HS256 for symmetric signing

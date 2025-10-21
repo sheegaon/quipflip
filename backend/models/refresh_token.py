@@ -28,9 +28,6 @@ class RefreshToken(Base):
         current_time = now or datetime.now(UTC)
         expires_at = self.expires_at
 
-        if expires_at is None:
-            return False
-
         # SQLite stores timestamps without timezone info; normalize to UTC so comparisons work.
         if expires_at.tzinfo is None:
             expires_at = expires_at.replace(tzinfo=UTC)

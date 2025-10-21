@@ -74,8 +74,8 @@ Your job is to write a phrase that could blend in with the original. Make it con
 
 Voters will try to identify the original, so the better you match the style, the more you earn.`,
       // **Click "Next" to start a Copy Round.** The tutorial will resume when you finish.
-    target: '.tutorial-copy-input',
-    position: 'top',
+    target: '.tutorial-copy-round',
+    position: 'bottom',
     action: 'wait',
     nextStep: 'vote_round',
     showSkip: true,
@@ -94,7 +94,7 @@ You'll see a prompt and three phrases. One is the original, two are copies.
 
 Your goal is to identify which phrase was the original. Choose carefully - correct votes earn coins!`,
       // **Make your vote now to complete the tutorial.**
-    target: '.tutorial-vote-options',
+    target: '.tutorial-vote-round',
     position: 'top',
     action: 'wait',
     nextStep: 'completed',
