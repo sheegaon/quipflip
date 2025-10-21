@@ -251,7 +251,6 @@ class AIService:
             tracker.set_result(
                 chosen_phrase,
                 success=True,
-                prompt_length=len(prompt_text) + sum(len(p) for p in phrases),
                 response_length=len(str(choice_index)),
                 vote_correct=vote_correct,
             )
