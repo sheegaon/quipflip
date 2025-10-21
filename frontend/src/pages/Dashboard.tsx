@@ -102,22 +102,11 @@ export const Dashboard: React.FC = () => {
     navigate('/results');
   };
 
-  const handleTrackPhrasesets = () => {
-    navigate('/tracking');
-  };
-
   const handleClaimResults = () => {
     navigate('/tracking');
   };
 
-  const inProgressPrompts = phrasesetSummary?.in_progress.prompts ?? 0;
-  const inProgressCopies = phrasesetSummary?.in_progress.copies ?? 0;
-  const hasInProgress = inProgressPrompts + inProgressCopies > 0;
-
   // Hide certain dashboard elements during tutorial to reduce overwhelm
-  const { tutorialStatus } = useTutorial();
-  const isTutorialComplete = tutorialStatus?.tutorial_completed ?? false;
-
   const unclaimedPromptCount = phrasesetSummary?.finalized.unclaimed_prompts ?? 0;
   const unclaimedCopyCount = phrasesetSummary?.finalized.unclaimed_copies ?? 0;
   const totalUnclaimedCount = unclaimedPromptCount + unclaimedCopyCount;
@@ -179,25 +168,6 @@ export const Dashboard: React.FC = () => {
                 className="bg-quip-turquoise hover:bg-quip-teal text-white font-bold py-2 px-6 rounded-tile transition-all hover:shadow-tile-sm"
               >
                 View Results
-              </button>
-            </div>
-          </div>
-        )}
-
-        {isTutorialComplete && hasInProgress && (
-          <div className="tile-card border-2 border-quip-navy p-4 mb-6 slide-up-enter">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="font-display font-semibold text-quip-navy">Past Rounds In Progress</p>
-                <p className="text-sm text-quip-teal">
-                  {inProgressPrompts} prompt{inProgressPrompts === 1 ? '' : 's'} • {inProgressCopies} cop{inProgressCopies === 1 ? 'y' : 'ies'}
-                </p>
-              </div>
-              <button
-                onClick={handleTrackPhrasesets}
-                className="w-full sm:w-auto bg-quip-navy hover:bg-quip-teal text-white font-bold py-2 px-6 rounded-tile transition-all hover:shadow-tile-sm"
-              >
-                Track Progress
               </button>
             </div>
           </div>
