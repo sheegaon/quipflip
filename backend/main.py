@@ -55,14 +55,8 @@ if not any(isinstance(h, RotatingFileHandler) for h in root_logger.handlers):
 uvicorn_access_logger = logging.getLogger("uvicorn.access")
 uvicorn_access_logger.setLevel(logging.INFO)
 # Add rotating file handler to uvicorn access logger if it doesn't have one
-if not any(isinstance(h, RotatingFileHandler) for h in uvicorn_access_logger.handlers):
-    access_rotating_handler = RotatingFileHandler(
-        log_file, 
-        maxBytes=5*1024*1024,  # 5MB
-        backupCount=5
-    )
-    access_rotating_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
-    uvicorn_access_logger.addHandler(access_rotating_handler)
+if rotating_handler not in uvicorn_access_logger.handlers:
+    uvicorn_access_logger.addHandler(rotating_handler)
 
 # Test that logging is working
 logger.info("Logging system initialized")

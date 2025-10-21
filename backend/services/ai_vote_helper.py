@@ -71,7 +71,10 @@ async def generate_vote_choice_openai(
             messages=[
                 {"role": "system", "content": "You are an expert at identifying original vs copied phrases in word games."},
                 {"role": "user", "content": prompt}
-            ])
+            ],
+            max_tokens=10,
+            temperature=0.7,
+        )
 
         if not response.choices:
             raise AIVoteError("OpenAI API returned no choices")
