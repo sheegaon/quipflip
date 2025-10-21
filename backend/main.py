@@ -1,4 +1,5 @@
 """FastAPI application entry point."""
+import asyncio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import logging
@@ -23,7 +24,7 @@ log_file = logs_dir / "quipflip.log"
 print(f"Logging to: {log_file.absolute()}")
 
 # Create rotating file handler (1MB max size, keep 10 backup files)
-rotating_handler = RotatingFileHandler(log_file, maxBytes=1024*1024, backupCount=10)  # 1 MB
+rotating_handler = RotatingFileHandler(log_file, maxBytes=1024 * 1024, backupCount=10)  # 1 MB
 rotating_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
 
 # Configure logging with both console and rotating file handlers
@@ -85,12 +86,28 @@ class SQLTransactionFilter(logging.Filter):
 sqlalchemy_logger = logging.getLogger("sqlalchemy.engine.Engine")
 sqlalchemy_logger.addFilter(SQLTransactionFilter())
 
-
 settings = get_settings()
 
 
+async def ai_backup_cycle(validator):
+    """Background task to run AI backup cycles."""
+    from backend.database import AsyncSessionLocal
+    from backend.services.ai_service import AIService
+
+    while True:
+        # Wait before first cycle
+        await asyncio.sleep(settings.ai_backup_sleep_seconds)
+
+        try:
+            async with AsyncSessionLocal() as db:
+                await AIService(db, validator).run_backup_cycle()
+
+        except Exception as e:
+            logger.error(f"AI backup cycle error: {e}")
+
+
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app_instance: FastAPI):
     """Manage application startup and shutdown tasks."""
     logger.info("=" * 60)
     logger.info("Quipflip API Starting")
@@ -102,6 +119,7 @@ async def lifespan(app: FastAPI):
     logger.info("=" * 60)
 
     # Initialize phrase validator
+    validator = None
     try:
         validator = get_phrase_validator()
         logger.info(f"Phrase validator initialized with {len(validator.dictionary)} words")
@@ -115,28 +133,7 @@ async def lifespan(app: FastAPI):
     # Start AI backup cycle background task
     ai_backup_task = None
     try:
-        import asyncio
-        from backend.database import AsyncSessionLocal
-        from backend.services.ai_service import AIService
-
-        async def ai_backup_cycle():
-            """Background task to run AI backup cycles."""
-            while True:
-                # Wait before first cycle
-                await asyncio.sleep(settings.ai_backup_sleep_seconds)
-
-                try:
-                    async with AsyncSessionLocal() as db:
-                        ai_service = AIService(db, validator)
-
-                        stats = await ai_service.run_backup_cycle()
-                        if stats["copies_generated"] > 0 or stats["errors"] > 0:
-                            logger.info(f"AI backup cycle completed: {stats}")
-
-                except Exception as e:
-                    logger.error(f"AI backup cycle error: {e}")
-
-        ai_backup_task = asyncio.create_task(ai_backup_cycle())
+        ai_backup_task = asyncio.create_task(ai_backup_cycle(validator))
         logger.info(f"AI backup cycle task started (runs every {settings.ai_backup_sleep_seconds} seconds)")
 
     except Exception as e:
@@ -153,24 +150,38 @@ async def lifespan(app: FastAPI):
             except asyncio.CancelledError:
                 logger.info("AI backup cycle task cancelled")
 
-        logger.info("Quipflip API Shutting Down")
+        logger.info("Quipflip API Shutting Down... Goodbye!")
 
 
 # Create FastAPI app
 app = FastAPI(
     title="Quipflip API",
-    description="Phase 2 MVP - Phrase association game backend",
-    version="1.1.0",
+    description="Phase 2 - Phrase association game backend",
+    version="1.2.0",
     lifespan=lifespan,
 )
 
+
 # CORS middleware with environment-based origins
+def get_local_ip():
+    """Get the local IP address."""
+    import socket
+    try:
+        # Connect to a remote address (doesn't actually send data)
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.connect(("8.8.8.8", 80))
+            return s.getsockname()[0]
+    except Exception:
+        return "127.0.0.1"
+
+
 allowed_origins = os.getenv("ALLOWED_ORIGINS", "").split(",")
 if not allowed_origins or allowed_origins == [""]:
     # Default origins for development + production fallback
     allowed_origins = [
-        "https://quipflip-amber.vercel.app",  # Your production frontend
+        settings.frontend_url,                # Your production frontend
         "http://localhost:5173",              # Vite dev server
+        f"http://{get_local_ip()}:5173/",     # Alternative dev server
         "http://localhost:3000",              # Alternative React dev server
         "http://127.0.0.1:5173",              # Alternative localhost format
         "http://127.0.0.1:3000",              # Alternative localhost format

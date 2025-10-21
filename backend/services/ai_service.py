@@ -262,7 +262,7 @@ class AIService:
 
             return chosen_phrase
 
-    async def run_backup_cycle(self) -> dict:
+    async def run_backup_cycle(self):
         """
         Run a backup cycle to provide AI copies for waiting prompts.
 
@@ -271,9 +271,6 @@ class AIService:
         2. Generates AI copies for those prompts
         3. Submits the copies as the AI player
         # TODO find and submit votes for phrasesets waiting for votes
-
-        Returns:
-            Dictionary with statistics about the backup cycle
 
         Note:
             This is the main entry point for the AI backup system and manages the complete transaction lifecycle.
@@ -284,6 +281,8 @@ class AIService:
         stats = {
             "prompts_checked": 0,
             "copies_generated": 0,
+            "phrasesets_checked": 0,
+            "votes_generated": 0,
             "errors": 0,
         }
 
@@ -381,11 +380,11 @@ class AIService:
             
             # Commit all changes
             await self.db.commit()
-            logger.info(f"AI backup cycle completed: {stats}")
 
         except Exception as exc:
             logger.error(f"AI backup cycle failed: {exc}")
             await self.db.rollback()
             stats["errors"] += 1
 
-        return stats
+        finally:
+            logger.info(f"AI backup cycle completed: {stats}")
