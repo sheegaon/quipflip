@@ -1,5 +1,9 @@
 import React from 'react';
-import type { PhrasesetDetails as PhrasesetDetailsType, PhrasesetSummary } from '../api/types';
+import type {
+  PhrasesetDetails as PhrasesetDetailsType,
+  PhrasesetStatus,
+  PhrasesetSummary,
+} from '../api/types';
 import { StatusBadge } from './StatusBadge';
 import { ProgressBar } from './ProgressBar';
 import { ActivityTimeline } from './ActivityTimeline';
@@ -11,6 +15,18 @@ interface PhrasesetDetailsProps {
   claiming?: boolean;
   onClaim?: (phrasesetId: string) => void;
 }
+
+const STATUS_LABELS: Record<PhrasesetStatus, string> = {
+  waiting_copies: 'Waiting for Copies',
+  waiting_copy1: 'Waiting for Final Copy',
+  active: 'Voting Active',
+  voting: 'Voting Active',
+  closing: 'Closing Soon',
+  finalized: 'Finalized',
+  abandoned: 'Abandoned',
+};
+
+const formatStatusLabel = (status: PhrasesetStatus) => STATUS_LABELS[status] ?? status.replace('_', ' ');
 
 const formatDateTime = (value: string | null) => {
   if (!value) return '—';
@@ -58,7 +74,7 @@ export const PhrasesetDetails: React.FC<PhrasesetDetailsProps> = ({
             </div>
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
               <p className="text-xs text-gray-700 uppercase tracking-wide">Status</p>
-              <p className="text-lg font-semibold text-gray-900 capitalize">{summary.status.replace('_', ' ')}</p>
+              <p className="text-lg font-semibold text-gray-900">{formatStatusLabel(summary.status)}</p>
               {summary.vote_count != null && (
                 <>
                   <p className="text-xs text-gray-700 mt-3 uppercase tracking-wide">Votes</p>

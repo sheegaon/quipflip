@@ -13,6 +13,31 @@ from backend.utils.exceptions import InvalidPhraseError, DuplicatePhraseError, P
 logger = logging.getLogger(__name__)
 
 
+def _parse_phrase(phrase: str) -> list[str]:
+    """Parse phrase into individual words."""
+    # Strip and normalize whitespace
+    phrase = phrase.strip()
+    phrase = re.sub(r'\s+', ' ', phrase)  # Replace multiple spaces with single space
+
+    # Split into words
+    words = phrase.split()
+    return words
+
+
+def _load_dictionary() -> Set[str]:
+    """Load word list from file."""
+    # Path relative to this file
+    data_path = os.path.join(os.path.dirname(__file__), "../data/dictionary.txt")
+
+    if not os.path.exists(data_path):
+        logger.error(f"Dictionary file not found at: {data_path}")
+        logger.error("Run: python scripts/download_dictionary.py")
+        raise FileNotFoundError(f"Dictionary file not found: {data_path}")
+
+    with open(data_path, "r") as f:
+        return {line.strip().upper() for line in f if line.strip()}
+
+
 class PhraseValidator:
     """Validates phrases against dictionary and similarity constraints."""
 
@@ -24,22 +49,9 @@ class PhraseValidator:
 
     def __init__(self):
         self.settings = get_settings()
-        self.dictionary: Set[str] = self._load_dictionary()
+        self.dictionary: Set[str] = _load_dictionary()
         self._similarity_model = None  # Lazy load on first use
         logger.info(f"Loaded dictionary with {len(self.dictionary)} words")
-
-    def _load_dictionary(self) -> Set[str]:
-        """Load word list from file."""
-        # Path relative to this file
-        data_path = os.path.join(os.path.dirname(__file__), "../data/dictionary.txt")
-
-        if not os.path.exists(data_path):
-            logger.error(f"Dictionary file not found at: {data_path}")
-            logger.error("Run: python scripts/download_dictionary.py")
-            raise FileNotFoundError(f"Dictionary file not found: {data_path}")
-
-        with open(data_path, "r") as f:
-            return {line.strip().upper() for line in f if line.strip()}
 
     @property
     def similarity_model(self):
@@ -85,24 +97,6 @@ class PhraseValidator:
             logger.warning("Similarity check failed, allowing phrase")
             return 0.0
 
-    def _parse_phrase(self, phrase: str) -> list[str]:
-        """
-        Parse phrase into individual words.
-
-        Args:
-            phrase: Raw phrase input
-
-        Returns:
-            List of words
-        """
-        # Strip and normalize whitespace
-        phrase = phrase.strip()
-        phrase = re.sub(r'\s+', ' ', phrase)  # Replace multiple spaces with single space
-
-        # Split into words
-        words = phrase.split()
-        return words
-
     def validate(self, phrase: str) -> tuple[bool, str]:
         """
         Validate a phrase for format and dictionary compliance.
@@ -133,7 +127,7 @@ class PhraseValidator:
             return False, "Phrase must contain only letters A-Z and spaces"
 
         # Parse into words
-        words = self._parse_phrase(phrase)
+        words = _parse_phrase(phrase)
 
         # Check word count
         if len(words) < self.settings.phrase_min_words:
@@ -202,17 +196,19 @@ class PhraseValidator:
             overlap = phrase_words & comparison_words
             if overlap:
                 word = next(iter(overlap)).upper()
-                return False, f"Cannot reuse significant word '{word}' from {label}"
+                return False, f"Cannot reuse '{word}' from {label}"
 
             for phrase_word in phrase_words:
                 for comparison_word in comparison_words:
                     if self._are_words_too_similar(phrase_word, comparison_word):
-                        return False, (
-                            f"Word '{phrase_word.upper()}' is too similar to "
-                            f"'{comparison_word.upper()}' from {label}"
-                        )
+                        return False, f"Word '{phrase_word.upper()}' is too similar to a word from {label}"
 
         return True, ""
+
+    def _check_prompt_relevance(self, phrase: str, prompt_text: str | None) -> tuple[bool, str]:
+        """Check if phrase is relevant to the prompt text."""
+        similarity = self.calculate_similarity(phrase, prompt_text)
+        return similarity >= self.settings.prompt_relevance_threshold, "Phrase not relevant to prompt"
 
     def validate_prompt_phrase(self, phrase: str, prompt_text: str | None) -> tuple[bool, str]:
         """Validate a prompt submission against the originating prompt text."""
@@ -223,6 +219,10 @@ class PhraseValidator:
 
         comparisons = {"prompt": prompt_text}
         is_valid, error = self._check_significant_word_conflicts(phrase, comparisons)
+        if not is_valid:
+            return False, error
+
+        is_valid, error = self._check_prompt_relevance(phrase, prompt_text)
         if not is_valid:
             return False, error
 

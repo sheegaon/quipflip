@@ -62,7 +62,7 @@ Authorization: Bearer <access_token>
 - `invalid_word` - Word validation failed
 - `no_prompts_available` - No prompts available for copy
 - `no_wordsets_available` - No phrasesets available for voting
-- `max_outstanding_prompts` - Player has 10 open/closing phrasesets
+- `max_outstanding_quips` - Player has 10 open/closing phrasesets
 
 ---
 
@@ -455,7 +455,7 @@ Start a prompt round (-\$100).
 **Errors:**
 - `already_in_round` - Player already in active round
 - `insufficient_balance` - Balance < \$100
-- `max_outstanding_prompts` - Player has 10 open/closing phrasesets
+- `max_outstanding_quips` - Player has 10 open/closing phrasesets
 
 #### `POST /rounds/copy`
 Start a copy round (-\$100 or -\$90).

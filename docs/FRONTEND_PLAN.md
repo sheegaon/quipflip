@@ -1,506 +1,424 @@
-# Frontend Implementation Plan
+# Frontend Implementation Plan - Remaining Features
 
 ## Overview
 
-This document provides high-level guidance for implementing a Quipflip frontend. The backend API is complete and documented in [API.md](API.md). This plan focuses on the minimum viable frontend and logical phasing.
+The Quipflip frontend MVP is **COMPLETE** ✅. This document outlines remaining features and enhancements to implement beyond the core gameplay experience.
 
-**STATUS: Phase 1 MVP is COMPLETE** ✅
-
-The frontend is fully functional with:
-- JWT authentication (access + refresh tokens with HTTP-only cookies)
-- All three round types (Prompt, Copy, Vote) with timers and feedback
-- Results viewing and prize claiming
-- Phraseset tracking dashboard (renamed from "PhrasesetTracking" to "Tracking")
-- Prompt feedback system (like/dislike with improved mobile UI)
-- Responsive UI with custom branding and optimized mobile experience
-- Automatic token refresh and error handling
-- Statistics page with comprehensive metrics
-- Tutorial system with interactive guided tours
-
-**Recent Updates (January 2025):**
-- **Account Creation Simplified**: Username automatically generated (email + password only)
-- **Username Management**: Usernames are random and cannot be changed by users
-- **Header Improvements**:
-  - Username now clickable (navigates to statistics page)
-  - Header bar height reduced for cleaner look
-  - Daily bonus moved to header as treasure chest icon
-- **Statistics Page Enhanced**: Email address displayed alongside username
-- **Navigation Streamlined**: Removed standalone "Statistics" button from dashboard
-- **Daily Bonus UI**: Treasure chest icon in header (animated when available)
-- **Mobile Responsive**: Optimized header for mobile devices
-
-**Next Steps:** Phase 2 enhancements (Enhanced mobile UI, currency icon replacement, navigation improvements per UI_ENHANCEMENT_PLAN.md)
+**Current Status:**
+- ✅ **Phase 1 MVP**: All core gameplay, authentication, statistics, and tutorial system complete
+- 🔄 **Phase 2**: Quest system backend complete, UI in progress  
+- ⏸️ **Phase 3**: UI enhancements and advanced features planned
 
 ---
 
-## Phase 1: MVP Frontend (Core Gameplay) ✅ COMPLETE
+## Phase 2: Quest System UI (HIGH PRIORITY)
 
-### Essential Screens
+**Backend Status**: ✅ Complete (database, API, service logic)  
+**Frontend Status**: 🔄 In Progress (20% complete - API integration done)
 
-1. ✅ **Landing / Authentication**
-   - Register new player with email + password only (POST /player) → username automatically generated
-   - Login form for returning players (POST /auth/login)
-   - Automatic refresh handling via `/auth/refresh` + HTTP-only cookie
-   - Store short-lived access token client-side (localStorage) and rely on refresh token cookie
-   - Automatic token refresh on 401 errors with retry logic
-   - No username selection during registration (randomly generated)
+### 2.1: Quest Context & State Management
+**Status**: ⏸️ Not Started
 
-2. ✅ **Dashboard / Home**
-   - Display current balance with flipcoin icon
-   - Daily bonus as treasure chest icon in header (not dashboard)
-   - Display active round status (if any)
-   - Notification badges for pending results and unclaimed prizes
-   - Round selection buttons (Prompt / Copy / Vote)
-   - Button state based on availability (GET /rounds/available)
-   - Phraseset tracking navigation (page labeled "Tracking")
-   - Custom branding with logo and themed colors
-   - No separate "Statistics" section (access via username click in header)
+**Files to Create:**
+- `frontend/src/contexts/QuestContext.tsx`
 
-3. ✅ **Prompt Round**
-   - Display prompt text with custom styling
-   - Text input for phrase submission (1-5 words, 2-100 chars)
-   - Countdown timer (3 minutes / 180 seconds) with color-coded warnings
-   - Submit button (disabled after timeout)
-   - Validation feedback
-   - Like/Dislike prompt feedback buttons
-   - Visual feedback for submitted feedback
-
-4. ✅ **Copy Round**
-   - Display original phrase to copy
-   - Display cost (100f or 90f if discount) with visual indicator
-   - Text input for copy phrase
-   - Countdown timer (3 minutes / 180 seconds)
-   - Submit button with duplicate detection feedback
-   - Clear error messaging
-
-5. ✅ **Vote Round**
-   - Display prompt text
-   - Three phrase buttons (randomized order per voter)
-   - Countdown timer (60 seconds, visual urgency states)
-   - Immediate feedback after vote (correct/incorrect, payout)
-   - Payout amount display
-
-6. ✅ **Results View**
-   - Display prompt text
-   - Show all three phrases with vote counts
-   - Highlight original phrase
-   - Show your phrase, role, points, and payout
-   - Claim prizes button (separate action)
-   - Visual vote distribution
-   - Navigate between multiple unclaimed results
-
-7. ✅ **Tracking Page** (formerly "Phraseset Tracking")
-   - View all phrasesets by role (prompt/copy/vote)
-   - Filter by status (pending/open/closing/finalized)
-   - Status badges with color coding
-   - Click to view details
-   - Count summaries for each category
-   - Pagination support
-   - Accessed from dashboard navigation
-
-8. ✅ **Tutorial System** (NEW)
-   - Interactive onboarding for new players
-   - Welcome modal with game overview
-   - Step-by-step guided tour through dashboard and rounds
-   - Spotlight effect highlighting key UI elements
-   - Progress tracking with backend persistence
-   - Skip and navigation options
-   - Mobile-responsive overlay design
-
-### Core Components
-
-✅ **Timer Component** (COMPLETE)
-- Calculate remaining time from `expires_at` timestamp
-- Update every second
-- Visual states: normal (blue) → warning (yellow, <30s) → urgent (red/pulsing, <10s) → expired
-- Don't show grace period to users
-- Custom hook `useTimer` for reusable logic
-
-✅ **Balance Display** (COMPLETE)
-- Show current balance prominently with coin emoji
-- Update after each action
-- Integrated into Header component
-- Real-time updates via GameContext
-
-✅ **Round State Manager** (COMPLETE)
-- Poll GET /player/current-round on app load
-- Resume active round if exists via GameContext
-- Handle reconnection gracefully with AbortController
-- Automatic cleanup on unmount
-
-✅ **Error Handler** (COMPLETE)
-- Map API error codes to user-friendly messages via extractErrorMessage
-- ErrorNotification component with auto-dismiss
-- Handle insufficient balance → suggest daily bonus
-- 401 errors trigger automatic token refresh
-
-### State Management
-
-✅ **Implemented Global State (via GameContext):**
-- `isAuthenticated` (JWT token status)
-- `username` (stored in localStorage)
-- `player` / `balance` (from GET /player/balance)
-- `activeRound` (from GET /player/current-round)
-- `pendingResults` (from GET /player/pending-results)
-- `phrasesetSummary` (from GET /player/phrasesets/summary)
-- `unclaimedResults` (from GET /player/unclaimed-results)
-- `roundAvailability` (from GET /rounds/available)
-- `loading` / `error` states
-
-✅ **Polling Strategy (Implemented):**
-- Balance & round availability: Every 60s
-- Pending results, phraseset summary, unclaimed results: Every 90s
-- All data fetched immediately on authentication
-- Automatic cleanup with AbortController
-
-### User Flow
-
-✅ **Implemented Flow:**
-```
-1. First visit → Register (email/password only, username auto-generated) → Store tokens → Dashboard
-2. Return visit → Auto-refresh access token → GET /player/balance → Dashboard
-3. Dashboard → Daily bonus shows as treasure chest in header → Click to claim
-4. Dashboard → Check active round → Resume if exists (automatic)
-5. Dashboard → Select round type → Start round (disabled if unavailable)
-6. In round → Submit phrase → Provide feedback (prompt only) → Return to dashboard
-7. Dashboard → Notification badge → View unclaimed results → Claim prizes
-8. Dashboard → Tracking page → View all phrasesets by role/status
-9. Header → Click username → Navigate to statistics page (with email shown)
+**Requirements:**
+```typescript
+interface QuestContextType {
+  quests: Quest[];
+  activeQuests: Quest[];
+  claimableQuests: Quest[];
+  loading: boolean;
+  error: string | null;
+  refreshQuests: () => Promise<void>;
+  claimQuest: (questId: string) => Promise<ClaimQuestRewardResponse>;
+  clearError: () => void;
+}
 ```
 
+**Integration Points:**
+- Call `refreshQuests()` after votes, round completions, feedback submissions
+- Trigger success notifications when quests complete
+- Update GameContext balance after quest claims
+
+### 2.2: Quest UI Components
+**Status**: ⏸️ Not Started
+
+**Files to Create:**
+1. `frontend/src/components/SuccessNotification.tsx`
+   - Green/blue celebration theme
+   - Auto-dismiss after 5 seconds
+   - Support for quest completion messages
+
+2. `frontend/src/components/QuestCard.tsx`
+   - Display quest name, description, progress bar
+   - Reward amount with flipcoin icon
+   - Status indicators (active/completed/claimed)
+   - Claim button for completed quests
+   - Category badges and progress animation
+
+3. `frontend/src/components/QuestProgressBar.tsx`
+   - Animated progress visualization
+   - Color coding by category
+   - "X / Y" format display
+
+4. `frontend/src/components/QuestFilter.tsx`
+   - Category tabs: All, Streaks, Quality, Activity, Milestones
+   - Filter and sort functionality
+
+### 2.3: Quests Page
+**Status**: ⏸️ Not Started
+
+**Files to Create:**
+- `frontend/src/pages/Quests.tsx`
+
+**Layout Requirements:**
+```
+Header with balance and back navigation
+┌─────────────────────────────────────┐
+│ Quests & Achievements               │
+│ [Claimable Rewards: 3] 🎁          │
+│ Total Rewards Earned: 450f          │
+└─────────────────────────────────────┘
+
+[Filter: All | Streaks | Quality | Activity | Milestones]
+
+┌── Active Quests (2) ──────────────┐
+│ [QuestCard] [QuestCard]             │
+└─────────────────────────────────────┘
+
+┌── Claimable Quests (1) ───────────┐
+│ [QuestCard with Claim button]      │
+└─────────────────────────────────────┘
+
+┌── Completed Quests (8) ───────────┐
+│ [QuestCard] [QuestCard] [QuestCard] │
+│ [Show More...]                      │
+└─────────────────────────────────────┘
+```
+
+**Features:**
+- Real-time progress updates
+- Expandable quest details
+- Filter and sort options
+- Empty states with encouraging messages
+- Responsive mobile layout
+
+### 2.4: Quest Integration & Notifications
+**Status**: ⏸️ Not Started
+
+**Files to Modify:**
+1. `frontend/src/App.tsx` - Add `/quests` route
+2. `frontend/src/pages/Dashboard.tsx` - Add quest notification banner
+3. `frontend/src/contexts/GameContext.tsx` - Integrate quest refresh triggers
+
+**Dashboard Integration:**
+```tsx
+{claimableQuests.length > 0 && (
+  <div className="bg-green-50 border-2 border-green-400 rounded-lg p-4 mb-4">
+    <div className="flex items-center justify-between">
+      <div>
+        <h3 className="font-display font-semibold text-green-800">
+          🎉 Quests Completed!
+        </h3>
+        <p className="text-green-700">
+          You have {claimableQuests.length} quest(s) ready to claim
+        </p>
+      </div>
+      <button 
+        onClick={() => navigate('/quests')}
+        className="btn-primary"
+      >
+        View Quests
+      </button>
+    </div>
+  </div>
+)}
+```
+
+**Celebration Triggers:**
+- After vote submission (hot streak progress)
+- After phraseset finalization (deceptive/obvious bonuses)
+- After round completion milestones
+- During polling refresh (detect new completed quests)
+
 ---
 
-## Phase 2: Polish & User Experience (PARTIAL)
+## Phase 3: UI Polish & Enhancements (MEDIUM PRIORITY)
 
-### Enhanced Features
+### 3.1: Mobile Header Optimization
+**Status**: ⏸️ Not Started
 
-1. **Transaction History** (NOT STARTED)
-   - List of recent transactions with types and amounts
-   - Filter by type (earnings, costs, bonuses)
-   - Running balance column
+**Goal**: Improve mobile header appearance with tighter spacing
 
-2. ✅ **Improved Round Selection** (PARTIAL - showing availability)
-   - ⏸️ Show queue depths (X prompts waiting, Y phrasesets waiting)
-   - ✅ Copy discount indicator when active
-   - ⏸️ Estimated wait time hints
-   - ✅ Disabled state for unavailable round types
+**Files to Modify:**
+- `frontend/src/components/Header.tsx`
 
-3. ✅ **Enhanced Results** (PARTIAL)
-   - ✅ Vote distribution display
-   - ✅ Points and payout breakdown
-   - ⏸️ Visual chart/graph of vote distribution
-   - ⏸️ Share results feature
-   - ✅ History via phraseset tracking page
+**Changes:**
+- Vertical padding: `py-1.5 md:py-3`
+- Logo scaling: `h-8 md:h-12`
+- Balance icon: `w-6 h-6 md:w-10 md:h-10`
+- Balance text: `text-xl md:text-3xl`
+- Element gaps: `gap-2 md:gap-4`
 
-4. **Settings / Account** (NOT STARTED)
-   - Legacy API key rotation UI
-   - Export transaction history
-   - Game statistics preview
-   - Account management (email, password change)
-   - Logout functionality (currently implemented inline)
+### 3.2: Currency Icon Replacement
+**Status**: ⏸️ Not Started
 
-5. ✅ **Better Error Handling** (COMPLETE)
-   - ✅ Clear error messages with extractErrorMessage
-   - ✅ Reconnection handling with state preservation
-   - ✅ Automatic token refresh on auth errors
-   - ⏸️ Graceful offline mode
+**Goal**: Replace all "$" symbols with flipcoin icons throughout UI
 
-6. ✅ **Loading States** (PARTIAL)
-   - ✅ Loading indicators on buttons
-   - ✅ Disabled states during API calls
-   - ⏸️ Skeleton screens
-   - ⏸️ Optimistic updates
+**Files to Create:**
+- `frontend/src/components/CurrencyDisplay.tsx`
 
-### UX Improvements
+**Files to Modify:**
+- `frontend/src/pages/Statistics.tsx` - Replace $ in earnings displays
+- `frontend/src/pages/PhrasesetTracking.tsx` - Replace $ in prize amounts
+- `frontend/src/pages/Dashboard.tsx` - Replace $ in cost displays
 
-- Animations on balance changes
-- Sound effects (optional, user toggle)
-- Haptic feedback on mobile
-- Dark mode support
-- ✅ **Tutorial/onboarding flow** (COMPLETE - Interactive guided tour)
-- Keyboard shortcuts
-- Accessibility (ARIA labels, keyboard navigation)
+**Component Design:**
+```tsx
+interface CurrencyDisplayProps {
+  amount: number;
+  iconClassName?: string;
+  textClassName?: string;
+  showIcon?: boolean;
+}
+
+// Renders: [flipcoin icon] 1000
+```
+
+### 3.3: Navigation Improvements
+**Status**: ⏸️ Not Started
+
+**Changes:**
+1. **Back Arrow in Header**
+   - Create `BackArrowIcon.tsx` component
+   - Show on Statistics and Tracking pages only
+   - Remove "Back to Dashboard" buttons from pages
+
+2. **Statistics Icon Next to Username**
+   - Create `StatisticsIndicatorIcon.tsx` (small bar chart)
+   - Add next to username in header to indicate clickability
+
+3. **Rename PhrasesetTracking → Tracking**
+   - Rename file and component
+   - Update all UI labels and references
+   - Keep `/phrasesets` route for compatibility
+
+### 3.4: Balance Visual Enhancement
+**Status**: ⏸️ Not Started
+
+**Goal**: Add subtle border around balance display
+
+**Implementation:**
+```tsx
+// Wrap balance in bordered container
+<div className="flex items-center gap-2">
+  <img src="/flipcoin.png" />
+  <div className="border-2 border-quip-turquoise rounded-tile px-3 py-1">
+    <BalanceFlipper value={player.balance} />
+  </div>
+</div>
+```
 
 ---
 
-## Phase 3: Advanced Features
+## Phase 4: Advanced Features (LOW PRIORITY)
 
-### ✅ Player Statistics Dashboard (COMPLETE)
-- ✅ Win rate by role (prompt/copy/voter) with bar charts
-- ✅ Total earnings breakdown with pie charts
-- ✅ Play frequency metrics (rounds per day, days active)
-- ✅ Role performance comparison with radar charts
-- ✅ Top earning prompts and best performing phrases
-- ✅ Interactive charts using Recharts library
-- ✅ Accessible from dashboard via "View Statistics" button
-- ✅ Backend endpoint: GET /player/statistics
-- ✅ Frontend page: /statistics route
+### 4.1: Transaction History
+**Status**: ⏸️ Not Started
 
-### Social Features
-- Leaderboards (daily/weekly/all-time)
-- Achievement badges
+**Files to Create:**
+- `frontend/src/pages/TransactionHistory.tsx`
+- `frontend/src/components/TransactionItem.tsx`
+
+**Features:**
+- List recent transactions with types and amounts
+- Filter by type (earnings, costs, bonuses, quest rewards)
+- Running balance column
+- Pagination or infinite scroll
+- Export functionality
+
+### 4.2: Enhanced Results Features
+**Status**: ⏸️ Partially Complete
+
+**Remaining Features:**
+- Visual chart/graph of vote distribution (using Recharts)
 - Share results to social media
-- Friend system (if backend supports)
+- Results comparison with previous phrasesets
 
-### Premium Experience
-- Progressive Web App (PWA)
-- Push notifications for results ready
-- Offline caching
-- Native mobile apps (React Native / Flutter)
+### 4.3: Settings/Account Management
+**Status**: ⏸️ Not Started
 
-### Real-time Updates
-- WebSocket connection for live updates (requires backend Phase 3)
-- Live vote counts as they come in
-- Real-time queue depth changes
+**Files to Create:**
+- `frontend/src/pages/Settings.tsx`
+
+**Features:**
+- API key rotation UI
+- Email/password change forms
+- Game preferences (sound effects, notifications)
+- Export data functionality
+- Account deletion
+
+### 4.4: Social Features
+**Status**: ⏸️ Not Started
+
+**Features:**
+- Leaderboards (daily/weekly/all-time)
+- Achievement sharing
+- Player profiles
+- Friend system integration (if backend supports)
+
+### 4.5: Progressive Web App (PWA)
+**Status**: ⏸️ Not Started
+
+**Requirements:**
+- Service worker for offline caching
+- Web app manifest
+- Push notification support
+- Install prompts
+- Offline queue for actions
+
+---
+
+## Phase 5: Real-time Features (FUTURE)
+
+### 5.1: WebSocket Integration
+**Status**: ⏸️ Requires Backend Phase 3
+
+**Features:**
+- Live vote counts during voting rounds
+- Real-time queue depth updates
 - Instant result notifications
+- Live activity feed
+
+### 5.2: Enhanced Notifications
+**Status**: ⏸️ Not Started
+
+**Features:**
+- Browser push notifications
+- Quest completion celebrations with animations
+- Sound effects (user-configurable)
+- Haptic feedback on mobile
 
 ---
 
-## Technical Considerations
+## Technical Debt & Optimizations
 
-### Framework Recommendations
+### Performance Improvements
+**Status**: ⏸️ Not Started
 
-**Web:**
-- React / Next.js (most popular, good ecosystem)
-- Vue / Nuxt (simpler learning curve)
-- Svelte / SvelteKit (performance-focused)
+1. **Bundle Optimization**
+   - Code splitting by route
+   - Lazy loading for Statistics charts
+   - Image optimization
+   - Tree shaking unused dependencies
 
-**Mobile:**
-- React Native (cross-platform, shares code with web)
-- Flutter (high performance, native feel)
-- Native iOS/Android (best UX, more effort)
+2. **State Management**
+   - Move from Context to Redux Toolkit (if complexity grows)
+   - Implement request caching
+   - Optimize re-renders
 
-### State Management Options
+3. **Accessibility**
+   - ARIA labels for all interactive elements
+   - Keyboard navigation improvements
+   - Screen reader testing
+   - Color contrast validation
 
-**Simple (MVP):**
-- React Context API
-- Vue Composition API
-- Svelte stores
+### Error Handling Improvements
+**Status**: ⏸️ Partially Complete
 
-**Advanced (Phase 2+):**
-- Redux Toolkit (React)
-- Pinia (Vue)
-- Zustand (lightweight, React)
+1. **Offline Support**
+   - Show offline indicator
+   - Queue actions when offline
+   - Retry failed requests automatically
 
-### API Client
-
-Create a typed API client using the TypeScript definitions in [API.md](API.md#frontend-integration). Consider:
-- Axios or Fetch API wrapper
-- Automatic retry logic
-- Request/response interceptors for Authorization header injection
-- Error transformation to user-friendly messages
-
-### Offline Strategy
-
-**Phase 1:**
-- Show error message when offline
-- Preserve access token metadata (with refresh fallback)
-
-**Phase 2+:**
-- Queue actions for later submission
-- Cache recent results
-- Service worker for PWA
+2. **Error Boundary**
+   - Add React error boundaries
+   - Graceful error recovery
+   - Error reporting integration
 
 ---
 
-## Testing Strategy
+## Implementation Priority Queue
 
-### Phase 1 Testing
+### Next 2 Weeks (High Priority)
+1. **Quest System UI** - Complete quest context, components, and page
+2. **Quest Dashboard Integration** - Add claimable quest notifications
+3. **Mobile Header Optimization** - Improve mobile header spacing
 
-**Manual Testing:**
-- Complete game flow (prompt → copy → vote → results)
-- Timer expiration handling
-- Error scenarios (insufficient balance, invalid words)
-- Reconnection after disconnect
+### Next Month (Medium Priority)  
+4. **Currency Icon Replacement** - Create CurrencyDisplay component
+5. **Navigation Improvements** - Back arrows, statistics icon
+6. **Balance Enhancement** - Add border styling
 
-**Automated Testing:**
-- API client unit tests
-- Component tests for timer logic
-- Integration tests for critical flows
-- E2E tests for happy path
-
-### Phase 2+ Testing
-
-- Visual regression testing
-- Performance testing (bundle size, load time)
-- Accessibility audits
-- Cross-browser testing
-- Mobile device testing
-
----
-
-## Deployment
-
-### Phase 1 MVP
-- Static hosting (Vercel, Netlify, GitHub Pages)
-- Environment variables for API URL
-- CORS configuration with backend
-- HTTPS required for secure token transport
-
-### Phase 2+
-- CDN for assets
-- Analytics integration
-- Error tracking (Sentry)
-- Performance monitoring
-
----
-
-## Design Guidelines
-
-### Visual Hierarchy
-- Balance and timer should be most prominent
-- Clear call-to-action buttons
-- Consistent color coding (green=success, red=error, blue=info)
-
-### Responsive Design
-- Mobile-first approach
-- Touch-friendly tap targets (minimum 44x44px)
-- Readable font sizes (minimum 16px)
-- Landscape and portrait support
-
-### Performance
-- Minimize bundle size
-- Lazy load routes
-- Optimize images
-- Debounce API calls
-
-### Accessibility
-- Semantic HTML
-- ARIA labels for interactive elements
-- Keyboard navigation support
-- Screen reader friendly
-- Color contrast ratios (WCAG AA minimum)
-
----
-
-## Development Workflow
-
-### Phase 1 Priorities (Week 1-2)
-1. Set up project structure and routing
-2. Implement authentication flow
-3. Create dashboard with round selection
-4. Build prompt/copy/vote round components
-5. Implement timer logic
-6. Add results viewing
-7. Polish error handling and edge cases
-
-### Phase 2 Priorities (Week 3-4)
-1. Add transaction history
-2. Improve loading states
-3. Add animations and transitions
-4. Implement settings/account page
-5. Add offline handling
-6. Accessibility improvements
-
-### Phase 3+ (Post-MVP)
-- Statistics dashboard
-- Social features
-- PWA conversion
-- Mobile apps
-- Real-time features
-
----
-
-## API Integration Checklist
-
-**Authentication:**
-- ✅ POST /player (create account)
-- ✅ POST /auth/login (username/password login)
-- ✅ POST /auth/refresh (automatic token refresh)
-- ✅ POST /auth/logout (clear refresh token)
-- ✅ Store access tokens securely (localStorage + HTTP-only cookies)
-- ✅ Include Authorization: Bearer header in all requests
-- ✅ Handle 401 errors (automatic refresh + retry)
-
-**Player Management:**
-- ✅ GET /player/balance
-- ✅ POST /player/claim-daily-bonus
-- ✅ GET /player/current-round
-- ✅ GET /player/pending-results
-- ✅ GET /player/phrasesets (with filtering)
-- ✅ GET /player/phrasesets/summary
-- ✅ GET /player/unclaimed-results
-- ✅ GET /player/statistics
-- ✅ GET /player/tutorial/status
-- ✅ POST /player/tutorial/progress
-- ✅ POST /player/tutorial/reset
-- ⏸️ POST /player/rotate-key (Phase 2 - UI needed)
-
-**Round Management:**
-- ✅ GET /rounds/available
-- ✅ POST /rounds/prompt
-- ✅ POST /rounds/copy
-- ✅ POST /rounds/vote
-- ✅ POST /rounds/{round_id}/submit
-- ✅ POST /rounds/{round_id}/feedback (like/dislike)
-- ✅ GET /rounds/{round_id}/feedback
-
-**Voting & Results:**
-- ✅ POST /phrasesets/{phraseset_id}/vote
-- ✅ GET /phrasesets/{phraseset_id}/results
-- ✅ GET /phrasesets/{phraseset_id}/details
-- ✅ POST /phrasesets/{phraseset_id}/claim
+### Next Quarter (Low Priority)
+7. **Transaction History** - Full transaction viewing page
+8. **Settings Page** - Account management features
+9. **PWA Implementation** - Offline support and install prompts
 
 ---
 
 ## Success Metrics
 
-### Phase 1 (MVP)
-- Users can complete full game flow without confusion
-- <2 second response time for API calls
-- 90%+ uptime
-- Zero critical bugs in production
+### Quest System Success
+- **Engagement**: >60% of users view quest page within first week
+- **Completion**: >40% of users claim at least one quest reward
+- **Retention**: Quest users have 25% higher 7-day retention
 
-### Phase 2+
-- Average session length > 5 minutes
-- Daily active user retention > 30%
-- <1% error rate on API calls
-- Lighthouse score > 90
+### UI Enhancement Success
+- **Mobile**: >90% mobile users complete full game flow
+- **Navigation**: <5% bounce rate on Statistics/Tracking pages
+- **Performance**: Lighthouse score remains >90
 
----
-
-## Common Pitfalls to Avoid
-
-1. **Timer Sync Issues**
-   - Always calculate from server `expires_at`, not client-side countdown
-   - Account for network latency
-   - Don't trust client time
-
-2. **Race Conditions**
-   - Handle rapid button clicks (disable while processing)
-   - Optimistic updates with rollback on error
-   - Check current round state before starting new round
-
-3. **State Staleness**
-   - Refresh balance after every transaction
-   - Poll for round availability changes
-   - Handle concurrent session detection (if needed)
-
-4. **API Key Security**
-   - Never log access or refresh tokens
-   - Clear from memory on logout
-   - Don't expose in URLs
-   - Use HTTPS only
-
-5. **Error Handling**
-   - Always handle network errors gracefully
-   - Provide actionable error messages
-   - Allow retry for transient failures
-   - Distinguish between client and server errors
+### Technical Success
+- **Error Rate**: <1% API call failures
+- **Load Time**: <2s initial page load
+- **Bundle Size**: <500KB initial bundle
 
 ---
 
-## Next Steps
+## Development Resources Needed
 
-1. **Choose your framework** - React, Vue, or Svelte
-2. **Set up project** - Use create-react-app, Vite, or Next.js
-3. **Create API client** - TypeScript wrapper around fetch/axios
-4. **Build authentication** - Landing page + token management
-5. **Implement dashboard** - Balance display + round selection
-6. **Add round screens** - Prompt → Copy → Vote
-7. **Build results view** - Vote breakdown + payout display
-8. **Test full flow** - End-to-end user journey
-9. **Deploy** - Static hosting with environment config
-10. **Iterate** - Gather feedback and improve
+### Design Assets
+- Quest category icons (4 types: streak, quality, activity, milestone)
+- Back arrow icon (left-pointing, theme-consistent)
+- Statistics indicator icon (small bar chart)
+- Enhanced flipcoin icon variants
 
-See [API.md](API.md) for complete API reference and [MVP_SUMMARY.md](MVP_SUMMARY.md) for backend status.
+### Technical Skills
+- React context management and optimization
+- Chart.js or Recharts for progress visualizations
+- CSS animations for quest celebrations
+- Service worker development (for PWA)
+
+---
+
+## Risk Mitigation
+
+### Quest System Risks
+- **Performance**: Large quest lists may impact load time
+  - *Mitigation*: Pagination and lazy loading
+- **User Confusion**: Complex quest mechanics
+  - *Mitigation*: Clear progress indicators and help text
+
+### UI Enhancement Risks  
+- **Mobile Compatibility**: Header changes may break on edge devices
+  - *Mitigation*: Extensive mobile testing
+- **Breaking Changes**: Navigation updates may confuse existing users
+  - *Mitigation*: Gradual rollout with user feedback
+
+---
+
+## Questions for Product Decision
+
+1. **Quest Page Priority**: Should quest system be accessible from dashboard or require separate navigation?
+2. **Mobile Header**: How aggressive should mobile space optimization be?
+3. **Currency Symbol**: Completely replace $ with icons, or show both in some contexts?
+4. **Real-time Features**: What's the priority for WebSocket integration vs other features?
+5. **PWA Timeline**: When should offline support become a priority?
+
+---
+
+*Document updated: January 2025*  
+*Status: Planning Phase - Quest System Backend Complete*  
+*Next Milestone: Quest System UI Implementation*

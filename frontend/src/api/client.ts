@@ -329,7 +329,7 @@ api.interceptors.response.use(
     }
 
     if (error.code === 'ERR_NETWORK') {
-      return Promise.reject({ message: 'Network error. Please check your connection.' });
+      return Promise.reject({ message: 'The backend server may be busy. Please check your connection and try again.' });
     }
 
     return Promise.reject(error);

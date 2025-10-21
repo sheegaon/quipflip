@@ -27,7 +27,7 @@ const TutorialWelcome: React.FC<TutorialWelcomeProps> = ({ onStart, onSkip }) =>
 
           <ul className="tutorial-welcome-features">
             <li>
-              <strong>Create Prompts:</strong> Write fun fill-in-the-blank challenges
+              <strong>Create Quips:</strong> Write fun fill-in-the-blank challenges
             </li>
             <li>
               <strong>Copy Phrases:</strong> Try to blend in with the original answers

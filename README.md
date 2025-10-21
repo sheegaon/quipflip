@@ -13,7 +13,7 @@ Winners split a prize pool based on vote performance. See full game rules below.
 
 ## 🚀 Quick Start
 
-### Backend (Production Ready)
+### Backend
 
 ```bash
 # Install dependencies
@@ -30,7 +30,7 @@ Server runs at **http://localhost:8000**
 - API Docs: http://localhost:8000/docs
 - Health Check: http://localhost:8000/health
 
-### Frontend (MVP Complete)
+### Frontend
 
 ```bash
 # Navigate to frontend
@@ -58,50 +58,6 @@ Frontend runs at **http://localhost:5173**
 **For Game Design:**
 - **[README.md](README.md)** - This file (complete game rules)
 - **[PLAN.md](docs/PROJECT_PLAN)** - Implementation phases and roadmap
-
-## ⚡ Features
-
-**✅ Phase 1 MVP Complete (100%)**
-
-*Backend:*
-- Player accounts with JWT + refresh token authentication (HTTP-only cookies)
-- Email-based login with auto-generated player pseudonyms
-- Three round types (Prompt, Copy, Vote)
-- Queue management with dynamic pricing
-- NASPA dictionary validation (191k words)
-- Proportional prize distribution
-- Daily login bonuses
-- Prompt feedback system (like/dislike)
-- Phraseset tracking and unclaimed results
-- Comprehensive player statistics with win rates and earnings breakdown
-- Transaction audit trail
-- 20+ REST API endpoints
-- 88% test coverage
-
-*Frontend:*
-- React 18 + TypeScript with Vite 5 (stable, production-ready)
-- JWT authentication with automatic token refresh
-- Email/password login with auto-suggested usernames for registration
-- Responsive UI with Tailwind CSS 3 and custom branding
-- Real-time countdown timers with visual states
-- Dashboard with balance, round selection, and phraseset tracking
-- All three round types with feedback mechanisms
-- Results viewing with pseudonym display, vote breakdown and prize claiming
-- Phraseset tracking dashboard (by role and status)
-- Interactive statistics page with charts and performance metrics (Recharts)
-- Automatic state polling with request cancellation
-- Error handling & notifications
-- 22% smaller bundle size vs bleeding-edge versions
-
-**🔜 Phase 2 (Planned)**
-- Transaction history endpoint
-- Admin API for testing
-
-**🎯 Phase 3+ (Future)**
-- AI backup players
-- Real-time WebSocket updates
-- Leaderboards & achievements
-- Social features
 
 ## 🛠️ Tech Stack
 

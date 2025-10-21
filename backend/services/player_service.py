@@ -186,8 +186,8 @@ class PlayerService:
 
         # Check outstanding prompts
         count = await self.get_outstanding_prompts_count(player.player_id)
-        if count >= settings.max_outstanding_prompts:
-            return False, "max_outstanding_prompts"
+        if count >= settings.max_outstanding_quips:
+            return False, "max_outstanding_quips"
 
         return True, ""
 

@@ -5,8 +5,10 @@ This module provides AI-powered vote generation to help determine
 which phrase in a phraseset is the original.
 """
 
-import os
 import random
+
+from backend.config import get_settings
+from .prompt_builder import build_vote_prompt
 
 try:
     from openai import AsyncOpenAI, OpenAIError
@@ -23,45 +25,11 @@ except ImportError:
 
 __all__ = ["AIVoteError", "generate_vote_choice"]
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+settings = get_settings()
 
 
 class AIVoteError(RuntimeError):
     """Raised when AI vote generation fails."""
-
-
-def _build_vote_prompt(prompt_text: str, phrases: list[str]) -> str:
-    """
-    Build structured prompt for AI vote generation.
-
-    Args:
-        prompt_text: The prompt that the phrases were created for
-        phrases: List of 3 phrases (1 original, 2 copies)
-
-    Returns:
-        A formatted prompt string for AI vote generation
-    """
-    phrases_formatted = "\n".join([f"{i+1}. {phrase}" for i, phrase in enumerate(phrases)])
-
-    return f"""You are playing a word game where you need to identify the original phrase.
-
-Given a prompt and three phrases, one phrase is the ORIGINAL that was submitted by a player,
-and two phrases are COPIES created by other players trying to mimic the original.
-
-Your task: Identify which phrase is most likely the ORIGINAL.
-
-Prompt: "{prompt_text}"
-
-Phrases:
-{phrases_formatted}
-
-Consider:
-- The original is often more natural and straightforward
-- Copies may try too hard or be slightly awkward
-- The original usually best matches the prompt intent
-
-Respond with ONLY the number (1, 2, or 3) of the phrase you believe is the original."""
 
 
 async def generate_vote_choice_openai(
@@ -88,15 +56,15 @@ async def generate_vote_choice_openai(
     if AsyncOpenAI is None:
         raise AIVoteError("openai package not installed. Install with: pip install openai")
 
-    if not OPENAI_API_KEY:
+    if not settings.openai_api_key:
         raise AIVoteError("OPENAI_API_KEY environment variable must be set")
 
     if len(phrases) != 3:
         raise AIVoteError(f"Expected 3 phrases, got {len(phrases)}")
 
     try:
-        client = AsyncOpenAI(api_key=OPENAI_API_KEY, timeout=timeout)
-        prompt = _build_vote_prompt(prompt_text, phrases)
+        client = AsyncOpenAI(api_key=settings.openai_api_key, timeout=timeout)
+        prompt = build_vote_prompt(prompt_text, phrases)
 
         response = await client.chat.completions.create(
             model=model,
@@ -158,15 +126,15 @@ async def generate_vote_choice_gemini(
     if genai is None:
         raise AIVoteError("google-genai package not installed. Install with: pip install google-genai")
 
-    if not GEMINI_API_KEY:
+    if not settings.gemini_api_key:
         raise AIVoteError("GEMINI_API_KEY environment variable must be set")
 
     if len(phrases) != 3:
         raise AIVoteError(f"Expected 3 phrases, got {len(phrases)}")
 
     try:
-        client = genai.Client(api_key=GEMINI_API_KEY)
-        prompt = _build_vote_prompt(prompt_text, phrases)
+        client = genai.Client(api_key=settings.gemini_api_key)
+        prompt = build_vote_prompt(prompt_text, phrases)
 
         contents = [
             types.Content(

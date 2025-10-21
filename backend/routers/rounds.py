@@ -27,6 +27,7 @@ from backend.utils.exceptions import (
     RoundExpiredError,
     RoundNotFoundError,
     NoWordsetsAvailableError,
+    NoPromptsAvailableError,
 )
 from datetime import datetime, UTC
 from uuid import UUID
@@ -100,6 +101,8 @@ async def start_copy_round(
             cost=round_object.cost,
             discount_active=QueueService.is_copy_discount_active(),
         )
+    except NoPromptsAvailableError:
+        raise HTTPException(status_code=400, detail="no_prompts_available")
     except Exception as e:
         logger.error(f"Error starting copy round: {e}")
         raise HTTPException(status_code=400, detail=str(e))
@@ -197,6 +200,9 @@ async def get_rounds_available(
     # Get prompts waiting count excluding player's own prompts
     prompts_waiting = await round_service.get_available_prompts_count(player.player_id)
     phrasesets_waiting = await vote_service.count_available_wordsets_for_player(player.player_id)
+
+    # Rehydrate prompt queue if necessary so availability reflects database state.
+    await round_service.ensure_prompt_queue_populated()
 
     can_prompt, _ = await player_service.can_start_prompt_round(player)
     can_copy, _ = await player_service.can_start_copy_round(player)

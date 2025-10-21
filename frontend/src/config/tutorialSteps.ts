@@ -18,9 +18,9 @@ export const TUTORIAL_STEPS: Record<TutorialProgress, TutorialStep | null> = {
   welcome: {
     id: 'welcome',
     title: 'Welcome to Quipflip!',
-    message: `Quipflip is a creative word game where you'll write prompts, copy phrases, and vote on the best matches.
+    message: `Quipflip is a creative word game where you'll write quips, copy phrases, and vote on the best matches.
 
-Let's take a quick tour to show you how to play and earn coins!`,
+Let's take a quick tour to show you how to play and earn some flipcoins!`,
     position: 'bottom',
     nextStep: 'dashboard',
     showSkip: true,
@@ -38,7 +38,7 @@ Let's take a quick tour to show you how to play and earn coins!`,
 
 Let's start with a **Prompt Round** where you'll create a creative fill-in-the-blank challenge.`,
     target: '.tutorial-dashboard',
-    position: 'top',
+    position: 'bottom',
     nextStep: 'prompt_round',
     showSkip: true,
     showBack: true,
@@ -53,47 +53,47 @@ For example: "The best pizza topping is ______"
 
 You might try writing "peppers and mushrooms" or "green and black olives".
 
-Then other players will try to write similar quips based on yours, but *without seeing the prompt*. The more uniquely your answer fits the prompt, the more coins you can earn!
-
-**Click "Next" to start your first Prompt Round.** The tutorial will resume when you finish.`,
-    target: '.tutorial-prompt-input',
-    position: 'top',
-    action: 'wait',
-    nextStep: 'dashboard', // Return to dashboard, tutorial resumes after completion
+Then other players will try to write similar quips based on yours, but *without seeing the prompt*. The more uniquely your answer fits the prompt, the more coins you can earn!`,
+      // **Click "Next" to start your first Prompt Round.** The tutorial will resume when you finish.
+    target: '.tutorial-prompt-round',
+    position: 'bottom',
+    nextStep: 'copy_round', // Changed from 'prompt_round_paused' to 'copy_round'
     showSkip: true,
     showBack: true,
   },
 
+  prompt_round_paused: null,
+
   copy_round: {
     id: 'copy_round',
     title: 'Write a Copy',
-    message: `Great job! Now let's try a **Copy Round**.
-
-In a Copy Round, you'll see a prompt like "The best dessert is ______" with an original answer.
+      // Great job! Now let's try a **Copy Round**.
+    message: `In a Copy Round, you'll see another player's response to a prompt *without seeing the original prompt*.
 
 Your job is to write a phrase that could blend in with the original. Make it convincing!
 
-Voters will try to identify the original, so the better you match the style, the more you earn.
-
-**Click "Next" to start a Copy Round.** The tutorial will resume when you finish.`,
+Voters will try to identify the original, so the better you match the style, the more you earn.`,
+      // **Click "Next" to start a Copy Round.** The tutorial will resume when you finish.
     target: '.tutorial-copy-input',
     position: 'top',
     action: 'wait',
-    nextStep: 'dashboard', // Return to dashboard, tutorial resumes after completion
+    nextStep: 'vote_round',
     showSkip: true,
     showBack: false,
   },
 
+  copy_round_paused: null,
+
   vote_round: {
     id: 'vote_round',
     title: 'Vote for the Original',
-    message: `Excellent! The final type of round is **Voting**.
+      // Excellent!
+    message: `The final type of round is **Voting**.
 
 You'll see a prompt and three phrases. One is the original, two are copies.
 
-Your goal is to identify which phrase was the original. Choose carefully - correct votes earn coins!
-
-**Make your vote now to complete the tutorial.**`,
+Your goal is to identify which phrase was the original. Choose carefully - correct votes earn coins!`,
+      // **Make your vote now to complete the tutorial.**
     target: '.tutorial-vote-options',
     position: 'top',
     action: 'wait',
@@ -115,7 +115,7 @@ export const getNextStep = (currentStep: TutorialProgress): TutorialProgress | n
 };
 
 export const getPreviousStep = (currentStep: TutorialProgress): TutorialProgress | null => {
-  const steps: TutorialProgress[] = ['welcome', 'dashboard', 'prompt_round', 'copy_round', 'vote_round'];
+  const steps: TutorialProgress[] = ['welcome', 'dashboard', 'prompt_round', 'prompt_round_paused', 'copy_round', 'vote_round'];
   const currentIndex = steps.indexOf(currentStep);
   if (currentIndex > 0) {
     return steps[currentIndex - 1];

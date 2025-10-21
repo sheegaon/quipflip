@@ -7,9 +7,7 @@ with configurable fallback behavior and comprehensive metrics tracking.
 """
 
 import logging
-import os
-from typing import Optional
-
+from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -19,6 +17,8 @@ from backend.models.round import Round
 from backend.models.phraseset import PhraseSet
 from backend.services.phrase_validator import PhraseValidator
 from backend.services.ai_metrics_service import AIMetricsService, MetricsTracker
+from backend.services.player_service import PlayerService
+from backend.services.round_service import RoundService
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ class AIVoteError(RuntimeError):
     """Raised when AI vote generation fails."""
 
 
-class AICopyService:
+class AIService:
     """
     Service for generating AI backup copies and votes using multiple providers.
 
@@ -67,9 +67,9 @@ class AICopyService:
         2. Fall back to other provider if configured one is unavailable
         3. Default to OpenAI if both are available
         """
-        configured_provider = self.settings.ai_copy_provider.lower()
-        openai_key = os.getenv("OPENAI_API_KEY")
-        gemini_key = os.getenv("GEMINI_API_KEY")
+        configured_provider = self.settings.ai_provider.lower()
+        openai_key = self.settings.openai_api_key
+        gemini_key = self.settings.gemini_api_key
 
         # Check if configured provider is available
         if configured_provider == "openai" and openai_key:
@@ -107,40 +107,31 @@ class AICopyService:
             This method should NOT commit or refresh the session.
         """
         # Check if AI player exists
-        result = await self.db.execute(
-            select(Player).where(Player.username == "AI_BACKUP")
-        )
+        result = await self.db.execute(select(Player).where(Player.username == "AI_BACKUP"))
         ai_player = result.scalar_one_or_none()
 
         if not ai_player:
             # Create AI player
-            from backend.services.player_service import PlayerService
-
             player_service = PlayerService(self.db)
 
             ai_player = await player_service.create_player(
                 username="AI_BACKUP",
                 email="ai@quipflip.internal",
                 password_hash="not-used-for-ai-player",
-                pseudonym="AI Assistant",
-                pseudonym_canonical="ai assistant",
+                pseudonym="Clever Lexical Runner",
+                pseudonym_canonical="cleverlexicalrunner",
             )
             # Note: Do not commit here - let caller manage transaction
             logger.info("Created AI backup player account")
 
         return ai_player
 
-    async def generate_copy_phrase(
-            self,
-            original_phrase: str,
-            prompt_text: str,
-    ) -> str:
+    async def generate_copy_phrase(self, original_phrase: str) -> str:
         """
         Generate a copy phrase using the configured AI provider with metrics tracking.
 
         Args:
             original_phrase: The original phrase to create a copy of
-            prompt_text: The prompt text for context
 
         Returns:
             Generated and validated copy phrase
@@ -149,9 +140,9 @@ class AICopyService:
             AICopyError: If generation or validation fails
         """
         model = (
-            self.settings.ai_copy_openai_model
+            self.settings.ai_openai_model
             if self.provider == "openai"
-            else self.settings.ai_copy_gemini_model
+            else self.settings.ai_gemini_model
         )
 
         async with MetricsTracker(
@@ -166,17 +157,15 @@ class AICopyService:
                     from backend.services.openai_api import generate_copy as openai_generate
                     phrase = await openai_generate(
                         original_phrase=original_phrase,
-                        prompt_text=prompt_text,
-                        model=self.settings.ai_copy_openai_model,
-                        timeout=self.settings.ai_copy_timeout_seconds,
+                        model=self.settings.ai_openai_model,
+                        timeout=self.settings.ai_timeout_seconds,
                     )
                 else:  # gemini
                     from backend.services.gemini_api import generate_copy as gemini_generate
                     phrase = await gemini_generate(
                         original_phrase=original_phrase,
-                        prompt_text=prompt_text,
-                        model=self.settings.ai_copy_gemini_model,
-                        timeout=self.settings.ai_copy_timeout_seconds,
+                        model=self.settings.ai_gemini_model,
+                        timeout=self.settings.ai_timeout_seconds,
                     )
             except Exception as e:
                 # Wrap API exceptions in AICopyError
@@ -184,39 +173,31 @@ class AICopyService:
                 raise AICopyError(f"Failed to generate AI copy: {e}")
 
             # Validate the generated phrase
-            validation_result = await self.validator.validate_phrase(phrase)
-            validation_passed = validation_result.is_valid
+            is_valid, error_message = self.validator.validate(phrase)
 
-            if not validation_passed:
+            if not is_valid:
                 tracker.set_result(
                     phrase,
                     success=False,
-                    prompt_length=len(prompt_text) + len(original_phrase),
                     response_length=len(phrase),
                     validation_passed=False,
                 )
                 raise AICopyError(
-                    f"AI generated invalid phrase: {validation_result.error_message}"
+                    f"AI generated invalid phrase: {error_message}"
                 )
 
             # Track successful generation
             tracker.set_result(
                 phrase,
                 success=True,
-                prompt_length=len(prompt_text) + len(original_phrase),
                 response_length=len(phrase),
                 validation_passed=True,
             )
 
-            logger.info(
-                f"AI ({self.provider}) generated valid copy: '{phrase}' for prompt: '{prompt_text[:50]}...'"
-            )
+            logger.info(f"AI ({self.provider}) generated valid copy: '{phrase}' for original: '{original_phrase}'")
             return phrase
 
-    async def generate_vote_choice(
-            self,
-            phraseset: PhraseSet,
-    ) -> str:
+    async def generate_vote_choice(self, phraseset: PhraseSet) -> str:
         """
         Generate a vote choice using the configured AI provider with metrics tracking.
 
@@ -240,9 +221,9 @@ class AICopyService:
         ]
 
         model = (
-            self.settings.ai_copy_openai_model
+            self.settings.ai_openai_model
             if self.provider == "openai"
-            else self.settings.ai_copy_gemini_model
+            else self.settings.ai_gemini_model
         )
 
         async with MetricsTracker(
@@ -256,9 +237,9 @@ class AICopyService:
                 prompt_text=prompt_text,
                 phrases=phrases,
                 provider=self.provider,
-                openai_model=self.settings.ai_copy_openai_model,
-                gemini_model=self.settings.ai_copy_gemini_model,
-                timeout=self.settings.ai_copy_timeout_seconds,
+                openai_model=self.settings.ai_openai_model,
+                gemini_model=self.settings.ai_gemini_model,
+                timeout=self.settings.ai_timeout_seconds,
             )
 
             chosen_phrase = phrases[choice_index]
@@ -270,7 +251,6 @@ class AICopyService:
             tracker.set_result(
                 chosen_phrase,
                 success=True,
-                prompt_length=len(prompt_text) + sum(len(p) for p in phrases),
                 response_length=len(str(choice_index)),
                 vote_correct=vote_correct,
             )
@@ -290,14 +270,17 @@ class AICopyService:
         1. Finds prompts that have been waiting for copies longer than the backup delay
         2. Generates AI copies for those prompts
         3. Submits the copies as the AI player
+        # TODO find and submit votes for phrasesets waiting for votes
 
         Returns:
             Dictionary with statistics about the backup cycle
 
         Note:
-            This is the main entry point for the AI backup system and manages
-            the complete transaction lifecycle.
+            This is the main entry point for the AI backup system and manages the complete transaction lifecycle.
         """
+        import uuid
+        from datetime import UTC
+
         stats = {
             "prompts_checked": 0,
             "copies_generated": 0,
@@ -308,14 +291,97 @@ class AICopyService:
             # Get or create AI player (within transaction)
             ai_player = await self._get_or_create_ai_player()
 
-            # Find prompts waiting for copies (older than backup delay)
-            # TODO: Implement prompt queue query logic here
-            # This would query for prompts in 'open' status that are older than
-            # settings.ai_backup_delay_minutes
+            # Find prompts waiting for copies that are older than backup delay
+            cutoff_time = datetime.now(UTC) - timedelta(minutes=self.settings.ai_backup_delay_minutes)
+            
+            # Query for submitted prompt rounds that:
+            # 1. Don't have a phraseset yet (still waiting for copies)
+            # 2. Are older than the backup delay
+            # 3. Don't belong to the AI player (avoid self-copies)
+            # 4. Haven't been copied by the AI player already
+            
+            # First, get all prompt rounds that meet our basic criteria
+            result = await self.db.execute(
+                select(Round)
+                .join(Player, Player.player_id == Round.player_id)
+                .outerjoin(PhraseSet, PhraseSet.prompt_round_id == Round.round_id)
+                .where(Round.round_type == 'prompt')
+                .where(Round.status == 'submitted')
+                .where(Round.created_at <= cutoff_time)
+                .where(Round.player_id != ai_player.player_id)
+                .where(~Player.username.like('%test%'))  # Exclude test players
+                .where(PhraseSet.phraseset_id.is_(None))  # No phraseset yet
+                .order_by(Round.created_at.asc())  # Process oldest first
+                .limit(self.settings.ai_backup_batch_size)  # Configurable batch size
+            )
+            
+            waiting_prompts = list(result.scalars().all())
+            
+            # Filter out prompts already copied by AI (check separately to avoid complex joins)
+            filtered_prompts = []
+            for prompt_round in waiting_prompts:
+                ai_copy_result = await self.db.execute(
+                    select(Round.round_id)
+                    .where(Round.prompt_round_id == prompt_round.round_id)
+                    .where(Round.round_type == 'copy')
+                    .where(Round.player_id == ai_player.player_id)
+                )
+                
+                if ai_copy_result.scalar_one_or_none() is None:
+                    filtered_prompts.append(prompt_round)
+            
+            stats["prompts_checked"] = len(filtered_prompts)
+            logger.info(f"Found {len(filtered_prompts)} prompts waiting for AI backup copies")
+            
+            round_service = RoundService(self.db)
 
-            # For now, this is a placeholder
-            logger.info("AI backup cycle completed")
+            # Process each waiting prompt
+            for prompt_round in filtered_prompts:
+                try:
+                    # Generate AI copy phrase
+                    copy_phrase = await self.generate_copy_phrase(prompt_round.submitted_phrase)
+
+                    # Create copy round for AI player
+                    # Start copy round for AI player
+                    copy_round = Round(
+                        round_id=uuid.uuid4(),
+                        player_id=ai_player.player_id,
+                        round_type='copy',
+                        status='submitted',
+                        created_at=datetime.now(UTC),
+                        expires_at=datetime.now(UTC) + timedelta(minutes=3),  # Standard copy round time
+                        cost=0,  # AI doesn't pay
+                        prompt_round_id=prompt_round.round_id,
+                        original_phrase=prompt_round.submitted_phrase,
+                        copy_phrase=copy_phrase.upper(),
+                        system_contribution=0,  # AI contributions are free
+                    )
+                    
+                    self.db.add(copy_round)
+                    
+                    # Update prompt round copy assignment
+                    if prompt_round.copy1_player_id is None:
+                        prompt_round.copy1_player_id = ai_player.player_id
+                        prompt_round.phraseset_status = "waiting_copy1"
+                    elif prompt_round.copy2_player_id is None:
+                        prompt_round.copy2_player_id = ai_player.player_id
+                        # Check if we now have both copies and can create phraseset
+                        if prompt_round.copy1_player_id is not None:
+                            phraseset = await round_service.create_phraseset_if_ready(prompt_round)
+                            if phraseset:
+                                prompt_round.phraseset_status = "active"
+                    
+                    stats["copies_generated"] += 1
+                    logger.info(f"AI generated backup copy '{copy_phrase}' for prompt '{prompt_round.submitted_phrase}'")
+                    
+                except Exception as e:
+                    logger.error(f"Failed to generate AI copy for prompt {prompt_round.round_id}: {e}")
+                    stats["errors"] += 1
+                    continue
+            
+            # Commit all changes
             await self.db.commit()
+            logger.info(f"AI backup cycle completed: {stats}")
 
         except Exception as exc:
             logger.error(f"AI backup cycle failed: {exc}")

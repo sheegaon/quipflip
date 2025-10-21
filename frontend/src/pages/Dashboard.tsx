@@ -39,6 +39,11 @@ export const Dashboard: React.FC = () => {
     return `${activeRound.round_type.charAt(0).toUpperCase()}${activeRound.round_type.slice(1)}`;
   }, [activeRound?.round_type]);
 
+  // Force refresh dashboard data when component mounts
+  useEffect(() => {
+    refreshDashboard();
+  }, [refreshDashboard]);
+
   // Refresh when page becomes visible (GameContext already loads data on mount)
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -97,22 +102,11 @@ export const Dashboard: React.FC = () => {
     navigate('/results');
   };
 
-  const handleTrackPhrasesets = () => {
-    navigate('/phrasesets');
-  };
-
   const handleClaimResults = () => {
-    navigate('/phrasesets');
+    navigate('/tracking');
   };
-
-  const inProgressPrompts = phrasesetSummary?.in_progress.prompts ?? 0;
-  const inProgressCopies = phrasesetSummary?.in_progress.copies ?? 0;
-  const hasInProgress = inProgressPrompts + inProgressCopies > 0;
 
   // Hide certain dashboard elements during tutorial to reduce overwhelm
-  const { tutorialStatus } = useTutorial();
-  const isTutorialComplete = tutorialStatus?.tutorial_completed ?? false;
-
   const unclaimedPromptCount = phrasesetSummary?.finalized.unclaimed_prompts ?? 0;
   const unclaimedCopyCount = phrasesetSummary?.finalized.unclaimed_copies ?? 0;
   const totalUnclaimedCount = unclaimedPromptCount + unclaimedCopyCount;
@@ -179,25 +173,6 @@ export const Dashboard: React.FC = () => {
           </div>
         )}
 
-        {isTutorialComplete && hasInProgress && (
-          <div className="tile-card border-2 border-quip-navy p-4 mb-6 slide-up-enter">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="font-display font-semibold text-quip-navy">Past Rounds In Progress</p>
-                <p className="text-sm text-quip-teal">
-                  {inProgressPrompts} prompt{inProgressPrompts === 1 ? '' : 's'} • {inProgressCopies} cop{inProgressCopies === 1 ? 'y' : 'ies'}
-                </p>
-              </div>
-              <button
-                onClick={handleTrackPhrasesets}
-                className="w-full sm:w-auto bg-quip-navy hover:bg-quip-teal text-white font-bold py-2 px-6 rounded-tile transition-all hover:shadow-tile-sm"
-              >
-                Track Progress
-              </button>
-            </div>
-          </div>
-        )}
-
         {totalUnclaimedCount > 0 && (
           <div className="tile-card bg-quip-turquoise bg-opacity-10 border-2 border-quip-turquoise p-4 mb-6 slide-up-enter">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -253,11 +228,15 @@ export const Dashboard: React.FC = () => {
                   <img src="/icon_copy.svg" alt="" className="w-8 h-8" />
                   <h3 className="font-display font-semibold text-lg text-quip-turquoise">Copy Round</h3>
                 </div>
-                <span className="text-quip-orange-deep font-bold">
-                  -${roundAvailability?.copy_cost || 100}
+                <span className="flex items-center gap-2 text-quip-orange-deep font-bold">
                   {roundAvailability?.copy_discount_active && (
-                    <span className="text-quip-turquoise text-sm ml-1">(discount!)</span>
+                    <img
+                      src="/badge_copy-discount.svg"
+                      alt="Copy discount active"
+                      className="h-7"
+                    />
                   )}
+                  -${roundAvailability?.copy_cost || 100}
                 </span>
               </div>
               <p className="text-sm text-quip-teal mb-1">
@@ -295,7 +274,7 @@ export const Dashboard: React.FC = () => {
               </p>
               {roundAvailability && roundAvailability.phrasesets_waiting > 0 && (
                 <p className="text-xs text-quip-orange-deep mb-3 font-semibold">
-                  {formatWaitingCount(roundAvailability.phrasesets_waiting)} phraseset
+                  {formatWaitingCount(roundAvailability.phrasesets_waiting)} quip set
                   {roundAvailability.phrasesets_waiting > 1 ? 's' : ''} waiting
                 </p>
               )}
@@ -305,7 +284,7 @@ export const Dashboard: React.FC = () => {
                 className="w-full bg-quip-orange hover:bg-quip-orange-deep disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm"
               >
                 {roundAvailability?.can_vote ? 'Start Vote Round' :
-                  roundAvailability?.phrasesets_waiting === 0 ? 'No Quips Available' :
+                  roundAvailability?.phrasesets_waiting === 0 ? 'No Quip Sets Available' :
                   player.balance < 1 ? 'Insufficient Balance' :
                   'Not Available'}
               </button>

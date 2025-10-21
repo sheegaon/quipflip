@@ -1,5 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="560" height="160" viewBox="0 0 560 160">
-  <rect x="0" y="0" width="560" height="160" rx="28" fill="#10B5A4"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="410" height="160" viewBox="0 0 430 160">  <rect x="0" y="0" width="410" height="160" rx="28" fill="#10B5A4"/>
   <circle cx="80" cy="80" r="36" fill="#FFF6EE" opacity="0.15"/>
-  <text x="140" y="100" font-family="Inter, Manrope, system-ui, sans-serif" font-size="52" font-weight="800" fill="#FFF6EE">Copy Discount Active</text>
+  <text x="140" y="100" font-family="Inter, Manrope, system-ui, sans-serif" font-size="52" font-weight="800" fill="#FFF6EE">Discount!</text>
 </svg>

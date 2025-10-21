@@ -129,7 +129,7 @@ export const CopyRound: React.FC = () => {
         {/* Instructions */}
         <div className="bg-quip-orange bg-opacity-10 border-2 border-quip-orange rounded-tile p-4 mb-6">
           <p className="text-sm text-quip-navy">
-            <strong>⚠️ Important:</strong> You don't know the prompt! Submit a phrase that could be similar or related to the original phrase.
+            <strong>💡 Tip:</strong> You don't know the prompt! Submit a phrase that could be similar or related to the original phrase.
           </p>
         </div>
 

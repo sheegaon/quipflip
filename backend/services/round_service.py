@@ -17,7 +17,13 @@ from backend.services.queue_service import QueueService
 from backend.services.phrase_validator import get_phrase_validator
 from backend.services.activity_service import ActivityService
 from backend.config import get_settings
-from backend.utils.exceptions import InvalidPhraseError, DuplicatePhraseError, RoundNotFoundError, RoundExpiredError
+from backend.utils.exceptions import (
+    InvalidPhraseError,
+    DuplicatePhraseError,
+    RoundNotFoundError,
+    RoundExpiredError,
+    NoPromptsAvailableError,
+)
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -205,6 +211,9 @@ class RoundService:
         - Deduct cost immediately
         - Prevent same player from getting abandoned prompt (24h)
         """
+        # Ensure prompt queue is hydrated before we try to pop from it
+        await self.ensure_prompt_queue_populated()
+
         # Retry logic: try up to 10 times to get a valid prompt
         max_attempts = 10
         prompt_round_id = None
@@ -214,7 +223,10 @@ class RoundService:
             # Get next prompt from queue
             prompt_round_id = QueueService.get_next_prompt()
             if not prompt_round_id:
-                raise ValueError("No prompts available")
+                await self.ensure_prompt_queue_populated()
+                prompt_round_id = QueueService.get_next_prompt()
+                if not prompt_round_id:
+                    raise NoPromptsAvailableError("No prompts available")
 
             # Get prompt round
             prompt_round = await self.db.get(Round, prompt_round_id)
@@ -261,7 +273,7 @@ class RoundService:
             break
         else:
             # Exhausted all attempts
-            raise ValueError("Could not find a valid prompt after multiple attempts")
+            raise NoPromptsAvailableError("Could not find a valid prompt after multiple attempts")
 
         # Get current copy cost (with discount if applicable)
         copy_cost = QueueService.get_copy_cost()
@@ -406,7 +418,7 @@ class RoundService:
 
         phraseset = None
         if prompt_round:
-            phraseset = await self._create_phraseset_if_ready(prompt_round)
+            phraseset = await self.create_phraseset_if_ready(prompt_round)
             if phraseset:
                 prompt_round.phraseset_status = "active"
                 await self.activity_service.attach_phraseset_id(
@@ -434,7 +446,7 @@ class RoundService:
         logger.info(f"Submitted phrase for copy round {round_id}: {phrase}")
         return round_object
 
-    async def _create_phraseset_if_ready(self, prompt_round: Round) -> PhraseSet | None:
+    async def create_phraseset_if_ready(self, prompt_round: Round) -> PhraseSet | None:
         """Create phraseset when two copies submitted."""
         result = await self.db.execute(
             select(Round)
@@ -450,7 +462,7 @@ class RoundService:
 
         copy1, copy2 = copy_rounds[0], copy_rounds[1]
 
-        total_pool = settings.phraseset_prize_pool
+        total_pool = settings.prize_pool
         system_contribution = copy1.system_contribution + copy2.system_contribution
 
         phraseset = PhraseSet(
@@ -626,3 +638,50 @@ class RoundService:
         )
 
         return available_count
+
+    async def ensure_prompt_queue_populated(self) -> bool:
+        """
+        Ensure the prompt queue has items. If empty, rehydrate it from the database.
+
+        Returns:
+            True if queue has items after running, False otherwise.
+        """
+        if QueueService.get_prompts_waiting() > 0:
+            return True
+
+        rehydrated = await self._rehydrate_prompt_queue()
+        return rehydrated > 0
+
+    async def _rehydrate_prompt_queue(self) -> int:
+        """
+        Rebuild the prompt queue from submitted prompt rounds waiting on copies.
+
+        Returns:
+            Number of prompts enqueued.
+        """
+        from backend.utils import lock_client
+
+        # Use a shared lock so only one worker rebuilds the queue at a time.
+        with lock_client.lock("rehydrate_prompt_queue", timeout=5):
+            # Another worker might have already filled the queue while we were waiting.
+            if QueueService.get_prompts_waiting() > 0:
+                return 0
+
+            result = await self.db.execute(
+                select(Round.round_id)
+                .join(PhraseSet, PhraseSet.prompt_round_id == Round.round_id, isouter=True)
+                .where(Round.round_type == "prompt")
+                .where(Round.status == "submitted")
+                .where(PhraseSet.phraseset_id == None)
+                .order_by(Round.created_at.asc())
+            )
+            prompt_ids = list(result.scalars().all())
+
+            if not prompt_ids:
+                return 0
+
+            for prompt_round_id in prompt_ids:
+                QueueService.add_prompt_to_queue(prompt_round_id)
+
+            logger.info(f"Rehydrated prompt queue with {len(prompt_ids)} prompts from database")
+            return len(prompt_ids)

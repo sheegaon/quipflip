@@ -5,8 +5,7 @@ Provides structured gameplay decisions with error handling and fallback logic
 for the Think Alike bot system.
 """
 
-import os
-import sys
+from backend.config import get_settings
 
 try:
     from google import genai
@@ -19,7 +18,7 @@ from .prompt_builder import build_copy_prompt
 
 __all__ = ["GeminiError", "generate", "generate_copy"]
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+settings = get_settings()
 
 
 class GeminiError(RuntimeError):
@@ -28,7 +27,6 @@ class GeminiError(RuntimeError):
 
 async def generate_copy(
         original_phrase: str,
-        prompt_text: str,
         model: str = "gemini-2.5-flash-lite",
         timeout: int = 30,
 ) -> str:
@@ -37,7 +35,6 @@ async def generate_copy(
 
     Args:
         original_phrase: The original phrase to create a copy of
-        prompt_text: The prompt text for context
         model: Gemini model to use (default: gemini-2.5-flash-lite)
         timeout: Request timeout in seconds (currently unused, reserved for future)
 
@@ -50,12 +47,12 @@ async def generate_copy(
     if genai is None:
         raise GeminiError("google-genai package not installed. Install with: pip install google-genai")
 
-    if not GEMINI_API_KEY:
+    if not settings.gemini_api_key:
         raise GeminiError("GEMINI_API_KEY environment variable must be set")
 
     try:
-        client = genai.Client(api_key=GEMINI_API_KEY)
-        prompt = build_copy_prompt(original_phrase, prompt_text)
+        client = genai.Client(api_key=settings.gemini_api_key)
+        prompt = build_copy_prompt(original_phrase)
 
         contents = [
             types.Content(
@@ -91,11 +88,11 @@ async def generate_copy(
 
 def generate(input_text: str) -> str:
     """Legacy interface for backwards compatibility."""
-    if not GEMINI_API_KEY:
+    if not settings.gemini_api_key:
         raise GeminiError("GEMINI_API_KEY environment variable must be set")
 
     try:
-        client = genai.Client(api_key=GEMINI_API_KEY)
+        client = genai.Client(api_key=settings.gemini_api_key)
         model = "gemini-2.5-flash-lite"
         contents = [
             types.Content(

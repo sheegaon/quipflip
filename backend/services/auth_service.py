@@ -66,11 +66,11 @@ class AuthService:
             message = str(exc)
             if message == "username_taken":
                 # This should be extremely rare since we generate unique usernames
-                raise AuthError("username_generation_failed") from exc
+                raise AuthError("The system could not generate a unique username, please try again") from exc
             if message == "email_taken":
-                raise AuthError("email_taken") from exc
+                raise AuthError("An account with this email already exists") from exc
             if message == "invalid_username":
-                raise AuthError("invalid_username") from exc
+                raise AuthError("The chosen username is invalid") from exc
             raise
 
     # ------------------------------------------------------------------
@@ -80,14 +80,14 @@ class AuthService:
         """Authenticate a player using email and password."""
         email_normalized = email.strip().lower()
         if not email_normalized:
-            raise AuthError("invalid_credentials")
+            raise AuthError("Email/password combination is invalid")
 
         result = await self.db.execute(
             select(Player).where(Player.email == email_normalized)
         )
         player = result.scalar_one_or_none()
         if not player or not verify_password(password, player.password_hash):
-            raise AuthError("invalid_credentials")
+            raise AuthError("Email/password combination is invalid")
 
         return player
 
@@ -158,28 +158,36 @@ class AuthService:
             )
             return payload
         except ExpiredSignatureError as exc:
-            raise AuthError("token_expired") from exc
+            raise AuthError("Token expired error, please try again") from exc
         except InvalidTokenError as exc:
-            raise AuthError("invalid_token") from exc
+            raise AuthError("Invalid token error, please try again") from exc
 
     async def exchange_refresh_token(self, raw_token: str) -> tuple[Player, str, str, int]:
-        token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
-        result = await self.db.execute(
-            select(RefreshToken).where(RefreshToken.token_hash == token_hash)
-        )
-        refresh_token = result.scalar_one_or_none()
-        if not refresh_token or not refresh_token.is_active():
-            raise AuthError("invalid_refresh_token")
+        try:
+            token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+            result = await self.db.execute(
+                select(RefreshToken).where(RefreshToken.token_hash == token_hash)
+            )
+            refresh_token = result.scalar_one_or_none()
+            if not refresh_token or not refresh_token.is_active():
+                raise AuthError("Token could not be refreshed, please log in again")
 
-        player = await self.player_service.get_player_by_id(refresh_token.player_id)
-        if not player:
-            raise AuthError("invalid_refresh_token")
+            player = await self.player_service.get_player_by_id(refresh_token.player_id)
+            if not player:
+                raise AuthError("Token could not be refreshed, please log in again")
 
-        refresh_token.revoked_at = datetime.now(UTC)
+            refresh_token.revoked_at = datetime.now(UTC)
 
-        access_token, expires_in = self.create_access_token(player)
-        new_refresh_token_value = secrets.token_urlsafe(48)
-        new_refresh_expires = datetime.now(UTC) + timedelta(days=self.settings.refresh_token_exp_days)
-        await self._store_refresh_token(player, new_refresh_token_value, new_refresh_expires)
-        await self.db.commit()
-        return player, access_token, new_refresh_token_value, expires_in
+            access_token, expires_in = self.create_access_token(player)
+            new_refresh_token_value = secrets.token_urlsafe(48)
+            new_refresh_expires = datetime.now(UTC) + timedelta(days=self.settings.refresh_token_exp_days)
+            await self._store_refresh_token(player, new_refresh_token_value, new_refresh_expires)
+            await self.db.commit()
+            return player, access_token, new_refresh_token_value, expires_in
+        except AuthError:
+            await self.db.rollback()
+            raise
+        except Exception as exc:  # pragma: no cover - defensive logging
+            await self.db.rollback()
+            logger.error("Unexpected error exchanging refresh token", exc_info=True)
+            raise
