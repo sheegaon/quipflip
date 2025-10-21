@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     vote_cost: int = 1
     vote_payout_correct: int = 5
     abandoned_penalty: int = 5
-    phraseset_prize_pool: int = 300
+    prize_pool: int = 300
     max_outstanding_quips: int = 10
     copy_discount_threshold: int = 10  # quips waiting to trigger discount
 
@@ -57,17 +57,16 @@ class Settings(BaseSettings):
     similarity_model: str = "all-mpnet-base-v2"  # previously "all-MiniLM-L6-v2"  # Sentence transformer model
     word_similarity_threshold: float = 0.8  # Minimum ratio for considering words too similar
 
-    # AI Providers
+    # AI Service
     openai_api_key: str = ""
     gemini_api_key: str = ""
-
-    # AI Service
     ai_provider: str = "openai"  # Options: "openai" or "gemini"
     ai_openai_model: str = "gpt-5-nano"  # OpenAI model for copy generation
     ai_gemini_model: str = "gemini-2.5-flash-lite"  # Gemini model for copy generation
     ai_timeout_seconds: int = 30  # Timeout for AI API calls
-    ai_backup_delay_minutes: int = 60  # Delay before AI provides backup copies/votes
+    ai_backup_delay_minutes: int = 15  # Delay before AI provides backup copies/votes
     ai_backup_batch_size: int = 3  # Number of prompts to process per backup cycle
+    ai_backup_sleep_seconds: int = 3600  # Sleep time between backup cycles (1 hour)
 
     @model_validator(mode="after")
     def validate_all_config(self):

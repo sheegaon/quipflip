@@ -303,12 +303,15 @@ class AIService:
             # First, get all prompt rounds that meet our basic criteria
             result = await self.db.execute(
                 select(Round)
+                .join(Player, Player.player_id == Round.player_id)
                 .outerjoin(PhraseSet, PhraseSet.prompt_round_id == Round.round_id)
                 .where(Round.round_type == 'prompt')
                 .where(Round.status == 'submitted')
                 .where(Round.created_at <= cutoff_time)
                 .where(Round.player_id != ai_player.player_id)
+                .where(~Player.username.like('%test%'))  # Exclude test players
                 .where(PhraseSet.phraseset_id.is_(None))  # No phraseset yet
+                .order_by(Round.created_at.asc())  # Process oldest first
                 .limit(self.settings.ai_backup_batch_size)  # Configurable batch size
             )
             

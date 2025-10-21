@@ -462,7 +462,7 @@ class RoundService:
 
         copy1, copy2 = copy_rounds[0], copy_rounds[1]
 
-        total_pool = settings.phraseset_prize_pool
+        total_pool = settings.prize_pool
         system_contribution = copy1.system_contribution + copy2.system_contribution
 
         phraseset = PhraseSet(

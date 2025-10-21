@@ -108,8 +108,8 @@ async def lifespan(app: FastAPI):
                 except Exception as e:
                     logger.error(f"AI backup cycle error: {e}")
                 
-                # Wait 10 minutes before next cycle
-                await asyncio.sleep(600)
+                # Wait before next cycle
+                await asyncio.sleep(settings.ai_backup_sleep_seconds)
         
         ai_backup_task = asyncio.create_task(ai_backup_cycle())
         logger.info("AI backup cycle task started (runs every 10 minutes)")
