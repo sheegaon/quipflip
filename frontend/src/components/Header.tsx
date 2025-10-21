@@ -91,7 +91,7 @@ export const Header: React.FC = () => {
           </div>
 
           {/* Right: Daily Bonus + Flipcoins + Logout */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1 md:gap-4">
             {/* Daily Bonus Treasure Chest */}
             {player.daily_bonus_available && (
               <button
@@ -101,21 +101,22 @@ export const Header: React.FC = () => {
                 title={`Claim your $${player.daily_bonus_amount} daily bonus!`}
               >
                 <TreasureChestIcon
-                  className="w-10 h-10 transition-transform group-hover:scale-110"
+                  className="w-7 h-7 md:w-10 md:h-10 transition-transform group-hover:scale-110"
                   isAvailable={true}
                 />
               </button>
             )}
-
-            <div className="flex items-center gap-2 tutorial-balance">
-              <img src="/flipcoin.png" alt="Flipcoin" className="w-6 h-6" />
+              {/* Flipcoin Balance */}
+              <div className="flex items-center gap-2 tutorial-balance">
+              <img src="/flipcoin.png" alt="Flipcoin" className="w-6 md:w-10 h-6 md:h-10" />
               <BalanceFlipper
                 value={player.balance}
-                className="text-xl font-display font-bold text-quip-turquoise"
+                className="text-xl md:text-3xl font-display font-bold text-quip-turquoise"
               />
             </div>
+              {/* Logout Button */}
             <button onClick={logout} className="text-quip-teal hover:text-quip-turquoise" title="Logout">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 md:h-9 w-6 md:w-9" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
               </svg>
             </button>
