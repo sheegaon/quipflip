@@ -27,7 +27,7 @@ const statusOptions: { value: StatusFilter; label: string }[] = [
   { value: 'abandoned', label: 'Abandoned' },
 ];
 
-export const PhrasesetTracking: React.FC = () => {
+export const Tracking: React.FC = () => {
   const navigate = useNavigate();
   const {
     player,

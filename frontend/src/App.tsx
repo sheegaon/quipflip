@@ -10,7 +10,7 @@ import { PromptRound } from './pages/PromptRound';
 import { CopyRound } from './pages/CopyRound';
 import { VoteRound } from './pages/VoteRound';
 import { Results } from './pages/Results';
-import { PhrasesetTracking } from './pages/PhrasesetTracking';
+import { Tracking } from './pages/Tracking';
 import Statistics from './pages/Statistics';
 import { ErrorNotification } from './components/ErrorNotification';
 import TutorialOverlay from './components/Tutorial/TutorialOverlay';
@@ -77,10 +77,10 @@ const AppRoutes: React.FC = () => {
           }
         />
         <Route
-          path="/phrasesets"
+          path="/tracking"
           element={
             <ProtectedRoute>
-              <PhrasesetTracking />
+              <Tracking />
             </ProtectedRoute>
           }
         />

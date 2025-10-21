@@ -103,11 +103,11 @@ export const Dashboard: React.FC = () => {
   };
 
   const handleTrackPhrasesets = () => {
-    navigate('/phrasesets');
+    navigate('/tracking');
   };
 
   const handleClaimResults = () => {
-    navigate('/phrasesets');
+    navigate('/tracking');
   };
 
   const inProgressPrompts = phrasesetSummary?.in_progress.prompts ?? 0;
