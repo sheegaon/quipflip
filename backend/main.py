@@ -23,11 +23,7 @@ log_file = logs_dir / "quipflip.log"
 print(f"Logging to: {log_file.absolute()}")
 
 # Create rotating file handler (1MB max size, keep 10 backup files)
-rotating_handler = RotatingFileHandler(
-    log_file,
-    maxBytes=1024*1024,  # 1MB
-    backupCount=10
-)
+rotating_handler = RotatingFileHandler(log_file, maxBytes=1024*1024, backupCount=10)  # 1 MB
 rotating_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
 
 # Configure logging with both console and rotating file handlers
@@ -59,7 +55,36 @@ if rotating_handler not in uvicorn_access_logger.handlers:
     uvicorn_access_logger.addHandler(rotating_handler)
 
 # Test that logging is working
-logger.info("Logging system initialized")
+logger.info("=" * 100)
+logger.info("*" * 36 + " Logging system initialized " + "*" * 36)
+logger.info("=" * 100)
+
+
+class SQLTransactionFilter(logging.Filter):
+    def filter(self, record):
+        # Only filter INFO level messages
+        if record.levelno == logging.INFO and hasattr(record, 'getMessage'):
+            message = record.getMessage()
+
+            # Filter out ROLLBACK, BEGIN, and "generated in" messages completely
+            if any(keyword in message for keyword in ['ROLLBACK', 'BEGIN', 'generated in']):
+                return False
+
+            # Remove line breaks from SELECT statements but keep the message
+            if 'SELECT' in message:
+                # Replace newlines and multiple spaces with single spaces
+                clean_message = ' '.join(message.split())
+                # Modify the record's message
+                record.msg = clean_message
+                record.args = ()
+
+        return True
+
+
+# Apply the filter to SQLAlchemy engine logger
+sqlalchemy_logger = logging.getLogger("sqlalchemy.engine.Engine")
+sqlalchemy_logger.addFilter(SQLTransactionFilter())
+
 
 settings = get_settings()
 
@@ -87,9 +112,47 @@ async def lifespan(app: FastAPI):
     # Auto-seed prompts if database is empty
     await auto_seed_prompts_if_empty()
 
+    # Start AI backup cycle background task
+    ai_backup_task = None
+    try:
+        import asyncio
+        from backend.database import AsyncSessionLocal
+        from backend.services.ai_service import AIService
+
+        async def ai_backup_cycle():
+            """Background task to run AI backup cycles."""
+            while True:
+                # Wait before first cycle
+                await asyncio.sleep(settings.ai_backup_sleep_seconds)
+
+                try:
+                    async with AsyncSessionLocal() as db:
+                        ai_service = AIService(db, validator)
+
+                        stats = await ai_service.run_backup_cycle()
+                        if stats["copies_generated"] > 0 or stats["errors"] > 0:
+                            logger.info(f"AI backup cycle completed: {stats}")
+
+                except Exception as e:
+                    logger.error(f"AI backup cycle error: {e}")
+
+        ai_backup_task = asyncio.create_task(ai_backup_cycle())
+        logger.info(f"AI backup cycle task started (runs every {settings.ai_backup_sleep_seconds} seconds)")
+
+    except Exception as e:
+        logger.error(f"Failed to start AI backup cycle: {e}")
+
     try:
         yield
     finally:
+        # Cancel AI backup task on shutdown
+        if ai_backup_task:
+            ai_backup_task.cancel()
+            try:
+                await ai_backup_task
+            except asyncio.CancelledError:
+                logger.info("AI backup cycle task cancelled")
+
         logger.info("Quipflip API Shutting Down")
 
 
