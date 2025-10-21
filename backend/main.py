@@ -60,15 +60,28 @@ if rotating_handler not in uvicorn_access_logger.handlers:
 
 # Test that logging is working
 logger.info("=" * 100)
-logger.info("*" * 20 + " Logging system initialized " + "*" * 20)
+logger.info("*" * 36 + " Logging system initialized " + "*" * 36)
+logger.info("=" * 100)
 
 
 class SQLTransactionFilter(logging.Filter):
     def filter(self, record):
-        # Only filter INFO level ROLLBACK and BEGIN messages
+        # Only filter INFO level messages
         if record.levelno == logging.INFO and hasattr(record, 'getMessage'):
             message = record.getMessage()
-            return not any(keyword in message for keyword in ['ROLLBACK', 'BEGIN', 'generated in'])
+            
+            # Filter out ROLLBACK, BEGIN, and "generated in" messages completely
+            if any(keyword in message for keyword in ['ROLLBACK', 'BEGIN', 'generated in']):
+                return False
+            
+            # Remove line breaks from SELECT statements but keep the message
+            if 'SELECT' in message:
+                # Replace newlines and multiple spaces with single spaces
+                clean_message = ' '.join(message.split())
+                # Modify the record's message
+                record.msg = clean_message
+                record.args = ()
+        
         return True
 
 
