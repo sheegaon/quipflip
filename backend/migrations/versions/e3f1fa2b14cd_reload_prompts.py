@@ -12,7 +12,7 @@ import uuid
 from alembic import op
 import sqlalchemy as sa
 
-from backend.services.prompt_seeder import PROMPTS
+from backend.services.prompt_seeder import load_prompts_from_csv
 
 
 # revision identifiers, used by Alembic.
@@ -23,7 +23,7 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    """Flush existing prompts and reload from prompt_seeder.PROMPTS."""
+    """Flush existing prompts and reload from prompt_seeder CSV file."""
     conn = op.get_bind()
     dialect_name = conn.dialect.name
     if dialect_name == "postgresql":
@@ -55,6 +55,9 @@ def upgrade() -> None:
         sa.column("enabled", sa.Boolean()),
     )
 
+    # Load prompts from CSV file
+    prompts_data = load_prompts_from_csv()
+
     now = datetime.now(timezone.utc)
     op.bulk_insert(
         prompt_table,
@@ -68,7 +71,7 @@ def upgrade() -> None:
                 "avg_copy_quality": None,
                 "enabled": True,
             }
-            for text, category in PROMPTS
+            for text, category in prompts_data
         ],
     )
 
