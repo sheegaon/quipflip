@@ -14,7 +14,6 @@ from backend.models.phraseset import PhraseSet
 from backend.models.player_abandoned_prompt import PlayerAbandonedPrompt
 from backend.services.transaction_service import TransactionService
 from backend.services.queue_service import QueueService
-from backend.services.phrase_validator import get_phrase_validator
 from backend.services.activity_service import ActivityService
 from backend.config import get_settings
 from backend.utils.exceptions import (
@@ -34,7 +33,12 @@ class RoundService:
 
     def __init__(self, db: AsyncSession):
         self.db = db
-        self.phrase_validator = get_phrase_validator()
+        if settings.use_phrase_validator_api:
+            # TODO implement remote phrase validator client
+            self.phrase_validator = None
+        else:
+            from backend.services.phrase_validator import get_phrase_validator
+            self.phrase_validator = get_phrase_validator()
         self.activity_service = ActivityService(db)
 
     async def start_prompt_round(self, player: Player, transaction_service: TransactionService) -> Optional[Round]:

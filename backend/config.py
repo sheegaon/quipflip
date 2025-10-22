@@ -18,6 +18,7 @@ class Settings(BaseSettings):
 
     # Application
     frontend_url: str = "https://quipflip-amber.vercel.app"
+    phrase_validator_url: str = "http://localhost:9000"
     environment: str = "development"
     secret_key: str = "dev-secret-key-change-in-production"  # Must be at least 32 characters in production
     jwt_algorithm: str = "HS256"  # Use HS256 for symmetric signing
@@ -45,6 +46,7 @@ class Settings(BaseSettings):
     grace_period_seconds: int = 5
 
     # Phrase Validation
+    use_phrase_validator_api: bool = False
     phrase_min_words: int = 1
     phrase_max_words: int = 5
     phrase_max_length: int = 100
