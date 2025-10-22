@@ -46,7 +46,7 @@ class Settings(BaseSettings):
     grace_period_seconds: int = 5
 
     # Phrase Validation
-    use_phrase_validator_api: bool = False
+    use_phrase_validator_api: bool = True
     phrase_min_words: int = 1
     phrase_max_words: int = 5
     phrase_max_length: int = 100
