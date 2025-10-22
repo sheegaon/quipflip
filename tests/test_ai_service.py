@@ -5,13 +5,13 @@ Tests AI copy generation, voting, metrics tracking, and error handling.
 """
 
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, UTC
 import uuid
 
 from backend.services.ai_service import AIService, AICopyError, AIVoteError
 from backend.services.ai_metrics_service import AIMetricsService
-from backend.services.phrase_validator import PhraseValidator
+from backend.phrase_validation.client import PhraseValidationClient
 from backend.models.player import Player
 from backend.models.round import Round
 from backend.models.phraseset import PhraseSet
@@ -21,8 +21,8 @@ from backend.models.ai_metric import AIMetric
 @pytest.fixture
 def mock_validator():
     """Mock phrase validator."""
-    validator = MagicMock(spec=PhraseValidator)
-    validator.validate.return_value = (True, "")
+    validator = MagicMock(spec=PhraseValidationClient)
+    validator.validate = AsyncMock(return_value=(True, ""))
     return validator
 
 
@@ -102,7 +102,7 @@ class TestAICopyGeneration:
 
         assert result == "joyful celebration"
         mock_openai.assert_called_once()
-        mock_validator.validate.assert_called_once_with("joyful celebration")
+        mock_validator.validate.assert_awaited_once_with("joyful celebration")
 
     @pytest.mark.asyncio
     @patch('backend.services.gemini_api.generate_copy')

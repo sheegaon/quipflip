@@ -14,7 +14,10 @@ from backend.models.phraseset import PhraseSet
 from backend.models.player_abandoned_prompt import PlayerAbandonedPrompt
 from backend.services.transaction_service import TransactionService
 from backend.services.queue_service import QueueService
-from backend.services.phrase_validator import get_phrase_validator
+from backend.phrase_validation.client import (
+    PhraseValidationServiceError,
+    get_phrase_validation_client,
+)
 from backend.services.activity_service import ActivityService
 from backend.config import get_settings
 from backend.utils.exceptions import (
@@ -34,7 +37,7 @@ class RoundService:
 
     def __init__(self, db: AsyncSession):
         self.db = db
-        self.phrase_validator = get_phrase_validator()
+        self.phrase_validator = get_phrase_validation_client()
         self.activity_service = ActivityService(db)
 
     async def start_prompt_round(self, player: Player, transaction_service: TransactionService) -> Optional[Round]:
@@ -158,10 +161,14 @@ class RoundService:
             raise RoundExpiredError("Round expired past grace period")
 
         # Validate word against prompt text
-        is_valid, error = self.phrase_validator.validate_prompt_phrase(
-            phrase,
-            round_object.prompt_text,
-        )
+        try:
+            is_valid, error = await self.phrase_validator.validate_prompt_phrase(
+                phrase,
+                round_object.prompt_text,
+            )
+        except PhraseValidationServiceError as exc:
+            logger.error("Phrase validation unavailable: %s", exc)
+            raise InvalidPhraseError("Phrase validation service unavailable. Please try again.")
         if not is_valid:
             raise InvalidPhraseError(error)
 
@@ -370,12 +377,16 @@ class RoundService:
                 prompt_text = prompt_round.prompt_text
 
         # Validate phrase (including duplicate check)
-        is_valid, error = self.phrase_validator.validate_copy(
-            phrase,
-            round_object.original_phrase,
-            other_copy_phrase,
-            prompt_text,
-        )
+        try:
+            is_valid, error = await self.phrase_validator.validate_copy(
+                phrase,
+                round_object.original_phrase,
+                other_copy_phrase,
+                prompt_text,
+            )
+        except PhraseValidationServiceError as exc:
+            logger.error("Phrase validation unavailable: %s", exc)
+            raise InvalidPhraseError("Phrase validation service unavailable. Please try again.")
         if not is_valid:
             if "same phrase" in error.lower():
                 raise DuplicatePhraseError(error)

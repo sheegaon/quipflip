@@ -45,7 +45,7 @@ def create_sample_dictionary():
     ]
 
     # Create data directory
-    data_dir = os.path.join(os.path.dirname(__file__), "../backend/data")
+    data_dir = os.path.join(os.path.dirname(__file__), "../phrase_validation_worker/data")
     os.makedirs(data_dir, exist_ok=True)
 
     # Write to file
