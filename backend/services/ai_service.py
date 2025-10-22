@@ -244,13 +244,23 @@ class AIService:
         """
         from backend.services.ai_vote_helper import generate_vote_choice
 
-        # Extract prompt and phrases
-        prompt_text = phraseset.prompt_round.phrase
-        phrases = [
-            phraseset.prompt_round.phrase,
-            phraseset.copy_round_1.phrase,
-            phraseset.copy_round_2.phrase,
-        ]
+        # Safely extract prompt and phrases with validation
+        try:
+            if not phraseset.prompt_round:
+                raise AIVoteError("Phraseset missing prompt_round relationship")
+            if not phraseset.copy_round_1:
+                raise AIVoteError("Phraseset missing copy_round_1 relationship")
+            if not phraseset.copy_round_2:
+                raise AIVoteError("Phraseset missing copy_round_2 relationship")
+
+            prompt_text = phraseset.prompt_round.phrase
+            phrases = [
+                phraseset.prompt_round.phrase,
+                phraseset.copy_round_1.phrase,
+                phraseset.copy_round_2.phrase,
+            ]
+        except AttributeError as e:
+            raise AIVoteError(f"Failed to extract phrases from phraseset: {e}")
 
         model = (
             self.settings.ai_openai_model
@@ -537,13 +547,29 @@ class AIService:
             # Filter out phrasesets where AI was a contributor (in-memory check since we need loaded relationships)
             filtered_phrasesets = []
             for phraseset in waiting_phrasesets:
-                # Skip if AI player was a contributor
-                if ai_player.player_id not in {
-                    phraseset.prompt_round.player_id,
-                    phraseset.copy_round_1.player_id,
-                    phraseset.copy_round_2.player_id,
-                }:
-                    filtered_phrasesets.append(phraseset)
+                try:
+                    # Safely get player IDs, handling None relationships
+                    contributor_player_ids = set()
+                    
+                    if phraseset.prompt_round and hasattr(phraseset.prompt_round, 'player_id'):
+                        contributor_player_ids.add(phraseset.prompt_round.player_id)
+                    
+                    if phraseset.copy_round_1 and hasattr(phraseset.copy_round_1, 'player_id'):
+                        contributor_player_ids.add(phraseset.copy_round_1.player_id)
+                    
+                    if phraseset.copy_round_2 and hasattr(phraseset.copy_round_2, 'player_id'):
+                        contributor_player_ids.add(phraseset.copy_round_2.player_id)
+                    
+                    # Skip if AI player was a contributor
+                    if ai_player.player_id not in contributor_player_ids:
+                        filtered_phrasesets.append(phraseset)
+                    else:
+                        logger.debug(f"Skipping phraseset {phraseset.phraseset_id} - AI was a contributor")
+                        
+                except Exception as e:
+                    logger.error(f"Error checking phraseset {phraseset.phraseset_id} contributors: {e}")
+                    # Skip this phraseset to avoid further errors
+                    continue
             
             stats["phrasesets_checked"] = len(filtered_phrasesets)
             logger.info(f"Found {len(filtered_phrasesets)} phrasesets waiting for AI backup votes")
