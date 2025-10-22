@@ -115,6 +115,7 @@ async def initialize_phrase_validation():
         else:
             logger.error(f"Failed to initialize local phrase validator: {e}")
             logger.error("Run: python3 scripts/download_dictionary.py")
+        raise e
 
 
 async def ai_backup_cycle():

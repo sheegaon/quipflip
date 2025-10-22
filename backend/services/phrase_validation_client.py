@@ -17,21 +17,26 @@ class PhraseValidationClient:
         self.settings = get_settings()
         self.base_url = self.settings.phrase_validator_url.rstrip('/')
         self.timeout = ClientTimeout(total=30)  # 30 second timeout
+        self._session = aiohttp.ClientSession(timeout=self.timeout)
+
+    async def close(self):
+        """Close the underlying aiohttp client session."""
+        if self._session and not self._session.closed:
+            await self._session.close()
 
     async def _make_request(self, endpoint: str, payload: dict) -> Tuple[bool, str]:
         """Make HTTP request to validation service."""
         url = f"{self.base_url}{endpoint}"
-        
+
         try:
-            async with aiohttp.ClientSession(timeout=self.timeout) as session:
-                async with session.post(url, json=payload) as response:
-                    if response.status == 200:
-                        data = await response.json()
-                        return data.get("is_valid", False), data.get("error", "")
-                    else:
-                        error_text = await response.text()
-                        logger.error(f"Phrase validator API error {response.status}: {error_text}")
-                        return False, f"Validation service error: {response.status}"
+            async with self._session.post(url, json=payload) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    return data.get("is_valid", False), data.get("error", "")
+                else:
+                    error_text = await response.text()
+                    logger.error(f"Phrase validator API error {response.status}: {error_text}")
+                    return False, f"Validation service error: {response.status}"
                         
         except asyncio.TimeoutError:
             logger.error(f"Phrase validator API timeout for {endpoint}")
@@ -110,17 +115,22 @@ class PhraseValidationClient:
         url = f"{self.base_url}/healthz"
         
         try:
-            async with aiohttp.ClientSession(timeout=self.timeout) as session:
-                async with session.get(url) as response:
-                    if response.status == 200:
-                        data = await response.json()
-                        return data.get("status") == "ok"
-                    else:
-                        logger.error(f"Phrase validator health check failed: {response.status}")
-                        return False
+            async with self._session.get(url) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    return data.get("status") == "ok"
+                else:
+                    logger.error(f"Phrase validator health check failed: {response.status}")
+                    return False
                         
+        except asyncio.TimeoutError:
+            logger.error("Phrase validator health check timeout")
+            return False
+        except ClientError as e:
+            logger.error(f"Phrase validator health check client error: {e}")
+            return False
         except Exception as e:
-            logger.error(f"Phrase validator health check error: {e}")
+            logger.error(f"Phrase validator health check unexpected error: {e}")
             return False
 
 
