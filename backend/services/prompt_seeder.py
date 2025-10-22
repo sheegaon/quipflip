@@ -1,7 +1,7 @@
 """Auto-seed prompt library if empty."""
 from backend.database import AsyncSessionLocal
 from backend.models.prompt import Prompt
-from sqlalchemy import select, func, update
+from sqlalchemy import select, func, update, case
 import logging
 import csv
 from pathlib import Path
@@ -147,7 +147,7 @@ async def sync_prompts_with_database():
                 select(
                     Prompt.category, 
                     func.count(Prompt.prompt_id).label('total'),
-                    func.sum(func.cast(Prompt.enabled, func.INTEGER)).label('enabled')
+                    func.sum(case((Prompt.enabled == True, 1), else_=0)).label('enabled')
                 )
                 .group_by(Prompt.category)
                 .order_by(Prompt.category)
