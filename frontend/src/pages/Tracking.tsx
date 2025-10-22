@@ -104,17 +104,42 @@ export const Tracking: React.FC = () => {
     }
   }, [selectedSummary, fetchDetails]);
 
-  // Poll details every 10 seconds when phraseset is active
+  // Poll details every 60 seconds when phraseset is active, but only if data might have changed
   useEffect(() => {
     if (!selectedSummary?.phraseset_id) return;
     if (details?.status === 'finalized') return;
 
-    const interval = setInterval(() => {
-      fetchDetails(selectedSummary);
-    }, 10000);
+    const interval = setInterval(async () => {
+      try {
+        // First, do a lightweight check to see if anything has changed
+        const currentData = await apiClient.getPhrasesetDetails(selectedSummary.phraseset_id!);
+        
+        // Compare key fields to see if an update is needed
+        const hasChanged = !details || 
+          details.status !== currentData.status ||
+          details.vote_count !== currentData.vote_count ||
+          details.third_vote_at !== currentData.third_vote_at ||
+          details.fifth_vote_at !== currentData.fifth_vote_at ||
+          details.closes_at !== currentData.closes_at ||
+          details.votes.length !== currentData.votes.length ||
+          details.votes.some((vote, index) => 
+            currentData.votes[index] && 
+            vote.vote_id !== currentData.votes[index].vote_id
+          );
+
+        // Only update state if something actually changed
+        if (hasChanged) {
+          setDetails(currentData);
+          setError(null);
+        }
+      } catch (err) {
+        // Don't update error state on polling failures to avoid UI flickering
+        console.warn('Failed to poll phraseset details:', err);
+      }
+    }, 60000); // Changed from 10000 (10s) to 60000 (60s)
 
     return () => clearInterval(interval);
-  }, [selectedSummary, details?.status, fetchDetails]);
+  }, [selectedSummary, details, fetchDetails]);
 
   const handleSelect = (summary: PhrasesetSummary) => {
     const id = summary.phraseset_id ?? summary.prompt_round_id;

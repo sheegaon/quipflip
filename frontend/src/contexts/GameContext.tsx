@@ -178,14 +178,70 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    const dashboardInterval = setInterval(() => {
-      refreshDashboard();
+    const dashboardInterval = setInterval(async () => {
+      try {
+        // Get fresh data
+        const newData = await apiClient.getDashboardData();
+
+        // Compare key fields to see if an update is needed
+        const hasPlayerChanged = !player || 
+          player.balance !== newData.player.balance ||
+          player.daily_bonus_available !== newData.player.daily_bonus_available;
+
+        const hasActiveRoundChanged = (!activeRound && newData.current_round) ||
+          (activeRound && !newData.current_round) ||
+          (activeRound?.round_id !== newData.current_round?.round_id) ||
+          (activeRound?.expires_at !== newData.current_round?.expires_at);
+
+        const hasPendingResultsChanged = pendingResults.length !== newData.pending_results.length ||
+          pendingResults.some((result, index) => 
+            newData.pending_results[index]?.phraseset_id !== result.phraseset_id
+          );
+
+        const hasPhrasesetSummaryChanged = !phrasesetSummary ||
+          phrasesetSummary.in_progress.prompts !== newData.phraseset_summary.in_progress.prompts ||
+          phrasesetSummary.in_progress.copies !== newData.phraseset_summary.in_progress.copies ||
+          phrasesetSummary.finalized.prompts !== newData.phraseset_summary.finalized.prompts ||
+          phrasesetSummary.finalized.copies !== newData.phraseset_summary.finalized.copies ||
+          phrasesetSummary.total_unclaimed_amount !== newData.phraseset_summary.total_unclaimed_amount;
+
+        const hasUnclaimedResultsChanged = unclaimedResults.length !== newData.unclaimed_results.length ||
+          unclaimedResults.some((result, index) => 
+            newData.unclaimed_results[index]?.phraseset_id !== result.phraseset_id
+          );
+
+        const hasRoundAvailabilityChanged = !roundAvailability ||
+          roundAvailability.can_prompt !== newData.round_availability.can_prompt ||
+          roundAvailability.can_copy !== newData.round_availability.can_copy ||
+          roundAvailability.can_vote !== newData.round_availability.can_vote;
+
+        // Only update state if something actually changed
+        if (hasPlayerChanged || hasActiveRoundChanged || hasPendingResultsChanged || 
+            hasPhrasesetSummaryChanged || hasUnclaimedResultsChanged || hasRoundAvailabilityChanged) {
+          
+          // Update all dashboard state at once
+          setPlayer(newData.player);
+          if (newData.player.username && newData.player.username !== username) {
+            apiClient.setSession(newData.player.username);
+            setUsername(newData.player.username);
+          }
+          setActiveRound(newData.current_round);
+          setPendingResults(newData.pending_results);
+          setPhrasesetSummary(newData.phraseset_summary);
+          setUnclaimedResults(newData.unclaimed_results);
+          setRoundAvailability(newData.round_availability);
+          setError(null);
+        }
+      } catch (err) {
+        // Don't update error state on polling failures to avoid UI flickering
+        console.warn('Failed to poll dashboard data:', err);
+      }
     }, 60_000);
 
     return () => {
       clearInterval(dashboardInterval);
     };
-  }, [isAuthenticated, refreshDashboard]);
+  }, [isAuthenticated, player, activeRound, pendingResults, phrasesetSummary, unclaimedResults, roundAvailability, username]);
 
   const value: GameContextType = {
     isAuthenticated,
