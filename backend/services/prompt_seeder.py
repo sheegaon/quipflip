@@ -5,22 +5,65 @@ from sqlalchemy import select, func, update
 import logging
 import csv
 from pathlib import Path
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
 
+def get_current_season():
+    """Determine current season based on month with overlap periods.
+    
+    Returns the appropriate seasonal category suffix:
+    - Sep-Dec: fall
+    - Dec-Mar: winter  
+    - Mar-Jun: spring
+    - Jun-Sep: summer
+    """
+    month = datetime.now().month
+    
+    if month in [9, 10, 11, 12]:  # Sep-Dec
+        return "fall"
+    elif month in [12, 1, 2, 3]:  # Dec-Mar
+        return "winter"
+    elif month in [3, 4, 5, 6]:  # Mar-Jun
+        return "spring"
+    elif month in [6, 7, 8, 9]:  # Jun-Sep
+        return "summer"
+    
+    # Fallback (shouldn't happen)
+    return "fall"
+
+
 def load_prompts_from_csv():
-    """Load prompts from CSV file in backend/data/prompts.csv"""
+    """Load prompts from CSV file in backend/data/prompts.csv, filtering seasonal prompts by current season"""
     current_dir = Path(__file__).parent.parent  # Go up from services/ to backend/
     csv_path = current_dir / "data" / "prompts.csv"
     
+    current_season = get_current_season()
     prompts = []
+    
     try:
         with open(csv_path, 'r', encoding='utf-8') as file:
             reader = csv.DictReader(file)
             for row in reader:
-                prompts.append((row['text'], row['category']))
-        logger.info(f"Loaded {len(prompts)} prompts from {csv_path}")
+                category = row['category']
+                
+                # Handle seasonal filtering
+                if category.startswith('seasonal_'):
+                    # Extract season from category (e.g., "seasonal_fall" -> "fall")
+                    prompt_season = category.replace('seasonal_', '')
+                    if prompt_season == current_season:
+                        # Include seasonal prompt for current season, but use "seasonal" as category
+                        prompts.append((row['text'], 'seasonal'))
+                    # Skip seasonal prompts not for current season
+                elif category == 'seasonal':
+                    # Generic seasonal prompts are always included
+                    prompts.append((row['text'], category))
+                else:
+                    # Non-seasonal prompts are always included
+                    prompts.append((row['text'], category))
+        
+        logger.info(f"Loaded {len(prompts)} prompts from {csv_path} (current season: {current_season})")
         return prompts
     except FileNotFoundError:
         logger.error(f"Prompts CSV file not found at {csv_path}")
@@ -34,7 +77,7 @@ async def sync_prompts_with_database():
     """Synchronize prompts between CSV file and database.
 
     This runs on application startup and:
-    1. Loads prompts from backend/data/prompts.csv
+    1. Loads prompts from backend/data/prompts.csv (filtered by current season)
     2. Adds any prompts from the CSV that don't exist in the database
     3. Sets enabled=True for prompts that exist in the CSV
     4. Sets enabled=False for prompts in database that aren't in the CSV
@@ -42,7 +85,7 @@ async def sync_prompts_with_database():
     Safe to run multiple times - idempotent operation.
     """
     try:
-        # Load prompts from CSV file
+        # Load prompts from CSV file (with seasonal filtering)
         file_prompts_list = load_prompts_from_csv()
         
         async with AsyncSessionLocal() as db:
@@ -94,9 +137,10 @@ async def sync_prompts_with_database():
             
             # Log summary
             if added_count > 0 or enabled_count > 0 or disabled_count > 0:
-                logger.info(f"✓ Prompt sync complete: {added_count} added, {enabled_count} re-enabled, {disabled_count} disabled")
+                logger.info(
+                    f"Prompt sync complete: {added_count} added, {enabled_count} re-enabled, {disabled_count} disabled")
             else:
-                logger.info("✓ Prompt library already in sync")
+                logger.info("Prompt library already in sync")
             
             # Show current statistics
             result = await db.execute(
@@ -117,7 +161,7 @@ async def sync_prompts_with_database():
                 total_prompts += total
                 total_enabled += enabled
                 logger.info(f"  {category}: {enabled}/{total} enabled")
-            logger.info(f"  TOTAL: {total_enabled}/{total_prompts} prompts enabled")
+            logger.info(f"Sync summary: {total_enabled}/{total_prompts} prompts enabled")
 
     except Exception as e:
         logger.error(f"Failed to sync prompts: {e}")
