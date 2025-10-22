@@ -122,7 +122,8 @@ async def lifespan(app_instance: FastAPI):
     validator = get_phrase_validation_client()
     await validator.startup()
     if not await validator.health_check():
-        logger.error("Phrase validation service health check failed")
+        logger.error("Phrase validation service health check failed. Shutting down.")
+        raise RuntimeError("Phrase validation service is unavailable at startup.")
 
     # Auto-seed prompts if database is empty
     await auto_seed_prompts_if_empty()
