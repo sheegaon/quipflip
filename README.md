@@ -40,7 +40,7 @@ cd frontend
 npm install
 
 # Start development server
-npm run dev
+npm run dev -- --host
 ```
 
 Frontend runs at **http://localhost:5173**
