@@ -9,7 +9,6 @@ from pathlib import Path
 from contextlib import asynccontextmanager
 
 from backend.config import get_settings
-from backend.services.phrase_validator import get_phrase_validator
 from backend.services.prompt_seeder import sync_prompts_with_database
 from backend.routers import health, player, rounds, phrasesets, prompt_feedback, auth, quests
 
