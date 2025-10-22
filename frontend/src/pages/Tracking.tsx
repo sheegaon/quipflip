@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient, { extractErrorMessage } from '../api/client';
 import type {
@@ -47,6 +47,9 @@ export const Tracking: React.FC = () => {
   const [claiming, setClaiming] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Store the last fetched details to compare for changes
+  const lastDetailsRef = useRef<PhrasesetDetailsType | null>(null);
+
   const fetchPhrasesets = useCallback(async () => {
     setListLoading(true);
     try {
@@ -80,12 +83,22 @@ export const Tracking: React.FC = () => {
   const fetchDetails = useCallback(async (phraseset: PhrasesetSummary | null) => {
     if (!phraseset || !phraseset.phraseset_id) {
       setDetails(null);
+      lastDetailsRef.current = null;
       return;
     }
     setDetailsLoading(true);
     try {
       const data = await apiClient.getPhrasesetDetails(phraseset.phraseset_id);
-      setDetails(data);
+      
+      // Only update state if the data has actually changed
+      const hasChanged = !lastDetailsRef.current || 
+        JSON.stringify(lastDetailsRef.current) !== JSON.stringify(data);
+      
+      if (hasChanged) {
+        setDetails(data);
+        lastDetailsRef.current = data;
+      }
+      
       setError(null);
     } catch (err) {
       setError(extractErrorMessage(err) || 'Unable to load the details for this round. It may no longer be available.');
@@ -104,14 +117,14 @@ export const Tracking: React.FC = () => {
     }
   }, [selectedSummary, fetchDetails]);
 
-  // Poll details every 10 seconds when phraseset is active
+  // Poll details every 60 seconds when phraseset is active (reduced from 10 seconds)
   useEffect(() => {
     if (!selectedSummary?.phraseset_id) return;
     if (details?.status === 'finalized') return;
 
     const interval = setInterval(() => {
       fetchDetails(selectedSummary);
-    }, 10000);
+    }, 60000); // Changed from 10000 to 60000 (60 seconds)
 
     return () => clearInterval(interval);
   }, [selectedSummary, details?.status, fetchDetails]);

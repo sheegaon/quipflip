@@ -7,8 +7,8 @@ import os
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from backend.services.prompt_seeder import auto_seed_prompts_if_empty
+from backend.services.prompt_seeder import sync_prompts_with_database
 
 
 if __name__ == "__main__":
-    asyncio.run(auto_seed_prompts_if_empty())
+    asyncio.run(sync_prompts_with_database())

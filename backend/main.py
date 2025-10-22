@@ -10,7 +10,7 @@ from contextlib import asynccontextmanager
 
 from backend.config import get_settings
 from backend.services.phrase_validator import get_phrase_validator
-from backend.services.prompt_seeder import auto_seed_prompts_if_empty
+from backend.services.prompt_seeder import sync_prompts_with_database
 from backend.routers import health, player, rounds, phrasesets, prompt_feedback, auth, quests
 
 # Create logs directory if it doesn't exist
@@ -127,8 +127,8 @@ async def lifespan(app_instance: FastAPI):
         logger.error(f"Failed to initialize phrase validator: {e}")
         logger.error("Run: python3 scripts/download_dictionary.py")
 
-    # Auto-seed prompts if database is empty
-    await auto_seed_prompts_if_empty()
+    # Synchronize prompts between file and database
+    await sync_prompts_with_database()
 
     # Start AI backup cycle background task
     ai_backup_task = None
