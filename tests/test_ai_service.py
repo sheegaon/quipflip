@@ -27,9 +27,9 @@ def mock_validator():
 
 
 @pytest.fixture
-def ai_service(db_session, mock_validator):
+def ai_service(db_session):
     """Create AI service instance."""
-    return AIService(db_session, mock_validator)
+    return AIService(db_session)
 
 
 @pytest.fixture
@@ -55,32 +55,32 @@ class TestAIServiceProviderSelection:
     """Test AI provider selection logic."""
 
     @patch.dict('os.environ', {'OPENAI_API_KEY': 'sk-test', 'AI_PROVIDER': 'openai'})
-    def test_select_openai_when_configured(self, db_session, mock_validator):
+    def test_select_openai_when_configured(self, db_session):
         """Should select OpenAI when configured and API key available."""
-        service = AIService(db_session, mock_validator)
+        service = AIService(db_session)
         assert service.provider == "openai"
 
     @patch.dict('os.environ', {'GEMINI_API_KEY': 'test-key', 'AI_PROVIDER': 'gemini'}, clear=True)
-    def test_select_gemini_when_configured(self, db_session, mock_validator):
+    def test_select_gemini_when_configured(self, db_session):
         """Should select Gemini when configured and API key available."""
         with patch('backend.services.ai_service.get_settings') as mock_settings:
             mock_settings.return_value.ai_provider = 'gemini'
-            service = AIService(db_session, mock_validator)
+            service = AIService(db_session)
             assert service.provider == "gemini"
 
     @patch.dict('os.environ', {'OPENAI_API_KEY': 'sk-test'}, clear=True)
-    def test_fallback_to_openai_when_gemini_unavailable(self, db_session, mock_validator):
+    def test_fallback_to_openai_when_gemini_unavailable(self, db_session):
         """Should fallback to OpenAI when Gemini configured but unavailable."""
         with patch('backend.services.ai_service.get_settings') as mock_settings:
             mock_settings.return_value.ai_provider = 'gemini'
-            service = AIService(db_session, mock_validator)
+            service = AIService(db_session)
             assert service.provider == "openai"
 
     @patch.dict('os.environ', {}, clear=True)
-    def test_raise_error_when_no_provider_available(self, db_session, mock_validator):
+    def test_raise_error_when_no_provider_available(self, db_session):
         """Should raise error when no API keys available."""
         with pytest.raises(AICopyError, match="No AI provider configured"):
-            AIService(db_session, mock_validator)
+            AIService(db_session)
 
 
 class TestAICopyGeneration:
@@ -95,7 +95,7 @@ class TestAICopyGeneration:
         """Should generate copy using OpenAI."""
         mock_openai.return_value = "joyful celebration"
 
-        service = AIService(db_session, mock_validator)
+        service = AIService(db_session)
         result = await service.generate_copy_phrase(
             original_phrase="happy birthday",
         )
@@ -118,7 +118,7 @@ class TestAICopyGeneration:
             mock_settings.return_value.ai_gemini_model = 'gemini-2.5-flash-lite'
             mock_settings.return_value.ai_timeout_seconds = 30
 
-            service = AIService(db_session, mock_validator)
+            service = AIService(db_session)
             result = await service.generate_copy_phrase(
                 original_phrase="happy birthday",
             )
@@ -136,7 +136,7 @@ class TestAICopyGeneration:
         mock_openai.return_value = "invalid phrase!!!"
         mock_validator.validate.return_value = (False, "Invalid characters")
 
-        service = AIService(db_session, mock_validator)
+        service = AIService(db_session)
 
         with pytest.raises(AICopyError, match="Invalid characters"):
             await service.generate_copy_phrase(
@@ -152,7 +152,7 @@ class TestAICopyGeneration:
         """Should handle API failures gracefully."""
         mock_openai.side_effect = Exception("API timeout")
 
-        service = AIService(db_session, mock_validator)
+        service = AIService(db_session)
 
         with pytest.raises(AICopyError, match="Failed to generate AI copy"):
             await service.generate_copy_phrase(
@@ -173,7 +173,7 @@ class TestAIVoting:
         # AI chooses index 0 (original phrase)
         mock_vote.return_value = 0
 
-        service = AIService(db_session, mock_validator)
+        service = AIService(db_session)
         result = await service.generate_vote_choice(mock_phraseset)
 
         assert result == "happy birthday"
@@ -189,7 +189,7 @@ class TestAIVoting:
         # AI chooses index 1 (copy phrase)
         mock_vote.return_value = 1
 
-        service = AIService(db_session, mock_validator)
+        service = AIService(db_session)
         result = await service.generate_vote_choice(mock_phraseset)
 
         assert result == "joyful anniversary"
@@ -207,7 +207,7 @@ class TestAIMetrics:
         """Should record metrics on successful operation."""
         mock_openai.return_value = "joyful celebration"
 
-        service = AIService(db_session, mock_validator)
+        service = AIService(db_session)
         await service.generate_copy_phrase(
             original_phrase="happy birthday",
         )
@@ -233,7 +233,7 @@ class TestAIMetrics:
         mock_openai.return_value = "invalid!!!"
         mock_validator.validate.return_value = (False, "Invalid characters")
 
-        service = AIService(db_session, mock_validator)
+        service = AIService(db_session)
 
         with pytest.raises(AICopyError):
             await service.generate_copy_phrase(
@@ -258,7 +258,7 @@ class TestAIMetrics:
         """Should track whether AI vote was correct."""
         mock_vote.return_value = 0  # Correct choice
 
-        service = AIService(db_session, mock_validator)
+        service = AIService(db_session)
         await service.generate_vote_choice(mock_phraseset)
 
         metrics = db_session.new
@@ -379,9 +379,9 @@ class TestAIPlayerManagement:
 
     @pytest.mark.asyncio
     @patch.dict('os.environ', {'OPENAI_API_KEY': 'sk-test'})
-    async def test_get_or_create_ai_player_creates_new(self, db_session, mock_validator):
+    async def test_get_or_create_ai_player_creates_new(self, db_session):
         """Should create AI player if it doesn't exist."""
-        service = AIService(db_session, mock_validator)
+        service = AIService(db_session)
 
         with patch('backend.services.player_service.PlayerService.create_player') as mock_create:
             mock_player = Player(
@@ -399,7 +399,7 @@ class TestAIPlayerManagement:
 
     @pytest.mark.asyncio
     @patch.dict('os.environ', {'OPENAI_API_KEY': 'sk-test'})
-    async def test_get_or_create_ai_player_reuses_existing(self, db_session, mock_validator):
+    async def test_get_or_create_ai_player_reuses_existing(self, db_session):
         """Should reuse existing AI player."""
         # Create AI player first
         ai_player = Player(
@@ -415,7 +415,7 @@ class TestAIPlayerManagement:
         db_session.add(ai_player)
         await db_session.commit()
 
-        service = AIService(db_session, mock_validator)
+        service = AIService(db_session)
 
         with patch('backend.services.player_service.PlayerService.create_player') as mock_create:
             player = await service._get_or_create_ai_player()

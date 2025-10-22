@@ -100,7 +100,7 @@ async def ai_backup_cycle(validator):
 
         try:
             async with AsyncSessionLocal() as db:
-                await AIService(db, validator).run_backup_cycle()
+                await AIService(db).run_backup_cycle()
 
         except Exception as e:
             logger.error(f"AI backup cycle error: {e}")
