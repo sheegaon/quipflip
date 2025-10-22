@@ -454,6 +454,8 @@ class PhrasesetService:
 
             contributions.append(
                 {
+                    # Non-contributors should not receive the finalized phraseset ID,
+                    # otherwise the UI would try to fetch details they are forbidden to view.
                     "phraseset_id": phraseset.phraseset_id if phraseset and is_contributor else None,
                     "prompt_round_id": copy_round.prompt_round_id,
                     "prompt_text": phraseset.prompt_text if phraseset else (prompt_round.prompt_text if prompt_round else ""),
@@ -462,6 +464,8 @@ class PhrasesetService:
                     "status": status,
                     "created_at": self._ensure_utc(copy_round.created_at),
                     "updated_at": self._determine_updated_at(prompt_round, phraseset, fallback=copy_round.created_at),
+                    # Non-contributors cannot see the final vote timeline, so we default
+                    # these metrics to 0/None when their copy was abandoned.
                     "vote_count": phraseset.vote_count if phraseset and is_contributor else 0,
                     "third_vote_at": self._ensure_utc(phraseset.third_vote_at) if phraseset and is_contributor else None,
                     "fifth_vote_at": self._ensure_utc(phraseset.fifth_vote_at) if phraseset and is_contributor else None,
@@ -574,7 +578,13 @@ class PhrasesetService:
         phraseset: Optional[PhraseSet],
         is_contributor: bool,
     ) -> str:
-        """Determine copy round status, marking non-contributors as abandoned."""
+        """Return the copy round status.
+
+        Possible values include:
+        - ``"abandoned"`` when the copy was not selected for the finalized phraseset.
+        - ``"voting"``/``"closing"``/``"finalized"`` when derived from the finalized phraseset.
+        - ``"waiting_copies"`` or other prompt-round derived states when no phraseset exists yet.
+        """
         return (
             self._derive_status(prompt_round, phraseset)
             if is_contributor or not phraseset
