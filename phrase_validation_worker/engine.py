@@ -1,11 +1,11 @@
 """Phrase validation service with similarity checking."""
-import os
-import re
 import logging
+import re
 from difflib import SequenceMatcher
+from pathlib import Path
 from typing import Set
 
-from backend.config import get_settings
+from .config import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -22,17 +22,17 @@ def _parse_phrase(phrase: str) -> list[str]:
 
 
 def _load_dictionary() -> Set[str]:
-    """Load word list from file."""
-    # Path relative to this file
-    data_path = os.path.join(os.path.dirname(__file__), "../data/dictionary.txt")
+    """Load word list from the configured dictionary file."""
+    settings = get_settings()
+    data_path = Path(settings.dictionary_path)
 
-    if not os.path.exists(data_path):
-        logger.error(f"Dictionary file not found at: {data_path}")
+    if not data_path.exists():
+        logger.error("Dictionary file not found at: %s", data_path)
         logger.error("Run: python scripts/download_dictionary.py")
         raise FileNotFoundError(f"Dictionary file not found: {data_path}")
 
-    with open(data_path, "r") as f:
-        return {line.strip().upper() for line in f if line.strip()}
+    with data_path.open("r", encoding="utf-8") as dictionary_file:
+        return {line.strip().upper() for line in dictionary_file if line.strip()}
 
 
 class LightweightSimilarityCalculator:

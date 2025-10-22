@@ -19,14 +19,15 @@ services:
     command: uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
 
   validator:
-    build: .
+    build:
+      context: ./phrase_validation_worker
     ports:
       - "9000:9000"
     environment:
       - ENVIRONMENT=development
     volumes:
-      - .:/app
-    command: uvicorn backend.phrase_validation_worker.main:app --host 0.0.0.0 --port 9000 --reload
+      - ./phrase_validation_worker:/app
+    command: uvicorn phrase_validation_worker.main:app --host 0.0.0.0 --port 9000 --reload
 
   db:
     image: postgres:15-alpine

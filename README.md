@@ -26,7 +26,7 @@ alembic upgrade head
 uvicorn backend.main:app --reload
 
 # In a separate terminal start the phrase validation worker
-uvicorn backend.phrase_validation_worker.main:app --port 9000 --reload
+uvicorn phrase_validation_worker.main:app --port 9000 --reload
 ```
 
 Server runs at **http://localhost:8000**

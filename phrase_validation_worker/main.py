@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
-from backend.phrase_validation.engine import get_phrase_validator
+from .engine import get_phrase_validator
 
 logger = logging.getLogger(__name__)
 

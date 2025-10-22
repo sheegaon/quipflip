@@ -44,22 +44,9 @@ class Settings(BaseSettings):
     vote_round_seconds: int = 60
     grace_period_seconds: int = 5
 
-    # Phrase Validation
-    phrase_min_words: int = 1
-    phrase_max_words: int = 5
-    phrase_max_length: int = 100
-    phrase_min_char_per_word: int = 2
-    phrase_max_char_per_word: int = 15
-    significant_word_min_length: int = 4
+    # Phrase validation worker
     phrase_validator_url: str = "http://localhost:9000"
     phrase_validator_timeout: float = 10.0
-
-    # Similarity Checking
-    use_sentence_transformers: bool = True  # Set to True to use sentence-transformers, False for lightweight similarity
-    similarity_model: str = "paraphrase-MiniLM-L6-v2"  # Sentence transformer model
-    prompt_relevance_threshold: float = 0.1  # Cosine similarity threshold for prompt relevance
-    similarity_threshold: float = 0.8  # Cosine similarity threshold for rejecting similar phrases
-    word_similarity_threshold: float = 0.8  # Minimum ratio for considering words too similar
 
     # AI Service
     openai_api_key: str = ""

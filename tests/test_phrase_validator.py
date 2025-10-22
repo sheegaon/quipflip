@@ -1,7 +1,7 @@
 """Tests for phrase validator with similarity checking."""
 import pytest
 pytest.importorskip("sklearn")
-from backend.phrase_validation.engine import PhraseValidator, get_phrase_validator
+from phrase_validation_worker.engine import PhraseValidator, get_phrase_validator
 
 
 @pytest.fixture
