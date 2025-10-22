@@ -89,7 +89,35 @@ sqlalchemy_logger.addFilter(SQLTransactionFilter())
 settings = get_settings()
 
 
-async def ai_backup_cycle(validator):
+async def initialize_phrase_validation():
+    try:
+        if settings.use_phrase_validator_api:
+            # Use remote phrase validation service
+            from backend.services.phrase_validation_client import get_phrase_validation_client
+            client = get_phrase_validation_client()
+
+            # Perform health check
+            is_healthy = await client.health_check()
+            if is_healthy:
+                logger.info(f"Phrase validation API health check passed at {settings.phrase_validator_url}")
+            else:
+                logger.error(f"Phrase validation API health check failed at {settings.phrase_validator_url}")
+                logger.error("Phrase validation will fail until the API service is available")
+        else:
+            # Use local phrase validator
+            from backend.services.phrase_validator import get_phrase_validator
+            validator = get_phrase_validator()
+            logger.info(f"Local phrase validator initialized with {len(validator.dictionary)} words")
+    except Exception as e:
+        if settings.use_phrase_validator_api:
+            logger.error(f"Failed to connect to phrase validation API: {e}")
+            logger.error("Phrase validation will fail until the API service is available")
+        else:
+            logger.error(f"Failed to initialize local phrase validator: {e}")
+            logger.error("Run: python3 scripts/download_dictionary.py")
+
+
+async def ai_backup_cycle():
     """Background task to run AI backup cycles."""
     from backend.database import AsyncSessionLocal
     from backend.services.ai_service import AIService
@@ -118,14 +146,8 @@ async def lifespan(app_instance: FastAPI):
     logger.info(f"Redis: {'Enabled' if settings.redis_url else 'In-Memory Fallback'}")
     logger.info("=" * 60)
 
-    # Initialize phrase validator
-    validator = None
-    try:
-        validator = get_phrase_validator()
-        logger.info(f"Phrase validator initialized with {len(validator.dictionary)} words")
-    except Exception as e:
-        logger.error(f"Failed to initialize phrase validator: {e}")
-        logger.error("Run: python3 scripts/download_dictionary.py")
+    # Initialize phrase validation service using either local or remote API
+    await initialize_phrase_validation()
 
     # Synchronize prompts between file and database
     await sync_prompts_with_database()
@@ -133,7 +155,7 @@ async def lifespan(app_instance: FastAPI):
     # Start AI backup cycle background task
     ai_backup_task = None
     try:
-        ai_backup_task = asyncio.create_task(ai_backup_cycle(validator))
+        ai_backup_task = asyncio.create_task(ai_backup_cycle())
         logger.info(f"AI backup cycle task started (runs every {settings.ai_backup_sleep_seconds} seconds)")
 
     except Exception as e:

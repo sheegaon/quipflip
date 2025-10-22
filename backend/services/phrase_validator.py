@@ -280,7 +280,7 @@ class PhraseValidator:
         similarity = self.calculate_similarity(phrase, prompt_text)
         return similarity >= self.settings.prompt_relevance_threshold, "Phrase not relevant to prompt"
 
-    def validate_prompt_phrase(self, phrase: str, prompt_text: str | None) -> tuple[bool, str]:
+    async def validate_prompt_phrase(self, phrase: str, prompt_text: str | None) -> tuple[bool, str]:
         """Validate a prompt submission against the originating prompt text."""
 
         is_valid, error = self.validate(phrase)
@@ -298,7 +298,7 @@ class PhraseValidator:
 
         return True, ""
 
-    def validate_copy(
+    async def validate_copy(
         self,
         phrase: str,
         original_phrase: str,
