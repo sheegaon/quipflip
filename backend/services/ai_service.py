@@ -16,7 +16,10 @@ from backend.config import get_settings
 from backend.models.player import Player
 from backend.models.round import Round
 from backend.models.phraseset import PhraseSet
-from backend.services.phrase_validator import PhraseValidator
+from backend.phrase_validation.client import (
+    PhraseValidationClient,
+    PhraseValidationServiceError,
+)
 from backend.services.ai_metrics_service import AIMetricsService, MetricsTracker
 from backend.services.player_service import PlayerService
 from backend.services.round_service import RoundService
@@ -45,7 +48,7 @@ class AIService:
     configurable provider selection, and comprehensive metrics tracking.
     """
 
-    def __init__(self, db: AsyncSession, validator: PhraseValidator):
+    def __init__(self, db: AsyncSession, validator: PhraseValidationClient):
         """
         Initialize AI service.
 
@@ -182,7 +185,16 @@ class AIService:
                 raise AICopyError(f"Failed to generate AI copy: {e}")
 
             # Validate the generated phrase
-            is_valid, error_message = self.validator.validate(phrase)
+            try:
+                is_valid, error_message = await self.validator.validate(phrase)
+            except PhraseValidationServiceError as exc:
+                tracker.set_result(
+                    phrase,
+                    success=False,
+                    response_length=len(phrase),
+                    validation_passed=False,
+                )
+                raise AICopyError("Phrase validation service unavailable") from exc
 
             if not is_valid:
                 tracker.set_result(

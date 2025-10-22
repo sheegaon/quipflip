@@ -9,7 +9,7 @@ from pathlib import Path
 from contextlib import asynccontextmanager
 
 from backend.config import get_settings
-from backend.services.phrase_validator import get_phrase_validator
+from backend.phrase_validation.client import get_phrase_validation_client
 from backend.services.prompt_seeder import auto_seed_prompts_if_empty
 from backend.routers import health, player, rounds, phrasesets, prompt_feedback, auth, quests
 
@@ -118,14 +118,11 @@ async def lifespan(app_instance: FastAPI):
     logger.info(f"Redis: {'Enabled' if settings.redis_url else 'In-Memory Fallback'}")
     logger.info("=" * 60)
 
-    # Initialize phrase validator
-    validator = None
-    try:
-        validator = get_phrase_validator()
-        logger.info(f"Phrase validator initialized with {len(validator.dictionary)} words")
-    except Exception as e:
-        logger.error(f"Failed to initialize phrase validator: {e}")
-        logger.error("Run: python3 scripts/download_dictionary.py")
+    # Initialize phrase validation client
+    validator = get_phrase_validation_client()
+    await validator.startup()
+    if not await validator.health_check():
+        logger.error("Phrase validation service health check failed")
 
     # Auto-seed prompts if database is empty
     await auto_seed_prompts_if_empty()
@@ -149,6 +146,8 @@ async def lifespan(app_instance: FastAPI):
                 await ai_backup_task
             except asyncio.CancelledError:
                 logger.info("AI backup cycle task cancelled")
+
+        await validator.shutdown()
 
         logger.info("Quipflip API Shutting Down... Goodbye!")
 

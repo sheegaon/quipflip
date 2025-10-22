@@ -145,10 +145,10 @@ ai_backup_delay_minutes: int = 10
 
 ```python
 from backend.services.ai_service import AIService
-from backend.services.phrase_validator import PhraseValidator
+from backend.phrase_validation.client import get_phrase_validation_client
 from backend.database import get_db
 
-validator = PhraseValidator()
+validator = get_phrase_validation_client()
 db = get_db()
 ai_service = AIService(db, validator)
 ```
@@ -553,12 +553,12 @@ alembic upgrade head
 
 ```python
 from backend.services.ai_service import AIService
-from backend.services.phrase_validator import PhraseValidator
+from backend.phrase_validation.client import get_phrase_validation_client
 
 
 # Initialize
 async def test_ai_service(db):
-   validator = PhraseValidator(db)
+   validator = get_phrase_validation_client()
    ai_service = AIService(db, validator)
 
    # Generate copy

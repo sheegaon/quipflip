@@ -9,12 +9,24 @@ services:
       - DATABASE_URL=postgresql+asyncpg://quipflip:quipflip@db:5432/quipflip
       - REDIS_URL=redis://redis:6379
       - ENVIRONMENT=development
+      - PHRASE_VALIDATOR_URL=http://validator:9000
     depends_on:
       - db
       - redis
+      - validator
     volumes:
       - .:/app
     command: uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
+
+  validator:
+    build: .
+    ports:
+      - "9000:9000"
+    environment:
+      - ENVIRONMENT=development
+    volumes:
+      - .:/app
+    command: uvicorn backend.phrase_validation_worker.main:app --host 0.0.0.0 --port 9000 --reload
 
   db:
     image: postgres:15-alpine

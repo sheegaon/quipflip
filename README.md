@@ -22,8 +22,11 @@ pip install -r requirements.txt
 # Run migrations
 alembic upgrade head
 
-# Start server
+# Start API server
 uvicorn backend.main:app --reload
+
+# In a separate terminal start the phrase validation worker
+uvicorn backend.phrase_validation_worker.main:app --port 9000 --reload
 ```
 
 Server runs at **http://localhost:8000**

@@ -51,6 +51,8 @@ class Settings(BaseSettings):
     phrase_min_char_per_word: int = 2
     phrase_max_char_per_word: int = 15
     significant_word_min_length: int = 4
+    phrase_validator_url: str = "http://localhost:9000"
+    phrase_validator_timeout: float = 10.0
 
     # Similarity Checking
     use_sentence_transformers: bool = True  # Set to True to use sentence-transformers, False for lightweight similarity
