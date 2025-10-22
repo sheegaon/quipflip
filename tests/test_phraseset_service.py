@@ -169,3 +169,139 @@ async def test_get_phrasesets_and_claim(db_session):
 
     unclaimed = await service.get_unclaimed_results(prompt_player.player_id)
     assert all(item["phraseset_id"] != phraseset_id for item in unclaimed["unclaimed"])
+
+
+@pytest.mark.asyncio
+async def test_copy_summary_marks_non_contributor_phraseset(db_session):
+    prompt_player = _base_player("prompt_master")
+    copy_one = _base_player("copy_cat_one")
+    copy_two = _base_player("copy_cat_two")
+    copy_three = _base_player("copy_cat_three")
+
+    now = datetime.now(UTC)
+    prompt_round = Round(
+        round_id=uuid4(),
+        player_id=prompt_player.player_id,
+        round_type="prompt",
+        status="submitted",
+        created_at=now,
+        expires_at=now + timedelta(minutes=5),
+        cost=100,
+        prompt_text="share a hidden talent",
+        submitted_phrase="JUGGLING",
+        phraseset_status="voting",
+        copy1_player_id=copy_one.player_id,
+        copy2_player_id=copy_two.player_id,
+    )
+
+    copy_round_1 = _copy_round(copy_one.player_id, prompt_round.round_id, "BALANCING")
+    copy_round_2 = _copy_round(copy_two.player_id, prompt_round.round_id, "WHISTLING")
+    copy_round_3 = _copy_round(copy_three.player_id, prompt_round.round_id, "DRAWING")
+
+    phraseset = PhraseSet(
+        phraseset_id=uuid4(),
+        prompt_round_id=prompt_round.round_id,
+        copy_round_1_id=copy_round_1.round_id,
+        copy_round_2_id=copy_round_2.round_id,
+        prompt_text=prompt_round.prompt_text,
+        original_phrase=prompt_round.submitted_phrase,
+        copy_phrase_1=copy_round_1.copy_phrase,
+        copy_phrase_2=copy_round_2.copy_phrase,
+        status="voting",
+        vote_count=3,
+        created_at=now,
+        total_pool=300,
+    )
+
+    db_session.add_all([
+        prompt_player,
+        copy_one,
+        copy_two,
+        copy_three,
+        prompt_round,
+        copy_round_1,
+        copy_round_2,
+        copy_round_3,
+        phraseset,
+    ])
+    await db_session.commit()
+
+    service = PhrasesetService(db_session)
+
+    summaries, total = await service.get_player_phrasesets(copy_three.player_id)
+    assert total == 1
+    assert len(summaries) == 1
+    summary = summaries[0]
+    assert summary["phraseset_id"] is None
+    assert summary["status"] == "abandoned"
+    assert summary["vote_count"] == 0
+    assert summary["prompt_text"] == "share a hidden talent"
+    assert summary["your_role"] == "copy"
+    assert summary["your_phrase"] == "DRAWING"
+    assert summary["payout_claimed"] is False
+
+
+@pytest.mark.asyncio
+async def test_copy_summary_marks_contributor_phraseset(db_session):
+    prompt_player = _base_player("prompt_master")
+    copy_one = _base_player("copy_cat_one")
+    copy_two = _base_player("copy_cat_two")
+
+    now = datetime.now(UTC)
+    prompt_round = Round(
+        round_id=uuid4(),
+        player_id=prompt_player.player_id,
+        round_type="prompt",
+        status="submitted",
+        created_at=now,
+        expires_at=now + timedelta(minutes=5),
+        cost=100,
+        prompt_text="share a hidden talent",
+        submitted_phrase="JUGGLING",
+        phraseset_status="voting",
+        copy1_player_id=copy_one.player_id,
+        copy2_player_id=copy_two.player_id,
+    )
+
+    copy_round_1 = _copy_round(copy_one.player_id, prompt_round.round_id, "BALANCING")
+    copy_round_2 = _copy_round(copy_two.player_id, prompt_round.round_id, "WHISTLING")
+
+    phraseset = PhraseSet(
+        phraseset_id=uuid4(),
+        prompt_round_id=prompt_round.round_id,
+        copy_round_1_id=copy_round_1.round_id,
+        copy_round_2_id=copy_round_2.round_id,
+        prompt_text=prompt_round.prompt_text,
+        original_phrase=prompt_round.submitted_phrase,
+        copy_phrase_1=copy_round_1.copy_phrase,
+        copy_phrase_2=copy_round_2.copy_phrase,
+        status="voting",
+        vote_count=3,
+        created_at=now,
+        total_pool=300,
+    )
+
+    db_session.add_all([
+        prompt_player,
+        copy_one,
+        copy_two,
+        prompt_round,
+        copy_round_1,
+        copy_round_2,
+        phraseset,
+    ])
+    await db_session.commit()
+
+    service = PhrasesetService(db_session)
+
+    summaries, total = await service.get_player_phrasesets(copy_one.player_id)
+    assert total == 1
+    assert len(summaries) == 1
+    summary = summaries[0]
+    assert summary["phraseset_id"] == phraseset.phraseset_id
+    assert summary["status"] == "voting"
+    assert summary["vote_count"] == 3
+    assert summary["prompt_text"] == "share a hidden talent"
+    assert summary["your_role"] == "copy"
+    assert summary["your_phrase"] == "BALANCING"
+    assert summary["payout_claimed"] is False

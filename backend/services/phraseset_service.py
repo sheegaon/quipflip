@@ -431,29 +431,41 @@ class PhrasesetService:
         for copy_round in copy_rounds:
             prompt_round = prompt_round_map.get(copy_round.prompt_round_id)
             phraseset = phraseset_map.get(copy_round.prompt_round_id)
-            result_view = result_view_map.get(phraseset.phraseset_id) if phraseset else None
+            is_contributor = bool(
+                phraseset
+                and copy_round.round_id
+                in {phraseset.copy_round_1_id, phraseset.copy_round_2_id}
+            )
+
+            result_view = (
+                result_view_map.get(phraseset.phraseset_id)
+                if phraseset and is_contributor
+                else None
+            )
             payout_claimed = result_view.payout_claimed if result_view else False
             your_payout = None
-            if phraseset and phraseset.status == "finalized":
+            if phraseset and is_contributor and phraseset.status == "finalized":
                 payouts = await self._get_payouts_cached(phraseset, payout_cache)
                 your_payout = self._extract_player_payout(payouts, copy_round.player_id)
                 if result_view and result_view.payout_amount:
                     your_payout = result_view.payout_amount
 
+            status = self._derive_copy_status(prompt_round, phraseset, is_contributor)
+
             contributions.append(
                 {
-                    "phraseset_id": phraseset.phraseset_id if phraseset else None,
+                    "phraseset_id": phraseset.phraseset_id if phraseset and is_contributor else None,
                     "prompt_round_id": copy_round.prompt_round_id,
                     "prompt_text": phraseset.prompt_text if phraseset else (prompt_round.prompt_text if prompt_round else ""),
                     "your_role": "copy",
                     "your_phrase": copy_round.copy_phrase,
-                    "status": self._derive_status(prompt_round, phraseset),
+                    "status": status,
                     "created_at": self._ensure_utc(copy_round.created_at),
                     "updated_at": self._determine_updated_at(prompt_round, phraseset, fallback=copy_round.created_at),
-                    "vote_count": phraseset.vote_count if phraseset else 0,
-                    "third_vote_at": self._ensure_utc(phraseset.third_vote_at) if phraseset else None,
-                    "fifth_vote_at": self._ensure_utc(phraseset.fifth_vote_at) if phraseset else None,
-                    "finalized_at": self._ensure_utc(phraseset.finalized_at) if phraseset else None,
+                    "vote_count": phraseset.vote_count if phraseset and is_contributor else 0,
+                    "third_vote_at": self._ensure_utc(phraseset.third_vote_at) if phraseset and is_contributor else None,
+                    "fifth_vote_at": self._ensure_utc(phraseset.fifth_vote_at) if phraseset and is_contributor else None,
+                    "finalized_at": self._ensure_utc(phraseset.finalized_at) if phraseset and is_contributor else None,
                     "has_copy1": bool(prompt_round.copy1_player_id) if prompt_round else bool(phraseset),
                     "has_copy2": bool(prompt_round.copy2_player_id) if prompt_round else bool(phraseset),
                     "your_payout": your_payout,
@@ -555,6 +567,19 @@ class PhrasesetService:
         if player_id == copy2_round.player_id:
             return "copy", phraseset.copy_phrase_2
         return "copy", None
+
+    def _derive_copy_status(
+        self,
+        prompt_round: Optional[Round],
+        phraseset: Optional[PhraseSet],
+        is_contributor: bool,
+    ) -> str:
+        """Determine copy round status, marking non-contributors as abandoned."""
+        return (
+            self._derive_status(prompt_round, phraseset)
+            if is_contributor or not phraseset
+            else "abandoned"
+        )
 
     def _derive_status(self, prompt_round: Optional[Round], phraseset: Optional[PhraseSet]) -> str:
         """Normalize status values between prompt rounds and phrasesets."""
