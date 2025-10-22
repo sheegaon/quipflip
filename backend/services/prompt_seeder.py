@@ -1,7 +1,7 @@
 """Auto-seed prompt library if empty."""
 from backend.database import AsyncSessionLocal
 from backend.models.prompt import Prompt
-from sqlalchemy import select, func
+from sqlalchemy import select, func, update
 import logging
 
 logger = logging.getLogger(__name__)
@@ -140,43 +140,91 @@ PROMPTS = [
 ]
 
 
-async def auto_seed_prompts_if_empty():
-    """Automatically seed prompts if the database is empty.
+async def sync_prompts_with_database():
+    """Synchronize prompts between file and database.
 
-    This runs on application startup and only seeds if no prompts exist.
+    This runs on application startup and:
+    1. Adds any prompts from the file that don't exist in the database
+    2. Sets enabled=True for prompts that exist in the file
+    3. Sets enabled=False for prompts in database that aren't in the file
+    
     Safe to run multiple times - idempotent operation.
     """
     try:
         async with AsyncSessionLocal() as db:
-            # Check if prompts already exist
-            result = await db.execute(select(func.count(Prompt.prompt_id)))
-            count = result.scalar()
-
-            if count > 0:
-                logger.info(f"Prompt library already seeded with {count} prompts")
-                return
-
-            logger.info("No prompts found, auto-seeding prompt library...")
-
-            # Insert new prompts
-            for text, category in PROMPTS:
-                prompt = Prompt(
-                    text=text,
-                    category=category,
-                )
-                db.add(prompt)
-
+            # Get all existing prompts from database
+            result = await db.execute(select(Prompt.text, Prompt.category, Prompt.enabled))
+            existing_prompts = {(row.text, row.category): row.enabled for row in result}
+            
+            # Convert file prompts to set for comparison
+            file_prompts = set(PROMPTS)
+            
+            # Track changes
+            added_count = 0
+            enabled_count = 0
+            disabled_count = 0
+            
+            # Add missing prompts from file to database
+            for text, category in file_prompts:
+                if (text, category) not in existing_prompts:
+                    prompt = Prompt(
+                        text=text,
+                        category=category,
+                        enabled=True
+                    )
+                    db.add(prompt)
+                    added_count += 1
+                    logger.info(f"Adding new prompt: '{text[:50]}...' ({category})")
+                elif not existing_prompts[(text, category)]:
+                    # Re-enable prompt that was previously disabled
+                    await db.execute(
+                        update(Prompt)
+                        .where(Prompt.text == text, Prompt.category == category)
+                        .values(enabled=True)
+                    )
+                    enabled_count += 1
+                    logger.info(f"Re-enabling prompt: '{text[:50]}...' ({category})")
+            
+            # Disable prompts in database that aren't in file
+            for (text, category), currently_enabled in existing_prompts.items():
+                if (text, category) not in file_prompts and currently_enabled:
+                    await db.execute(
+                        update(Prompt)
+                        .where(Prompt.text == text, Prompt.category == category)
+                        .values(enabled=False)
+                    )
+                    disabled_count += 1
+                    logger.info(f"Disabling prompt: '{text[:50]}...' ({category})")
+            
             await db.commit()
-            logger.info(f"✓ Auto-seeded {len(PROMPTS)} prompts")
-
-            # Show summary
+            
+            # Log summary
+            if added_count > 0 or enabled_count > 0 or disabled_count > 0:
+                logger.info(f"✓ Prompt sync complete: {added_count} added, {enabled_count} re-enabled, {disabled_count} disabled")
+            else:
+                logger.info("✓ Prompt library already in sync")
+            
+            # Show current statistics
             result = await db.execute(
-                select(Prompt.category, func.count(Prompt.prompt_id))
+                select(
+                    Prompt.category, 
+                    func.count(Prompt.prompt_id).label('total'),
+                    func.sum(func.cast(Prompt.enabled, func.INTEGER)).label('enabled')
+                )
                 .group_by(Prompt.category)
+                .order_by(Prompt.category)
             )
-            logger.info("Prompts by category:")
-            for category, prompt_count in result:
-                logger.info(f"  {category}: {prompt_count}")
+            
+            logger.info("Current prompt library status:")
+            total_prompts = 0
+            total_enabled = 0
+            for category, total, enabled in result:
+                enabled = enabled or 0  # Handle None case
+                total_prompts += total
+                total_enabled += enabled
+                logger.info(f"  {category}: {enabled}/{total} enabled")
+            logger.info(f"  TOTAL: {total_enabled}/{total_prompts} prompts enabled")
 
     except Exception as e:
-        logger.error(f"Failed to auto-seed prompts: {e}")
+        logger.error(f"Failed to sync prompts: {e}")
+        raise
