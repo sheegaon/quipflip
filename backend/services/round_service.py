@@ -162,7 +162,7 @@ class RoundService:
             raise RoundExpiredError("Round expired past grace period")
 
         # Validate word against prompt text
-        is_valid, error = self.phrase_validator.validate_prompt_phrase(phrase, round_object.prompt_text)
+        is_valid, error = await self.phrase_validator.validate_prompt_phrase(phrase, round_object.prompt_text)
         if not is_valid:
             raise InvalidPhraseError(error)
 
@@ -371,7 +371,7 @@ class RoundService:
                 prompt_text = prompt_round.prompt_text
 
         # Validate phrase (including duplicate check)
-        is_valid, error = self.phrase_validator.validate_copy(
+        is_valid, error = await self.phrase_validator.validate_copy(
             phrase,
             round_object.original_phrase,
             other_copy_phrase,

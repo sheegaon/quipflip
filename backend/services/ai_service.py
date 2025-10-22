@@ -200,7 +200,7 @@ class AIService:
                 raise AICopyError(f"Failed to generate AI copy: {e}")
 
             # Use the same validation logic as round_service for copy phrases
-            is_valid, error_message = self.phrase_validator.validate_copy(
+            is_valid, error_message = await self.phrase_validator.validate_copy(
                 phrase,
                 original_phrase,
                 other_copy_phrase,
