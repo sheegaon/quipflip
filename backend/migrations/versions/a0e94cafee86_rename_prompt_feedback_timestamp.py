@@ -1,7 +1,7 @@
 """rename prompt feedback timestamp
 
 Revision ID: a0e94cafee86
-Revises: e3f1fa2b14cd
+Revises: d7e8f9a1b2c3
 Create Date: 2025-10-12 18:30:44.682925
 
 """
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = 'a0e94cafee86'
-down_revision: Union[str, None] = 'e3f1fa2b14cd'
+down_revision: Union[str, None] = 'd7e8f9a1b2c3'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
