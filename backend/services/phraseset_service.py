@@ -450,10 +450,7 @@ class PhrasesetService:
                 if result_view and result_view.payout_amount:
                     your_payout = result_view.payout_amount
 
-            if phraseset and not is_contributor:
-                status = "abandoned"
-            else:
-                status = self._derive_status(prompt_round, phraseset)
+            status = self._derive_copy_status(prompt_round, phraseset, is_contributor)
 
             contributions.append(
                 {
@@ -570,6 +567,19 @@ class PhrasesetService:
         if player_id == copy2_round.player_id:
             return "copy", phraseset.copy_phrase_2
         return "copy", None
+
+    def _derive_copy_status(
+        self,
+        prompt_round: Optional[Round],
+        phraseset: Optional[PhraseSet],
+        is_contributor: bool,
+    ) -> str:
+        """Determine copy round status, marking non-contributors as abandoned."""
+        return (
+            self._derive_status(prompt_round, phraseset)
+            if is_contributor or not phraseset
+            else "abandoned"
+        )
 
     def _derive_status(self, prompt_round: Optional[Round], phraseset: Optional[PhraseSet]) -> str:
         """Normalize status values between prompt rounds and phrasesets."""
