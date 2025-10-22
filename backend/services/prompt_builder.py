@@ -6,17 +6,18 @@ Gemini and OpenAI AI providers, eliminating code duplication.
 """
 
 
-def build_copy_prompt(original_phrase: str) -> str:
+def build_copy_prompt(original_phrase: str, existing_copy_phrase: str = None) -> str:
     """
     Build structured prompt for Think Alike gameplay copy generation.
 
     Args:
         original_phrase: The original phrase that was submitted for the prompt
+        existing_copy_phrase: Another copy phrase already submitted (if any)
 
     Returns:
         A formatted prompt string for AI copy generation
     """
-    return f"""Given an original phrase for a prompt (which you do not know),
+    base_prompt = f"""Given an original phrase for a prompt (which you do not know),
 create a similar but different phrase.
 
 Rules:
@@ -25,11 +26,21 @@ Rules:
 - Letters and spaces only
 - Must pass dictionary validation
 - Should be similar enough to be believable as the original
-- Do NOT copy or lightly modify (e.g., pluralize) any words from the original phrase which are 4 or more letters long
+- Do NOT copy or lightly modify (e.g., pluralize) any words from the original phrase which are 4 or more letters long"""
+
+    if existing_copy_phrase:
+        base_prompt += f"""
+- IMPORTANT: Another player already submitted this copy: "{existing_copy_phrase}"
+- Your phrase must be distinctly different from this existing copy
+- Avoid using similar words or concepts as the existing copy"""
+
+    base_prompt += f"""
 
 Original phrase: "{original_phrase}"
 
 Generate ONE alternative phrase only:"""
+
+    return base_prompt
 
 
 def build_vote_prompt(prompt_text: str, phrases: list[str]) -> str:

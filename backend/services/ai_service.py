@@ -16,7 +16,6 @@ from backend.config import get_settings
 from backend.models.player import Player
 from backend.models.round import Round
 from backend.models.phraseset import PhraseSet
-from backend.services.phrase_validator import PhraseValidator
 from backend.services.ai_metrics_service import AIMetricsService, MetricsTracker
 from backend.services.player_service import PlayerService
 from backend.services.round_service import RoundService
@@ -45,7 +44,7 @@ class AIService:
     configurable provider selection, and comprehensive metrics tracking.
     """
 
-    def __init__(self, db: AsyncSession, validator: PhraseValidator):
+    def __init__(self, db: AsyncSession):
         """
         Initialize AI service.
 
@@ -54,9 +53,14 @@ class AIService:
             validator: Phrase validator for checking generated phrases
         """
         self.db = db
-        self.validator = validator
-        self.metrics_service = AIMetricsService(db)
         self.settings = get_settings()
+        if self.settings.use_phrase_validator_api:
+            # TODO implement remote phrase validator client
+            self.phrase_validator = None
+        else:
+            from backend.services.phrase_validator import get_phrase_validator
+            self.phrase_validator = get_phrase_validator()
+        self.metrics_service = AIMetricsService(db)
 
         # Determine which provider to use based on config and available API keys
         self.provider = self._determine_provider()
@@ -135,12 +139,13 @@ class AIService:
 
         return ai_player
 
-    async def generate_copy_phrase(self, original_phrase: str) -> str:
+    async def generate_copy_phrase(self, original_phrase: str, prompt_round: Round) -> str:
         """
-        Generate a copy phrase using the configured AI provider with metrics tracking.
+        Generate a copy phrase using the configured AI provider with proper copy validation.
 
         Args:
             original_phrase: The original phrase to create a copy of
+            prompt_round: The prompt round object to get context and check existing copies
 
         Returns:
             Generated and validated copy phrase
@@ -148,6 +153,17 @@ class AIService:
         Raises:
             AICopyError: If generation or validation fails
         """
+        # Determine if another copy already exists for duplicate/similarity checks
+        other_copy_phrase = None
+        if prompt_round.round_id:
+            result = await self.db.execute(
+                select(Round.copy_phrase)
+                .where(Round.prompt_round_id == prompt_round.round_id)
+                .where(Round.round_type == "copy")
+                .where(Round.status == "submitted")
+            )
+            other_copy_phrase = result.scalars().first()
+
         model = (
             self.settings.ai_openai_model
             if self.provider == "openai"
@@ -168,6 +184,7 @@ class AIService:
                         original_phrase=original_phrase,
                         model=self.settings.ai_openai_model,
                         timeout=self.settings.ai_timeout_seconds,
+                        existing_copy_phrase=other_copy_phrase,
                     )
                 else:  # gemini
                     from backend.services.gemini_api import generate_copy as gemini_generate
@@ -175,14 +192,20 @@ class AIService:
                         original_phrase=original_phrase,
                         model=self.settings.ai_gemini_model,
                         timeout=self.settings.ai_timeout_seconds,
+                        existing_copy_phrase=other_copy_phrase,
                     )
             except Exception as e:
                 # Wrap API exceptions in AICopyError
                 logger.error(f"Failed to generate AI copy: {e}")
                 raise AICopyError(f"Failed to generate AI copy: {e}")
 
-            # Validate the generated phrase
-            is_valid, error_message = self.validator.validate(phrase)
+            # Use the same validation logic as round_service for copy phrases
+            is_valid, error_message = self.phrase_validator.validate_copy(
+                phrase,
+                original_phrase,
+                other_copy_phrase,
+                prompt_round.prompt_text,
+            )
 
             if not is_valid:
                 tracker.set_result(
@@ -192,7 +215,7 @@ class AIService:
                     validation_passed=False,
                 )
                 raise AICopyError(
-                    f"AI generated invalid phrase: {error_message}"
+                    f"AI generated invalid copy phrase: {error_message}"
                 )
 
             # Track successful generation
@@ -436,8 +459,8 @@ class AIService:
             # Process each waiting prompt
             for prompt_round in filtered_prompts:
                 try:
-                    # Generate AI copy phrase
-                    copy_phrase = await self.generate_copy_phrase(prompt_round.submitted_phrase)
+                    # Generate AI copy phrase with proper validation context
+                    copy_phrase = await self.generate_copy_phrase(prompt_round.submitted_phrase, prompt_round)
 
                     # Create copy round for AI player
                     round_service = RoundService(self.db)

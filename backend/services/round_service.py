@@ -14,7 +14,6 @@ from backend.models.phraseset import PhraseSet
 from backend.models.player_abandoned_prompt import PlayerAbandonedPrompt
 from backend.services.transaction_service import TransactionService
 from backend.services.queue_service import QueueService
-from backend.services.phrase_validator import get_phrase_validator
 from backend.services.activity_service import ActivityService
 from backend.config import get_settings
 from backend.utils.exceptions import (
@@ -26,7 +25,6 @@ from backend.utils.exceptions import (
 )
 
 logger = logging.getLogger(__name__)
-settings = get_settings()
 
 
 class RoundService:
@@ -34,7 +32,13 @@ class RoundService:
 
     def __init__(self, db: AsyncSession):
         self.db = db
-        self.phrase_validator = get_phrase_validator()
+        self.settings = get_settings()
+        if self.settings.use_phrase_validator_api:
+            # TODO implement remote phrase validator client
+            self.phrase_validator = None
+        else:
+            from backend.services.phrase_validator import get_phrase_validator
+            self.phrase_validator = get_phrase_validator()
         self.activity_service = ActivityService(db)
 
     async def start_prompt_round(self, player: Player, transaction_service: TransactionService) -> Optional[Round]:
@@ -83,7 +87,7 @@ class RoundService:
             # Use auto_commit=False to defer commit until all operations complete
             await transaction_service.create_transaction(
                 player.player_id,
-                -settings.prompt_cost,
+                -self.settings.prompt_cost,
                 "prompt_entry",
                 auto_commit=False,
                 skip_lock=True,
@@ -95,8 +99,8 @@ class RoundService:
                 player_id=player.player_id,
                 round_type="prompt",
                 status="active",
-                cost=settings.prompt_cost,
-                expires_at=datetime.now(UTC) + timedelta(seconds=settings.prompt_round_seconds),
+                cost=self.settings.prompt_cost,
+                expires_at=datetime.now(UTC) + timedelta(seconds=self.settings.prompt_round_seconds),
                 # Prompt-specific fields
                 prompt_id=prompt.prompt_id,
                 prompt_text=prompt.text,
@@ -153,7 +157,7 @@ class RoundService:
         # Make grace_cutoff timezone-aware if expires_at is naive (SQLite stores naive)
         expires_at_aware = round_object.expires_at.replace(
             tzinfo=UTC) if round_object.expires_at.tzinfo is None else round_object.expires_at
-        grace_cutoff = expires_at_aware + timedelta(seconds=settings.grace_period_seconds)
+        grace_cutoff = expires_at_aware + timedelta(seconds=self.settings.grace_period_seconds)
         if datetime.now(UTC) > grace_cutoff:
             raise RoundExpiredError("Round expired past grace period")
 
@@ -277,8 +281,8 @@ class RoundService:
 
         # Get current copy cost (with discount if applicable)
         copy_cost = QueueService.get_copy_cost()
-        is_discounted = copy_cost == settings.copy_cost_discount
-        system_contribution = settings.copy_cost_normal - copy_cost if is_discounted else 0
+        is_discounted = copy_cost == self.settings.copy_cost_discount
+        system_contribution = self.settings.copy_cost_normal - copy_cost if is_discounted else 0
 
         # Acquire lock for the entire transaction
         from backend.utils import lock_client
@@ -302,7 +306,7 @@ class RoundService:
                 round_type="copy",
                 status="active",
                 cost=copy_cost,
-                expires_at=datetime.now(UTC) + timedelta(seconds=settings.copy_round_seconds),
+                expires_at=datetime.now(UTC) + timedelta(seconds=self.settings.copy_round_seconds),
                 # Copy-specific fields
                 prompt_round_id=prompt_round_id,
                 original_phrase=prompt_round.submitted_phrase,
@@ -346,7 +350,7 @@ class RoundService:
         # Make grace_cutoff timezone-aware if expires_at is naive (SQLite stores naive)
         expires_at_aware = round_object.expires_at.replace(
             tzinfo=UTC) if round_object.expires_at.tzinfo is None else round_object.expires_at
-        grace_cutoff = expires_at_aware + timedelta(seconds=settings.grace_period_seconds)
+        grace_cutoff = expires_at_aware + timedelta(seconds=self.settings.grace_period_seconds)
         if datetime.now(UTC) > grace_cutoff:
             raise RoundExpiredError("Round expired past grace period")
 
@@ -462,7 +466,7 @@ class RoundService:
 
         copy1, copy2 = copy_rounds[0], copy_rounds[1]
 
-        total_pool = settings.prize_pool
+        total_pool = self.settings.prize_pool
         system_contribution = copy1.system_contribution + copy2.system_contribution
 
         phraseset = PhraseSet(
@@ -512,7 +516,7 @@ class RoundService:
             expires_at.replace(tzinfo=UTC) if expires_at and expires_at.tzinfo is None else expires_at
         )
         grace_cutoff = (
-            expires_at_aware + timedelta(seconds=settings.grace_period_seconds) if expires_at_aware else None
+            expires_at_aware + timedelta(seconds=self.settings.grace_period_seconds) if expires_at_aware else None
         )
 
         # Respect grace period before cleanup
@@ -531,7 +535,7 @@ class RoundService:
         if round_object.round_type == "prompt":
             round_object.status = "expired"
             round_object.phraseset_status = "abandoned"
-            refund_amount = settings.prompt_cost - settings.abandoned_penalty
+            refund_amount = self.settings.prompt_cost - self.settings.abandoned_penalty
 
             # Create refund transaction
             await transaction_service.create_transaction(
@@ -545,7 +549,7 @@ class RoundService:
 
         elif round_object.round_type == "copy":
             round_object.status = "abandoned"
-            refund_amount = round_object.cost - settings.abandoned_penalty
+            refund_amount = round_object.cost - self.settings.abandoned_penalty
 
             # Create refund transaction
             await transaction_service.create_transaction(

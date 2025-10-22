@@ -22,8 +22,13 @@ pip install -r requirements.txt
 # Run migrations
 alembic upgrade head
 
-# Start server
+# Start API server
 uvicorn backend.main:app --reload
+
+# In a separate terminal start the phrase validation worker from the quipflip-pwv folder
+cd ..
+cd quipflip-pwv
+uvicorn main:app --port 9000 --reload
 ```
 
 Server runs at **http://localhost:8000**

@@ -5,6 +5,7 @@ Provides structured gameplay decisions with error handling and fallback logic
 for the Think Alike bot system.
 """
 
+import sys
 from backend.config import get_settings
 
 try:
@@ -29,6 +30,7 @@ async def generate_copy(
         original_phrase: str,
         model: str = "gemini-2.5-flash-lite",
         timeout: int = 30,
+        existing_copy_phrase: str = None,
 ) -> str:
     """
     Generate a copy phrase using Gemini API.
@@ -37,6 +39,7 @@ async def generate_copy(
         original_phrase: The original phrase to create a copy of
         model: Gemini model to use (default: gemini-2.5-flash-lite)
         timeout: Request timeout in seconds (currently unused, reserved for future)
+        existing_copy_phrase: Another copy phrase already submitted (if any)
 
     Returns:
         The generated copy phrase as a string
@@ -52,7 +55,7 @@ async def generate_copy(
 
     try:
         client = genai.Client(api_key=settings.gemini_api_key)
-        prompt = build_copy_prompt(original_phrase)
+        prompt = build_copy_prompt(original_phrase, existing_copy_phrase)
 
         contents = [
             types.Content(
