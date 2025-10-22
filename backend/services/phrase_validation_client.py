@@ -115,17 +115,22 @@ class PhraseValidationClient:
         url = f"{self.base_url}/healthz"
         
         try:
-            async with aiohttp.ClientSession(timeout=self.timeout) as session:
-                async with session.get(url) as response:
-                    if response.status == 200:
-                        data = await response.json()
-                        return data.get("status") == "ok"
-                    else:
-                        logger.error(f"Phrase validator health check failed: {response.status}")
-                        return False
+            async with self._session.get(url) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    return data.get("status") == "ok"
+                else:
+                    logger.error(f"Phrase validator health check failed: {response.status}")
+                    return False
                         
+        except asyncio.TimeoutError:
+            logger.error("Phrase validator health check timeout")
+            return False
+        except ClientError as e:
+            logger.error(f"Phrase validator health check client error: {e}")
+            return False
         except Exception as e:
-            logger.error(f"Phrase validator health check error: {e}")
+            logger.error(f"Phrase validator health check unexpected error: {e}")
             return False
 
 
