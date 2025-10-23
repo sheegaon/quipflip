@@ -64,7 +64,7 @@ export default function EarningsChart({ earnings }: EarningsChartProps) {
 
   return (
     <div className="w-full h-80">
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width="100%" height="100%" minWidth={300} minHeight={200}>
         <PieChart>
           <Pie
             data={data}
