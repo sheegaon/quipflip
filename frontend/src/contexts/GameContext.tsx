@@ -361,7 +361,8 @@ export const GameProviderWithNavigation: React.FC<{ children: React.ReactNode }>
   return <>{children}</>;
 };
 
-export const useGame = (): GameContextType => {
+// Main hook - returns structured API
+export const useGameStructured = (): GameContextType => {
   const context = useContext(GameContext);
   if (!context) {
     throw new Error('useGame must be used within a GameProvider');
@@ -369,9 +370,9 @@ export const useGame = (): GameContextType => {
   return context;
 };
 
-// Legacy compatibility exports (to be removed after migration)
-export const useLegacyGame = () => {
-  const { state, actions } = useGame();
+// Default export - backwards compatible (flattened API)
+export const useGame = () => {
+  const { state, actions } = useGameStructured();
   return {
     ...state,
     ...actions,

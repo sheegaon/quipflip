@@ -9,8 +9,14 @@ import TutorialWelcome from '../components/Tutorial/TutorialWelcome';
 const formatWaitingCount = (count: number): string => (count > 10 ? 'over 10' : count.toString());
 
 export const Dashboard: React.FC = () => {
-  const { state, actions } = useGame();
-  const { player, activeRound, pendingResults, phrasesetSummary, roundAvailability } = state;
+  const {
+    player,
+    activeRound,
+    pendingResults,
+    phrasesetSummary,
+    roundAvailability,
+    refreshDashboard,
+  } = useGame();
   const { startTutorial, skipTutorial, advanceStep } = useTutorial();
   const navigate = useNavigate();
   const [isRoundExpired, setIsRoundExpired] = useState(false);
@@ -37,7 +43,7 @@ export const Dashboard: React.FC = () => {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        actions.refreshDashboard();
+        refreshDashboard();
       }
     };
 
@@ -46,7 +52,7 @@ export const Dashboard: React.FC = () => {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [actions]);
+  }, [refreshDashboard]);
 
   useEffect(() => {
     if (!activeRound?.round_id) {
