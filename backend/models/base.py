@@ -35,7 +35,8 @@ def get_uuid_column(*args, **kwargs):
     """Get UUID column type based on database dialect.
 
     Returns a SQLAlchemy Column configured for UUID storage.
-    Uses a type that adapts based on the actual database dialect at runtime.
+    For PostgreSQL: uses native UUID type without custom comparator
+    For SQLite: uses String with custom comparator for legacy compatibility
 
     Args:
         *args: Positional arguments to pass to Column (e.g., ForeignKey)
@@ -57,14 +58,7 @@ def get_uuid_column(*args, **kwargs):
         class Comparator(sqltypes.TypeDecorator.Comparator):
             """Comparator that normalizes UUIDs for legacy SQLite rows."""
 
-            def _is_native_uuid(self) -> bool:
-                return getattr(self.type, "_uses_native_uuid", False)
-
             def operate(self, op, other, **kwargs):
-                # For PostgreSQL with native UUID, use standard comparison
-                if self._is_native_uuid():
-                    return super().operate(op, other, **kwargs)
-
                 # For SQLite/String storage with legacy data, normalize for comparison
                 # but only for explicit equality/membership operations
                 if isinstance(other, ClauseElement) or hasattr(other, "__clause_element__"):
@@ -72,7 +66,9 @@ def get_uuid_column(*args, **kwargs):
 
                 # For explicit comparisons, normalize both sides
                 if op in (operators.eq, operators.ne, operators.in_op, operators.notin_op):
-                    normalized_expr = func.lower(func.replace(self.expr, "-", ""))
+                    # For PostgreSQL UUID type, cast to text before using string functions
+                    # For SQLite, self.expr is already a string
+                    normalized_expr = func.lower(func.replace(func.cast(self.expr, String), "-", ""))
 
                     if op in (operators.in_op, operators.notin_op):
                         # Normalize list/tuple values
@@ -100,12 +96,12 @@ def get_uuid_column(*args, **kwargs):
 
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
-            self._uses_native_uuid = False
 
         def load_dialect_impl(self, dialect):
-            self._uses_native_uuid = dialect.name == "postgresql"
-            if self._uses_native_uuid:
+            if dialect.name == "postgresql":
+                # For PostgreSQL, return native UUID type
                 return dialect.type_descriptor(PGUUID(as_uuid=True))
+            # For SQLite, use String with our custom comparator
             return dialect.type_descriptor(String(36))
 
         @staticmethod
@@ -118,7 +114,7 @@ def get_uuid_column(*args, **kwargs):
             value = self._coerce_uuid(value)
             if value is None:
                 return None
-            if self._uses_native_uuid:
+            if dialect.name == "postgresql":
                 return value
             # Store as lowercase hex so both legacy and new rows share format.
             return value.hex
@@ -126,7 +122,7 @@ def get_uuid_column(*args, **kwargs):
         def process_result_value(self, value, dialect):
             if value is None:
                 return None
-            if self._uses_native_uuid:
+            if dialect.name == "postgresql":
                 return self._coerce_uuid(value)
             # Stored as text/hex – convert back to UUID.
             return uuid.UUID(str(value))
