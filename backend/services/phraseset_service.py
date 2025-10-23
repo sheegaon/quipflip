@@ -148,6 +148,18 @@ class PhrasesetService:
             copy1_round.player_id,
             copy2_round.player_id,
         }
+
+        # Debug logging
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"Phraseset {phraseset_id} contributor check:")
+        logger.info(f"  Player ID: {player_id}")
+        logger.info(f"  Prompt player: {prompt_round.player_id}")
+        logger.info(f"  Copy1 player: {copy1_round.player_id}")
+        logger.info(f"  Copy2 player: {copy2_round.player_id}")
+        logger.info(f"  Contributor IDs: {contributor_ids}")
+        logger.info(f"  Is contributor: {player_id in contributor_ids}")
+
         if player_id not in contributor_ids:
             raise ValueError("Not a contributor to this phraseset")
 
