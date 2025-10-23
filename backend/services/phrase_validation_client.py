@@ -17,7 +17,13 @@ class PhraseValidationClient:
         self.settings = get_settings()
         self.base_url = self.settings.phrase_validator_url.rstrip('/')
         self.timeout = ClientTimeout(total=30)  # 30 second timeout
-        self._session = aiohttp.ClientSession(timeout=self.timeout)
+        self._session = None
+
+    def _get_session(self) -> aiohttp.ClientSession:
+        """Get or create the aiohttp session."""
+        if self._session is None:
+            self._session = aiohttp.ClientSession(timeout=self.timeout)
+        return self._session
 
     async def close(self):
         """Close the underlying aiohttp client session."""
@@ -29,7 +35,8 @@ class PhraseValidationClient:
         url = f"{self.base_url}{endpoint}"
 
         try:
-            async with self._session.post(url, json=payload) as response:
+            session = self._get_session()
+            async with session.post(url, json=payload) as response:
                 if response.status == 200:
                     data = await response.json()
                     return data.get("is_valid", False), data.get("error", "")

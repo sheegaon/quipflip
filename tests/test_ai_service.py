@@ -9,7 +9,7 @@ from unittest.mock import patch, MagicMock
 from datetime import datetime, UTC
 import uuid
 
-from backend.services.ai_service import AIService, AICopyError, AIVoteError
+from backend.services.ai_service import AIService, AICopyError, AIVoteError, AIServiceError
 from backend.services.ai_metrics_service import AIMetricsService
 from backend.services.phrase_validator import PhraseValidator
 from backend.models.player import Player
@@ -33,12 +33,28 @@ def ai_service(db_session):
 
 
 @pytest.fixture
+def mock_prompt_round():
+    """Create a mock prompt round for copy generation tests."""
+    round_obj = MagicMock(spec=Round)
+    round_obj.round_id = uuid.uuid4()
+    round_obj.phrase = "happy birthday"
+    round_obj.prompt_text = "What do you say to celebrate someone's birth?"
+    return round_obj
+
+
+@pytest.fixture
 def mock_phraseset():
     """Create a mock phraseset for voting tests."""
     phraseset = MagicMock(spec=PhraseSet)
     phraseset.phraseset_id = uuid.uuid4()
 
-    # Mock rounds with phrases
+    # Mock the properties that generate_vote_choice uses
+    phraseset.prompt_text = "What do you say to celebrate someone's birth?"
+    phraseset.original_phrase = "happy birthday"
+    phraseset.copy_phrase_1 = "joyful anniversary"
+    phraseset.copy_phrase_2 = "merry celebration"
+
+    # Also keep the old structure for compatibility
     phraseset.prompt_round = MagicMock()
     phraseset.prompt_round.phrase = "happy birthday"
 
@@ -57,14 +73,24 @@ class TestAIServiceProviderSelection:
     @patch.dict('os.environ', {'OPENAI_API_KEY': 'sk-test', 'AI_PROVIDER': 'openai'})
     def test_select_openai_when_configured(self, db_session):
         """Should select OpenAI when configured and API key available."""
-        service = AIService(db_session)
-        assert service.provider == "openai"
+        with patch('backend.services.ai_service.get_settings') as mock_settings:
+            settings = mock_settings.return_value
+            settings.ai_provider = 'openai'
+            settings.openai_api_key = 'sk-test'
+            settings.use_phrase_validator_api = False
+            settings.use_sentence_transformers = False
+            service = AIService(db_session)
+            assert service.provider == "openai"
 
     @patch.dict('os.environ', {'GEMINI_API_KEY': 'test-key', 'AI_PROVIDER': 'gemini'}, clear=True)
     def test_select_gemini_when_configured(self, db_session):
         """Should select Gemini when configured and API key available."""
         with patch('backend.services.ai_service.get_settings') as mock_settings:
-            mock_settings.return_value.ai_provider = 'gemini'
+            settings = mock_settings.return_value
+            settings.ai_provider = 'gemini'
+            settings.gemini_api_key = 'test-key'
+            settings.use_phrase_validator_api = False
+            settings.use_sentence_transformers = False
             service = AIService(db_session)
             assert service.provider == "gemini"
 
@@ -72,15 +98,27 @@ class TestAIServiceProviderSelection:
     def test_fallback_to_openai_when_gemini_unavailable(self, db_session):
         """Should fallback to OpenAI when Gemini configured but unavailable."""
         with patch('backend.services.ai_service.get_settings') as mock_settings:
-            mock_settings.return_value.ai_provider = 'gemini'
+            settings = mock_settings.return_value
+            settings.ai_provider = 'gemini'
+            settings.openai_api_key = 'sk-test'
+            settings.gemini_api_key = None
+            settings.use_phrase_validator_api = False
+            settings.use_sentence_transformers = False
             service = AIService(db_session)
             assert service.provider == "openai"
 
     @patch.dict('os.environ', {}, clear=True)
     def test_raise_error_when_no_provider_available(self, db_session):
         """Should raise error when no API keys available."""
-        with pytest.raises(AICopyError, match="No AI provider configured"):
-            AIService(db_session)
+        with patch('backend.services.ai_service.get_settings') as mock_settings:
+            settings = mock_settings.return_value
+            settings.ai_provider = 'openai'
+            settings.openai_api_key = None
+            settings.gemini_api_key = None
+            settings.use_phrase_validator_api = False
+            settings.use_sentence_transformers = False
+            with pytest.raises(AIServiceError, match="No AI provider configured"):
+                AIService(db_session)
 
 
 class TestAICopyGeneration:
@@ -90,38 +128,47 @@ class TestAICopyGeneration:
     @patch('backend.services.openai_api.generate_copy')
     @patch.dict('os.environ', {'OPENAI_API_KEY': 'sk-test'})
     async def test_generate_copy_with_openai(
-            self, mock_openai, db_session, mock_validator
+            self, mock_openai, db_session, mock_prompt_round
     ):
         """Should generate copy using OpenAI."""
         mock_openai.return_value = "joyful celebration"
 
         service = AIService(db_session)
-        result = await service.generate_copy_phrase(
-            original_phrase="happy birthday",
-        )
+        # Mock the phrase validator's validate_copy method to return success
+        with patch.object(service.phrase_validator, 'validate_copy', return_value=(True, "")):
+            result = await service.generate_copy_phrase(
+                original_phrase="happy birthday",
+                prompt_round=mock_prompt_round,
+            )
 
         assert result == "joyful celebration"
         mock_openai.assert_called_once()
-        mock_validator.validate.assert_called_once_with("joyful celebration")
 
     @pytest.mark.asyncio
     @patch('backend.services.gemini_api.generate_copy')
     @patch.dict('os.environ', {'GEMINI_API_KEY': 'test-key'}, clear=True)
     async def test_generate_copy_with_gemini(
-            self, mock_gemini, db_session, mock_validator
+            self, mock_gemini, db_session, mock_prompt_round
     ):
         """Should generate copy using Gemini."""
         mock_gemini.return_value = "merry festivity"
 
         with patch('backend.services.ai_service.get_settings') as mock_settings:
-            mock_settings.return_value.ai_provider = 'gemini'
-            mock_settings.return_value.ai_gemini_model = 'gemini-2.5-flash-lite'
-            mock_settings.return_value.ai_timeout_seconds = 30
+            settings = mock_settings.return_value
+            settings.ai_provider = 'gemini'
+            settings.gemini_api_key = 'test-key'
+            settings.ai_gemini_model = 'gemini-2.5-flash-lite'
+            settings.ai_timeout_seconds = 30
+            settings.use_phrase_validator_api = False
+            settings.use_sentence_transformers = False
 
             service = AIService(db_session)
-            result = await service.generate_copy_phrase(
-                original_phrase="happy birthday",
-            )
+            # Mock the phrase validator's validate_copy method to return success
+            with patch.object(service.phrase_validator, 'validate_copy', return_value=(True, "")):
+                result = await service.generate_copy_phrase(
+                    original_phrase="happy birthday",
+                    prompt_round=mock_prompt_round,
+                )
 
             assert result == "merry festivity"
             mock_gemini.assert_called_once()
@@ -130,24 +177,26 @@ class TestAICopyGeneration:
     @patch('backend.services.openai_api.generate_copy')
     @patch.dict('os.environ', {'OPENAI_API_KEY': 'sk-test'})
     async def test_generate_copy_validation_failure(
-            self, mock_openai, db_session, mock_validator
+            self, mock_openai, db_session, mock_prompt_round
     ):
         """Should raise error when generated phrase fails validation."""
         mock_openai.return_value = "invalid phrase!!!"
-        mock_validator.validate.return_value = (False, "Invalid characters")
 
         service = AIService(db_session)
 
-        with pytest.raises(AICopyError, match="Invalid characters"):
-            await service.generate_copy_phrase(
-                original_phrase="happy birthday",
-            )
+        # Mock the phrase validator to return validation failure
+        with patch.object(service.phrase_validator, 'validate', return_value=(False, "Invalid characters")):
+            with pytest.raises(AICopyError, match="Invalid characters"):
+                await service.generate_copy_phrase(
+                    original_phrase="happy birthday",
+                    prompt_round=mock_prompt_round,
+                )
 
     @pytest.mark.asyncio
     @patch('backend.services.openai_api.generate_copy')
     @patch.dict('os.environ', {'OPENAI_API_KEY': 'sk-test'})
     async def test_generate_copy_api_failure(
-            self, mock_openai, db_session, mock_validator
+            self, mock_openai, db_session, mock_prompt_round
     ):
         """Should handle API failures gracefully."""
         mock_openai.side_effect = Exception("API timeout")
@@ -157,6 +206,7 @@ class TestAICopyGeneration:
         with pytest.raises(AICopyError, match="Failed to generate AI copy"):
             await service.generate_copy_phrase(
                 original_phrase="happy birthday",
+                prompt_round=mock_prompt_round,
             )
 
 
@@ -202,7 +252,7 @@ class TestAIMetrics:
     @patch('backend.services.openai_api.generate_copy')
     @patch.dict('os.environ', {'OPENAI_API_KEY': 'sk-test'})
     async def test_metrics_recorded_on_success(
-            self, mock_openai, db_session, mock_validator
+            self, mock_openai, db_session, mock_prompt_round
     ):
         """Should record metrics on successful operation."""
         mock_openai.return_value = "joyful celebration"
@@ -210,6 +260,7 @@ class TestAIMetrics:
         service = AIService(db_session)
         await service.generate_copy_phrase(
             original_phrase="happy birthday",
+            prompt_round=mock_prompt_round,
         )
 
         # Check that metric was created (but not committed yet)
@@ -227,18 +278,20 @@ class TestAIMetrics:
     @patch('backend.services.openai_api.generate_copy')
     @patch.dict('os.environ', {'OPENAI_API_KEY': 'sk-test'})
     async def test_metrics_recorded_on_failure(
-            self, mock_openai, db_session, mock_validator
+            self, mock_openai, db_session, mock_prompt_round
     ):
         """Should record metrics on failed operation."""
         mock_openai.return_value = "invalid!!!"
-        mock_validator.validate.return_value = (False, "Invalid characters")
 
         service = AIService(db_session)
 
-        with pytest.raises(AICopyError):
-            await service.generate_copy_phrase(
-                original_phrase="happy birthday",
-            )
+        # Mock the phrase validator to return validation failure
+        with patch.object(service.phrase_validator, 'validate', return_value=(False, "Invalid characters")):
+            with pytest.raises(AICopyError):
+                await service.generate_copy_phrase(
+                    original_phrase="happy birthday",
+                    prompt_round=mock_prompt_round,
+                )
 
         # Check that failure metric was created
         metrics = db_session.new

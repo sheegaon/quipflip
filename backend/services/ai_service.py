@@ -244,23 +244,13 @@ class AIService:
         """
         from backend.services.ai_vote_helper import generate_vote_choice
 
-        # Safely extract prompt and phrases with validation
-        try:
-            if not phraseset.prompt_round:
-                raise AIVoteError("Phraseset missing prompt_round relationship")
-            if not phraseset.copy_round_1:
-                raise AIVoteError("Phraseset missing copy_round_1 relationship")
-            if not phraseset.copy_round_2:
-                raise AIVoteError("Phraseset missing copy_round_2 relationship")
-
-            prompt_text = phraseset.prompt_round.phrase
-            phrases = [
-                phraseset.prompt_round.phrase,
-                phraseset.copy_round_1.phrase,
-                phraseset.copy_round_2.phrase,
-            ]
-        except AttributeError as e:
-            raise AIVoteError(f"Failed to extract phrases from phraseset: {e}")
+        # Extract prompt and phrases from denormalized fields on PhraseSet
+        prompt_text = phraseset.prompt_text
+        phrases = [
+            phraseset.original_phrase,
+            phraseset.copy_phrase_1,
+            phraseset.copy_phrase_2,
+        ]
 
         model = (
             self.settings.ai_openai_model
@@ -548,17 +538,16 @@ class AIService:
             filtered_phrasesets = []
             for phraseset in waiting_phrasesets:
                 try:
-                    # Safely get player IDs, handling None relationships
-                    contributor_player_ids = set()
-                    
-                    if phraseset.prompt_round and hasattr(phraseset.prompt_round, 'player_id'):
-                        contributor_player_ids.add(phraseset.prompt_round.player_id)
-                    
-                    if phraseset.copy_round_1 and hasattr(phraseset.copy_round_1, 'player_id'):
-                        contributor_player_ids.add(phraseset.copy_round_1.player_id)
-                    
-                    if phraseset.copy_round_2 and hasattr(phraseset.copy_round_2, 'player_id'):
-                        contributor_player_ids.add(phraseset.copy_round_2.player_id)
+                    # Safely get player IDs from loaded relationships
+                    contributor_player_ids = {
+                        r.player_id
+                        for r in (
+                            phraseset.prompt_round,
+                            phraseset.copy_round_1,
+                            phraseset.copy_round_2,
+                        )
+                        if r
+                    }
                     
                     # Skip if AI player was a contributor
                     if ai_player.player_id not in contributor_player_ids:
