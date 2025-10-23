@@ -1,13 +1,17 @@
 // API Response Types based on backend documentation
 
 export interface Player {
+  player_id: string;
   username: string;
+  email: string;
+  pseudonym: string;
   balance: number;
   starting_balance: number;
   daily_bonus_available: boolean;
   daily_bonus_amount: number;
   last_login_date: string;
   outstanding_prompts: number;
+  created_at: string;
 }
 
 export interface AuthTokenResponse {

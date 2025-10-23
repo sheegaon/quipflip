@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { Header } from '../components/Header';
 
@@ -7,7 +6,6 @@ export const Quests: React.FC = () => {
   const { state, actions } = useGame();
   const { player } = state;
   const { claimBonus } = actions;
-  const navigate = useNavigate();
   const [isClaiming, setIsClaiming] = useState(false);
 
   if (!player) {
