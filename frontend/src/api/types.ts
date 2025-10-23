@@ -30,7 +30,7 @@ export interface SuggestUsernameResponse {
 
 export interface PromptState {
   round_id: string;
-  status: 'active' | 'submitted';
+  status: 'active' | 'submitted' | 'expired' | 'abandoned';
   expires_at: string;
   cost: number;
   prompt_text: string;
@@ -39,7 +39,7 @@ export interface PromptState {
 
 export interface CopyState {
   round_id: string;
-  status: 'active' | 'submitted';
+  status: 'active' | 'submitted' | 'expired' | 'abandoned';
   expires_at: string;
   cost: number;
   original_phrase: string;
@@ -48,7 +48,7 @@ export interface CopyState {
 
 export interface VoteState {
   round_id: string;
-  status: 'active' | 'submitted';
+  status: 'active' | 'submitted' | 'expired' | 'abandoned';
   expires_at: string;
   phraseset_id: string;
   prompt_text: string;
