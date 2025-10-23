@@ -1,5 +1,12 @@
 import React from 'react';
 
+// Debug logging helper
+const log = (message: string, data?: any) => {
+  if (import.meta.env.DEV) {
+    console.log(`[LoadingSpinner] ${message}`, data || '');
+  }
+};
+
 export interface LoadingState {
   isLoading: boolean;
   type?: 'initial' | 'submit' | 'refresh' | 'sync' | 'retry';
@@ -28,6 +35,19 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   size = 'md',
   className = '',
 }) => {
+  // Log when spinner is shown
+  React.useEffect(() => {
+    if (isLoading) {
+      log('Spinner shown', {
+        type,
+        message,
+        isOffline,
+        queuedAction,
+        size
+      });
+    }
+  }, [isLoading, type, message, isOffline, queuedAction, size]);
+
   if (!isLoading) return null;
 
   const sizeClasses = {
@@ -44,7 +64,10 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
 
   // Different loading messages based on context
   const getLoadingMessage = () => {
-    if (message) return message;
+    if (message) {
+      log('Using custom message:', message);
+      return message;
+    }
     
     if (isOffline && queuedAction) {
       return "Action queued - will sync when online";

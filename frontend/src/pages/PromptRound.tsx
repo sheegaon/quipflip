@@ -9,6 +9,13 @@ import { useTimer } from '../hooks/useTimer';
 import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
 import type { PromptState } from '../api/types';
 
+// Debug logging helper
+const log = (message: string, data?: any) => {
+  if (import.meta.env.DEV) {
+    console.log(`[PromptRound] ${message}`, data || '');
+  }
+};
+
 export const PromptRound: React.FC = () => {
   const { state, actions } = useGame();
   const { activeRound } = state;
@@ -23,6 +30,45 @@ export const PromptRound: React.FC = () => {
 
   const roundData = activeRound?.round_type === 'prompt' ? activeRound.state as PromptState : null;
   const { isExpired } = useTimer(roundData?.expires_at || null);
+
+  // Log component mount and key state changes
+  useEffect(() => {
+    log('Component mounted');
+    log('Initial state:', {
+      activeRound: activeRound ? {
+        type: activeRound.round_type,
+        id: activeRound.round_id,
+        expiresAt: activeRound.expires_at
+      } : 'null',
+      currentStep,
+      roundData: roundData ? {
+        roundId: roundData.round_id,
+        promptText: roundData.prompt_text,
+        status: roundData.status
+      } : 'null'
+    });
+  }, []);
+
+  useEffect(() => {
+    log('Active round changed:', {
+      activeRound: activeRound ? {
+        type: activeRound.round_type,
+        id: activeRound.round_id,
+        expiresAt: activeRound.expires_at
+      } : 'null'
+    });
+  }, [activeRound]);
+
+  useEffect(() => {
+    log('Round data changed:', {
+      roundData: roundData ? {
+        roundId: roundData.round_id,
+        promptText: roundData.prompt_text,
+        status: roundData.status,
+        cost: roundData.cost
+      } : 'null'
+    });
+  }, [roundData]);
 
   // Load existing feedback
   useEffect(() => {
@@ -42,20 +88,40 @@ export const PromptRound: React.FC = () => {
   // Redirect if no active prompt round
   useEffect(() => {
     if (!activeRound || activeRound.round_type !== 'prompt') {
+      log('❌ No active prompt round found');
+      log('Redirect logic:', {
+        hasActiveRound: !!activeRound,
+        roundType: activeRound?.round_type,
+        currentStep,
+        isTutorialPromptStep: currentStep === 'prompt_round'
+      });
+
       // Special case for tutorial
       if (currentStep === 'prompt_round') {
+        log('Tutorial mode: advancing to copy_round and returning to dashboard');
         advanceStep('copy_round').then(() => navigate('/dashboard'));
       } else {
+        log('Attempting to start new prompt round...');
         // Start a new round using GameContext action
         actions.startPromptRound()
-          .catch(() => navigate('/dashboard'));
+          .then(() => {
+            log('✅ Successfully started new prompt round');
+          })
+          .catch((err) => {
+            log('❌ Failed to start new prompt round:', err);
+            log('Navigating back to dashboard');
+            navigate('/dashboard');
+          });
       }
+    } else {
+      log('✅ Active prompt round found, staying on page');
     }
   }, [activeRound, currentStep, advanceStep, navigate, actions]);
 
   // Redirect if already submitted
   useEffect(() => {
     if (roundData?.status === 'submitted') {
+      log('Round already submitted, redirecting to dashboard');
       navigate('/dashboard');
     }
   }, [roundData?.status, navigate]);
@@ -80,13 +146,44 @@ export const PromptRound: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!phrase.trim() || !roundData) return;
+    log('Form submitted, checking conditions...', {
+      hasPhrase: !!phrase.trim(),
+      hasRoundData: !!roundData,
+      isSubmitting,
+      roundStatus: roundData?.status
+    });
+    
+    if (!phrase.trim() || !roundData || isSubmitting) {
+      log('Submission blocked - conditions not met');
+      return;
+    }
 
+    // Check if round is already submitted
+    if (roundData.status === 'submitted') {
+      log('Round already submitted, ignoring submission attempt');
+      return;
+    }
+
+    log('Starting submission process...', { phrase: phrase.trim(), roundId: roundData.round_id });
     setIsSubmitting(true);
     setError(null);
 
     try {
       await apiClient.submitPhrase(roundData.round_id, phrase.trim());
+      log('✅ Phrase submitted successfully');
+
+      // Update the round state immediately to prevent double submissions
+      if (activeRound) {
+        const updatedRound = {
+          ...activeRound,
+          state: {
+            ...activeRound.state,
+            status: 'submitted' as const
+          }
+        };
+        log('Updating local round state to submitted');
+        actions.refreshDashboard(); // Trigger refresh to get latest state
+      }
 
       // Show success message
       setSuccessMessage(getRandomMessage('promptSubmitted'));
@@ -97,8 +194,12 @@ export const PromptRound: React.FC = () => {
       }
 
       // Navigate after delay
-      setTimeout(() => navigate('/dashboard'), 1500);
+      setTimeout(() => {
+        log('Navigating to dashboard after successful submission');
+        navigate('/dashboard');
+      }, 1500);
     } catch (err) {
+      log('❌ Submission failed:', err);
       setError(extractErrorMessage(err) || 'Unable to submit your phrase. Please check your connection and try again.');
       setIsSubmitting(false);
     }

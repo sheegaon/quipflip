@@ -13,6 +13,13 @@ import type {
   AuthTokenResponse,
 } from '../api/types';
 
+// Debug logging helper
+const log = (component: string, message: string, data?: any) => {
+  if (import.meta.env.DEV) {
+    console.log(`[${component}] ${message}`, data || '');
+  }
+};
+
 interface GameState {
   isAuthenticated: boolean;
   username: string | null;
@@ -72,16 +79,24 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Initialize session on mount
   useEffect(() => {
+    log('GameContext', 'Initializing session...');
     const initializeSession = async () => {
       const storedUsername = apiClient.getStoredUsername();
+      log('GameContext', 'Stored username:', storedUsername);
       if (storedUsername) {
         setUsername(storedUsername);
       }
       const token = await apiClient.ensureAccessToken();
+      log('GameContext', 'Access token check result:', { hasToken: !!token });
       setIsAuthenticated(Boolean(token));
     };
     initializeSession();
   }, []);
+
+  // Monitor authentication state changes
+  useEffect(() => {
+    log('GameContext', 'Authentication state changed:', { isAuthenticated, username });
+  }, [isAuthenticated, username]);
 
   // Create stable actions object using ref
   const actionsRef = useRef<GameActions>({
@@ -132,12 +147,34 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     },
 
     refreshDashboard: async (signal?: AbortSignal) => {
-      // Use the current state value, not the closure value
-      const currentIsAuthenticated = isAuthenticated;
-      if (!currentIsAuthenticated) return;
+      log('GameContext', 'refreshDashboard called');
+      // Check token directly instead of relying on state
+      const token = await apiClient.ensureAccessToken();
+      log('GameContext', 'Token check for dashboard refresh:', { hasToken: !!token });
+      
+      if (!token) {
+        log('GameContext', '❌ No valid token, skipping dashboard refresh');
+        setIsAuthenticated(false);
+        return;
+      }
+
+      // Ensure authentication state is correct
+      if (!isAuthenticated) {
+        log('GameContext', 'Setting authenticated to true after token check');
+        setIsAuthenticated(true);
+      }
 
       try {
+        log('GameContext', 'Making dashboard API call...');
         const data = await apiClient.getDashboardData(signal);
+        log('GameContext', '✅ Dashboard data received successfully');
+        log('GameContext', 'Current round from API:', {
+          currentRound: data.current_round ? {
+            id: data.current_round.round_id,
+            type: data.current_round.round_type,
+            status: data.current_round.state?.status
+          } : 'null'
+        });
 
         // Update all dashboard state at once
         setPlayer(data.player);
@@ -145,7 +182,22 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           apiClient.setSession(data.player.username);
           setUsername(data.player.username);
         }
-        setActiveRound(data.current_round);
+        
+        // Handle active round properly - if it's submitted or expired, clear it
+        if (data.current_round) {
+          const roundState = data.current_round.state;
+          if (roundState?.status === 'submitted' || roundState?.status === 'expired') {
+            log('GameContext', 'Round is completed, clearing active round');
+            setActiveRound(null);
+          } else {
+            log('GameContext', 'Setting active round:', data.current_round);
+            setActiveRound(data.current_round);
+          }
+        } else {
+          log('GameContext', 'No current round from API, clearing active round');
+          setActiveRound(null);
+        }
+        
         setPendingResults(data.pending_results);
         setPhrasesetSummary(data.phraseset_summary);
         setUnclaimedResults(data.unclaimed_results);
@@ -154,11 +206,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch (err) {
         if (err instanceof Error && err.name === 'CanceledError') return;
 
+        log('GameContext', '❌ Dashboard refresh failed:', err);
         const errorMessage = getActionErrorMessage('load-dashboard', err);
         setError(errorMessage);
 
         // Handle auth errors
         if (errorMessage.toLowerCase().includes('session') || errorMessage.toLowerCase().includes('login')) {
+          log('GameContext', 'Auth error detected, logging out');
           actionsRef.current.logout();
         }
       }
@@ -223,13 +277,39 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     },
 
     startPromptRound: async () => {
-      if (!isAuthenticated) return;
+      log('GameContext', 'startPromptRound called');
+      
+      // Check token directly instead of relying on state
+      const token = await apiClient.ensureAccessToken();
+      log('GameContext', 'Token check for prompt round:', { hasToken: !!token });
+      
+      if (!token) {
+        log('GameContext', '❌ No valid token, aborting prompt round start');
+        setIsAuthenticated(false);
+        return;
+      }
+
+      // Ensure authentication state is correct
+      if (!isAuthenticated) {
+        log('GameContext', 'Setting authenticated to true after token check');
+        setIsAuthenticated(true);
+      }
+
+      log('GameContext', 'Starting prompt round API call...');
+      log('GameContext', 'Current round availability:', roundAvailability);
+      log('GameContext', 'Current player state:', { 
+        balance: player?.balance, 
+        outstandingPrompts: player?.outstanding_prompts 
+      });
 
       try {
         setError(null);
+        log('GameContext', 'Calling apiClient.startPromptRound()...');
         const response = await apiClient.startPromptRound();
-        setActiveRound({
-          round_type: 'prompt',
+        log('GameContext', '✅ API call successful, response:', response);
+        
+        const newActiveRound = {
+          round_type: 'prompt' as const,
           round_id: response.round_id,
           expires_at: response.expires_at,
           state: {
@@ -237,27 +317,62 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             prompt_text: response.prompt_text,
             expires_at: response.expires_at,
             cost: response.cost,
-            status: 'active',
+            status: 'active' as const,
           },
-        });
+        };
+        
+        log('GameContext', 'Setting active round:', newActiveRound);
+        setActiveRound(newActiveRound);
         
         // Trigger immediate dashboard refresh to update availability
+        log('GameContext', 'Triggering dashboard refresh...');
         triggerPoll('dashboard');
+        
+        log('GameContext', '✅ Prompt round started successfully');
       } catch (err) {
+        log('GameContext', '❌ Failed to start prompt round:', err);
         const errorMessage = getActionErrorMessage('start-prompt', err);
+        log('GameContext', 'Setting error message:', errorMessage);
         setError(errorMessage);
         throw err;
       }
     },
 
     startCopyRound: async () => {
-      if (!isAuthenticated) return;
+      log('GameContext', 'startCopyRound called');
+      
+      // Check token directly instead of relying on state
+      const token = await apiClient.ensureAccessToken();
+      log('GameContext', 'Token check for copy round:', { hasToken: !!token });
+      
+      if (!token) {
+        log('GameContext', '❌ No valid token, aborting copy round start');
+        setIsAuthenticated(false);
+        return;
+      }
+
+      // Ensure authentication state is correct
+      if (!isAuthenticated) {
+        log('GameContext', 'Setting authenticated to true after token check');
+        setIsAuthenticated(true);
+      }
+
+      log('GameContext', 'Starting copy round API call...');
+      log('GameContext', 'Current round availability:', roundAvailability);
+      log('GameContext', 'Current player state:', { 
+        balance: player?.balance,
+        promptsWaiting: roundAvailability?.prompts_waiting,
+        copyCost: roundAvailability?.copy_cost
+      });
 
       try {
         setError(null);
+        log('GameContext', 'Calling apiClient.startCopyRound()...');
         const response = await apiClient.startCopyRound();
-        setActiveRound({
-          round_type: 'copy',
+        log('GameContext', '✅ API call successful, response:', response);
+        
+        const newActiveRound = {
+          round_type: 'copy' as const,
           round_id: response.round_id,
           expires_at: response.expires_at,
           state: {
@@ -266,26 +381,60 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             expires_at: response.expires_at,
             cost: response.cost,
             discount_active: response.discount_active,
-            status: 'active',
+            status: 'active' as const,
           },
-        });
+        };
         
+        log('GameContext', 'Setting active round:', newActiveRound);
+        setActiveRound(newActiveRound);
+        
+        log('GameContext', 'Triggering dashboard refresh...');
         triggerPoll('dashboard');
+        
+        log('GameContext', '✅ Copy round started successfully');
       } catch (err) {
+        log('GameContext', '❌ Failed to start copy round:', err);
         const errorMessage = getActionErrorMessage('start-copy', err);
+        log('GameContext', 'Setting error message:', errorMessage);
         setError(errorMessage);
         throw err;
       }
     },
 
     startVoteRound: async () => {
-      if (!isAuthenticated) return;
+      log('GameContext', 'startVoteRound called');
+      
+      // Check token directly instead of relying on state
+      const token = await apiClient.ensureAccessToken();
+      log('GameContext', 'Token check for vote round:', { hasToken: !!token });
+      
+      if (!token) {
+        log('GameContext', '❌ No valid token, aborting vote round start');
+        setIsAuthenticated(false);
+        return;
+      }
+
+      // Ensure authentication state is correct
+      if (!isAuthenticated) {
+        log('GameContext', 'Setting authenticated to true after token check');
+        setIsAuthenticated(true);
+      }
+
+      log('GameContext', 'Starting vote round API call...');
+      log('GameContext', 'Current round availability:', roundAvailability);
+      log('GameContext', 'Current player state:', { 
+        balance: player?.balance,
+        phrasesetsWaiting: roundAvailability?.phrasesets_waiting
+      });
 
       try {
         setError(null);
+        log('GameContext', 'Calling apiClient.startVoteRound()...');
         const response = await apiClient.startVoteRound();
-        setActiveRound({
-          round_type: 'vote',
+        log('GameContext', '✅ API call successful, response:', response);
+        
+        const newActiveRound = {
+          round_type: 'vote' as const,
           round_id: response.round_id,
           expires_at: response.expires_at,
           state: {
@@ -294,13 +443,21 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             prompt_text: response.prompt_text,
             phrases: response.phrases,
             expires_at: response.expires_at,
-            status: 'active',
+            status: 'active' as const,
           },
-        });
+        };
         
+        log('GameContext', 'Setting active round:', newActiveRound);
+        setActiveRound(newActiveRound);
+        
+        log('GameContext', 'Triggering dashboard refresh...');
         triggerPoll('dashboard');
+        
+        log('GameContext', '✅ Vote round started successfully');
       } catch (err) {
+        log('GameContext', '❌ Failed to start vote round:', err);
         const errorMessage = getActionErrorMessage('start-vote', err);
+        log('GameContext', 'Setting error message:', errorMessage);
         setError(errorMessage);
         throw err;
       }

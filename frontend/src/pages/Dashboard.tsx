@@ -8,6 +8,13 @@ import TutorialWelcome from '../components/Tutorial/TutorialWelcome';
 
 const formatWaitingCount = (count: number): string => (count > 10 ? 'over 10' : count.toString());
 
+// Debug logging helper
+const log = (message: string, data?: any) => {
+  if (import.meta.env.DEV) {
+    console.log(`[Dashboard] ${message}`, data || '');
+  }
+};
+
 export const Dashboard: React.FC = () => {
   const { state, actions } = useGame();
   const { player, activeRound, phrasesetSummary, roundAvailability } = state;
@@ -15,6 +22,34 @@ export const Dashboard: React.FC = () => {
   const { startTutorial, skipTutorial, advanceStep } = useTutorial();
   const navigate = useNavigate();
   const [isRoundExpired, setIsRoundExpired] = useState(false);
+  const [startingRound, setStartingRound] = useState<string | null>(null);
+
+  // Log component mount and key state changes
+  useEffect(() => {
+    log('Component mounted');
+    log('Initial state:', {
+      player: player ? `${player.username} (${player.player_id})` : 'null',
+      activeRound: activeRound ? `${activeRound.round_type} (${activeRound.round_id})` : 'null',
+      roundAvailability: roundAvailability || 'null'
+    });
+  }, []);
+
+  useEffect(() => {
+    log('Round availability changed:', roundAvailability);
+  }, [roundAvailability]);
+
+  useEffect(() => {
+    if (activeRound) {
+      log('Active round changed:', {
+        id: activeRound.round_id,
+        type: activeRound.round_type,
+        status: activeRound.status,
+        expiresAt: activeRound.expires_at
+      });
+    } else {
+      log('Active round cleared');
+    }
+  }, [activeRound]);
 
   const handleStartTutorial = async () => {
     await startTutorial();
@@ -77,29 +112,87 @@ export const Dashboard: React.FC = () => {
   }, []);
 
   const handleStartPrompt = async () => {
+    if (startingRound) {
+      log('Ignoring prompt button click - already starting round:', startingRound);
+      return;
+    }
+    
+    log('Starting prompt round...');
+    log('Player state before start:', {
+      balance: player?.balance,
+      outstandingPrompts: player?.outstanding_prompts,
+      canPrompt: roundAvailability?.can_prompt
+    });
+    
+    setStartingRound('prompt');
     try {
+      log('Calling actions.startPromptRound()...');
       await actions.startPromptRound();
+      log('✅ Prompt round started successfully, navigating to /prompt');
       navigate('/prompt');
     } catch (err) {
-      // Error is handled in GameContext and will show in UI
+      log('❌ Failed to start prompt round:', err);
+      console.error('Failed to start prompt round:', err);
+    } finally {
+      setStartingRound(null);
+      log('Prompt round start process completed');
     }
   };
 
   const handleStartCopy = async () => {
+    if (startingRound) {
+      log('Ignoring copy button click - already starting round:', startingRound);
+      return;
+    }
+    
+    log('Starting copy round...');
+    log('Player state before start:', {
+      balance: player?.balance,
+      canCopy: roundAvailability?.can_copy,
+      promptsWaiting: roundAvailability?.prompts_waiting,
+      copyCost: roundAvailability?.copy_cost
+    });
+    
+    setStartingRound('copy');
     try {
+      log('Calling actions.startCopyRound()...');
       await actions.startCopyRound();
+      log('✅ Copy round started successfully, navigating to /copy');
       navigate('/copy');
     } catch (err) {
-      // Error is handled in GameContext and will show in UI
+      log('❌ Failed to start copy round:', err);
+      console.error('Failed to start copy round:', err);
+    } finally {
+      setStartingRound(null);
+      log('Copy round start process completed');
     }
   };
 
   const handleStartVote = async () => {
+    if (startingRound) {
+      log('Ignoring vote button click - already starting round:', startingRound);
+      return;
+    }
+    
+    log('Starting vote round...');
+    log('Player state before start:', {
+      balance: player?.balance,
+      canVote: roundAvailability?.can_vote,
+      phrasesetsWaiting: roundAvailability?.phrasesets_waiting
+    });
+    
+    setStartingRound('vote');
     try {
+      log('Calling actions.startVoteRound()...');
       await actions.startVoteRound();
+      log('✅ Vote round started successfully, navigating to /vote');
       navigate('/vote');
     } catch (err) {
-      // Error is handled in GameContext and will show in UI
+      log('❌ Failed to start vote round:', err);
+      console.error('Failed to start vote round:', err);
+    } finally {
+      setStartingRound(null);
+      log('Vote round start process completed');
     }
   };
 
@@ -193,13 +286,14 @@ export const Dashboard: React.FC = () => {
               </p>
               <button
                 onClick={handleStartPrompt}
-                disabled={!roundAvailability?.can_prompt}
+                disabled={!roundAvailability?.can_prompt || startingRound === 'prompt'}
                 className="w-full bg-quip-navy hover:bg-quip-teal disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm"
               >
-                {roundAvailability?.can_prompt ? 'Start Prompt Round' :
-                  player.balance < 100 ? 'Insufficient Balance' :
-                  player.outstanding_prompts >= 10 ? 'Too Many Outstanding Prompts' :
-                  'Not Available'}
+                {startingRound === 'prompt' ? 'Starting Round...' :
+                 roundAvailability?.can_prompt ? 'Start Prompt Round' :
+                 player.balance < 100 ? 'Insufficient Balance' :
+                 player.outstanding_prompts >= 10 ? 'Too Many Outstanding Prompts' :
+                 'Not Available'}
               </button>
             </div>
 
@@ -232,13 +326,14 @@ export const Dashboard: React.FC = () => {
               )}
               <button
                 onClick={handleStartCopy}
-                disabled={!roundAvailability?.can_copy}
+                disabled={!roundAvailability?.can_copy || startingRound === 'copy'}
                 className="w-full bg-quip-turquoise hover:bg-quip-teal disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm"
               >
-                {roundAvailability?.can_copy ? 'Start Copy Round' :
-                  roundAvailability?.prompts_waiting === 0 ? 'No Prompts Available' :
-                  player.balance < (roundAvailability?.copy_cost || 100) ? 'Insufficient Balance' :
-                  'Start Copy Round'}
+                {startingRound === 'copy' ? 'Starting Round...' :
+                 roundAvailability?.can_copy ? 'Start Copy Round' :
+                 roundAvailability?.prompts_waiting === 0 ? 'No Prompts Available' :
+                 player.balance < (roundAvailability?.copy_cost || 100) ? 'Insufficient Balance' :
+                 'Start Copy Round'}
               </button>
             </div>
 
@@ -262,13 +357,14 @@ export const Dashboard: React.FC = () => {
               )}
               <button
                 onClick={handleStartVote}
-                disabled={!roundAvailability?.can_vote}
+                disabled={!roundAvailability?.can_vote || startingRound === 'vote'}
                 className="w-full bg-quip-orange hover:bg-quip-orange-deep disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm"
               >
-                {roundAvailability?.can_vote ? 'Start Vote Round' :
-                  roundAvailability?.phrasesets_waiting === 0 ? 'No Quip Sets Available' :
-                  player.balance < 1 ? 'Insufficient Balance' :
-                  'Not Available'}
+                {startingRound === 'vote' ? 'Starting Round...' :
+                 roundAvailability?.can_vote ? 'Start Vote Round' :
+                 roundAvailability?.phrasesets_waiting === 0 ? 'No Quip Sets Available' :
+                 player.balance < 1 ? 'Insufficient Balance' :
+                 'Not Available'}
               </button>
             </div>
           </div>

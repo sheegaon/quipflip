@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { BalanceFlipper } from './BalanceFlipper';
@@ -7,10 +7,9 @@ import { TreasureChestIcon } from './TreasureChestIcon';
 export const Header: React.FC = () => {
   const { state, actions } = useGame();
   const { player, username, phrasesetSummary, unclaimedResults } = state;
-  const { logout, claimBonus } = actions;
+  const { logout } = actions;
   const navigate = useNavigate();
   const location = useLocation();
-  const [isClaiming, setIsClaiming] = useState(false);
 
   // Show back arrow on Statistics and Tracking pages only
   const showBackArrow = location.pathname === '/statistics' || location.pathname === '/tracking';
@@ -36,18 +35,6 @@ export const Header: React.FC = () => {
   const unclaimedCount = unclaimedResults?.length ?? 0;
   const showUnclaimedIndicator = unclaimedCount > 0;
   const unclaimedLabel = `${unclaimedCount} result${unclaimedCount === 1 ? '' : 's'} ready to view and claim`;
-
-  const handleClaimBonus = async () => {
-    if (isClaiming) return;
-    setIsClaiming(true);
-    try {
-      await claimBonus();
-    } catch (err) {
-      // Error is already handled in context
-    } finally {
-      setIsClaiming(false);
-    }
-  };
 
   return (
     <div className="bg-white shadow-tile-sm">
