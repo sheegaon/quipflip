@@ -5,7 +5,7 @@ import { BalanceFlipper } from './BalanceFlipper';
 import { TreasureChestIcon } from './TreasureChestIcon';
 
 export const Header: React.FC = () => {
-  const { player, username, logout, claimBonus, phrasesetSummary } = useGame();
+  const { player, username, logout, claimBonus, phrasesetSummary, unclaimedResults } = useGame();
   const navigate = useNavigate();
   const location = useLocation();
   const [isClaiming, setIsClaiming] = useState(false);
@@ -30,6 +30,10 @@ export const Header: React.FC = () => {
   const inProgressLabel = inProgressLabelParts.length
     ? `In-progress rounds: ${inProgressLabelParts.join(' and ')}`
     : 'View your in-progress rounds';
+
+  const unclaimedCount = unclaimedResults?.length ?? 0;
+  const showUnclaimedIndicator = unclaimedCount > 0;
+  const unclaimedLabel = `${unclaimedCount} result${unclaimedCount === 1 ? '' : 's'} ready to view and claim`;
 
   const handleClaimBonus = async () => {
     if (isClaiming) return;
@@ -93,6 +97,22 @@ export const Header: React.FC = () => {
                     />
                   </span>
                 )}
+              </button>
+            )}
+            {showUnclaimedIndicator && (
+              <button
+                type="button"
+                onClick={() => navigate('/results')}
+                className="flex items-center gap-1 rounded-full bg-quip-orange bg-opacity-10 px-3 py-1 text-xs font-semibold text-quip-orange transition-colors hover:bg-quip-orange hover:bg-opacity-20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-quip-orange"
+                title={unclaimedLabel}
+                aria-label={unclaimedLabel}
+              >
+                <span>{unclaimedCount}</span>
+                <img
+                  src="/icon_results.svg"
+                  alt="Results ready to view"
+                  className="h-5 w-5 md:h-7 md:w-7"
+                />
               </button>
             )}
           </div>
