@@ -192,6 +192,8 @@ class VoteService:
         Unlike submit_vote(), this doesn't require an active round and skips
         the grace period check.
 
+        All operations are performed in a single atomic transaction to ensure consistency.
+
         Args:
             phraseset: The phraseset being voted on
             player: The voting player (typically AI)
@@ -243,13 +245,14 @@ class VoteService:
         self.db.add(vote)
         await self.db.flush()
 
-        # Give payout if correct
+        # Give payout if correct (deferred commit)
         if correct:
             await transaction_service.create_transaction(
                 player.player_id,
                 payout,
                 "vote_payout",
                 vote.vote_id,
+                auto_commit=False,  # Defer commit to end of this method
             )
 
         # Update phraseset vote count
@@ -267,14 +270,15 @@ class VoteService:
             },
         )
 
+        # Update vote timeline (deferred commit)
+        await self._update_vote_timeline(phraseset, auto_commit=False)
+
+        # Check if should finalize (deferred commit)
+        # Note: This may trigger _finalize_wordset which also defers commits
+        await self._check_and_finalize(phraseset, transaction_service, auto_commit=False)
+
+        # Single atomic commit for all operations
         await self.db.commit()
-
-        # Update vote timeline
-        await self._update_vote_timeline(phraseset)
-
-        # Check if should finalize
-        await self._check_and_finalize(phraseset, transaction_service)
-
         await self.db.refresh(vote)
 
         logger.info(
@@ -300,11 +304,13 @@ class VoteService:
         - Give $5 if correct
         - Update vote timeline
         - Check for finalization
+
+        All operations are performed in a single atomic transaction to ensure consistency.
         """
         # Check grace period
         current_time = datetime.now(UTC)
         grace_cutoff = ensure_utc(round.expires_at) + timedelta(seconds=settings.grace_period_seconds)
-        
+
         if current_time > grace_cutoff:
             raise RoundExpiredError("Round expired past grace period")
 
@@ -346,13 +352,14 @@ class VoteService:
         self.db.add(vote)
         await self.db.flush()
 
-        # Give payout if correct
+        # Give payout if correct (deferred commit)
         if correct:
             await transaction_service.create_transaction(
                 player.player_id,
                 payout,
                 "vote_payout",
                 vote.vote_id,
+                auto_commit=False,  # Defer commit to end of this method
             )
 
         # Update round
@@ -376,17 +383,18 @@ class VoteService:
             },
         )
 
+        # Update vote timeline (deferred commit)
+        await self._update_vote_timeline(phraseset, auto_commit=False)
+
+        # Check if should finalize (deferred commit)
+        # Note: This may trigger _finalize_wordset which also defers commits
+        await self._check_and_finalize(phraseset, transaction_service, auto_commit=False)
+
+        # Single atomic commit for all operations
         await self.db.commit()
-
-        # Update vote timeline
-        await self._update_vote_timeline(phraseset)
-
-        # Check if should finalize
-        await self._check_and_finalize(phraseset, transaction_service)
-
         await self.db.refresh(vote)
 
-        # Track quest progress for votes
+        # Track quest progress for votes (runs after commit)
         from backend.services.quest_service import QuestService
         quest_service = QuestService(self.db)
         try:
@@ -405,8 +413,13 @@ class VoteService:
         )
         return vote
 
-    async def _update_vote_timeline(self, phraseset: PhraseSet) -> None:
-        """Update vote timeline markers based on configured thresholds."""
+    async def _update_vote_timeline(self, phraseset: PhraseSet, auto_commit: bool = True) -> None:
+        """Update vote timeline markers based on configured thresholds.
+
+        Args:
+            phraseset: The phraseset to update
+            auto_commit: If True, commits the changes. If False, caller is responsible for commit.
+        """
         prompt_round = await self.db.get(Round, phraseset.prompt_round_id)
         if prompt_round and phraseset.vote_count >= 1 and prompt_round.phraseset_status not in {"closing", "finalized"}:
             prompt_round.phraseset_status = "voting"
@@ -444,12 +457,14 @@ class VoteService:
                 f"{settings.vote_closing_window_seconds}sec closing window"
             )
 
-        await self.db.commit()
+        if auto_commit:
+            await self.db.commit()
 
     async def _check_and_finalize(
         self,
         phraseset: PhraseSet,
         transaction_service: TransactionService,
+        auto_commit: bool = True,
     ) -> None:
         """
         Check if phraseset should be finalized based on configured thresholds.
@@ -458,6 +473,11 @@ class VoteService:
         - vote_max_votes reached (default: 20)
         - OR vote_closing_threshold+ votes AND closing window elapsed
         - OR vote_minimum_threshold votes AND minimum window elapsed
+
+        Args:
+            phraseset: The phraseset to check
+            transaction_service: Service for creating payout transactions
+            auto_commit: If True, commits the changes. If False, caller is responsible for commit.
         """
         should_finalize = False
         current_time = datetime.now(UTC)
@@ -490,12 +510,13 @@ class VoteService:
                 )
 
         if should_finalize:
-            await self._finalize_wordset(phraseset, transaction_service)
+            await self._finalize_wordset(phraseset, transaction_service, auto_commit=auto_commit)
 
     async def _finalize_wordset(
         self,
         phraseset: PhraseSet,
         transaction_service: TransactionService,
+        auto_commit: bool = True,
     ) -> None:
         """
         Finalize phraseset.
@@ -503,6 +524,11 @@ class VoteService:
         - Calculate payouts
         - Create prize transactions
         - Update status to finalized
+
+        Args:
+            phraseset: The phraseset to finalize
+            transaction_service: Service for creating payout transactions
+            auto_commit: If True, commits the changes. If False, caller is responsible for commit.
         """
         # Calculate payouts
         scoring_service = ScoringService(self.db)
@@ -517,6 +543,7 @@ class VoteService:
                     payout_info["payout"],
                     "prize_payout",
                     phraseset.phraseset_id,
+                    auto_commit=False,  # Defer commit to caller
                 )
 
         # Update phraseset status
@@ -536,9 +563,11 @@ class VoteService:
             },
         )
 
-        await self.db.commit()
+        if auto_commit:
+            await self.db.commit()
 
         # Check quest progress for finalized phraseset
+        # Note: Quest checks run after commit to avoid blocking the transaction
         from backend.services.quest_service import QuestService
         quest_service = QuestService(self.db)
         try:

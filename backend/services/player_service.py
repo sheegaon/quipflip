@@ -100,8 +100,16 @@ class PlayerService:
         if player.created_at.date() == today:
             return False
 
-        # Bonus available if last_login_date is before today
-        return player.last_login_date is None or player.last_login_date < today
+        # Check if bonus was already claimed today by querying the DailyBonus table
+        result = await self.db.execute(
+            select(DailyBonus)
+            .where(DailyBonus.player_id == player.player_id)
+            .where(DailyBonus.date == today)
+        )
+        bonus_today = result.scalar_one_or_none()
+
+        # Bonus available if NOT claimed today
+        return bonus_today is None
 
     async def claim_daily_bonus(self, player: Player, transaction_service) -> int:
         """
@@ -123,9 +131,6 @@ class PlayerService:
             date=today,
         )
         self.db.add(bonus)
-
-        # Update last_login_date
-        player.last_login_date = today
 
         # Create transaction
         await transaction_service.create_transaction(

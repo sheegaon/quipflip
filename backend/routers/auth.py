@@ -28,7 +28,9 @@ async def login(
     except AuthError as exc:
         raise HTTPException(status_code=401, detail=str(exc)) from exc
 
+    # Update last_login_date for tracking purposes
     player.last_login_date = datetime.now(UTC).date()
+    await db.commit()
 
     access_token, refresh_token, expires_in = await auth_service.issue_tokens(player)
     set_refresh_cookie(response, refresh_token, expires_days=settings.refresh_token_exp_days)
