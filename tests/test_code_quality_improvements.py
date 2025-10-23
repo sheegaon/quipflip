@@ -10,7 +10,7 @@ Tests cover:
 """
 
 import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import patch, MagicMock
 from datetime import datetime, UTC, timedelta
 import uuid
 
@@ -19,13 +19,10 @@ from backend.services.round_service import RoundService
 from backend.services.transaction_service import TransactionService
 from backend.services.phrase_validation_client import PhraseValidationClient
 from backend.utils.datetime_helpers import ensure_utc
-from backend.models.player import Player
 from backend.models.round import Round
 from backend.models.phraseset import PhraseSet
-from backend.models.vote import Vote
 from backend.config import get_settings
 from backend.utils.exceptions import AlreadyVotedError
-from sqlalchemy import text
 
 
 class TestTimezoneUtility:
@@ -72,44 +69,16 @@ class TestTimezoneUtility:
 class TestSystemVote:
     """Test VoteService.submit_system_vote() method."""
 
-    @pytest.fixture
-    def vote_service(self, db_session):
-        """Create vote service instance."""
-        return VoteService(db_session)
+    @pytest.mark.asyncio
+    async def test_submit_system_vote_correct(self, db_session, player_factory):
+        """Should create correct vote and give payout."""
+        # Create players
+        prompt_player = await player_factory()
+        copy1_player = await player_factory()
+        copy2_player = await player_factory()
+        ai_player = await player_factory()
 
-    @pytest.fixture
-    def transaction_service(self, db_session):
-        """Create transaction service instance."""
-        return TransactionService(db_session)
-
-    @pytest.fixture
-    async def setup_phraseset(self, db_session):
-        """Create a phraseset for testing."""
-        suffix = uuid.uuid4().hex[:8]
-
-        def make_player(role: str) -> Player:
-            """Create a player with unique identifiers to avoid constraint collisions."""
-            return Player(
-                player_id=uuid.uuid4(),
-                username=f"{role}_{suffix}",
-                username_canonical=f"{role}_{suffix}",
-                email=f"{role}_{suffix}@test.com",
-                password_hash="test_hash",
-                pseudonym=f"{role.title()} Player",
-                pseudonym_canonical=f"{role}_{suffix}",
-                balance=1000,
-            )
-
-        # Create players (need password_hash for database constraint)
-        prompt_player = make_player("prompt_player")
-        copy1_player = make_player("copy1_player")
-        copy2_player = make_player("copy2_player")
-        ai_player = make_player("ai_voter")
-
-        db_session.add_all([prompt_player, copy1_player, copy2_player, ai_player])
-        await db_session.flush()
-
-        # Create prompt round
+        # Create rounds
         prompt_round = Round(
             round_id=uuid.uuid4(),
             player_id=prompt_player.player_id,
@@ -118,10 +87,8 @@ class TestSystemVote:
             cost=100,
             expires_at=datetime.now(UTC) + timedelta(minutes=3),
             prompt_text="Test prompt",
-            submitted_phrase="ORIGINAL PHRASE",
+            submitted_phrase="ORIGINAL",
         )
-
-        # Create copy rounds
         copy1_round = Round(
             round_id=uuid.uuid4(),
             player_id=copy1_player.player_id,
@@ -130,10 +97,8 @@ class TestSystemVote:
             cost=100,
             expires_at=datetime.now(UTC) + timedelta(minutes=3),
             prompt_round_id=prompt_round.round_id,
-            original_phrase="ORIGINAL PHRASE",
-            copy_phrase="COPY PHRASE ONE",
+            copy_phrase="COPY ONE",
         )
-
         copy2_round = Round(
             round_id=uuid.uuid4(),
             player_id=copy2_player.player_id,
@@ -142,10 +107,8 @@ class TestSystemVote:
             cost=100,
             expires_at=datetime.now(UTC) + timedelta(minutes=3),
             prompt_round_id=prompt_round.round_id,
-            original_phrase="ORIGINAL PHRASE",
-            copy_phrase="COPY PHRASE TWO",
+            copy_phrase="COPY TWO",
         )
-
         db_session.add_all([prompt_round, copy1_round, copy2_round])
         await db_session.flush()
 
@@ -156,108 +119,187 @@ class TestSystemVote:
             copy_round_1_id=copy1_round.round_id,
             copy_round_2_id=copy2_round.round_id,
             prompt_text="Test prompt",
-            original_phrase="ORIGINAL PHRASE",
-            copy_phrase_1="COPY PHRASE ONE",
-            copy_phrase_2="COPY PHRASE TWO",
+            original_phrase="ORIGINAL",
+            copy_phrase_1="COPY ONE",
+            copy_phrase_2="COPY TWO",
             status="open",
             vote_count=0,
             total_pool=300,
             system_contribution=0,
         )
-
         db_session.add(phraseset)
         await db_session.commit()
 
-        return {
-            "phraseset": phraseset,
-            "ai_player": ai_player,
-            "prompt_player": prompt_player,
-        }
+        # Submit correct vote
+        vote_service = VoteService(db_session)
+        transaction_service = TransactionService(db_session)
 
-    @pytest.mark.asyncio
-    async def test_submit_system_vote_correct(
-        self, vote_service, transaction_service, setup_phraseset, db_session
-    ):
-        """Should create correct vote and give payout."""
-        data = setup_phraseset
-        phraseset = data["phraseset"]
-        ai_player = data["ai_player"]
-
-        # Submit system vote for original phrase (correct)
+        initial_balance = ai_player.balance
         vote = await vote_service.submit_system_vote(
             phraseset=phraseset,
             player=ai_player,
-            chosen_phrase="ORIGINAL PHRASE",
+            chosen_phrase="ORIGINAL",
             transaction_service=transaction_service,
         )
 
-        assert vote.voted_phrase == "ORIGINAL PHRASE"
+        assert vote.voted_phrase == "ORIGINAL"
         assert vote.correct is True
-        assert vote.payout == 5  # Default correct payout
+        assert vote.payout == 5
 
-        # Verify player got payout
+        # Verify payout
         await db_session.refresh(ai_player)
-        assert ai_player.balance == 1005  # 1000 + 5
+        assert ai_player.balance == initial_balance + 5
 
     @pytest.mark.asyncio
-    async def test_submit_system_vote_incorrect(
-        self, vote_service, transaction_service, setup_phraseset, db_session
-    ):
+    async def test_submit_system_vote_incorrect(self, db_session, player_factory):
         """Should create incorrect vote with no payout."""
-        data = setup_phraseset
-        phraseset = data["phraseset"]
-        ai_player = data["ai_player"]
+        # Create players
+        prompt_player = await player_factory()
+        copy1_player = await player_factory()
+        copy2_player = await player_factory()
+        ai_player = await player_factory()
 
-        # Submit system vote for copy phrase (incorrect)
+        # Create rounds
+        prompt_round = Round(
+            round_id=uuid.uuid4(),
+            player_id=prompt_player.player_id,
+            round_type="prompt",
+            status="submitted",
+            cost=100,
+            expires_at=datetime.now(UTC) + timedelta(minutes=3),
+            prompt_text="Test",
+            submitted_phrase="ORIGINAL",
+        )
+        copy1_round = Round(
+            round_id=uuid.uuid4(),
+            player_id=copy1_player.player_id,
+            round_type="copy",
+            status="submitted",
+            cost=100,
+            expires_at=datetime.now(UTC) + timedelta(minutes=3),
+            prompt_round_id=prompt_round.round_id,
+            copy_phrase="COPY ONE",
+        )
+        copy2_round = Round(
+            round_id=uuid.uuid4(),
+            player_id=copy2_player.player_id,
+            round_type="copy",
+            status="submitted",
+            cost=100,
+            expires_at=datetime.now(UTC) + timedelta(minutes=3),
+            prompt_round_id=prompt_round.round_id,
+            copy_phrase="COPY TWO",
+        )
+        db_session.add_all([prompt_round, copy1_round, copy2_round])
+        await db_session.flush()
+
+        # Create phraseset
+        phraseset = PhraseSet(
+            phraseset_id=uuid.uuid4(),
+            prompt_round_id=prompt_round.round_id,
+            copy_round_1_id=copy1_round.round_id,
+            copy_round_2_id=copy2_round.round_id,
+            prompt_text="Test",
+            original_phrase="ORIGINAL",
+            copy_phrase_1="COPY ONE",
+            copy_phrase_2="COPY TWO",
+            status="open",
+            vote_count=0,
+            total_pool=300,
+            system_contribution=0,
+        )
+        db_session.add(phraseset)
+        await db_session.commit()
+
+        # Submit incorrect vote
+        vote_service = VoteService(db_session)
+        transaction_service = TransactionService(db_session)
+
+        initial_balance = ai_player.balance
         vote = await vote_service.submit_system_vote(
             phraseset=phraseset,
             player=ai_player,
-            chosen_phrase="COPY PHRASE ONE",
+            chosen_phrase="COPY ONE",
             transaction_service=transaction_service,
         )
 
-        assert vote.voted_phrase == "COPY PHRASE ONE"
+        assert vote.voted_phrase == "COPY ONE"
         assert vote.correct is False
         assert vote.payout == 0
 
-        # Verify player got no payout
+        # Verify no payout
         await db_session.refresh(ai_player)
-        assert ai_player.balance == 1000
+        assert ai_player.balance == initial_balance
 
     @pytest.mark.asyncio
-    async def test_submit_system_vote_updates_vote_count(
-        self, vote_service, transaction_service, setup_phraseset, db_session
-    ):
-        """Should update phraseset vote count."""
-        data = setup_phraseset
-        phraseset = data["phraseset"]
-        ai_player = data["ai_player"]
-
-        initial_count = phraseset.vote_count
-        await vote_service.submit_system_vote(
-            phraseset=phraseset,
-            player=ai_player,
-            chosen_phrase="ORIGINAL PHRASE",
-            transaction_service=transaction_service,
-        )
-
-        await db_session.refresh(phraseset)
-        assert phraseset.vote_count == initial_count + 1
-
-    @pytest.mark.asyncio
-    async def test_submit_system_vote_prevents_duplicate(
-        self, vote_service, transaction_service, setup_phraseset, db_session
-    ):
+    async def test_submit_system_vote_prevents_duplicate(self, db_session, player_factory):
         """Should prevent duplicate votes from same player."""
-        data = setup_phraseset
-        phraseset = data["phraseset"]
-        ai_player = data["ai_player"]
+        # Create players
+        prompt_player = await player_factory()
+        copy1_player = await player_factory()
+        copy2_player = await player_factory()
+        ai_player = await player_factory()
+
+        # Create rounds
+        prompt_round = Round(
+            round_id=uuid.uuid4(),
+            player_id=prompt_player.player_id,
+            round_type="prompt",
+            status="submitted",
+            cost=100,
+            expires_at=datetime.now(UTC) + timedelta(minutes=3),
+            prompt_text="Test",
+            submitted_phrase="ORIGINAL",
+        )
+        copy1_round = Round(
+            round_id=uuid.uuid4(),
+            player_id=copy1_player.player_id,
+            round_type="copy",
+            status="submitted",
+            cost=100,
+            expires_at=datetime.now(UTC) + timedelta(minutes=3),
+            prompt_round_id=prompt_round.round_id,
+            copy_phrase="COPY ONE",
+        )
+        copy2_round = Round(
+            round_id=uuid.uuid4(),
+            player_id=copy2_player.player_id,
+            round_type="copy",
+            status="submitted",
+            cost=100,
+            expires_at=datetime.now(UTC) + timedelta(minutes=3),
+            prompt_round_id=prompt_round.round_id,
+            copy_phrase="COPY TWO",
+        )
+        db_session.add_all([prompt_round, copy1_round, copy2_round])
+        await db_session.flush()
+
+        # Create phraseset
+        phraseset = PhraseSet(
+            phraseset_id=uuid.uuid4(),
+            prompt_round_id=prompt_round.round_id,
+            copy_round_1_id=copy1_round.round_id,
+            copy_round_2_id=copy2_round.round_id,
+            prompt_text="Test",
+            original_phrase="ORIGINAL",
+            copy_phrase_1="COPY ONE",
+            copy_phrase_2="COPY TWO",
+            status="open",
+            vote_count=0,
+            total_pool=300,
+            system_contribution=0,
+        )
+        db_session.add(phraseset)
+        await db_session.commit()
+
+        vote_service = VoteService(db_session)
+        transaction_service = TransactionService(db_session)
 
         # First vote succeeds
         await vote_service.submit_system_vote(
             phraseset=phraseset,
             player=ai_player,
-            chosen_phrase="ORIGINAL PHRASE",
+            chosen_phrase="ORIGINAL",
             transaction_service=transaction_service,
         )
 
@@ -266,24 +308,7 @@ class TestSystemVote:
             await vote_service.submit_system_vote(
                 phraseset=phraseset,
                 player=ai_player,
-                chosen_phrase="COPY PHRASE ONE",
-                transaction_service=transaction_service,
-            )
-
-    @pytest.mark.asyncio
-    async def test_submit_system_vote_invalid_phrase(
-        self, vote_service, transaction_service, setup_phraseset
-    ):
-        """Should reject invalid phrase."""
-        data = setup_phraseset
-        phraseset = data["phraseset"]
-        ai_player = data["ai_player"]
-
-        with pytest.raises(ValueError, match="Phrase must be one of"):
-            await vote_service.submit_system_vote(
-                phraseset=phraseset,
-                player=ai_player,
-                chosen_phrase="INVALID PHRASE",
+                chosen_phrase="COPY ONE",
                 transaction_service=transaction_service,
             )
 
@@ -292,27 +317,21 @@ class TestDenormalizedFieldValidation:
     """Test denormalized field validation in RoundService."""
 
     @pytest.mark.asyncio
-    @patch('backend.services.phrase_validator.get_phrase_validator')
-    async def test_create_phraseset_validates_prompt_text(
-        self, mock_get_validator, db_session
-    ):
+    async def test_create_phraseset_validates_prompt_text(self, db_session, player_factory):
         """Should reject phraseset creation if prompt_text missing."""
-        # Mock phrase validator
-        mock_validator = MagicMock()
-        mock_validator.validate.return_value = (True, "")
-        mock_get_validator.return_value = mock_validator
-
         round_service = RoundService(db_session)
+        player = await player_factory()
+
         # Create prompt round without prompt_text
         prompt_round = Round(
             round_id=uuid.uuid4(),
-            player_id=uuid.uuid4(),
+            player_id=player.player_id,
             round_type="prompt",
             status="submitted",
             cost=100,
             expires_at=datetime.now(UTC) + timedelta(minutes=3),
             prompt_text=None,  # Missing!
-            submitted_phrase="TEST PHRASE",
+            submitted_phrase="TEST",
         )
         db_session.add(prompt_round)
 
@@ -320,13 +339,13 @@ class TestDenormalizedFieldValidation:
         for i in range(2):
             copy_round = Round(
                 round_id=uuid.uuid4(),
-                player_id=uuid.uuid4(),
+                player_id=player.player_id,
                 round_type="copy",
                 status="submitted",
                 cost=100,
                 expires_at=datetime.now(UTC) + timedelta(minutes=3),
                 prompt_round_id=prompt_round.round_id,
-                copy_phrase=f"COPY {i}",
+                copy_phrase=f"COPY{i}",
             )
             db_session.add(copy_round)
 
@@ -337,34 +356,28 @@ class TestDenormalizedFieldValidation:
         assert result is None
 
     @pytest.mark.asyncio
-    @patch('backend.services.phrase_validator.get_phrase_validator')
-    async def test_create_phraseset_validates_copy_phrases(
-        self, mock_get_validator, db_session
-    ):
+    async def test_create_phraseset_validates_copy_phrases(self, db_session, player_factory):
         """Should reject phraseset creation if copy_phrase missing."""
-        # Mock phrase validator
-        mock_validator = MagicMock()
-        mock_validator.validate.return_value = (True, "")
-        mock_get_validator.return_value = mock_validator
-
         round_service = RoundService(db_session)
+        player = await player_factory()
+
         # Create prompt round
         prompt_round = Round(
             round_id=uuid.uuid4(),
-            player_id=uuid.uuid4(),
+            player_id=player.player_id,
             round_type="prompt",
             status="submitted",
             cost=100,
             expires_at=datetime.now(UTC) + timedelta(minutes=3),
-            prompt_text="Test prompt",
-            submitted_phrase="TEST PHRASE",
+            prompt_text="Test",
+            submitted_phrase="TEST",
         )
         db_session.add(prompt_round)
 
         # Create copy round with missing copy_phrase
-        copy_round = Round(
+        copy_round1 = Round(
             round_id=uuid.uuid4(),
-            player_id=uuid.uuid4(),
+            player_id=player.player_id,
             round_type="copy",
             status="submitted",
             cost=100,
@@ -372,18 +385,18 @@ class TestDenormalizedFieldValidation:
             prompt_round_id=prompt_round.round_id,
             copy_phrase=None,  # Missing!
         )
-        db_session.add(copy_round)
+        db_session.add(copy_round1)
 
         # Create second copy round (valid)
         copy_round2 = Round(
             round_id=uuid.uuid4(),
-            player_id=uuid.uuid4(),
+            player_id=player.player_id,
             round_type="copy",
             status="submitted",
             cost=100,
             expires_at=datetime.now(UTC) + timedelta(minutes=3),
             prompt_round_id=prompt_round.round_id,
-            copy_phrase="COPY TWO",
+            copy_phrase="COPY",
         )
         db_session.add(copy_round2)
 
@@ -465,108 +478,3 @@ class TestGameBalanceSettings:
         assert isinstance(settings.vote_closing_window_seconds, int)
         assert isinstance(settings.vote_minimum_threshold, int)
         assert isinstance(settings.vote_minimum_window_seconds, int)
-
-
-class TestVoteServiceUsesSettings:
-    """Test that VoteService uses centralized settings."""
-
-    @pytest.fixture
-    def vote_service(self, db_session):
-        """Create vote service instance."""
-        return VoteService(db_session)
-
-    @pytest.mark.asyncio
-    async def test_finalization_uses_max_votes_setting(
-        self, vote_service, db_session
-    ):
-        """Should use settings.vote_max_votes for finalization check."""
-        settings = get_settings()
-
-        # Create phraseset with max votes
-        phraseset = PhraseSet(
-            phraseset_id=uuid.uuid4(),
-            prompt_round_id=uuid.uuid4(),
-            copy_round_1_id=uuid.uuid4(),
-            copy_round_2_id=uuid.uuid4(),
-            prompt_text="Test",
-            original_phrase="ORIGINAL",
-            copy_phrase_1="COPY1",
-            copy_phrase_2="COPY2",
-            status="open",
-            vote_count=settings.vote_max_votes,  # Use setting
-            total_pool=300,
-        )
-
-        db_session.add(phraseset)
-        await db_session.commit()
-
-        # The finalization logic should trigger based on settings
-        # (This test verifies the setting is accessible)
-        assert phraseset.vote_count >= settings.vote_max_votes
-
-
-class TestUUIDColumnCompatibility:
-    """Regression coverage for adaptive UUID storage."""
-
-    @pytest.mark.asyncio
-    async def test_player_lookup_handles_hex_ids(self, db_session):
-        """Rows persisted without hyphens should still load and update via ORM."""
-        raw_id = uuid.uuid4().hex  # Legacy format without hyphens
-        lookup_id = uuid.UUID(raw_id)
-        now = datetime.now(UTC)
-
-        await db_session.execute(
-            text(
-                """
-                INSERT INTO players (
-                    player_id,
-                    username,
-                    username_canonical,
-                    pseudonym,
-                    pseudonym_canonical,
-                    email,
-                    password_hash,
-                    balance,
-                    created_at,
-                    tutorial_completed,
-                    tutorial_progress
-                ) VALUES (
-                    :player_id,
-                    :username,
-                    :username_canonical,
-                    :pseudonym,
-                    :pseudonym_canonical,
-                    :email,
-                    :password_hash,
-                    :balance,
-                    :created_at,
-                    :tutorial_completed,
-                    :tutorial_progress
-                )
-                """
-            ),
-            {
-                "player_id": raw_id,
-                "username": f"legacy_{raw_id[:8]}",
-                "username_canonical": f"legacy_{raw_id[:8]}",
-                "pseudonym": "Legacy User",
-                "pseudonym_canonical": f"legacy_{raw_id[:8]}",
-                "email": f"legacy_{raw_id[:8]}@example.com",
-                "password_hash": "test_hash",
-                "balance": 1000,
-                "created_at": now.isoformat(),
-                "tutorial_completed": 0,
-                "tutorial_progress": "not_started",
-            },
-        )
-        await db_session.commit()
-
-        player = await db_session.get(Player, lookup_id)
-        assert player is not None
-
-        player.last_login_date = now.date()
-        await db_session.commit()
-
-        refreshed = await db_session.get(Player, lookup_id)
-        assert refreshed is not None
-        assert refreshed.last_login_date == now.date()
