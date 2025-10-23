@@ -22,7 +22,7 @@ export const Dashboard: React.FC = () => {
   useEffect(() => {
     dashboardLogger.debug('Component mounted');
     dashboardLogger.debug('Initial state:', {
-      player: player ? `${player.username} (${player.player_id})` : 'null',
+      player: player ? `${player.username}` : 'null',
       activeRound: activeRound ? `${activeRound.round_type} (${activeRound.round_id})` : 'null',
       roundAvailability: roundAvailability || 'null'
     });
@@ -37,7 +37,6 @@ export const Dashboard: React.FC = () => {
       dashboardLogger.debug('Active round changed:', {
         id: activeRound.round_id,
         type: activeRound.round_type,
-        status: activeRound.status,
         expiresAt: activeRound.expires_at
       });
     } else {

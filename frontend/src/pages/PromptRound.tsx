@@ -168,13 +168,6 @@ export const PromptRound: React.FC = () => {
 
       // Update the round state immediately to prevent double submissions
       if (activeRound) {
-        const updatedRound = {
-          ...activeRound,
-          state: {
-            ...activeRound.state,
-            status: 'submitted' as const
-          }
-        };
         promptRoundLogger.debug('Updating local round state to submitted');
         actions.refreshDashboard(); // Trigger refresh to get latest state
       }

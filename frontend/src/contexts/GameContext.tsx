@@ -14,13 +14,6 @@ import type {
   AuthTokenResponse,
 } from '../api/types';
 
-// Debug logging helper
-const log = (component: string, message: string, data?: any) => {
-  if (import.meta.env.DEV) {
-    console.log(`[${component}] ${message}`, data || '');
-  }
-};
-
 interface GameState {
   isAuthenticated: boolean;
   username: string | null;
