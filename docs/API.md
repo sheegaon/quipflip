@@ -23,7 +23,7 @@ Authorization: Bearer <access_token>
 
 **Getting Tokens:**
 - Use `POST /player` to register with a username, email, and password.
-- Use `POST /auth/login` with your credentials to obtain fresh tokens.
+- Use `POST /auth/login` with your email and password to obtain fresh tokens.
 - Tokens expire after 15 minutes; call `POST /auth/refresh` (or rely on the cookie) to obtain a new pair.
 
 ## Response Format
@@ -132,13 +132,13 @@ curl -X POST http://localhost:8000/player \
 ### Authentication Endpoints
 
 #### `POST /auth/login`
-Exchange a username and password for a new access token + refresh token pair.
+Exchange an email and password for a new access token + refresh token pair.
 
 ```bash
 curl -X POST http://localhost:8000/auth/login \
   -H "Content-Type: application/json" \
   -d '{
-        "username": "Prompt Pirate",
+        "email": "prompt.pirate@example.com",
         "password": "SuperSecure123!"
       }'
 ```
