@@ -64,6 +64,22 @@ run_tests() {
     fi
 }
 
+# Function to cleanup test data
+cleanup_test_data() {
+    echo ""
+    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${BLUE}Cleaning up test player data...${NC}"
+    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+
+    if python3 cleanup_test_players.py --yes --verbose; then
+        echo -e "${GREEN}✓ Test data cleanup completed${NC}"
+        return 0
+    else
+        echo -e "${RED}✗ Test data cleanup failed${NC}"
+        return 1
+    fi
+}
+
 # Parse command line arguments
 TEST_TYPE="${1:-all}"
 shift  # Remove first argument
@@ -109,6 +125,11 @@ case "$TEST_TYPE" in
         pytest tests/test_integration_localhost.py::TestHealthEndpoints -v "${EXTRA_ARGS[@]}"
         ;;
 
+    "cleanup")
+        cleanup_test_data
+        exit 0
+        ;;
+
     "help"|"-h"|"--help")
         echo "Usage: ./run_localhost_tests.sh [TEST_TYPE] [PYTEST_ARGS]"
         echo ""
@@ -119,6 +140,7 @@ case "$TEST_TYPE" in
         echo "  stress       - Run stress/load tests only"
         echo "  quick        - Run integration + scenarios (skip stress)"
         echo "  health       - Run health check only"
+        echo "  cleanup      - Remove all test player data from database"
         echo "  help         - Show this help message"
         echo ""
         echo "PYTEST_ARGS: Any additional pytest arguments"
@@ -132,6 +154,7 @@ case "$TEST_TYPE" in
         echo "  ./run_localhost_tests.sh integration         # Integration only"
         echo "  ./run_localhost_tests.sh quick -s            # Quick tests with output"
         echo "  ./run_localhost_tests.sh all -k player       # All player-related tests"
+        echo "  ./run_localhost_tests.sh cleanup             # Clean up test data"
         exit 0
         ;;
 
@@ -147,6 +170,21 @@ echo ""
 echo -e "${BLUE}========================================${NC}"
 echo -e "${GREEN}Test run complete!${NC}"
 echo -e "${BLUE}========================================${NC}"
+echo ""
+
+# Optional cleanup prompt
+echo -e "${YELLOW}Clean up test player data from database?${NC}"
+echo -e "${YELLOW}This will remove all test players and their associated data.${NC}"
+read -p "Run cleanup? (y/N): " -n 1 -r
+echo
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+    cleanup_test_data
+else
+    echo -e "${YELLOW}Skipping cleanup. You can run it later with:${NC}"
+    echo -e "${YELLOW}  ./run_localhost_tests.sh cleanup${NC}"
+    echo -e "${YELLOW}  or: python3 cleanup_test_players.py${NC}"
+fi
+
 echo ""
 echo -e "${YELLOW}Tip: Check server logs for detailed request information${NC}"
 echo ""

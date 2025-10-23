@@ -58,19 +58,6 @@ def get_uuid_column(*args, **kwargs):
             """Comparator that normalizes UUIDs for legacy SQLite rows."""
 
             def operate(self, op, other, **kwargs):
-                # For PostgreSQL with native UUID, use standard comparison without string functions
-                # We check the actual impl type that was loaded for the dialect
-                uses_native_uuid = False
-                if hasattr(self.type, 'impl'):
-                    # If impl is PGUUID, we're using native PostgreSQL UUID
-                    uses_native_uuid = isinstance(self.type.impl, type) and issubclass(self.type.impl, PGUUID)
-                    if not isinstance(self.type.impl, type):
-                        # It's an instance, check its type
-                        uses_native_uuid = isinstance(self.type.impl, PGUUID)
-
-                if uses_native_uuid:
-                    return super().operate(op, other, **kwargs)
-
                 # For SQLite/String storage with legacy data, normalize for comparison
                 # but only for explicit equality/membership operations
                 if isinstance(other, ClauseElement) or hasattr(other, "__clause_element__"):
@@ -78,7 +65,10 @@ def get_uuid_column(*args, **kwargs):
 
                 # For explicit comparisons, normalize both sides
                 if op in (operators.eq, operators.ne, operators.in_op, operators.notin_op):
-                    normalized_expr = func.lower(func.replace(self.expr, "-", ""))
+                    # Cast to String first to handle both PostgreSQL UUID and SQLite string types
+                    # For PostgreSQL: UUID -> TEXT allows string functions to work
+                    # For SQLite: String -> String is a no-op
+                    normalized_expr = func.lower(func.replace(func.cast(self.expr, String), "-", ""))
 
                     if op in (operators.in_op, operators.notin_op):
                         # Normalize list/tuple values
