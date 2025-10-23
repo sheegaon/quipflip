@@ -60,37 +60,40 @@ def get_uuid_column(*args, **kwargs):
             def _is_native_uuid(self) -> bool:
                 return getattr(self.type, "_uses_native_uuid", False)
 
-            def _normalize_single(self, value):
-                if value is None:
-                    return None
-                if isinstance(value, ClauseElement) or hasattr(value, "__clause_element__"):
-                    return value
-                if self._is_native_uuid():
-                    if isinstance(value, uuid.UUID):
-                        return value
-                    return uuid.UUID(str(value))
-                if isinstance(value, uuid.UUID):
-                    return value.hex
-                return str(value).replace("-", "").lower()
-
-            def _normalize(self, other):
-                if isinstance(other, (list, tuple, set)):
-                    return [self._normalize_single(v) for v in other]
-                return self._normalize_single(other)
-
-            def _normalized_expr(self):
-                if self._is_native_uuid():
-                    return self.expr
-                # Remove hyphens/lowercase so legacy hex IDs still match.
-                return func.lower(func.replace(self.expr, "-", ""))
-
             def operate(self, op, other, **kwargs):
+                # For PostgreSQL with native UUID, use standard comparison
+                if self._is_native_uuid():
+                    return super().operate(op, other, **kwargs)
+
+                # For SQLite/String storage with legacy data, normalize for comparison
+                # but only for explicit equality/membership operations
                 if isinstance(other, ClauseElement) or hasattr(other, "__clause_element__"):
                     return super().operate(op, other, **kwargs)
-                if op in (operators.eq, operators.ne):
-                    return op(self._normalized_expr(), self._normalize(other))
-                if op in (operators.in_op, operators.notin_op):
-                    return op(self._normalized_expr(), self._normalize(other))
+
+                # For explicit comparisons, normalize both sides
+                if op in (operators.eq, operators.ne, operators.in_op, operators.notin_op):
+                    normalized_expr = func.lower(func.replace(self.expr, "-", ""))
+
+                    if op in (operators.in_op, operators.notin_op):
+                        # Normalize list/tuple values
+                        if isinstance(other, (list, tuple, set)):
+                            normalized_values = []
+                            for v in other:
+                                if isinstance(v, uuid.UUID):
+                                    normalized_values.append(v.hex)
+                                else:
+                                    normalized_values.append(str(v).replace("-", "").lower())
+                            return op(normalized_expr, normalized_values)
+
+                    # Normalize single value
+                    if isinstance(other, uuid.UUID):
+                        normalized_value = other.hex
+                    else:
+                        normalized_value = str(other).replace("-", "").lower()
+
+                    return op(normalized_expr, normalized_value)
+
+                # For all other operations, use default behavior
                 return super().operate(op, other, **kwargs)
 
         comparator_factory = Comparator

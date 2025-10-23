@@ -25,6 +25,7 @@ from backend.models.phraseset import PhraseSet
 from backend.models.vote import Vote
 from backend.config import get_settings
 from backend.utils.exceptions import AlreadyVotedError
+from sqlalchemy import text
 
 
 class TestTimezoneUtility:
@@ -84,47 +85,26 @@ class TestSystemVote:
     @pytest.fixture
     async def setup_phraseset(self, db_session):
         """Create a phraseset for testing."""
+        suffix = uuid.uuid4().hex[:8]
+
+        def make_player(role: str) -> Player:
+            """Create a player with unique identifiers to avoid constraint collisions."""
+            return Player(
+                player_id=uuid.uuid4(),
+                username=f"{role}_{suffix}",
+                username_canonical=f"{role}_{suffix}",
+                email=f"{role}_{suffix}@test.com",
+                password_hash="test_hash",
+                pseudonym=f"{role.title()} Player",
+                pseudonym_canonical=f"{role}_{suffix}",
+                balance=1000,
+            )
+
         # Create players (need password_hash for database constraint)
-        prompt_player = Player(
-            player_id=uuid.uuid4(),
-            username="prompt_player",
-            username_canonical="prompt_player",
-            email="prompt@test.com",
-            password_hash="test_hash",
-            pseudonym="Prompt Maker",
-            pseudonym_canonical="promptmaker",
-            balance=1000,
-        )
-        copy1_player = Player(
-            player_id=uuid.uuid4(),
-            username="copy1_player",
-            username_canonical="copy1_player",
-            email="copy1@test.com",
-            password_hash="test_hash",
-            pseudonym="Copy One",
-            pseudonym_canonical="copyone",
-            balance=1000,
-        )
-        copy2_player = Player(
-            player_id=uuid.uuid4(),
-            username="copy2_player",
-            username_canonical="copy2_player",
-            email="copy2@test.com",
-            password_hash="test_hash",
-            pseudonym="Copy Two",
-            pseudonym_canonical="copytwo",
-            balance=1000,
-        )
-        ai_player = Player(
-            player_id=uuid.uuid4(),
-            username="AI_VOTER",
-            username_canonical="ai_voter",
-            email="ai@test.com",
-            password_hash="test_hash",
-            pseudonym="AI Voter",
-            pseudonym_canonical="aivoter",
-            balance=1000,
-        )
+        prompt_player = make_player("prompt_player")
+        copy1_player = make_player("copy1_player")
+        copy2_player = make_player("copy2_player")
+        ai_player = make_player("ai_voter")
 
         db_session.add_all([prompt_player, copy1_player, copy2_player, ai_player])
         await db_session.flush()
@@ -199,7 +179,7 @@ class TestSystemVote:
         self, vote_service, transaction_service, setup_phraseset, db_session
     ):
         """Should create correct vote and give payout."""
-        data = await setup_phraseset
+        data = setup_phraseset
         phraseset = data["phraseset"]
         ai_player = data["ai_player"]
 
@@ -224,7 +204,7 @@ class TestSystemVote:
         self, vote_service, transaction_service, setup_phraseset, db_session
     ):
         """Should create incorrect vote with no payout."""
-        data = await setup_phraseset
+        data = setup_phraseset
         phraseset = data["phraseset"]
         ai_player = data["ai_player"]
 
@@ -249,7 +229,7 @@ class TestSystemVote:
         self, vote_service, transaction_service, setup_phraseset, db_session
     ):
         """Should update phraseset vote count."""
-        data = await setup_phraseset
+        data = setup_phraseset
         phraseset = data["phraseset"]
         ai_player = data["ai_player"]
 
@@ -269,7 +249,7 @@ class TestSystemVote:
         self, vote_service, transaction_service, setup_phraseset, db_session
     ):
         """Should prevent duplicate votes from same player."""
-        data = await setup_phraseset
+        data = setup_phraseset
         phraseset = data["phraseset"]
         ai_player = data["ai_player"]
 
@@ -295,7 +275,7 @@ class TestSystemVote:
         self, vote_service, transaction_service, setup_phraseset
     ):
         """Should reject invalid phrase."""
-        data = await setup_phraseset
+        data = setup_phraseset
         phraseset = data["phraseset"]
         ai_player = data["ai_player"]
 
@@ -523,3 +503,70 @@ class TestVoteServiceUsesSettings:
         # The finalization logic should trigger based on settings
         # (This test verifies the setting is accessible)
         assert phraseset.vote_count >= settings.vote_max_votes
+
+
+class TestUUIDColumnCompatibility:
+    """Regression coverage for adaptive UUID storage."""
+
+    @pytest.mark.asyncio
+    async def test_player_lookup_handles_hex_ids(self, db_session):
+        """Rows persisted without hyphens should still load and update via ORM."""
+        raw_id = uuid.uuid4().hex  # Legacy format without hyphens
+        lookup_id = uuid.UUID(raw_id)
+        now = datetime.now(UTC)
+
+        await db_session.execute(
+            text(
+                """
+                INSERT INTO players (
+                    player_id,
+                    username,
+                    username_canonical,
+                    pseudonym,
+                    pseudonym_canonical,
+                    email,
+                    password_hash,
+                    balance,
+                    created_at,
+                    tutorial_completed,
+                    tutorial_progress
+                ) VALUES (
+                    :player_id,
+                    :username,
+                    :username_canonical,
+                    :pseudonym,
+                    :pseudonym_canonical,
+                    :email,
+                    :password_hash,
+                    :balance,
+                    :created_at,
+                    :tutorial_completed,
+                    :tutorial_progress
+                )
+                """
+            ),
+            {
+                "player_id": raw_id,
+                "username": f"legacy_{raw_id[:8]}",
+                "username_canonical": f"legacy_{raw_id[:8]}",
+                "pseudonym": "Legacy User",
+                "pseudonym_canonical": f"legacy_{raw_id[:8]}",
+                "email": f"legacy_{raw_id[:8]}@example.com",
+                "password_hash": "test_hash",
+                "balance": 1000,
+                "created_at": now.isoformat(),
+                "tutorial_completed": 0,
+                "tutorial_progress": "not_started",
+            },
+        )
+        await db_session.commit()
+
+        player = await db_session.get(Player, lookup_id)
+        assert player is not None
+
+        player.last_login_date = now.date()
+        await db_session.commit()
+
+        refreshed = await db_session.get(Player, lookup_id)
+        assert refreshed is not None
+        assert refreshed.last_login_date == now.date()
