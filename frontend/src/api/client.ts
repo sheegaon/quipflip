@@ -433,7 +433,7 @@ export const apiClient = {
 
   // Player endpoints
   async createPlayer(
-    payload: { email: string; password: string },
+    payload: { username: string; email: string; password: string },
     signal?: AbortSignal,
   ): Promise<CreatePlayerResponse> {
     const { data } = await api.post('/player', payload, { signal });
@@ -441,7 +441,7 @@ export const apiClient = {
   },
 
   async login(
-    payload: { email: string; password: string },
+    payload: { username: string; password: string },
     signal?: AbortSignal,
   ): Promise<AuthTokenResponse> {
     const { data} = await api.post('/auth/login', payload, {
