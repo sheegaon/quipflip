@@ -10,7 +10,7 @@ import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
 import type { CopyState } from '../api/types';
 
 export const CopyRound: React.FC = () => {
-  const { state, actions } = useGame();
+  const { state } = useGame();
   const { activeRound } = state;
   const { currentStep, advanceStep } = useTutorial();
   const navigate = useNavigate();

@@ -9,7 +9,7 @@ import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
 import type { VoteResponse, VoteState } from '../api/types';
 
 export const VoteRound: React.FC = () => {
-  const { state, actions } = useGame();
+  const { state } = useGame();
   const { activeRound } = state;
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
