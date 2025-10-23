@@ -61,7 +61,7 @@ export const Header: React.FC = () => {
                     <img
                       src="/icon_prompt.svg"
                       alt="Prompt rounds in progress"
-                      className="h-5 w-5"
+                      className="h-5 w-5 md:h-7 md:w-7"
                     />
                   </span>
                 )}
@@ -71,7 +71,7 @@ export const Header: React.FC = () => {
                     <img
                       src="/icon_copy.svg"
                       alt="Copy rounds in progress"
-                      className="h-5 w-5"
+                      className="h-5 w-5 md:h-7 md:w-7"
                     />
                   </span>
                 )}
@@ -83,10 +83,16 @@ export const Header: React.FC = () => {
           <div className="flex-1 text-center">
             <button
               onClick={() => navigate('/statistics')}
-              className="text-xs md:text-lg text-quip-turquoise font-semibold hover:text-quip-teal transition-colors"
+              className="inline-flex items-center gap-0.5 md:gap-1.5 text-xs md:text-lg text-quip-turquoise font-semibold hover:text-quip-teal transition-colors"
               title="View your statistics"
             >
-              {player.username || username}
+              <span>{player.username || username}</span>
+              <img
+                src="/icon_stats.svg"
+                alt=""
+                className="w-4 h-4 md:h-7 md:w-7"
+                aria-hidden="true"
+              />
             </button>
           </div>
 
