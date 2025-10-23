@@ -32,7 +32,7 @@ export const Tracking: React.FC = () => {
   const { refreshBalance, refreshDashboard, getPlayerPhrasesets, getPhrasesetDetails, claimPhrasesetPrize } = actions;
 
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('in_progress');
   const [phrasesets, setPhrasesets] = useState<PhrasesetSummary[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedSummary, setSelectedSummary] = useState<PhrasesetSummary | null>(null);

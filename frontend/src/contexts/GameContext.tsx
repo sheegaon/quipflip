@@ -287,7 +287,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     },
 
     getPhrasesetResults: async (phrasesetId: string) => {
-      if (!isAuthenticated) return;
+      if (!isAuthenticated) return null;
 
       try {
         const data = await apiClient.getPhrasesetResults(phrasesetId);
@@ -300,7 +300,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     },
 
     getPlayerPhrasesets: async (params: any) => {
-      if (!isAuthenticated) return;
+      if (!isAuthenticated) return { phrasesets: [], total: 0, has_more: false };
 
       try {
         const data = await apiClient.getPlayerPhrasesets(params);
@@ -313,7 +313,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     },
 
     getPhrasesetDetails: async (phrasesetId: string) => {
-      if (!isAuthenticated) return;
+      if (!isAuthenticated) return null;
 
       try {
         const data = await apiClient.getPhrasesetDetails(phrasesetId);
@@ -340,7 +340,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     },
 
     getStatistics: async (signal?: AbortSignal) => {
-      if (!isAuthenticated) return;
+      if (!isAuthenticated) return null;
 
       try {
         const data = await apiClient.getStatistics(signal);
