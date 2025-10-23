@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { useTutorial } from '../contexts/TutorialContext';
@@ -7,114 +7,130 @@ import { Timer } from '../components/Timer';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { useTimer } from '../hooks/useTimer';
 import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
+import { promptRoundLogger } from '../utils/logger';
 import type { PromptState } from '../api/types';
 
 export const PromptRound: React.FC = () => {
-  const { activeRound } = useGame();
+  const { state, actions } = useGame();
+  const { activeRound } = state;
   const { currentStep, advanceStep } = useTutorial();
   const navigate = useNavigate();
   const [phrase, setPhrase] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [roundData, setRoundData] = useState<PromptState | null>(null);
   const [feedbackType, setFeedbackType] = useState<'like' | 'dislike' | null>(null);
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const hasInitialized = useRef(false);
 
+  const roundData = activeRound?.round_type === 'prompt' ? activeRound.state as PromptState : null;
   const { isExpired } = useTimer(roundData?.expires_at || null);
 
+  // Log component mount and key state changes
   useEffect(() => {
-    // Prevent duplicate calls in React StrictMode
-    if (hasInitialized.current) return;
-    hasInitialized.current = true;
+    promptRoundLogger.debug('Component mounted');
+    promptRoundLogger.debug('Initial state:', {
+      activeRound: activeRound ? {
+        type: activeRound.round_type,
+        id: activeRound.round_id,
+        expiresAt: activeRound.expires_at
+      } : 'null',
+      currentStep,
+      roundData: roundData ? {
+        roundId: roundData.round_id,
+        promptText: roundData.prompt_text,
+        status: roundData.status
+      } : 'null'
+    });
+  }, []);
 
-    const initRound = async () => {
-      // Check if we have an active prompt round
-      if (activeRound?.round_type === 'prompt' && activeRound.state) {
-        const promptState = activeRound.state as PromptState;
-        setRoundData(promptState);
+  useEffect(() => {
+    promptRoundLogger.debug('Active round changed:', {
+      activeRound: activeRound ? {
+        type: activeRound.round_type,
+        id: activeRound.round_id,
+        expiresAt: activeRound.expires_at
+      } : 'null'
+    });
+  }, [activeRound]);
 
-        // Load existing feedback
-        try {
-          const feedbackResponse = await apiClient.getPromptFeedback(promptState.round_id);
-          setFeedbackType(feedbackResponse.feedback_type);
-        } catch (err) {
-          // Feedback not found is ok, just leave as null
-          console.log('No existing feedback found');
-        }
+  useEffect(() => {
+    promptRoundLogger.debug('Round data changed:', {
+      roundData: roundData ? {
+        roundId: roundData.round_id,
+        promptText: roundData.prompt_text,
+        status: roundData.status,
+        cost: roundData.cost
+      } : 'null'
+    });
+  }, [roundData]);
 
-        // If already submitted, redirect to dashboard
-        if (promptState.status === 'submitted') {
-          navigate('/dashboard');
-        }
-      } else {
-        // Special case: If in tutorial and user has any active round, advance tutorial
-        if (currentStep === 'prompt_round' && activeRound?.round_id) {
-          // User has some other active round during tutorial
-          // Skip the prompt round and advance tutorial to next step
-          try {
-            await advanceStep('copy_round');
-            navigate('/dashboard');
-            return;
-          } catch (err) {
-            console.error('Failed to advance tutorial:', err);
-            // Fall through to normal error handling
-          }
-        }
+  // Load existing feedback
+  useEffect(() => {
+    if (!roundData) return;
 
-        // No active round, start a new one
-        try {
-          const response = await apiClient.startPromptRound();
-          setRoundData({
-            round_id: response.round_id,
-            status: 'active',
-            expires_at: response.expires_at,
-            cost: response.cost,
-            prompt_text: response.prompt_text,
-          });
-        } catch (err) {
-          // Special handling for tutorial users with existing rounds
-          if (currentStep === 'prompt_round' && extractErrorMessage(err)?.includes('already_in_round')) {
-            try {
-              // Advance tutorial and go back to dashboard
-              await advanceStep('copy_round');
-              navigate('/dashboard');
-              return;
-            } catch (tutorialErr) {
-              console.error('Failed to advance tutorial:', tutorialErr);
-            }
-          }
-          
-          setError(extractErrorMessage(err) || 'Unable to start a new prompt round. Please check your balance and try again.');
-          setTimeout(() => navigate('/dashboard'), 2000);
-        }
+    const loadFeedback = async () => {
+      try {
+        const feedbackResponse = await apiClient.getPromptFeedback(roundData.round_id);
+        setFeedbackType(feedbackResponse.feedback_type);
+      } catch (err) {
+        // Feedback not found is ok
       }
     };
+    loadFeedback();
+  }, [roundData?.round_id]);
 
-    initRound();
-  }, [activeRound, navigate, currentStep, advanceStep]);
+  // Redirect if already submitted
+  useEffect(() => {
+    if (roundData?.status === 'submitted') {
+      promptRoundLogger.debug('Round already submitted, redirecting to dashboard');
+      navigate('/dashboard');
+    }
+  }, [roundData?.status, navigate]);
+
+  // Redirect if no active prompt round - but NOT during the submission process
+  useEffect(() => {
+    if (!activeRound || activeRound.round_type !== 'prompt') {
+      promptRoundLogger.debug('No active prompt round detected');
+      promptRoundLogger.debug('Redirect logic:', {
+        hasActiveRound: !!activeRound,
+        roundType: activeRound?.round_type,
+        currentStep,
+        isTutorialPromptStep: currentStep === 'prompt_round',
+        successMessage: !!successMessage
+      });
+
+      // Don't start a new round if we're showing success message (submission in progress)
+      if (successMessage) {
+        promptRoundLogger.debug('Success message showing, not starting new round');
+        return;
+      }
+
+      // Special case for tutorial
+      if (currentStep === 'prompt_round') {
+        promptRoundLogger.debug('Tutorial mode: advancing to copy_round and returning to dashboard');
+        advanceStep('copy_round').then(() => navigate('/dashboard'));
+      } else {
+        promptRoundLogger.debug('No active round and not in tutorial - redirecting to dashboard');
+        navigate('/dashboard');
+      }
+    } else {
+      promptRoundLogger.debug('✅ Active prompt round found, staying on page');
+    }
+  }, [activeRound, currentStep, advanceStep, navigate, successMessage]);
 
   const handleFeedback = async (type: 'like' | 'dislike') => {
     if (!roundData || isSubmittingFeedback) return;
 
-    // Toggle off if clicking the same feedback type
     const newFeedbackType = feedbackType === type ? null : type;
 
     try {
       setIsSubmittingFeedback(true);
-
-      if (newFeedbackType === null) {
-        // For now, we just keep the last feedback since backend doesn't support deletion
-        // In a future version, we could add a DELETE endpoint
-        return;
-      }
+      if (newFeedbackType === null) return; // Can't delete feedback yet
 
       await apiClient.submitPromptFeedback(roundData.round_id, newFeedbackType);
       setFeedbackType(newFeedbackType);
     } catch (err) {
       console.error('Failed to submit feedback:', err);
-      // Don't show error to user, feedback is optional
     } finally {
       setIsSubmittingFeedback(false);
     }
@@ -122,26 +138,53 @@ export const PromptRound: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!phrase.trim() || !roundData) return;
+    promptRoundLogger.debug('Form submitted, checking conditions...', {
+      hasPhrase: !!phrase.trim(),
+      hasRoundData: !!roundData,
+      isSubmitting,
+      roundStatus: roundData?.status
+    });
+    
+    if (!phrase.trim() || !roundData || isSubmitting) {
+      promptRoundLogger.debug('Submission blocked - conditions not met');
+      return;
+    }
 
+    // Check if round is already submitted
+    if (roundData.status === 'submitted') {
+      promptRoundLogger.debug('Round already submitted, ignoring submission attempt');
+      return;
+    }
+
+    promptRoundLogger.info('Starting submission process...', { phrase: phrase.trim(), roundId: roundData.round_id });
     setIsSubmitting(true);
     setError(null);
 
     try {
       await apiClient.submitPhrase(roundData.round_id, phrase.trim());
+      promptRoundLogger.info('✅ Phrase submitted successfully');
+
+      // Update the round state immediately to prevent double submissions
+      if (activeRound) {
+        promptRoundLogger.debug('Updating local round state to submitted');
+        actions.refreshDashboard(); // Trigger refresh to get latest state
+      }
 
       // Show success message
-      const message = getRandomMessage('promptSubmitted');
-      setSuccessMessage(message);
+      setSuccessMessage(getRandomMessage('promptSubmitted'));
 
       // Advance tutorial if in prompt_round step
       if (currentStep === 'prompt_round') {
         await advanceStep('copy_round');
       }
 
-      // Navigate after brief delay
-      setTimeout(() => navigate('/dashboard'), 1500);
+      // Navigate after delay
+      setTimeout(() => {
+        promptRoundLogger.info('Navigating to dashboard after successful submission');
+        navigate('/dashboard');
+      }, 1500);
     } catch (err) {
+      promptRoundLogger.error('Submission failed:', err);
       setError(extractErrorMessage(err) || 'Unable to submit your phrase. Please check your connection and try again.');
       setIsSubmitting(false);
     }
@@ -150,7 +193,7 @@ export const PromptRound: React.FC = () => {
   if (!roundData) {
     return (
       <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center">
-        <LoadingSpinner message={loadingMessages.starting} />
+        <LoadingSpinner isLoading={true} message={loadingMessages.starting} />
       </div>
     );
   }

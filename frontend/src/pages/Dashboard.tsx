@@ -5,21 +5,44 @@ import { useTutorial } from '../contexts/TutorialContext';
 import { Timer } from '../components/Timer';
 import { Header } from '../components/Header';
 import TutorialWelcome from '../components/Tutorial/TutorialWelcome';
+import { dashboardLogger } from '../utils/logger';
 
 const formatWaitingCount = (count: number): string => (count > 10 ? 'over 10' : count.toString());
 
 export const Dashboard: React.FC = () => {
-  const {
-    player,
-    activeRound,
-    pendingResults,
-    phrasesetSummary,
-    roundAvailability,
-    refreshDashboard,
-  } = useGame();
+  const { state, actions } = useGame();
+  const { player, activeRound, phrasesetSummary, roundAvailability } = state;
+  const { refreshDashboard } = actions;
   const { startTutorial, skipTutorial, advanceStep } = useTutorial();
   const navigate = useNavigate();
   const [isRoundExpired, setIsRoundExpired] = useState(false);
+  const [startingRound, setStartingRound] = useState<string | null>(null);
+
+  // Log component mount and key state changes
+  useEffect(() => {
+    dashboardLogger.debug('Component mounted');
+    dashboardLogger.debug('Initial state:', {
+      player: player ? `${player.username}` : 'null',
+      activeRound: activeRound ? `${activeRound.round_type} (${activeRound.round_id})` : 'null',
+      roundAvailability: roundAvailability || 'null'
+    });
+  }, []);
+
+  useEffect(() => {
+    dashboardLogger.debug('Round availability changed:', roundAvailability);
+  }, [roundAvailability]);
+
+  useEffect(() => {
+    if (activeRound) {
+      dashboardLogger.debug('Active round changed:', {
+        id: activeRound.round_id,
+        type: activeRound.round_type,
+        expiresAt: activeRound.expires_at
+      });
+    } else {
+      dashboardLogger.debug('Active round cleared');
+    }
+  }, [activeRound]);
 
   const handleStartTutorial = async () => {
     await startTutorial();
@@ -39,12 +62,7 @@ export const Dashboard: React.FC = () => {
     return `${activeRound.round_type.charAt(0).toUpperCase()}${activeRound.round_type.slice(1)}`;
   }, [activeRound?.round_type]);
 
-  // Force refresh dashboard data when component mounts
-  useEffect(() => {
-    refreshDashboard();
-  }, [refreshDashboard]);
-
-  // Refresh when page becomes visible (GameContext already loads data on mount)
+  // Refresh when page becomes visible
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
@@ -72,7 +90,18 @@ export const Dashboard: React.FC = () => {
 
     const expiresAt = new Date(activeRound.expires_at).getTime();
     const now = Date.now();
-    setIsRoundExpired(expiresAt <= now);
+    const isExpired = expiresAt <= now;
+    
+    dashboardLogger.debug('Round expiration check:', {
+      roundId: activeRound.round_id,
+      expiresAt: activeRound.expires_at,
+      expiresAtMs: expiresAt,
+      nowMs: now,
+      isExpired,
+      timeDiff: expiresAt - now
+    });
+    
+    setIsRoundExpired(isExpired);
   }, [activeRound?.round_id, activeRound?.expires_at]);
 
   const handleContinueRound = useCallback(() => {
@@ -86,20 +115,89 @@ export const Dashboard: React.FC = () => {
     // Background polling will refresh data automatically
   }, []);
 
-  const handleStartPrompt = () => {
-    navigate('/prompt');
+  const handleStartPrompt = async () => {
+    if (startingRound) {
+      dashboardLogger.debug('Ignoring prompt button click - already starting round:', startingRound);
+      return;
+    }
+    
+    dashboardLogger.info('Starting prompt round...');
+    dashboardLogger.debug('Player state before start:', {
+      balance: player?.balance,
+      outstandingPrompts: player?.outstanding_prompts,
+      canPrompt: roundAvailability?.can_prompt
+    });
+    
+    setStartingRound('prompt');
+    try {
+      dashboardLogger.debug('Calling actions.startPromptRound()...');
+      await actions.startPromptRound();
+      dashboardLogger.info('✅ Prompt round started successfully, navigating to /prompt');
+      navigate('/prompt');
+    } catch (err) {
+      dashboardLogger.error('❌ Failed to start prompt round:', err);
+      console.error('Failed to start prompt round:', err);
+    } finally {
+      setStartingRound(null);
+      dashboardLogger.debug('Prompt round start process completed');
+    }
   };
 
-  const handleStartCopy = () => {
-    navigate('/copy');
+  const handleStartCopy = async () => {
+    if (startingRound) {
+      dashboardLogger.debug('Ignoring copy button click - already starting round:', startingRound);
+      return;
+    }
+    
+    dashboardLogger.info('Starting copy round...');
+    dashboardLogger.debug('Player state before start:', {
+      balance: player?.balance,
+      canCopy: roundAvailability?.can_copy,
+      promptsWaiting: roundAvailability?.prompts_waiting,
+      copyCost: roundAvailability?.copy_cost
+    });
+    
+    setStartingRound('copy');
+    try {
+      dashboardLogger.debug('Calling actions.startCopyRound()...');
+      await actions.startCopyRound();
+      dashboardLogger.info('✅ Copy round started successfully, navigating to /copy');
+      navigate('/copy');
+    } catch (err) {
+      dashboardLogger.error('❌ Failed to start copy round:', err);
+      console.error('Failed to start copy round:', err);
+    } finally {
+      setStartingRound(null);
+      dashboardLogger.debug('Copy round start process completed');
+    }
   };
 
-  const handleStartVote = () => {
-    navigate('/vote');
-  };
-
-  const handleViewResults = () => {
-    navigate('/results');
+  const handleStartVote = async () => {
+    if (startingRound) {
+      dashboardLogger.debug('Ignoring vote button click - already starting round:', startingRound);
+      return;
+    }
+    
+    dashboardLogger.info('Starting vote round...');
+    dashboardLogger.debug('Player state before start:', {
+      balance: player?.balance,
+      canVote: roundAvailability?.can_vote,
+      phrasesetsWaiting: roundAvailability?.phrasesets_waiting
+    });
+    
+    setStartingRound('vote');
+    try {
+      dashboardLogger.debug('Calling actions.startVoteRound()...');
+      await actions.startVoteRound();
+      dashboardLogger.info('✅ Vote round started successfully, navigating to /vote');
+      navigate('/vote');
+    } catch (err) {
+      dashboardLogger.error('❌ Failed to start vote round:', err);
+      console.error('Failed to start vote round:', err);
+    } finally {
+      setStartingRound(null);
+      dashboardLogger.debug('Vote round start process completed');
+    }
   };
 
   const handleClaimResults = () => {
@@ -153,26 +251,6 @@ export const Dashboard: React.FC = () => {
           </div>
         )}
 
-        {/* Pending Results Notification */}
-        {pendingResults.length > 0 && (
-          <div className="tile-card bg-quip-turquoise bg-opacity-10 border-2 border-quip-turquoise p-4 mb-6 slide-up-enter">
-            <div className="flex justify-between items-center">
-              <div>
-                <p className="font-display font-semibold text-quip-turquoise">Results Ready!</p>
-                <p className="text-sm text-quip-teal">
-                  {pendingResults.length} quipset{pendingResults.length > 1 ? 's' : ''} finalized
-                </p>
-              </div>
-              <button
-                onClick={handleViewResults}
-                className="bg-quip-turquoise hover:bg-quip-teal text-white font-bold py-2 px-6 rounded-tile transition-all hover:shadow-tile-sm"
-              >
-                View Results
-              </button>
-            </div>
-          </div>
-        )}
-
         {totalUnclaimedCount > 0 && (
           <div className="tile-card bg-quip-turquoise bg-opacity-10 border-2 border-quip-turquoise p-4 mb-6 slide-up-enter">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -212,13 +290,16 @@ export const Dashboard: React.FC = () => {
               </p>
               <button
                 onClick={handleStartPrompt}
-                disabled={!roundAvailability?.can_prompt}
+                disabled={!roundAvailability?.can_prompt || startingRound === 'prompt'}
                 className="w-full bg-quip-navy hover:bg-quip-teal disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm"
               >
-                {roundAvailability?.can_prompt ? 'Start Prompt Round' :
-                  player.balance < 100 ? 'Insufficient Balance' :
-                  player.outstanding_prompts >= 10 ? 'Too Many Outstanding Prompts' :
-                  'Not Available'}
+                {startingRound === 'prompt' ? 'Starting Round...' :
+                 roundAvailability?.can_prompt ? 'Start Prompt Round' :
+                 activeRound?.round_type === 'prompt' ? 'Active Round - Use Continue Above' :
+                 activeRound?.round_id ? 'Complete Current Round First' :
+                 player.balance < 100 ? 'Insufficient Balance' :
+                 player.outstanding_prompts >= 10 ? 'Too Many Outstanding Prompts' :
+                 'Not Available'}
               </button>
             </div>
 
@@ -251,13 +332,14 @@ export const Dashboard: React.FC = () => {
               )}
               <button
                 onClick={handleStartCopy}
-                disabled={!roundAvailability?.can_copy}
+                disabled={!roundAvailability?.can_copy || startingRound === 'copy'}
                 className="w-full bg-quip-turquoise hover:bg-quip-teal disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm"
               >
-                {roundAvailability?.can_copy ? 'Start Copy Round' :
-                  roundAvailability?.prompts_waiting === 0 ? 'No Prompts Available' :
-                  player.balance < (roundAvailability?.copy_cost || 100) ? 'Insufficient Balance' :
-                  'Start Copy Round'}
+                {startingRound === 'copy' ? 'Starting Round...' :
+                 roundAvailability?.can_copy ? 'Start Copy Round' :
+                 roundAvailability?.prompts_waiting === 0 ? 'No Prompts Available' :
+                 player.balance < (roundAvailability?.copy_cost || 100) ? 'Insufficient Balance' :
+                 'Start Copy Round'}
               </button>
             </div>
 
@@ -281,13 +363,14 @@ export const Dashboard: React.FC = () => {
               )}
               <button
                 onClick={handleStartVote}
-                disabled={!roundAvailability?.can_vote}
+                disabled={!roundAvailability?.can_vote || startingRound === 'vote'}
                 className="w-full bg-quip-orange hover:bg-quip-orange-deep disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm"
               >
-                {roundAvailability?.can_vote ? 'Start Vote Round' :
-                  roundAvailability?.phrasesets_waiting === 0 ? 'No Quip Sets Available' :
-                  player.balance < 1 ? 'Insufficient Balance' :
-                  'Not Available'}
+                {startingRound === 'vote' ? 'Starting Round...' :
+                 roundAvailability?.can_vote ? 'Start Vote Round' :
+                 roundAvailability?.phrasesets_waiting === 0 ? 'No Quip Sets Available' :
+                 player.balance < 1 ? 'Insufficient Balance' :
+                 'Not Available'}
               </button>
             </div>
           </div>

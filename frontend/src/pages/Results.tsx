@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import apiClient, { extractErrorMessage } from '../api/client';
+import { extractErrorMessage } from '../api/client';
 import { loadingMessages } from '../utils/brandedMessages';
 import type { PhrasesetResults } from '../api/types';
 
 export const Results: React.FC = () => {
-  const { pendingResults, refreshDashboard } = useGame();
+  const { state, actions } = useGame();
+  const { pendingResults } = state;
+  const { refreshDashboard, getPhrasesetResults } = actions;
   const navigate = useNavigate();
   const [selectedPhrasesetId, setSelectedPhrasesetId] = useState<string | null>(null);
   const [results, setResults] = useState<PhrasesetResults | null>(null);
@@ -28,7 +30,7 @@ export const Results: React.FC = () => {
       try {
         setLoading(true);
         setError(null);
-        const data = await apiClient.getPhrasesetResults(selectedPhrasesetId);
+        const data = await getPhrasesetResults(selectedPhrasesetId);
         setResults(data);
         // Refresh dashboard to update pending results and balance (in case payout was collected)
         await refreshDashboard();
@@ -40,7 +42,7 @@ export const Results: React.FC = () => {
     };
 
     fetchResults();
-  }, [selectedPhrasesetId]);
+  }, [selectedPhrasesetId, getPhrasesetResults, refreshDashboard]);
 
   const handleSelectPhraseset = (phrasesetId: string) => {
     setSelectedPhrasesetId(phrasesetId);
@@ -119,7 +121,7 @@ export const Results: React.FC = () => {
           <div className="lg:col-span-2">
             {loading && (
               <div className="tile-card p-8 flex justify-center">
-                <LoadingSpinner message={loadingMessages.loading} />
+                <LoadingSpinner isLoading={true} message={loadingMessages.loading} />
               </div>
             )}
 

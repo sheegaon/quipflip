@@ -20,7 +20,8 @@ interface TutorialContextType {
 const TutorialContext = createContext<TutorialContextType | undefined>(undefined);
 
 export const TutorialProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated } = useGame();
+  const { state } = useGame();
+  const { isAuthenticated } = state;
   const [tutorialStatus, setTutorialStatus] = useState<TutorialStatus | null>(null);
   const [loading, setLoading] = useState(false);
 
