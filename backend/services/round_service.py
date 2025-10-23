@@ -617,10 +617,11 @@ class RoundService:
         # Count ALL submitted prompt rounds waiting for copies (not yet in a phraseset)
         result = await self.db.execute(
             select(func.count(Round.round_id))
-            .join(PhraseSet, PhraseSet.prompt_round_id == Round.round_id, isouter=True)
+            .select_from(Round)
+            .outerjoin(PhraseSet, PhraseSet.prompt_round_id == Round.round_id)
             .where(Round.round_type == "prompt")
             .where(Round.status == "submitted")
-            .where(PhraseSet.phraseset_id == None)  # Exclude prompts that already have phrasesets
+            .where(PhraseSet.phraseset_id.is_(None))  # Use proper NULL check
         )
         total_count = result.scalar() or 0
 
@@ -630,26 +631,27 @@ class RoundService:
         # Count submitted prompt rounds that belong to this player AND don't have phrasesets yet
         result = await self.db.execute(
             select(func.count(Round.round_id))
-            .join(PhraseSet, PhraseSet.prompt_round_id == Round.round_id, isouter=True)
+            .select_from(Round)
+            .outerjoin(PhraseSet, PhraseSet.prompt_round_id == Round.round_id)
             .where(Round.player_id == player_id)
             .where(Round.round_type == "prompt")
             .where(Round.status == "submitted")
-            .where(PhraseSet.phraseset_id == None)
+            .where(PhraseSet.phraseset_id.is_(None))  # Use proper NULL check
         )
         player_prompts_count = result.scalar() or 0
 
         # Count prompts this player already copied that are still waiting for a second copy
         result = await self.db.execute(
             select(func.count(Round.round_id))
-            .join(
+            .select_from(Round)
+            .outerjoin(
                 PhraseSet,
                 PhraseSet.prompt_round_id == Round.prompt_round_id,
-                isouter=True,
             )
             .where(Round.round_type == "copy")
             .where(Round.player_id == player_id)
             .where(Round.status == "submitted")
-            .where(PhraseSet.phraseset_id == None)
+            .where(PhraseSet.phraseset_id.is_(None))  # Use proper NULL check
         )
         already_copied_waiting = result.scalar() or 0
 
