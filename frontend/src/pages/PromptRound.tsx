@@ -7,14 +7,8 @@ import { Timer } from '../components/Timer';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { useTimer } from '../hooks/useTimer';
 import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
+import { promptRoundLogger } from '../utils/logger';
 import type { PromptState } from '../api/types';
-
-// Debug logging helper
-const log = (message: string, data?: any) => {
-  if (import.meta.env.DEV) {
-    console.log(`[PromptRound] ${message}`, data || '');
-  }
-};
 
 export const PromptRound: React.FC = () => {
   const { state, actions } = useGame();
@@ -33,8 +27,8 @@ export const PromptRound: React.FC = () => {
 
   // Log component mount and key state changes
   useEffect(() => {
-    log('Component mounted');
-    log('Initial state:', {
+    promptRoundLogger.debug('Component mounted');
+    promptRoundLogger.debug('Initial state:', {
       activeRound: activeRound ? {
         type: activeRound.round_type,
         id: activeRound.round_id,
@@ -50,7 +44,7 @@ export const PromptRound: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    log('Active round changed:', {
+    promptRoundLogger.debug('Active round changed:', {
       activeRound: activeRound ? {
         type: activeRound.round_type,
         id: activeRound.round_id,
@@ -60,7 +54,7 @@ export const PromptRound: React.FC = () => {
   }, [activeRound]);
 
   useEffect(() => {
-    log('Round data changed:', {
+    promptRoundLogger.debug('Round data changed:', {
       roundData: roundData ? {
         roundId: roundData.round_id,
         promptText: roundData.prompt_text,
@@ -88,8 +82,8 @@ export const PromptRound: React.FC = () => {
   // Redirect if no active prompt round
   useEffect(() => {
     if (!activeRound || activeRound.round_type !== 'prompt') {
-      log('❌ No active prompt round found');
-      log('Redirect logic:', {
+      promptRoundLogger.warn('No active prompt round found');
+      promptRoundLogger.debug('Redirect logic:', {
         hasActiveRound: !!activeRound,
         roundType: activeRound?.round_type,
         currentStep,
@@ -98,30 +92,30 @@ export const PromptRound: React.FC = () => {
 
       // Special case for tutorial
       if (currentStep === 'prompt_round') {
-        log('Tutorial mode: advancing to copy_round and returning to dashboard');
+        promptRoundLogger.debug('Tutorial mode: advancing to copy_round and returning to dashboard');
         advanceStep('copy_round').then(() => navigate('/dashboard'));
       } else {
-        log('Attempting to start new prompt round...');
+        promptRoundLogger.debug('Attempting to start new prompt round...');
         // Start a new round using GameContext action
         actions.startPromptRound()
           .then(() => {
-            log('✅ Successfully started new prompt round');
+            promptRoundLogger.info('✅ Successfully started new prompt round');
           })
           .catch((err) => {
-            log('❌ Failed to start new prompt round:', err);
-            log('Navigating back to dashboard');
+            promptRoundLogger.error('Failed to start new prompt round:', err);
+            promptRoundLogger.debug('Navigating back to dashboard');
             navigate('/dashboard');
           });
       }
     } else {
-      log('✅ Active prompt round found, staying on page');
+      promptRoundLogger.debug('✅ Active prompt round found, staying on page');
     }
   }, [activeRound, currentStep, advanceStep, navigate, actions]);
 
   // Redirect if already submitted
   useEffect(() => {
     if (roundData?.status === 'submitted') {
-      log('Round already submitted, redirecting to dashboard');
+      promptRoundLogger.debug('Round already submitted, redirecting to dashboard');
       navigate('/dashboard');
     }
   }, [roundData?.status, navigate]);
@@ -146,7 +140,7 @@ export const PromptRound: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    log('Form submitted, checking conditions...', {
+    promptRoundLogger.debug('Form submitted, checking conditions...', {
       hasPhrase: !!phrase.trim(),
       hasRoundData: !!roundData,
       isSubmitting,
@@ -154,23 +148,23 @@ export const PromptRound: React.FC = () => {
     });
     
     if (!phrase.trim() || !roundData || isSubmitting) {
-      log('Submission blocked - conditions not met');
+      promptRoundLogger.debug('Submission blocked - conditions not met');
       return;
     }
 
     // Check if round is already submitted
     if (roundData.status === 'submitted') {
-      log('Round already submitted, ignoring submission attempt');
+      promptRoundLogger.debug('Round already submitted, ignoring submission attempt');
       return;
     }
 
-    log('Starting submission process...', { phrase: phrase.trim(), roundId: roundData.round_id });
+    promptRoundLogger.info('Starting submission process...', { phrase: phrase.trim(), roundId: roundData.round_id });
     setIsSubmitting(true);
     setError(null);
 
     try {
       await apiClient.submitPhrase(roundData.round_id, phrase.trim());
-      log('✅ Phrase submitted successfully');
+      promptRoundLogger.info('✅ Phrase submitted successfully');
 
       // Update the round state immediately to prevent double submissions
       if (activeRound) {
@@ -181,7 +175,7 @@ export const PromptRound: React.FC = () => {
             status: 'submitted' as const
           }
         };
-        log('Updating local round state to submitted');
+        promptRoundLogger.debug('Updating local round state to submitted');
         actions.refreshDashboard(); // Trigger refresh to get latest state
       }
 
@@ -195,11 +189,11 @@ export const PromptRound: React.FC = () => {
 
       // Navigate after delay
       setTimeout(() => {
-        log('Navigating to dashboard after successful submission');
+        promptRoundLogger.info('Navigating to dashboard after successful submission');
         navigate('/dashboard');
       }, 1500);
     } catch (err) {
-      log('❌ Submission failed:', err);
+      promptRoundLogger.error('Submission failed:', err);
       setError(extractErrorMessage(err) || 'Unable to submit your phrase. Please check your connection and try again.');
       setIsSubmitting(false);
     }

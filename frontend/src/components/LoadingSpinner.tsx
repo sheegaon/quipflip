@@ -1,11 +1,5 @@
 import React from 'react';
-
-// Debug logging helper
-const log = (message: string, data?: any) => {
-  if (import.meta.env.DEV) {
-    console.log(`[LoadingSpinner] ${message}`, data || '');
-  }
-};
+import { loadingSpinnerLogger } from '../utils/logger';
 
 export interface LoadingState {
   isLoading: boolean;
@@ -38,7 +32,7 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   // Log when spinner is shown
   React.useEffect(() => {
     if (isLoading) {
-      log('Spinner shown', {
+      loadingSpinnerLogger.debug('Spinner shown', {
         type,
         message,
         isOffline,
@@ -65,7 +59,7 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   // Different loading messages based on context
   const getLoadingMessage = () => {
     if (message) {
-      log('Using custom message:', message);
+      loadingSpinnerLogger.debug('Using custom message:', message);
       return message;
     }
     

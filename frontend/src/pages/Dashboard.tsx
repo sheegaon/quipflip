@@ -5,15 +5,9 @@ import { useTutorial } from '../contexts/TutorialContext';
 import { Timer } from '../components/Timer';
 import { Header } from '../components/Header';
 import TutorialWelcome from '../components/Tutorial/TutorialWelcome';
+import { dashboardLogger } from '../utils/logger';
 
 const formatWaitingCount = (count: number): string => (count > 10 ? 'over 10' : count.toString());
-
-// Debug logging helper
-const log = (message: string, data?: any) => {
-  if (import.meta.env.DEV) {
-    console.log(`[Dashboard] ${message}`, data || '');
-  }
-};
 
 export const Dashboard: React.FC = () => {
   const { state, actions } = useGame();
@@ -26,8 +20,8 @@ export const Dashboard: React.FC = () => {
 
   // Log component mount and key state changes
   useEffect(() => {
-    log('Component mounted');
-    log('Initial state:', {
+    dashboardLogger.debug('Component mounted');
+    dashboardLogger.debug('Initial state:', {
       player: player ? `${player.username} (${player.player_id})` : 'null',
       activeRound: activeRound ? `${activeRound.round_type} (${activeRound.round_id})` : 'null',
       roundAvailability: roundAvailability || 'null'
@@ -35,19 +29,19 @@ export const Dashboard: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    log('Round availability changed:', roundAvailability);
+    dashboardLogger.debug('Round availability changed:', roundAvailability);
   }, [roundAvailability]);
 
   useEffect(() => {
     if (activeRound) {
-      log('Active round changed:', {
+      dashboardLogger.debug('Active round changed:', {
         id: activeRound.round_id,
         type: activeRound.round_type,
         status: activeRound.status,
         expiresAt: activeRound.expires_at
       });
     } else {
-      log('Active round cleared');
+      dashboardLogger.debug('Active round cleared');
     }
   }, [activeRound]);
 
@@ -113,12 +107,12 @@ export const Dashboard: React.FC = () => {
 
   const handleStartPrompt = async () => {
     if (startingRound) {
-      log('Ignoring prompt button click - already starting round:', startingRound);
+      dashboardLogger.debug('Ignoring prompt button click - already starting round:', startingRound);
       return;
     }
     
-    log('Starting prompt round...');
-    log('Player state before start:', {
+    dashboardLogger.info('Starting prompt round...');
+    dashboardLogger.debug('Player state before start:', {
       balance: player?.balance,
       outstandingPrompts: player?.outstanding_prompts,
       canPrompt: roundAvailability?.can_prompt
@@ -126,27 +120,27 @@ export const Dashboard: React.FC = () => {
     
     setStartingRound('prompt');
     try {
-      log('Calling actions.startPromptRound()...');
+      dashboardLogger.debug('Calling actions.startPromptRound()...');
       await actions.startPromptRound();
-      log('✅ Prompt round started successfully, navigating to /prompt');
+      dashboardLogger.info('✅ Prompt round started successfully, navigating to /prompt');
       navigate('/prompt');
     } catch (err) {
-      log('❌ Failed to start prompt round:', err);
+      dashboardLogger.error('❌ Failed to start prompt round:', err);
       console.error('Failed to start prompt round:', err);
     } finally {
       setStartingRound(null);
-      log('Prompt round start process completed');
+      dashboardLogger.debug('Prompt round start process completed');
     }
   };
 
   const handleStartCopy = async () => {
     if (startingRound) {
-      log('Ignoring copy button click - already starting round:', startingRound);
+      dashboardLogger.debug('Ignoring copy button click - already starting round:', startingRound);
       return;
     }
     
-    log('Starting copy round...');
-    log('Player state before start:', {
+    dashboardLogger.info('Starting copy round...');
+    dashboardLogger.debug('Player state before start:', {
       balance: player?.balance,
       canCopy: roundAvailability?.can_copy,
       promptsWaiting: roundAvailability?.prompts_waiting,
@@ -155,27 +149,27 @@ export const Dashboard: React.FC = () => {
     
     setStartingRound('copy');
     try {
-      log('Calling actions.startCopyRound()...');
+      dashboardLogger.debug('Calling actions.startCopyRound()...');
       await actions.startCopyRound();
-      log('✅ Copy round started successfully, navigating to /copy');
+      dashboardLogger.info('✅ Copy round started successfully, navigating to /copy');
       navigate('/copy');
     } catch (err) {
-      log('❌ Failed to start copy round:', err);
+      dashboardLogger.error('❌ Failed to start copy round:', err);
       console.error('Failed to start copy round:', err);
     } finally {
       setStartingRound(null);
-      log('Copy round start process completed');
+      dashboardLogger.debug('Copy round start process completed');
     }
   };
 
   const handleStartVote = async () => {
     if (startingRound) {
-      log('Ignoring vote button click - already starting round:', startingRound);
+      dashboardLogger.debug('Ignoring vote button click - already starting round:', startingRound);
       return;
     }
     
-    log('Starting vote round...');
-    log('Player state before start:', {
+    dashboardLogger.info('Starting vote round...');
+    dashboardLogger.debug('Player state before start:', {
       balance: player?.balance,
       canVote: roundAvailability?.can_vote,
       phrasesetsWaiting: roundAvailability?.phrasesets_waiting
@@ -183,16 +177,16 @@ export const Dashboard: React.FC = () => {
     
     setStartingRound('vote');
     try {
-      log('Calling actions.startVoteRound()...');
+      dashboardLogger.debug('Calling actions.startVoteRound()...');
       await actions.startVoteRound();
-      log('✅ Vote round started successfully, navigating to /vote');
+      dashboardLogger.info('✅ Vote round started successfully, navigating to /vote');
       navigate('/vote');
     } catch (err) {
-      log('❌ Failed to start vote round:', err);
+      dashboardLogger.error('❌ Failed to start vote round:', err);
       console.error('Failed to start vote round:', err);
     } finally {
       setStartingRound(null);
-      log('Vote round start process completed');
+      dashboardLogger.debug('Vote round start process completed');
     }
   };
 
