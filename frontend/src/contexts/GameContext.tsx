@@ -27,8 +27,8 @@ interface GameState {
 interface GameActions {
   startSession: (username: string, tokens: AuthTokenResponse) => void;
   logout: () => Promise<void>;
-  refreshDashboard: () => Promise<void>;
-  refreshBalance: () => Promise<void>;
+  refreshDashboard: (signal?: AbortSignal) => Promise<void>;
+  refreshBalance: (signal?: AbortSignal) => Promise<void>;
   claimBonus: () => Promise<void>;
   clearError: () => void;
   navigateAfterDelay: (path: string, delay?: number) => void;

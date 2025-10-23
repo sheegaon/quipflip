@@ -7,6 +7,7 @@ import { Timer } from '../components/Timer';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { useTimer } from '../hooks/useTimer';
 import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
+import type { PromptState } from '../api/types';
 
 export const PromptRound: React.FC = () => {
   const { state } = useGame();
@@ -20,7 +21,7 @@ export const PromptRound: React.FC = () => {
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const roundData = activeRound?.round_type === 'prompt' ? activeRound.state : null;
+  const roundData = activeRound?.round_type === 'prompt' ? activeRound.state as PromptState : null;
   const { isExpired } = useTimer(roundData?.expires_at || null);
 
   // Load existing feedback

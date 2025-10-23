@@ -10,7 +10,7 @@ const formatWaitingCount = (count: number): string => (count > 10 ? 'over 10' : 
 
 export const Dashboard: React.FC = () => {
   const { state, actions } = useGame();
-  const { player, activeRound, pendingResults, phrasesetSummary, roundAvailability } = state;
+  const { player, activeRound, phrasesetSummary, roundAvailability } = state;
   const { refreshDashboard } = actions;
   const { startTutorial, skipTutorial, advanceStep } = useTutorial();
   const navigate = useNavigate();
@@ -86,10 +86,6 @@ export const Dashboard: React.FC = () => {
 
   const handleStartVote = () => {
     navigate('/vote');
-  };
-
-  const handleViewResults = () => {
-    navigate('/results');
   };
 
   const handleClaimResults = () => {

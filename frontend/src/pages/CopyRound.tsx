@@ -7,6 +7,7 @@ import { Timer } from '../components/Timer';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { useTimer } from '../hooks/useTimer';
 import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
+import type { CopyState } from '../api/types';
 
 export const CopyRound: React.FC = () => {
   const { state } = useGame();
@@ -18,7 +19,7 @@ export const CopyRound: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const roundData = activeRound?.round_type === 'copy' ? activeRound.state : null;
+  const roundData = activeRound?.round_type === 'copy' ? activeRound.state as CopyState : null;
   const { isExpired } = useTimer(roundData?.expires_at || null);
 
   // Redirect if no active copy round

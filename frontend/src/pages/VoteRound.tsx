@@ -6,7 +6,7 @@ import { Timer } from '../components/Timer';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { useTimer } from '../hooks/useTimer';
 import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
-import type { VoteResponse } from '../api/types';
+import type { VoteResponse, VoteState } from '../api/types';
 
 export const VoteRound: React.FC = () => {
   const { state } = useGame();
@@ -17,7 +17,7 @@ export const VoteRound: React.FC = () => {
   const [voteResult, setVoteResult] = useState<VoteResponse | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const roundData = activeRound?.round_type === 'vote' ? activeRound.state : null;
+  const roundData = activeRound?.round_type === 'vote' ? activeRound.state as VoteState : null;
   const { isExpired } = useTimer(roundData?.expires_at || null);
 
   // Redirect if no active vote round
