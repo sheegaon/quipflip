@@ -1,4 +1,5 @@
 import axios, { AxiosError, type AxiosRequestConfig } from 'axios';
+import { getContextualErrorMessage, getActionErrorMessage } from '../utils/errorMessages';
 import type {
   Player,
   CreatePlayerResponse,
@@ -54,165 +55,15 @@ const logApi = (
   }
 };
 
-// Helper function to extract meaningful error messages
-const extractErrorMessage = (error: any): string => {
-  if (typeof error === 'string') {
-    return error;
+// Helper function to extract meaningful error messages using enhanced localization
+const extractErrorMessage = (error: any, action?: string): string => {
+  // Use the new contextual error message system
+  if (action) {
+    return getActionErrorMessage(action, error);
   }
-
-  // If it's an Error object, use its message
-  if (error instanceof Error) {
-    // Handle network errors with user-friendly messages
-    if (error.name === 'NetworkError' || error.message.includes('fetch')) {
-      return 'Connection problem. Please check your internet and try again.';
-    }
-    if (error.name === 'TimeoutError' || error.message.includes('timeout')) {
-      return 'Request timed out. Please try again in a moment.';
-    }
-    return error.message;
-  }
-
-  // If it's an object with a message property, use that
-  if (error && typeof error === 'object') {
-    if (error.detail) {
-      const detail = error.detail;
-      if (Array.isArray(detail)) {
-        const firstError = detail[0];
-        if (firstError) {
-          if (typeof firstError === 'string') {
-            return firstError;
-          }
-          if (
-            typeof firstError === 'object' &&
-            'msg' in firstError &&
-            typeof firstError.msg === 'string'
-          ) {
-            return firstError.msg;
-          }
-        }
-        return 'Please check your input and try again.';
-      }
-      if (typeof detail === 'string') {
-        // Handle specific backend error codes with user-friendly messages
-        if (detail === 'email_taken') {
-          return 'This email is already registered. Try logging in instead.';
-        }
-        if (detail === 'username_generation_failed') {
-          return 'Unable to create a unique username. Please try again or contact support.';
-        }
-        if (detail === 'invalid_username') {
-          return 'The username format is invalid. Please try again.';
-        }
-        
-        // Round availability errors
-        if (detail === 'no_prompts_available') {
-          return 'No prompts are available for copy rounds right now. Try a prompt round or check back later.';
-        }
-        if (detail === 'no_wordsets_available') {
-          return 'No phrasesets are available for voting right now. Try a prompt or copy round first.';
-        }
-        
-        // Authentication errors
-        if (detail === 'missing_credentials') {
-          return 'Please log in to continue.';
-        }
-        if (detail === 'invalid_authorization_header') {
-          return 'Authentication error. Please log in again.';
-        }
-        if (detail === 'invalid_token') {
-          return 'Your session is invalid. Please log in again.';
-        }
-        if (detail === 'token_expired') {
-          return 'Your session has expired. Please log in again.';
-        }
-        if (detail === 'missing_refresh_token') {
-          return 'Session expired. Please log in again.';
-        }
-        
-        // Vote round errors
-        if (detail === 'No active vote round') {
-          return 'No active voting round found. Please start a new vote round.';
-        }
-        
-        // Improve other common backend error messages
-        if (detail.includes('already exists')) {
-          return 'This email is already registered. Try logging in instead.';
-        }
-        if (detail.includes('not found') || detail.includes('invalid credentials')) {
-          return 'Email or password is incorrect. Please try again.';
-        }
-        if (detail.includes('insufficient funds') || detail.includes('balance')) {
-          return 'Not enough coins for this round. Claim your daily bonus or complete more rounds.';
-        }
-        if (detail.includes('round not found') || detail.includes('expired')) {
-          return 'This round has expired. Please start a new round.';
-        }
-        if (detail.includes('already submitted')) {
-          return 'You\'ve already submitted for this round.';
-        }
-        return detail;
-      }
-      if (detail && typeof detail === 'object') {
-        // Handle structured error objects (like phrase submission errors)
-        if (detail.error && detail.message) {
-          const errorType = detail.error;
-          const message = detail.message;
-          
-          if (errorType === 'invalid_phrase') {
-            return `Invalid phrase: ${message}. Please try a different phrase.`;
-          }
-          if (errorType === 'duplicate_phrase') {
-            return `This phrase has already been used: ${message}. Please try something different.`;
-          }
-          if (errorType === 'expired') {
-            return `This round has expired: ${message}. Please start a new round.`;
-          }
-          
-          // Fallback to the message if we don't recognize the error type
-          return message || 'Please check your input and try again.';
-        }
-        
-        if ('msg' in detail && typeof detail.msg === 'string') {
-          return detail.msg;
-        }
-        if ('message' in detail && typeof detail.message === 'string') {
-          return detail.message;
-        }
-      }
-    }
-
-    // Handle HTTP status-specific errors
-    if (error.status) {
-      switch (error.status) {
-        case 401:
-          return 'Your session has expired. Please log in again.';
-        case 403:
-          return 'You don\'t have permission to do that.';
-        case 404:
-          return 'The requested item could not be found.';
-        case 409:
-          return 'This action conflicts with current game state. Please refresh and try again.';
-        case 422:
-          return 'Please check your input and try again.';
-        case 429:
-          return 'Too many requests. Please wait a moment and try again.';
-        case 500:
-          return 'Server error. Please try again in a few moments.';
-        case 503:
-          return 'Service temporarily unavailable. Please try again later.';
-      }
-    }
-
-    if (error.error && error.message) {
-      return error.message;
-    }
-
-    if (error.message) {
-      return error.message;
-    }
-  }
-
-  return String(error);
+  
+  const contextualError = getContextualErrorMessage(error);
+  return contextualError.message;
 };
 
 const ACCESS_TOKEN_KEY = 'quipflip_access_token';

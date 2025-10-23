@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import apiClient, { extractErrorMessage } from '../api/client';
+import apiClient from '../api/client';
+import { useSmartPolling, PollConfigs } from '../utils/smartPolling';
+import { getActionErrorMessage } from '../utils/errorMessages';
 import type {
   Player,
   ActiveRound,
@@ -16,9 +18,9 @@ interface GameState {
   username: string | null;
   player: Player | null;
   activeRound: ActiveRound | null;
-  pendingResults: PendingResult[];
+  pendingResults: PendingResult[]; 
   phrasesetSummary: PhrasesetDashboardSummary | null;
-  unclaimedResults: UnclaimedResult[];
+  unclaimedResults: UnclaimedResult[]; 
   roundAvailability: RoundAvailability | null;
   loading: boolean;
   error: string | null;
@@ -52,6 +54,9 @@ const GameContext = createContext<GameContextType | undefined>(undefined);
 export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Navigation hook - use directly since we're inside Router
   const navigate = useNavigate();
+  
+  // Smart polling hook
+  const { startPoll, stopPoll, triggerPoll } = useSmartPolling();
   
   // State
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -92,6 +97,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch (err) {
         console.warn('Failed to logout cleanly', err);
       } finally {
+        // Stop all polling
+        stopPoll('dashboard');
+        stopPoll('balance');
+        
         apiClient.clearSession();
         setIsAuthenticated(false);
         setUsername(null);
@@ -125,19 +134,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch (err) {
         if (err instanceof Error && err.name === 'CanceledError') return;
 
-        const errorMessage = extractErrorMessage(err);
-        setError(errorMessage || 'Unable to load dashboard data. Please refresh the page.');
+        const errorMessage = getActionErrorMessage('load-dashboard', err);
+        setError(errorMessage);
 
         // Handle auth errors
-        if (errorMessage) {
-          const normalized = errorMessage.toLowerCase();
-          if (
-            normalized.includes('unauthorized') ||
-            normalized.includes('token') ||
-            normalized.includes('credentials')
-          ) {
-            actionsRef.current.logout();
-          }
+        if (errorMessage.toLowerCase().includes('session') || errorMessage.toLowerCase().includes('login')) {
+          actionsRef.current.logout();
         }
       }
     },
@@ -156,19 +158,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch (err) {
         if (err instanceof Error && err.name === 'CanceledError') return;
 
-        const errorMessage = extractErrorMessage(err);
-        setError(errorMessage || 'Unable to update your balance. Please refresh the page.');
-
-        // Handle auth errors
-        if (errorMessage) {
-          const normalized = errorMessage.toLowerCase();
-          if (
-            normalized.includes('unauthorized') ||
-            normalized.includes('token') ||
-            normalized.includes('credentials')
-          ) {
-            actionsRef.current.logout();
-          }
+        const errorMessage = getActionErrorMessage('refresh-balance', err);
+        
+        // Only show balance refresh errors if they're auth-related
+        if (errorMessage.toLowerCase().includes('session') || errorMessage.toLowerCase().includes('login')) {
+          setError(errorMessage);
+          actionsRef.current.logout();
         }
       }
     },
@@ -179,19 +174,17 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         setLoading(true);
         await apiClient.claimDailyBonus();
-        await actionsRef.current.refreshDashboard();
+        
+        // Trigger immediate dashboard refresh
+        triggerPoll('dashboard');
+        
         setError(null);
       } catch (err) {
-        const message = extractErrorMessage(err) || 'Unable to claim your daily bonus right now. You may have already claimed it today, or there may be a temporary issue.';
+        const message = getActionErrorMessage('claim-bonus', err);
         setError(message);
 
         // Handle auth errors
-        const normalized = message.toLowerCase();
-        if (
-          normalized.includes('unauthorized') ||
-          normalized.includes('token') ||
-          normalized.includes('credentials')
-        ) {
+        if (message.toLowerCase().includes('session') || message.toLowerCase().includes('login')) {
           actionsRef.current.logout();
         }
 
@@ -227,9 +220,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             status: 'active',
           },
         });
+        
+        // Trigger immediate dashboard refresh to update availability
+        triggerPoll('dashboard');
       } catch (err) {
-        const errorMessage = extractErrorMessage(err);
-        setError(errorMessage || 'Unable to start prompt round. Please try again.');
+        const errorMessage = getActionErrorMessage('start-prompt', err);
+        setError(errorMessage);
         throw err;
       }
     },
@@ -253,9 +249,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             status: 'active',
           },
         });
+        
+        triggerPoll('dashboard');
       } catch (err) {
-        const errorMessage = extractErrorMessage(err);
-        setError(errorMessage || 'Unable to start copy round. Please try again.');
+        const errorMessage = getActionErrorMessage('start-copy', err);
+        setError(errorMessage);
         throw err;
       }
     },
@@ -279,9 +277,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             status: 'active',
           },
         });
+        
+        triggerPoll('dashboard');
       } catch (err) {
-        const errorMessage = extractErrorMessage(err);
-        setError(errorMessage || 'Unable to start vote round. Please try again.');
+        const errorMessage = getActionErrorMessage('start-vote', err);
+        setError(errorMessage);
         throw err;
       }
     },
@@ -293,8 +293,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const data = await apiClient.getPhrasesetResults(phrasesetId);
         return data;
       } catch (err) {
-        const errorMessage = extractErrorMessage(err);
-        setError(errorMessage || 'Unable to get phraseset results. Please try again.');
+        const errorMessage = getActionErrorMessage('load-results', err);
+        setError(errorMessage);
         throw err;
       }
     },
@@ -306,8 +306,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const data = await apiClient.getPlayerPhrasesets(params);
         return data;
       } catch (err) {
-        const errorMessage = extractErrorMessage(err);
-        setError(errorMessage || 'Unable to get player phrasesets. Please try again.');
+        const errorMessage = getActionErrorMessage('load-tracking', err);
+        setError(errorMessage);
         throw err;
       }
     },
@@ -319,8 +319,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const data = await apiClient.getPhrasesetDetails(phrasesetId);
         return data;
       } catch (err) {
-        const errorMessage = extractErrorMessage(err);
-        setError(errorMessage || 'Unable to get phraseset details. Please try again.');
+        const errorMessage = getActionErrorMessage('load-details', err);
+        setError(errorMessage);
         throw err;
       }
     },
@@ -330,11 +330,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       try {
         await apiClient.claimPhrasesetPrize(phrasesetId);
-        await actionsRef.current.refreshDashboard();
+        
+        // Trigger immediate dashboard refresh to update balance
+        triggerPoll('dashboard');
+        
         setError(null);
       } catch (err) {
-        const errorMessage = extractErrorMessage(err);
-        setError(errorMessage || 'Unable to claim phraseset prize. Please try again.');
+        const errorMessage = getActionErrorMessage('claim-prize', err);
+        setError(errorMessage);
         throw err;
       }
     },
@@ -346,108 +349,37 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const data = await apiClient.getStatistics(signal);
         return data;
       } catch (err) {
-        const errorMessage = extractErrorMessage(err);
-        setError(errorMessage || 'Unable to get statistics. Please try again.');
+        const errorMessage = getActionErrorMessage('load-statistics', err);
+        setError(errorMessage);
         throw err;
       }
     },
   });
 
-  // Update actions ref closures when dependencies change
+  // Set up smart polling when authenticated
   useEffect(() => {
-    actionsRef.current.refreshDashboard = async (signal?: AbortSignal) => {
-      if (!isAuthenticated) return;
+    if (!isAuthenticated) {
+      stopPoll('dashboard');
+      stopPoll('balance');
+      return;
+    }
 
-      try {
-        const data = await apiClient.getDashboardData(signal);
+    // Start dashboard polling with smart intervals
+    startPoll(PollConfigs.DASHBOARD, async () => {
+      await actionsRef.current.refreshDashboard();
+    });
 
-        setPlayer(data.player);
-        if (data.player.username && data.player.username !== username) {
-          apiClient.setSession(data.player.username);
-          setUsername(data.player.username);
-        }
-        setActiveRound(data.current_round);
-        setPendingResults(data.pending_results);
-        setPhrasesetSummary(data.phraseset_summary);
-        setUnclaimedResults(data.unclaimed_results);
-        setRoundAvailability(data.round_availability);
-        setError(null);
-      } catch (err) {
-        if (err instanceof Error && err.name === 'CanceledError') return;
+    // Start balance polling with longer intervals
+    startPoll(PollConfigs.BALANCE_REFRESH, async () => {
+      await actionsRef.current.refreshBalance();
+    });
 
-        const errorMessage = extractErrorMessage(err);
-        setError(errorMessage || 'Unable to load dashboard data. Please refresh the page.');
-
-        if (errorMessage) {
-          const normalized = errorMessage.toLowerCase();
-          if (
-            normalized.includes('unauthorized') ||
-            normalized.includes('token') ||
-            normalized.includes('credentials')
-          ) {
-            actionsRef.current.logout();
-          }
-        }
-      }
+    // Cleanup function
+    return () => {
+      stopPoll('dashboard');
+      stopPoll('balance');
     };
-
-    actionsRef.current.refreshBalance = async (signal?: AbortSignal) => {
-      if (!isAuthenticated) return;
-
-      try {
-        const data = await apiClient.getBalance(signal);
-        setPlayer(data);
-        if (data.username && data.username !== username) {
-          apiClient.setSession(data.username);
-          setUsername(data.username);
-        }
-        setError(null);
-      } catch (err) {
-        if (err instanceof Error && err.name === 'CanceledError') return;
-
-        const errorMessage = extractErrorMessage(err);
-        setError(errorMessage || 'Unable to update your balance. Please refresh the page.');
-
-        if (errorMessage) {
-          const normalized = errorMessage.toLowerCase();
-          if (
-            normalized.includes('unauthorized') ||
-            normalized.includes('token') ||
-            normalized.includes('credentials')
-          ) {
-            actionsRef.current.logout();
-          }
-        }
-      }
-    };
-
-    actionsRef.current.claimBonus = async () => {
-      if (!isAuthenticated) return;
-
-      try {
-        setLoading(true);
-        await apiClient.claimDailyBonus();
-        await actionsRef.current.refreshDashboard();
-        setError(null);
-      } catch (err) {
-        const message = extractErrorMessage(err) || 'Unable to claim your daily bonus right now. You may have already claimed it today, or there may be a temporary issue.';
-        setError(message);
-
-        const normalized = message.toLowerCase();
-        if (
-          normalized.includes('unauthorized') ||
-          normalized.includes('token') ||
-          normalized.includes('credentials')
-        ) {
-          actionsRef.current.logout();
-        }
-
-        throw err;
-      } finally {
-        setLoading(false);
-      }
-    };
-  }, [isAuthenticated, username]);
+  }, [isAuthenticated, startPoll, stopPoll]);
 
   // Initial dashboard load
   useEffect(() => {
@@ -457,19 +389,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     actionsRef.current.refreshDashboard(controller.signal);
 
     return () => controller.abort();
-  }, [isAuthenticated]);
-
-  // Dashboard polling interval
-  useEffect(() => {
-    if (!isAuthenticated) return;
-
-    const dashboardInterval = setInterval(() => {
-      actionsRef.current.refreshDashboard();
-    }, 60_000);
-
-    return () => {
-      clearInterval(dashboardInterval);
-    };
   }, [isAuthenticated]);
 
   const state: GameState = {
