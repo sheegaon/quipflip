@@ -39,16 +39,22 @@ export const Dashboard: React.FC = () => {
     return `${activeRound.round_type.charAt(0).toUpperCase()}${activeRound.round_type.slice(1)}`;
   }, [activeRound?.round_type]);
 
+  // Store refreshDashboard in a ref to avoid dependency issues
+  const refreshDashboardRef = React.useRef(refreshDashboard);
+  React.useEffect(() => {
+    refreshDashboardRef.current = refreshDashboard;
+  }, [refreshDashboard]);
+
   // Force refresh dashboard data when component mounts
   useEffect(() => {
-    refreshDashboard();
-  }, [refreshDashboard]);
+    refreshDashboardRef.current();
+  }, []);
 
   // Refresh when page becomes visible (GameContext already loads data on mount)
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        refreshDashboard();
+        refreshDashboardRef.current();
       }
     };
 
@@ -57,7 +63,7 @@ export const Dashboard: React.FC = () => {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [refreshDashboard]);
+  }, []);
 
   useEffect(() => {
     if (!activeRound?.round_id) {

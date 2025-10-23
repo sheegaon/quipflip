@@ -538,6 +538,15 @@ class VoteService:
         for role in ["original", "copy1", "copy2"]:
             payout_info = payouts[role]
             if payout_info["payout"] > 0:
+                # Verify player exists before creating transaction
+                player_exists = await self.db.get(Player, payout_info["player_id"])
+                if not player_exists:
+                    logger.warning(
+                        f"Skipping prize payout for {role}: player {payout_info['player_id']} not found. "
+                        f"This suggests orphaned data in rounds table."
+                    )
+                    continue
+
                 await transaction_service.create_transaction(
                     payout_info["player_id"],
                     payout_info["payout"],

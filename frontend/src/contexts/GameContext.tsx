@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import apiClient, { extractErrorMessage } from '../api/client';
 import type {
   Player,
@@ -166,26 +166,34 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [handleAuthError, isAuthenticated, refreshDashboard]);
 
+  // Use a ref to store the latest refreshDashboard to avoid dependency issues
+  const refreshDashboardRef = useRef(refreshDashboard);
+  useEffect(() => {
+    refreshDashboardRef.current = refreshDashboard;
+  }, [refreshDashboard]);
+
+  // Initial dashboard load
   useEffect(() => {
     if (!isAuthenticated) return;
 
     const controller = new AbortController();
-    refreshDashboard(controller.signal);
+    refreshDashboardRef.current(controller.signal);
 
     return () => controller.abort();
-  }, [isAuthenticated, refreshDashboard]);
+  }, [isAuthenticated]);
 
+  // Dashboard polling interval
   useEffect(() => {
     if (!isAuthenticated) return;
 
     const dashboardInterval = setInterval(() => {
-      refreshDashboard();
+      refreshDashboardRef.current();
     }, 60_000);
 
     return () => {
       clearInterval(dashboardInterval);
     };
-  }, [isAuthenticated, refreshDashboard]);
+  }, [isAuthenticated]);
 
   const value: GameContextType = {
     isAuthenticated,
