@@ -17,14 +17,27 @@ export const Quests: React.FC = () => {
   }
 
   const handleClaimBonus = async () => {
-    if (isClaiming) return;
+    console.log('🎁 Claim bonus button clicked');
+    console.log('🔍 claimBonus function:', claimBonus);
+    console.log('🔍 claimBonus function type:', typeof claimBonus);
+    
+    if (isClaiming) {
+      console.log('❌ Already claiming, ignoring click');
+      return;
+    }
+    
+    console.log('✅ Starting claim process...');
     setIsClaiming(true);
     try {
+      console.log('📞 Calling claimBonus action...');
       await claimBonus();
+      console.log('✅ Claim bonus completed successfully');
     } catch (err) {
+      console.error('❌ Claim bonus failed:', err);
       // Error is already handled in context
     } finally {
       setIsClaiming(false);
+      console.log('🔄 Claim process finished, resetting state');
     }
   };
 

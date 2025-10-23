@@ -213,7 +213,17 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     },
 
     refreshBalance: async (signal?: AbortSignal) => {
-      if (!isAuthenticated) return;
+      // Check token directly instead of relying on stale state
+      const token = await apiClient.ensureAccessToken();
+      if (!token) {
+        setIsAuthenticated(false);
+        return;
+      }
+
+      // Ensure authentication state is correct
+      if (!isAuthenticated) {
+        setIsAuthenticated(true);
+      }
 
       try {
         const data = await apiClient.getBalance(signal);
@@ -237,27 +247,52 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     },
 
     claimBonus: async () => {
-      if (!isAuthenticated) return;
+      console.log('🎯 GameContext claimBonus called');
+      
+      // Check token directly instead of relying on stale state
+      const token = await apiClient.ensureAccessToken();
+      console.log('🔍 Token check for claim bonus:', { hasToken: !!token });
+      
+      if (!token) {
+        console.log('❌ No valid token, aborting claim bonus');
+        setIsAuthenticated(false);
+        return;
+      }
+
+      // Ensure authentication state is correct
+      if (!isAuthenticated) {
+        console.log('🔄 Setting authenticated to true after token check');
+        setIsAuthenticated(true);
+      }
 
       try {
+        console.log('🔄 Setting loading to true');
         setLoading(true);
+        console.log('📞 Calling apiClient.claimDailyBonus()...');
         await apiClient.claimDailyBonus();
+        console.log('✅ API call successful');
         
         // Trigger immediate dashboard refresh
+        console.log('🔄 Triggering dashboard refresh');
         triggerPoll('dashboard');
         
         setError(null);
+        console.log('✅ Claim bonus completed successfully');
       } catch (err) {
+        console.error('❌ Claim bonus API call failed:', err);
         const message = getActionErrorMessage('claim-bonus', err);
+        console.log('📝 Error message:', message);
         setError(message);
 
         // Handle auth errors
         if (message.toLowerCase().includes('session') || message.toLowerCase().includes('login')) {
+          console.log('🚪 Auth error detected, logging out');
           actionsRef.current.logout();
         }
 
         throw err;
       } finally {
+        console.log('🔄 Setting loading to false');
         setLoading(false);
       }
     },
@@ -458,7 +493,17 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     },
 
     getPhrasesetResults: async (phrasesetId: string) => {
-      if (!isAuthenticated) return null;
+      // Check token directly instead of relying on stale state
+      const token = await apiClient.ensureAccessToken();
+      if (!token) {
+        setIsAuthenticated(false);
+        return null;
+      }
+
+      // Ensure authentication state is correct
+      if (!isAuthenticated) {
+        setIsAuthenticated(true);
+      }
 
       try {
         const data = await apiClient.getPhrasesetResults(phrasesetId);
@@ -471,7 +516,17 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     },
 
     getPlayerPhrasesets: async (params: any) => {
-      if (!isAuthenticated) return { phrasesets: [], total: 0, has_more: false };
+      // Check token directly instead of relying on stale state
+      const token = await apiClient.ensureAccessToken();
+      if (!token) {
+        setIsAuthenticated(false);
+        return { phrasesets: [], total: 0, has_more: false };
+      }
+
+      // Ensure authentication state is correct
+      if (!isAuthenticated) {
+        setIsAuthenticated(true);
+      }
 
       try {
         const data = await apiClient.getPlayerPhrasesets(params);
@@ -484,7 +539,17 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     },
 
     getPhrasesetDetails: async (phrasesetId: string) => {
-      if (!isAuthenticated) return null;
+      // Check token directly instead of relying on stale state
+      const token = await apiClient.ensureAccessToken();
+      if (!token) {
+        setIsAuthenticated(false);
+        return null;
+      }
+
+      // Ensure authentication state is correct
+      if (!isAuthenticated) {
+        setIsAuthenticated(true);
+      }
 
       try {
         const data = await apiClient.getPhrasesetDetails(phrasesetId);
@@ -497,7 +562,17 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     },
 
     claimPhrasesetPrize: async (phrasesetId: string) => {
-      if (!isAuthenticated) return;
+      // Check token directly instead of relying on stale state
+      const token = await apiClient.ensureAccessToken();
+      if (!token) {
+        setIsAuthenticated(false);
+        return;
+      }
+
+      // Ensure authentication state is correct
+      if (!isAuthenticated) {
+        setIsAuthenticated(true);
+      }
 
       try {
         await apiClient.claimPhrasesetPrize(phrasesetId);
@@ -514,7 +589,17 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     },
 
     getStatistics: async (signal?: AbortSignal) => {
-      if (!isAuthenticated) return null;
+      // Check token directly instead of relying on stale state
+      const token = await apiClient.ensureAccessToken();
+      if (!token) {
+        setIsAuthenticated(false);
+        return null;
+      }
+
+      // Ensure authentication state is correct
+      if (!isAuthenticated) {
+        setIsAuthenticated(true);
+      }
 
       try {
         const data = await apiClient.getStatistics(signal);
