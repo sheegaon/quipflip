@@ -289,7 +289,7 @@ class SmartPollingManager {
   }
 
   cleanup = () => {
-    this.polls.forEach((poll, key) => {
+    this.polls.forEach((_, key) => {
       this.stopPoll(key);
     });
     this.polls.clear();

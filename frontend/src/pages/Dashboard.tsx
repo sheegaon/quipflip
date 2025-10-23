@@ -76,16 +76,31 @@ export const Dashboard: React.FC = () => {
     // Background polling will refresh data automatically
   }, []);
 
-  const handleStartPrompt = () => {
-    navigate('/prompt');
+  const handleStartPrompt = async () => {
+    try {
+      await actions.startPromptRound();
+      navigate('/prompt');
+    } catch (err) {
+      // Error is handled in GameContext and will show in UI
+    }
   };
 
-  const handleStartCopy = () => {
-    navigate('/copy');
+  const handleStartCopy = async () => {
+    try {
+      await actions.startCopyRound();
+      navigate('/copy');
+    } catch (err) {
+      // Error is handled in GameContext and will show in UI
+    }
   };
 
-  const handleStartVote = () => {
-    navigate('/vote');
+  const handleStartVote = async () => {
+    try {
+      await actions.startVoteRound();
+      navigate('/vote');
+    } catch (err) {
+      // Error is handled in GameContext and will show in UI
+    }
   };
 
   const handleClaimResults = () => {

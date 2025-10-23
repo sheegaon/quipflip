@@ -11,6 +11,7 @@ import { CopyRound } from './pages/CopyRound';
 import { VoteRound } from './pages/VoteRound';
 import { Results } from './pages/Results';
 import { Tracking } from './pages/Tracking';
+import { Quests } from './pages/Quests';
 import Statistics from './pages/Statistics';
 import { ErrorNotification } from './components/ErrorNotification';
 import TutorialOverlay from './components/Tutorial/TutorialOverlay';
@@ -81,6 +82,14 @@ const AppRoutes: React.FC = () => {
           element={
             <ProtectedRoute>
               <Tracking />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/quests"
+          element={
+            <ProtectedRoute>
+              <Quests />
             </ProtectedRoute>
           }
         />

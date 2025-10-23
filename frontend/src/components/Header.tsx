@@ -138,29 +138,26 @@ export const Header: React.FC = () => {
 
           {/* Right: Daily Bonus + Flipcoins + Logout */}
           <div className="flex items-center gap-1 md:gap-4">
-            {/* Daily Bonus Treasure Chest */}
-            {player.daily_bonus_available && (
-              <button
-                onClick={handleClaimBonus}
-                disabled={isClaiming}
-                className="relative group"
-                title={`Claim your $${player.daily_bonus_amount} daily bonus!`}
-              >
-                <TreasureChestIcon
-                  className="w-7 h-7 md:w-10 md:h-10 transition-transform group-hover:scale-110"
-                  isAvailable={true}
-                />
-              </button>
-            )}
-              {/* Flipcoin Balance */}
-              <div className="flex items-center gap-2 tutorial-balance">
+            {/* Treasure Chest - Always visible, navigates to quests page */}
+            <button
+              onClick={() => navigate('/quests')}
+              className="relative group"
+              title={player.daily_bonus_available ? "View available rewards" : "No rewards available"}
+            >
+              <TreasureChestIcon
+                className="w-7 h-7 md:w-10 md:h-10 transition-transform group-hover:scale-110"
+                isAvailable={player.daily_bonus_available}
+              />
+            </button>
+            {/* Flipcoin Balance */}
+            <div className="flex items-center gap-2 tutorial-balance">
               <img src="/flipcoin.png" alt="Flipcoin" className="w-6 h-6 md:w-10 md:h-10" />
               <BalanceFlipper
                 value={player.balance}
                 className="text-xl md:text-4xl font-display font-bold text-quip-turquoise"
               />
             </div>
-              {/* Logout Button */}
+            {/* Logout Button */}
             <button onClick={logout} className="text-quip-teal hover:text-quip-turquoise" title="Logout">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 md:h-9 w-6 md:w-9" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
