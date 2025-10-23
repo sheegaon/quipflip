@@ -90,7 +90,18 @@ export const Dashboard: React.FC = () => {
 
     const expiresAt = new Date(activeRound.expires_at).getTime();
     const now = Date.now();
-    setIsRoundExpired(expiresAt <= now);
+    const isExpired = expiresAt <= now;
+    
+    dashboardLogger.debug('Round expiration check:', {
+      roundId: activeRound.round_id,
+      expiresAt: activeRound.expires_at,
+      expiresAtMs: expiresAt,
+      nowMs: now,
+      isExpired,
+      timeDiff: expiresAt - now
+    });
+    
+    setIsRoundExpired(isExpired);
   }, [activeRound?.round_id, activeRound?.expires_at]);
 
   const handleContinueRound = useCallback(() => {
@@ -284,6 +295,8 @@ export const Dashboard: React.FC = () => {
               >
                 {startingRound === 'prompt' ? 'Starting Round...' :
                  roundAvailability?.can_prompt ? 'Start Prompt Round' :
+                 activeRound?.round_type === 'prompt' ? 'Active Round - Use Continue Above' :
+                 activeRound?.round_id ? 'Complete Current Round First' :
                  player.balance < 100 ? 'Insufficient Balance' :
                  player.outstanding_prompts >= 10 ? 'Too Many Outstanding Prompts' :
                  'Not Available'}

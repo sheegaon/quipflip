@@ -79,39 +79,6 @@ export const PromptRound: React.FC = () => {
     loadFeedback();
   }, [roundData?.round_id]);
 
-  // Redirect if no active prompt round
-  useEffect(() => {
-    if (!activeRound || activeRound.round_type !== 'prompt') {
-      promptRoundLogger.warn('No active prompt round found');
-      promptRoundLogger.debug('Redirect logic:', {
-        hasActiveRound: !!activeRound,
-        roundType: activeRound?.round_type,
-        currentStep,
-        isTutorialPromptStep: currentStep === 'prompt_round'
-      });
-
-      // Special case for tutorial
-      if (currentStep === 'prompt_round') {
-        promptRoundLogger.debug('Tutorial mode: advancing to copy_round and returning to dashboard');
-        advanceStep('copy_round').then(() => navigate('/dashboard'));
-      } else {
-        promptRoundLogger.debug('Attempting to start new prompt round...');
-        // Start a new round using GameContext action
-        actions.startPromptRound()
-          .then(() => {
-            promptRoundLogger.info('✅ Successfully started new prompt round');
-          })
-          .catch((err) => {
-            promptRoundLogger.error('Failed to start new prompt round:', err);
-            promptRoundLogger.debug('Navigating back to dashboard');
-            navigate('/dashboard');
-          });
-      }
-    } else {
-      promptRoundLogger.debug('✅ Active prompt round found, staying on page');
-    }
-  }, [activeRound, currentStep, advanceStep, navigate, actions]);
-
   // Redirect if already submitted
   useEffect(() => {
     if (roundData?.status === 'submitted') {
@@ -119,6 +86,37 @@ export const PromptRound: React.FC = () => {
       navigate('/dashboard');
     }
   }, [roundData?.status, navigate]);
+
+  // Redirect if no active prompt round - but NOT during the submission process
+  useEffect(() => {
+    if (!activeRound || activeRound.round_type !== 'prompt') {
+      promptRoundLogger.debug('No active prompt round detected');
+      promptRoundLogger.debug('Redirect logic:', {
+        hasActiveRound: !!activeRound,
+        roundType: activeRound?.round_type,
+        currentStep,
+        isTutorialPromptStep: currentStep === 'prompt_round',
+        successMessage: !!successMessage
+      });
+
+      // Don't start a new round if we're showing success message (submission in progress)
+      if (successMessage) {
+        promptRoundLogger.debug('Success message showing, not starting new round');
+        return;
+      }
+
+      // Special case for tutorial
+      if (currentStep === 'prompt_round') {
+        promptRoundLogger.debug('Tutorial mode: advancing to copy_round and returning to dashboard');
+        advanceStep('copy_round').then(() => navigate('/dashboard'));
+      } else {
+        promptRoundLogger.debug('No active round and not in tutorial - redirecting to dashboard');
+        navigate('/dashboard');
+      }
+    } else {
+      promptRoundLogger.debug('✅ Active prompt round found, staying on page');
+    }
+  }, [activeRound, currentStep, advanceStep, navigate, successMessage]);
 
   const handleFeedback = async (type: 'like' | 'dislike') => {
     if (!roundData || isSubmittingFeedback) return;

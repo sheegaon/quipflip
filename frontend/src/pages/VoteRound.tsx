@@ -20,21 +20,25 @@ export const VoteRound: React.FC = () => {
   const roundData = activeRound?.round_type === 'vote' ? activeRound.state as VoteState : null;
   const { isExpired } = useTimer(roundData?.expires_at || null);
 
-  // Redirect if no active vote round
-  useEffect(() => {
-    if (!activeRound || activeRound.round_type !== 'vote') {
-      // Start a new round using GameContext action
-      actions.startVoteRound()
-        .catch(() => navigate('/dashboard'));
-    }
-  }, [activeRound, navigate, actions]);
-
   // Redirect if already submitted
   useEffect(() => {
     if (roundData?.status === 'submitted') {
       navigate('/dashboard');
     }
   }, [roundData?.status, navigate]);
+
+  // Redirect if no active vote round - but NOT during the submission process
+  useEffect(() => {
+    if (!activeRound || activeRound.round_type !== 'vote') {
+      // Don't start a new round if we're showing success message or vote result
+      if (successMessage || voteResult) {
+        return;
+      }
+
+      // Redirect to dashboard instead of starting new rounds
+      navigate('/dashboard');
+    }
+  }, [activeRound, navigate, successMessage, voteResult]);
 
   const handleVote = async (phrase: string) => {
     if (!roundData || isSubmitting) return;

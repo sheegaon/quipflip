@@ -22,26 +22,30 @@ export const CopyRound: React.FC = () => {
   const roundData = activeRound?.round_type === 'copy' ? activeRound.state as CopyState : null;
   const { isExpired } = useTimer(roundData?.expires_at || null);
 
-  // Redirect if no active copy round
-  useEffect(() => {
-    if (!activeRound || activeRound.round_type !== 'copy') {
-      // Special case for tutorial
-      if (currentStep === 'copy_round') {
-        advanceStep('vote_round').then(() => navigate('/dashboard'));
-      } else {
-        // Start a new round using GameContext action
-        actions.startCopyRound()
-          .catch(() => navigate('/dashboard'));
-      }
-    }
-  }, [activeRound, currentStep, advanceStep, navigate, actions]);
-
   // Redirect if already submitted
   useEffect(() => {
     if (roundData?.status === 'submitted') {
       navigate('/dashboard');
     }
   }, [roundData?.status, navigate]);
+
+  // Redirect if no active copy round - but NOT during the submission process
+  useEffect(() => {
+    if (!activeRound || activeRound.round_type !== 'copy') {
+      // Don't start a new round if we're showing success message (submission in progress)
+      if (successMessage) {
+        return;
+      }
+
+      // Special case for tutorial
+      if (currentStep === 'copy_round') {
+        advanceStep('vote_round').then(() => navigate('/dashboard'));
+      } else {
+        // Redirect to dashboard instead of starting new rounds
+        navigate('/dashboard');
+      }
+    }
+  }, [activeRound, currentStep, advanceStep, navigate, successMessage]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
