@@ -10,7 +10,7 @@ import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
 import type { CopyState } from '../api/types';
 
 export const CopyRound: React.FC = () => {
-  const { state } = useGame();
+  const { state, actions } = useGame();
   const { activeRound } = state;
   const { currentStep, advanceStep } = useTutorial();
   const navigate = useNavigate();
@@ -56,6 +56,11 @@ export const CopyRound: React.FC = () => {
 
     try {
       await apiClient.submitPhrase(roundData.round_id, phrase.trim());
+
+      // Update the round state immediately to prevent double submissions
+      if (activeRound) {
+        actions.refreshDashboard(); // Trigger refresh to get latest state
+      }
 
       // Show success message
       const message = getRandomMessage('copySubmitted');
