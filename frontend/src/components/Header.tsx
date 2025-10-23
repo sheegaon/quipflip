@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { BalanceFlipper } from './BalanceFlipper';
 import { TreasureChestIcon } from './TreasureChestIcon';
@@ -7,7 +7,11 @@ import { TreasureChestIcon } from './TreasureChestIcon';
 export const Header: React.FC = () => {
   const { player, username, logout, claimBonus, phrasesetSummary } = useGame();
   const navigate = useNavigate();
+  const location = useLocation();
   const [isClaiming, setIsClaiming] = useState(false);
+
+  // Show back arrow on Statistics and Tracking pages only
+  const showBackArrow = location.pathname === '/statistics' || location.pathname === '/tracking';
 
   if (!player) {
     return null;
@@ -15,8 +19,7 @@ export const Header: React.FC = () => {
 
   const inProgressPrompts = phrasesetSummary?.in_progress.prompts ?? 0;
   const inProgressCopies = phrasesetSummary?.in_progress.copies ?? 0;
-  const hasInProgress = inProgressPrompts + inProgressCopies > 0;
-  const showInProgressIndicator = hasInProgress;
+  const showInProgressIndicator = inProgressPrompts + inProgressCopies > 0;
   const inProgressLabelParts: string[] = [];
   if (inProgressPrompts > 0) {
     inProgressLabelParts.push(`${inProgressPrompts} prompt${inProgressPrompts === 1 ? '' : 's'}`);
@@ -44,9 +47,24 @@ export const Header: React.FC = () => {
     <div className="bg-white shadow-tile-sm">
       <div className="max-w-6xl mx-auto px-1 py-0 md:px-4 md:py-3">
         <div className="flex justify-between items-center">
-          {/* Left: Logo */}
-          <div className="flex items-center gap-3">
-            <img src="/large_icon.png" alt="Quipflip" className="h-10 w-auto" />
+          {/* Left: Logo + Back Arrow (on certain pages) */}
+          <div className="flex items-center gap-1 md:gap-3">
+            <button
+              onClick={showBackArrow ? () => navigate('/dashboard') : undefined}
+              className={`flex items-center gap-0 md:gap-2 ${showBackArrow ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+              disabled={!showBackArrow}
+              title={showBackArrow ? "Back to Dashboard" : undefined}
+            >
+              {showBackArrow && (
+                <img
+                  src="/icon_back_arrow.svg"
+                  alt=""
+                  className="w-4 h-4 md:w-6 md:h-6"
+                  aria-hidden="true"
+                />
+              )}
+              <img src="/large_icon.png" alt="Quipflip" className="h-10 w-auto" />
+            </button>
             {showInProgressIndicator && (
               <button
                 type="button"
@@ -61,7 +79,7 @@ export const Header: React.FC = () => {
                     <img
                       src="/icon_prompt.svg"
                       alt="Prompt rounds in progress"
-                      className="h-5 w-5"
+                      className="h-5 w-5 md:h-7 md:w-7"
                     />
                   </span>
                 )}
@@ -71,7 +89,7 @@ export const Header: React.FC = () => {
                     <img
                       src="/icon_copy.svg"
                       alt="Copy rounds in progress"
-                      className="h-5 w-5"
+                      className="h-5 w-5 md:h-7 md:w-7"
                     />
                   </span>
                 )}
@@ -83,10 +101,16 @@ export const Header: React.FC = () => {
           <div className="flex-1 text-center">
             <button
               onClick={() => navigate('/statistics')}
-              className="text-xs md:text-lg text-quip-turquoise font-semibold hover:text-quip-teal transition-colors"
+              className="inline-flex items-center gap-0.5 md:gap-1.5 text-xs md:text-2xl text-quip-turquoise font-semibold hover:text-quip-teal transition-colors"
               title="View your statistics"
             >
-              {player.username || username}
+              <span>{player.username || username}</span>
+              <img
+                src="/icon_stats.svg"
+                alt=""
+                className="w-4 h-4 md:h-7 md:w-7"
+                aria-hidden="true"
+              />
             </button>
           </div>
 
@@ -108,10 +132,10 @@ export const Header: React.FC = () => {
             )}
               {/* Flipcoin Balance */}
               <div className="flex items-center gap-2 tutorial-balance">
-              <img src="/flipcoin.png" alt="Flipcoin" className="w-6 md:w-10 h-6 md:h-10" />
+              <img src="/flipcoin.png" alt="Flipcoin" className="w-6 h-6 md:w-10 md:h-10" />
               <BalanceFlipper
                 value={player.balance}
-                className="text-xl md:text-3xl font-display font-bold text-quip-turquoise"
+                className="text-xl md:text-4xl font-display font-bold text-quip-turquoise"
               />
             </div>
               {/* Logout Button */}

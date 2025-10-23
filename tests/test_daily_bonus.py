@@ -1,0 +1,373 @@
+"""Tests for daily bonus functionality.
+
+This test suite ensures that:
+1. Daily bonus appears in the UI when eligible
+2. Login does not prevent bonus from being available
+3. Bonus is tracked via DailyBonus table, not last_login_date
+4. Bonus can only be claimed once per day
+"""
+import pytest
+from datetime import date, timedelta, datetime, UTC
+from uuid import uuid4
+
+from httpx import AsyncClient, ASGITransport
+from sqlalchemy import select, update
+
+from backend.models.player import Player
+from backend.models.daily_bonus import DailyBonus
+from backend.services.player_service import PlayerService
+from backend.services.transaction_service import TransactionService
+
+
+@pytest.mark.asyncio
+async def test_new_player_no_bonus_on_creation_day(test_app):
+    """New players should NOT get daily bonus on the day they sign up."""
+    payload = {
+        "email": f"newuser_{uuid4().hex[:6]}@example.com",
+        "password": "TestPass123!",
+    }
+
+    async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+        response = await client.post("/player", json=payload)
+        assert response.status_code == 201
+        data = response.json()
+        token = data["access_token"]
+
+        # Check balance endpoint
+        balance_response = await client.get(
+            "/player/balance",
+            headers={"Authorization": f"Bearer {token}"}
+        )
+        assert balance_response.status_code == 200
+        balance_data = balance_response.json()
+
+        # Daily bonus should NOT be available on creation day
+        assert balance_data["daily_bonus_available"] is False
+        assert balance_data["daily_bonus_amount"] == 100
+
+
+@pytest.mark.asyncio
+async def test_daily_bonus_available_after_login(test_app, db_session):
+    """Daily bonus should remain available after logging in.
+
+    This is the main regression test for the bug where logging in
+    would update last_login_date and make the bonus unavailable.
+    """
+    # Create player
+    payload = {
+        "email": f"logintest_{uuid4().hex[:6]}@example.com",
+        "password": "TestPass123!",
+    }
+
+    async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+        create_response = await client.post("/player", json=payload)
+        assert create_response.status_code == 201
+        player_id = create_response.json()["player_id"]
+
+        # Simulate player created yesterday by updating database
+        result = await db_session.execute(
+            select(Player).where(Player.player_id == player_id)
+        )
+        player = result.scalar_one()
+
+        yesterday = datetime.now(UTC) - timedelta(days=1)
+        await db_session.execute(
+            update(Player)
+            .where(Player.player_id == player_id)
+            .values(
+                created_at=yesterday,
+                last_login_date=date.today() - timedelta(days=1)
+            )
+        )
+        await db_session.commit()
+
+        # Login
+        login_response = await client.post("/auth/login", json=payload)
+        assert login_response.status_code == 200
+        token = login_response.json()["access_token"]
+
+        # Check that daily bonus is STILL available after login
+        balance_response = await client.get(
+            "/player/balance",
+            headers={"Authorization": f"Bearer {token}"}
+        )
+        assert balance_response.status_code == 200
+        balance_data = balance_response.json()
+
+        # This is the key assertion - bonus should be available after login
+        assert balance_data["daily_bonus_available"] is True
+        assert balance_data["daily_bonus_amount"] == 100
+
+        # Verify last_login_date was updated (for tracking)
+        assert balance_data["last_login_date"] == str(date.today())
+
+
+@pytest.mark.asyncio
+async def test_daily_bonus_uses_dailybonus_table_not_last_login(db_session):
+    """Test that is_daily_bonus_available checks DailyBonus table, not last_login_date.
+
+    This ensures the fix is working at the service layer.
+    """
+    # Create a player with last_login_date = today (which would fail the old logic)
+    from backend.services.auth_service import AuthService
+
+    auth_service = AuthService(db_session)
+    email = f"tabletest_{uuid4().hex[:6]}@example.com"
+    player = await auth_service.register_player(email, "TestPass123!")
+
+    # Set created_at to yesterday so bonus would be eligible
+    yesterday = datetime.now(UTC) - timedelta(days=1)
+    await db_session.execute(
+        update(Player)
+        .where(Player.player_id == player.player_id)
+        .values(created_at=yesterday)
+    )
+    await db_session.commit()
+    await db_session.refresh(player)
+
+    # Set last_login_date to today (simulating a login)
+    player.last_login_date = date.today()
+    await db_session.commit()
+    await db_session.refresh(player)
+
+    # Check bonus availability using PlayerService
+    player_service = PlayerService(db_session)
+    is_available = await player_service.is_daily_bonus_available(player)
+
+    # Should be available because DailyBonus table has no entry for today
+    assert is_available is True
+
+    # Verify no DailyBonus record exists
+    result = await db_session.execute(
+        select(DailyBonus)
+        .where(DailyBonus.player_id == player.player_id)
+        .where(DailyBonus.date == date.today())
+    )
+    bonus_record = result.scalar_one_or_none()
+    assert bonus_record is None
+
+
+@pytest.mark.asyncio
+async def test_claim_daily_bonus_makes_it_unavailable(test_app, db_session):
+    """After claiming bonus, it should be unavailable for the rest of the day."""
+    payload = {
+        "email": f"claimtest_{uuid4().hex[:6]}@example.com",
+        "password": "TestPass123!",
+    }
+
+    async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+        create_response = await client.post("/player", json=payload)
+        player_id = create_response.json()["player_id"]
+
+        # Make player eligible by setting created_at to yesterday
+        yesterday = datetime.now(UTC) - timedelta(days=1)
+        await db_session.execute(
+            update(Player)
+            .where(Player.player_id == player_id)
+            .values(created_at=yesterday)
+        )
+        await db_session.commit()
+
+        # Get token and verify bonus is available
+        login_response = await client.post("/auth/login", json=payload)
+        token = login_response.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        balance_response = await client.get("/player/balance", headers=headers)
+        assert balance_response.json()["daily_bonus_available"] is True
+
+        # Claim bonus
+        claim_response = await client.post("/player/claim-daily-bonus", headers=headers)
+        assert claim_response.status_code == 200
+        claim_data = claim_response.json()
+        assert claim_data["success"] is True
+        assert claim_data["amount"] == 100
+        assert claim_data["new_balance"] == 1100  # 1000 starting + 100 bonus
+
+        # Verify bonus is now unavailable
+        balance_response = await client.get("/player/balance", headers=headers)
+        assert balance_response.json()["daily_bonus_available"] is False
+
+        # Verify DailyBonus record was created
+        result = await db_session.execute(
+            select(DailyBonus)
+            .where(DailyBonus.player_id == player_id)
+            .where(DailyBonus.date == date.today())
+        )
+        bonus_record = result.scalar_one_or_none()
+        assert bonus_record is not None
+        assert bonus_record.amount == 100
+
+
+@pytest.mark.asyncio
+async def test_cannot_claim_daily_bonus_twice(test_app, db_session):
+    """Players should not be able to claim daily bonus twice in one day."""
+    payload = {
+        "email": f"doubletest_{uuid4().hex[:6]}@example.com",
+        "password": "TestPass123!",
+    }
+
+    async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+        create_response = await client.post("/player", json=payload)
+        player_id = create_response.json()["player_id"]
+
+        # Make eligible
+        yesterday = datetime.now(UTC) - timedelta(days=1)
+        await db_session.execute(
+            update(Player)
+            .where(Player.player_id == player_id)
+            .values(created_at=yesterday)
+        )
+        await db_session.commit()
+
+        login_response = await client.post("/auth/login", json=payload)
+        token = login_response.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        # First claim should succeed
+        claim_response = await client.post("/player/claim-daily-bonus", headers=headers)
+        assert claim_response.status_code == 200
+
+        # Second claim should fail
+        claim_response = await client.post("/player/claim-daily-bonus", headers=headers)
+        assert claim_response.status_code == 400
+        assert "not available" in claim_response.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_multiple_logins_preserve_bonus_availability(test_app, db_session):
+    """Multiple logins in the same day should not affect bonus availability.
+
+    This is a critical regression test - ensures that repeated logins
+    don't prevent the bonus from being claimable.
+    """
+    payload = {
+        "email": f"multilogin_{uuid4().hex[:6]}@example.com",
+        "password": "TestPass123!",
+    }
+
+    async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+        create_response = await client.post("/player", json=payload)
+        player_id = create_response.json()["player_id"]
+
+        # Make eligible
+        yesterday = datetime.now(UTC) - timedelta(days=1)
+        await db_session.execute(
+            update(Player)
+            .where(Player.player_id == player_id)
+            .values(created_at=yesterday)
+        )
+        await db_session.commit()
+
+        # Login multiple times
+        for i in range(5):
+            login_response = await client.post("/auth/login", json=payload)
+            assert login_response.status_code == 200
+            token = login_response.json()["access_token"]
+            headers = {"Authorization": f"Bearer {token}"}
+
+            # Check bonus is still available after each login
+            balance_response = await client.get("/player/balance", headers=headers)
+            balance_data = balance_response.json()
+            assert balance_data["daily_bonus_available"] is True, f"Bonus unavailable after login #{i+1}"
+
+        # Final claim should still work
+        claim_response = await client.post("/player/claim-daily-bonus", headers=headers)
+        assert claim_response.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_dashboard_endpoint_includes_bonus_status(test_app, db_session):
+    """The /player/dashboard endpoint should include daily_bonus_available.
+
+    This ensures the frontend gets the data it needs to show the treasure chest.
+    """
+    payload = {
+        "email": f"dashboard_{uuid4().hex[:6]}@example.com",
+        "password": "TestPass123!",
+    }
+
+    async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+        create_response = await client.post("/player", json=payload)
+        player_id = create_response.json()["player_id"]
+
+        # Make eligible
+        yesterday = datetime.now(UTC) - timedelta(days=1)
+        await db_session.execute(
+            update(Player)
+            .where(Player.player_id == player_id)
+            .values(created_at=yesterday)
+        )
+        await db_session.commit()
+
+        login_response = await client.post("/auth/login", json=payload)
+        token = login_response.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        # Check dashboard endpoint
+        dashboard_response = await client.get("/player/dashboard", headers=headers)
+        assert dashboard_response.status_code == 200
+        dashboard_data = dashboard_response.json()
+
+        # Verify player data includes bonus information
+        assert "player" in dashboard_data
+        player_data = dashboard_data["player"]
+        assert "daily_bonus_available" in player_data
+        assert "daily_bonus_amount" in player_data
+        assert player_data["daily_bonus_available"] is True
+        assert player_data["daily_bonus_amount"] == 100
+
+
+@pytest.mark.asyncio
+async def test_bonus_available_next_day_after_claiming(test_app, db_session):
+    """After claiming bonus, it should be available again the next day."""
+    from backend.services.auth_service import AuthService
+
+    # Create player
+    auth_service = AuthService(db_session)
+    email = f"nextday_{uuid4().hex[:6]}@example.com"
+    player = await auth_service.register_player(email, "TestPass123!")
+
+    # Set created_at to 2 days ago
+    two_days_ago = datetime.now(UTC) - timedelta(days=2)
+    await db_session.execute(
+        update(Player)
+        .where(Player.player_id == player.player_id)
+        .values(created_at=two_days_ago)
+    )
+    await db_session.commit()
+    await db_session.refresh(player)
+
+    # Claim bonus for yesterday
+    yesterday = date.today() - timedelta(days=1)
+    bonus_yesterday = DailyBonus(
+        player_id=player.player_id,
+        amount=100,
+        date=yesterday,
+    )
+    db_session.add(bonus_yesterday)
+    await db_session.commit()
+
+    # Check that bonus is available today
+    player_service = PlayerService(db_session)
+    is_available = await player_service.is_daily_bonus_available(player)
+    assert is_available is True
+
+    # Claim today's bonus
+    transaction_service = TransactionService(db_session)
+    amount = await player_service.claim_daily_bonus(player, transaction_service)
+    assert amount == 100
+
+    # Should not be available anymore today
+    is_available = await player_service.is_daily_bonus_available(player)
+    assert is_available is False
+
+    # Verify two separate DailyBonus records exist
+    result = await db_session.execute(
+        select(DailyBonus).where(DailyBonus.player_id == player.player_id)
+    )
+    all_bonuses = result.scalars().all()
+    assert len(all_bonuses) == 2
+    bonus_dates = {b.date for b in all_bonuses}
+    assert yesterday in bonus_dates
+    assert date.today() in bonus_dates

@@ -118,12 +118,39 @@ async def initialize_phrase_validation():
 
 
 async def ai_backup_cycle():
-    """Background task to run AI backup cycles."""
+    """
+    Background task to run AI backup cycles.
+
+    Includes startup delay to ensure all services (especially phrase validator)
+    are ready before attempting AI operations.
+    """
     from backend.database import AsyncSessionLocal
     from backend.services.ai_service import AIService
 
+    # Initial startup delay to ensure services are ready
+    startup_delay = 10  # 10 seconds initial delay
+    logger.info(f"AI backup cycle starting in {startup_delay}s (waiting for services to initialize)")
+    await asyncio.sleep(startup_delay)
+
+    # Verify phrase validator is ready before starting
+    try:
+        if settings.use_phrase_validator_api:
+            from backend.services.phrase_validation_client import get_phrase_validation_client
+            client = get_phrase_validation_client()
+            if not await client.health_check():
+                logger.warning("Phrase validator API not healthy yet, AI backup may experience issues")
+        else:
+            from backend.services.phrase_validator import get_phrase_validator
+            validator = get_phrase_validator()
+            if not validator.dictionary:
+                logger.warning("Local phrase validator dictionary not loaded, AI backup may experience issues")
+    except Exception as e:
+        logger.warning(f"Could not verify phrase validator health: {e}")
+
+    logger.info("AI backup cycle starting main loop")
+
     while True:
-        # Wait before first cycle
+        # Wait before each cycle
         await asyncio.sleep(settings.ai_backup_sleep_seconds)
 
         try:
@@ -132,6 +159,41 @@ async def ai_backup_cycle():
 
         except Exception as e:
             logger.error(f"AI backup cycle error: {e}")
+
+
+async def cleanup_cycle():
+    """
+    Background task to run database cleanup tasks.
+
+    Runs periodically to clean up:
+    - Orphaned refresh tokens
+    - Expired refresh tokens
+    - Old revoked tokens
+    """
+    from backend.database import AsyncSessionLocal
+    from backend.services.cleanup_service import CleanupService
+
+    # Initial startup delay
+    startup_delay = 60  # 60 seconds initial delay
+    logger.info(f"Cleanup cycle starting in {startup_delay}s")
+    await asyncio.sleep(startup_delay)
+
+    logger.info("Cleanup cycle starting main loop")
+
+    # Run cleanup every 6 hours (21600 seconds)
+    cleanup_interval = 6 * 60 * 60
+
+    while True:
+        try:
+            async with AsyncSessionLocal() as db:
+                cleanup_service = CleanupService(db)
+                await cleanup_service.run_all_cleanup_tasks()
+
+        except Exception as e:
+            logger.error(f"Cleanup cycle error: {e}")
+
+        # Wait before next cycle
+        await asyncio.sleep(cleanup_interval)
 
 
 @asynccontextmanager
@@ -152,25 +214,49 @@ async def lifespan(app_instance: FastAPI):
     # Synchronize prompts between file and database
     await sync_prompts_with_database()
 
-    # Start AI backup cycle background task
+    # Start background tasks
     ai_backup_task = None
+    cleanup_task = None
+
     try:
         ai_backup_task = asyncio.create_task(ai_backup_cycle())
         logger.info(f"AI backup cycle task started (runs every {settings.ai_backup_sleep_seconds} seconds)")
-
     except Exception as e:
         logger.error(f"Failed to start AI backup cycle: {e}")
 
     try:
+        cleanup_task = asyncio.create_task(cleanup_cycle())
+        logger.info("Cleanup cycle task started (runs every 6 hours)")
+    except Exception as e:
+        logger.error(f"Failed to start cleanup cycle: {e}")
+
+    try:
         yield
     finally:
-        # Cancel AI backup task on shutdown
+        # Cancel background tasks on shutdown
         if ai_backup_task:
             ai_backup_task.cancel()
             try:
                 await ai_backup_task
             except asyncio.CancelledError:
                 logger.info("AI backup cycle task cancelled")
+
+        if cleanup_task:
+            cleanup_task.cancel()
+            try:
+                await cleanup_task
+            except asyncio.CancelledError:
+                logger.info("Cleanup cycle task cancelled")
+
+        # Cleanup phrase validation client session
+        if settings.use_phrase_validator_api:
+            try:
+                from backend.services.phrase_validation_client import get_phrase_validation_client
+                client = get_phrase_validation_client()
+                await client.close()
+                logger.info("Phrase validation client session closed")
+            except Exception as e:
+                logger.error(f"Error closing phrase validation client: {e}")
 
         logger.info("Quipflip API Shutting Down... Goodbye!")
 

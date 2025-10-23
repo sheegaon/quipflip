@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
 import apiClient, { extractErrorMessage } from '../api/client';
 import type {
   PhrasesetSummary,
@@ -28,7 +27,6 @@ const statusOptions: { value: StatusFilter; label: string }[] = [
 ];
 
 export const Tracking: React.FC = () => {
-  const navigate = useNavigate();
   const {
     player,
     refreshBalance,
@@ -46,6 +44,7 @@ export const Tracking: React.FC = () => {
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [claiming, setClaiming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [infoExpanded, setInfoExpanded] = useState(false);
 
   // Store the last fetched details to compare for changes
   const lastDetailsRef = useRef<PhrasesetDetailsType | null>(null);
@@ -168,22 +167,11 @@ export const Tracking: React.FC = () => {
       <Header />
 
       <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-display font-bold text-quip-navy">Past Round Tracking</h1>
-            <p className="text-sm text-quip-teal">
-              Monitor your quips throughout the game lifecycle.
-            </p>
-          </div>
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="text-quip-teal hover:text-quip-turquoise text-sm font-medium inline-flex items-center gap-2 transition-colors"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-            </svg>
-            Back to Dashboard
-          </button>
+        <div>
+          <h1 className="text-2xl font-display font-bold text-quip-navy">Past Round Tracking</h1>
+          <p className="text-sm text-quip-teal">
+            Monitor your quips throughout the game lifecycle.
+          </p>
         </div>
 
         {phrasesetSummary && (
@@ -280,6 +268,72 @@ export const Tracking: React.FC = () => {
               onClaim={handleClaim}
             />
           </div>
+        </div>
+
+        {/* Collapsible Info Section */}
+        <div className="tile-card overflow-hidden">
+          <button
+            onClick={() => setInfoExpanded(!infoExpanded)}
+            className="w-full p-4 flex items-center justify-between hover:bg-quip-cream hover:bg-opacity-30 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <svg className="w-5 h-5 text-quip-teal flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+              <span className="text-sm font-semibold text-quip-navy">
+                How does voting priority work?
+              </span>
+            </div>
+            <svg
+              className={`w-5 h-5 text-quip-teal transition-transform ${infoExpanded ? 'rotate-180' : ''}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          {infoExpanded && (
+            <div className="px-4 pb-4 pt-2 border-t border-gray-100">
+              <div className="text-sm text-gray-700 space-y-3">
+                <p>
+                  When voters request a round, phrasesets are prioritized to ensure fair and timely completion:
+                </p>
+
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <span className="font-semibold text-quip-turquoise min-w-[3rem]">High:</span>
+                    <span>Phrasesets with <strong>5+ votes</strong> (FIFO from 5th vote timestamp)</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="font-semibold text-quip-teal min-w-[3rem]">Medium:</span>
+                    <span>Phrasesets with <strong>3-4 votes</strong> (FIFO from 3rd vote timestamp)</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="font-semibold text-gray-500 min-w-[3rem]">Low:</span>
+                    <span>Phrasesets with <strong>0-2 votes</strong> (random selection)</span>
+                  </div>
+                </div>
+
+                <div className="bg-quip-teal bg-opacity-5 p-3 rounded-lg mt-3">
+                  <p className="text-xs text-quip-navy">
+                    <strong>Key Milestones:</strong> The <strong>3rd vote</strong> and <strong>5th vote</strong> timestamps
+                    determine when your phraseset enters priority queues, affecting how quickly it receives additional votes and finalizes.
+                  </p>
+                </div>
+
+                <div className="text-xs text-gray-600 mt-3 space-y-1">
+                  <p><strong>Voting Window:</strong></p>
+                  <ul className="list-disc list-inside ml-2 space-y-0.5">
+                    <li>After 3rd vote: Remains open for 10 minutes or until 5th vote (whichever comes first)</li>
+                    <li>After 5th vote: Accepts new voters for 60 seconds</li>
+                    <li>Maximum: 20 votes per phraseset</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

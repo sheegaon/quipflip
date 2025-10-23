@@ -154,7 +154,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setLoading(true);
       await apiClient.claimDailyBonus();
-      await refreshBalance();
+      await refreshDashboard();
       setError(null);
     } catch (err) {
       const message = extractErrorMessage(err) || 'Unable to claim your daily bonus right now. You may have already claimed it today, or there may be a temporary issue.';
@@ -164,7 +164,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setLoading(false);
     }
-  }, [handleAuthError, isAuthenticated, refreshBalance]);
+  }, [handleAuthError, isAuthenticated, refreshDashboard]);
 
   useEffect(() => {
     if (!isAuthenticated) return;

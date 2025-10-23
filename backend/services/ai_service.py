@@ -12,14 +12,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
+from backend.utils.datetime_helpers import ensure_utc
+
 from backend.config import get_settings
 from backend.models.player import Player
 from backend.models.round import Round
 from backend.models.phraseset import PhraseSet
+from backend.models.vote import Vote
 from backend.services.ai_metrics_service import AIMetricsService, MetricsTracker
 from backend.services.player_service import PlayerService
 from backend.services.round_service import RoundService
-from backend.models.vote import Vote
 
 logger = logging.getLogger(__name__)
 
@@ -115,29 +117,56 @@ class AIService:
         Returns:
             The AI player instance
 
+        Raises:
+            AIServiceError: If AI player cannot be created or is in invalid state
+
         Note:
             Transaction management is handled by the caller (run_backup_cycle).
             This method should NOT commit or refresh the session.
         """
-        # Check if AI player exists
-        result = await self.db.execute(select(Player).where(Player.username == "AI_BACKUP"))
-        ai_player = result.scalar_one_or_none()
-
-        if not ai_player:
-            # Create AI player
-            player_service = PlayerService(self.db)
-
-            ai_player = await player_service.create_player(
-                username="AI_BACKUP",
-                email="ai@quipflip.internal",
-                password_hash="not-used-for-ai-player",
-                pseudonym="Clever Lexical Runner",
-                pseudonym_canonical="cleverlexicalrunner",
+        try:
+            # Check if AI player exists
+            result = await self.db.execute(
+                select(Player).where(Player.username == "AI_BACKUP")
             )
-            # Note: Do not commit here - let caller manage transaction
-            logger.info("Created AI backup player account")
+            ai_player = result.scalar_one_or_none()
 
-        return ai_player
+            if not ai_player:
+                # Create AI player
+                player_service = PlayerService(self.db)
+
+                ai_player = await player_service.create_player(
+                    username="AI_BACKUP",
+                    email="ai@quipflip.internal",
+                    password_hash="not-used-for-ai-player",
+                    pseudonym="Clever Lexical Runner",
+                    pseudonym_canonical="cleverlexicalrunner",
+                )
+                # Note: Do not commit here - let caller manage transaction
+                logger.info("Created AI backup player account")
+            else:
+                # Validate AI player is in good state
+                if ai_player.balance < -1000:
+                    logger.warning(
+                        f"AI player has very negative balance: {ai_player.balance}. "
+                        "This may indicate an issue with payout logic."
+                    )
+
+                # Check for stuck active rounds (shouldn't happen, but handle gracefully)
+                if ai_player.active_round_id:
+                    logger.warning(
+                        f"AI player has stuck active round: {ai_player.active_round_id}. "
+                        "Clearing it to allow new operations."
+                    )
+                    # Clear the stuck round - AI doesn't use traditional rounds
+                    ai_player.active_round_id = None
+                    await self.db.flush()
+
+            return ai_player
+
+        except Exception as e:
+            logger.error(f"Failed to get/create AI player: {e}")
+            raise AIServiceError(f"AI player initialization failed: {e}")
 
     async def generate_copy_phrase(self, original_phrase: str, prompt_round: Round) -> str:
         """
@@ -244,12 +273,12 @@ class AIService:
         """
         from backend.services.ai_vote_helper import generate_vote_choice
 
-        # Extract prompt and phrases
-        prompt_text = phraseset.prompt_round.phrase
+        # Extract prompt and phrases from denormalized fields on PhraseSet
+        prompt_text = phraseset.prompt_text
         phrases = [
-            phraseset.prompt_round.phrase,
-            phraseset.copy_round_1.phrase,
-            phraseset.copy_round_2.phrase,
+            phraseset.original_phrase,
+            phraseset.copy_phrase_1,
+            phraseset.copy_phrase_2,
         ]
 
         model = (
@@ -294,98 +323,7 @@ class AIService:
 
             return chosen_phrase
 
-    async def _check_and_finalize_phraseset(self, phraseset: PhraseSet):
-        """
-        Check if phraseset should be finalized and finalize it if necessary.
-        
-        This mirrors the logic from VoteService._check_and_finalize() to ensure
-        AI votes trigger proper finalization when conditions are met.
-
-        Conditions for finalization:
-        - 20 votes (max)
-        - OR 5+ votes AND 60 seconds elapsed since 5th vote
-        - OR 3 votes AND 10 minutes elapsed since 3rd vote
-        """
-        should_finalize = False
-        current_time = datetime.now(UTC)
-
-        # Max votes reached
-        if phraseset.vote_count >= 20:
-            should_finalize = True
-            logger.info(f"Phraseset {phraseset.phraseset_id} reached max votes (20) via AI vote")
-
-        # 5+ votes and 60 seconds elapsed
-        elif phraseset.vote_count >= 5 and phraseset.fifth_vote_at:
-            fifth_vote_at = phraseset.fifth_vote_at
-            # Handle timezone-naive datetime from database
-            if fifth_vote_at.tzinfo is None:
-                fifth_vote_at = fifth_vote_at.replace(tzinfo=UTC)
-            
-            elapsed = (current_time - fifth_vote_at).total_seconds()
-            if elapsed >= 60:
-                should_finalize = True
-                logger.info(f"Phraseset {phraseset.phraseset_id} closing window expired (60s) after AI vote")
-
-        # 3 votes and 10 minutes elapsed (no 5th vote)
-        elif phraseset.vote_count >= 3 and phraseset.third_vote_at and not phraseset.fifth_vote_at:
-            third_vote_at = phraseset.third_vote_at
-            # Handle timezone-naive datetime from database
-            if third_vote_at.tzinfo is None:
-                third_vote_at = third_vote_at.replace(tzinfo=UTC)
-                
-            elapsed = (current_time - third_vote_at).total_seconds()
-            if elapsed >= 600:  # 10 minutes
-                should_finalize = True
-                logger.info(f"Phraseset {phraseset.phraseset_id} 10min window expired after AI vote")
-
-        if should_finalize:
-            await self._finalize_phraseset(phraseset)
-
-    async def _finalize_phraseset(self, phraseset: PhraseSet):
-        """
-        Finalize phraseset - calculate and distribute payouts.
-        
-        This mirrors the logic from VoteService._finalize_wordset() to ensure
-        consistent finalization behavior for AI-triggered finalization.
-        """
-        from backend.services.transaction_service import TransactionService
-        from backend.services.scoring_service import ScoringService
-        
-        # Calculate payouts
-        scoring_service = ScoringService(self.db)
-        payouts = await scoring_service.calculate_payouts(phraseset)
-
-        # Create prize transactions for each contributor
-        transaction_service = TransactionService(self.db)
-        for role in ["original", "copy1", "copy2"]:
-            payout_info = payouts[role]
-            if payout_info["payout"] > 0:
-                await transaction_service.create_transaction(
-                    payout_info["player_id"],
-                    payout_info["payout"],
-                    "prize_payout",
-                    phraseset.phraseset_id,
-                )
-
-        # Update phraseset status
-        phraseset.status = "finalized"
-        phraseset.finalized_at = datetime.now(UTC)
-
-        prompt_round = await self.db.get(Round, phraseset.prompt_round_id)
-        if prompt_round:
-            prompt_round.phraseset_status = "finalized"
-
-        # Note: Activity service recording is skipped in AI backup to avoid dependency complexity
-        # The finalization will still be logged via the main logger
-
-        logger.info(
-            f"AI backup finalized phraseset {phraseset.phraseset_id}: "
-            f"original=${payouts['original']['payout']}, "
-            f"copy1=${payouts['copy1']['payout']}, "
-            f"copy2=${payouts['copy2']['payout']}"
-        )
-
-    async def run_backup_cycle(self):
+    async def run_backup_cycle(self) -> None:
         """
         Run a backup cycle to provide AI copies for waiting prompts and AI votes for waiting phrasesets.
 
@@ -537,84 +475,58 @@ class AIService:
             # Filter out phrasesets where AI was a contributor (in-memory check since we need loaded relationships)
             filtered_phrasesets = []
             for phraseset in waiting_phrasesets:
-                # Skip if AI player was a contributor
-                if ai_player.player_id not in {
-                    phraseset.prompt_round.player_id,
-                    phraseset.copy_round_1.player_id,
-                    phraseset.copy_round_2.player_id,
-                }:
-                    filtered_phrasesets.append(phraseset)
+                try:
+                    # Safely get player IDs from loaded relationships
+                    contributor_player_ids = {
+                        r.player_id
+                        for r in (
+                            phraseset.prompt_round,
+                            phraseset.copy_round_1,
+                            phraseset.copy_round_2,
+                        )
+                        if r
+                    }
+                    
+                    # Skip if AI player was a contributor
+                    if ai_player.player_id not in contributor_player_ids:
+                        filtered_phrasesets.append(phraseset)
+                    else:
+                        logger.debug(f"Skipping phraseset {phraseset.phraseset_id} - AI was a contributor")
+                        
+                except Exception as e:
+                    logger.error(f"Error checking phraseset {phraseset.phraseset_id} contributors: {e}")
+                    # Skip this phraseset to avoid further errors
+                    continue
             
             stats["phrasesets_checked"] = len(filtered_phrasesets)
             logger.info(f"Found {len(filtered_phrasesets)} phrasesets waiting for AI backup votes")
             
+            # Initialize services once for all votes (performance improvement)
+            from backend.services.vote_service import VoteService
+            from backend.services.transaction_service import TransactionService
+            vote_service = VoteService(self.db)
+            transaction_service = TransactionService(self.db)
+
             # Process each waiting phraseset
             for phraseset in filtered_phrasesets:
                 try:
                     # Generate AI vote choice
                     chosen_phrase = await self.generate_vote_choice(phraseset)
-                    
-                    # Create vote directly (simpler than going through vote service)
-                    # Determine if vote is correct
-                    correct = chosen_phrase == phraseset.original_phrase
-                    payout = self.settings.vote_payout_correct if correct else 0
-                    
-                    # Create vote record
-                    vote = Vote(
-                        vote_id=uuid.uuid4(),
-                        phraseset_id=phraseset.phraseset_id,
-                        player_id=ai_player.player_id,
-                        voted_phrase=chosen_phrase,
-                        correct=correct,
-                        payout=payout,
+
+                    # Use VoteService for centralized voting logic
+                    vote = await vote_service.submit_system_vote(
+                        phraseset=phraseset,
+                        player=ai_player,
+                        chosen_phrase=chosen_phrase,
+                        transaction_service=transaction_service,
                     )
-                    
-                    self.db.add(vote)
-                    await self.db.flush()
-                    
-                    # Give payout if correct (AI gets rewards like normal players)
-                    if correct:
-                        from backend.services.transaction_service import TransactionService
-                        transaction_service = TransactionService(self.db)
-                        await transaction_service.create_transaction(
-                            ai_player.player_id,
-                            payout,
-                            "vote_payout",
-                            vote.vote_id,
-                        )
-                    
-                    # Update phraseset vote count
-                    phraseset.vote_count += 1
-                    
-                    # Update vote timeline markers (copied from vote_service logic)
-                    prompt_round = await self.db.get(Round, phraseset.prompt_round_id)
-                    if (prompt_round and phraseset.vote_count >= 1 and
-                            prompt_round.phraseset_status not in {"closing", "finalized"}):
-                        prompt_round.phraseset_status = "voting"
 
-                    # Mark 3rd vote timestamp
-                    if phraseset.vote_count == 3 and not phraseset.third_vote_at:
-                        phraseset.third_vote_at = datetime.now(UTC)
-                        logger.info(f"Phraseset {phraseset.phraseset_id} reached 3rd vote via AI, 10min window starts")
-
-                    # Mark 5th vote timestamp and change status to closing
-                    if phraseset.vote_count == 5 and not phraseset.fifth_vote_at:
-                        phraseset.fifth_vote_at = datetime.now(UTC)
-                        phraseset.status = "closing"
-                        phraseset.closes_at = datetime.now(UTC) + timedelta(seconds=60)
-                        if prompt_round:
-                            prompt_round.phraseset_status = "closing"
-                        logger.info(f"Phraseset {phraseset.phraseset_id} reached 5th vote via AI, 60sec closing window")
-                    
-                    # Check if phraseset should be finalized after AI vote
-                    await self._check_and_finalize_phraseset(phraseset)
-                    
                     stats["votes_generated"] += 1
                     logger.info(
-                        f"AI generated vote '{chosen_phrase}' for phraseset {phraseset.phraseset_id} "
-                        f"({'CORRECT' if correct else 'INCORRECT'}, payout: ${payout})"
+                        f"AI generated vote '{vote.voted_phrase}' for phraseset {phraseset.phraseset_id} "
+                        f"({'CORRECT' if vote.correct else 'INCORRECT'}, payout: ${vote.payout})"
                     )
-                    
+
                 except Exception as e:
                     logger.error(f"Failed to generate AI vote for phraseset {phraseset.phraseset_id}: {e}")
                     stats["errors"] += 1

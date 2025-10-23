@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     environment: str = "development"
     secret_key: str = "dev-secret-key-change-in-production"  # Must be at least 32 characters in production
     jwt_algorithm: str = "HS256"  # Use HS256 for symmetric signing
-    access_token_exp_minutes: int = 15  # Short-lived access tokens for security
+    access_token_exp_minutes: int = 120  # Access tokens valid for 2 hours
     refresh_token_exp_days: int = 30  # Longer-lived refresh tokens
     refresh_token_cookie_name: str = "quipflip_refresh_token"
 
@@ -44,6 +44,13 @@ class Settings(BaseSettings):
     copy_round_seconds: int = 180
     vote_round_seconds: int = 60
     grace_period_seconds: int = 5
+
+    # Vote finalization thresholds
+    vote_max_votes: int = 20  # Maximum votes before auto-finalization
+    vote_closing_threshold: int = 5  # Votes needed to enter closing window
+    vote_closing_window_seconds: int = 60  # Closing window duration (60 seconds)
+    vote_minimum_threshold: int = 3  # Minimum votes to start timeout window
+    vote_minimum_window_seconds: int = 600  # Minimum vote window duration (10 minutes)
 
     # Phrase Validation
     use_phrase_validator_api: bool = True

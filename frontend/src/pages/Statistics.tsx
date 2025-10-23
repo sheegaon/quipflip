@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import type { PlayerStatistics } from '../api/types';
 import { Header } from '../components/Header';
@@ -13,7 +12,6 @@ export default function Statistics() {
   const [stats, setStats] = useState<PlayerStatistics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const navigate = useNavigate();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -62,13 +60,7 @@ export default function Statistics() {
         <div className="container mx-auto px-4 py-8">
           <div className="tile-card p-8">
             <h1 className="text-2xl font-display font-bold text-quip-navy mb-4">Statistics</h1>
-            <div className="text-red-600 mb-4">{error || 'Failed to load statistics'}</div>
-            <button
-              onClick={() => navigate('/dashboard')}
-              className="px-4 py-2 bg-quip-orange hover:bg-quip-orange-deep text-white rounded-tile transition-all hover:shadow-tile-sm font-bold"
-            >
-              Back to Dashboard
-            </button>
+            <div className="text-red-600">{error || 'Failed to load statistics'}</div>
           </div>
         </div>
       </div>
@@ -153,16 +145,6 @@ export default function Statistics() {
               showStats
             />
           </div>
-        </div>
-
-        {/* Back Button */}
-        <div className="text-center">
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="px-6 py-3 bg-quip-navy hover:bg-quip-teal text-white rounded-tile transition-all hover:shadow-tile-sm font-bold"
-          >
-            Back to Dashboard
-          </button>
         </div>
       </div>
     </div>

@@ -48,6 +48,7 @@ class AIMetric(Base):
     __table_args__ = (
         Index('ix_ai_metrics_created_at_success', 'created_at', 'success'),
         Index('ix_ai_metrics_operation_provider', 'operation_type', 'provider'),
+        Index('ix_ai_metrics_op_created', 'operation_type', 'created_at'),  # For analytics queries
     )
 
     def __repr__(self):
