@@ -9,14 +9,8 @@ import TutorialWelcome from '../components/Tutorial/TutorialWelcome';
 const formatWaitingCount = (count: number): string => (count > 10 ? 'over 10' : count.toString());
 
 export const Dashboard: React.FC = () => {
-  const {
-    player,
-    activeRound,
-    pendingResults,
-    phrasesetSummary,
-    roundAvailability,
-    refreshDashboard,
-  } = useGame();
+  const { state, actions } = useGame();
+  const { player, activeRound, pendingResults, phrasesetSummary, roundAvailability } = state;
   const { startTutorial, skipTutorial, advanceStep } = useTutorial();
   const navigate = useNavigate();
   const [isRoundExpired, setIsRoundExpired] = useState(false);
@@ -39,22 +33,11 @@ export const Dashboard: React.FC = () => {
     return `${activeRound.round_type.charAt(0).toUpperCase()}${activeRound.round_type.slice(1)}`;
   }, [activeRound?.round_type]);
 
-  // Store refreshDashboard in a ref to avoid dependency issues
-  const refreshDashboardRef = React.useRef(refreshDashboard);
-  React.useEffect(() => {
-    refreshDashboardRef.current = refreshDashboard;
-  }, [refreshDashboard]);
-
-  // Force refresh dashboard data when component mounts
-  useEffect(() => {
-    refreshDashboardRef.current();
-  }, []);
-
-  // Refresh when page becomes visible (GameContext already loads data on mount)
+  // Refresh when page becomes visible
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        refreshDashboardRef.current();
+        actions.refreshDashboard();
       }
     };
 
@@ -63,7 +46,7 @@ export const Dashboard: React.FC = () => {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, []);
+  }, [actions]);
 
   useEffect(() => {
     if (!activeRound?.round_id) {
