@@ -29,12 +29,12 @@ class RequestDeduplicator:
         user_part = ""
         if auth_header := request.headers.get("authorization"):
             # Just use a hash of the auth header to identify the user
-            user_hash = hashlib.md5(auth_header.encode()).hexdigest()[:8]
+            user_hash = hashlib.sha256(auth_header.encode()).hexdigest()[:8]
             user_part = f":{user_hash}"
         
         # Create key from method, path, and user
         key_data = f"{request.method}:{request.url.path}{user_part}"
-        return hashlib.md5(key_data.encode()).hexdigest()
+        return hashlib.sha256(key_data.encode()).hexdigest()
     
     def _cleanup_old_entries(self):
         """Remove expired entries from the pending requests cache."""
