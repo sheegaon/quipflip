@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
 import apiClient, { extractErrorMessage } from '../api/client';
 import type {
   PhrasesetSummary,
@@ -28,7 +27,6 @@ const statusOptions: { value: StatusFilter; label: string }[] = [
 ];
 
 export const Tracking: React.FC = () => {
-  const navigate = useNavigate();
   const {
     player,
     refreshBalance,

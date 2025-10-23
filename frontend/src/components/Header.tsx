@@ -19,8 +19,7 @@ export const Header: React.FC = () => {
 
   const inProgressPrompts = phrasesetSummary?.in_progress.prompts ?? 0;
   const inProgressCopies = phrasesetSummary?.in_progress.copies ?? 0;
-  const hasInProgress = inProgressPrompts + inProgressCopies > 0;
-  const showInProgressIndicator = hasInProgress;
+  const showInProgressIndicator = inProgressPrompts + inProgressCopies > 0;
   const inProgressLabelParts: string[] = [];
   if (inProgressPrompts > 0) {
     inProgressLabelParts.push(`${inProgressPrompts} prompt${inProgressPrompts === 1 ? '' : 's'}`);

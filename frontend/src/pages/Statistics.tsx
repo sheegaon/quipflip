@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import type { PlayerStatistics } from '../api/types';
 import { Header } from '../components/Header';
@@ -13,7 +12,6 @@ export default function Statistics() {
   const [stats, setStats] = useState<PlayerStatistics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const navigate = useNavigate();
 
   useEffect(() => {
     const controller = new AbortController();
