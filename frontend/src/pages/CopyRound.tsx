@@ -73,7 +73,7 @@ export const CopyRound: React.FC = () => {
   if (!roundData) {
     return (
       <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center">
-        <LoadingSpinner message={loadingMessages.starting} />
+        <LoadingSpinner isLoading={true} message={loadingMessages.starting} />
       </div>
     );
   }

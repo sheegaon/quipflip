@@ -121,7 +121,7 @@ export const Results: React.FC = () => {
           <div className="lg:col-span-2">
             {loading && (
               <div className="tile-card p-8 flex justify-center">
-                <LoadingSpinner message={loadingMessages.loading} />
+                <LoadingSpinner isLoading={true} message={loadingMessages.loading} />
               </div>
             )}
 

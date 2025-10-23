@@ -89,6 +89,24 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       apiClient.setSession(nextUsername, tokens);
       setUsername(nextUsername);
       setIsAuthenticated(true);
+      
+      // Immediately load dashboard data after successful login
+      setTimeout(async () => {
+        try {
+          const data = await apiClient.getDashboardData();
+          setPlayer(data.player);
+          setActiveRound(data.current_round);
+          setPendingResults(data.pending_results);
+          setPhrasesetSummary(data.phraseset_summary);
+          setUnclaimedResults(data.unclaimed_results);
+          setRoundAvailability(data.round_availability);
+          setError(null);
+        } catch (err) {
+          console.error('Failed to load dashboard after login:', err);
+          const errorMessage = getActionErrorMessage('load-dashboard', err);
+          setError(errorMessage);
+        }
+      }, 100);
     },
 
     logout: async () => {
@@ -114,7 +132,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     },
 
     refreshDashboard: async (signal?: AbortSignal) => {
-      if (!isAuthenticated) return;
+      // Use the current state value, not the closure value
+      const currentIsAuthenticated = isAuthenticated;
+      if (!currentIsAuthenticated) return;
 
       try {
         const data = await apiClient.getDashboardData(signal);

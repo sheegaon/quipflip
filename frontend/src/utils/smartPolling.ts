@@ -103,12 +103,13 @@ class SmartPollingManager {
   private handleOffline = () => {
     this.isOnline = false;
     // Cancel all pending polls when going offline
-    this.polls.forEach(poll => {
-      if (poll.timeoutId) {
+    this.polls.forEach((_, key) => {
+      const poll = this.polls.get(key);
+      if (poll?.timeoutId) {
         clearTimeout(poll.timeoutId);
         poll.timeoutId = undefined;
       }
-      if (poll.abortController) {
+      if (poll?.abortController) {
         poll.abortController.abort();
       }
     });
