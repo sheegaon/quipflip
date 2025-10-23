@@ -448,7 +448,12 @@ class RoundService:
         return round_object
 
     async def create_phraseset_if_ready(self, prompt_round: Round) -> PhraseSet | None:
-        """Create phraseset when two copies submitted."""
+        """
+        Create phraseset when two copies submitted.
+
+        Validates that all required denormalized data is present before creating
+        the phraseset to prevent data corruption.
+        """
         result = await self.db.execute(
             select(Round)
             .where(Round.prompt_round_id == prompt_round.round_id)
@@ -463,6 +468,23 @@ class RoundService:
 
         copy1, copy2 = copy_rounds[0], copy_rounds[1]
 
+        # Validate denormalized data exists before creating phraseset
+        if not prompt_round.prompt_text:
+            logger.error(f"Cannot create phraseset: prompt_round {prompt_round.round_id} missing prompt_text")
+            return None
+
+        if not prompt_round.submitted_phrase:
+            logger.error(f"Cannot create phraseset: prompt_round {prompt_round.round_id} missing submitted_phrase")
+            return None
+
+        if not copy1.copy_phrase:
+            logger.error(f"Cannot create phraseset: copy_round {copy1.round_id} missing copy_phrase")
+            return None
+
+        if not copy2.copy_phrase:
+            logger.error(f"Cannot create phraseset: copy_round {copy2.round_id} missing copy_phrase")
+            return None
+
         total_pool = self.settings.prize_pool
         system_contribution = copy1.system_contribution + copy2.system_contribution
 
@@ -471,10 +493,11 @@ class RoundService:
             prompt_round_id=prompt_round.round_id,
             copy_round_1_id=copy1.round_id,
             copy_round_2_id=copy2.round_id,
+            # Denormalized fields - explicitly copy from source rounds
             prompt_text=prompt_round.prompt_text,
-            original_phrase=prompt_round.submitted_phrase,
-            copy_phrase_1=copy1.copy_phrase,
-            copy_phrase_2=copy2.copy_phrase,
+            original_phrase=prompt_round.submitted_phrase.upper(),
+            copy_phrase_1=copy1.copy_phrase.upper(),
+            copy_phrase_2=copy2.copy_phrase.upper(),
             status="open",
             vote_count=0,
             total_pool=total_pool,

@@ -4,6 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from datetime import datetime, UTC, timedelta
 from backend.utils.exceptions import NoWordsetsAvailableError,  AlreadyVotedError, RoundExpiredError
+from backend.utils.datetime_helpers import ensure_utc
 from uuid import UUID
 import uuid
 import random
@@ -170,6 +171,111 @@ class VoteService:
         logger.info(f"Started vote round {round.round_id} for phraseset {phraseset.phraseset_id}")
         return round, phraseset
 
+    async def submit_system_vote(
+        self,
+        phraseset: PhraseSet,
+        player: Player,
+        chosen_phrase: str,
+        transaction_service: TransactionService,
+    ) -> Vote:
+        """
+        Submit a vote from a system/AI player (no active round required).
+
+        This method is used for AI backup votes and other programmatic voting.
+        Unlike submit_vote(), this doesn't require an active round and skips
+        the grace period check.
+
+        Args:
+            phraseset: The phraseset being voted on
+            player: The voting player (typically AI)
+            chosen_phrase: The selected phrase
+            transaction_service: Transaction service for payouts
+
+        Returns:
+            Created vote with immediate feedback
+
+        Raises:
+            ValueError: If phrase is not valid
+            AlreadyVotedError: If player already voted on this phraseset
+        """
+        # Normalize phrase
+        phrase = chosen_phrase.strip().upper()
+
+        # Check if phrase is one of the three
+        valid_phrases = {
+            phraseset.original_phrase,
+            phraseset.copy_phrase_1,
+            phraseset.copy_phrase_2,
+        }
+        if phrase not in valid_phrases:
+            raise ValueError(f"Phrase must be one of: {', '.join(valid_phrases)}")
+
+        # Check if already voted
+        existing = await self.db.execute(
+            select(Vote)
+            .where(Vote.phraseset_id == phraseset.phraseset_id)
+            .where(Vote.player_id == player.player_id)
+        )
+        if existing.scalar_one_or_none():
+            raise AlreadyVotedError("Already voted on this phraseset")
+
+        # Determine if correct
+        correct = phrase == phraseset.original_phrase
+        payout = settings.vote_payout_correct if correct else 0
+
+        # Create vote
+        vote = Vote(
+            vote_id=uuid.uuid4(),
+            phraseset_id=phraseset.phraseset_id,
+            player_id=player.player_id,
+            voted_phrase=phrase,
+            correct=correct,
+            payout=payout,
+        )
+
+        self.db.add(vote)
+        await self.db.flush()
+
+        # Give payout if correct
+        if correct:
+            await transaction_service.create_transaction(
+                player.player_id,
+                payout,
+                "vote_payout",
+                vote.vote_id,
+            )
+
+        # Update phraseset vote count
+        phraseset.vote_count += 1
+
+        await self.activity_service.record_activity(
+            activity_type="vote_submitted",
+            phraseset_id=phraseset.phraseset_id,
+            player_id=player.player_id,
+            metadata={
+                "voted_phrase": phrase,
+                "correct": correct,
+                "vote_count": phraseset.vote_count,
+                "system_vote": True,
+            },
+        )
+
+        await self.db.commit()
+
+        # Update vote timeline
+        await self._update_vote_timeline(phraseset)
+
+        # Check if should finalize
+        await self._check_and_finalize(phraseset, transaction_service)
+
+        await self.db.refresh(vote)
+
+        logger.info(
+            f"System vote submitted: phraseset={phraseset.phraseset_id}, player={player.player_id}, "
+            f"phrase={phrase}, correct={correct}, payout=${payout}"
+        )
+        return vote
+
     async def submit_vote(
         self,
         round: Round,
@@ -188,16 +294,9 @@ class VoteService:
         - Update vote timeline
         - Check for finalization
         """
-        # Check grace period - ensure both datetimes have same timezone awareness
+        # Check grace period
         current_time = datetime.now(UTC)
-        expires_at = round.expires_at
-        
-        # Handle timezone-naive datetime from database
-        if expires_at.tzinfo is None:
-            # If expires_at is naive, treat it as UTC
-            expires_at = expires_at.replace(tzinfo=UTC)
-        
-        grace_cutoff = expires_at + timedelta(seconds=settings.grace_period_seconds)
+        grace_cutoff = ensure_utc(round.expires_at) + timedelta(seconds=settings.grace_period_seconds)
         
         if current_time > grace_cutoff:
             raise RoundExpiredError("Round expired past grace period")
@@ -300,26 +399,29 @@ class VoteService:
         return vote
 
     async def _update_vote_timeline(self, phraseset: PhraseSet):
-        """Update vote timeline markers (3rd vote, 5th vote)."""
+        """Update vote timeline markers based on configured thresholds."""
         prompt_round = await self.db.get(Round, phraseset.prompt_round_id)
         if prompt_round and phraseset.vote_count >= 1 and prompt_round.phraseset_status not in {"closing", "finalized"}:
             prompt_round.phraseset_status = "voting"
 
-        # Mark 3rd vote timestamp
-        if phraseset.vote_count == 3 and not phraseset.third_vote_at:
+        # Mark minimum vote threshold timestamp
+        if phraseset.vote_count == settings.vote_minimum_threshold and not phraseset.third_vote_at:
             phraseset.third_vote_at = datetime.now(UTC)
             await self.activity_service.record_activity(
                 activity_type="third_vote_reached",
                 phraseset_id=phraseset.phraseset_id,
                 metadata={"vote_count": phraseset.vote_count},
             )
-            logger.info(f"Phraseset {phraseset.phraseset_id} reached 3rd vote, 10min window starts")
+            logger.info(
+                f"Phraseset {phraseset.phraseset_id} reached {settings.vote_minimum_threshold} votes, "
+                f"{settings.vote_minimum_window_seconds}s window starts"
+            )
 
-        # Mark 5th vote timestamp and change status to closing
-        if phraseset.vote_count == 5 and not phraseset.fifth_vote_at:
+        # Mark closing threshold timestamp and change status to closing
+        if phraseset.vote_count == settings.vote_closing_threshold and not phraseset.fifth_vote_at:
             phraseset.fifth_vote_at = datetime.now(UTC)
             phraseset.status = "closing"
-            phraseset.closes_at = datetime.now(UTC) + timedelta(seconds=60)
+            phraseset.closes_at = datetime.now(UTC) + timedelta(seconds=settings.vote_closing_window_seconds)
             if prompt_round:
                 prompt_round.phraseset_status = "closing"
             await self.activity_service.record_activity(
@@ -357,24 +459,14 @@ class VoteService:
 
         # 5+ votes and 60 seconds elapsed
         elif phraseset.vote_count >= 5 and phraseset.fifth_vote_at:
-            fifth_vote_at = phraseset.fifth_vote_at
-            # Handle timezone-naive datetime from database
-            if fifth_vote_at.tzinfo is None:
-                fifth_vote_at = fifth_vote_at.replace(tzinfo=UTC)
-            
-            elapsed = (current_time - fifth_vote_at).total_seconds()
+            elapsed = (current_time - ensure_utc(phraseset.fifth_vote_at)).total_seconds()
             if elapsed >= 60:
                 should_finalize = True
                 logger.info(f"Phraseset {phraseset.phraseset_id} closing window expired (60s)")
 
         # 3 votes and 10 minutes elapsed (no 5th vote)
         elif phraseset.vote_count >= 3 and phraseset.third_vote_at and not phraseset.fifth_vote_at:
-            third_vote_at = phraseset.third_vote_at
-            # Handle timezone-naive datetime from database
-            if third_vote_at.tzinfo is None:
-                third_vote_at = third_vote_at.replace(tzinfo=UTC)
-                
-            elapsed = (current_time - third_vote_at).total_seconds()
+            elapsed = (current_time - ensure_utc(phraseset.third_vote_at)).total_seconds()
             if elapsed >= 600:  # 10 minutes
                 should_finalize = True
                 logger.info(f"Phraseset {phraseset.phraseset_id} 10min window expired")

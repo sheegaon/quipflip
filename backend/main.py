@@ -118,12 +118,39 @@ async def initialize_phrase_validation():
 
 
 async def ai_backup_cycle():
-    """Background task to run AI backup cycles."""
+    """
+    Background task to run AI backup cycles.
+
+    Includes startup delay to ensure all services (especially phrase validator)
+    are ready before attempting AI operations.
+    """
     from backend.database import AsyncSessionLocal
     from backend.services.ai_service import AIService
 
+    # Initial startup delay to ensure services are ready
+    startup_delay = 10  # 10 seconds initial delay
+    logger.info(f"AI backup cycle starting in {startup_delay}s (waiting for services to initialize)")
+    await asyncio.sleep(startup_delay)
+
+    # Verify phrase validator is ready before starting
+    try:
+        if settings.use_phrase_validator_api:
+            from backend.services.phrase_validation_client import get_phrase_validation_client
+            client = get_phrase_validation_client()
+            if not await client.health_check():
+                logger.warning("Phrase validator API not healthy yet, AI backup may experience issues")
+        else:
+            from backend.services.phrase_validator import get_phrase_validator
+            validator = get_phrase_validator()
+            if not validator.dictionary:
+                logger.warning("Local phrase validator dictionary not loaded, AI backup may experience issues")
+    except Exception as e:
+        logger.warning(f"Could not verify phrase validator health: {e}")
+
+    logger.info("AI backup cycle starting main loop")
+
     while True:
-        # Wait before first cycle
+        # Wait before each cycle
         await asyncio.sleep(settings.ai_backup_sleep_seconds)
 
         try:
@@ -171,6 +198,16 @@ async def lifespan(app_instance: FastAPI):
                 await ai_backup_task
             except asyncio.CancelledError:
                 logger.info("AI backup cycle task cancelled")
+
+        # Cleanup phrase validation client session
+        if settings.use_phrase_validator_api:
+            try:
+                from backend.services.phrase_validation_client import get_phrase_validation_client
+                client = get_phrase_validation_client()
+                await client.close()
+                logger.info("Phrase validation client session closed")
+            except Exception as e:
+                logger.error(f"Error closing phrase validation client: {e}")
 
         logger.info("Quipflip API Shutting Down... Goodbye!")
 

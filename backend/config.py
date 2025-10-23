@@ -45,6 +45,13 @@ class Settings(BaseSettings):
     vote_round_seconds: int = 60
     grace_period_seconds: int = 5
 
+    # Vote finalization thresholds
+    vote_max_votes: int = 20  # Maximum votes before auto-finalization
+    vote_closing_threshold: int = 5  # Votes needed to enter closing window
+    vote_closing_window_seconds: int = 60  # Closing window duration (60 seconds)
+    vote_minimum_threshold: int = 3  # Minimum votes to start timeout window
+    vote_minimum_window_seconds: int = 600  # Minimum vote window duration (10 minutes)
+
     # Phrase Validation
     use_phrase_validator_api: bool = True
     phrase_min_words: int = 1

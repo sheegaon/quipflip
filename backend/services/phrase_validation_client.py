@@ -1,7 +1,7 @@
 """Phrase validation client for remote phrase validation service."""
 import asyncio
 import logging
-from typing import Tuple
+from typing import Tuple, Optional
 import aiohttp
 from aiohttp import ClientTimeout, ClientError
 
@@ -11,32 +11,59 @@ logger = logging.getLogger(__name__)
 
 
 class PhraseValidationClient:
-    """Client for remote phrase validation service."""
+    """
+    Client for remote phrase validation service.
+
+    Manages HTTP session lifecycle properly to prevent resource leaks.
+    Session is created lazily on first use and should be closed on shutdown.
+    """
 
     def __init__(self):
         self.settings = get_settings()
         self.base_url = self.settings.phrase_validator_url.rstrip('/')
         self.timeout = ClientTimeout(total=30)  # 30 second timeout
-        self._session = None
+        self._session: Optional[aiohttp.ClientSession] = None
+
+    async def __aenter__(self):
+        """Async context manager entry."""
+        await self._ensure_session()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Async context manager exit - ensure session is closed."""
+        await self.close()
+
+    async def _ensure_session(self):
+        """Ensure session exists and is not closed."""
+        if self._session is None or self._session.closed:
+            self._session = aiohttp.ClientSession(timeout=self.timeout)
+            logger.debug("Created new aiohttp session for phrase validation client")
 
     def _get_session(self) -> aiohttp.ClientSession:
-        """Get or create the aiohttp session."""
+        """
+        Get the aiohttp session.
+
+        Note: Use _ensure_session() in async methods instead.
+        This method exists for backwards compatibility but should not be used directly.
+        """
         if self._session is None:
-            self._session = aiohttp.ClientSession(timeout=self.timeout)
+            raise RuntimeError("Session not initialized. Call _ensure_session() first.")
         return self._session
 
     async def close(self):
         """Close the underlying aiohttp client session."""
         if self._session and not self._session.closed:
             await self._session.close()
+            logger.debug("Closed aiohttp session for phrase validation client")
+            self._session = None
 
     async def _make_request(self, endpoint: str, payload: dict) -> Tuple[bool, str]:
         """Make HTTP request to validation service."""
+        await self._ensure_session()
         url = f"{self.base_url}{endpoint}"
 
         try:
-            session = self._get_session()
-            async with session.post(url, json=payload) as response:
+            async with self._session.post(url, json=payload) as response:
                 if response.status == 200:
                     data = await response.json()
                     return data.get("is_valid", False), data.get("error", "")
@@ -119,8 +146,9 @@ class PhraseValidationClient:
         Returns:
             True if service is healthy, False otherwise
         """
+        await self._ensure_session()
         url = f"{self.base_url}/healthz"
-        
+
         try:
             async with self._session.get(url) as response:
                 if response.status == 200:
