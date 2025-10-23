@@ -398,7 +398,7 @@ class VoteService:
         )
         return vote
 
-    async def _update_vote_timeline(self, phraseset: PhraseSet):
+    async def _update_vote_timeline(self, phraseset: PhraseSet) -> None:
         """Update vote timeline markers based on configured thresholds."""
         prompt_round = await self.db.get(Round, phraseset.prompt_round_id)
         if prompt_round and phraseset.vote_count >= 1 and prompt_round.phraseset_status not in {"closing", "finalized"}:
@@ -432,7 +432,10 @@ class VoteService:
                     "closes_at": phraseset.closes_at.isoformat() if phraseset.closes_at else None,
                 },
             )
-            logger.info(f"Phraseset {phraseset.phraseset_id} reached 5th vote, 60sec closing window")
+            logger.info(
+                f"Phraseset {phraseset.phraseset_id} reached {settings.vote_closing_threshold} votes, "
+                f"{settings.vote_closing_window_seconds}sec closing window"
+            )
 
         await self.db.commit()
 
@@ -440,36 +443,44 @@ class VoteService:
         self,
         phraseset: PhraseSet,
         transaction_service: TransactionService,
-    ):
+    ) -> None:
         """
-        Check if phraseset should be finalized.
+        Check if phraseset should be finalized based on configured thresholds.
 
-        Conditions:
-        - 20 votes (max)
-        - OR 5+ votes AND 60 seconds elapsed since 5th vote
-        - OR 3 votes AND 10 minutes elapsed since 3rd vote
+        Conditions (configurable in settings):
+        - vote_max_votes reached (default: 20)
+        - OR vote_closing_threshold+ votes AND closing window elapsed
+        - OR vote_minimum_threshold votes AND minimum window elapsed
         """
         should_finalize = False
         current_time = datetime.now(UTC)
 
         # Max votes reached
-        if phraseset.vote_count >= 20:
+        if phraseset.vote_count >= settings.vote_max_votes:
             should_finalize = True
-            logger.info(f"Phraseset {phraseset.phraseset_id} reached max votes (20)")
+            logger.info(f"Phraseset {phraseset.phraseset_id} reached max votes ({settings.vote_max_votes})")
 
-        # 5+ votes and 60 seconds elapsed
-        elif phraseset.vote_count >= 5 and phraseset.fifth_vote_at:
+        # Closing threshold+ votes and closing window elapsed
+        elif phraseset.vote_count >= settings.vote_closing_threshold and phraseset.fifth_vote_at:
             elapsed = (current_time - ensure_utc(phraseset.fifth_vote_at)).total_seconds()
-            if elapsed >= 60:
+            if elapsed >= settings.vote_closing_window_seconds:
                 should_finalize = True
-                logger.info(f"Phraseset {phraseset.phraseset_id} closing window expired (60s)")
+                logger.info(
+                    f"Phraseset {phraseset.phraseset_id} closing window expired "
+                    f"({settings.vote_closing_window_seconds}s)"
+                )
 
-        # 3 votes and 10 minutes elapsed (no 5th vote)
-        elif phraseset.vote_count >= 3 and phraseset.third_vote_at and not phraseset.fifth_vote_at:
+        # Minimum threshold votes and minimum window elapsed (no closing vote yet)
+        elif (phraseset.vote_count >= settings.vote_minimum_threshold
+              and phraseset.third_vote_at
+              and not phraseset.fifth_vote_at):
             elapsed = (current_time - ensure_utc(phraseset.third_vote_at)).total_seconds()
-            if elapsed >= 600:  # 10 minutes
+            if elapsed >= settings.vote_minimum_window_seconds:
                 should_finalize = True
-                logger.info(f"Phraseset {phraseset.phraseset_id} 10min window expired")
+                logger.info(
+                    f"Phraseset {phraseset.phraseset_id} minimum window expired "
+                    f"({settings.vote_minimum_window_seconds}s)"
+                )
 
         if should_finalize:
             await self._finalize_wordset(phraseset, transaction_service)
@@ -478,7 +489,7 @@ class VoteService:
         self,
         phraseset: PhraseSet,
         transaction_service: TransactionService,
-    ):
+    ) -> None:
         """
         Finalize phraseset.
 

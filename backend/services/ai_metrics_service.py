@@ -275,7 +275,36 @@ class AIMetricsService:
 
 class MetricsTracker:
     """
-    Context manager for tracking AI operation metrics.
+    Context manager for automatic AI operation metrics tracking.
+
+    Automatically records operation start, duration, and success/failure.
+    Handles exceptions gracefully and ensures metrics are always saved.
+
+    Example:
+        >>> async with MetricsTracker(
+        ...     metrics_service,
+        ...     operation_type="copy_generation",
+        ...     provider="openai",
+        ...     model="gpt-4",
+        ... ) as tracker:
+        ...     result = await generate_copy(...)
+        ...     tracker.set_result(
+        ...         result,
+        ...         success=True,
+        ...         response_length=len(result),
+        ...         validation_passed=True,
+        ...     )
+
+    Metrics are automatically committed when the context exits.
+    If an exception occurs, success=False is recorded with error message.
+
+    Attributes:
+        metrics_service: AIMetricsService instance
+        operation_type: Type of operation ("copy_generation" or "vote_generation")
+        provider: AI provider name ("openai" or "gemini")
+        model: Model name (e.g., "gpt-4")
+        start_time: Timestamp when operation started
+        result_data: Dictionary storing operation results
 
     Usage:
         async with MetricsTracker(

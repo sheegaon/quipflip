@@ -595,13 +595,42 @@ The Quipflip AI Service is a production-ready system that provides:
 
 The service successfully handles both copy generation and voting scenarios, with full metrics tracking for operational excellence. It's ready for production deployment with proper monitoring and cost controls in place.
 
-## TODO
-This entire block for processing waiting phrasesets duplicates a large amount of complex business logic from VoteService (e.g., creating votes, handling payouts, updating vote timelines and phraseset statuses). This is a significant maintainability risk, as any future changes to the voting process will need to be updated in two places.
+## Recent Code Quality Improvements (2025-10-22)
 
-Instead of duplicating this logic, VoteService should be refactored to support programmatic voting by the AI. For example, you could create a new method in VoteService like submit_ai_vote(self, phraseset: PhraseSet, player: Player, chosen_phrase: str) that encapsulates all the necessary steps.
+### ✅ Refactored AI Voting to Use VoteService
 
-Additionally, the duplicated code contains several inefficiencies:
+**Issue**: The AI voting logic duplicated 200+ lines of complex business logic from VoteService, creating a significant maintainability risk.
 
-Local imports and instantiation in loop: TransactionService is imported and instantiated inside the loop (lines 468-469).
-Unnecessary database queries: The code fetches prompt_round using db.get (line 481) even though it was already eager-loaded and is available via phraseset.prompt_round.
-Refactoring to use a centralized VoteService method will resolve the duplication and fix these performance issues.
+**Solution**: Created `VoteService.submit_system_vote()` method for programmatic/AI voting that both AI and human votes now use. This provides:
+- **Single source of truth** for all voting logic
+- **Performance improvements**: Services instantiated once instead of in loop
+- **Eliminated code duplication**: Removed ~70 lines of duplicated code from AI service
+- **Consistent behavior**: AI and human votes use identical business rules
+
+See [vote_service.py:174-277](../backend/services/vote_service.py#L174-L277) for implementation.
+
+### ✅ Added Timezone Utility Function
+
+Created `backend/utils/datetime_helpers.py` with `ensure_utc()` function that centralizes timezone-naive datetime handling, eliminating 6+ blocks of duplicated timezone normalization code.
+
+### ✅ Fixed Resource Leaks
+
+**aiohttp Session Management**: Updated phrase_validation_client.py with:
+- Async context manager support
+- Lazy session creation
+- Proper cleanup in main.py lifespan
+
+### ✅ Improved Data Validation
+
+Added validation in RoundService.create_phraseset_if_ready() to ensure all denormalized fields exist before creating phrasesets, preventing data corruption.
+
+### ✅ Enhanced Error Handling
+
+Improved AI player initialization with:
+- Balance validation warnings
+- Automatic stuck round cleanup
+- Comprehensive error logging
+
+### ✅ Fixed Startup Race Conditions
+
+Added 10-second startup delay and health checks to AI backup cycle to ensure phrase validator is ready before AI operations begin.

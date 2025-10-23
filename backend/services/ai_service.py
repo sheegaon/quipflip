@@ -322,7 +322,7 @@ class AIService:
 
             return chosen_phrase
 
-    async def run_backup_cycle(self):
+    async def run_backup_cycle(self) -> None:
         """
         Run a backup cycle to provide AI copies for waiting prompts and AI votes for waiting phrasesets.
 

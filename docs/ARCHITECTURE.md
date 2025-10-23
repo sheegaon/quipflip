@@ -130,6 +130,82 @@ For voting displays, phrase order is randomized per-voter (not stored in databas
 
 ---
 
+## Code Quality Patterns
+
+### Denormalized Data Pattern
+PhraseSet uses denormalized fields for performance while maintaining referential integrity:
+
+```python
+# Denormalized fields (copied from source rounds)
+prompt_text = Column(String(500), nullable=False)
+original_phrase = Column(String(100), nullable=False)
+copy_phrase_1 = Column(String(100), nullable=False)
+copy_phrase_2 = Column(String(100), nullable=False)
+
+# Relationships to source data
+prompt_round = relationship("Round", foreign_keys=[prompt_round_id])
+copy_round_1 = relationship("Round", foreign_keys=[copy_round_1_id])
+copy_round_2 = relationship("Round", foreign_keys=[copy_round_2_id])
+```
+
+**Validation**: RoundService validates all denormalized fields exist before creating phrasesets to prevent data corruption.
+
+### Timezone Handling Pattern
+Use `ensure_utc()` utility for consistent timezone handling:
+
+```python
+from backend.utils.datetime_helpers import ensure_utc
+
+# Convert timezone-naive datetime from database
+elapsed = (current_time - ensure_utc(phraseset.fifth_vote_at)).total_seconds()
+```
+
+**Benefits**: Eliminates 6+ blocks of duplicated timezone normalization code across services.
+
+### System/Programmatic Operations
+VoteService provides separate methods for human vs system operations:
+
+```python
+# Human voting (requires active round, checks grace period)
+async def submit_vote(round, phraseset, phrase, player, transaction_service) -> Vote
+
+# System/AI voting (no round required, skips grace period)
+async def submit_system_vote(phraseset, player, chosen_phrase, transaction_service) -> Vote
+```
+
+**Single Source of Truth**: Both AI and human votes use identical business logic for consistency.
+
+### Resource Management Pattern
+HTTP clients use async context managers for proper lifecycle:
+
+```python
+async with PhraseValidationClient() as client:
+    result = await client.validate("phrase")
+# Session automatically closed on exit
+```
+
+**Cleanup**: Application lifespan manager ensures all resources are properly closed on shutdown.
+
+### Game Balance Configuration
+All game balance constants centralized in settings for easy tuning:
+
+```python
+# In config.py
+vote_max_votes: int = 20
+vote_closing_threshold: int = 5
+vote_closing_window_seconds: int = 60
+vote_minimum_threshold: int = 3
+vote_minimum_window_seconds: int = 600
+
+# Usage in services
+if phraseset.vote_count >= settings.vote_max_votes:
+    should_finalize = True
+```
+
+**Benefits**: Single place to adjust game balance, no magic numbers scattered across code.
+
+---
+
 ## Backend State Machines
 
 ### Voting Timeline State Machine
