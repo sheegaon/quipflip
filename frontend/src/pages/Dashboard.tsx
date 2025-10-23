@@ -148,26 +148,6 @@ export const Dashboard: React.FC = () => {
           </div>
         )}
 
-        {/* Pending Results Notification */}
-        {pendingResults.length > 0 && (
-          <div className="tile-card bg-quip-turquoise bg-opacity-10 border-2 border-quip-turquoise p-4 mb-6 slide-up-enter">
-            <div className="flex justify-between items-center">
-              <div>
-                <p className="font-display font-semibold text-quip-turquoise">Results Ready!</p>
-                <p className="text-sm text-quip-teal">
-                  {pendingResults.length} quipset{pendingResults.length > 1 ? 's' : ''} finalized
-                </p>
-              </div>
-              <button
-                onClick={handleViewResults}
-                className="bg-quip-turquoise hover:bg-quip-teal text-white font-bold py-2 px-6 rounded-tile transition-all hover:shadow-tile-sm"
-              >
-                View Results
-              </button>
-            </div>
-          </div>
-        )}
-
         {totalUnclaimedCount > 0 && (
           <div className="tile-card bg-quip-turquoise bg-opacity-10 border-2 border-quip-turquoise p-4 mb-6 slide-up-enter">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
