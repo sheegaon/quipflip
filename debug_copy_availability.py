@@ -113,18 +113,23 @@ async def debug_copy_availability():
                 if not prompt.submitted_phrase:
                     status = "Not submitted"
                 elif prompt.expires_at:
-                    # Convert string datetime to datetime object if needed
-                    if isinstance(prompt.expires_at, str):
-                        from datetime import datetime as dt
-                        expires_at = dt.fromisoformat(prompt.expires_at.replace('Z', '+00:00'))
-                    else:
-                        expires_at = prompt.expires_at
-                        # Ensure timezone awareness
-                        if expires_at.tzinfo is None:
-                            expires_at = expires_at.replace(tzinfo=timezone.utc)
-                    
-                    if expires_at >= datetime.now(timezone.utc):
-                        status = "Still active"
+                    # Handle timezone-aware datetime comparison
+                    try:
+                        if isinstance(prompt.expires_at, str):
+                            from datetime import datetime as dt
+                            expires_at = dt.fromisoformat(prompt.expires_at.replace('Z', '+00:00'))
+                        else:
+                            expires_at = prompt.expires_at
+                            # Ensure timezone awareness
+                            if expires_at.tzinfo is None:
+                                expires_at = expires_at.replace(tzinfo=timezone.utc)
+                        
+                        current_time = datetime.now(timezone.utc)
+                        if expires_at >= current_time:
+                            status = "Still active"
+                    except Exception:
+                        # If datetime comparison fails, just skip the status check
+                        pass
 
                 print(f"   - ID: {prompt.round_id} | Player: {prompt.username}")
                 print(f"     Status: {status} (DB status: {prompt.status})")

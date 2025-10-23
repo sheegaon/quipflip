@@ -698,7 +698,7 @@ class RoundService:
                 .join(PhraseSet, PhraseSet.prompt_round_id == Round.round_id, isouter=True)
                 .where(Round.round_type == "prompt")
                 .where(Round.status == "submitted")
-                .where(PhraseSet.phraseset_id == None)
+                .where(PhraseSet.phraseset_id.is_(None))  # Use proper NULL check
                 .order_by(Round.created_at.asc())
             )
             prompt_ids = list(result.scalars().all())
