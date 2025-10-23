@@ -212,14 +212,6 @@ async def get_rounds_available(
         available_count=phrasesets_waiting,
     )
 
-    # Debug logging
-    import logging
-    logger = logging.getLogger(__name__)
-    logger.info(f"Round availability for player {player.player_id}:")
-    logger.info(f"  can_prompt: {can_prompt}, can_copy: {can_copy}, can_vote: {can_vote}")
-    logger.info(f"  prompts_waiting: {prompts_waiting}, phrasesets_waiting: {phrasesets_waiting}")
-    logger.info(f"  player.balance: {player.balance}, player.outstanding_prompts: {player.outstanding_prompts}")
-
     # Override can_copy if no prompts are waiting
     if prompts_waiting == 0:
         can_copy = False

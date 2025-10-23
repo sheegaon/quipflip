@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
-import apiClient, { extractErrorMessage } from '../api/client';
+import { extractErrorMessage } from '../api/client';
 import type {
   PhrasesetSummary,
   PhrasesetDetails as PhrasesetDetailsType,
@@ -29,7 +29,7 @@ const statusOptions: { value: StatusFilter; label: string }[] = [
 export const Tracking: React.FC = () => {
   const { state, actions } = useGame();
   const { player, phrasesetSummary } = state;
-  const { refreshBalance, refreshDashboard } = actions;
+  const { refreshBalance, refreshDashboard, getPlayerPhrasesets, getPhrasesetDetails, claimPhrasesetPrize } = actions;
 
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -49,7 +49,7 @@ export const Tracking: React.FC = () => {
   const fetchPhrasesets = useCallback(async () => {
     setListLoading(true);
     try {
-      const data = await apiClient.getPlayerPhrasesets({
+      const data = await getPlayerPhrasesets({
         role: roleFilter,
         status: statusFilter,
         limit: 100,
@@ -57,7 +57,7 @@ export const Tracking: React.FC = () => {
       });
       setPhrasesets(data.phrasesets);
       if (data.phrasesets.length > 0) {
-        const first = data.phrasesets.find((item) =>
+        const first = data.phrasesets.find((item: PhrasesetSummary) =>
           item.phraseset_id ? item.phraseset_id === selectedId : item.prompt_round_id === selectedId
         ) ?? data.phrasesets[0];
         const id = first.phraseset_id ?? first.prompt_round_id;
@@ -74,7 +74,7 @@ export const Tracking: React.FC = () => {
     } finally {
       setListLoading(false);
     }
-  }, [roleFilter, statusFilter, selectedId]);
+  }, [roleFilter, statusFilter, selectedId, getPlayerPhrasesets]);
 
   const fetchDetails = useCallback(async (phraseset: PhrasesetSummary | null) => {
     if (!phraseset || !phraseset.phraseset_id) {
@@ -84,7 +84,7 @@ export const Tracking: React.FC = () => {
     }
     setDetailsLoading(true);
     try {
-      const data = await apiClient.getPhrasesetDetails(phraseset.phraseset_id);
+      const data = await getPhrasesetDetails(phraseset.phraseset_id);
       
       // Only update state if the data has actually changed
       const hasChanged = !lastDetailsRef.current || 
@@ -101,7 +101,7 @@ export const Tracking: React.FC = () => {
     } finally {
       setDetailsLoading(false);
     }
-  }, []);
+  }, [getPhrasesetDetails]);
 
   useEffect(() => {
     fetchPhrasesets();
@@ -134,7 +134,7 @@ export const Tracking: React.FC = () => {
   const handleClaim = async (phrasesetId: string) => {
     setClaiming(true);
     try {
-      await apiClient.claimPhrasesetPrize(phrasesetId);
+      await claimPhrasesetPrize(phrasesetId);
       await Promise.all([
         fetchDetails(selectedSummary),
         fetchPhrasesets(),

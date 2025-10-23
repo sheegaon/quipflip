@@ -10,7 +10,7 @@ import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
 import type { PromptState } from '../api/types';
 
 export const PromptRound: React.FC = () => {
-  const { state } = useGame();
+  const { state, actions } = useGame();
   const { activeRound } = state;
   const { currentStep, advanceStep } = useTutorial();
   const navigate = useNavigate();
@@ -46,12 +46,12 @@ export const PromptRound: React.FC = () => {
       if (currentStep === 'prompt_round') {
         advanceStep('copy_round').then(() => navigate('/dashboard'));
       } else {
-        // Start a new round
-        apiClient.startPromptRound()
+        // Start a new round using GameContext action
+        actions.startPromptRound()
           .catch(() => navigate('/dashboard'));
       }
     }
-  }, [activeRound, currentStep, advanceStep, navigate]);
+  }, [activeRound, currentStep, advanceStep, navigate, actions]);
 
   // Redirect if already submitted
   useEffect(() => {

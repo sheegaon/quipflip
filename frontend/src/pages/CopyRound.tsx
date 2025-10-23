@@ -10,7 +10,7 @@ import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
 import type { CopyState } from '../api/types';
 
 export const CopyRound: React.FC = () => {
-  const { state } = useGame();
+  const { state, actions } = useGame();
   const { activeRound } = state;
   const { currentStep, advanceStep } = useTutorial();
   const navigate = useNavigate();
@@ -29,12 +29,12 @@ export const CopyRound: React.FC = () => {
       if (currentStep === 'copy_round') {
         advanceStep('vote_round').then(() => navigate('/dashboard'));
       } else {
-        // Start a new round
-        apiClient.startCopyRound()
+        // Start a new round using GameContext action
+        actions.startCopyRound()
           .catch(() => navigate('/dashboard'));
       }
     }
-  }, [activeRound, currentStep, advanceStep, navigate]);
+  }, [activeRound, currentStep, advanceStep, navigate, actions]);
 
   // Redirect if already submitted
   useEffect(() => {

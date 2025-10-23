@@ -32,6 +32,14 @@ interface GameActions {
   claimBonus: () => Promise<void>;
   clearError: () => void;
   navigateAfterDelay: (path: string, delay?: number) => void;
+  startPromptRound: () => Promise<void>;
+  startCopyRound: () => Promise<void>;
+  startVoteRound: () => Promise<void>;
+  getPhrasesetResults: (phrasesetId: string) => Promise<any>;
+  getPlayerPhrasesets: (params: any) => Promise<any>;
+  getPhrasesetDetails: (phrasesetId: string) => Promise<any>;
+  claimPhrasesetPrize: (phrasesetId: string) => Promise<void>;
+  getStatistics: (signal?: AbortSignal) => Promise<any>;
 }
 
 interface GameContextType {
@@ -42,6 +50,9 @@ interface GameContextType {
 const GameContext = createContext<GameContextType | undefined>(undefined);
 
 export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Navigation hook - use directly since we're inside Router
+  const navigate = useNavigate();
+  
   // State
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [username, setUsername] = useState<string | null>(null);
@@ -53,9 +64,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [roundAvailability, setRoundAvailability] = useState<RoundAvailability | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Navigation ref (will be set by navigation wrapper)
-  const navigateRef = useRef<((path: string) => void) | null>(null);
 
   // Initialize session on mount
   useEffect(() => {
@@ -198,8 +206,149 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     },
 
     navigateAfterDelay: (path: string, delay: number = 1500) => {
-      if (navigateRef.current) {
-        setTimeout(() => navigateRef.current?.(path), delay);
+      setTimeout(() => navigate(path), delay);
+    },
+
+    startPromptRound: async () => {
+      if (!isAuthenticated) return;
+
+      try {
+        setError(null);
+        const response = await apiClient.startPromptRound();
+        setActiveRound({
+          round_type: 'prompt',
+          round_id: response.round_id,
+          expires_at: response.expires_at,
+          state: {
+            round_id: response.round_id,
+            prompt_text: response.prompt_text,
+            expires_at: response.expires_at,
+            cost: response.cost,
+            status: 'active',
+          },
+        });
+      } catch (err) {
+        const errorMessage = extractErrorMessage(err);
+        setError(errorMessage || 'Unable to start prompt round. Please try again.');
+        throw err;
+      }
+    },
+
+    startCopyRound: async () => {
+      if (!isAuthenticated) return;
+
+      try {
+        setError(null);
+        const response = await apiClient.startCopyRound();
+        setActiveRound({
+          round_type: 'copy',
+          round_id: response.round_id,
+          expires_at: response.expires_at,
+          state: {
+            round_id: response.round_id,
+            original_phrase: response.original_phrase,
+            expires_at: response.expires_at,
+            cost: response.cost,
+            discount_active: response.discount_active,
+            status: 'active',
+          },
+        });
+      } catch (err) {
+        const errorMessage = extractErrorMessage(err);
+        setError(errorMessage || 'Unable to start copy round. Please try again.');
+        throw err;
+      }
+    },
+
+    startVoteRound: async () => {
+      if (!isAuthenticated) return;
+
+      try {
+        setError(null);
+        const response = await apiClient.startVoteRound();
+        setActiveRound({
+          round_type: 'vote',
+          round_id: response.round_id,
+          expires_at: response.expires_at,
+          state: {
+            round_id: response.round_id,
+            phraseset_id: response.phraseset_id,
+            prompt_text: response.prompt_text,
+            phrases: response.phrases,
+            expires_at: response.expires_at,
+            status: 'active',
+          },
+        });
+      } catch (err) {
+        const errorMessage = extractErrorMessage(err);
+        setError(errorMessage || 'Unable to start vote round. Please try again.');
+        throw err;
+      }
+    },
+
+    getPhrasesetResults: async (phrasesetId: string) => {
+      if (!isAuthenticated) return;
+
+      try {
+        const data = await apiClient.getPhrasesetResults(phrasesetId);
+        return data;
+      } catch (err) {
+        const errorMessage = extractErrorMessage(err);
+        setError(errorMessage || 'Unable to get phraseset results. Please try again.');
+        throw err;
+      }
+    },
+
+    getPlayerPhrasesets: async (params: any) => {
+      if (!isAuthenticated) return;
+
+      try {
+        const data = await apiClient.getPlayerPhrasesets(params);
+        return data;
+      } catch (err) {
+        const errorMessage = extractErrorMessage(err);
+        setError(errorMessage || 'Unable to get player phrasesets. Please try again.');
+        throw err;
+      }
+    },
+
+    getPhrasesetDetails: async (phrasesetId: string) => {
+      if (!isAuthenticated) return;
+
+      try {
+        const data = await apiClient.getPhrasesetDetails(phrasesetId);
+        return data;
+      } catch (err) {
+        const errorMessage = extractErrorMessage(err);
+        setError(errorMessage || 'Unable to get phraseset details. Please try again.');
+        throw err;
+      }
+    },
+
+    claimPhrasesetPrize: async (phrasesetId: string) => {
+      if (!isAuthenticated) return;
+
+      try {
+        await apiClient.claimPhrasesetPrize(phrasesetId);
+        await actionsRef.current.refreshDashboard();
+        setError(null);
+      } catch (err) {
+        const errorMessage = extractErrorMessage(err);
+        setError(errorMessage || 'Unable to claim phraseset prize. Please try again.');
+        throw err;
+      }
+    },
+
+    getStatistics: async (signal?: AbortSignal) => {
+      if (!isAuthenticated) return;
+
+      try {
+        const data = await apiClient.getStatistics(signal);
+        return data;
+      } catch (err) {
+        const errorMessage = extractErrorMessage(err);
+        setError(errorMessage || 'Unable to get statistics. Please try again.');
+        throw err;
       }
     },
   });
@@ -342,23 +491,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>;
-};
-
-// Navigation wrapper component to inject navigate function
-export const GameProviderWithNavigation: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const navigate = useNavigate();
-  const contextValue = useContext(GameContext);
-
-  useEffect(() => {
-    if (contextValue) {
-      const actionsRef = (contextValue.actions as any).__navigateRef;
-      if (actionsRef) {
-        actionsRef.current = navigate;
-      }
-    }
-  }, [navigate, contextValue]);
-
-  return <>{children}</>;
 };
 
 // Main hook - returns structured API

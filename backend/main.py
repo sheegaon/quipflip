@@ -70,8 +70,8 @@ class SQLTransactionFilter(logging.Filter):
             if any(keyword in message for keyword in ['ROLLBACK', 'BEGIN', 'COMMIT', 'generated in']):
                 return False
 
-            # Remove line breaks from SELECT statements but keep the message
-            if 'SELECT' in message:
+            # Remove line breaks from SELECT, DELETE, INSERT statements but keep the message
+            if any([kw in message for kw in ['SELECT', 'DELETE', 'INSERT']]):
                 # Replace newlines and multiple spaces with single spaces
                 clean_message = ' '.join(message.split())
                 # Modify the record's message

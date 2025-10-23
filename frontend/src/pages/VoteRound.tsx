@@ -9,7 +9,7 @@ import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
 import type { VoteResponse, VoteState } from '../api/types';
 
 export const VoteRound: React.FC = () => {
-  const { state } = useGame();
+  const { state, actions } = useGame();
   const { activeRound } = state;
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
@@ -23,11 +23,11 @@ export const VoteRound: React.FC = () => {
   // Redirect if no active vote round
   useEffect(() => {
     if (!activeRound || activeRound.round_type !== 'vote') {
-      // Start a new round
-      apiClient.startVoteRound()
+      // Start a new round using GameContext action
+      actions.startVoteRound()
         .catch(() => navigate('/dashboard'));
     }
-  }, [activeRound, navigate]);
+  }, [activeRound, navigate, actions]);
 
   // Redirect if already submitted
   useEffect(() => {
