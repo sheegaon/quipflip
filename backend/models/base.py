@@ -35,8 +35,7 @@ def get_uuid_column(*args, **kwargs):
     """Get UUID column type based on database dialect.
 
     Returns a SQLAlchemy Column configured for UUID storage.
-    For PostgreSQL: uses native UUID type without custom comparator
-    For SQLite: uses String with custom comparator for legacy compatibility
+    Uses a type that adapts based on the actual database dialect at runtime.
 
     Args:
         *args: Positional arguments to pass to Column (e.g., ForeignKey)
@@ -66,8 +65,9 @@ def get_uuid_column(*args, **kwargs):
 
                 # For explicit comparisons, normalize both sides
                 if op in (operators.eq, operators.ne, operators.in_op, operators.notin_op):
-                    # For PostgreSQL UUID type, cast to text before using string functions
-                    # For SQLite, self.expr is already a string
+                    # Cast to String first to handle both PostgreSQL UUID and SQLite string types
+                    # For PostgreSQL: UUID -> TEXT allows string functions to work
+                    # For SQLite: String -> String is a no-op
                     normalized_expr = func.lower(func.replace(func.cast(self.expr, String), "-", ""))
 
                     if op in (operators.in_op, operators.notin_op):
@@ -99,9 +99,7 @@ def get_uuid_column(*args, **kwargs):
 
         def load_dialect_impl(self, dialect):
             if dialect.name == "postgresql":
-                # For PostgreSQL, return native UUID type
                 return dialect.type_descriptor(PGUUID(as_uuid=True))
-            # For SQLite, use String with our custom comparator
             return dialect.type_descriptor(String(36))
 
         @staticmethod
