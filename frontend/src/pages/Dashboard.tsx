@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useGameStructured } from '../contexts/GameContext';
+import { useGame } from '../contexts/GameContext';
 import { useTutorial } from '../contexts/TutorialContext';
 import { Timer } from '../components/Timer';
 import { Header } from '../components/Header';
@@ -9,7 +9,7 @@ import TutorialWelcome from '../components/Tutorial/TutorialWelcome';
 const formatWaitingCount = (count: number): string => (count > 10 ? 'over 10' : count.toString());
 
 export const Dashboard: React.FC = () => {
-  const { state, actions } = useGameStructured();
+  const { state, actions } = useGame();
   const { player, activeRound, pendingResults, phrasesetSummary, roundAvailability } = state;
   const { refreshDashboard } = actions;
   const { startTutorial, skipTutorial, advanceStep } = useTutorial();

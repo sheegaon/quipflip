@@ -2,7 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
-import { GameProvider, useGameStructured } from './contexts/GameContext';
+import { GameProvider, useGame } from './contexts/GameContext';
 import { TutorialProvider } from './contexts/TutorialContext';
 import { Landing } from './pages/Landing';
 import { Dashboard } from './pages/Dashboard';
@@ -17,7 +17,7 @@ import TutorialOverlay from './components/Tutorial/TutorialOverlay';
 
 // Protected Route wrapper
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { state } = useGameStructured();
+  const { state } = useGame();
 
   if (!state.isAuthenticated) {
     return <Navigate to="/" replace />;
@@ -28,7 +28,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
 // App Routes
 const AppRoutes: React.FC = () => {
-  const { state } = useGameStructured();
+  const { state } = useGame();
 
   return (
     <>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useGameStructured } from '../contexts/GameContext';
+import { useGame } from '../contexts/GameContext';
 import apiClient, { extractErrorMessage } from '../api/client';
 import { Timer } from '../components/Timer';
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -9,7 +9,7 @@ import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
 import type { VoteResponse } from '../api/types';
 
 export const VoteRound: React.FC = () => {
-  const { state } = useGameStructured();
+  const { state } = useGame();
   const { activeRound } = state;
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);

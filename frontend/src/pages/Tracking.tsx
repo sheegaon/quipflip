@@ -4,7 +4,7 @@ import type {
   PhrasesetSummary,
   PhrasesetDetails as PhrasesetDetailsType,
 } from '../api/types';
-import { useGameStructured } from '../contexts/GameContext';
+import { useGame } from '../contexts/GameContext';
 import { PhrasesetList } from '../components/PhrasesetList';
 import { PhrasesetDetails } from '../components/PhrasesetDetails';
 import { Header } from '../components/Header';
@@ -27,7 +27,7 @@ const statusOptions: { value: StatusFilter; label: string }[] = [
 ];
 
 export const Tracking: React.FC = () => {
-  const { state, actions } = useGameStructured();
+  const { state, actions } = useGame();
   const { player, phrasesetSummary } = state;
   const { refreshBalance, refreshDashboard } = actions;
 

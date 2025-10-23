@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useGameStructured } from '../contexts/GameContext';
+import { useGame } from '../contexts/GameContext';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import apiClient, { extractErrorMessage } from '../api/client';
 import { loadingMessages } from '../utils/brandedMessages';
 import type { PhrasesetResults } from '../api/types';
 
 export const Results: React.FC = () => {
-  const { state, actions } = useGameStructured();
+  const { state, actions } = useGame();
   const { pendingResults } = state;
   const { refreshDashboard } = actions;
   const navigate = useNavigate();

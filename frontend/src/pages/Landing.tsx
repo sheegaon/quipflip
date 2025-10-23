@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useGameStructured } from '../contexts/GameContext';
+import { useGame } from '../contexts/GameContext';
 import apiClient, { extractErrorMessage } from '../api/client';
 
 export const Landing: React.FC = () => {
@@ -11,7 +11,7 @@ export const Landing: React.FC = () => {
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
 
-  const { actions } = useGameStructured();
+  const { actions } = useGame();
   const { startSession } = actions;
   const navigate = useNavigate();
 

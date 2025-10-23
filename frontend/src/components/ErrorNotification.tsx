@@ -1,8 +1,8 @@
 import React, { useEffect } from 'react';
-import { useGameStructured } from '../contexts/GameContext';
+import { useGame } from '../contexts/GameContext';
 
 export const ErrorNotification: React.FC = () => {
-  const { state, actions } = useGameStructured();
+  const { state, actions } = useGame();
   const { error } = state;
   const { clearError } = actions;
 
