@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     environment: str = "development"
     secret_key: str = "dev-secret-key-change-in-production"  # Must be at least 32 characters in production
     jwt_algorithm: str = "HS256"  # Use HS256 for symmetric signing
-    access_token_exp_minutes: int = 15  # Short-lived access tokens for security
+    access_token_exp_minutes: int = 120  # Access tokens valid for 2 hours
     refresh_token_exp_days: int = 30  # Longer-lived refresh tokens
     refresh_token_cookie_name: str = "quipflip_refresh_token"
 
