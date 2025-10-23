@@ -339,7 +339,7 @@ export const useSmartPolling = () => {
 export const PollConfigs = {
   DASHBOARD: {
     key: 'dashboard',
-    interval: 30000,        // 30 seconds
+    interval: 60000,        // 1 minute (increased from 30s)
     maxInterval: 300000,    // 5 minutes max
     backoffMultiplier: 1.5,
     immediateOnFocus: true,
@@ -369,7 +369,7 @@ export const PollConfigs = {
   },
   BALANCE_REFRESH: {
     key: 'balance',
-    interval: 120000,       // 2 minutes
+    interval: 180000,       // 3 minutes (increased from 2m)
     maxInterval: 600000,    // 10 minutes max
     backoffMultiplier: 1.5,
     immediateOnFocus: false,

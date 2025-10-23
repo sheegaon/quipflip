@@ -129,6 +129,8 @@ async def claim_daily_bonus(
     db: AsyncSession = Depends(get_db),
 ):
     """Claim daily login bonus."""
+    from backend.utils.cache import dashboard_cache
+    
     player_service = PlayerService(db)
     transaction_service = TransactionService(db)
 
@@ -137,6 +139,9 @@ async def claim_daily_bonus(
 
         # Refresh player to get updated balance
         await db.refresh(player)
+        
+        # Invalidate cached dashboard data since balance changed
+        dashboard_cache.invalidate_player_data(player.player_id)
 
         return ClaimDailyBonusResponse(
             success=True,
@@ -359,7 +364,20 @@ async def get_dashboard_data(
     Reuses existing endpoint logic to avoid code duplication.
     Executes sequentially because AsyncSession is not concurrency-safe.
     Still much faster than 6 separate HTTP requests from the client.
+    
+    Now includes caching to reduce database load from rapid-fire requests.
     """
+    from backend.utils.cache import dashboard_cache
+    
+    # Check cache first
+    cache_key = f"dashboard:{player.player_id}"
+    cached_data = dashboard_cache.get(cache_key)
+    if cached_data:
+        logger.debug(f"Returning cached dashboard data for player {player.player_id}")
+        return cached_data
+    
+    logger.debug(f"Generating fresh dashboard data for player {player.player_id}")
+    
     # Reuse existing endpoint logic by calling the internal functions
     player_balance = await get_balance(player, db)
     current_round = await get_current_round(player, db)
@@ -402,7 +420,7 @@ async def get_dashboard_data(
         current_round_id=player.active_round_id,
     )
 
-    return DashboardDataResponse(
+    dashboard_data = DashboardDataResponse(
         player=player_balance,
         current_round=current_round,
         pending_results=pending_results_response.pending,
@@ -410,6 +428,11 @@ async def get_dashboard_data(
         unclaimed_results=unclaimed_results_response.unclaimed,
         round_availability=round_availability,
     )
+    
+    # Cache the response for 10 seconds (shorter TTL for dashboard since it changes frequently)
+    dashboard_cache.set(cache_key, dashboard_data, ttl=10.0)
+    
+    return dashboard_data
 
 
 @router.get("/statistics", response_model=PlayerStatistics)

@@ -11,6 +11,7 @@ from contextlib import asynccontextmanager
 from backend.config import get_settings
 from backend.services.prompt_seeder import sync_prompts_with_database
 from backend.routers import health, player, rounds, phrasesets, prompt_feedback, auth, quests
+from backend.middleware.deduplication import deduplication_middleware
 
 # Create logs directory if it doesn't exist
 logs_dir = Path("logs")
@@ -301,6 +302,9 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
+
+# Add request deduplication middleware to prevent rapid-fire duplicate requests
+app.middleware("http")(deduplication_middleware)
 
 # Import and register routers
 app.include_router(health.router, tags=["health"])
