@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useGame } from '../contexts/GameContext';
+import { useGameStructured } from '../contexts/GameContext';
 import { BalanceFlipper } from './BalanceFlipper';
 import { TreasureChestIcon } from './TreasureChestIcon';
 
 export const Header: React.FC = () => {
-  const { player, username, logout, claimBonus, phrasesetSummary, unclaimedResults } = useGame();
+  const { state, actions } = useGameStructured();
+  const { player, username, phrasesetSummary, unclaimedResults } = state;
+  const { logout, claimBonus } = actions;
   const navigate = useNavigate();
   const location = useLocation();
   const [isClaiming, setIsClaiming] = useState(false);

@@ -1,120 +1,77 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useGame } from '../contexts/GameContext';
+import { useGameStructured } from '../contexts/GameContext';
 import { useTutorial } from '../contexts/TutorialContext';
 import apiClient, { extractErrorMessage } from '../api/client';
 import { Timer } from '../components/Timer';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { useTimer } from '../hooks/useTimer';
 import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
-import type { PromptState } from '../api/types';
 
 export const PromptRound: React.FC = () => {
-  const { activeRound } = useGame();
+  const { state } = useGameStructured();
+  const { activeRound } = state;
   const { currentStep, advanceStep } = useTutorial();
   const navigate = useNavigate();
   const [phrase, setPhrase] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [roundData, setRoundData] = useState<PromptState | null>(null);
   const [feedbackType, setFeedbackType] = useState<'like' | 'dislike' | null>(null);
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const hasInitialized = useRef(false);
 
+  const roundData = activeRound?.round_type === 'prompt' ? activeRound.state : null;
   const { isExpired } = useTimer(roundData?.expires_at || null);
 
+  // Load existing feedback
   useEffect(() => {
-    // Prevent duplicate calls in React StrictMode
-    if (hasInitialized.current) return;
-    hasInitialized.current = true;
+    if (!roundData) return;
 
-    const initRound = async () => {
-      // Check if we have an active prompt round
-      if (activeRound?.round_type === 'prompt' && activeRound.state) {
-        const promptState = activeRound.state as PromptState;
-        setRoundData(promptState);
-
-        // Load existing feedback
-        try {
-          const feedbackResponse = await apiClient.getPromptFeedback(promptState.round_id);
-          setFeedbackType(feedbackResponse.feedback_type);
-        } catch (err) {
-          // Feedback not found is ok, just leave as null
-          console.log('No existing feedback found');
-        }
-
-        // If already submitted, redirect to dashboard
-        if (promptState.status === 'submitted') {
-          navigate('/dashboard');
-        }
-      } else {
-        // Special case: If in tutorial and user has any active round, advance tutorial
-        if (currentStep === 'prompt_round' && activeRound?.round_id) {
-          // User has some other active round during tutorial
-          // Skip the prompt round and advance tutorial to next step
-          try {
-            await advanceStep('copy_round');
-            navigate('/dashboard');
-            return;
-          } catch (err) {
-            console.error('Failed to advance tutorial:', err);
-            // Fall through to normal error handling
-          }
-        }
-
-        // No active round, start a new one
-        try {
-          const response = await apiClient.startPromptRound();
-          setRoundData({
-            round_id: response.round_id,
-            status: 'active',
-            expires_at: response.expires_at,
-            cost: response.cost,
-            prompt_text: response.prompt_text,
-          });
-        } catch (err) {
-          // Special handling for tutorial users with existing rounds
-          if (currentStep === 'prompt_round' && extractErrorMessage(err)?.includes('already_in_round')) {
-            try {
-              // Advance tutorial and go back to dashboard
-              await advanceStep('copy_round');
-              navigate('/dashboard');
-              return;
-            } catch (tutorialErr) {
-              console.error('Failed to advance tutorial:', tutorialErr);
-            }
-          }
-          
-          setError(extractErrorMessage(err) || 'Unable to start a new prompt round. Please check your balance and try again.');
-          setTimeout(() => navigate('/dashboard'), 2000);
-        }
+    const loadFeedback = async () => {
+      try {
+        const feedbackResponse = await apiClient.getPromptFeedback(roundData.round_id);
+        setFeedbackType(feedbackResponse.feedback_type);
+      } catch (err) {
+        // Feedback not found is ok
       }
     };
+    loadFeedback();
+  }, [roundData?.round_id]);
 
-    initRound();
-  }, [activeRound, navigate, currentStep, advanceStep]);
+  // Redirect if no active prompt round
+  useEffect(() => {
+    if (!activeRound || activeRound.round_type !== 'prompt') {
+      // Special case for tutorial
+      if (currentStep === 'prompt_round') {
+        advanceStep('copy_round').then(() => navigate('/dashboard'));
+      } else {
+        // Start a new round
+        apiClient.startPromptRound()
+          .catch(() => navigate('/dashboard'));
+      }
+    }
+  }, [activeRound, currentStep, advanceStep, navigate]);
+
+  // Redirect if already submitted
+  useEffect(() => {
+    if (roundData?.status === 'submitted') {
+      navigate('/dashboard');
+    }
+  }, [roundData?.status, navigate]);
 
   const handleFeedback = async (type: 'like' | 'dislike') => {
     if (!roundData || isSubmittingFeedback) return;
 
-    // Toggle off if clicking the same feedback type
     const newFeedbackType = feedbackType === type ? null : type;
 
     try {
       setIsSubmittingFeedback(true);
-
-      if (newFeedbackType === null) {
-        // For now, we just keep the last feedback since backend doesn't support deletion
-        // In a future version, we could add a DELETE endpoint
-        return;
-      }
+      if (newFeedbackType === null) return; // Can't delete feedback yet
 
       await apiClient.submitPromptFeedback(roundData.round_id, newFeedbackType);
       setFeedbackType(newFeedbackType);
     } catch (err) {
       console.error('Failed to submit feedback:', err);
-      // Don't show error to user, feedback is optional
     } finally {
       setIsSubmittingFeedback(false);
     }
@@ -131,15 +88,14 @@ export const PromptRound: React.FC = () => {
       await apiClient.submitPhrase(roundData.round_id, phrase.trim());
 
       // Show success message
-      const message = getRandomMessage('promptSubmitted');
-      setSuccessMessage(message);
+      setSuccessMessage(getRandomMessage('promptSubmitted'));
 
       // Advance tutorial if in prompt_round step
       if (currentStep === 'prompt_round') {
         await advanceStep('copy_round');
       }
 
-      // Navigate after brief delay
+      // Navigate after delay
       setTimeout(() => navigate('/dashboard'), 1500);
     } catch (err) {
       setError(extractErrorMessage(err) || 'Unable to submit your phrase. Please check your connection and try again.');

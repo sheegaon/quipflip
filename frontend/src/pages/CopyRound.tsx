@@ -1,62 +1,46 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useGame } from '../contexts/GameContext';
+import { useGameStructured } from '../contexts/GameContext';
 import { useTutorial } from '../contexts/TutorialContext';
 import apiClient, { extractErrorMessage } from '../api/client';
 import { Timer } from '../components/Timer';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { useTimer } from '../hooks/useTimer';
 import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
-import type { CopyState } from '../api/types';
 
 export const CopyRound: React.FC = () => {
-  const { activeRound } = useGame();
+  const { state } = useGameStructured();
+  const { activeRound } = state;
   const { currentStep, advanceStep } = useTutorial();
   const navigate = useNavigate();
   const [phrase, setPhrase] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [roundData, setRoundData] = useState<CopyState | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const hasInitialized = useRef(false);
 
+  const roundData = activeRound?.round_type === 'copy' ? activeRound.state : null;
   const { isExpired } = useTimer(roundData?.expires_at || null);
 
+  // Redirect if no active copy round
   useEffect(() => {
-    // Prevent duplicate calls in React StrictMode
-    if (hasInitialized.current) return;
-    hasInitialized.current = true;
-
-    const initRound = async () => {
-      // Check if we have an active copy round
-      if (activeRound?.round_type === 'copy' && activeRound.state) {
-        setRoundData(activeRound.state as CopyState);
-
-        // If already submitted, redirect to dashboard
-        if ((activeRound.state as CopyState).status === 'submitted') {
-          navigate('/dashboard');
-        }
+    if (!activeRound || activeRound.round_type !== 'copy') {
+      // Special case for tutorial
+      if (currentStep === 'copy_round') {
+        advanceStep('vote_round').then(() => navigate('/dashboard'));
       } else {
-        // No active round, start a new one
-        try {
-          const response = await apiClient.startCopyRound();
-          setRoundData({
-            round_id: response.round_id,
-            status: 'active',
-            expires_at: response.expires_at,
-            cost: response.cost,
-            original_phrase: response.original_phrase,
-            discount_active: response.discount_active,
-          });
-        } catch (err) {
-          setError(extractErrorMessage(err) || 'Unable to start a copy round right now. Please check your balance or try again in a moment.');
-          setTimeout(() => navigate('/dashboard'), 2000);
-        }
+        // Start a new round
+        apiClient.startCopyRound()
+          .catch(() => navigate('/dashboard'));
       }
-    };
+    }
+  }, [activeRound, currentStep, advanceStep, navigate]);
 
-    initRound();
-  }, [activeRound, navigate]);
+  // Redirect if already submitted
+  useEffect(() => {
+    if (roundData?.status === 'submitted') {
+      navigate('/dashboard');
+    }
+  }, [roundData?.status, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

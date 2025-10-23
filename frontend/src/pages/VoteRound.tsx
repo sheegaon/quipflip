@@ -1,61 +1,40 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useGame } from '../contexts/GameContext';
+import { useGameStructured } from '../contexts/GameContext';
 import apiClient, { extractErrorMessage } from '../api/client';
 import { Timer } from '../components/Timer';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { useTimer } from '../hooks/useTimer';
 import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
-import type { VoteState, VoteResponse } from '../api/types';
+import type { VoteResponse } from '../api/types';
 
 export const VoteRound: React.FC = () => {
-  const { activeRound } = useGame();
+  const { state } = useGameStructured();
+  const { activeRound } = state;
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [roundData, setRoundData] = useState<VoteState | null>(null);
   const [voteResult, setVoteResult] = useState<VoteResponse | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const hasInitialized = useRef(false);
 
+  const roundData = activeRound?.round_type === 'vote' ? activeRound.state : null;
   const { isExpired } = useTimer(roundData?.expires_at || null);
 
+  // Redirect if no active vote round
   useEffect(() => {
-    // Prevent duplicate calls in React StrictMode
-    if (hasInitialized.current) return;
-    hasInitialized.current = true;
-
-    const initRound = async () => {
-      // Check if we have an active vote round
-      if (activeRound?.round_type === 'vote' && activeRound.state) {
-        const state = activeRound.state as VoteState;
-        setRoundData(state);
-
-        // If already submitted, redirect to dashboard
-        if (state.status === 'submitted') {
-          navigate('/dashboard');
-        }
-      } else {
-        // No active round, start a new one
-        try {
-          const response = await apiClient.startVoteRound();
-          setRoundData({
-            round_id: response.round_id,
-            status: 'active',
-            expires_at: response.expires_at,
-            phraseset_id: response.phraseset_id,
-            prompt_text: response.prompt_text,
-            phrases: response.phrases,
-          });
-        } catch (err) {
-          setError(extractErrorMessage(err) || 'No vote rounds available right now. Try again in a moment or complete other round types first.');
-          setTimeout(() => navigate('/dashboard'), 2000);
-        }
-      }
-    };
-
-    initRound();
+    if (!activeRound || activeRound.round_type !== 'vote') {
+      // Start a new round
+      apiClient.startVoteRound()
+        .catch(() => navigate('/dashboard'));
+    }
   }, [activeRound, navigate]);
+
+  // Redirect if already submitted
+  useEffect(() => {
+    if (roundData?.status === 'submitted') {
+      navigate('/dashboard');
+    }
+  }, [roundData?.status, navigate]);
 
   const handleVote = async (phrase: string) => {
     if (!roundData || isSubmitting) return;

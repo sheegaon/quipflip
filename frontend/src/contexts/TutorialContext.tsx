@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import apiClient from '../api/client';
 import type { TutorialProgress, TutorialStatus } from '../api/types';
-import { useGame } from './GameContext';
+import { useGameStructured } from './GameContext';
 
 interface TutorialContextType {
   tutorialStatus: TutorialStatus | null;
@@ -20,7 +20,8 @@ interface TutorialContextType {
 const TutorialContext = createContext<TutorialContextType | undefined>(undefined);
 
 export const TutorialProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated } = useGame();
+  const { state } = useGameStructured();
+  const { isAuthenticated } = state;
   const [tutorialStatus, setTutorialStatus] = useState<TutorialStatus | null>(null);
   const [loading, setLoading] = useState(false);
 
