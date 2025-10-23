@@ -81,7 +81,7 @@ export const getContextualErrorMessage = (
   category: 'network' | 'auth' | 'game' | 'account' | 'rewards' | 'general';
 } => {
   const errorDetail = typeof error === 'string' ? error : error?.detail || error?.message || '';
-  const normalizedError = errorDetail.toLowerCase();
+  const normalizedError = String(errorDetail).toLowerCase();
 
   // Network errors
   if (normalizedError.includes('network') || normalizedError.includes('fetch') || error?.code === 'ERR_NETWORK') {

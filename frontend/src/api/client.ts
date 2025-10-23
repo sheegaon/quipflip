@@ -292,7 +292,7 @@ export const apiClient = {
   },
 
   async login(
-    payload: { username: string; password: string },
+    payload: { email: string; password: string },
     signal?: AbortSignal,
   ): Promise<AuthTokenResponse> {
     const { data} = await api.post('/auth/login', payload, {

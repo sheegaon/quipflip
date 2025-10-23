@@ -79,9 +79,9 @@ export const Landing: React.FC = () => {
       setIsLoading(true);
       setError(null);
       
-      // Backend actually expects email and password, not username!
+      // Send email and password to backend (now with correct field names)
       const response = await apiClient.login({
-        username: loginEmail.trim(), // API client expects 'username' field but backend treats it as email
+        email: loginEmail.trim(),
         password: loginPassword,
       });
       
