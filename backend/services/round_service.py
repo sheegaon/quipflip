@@ -612,8 +612,6 @@ class RoundService:
         This queries the database for prompts waiting for copies, which is more reliable
         than relying on the queue (which may be empty after a restart).
         """
-        from backend.utils import queue_client
-
         # Count ALL submitted prompt rounds waiting for copies (not yet in a phraseset)
         result = await self.db.execute(
             select(func.count(Round.round_id))

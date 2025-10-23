@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../api/client';
 import { useSmartPolling, PollConfigs } from '../utils/smartPolling';
@@ -588,7 +588,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     },
 
-    getStatistics: async (signal?: AbortSignal) => {
+    getStatistics: useCallback(async (signal?: AbortSignal) => {
       // Check token directly instead of relying on stale state
       const token = await apiClient.ensureAccessToken();
       if (!token) {
@@ -609,7 +609,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setError(errorMessage);
         throw err;
       }
-    },
+    }, []),
   });
 
   // Set up smart polling when authenticated
