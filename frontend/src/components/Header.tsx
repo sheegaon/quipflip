@@ -50,24 +50,22 @@ export const Header: React.FC = () => {
         <div className="flex justify-between items-center">
           {/* Left: Logo + Back Arrow (on certain pages) */}
           <div className="flex items-center gap-1 md:gap-3">
-            <div className="flex items-center gap-0 md:gap-2">
+            <button
+              onClick={showBackArrow ? () => navigate('/dashboard') : undefined}
+              className={`flex items-center gap-0 md:gap-2 ${showBackArrow ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+              disabled={!showBackArrow}
+              title={showBackArrow ? "Back to Dashboard" : undefined}
+            >
               {showBackArrow && (
-                <button
-                  onClick={() => navigate('/dashboard')}
-                  className="p-2 hover:bg-quip-cream rounded-full transition-colors"
-                  title="Back to Dashboard"
-                  aria-label="Back to Dashboard"
-                >
-                  <img
-                    src="/icon_back_arrow.svg"
-                    alt=""
-                    className="w-4 h-4 md:w-6 md:h-6"
-                    aria-hidden="true"
-                  />
-                </button>
+                <img
+                  src="/icon_back_arrow.svg"
+                  alt=""
+                  className="w-4 h-4 md:w-6 md:h-6"
+                  aria-hidden="true"
+                />
               )}
               <img src="/large_icon.png" alt="Quipflip" className="h-10 w-auto" />
-            </div>
+            </button>
             {showInProgressIndicator && (
               <button
                 type="button"
