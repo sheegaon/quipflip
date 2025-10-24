@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useGame } from '../contexts/GameContext';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Header } from '../components/Header';
+import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import apiClient, { extractErrorMessage } from '../api/client';
 import { loadingMessages } from '../utils/brandedMessages';
 import type { PhrasesetResults } from '../api/types';
@@ -269,7 +270,9 @@ export const Results: React.FC = () => {
                     </div>
                     <div>
                       <p className="text-quip-teal">Prize Pool:</p>
-                      <p className="font-bold text-quip-navy">${results.total_pool}</p>
+                      <p className="font-bold text-quip-navy">
+                        <CurrencyDisplay amount={results.total_pool} iconClassName="w-4 h-4" textClassName="font-bold" />
+                      </p>
                     </div>
                     <div className="col-span-2">
                       <p className="text-quip-teal">Finalized At:</p>

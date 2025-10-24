@@ -4,6 +4,7 @@ import { useQuests } from '../contexts/QuestContext';
 import { Header } from '../components/Header';
 import { QuestCard } from '../components/QuestCard';
 import { SuccessNotification } from '../components/SuccessNotification';
+import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { QuestCategory } from '../api/types';
 
 export const Quests: React.FC = () => {
@@ -55,7 +56,7 @@ export const Quests: React.FC = () => {
       console.log('📞 Calling claimBonus action...');
       await claimBonus();
       console.log('✅ Claim bonus completed successfully');
-      setSuccessMessage(`Daily bonus claimed! +$${player.daily_bonus_amount}`);
+      setSuccessMessage(`Daily bonus claimed! +${player.daily_bonus_amount}f`);
       // Refresh quests after claiming daily bonus (might unlock daily quests)
       await refreshQuests();
     } catch (err) {
@@ -70,7 +71,7 @@ export const Quests: React.FC = () => {
   const handleClaimQuest = async (questId: string) => {
     try {
       const result = await claimQuest(questId);
-      setSuccessMessage(`Quest reward claimed! +$${result.reward_amount}`);
+      setSuccessMessage(`Quest reward claimed! +${result.reward_amount}f`);
       // refreshQuests is already called in claimQuest
     } catch (err) {
       console.error('Failed to claim quest:', err);
@@ -133,7 +134,7 @@ export const Quests: React.FC = () => {
                     Your daily bonus is ready!
                   </p>
                   <p className="text-quip-teal">
-                    Claim ${player.daily_bonus_amount} Flipcoins
+                    Claim <CurrencyDisplay amount={player.daily_bonus_amount} iconClassName="w-4 h-4" textClassName="text-base" /> Flipcoins
                   </p>
                 </div>
                 <button

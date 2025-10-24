@@ -193,7 +193,7 @@ Get player balance and status.
 ```
 
 #### `POST /player/claim-daily-bonus`
-Claim daily login bonus (\$100).
+Claim daily login bonus (100f).
 
 **Response:**
 ```json
@@ -435,7 +435,7 @@ Reset the tutorial progress (useful for testing or replaying tutorial).
 ### Round Endpoints
 
 #### `POST /rounds/prompt`
-Start a prompt round (-\$100).
+Start a prompt round (-100f).
 
 **Request Body:**
 ```json
@@ -454,11 +454,11 @@ Start a prompt round (-\$100).
 
 **Errors:**
 - `already_in_round` - Player already in active round
-- `insufficient_balance` - Balance < \$100
+- `insufficient_balance` - Balance < 100f
 - `max_outstanding_quips` - Player has 10 open/closing phrasesets
 
 #### `POST /rounds/copy`
-Start a copy round (-\$100 or -\$90).
+Start a copy round (-100f or -90f).
 
 **Response:**
 ```json
@@ -478,7 +478,7 @@ Start a copy round (-\$100 or -\$90).
 - `insufficient_balance` - Balance < cost
 
 #### `POST /rounds/vote`
-Start a vote round (-\$1).
+Start a vote round (-1f).
 
 **Response:**
 ```json
@@ -494,7 +494,7 @@ Start a vote round (-\$1).
 **Errors:**
 - `no_wordsets_available` - No phrasesets in queue
 - `already_in_round` - Player already in active round
-- `insufficient_balance` - Balance < \$1
+- `insufficient_balance` - Balance < 1f
 
 #### `POST /rounds/{round_id}/submit`
 Submit phrase for prompt or copy round.
@@ -969,13 +969,13 @@ Visit `/redoc` for alternative ReDoc documentation.
 - **Grace period**: 5 seconds (not shown to users - allows late submissions)
 
 ### Economics
-- **Starting balance**: \$1000
-- **Daily bonus**: \$100
-- **Prompt cost**: \$100
-- **Copy cost**: \$100 normal, \$90 with discount
-- **Vote cost**: \$1
-- **Vote payout (correct)**: \$5
-- **Phraseset prize pool**: \$300
+- **Starting balance**: 1000f
+- **Daily bonus**: 100f
+- **Prompt cost**: 100f
+- **Copy cost**: 100f normal, 90f with discount
+- **Vote cost**: 1f
+- **Vote payout (correct)**: 5f
+- **Phraseset prize pool**: 300f
 - **Copy discount threshold**: >10 prompts waiting
 - **Max outstanding prompts**: 10 per player
 
@@ -995,7 +995,7 @@ Visit `/redoc` for alternative ReDoc documentation.
 ### Prize Distribution
 - Prize pool split among prompt + 2 copy contributors
 - Share proportional to votes received for your word
-- System contributes \$10 if copy used discount pricing
+- System contributes 10f if copy used discount pricing
 
 ## Frontend Integration
 
@@ -1085,7 +1085,7 @@ interface VoteState {
 ## Notes
 
 - All timestamps in UTC ISO 8601 format
-- All currency amounts in whole dollars (integer values: 100 = \$100)
+- All currency amounts in whole Flipcoins (integer values: 100 = 100f)
 - Words automatically converted to uppercase
 - Grace period allows submissions up to 5 seconds past expiry
 - `/docs` and `/redoc` provide interactive API testing

@@ -10,6 +10,7 @@ import { useGame } from '../contexts/GameContext';
 import { PhrasesetList } from '../components/PhrasesetList';
 import { PhrasesetDetails } from '../components/PhrasesetDetails';
 import { Header } from '../components/Header';
+import { CurrencyDisplay } from '../components/CurrencyDisplay';
 
 type RoleFilter = 'all' | 'prompt' | 'copy';
 type StatusFilter = 'all' | 'in_progress' | 'voting' | 'finalized' | 'abandoned';
@@ -266,7 +267,11 @@ export const Tracking: React.FC = () => {
             <div className="tile-card p-4 bg-quip-turquoise bg-opacity-10">
               <p className="text-xs uppercase text-quip-teal font-medium">Unclaimed</p>
               <p className="text-lg font-display font-semibold text-quip-turquoise">
-                ${phrasesetSummary.total_unclaimed_amount}
+                <CurrencyDisplay
+                  amount={phrasesetSummary.total_unclaimed_amount}
+                  iconClassName="w-5 h-5"
+                  textClassName="text-lg font-display font-semibold text-quip-turquoise"
+                />
               </p>
             </div>
           </div>
