@@ -12,7 +12,7 @@ class DailyBonus(Base):
     __tablename__ = "daily_bonuses"
 
     bonus_id = get_uuid_column(primary_key=True, default=uuid.uuid4)
-    player_id = get_uuid_column(ForeignKey("players.player_id"), nullable=False, index=True)
+    player_id = get_uuid_column(ForeignKey("players.player_id", ondelete="CASCADE"), nullable=False, index=True)
     amount = Column(Integer, default=100, nullable=False)
     claimed_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     date = Column(Date, nullable=False, index=True)  # UTC date

@@ -5,6 +5,7 @@ import { useTutorial } from '../contexts/TutorialContext';
 import { extractErrorMessage } from '../api/client';
 import { Timer } from '../components/Timer';
 import { Header } from '../components/Header';
+import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import TutorialWelcome from '../components/Tutorial/TutorialWelcome';
 import { dashboardLogger } from '../utils/logger';
 import type { PendingResult } from '../api/types';
@@ -293,7 +294,7 @@ export const Dashboard: React.FC = () => {
                   )}
                   {totalUnclaimedCount > 0 && (
                     <p>
-                      {unclaimedPromptCount} prompt{unclaimedPromptCount === 1 ? '' : 's'} • {unclaimedCopyCount} cop{unclaimedCopyCount === 1 ? 'y' : 'ies'} • ${totalUnclaimedAmount} to claim
+                      {unclaimedPromptCount} prompt{unclaimedPromptCount === 1 ? '' : 's'} • {unclaimedCopyCount} cop{unclaimedCopyCount === 1 ? 'y' : 'ies'} • <CurrencyDisplay amount={totalUnclaimedAmount} iconClassName="w-3 h-3" textClassName="text-sm" /> to claim
                     </p>
                   )}
                 </div>
@@ -340,7 +341,7 @@ export const Dashboard: React.FC = () => {
                   <img src="/icon_prompt.svg" alt="" className="w-8 h-8" />
                   <h3 className="font-display font-semibold text-lg text-quip-navy">Prompt Round</h3>
                 </div>
-                <span className="text-quip-orange-deep font-bold">-$100</span>
+                <span className="text-quip-orange-deep font-bold">-<CurrencyDisplay amount={100} iconClassName="w-4 h-4" textClassName="font-bold" showIcon={false} /></span>
               </div>
               <p className="text-sm text-quip-teal mb-3">
                 Submit a phrase for a creative prompt
@@ -375,7 +376,7 @@ export const Dashboard: React.FC = () => {
                       className="h-7"
                     />
                   )}
-                  -${roundAvailability?.copy_cost || 100}
+                  -<CurrencyDisplay amount={roundAvailability?.copy_cost || 100} iconClassName="w-4 h-4" textClassName="font-bold" showIcon={false} />
                 </span>
               </div>
               <p className="text-sm text-quip-teal mb-1">
@@ -407,7 +408,7 @@ export const Dashboard: React.FC = () => {
                   <img src="/icon_vote.svg" alt="" className="w-8 h-8" />
                   <h3 className="font-display font-semibold text-lg text-quip-orange-deep">Vote Round</h3>
                 </div>
-                <span className="text-quip-orange-deep font-bold">-$1</span>
+                <span className="text-quip-orange-deep font-bold">-<CurrencyDisplay amount={1} iconClassName="w-4 h-4" textClassName="font-bold" showIcon={false} /></span>
               </div>
               <p className="text-sm text-quip-teal mb-1">
                 Identify the original phrase from three options

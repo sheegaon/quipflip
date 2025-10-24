@@ -1,8 +1,23 @@
 """Cleanup service for database maintenance tasks."""
 import logging
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import text
+from sqlalchemy import select, delete, text
 from datetime import datetime, UTC, timedelta
+from typing import Optional
+
+from backend.models import (
+    Player,
+    Round,
+    Vote,
+    Transaction,
+    DailyBonus,
+    ResultView,
+    PlayerAbandonedPrompt,
+    PromptFeedback,
+    PhrasesetActivity,
+    RefreshToken,
+    Quest,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -10,8 +25,19 @@ logger = logging.getLogger(__name__)
 class CleanupService:
     """Service for periodic database cleanup tasks."""
 
+    # Test player identification patterns
+    TEST_PATTERNS = [
+        "testplayer",
+        "stresstest",
+        "@example.com",
+        "test_",
+        "_test",
+    ]
+
     def __init__(self, db: AsyncSession):
         self.db = db
+
+    # ===== Refresh Token Cleanup =====
 
     async def cleanup_orphaned_refresh_tokens(self) -> int:
         """
@@ -102,9 +128,204 @@ class CleanupService:
 
         return deleted_count
 
-    async def run_all_cleanup_tasks(self) -> dict[str, int]:
+    # ===== Orphaned Rounds Cleanup =====
+
+    async def count_orphaned_rounds(self) -> tuple[int, dict[str, int]]:
+        """Count orphaned rounds in the database."""
+        # Count rounds with player_id not in players table
+        result = await self.db.execute(text("""
+            SELECT COUNT(*)
+            FROM rounds
+            WHERE player_id NOT IN (SELECT player_id FROM players)
+        """))
+        orphaned_count = result.scalar() or 0
+
+        # Count by type
+        result = await self.db.execute(text("""
+            SELECT round_type, COUNT(*) as count
+            FROM rounds
+            WHERE player_id NOT IN (SELECT player_id FROM players)
+            GROUP BY round_type
+        """))
+        by_type = {row.round_type: row.count for row in result}
+
+        return orphaned_count, by_type
+
+    async def cleanup_orphaned_rounds(self) -> int:
+        """
+        Remove orphaned rounds from the database.
+
+        Orphaned rounds are rounds that reference player_ids that no longer exist.
+
+        Returns:
+            Number of orphaned rounds deleted
+        """
+        orphaned_count, by_type = await self.count_orphaned_rounds()
+
+        if orphaned_count == 0:
+            logger.debug("No orphaned rounds found")
+            return 0
+
+        logger.info(f"Found {orphaned_count} orphaned round(s): {by_type}")
+
+        # Delete orphaned rounds
+        result = await self.db.execute(text("""
+            DELETE FROM rounds
+            WHERE player_id NOT IN (SELECT player_id FROM players)
+        """))
+        await self.db.commit()
+
+        deleted_count = result.rowcount or 0
+        if deleted_count > 0:
+            logger.info(f"Deleted {deleted_count} orphaned round(s)")
+
+        return deleted_count
+
+    # ===== Test Player Cleanup =====
+
+    async def get_test_players(self) -> list[Player]:
+        """
+        Find all players matching test patterns.
+
+        Returns:
+            List of Player objects
+        """
+        # Build query to find test players
+        from sqlalchemy import or_
+
+        # Build a list of conditions for the WHERE clause
+        conditions = []
+        for pattern in self.TEST_PATTERNS:
+            # Patterns like "@example.com" should only match email
+            if pattern.startswith('@'):
+                conditions.append(Player.email.ilike(f"%{pattern}"))
+            else:
+                conditions.append(Player.username.ilike(f"%{pattern}%"))
+                conditions.append(Player.email.ilike(f"%{pattern}%"))
+
+        # Build query to find test players using the conditions
+        stmt = select(Player).where(or_(*conditions))
+        result = await self.db.execute(stmt)
+        test_players = result.scalars().all()
+
+        return test_players
+
+    async def cleanup_test_players(self, dry_run: bool = False) -> dict[str, int]:
+        """
+        Remove all test player data from the database.
+
+        Args:
+            dry_run: If True, return counts without deleting
+
+        Returns:
+            Dictionary with counts of deleted entities
+        """
+        # Find test players
+        test_players = await self.get_test_players()
+
+        if not test_players:
+            logger.debug("No test players found")
+            return {}
+
+        logger.info(f"Found {len(test_players)} test player(s)")
+
+        if dry_run:
+            return {"would_delete_players": len(test_players)}
+
+        # Extract player IDs for cascade deletion
+        player_ids = [player.player_id for player in test_players]
+
+        # Delete related data first (in order to respect foreign keys)
+        deletion_counts = {}
+
+        # 1. Votes (references player_id)
+        result = await self.db.execute(
+            delete(Vote).where(Vote.player_id.in_(player_ids))
+        )
+        deletion_counts['votes'] = result.rowcount or 0
+
+        # 2. Transactions (references player_id)
+        result = await self.db.execute(
+            delete(Transaction).where(Transaction.player_id.in_(player_ids))
+        )
+        deletion_counts['transactions'] = result.rowcount or 0
+
+        # 3. Daily bonuses (references player_id)
+        result = await self.db.execute(
+            delete(DailyBonus).where(DailyBonus.player_id.in_(player_ids))
+        )
+        deletion_counts['daily_bonuses'] = result.rowcount or 0
+
+        # 4. Result views (references player_id)
+        result = await self.db.execute(
+            delete(ResultView).where(ResultView.player_id.in_(player_ids))
+        )
+        deletion_counts['result_views'] = result.rowcount or 0
+
+        # 5. Abandoned prompts (references player_id)
+        result = await self.db.execute(
+            delete(PlayerAbandonedPrompt).where(PlayerAbandonedPrompt.player_id.in_(player_ids))
+        )
+        deletion_counts['abandoned_prompts'] = result.rowcount or 0
+
+        # 6. Prompt feedback (references player_id)
+        result = await self.db.execute(
+            delete(PromptFeedback).where(PromptFeedback.player_id.in_(player_ids))
+        )
+        deletion_counts['prompt_feedback'] = result.rowcount or 0
+
+        # 7. Phraseset activities (references player_id)
+        result = await self.db.execute(
+            delete(PhrasesetActivity).where(PhrasesetActivity.player_id.in_(player_ids))
+        )
+        deletion_counts['phraseset_activities'] = result.rowcount or 0
+
+        # 8. Refresh tokens (references player_id)
+        result = await self.db.execute(
+            delete(RefreshToken).where(RefreshToken.player_id.in_(player_ids))
+        )
+        deletion_counts['refresh_tokens'] = result.rowcount or 0
+
+        # 9. Quests (references player_id)
+        result = await self.db.execute(
+            delete(Quest).where(Quest.player_id.in_(player_ids))
+        )
+        deletion_counts['quests'] = result.rowcount or 0
+
+        # 10. Delete rounds (references player_id)
+        # Note: Prompts are shared across players and should not be deleted
+        result = await self.db.execute(
+            delete(Round).where(Round.player_id.in_(player_ids))
+        )
+        deletion_counts['rounds'] = result.rowcount or 0
+
+        # 11. Finally, delete players
+        result = await self.db.execute(
+            delete(Player).where(Player.player_id.in_(player_ids))
+        )
+        deletion_counts['players'] = result.rowcount or 0
+
+        # Commit the transaction
+        await self.db.commit()
+
+        total_deleted = sum(deletion_counts.values())
+        logger.info(f"Deleted test players and {total_deleted} associated records")
+
+        return deletion_counts
+
+    # ===== Run All Cleanup Tasks =====
+
+    async def run_all_cleanup_tasks(
+        self,
+        include_test_players: bool = False,
+        test_players_dry_run: bool = True
+    ) -> dict[str, int]:
         """
         Run all cleanup tasks.
+
+        Args:
+            include_test_players: Whether to include test player cleanup
+            test_players_dry_run: If True, only count test players without deleting
 
         Returns:
             Dictionary with counts of items cleaned up per task
@@ -115,7 +336,12 @@ class CleanupService:
             "orphaned_tokens": await self.cleanup_orphaned_refresh_tokens(),
             "expired_tokens": await self.cleanup_expired_refresh_tokens(),
             "old_revoked_tokens": await self.cleanup_old_revoked_tokens(),
+            "orphaned_rounds": await self.cleanup_orphaned_rounds(),
         }
+
+        if include_test_players:
+            test_player_results = await self.cleanup_test_players(dry_run=test_players_dry_run)
+            results.update(test_player_results)
 
         total_cleaned = sum(results.values())
         logger.info(f"Cleanup tasks completed. Total items cleaned: {total_cleaned}")

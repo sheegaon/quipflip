@@ -5,9 +5,9 @@ import { useTutorial } from '../contexts/TutorialContext';
 import apiClient, { extractErrorMessage } from '../api/client';
 import { Timer } from '../components/Timer';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { useTimer } from '../hooks/useTimer';
 import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
-import { promptRoundLogger } from '../utils/logger';
 import type { PromptState } from '../api/types';
 
 export const PromptRound: React.FC = () => {
@@ -22,50 +22,8 @@ export const PromptRound: React.FC = () => {
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // Log every render to track state changes
-  console.log('🔄 PromptRound RENDER:', { successMessage, isSubmitting, hasRoundData: !!activeRound });
-
   const roundData = activeRound?.round_type === 'prompt' ? activeRound.state as PromptState : null;
   const { isExpired } = useTimer(roundData?.expires_at || null);
-
-  // Log component mount and key state changes
-  useEffect(() => {
-    promptRoundLogger.debug('Component mounted');
-    promptRoundLogger.debug('Initial state:', {
-      activeRound: activeRound ? {
-        type: activeRound.round_type,
-        id: activeRound.round_id,
-        expiresAt: activeRound.expires_at
-      } : 'null',
-      currentStep,
-      roundData: roundData ? {
-        roundId: roundData.round_id,
-        promptText: roundData.prompt_text,
-        status: roundData.status
-      } : 'null'
-    });
-  }, []);
-
-  useEffect(() => {
-    promptRoundLogger.debug('Active round changed:', {
-      activeRound: activeRound ? {
-        type: activeRound.round_type,
-        id: activeRound.round_id,
-        expiresAt: activeRound.expires_at
-      } : 'null'
-    });
-  }, [activeRound]);
-
-  useEffect(() => {
-    promptRoundLogger.debug('Round data changed:', {
-      roundData: roundData ? {
-        roundId: roundData.round_id,
-        promptText: roundData.prompt_text,
-        status: roundData.status,
-        cost: roundData.cost
-      } : 'null'
-    });
-  }, [roundData]);
 
   // Load existing feedback
   useEffect(() => {
@@ -91,49 +49,24 @@ export const PromptRound: React.FC = () => {
   // Redirect if already submitted
   useEffect(() => {
     if (roundData?.status === 'submitted') {
-      promptRoundLogger.debug('Round already submitted, redirecting to dashboard');
       navigate('/dashboard');
     }
   }, [roundData?.status, navigate]);
 
   // Redirect if no active prompt round - but NOT during the submission process
   useEffect(() => {
-    console.log('⚙️ PromptRound REDIRECT EFFECT:', {
-      hasActiveRound: !!activeRound,
-      roundType: activeRound?.round_type,
-      successMessage,
-      currentStep
-    });
-
     if (!activeRound || activeRound.round_type !== 'prompt') {
-      promptRoundLogger.debug('No active prompt round detected');
-      promptRoundLogger.debug('Redirect logic:', {
-        hasActiveRound: !!activeRound,
-        roundType: activeRound?.round_type,
-        currentStep,
-        isTutorialPromptStep: currentStep === 'prompt_round',
-        successMessage: !!successMessage
-      });
-
       // Don't start a new round if we're showing success message (submission in progress)
       if (successMessage) {
-        promptRoundLogger.debug('Success message showing, not starting new round');
-        console.log('⏸️ PromptRound: Skipping redirect because successMessage is showing');
         return;
       }
 
       // Special case for tutorial
       if (currentStep === 'prompt_round') {
-        promptRoundLogger.debug('Tutorial mode: advancing to copy_round and returning to dashboard');
-        console.log('🎓 PromptRound: Tutorial mode, advancing step and navigating');
         advanceStep('copy_round').then(() => navigate('/dashboard'));
       } else {
-        promptRoundLogger.debug('No active round and not in tutorial - redirecting to dashboard');
-        console.log('🔀 PromptRound: No active round, redirecting to dashboard');
         navigate('/dashboard');
       }
-    } else {
-      promptRoundLogger.debug('✅ Active prompt round found, staying on page');
     }
   }, [activeRound, currentStep, advanceStep, navigate, successMessage]);
 
@@ -157,36 +90,24 @@ export const PromptRound: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    promptRoundLogger.debug('Form submitted, checking conditions...', {
-      hasPhrase: !!phrase.trim(),
-      hasRoundData: !!roundData,
-      isSubmitting,
-      roundStatus: roundData?.status
-    });
 
     if (!phrase.trim() || !roundData || isSubmitting) {
-      promptRoundLogger.debug('Submission blocked - conditions not met');
       return;
     }
 
     // Check if round is already submitted
     if (roundData.status === 'submitted') {
-      promptRoundLogger.debug('Round already submitted, ignoring submission attempt');
       return;
     }
 
-    promptRoundLogger.info('Starting submission process...', { phrase: phrase.trim(), roundId: roundData.round_id });
     setIsSubmitting(true);
     setError(null);
 
     try {
       await apiClient.submitPhrase(roundData.round_id, phrase.trim());
-      promptRoundLogger.info('✅ Phrase submitted successfully');
 
       // Show success message first to prevent navigation race condition
       const message = getRandomMessage('promptSubmitted');
-      promptRoundLogger.info('🎯 Setting success message:', message);
-      console.log('🎯 PromptRound SETTING SUCCESS MESSAGE:', message);
       setSuccessMessage(message);
 
       // Advance tutorial if in prompt_round step
@@ -196,11 +117,9 @@ export const PromptRound: React.FC = () => {
 
       // Navigate after delay - refresh will happen on dashboard
       setTimeout(() => {
-        promptRoundLogger.info('Navigating to dashboard after successful submission');
         navigate('/dashboard');
       }, 1500);
     } catch (err) {
-      promptRoundLogger.error('Submission failed:', err);
       setError(extractErrorMessage(err) || 'Unable to submit your phrase. Please check your connection and try again.');
       setIsSubmitting(false);
     }
@@ -216,8 +135,6 @@ export const PromptRound: React.FC = () => {
 
   // Show success state
   if (successMessage) {
-    promptRoundLogger.info('🎉 Rendering success message:', successMessage);
-    console.log('🎉 PromptRound SUCCESS MESSAGE SHOWING:', successMessage);
     return (
       <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center p-4">
         <div className="tile-card max-w-md w-full p-8 text-center flip-enter">
@@ -342,7 +259,7 @@ export const PromptRound: React.FC = () => {
         {/* Info */}
         <div className="mt-6 p-4 bg-quip-navy bg-opacity-5 rounded-tile">
           <p className="text-sm text-quip-teal">
-            <strong className="text-quip-navy">Cost:</strong> ${roundData.cost} ($95 refunded if you don't submit in time)
+            <strong className="text-quip-navy">Cost:</strong> <CurrencyDisplay amount={roundData.cost} iconClassName="w-3 h-3" textClassName="text-sm" /> (<CurrencyDisplay amount={95} iconClassName="w-3 h-3" textClassName="text-sm" /> refunded if you don't submit in time)
           </p>
         </div>
       </div>

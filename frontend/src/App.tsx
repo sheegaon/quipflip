@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import { GameProvider, useGame } from './contexts/GameContext';
+import { QuestProvider } from './contexts/QuestContext';
 import { TutorialProvider } from './contexts/TutorialContext';
 import { Landing } from './pages/Landing';
 import { Dashboard } from './pages/Dashboard';
@@ -117,11 +118,13 @@ function App() {
       }}
     >
       <GameProvider>
-        <TutorialProvider>
-          <AppRoutes />
-          <Analytics />
-          <SpeedInsights />
-        </TutorialProvider>
+        <QuestProvider>
+          <TutorialProvider>
+            <AppRoutes />
+            <Analytics />
+            <SpeedInsights />
+          </TutorialProvider>
+        </QuestProvider>
       </GameProvider>
     </Router>
   );
