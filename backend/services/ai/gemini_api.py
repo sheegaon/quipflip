@@ -15,8 +15,6 @@ except ImportError:
     genai = None  # type: ignore
     types = None  # type: ignore
 
-from .prompt_builder import build_copy_prompt
-
 __all__ = ["GeminiError", "generate", "generate_copy"]
 
 settings = get_settings()
@@ -27,19 +25,17 @@ class GeminiError(RuntimeError):
 
 
 async def generate_copy(
-        original_phrase: str,
+        prompt: str,
         model: str = "gemini-2.5-flash-lite",
         timeout: int = 30,
-        existing_copy_phrase: str = None,
 ) -> str:
     """
     Generate a copy phrase using Gemini API.
 
     Args:
-        original_phrase: The original phrase to create a copy of
+        prompt: Prompt to send to the Gemini API
         model: Gemini model to use (default: gemini-2.5-flash-lite)
         timeout: Request timeout in seconds (currently unused, reserved for future)
-        existing_copy_phrase: Another copy phrase already submitted (if any)
 
     Returns:
         The generated copy phrase as a string
@@ -55,7 +51,6 @@ async def generate_copy(
 
     try:
         client = genai.Client(api_key=settings.gemini_api_key)
-        prompt = build_copy_prompt(original_phrase, existing_copy_phrase)
 
         contents = [
             types.Content(

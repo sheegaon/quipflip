@@ -78,7 +78,7 @@ class Settings(BaseSettings):
     ai_gemini_model: str = "gemini-2.5-flash-lite"  # Gemini model for copy generation
     ai_timeout_seconds: int = 30  # Timeout for AI API calls
     ai_backup_delay_minutes: int = 15  # Delay before AI provides backup copies/votes
-    ai_backup_batch_size: int = 3  # Number of prompts to process per backup cycle
+    ai_backup_batch_size: int = 10  # Maximum number of copy or vote rounds to process per backup cycle
     ai_backup_sleep_seconds: int = 3600  # Sleep time between backup cycles (1 hour)
 
     @model_validator(mode="after")

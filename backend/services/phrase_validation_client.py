@@ -96,7 +96,13 @@ class PhraseValidationClient:
             async with self._session.get(url) as response:
                 if response.status == 200:
                     data = await response.json()
-                    return set(data.get("common_words", []))
+                    # The API returns a list directly, not a dict with "common_words" key
+                    if isinstance(data, list):
+                        return set(data)
+                    else:
+                        # Fallback for unexpected response format
+                        logger.warning(f"Unexpected response format from common-words API: {type(data)}")
+                        return set()
                 else:
                     logger.error(f"Phrase validator common words API error: {response.status}")
                     return set()

@@ -144,7 +144,7 @@ ai_backup_delay_minutes: int = 10
 #### Initialize Service
 
 ```python
-from backend.services.ai_service import AIService
+from backend.services.ai.ai_service import AIService
 from backend.services.phrase_validator import PhraseValidator
 from backend.database import get_db
 
@@ -552,7 +552,7 @@ alembic upgrade head
 ### 3. Test Setup
 
 ```python
-from backend.services.ai_service import AIService
+from backend.services.ai.ai_service import AIService
 from backend.services.phrase_validator import PhraseValidator
 
 

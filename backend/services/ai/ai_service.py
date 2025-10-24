@@ -7,21 +7,23 @@ with configurable fallback behavior and comprehensive metrics tracking.
 """
 
 import logging
+import random
+
 from datetime import datetime, timedelta, UTC
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
-
-from backend.utils.datetime_helpers import ensure_utc
 
 from backend.config import get_settings
 from backend.models.player import Player
 from backend.models.round import Round
 from backend.models.phraseset import PhraseSet
 from backend.models.vote import Vote
-from backend.services.ai_metrics_service import AIMetricsService, MetricsTracker
+from backend.services.ai.metrics_service import AIMetricsService, MetricsTracker
 from backend.services.player_service import PlayerService
 from backend.services.round_service import RoundService
+from .prompt_builder import build_copy_prompt
+
 
 logger = logging.getLogger(__name__)
 
@@ -62,10 +64,15 @@ class AIService:
         else:
             from backend.services.phrase_validator import get_phrase_validator
             self.phrase_validator = get_phrase_validator()
+        self.common_words = None
         self.metrics_service = AIMetricsService(db)
 
         # Determine which provider to use based on config and available API keys
         self.provider = self._determine_provider()
+        if self.provider == "openai":
+            self.ai_model = self.settings.ai_openai_model
+        else:  # gemini
+            self.ai_model = self.settings.ai_gemini_model
 
     def _determine_provider(self) -> str:
         """
@@ -126,9 +133,7 @@ class AIService:
         """
         try:
             # Check if AI player exists
-            result = await self.db.execute(
-                select(Player).where(Player.username == "AI_BACKUP")
-            )
+            result = await self.db.execute(select(Player).where(Player.username == "AI_BACKUP"))
             ai_player = result.scalar_one_or_none()
 
             if not ai_player:
@@ -168,6 +173,33 @@ class AIService:
             logger.error(f"Failed to get/create AI player: {e}")
             raise AIServiceError(f"AI player initialization failed: {e}")
 
+    async def get_common_words(self) -> list[str]:
+        """
+        Get the list of common words to allow in AI-generated phrases.
+
+        Returns:
+            List of common words
+        """
+        if self.common_words is None:
+            try:
+                result = await self.phrase_validator.common_words()
+
+                # Handle different return types from phrase validator
+                if isinstance(result, (list, tuple)):
+                    self.common_words = list(result)
+                elif isinstance(result, set):
+                    self.common_words = list(result)
+                    logger.debug(f"Converted set to list for common_words: {len(self.common_words)} words")
+                else:
+                    logger.error(f"phrase_validator.common_words() returned {type(result)}, expected list/tuple/set")
+                    self.common_words = []
+
+            except Exception as e:
+                logger.error(f"Failed to get common words: {e}")
+                self.common_words = []
+
+        return self.common_words
+
     async def generate_copy_phrase(self, original_phrase: str, prompt_round: Round) -> str:
         """
         Generate a copy phrase using the configured AI provider with proper copy validation.
@@ -193,42 +225,50 @@ class AIService:
             )
             other_copy_phrase = result.scalars().first()
 
-        model = (
-            self.settings.ai_openai_model
-            if self.provider == "openai"
-            else self.settings.ai_gemini_model
-        )
-
         async with MetricsTracker(
                 self.metrics_service,
                 operation_type="copy_generation",
                 provider=self.provider,
-                model=model,
+                model=self.ai_model,
         ) as tracker:
             try:
                 # Generate using configured provider
+                ai_prompt = build_copy_prompt(original_phrase, other_copy_phrase)
+                common_words = await self.get_common_words()
+                if not isinstance(common_words, (list, tuple)):
+                    logger.warning(f"common_words is not iterable: {type(common_words)}, using empty list")
+                    common_words = []
+
+                ai_prompt = ai_prompt.format(common_words=", ".join(common_words))
                 if self.provider == "openai":
-                    from backend.services.openai_api import generate_copy as openai_generate
-                    phrase = await openai_generate(
-                        original_phrase=original_phrase,
-                        model=self.settings.ai_openai_model,
-                        timeout=self.settings.ai_timeout_seconds,
-                        existing_copy_phrase=other_copy_phrase,
-                    )
+                    from backend.services.ai.openai_api import generate_copy
                 else:  # gemini
-                    from backend.services.gemini_api import generate_copy as gemini_generate
-                    phrase = await gemini_generate(
-                        original_phrase=original_phrase,
-                        model=self.settings.ai_gemini_model,
-                        timeout=self.settings.ai_timeout_seconds,
-                        existing_copy_phrase=other_copy_phrase,
-                    )
+                    from backend.services.ai.gemini_api import generate_copy
+                phrase = await generate_copy(
+                    prompt=ai_prompt, model=self.ai_model, timeout=self.settings.ai_timeout_seconds)
             except Exception as e:
                 # Wrap API exceptions in AICopyError
                 logger.error(f"Failed to generate AI copy: {e}")
-                raise AICopyError(f"Failed to generate AI copy: {e}")
+                raise AICopyError(f"Failed to generate AI copy using {ai_prompt=}: {e}")
 
             # Use the same validation logic as round_service for copy phrases
+            is_valid, error_message = await self.phrase_validator.validate_copy(
+                phrase,
+                original_phrase,
+                other_copy_phrase,
+                prompt_round.prompt_text,
+            )
+
+            if not is_valid and 'too similar' in error_message:
+                ai_prompt += f"\nNote: Your response of {phrase} was too similar. Generate a very different phrase."
+                try:
+                    phrase = await generate_copy(
+                        prompt=ai_prompt, model=self.ai_model, timeout=self.settings.ai_timeout_seconds)
+                except Exception as e:
+                    logger.error(f"Failed to generate AI copy on retry: {e}")
+                    raise AICopyError(f"Failed to generate AI copy using retry {ai_prompt=}: {e}")
+
+            # Retry validation
             is_valid, error_message = await self.phrase_validator.validate_copy(
                 phrase,
                 original_phrase,
@@ -243,9 +283,8 @@ class AIService:
                     response_length=len(phrase),
                     validation_passed=False,
                 )
-                raise AICopyError(
-                    f"AI generated invalid copy phrase: {error_message}"
-                )
+                raise AICopyError(f"AI generated invalid copy phrase {phrase} for "
+                                  f"{original_phrase=} {other_copy_phrase=}: {error_message}")
 
             # Track successful generation
             tracker.set_result(
@@ -271,7 +310,7 @@ class AIService:
         Raises:
             AIVoteError: If vote generation fails
         """
-        from backend.services.ai_vote_helper import generate_vote_choice
+        from backend.services.ai.vote_helper import generate_vote_choice
 
         # Extract prompt and phrases from denormalized fields on PhraseSet
         prompt_text = phraseset.prompt_text
@@ -280,33 +319,27 @@ class AIService:
             phraseset.copy_phrase_1,
             phraseset.copy_phrase_2,
         ]
-
-        model = (
-            self.settings.ai_openai_model
-            if self.provider == "openai"
-            else self.settings.ai_gemini_model
-        )
+        random.shuffle(phrases)
 
         async with MetricsTracker(
                 self.metrics_service,
                 operation_type="vote_generation",
                 provider=self.provider,
-                model=model,
+                model=self.ai_model,
         ) as tracker:
             # Generate vote choice
             choice_index = await generate_vote_choice(
                 prompt_text=prompt_text,
                 phrases=phrases,
                 provider=self.provider,
-                openai_model=self.settings.ai_openai_model,
-                gemini_model=self.settings.ai_gemini_model,
+                model=self.ai_model,
                 timeout=self.settings.ai_timeout_seconds,
             )
 
             chosen_phrase = phrases[choice_index]
 
-            # Determine if vote is correct (index 0 is the original)
-            vote_correct = (choice_index == 0)
+            # Determine if vote is correct
+            vote_correct = chosen_phrase == phraseset.original_phrase
 
             # Track the vote
             tracker.set_result(
@@ -317,9 +350,7 @@ class AIService:
             )
 
             logger.info(
-                f"AI ({self.provider}) voted for phrase '{chosen_phrase}' (index {choice_index}, "
-                f"{'CORRECT' if vote_correct else 'INCORRECT'})"
-            )
+                f"AI ({self.provider}) voted for '{chosen_phrase}' ({'CORRECT' if vote_correct else 'INCORRECT'})")
 
             return chosen_phrase
 
@@ -392,8 +423,8 @@ class AIService:
                     filtered_prompts.append(prompt_round)
             
             stats["prompts_checked"] = len(filtered_prompts)
-            logger.info(f"Found {len(filtered_prompts)} prompts waiting for AI backup copies")
-            
+            logger.info(f"Found {len(filtered_prompts)} prompts waiting for AI backup copies:\n{filtered_prompts}")
+
             # Process each waiting prompt
             for prompt_round in filtered_prompts:
                 try:
@@ -433,8 +464,7 @@ class AIService:
                                 prompt_round.phraseset_status = "active"
                     
                     stats["copies_generated"] += 1
-                    logger.info(f"AI generated copy '{copy_phrase}' for prompt '{prompt_round.submitted_phrase}'")
-                    
+
                 except Exception as e:
                     logger.error(f"Failed to generate AI copy for prompt {prompt_round.round_id}: {e}")
                     stats["errors"] += 1

@@ -315,11 +315,7 @@ class CleanupService:
 
     # ===== Run All Cleanup Tasks =====
 
-    async def run_all_cleanup_tasks(
-        self,
-        include_test_players: bool = False,
-        test_players_dry_run: bool = True
-    ) -> dict[str, int]:
+    async def run_all_cleanup_tasks(self) -> dict[str, int]:
         """
         Run all cleanup tasks.
 
@@ -339,9 +335,8 @@ class CleanupService:
             "orphaned_rounds": await self.cleanup_orphaned_rounds(),
         }
 
-        if include_test_players:
-            test_player_results = await self.cleanup_test_players(dry_run=test_players_dry_run)
-            results.update(test_player_results)
+        test_player_results = await self.cleanup_test_players()
+        results.update(test_player_results)
 
         total_cleaned = sum(results.values())
         logger.info(f"Cleanup tasks completed. Total items cleaned: {total_cleaned}")

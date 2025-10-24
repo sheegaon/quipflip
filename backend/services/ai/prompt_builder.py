@@ -17,22 +17,25 @@ def build_copy_prompt(original_phrase: str, existing_copy_phrase: str = None) ->
     Returns:
         A formatted prompt string for AI copy generation
     """
-    base_prompt = f"""Given an original phrase for a prompt (which you do not know),
-create a similar but different phrase.
+    base_prompt = """Create a phrase meaning roughly the same thing as the original phrase.
 
 Rules:
 - 1-15 characters per word
 - 1-5 words total
 - Letters and spaces only
-- Must pass dictionary validation
-- Should be similar enough to be believable as the original
-- Do NOT copy or lightly modify (e.g., pluralize) any words from the original phrase which are 4 or more letters long"""
+- Each word must pass dictionary validation
+- Phrase should be similar enough to be believable as the original"""
 
     if existing_copy_phrase:
         base_prompt += f"""
-- IMPORTANT: Another player already submitted this copy: "{existing_copy_phrase}"
-- Your phrase must be distinctly different from this existing copy
-- Avoid using similar words or concepts as the existing copy"""
+- IMPORTANT: Another player already submitted this copy: "{existing_copy_phrase}" """
+        base_prompt += """
+- Do NOT use or lightly modify (e.g., pluralize) any words from either the original phrase or the existing copy phrase
+  which are 4 or more letters long, except common words {common_words}"""
+    else:
+        base_prompt += """
+- Do NOT use or lightly modify (e.g., pluralize) any words from the original phrase which are 4 or more letters long, 
+  except common words {common_words}"""
 
     base_prompt += f"""
 

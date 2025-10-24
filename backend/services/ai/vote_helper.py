@@ -69,10 +69,11 @@ async def generate_vote_choice_openai(
         response = await client.chat.completions.create(
             model=model,
             messages=[
-                {"role": "system", "content": "You are an expert at identifying original vs copied phrases in word games."},
+                {"role": "system",
+                 "content": "You are an expert at identifying original vs copied phrases in word games."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=10,
+            max_completion_tokens=10,
             temperature=0.7,
         )
 
@@ -180,8 +181,7 @@ async def generate_vote_choice(
         prompt_text: str,
         phrases: list[str],
         provider: str = "openai",
-        openai_model: str = "gpt-5-nano",
-        gemini_model: str = "gemini-2.5-flash-lite",
+        model: str = "gpt-5-nano",
         timeout: int = 30,
 ) -> int:
     """
@@ -191,8 +191,7 @@ async def generate_vote_choice(
         prompt_text: The prompt text
         phrases: List of 3 phrases to choose from
         provider: "openai" or "gemini"
-        openai_model: OpenAI model to use
-        gemini_model: Gemini model to use
+        model: AI model to use
         timeout: Request timeout in seconds
 
     Returns:
@@ -205,14 +204,14 @@ async def generate_vote_choice(
         return await generate_vote_choice_openai(
             prompt_text=prompt_text,
             phrases=phrases,
-            model=openai_model,
+            model=model,
             timeout=timeout,
         )
     elif provider.lower() == "gemini":
         return await generate_vote_choice_gemini(
             prompt_text=prompt_text,
             phrases=phrases,
-            model=gemini_model,
+            model=model,
             timeout=timeout,
         )
     else:

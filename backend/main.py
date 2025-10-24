@@ -126,12 +126,7 @@ async def ai_backup_cycle():
     are ready before attempting AI operations.
     """
     from backend.database import AsyncSessionLocal
-    from backend.services.ai_service import AIService
-
-    # Initial startup delay to ensure services are ready
-    startup_delay = 10  # 10 seconds initial delay
-    logger.info(f"AI backup cycle starting in {startup_delay}s (waiting for services to initialize)")
-    await asyncio.sleep(startup_delay)
+    from backend.services.ai.ai_service import AIService
 
     # Verify phrase validator is ready before starting
     try:
@@ -148,18 +143,23 @@ async def ai_backup_cycle():
     except Exception as e:
         logger.warning(f"Could not verify phrase validator health: {e}")
 
+    # Initial startup delay
+    startup_delay = 180
+    logger.info(f"AI backup cycle starting in {startup_delay}s")
+    await asyncio.sleep(startup_delay)
+
     logger.info("AI backup cycle starting main loop")
 
     while True:
-        # Wait before each cycle
-        await asyncio.sleep(settings.ai_backup_sleep_seconds)
-
         try:
             async with AsyncSessionLocal() as db:
                 await AIService(db).run_backup_cycle()
 
         except Exception as e:
             logger.error(f"AI backup cycle error: {e}")
+
+        # Wait before next cycle
+        await asyncio.sleep(settings.ai_backup_sleep_seconds)
 
 
 async def cleanup_cycle():
@@ -175,7 +175,7 @@ async def cleanup_cycle():
     from backend.services.cleanup_service import CleanupService
 
     # Initial startup delay
-    startup_delay = 60  # 60 seconds initial delay
+    startup_delay = 120
     logger.info(f"Cleanup cycle starting in {startup_delay}s")
     await asyncio.sleep(startup_delay)
 

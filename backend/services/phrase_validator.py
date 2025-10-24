@@ -134,7 +134,7 @@ class PhraseValidator:
             self._similarity_calculator = LightweightSimilarityCalculator()
             logger.info("Lightweight similarity calculator initialized")
 
-    def common_words(self) -> Set[str]:
+    async def common_words(self) -> Set[str]:
         """Get set of common words allowed to be reused."""
         return self.COMMON_WORDS.copy()
 
