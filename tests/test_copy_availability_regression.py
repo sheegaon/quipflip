@@ -32,7 +32,7 @@ async def test_copy_available_when_prompts_in_database(db_session, player_factor
 
     # Seed a test prompt
     prompt = Prompt(
-        text=f"test copy availability {uuid.uuid4()}",
+        text=f"dog food {uuid.uuid4().hex[:8]}",
         category="test",
         enabled=True
     )
@@ -80,7 +80,7 @@ async def test_copy_not_available_for_own_prompts(db_session, player_factory):
 
     # Seed a test prompt
     prompt = Prompt(
-        text=f"test own prompt {uuid.uuid4()}",
+        text=f"cat behavior {uuid.uuid4().hex[:8]}",
         category="test",
         enabled=True
     )
@@ -123,7 +123,7 @@ async def test_copy_not_available_after_already_copied(db_session, player_factor
 
     # Seed a test prompt
     prompt = Prompt(
-        text=f"test already copied {uuid.uuid4()}",
+        text=f"bird songs {uuid.uuid4().hex[:8]}",
         category="test",
         enabled=True
     )
@@ -169,10 +169,10 @@ async def test_multiple_prompts_available_count(db_session, player_factory):
     round_service = RoundService(db_session)
     transaction_service = TransactionService(db_session)
 
-    # Seed test prompts
-    for i in range(3):
+    # Seed test prompts - use prompts that are relevant to the phrases we'll submit
+    for prompt_text in [f"fishing {uuid.uuid4().hex[:8]}", f"frogs {uuid.uuid4().hex[:8]}", f"toads {uuid.uuid4().hex[:8]}"]:
         prompt = Prompt(
-            text=f"test multiple prompts {uuid.uuid4()}",
+            text=prompt_text,
             category="test",
             enabled=True
         )

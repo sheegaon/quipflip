@@ -150,7 +150,7 @@ export const PromptRound: React.FC = () => {
       isSubmitting,
       roundStatus: roundData?.status
     });
-    
+
     if (!phrase.trim() || !roundData || isSubmitting) {
       promptRoundLogger.debug('Submission blocked - conditions not met');
       return;
@@ -166,18 +166,25 @@ export const PromptRound: React.FC = () => {
     setIsSubmitting(true);
     setError(null);
 
+    // Create abort controller for this submission
+    const controller = new AbortController();
+
     try {
       await apiClient.submitPhrase(roundData.round_id, phrase.trim());
       promptRoundLogger.info('✅ Phrase submitted successfully');
 
-      // Update the round state immediately to prevent double submissions
-      if (activeRound) {
-        promptRoundLogger.debug('Updating local round state to submitted');
-        actions.refreshDashboard(); // Trigger refresh to get latest state
-      }
-
-      // Show success message
+      // Show success message first to prevent navigation race condition
       setSuccessMessage(getRandomMessage('promptSubmitted'));
+
+      // Update the round state in background with abort signal
+      if (activeRound) {
+        promptRoundLogger.debug('Triggering dashboard refresh in background');
+        actions.refreshDashboard(controller.signal).catch((err) => {
+          if (err.name !== 'AbortError') {
+            promptRoundLogger.warn('Background dashboard refresh failed:', err);
+          }
+        });
+      }
 
       // Advance tutorial if in prompt_round step
       if (currentStep === 'prompt_round') {
@@ -187,10 +194,12 @@ export const PromptRound: React.FC = () => {
       // Navigate after delay
       setTimeout(() => {
         promptRoundLogger.info('Navigating to dashboard after successful submission');
+        controller.abort(); // Cancel any pending refresh
         navigate('/dashboard');
       }, 1500);
     } catch (err) {
       promptRoundLogger.error('Submission failed:', err);
+      controller.abort();
       setError(extractErrorMessage(err) || 'Unable to submit your phrase. Please check your connection and try again.');
       setIsSubmitting(false);
     }
@@ -317,8 +326,9 @@ export const PromptRound: React.FC = () => {
         {/* Home Button */}
         <button
           onClick={() => navigate('/dashboard')}
-          className="w-full mt-4 flex items-center justify-center gap-2 text-quip-teal hover:text-quip-turquoise py-2 font-medium transition-colors"
-          title="Back to Dashboard"
+          disabled={isSubmitting}
+          className="w-full mt-4 flex items-center justify-center gap-2 text-quip-teal hover:text-quip-turquoise disabled:opacity-50 disabled:cursor-not-allowed py-2 font-medium transition-colors"
+          title={isSubmitting ? "Please wait for submission to complete" : "Back to Dashboard"}
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />

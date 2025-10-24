@@ -86,16 +86,13 @@ export const getContextualErrorMessage = (
   // 2. {error: 'type', message: 'specific'} - top level
   // 3. {detail: 'string message'} - simple string detail
   let specificMessage: string | null = null;
-  let errorType: string | null = null;
 
   if (error?.detail && typeof error.detail === 'object') {
     // Format 1: detail is an object with error and message
     specificMessage = error.detail.message;
-    errorType = error.detail.error;
   } else if (error?.error && typeof error.error === 'string' && error?.message) {
     // Format 2: top-level error and message fields
     specificMessage = error.message;
-    errorType = error.error;
   }
 
   const errorDetail = typeof error === 'string' ? error : error?.detail || error?.error || error?.message || '';

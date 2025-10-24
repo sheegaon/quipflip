@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useGame } from '../contexts/GameContext';
+import { extractErrorMessage } from '../api/client';
 import type { PlayerStatistics } from '../api/types';
 import { Header } from '../components/Header';
 import WinRateChart from '../components/statistics/WinRateChart';
@@ -31,7 +32,7 @@ const Statistics: React.FC = () => {
         setTimeout(() => setChartsReady(true), 100);
       } catch (err) {
         if (err instanceof Error && err.name === 'CanceledError') return;
-        setError('Failed to load statistics. Please try again.');
+        setError(extractErrorMessage(err) || 'Failed to load statistics. Please try again.');
       } finally {
         setLoading(false);
       }

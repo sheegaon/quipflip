@@ -24,6 +24,13 @@ class PhrasesetService:
         self.db = db
         self.activity_service = ActivityService(db)
         self.scoring_service = ScoringService(db)
+        # Request-scoped cache to avoid re-querying _build_contributions multiple times
+        # within a single request (e.g., dashboard endpoint calls it 3x)
+        self._contributions_cache: dict[UUID, list[dict]] = {}
+
+    def _invalidate_contributions_cache(self, player_id: UUID) -> None:
+        """Invalidate cached contributions for a player after data changes."""
+        self._contributions_cache.pop(player_id, None)
 
     async def get_player_phrasesets(
         self,
@@ -326,6 +333,9 @@ class PhrasesetService:
         if player:
             await self.db.refresh(player)
 
+        # Invalidate cached contributions since payout_claimed status changed
+        self._invalidate_contributions_cache(player_id)
+
         return {
             "success": True,
             "amount": result_view.payout_amount,
@@ -350,7 +360,16 @@ class PhrasesetService:
     # ---------------------------------------------------------------------
 
     async def _build_contributions(self, player_id: UUID) -> list[dict]:
-        """Load prompt and copy contributions and derive summary fields."""
+        """Load prompt and copy contributions and derive summary fields.
+
+        Results are cached per player_id for the lifetime of this service instance
+        to avoid redundant queries within a single request.
+        """
+        # Check cache first
+        if player_id in self._contributions_cache:
+            return self._contributions_cache[player_id]
+
+        # Build contributions if not cached
         prompt_result = await self.db.execute(
             select(Round)
             .where(Round.player_id == player_id)
@@ -476,6 +495,10 @@ class PhrasesetService:
 
         # Sort descending by created_at
         contributions.sort(key=lambda entry: entry["created_at"] or datetime.now(UTC), reverse=True)
+
+        # Cache the results for this request
+        self._contributions_cache[player_id] = contributions
+
         return contributions
 
     async def _load_contributor_rounds(self, phraseset: PhraseSet) -> tuple[Round, Round, Round]:
