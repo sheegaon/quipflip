@@ -6,12 +6,14 @@ from sqlalchemy.engine.url import make_url, URL
 from typing import Optional
 import logging
 
+SQLITE_LOCAL_URL = "sqlite+aiosqlite:///./quipflip.db"
+
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
     # Database
-    database_url: str = "sqlite+aiosqlite:///./quipflip.db"
+    database_url: str = SQLITE_LOCAL_URL
 
     # Redis (optional, falls back to in-memory)
     redis_url: str = ""
@@ -114,7 +116,7 @@ class Settings(BaseSettings):
         
         if not url:
             logger.warning("Empty DATABASE_URL, using SQLite fallback")
-            self.database_url = "sqlite+aiosqlite:///./quipflip.db"
+            self.database_url = SQLITE_LOCAL_URL
             return self
 
         parsed: Optional[URL] = None
@@ -135,11 +137,8 @@ class Settings(BaseSettings):
                 
         except Exception as e:  # pragma: no cover - defensive fallback
             logger.error(f"Failed to parse DATABASE_URL: {e}")
-            logging.warning(
-                "Invalid DATABASE_URL '%s'; falling back to default sqlite database.",
-                url,
-            )
-            self.database_url = "sqlite+aiosqlite:///./quipflip.db"
+            logging.warning(f"Invalid DATABASE_URL '{url}'; falling back to default sqlite database.")
+            self.database_url = SQLITE_LOCAL_URL
             return self
 
         drivername = parsed.drivername
