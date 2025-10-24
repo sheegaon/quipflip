@@ -5,19 +5,7 @@ from sqlalchemy import select, delete, text
 from datetime import datetime, UTC, timedelta
 from typing import Optional
 
-from backend.models import (
-    Player,
-    Round,
-    Vote,
-    Transaction,
-    DailyBonus,
-    ResultView,
-    PlayerAbandonedPrompt,
-    PromptFeedback,
-    PhrasesetActivity,
-    RefreshToken,
-    Quest,
-)
+from backend.models import Player
 
 logger = logging.getLogger(__name__)
 
@@ -214,6 +202,12 @@ class CleanupService:
         """
         Remove all test player data from the database.
 
+        With CASCADE foreign key constraints, deleting players automatically
+        removes all related records in dependent tables:
+        - votes, transactions, daily_bonuses, result_views
+        - player_abandoned_prompts, prompt_feedback, phraseset_activity
+        - refresh_tokens, quests, rounds (including copy assignments)
+
         Args:
             dry_run: If True, return counts without deleting
 
@@ -232,84 +226,22 @@ class CleanupService:
         if dry_run:
             return {"would_delete_players": len(test_players)}
 
-        # Extract player IDs for cascade deletion
+        # Extract player IDs
         player_ids = [player.player_id for player in test_players]
 
-        # Delete related data first (in order to respect foreign keys)
-        deletion_counts = {}
-
-        # 1. Votes (references player_id)
-        result = await self.db.execute(
-            delete(Vote).where(Vote.player_id.in_(player_ids))
-        )
-        deletion_counts['votes'] = result.rowcount or 0
-
-        # 2. Transactions (references player_id)
-        result = await self.db.execute(
-            delete(Transaction).where(Transaction.player_id.in_(player_ids))
-        )
-        deletion_counts['transactions'] = result.rowcount or 0
-
-        # 3. Daily bonuses (references player_id)
-        result = await self.db.execute(
-            delete(DailyBonus).where(DailyBonus.player_id.in_(player_ids))
-        )
-        deletion_counts['daily_bonuses'] = result.rowcount or 0
-
-        # 4. Result views (references player_id)
-        result = await self.db.execute(
-            delete(ResultView).where(ResultView.player_id.in_(player_ids))
-        )
-        deletion_counts['result_views'] = result.rowcount or 0
-
-        # 5. Abandoned prompts (references player_id)
-        result = await self.db.execute(
-            delete(PlayerAbandonedPrompt).where(PlayerAbandonedPrompt.player_id.in_(player_ids))
-        )
-        deletion_counts['abandoned_prompts'] = result.rowcount or 0
-
-        # 6. Prompt feedback (references player_id)
-        result = await self.db.execute(
-            delete(PromptFeedback).where(PromptFeedback.player_id.in_(player_ids))
-        )
-        deletion_counts['prompt_feedback'] = result.rowcount or 0
-
-        # 7. Phraseset activities (references player_id)
-        result = await self.db.execute(
-            delete(PhrasesetActivity).where(PhrasesetActivity.player_id.in_(player_ids))
-        )
-        deletion_counts['phraseset_activities'] = result.rowcount or 0
-
-        # 8. Refresh tokens (references player_id)
-        result = await self.db.execute(
-            delete(RefreshToken).where(RefreshToken.player_id.in_(player_ids))
-        )
-        deletion_counts['refresh_tokens'] = result.rowcount or 0
-
-        # 9. Quests (references player_id)
-        result = await self.db.execute(
-            delete(Quest).where(Quest.player_id.in_(player_ids))
-        )
-        deletion_counts['quests'] = result.rowcount or 0
-
-        # 10. Delete rounds (references player_id)
-        # Note: Prompts are shared across players and should not be deleted
-        result = await self.db.execute(
-            delete(Round).where(Round.player_id.in_(player_ids))
-        )
-        deletion_counts['rounds'] = result.rowcount or 0
-
-        # 11. Finally, delete players
+        # Delete players - CASCADE will automatically remove all dependent records
         result = await self.db.execute(
             delete(Player).where(Player.player_id.in_(player_ids))
         )
-        deletion_counts['players'] = result.rowcount or 0
+        deletion_counts = {'players': result.rowcount or 0}
 
         # Commit the transaction
         await self.db.commit()
 
-        total_deleted = sum(deletion_counts.values())
-        logger.info(f"Deleted test players and {total_deleted} associated records")
+        logger.info(
+            f"Deleted {deletion_counts['players']} test player(s) "
+            f"(dependent records cascaded automatically)"
+        )
 
         return deletion_counts
 
