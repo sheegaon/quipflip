@@ -521,7 +521,7 @@ class VoteService:
         Conditions (configurable in settings):
         - vote_max_votes reached (default: 20)
         - OR vote_closing_threshold+ votes AND closing window elapsed
-        - OR vote_minimum_threshold votes AND minimum window elapsed
+        - OR vote_minimum_threshold votes reached (immediate finalization)
 
         Args:
             phraseset: The phraseset to check
@@ -546,17 +546,13 @@ class VoteService:
                     f"({settings.vote_closing_window_seconds}s)"
                 )
 
-        # Minimum threshold votes and minimum window elapsed (no closing vote yet)
-        elif (phraseset.vote_count >= settings.vote_minimum_threshold
-              and phraseset.third_vote_at
-              and not phraseset.fifth_vote_at):
-            elapsed = (current_time - ensure_utc(phraseset.third_vote_at)).total_seconds()
-            if elapsed >= settings.vote_minimum_window_seconds:
-                should_finalize = True
-                logger.info(
-                    f"Phraseset {phraseset.phraseset_id} minimum window expired "
-                    f"({settings.vote_minimum_window_seconds}s)"
-                )
+        # Minimum threshold votes reached (immediate finalization)
+        elif phraseset.vote_count >= settings.vote_minimum_threshold:
+            should_finalize = True
+            logger.info(
+                f"Phraseset {phraseset.phraseset_id} reached minimum threshold "
+                f"({settings.vote_minimum_threshold} votes) - finalizing immediately"
+            )
 
         if should_finalize:
             await self._finalize_wordset(phraseset, transaction_service, auto_commit=auto_commit)

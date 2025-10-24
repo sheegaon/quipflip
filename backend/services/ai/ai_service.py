@@ -117,7 +117,7 @@ class AIService:
         logger.error("No AI provider API keys found (OPENAI_API_KEY or GEMINI_API_KEY)")
         raise AIServiceError("No AI provider configured - set OPENAI_API_KEY or GEMINI_API_KEY")
 
-    async def _get_or_create_ai_player(self) -> Player:
+    async def _get_or_create_ai_player(self, username="AI_COPY_BACKUP") -> Player:
         """
         Get or create the AI player account.
 
@@ -133,7 +133,7 @@ class AIService:
         """
         try:
             # Check if AI player exists
-            result = await self.db.execute(select(Player).where(Player.username == "AI_BACKUP"))
+            result = await self.db.execute(select(Player).where(Player.username == username))
             ai_player = result.scalar_one_or_none()
 
             if not ai_player:
@@ -141,7 +141,7 @@ class AIService:
                 player_service = PlayerService(self.db)
 
                 ai_player = await player_service.create_player(
-                    username="AI_BACKUP",
+                    username=username,
                     email="ai@quipflip.internal",
                     password_hash="not-used-for-ai-player",
                     pseudonym="Clever Lexical Runner",
@@ -410,8 +410,8 @@ class AIService:
         }
 
         try:
-            # Get or create AI player (within transaction)
-            ai_player = await self._get_or_create_ai_player()
+            # Get or create AI copy player (within transaction)
+            ai_copy_player = await self._get_or_create_ai_player()
 
             # Query for submitted prompt rounds that:
             # 1. Don't have a phraseset yet (still waiting for copies)
@@ -430,7 +430,7 @@ class AIService:
                 .where(Round.round_type == 'prompt')
                 .where(Round.status == 'submitted')
                 .where(Round.created_at <= cutoff_time)
-                .where(Round.player_id != ai_player.player_id)
+                .where(Round.player_id != ai_copy_player.player_id)
                 .where(~Player.username.like('%test%'))  # Exclude test players
                 .where(PhraseSet.phraseset_id.is_(None))  # No phraseset yet
                 .order_by(Round.created_at.asc())  # Process oldest first
@@ -446,7 +446,7 @@ class AIService:
                     select(Round.round_id)
                     .where(Round.prompt_round_id == prompt_round.round_id)
                     .where(Round.round_type == 'copy')
-                    .where(Round.player_id == ai_player.player_id)
+                    .where(Round.player_id == ai_copy_player.player_id)
                 )
                 
                 if ai_copy_result.scalar_one_or_none() is None:
@@ -480,7 +480,7 @@ class AIService:
                     # Start copy round for AI player
                     copy_round = Round(
                         round_id=uuid.uuid4(),
-                        player_id=ai_player.player_id,
+                        player_id=ai_copy_player.player_id,
                         round_type='copy',
                         status='submitted',
                         created_at=datetime.now(UTC),
@@ -496,10 +496,10 @@ class AIService:
                     
                     # Update prompt round copy assignment
                     if prompt_round.copy1_player_id is None:
-                        prompt_round.copy1_player_id = ai_player.player_id
+                        prompt_round.copy1_player_id = ai_copy_player.player_id
                         prompt_round.phraseset_status = "waiting_copy1"
                     elif prompt_round.copy2_player_id is None:
-                        prompt_round.copy2_player_id = ai_player.player_id
+                        prompt_round.copy2_player_id = ai_copy_player.player_id
                         # Check if we now have both copies and can create phraseset
                         if prompt_round.copy1_player_id is not None:
                             phraseset = await round_service.create_phraseset_if_ready(prompt_round)
@@ -580,6 +580,9 @@ class AIService:
             vote_service = VoteService(self.db)
             transaction_service = TransactionService(self.db)
 
+            # Get or create AI copy player (within transaction)
+            ai_vote_player = await self._get_or_create_ai_player(f"AI_VOTE_BACKUP_{random.randint(1000, 9999)}")
+
             # Process each waiting phraseset
             for phraseset in filtered_phrasesets:
                 try:
@@ -589,7 +592,7 @@ class AIService:
                     # Use VoteService for centralized voting logic
                     vote = await vote_service.submit_system_vote(
                         phraseset=phraseset,
-                        player=ai_player,
+                        player=ai_vote_player,
                         chosen_phrase=chosen_phrase,
                         transaction_service=transaction_service,
                     )
