@@ -1,9 +1,11 @@
 """Cleanup service for database maintenance tasks."""
 import logging
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, text
-from datetime import datetime, UTC, timedelta
+import re
+from datetime import UTC, datetime, timedelta
 from typing import Optional
+
+from sqlalchemy import delete, select, text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.models import (
     Player,
@@ -25,13 +27,24 @@ logger = logging.getLogger(__name__)
 class CleanupService:
     """Service for periodic database cleanup tasks."""
 
-    # Test player identification patterns
-    TEST_PATTERNS = [
-        "testplayer",
-        "stresstest",
-        "@example.com",
-        "test_",
-        "_test",
+    # Test player identification patterns derived from test scripts
+    _TEST_USERNAME_REGEXES = [
+        re.compile(r"^testplayer\d+_\d+$", re.IGNORECASE),
+        re.compile(r"^stresstest\d+_\d+$", re.IGNORECASE),
+        re.compile(r"^test_user_[0-9a-f]{8}$", re.IGNORECASE),
+    ]
+    _TEST_EMAIL_REGEXES = [
+        re.compile(r"^testplayer\d+_\d+@example\.com$", re.IGNORECASE),
+        re.compile(r"^stresstest\d+_\d+@example\.com$", re.IGNORECASE),
+        re.compile(r"^test_user_[0-9a-f]{8}@example\.com$", re.IGNORECASE),
+    ]
+    _TEST_LIKE_PATTERNS = [
+        ("username", "testplayer%"),
+        ("email", "testplayer%"),
+        ("username", "stresstest%"),
+        ("email", "stresstest%"),
+        ("username", "test_user_%"),
+        ("email", "test_user_%"),
     ]
 
     def __init__(self, db: AsyncSession):
@@ -190,25 +203,33 @@ class CleanupService:
         Returns:
             List of Player objects
         """
-        # Build query to find test players
         from sqlalchemy import or_
 
-        # Build a list of conditions for the WHERE clause
-        conditions = []
-        for pattern in self.TEST_PATTERNS:
-            # Patterns like "@example.com" should only match email
-            if pattern.startswith('@'):
-                conditions.append(Player.email.ilike(f"%{pattern}"))
-            else:
-                conditions.append(Player.username.ilike(f"%{pattern}%"))
-                conditions.append(Player.email.ilike(f"%{pattern}%"))
+        if not self._TEST_LIKE_PATTERNS:
+            return []
 
-        # Build query to find test players using the conditions
-        stmt = select(Player).where(or_(*conditions))
+        like_conditions = []
+        for column_name, like_pattern in self._TEST_LIKE_PATTERNS:
+            column = getattr(Player, column_name)
+            like_conditions.append(column.ilike(like_pattern))
+
+        stmt = select(Player).where(or_(*like_conditions))
         result = await self.db.execute(stmt)
-        test_players = result.scalars().all()
+        candidates = result.scalars().all()
 
-        return test_players
+        def matches(player: Player) -> bool:
+            username = player.username or ""
+            email = player.email or ""
+            return any(regex.match(username) for regex in self._TEST_USERNAME_REGEXES) or any(
+                regex.match(email) for regex in self._TEST_EMAIL_REGEXES
+            )
+
+        unique_players: dict[str, Player] = {}
+        for player in candidates:
+            if matches(player):
+                unique_players[player.player_id] = player
+
+        return list(unique_players.values())
 
     async def cleanup_test_players(self, dry_run: bool = False) -> dict[str, int]:
         """
