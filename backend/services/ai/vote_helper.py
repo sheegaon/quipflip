@@ -36,7 +36,7 @@ async def generate_vote_choice_openai(
         prompt_text: str,
         phrases: list[str],
         model: str = "gpt-5-nano",
-        timeout: int = 30,
+        timeout: int = 60,
 ) -> int:
     """
     Generate a vote choice using OpenAI API.
@@ -73,8 +73,6 @@ async def generate_vote_choice_openai(
                  "content": "You are an expert at identifying original vs copied phrases in word games."},
                 {"role": "user", "content": prompt}
             ],
-            max_completion_tokens=10,
-            temperature=0.7,
         )
 
         if not response.choices:
@@ -82,7 +80,7 @@ async def generate_vote_choice_openai(
 
         output_text = response.choices[0].message.content
         if not output_text:
-            raise AIVoteError("OpenAI API returned empty response")
+            raise AIVoteError(f"OpenAI API returned empty {response=} for {prompt=}")
 
         # Parse the choice (should be 1, 2, or 3)
         choice = int(output_text.strip())
@@ -158,7 +156,7 @@ async def generate_vote_choice_gemini(
                 output_text += chunk.text
 
         if not output_text:
-            raise AIVoteError("Gemini API returned empty response")
+            raise AIVoteError(f"Gemini API returned empty response for {prompt=}")
 
         # Parse the choice (should be 1, 2, or 3)
         choice = int(output_text.strip())
