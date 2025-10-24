@@ -68,15 +68,21 @@ export const PromptRound: React.FC = () => {
   useEffect(() => {
     if (!roundData) return;
 
+    const controller = new AbortController();
     const loadFeedback = async () => {
       try {
-        const feedbackResponse = await apiClient.getPromptFeedback(roundData.round_id);
+        const feedbackResponse = await apiClient.getPromptFeedback(roundData.round_id, controller.signal);
         setFeedbackType(feedbackResponse.feedback_type);
-      } catch (err) {
-        // Feedback not found is ok
+      } catch (err: any) {
+        // Feedback not found or aborted is ok
+        if (err.name !== 'AbortError' && err.code !== 'ERR_CANCELED') {
+          console.debug('Feedback not found:', err);
+        }
       }
     };
     loadFeedback();
+
+    return () => controller.abort();
   }, [roundData?.round_id]);
 
   // Redirect if already submitted

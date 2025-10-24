@@ -31,7 +31,7 @@ const statusOptions: { value: StatusFilter; label: string }[] = [
 export const Tracking: React.FC = () => {
   const { state, actions } = useGame();
   const { player, phrasesetSummary } = state;
-  const { refreshBalance, refreshDashboard, getPlayerPhrasesets, getPhrasesetDetails, claimPhrasesetPrize } = actions;
+  const { getPlayerPhrasesets, getPhrasesetDetails, claimPhrasesetPrize } = actions;
 
   // Smart polling for active phraseset details
   const { startPoll, stopPoll } = useSmartPolling();
@@ -178,11 +178,11 @@ export const Tracking: React.FC = () => {
 
     try {
       await claimPhrasesetPrize(phrasesetId);
+      // claimPhrasesetPrize already triggers dashboard refresh which updates balance
+      // Only need to refresh local data
       await Promise.all([
         fetchDetails(selectedSummary),
         fetchPhrasesets(),
-        refreshBalance(),
-        refreshDashboard(),
       ]);
       setError(null);
     } catch (err) {

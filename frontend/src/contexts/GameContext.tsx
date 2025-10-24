@@ -637,9 +637,17 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [isAuthenticated, startPoll, stopPoll]);
 
-  // Initial dashboard load
+  // Initial dashboard load - only once when authenticated changes
+  const hasInitialLoadRef = useRef(false);
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated) {
+      hasInitialLoadRef.current = false;
+      return;
+    }
+
+    // Prevent duplicate loads in React StrictMode
+    if (hasInitialLoadRef.current) return;
+    hasInitialLoadRef.current = true;
 
     const controller = new AbortController();
     actionsRef.current.refreshDashboard(controller.signal);

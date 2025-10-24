@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { useTutorial } from '../contexts/TutorialContext';
@@ -63,11 +63,17 @@ export const Dashboard: React.FC = () => {
     return `${activeRound.round_type.charAt(0).toUpperCase()}${activeRound.round_type.slice(1)}`;
   }, [activeRound?.round_type]);
 
-  // Refresh when page becomes visible
+  // Refresh when page becomes visible (with debouncing)
+  const lastVisibilityRefreshRef = useRef<number>(0);
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        refreshDashboard();
+        const now = Date.now();
+        // Debounce: only refresh if more than 5 seconds since last refresh
+        if (now - lastVisibilityRefreshRef.current > 5000) {
+          lastVisibilityRefreshRef.current = now;
+          refreshDashboard();
+        }
       }
     };
 
