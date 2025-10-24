@@ -235,12 +235,12 @@ class PlayerService:
         # Check phrasesets available
         if vote_service:
             if available_count is None:
-                available_count = await vote_service.count_available_wordsets_for_player(player.player_id)
+                available_count = await vote_service.count_available_phrasesets_for_player(player.player_id)
             if available_count == 0:
-                return False, "no_wordsets_available"
+                return False, "no_phrasesets_available"
         else:
-            if not QueueService.has_wordsets_available():
-                return False, "no_wordsets_available"
+            if not QueueService.has_phrasesets_available():
+                return False, "no_phrasesets_available"
 
         return True, ""
 

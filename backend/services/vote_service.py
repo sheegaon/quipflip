@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from datetime import datetime, UTC, timedelta
-from backend.utils.exceptions import NoWordsetsAvailableError,  AlreadyVotedError, RoundExpiredError
+from backend.utils.exceptions import NoPhrasesetsAvailableError,  AlreadyVotedError, RoundExpiredError
 from backend.utils.datetime_helpers import ensure_utc
 from uuid import UUID
 import uuid
@@ -31,7 +31,7 @@ class VoteService:
         self.db = db
         self.activity_service = ActivityService(db)
 
-    async def _load_available_wordsets_for_player(self, player_id: UUID) -> list[PhraseSet]:
+    async def _load_available_phrasesets_for_player(self, player_id: UUID) -> list[PhraseSet]:
         """Load phrasesets the player can vote on (excludes contributors and already-voted)."""
         result = await self.db.execute(
             select(PhraseSet)
@@ -42,41 +42,39 @@ class VoteService:
                 selectinload(PhraseSet.copy_round_2),
             )
         )
-        all_wordsets = list(result.scalars().all())
-        if not all_wordsets:
+        all_phrasesets = list(result.scalars().all())
+        if not all_phrasesets:
             return []
 
         # Filter out phrasesets where player was a contributor
-        candidate_wordsets = []
-        for ws in all_wordsets:
+        candidate_phrasesets = []
+        for ps in all_phrasesets:
             # Skip phrasesets with missing relationships (data integrity issue)
-            if not ws.prompt_round or not ws.copy_round_1 or not ws.copy_round_2:
+            if not ps.prompt_round or not ps.copy_round_1 or not ps.copy_round_2:
                 logger.warning(
-                    f"Skipping phraseset {ws.phraseset_id} with missing relationships: "
-                    f"prompt_round={ws.prompt_round is not None}, "
-                    f"copy_round_1={ws.copy_round_1 is not None}, "
-                    f"copy_round_2={ws.copy_round_2 is not None}"
+                    f"Skipping phraseset {ps.phraseset_id} with missing relationships: "
+                    f"prompt_round={ps.prompt_round is not None}, "
+                    f"copy_round_1={ps.copy_round_1 is not None}, "
+                    f"copy_round_2={ps.copy_round_2 is not None}"
                 )
                 continue
 
             # Get contributor player IDs
             contributor_ids = {
-                ws.prompt_round.player_id,
-                ws.copy_round_1.player_id,
-                ws.copy_round_2.player_id,
+                ps.prompt_round.player_id,
+                ps.copy_round_1.player_id,
+                ps.copy_round_2.player_id,
             }
 
             # Skip if player was a contributor
             if player_id in contributor_ids:
-                logger.debug(
-                    f"Filtering out phraseset {ws.phraseset_id} - player {player_id} was a contributor"
-                )
+                logger.debug(f"Filtering out phraseset {ps.phraseset_id} - player {player_id} was a contributor")
                 continue
 
-            candidate_wordsets.append(ws)
-        candidate_ids = [ws.phraseset_id for ws in candidate_wordsets]
+            candidate_phrasesets.append(ps)
+        candidate_ids = [ws.phraseset_id for ws in candidate_phrasesets]
 
-        if not candidate_wordsets:
+        if not candidate_phrasesets:
             return []
 
         # Filter out phrasesets where player already voted
@@ -89,17 +87,17 @@ class VoteService:
             )
             voted_ids = {row[0] for row in vote_result.all()}
 
-        available = [ws for ws in candidate_wordsets if ws.phraseset_id not in voted_ids]
+        available = [ws for ws in candidate_phrasesets if ws.phraseset_id not in voted_ids]
         return available
 
-    async def get_available_wordset_for_player(self, player_id: UUID) -> PhraseSet | None:
+    async def get_available_phrasesets_for_player(self, player_id: UUID) -> PhraseSet | None:
         """
         Get available phraseset for voting with priority:
-        1. Wordsets with >=5 votes (FIFO by fifth_vote_at)
-        2. Wordsets with 3-4 votes (FIFO by third_vote_at)
-        3. Wordsets with <3 votes (random)
+        1. Phrasesets with >=5 votes (FIFO by fifth_vote_at)
+        2. Phrasesets with 3-4 votes (FIFO by third_vote_at)
+        3. Phrasesets with <3 votes (random)
         """
-        available = await self._load_available_wordsets_for_player(player_id)
+        available = await self._load_available_phrasesets_for_player(player_id)
 
         if not available:
             return None
@@ -124,10 +122,86 @@ class VoteService:
         # Fallback: random from any available
         return random.choice(available)
 
-    async def count_available_wordsets_for_player(self, player_id: UUID) -> int:
-        """Count how many phrasesets the player can vote on."""
-        available = await self._load_available_wordsets_for_player(player_id)
+    async def count_available_phrasesets_for_player(self, player_id: UUID) -> int:
+        """Count how many phrasesets the player can vote on.
+        
+        First checks and finalizes any phrasesets that meet finalization criteria
+        to ensure accurate availability counts.
+        """
+        # First, check and finalize any active phrasesets that meet finalization criteria
+        # This ensures we get accurate counts after any eligible phrasesets are finalized
+        await self._check_and_finalize_active_phrasesets()
+        
+        # Then count available phrasesets for this player
+        available = await self._load_available_phrasesets_for_player(player_id)
         return len(available)
+
+    async def _check_and_finalize_active_phrasesets(self) -> None:
+        """
+        Check and finalize all active phrasesets that meet finalization criteria.
+        
+        This runs before counting available phrasesets to ensure accurate counts.
+        """
+        try:
+            # Get all active phrasesets that could potentially be finalized
+            result = await self.db.execute(
+                select(PhraseSet)
+                .where(PhraseSet.status.in_(["open", "closing"]))
+                .order_by(PhraseSet.created_at.asc())  # Process oldest first
+            )
+            active_phrasesets = list(result.scalars().all())
+            
+            if not active_phrasesets:
+                return
+                
+            logger.debug(f"Checking {len(active_phrasesets)} active phrasesets for finalization")
+            
+            # Import here to avoid circular imports
+            from backend.services.transaction_service import TransactionService
+            transaction_service = TransactionService(self.db)
+            
+            finalized_count = 0
+            orphaned_count = 0
+            for phraseset in active_phrasesets:
+                try:
+                    # Check if this phraseset should be finalized
+                    # This will automatically finalize if conditions are met
+                    await self.check_and_finalize(
+                        phraseset, 
+                        transaction_service, 
+                        auto_commit=True
+                    )
+                    
+                    # Refresh to check if it was finalized
+                    await self.db.refresh(phraseset)
+                    if phraseset.status == "finalized":
+                        finalized_count += 1
+                        
+                except ValueError as e:
+                    # Handle orphaned phrasesets (missing round references)
+                    if "Cannot calculate payouts: missing" in str(e):
+                        orphaned_count += 1
+                        logger.warning(f"Skipping orphaned phraseset {phraseset.phraseset_id}: {e}")
+                        # Optionally mark phraseset as finalized with zero payouts to prevent future processing
+                        # For now, just skip and let manual cleanup handle it
+                        continue
+                    else:
+                        # Re-raise other ValueErrors
+                        raise
+                        
+                except Exception as e:
+                    logger.error(f"Error checking phraseset {phraseset.phraseset_id} for finalization: {e}",
+                                 exc_info=True)
+                    # Continue processing other phrasesets even if one fails
+                    
+            if finalized_count > 0:
+                logger.info(f"Finalized {finalized_count} phrasesets during availability check")
+            if orphaned_count > 0:
+                logger.warning(f"Skipped {orphaned_count} orphaned phrasesets during availability check")
+                
+        except Exception as e:
+            logger.error(f"Error during phraseset finalization check: {e}", exc_info=True)
+            # Don't let finalization errors break the availability counting
 
     async def start_vote_round(
         self,
@@ -145,9 +219,9 @@ class VoteService:
         All operations are performed in a single atomic transaction.
         """
         # Get available phraseset (outside lock - read-only)
-        phraseset = await self.get_available_wordset_for_player(player.player_id)
+        phraseset = await self.get_available_phrasesets_for_player(player.player_id)
         if not phraseset:
-            raise NoWordsetsAvailableError("No quips available for voting")
+            raise NoPhrasesetsAvailableError("No quips available for voting")
 
         # Acquire lock for the entire transaction
         from backend.utils import lock_client
@@ -290,7 +364,7 @@ class VoteService:
         await self._update_vote_timeline(phraseset, auto_commit=False)
 
         # Check if should finalize (deferred commit)
-        # Note: This may trigger _finalize_wordset which also defers commits
+        # Note: This may trigger _finalize_phraseset which also defers commits
         await self.check_and_finalize(phraseset, transaction_service, auto_commit=False)
 
         # Single atomic commit for all operations
@@ -432,7 +506,7 @@ class VoteService:
         await self._update_vote_timeline(phraseset, auto_commit=False)
 
         # Check if should finalize (deferred commit)
-        # Note: This may trigger _finalize_wordset which also defers commits
+        # Note: This may trigger _finalize_phraseset which also defers commits
         await self.check_and_finalize(phraseset, transaction_service, auto_commit=False)
 
         # Single atomic commit for all operations
@@ -584,7 +658,7 @@ class VoteService:
         # Create prize transactions for each contributor
         for role in ["original", "copy1", "copy2"]:
             payout_info = payouts[role]
-            if payout_info["payout"] > 0:
+            if payout_info["player_id"] is not None and payout_info["payout"] > 0:
                 # Verify player exists before creating transaction
                 player_exists = await self.db.get(Player, payout_info["player_id"])
                 if not player_exists:
@@ -651,7 +725,7 @@ class VoteService:
 
     async def get_phraseset_results(
         self,
-        wordset_id: UUID,
+        phraseset_id: UUID,
         player_id: UUID,
         transaction_service: TransactionService,
     ) -> dict:
@@ -660,7 +734,7 @@ class VoteService:
 
         First view collects payout (idempotent).
         """
-        phraseset = await self.db.get(PhraseSet, wordset_id)
+        phraseset = await self.db.get(PhraseSet, phraseset_id)
         if not phraseset:
             raise ValueError("Phraseset not found")
 
@@ -686,7 +760,7 @@ class VoteService:
         # Get or create result view
         result = await self.db.execute(
             select(ResultView)
-            .where(ResultView.phraseset_id == wordset_id)
+            .where(ResultView.phraseset_id == phraseset_id)
             .where(ResultView.player_id == player_id)
         )
         result_view = result.scalar_one_or_none()
@@ -706,7 +780,7 @@ class VoteService:
             # Create result view
             result_view = ResultView(
                 view_id=uuid.uuid4(),
-                phraseset_id=wordset_id,
+                phraseset_id=phraseset_id,
                 player_id=player_id,
                 payout_amount=player_payout,
                 payout_claimed=True,
@@ -716,7 +790,7 @@ class VoteService:
             self.db.add(result_view)
             await self.db.commit()
 
-            logger.info(f"Player {player_id} collected payout ${player_payout} from phraseset {wordset_id}")
+            logger.info(f"Player {player_id} collected payout ${player_payout} from phraseset {phraseset_id}")
         else:
             updated = False
             if not result_view.first_viewed_at:
@@ -730,7 +804,7 @@ class VoteService:
 
         # Get all votes for display
         votes_result = await self.db.execute(
-            select(Vote).where(Vote.phraseset_id == wordset_id)
+            select(Vote).where(Vote.phraseset_id == phraseset_id)
         )
         all_votes = list(votes_result.scalars().all())
 
@@ -771,12 +845,3 @@ class VoteService:
             "already_collected": result_view.payout_claimed,
             "finalized_at": phraseset.finalized_at,
         }
-
-    async def get_wordset_results(
-        self,
-        wordset_id: UUID,
-        player_id: UUID,
-        transaction_service: TransactionService,
-    ) -> dict:
-        """Backward-compatible alias for phrase-based results."""
-        return await self.get_phraseset_results(wordset_id, player_id, transaction_service)

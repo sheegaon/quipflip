@@ -23,8 +23,8 @@ class RoundStatus(str, Enum):
     ABANDONED = "abandoned"
 
 
-class WordSetStatus(str, Enum):
-    """WordSet status enumeration for type safety."""
+class PhraseSetStatus(str, Enum):
+    """PhraseSet status enumeration for type safety."""
     OPEN = "open"
     CLOSING = "closing"
     CLOSED = "closed"

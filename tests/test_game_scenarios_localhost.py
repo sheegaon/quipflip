@@ -66,7 +66,7 @@ class TestSinglePlayerJourney:
         submit_data = GameFlowHelper.submit_word(client, round_id, word)
 
         assert submit_data["success"] is True
-        assert submit_data["phrase"] == word.upper()  # Changed from "word" to "phrase"
+        assert submit_data["phrase"] == word.upper()
 
         # Check no active round
         current = client.get("/player/current-round").json()
@@ -164,11 +164,11 @@ class TestTwoPlayerInteraction:
         client.close()
 
 
-class TestThreePlayerWordset:
-    """Test complete wordset creation with 3 players."""
+class TestThreePlayerPhraseset:
+    """Test complete phraseset creation with 3 players."""
 
-    def test_create_complete_wordset(self, verify_server):
-        """Create wordset with 1 prompt + 2 copy players."""
+    def test_create_complete_phraseset(self, verify_server):
+        """Create phraseset with 1 prompt + 2 copy players."""
         # Create 3 players
         players_clients = PlayerFactory.create_players(3)
         (p1, c1), (p2, c2), (p3, c3) = players_clients
@@ -198,11 +198,11 @@ class TestThreePlayerWordset:
 
             assert all(b <= 910 for b in balances), "All players should have paid"
 
-            print(f"\nWordset created with words: {words}")
+            print(f"\nPhraseset created with words: {words}")
             print(f"Final balances: {balances}")
 
         except Exception as e:
-            print(f"Wordset creation failed: {e}")
+            print(f"Phraseset creation failed: {e}")
 
         cleanup_clients(c1, c2, c3)
 
@@ -210,9 +210,9 @@ class TestThreePlayerWordset:
 class TestVotingScenarios:
     """Test voting behavior and scenarios."""
 
-    def test_voter_can_vote_on_wordset(self, verify_server):
-        """Create wordset and have another player vote."""
-        # This test depends on wordsets being available
+    def test_voter_can_vote_on_phraseset(self, verify_server):
+        """Create phraseset and have another player vote."""
+        # This test depends on phrasesets being available
         player, client = PlayerFactory.create_player()
 
         try:
@@ -221,8 +221,8 @@ class TestVotingScenarios:
             AssertionHelper.assert_round_response(vote_data, "vote")
 
             # Submit vote for first phrase
-            phraseset_id = vote_data["phraseset_id"]  # Changed from wordset_id
-            chosen_phrase = vote_data["phrases"][0]  # Changed from words to phrases
+            phraseset_id = vote_data["phraseset_id"]
+            chosen_phrase = vote_data["phrases"][0]
 
             vote_result = GameFlowHelper.submit_vote(client, phraseset_id, chosen_phrase)
             AssertionHelper.assert_vote_result(vote_result)
@@ -239,16 +239,16 @@ class TestVotingScenarios:
             assert final_balance == expected
 
         except Exception as e:
-            # No wordsets available is acceptable
+            # No phrasesets available is acceptable
             if "available" in str(e).lower():
-                pytest.skip("No wordsets available for voting")
+                pytest.skip("No phrasesets available for voting")
             else:
                 raise
 
         client.close()
 
-    def test_multiple_voters_on_same_wordset(self, verify_server):
-        """Multiple players vote on the same wordset."""
+    def test_multiple_voters_on_same_phraseset(self, verify_server):
+        """Multiple players vote on the same phraseset."""
         # Create 3 voters
         players_clients = PlayerFactory.create_players(3)
 
@@ -257,7 +257,7 @@ class TestVotingScenarios:
         for player, client in players_clients:
             try:
                 vote_data = GameFlowHelper.start_vote_round(client)
-                phraseset_id = vote_data["phraseset_id"]  # Changed from wordset_id
+                phraseset_id = vote_data["phraseset_id"]
                 chosen_phrase = vote_data["phrases"][0]  # All vote for first phrase
 
                 GameFlowHelper.submit_vote(client, phraseset_id, chosen_phrase)
@@ -327,14 +327,14 @@ class TestEdgeCasesAndErrors:
         client.close()
 
     def test_duplicate_vote_prevention(self, verify_server):
-        """Test that players cannot vote twice on same wordset."""
+        """Test that players cannot vote twice on same phraseset."""
         player, client = PlayerFactory.create_player()
 
         try:
             # Cast first vote
             vote_data = GameFlowHelper.start_vote_round(client)
-            phraseset_id = vote_data["phraseset_id"]  # Changed from wordset_id
-            chosen_phrase = vote_data["phrases"][0]  # Changed from words
+            phraseset_id = vote_data["phraseset_id"]
+            chosen_phrase = vote_data["phrases"][0]
 
             GameFlowHelper.submit_vote(client, phraseset_id, chosen_phrase)
 
@@ -348,8 +348,8 @@ class TestEdgeCasesAndErrors:
                 # If we got the same phraseset, try to vote again
                 if vote2_data["phraseset_id"] == phraseset_id:
                     vote_response = client.post(
-                        f"/phrasesets/{phraseset_id}/vote",  # Changed endpoint
-                        json={"phrase": vote2_data["phrases"][0]}  # Changed field
+                        f"/phrasesets/{phraseset_id}/vote",
+                        json={"phrase": vote2_data["phrases"][0]}
                     )
                     # Should fail with conflict or already voted error
                     assert vote_response.status_code in [400, 409]

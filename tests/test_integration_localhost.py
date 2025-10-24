@@ -220,7 +220,7 @@ class TestRoundAvailability:
         assert "can_copy" in data
         assert "can_vote" in data
         assert "prompts_waiting" in data
-        assert "phrasesets_waiting" in data  # Changed from wordsets_waiting to phrasesets_waiting
+        assert "phrasesets_waiting" in data
         assert "copy_discount_active" in data
         assert "copy_cost" in data
         assert "current_round_id" in data
@@ -387,8 +387,8 @@ class TestCopyRoundFlow:
 class TestVoteRoundFlow:
     """Test vote round functionality."""
 
-    def test_no_wordsets_available(self, verify_server_running):
-        """Test POST /rounds/vote when no wordsets ready."""
+    def test_no_phrasesets_available(self, verify_server_running):
+        """Test POST /rounds/vote when no phrasesets ready."""
         # Create authenticated client
         auth_client, player_data = create_authenticated_client()
 
@@ -402,8 +402,8 @@ class TestVoteRoundFlow:
             # Vote round started successfully
             data = response.json()
             assert "round_id" in data
-            assert "phraseset_id" in data  # Changed from wordset_id to phraseset_id
-            assert "phrases" in data  # Changed from words to phrases
+            assert "phraseset_id" in data
+            assert "phrases" in data
             assert len(data["phrases"]) == 3
 
         auth_client.close()

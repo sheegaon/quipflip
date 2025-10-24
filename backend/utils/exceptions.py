@@ -61,13 +61,13 @@ class NoPromptsAvailableError(QuipflipException):
     pass
 
 
-class NoWordsetsAvailableError(QuipflipException):
-    """No wordsets waiting in queue for voting."""
+class NoPhrasesetsAvailableError(QuipflipException):
+    """No phrasesets waiting in queue for voting."""
     pass
 
 
 class AlreadyVotedError(QuipflipException):
-    """Player has already voted on this wordset."""
+    """Player has already voted on this phraseset."""
     pass
 
 
@@ -77,5 +77,5 @@ class DailyBonusNotAvailableError(QuipflipException):
 
 
 class SelfVotingError(QuipflipException):
-    """Cannot vote on own wordset."""
+    """Cannot vote on own phraseset."""
     pass

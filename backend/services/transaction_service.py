@@ -37,7 +37,7 @@ class TransactionService:
             player_id: Player UUID
             amount: Amount (negative for charges, positive for payouts)
             trans_type: Transaction type
-            reference_id: Optional reference to round/wordset/vote
+            reference_id: Optional reference to round/phraseset/vote
             auto_commit: If True, commits immediately. If False, caller must commit.
             skip_lock: If True, assumes caller has already acquired the lock.
 
