@@ -51,14 +51,26 @@ class VoteService:
         for ws in all_wordsets:
             # Skip phrasesets with missing relationships (data integrity issue)
             if not ws.prompt_round or not ws.copy_round_1 or not ws.copy_round_2:
+                logger.warning(
+                    f"Skipping phraseset {ws.phraseset_id} with missing relationships: "
+                    f"prompt_round={ws.prompt_round is not None}, "
+                    f"copy_round_1={ws.copy_round_1 is not None}, "
+                    f"copy_round_2={ws.copy_round_2 is not None}"
+                )
                 continue
 
-            # Skip if player was a contributor
-            if player_id in {
+            # Get contributor player IDs
+            contributor_ids = {
                 ws.prompt_round.player_id,
                 ws.copy_round_1.player_id,
                 ws.copy_round_2.player_id,
-            }:
+            }
+
+            # Skip if player was a contributor
+            if player_id in contributor_ids:
+                logger.debug(
+                    f"Filtering out phraseset {ws.phraseset_id} - player {player_id} was a contributor"
+                )
                 continue
 
             candidate_wordsets.append(ws)
@@ -317,6 +329,35 @@ class VoteService:
 
         if current_time > grace_cutoff:
             raise RoundExpiredError("Round expired past grace period")
+
+        # Safety check: Ensure player is not a contributor to this phraseset
+        # Load the relationships to check contributor IDs
+        from sqlalchemy import select as sql_select
+        from sqlalchemy.orm import selectinload
+
+        # Refresh phraseset with relationships
+        result = await self.db.execute(
+            sql_select(PhraseSet)
+            .where(PhraseSet.phraseset_id == phraseset.phraseset_id)
+            .options(
+                selectinload(PhraseSet.prompt_round),
+                selectinload(PhraseSet.copy_round_1),
+                selectinload(PhraseSet.copy_round_2),
+            )
+        )
+        phraseset_with_relations = result.scalar_one()
+
+        contributor_ids = {
+            phraseset_with_relations.prompt_round.player_id if phraseset_with_relations.prompt_round else None,
+            phraseset_with_relations.copy_round_1.player_id if phraseset_with_relations.copy_round_1 else None,
+            phraseset_with_relations.copy_round_2.player_id if phraseset_with_relations.copy_round_2 else None,
+        } - {None}  # Remove None values
+
+        if player.player_id in contributor_ids:
+            logger.error(
+                f"Player {player.player_id} attempted to vote on their own phraseset {phraseset.phraseset_id}!"
+            )
+            raise ValueError("You cannot vote on a phraseset you contributed to")
 
         # Normalize phrase
         phrase = phrase.strip().upper()
