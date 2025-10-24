@@ -13,8 +13,6 @@ except ImportError:
     AsyncOpenAI = None  # type: ignore
     OpenAIError = Exception  # type: ignore
 
-from .prompt_builder import build_copy_prompt
-
 __all__ = ["OpenAIError", "generate_copy"]
 
 settings = get_settings()
@@ -25,19 +23,17 @@ class OpenAIAPIError(RuntimeError):
 
 
 async def generate_copy(
-        original_phrase: str,
+        prompt: str,
         model: str = "gpt-5-nano",
-        timeout: int = 30,
-        existing_copy_phrase: str = None,
+        timeout: int = 120,
 ) -> str:
     """
     Generate a copy phrase using OpenAI API.
 
     Args:
-        original_phrase: The original phrase to create a copy of
+        prompt: Prompt to send to the OpenAI API
         model: OpenAI model to use (default: gpt-5-nano)
         timeout: Request timeout in seconds
-        existing_copy_phrase: Another copy phrase already submitted (if any)
 
     Returns:
         The generated copy phrase as a string
@@ -53,7 +49,6 @@ async def generate_copy(
 
     try:
         client = AsyncOpenAI(api_key=settings.openai_api_key, timeout=timeout)
-        prompt = build_copy_prompt(original_phrase, existing_copy_phrase)
 
         response = await client.chat.completions.create(
             model=model,
@@ -76,7 +71,7 @@ async def generate_copy(
             logger = logging.getLogger(__name__)
             logger.warning(f"OpenAI returned empty content. Model: {model}, "
                            f"Finish reason: {choice.finish_reason}, "
-                           f"Original phrase: '{original_phrase}', "
+                           f"Prompt: '{prompt}', "
                            f"Response: {response}")
             raise OpenAIAPIError("OpenAI API returned empty response content")
 

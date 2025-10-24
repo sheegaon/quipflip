@@ -9,7 +9,7 @@ from unittest.mock import patch, MagicMock
 from datetime import datetime, UTC
 import uuid
 
-from backend.services.ai_service import AIService, AICopyError, AIVoteError, AIServiceError
+from backend.services.ai.ai_service import AIService, AICopyError, AIVoteError, AIServiceError
 from backend.services.ai_metrics_service import AIMetricsService
 from backend.services.phrase_validator import PhraseValidator
 from backend.models.player import Player

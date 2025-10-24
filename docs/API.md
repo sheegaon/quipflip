@@ -61,7 +61,7 @@ Authorization: Bearer <access_token>
 - `duplicate_phrase` - Copy submission matched an existing phrase too closely
 - `invalid_word` - Word validation failed
 - `no_prompts_available` - No prompts available for copy
-- `no_wordsets_available` - No phrasesets available for voting
+- `no_phrasesets_available` - No phrasesets available for voting
 - `max_outstanding_quips` - Player has 10 open/closing phrasesets
 
 ---
@@ -492,7 +492,7 @@ Start a vote round (-1f).
 ```
 
 **Errors:**
-- `no_wordsets_available` - No phrasesets in queue
+- `no_phrasesets_available` - No phrasesets in queue
 - `already_in_round` - Player already in active round
 - `insufficient_balance` - Balance < 1f
 
@@ -985,7 +985,7 @@ Visit `/redoc` for alternative ReDoc documentation.
 - **Dictionary**: NASPA word list
 - **Copy validation**: Must differ from original phrase
 
-### WordSet Voting Lifecycle
+### PhraseSet Voting Lifecycle
 1. **Open**: 0-2 votes submitted
 2. **Closing**: 3+ votes, 10-minute window starts
 3. **Rapid closing**: 5+ votes, 60-second window starts

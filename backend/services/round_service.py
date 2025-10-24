@@ -523,7 +523,7 @@ class RoundService:
         self.db.add(phraseset)
         await self.db.flush()
 
-        QueueService.add_wordset_to_queue(phraseset.phraseset_id)
+        QueueService.add_phraseset_to_queue(phraseset.phraseset_id)
         logger.info(
             "Created phraseset %s from prompt %s",
             phraseset.phraseset_id,

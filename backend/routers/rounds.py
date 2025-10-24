@@ -26,7 +26,7 @@ from backend.utils.exceptions import (
     DuplicatePhraseError,
     RoundExpiredError,
     RoundNotFoundError,
-    NoWordsetsAvailableError,
+    NoPhrasesetsAvailableError,
     NoPromptsAvailableError,
 )
 from datetime import datetime, UTC
@@ -140,8 +140,8 @@ async def start_vote_round(
             phrases=phrases,
             expires_at=ensure_utc(round_object.expires_at),
         )
-    except NoWordsetsAvailableError as e:
-        raise HTTPException(status_code=400, detail="no_wordsets_available")
+    except NoPhrasesetsAvailableError as e:
+        raise HTTPException(status_code=400, detail="no_phrasesets_available")
     except Exception as e:
         logger.error(f"Error starting vote round: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -202,7 +202,7 @@ async def get_rounds_available(
 
     # Get prompts waiting count excluding player's own prompts
     prompts_waiting = await round_service.get_available_prompts_count(player.player_id)
-    phrasesets_waiting = await vote_service.count_available_wordsets_for_player(player.player_id)
+    phrasesets_waiting = await vote_service.count_available_phrasesets_for_player(player.player_id)
 
     # Rehydrate prompt queue if necessary so availability reflects database state.
     await round_service.ensure_prompt_queue_populated()

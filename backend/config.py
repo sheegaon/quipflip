@@ -6,12 +6,14 @@ from sqlalchemy.engine.url import make_url, URL
 from typing import Optional
 import logging
 
+SQLITE_LOCAL_URL = "sqlite+aiosqlite:///./quipflip.db"
+
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
     # Database
-    database_url: str = "sqlite+aiosqlite:///./quipflip.db"
+    database_url: str = SQLITE_LOCAL_URL
 
     # Redis (optional, falls back to in-memory)
     redis_url: str = ""
@@ -76,7 +78,7 @@ class Settings(BaseSettings):
     ai_gemini_model: str = "gemini-2.5-flash-lite"  # Gemini model for copy generation
     ai_timeout_seconds: int = 30  # Timeout for AI API calls
     ai_backup_delay_minutes: int = 15  # Delay before AI provides backup copies/votes
-    ai_backup_batch_size: int = 3  # Number of prompts to process per backup cycle
+    ai_backup_batch_size: int = 10  # Maximum number of copy or vote rounds to process per backup cycle
     ai_backup_sleep_seconds: int = 3600  # Sleep time between backup cycles (1 hour)
 
     @model_validator(mode="after")
@@ -114,7 +116,7 @@ class Settings(BaseSettings):
         
         if not url:
             logger.warning("Empty DATABASE_URL, using SQLite fallback")
-            self.database_url = "sqlite+aiosqlite:///./quipflip.db"
+            self.database_url = SQLITE_LOCAL_URL
             return self
 
         parsed: Optional[URL] = None
@@ -135,11 +137,8 @@ class Settings(BaseSettings):
                 
         except Exception as e:  # pragma: no cover - defensive fallback
             logger.error(f"Failed to parse DATABASE_URL: {e}")
-            logging.warning(
-                "Invalid DATABASE_URL '%s'; falling back to default sqlite database.",
-                url,
-            )
-            self.database_url = "sqlite+aiosqlite:///./quipflip.db"
+            logging.warning(f"Invalid DATABASE_URL '{url}'; falling back to default sqlite database.")
+            self.database_url = SQLITE_LOCAL_URL
             return self
 
         drivername = parsed.drivername

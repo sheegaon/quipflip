@@ -36,7 +36,7 @@ async def generate_vote_choice_openai(
         prompt_text: str,
         phrases: list[str],
         model: str = "gpt-5-nano",
-        timeout: int = 30,
+        timeout: int = 120,
 ) -> int:
     """
     Generate a vote choice using OpenAI API.
@@ -69,11 +69,10 @@ async def generate_vote_choice_openai(
         response = await client.chat.completions.create(
             model=model,
             messages=[
-                {"role": "system", "content": "You are an expert at identifying original vs copied phrases in word games."},
+                {"role": "system",
+                 "content": "You are an expert at identifying original vs copied phrases in word games."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=10,
-            temperature=0.7,
         )
 
         if not response.choices:
@@ -81,7 +80,7 @@ async def generate_vote_choice_openai(
 
         output_text = response.choices[0].message.content
         if not output_text:
-            raise AIVoteError("OpenAI API returned empty response")
+            raise AIVoteError(f"OpenAI API returned empty {response=} for {prompt=}")
 
         # Parse the choice (should be 1, 2, or 3)
         choice = int(output_text.strip())
@@ -106,7 +105,7 @@ async def generate_vote_choice_gemini(
         prompt_text: str,
         phrases: list[str],
         model: str = "gemini-2.5-flash-lite",
-        timeout: int = 30,
+        timeout: int = 120,
 ) -> int:
     """
     Generate a vote choice using Gemini API.
@@ -157,7 +156,7 @@ async def generate_vote_choice_gemini(
                 output_text += chunk.text
 
         if not output_text:
-            raise AIVoteError("Gemini API returned empty response")
+            raise AIVoteError(f"Gemini API returned empty response for {prompt=}")
 
         # Parse the choice (should be 1, 2, or 3)
         choice = int(output_text.strip())
@@ -180,9 +179,8 @@ async def generate_vote_choice(
         prompt_text: str,
         phrases: list[str],
         provider: str = "openai",
-        openai_model: str = "gpt-5-nano",
-        gemini_model: str = "gemini-2.5-flash-lite",
-        timeout: int = 30,
+        model: str = "gpt-5-nano",
+        timeout: int = 120,
 ) -> int:
     """
     Generate a vote choice using the specified AI provider.
@@ -191,8 +189,7 @@ async def generate_vote_choice(
         prompt_text: The prompt text
         phrases: List of 3 phrases to choose from
         provider: "openai" or "gemini"
-        openai_model: OpenAI model to use
-        gemini_model: Gemini model to use
+        model: AI model to use
         timeout: Request timeout in seconds
 
     Returns:
@@ -205,14 +202,14 @@ async def generate_vote_choice(
         return await generate_vote_choice_openai(
             prompt_text=prompt_text,
             phrases=phrases,
-            model=openai_model,
+            model=model,
             timeout=timeout,
         )
     elif provider.lower() == "gemini":
         return await generate_vote_choice_gemini(
             prompt_text=prompt_text,
             phrases=phrases,
-            model=gemini_model,
+            model=model,
             timeout=timeout,
         )
     else:

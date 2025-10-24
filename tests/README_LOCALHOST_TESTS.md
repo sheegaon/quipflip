@@ -84,8 +84,8 @@ Required packages:
 **`test_game_scenarios_localhost.py`** - Realistic game flow testing
 - Single player journey
 - Two-player interactions
-- Complete wordset creation (3 players)
-- Multiple voters on same wordset
+- Complete phraseset creation (3 players)
+- Multiple voters on same phraseset
 - Balance tracking accuracy
 - Queue dynamics and copy discounts
 - Edge cases and error scenarios
@@ -268,7 +268,7 @@ No prompts available
 
 Some tests depend on queue state:
 - **Copy round tests** require prompts in queue
-- **Vote round tests** require complete wordsets
+- **Vote round tests** require complete phrasesets
 - Tests handle missing queue items gracefully (skip or create necessary setup)
 
 ## Performance Benchmarks
@@ -391,7 +391,7 @@ When adding new tests:
 1. Follow existing patterns in test files
 2. Use helper utilities from `helpers_localhost.py`
 3. Add descriptive docstrings
-4. Handle graceful failures (no prompts, no wordsets, etc.)
+4. Handle graceful failures (no prompts, no phrasesets, etc.)
 5. Clean up resources (close clients)
 6. Test both success and failure cases
 

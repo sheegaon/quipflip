@@ -291,7 +291,7 @@ Expected:
 # If using SQLite
 sqlite3 quipflip.db "SELECT name FROM sqlite_master WHERE type='table';"
 
-# Should show tables: players, prompts, rounds, wordsets, votes, transactions, etc.
+# Should show tables: players, prompts, rounds, phrasesets, votes, transactions, etc.
 ```
 
 ### Step 4: Run Single Test with Verbose Output

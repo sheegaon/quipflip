@@ -368,7 +368,7 @@ class QuestService:
 
     async def check_deceptive_copy(self, phraseset_id: UUID) -> None:
         """Check if any player earned the deceptive copy bonus."""
-        # Get phraseset with vote counts
+        # Get phraseset
         result = await self.db.execute(
             select(PhraseSet).where(PhraseSet.phraseset_id == phraseset_id)
         )
@@ -377,19 +377,41 @@ class QuestService:
         if not phraseset or phraseset.status != "finalized":
             return
 
-        # Get total votes
-        total_votes = (phraseset.copy1_votes or 0) + (phraseset.copy2_votes or 0) + (phraseset.original_votes or 0)
+        # Get vote counts by querying the votes table
+        votes_result = await self.db.execute(
+            select(Vote.voted_phrase, func.count(Vote.vote_id).label('vote_count'))
+            .where(Vote.phraseset_id == phraseset_id)
+            .group_by(Vote.voted_phrase)
+        )
+        vote_counts = {phrase: count for phrase, count in votes_result.all()}
+        
+        # Calculate total votes
+        total_votes = sum(vote_counts.values())
         if total_votes == 0:
             return
 
+        # Get player IDs from the rounds
+        copy1_result = await self.db.execute(
+            select(Round.player_id).where(Round.round_id == phraseset.copy_round_1_id)
+        )
+        copy1_player_id = copy1_result.scalar_one_or_none()
+        
+        copy2_result = await self.db.execute(
+            select(Round.player_id).where(Round.round_id == phraseset.copy_round_2_id)
+        )
+        copy2_player_id = copy2_result.scalar_one_or_none()
+
         # Check both copy players
-        for copy_player_id, copy_votes in [
-            (phraseset.copy1_player_id, phraseset.copy1_votes or 0),
-            (phraseset.copy2_player_id, phraseset.copy2_votes or 0),
-        ]:
+        copy_data = [
+            (copy1_player_id, phraseset.copy_phrase_1),
+            (copy2_player_id, phraseset.copy_phrase_2),
+        ]
+        
+        for copy_player_id, copy_phrase in copy_data:
             if not copy_player_id:
                 continue
 
+            copy_votes = vote_counts.get(copy_phrase, 0)
             vote_percentage = (copy_votes / total_votes) * 100
 
             if vote_percentage >= 75:
@@ -423,7 +445,7 @@ class QuestService:
 
     async def check_obvious_original(self, phraseset_id: UUID) -> None:
         """Check if the original prompt player earned the obvious original bonus."""
-        # Get phraseset with vote counts
+        # Get phraseset
         result = await self.db.execute(
             select(PhraseSet).where(PhraseSet.phraseset_id == phraseset_id)
         )
@@ -432,12 +454,29 @@ class QuestService:
         if not phraseset or phraseset.status != "finalized":
             return
 
-        # Get total votes
-        total_votes = (phraseset.copy1_votes or 0) + (phraseset.copy2_votes or 0) + (phraseset.original_votes or 0)
-        if total_votes == 0 or not phraseset.original_player_id:
+        # Get vote counts by querying the votes table
+        votes_result = await self.db.execute(
+            select(Vote.voted_phrase, func.count(Vote.vote_id).label('vote_count'))
+            .where(Vote.phraseset_id == phraseset_id)
+            .group_by(Vote.voted_phrase)
+        )
+        vote_counts = {phrase: count for phrase, count in votes_result.all()}
+        
+        # Calculate total votes
+        total_votes = sum(vote_counts.values())
+        if total_votes == 0:
             return
 
-        original_votes = phraseset.original_votes or 0
+        # Get original player ID from the prompt round
+        original_result = await self.db.execute(
+            select(Round.player_id).where(Round.round_id == phraseset.prompt_round_id)
+        )
+        original_player_id = original_result.scalar_one_or_none()
+        
+        if not original_player_id:
+            return
+
+        original_votes = vote_counts.get(phraseset.original_phrase, 0)
         vote_percentage = (original_votes / total_votes) * 100
 
         if vote_percentage >= 85:
@@ -445,7 +484,7 @@ class QuestService:
             quest_result = await self.db.execute(
                 select(Quest).where(
                     and_(
-                        Quest.player_id == phraseset.original_player_id,
+                        Quest.player_id == original_player_id,
                         Quest.quest_type == QuestType.OBVIOUS_ORIGINAL.value,
                         Quest.status == QuestStatus.ACTIVE.value
                     )
@@ -455,7 +494,7 @@ class QuestService:
 
             if not quest:
                 # Create and complete quest
-                quest = await self._create_quest(phraseset.original_player_id, QuestType.OBVIOUS_ORIGINAL)
+                quest = await self._create_quest(original_player_id, QuestType.OBVIOUS_ORIGINAL)
 
             if quest.status == QuestStatus.ACTIVE.value:
                 quest.status = QuestStatus.COMPLETED.value
@@ -463,7 +502,7 @@ class QuestService:
                 quest.progress["percentage"] = vote_percentage
                 self.db.add(quest)
                 logger.info(
-                    f"Obvious original quest completed for player {phraseset.original_player_id}, "
+                    f"Obvious original quest completed for player {original_player_id}, "
                     f"percentage={vote_percentage:.1f}%"
                 )
 

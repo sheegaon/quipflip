@@ -19,7 +19,7 @@ class Transaction(Base):
     # Quest rewards: quest_reward_hot_streak, quest_reward_deceptive_copy, quest_reward_obvious_original,
     # quest_reward_round_completion, quest_reward_balanced_player, quest_reward_login_streak,
     # quest_reward_feedback, quest_reward_milestone
-    reference_id = get_uuid_column(nullable=True, index=True)  # References round_id, wordset_id, vote_id, or quest_id
+    reference_id = get_uuid_column(nullable=True, index=True)  # References round_id, phraseset_id, vote_id, or quest_id
     balance_after = Column(Integer, nullable=False)  # For audit trail
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False, index=True)
 

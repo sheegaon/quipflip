@@ -82,6 +82,41 @@ class PhraseValidationClient:
             logger.error(f"Phrase validator API unexpected error for {endpoint}: {e}")
             return False, "Validation service error - please try again"
 
+    async def common_words(self) -> set[str]:
+        """
+        Retrieve the set of common words from the validation service.
+
+        Returns:
+            Set of common words.
+        """
+        await self._ensure_session()
+        url = f"{self.base_url}/common-words"
+
+        try:
+            async with self._session.get(url) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    # The API returns a list directly, not a dict with "common_words" key
+                    if isinstance(data, list):
+                        return set(data)
+                    else:
+                        # Fallback for unexpected response format
+                        logger.warning(f"Unexpected response format from common-words API: {type(data)}")
+                        return set()
+                else:
+                    logger.error(f"Phrase validator common words API error: {response.status}")
+                    return set()
+
+        except asyncio.TimeoutError:
+            logger.error("Phrase validator common words API timeout")
+            return set()
+        except ClientError as e:
+            logger.error(f"Phrase validator common words API client error: {e}")
+            return set()
+        except Exception as e:
+            logger.error(f"Phrase validator common words API unexpected error: {e}")
+            return set()
+
     async def validate(self, phrase: str) -> Tuple[bool, str]:
         """
         Validate a phrase for format and dictionary compliance.

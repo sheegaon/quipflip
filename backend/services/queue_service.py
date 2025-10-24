@@ -10,7 +10,7 @@ settings = get_settings()
 
 # Queue names
 PROMPT_QUEUE = "queue:prompts"
-WORDSET_QUEUE = "queue:phrasesets"
+PHRASESET_QUEUE = "queue:phrasesets"
 
 
 class QueueService:
@@ -64,15 +64,15 @@ class QueueService:
         )
 
     @staticmethod
-    def add_wordset_to_queue(phraseset_id: UUID):
+    def add_phraseset_to_queue(phraseset_id: UUID):
         """Add phraseset to voting queue."""
-        queue_client.push(WORDSET_QUEUE, {"phraseset_id": str(phraseset_id)})
+        queue_client.push(PHRASESET_QUEUE, {"phraseset_id": str(phraseset_id)})
         logger.info(f"Added phraseset to queue: {phraseset_id}")
 
     @staticmethod
-    def get_wordsets_waiting() -> int:
+    def get_phrasesets_waiting() -> int:
         """Get count of phrasesets waiting for votes."""
-        return queue_client.length(WORDSET_QUEUE)
+        return queue_client.length(PHRASESET_QUEUE)
 
     @staticmethod
     def has_prompts_available() -> bool:
@@ -80,6 +80,6 @@ class QueueService:
         return QueueService.get_prompts_waiting() > 0
 
     @staticmethod
-    def has_wordsets_available() -> bool:
+    def has_phrasesets_available() -> bool:
         """Check if phrasesets available for voting."""
-        return QueueService.get_wordsets_waiting() > 0
+        return QueueService.get_phrasesets_waiting() > 0
