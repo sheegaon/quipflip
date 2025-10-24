@@ -12,7 +12,7 @@ class PlayerAbandonedPrompt(Base):
     __tablename__ = "player_abandoned_prompts"
 
     id = get_uuid_column(primary_key=True, default=uuid.uuid4)
-    player_id = get_uuid_column(ForeignKey("players.player_id"), nullable=False, index=True)
+    player_id = get_uuid_column(ForeignKey("players.player_id", ondelete="CASCADE"), nullable=False, index=True)
     prompt_round_id = get_uuid_column(ForeignKey("rounds.round_id"), nullable=False)
     abandoned_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
 

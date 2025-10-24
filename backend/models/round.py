@@ -12,7 +12,7 @@ class Round(Base):
     __tablename__ = "rounds"
 
     round_id = get_uuid_column(primary_key=True, default=uuid.uuid4)
-    player_id = get_uuid_column(ForeignKey("players.player_id"), nullable=False, index=True)
+    player_id = get_uuid_column(ForeignKey("players.player_id", ondelete="CASCADE"), nullable=False, index=True)
     round_type = Column(String(20), nullable=False)  # prompt, copy, vote
     status = Column(String(20), nullable=False)  # active, submitted, expired, abandoned
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False, index=True)
@@ -24,8 +24,8 @@ class Round(Base):
     prompt_text = Column(String(500), nullable=True)  # Denormalized
     submitted_phrase = Column(String(100), nullable=True)  # Prompt player's phrase
     phraseset_status = Column(String(20), nullable=True)  # waiting_copies, waiting_copy1, active, finalized, abandoned
-    copy1_player_id = get_uuid_column(ForeignKey("players.player_id"), nullable=True, index=True)
-    copy2_player_id = get_uuid_column(ForeignKey("players.player_id"), nullable=True, index=True)
+    copy1_player_id = get_uuid_column(ForeignKey("players.player_id", ondelete="CASCADE"), nullable=True, index=True)
+    copy2_player_id = get_uuid_column(ForeignKey("players.player_id", ondelete="CASCADE"), nullable=True, index=True)
 
     # Copy-specific fields (nullable for non-copy rounds)
     prompt_round_id = get_uuid_column(ForeignKey("rounds.round_id"), nullable=True, index=True)

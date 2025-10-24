@@ -59,7 +59,7 @@ class Quest(Base):
     __tablename__ = "quests"
 
     quest_id = get_uuid_column(primary_key=True, default=uuid.uuid4)
-    player_id = get_uuid_column(ForeignKey("players.player_id"), nullable=False, index=True)
+    player_id = get_uuid_column(ForeignKey("players.player_id", ondelete="CASCADE"), nullable=False, index=True)
     quest_type = Column(String(50), nullable=False, index=True)
     status = Column(String(20), nullable=False, default=QuestStatus.ACTIVE.value, index=True)
     progress = Column(JSON, nullable=False, default=dict)  # Flexible progress tracking

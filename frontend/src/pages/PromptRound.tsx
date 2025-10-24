@@ -8,7 +8,6 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { useTimer } from '../hooks/useTimer';
 import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
-import { promptRoundLogger } from '../utils/logger';
 import type { PromptState } from '../api/types';
 
 export const PromptRound: React.FC = () => {

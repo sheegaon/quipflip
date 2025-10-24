@@ -13,7 +13,7 @@ class ResultView(Base):
 
     view_id = get_uuid_column(primary_key=True, default=uuid.uuid4)
     phraseset_id = get_uuid_column(ForeignKey("phrasesets.phraseset_id"), nullable=False, index=True)
-    player_id = get_uuid_column(ForeignKey("players.player_id"), nullable=False, index=True)
+    player_id = get_uuid_column(ForeignKey("players.player_id", ondelete="CASCADE"), nullable=False, index=True)
     payout_claimed = Column(Boolean, default=False, nullable=False, index=True)
     payout_amount = Column(Integer, nullable=False)
     viewed_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)

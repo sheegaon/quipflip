@@ -16,7 +16,7 @@ class PhrasesetActivity(Base):
     phraseset_id = get_uuid_column(ForeignKey("phrasesets.phraseset_id"), nullable=True, index=True)
     prompt_round_id = get_uuid_column(ForeignKey("rounds.round_id"), nullable=True, index=True)
     activity_type = Column(String(50), nullable=False)
-    player_id = get_uuid_column(ForeignKey("players.player_id"), nullable=True, index=True)
+    player_id = get_uuid_column(ForeignKey("players.player_id", ondelete="CASCADE"), nullable=True, index=True)
     payload = Column("metadata", JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
 
