@@ -68,7 +68,7 @@ export const Tracking: React.FC = () => {
 
       setPhrasesets(data.phrasesets);
       if (data.phrasesets.length > 0) {
-        const first = data.phrasesets.find((item: PhrasesetSummary) =>
+        const currentlySelected = data.phrasesets.find((item: PhrasesetSummary) =>
           item.phraseset_id ? item.phraseset_id === selectedId : item.prompt_round_id === selectedId
         );
 
@@ -96,7 +96,7 @@ export const Tracking: React.FC = () => {
     }
   }, [roleFilter, statusFilter, selectedId, getPlayerPhrasesets, setLoading, clearLoading]);
 
-  const fetchDetails = useCallback(async (phraseset: PhrasesetSummary | null, signal?: AbortSignal) => {
+  const fetchDetails = useCallback(async (phraseset: PhrasesetSummary | null) => {
     if (!phraseset || !phraseset.phraseset_id) {
       setDetails(null);
       lastDetailsRef.current = null;
@@ -132,23 +132,13 @@ export const Tracking: React.FC = () => {
   }, [getPhrasesetDetails, setLoading, clearLoading, stopPoll]);
 
   useEffect(() => {
-    const controller = new AbortController();
-    fetchPhrasesets(controller.signal);
-
-    return () => {
-      controller.abort();
-    };
+    fetchPhrasesets();
   }, [fetchPhrasesets]);
 
   useEffect(() => {
     if (!selectedSummary) return;
 
-    const controller = new AbortController();
-    fetchDetails(selectedSummary, controller.signal);
-
-    return () => {
-      controller.abort();
-    };
+    fetchDetails(selectedSummary);
   }, [selectedSummary, fetchDetails]);
 
   // Smart polling for active phraseset details

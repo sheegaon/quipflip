@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Header } from '../components/Header';
@@ -11,7 +10,6 @@ export const Results: React.FC = () => {
   const { state, actions } = useGame();
   const { pendingResults } = state;
   const { refreshDashboard, getPhrasesetResults } = actions;
-  const navigate = useNavigate();
   const [selectedPhrasesetId, setSelectedPhrasesetId] = useState<string | null>(null);
   const [results, setResults] = useState<PhrasesetResults | null>(null);
   const [loading, setLoading] = useState(false);

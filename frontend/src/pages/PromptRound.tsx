@@ -170,9 +170,6 @@ export const PromptRound: React.FC = () => {
         actions.refreshDashboard(); // Trigger refresh to get latest state
       }
 
-      // Mark round as submitted locally
-      setRoundData({ ...roundData, status: 'submitted' });
-
       // Show success message
       setSuccessMessage(getRandomMessage('promptSubmitted'));
 

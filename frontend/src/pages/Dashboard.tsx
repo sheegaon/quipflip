@@ -6,12 +6,13 @@ import { Timer } from '../components/Timer';
 import { Header } from '../components/Header';
 import TutorialWelcome from '../components/Tutorial/TutorialWelcome';
 import { dashboardLogger } from '../utils/logger';
+import type { PendingResult } from '../api/types';
 
 const formatWaitingCount = (count: number): string => (count > 10 ? 'over 10' : count.toString());
 
 export const Dashboard: React.FC = () => {
   const { state, actions } = useGame();
-  const { player, activeRound, phrasesetSummary, roundAvailability } = state;
+  const { player, activeRound, pendingResults, phrasesetSummary, roundAvailability } = state;
   const { refreshDashboard } = actions;
   const { startTutorial, skipTutorial, advanceStep } = useTutorial();
   const navigate = useNavigate();
@@ -200,6 +201,10 @@ export const Dashboard: React.FC = () => {
     }
   };
 
+  const handleViewResults = () => {
+    navigate('/tracking');
+  };
+
   const handleClaimResults = () => {
     navigate('/tracking');
   };
@@ -211,7 +216,7 @@ export const Dashboard: React.FC = () => {
   const totalUnclaimedAmount = phrasesetSummary?.total_unclaimed_amount ?? 0;
 
   // Filter pending results to only show unclaimed ones
-  const unclaimedPendingResults = pendingResults.filter(result => !result.payout_claimed);
+  const unclaimedPendingResults = pendingResults.filter((result: PendingResult) => !result.payout_claimed);
 
   if (!player) {
     return (

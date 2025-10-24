@@ -106,7 +106,7 @@ const Statistics: React.FC = () => {
           {/* Costs Chart */}
           <div className="tile-card p-6">
             <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Costs Breakdown</h2>
-            <CostsChart earnings={stats.earnings} />
+            <CostsChart earnings={data.earnings} />
           </div>
 
           {/* Performance Radar */}
