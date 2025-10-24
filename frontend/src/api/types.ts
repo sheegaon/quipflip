@@ -1,13 +1,17 @@
 // API Response Types based on backend documentation
 
 export interface Player {
+  player_id: string;
   username: string;
+  email: string;
+  pseudonym: string;
   balance: number;
   starting_balance: number;
   daily_bonus_available: boolean;
   daily_bonus_amount: number;
   last_login_date: string;
   outstanding_prompts: number;
+  created_at: string;
 }
 
 export interface AuthTokenResponse {
@@ -30,7 +34,7 @@ export interface SuggestUsernameResponse {
 
 export interface PromptState {
   round_id: string;
-  status: 'active' | 'submitted';
+  status: 'active' | 'submitted' | 'expired' | 'abandoned';
   expires_at: string;
   cost: number;
   prompt_text: string;
@@ -39,7 +43,7 @@ export interface PromptState {
 
 export interface CopyState {
   round_id: string;
-  status: 'active' | 'submitted';
+  status: 'active' | 'submitted' | 'expired' | 'abandoned';
   expires_at: string;
   cost: number;
   original_phrase: string;
@@ -48,7 +52,7 @@ export interface CopyState {
 
 export interface VoteState {
   round_id: string;
-  status: 'active' | 'submitted';
+  status: 'active' | 'submitted' | 'expired' | 'abandoned';
   expires_at: string;
   phraseset_id: string;
   prompt_text: string;

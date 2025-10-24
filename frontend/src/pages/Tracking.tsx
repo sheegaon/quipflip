@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
-import apiClient, { extractErrorMessage } from '../api/client';
+import { useSmartPolling, PollConfigs } from '../utils/smartPolling';
+import { getActionErrorMessage } from '../utils/errorMessages';
+import { useLoadingState, InlineLoadingSpinner } from '../components/LoadingSpinner';
 import type {
   PhrasesetSummary,
   PhrasesetDetails as PhrasesetDetailsType,
@@ -27,41 +29,46 @@ const statusOptions: { value: StatusFilter; label: string }[] = [
 ];
 
 export const Tracking: React.FC = () => {
-  const {
-    player,
-    refreshBalance,
-    refreshDashboard,
-    phrasesetSummary,
-  } = useGame();
+  const { state, actions } = useGame();
+  const { player, phrasesetSummary } = state;
+  const { refreshBalance, refreshDashboard, getPlayerPhrasesets, getPhrasesetDetails, claimPhrasesetPrize } = actions;
+
+  // Smart polling for active phraseset details
+  const { startPoll, stopPoll } = useSmartPolling();
+
+  // Enhanced loading states
+  const { setLoading, clearLoading, getLoadingState } = useLoadingState();
 
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('in_progress');
   const [phrasesets, setPhrasesets] = useState<PhrasesetSummary[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedSummary, setSelectedSummary] = useState<PhrasesetSummary | null>(null);
   const [details, setDetails] = useState<PhrasesetDetailsType | null>(null);
-  const [listLoading, setListLoading] = useState(false);
-  const [detailsLoading, setDetailsLoading] = useState(false);
-  const [claiming, setClaiming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [infoExpanded, setInfoExpanded] = useState(false);
 
   // Store the last fetched details to compare for changes
   const lastDetailsRef = useRef<PhrasesetDetailsType | null>(null);
 
-  const fetchPhrasesets = useCallback(async (signal?: AbortSignal) => {
-    setListLoading(true);
+  const fetchPhrasesets = useCallback(async () => {
+    setLoading('phrasesets', {
+      isLoading: true,
+      type: 'refresh',
+      message: 'Loading your past rounds...'
+    });
+
     try {
-      const data = await apiClient.getPlayerPhrasesets({
+      const data = await getPlayerPhrasesets({
         role: roleFilter,
         status: statusFilter,
         limit: 100,
         offset: 0,
-      }, signal);
+      });
+
       setPhrasesets(data.phrasesets);
       if (data.phrasesets.length > 0) {
-        // Preserve selected item if it still exists in the new list
-        const currentlySelected = data.phrasesets.find((item) =>
+        const first = data.phrasesets.find((item: PhrasesetSummary) =>
           item.phraseset_id ? item.phraseset_id === selectedId : item.prompt_round_id === selectedId
         );
 
@@ -81,25 +88,31 @@ export const Tracking: React.FC = () => {
         setDetails(null);
       }
       setError(null);
-    } catch (err: any) {
-      if (err.name !== 'AbortError' && err.code !== 'ERR_CANCELED') {
-        setError(extractErrorMessage(err) || 'Unable to load your past rounds. Please refresh the page or try again in a moment.');
-      }
+    } catch (err) {
+      const errorMessage = getActionErrorMessage('load-tracking', err);
+      setError(errorMessage);
     } finally {
-      setListLoading(false);
+      clearLoading('phrasesets');
     }
-  }, [roleFilter, statusFilter, selectedId]);
+  }, [roleFilter, statusFilter, selectedId, getPlayerPhrasesets, setLoading, clearLoading]);
 
   const fetchDetails = useCallback(async (phraseset: PhrasesetSummary | null, signal?: AbortSignal) => {
     if (!phraseset || !phraseset.phraseset_id) {
       setDetails(null);
       lastDetailsRef.current = null;
+      stopPoll('phraseset-details');
       return;
     }
-    setDetailsLoading(true);
-    try {
-      const data = await apiClient.getPhrasesetDetails(phraseset.phraseset_id, signal);
 
+    setLoading('details', {
+      isLoading: true,
+      type: 'refresh',
+      message: 'Loading details...'
+    });
+
+    try {
+      const data = await getPhrasesetDetails(phraseset.phraseset_id);
+      
       // Only update state if the data has actually changed
       const hasChanged = !lastDetailsRef.current ||
         JSON.stringify(lastDetailsRef.current) !== JSON.stringify(data);
@@ -110,14 +123,13 @@ export const Tracking: React.FC = () => {
       }
 
       setError(null);
-    } catch (err: any) {
-      if (err.name !== 'AbortError' && err.code !== 'ERR_CANCELED') {
-        setError(extractErrorMessage(err) || 'Unable to load the details for this round. It may no longer be available.');
-      }
+    } catch (err) {
+      const errorMessage = getActionErrorMessage('load-details', err);
+      setError(errorMessage);
     } finally {
-      setDetailsLoading(false);
+      clearLoading('details');
     }
-  }, []);
+  }, [getPhrasesetDetails, setLoading, clearLoading, stopPoll]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -139,17 +151,27 @@ export const Tracking: React.FC = () => {
     };
   }, [selectedSummary, fetchDetails]);
 
-  // Poll details every 60 seconds when phraseset is active (reduced from 10 seconds)
+  // Smart polling for active phraseset details
   useEffect(() => {
-    if (!selectedSummary?.phraseset_id) return;
-    if (details?.status === 'finalized') return;
+    if (!selectedSummary?.phraseset_id) {
+      stopPoll('phraseset-details');
+      return;
+    }
 
-    const interval = setInterval(() => {
-      fetchDetails(selectedSummary);
-    }, 60000); // Changed from 10000 to 60000 (60 seconds)
+    if (details?.status === 'finalized') {
+      stopPoll('phraseset-details');
+      return;
+    }
 
-    return () => clearInterval(interval);
-  }, [selectedSummary, details?.status, fetchDetails]);
+    // Start smart polling for details updates
+    startPoll(PollConfigs.PHRASESET_DETAILS, async () => {
+      await fetchDetails(selectedSummary);
+    });
+
+    return () => {
+      stopPoll('phraseset-details');
+    };
+  }, [selectedSummary, details?.status, fetchDetails, startPoll, stopPoll]);
 
   const handleSelect = (summary: PhrasesetSummary) => {
     const id = summary.phraseset_id ?? summary.prompt_round_id;
@@ -158,9 +180,14 @@ export const Tracking: React.FC = () => {
   };
 
   const handleClaim = async (phrasesetId: string) => {
-    setClaiming(true);
+    setLoading('claim', {
+      isLoading: true,
+      type: 'submit',
+      message: 'Claiming your prize...'
+    });
+
     try {
-      await apiClient.claimPhrasesetPrize(phrasesetId);
+      await claimPhrasesetPrize(phrasesetId);
       await Promise.all([
         fetchDetails(selectedSummary),
         fetchPhrasesets(),
@@ -169,13 +196,19 @@ export const Tracking: React.FC = () => {
       ]);
       setError(null);
     } catch (err) {
-      setError(extractErrorMessage(err) || 'Failed to claim prize');
+      const errorMessage = getActionErrorMessage('claim-prize', err);
+      setError(errorMessage);
     } finally {
-      setClaiming(false);
+      clearLoading('claim');
     }
   };
 
   const totalTracked = useMemo(() => phrasesets.length, [phrasesets.length]);
+
+  // Loading states
+  const listLoading = getLoadingState('phrasesets')?.isLoading || false;
+  const detailsLoading = getLoadingState('details')?.isLoading || false;
+  const claiming = getLoadingState('claim')?.isLoading || false;
 
   if (!player) {
     return (
@@ -235,6 +268,7 @@ export const Tracking: React.FC = () => {
                   value={roleFilter}
                   onChange={(event) => setRoleFilter(event.target.value as RoleFilter)}
                   className="border border-gray-300 rounded-md px-2 py-1 text-sm"
+                  disabled={listLoading}
                 >
                   {roleOptions.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -249,6 +283,7 @@ export const Tracking: React.FC = () => {
                   value={statusFilter}
                   onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
                   className="border border-gray-300 rounded-md px-2 py-1 text-sm"
+                  disabled={listLoading}
                 >
                   {statusOptions.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -258,7 +293,8 @@ export const Tracking: React.FC = () => {
                 </select>
               </label>
             </div>
-            <div className="text-sm text-gray-600">
+            <div className="text-sm text-gray-600 flex items-center gap-2">
+              {listLoading && <InlineLoadingSpinner type="refresh" />}
               Showing {totalTracked} round{totalTracked === 1 ? '' : 's'}
             </div>
           </div>

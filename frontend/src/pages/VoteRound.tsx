@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import apiClient, { extractErrorMessage } from '../api/client';
@@ -6,56 +6,39 @@ import { Timer } from '../components/Timer';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { useTimer } from '../hooks/useTimer';
 import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
-import type { VoteState, VoteResponse } from '../api/types';
+import type { VoteResponse, VoteState } from '../api/types';
 
 export const VoteRound: React.FC = () => {
-  const { activeRound } = useGame();
+  const { state, actions } = useGame();
+  const { activeRound } = state;
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [roundData, setRoundData] = useState<VoteState | null>(null);
   const [voteResult, setVoteResult] = useState<VoteResponse | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const hasInitialized = useRef(false);
 
+  const roundData = activeRound?.round_type === 'vote' ? activeRound.state as VoteState : null;
   const { isExpired } = useTimer(roundData?.expires_at || null);
 
+  // Redirect if already submitted
   useEffect(() => {
-    // Prevent duplicate calls in React StrictMode
-    if (hasInitialized.current) return;
-    hasInitialized.current = true;
+    if (roundData?.status === 'submitted') {
+      navigate('/dashboard');
+    }
+  }, [roundData?.status, navigate]);
 
-    const initRound = async () => {
-      // Check if we have an active vote round
-      if (activeRound?.round_type === 'vote' && activeRound.state) {
-        const state = activeRound.state as VoteState;
-        setRoundData(state);
-
-        // If already submitted, redirect to dashboard
-        if (state.status === 'submitted') {
-          navigate('/dashboard');
-        }
-      } else {
-        // No active round, start a new one
-        try {
-          const response = await apiClient.startVoteRound();
-          setRoundData({
-            round_id: response.round_id,
-            status: 'active',
-            expires_at: response.expires_at,
-            phraseset_id: response.phraseset_id,
-            prompt_text: response.prompt_text,
-            phrases: response.phrases,
-          });
-        } catch (err) {
-          setError(extractErrorMessage(err) || 'No vote rounds available right now. Try again in a moment or complete other round types first.');
-          setTimeout(() => navigate('/dashboard'), 2000);
-        }
+  // Redirect if no active vote round - but NOT during the submission process
+  useEffect(() => {
+    if (!activeRound || activeRound.round_type !== 'vote') {
+      // Don't start a new round if we're showing success message or vote result
+      if (successMessage || voteResult) {
+        return;
       }
-    };
 
-    initRound();
-  }, [activeRound, navigate]);
+      // Redirect to dashboard instead of starting new rounds
+      navigate('/dashboard');
+    }
+  }, [activeRound, navigate, successMessage, voteResult]);
 
   const handleVote = async (phrase: string) => {
     if (!roundData || isSubmitting) return;
@@ -65,8 +48,8 @@ export const VoteRound: React.FC = () => {
       setError(null);
       const result = await apiClient.submitVote(roundData.phraseset_id, phrase);
 
-      // Mark round as submitted locally
-      setRoundData({ ...roundData, status: 'submitted' });
+      // Update the round state immediately to prevent issues
+      actions.refreshDashboard(); // Trigger refresh to get latest state
 
       setSuccessMessage(result.correct ? getRandomMessage('voteSubmitted') : null);
       setVoteResult(result);
@@ -82,7 +65,7 @@ export const VoteRound: React.FC = () => {
   if (!roundData) {
     return (
       <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center">
-        <LoadingSpinner message={loadingMessages.starting} />
+        <LoadingSpinner isLoading={true} message={loadingMessages.starting} />
       </div>
     );
   }

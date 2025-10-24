@@ -609,58 +609,48 @@ class RoundService:
         """
         Get count of prompts available for copy rounds, excluding player's own prompts.
 
-        This queries the database for prompts waiting for copies, which is more reliable
-        than relying on the queue (which may be empty after a restart).
+        Optimized version that uses a single efficient query instead of multiple
+        complex subqueries to reduce database load.
         """
-        from backend.utils import queue_client
-
-        # Count ALL submitted prompt rounds waiting for copies (not yet in a phraseset)
+        # Use a single query with proper joins to count available prompts
+        # This is much more efficient than the previous multiple-query approach
         result = await self.db.execute(
-            select(func.count(Round.round_id))
-            .join(PhraseSet, PhraseSet.prompt_round_id == Round.round_id, isouter=True)
-            .where(Round.round_type == "prompt")
-            .where(Round.status == "submitted")
-            .where(PhraseSet.phraseset_id == None)  # Exclude prompts that already have phrasesets
+            text("""
+                WITH player_prompt_rounds AS (
+                    SELECT r.round_id
+                    FROM rounds r
+                    WHERE LOWER(REPLACE(CAST(r.player_id AS TEXT), '-', '')) = :player_id_clean
+                    AND r.round_type = 'prompt'
+                    AND r.status = 'submitted'
+                ),
+                player_copy_rounds AS (
+                    SELECT r.prompt_round_id
+                    FROM rounds r
+                    WHERE LOWER(REPLACE(CAST(r.player_id AS TEXT), '-', '')) = :player_id_clean
+                    AND r.round_type = 'copy'
+                    AND r.status = 'submitted'
+                ),
+                all_available_prompts AS (
+                    SELECT r.round_id
+                    FROM rounds r
+                    LEFT JOIN phrasesets p ON p.prompt_round_id = r.round_id
+                    WHERE r.round_type = 'prompt'
+                    AND r.status = 'submitted'
+                    AND p.phraseset_id IS NULL
+                )
+                SELECT COUNT(*) as available_count
+                FROM all_available_prompts a
+                WHERE a.round_id NOT IN (SELECT round_id FROM player_prompt_rounds)
+                AND a.round_id NOT IN (SELECT prompt_round_id FROM player_copy_rounds WHERE prompt_round_id IS NOT NULL)
+            """),
+            {
+                "player_id_clean": str(player_id).replace('-', '').lower()
+            }
         )
-        total_count = result.scalar() or 0
-
-        if total_count == 0:
-            return 0
-
-        # Count submitted prompt rounds that belong to this player AND don't have phrasesets yet
-        result = await self.db.execute(
-            select(func.count(Round.round_id))
-            .join(PhraseSet, PhraseSet.prompt_round_id == Round.round_id, isouter=True)
-            .where(Round.player_id == player_id)
-            .where(Round.round_type == "prompt")
-            .where(Round.status == "submitted")
-            .where(PhraseSet.phraseset_id == None)
-        )
-        player_prompts_count = result.scalar() or 0
-
-        # Count prompts this player already copied that are still waiting for a second copy
-        result = await self.db.execute(
-            select(func.count(Round.round_id))
-            .join(
-                PhraseSet,
-                PhraseSet.prompt_round_id == Round.prompt_round_id,
-                isouter=True,
-            )
-            .where(Round.round_type == "copy")
-            .where(Round.player_id == player_id)
-            .where(Round.status == "submitted")
-            .where(PhraseSet.phraseset_id == None)
-        )
-        already_copied_waiting = result.scalar() or 0
-
-        # Subtract player's own prompts and any prompts they've already copied
-        available_count = max(0, total_count - player_prompts_count - already_copied_waiting)
-
-        logger.debug(
-            f"Available prompts for player {player_id}: {available_count} "
-            f"(total: {total_count}, player's own: {player_prompts_count}, already copied: {already_copied_waiting})"
-        )
-
+        
+        available_count = result.scalar() or 0
+        
+        logger.debug(f"Available prompts for player {player_id}: {available_count}")
         return available_count
 
     async def ensure_prompt_queue_populated(self) -> bool:
@@ -696,7 +686,7 @@ class RoundService:
                 .join(PhraseSet, PhraseSet.prompt_round_id == Round.round_id, isouter=True)
                 .where(Round.round_type == "prompt")
                 .where(Round.status == "submitted")
-                .where(PhraseSet.phraseset_id == None)
+                .where(PhraseSet.phraseset_id.is_(None))  # Use proper NULL check
                 .order_by(Round.created_at.asc())
             )
             prompt_ids = list(result.scalars().all())

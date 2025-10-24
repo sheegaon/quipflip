@@ -23,7 +23,7 @@ Authorization: Bearer <access_token>
 
 **Getting Tokens:**
 - Use `POST /player` to register with a username, email, and password.
-- Use `POST /auth/login` with your credentials to obtain fresh tokens.
+- Use `POST /auth/login` with your email and password to obtain fresh tokens.
 - Tokens expire after 15 minutes; call `POST /auth/refresh` (or rely on the cookie) to obtain a new pair.
 
 ## Response Format
@@ -132,13 +132,13 @@ curl -X POST http://localhost:8000/player \
 ### Authentication Endpoints
 
 #### `POST /auth/login`
-Exchange a username and password for a new access token + refresh token pair.
+Exchange an email and password for a new access token + refresh token pair.
 
 ```bash
 curl -X POST http://localhost:8000/auth/login \
   -H "Content-Type: application/json" \
   -d '{
-        "username": "Prompt Pirate",
+        "email": "prompt.pirate@example.com",
         "password": "SuperSecure123!"
       }'
 ```
@@ -520,6 +520,56 @@ Submit phrase for prompt or copy round.
 - `expired` - Past grace period
 - `not_found` - Round not found or not owned by player
 
+#### `POST /rounds/{round_id}/feedback`
+Submit thumbs up/down feedback for a prompt round.
+
+**Request Body:**
+```json
+{
+  "feedback_type": "like"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "feedback_type": "like",
+  "message": "Feedback submitted successfully"
+}
+```
+
+**Errors:**
+- `not_found` - Round not found
+- `forbidden` - Not authorized to submit feedback for this round
+- `invalid_round_type` - Can only submit feedback for prompt rounds
+
+**Notes:**
+- Only works for prompt rounds
+- Can update existing feedback (upsert behavior)
+- `feedback_type` can be "like" or "dislike"
+
+#### `GET /rounds/{round_id}/feedback`
+Get existing feedback for a round.
+
+**Response:**
+```json
+{
+  "feedback_type": "like",
+  "feedback_id": "uuid",
+  "last_updated_at": "2025-01-06T12:00:00Z"
+}
+```
+
+**Response (no feedback):**
+```json
+{
+  "feedback_type": null,
+  "feedback_id": null,
+  "last_updated_at": null
+}
+```
+
 #### `GET /rounds/available`
 Get round availability status.
 
@@ -696,6 +746,162 @@ Explicitly mark a phraseset payout as claimed (idempotent).
 **Errors:**
 - `Phraseset not found` - Invalid phraseset ID
 - `Not a contributor to this phraseset` - Player did not submit the prompt or copies
+
+---
+
+### Quest Endpoints
+
+#### `GET /quests`
+Get all quests for the current player.
+
+**Response:**
+```json
+{
+  "quests": [
+    {
+      "quest_id": "uuid",
+      "quest_type": "daily_login_streak",
+      "name": "Daily Login Streak",
+      "description": "Log in for consecutive days",
+      "status": "active",
+      "progress": {
+        "current_streak": 3,
+        "target": 7
+      },
+      "reward_amount": 50,
+      "category": "daily",
+      "created_at": "2025-01-06T10:00:00Z",
+      "completed_at": null,
+      "claimed_at": null,
+      "progress_percentage": 42.8,
+      "progress_current": 3,
+      "progress_target": 7
+    }
+  ],
+  "total_count": 5,
+  "active_count": 3,
+  "completed_count": 1,
+  "claimed_count": 1,
+  "claimable_count": 1
+}
+```
+
+**Notes:**
+- Returns all quests for the player regardless of status
+- `status` can be "active", "completed", or "claimed"
+- `progress_percentage` is calculated as (current/target) * 100, capped at 100
+- Quest types include daily challenges, milestones, and achievements
+
+#### `GET /quests/active`
+Get only active quests for the current player.
+
+**Response:**
+```json
+[
+  {
+    "quest_id": "uuid",
+    "quest_type": "daily_login_streak",
+    "name": "Daily Login Streak",
+    "description": "Log in for consecutive days",
+    "status": "active",
+    "progress": {
+      "current_streak": 3,
+      "target": 7
+    },
+    "reward_amount": 50,
+    "category": "daily",
+    "created_at": "2025-01-06T10:00:00Z",
+    "completed_at": null,
+    "claimed_at": null,
+    "progress_percentage": 42.8,
+    "progress_current": 3,
+    "progress_target": 7
+  }
+]
+```
+
+#### `GET /quests/claimable`
+Get completed but unclaimed quests for the current player.
+
+**Response:**
+```json
+[
+  {
+    "quest_id": "uuid",
+    "quest_type": "first_prompt",
+    "name": "First Prompt",
+    "description": "Submit your first prompt",
+    "status": "completed",
+    "progress": {
+      "rounds_completed": 1,
+      "target": 1
+    },
+    "reward_amount": 25,
+    "category": "milestone",
+    "created_at": "2025-01-06T10:00:00Z",
+    "completed_at": "2025-01-06T11:30:00Z",
+    "claimed_at": null,
+    "progress_percentage": 100,
+    "progress_current": 1,
+    "progress_target": 1
+  }
+]
+```
+
+#### `GET /quests/{quest_id}`
+Get a single quest by ID.
+
+**Response:**
+```json
+{
+  "quest_id": "uuid",
+  "quest_type": "daily_login_streak",
+  "name": "Daily Login Streak",
+  "description": "Log in for consecutive days",
+  "status": "active",
+  "progress": {
+    "current_streak": 3,
+    "target": 7
+  },
+  "reward_amount": 50,
+  "category": "daily",
+  "created_at": "2025-01-06T10:00:00Z",
+  "completed_at": null,
+  "claimed_at": null,
+  "progress_percentage": 42.8,
+  "progress_current": 3,
+  "progress_target": 7
+}
+```
+
+**Errors:**
+- `404 Not Found` - Quest not found
+- `403 Forbidden` - Not authorized to view this quest
+
+#### `POST /quests/{quest_id}/claim`
+Claim a completed quest reward.
+
+**Response:**
+```json
+{
+  "success": true,
+  "quest_id": "uuid",
+  "reward_amount": 25,
+  "new_balance": 1125,
+  "message": "Quest reward claimed successfully!"
+}
+```
+
+**Errors:**
+- `404 Not Found` - Quest not found
+- `400 Bad Request` - Quest not completed yet
+- `409 Conflict` - Quest reward already claimed
+
+**Notes:**
+- Only completed quests can be claimed
+- Claiming a quest adds the reward amount to player balance
+- Quest status changes from "completed" to "claimed"
+- Operation is idempotent - claiming an already claimed quest returns success
 
 ---
 

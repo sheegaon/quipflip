@@ -1,155 +1,36 @@
 # 🎯 Quest/Bonus System Implementation Plan
 
 ## Overview
-Implement a comprehensive quest and achievement system with 16 achievement types, progress tracking, claim mechanism, and celebratory UI notifications.
+Comprehensive quest and achievement system with 16 achievement types, progress tracking, claim mechanism, and celebratory UI notifications.
 
 **Implementation Status**: ✅ Backend Complete (100%), 🔄 Frontend UI In Progress (20%)
 
 ---
 
-## Phase 1: Database Models & Migrations (Backend Foundation) ✅ COMPLETE
+## ✅ Completed Phases (Summary)
 
-### Step 1.1: Create Quest Models
-**File**: `backend/models/quest.py`
+### Phases 1-4: Backend Foundation & API ✅ COMPLETE
+- **Database Models**: Quest and QuestTemplate tables with all 16 quest types configured
+- **Quest Service**: 800+ lines of business logic for all quest types, tier progression, and reward distribution
+- **Service Integration**: Quest checks integrated into vote_service, round_service, player_service, and prompt_feedback router
+- **API Endpoints**: Full REST API at `/quests` with list, filter, detail, and claim endpoints
+- **Frontend Types**: TypeScript interfaces and API client methods for quest data
 
-**Models to create**:
-- `Quest` - Base quest definition and player progress tracking
-  - `quest_id` (UUID, PK)
-  - `player_id` (UUID, FK to players)
-  - `quest_type` (String) - enum: hot_streak, deceptive_copy, obvious_original, round_completion_5, round_completion_10, round_completion_20, balanced_player, login_streak_7, feedback_contributor_10, feedback_contributor_50, milestone_votes_100, milestone_prompts_50, milestone_copies_100, milestone_phraseset_20votes
-  - `status` (String) - enum: active, completed, claimed
-  - `progress` (JSON) - Flexible progress tracking (e.g., `{"current": 3, "target": 5, "streak": 3}`)
-  - `reward_amount` (Integer) - Flipcoins to award
-  - `created_at` (DateTime)
-  - `completed_at` (DateTime, nullable)
-  - `claimed_at` (DateTime, nullable)
-  - Indexes: player_id, quest_type, status
-  - Unique constraint: player_id + quest_type (one quest per type per player at a time)
-
-- `QuestTemplate` - Quest configuration (optional - can be hardcoded in service)
-  - `template_id` (String, PK) - matches quest_type
-  - `name` (String)
-  - `description` (String)
-  - `reward_amount` (Integer)
-  - `target_value` (Integer)
-  - `category` (String) - enum: streak, quality, activity, milestone
-
-### Step 1.2: Create Migration ✅
-**File**: `backend/migrations/versions/5c2dbcd09a92_add_quest_system.py`
-
-- ✅ Created Quest table with all fields and indexes
-- ✅ Created QuestTemplate table with pre-seeded 16 quest configurations
-- ✅ Migration run successfully, tables created in database
-
-### Step 1.3: Update Transaction Model ✅
-**File**: `backend/models/transaction.py`
-
-- ✅ Added new transaction types to documentation comment (lines 18-21)
-- ✅ Transaction type `quest_reward_{category}` pattern implemented
+**Key Files**:
+- `backend/models/quest.py` - Quest & QuestTemplate models
+- `backend/services/quest_service.py` - Complete business logic (800+ lines)
+- `backend/routers/quests.py` - REST API endpoints
+- `backend/schemas/quest.py` - Pydantic schemas
+- `frontend/src/api/types.ts` (lines 375-410) - TypeScript types
+- `frontend/src/api/client.ts` (lines 545-569) - API methods
 
 ---
 
-## Phase 2: Quest Service & Logic (Backend Business Logic) ✅ COMPLETE
-
-### Step 2.1: Create Quest Service ✅
-**File**: `backend/services/quest_service.py` (800+ lines)
-
-- ✅ All core quest management methods implemented
-- ✅ All 16 quest types with unique progress tracking logic
-- ✅ QUEST_CONFIGS dictionary with all quest definitions
-- ✅ Tier progression logic (auto-create next tier on claim)
-- ✅ Comprehensive error handling with logging
-- ✅ Transaction integration for reward distribution
-
-### Step 2.2: Quest Definitions & Configuration ✅
-**Location**: `backend/services/quest_service.py` (lines 24-136)
-
-- ✅ QUEST_CONFIGS dictionary with all 16 quest configurations
-- ✅ Includes name, description, target, reward, category, next_tier
-- ✅ Referenced by QuestService for all quest operations
-
-### Step 2.3: Integrate Quest Checks into Existing Services ✅
-
-**Files modified**:
-- ✅ `backend/services/vote_service.py` (lines 283-294)
-  - Calls `check_and_update_vote_streak()` after each vote
-  - Calls `check_milestone_votes()` for total vote milestones
-  - Calls `check_balanced_player()` for activity tracking
-
-- ✅ `backend/services/vote_service.py` (lines 431-448)
-  - Calls `check_deceptive_copy()` when phraseset finalizes
-  - Calls `check_obvious_original()` for quality bonuses
-  - Calls `check_milestone_phraseset_20votes()` for popular sets
-
-- ✅ `backend/services/round_service.py` (lines 186-194, 424-432)
-  - Calls `increment_round_completion()` after prompt/copy submission
-  - Calls `check_milestone_prompts()` and `check_milestone_copies()`
-  - Calls `check_balanced_player()` for mixed activity
-
-- ✅ `backend/services/player_service.py` (lines 148-154)
-  - Calls `check_login_streak()` on daily bonus claim
-
-- ✅ `backend/routers/prompt_feedback.py` (lines 81-87)
-  - Calls `increment_feedback_count()` after new feedback submission
+## 🔄 Remaining Implementation
 
 ---
 
-## Phase 3: Quest API Endpoints (Backend Routes) ✅ COMPLETE
-
-### Step 3.1: Create Quest Router ✅
-**File**: `backend/routers/quests.py` (175 lines)
-
-- ✅ GET /quests - List all quests with summary counts
-- ✅ GET /quests/active - Active quests only
-- ✅ GET /quests/claimable - Completed unclaimed quests
-- ✅ GET /quests/{quest_id} - Single quest details
-- ✅ POST /quests/{quest_id}/claim - Claim reward with balance update
-- ✅ Helper function `_map_quest_to_response()` for consistent responses
-- ✅ Proper error handling with HTTP status codes
-
-### Step 3.2: Create Quest Schemas ✅
-**File**: `backend/schemas/quest.py`
-
-- ✅ QuestProgress with flexible fields for all quest types
-- ✅ QuestResponse with all quest data + computed fields
-- ✅ ClaimQuestRewardResponse for reward claiming
-- ✅ QuestListResponse with summary counts
-- ✅ All schemas use Pydantic BaseModel with from_attributes
-
-### Step 3.3: Register Router ✅
-**File**: `backend/main.py` (line 99)
-
-- ✅ Router registered at `/quests` prefix
-- ✅ Tagged as "quests" for API documentation
-- ✅ Available in Swagger docs at `/docs`
-
----
-
-## Phase 4: Frontend API Client (Frontend-Backend Integration) ✅ COMPLETE
-
-### Step 4.1: Update API Types ✅
-**File**: `frontend/src/api/types.ts` (lines 375-410)
-
-- ✅ QuestStatus type ('active' | 'completed' | 'claimed')
-- ✅ QuestCategory type ('streak' | 'quality' | 'activity' | 'milestone')
-- ✅ Quest interface with all fields including progress tracking
-- ✅ QuestListResponse with summary counts
-- ✅ ClaimQuestRewardResponse for reward flow
-- ✅ Progress field uses Record<string, any> for flexibility
-
-### Step 4.2: Add Quest API Methods ✅
-**File**: `frontend/src/api/client.ts` (lines 545-569)
-
-- ✅ getQuests() - Returns QuestListResponse
-- ✅ getActiveQuests() - Returns Quest[]
-- ✅ getClaimableQuests() - Returns Quest[]
-- ✅ getQuest(questId) - Returns single Quest
-- ✅ claimQuestReward(questId) - Returns ClaimQuestRewardResponse
-- ✅ All methods include AbortSignal support for cancellation
-
----
-
-## Phase 5: Quest Context & State Management (Frontend State) 🔄 IN PROGRESS
+## Phase 5: Quest Context & State Management (Frontend State)
 
 ### Step 5.1: Create Quest Context
 **File**: `frontend/src/contexts/QuestContext.tsx`
@@ -159,6 +40,7 @@ interface QuestContextType {
   quests: Quest[];
   activeQuests: Quest[];
   claimableQuests: Quest[];
+  hasClaimableQuests: boolean;  // For treasure chest indicator
   loading: boolean;
   error: string | null;
   refreshQuests: () => Promise<void>;
@@ -167,12 +49,27 @@ interface QuestContextType {
 }
 ```
 
+**Key Features**:
+- `hasClaimableQuests` computed property for treasure chest state
+- Auto-refresh after quest-eligible actions
+- Error handling with user-friendly messages
+
 ### Step 5.2: Integrate with GameContext
 **File**: `frontend/src/contexts/GameContext.tsx`
 
-- Add quest state management
-- Call `refreshQuests()` after relevant actions (vote, round completion, etc.)
-- Trigger notifications when quests complete
+**Changes**:
+- Import and wrap with QuestProvider
+- Call `refreshQuests()` after:
+  - Vote submission
+  - Round completion (prompt/copy)
+  - Daily bonus claim
+  - Phraseset finalization
+- Update `player` state to include daily_bonus_available flag
+
+**New computed properties**:
+```typescript
+const hasTreasure = dailyBonusAvailable || hasClaimableQuests;
+```
 
 ---
 
@@ -181,11 +78,12 @@ interface QuestContextType {
 ### Step 6.1: Create Success Notification Component
 **File**: `frontend/src/components/SuccessNotification.tsx`
 
-- Similar to ErrorNotification but with:
-  - Green/blue branded color scheme
-  - Celebration icon (🎉, ⭐, etc.)
-  - Auto-dismiss after 5 seconds
-  - Support for "Quest completed!" messages
+Similar to ErrorNotification but with:
+- Green/teal branded color scheme
+- Celebration icon (🎉, ⭐, 🎯)
+- Auto-dismiss after 5 seconds
+- Support for "Quest completed!" messages
+- Optional action button (e.g., "View Quests")
 
 ### Step 6.2: Create Quest Card Component
 **File**: `frontend/src/components/QuestCard.tsx`
@@ -193,27 +91,43 @@ interface QuestContextType {
 Props: `quest: Quest, onClaim?: (questId: string) => void`
 
 **Features**:
-- Display quest name, description
-- Progress bar (visual representation of progress.current / progress.target)
-- Reward amount badge
+- Display quest name, description, reward amount
+- Progress bar (current / target)
 - Status indicator (active, completed, claimed)
-- Claim button (for completed quests)
-- Category icon/badge
+- Claim button for completed quests
+- Category badge (streak, quality, activity, milestone)
 - Locked/unlocked visual state
+- Tier indicators (I, II, III) for progressive quests
+
+**Layout**:
+```
+┌─────────────────────────────────────┐
+│ 🔥 Hot Streak                  $10 │
+│ Get 5 correct votes in a row       │
+│ ████████░░░░ 3/5                   │
+│                          [Active]  │
+└─────────────────────────────────────┘
+```
 
 ### Step 6.3: Create Quest Progress Bar Component
 **File**: `frontend/src/components/QuestProgressBar.tsx`
 
-- Animated progress bar
+- Animated progress bar with smooth transitions
 - Show percentage or "X / Y" format
-- Color coding by category
-- Pulse animation when near completion
+- Color coding by category:
+  - Streak: Orange/red gradient
+  - Quality: Purple gradient
+  - Activity: Blue gradient
+  - Milestone: Gold gradient
+- Pulse animation when 80%+ complete
 
 ### Step 6.4: Create Quest Category Filter
-**File**: `frontend/src/components/QuestFilter.tsx`
+**File**: `frontend/src/components/QuestCategoryFilter.tsx`
 
-- Tabs/buttons for: All, Streaks, Quality, Activity, Milestones
+- Tabs for: All, Streaks, Quality, Activity, Milestones
+- Show count badge per category
 - Filter quest list by category
+- Responsive mobile design (horizontal scroll or dropdown)
 
 ---
 
@@ -222,288 +136,262 @@ Props: `quest: Quest, onClaim?: (questId: string) => void`
 ### Step 7.1: Create Quests Page
 **File**: `frontend/src/pages/Quests.tsx`
 
-**Layout** (similar to Dashboard/Results):
+**Layout**:
 ```
 Header with balance
 ┌─────────────────────────────────────┐
-│ Quests & Achievements               │
+│ 🎁 Quests & Achievements            │
 │                                     │
-│ [Claimable Rewards: 3] 🎁          │
+│ ┌─ Daily Bonus ─────────────────┐  │
+│ │ $100 Daily Bonus Available!   │  │
+│ │ [Claim Daily Bonus] ←────────── │  │
+│ └───────────────────────────────┘  │
+│                                     │
+│ Claimable Rewards: 3 🎉            │
 │ Total Rewards Earned: $XXX         │
 └─────────────────────────────────────┘
 
 [Category Filter: All | Streaks | Quality | Activity | Milestones]
+
+┌── Claimable Quests ───────────────┐
+│ [QuestCard ✅] [QuestCard ✅]     │
+└─────────────────────────────────────┘
 
 ┌── Active Quests ──────────────────┐
 │ [QuestCard] [QuestCard] [QuestCard] │
 │ [QuestCard] [QuestCard]             │
 └─────────────────────────────────────┘
 
-┌── Completed Quests ───────────────┐
-│ [QuestCard] [QuestCard]            │
-└─────────────────────────────────────┘
-
 ┌── Claimed Quests ─────────────────┐
-│ [QuestCard] [QuestCard] [QuestCard] │
+│ [QuestCard ✓] [QuestCard ✓]       │
 └─────────────────────────────────────┘
 ```
 
 **Features**:
+- **Daily Bonus Section**: Prominent card at top with claim button (moved from Header)
 - Real-time progress updates
 - Click quest card to expand details
-- Claim button for completed quests
+- Claim button for completed quests (updates balance immediately)
 - Filter by category
 - Sort by: progress, reward amount, completion date
 - Empty states with encouraging messages
+- Summary stats (total earned, current streak, etc.)
 
-### Step 7.2: Add Navigation Link
-**Files**: `frontend/src/App.tsx`, `frontend/src/components/Header.tsx` (if exists)
+### Step 7.2: Add Route
+**File**: `frontend/src/App.tsx`
 
-- Add "Quests" link to navigation
-- Badge indicator for claimable quests count
+Add route:
+```typescript
+<Route path="/quests" element={<Quests />} />
+```
 
 ---
 
-## Phase 8: Dashboard Integration (Frontend Dashboard)
+## Phase 8: Treasure Chest Integration (MODIFIED)
 
-### Step 8.1: Add Quest Notification to Dashboard
-**File**: `frontend/src/pages/Dashboard.tsx`
+### Changes from Original Plan:
+1. **Treasure chest now leads to Quests page** (not just daily bonus)
+2. **Treasure chest state indicates available rewards**:
+   - **Gold/Available**: When `dailyBonusAvailable || hasClaimableQuests`
+   - **Gray/Empty**: When no daily bonus and no claimable quests
+3. **Daily bonus claim moved to Quests page** (removed from Header dropdown)
 
-Add after daily bonus notification:
-```tsx
-{claimableQuests.length > 0 && (
-  <div className="bg-green-50 border-2 border-green-400 rounded-lg p-4">
-    <h3>🎉 Quests Completed!</h3>
-    <p>You have {claimableQuests.length} quest(s) ready to claim</p>
-    <button onClick={() => navigate('/quests')}>View Quests</button>
-  </div>
-)}
+### Step 8.1: Update Treasure Chest Icon Component
+**File**: `frontend/src/components/TreasureChestIcon.tsx`
+
+**Current Implementation** (check existing):
+- Likely has `isAvailable` prop that controls visual state
+- Update to show gold when available, gray when not
+
+**Expected Props**:
+```typescript
+interface TreasureChestIconProps {
+  isAvailable: boolean;  // Gold when true, gray when false
+  className?: string;
+}
 ```
 
-### Step 8.2: Add Celebration Notification Trigger
+**Visual States**:
+- **Available (Gold)**: Shiny, animated, inviting
+- **Unavailable (Gray)**: Muted, static, clearly empty
+
+### Step 8.2: Update Header Component
+**File**: `frontend/src/components/Header.tsx`
+
+**Current State** (from earlier in conversation):
+- Treasure chest button exists (lines 123-134)
+- Currently shows when `player.daily_bonus_available`
+- Clicking calls `handleClaimBonus()` directly
+
+**Required Changes**:
+1. **Always show treasure chest** (don't conditionally hide)
+2. **Update `isAvailable` prop logic**:
+   ```typescript
+   const hasTreasure = player.daily_bonus_available || hasClaimableQuests;
+   ```
+3. **Navigate to `/quests` on click** (remove direct claim logic):
+   ```typescript
+   onClick={() => navigate('/quests')}
+   ```
+4. **Remove `handleClaimBonus` function** (moved to Quests page)
+5. **Update tooltip**:
+   - Available: "View available rewards"
+   - Unavailable: "No rewards available"
+
+**Modified Header Code**:
+```typescript
+{/* Treasure Chest - Always visible */}
+<button
+  onClick={() => navigate('/quests')}
+  className="relative group"
+  title={hasTreasure ? "View available rewards" : "No rewards available"}
+>
+  <TreasureChestIcon
+    className="w-7 h-7 md:w-10 md:h-10 transition-transform group-hover:scale-110"
+    isAvailable={hasTreasure}
+  />
+</button>
+```
+
+### Step 8.3: Remove Daily Bonus Claim from Header
+**File**: `frontend/src/components/Header.tsx`
+
+- Remove `handleClaimBonus` async function
+- Remove `isClaiming` state
+- Remove `claimBonus` from useGame destructure (if no longer needed in Header)
+- Keep treasure chest button always visible
+
+### Step 8.4: Update GameContext
+**File**: `frontend/src/contexts/GameContext.tsx`
+
+**Add to context interface**:
+```typescript
+interface GameContextType {
+  // ... existing properties
+  hasClaimableQuests: boolean;  // From QuestContext
+  claimDailyBonus: () => Promise<void>;  // For Quests page to call
+}
+```
+
+**Integration**:
+- Access QuestContext's `hasClaimableQuests`
+- Expose `claimBonus` as `claimDailyBonus` for Quests page
+- Ensure `refreshQuests()` is called after daily bonus claim
+
+### Step 8.5: Quest Completion Notifications
 **File**: `frontend/src/contexts/GameContext.tsx` or `QuestContext.tsx`
 
-When quest completes (status changes from active to completed):
-- Show SuccessNotification with quest name and reward
-- Play subtle animation (optional)
-- Update balance display
+**When quest completes** (status changes active → completed):
+- Show SuccessNotification:
+  ```
+  🎉 Quest Completed!
+  [Quest Name] - Earned $[reward]
+  [View Quests]
+  ```
+- Optional: Subtle celebration animation on treasure chest
 
-**Trigger points**:
-- After vote submission (if hot streak completes)
-- After phraseset finalization (if deceptive/obvious bonus earned)
-- After round completion
+**Trigger Points**:
+- After vote submission (check for completed hot_streak)
+- After round completion (check for completed round_completion quests)
+- After phraseset finalization (check for quality bonuses)
 - After daily login
-- Polling/refresh (check if new completed quests exist)
+- Polling/refresh (periodic check for new completions)
 
 ---
 
-## Phase 9: Quest-Specific Logic Implementation (Backend Deep Dive)
+## Phase 9: Testing & Refinement
 
-### Step 9.1: Hot Streak Quest (5/10/20 correct votes)
-**Integration point**: `backend/services/vote_service.py` after vote submission
-
-**Logic**:
-```python
-# After creating vote record
-if vote.correct:
-    await quest_service.check_and_update_vote_streak(player_id, correct=True)
-else:
-    await quest_service.check_and_update_vote_streak(player_id, correct=False)  # Resets streak
-```
-
-**Quest progress structure**:
-```json
-{
-  "current_streak": 3,
-  "target": 5,
-  "highest_streak": 8
-}
-```
-
-**Auto-create next tier**: When hot_streak_5 is claimed, auto-create hot_streak_10
-
-### Step 9.2: Deceptive Copy Quest (75%+ votes)
-**Integration point**: `backend/services/phraseset_service.py` when phraseset finalizes
-
-**Logic**:
-```python
-# After vote tallying
-for copy_player in [copy1_player_id, copy2_player_id]:
-    copy_vote_count = votes_for_copy[copy_player]
-    vote_percentage = copy_vote_count / total_votes
-    if vote_percentage >= 0.75:
-        await quest_service.complete_deceptive_copy_quest(copy_player, vote_percentage)
-```
-
-**Quest progress**: One-time completion, no streak
-
-### Step 9.3: Obvious Original Quest (85%+ votes)
-**Integration point**: `backend/services/phraseset_service.py` when phraseset finalizes
-
-**Logic**: Similar to deceptive copy, check original phrase vote percentage
-
-### Step 9.4: Round Completion Quests (5/10/20 rounds in 24h)
-**Integration point**: `backend/services/round_service.py` after round submission
-
-**Logic**:
-```python
-# After successful round completion
-await quest_service.increment_round_completion(player_id)
-```
-
-**Quest progress structure**:
-```json
-{
-  "rounds_completed": 7,
-  "target": 10,
-  "window_start": "2025-10-17T12:00:00Z",
-  "rounds_in_window": [list of round timestamps]
-}
-```
-
-**Window logic**: Rolling 24-hour window, resets when quest claimed
-
-### Step 9.5: Balanced Player Quest (1 prompt, 2 copies, 10 votes in 24h)
-**Integration point**: Multiple - after each round type completion
-
-**Quest progress structure**:
-```json
-{
-  "window_start": "2025-10-17T12:00:00Z",
-  "prompts": 1,
-  "copies": 2,
-  "votes": 8,
-  "target": {"prompts": 1, "copies": 2, "votes": 10}
-}
-```
-
-### Step 9.6: 7-Day Login Streak Quest
-**Integration point**: `backend/services/player_service.py` during login or daily bonus check
-
-**Logic**:
-```python
-# When player logs in
-await quest_service.check_login_streak(player_id)
-```
-
-**Quest progress structure**:
-```json
-{
-  "consecutive_days": 5,
-  "target": 7,
-  "last_login_date": "2025-10-17",
-  "login_dates": ["2025-10-13", "2025-10-14", "2025-10-15", "2025-10-16", "2025-10-17"]
-}
-```
-
-### Step 9.7: Feedback Contributor Quest (10/50 feedback submissions)
-**Integration point**: `backend/routers/prompt_feedback.py` after feedback submission
-
-**Logic**:
-```python
-# After creating prompt_feedback record
-await quest_service.increment_feedback_count(player_id)
-```
-
-**Auto-create next tier**: feedback_contributor_10 → feedback_contributor_50
-
-### Step 9.8: Milestone Quests
-**Integration points**:
-- 100th vote: `vote_service.py` after vote creation
-- 50th prompt: `round_service.py` after prompt submission
-- 100th copy: `round_service.py` after copy submission
-- First phraseset with 20 votes: `phraseset_service.py` when vote count reaches 20
-
-**Logic**: Check total count from database, complete quest if threshold reached
-
----
-
-## Phase 10: Testing & Refinement
-
-### Step 10.1: Backend Unit Tests
-**Files**: `tests/test_quest_service.py`, `tests/test_quest_api.py`
-
-Test cases:
-- Quest creation and initialization
-- Progress tracking for each quest type
-- Reward claiming and transaction creation
-- Edge cases (quest already claimed, insufficient data, etc.)
-- Concurrency (multiple quest completions simultaneously)
-
-### Step 10.2: Frontend Component Tests
+### Step 9.1: Frontend Component Tests
 **Files**: `frontend/src/components/__tests__/`
 
-Test QuestCard, SuccessNotification, QuestProgressBar rendering
+Test cases:
+- QuestCard rendering for all states (active, completed, claimed)
+- QuestProgressBar animation and percentage display
+- TreasureChestIcon visual states (gold vs gray)
+- SuccessNotification auto-dismiss and actions
+- Quest filtering and sorting
 
-### Step 10.3: Integration Testing
-- Complete workflows for each quest type
-- Verify transactions created correctly
-- Verify UI updates properly
-- Test claim flow end-to-end
+### Step 9.2: Integration Testing
+- Navigate to Quests page via treasure chest
+- Claim daily bonus from Quests page (verify balance update)
+- Claim quest rewards (verify balance update and transaction)
+- Complete quest and verify notification appears
+- Verify treasure chest state changes based on available rewards
+- Test with multiple claimable quests
 
-### Step 10.4: Manual QA
-- Visual design consistency
-- Mobile responsiveness
-- Performance with many quests
-- Notification timing and clarity
+### Step 9.3: Mobile Responsiveness
+- Treasure chest icon size on mobile
+- Quest cards stack properly
+- Category filter works on small screens
+- Daily bonus claim button accessible on mobile
+
+### Step 9.4: Edge Cases
+- No quests available (empty state)
+- All quests claimed (encouraging message)
+- Multiple quests complete simultaneously
+- Daily bonus + quest rewards both available
+- Network errors during claim
 
 ---
 
-## Phase 11: Documentation & Deployment
+## Phase 10: Documentation & Polish
 
-### Step 11.1: Update Documentation
+### Step 10.1: Update Documentation
 **Files**:
-- `README.md` - Add quest system overview
-- `docs/API.md` - Document quest endpoints
-- `docs/DATA_MODELS.md` - Document Quest model
-- `docs/ARCHITECTURE.md` - Explain quest service integration
+- `README.md` - Add quest system overview (player-facing)
+- `docs/API.md` - Quest endpoints already documented
+- `docs/ARCHITECTURE.md` - Explain treasure chest + quest integration
 
-### Step 11.2: Database Migration
-- Run migration on development
-- Test migration rollback
-- Prepare migration for production
-
-### Step 11.3: Configuration
-- Add quest-related settings to config
-- Environment variable configuration if needed
-
-### Step 11.4: Deploy
-- Backend deployment
-- Frontend build and deployment
-- Monitor for errors
+### Step 10.2: Visual Polish
+- Smooth transitions and animations
+- Consistent color scheme for quest categories
+- Celebration effects for quest completion
+- Loading states during claim actions
+- Error states with retry options
 
 ---
 
 ## Implementation Summary
 
-**Total Files to Create**: ~15
-- Backend: 5 (models, service, router, schemas, migration)
-- Frontend: 7 (page, components, context, API types/methods)
-- Tests: 3+
+### My Understanding of Changes:
 
-**Total Files to Modify**: ~12
-- Backend: 6 (existing services, main.py, config)
-- Frontend: 4 (App.tsx, Dashboard.tsx, GameContext, client.ts)
-- Docs: 4
+**Original Phase 8**:
+- Treasure chest was for daily bonus only
+- Clicking opened a modal or claimed directly in header
+- Separate navigation link to Quests page
 
-**Estimated Complexity**: High (10-15 hours of implementation)
+**Modified Phase 8**:
+1. **Treasure chest = Gateway to all rewards**
+   - Daily bonus + quest rewards both accessed via treasure chest
+   - Clicking navigates to `/quests` page
 
-**Key Technical Decisions**:
-1. Quest progress stored as JSON for flexibility
-2. One Quest record per player per quest_type (unique constraint)
-3. Auto-create next tier quests when current tier claimed
-4. Polling vs WebSockets: Use polling initially (consistent with current architecture)
-5. Quest completion triggers: Synchronous checks after relevant actions
+2. **Treasure chest visual state = Reward indicator**
+   - Gold/shiny when `dailyBonusAvailable || hasClaimableQuests`
+   - Gray/muted when no rewards available
+   - Always visible (not conditionally rendered)
 
-**Risk Mitigation**:
-- Use transactions for all quest rewards to ensure balance consistency
-- Distributed locking for concurrent quest completions
-- Graceful degradation if quest service fails (log error, don't block main action)
-- Comprehensive error handling in claim flow
+3. **Quests page = Unified reward center**
+   - Daily bonus claim moved here (prominent card at top)
+   - Quest list below daily bonus
+   - Single place for all reward claiming
 
----
+4. **Benefits of this approach**:
+   - Cleaner header UI (one button, no claim modal)
+   - Clear visual indicator of available rewards
+   - Centralized reward experience
+   - Encourages quest discovery (players see quests when claiming daily bonus)
 
-## Quest Definitions Reference
+### Files to Modify:
+1. `frontend/src/components/Header.tsx` - Update treasure chest behavior
+2. `frontend/src/components/TreasureChestIcon.tsx` - Ensure gold/gray states work
+3. `frontend/src/contexts/GameContext.tsx` - Expose hasClaimableQuests
+4. `frontend/src/contexts/QuestContext.tsx` - NEW: Create quest state management
+5. `frontend/src/pages/Quests.tsx` - NEW: Create quests page with daily bonus section
+6. `frontend/src/components/QuestCard.tsx` - NEW: Quest display component
+7. `frontend/src/components/QuestProgressBar.tsx` - NEW: Progress visualization
+8. `frontend/src/components/SuccessNotification.tsx` - NEW: Celebration notifications
+
+### Quest Definitions Reference
 
 | Quest Type | Name | Target | Reward | Category | Resets |
 |------------|------|--------|--------|----------|---------|
@@ -528,6 +416,25 @@ Test QuestCard, SuccessNotification, QuestProgressBar rendering
 
 ## Next Steps
 
-Implementation can proceed in phases as outlined above. Each phase builds on the previous one, allowing for incremental development and testing.
+**Priority 1**: Phase 8 - Treasure Chest Integration
+- Update Header to navigate to /quests
+- Update treasure chest state logic
+- Ensure always visible with correct gold/gray state
 
-**Recommended Start**: Phase 1 (Database Models & Migrations) to establish the foundation for the quest system.
+**Priority 2**: Phase 5 - Quest Context
+- Create QuestContext with state management
+- Integrate with GameContext
+
+**Priority 3**: Phase 7 - Quests Page
+- Create page with daily bonus section at top
+- Implement claim functionality
+- Add quest list display
+
+**Priority 4**: Phase 6 - Quest Components
+- Build QuestCard, QuestProgressBar, SuccessNotification
+- Implement category filtering
+
+**Priority 5**: Phase 9 & 10 - Testing & Polish
+- Integration testing
+- Mobile responsiveness
+- Visual polish and animations
