@@ -130,6 +130,9 @@ export const PromptRound: React.FC = () => {
     try {
       await apiClient.submitPhrase(roundData.round_id, phrase.trim());
 
+      // Mark round as submitted locally
+      setRoundData({ ...roundData, status: 'submitted' });
+
       // Show success message
       const message = getRandomMessage('promptSubmitted');
       setSuccessMessage(message);

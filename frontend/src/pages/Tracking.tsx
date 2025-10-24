@@ -49,7 +49,7 @@ export const Tracking: React.FC = () => {
   // Store the last fetched details to compare for changes
   const lastDetailsRef = useRef<PhrasesetDetailsType | null>(null);
 
-  const fetchPhrasesets = useCallback(async () => {
+  const fetchPhrasesets = useCallback(async (signal?: AbortSignal) => {
     setListLoading(true);
     try {
       const data = await apiClient.getPlayerPhrasesets({
@@ -57,29 +57,40 @@ export const Tracking: React.FC = () => {
         status: statusFilter,
         limit: 100,
         offset: 0,
-      });
+      }, signal);
       setPhrasesets(data.phrasesets);
       if (data.phrasesets.length > 0) {
-        const first = data.phrasesets.find((item) =>
+        // Preserve selected item if it still exists in the new list
+        const currentlySelected = data.phrasesets.find((item) =>
           item.phraseset_id ? item.phraseset_id === selectedId : item.prompt_round_id === selectedId
-        ) ?? data.phrasesets[0];
-        const id = first.phraseset_id ?? first.prompt_round_id;
-        setSelectedId(id);
-        setSelectedSummary(first);
+        );
+
+        if (currentlySelected) {
+          // Keep the current selection
+          setSelectedSummary(currentlySelected);
+        } else if (!selectedId) {
+          // No previous selection, select first item
+          const first = data.phrasesets[0];
+          const id = first.phraseset_id ?? first.prompt_round_id;
+          setSelectedId(id);
+          setSelectedSummary(first);
+        }
       } else {
         setSelectedId(null);
         setSelectedSummary(null);
         setDetails(null);
       }
       setError(null);
-    } catch (err) {
-      setError(extractErrorMessage(err) || 'Unable to load your past rounds. Please refresh the page or try again in a moment.');
+    } catch (err: any) {
+      if (err.name !== 'AbortError' && err.code !== 'ERR_CANCELED') {
+        setError(extractErrorMessage(err) || 'Unable to load your past rounds. Please refresh the page or try again in a moment.');
+      }
     } finally {
       setListLoading(false);
     }
   }, [roleFilter, statusFilter, selectedId]);
 
-  const fetchDetails = useCallback(async (phraseset: PhrasesetSummary | null) => {
+  const fetchDetails = useCallback(async (phraseset: PhrasesetSummary | null, signal?: AbortSignal) => {
     if (!phraseset || !phraseset.phraseset_id) {
       setDetails(null);
       lastDetailsRef.current = null;
@@ -87,33 +98,45 @@ export const Tracking: React.FC = () => {
     }
     setDetailsLoading(true);
     try {
-      const data = await apiClient.getPhrasesetDetails(phraseset.phraseset_id);
-      
+      const data = await apiClient.getPhrasesetDetails(phraseset.phraseset_id, signal);
+
       // Only update state if the data has actually changed
-      const hasChanged = !lastDetailsRef.current || 
+      const hasChanged = !lastDetailsRef.current ||
         JSON.stringify(lastDetailsRef.current) !== JSON.stringify(data);
-      
+
       if (hasChanged) {
         setDetails(data);
         lastDetailsRef.current = data;
       }
-      
+
       setError(null);
-    } catch (err) {
-      setError(extractErrorMessage(err) || 'Unable to load the details for this round. It may no longer be available.');
+    } catch (err: any) {
+      if (err.name !== 'AbortError' && err.code !== 'ERR_CANCELED') {
+        setError(extractErrorMessage(err) || 'Unable to load the details for this round. It may no longer be available.');
+      }
     } finally {
       setDetailsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchPhrasesets();
+    const controller = new AbortController();
+    fetchPhrasesets(controller.signal);
+
+    return () => {
+      controller.abort();
+    };
   }, [fetchPhrasesets]);
 
   useEffect(() => {
-    if (selectedSummary) {
-      fetchDetails(selectedSummary);
-    }
+    if (!selectedSummary) return;
+
+    const controller = new AbortController();
+    fetchDetails(selectedSummary, controller.signal);
+
+    return () => {
+      controller.abort();
+    };
   }, [selectedSummary, fetchDetails]);
 
   // Poll details every 60 seconds when phraseset is active (reduced from 10 seconds)

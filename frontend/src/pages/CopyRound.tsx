@@ -68,6 +68,9 @@ export const CopyRound: React.FC = () => {
     try {
       await apiClient.submitPhrase(roundData.round_id, phrase.trim());
 
+      // Mark round as submitted locally
+      setRoundData({ ...roundData, status: 'submitted' });
+
       // Show success message
       const message = getRandomMessage('copySubmitted');
       setSuccessMessage(message);

@@ -64,6 +64,10 @@ export const VoteRound: React.FC = () => {
       setIsSubmitting(true);
       setError(null);
       const result = await apiClient.submitVote(roundData.phraseset_id, phrase);
+
+      // Mark round as submitted locally
+      setRoundData({ ...roundData, status: 'submitted' });
+
       setSuccessMessage(result.correct ? getRandomMessage('voteSubmitted') : null);
       setVoteResult(result);
 

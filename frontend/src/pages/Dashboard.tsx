@@ -112,6 +112,9 @@ export const Dashboard: React.FC = () => {
   const totalUnclaimedCount = unclaimedPromptCount + unclaimedCopyCount;
   const totalUnclaimedAmount = phrasesetSummary?.total_unclaimed_amount ?? 0;
 
+  // Filter pending results to only show unclaimed ones
+  const unclaimedPendingResults = pendingResults.filter(result => !result.payout_claimed);
+
   if (!player) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
@@ -154,13 +157,13 @@ export const Dashboard: React.FC = () => {
         )}
 
         {/* Pending Results Notification */}
-        {pendingResults.length > 0 && (
+        {unclaimedPendingResults.length > 0 && (
           <div className="tile-card bg-quip-turquoise bg-opacity-10 border-2 border-quip-turquoise p-4 mb-6 slide-up-enter">
             <div className="flex justify-between items-center">
               <div>
                 <p className="font-display font-semibold text-quip-turquoise">Results Ready!</p>
                 <p className="text-sm text-quip-teal">
-                  {pendingResults.length} quipset{pendingResults.length > 1 ? 's' : ''} finalized
+                  {unclaimedPendingResults.length} quipset{unclaimedPendingResults.length > 1 ? 's' : ''} finalized
                 </p>
               </div>
               <button
