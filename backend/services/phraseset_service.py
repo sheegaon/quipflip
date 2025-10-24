@@ -156,17 +156,6 @@ class PhrasesetService:
             copy2_round.player_id,
         }
 
-        # Debug logging
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.info(f"Phraseset {phraseset_id} contributor check:")
-        logger.info(f"  Player ID: {player_id}")
-        logger.info(f"  Prompt player: {prompt_round.player_id}")
-        logger.info(f"  Copy1 player: {copy1_round.player_id}")
-        logger.info(f"  Copy2 player: {copy2_round.player_id}")
-        logger.info(f"  Contributor IDs: {contributor_ids}")
-        logger.info(f"  Is contributor: {player_id in contributor_ids}")
-
         if player_id not in contributor_ids:
             raise ValueError("Not a contributor to this phraseset")
 
@@ -462,6 +451,13 @@ class PhrasesetService:
         for copy_round in copy_rounds:
             prompt_round = prompt_round_map.get(copy_round.prompt_round_id)
             phraseset = phraseset_map.get(copy_round.prompt_round_id)
+
+            # Skip if phraseset exists but this copy round is not one of the actual contributors
+            # This can happen when a player submitted a copy but was not selected for the final phraseset
+            if phraseset:
+                if copy_round.round_id not in {phraseset.copy_round_1_id, phraseset.copy_round_2_id}:
+                    continue
+
             result_view = result_view_map.get(phraseset.phraseset_id) if phraseset else None
             payout_claimed = result_view.payout_claimed if result_view else False
             your_payout = None

@@ -15,9 +15,14 @@ async def test_prompt_round_lifecycle(db_session, player_factory):
 
     player = await player_factory()
 
-    # Seed a test prompt with unique text
+    # Disable existing prompts and seed a test prompt
+    from backend.models.prompt import Prompt as PromptModel
+    from sqlalchemy import update
+    await db_session.execute(update(PromptModel).values(enabled=False))
+    await db_session.commit()
+
     prompt = Prompt(
-        text=f"test prompt lifecycle {uuid.uuid4()}",
+        text=f"big cats {uuid.uuid4().hex[:8]}",
         category="test",
         enabled=True
     )
@@ -34,11 +39,11 @@ async def test_prompt_round_lifecycle(db_session, player_factory):
 
     # Submit word (minimum 4 characters)
     round = await round_service.submit_prompt_phrase(
-        round.round_id, "cats", player, transaction_service
+        round.round_id, "big lion", player, transaction_service
     )
 
     assert round.status == "submitted"
-    assert round.submitted_phrase == "CATS"
+    assert round.submitted_phrase == "BIG LION"
 
 
 @pytest.mark.asyncio
@@ -175,9 +180,14 @@ async def test_cannot_copy_own_prompt(db_session, player_factory):
 
     player = await player_factory()
 
-    # Seed a test prompt
+    # Disable existing prompts and seed a test prompt
+    from backend.models.prompt import Prompt as PromptModel
+    from sqlalchemy import update
+    await db_session.execute(update(PromptModel).values(enabled=False))
+    await db_session.commit()
+
     prompt = Prompt(
-        text=f"test self-copy prevention {uuid.uuid4()}",
+        text=f"big cats {uuid.uuid4().hex[:8]}",
         category="test",
         enabled=True
     )
@@ -187,7 +197,7 @@ async def test_cannot_copy_own_prompt(db_session, player_factory):
     # Start and submit prompt round (minimum 4 characters)
     prompt_round = await round_service.start_prompt_round(player, transaction_service)
     await round_service.submit_prompt_phrase(
-        prompt_round.round_id, "cats", player, transaction_service
+        prompt_round.round_id, "big lion", player, transaction_service
     )
     await db_session.refresh(player)
 

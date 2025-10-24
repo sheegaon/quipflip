@@ -22,6 +22,9 @@ export const PromptRound: React.FC = () => {
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  // Log every render to track state changes
+  console.log('🔄 PromptRound RENDER:', { successMessage, isSubmitting, hasRoundData: !!activeRound });
+
   const roundData = activeRound?.round_type === 'prompt' ? activeRound.state as PromptState : null;
   const { isExpired } = useTimer(roundData?.expires_at || null);
 
@@ -95,6 +98,13 @@ export const PromptRound: React.FC = () => {
 
   // Redirect if no active prompt round - but NOT during the submission process
   useEffect(() => {
+    console.log('⚙️ PromptRound REDIRECT EFFECT:', {
+      hasActiveRound: !!activeRound,
+      roundType: activeRound?.round_type,
+      successMessage,
+      currentStep
+    });
+
     if (!activeRound || activeRound.round_type !== 'prompt') {
       promptRoundLogger.debug('No active prompt round detected');
       promptRoundLogger.debug('Redirect logic:', {
@@ -108,15 +118,18 @@ export const PromptRound: React.FC = () => {
       // Don't start a new round if we're showing success message (submission in progress)
       if (successMessage) {
         promptRoundLogger.debug('Success message showing, not starting new round');
+        console.log('⏸️ PromptRound: Skipping redirect because successMessage is showing');
         return;
       }
 
       // Special case for tutorial
       if (currentStep === 'prompt_round') {
         promptRoundLogger.debug('Tutorial mode: advancing to copy_round and returning to dashboard');
+        console.log('🎓 PromptRound: Tutorial mode, advancing step and navigating');
         advanceStep('copy_round').then(() => navigate('/dashboard'));
       } else {
         promptRoundLogger.debug('No active round and not in tutorial - redirecting to dashboard');
+        console.log('🔀 PromptRound: No active round, redirecting to dashboard');
         navigate('/dashboard');
       }
     } else {
@@ -174,7 +187,10 @@ export const PromptRound: React.FC = () => {
       promptRoundLogger.info('✅ Phrase submitted successfully');
 
       // Show success message first to prevent navigation race condition
-      setSuccessMessage(getRandomMessage('promptSubmitted'));
+      const message = getRandomMessage('promptSubmitted');
+      promptRoundLogger.info('🎯 Setting success message:', message);
+      console.log('🎯 PromptRound SETTING SUCCESS MESSAGE:', message);
+      setSuccessMessage(message);
 
       // Update the round state in background with abort signal
       if (activeRound) {
@@ -215,6 +231,8 @@ export const PromptRound: React.FC = () => {
 
   // Show success state
   if (successMessage) {
+    promptRoundLogger.info('🎉 Rendering success message:', successMessage);
+    console.log('🎉 PromptRound SUCCESS MESSAGE SHOWING:', successMessage);
     return (
       <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center p-4">
         <div className="tile-card max-w-md w-full p-8 text-center flip-enter">

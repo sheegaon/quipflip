@@ -19,6 +19,9 @@ export const CopyRound: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  // Log every render to track state changes
+  console.log('🔄 CopyRound RENDER:', { successMessage, isSubmitting, hasRoundData: !!activeRound });
+
   const roundData = activeRound?.round_type === 'copy' ? activeRound.state as CopyState : null;
   const { isExpired } = useTimer(roundData?.expires_at || null);
 
@@ -31,17 +34,27 @@ export const CopyRound: React.FC = () => {
 
   // Redirect if no active copy round - but NOT during the submission process
   useEffect(() => {
+    console.log('⚙️ CopyRound REDIRECT EFFECT:', {
+      hasActiveRound: !!activeRound,
+      roundType: activeRound?.round_type,
+      successMessage,
+      currentStep
+    });
+
     if (!activeRound || activeRound.round_type !== 'copy') {
       // Don't start a new round if we're showing success message (submission in progress)
       if (successMessage) {
+        console.log('⏸️ CopyRound: Skipping redirect because successMessage is showing');
         return;
       }
 
       // Special case for tutorial
       if (currentStep === 'copy_round') {
+        console.log('🎓 CopyRound: Tutorial mode, advancing step and navigating');
         advanceStep('vote_round').then(() => navigate('/dashboard'));
       } else {
         // Redirect to dashboard instead of starting new rounds
+        console.log('🔀 CopyRound: No active round, redirecting to dashboard');
         navigate('/dashboard');
       }
     }
@@ -62,6 +75,7 @@ export const CopyRound: React.FC = () => {
 
       // Show success message first to prevent navigation race condition
       const message = getRandomMessage('copySubmitted');
+      console.log('🎯 CopyRound SETTING SUCCESS MESSAGE:', message);
       setSuccessMessage(message);
 
       // Update the round state in background with abort signal
@@ -100,6 +114,7 @@ export const CopyRound: React.FC = () => {
 
   // Show success state
   if (successMessage) {
+    console.log('🎉 CopyRound SUCCESS MESSAGE SHOWING:', successMessage);
     return (
       <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center p-4">
         <div className="tile-card max-w-md w-full p-8 text-center flip-enter">

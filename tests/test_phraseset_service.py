@@ -169,3 +169,98 @@ async def test_get_phrasesets_and_claim(db_session):
 
     unclaimed = await service.get_unclaimed_results(prompt_player.player_id)
     assert all(item["phraseset_id"] != phraseset_id for item in unclaimed["unclaimed"])
+
+
+@pytest.mark.asyncio
+async def test_phraseset_excludes_non_selected_copy_rounds(db_session):
+    """Test that phrasesets exclude copy rounds that were not selected for the final phraseset.
+
+    Regression test for: Player submits a copy for a prompt, but two other copywriters
+    are selected. The player should NOT see that phraseset in their tracking list.
+    """
+    prompt_player = _base_player("prompt_master_2")
+    selected_copy_1 = _base_player("selected_copy_1_test2")
+    selected_copy_2 = _base_player("selected_copy_2_test2")
+    rejected_player = _base_player("rejected_player_test2")
+
+    now = datetime.now(UTC)
+    prompt_round = Round(
+        round_id=uuid4(),
+        player_id=prompt_player.player_id,
+        round_type="prompt",
+        status="submitted",
+        created_at=now,
+        expires_at=now + timedelta(minutes=5),
+        cost=100,
+        prompt_text="describe happiness in one word",
+        submitted_phrase="JOY",
+        phraseset_status="active",
+        copy1_player_id=selected_copy_1.player_id,
+        copy2_player_id=selected_copy_2.player_id,
+    )
+
+    # The two copy rounds that were SELECTED for the phraseset
+    selected_round_1 = _copy_round(selected_copy_1.player_id, prompt_round.round_id, "BLISS")
+    selected_round_2 = _copy_round(selected_copy_2.player_id, prompt_round.round_id, "PEACE")
+
+    # The copy round that was NOT selected (submitted but not chosen)
+    rejected_round = _copy_round(rejected_player.player_id, prompt_round.round_id, "SADNESS")
+
+    phraseset_id = uuid4()
+    phraseset = PhraseSet(
+        phraseset_id=phraseset_id,
+        prompt_round_id=prompt_round.round_id,
+        copy_round_1_id=selected_round_1.round_id,  # Only the selected rounds
+        copy_round_2_id=selected_round_2.round_id,
+        prompt_text=prompt_round.prompt_text,
+        original_phrase=prompt_round.submitted_phrase,
+        copy_phrase_1=selected_round_1.copy_phrase,
+        copy_phrase_2=selected_round_2.copy_phrase,
+        status="open",
+        vote_count=0,
+        created_at=now,
+        total_pool=300,
+    )
+
+    db_session.add_all([
+        prompt_player,
+        selected_copy_1,
+        selected_copy_2,
+        rejected_player,
+        prompt_round,
+        selected_round_1,
+        selected_round_2,
+        rejected_round,  # This round exists but is not in the phraseset
+        phraseset,
+    ])
+    await db_session.commit()
+
+    service = PhrasesetService(db_session)
+
+    # The rejected player should NOT see this phraseset in their list
+    rejected_phrasesets, rejected_total = await service.get_player_phrasesets(
+        rejected_player.player_id,
+        role='all',
+        status='all',
+    )
+    assert rejected_total == 0, f"Expected 0 phrasesets for rejected player, got {rejected_total}"
+    assert len(rejected_phrasesets) == 0
+
+    # Verify that trying to get details for this phraseset as the rejected player fails
+    with pytest.raises(ValueError, match="Not a contributor to this phraseset"):
+        await service.get_phraseset_details(phraseset_id, rejected_player.player_id)
+
+    # The selected players SHOULD see the phraseset
+    selected_1_phrasesets, selected_1_total = await service.get_player_phrasesets(
+        selected_copy_1.player_id,
+        role='all',
+        status='all',
+    )
+    assert selected_1_total == 1
+    assert len(selected_1_phrasesets) == 1
+    assert selected_1_phrasesets[0]["phraseset_id"] == phraseset_id
+
+    # And they should be able to get details
+    details = await service.get_phraseset_details(phraseset_id, selected_copy_1.player_id)
+    assert details["your_role"] == "copy"
+    assert details["your_phrase"] == "BLISS"

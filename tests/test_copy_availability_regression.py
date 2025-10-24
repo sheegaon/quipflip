@@ -30,6 +30,12 @@ async def test_copy_available_when_prompts_in_database(db_session, player_factor
     transaction_service = TransactionService(db_session)
     player_service = PlayerService(db_session)
 
+    # Disable all existing prompts to ensure we only use our test prompt
+    from backend.models.prompt import Prompt as PromptModel
+    from sqlalchemy import update
+    await db_session.execute(update(PromptModel).values(enabled=False))
+    await db_session.commit()
+
     # Seed a test prompt
     prompt = Prompt(
         text=f"dog food {uuid.uuid4().hex[:8]}",
@@ -78,9 +84,15 @@ async def test_copy_not_available_for_own_prompts(db_session, player_factory):
     round_service = RoundService(db_session)
     transaction_service = TransactionService(db_session)
 
+    # Disable all existing prompts to ensure we only use our test prompt
+    from backend.models.prompt import Prompt as PromptModel
+    from sqlalchemy import update
+    await db_session.execute(update(PromptModel).values(enabled=False))
+    await db_session.commit()
+
     # Seed a test prompt
     prompt = Prompt(
-        text=f"cat behavior {uuid.uuid4().hex[:8]}",
+        text=f"big cats {uuid.uuid4().hex[:8]}",
         category="test",
         enabled=True
     )
@@ -93,7 +105,7 @@ async def test_copy_not_available_for_own_prompts(db_session, player_factory):
     # Player submits a prompt
     prompt_round = await round_service.start_prompt_round(player, transaction_service)
     await round_service.submit_prompt_phrase(
-        prompt_round.round_id, "cats", player, transaction_service
+        prompt_round.round_id, "big lion", player, transaction_service
     )
     await db_session.refresh(player)
 
@@ -121,9 +133,15 @@ async def test_copy_not_available_after_already_copied(db_session, player_factor
     round_service = RoundService(db_session)
     transaction_service = TransactionService(db_session)
 
+    # Disable all existing prompts to ensure we only use our test prompt
+    from backend.models.prompt import Prompt as PromptModel
+    from sqlalchemy import update
+    await db_session.execute(update(PromptModel).values(enabled=False))
+    await db_session.commit()
+
     # Seed a test prompt
     prompt = Prompt(
-        text=f"bird songs {uuid.uuid4().hex[:8]}",
+        text=f"big birds {uuid.uuid4().hex[:8]}",
         category="test",
         enabled=True
     )
@@ -133,7 +151,7 @@ async def test_copy_not_available_after_already_copied(db_session, player_factor
     # Player 1 submits a prompt
     prompt_round = await round_service.start_prompt_round(player1, transaction_service)
     await round_service.submit_prompt_phrase(
-        prompt_round.round_id, "birds", player1, transaction_service
+        prompt_round.round_id, "big crow", player1, transaction_service
     )
     await db_session.refresh(player1)
 
@@ -143,7 +161,7 @@ async def test_copy_not_available_after_already_copied(db_session, player_factor
 
     copy_round = await round_service.start_copy_round(player2, transaction_service)
     await round_service.submit_copy_phrase(
-        copy_round.round_id, "crows", player2, transaction_service
+        copy_round.round_id, "big hawk", player2, transaction_service
     )
     await db_session.refresh(player2)
 
@@ -169,18 +187,24 @@ async def test_multiple_prompts_available_count(db_session, player_factory):
     round_service = RoundService(db_session)
     transaction_service = TransactionService(db_session)
 
-    # Seed test prompts - use prompts that are relevant to the phrases we'll submit
-    for prompt_text in [f"fishing {uuid.uuid4().hex[:8]}", f"frogs {uuid.uuid4().hex[:8]}", f"toads {uuid.uuid4().hex[:8]}"]:
-        prompt = Prompt(
-            text=prompt_text,
-            category="test",
-            enabled=True
-        )
-        db_session.add(prompt)
+    # Disable all existing prompts to ensure we only use our test prompt
+    from backend.models.prompt import Prompt as PromptModel
+    from sqlalchemy import update
+    await db_session.execute(update(PromptModel).values(enabled=False))
     await db_session.commit()
 
-    # Player 1 submits 2 prompts
-    for word in ["fish", "frog"]:
+    # Seed ONE test prompt that's relevant to all phrases we'll submit
+    # Use a prompt with a short word (< 4 chars) that can be shared
+    prompt = Prompt(
+        text=f"wet animals {uuid.uuid4().hex[:8]}",
+        category="test",
+        enabled=True
+    )
+    db_session.add(prompt)
+    await db_session.commit()
+
+    # Player 1 submits 2 prompts - use two-word phrases that share "wet" (3 chars, not significant)
+    for word in ["wet fish", "wet frog"]:
         prompt_round = await round_service.start_prompt_round(player1, transaction_service)
         await round_service.submit_prompt_phrase(
             prompt_round.round_id, word, player1, transaction_service
@@ -190,7 +214,7 @@ async def test_multiple_prompts_available_count(db_session, player_factory):
     # Player 2 submits 1 prompt
     prompt_round = await round_service.start_prompt_round(player2, transaction_service)
     await round_service.submit_prompt_phrase(
-        prompt_round.round_id, "toad", player2, transaction_service
+        prompt_round.round_id, "wet toad", player2, transaction_service
     )
     await db_session.refresh(player2)
 

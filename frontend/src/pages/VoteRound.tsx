@@ -17,6 +17,9 @@ export const VoteRound: React.FC = () => {
   const [voteResult, setVoteResult] = useState<VoteResponse | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  // Log every render to track state changes
+  console.log('🔄 VoteRound RENDER:', { successMessage, isSubmitting, hasVoteResult: !!voteResult, hasRoundData: !!activeRound });
+
   const roundData = activeRound?.round_type === 'vote' ? activeRound.state as VoteState : null;
   const { isExpired } = useTimer(roundData?.expires_at || null);
 
@@ -29,13 +32,22 @@ export const VoteRound: React.FC = () => {
 
   // Redirect if no active vote round - but NOT during the submission process
   useEffect(() => {
+    console.log('⚙️ VoteRound REDIRECT EFFECT:', {
+      hasActiveRound: !!activeRound,
+      roundType: activeRound?.round_type,
+      successMessage,
+      hasVoteResult: !!voteResult
+    });
+
     if (!activeRound || activeRound.round_type !== 'vote') {
       // Don't start a new round if we're showing success message or vote result
       if (successMessage || voteResult) {
+        console.log('⏸️ VoteRound: Skipping redirect because result is showing');
         return;
       }
 
       // Redirect to dashboard instead of starting new rounds
+      console.log('🔀 VoteRound: No active round, redirecting to dashboard');
       navigate('/dashboard');
     }
   }, [activeRound, navigate, successMessage, voteResult]);
@@ -51,7 +63,9 @@ export const VoteRound: React.FC = () => {
       setError(null);
       const result = await apiClient.submitVote(roundData.phraseset_id, phrase);
 
-      setSuccessMessage(result.correct ? getRandomMessage('voteSubmitted') : null);
+      const message = result.correct ? getRandomMessage('voteSubmitted') : null;
+      console.log('🎯 VoteRound SETTING SUCCESS MESSAGE:', message, 'correct:', result.correct);
+      setSuccessMessage(message);
       setVoteResult(result);
 
       // Update the round state in background with abort signal
@@ -86,6 +100,12 @@ export const VoteRound: React.FC = () => {
     const successMsg = voteResult.correct
       ? successMessage!
       : 'Better luck next time!';
+    console.log('🎉 VoteRound RESULT SHOWING:', {
+      correct: voteResult.correct,
+      message: successMsg,
+      originalPhrase: voteResult.original_phrase,
+      yourChoice: voteResult.your_choice
+    });
     return (
       <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center p-4">
         <div className="max-w-2xl w-full tile-card p-8 text-center flip-enter">
