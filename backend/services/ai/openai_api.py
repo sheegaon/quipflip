@@ -25,7 +25,7 @@ class OpenAIAPIError(RuntimeError):
 async def generate_copy(
         prompt: str,
         model: str = "gpt-5-nano",
-        timeout: int = 60,
+        timeout: int = 120,
 ) -> str:
     """
     Generate a copy phrase using OpenAI API.

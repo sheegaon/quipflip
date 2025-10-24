@@ -142,7 +142,7 @@ class AIService:
 
                 ai_player = await player_service.create_player(
                     username=username,
-                    email="ai@quipflip.internal",
+                    email=f"{username.lower()}@quipflip.internal",
                     password_hash="not-used-for-ai-player",
                     pseudonym="Clever Lexical Runner",
                     pseudonym_canonical="cleverlexicalrunner",

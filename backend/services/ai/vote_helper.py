@@ -36,7 +36,7 @@ async def generate_vote_choice_openai(
         prompt_text: str,
         phrases: list[str],
         model: str = "gpt-5-nano",
-        timeout: int = 60,
+        timeout: int = 120,
 ) -> int:
     """
     Generate a vote choice using OpenAI API.
@@ -105,7 +105,7 @@ async def generate_vote_choice_gemini(
         prompt_text: str,
         phrases: list[str],
         model: str = "gemini-2.5-flash-lite",
-        timeout: int = 30,
+        timeout: int = 120,
 ) -> int:
     """
     Generate a vote choice using Gemini API.
@@ -180,7 +180,7 @@ async def generate_vote_choice(
         phrases: list[str],
         provider: str = "openai",
         model: str = "gpt-5-nano",
-        timeout: int = 30,
+        timeout: int = 120,
 ) -> int:
     """
     Generate a vote choice using the specified AI provider.
