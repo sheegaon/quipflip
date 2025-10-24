@@ -207,10 +207,6 @@ export const Dashboard: React.FC = () => {
     }
   };
 
-  const handleViewResults = () => {
-    navigate('/tracking');
-  };
-
   const handleClaimResults = () => {
     navigate('/tracking');
   };
@@ -265,40 +261,33 @@ export const Dashboard: React.FC = () => {
           </div>
         )}
 
-        {/* Pending Results Notification */}
-        {unclaimedPendingResults.length > 0 && (
-          <div className="tile-card bg-quip-turquoise bg-opacity-10 border-2 border-quip-turquoise p-4 mb-6 slide-up-enter">
-            <div className="flex justify-between items-center">
-              <div>
-                <p className="font-display font-semibold text-quip-turquoise">Results Ready!</p>
-                <p className="text-sm text-quip-teal">
-                  {unclaimedPendingResults.length} quipset{unclaimedPendingResults.length > 1 ? 's' : ''} finalized
-                </p>
-              </div>
-              <button
-                onClick={handleViewResults}
-                className="bg-quip-turquoise hover:bg-quip-teal text-white font-bold py-2 px-6 rounded-tile transition-all hover:shadow-tile-sm"
-              >
-                View Results
-              </button>
-            </div>
-          </div>
-        )}
-
-        {totalUnclaimedCount > 0 && (
+        {/* Consolidated Results & Prizes Notification */}
+        {(unclaimedPendingResults.length > 0 || totalUnclaimedCount > 0) && (
           <div className="tile-card bg-quip-turquoise bg-opacity-10 border-2 border-quip-turquoise p-4 mb-6 slide-up-enter">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="font-display font-semibold text-quip-turquoise">Quip-tastic! Prizes Ready to Claim</p>
-                <p className="text-sm text-quip-teal">
-                  {unclaimedPromptCount} prompt{unclaimedPromptCount === 1 ? '' : 's'} • {unclaimedCopyCount} cop{unclaimedCopyCount === 1 ? 'y' : 'ies'} • ${totalUnclaimedAmount} total
+              <div className="flex-1">
+                <p className="font-display font-semibold text-quip-turquoise">
+                  {totalUnclaimedCount > 0 ? 'Quip-tastic! Results & Prizes Ready!' : 'Results Ready!'}
                 </p>
+                <div className="text-sm text-quip-teal space-y-1">
+                  {unclaimedPendingResults.length > 0 && (
+                    <p>
+                      {unclaimedPendingResults.length} quipset{unclaimedPendingResults.length > 1 ? 's' : ''} finalized
+                      {totalUnclaimedCount === 0 && ' - view your results'}
+                    </p>
+                  )}
+                  {totalUnclaimedCount > 0 && (
+                    <p>
+                      {unclaimedPromptCount} prompt{unclaimedPromptCount === 1 ? '' : 's'} • {unclaimedCopyCount} cop{unclaimedCopyCount === 1 ? 'y' : 'ies'} • ${totalUnclaimedAmount} to claim
+                    </p>
+                  )}
+                </div>
               </div>
               <button
                 onClick={handleClaimResults}
                 className="w-full sm:w-auto bg-quip-turquoise hover:bg-quip-teal text-white font-bold py-2 px-6 rounded-tile transition-all hover:shadow-tile-sm"
               >
-                Claim Prizes
+                {totalUnclaimedCount > 0 ? 'View & Claim' : 'View Results'}
               </button>
             </div>
           </div>

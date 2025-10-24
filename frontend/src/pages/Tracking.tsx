@@ -51,7 +51,17 @@ export const Tracking: React.FC = () => {
   // Store the last fetched details to compare for changes
   const lastDetailsRef = useRef<PhrasesetDetailsType | null>(null);
 
+  // Track if we're currently fetching to prevent duplicate calls
+  const isFetchingRef = useRef(false);
+  const isFetchingDetailsRef = useRef(false);
+
   const fetchPhrasesets = useCallback(async () => {
+    // Prevent duplicate concurrent fetches
+    if (isFetchingRef.current) {
+      return;
+    }
+
+    isFetchingRef.current = true;
     setLoading('phrasesets', {
       isLoading: true,
       type: 'refresh',
@@ -91,19 +101,29 @@ export const Tracking: React.FC = () => {
     } catch (err) {
       const errorMessage = getActionErrorMessage('load-tracking', err);
       setError(errorMessage);
+      // Don't set phrasesets to empty on error - keep previous data if available
     } finally {
       clearLoading('phrasesets');
+      isFetchingRef.current = false;
     }
-  }, [roleFilter, statusFilter, selectedId, getPlayerPhrasesets, setLoading, clearLoading]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roleFilter, statusFilter, selectedId, getPlayerPhrasesets]);
 
   const fetchDetails = useCallback(async (phraseset: PhrasesetSummary | null) => {
     if (!phraseset || !phraseset.phraseset_id) {
       setDetails(null);
       lastDetailsRef.current = null;
       stopPoll('phraseset-details');
+      isFetchingDetailsRef.current = false;
       return;
     }
 
+    // Prevent duplicate concurrent fetches
+    if (isFetchingDetailsRef.current) {
+      return;
+    }
+
+    isFetchingDetailsRef.current = true;
     setLoading('details', {
       isLoading: true,
       type: 'refresh',
@@ -112,7 +132,7 @@ export const Tracking: React.FC = () => {
 
     try {
       const data = await getPhrasesetDetails(phraseset.phraseset_id);
-      
+
       // Only update state if the data has actually changed
       const hasChanged = !lastDetailsRef.current ||
         JSON.stringify(lastDetailsRef.current) !== JSON.stringify(data);
@@ -126,10 +146,13 @@ export const Tracking: React.FC = () => {
     } catch (err) {
       const errorMessage = getActionErrorMessage('load-details', err);
       setError(errorMessage);
+      // Don't clear details on error - keep previous data if available
     } finally {
       clearLoading('details');
+      isFetchingDetailsRef.current = false;
     }
-  }, [getPhrasesetDetails, setLoading, clearLoading, stopPoll]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [getPhrasesetDetails, stopPoll]);
 
   useEffect(() => {
     fetchPhrasesets();

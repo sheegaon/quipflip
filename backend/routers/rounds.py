@@ -85,6 +85,9 @@ async def start_copy_round(
     transaction_service = TransactionService(db)
     round_service = RoundService(db)
 
+    # Ensure prompt queue is populated from database before checking availability
+    await round_service.ensure_prompt_queue_populated()
+
     # Check if can start
     can_start, error = await player_service.can_start_copy_round(player)
     if not can_start:
