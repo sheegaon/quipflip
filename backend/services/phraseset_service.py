@@ -24,6 +24,13 @@ class PhrasesetService:
         self.db = db
         self.activity_service = ActivityService(db)
         self.scoring_service = ScoringService(db)
+        # Request-scoped cache to avoid re-querying _build_contributions multiple times
+        # within a single request (e.g., dashboard endpoint calls it 3x)
+        self._contributions_cache: dict[UUID, list[dict]] = {}
+
+    def _invalidate_contributions_cache(self, player_id: UUID) -> None:
+        """Invalidate cached contributions for a player after data changes."""
+        self._contributions_cache.pop(player_id, None)
 
     async def get_player_phrasesets(
         self,
@@ -148,17 +155,6 @@ class PhrasesetService:
             copy1_round.player_id,
             copy2_round.player_id,
         }
-
-        # Debug logging
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.info(f"Phraseset {phraseset_id} contributor check:")
-        logger.info(f"  Player ID: {player_id}")
-        logger.info(f"  Prompt player: {prompt_round.player_id}")
-        logger.info(f"  Copy1 player: {copy1_round.player_id}")
-        logger.info(f"  Copy2 player: {copy2_round.player_id}")
-        logger.info(f"  Contributor IDs: {contributor_ids}")
-        logger.info(f"  Is contributor: {player_id in contributor_ids}")
 
         if player_id not in contributor_ids:
             raise ValueError("Not a contributor to this phraseset")
@@ -326,6 +322,9 @@ class PhrasesetService:
         if player:
             await self.db.refresh(player)
 
+        # Invalidate cached contributions since payout_claimed status changed
+        self._invalidate_contributions_cache(player_id)
+
         return {
             "success": True,
             "amount": result_view.payout_amount,
@@ -350,7 +349,16 @@ class PhrasesetService:
     # ---------------------------------------------------------------------
 
     async def _build_contributions(self, player_id: UUID) -> list[dict]:
-        """Load prompt and copy contributions and derive summary fields."""
+        """Load prompt and copy contributions and derive summary fields.
+
+        Results are cached per player_id for the lifetime of this service instance
+        to avoid redundant queries within a single request.
+        """
+        # Check cache first
+        if player_id in self._contributions_cache:
+            return self._contributions_cache[player_id]
+
+        # Build contributions if not cached
         prompt_result = await self.db.execute(
             select(Round)
             .where(Round.player_id == player_id)
@@ -443,6 +451,13 @@ class PhrasesetService:
         for copy_round in copy_rounds:
             prompt_round = prompt_round_map.get(copy_round.prompt_round_id)
             phraseset = phraseset_map.get(copy_round.prompt_round_id)
+
+            # Skip if phraseset exists but this copy round is not one of the actual contributors
+            # This can happen when a player submitted a copy but was not selected for the final phraseset
+            if phraseset:
+                if copy_round.round_id not in {phraseset.copy_round_1_id, phraseset.copy_round_2_id}:
+                    continue
+
             result_view = result_view_map.get(phraseset.phraseset_id) if phraseset else None
             payout_claimed = result_view.payout_claimed if result_view else False
             your_payout = None
@@ -476,6 +491,10 @@ class PhrasesetService:
 
         # Sort descending by created_at
         contributions.sort(key=lambda entry: entry["created_at"] or datetime.now(UTC), reverse=True)
+
+        # Cache the results for this request
+        self._contributions_cache[player_id] = contributions
+
         return contributions
 
     async def _load_contributor_rounds(self, phraseset: PhraseSet) -> tuple[Round, Round, Round]:

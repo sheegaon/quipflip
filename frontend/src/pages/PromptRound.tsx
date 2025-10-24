@@ -22,6 +22,9 @@ export const PromptRound: React.FC = () => {
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  // Log every render to track state changes
+  console.log('🔄 PromptRound RENDER:', { successMessage, isSubmitting, hasRoundData: !!activeRound });
+
   const roundData = activeRound?.round_type === 'prompt' ? activeRound.state as PromptState : null;
   const { isExpired } = useTimer(roundData?.expires_at || null);
 
@@ -95,6 +98,13 @@ export const PromptRound: React.FC = () => {
 
   // Redirect if no active prompt round - but NOT during the submission process
   useEffect(() => {
+    console.log('⚙️ PromptRound REDIRECT EFFECT:', {
+      hasActiveRound: !!activeRound,
+      roundType: activeRound?.round_type,
+      successMessage,
+      currentStep
+    });
+
     if (!activeRound || activeRound.round_type !== 'prompt') {
       promptRoundLogger.debug('No active prompt round detected');
       promptRoundLogger.debug('Redirect logic:', {
@@ -108,15 +118,18 @@ export const PromptRound: React.FC = () => {
       // Don't start a new round if we're showing success message (submission in progress)
       if (successMessage) {
         promptRoundLogger.debug('Success message showing, not starting new round');
+        console.log('⏸️ PromptRound: Skipping redirect because successMessage is showing');
         return;
       }
 
       // Special case for tutorial
       if (currentStep === 'prompt_round') {
         promptRoundLogger.debug('Tutorial mode: advancing to copy_round and returning to dashboard');
+        console.log('🎓 PromptRound: Tutorial mode, advancing step and navigating');
         advanceStep('copy_round').then(() => navigate('/dashboard'));
       } else {
         promptRoundLogger.debug('No active round and not in tutorial - redirecting to dashboard');
+        console.log('🔀 PromptRound: No active round, redirecting to dashboard');
         navigate('/dashboard');
       }
     } else {
@@ -150,7 +163,7 @@ export const PromptRound: React.FC = () => {
       isSubmitting,
       roundStatus: roundData?.status
     });
-    
+
     if (!phrase.trim() || !roundData || isSubmitting) {
       promptRoundLogger.debug('Submission blocked - conditions not met');
       return;
@@ -166,18 +179,28 @@ export const PromptRound: React.FC = () => {
     setIsSubmitting(true);
     setError(null);
 
+    // Create abort controller for this submission
+    const controller = new AbortController();
+
     try {
       await apiClient.submitPhrase(roundData.round_id, phrase.trim());
       promptRoundLogger.info('✅ Phrase submitted successfully');
 
-      // Update the round state immediately to prevent double submissions
-      if (activeRound) {
-        promptRoundLogger.debug('Updating local round state to submitted');
-        actions.refreshDashboard(); // Trigger refresh to get latest state
-      }
+      // Show success message first to prevent navigation race condition
+      const message = getRandomMessage('promptSubmitted');
+      promptRoundLogger.info('🎯 Setting success message:', message);
+      console.log('🎯 PromptRound SETTING SUCCESS MESSAGE:', message);
+      setSuccessMessage(message);
 
-      // Show success message
-      setSuccessMessage(getRandomMessage('promptSubmitted'));
+      // Update the round state in background with abort signal
+      if (activeRound) {
+        promptRoundLogger.debug('Triggering dashboard refresh in background');
+        actions.refreshDashboard(controller.signal).catch((err) => {
+          if (err.name !== 'AbortError') {
+            promptRoundLogger.warn('Background dashboard refresh failed:', err);
+          }
+        });
+      }
 
       // Advance tutorial if in prompt_round step
       if (currentStep === 'prompt_round') {
@@ -187,10 +210,12 @@ export const PromptRound: React.FC = () => {
       // Navigate after delay
       setTimeout(() => {
         promptRoundLogger.info('Navigating to dashboard after successful submission');
+        controller.abort(); // Cancel any pending refresh
         navigate('/dashboard');
       }, 1500);
     } catch (err) {
       promptRoundLogger.error('Submission failed:', err);
+      controller.abort();
       setError(extractErrorMessage(err) || 'Unable to submit your phrase. Please check your connection and try again.');
       setIsSubmitting(false);
     }
@@ -206,6 +231,8 @@ export const PromptRound: React.FC = () => {
 
   // Show success state
   if (successMessage) {
+    promptRoundLogger.info('🎉 Rendering success message:', successMessage);
+    console.log('🎉 PromptRound SUCCESS MESSAGE SHOWING:', successMessage);
     return (
       <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center p-4">
         <div className="tile-card max-w-md w-full p-8 text-center flip-enter">
@@ -317,8 +344,9 @@ export const PromptRound: React.FC = () => {
         {/* Home Button */}
         <button
           onClick={() => navigate('/dashboard')}
-          className="w-full mt-4 flex items-center justify-center gap-2 text-quip-teal hover:text-quip-turquoise py-2 font-medium transition-colors"
-          title="Back to Dashboard"
+          disabled={isSubmitting}
+          className="w-full mt-4 flex items-center justify-center gap-2 text-quip-teal hover:text-quip-turquoise disabled:opacity-50 disabled:cursor-not-allowed py-2 font-medium transition-colors"
+          title={isSubmitting ? "Please wait for submission to complete" : "Back to Dashboard"}
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />

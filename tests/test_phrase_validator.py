@@ -1,7 +1,7 @@
 """Tests for phrase validator with similarity checking."""
 import pytest
 pytest.importorskip("sklearn")
-from backend.services.phrase_validator import PhraseValidator, get_phrase_validator
+from backend.services.phrase_validator import PhraseValidator, get_phrase_validator, _parse_phrase
 
 
 @pytest.fixture
@@ -111,25 +111,25 @@ class TestPhraseParsing:
 
     def test_parse_single_word(self, validator):
         """Test parsing single word."""
-        words = validator._parse_phrase("freedom")
+        words = _parse_phrase("freedom")
         assert len(words) == 1
         assert words[0] == "freedom"
 
     def test_parse_multiple_words(self, validator):
         """Test parsing multiple words."""
-        words = validator._parse_phrase("ice cream cone")
+        words = _parse_phrase("ice cream cone")
         assert len(words) == 3
         assert words == ["ice", "cream", "cone"]
 
     def test_parse_with_extra_spaces(self, validator):
         """Test parsing normalizes multiple spaces."""
-        words = validator._parse_phrase("ice    cream   cone")
+        words = _parse_phrase("ice    cream   cone")
         assert len(words) == 3
         assert words == ["ice", "cream", "cone"]
 
     def test_parse_with_leading_trailing_spaces(self, validator):
         """Test parsing strips leading/trailing spaces."""
-        words = validator._parse_phrase("  ice cream  ")
+        words = _parse_phrase("  ice cream  ")
         assert len(words) == 2
         assert words == ["ice", "cream"]
 

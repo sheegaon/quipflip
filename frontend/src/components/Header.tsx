@@ -11,8 +11,8 @@ export const Header: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Show back arrow on Statistics, Tracking, and Quests pages
-  const showBackArrow = location.pathname === '/statistics' || location.pathname === '/tracking' || location.pathname === '/quests';
+  // Show back arrow on Statistics, Tracking, Quests, and Results pages
+  const showBackArrow = location.pathname === '/statistics' || location.pathname === '/tracking' || location.pathname === '/quests' || location.pathname === '/results';
 
   if (!player) {
     return null;

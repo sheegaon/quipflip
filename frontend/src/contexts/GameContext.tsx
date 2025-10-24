@@ -92,9 +92,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     gameContextLogger.debug('Authentication state changed:', { isAuthenticated, username });
   }, [isAuthenticated, username]);
 
-  // Create stable actions object using ref
-  const actionsRef = useRef<GameActions>({
-    startSession: (nextUsername: string, tokens: AuthTokenResponse) => {
+  // Create stable actions object using useCallback for all methods
+  const startSession = useCallback((nextUsername: string, tokens: AuthTokenResponse) => {
       apiClient.setSession(nextUsername, tokens);
       setUsername(nextUsername);
       setIsAuthenticated(true);
@@ -116,9 +115,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setError(errorMessage);
         }
       }, 100);
-    },
+  }, []);
 
-    logout: async () => {
+  const logout = useCallback(async () => {
       try {
         await apiClient.logout();
       } catch (err) {
@@ -138,9 +137,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUnclaimedResults([]);
         setRoundAvailability(null);
       }
-    },
+  }, [stopPoll]);
 
-    refreshDashboard: async (signal?: AbortSignal) => {
+  const refreshDashboard = useCallback(async (signal?: AbortSignal) => {
       gameContextLogger.debug('refreshDashboard called');
       // Check token directly instead of relying on state
       const token = await apiClient.ensureAccessToken();
@@ -177,15 +176,18 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUsername(data.player.username);
         }
         
-        // Handle active round properly - if it's submitted or expired, clear it
+        // Handle active round properly - if it's submitted, expired, or abandoned, clear it
         if (data.current_round) {
           const roundState = data.current_round.state;
-          if (roundState?.status === 'submitted' || roundState?.status === 'expired') {
-            gameContextLogger.debug('Round is completed, clearing active round');
-            setActiveRound(null);
-          } else {
+          const roundStatus = roundState?.status;
+
+          // Only show active rounds; clear completed/expired/abandoned rounds
+          if (roundStatus === 'active') {
             gameContextLogger.debug('Setting active round:', data.current_round);
             setActiveRound(data.current_round);
+          } else {
+            gameContextLogger.debug(`Round status is ${roundStatus}, clearing active round`);
+            setActiveRound(null);
           }
         } else {
           gameContextLogger.debug('No current round from API, clearing active round');
@@ -207,12 +209,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Handle auth errors
         if (errorMessage.toLowerCase().includes('session') || errorMessage.toLowerCase().includes('login')) {
           gameContextLogger.warn('Auth error detected, logging out');
-          actionsRef.current.logout();
+          logout();
         }
       }
-    },
+  }, [isAuthenticated, username]);
 
-    refreshBalance: async (signal?: AbortSignal) => {
+  const refreshBalance = useCallback(async (signal?: AbortSignal) => {
       // Check token directly instead of relying on stale state
       const token = await apiClient.ensureAccessToken();
       if (!token) {
@@ -241,12 +243,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Only show balance refresh errors if they're auth-related
         if (errorMessage.toLowerCase().includes('session') || errorMessage.toLowerCase().includes('login')) {
           setError(errorMessage);
-          actionsRef.current.logout();
+          logout();
         }
       }
-    },
+  }, [isAuthenticated, username]);
 
-    claimBonus: async () => {
+  const claimBonus = useCallback(async () => {
       console.log('🎯 GameContext claimBonus called');
       
       // Check token directly instead of relying on stale state
@@ -287,7 +289,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Handle auth errors
         if (message.toLowerCase().includes('session') || message.toLowerCase().includes('login')) {
           console.log('🚪 Auth error detected, logging out');
-          actionsRef.current.logout();
+          logout();
         }
 
         throw err;
@@ -295,23 +297,23 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log('🔄 Setting loading to false');
         setLoading(false);
       }
-    },
+  }, [isAuthenticated, triggerPoll, logout]);
 
-    clearError: () => {
+  const clearError = useCallback(() => {
       setError(null);
-    },
+  }, []);
 
-    navigateAfterDelay: (path: string, delay: number = 1500) => {
+  const navigateAfterDelay = useCallback((path: string, delay: number = 1500) => {
       setTimeout(() => navigate(path), delay);
-    },
+  }, [navigate]);
 
-    startPromptRound: async () => {
+  const startPromptRound = useCallback(async () => {
       gameContextLogger.info('startPromptRound called');
-      
+
       // Check token directly instead of relying on state
       const token = await apiClient.ensureAccessToken();
       gameContextLogger.debug('Token check for prompt round:', { hasToken: !!token });
-      
+
       if (!token) {
         gameContextLogger.warn('No valid token, aborting prompt round start');
         setIsAuthenticated(false);
@@ -326,12 +328,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       gameContextLogger.debug('Starting prompt round API call...');
       gameContextLogger.debug('Current round availability:', roundAvailability);
-      gameContextLogger.debug('Current player state:', { 
-        balance: player?.balance, 
-        outstandingPrompts: player?.outstanding_prompts 
+      gameContextLogger.debug('Current player state:', {
+        balance: player?.balance,
+        outstandingPrompts: player?.outstanding_prompts
       });
 
       try {
+        setLoading(true);
         setError(null);
         gameContextLogger.debug('Calling apiClient.startPromptRound()...');
         const response = await apiClient.startPromptRound();
@@ -356,7 +359,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Trigger immediate dashboard refresh to update availability
         gameContextLogger.debug('Triggering dashboard refresh...');
         triggerPoll('dashboard');
-        
+
         gameContextLogger.info('✅ Prompt round started successfully');
       } catch (err) {
         gameContextLogger.error('Failed to start prompt round:', err);
@@ -364,16 +367,18 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         gameContextLogger.debug('Setting error message:', errorMessage);
         setError(errorMessage);
         throw err;
+      } finally {
+        setLoading(false);
       }
-    },
+  }, [isAuthenticated, roundAvailability, player?.balance, player?.outstanding_prompts, triggerPoll]);
 
-    startCopyRound: async () => {
+  const startCopyRound = useCallback(async () => {
       gameContextLogger.info('startCopyRound called');
-      
+
       // Check token directly instead of relying on state
       const token = await apiClient.ensureAccessToken();
       gameContextLogger.debug('Token check for copy round:', { hasToken: !!token });
-      
+
       if (!token) {
         gameContextLogger.warn('No valid token, aborting copy round start');
         setIsAuthenticated(false);
@@ -388,13 +393,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       gameContextLogger.debug('Starting copy round API call...');
       gameContextLogger.debug('Current round availability:', roundAvailability);
-      gameContextLogger.debug('Current player state:', { 
+      gameContextLogger.debug('Current player state:', {
         balance: player?.balance,
         promptsWaiting: roundAvailability?.prompts_waiting,
         copyCost: roundAvailability?.copy_cost
       });
 
       try {
+        setLoading(true);
         setError(null);
         gameContextLogger.debug('Calling apiClient.startCopyRound()...');
         const response = await apiClient.startCopyRound();
@@ -419,7 +425,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         gameContextLogger.debug('Triggering dashboard refresh...');
         triggerPoll('dashboard');
-        
+
         gameContextLogger.info('✅ Copy round started successfully');
       } catch (err) {
         gameContextLogger.error('Failed to start copy round:', err);
@@ -427,16 +433,18 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         gameContextLogger.debug('Setting error message:', errorMessage);
         setError(errorMessage);
         throw err;
+      } finally {
+        setLoading(false);
       }
-    },
+  }, [isAuthenticated, roundAvailability, player?.balance, triggerPoll]);
 
-    startVoteRound: async () => {
+  const startVoteRound = useCallback(async () => {
       gameContextLogger.info('startVoteRound called');
-      
+
       // Check token directly instead of relying on state
       const token = await apiClient.ensureAccessToken();
       gameContextLogger.debug('Token check for vote round:', { hasToken: !!token });
-      
+
       if (!token) {
         gameContextLogger.warn('No valid token, aborting vote round start');
         setIsAuthenticated(false);
@@ -451,12 +459,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       gameContextLogger.debug('Starting vote round API call...');
       gameContextLogger.debug('Current round availability:', roundAvailability);
-      gameContextLogger.debug('Current player state:', { 
+      gameContextLogger.debug('Current player state:', {
         balance: player?.balance,
         phrasesetsWaiting: roundAvailability?.phrasesets_waiting
       });
 
       try {
+        setLoading(true);
         setError(null);
         gameContextLogger.debug('Calling apiClient.startVoteRound()...');
         const response = await apiClient.startVoteRound();
@@ -481,7 +490,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         gameContextLogger.debug('Triggering dashboard refresh...');
         triggerPoll('dashboard');
-        
+
         gameContextLogger.info('✅ Vote round started successfully');
       } catch (err) {
         gameContextLogger.error('Failed to start vote round:', err);
@@ -489,10 +498,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         gameContextLogger.debug('Setting error message:', errorMessage);
         setError(errorMessage);
         throw err;
+      } finally {
+        setLoading(false);
       }
-    },
+  }, [isAuthenticated, roundAvailability, player?.balance, triggerPoll]);
 
-    getPhrasesetResults: async (phrasesetId: string) => {
+  const getPhrasesetResults = useCallback(async (phrasesetId: string) => {
       // Check token directly instead of relying on stale state
       const token = await apiClient.ensureAccessToken();
       if (!token) {
@@ -513,9 +524,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setError(errorMessage);
         throw err;
       }
-    },
+  }, [isAuthenticated]);
 
-    getPlayerPhrasesets: async (params: any) => {
+  const getPlayerPhrasesets = useCallback(async (params: any) => {
       // Check token directly instead of relying on stale state
       const token = await apiClient.ensureAccessToken();
       if (!token) {
@@ -536,9 +547,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setError(errorMessage);
         throw err;
       }
-    },
+  }, [isAuthenticated]);
 
-    getPhrasesetDetails: async (phrasesetId: string) => {
+  const getPhrasesetDetails = useCallback(async (phrasesetId: string) => {
       // Check token directly instead of relying on stale state
       const token = await apiClient.ensureAccessToken();
       if (!token) {
@@ -559,9 +570,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setError(errorMessage);
         throw err;
       }
-    },
+  }, [isAuthenticated]);
 
-    claimPhrasesetPrize: async (phrasesetId: string) => {
+  const claimPhrasesetPrize = useCallback(async (phrasesetId: string) => {
       // Check token directly instead of relying on stale state
       const token = await apiClient.ensureAccessToken();
       if (!token) {
@@ -586,9 +597,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setError(errorMessage);
         throw err;
       }
-    },
+  }, [isAuthenticated, triggerPoll]);
 
-    getStatistics: useCallback(async (signal?: AbortSignal) => {
+  const getStatistics = useCallback(async (signal?: AbortSignal) => {
       // Check token directly instead of relying on stale state
       const token = await apiClient.ensureAccessToken();
       if (!token) {
@@ -609,8 +620,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setError(errorMessage);
         throw err;
       }
-    }, []),
-  });
+  }, [isAuthenticated]);
 
   // Set up smart polling when authenticated
   useEffect(() => {
@@ -622,12 +632,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Start dashboard polling with smart intervals
     startPoll(PollConfigs.DASHBOARD, async () => {
-      await actionsRef.current.refreshDashboard();
+      await refreshDashboard();
     });
 
     // Start balance polling with longer intervals
     startPoll(PollConfigs.BALANCE_REFRESH, async () => {
-      await actionsRef.current.refreshBalance();
+      await refreshBalance();
     });
 
     // Cleanup function
@@ -635,7 +645,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       stopPoll('dashboard');
       stopPoll('balance');
     };
-  }, [isAuthenticated, startPoll, stopPoll]);
+  }, [isAuthenticated, startPoll, stopPoll, refreshDashboard, refreshBalance]);
 
   // Initial dashboard load - only once when authenticated changes
   const hasInitialLoadRef = useRef(false);
@@ -650,10 +660,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     hasInitialLoadRef.current = true;
 
     const controller = new AbortController();
-    actionsRef.current.refreshDashboard(controller.signal);
+    refreshDashboard(controller.signal);
 
     return () => controller.abort();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, refreshDashboard]);
 
   const state: GameState = {
     isAuthenticated,
@@ -668,9 +678,27 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     error,
   };
 
+  const actions: GameActions = {
+    startSession,
+    logout,
+    refreshDashboard,
+    refreshBalance,
+    claimBonus,
+    clearError,
+    navigateAfterDelay,
+    startPromptRound,
+    startCopyRound,
+    startVoteRound,
+    getPhrasesetResults,
+    getPlayerPhrasesets,
+    getPhrasesetDetails,
+    claimPhrasesetPrize,
+    getStatistics,
+  };
+
   const value: GameContextType = {
     state,
-    actions: actionsRef.current,
+    actions,
   };
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>;

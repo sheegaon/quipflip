@@ -17,6 +17,9 @@ export const VoteRound: React.FC = () => {
   const [voteResult, setVoteResult] = useState<VoteResponse | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  // Log every render to track state changes
+  console.log('🔄 VoteRound RENDER:', { successMessage, isSubmitting, hasVoteResult: !!voteResult, hasRoundData: !!activeRound });
+
   const roundData = activeRound?.round_type === 'vote' ? activeRound.state as VoteState : null;
   const { isExpired } = useTimer(roundData?.expires_at || null);
 
@@ -29,13 +32,22 @@ export const VoteRound: React.FC = () => {
 
   // Redirect if no active vote round - but NOT during the submission process
   useEffect(() => {
+    console.log('⚙️ VoteRound REDIRECT EFFECT:', {
+      hasActiveRound: !!activeRound,
+      roundType: activeRound?.round_type,
+      successMessage,
+      hasVoteResult: !!voteResult
+    });
+
     if (!activeRound || activeRound.round_type !== 'vote') {
       // Don't start a new round if we're showing success message or vote result
       if (successMessage || voteResult) {
+        console.log('⏸️ VoteRound: Skipping redirect because result is showing');
         return;
       }
 
       // Redirect to dashboard instead of starting new rounds
+      console.log('🔀 VoteRound: No active round, redirecting to dashboard');
       navigate('/dashboard');
     }
   }, [activeRound, navigate, successMessage, voteResult]);
@@ -43,20 +55,33 @@ export const VoteRound: React.FC = () => {
   const handleVote = async (phrase: string) => {
     if (!roundData || isSubmitting) return;
 
+    // Create abort controller for this submission
+    const controller = new AbortController();
+
     try {
       setIsSubmitting(true);
       setError(null);
       const result = await apiClient.submitVote(roundData.phraseset_id, phrase);
 
-      // Update the round state immediately to prevent issues
-      actions.refreshDashboard(); // Trigger refresh to get latest state
-
-      setSuccessMessage(result.correct ? getRandomMessage('voteSubmitted') : null);
+      const message = result.correct ? getRandomMessage('voteSubmitted') : null;
+      console.log('🎯 VoteRound SETTING SUCCESS MESSAGE:', message, 'correct:', result.correct);
+      setSuccessMessage(message);
       setVoteResult(result);
 
+      // Update the round state in background with abort signal
+      actions.refreshDashboard(controller.signal).catch((err) => {
+        if (err.name !== 'AbortError') {
+          console.warn('Background dashboard refresh failed:', err);
+        }
+      });
+
       // Navigate after showing results for 3 seconds
-      setTimeout(() => navigate('/dashboard'), 3000);
+      setTimeout(() => {
+        controller.abort(); // Cancel any pending refresh
+        navigate('/dashboard');
+      }, 3000);
     } catch (err) {
+      controller.abort();
       setError(extractErrorMessage(err) || 'Unable to submit your vote. The round may have expired or someone else may have already voted.');
       setIsSubmitting(false);
     }
@@ -75,13 +100,19 @@ export const VoteRound: React.FC = () => {
     const successMsg = voteResult.correct
       ? successMessage!
       : 'Better luck next time!';
+    console.log('🎉 VoteRound RESULT SHOWING:', {
+      correct: voteResult.correct,
+      message: successMsg,
+      originalPhrase: voteResult.original_phrase,
+      yourChoice: voteResult.your_choice
+    });
     return (
       <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center p-4">
         <div className="max-w-2xl w-full tile-card p-8 text-center flip-enter">
           <div className="flex justify-center mb-4">
             <img src="/icon_vote.svg" alt="" className="w-24 h-24" />
           </div>
-          <h2 className={`text-3xl font-display font-bold mb-4 ${voteResult.correct ? 'text-quip-turquoise' : 'text-quip-orange'}`}>
+          <h2 className={`text-3xl font-display font-bold mb-4 success-message ${voteResult.correct ? 'text-quip-turquoise' : 'text-quip-orange'}`}>
             {voteResult.correct ? successMsg : 'Incorrect'}
           </h2>
           <p className="text-lg text-quip-navy mb-2">
@@ -90,14 +121,6 @@ export const VoteRound: React.FC = () => {
           <p className="text-lg text-quip-teal mb-4">
             You chose: <strong>{voteResult.your_choice}</strong>
           </p>
-          {voteResult.correct && (
-            <div className="bg-quip-turquoise bg-opacity-10 border-2 border-quip-turquoise rounded-tile p-4">
-              <p className="text-2xl font-display font-bold text-quip-turquoise">
-                +{voteResult.payout} Flipcoins
-              </p>
-              <p className="text-sm text-quip-teal">Added to your balance!</p>
-            </div>
-          )}
           <p className="text-sm text-quip-teal mt-6">Returning to dashboard...</p>
         </div>
       </div>
@@ -162,8 +185,9 @@ export const VoteRound: React.FC = () => {
         {/* Home Button */}
         <button
           onClick={() => navigate('/dashboard')}
-          className="w-full mt-4 flex items-center justify-center gap-2 text-quip-teal hover:text-quip-turquoise py-2 font-medium transition-colors"
-          title="Back to Dashboard"
+          disabled={isSubmitting}
+          className="w-full mt-4 flex items-center justify-center gap-2 text-quip-teal hover:text-quip-turquoise disabled:opacity-50 disabled:cursor-not-allowed py-2 font-medium transition-colors"
+          title={isSubmitting ? "Please wait for submission to complete" : "Back to Dashboard"}
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />

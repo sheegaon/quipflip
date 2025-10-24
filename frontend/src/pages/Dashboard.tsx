@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { useTutorial } from '../contexts/TutorialContext';
+import { extractErrorMessage } from '../api/client';
 import { Timer } from '../components/Timer';
 import { Header } from '../components/Header';
 import TutorialWelcome from '../components/Tutorial/TutorialWelcome';
@@ -12,12 +13,13 @@ const formatWaitingCount = (count: number): string => (count > 10 ? 'over 10' : 
 
 export const Dashboard: React.FC = () => {
   const { state, actions } = useGame();
-  const { player, activeRound, pendingResults, phrasesetSummary, roundAvailability } = state;
-  const { refreshDashboard } = actions;
+  const { player, activeRound, pendingResults, phrasesetSummary, roundAvailability, error: contextError } = state;
+  const { refreshDashboard, clearError } = actions;
   const { startTutorial, skipTutorial, advanceStep } = useTutorial();
   const navigate = useNavigate();
   const [isRoundExpired, setIsRoundExpired] = useState(false);
   const [startingRound, setStartingRound] = useState<string | null>(null);
+  const [roundStartError, setRoundStartError] = useState<string | null>(null);
 
   // Log component mount and key state changes
   useEffect(() => {
@@ -118,9 +120,13 @@ export const Dashboard: React.FC = () => {
   }, [activeRoundRoute, navigate]);
 
   const handleRoundExpired = useCallback(() => {
+    dashboardLogger.debug('Round expired, setting flag and triggering refresh');
     setIsRoundExpired(true);
-    // Background polling will refresh data automatically
-  }, []);
+    // Immediately refresh dashboard to clear expired round
+    refreshDashboard().catch((err) => {
+      dashboardLogger.error('Failed to refresh dashboard after expiration:', err);
+    });
+  }, [refreshDashboard]);
 
   const handleStartPrompt = async () => {
     if (startingRound) {
@@ -136,6 +142,7 @@ export const Dashboard: React.FC = () => {
     });
 
     setStartingRound('prompt');
+    setRoundStartError(null);
     try {
       dashboardLogger.debug('Calling actions.startPromptRound()...');
       await actions.startPromptRound();
@@ -143,6 +150,8 @@ export const Dashboard: React.FC = () => {
       navigate('/prompt');
     } catch (err) {
       dashboardLogger.error('❌ Failed to start prompt round:', err);
+      const errorMsg = extractErrorMessage(err) || 'Unable to start prompt round. Please try again.';
+      setRoundStartError(errorMsg);
       console.error('Failed to start prompt round:', err);
     } finally {
       setStartingRound(null);
@@ -165,6 +174,7 @@ export const Dashboard: React.FC = () => {
     });
 
     setStartingRound('copy');
+    setRoundStartError(null);
     try {
       dashboardLogger.debug('Calling actions.startCopyRound()...');
       await actions.startCopyRound();
@@ -172,6 +182,8 @@ export const Dashboard: React.FC = () => {
       navigate('/copy');
     } catch (err) {
       dashboardLogger.error('❌ Failed to start copy round:', err);
+      const errorMsg = extractErrorMessage(err) || 'Unable to start copy round. Please try again.';
+      setRoundStartError(errorMsg);
       console.error('Failed to start copy round:', err);
     } finally {
       setStartingRound(null);
@@ -193,6 +205,7 @@ export const Dashboard: React.FC = () => {
     });
 
     setStartingRound('vote');
+    setRoundStartError(null);
     try {
       dashboardLogger.debug('Calling actions.startVoteRound()...');
       await actions.startVoteRound();
@@ -200,6 +213,8 @@ export const Dashboard: React.FC = () => {
       navigate('/vote');
     } catch (err) {
       dashboardLogger.error('❌ Failed to start vote round:', err);
+      const errorMsg = extractErrorMessage(err) || 'Unable to start vote round. Please try again.';
+      setRoundStartError(errorMsg);
       console.error('Failed to start vote round:', err);
     } finally {
       setStartingRound(null);
@@ -296,6 +311,25 @@ export const Dashboard: React.FC = () => {
         {/* Round Selection */}
         <div className="tutorial-dashboard tile-card p-6 shuffle-enter">
           <h2 className="text-xl font-display font-bold mb-4 text-quip-navy">Start a Round</h2>
+
+          {/* Error Messages */}
+          {(roundStartError || contextError) && (
+            <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-tile">
+              <div className="flex justify-between items-start">
+                <span>{roundStartError || contextError}</span>
+                <button
+                  onClick={() => {
+                    setRoundStartError(null);
+                    clearError();
+                  }}
+                  className="ml-2 text-red-900 hover:text-red-700"
+                  aria-label="Dismiss error"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="space-y-4">
 

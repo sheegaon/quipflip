@@ -19,6 +19,9 @@ export const CopyRound: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  // Log every render to track state changes
+  console.log('🔄 CopyRound RENDER:', { successMessage, isSubmitting, hasRoundData: !!activeRound });
+
   const roundData = activeRound?.round_type === 'copy' ? activeRound.state as CopyState : null;
   const { isExpired } = useTimer(roundData?.expires_at || null);
 
@@ -31,17 +34,27 @@ export const CopyRound: React.FC = () => {
 
   // Redirect if no active copy round - but NOT during the submission process
   useEffect(() => {
+    console.log('⚙️ CopyRound REDIRECT EFFECT:', {
+      hasActiveRound: !!activeRound,
+      roundType: activeRound?.round_type,
+      successMessage,
+      currentStep
+    });
+
     if (!activeRound || activeRound.round_type !== 'copy') {
       // Don't start a new round if we're showing success message (submission in progress)
       if (successMessage) {
+        console.log('⏸️ CopyRound: Skipping redirect because successMessage is showing');
         return;
       }
 
       // Special case for tutorial
       if (currentStep === 'copy_round') {
+        console.log('🎓 CopyRound: Tutorial mode, advancing step and navigating');
         advanceStep('vote_round').then(() => navigate('/dashboard'));
       } else {
         // Redirect to dashboard instead of starting new rounds
+        console.log('🔀 CopyRound: No active round, redirecting to dashboard');
         navigate('/dashboard');
       }
     }
@@ -54,17 +67,25 @@ export const CopyRound: React.FC = () => {
     setIsSubmitting(true);
     setError(null);
 
+    // Create abort controller for this submission
+    const controller = new AbortController();
+
     try {
       await apiClient.submitPhrase(roundData.round_id, phrase.trim());
 
-      // Update the round state immediately to prevent double submissions
-      if (activeRound) {
-        actions.refreshDashboard(); // Trigger refresh to get latest state
-      }
-
-      // Show success message
+      // Show success message first to prevent navigation race condition
       const message = getRandomMessage('copySubmitted');
+      console.log('🎯 CopyRound SETTING SUCCESS MESSAGE:', message);
       setSuccessMessage(message);
+
+      // Update the round state in background with abort signal
+      if (activeRound) {
+        actions.refreshDashboard(controller.signal).catch((err) => {
+          if (err.name !== 'AbortError') {
+            console.warn('Background dashboard refresh failed:', err);
+          }
+        });
+      }
 
       // Advance tutorial if in copy_round step
       if (currentStep === 'copy_round') {
@@ -72,8 +93,12 @@ export const CopyRound: React.FC = () => {
       }
 
       // Navigate after brief delay
-      setTimeout(() => navigate('/dashboard'), 1500);
+      setTimeout(() => {
+        controller.abort(); // Cancel any pending refresh
+        navigate('/dashboard');
+      }, 1500);
     } catch (err) {
+      controller.abort();
       setError(extractErrorMessage(err) || 'Unable to submit your phrase. The round may have expired or there may be a connection issue.');
       setIsSubmitting(false);
     }
@@ -89,6 +114,7 @@ export const CopyRound: React.FC = () => {
 
   // Show success state
   if (successMessage) {
+    console.log('🎉 CopyRound SUCCESS MESSAGE SHOWING:', successMessage);
     return (
       <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center p-4">
         <div className="tile-card max-w-md w-full p-8 text-center flip-enter">
@@ -171,8 +197,9 @@ export const CopyRound: React.FC = () => {
         {/* Home Button */}
         <button
           onClick={() => navigate('/dashboard')}
-          className="w-full mt-4 flex items-center justify-center gap-2 text-quip-teal hover:text-quip-turquoise py-2 font-medium transition-colors"
-          title="Back to Dashboard"
+          disabled={isSubmitting}
+          className="w-full mt-4 flex items-center justify-center gap-2 text-quip-teal hover:text-quip-turquoise disabled:opacity-50 disabled:cursor-not-allowed py-2 font-medium transition-colors"
+          title={isSubmitting ? "Please wait for submission to complete" : "Back to Dashboard"}
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
