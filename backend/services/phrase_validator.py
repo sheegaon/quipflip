@@ -97,6 +97,9 @@ class PhraseValidator:
 
     # Common connecting words that are allowed even if short or not in dictionary
     CONNECTING_WORDS = {'A', 'I'}
+    # Common 4+ letter words that are allowed to be reused
+    COMMON_WORDS = {'THIS', 'THAT', 'YOUR', 'WITH', 'FROM', 'THEIR', 'THESE', 'THOSE', 'WHAT', 'WHEN', 'WHERE',
+                    'WHICH', 'WHILE', 'BECAUSE'}
 
     # Significant words are those meeting the configured minimum length requirement
     # for overlap/similarity checks (default: 4 characters)
@@ -130,6 +133,10 @@ class PhraseValidator:
             self._similarity_model = None
             self._similarity_calculator = LightweightSimilarityCalculator()
             logger.info("Lightweight similarity calculator initialized")
+
+    def common_words(self) -> Set[str]:
+        """Get set of common words allowed to be reused."""
+        return self.COMMON_WORDS.copy()
 
     def calculate_similarity(self, phrase1: str, phrase2: str) -> float:
         """
@@ -228,13 +235,20 @@ class PhraseValidator:
         return True, ""
 
     def _extract_significant_words(self, phrase: str) -> Set[str]:
-        """Extract significant (length-limited) words from a phrase."""
+        """Extract significant (length-limited) words from a phrase, excluding common words."""
         if not phrase:
             return set()
 
         words = re.findall(r"[a-zA-Z]+", phrase)
         min_length = self.settings.significant_word_min_length
-        return {word.lower() for word in words if len(word) >= min_length}
+        significant_words = set()
+
+        for word in words:
+            if len(word) >= min_length:
+                word_upper = word.upper()
+                # Exclude common words that are allowed to be reused
+                if word_upper not in self.COMMON_WORDS:
+                    significant_words.add(word.lower())
 
     def _are_words_too_similar(self, word1: str, word2: str) -> bool:
         """Determine if two words are too similar based on sequence matching."""
@@ -244,11 +258,7 @@ class PhraseValidator:
         ratio = SequenceMatcher(None, word1, word2).ratio()
         return ratio >= self.settings.word_similarity_threshold
 
-    def _check_significant_word_conflicts(
-        self,
-        phrase: str,
-        comparisons: dict[str, str | None],
-    ) -> tuple[bool, str]:
+    def _check_significant_word_conflicts(self, phrase: str, comparisons: dict[str, str | None]) -> tuple[bool, str]:
         """Ensure phrase does not reuse or closely match significant words."""
 
         phrase_words = self._extract_significant_words(phrase)
