@@ -191,22 +191,22 @@ class CleanupService:
             List of Player objects
         """
         # Build query to find test players
-        stmt = select(Player)
+        from sqlalchemy import or_
+
+        # Build a list of conditions for the WHERE clause
+        conditions = []
+        for pattern in self.TEST_PATTERNS:
+            # Patterns like "@example.com" should only match email
+            if pattern.startswith('@'):
+                conditions.append(Player.email.ilike(f"%{pattern}"))
+            else:
+                conditions.append(Player.username.ilike(f"%{pattern}%"))
+                conditions.append(Player.email.ilike(f"%{pattern}%"))
+
+        # Build query to find test players using the conditions
+        stmt = select(Player).where(or_(*conditions))
         result = await self.db.execute(stmt)
-        all_players = result.scalars().all()
-
-        # Filter players matching test patterns
-        test_players = []
-        for player in all_players:
-            is_test = False
-            for pattern in self.TEST_PATTERNS:
-                if (pattern.lower() in player.username.lower() or
-                    pattern.lower() in player.email.lower()):
-                    is_test = True
-                    break
-
-            if is_test:
-                test_players.append(player)
+        test_players = result.scalars().all()
 
         return test_players
 
