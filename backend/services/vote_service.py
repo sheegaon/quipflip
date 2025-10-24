@@ -291,7 +291,7 @@ class VoteService:
 
         # Check if should finalize (deferred commit)
         # Note: This may trigger _finalize_wordset which also defers commits
-        await self._check_and_finalize(phraseset, transaction_service, auto_commit=False)
+        await self.check_and_finalize(phraseset, transaction_service, auto_commit=False)
 
         # Single atomic commit for all operations
         await self.db.commit()
@@ -433,7 +433,7 @@ class VoteService:
 
         # Check if should finalize (deferred commit)
         # Note: This may trigger _finalize_wordset which also defers commits
-        await self._check_and_finalize(phraseset, transaction_service, auto_commit=False)
+        await self.check_and_finalize(phraseset, transaction_service, auto_commit=False)
 
         # Single atomic commit for all operations
         await self.db.commit()
@@ -509,7 +509,7 @@ class VoteService:
         if auto_commit:
             await self.db.commit()
 
-    async def _check_and_finalize(
+    async def check_and_finalize(
         self,
         phraseset: PhraseSet,
         transaction_service: TransactionService,
@@ -521,7 +521,7 @@ class VoteService:
         Conditions (configurable in settings):
         - vote_max_votes reached (default: 20)
         - OR vote_closing_threshold+ votes AND closing window elapsed
-        - OR vote_minimum_threshold votes reached (immediate finalization)
+        - OR vote_minimum_threshold votes AND minimum window elapsed
 
         Args:
             phraseset: The phraseset to check
@@ -542,22 +542,24 @@ class VoteService:
             if elapsed >= settings.vote_closing_window_seconds:
                 should_finalize = True
                 logger.info(
-                    f"Phraseset {phraseset.phraseset_id} closing window expired "
-                    f"({settings.vote_closing_window_seconds}s)"
+                    f"{phraseset.phraseset_id=} 5th vote closing window expired "
+                    f"({elapsed=} >= {settings.vote_closing_window_seconds}s)"
                 )
 
-        # Minimum threshold votes reached (immediate finalization)
-        elif phraseset.vote_count >= settings.vote_minimum_threshold:
-            should_finalize = True
-            logger.info(
-                f"Phraseset {phraseset.phraseset_id} reached minimum threshold "
-                f"({settings.vote_minimum_threshold} votes) - finalizing immediately"
-            )
+        # Minimum threshold votes and minimum window elapsed (no closing vote yet)
+        elif phraseset.vote_count >= settings.vote_minimum_threshold and phraseset.third_vote_at:
+            elapsed = (current_time - ensure_utc(phraseset.third_vote_at)).total_seconds()
+            if elapsed >= settings.vote_minimum_window_seconds:
+                should_finalize = True
+                logger.info(
+                    f"{phraseset.phraseset_id=} 3rd vote minimum window expired "
+                    f"({elapsed=} >= {settings.vote_minimum_window_seconds}s)"
+                )
 
         if should_finalize:
-            await self._finalize_wordset(phraseset, transaction_service, auto_commit=auto_commit)
+            await self._finalize_phraseset(phraseset, transaction_service, auto_commit=auto_commit)
 
-    async def _finalize_wordset(
+    async def _finalize_phraseset(
         self,
         phraseset: PhraseSet,
         transaction_service: TransactionService,
