@@ -74,13 +74,31 @@ export const errorMessages = {
 export const getContextualErrorMessage = (
   error: any,
   context: ErrorContext = {}
-): { 
-  message: string; 
-  suggestion?: string; 
+): {
+  message: string;
+  suggestion?: string;
   retryable: boolean;
   category: 'network' | 'auth' | 'game' | 'account' | 'rewards' | 'general';
 } => {
-  const errorDetail = typeof error === 'string' ? error : error?.detail || error?.message || '';
+  // Check for specific backend error message first
+  // Backend can return errors in several formats:
+  // 1. {detail: {error: 'type', message: 'specific'}} - detail is object
+  // 2. {error: 'type', message: 'specific'} - top level
+  // 3. {detail: 'string message'} - simple string detail
+  let specificMessage: string | null = null;
+  let errorType: string | null = null;
+
+  if (error?.detail && typeof error.detail === 'object') {
+    // Format 1: detail is an object with error and message
+    specificMessage = error.detail.message;
+    errorType = error.detail.error;
+  } else if (error?.error && typeof error.error === 'string' && error?.message) {
+    // Format 2: top-level error and message fields
+    specificMessage = error.message;
+    errorType = error.error;
+  }
+
+  const errorDetail = typeof error === 'string' ? error : error?.detail || error?.error || error?.message || '';
   const normalizedError = String(errorDetail).toLowerCase();
 
   // Network errors
@@ -142,7 +160,7 @@ export const getContextualErrorMessage = (
 
   if (normalizedError.includes('already submitted')) {
     return {
-      message: errorMessages.game.alreadySubmitted,
+      message: specificMessage || errorMessages.game.alreadySubmitted,
       suggestion: "Check your dashboard for results",
       retryable: false,
       category: 'game'
@@ -151,7 +169,7 @@ export const getContextualErrorMessage = (
 
   if (normalizedError.includes('insufficient') || normalizedError.includes('balance')) {
     return {
-      message: errorMessages.game.insufficientBalance,
+      message: specificMessage || errorMessages.game.insufficientBalance,
       suggestion: "Claim your daily bonus or complete more rounds",
       retryable: false,
       category: 'game'
@@ -178,8 +196,8 @@ export const getContextualErrorMessage = (
 
   if (normalizedError.includes('invalid_phrase') || normalizedError.includes('invalid word')) {
     return {
-      message: errorMessages.game.invalidPhrase,
-      suggestion: "Try a different word from the dictionary",
+      message: specificMessage || errorMessages.game.invalidPhrase,
+      suggestion: "Try a different word or phrase",
       retryable: true,
       category: 'game'
     };
@@ -187,7 +205,7 @@ export const getContextualErrorMessage = (
 
   if (normalizedError.includes('duplicate_phrase')) {
     return {
-      message: errorMessages.game.duplicatePhrase,
+      message: specificMessage || errorMessages.game.duplicatePhrase,
       suggestion: "Think of something more unique",
       retryable: true,
       category: 'game'
@@ -242,9 +260,18 @@ export const getContextualErrorMessage = (
     };
   }
 
-  // Default fallback
+  // Default fallback - use specific message from backend if available
+  if (specificMessage && specificMessage.length > 0) {
+    return {
+      message: specificMessage,
+      suggestion: "Please try again",
+      retryable: true,
+      category: 'general'
+    };
+  }
+
   return {
-    message: context.component 
+    message: context.component
       ? `${errorMessages.general.somethingWrong} ${context.component} isn't responding properly.`
       : errorMessages.general.somethingWrong,
     suggestion: "If this keeps happening, contact our support team",
