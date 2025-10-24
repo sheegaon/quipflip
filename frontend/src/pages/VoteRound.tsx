@@ -9,7 +9,7 @@ import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
 import type { VoteResponse, VoteState } from '../api/types';
 
 export const VoteRound: React.FC = () => {
-  const { state, actions } = useGame();
+  const { state } = useGame();
   const { activeRound } = state;
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
@@ -55,9 +55,6 @@ export const VoteRound: React.FC = () => {
   const handleVote = async (phrase: string) => {
     if (!roundData || isSubmitting) return;
 
-    // Create abort controller for this submission
-    const controller = new AbortController();
-
     try {
       setIsSubmitting(true);
       setError(null);
@@ -68,20 +65,11 @@ export const VoteRound: React.FC = () => {
       setSuccessMessage(message);
       setVoteResult(result);
 
-      // Update the round state in background with abort signal
-      actions.refreshDashboard(controller.signal).catch((err) => {
-        if (err.name !== 'AbortError') {
-          console.warn('Background dashboard refresh failed:', err);
-        }
-      });
-
-      // Navigate after showing results for 3 seconds
+      // Navigate after showing results for 3 seconds - refresh will happen on dashboard
       setTimeout(() => {
-        controller.abort(); // Cancel any pending refresh
         navigate('/dashboard');
       }, 3000);
     } catch (err) {
-      controller.abort();
       setError(extractErrorMessage(err) || 'Unable to submit your vote. The round may have expired or someone else may have already voted.');
       setIsSubmitting(false);
     }

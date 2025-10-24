@@ -11,7 +11,7 @@ import { promptRoundLogger } from '../utils/logger';
 import type { PromptState } from '../api/types';
 
 export const PromptRound: React.FC = () => {
-  const { state, actions } = useGame();
+  const { state } = useGame();
   const { activeRound } = state;
   const { currentStep, advanceStep } = useTutorial();
   const navigate = useNavigate();
@@ -179,9 +179,6 @@ export const PromptRound: React.FC = () => {
     setIsSubmitting(true);
     setError(null);
 
-    // Create abort controller for this submission
-    const controller = new AbortController();
-
     try {
       await apiClient.submitPhrase(roundData.round_id, phrase.trim());
       promptRoundLogger.info('✅ Phrase submitted successfully');
@@ -192,30 +189,18 @@ export const PromptRound: React.FC = () => {
       console.log('🎯 PromptRound SETTING SUCCESS MESSAGE:', message);
       setSuccessMessage(message);
 
-      // Update the round state in background with abort signal
-      if (activeRound) {
-        promptRoundLogger.debug('Triggering dashboard refresh in background');
-        actions.refreshDashboard(controller.signal).catch((err) => {
-          if (err.name !== 'AbortError') {
-            promptRoundLogger.warn('Background dashboard refresh failed:', err);
-          }
-        });
-      }
-
       // Advance tutorial if in prompt_round step
       if (currentStep === 'prompt_round') {
         await advanceStep('copy_round');
       }
 
-      // Navigate after delay
+      // Navigate after delay - refresh will happen on dashboard
       setTimeout(() => {
         promptRoundLogger.info('Navigating to dashboard after successful submission');
-        controller.abort(); // Cancel any pending refresh
         navigate('/dashboard');
       }, 1500);
     } catch (err) {
       promptRoundLogger.error('Submission failed:', err);
-      controller.abort();
       setError(extractErrorMessage(err) || 'Unable to submit your phrase. Please check your connection and try again.');
       setIsSubmitting(false);
     }

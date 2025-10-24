@@ -10,7 +10,7 @@ import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
 import type { CopyState } from '../api/types';
 
 export const CopyRound: React.FC = () => {
-  const { state, actions } = useGame();
+  const { state } = useGame();
   const { activeRound } = state;
   const { currentStep, advanceStep } = useTutorial();
   const navigate = useNavigate();
@@ -67,9 +67,6 @@ export const CopyRound: React.FC = () => {
     setIsSubmitting(true);
     setError(null);
 
-    // Create abort controller for this submission
-    const controller = new AbortController();
-
     try {
       await apiClient.submitPhrase(roundData.round_id, phrase.trim());
 
@@ -78,27 +75,16 @@ export const CopyRound: React.FC = () => {
       console.log('🎯 CopyRound SETTING SUCCESS MESSAGE:', message);
       setSuccessMessage(message);
 
-      // Update the round state in background with abort signal
-      if (activeRound) {
-        actions.refreshDashboard(controller.signal).catch((err) => {
-          if (err.name !== 'AbortError') {
-            console.warn('Background dashboard refresh failed:', err);
-          }
-        });
-      }
-
       // Advance tutorial if in copy_round step
       if (currentStep === 'copy_round') {
         await advanceStep('vote_round');
       }
 
-      // Navigate after brief delay
+      // Navigate after brief delay - refresh will happen on dashboard
       setTimeout(() => {
-        controller.abort(); // Cancel any pending refresh
         navigate('/dashboard');
       }, 1500);
     } catch (err) {
-      controller.abort();
       setError(extractErrorMessage(err) || 'Unable to submit your phrase. The round may have expired or there may be a connection issue.');
       setIsSubmitting(false);
     }
