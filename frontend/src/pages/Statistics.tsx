@@ -4,6 +4,7 @@ import type { PlayerStatistics } from '../api/types';
 import { Header } from '../components/Header';
 import WinRateChart from '../components/statistics/WinRateChart';
 import EarningsChart from '../components/statistics/EarningsChart';
+import CostsChart from '../components/statistics/CostsChart';
 import FrequencyChart from '../components/statistics/FrequencyChart';
 import PerformanceRadar from '../components/statistics/PerformanceRadar';
 import TopContentTable from '../components/statistics/TopContentTable';
@@ -102,6 +103,12 @@ export default function Statistics() {
           <div className="tile-card p-6">
             <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Earnings Breakdown</h2>
             <EarningsChart earnings={stats.earnings} />
+          </div>
+
+          {/* Costs Chart */}
+          <div className="tile-card p-6">
+            <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Costs Breakdown</h2>
+            <CostsChart earnings={stats.earnings} />
           </div>
 
           {/* Performance Radar */}

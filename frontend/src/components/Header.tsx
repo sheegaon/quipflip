@@ -10,8 +10,8 @@ export const Header: React.FC = () => {
   const location = useLocation();
   const [isClaiming, setIsClaiming] = useState(false);
 
-  // Show back arrow on Statistics and Tracking pages only
-  const showBackArrow = location.pathname === '/statistics' || location.pathname === '/tracking';
+  // Show back arrow on Statistics, Tracking, and Results pages
+  const showBackArrow = location.pathname === '/statistics' || location.pathname === '/tracking' || location.pathname === '/results';
 
   if (!player) {
     return null;

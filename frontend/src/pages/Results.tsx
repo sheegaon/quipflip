@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import { Header } from '../components/Header';
 import apiClient, { extractErrorMessage } from '../api/client';
 import { loadingMessages } from '../utils/brandedMessages';
 import type { PhrasesetResults } from '../api/types';
@@ -13,6 +14,8 @@ export const Results: React.FC = () => {
   const [results, setResults] = useState<PhrasesetResults | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [claiming, setClaiming] = useState(false);
+  const [showClaimAnimation, setShowClaimAnimation] = useState(false);
 
   useEffect(() => {
     // Auto-select first pending result if available
@@ -46,9 +49,37 @@ export const Results: React.FC = () => {
     setSelectedPhrasesetId(phrasesetId);
   };
 
+  const handleClaim = async () => {
+    if (!selectedPhrasesetId || claiming) return;
+
+    try {
+      setClaiming(true);
+      setShowClaimAnimation(true);
+      await apiClient.claimPhrasesetPrize(selectedPhrasesetId);
+
+      // Refresh dashboard and results
+      await refreshDashboard();
+
+      // Refresh the current results to update the claimed status
+      const data = await apiClient.getPhrasesetResults(selectedPhrasesetId);
+      setResults(data);
+
+      // Hide animation after a short delay
+      setTimeout(() => {
+        setShowClaimAnimation(false);
+      }, 1000);
+    } catch (err) {
+      setError(extractErrorMessage(err) || 'Unable to claim the payout. Please try again.');
+      setShowClaimAnimation(false);
+    } finally {
+      setClaiming(false);
+    }
+  };
+
   if (pendingResults.length === 0) {
     return (
       <div className="min-h-screen bg-quip-cream bg-pattern">
+        <Header />
         <div className="max-w-4xl mx-auto px-4 py-8">
           <div className="tile-card p-8 text-center">
             <div className="text-6xl mb-4">📊</div>
@@ -56,15 +87,6 @@ export const Results: React.FC = () => {
             <p className="text-quip-teal mb-6">
               You don't have any finalized quipsets yet. Complete some rounds and check back!
             </p>
-            <button
-              onClick={() => navigate('/dashboard')}
-              className="bg-quip-turquoise hover:bg-quip-teal text-white font-bold py-2 px-6 rounded-tile transition-all hover:shadow-tile-sm inline-flex items-center gap-2"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-              </svg>
-              Back to Dashboard
-            </button>
           </div>
         </div>
       </div>
@@ -73,18 +95,10 @@ export const Results: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-quip-cream bg-pattern">
+      <Header />
       <div className="max-w-6xl mx-auto px-4 py-8">
-        <div className="mb-6 flex justify-between items-center">
+        <div className="mb-6">
           <h1 className="text-3xl font-display font-bold text-quip-navy">Results</h1>
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="text-quip-teal hover:text-quip-turquoise font-medium inline-flex items-center gap-2 transition-colors"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-            </svg>
-            Back to Dashboard
-          </button>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -157,13 +171,38 @@ export const Results: React.FC = () => {
                     </div>
                     <div>
                       <p className="text-sm text-quip-teal">Payout:</p>
-                      <p className="text-2xl font-display font-bold text-quip-turquoise">{results.your_payout} FC</p>
+                      <p className="text-2xl font-display font-bold text-quip-turquoise relative">
+                        {showClaimAnimation && (
+                          <span className="absolute inset-0 flex items-center justify-center">
+                            <img src="/flipcoin.png" alt="" className="w-8 h-8 balance-flip-active" />
+                          </span>
+                        )}
+                        {results.your_payout} FC
+                      </p>
                     </div>
                   </div>
-                  {results.already_collected && (
+                  {results.already_collected ? (
                     <p className="text-sm text-quip-teal mt-3 italic">
                       ✓ Payout already collected
                     </p>
+                  ) : (
+                    <button
+                      onClick={handleClaim}
+                      disabled={claiming}
+                      className="mt-4 w-full bg-quip-turquoise hover:bg-quip-teal disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm inline-flex items-center justify-center gap-2"
+                    >
+                      {claiming ? (
+                        <>
+                          <img src="/flipcoin.png" alt="" className="w-6 h-6 balance-flip-active" />
+                          Claiming...
+                        </>
+                      ) : (
+                        <>
+                          <img src="/flipcoin.png" alt="" className="w-6 h-6" />
+                          Claim {results.your_payout} FC
+                        </>
+                      )}
+                    </button>
                   )}
                 </div>
 
