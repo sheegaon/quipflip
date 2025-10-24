@@ -354,17 +354,46 @@ class AIService:
 
             return chosen_phrase
 
+    async def _has_ai_attempted_prompt(self, prompt_round_id: str, lookback_hours: int = 24) -> bool:
+        """
+        Check if AI has already attempted to generate a copy for this prompt.
+
+        Args:
+            prompt_round_id: The prompt round ID to check
+            lookback_hours: How far back to look for attempts (default: 24 hours)
+
+        Returns:
+            True if AI has attempted this prompt recently, False otherwise
+        """
+        from backend.models.ai_metric import AIMetric
+        
+        # Look back specified hours for attempts
+        since = datetime.now(UTC) - timedelta(hours=lookback_hours)
+        
+        # Check if there are any copy generation attempts for this prompt
+        # We use the prompt round ID in error messages, so we can search for it
+        result = await self.db.execute(
+            select(AIMetric.metric_id)
+            .where(AIMetric.operation_type == "copy_generation")
+            .where(AIMetric.created_at >= since)
+            .where(AIMetric.error_message.contains(str(prompt_round_id)))
+            .limit(1)
+        )
+        
+        return result.scalar_one_or_none() is not None
+
     async def run_backup_cycle(self) -> None:
         """
         Run a backup cycle to provide AI copies for waiting prompts and AI votes for waiting phrasesets.
 
         This method:
         1. Finds prompts that have been waiting for copies longer than the backup delay
-        2. Generates AI copies for those prompts
-        3. Submits the copies as the AI player
-        4. Finds phrasesets that have been waiting for votes longer than the backup delay
-        5. Generates AI votes for those phrasesets
-        6. Submits the votes as the AI player
+        2. Filters out prompts that AI has already attempted recently
+        3. Generates AI copies for those prompts
+        4. Submits the copies as the AI player
+        5. Finds phrasesets that have been waiting for votes longer than the backup delay
+        6. Generates AI votes for those phrasesets
+        7. Submits the votes as the AI player
 
         Note:
             This is the main entry point for the AI backup system and manages the complete transaction lifecycle.
@@ -373,6 +402,7 @@ class AIService:
 
         stats = {
             "prompts_checked": 0,
+            "prompts_filtered_already_attempted": 0,
             "copies_generated": 0,
             "phrasesets_checked": 0,
             "votes_generated": 0,
@@ -383,16 +413,16 @@ class AIService:
             # Get or create AI player (within transaction)
             ai_player = await self._get_or_create_ai_player()
 
-            # Find prompts waiting for copies that are older than backup delay
-            cutoff_time = datetime.now(UTC) - timedelta(minutes=self.settings.ai_backup_delay_minutes)
-
             # Query for submitted prompt rounds that:
             # 1. Don't have a phraseset yet (still waiting for copies)
             # 2. Are older than the backup delay
             # 3. Don't belong to the AI player (avoid self-copies)
             # 4. Haven't been copied by the AI player already
             
-            # First, get all prompt rounds that meet our basic criteria
+            # Determine backup delay
+            cutoff_time = datetime.now(UTC) - timedelta(minutes=self.settings.ai_backup_delay_minutes)
+
+            # Get all prompt rounds that meet our basic criteria
             result = await self.db.execute(
                 select(Round)
                 .join(Player, Player.player_id == Round.player_id)
@@ -422,11 +452,24 @@ class AIService:
                 if ai_copy_result.scalar_one_or_none() is None:
                     filtered_prompts.append(prompt_round)
             
-            stats["prompts_checked"] = len(filtered_prompts)
-            logger.info(f"Found {len(filtered_prompts)} prompts waiting for AI backup copies:\n{filtered_prompts}")
+            # Filter out prompts that AI has already attempted recently
+            final_prompts = []
+            for prompt_round in filtered_prompts:
+                has_attempted = await self._has_ai_attempted_prompt(str(prompt_round.round_id))
+                if not has_attempted:
+                    final_prompts.append(prompt_round)
+                else:
+                    stats["prompts_filtered_already_attempted"] += 1
+                    logger.debug(f"Skipping prompt {prompt_round.round_id} - AI already attempted recently")
+            
+            stats["prompts_checked"] = len(final_prompts)
+            logger.info(
+                f"Found {len(final_prompts)} prompts waiting for AI backup copies "
+                f"(filtered out {stats['prompts_filtered_already_attempted']} already attempted)"
+            )
 
             # Process each waiting prompt
-            for prompt_round in filtered_prompts:
+            for prompt_round in final_prompts:
                 try:
                     # Generate AI copy phrase with proper validation context
                     copy_phrase = await self.generate_copy_phrase(prompt_round.submitted_phrase, prompt_round)
@@ -470,27 +513,25 @@ class AIService:
                     stats["errors"] += 1
                     continue
 
-            # Find phrasesets waiting for votes that are older than backup delay
-            # Create subquery to find phrasesets where AI has already voted
-            ai_voted_subquery = (
-                select(Vote.phraseset_id)
-                .where(Vote.player_id == ai_player.player_id)
-            )
-            
-            # Query for phrasesets that:
+            # Query for phrasesets waiting for votes that:
             # 1. Are in "open" or "closing" status (accepting votes)
             # 2. Were created older than the backup delay
-            # 3. Don't have contributions from the AI player (avoid self-votes)
-            # 4. Haven't been voted on by the AI player already (using subquery)
-            # 5. Exclude phrasesets from test players
+            # 3. Don't have contributions from the AI player (avoid self-votes) [disabled]
+            # 4. Haven't been voted on by the AI player already (using subquery) [disabled]
+            # 5. Exclude phrasesets from test players [disabled]
+
+            # Create subquery to find phrasesets where AI has already voted
+            # ai_voted_subquery = select(Vote.phraseset_id).where(Vote.player_id == ai_player.player_id)
+
+            # Get all phrasesets that meet our basic criteria
             phraseset_result = await self.db.execute(
                 select(PhraseSet)
-                .join(Round, Round.round_id == PhraseSet.prompt_round_id)
-                .join(Player, Player.player_id == Round.player_id)
+                # .join(Round, Round.round_id == PhraseSet.prompt_round_id)
+                # .join(Player, Player.player_id == Round.player_id)
                 .where(PhraseSet.status.in_(["open", "closing"]))
                 .where(PhraseSet.created_at <= cutoff_time)
-                .where(~Player.username.like('%test%'))  # Exclude test players
-                .where(PhraseSet.phraseset_id.not_in(ai_voted_subquery))  # Exclude already voted
+                # .where(~Player.username.like('%test%'))  # Exclude test players
+                # .where(PhraseSet.phraseset_id.not_in(ai_voted_subquery))  # Exclude already voted
                 .options(
                     selectinload(PhraseSet.prompt_round),
                     selectinload(PhraseSet.copy_round_1),
@@ -502,34 +543,36 @@ class AIService:
             
             waiting_phrasesets = list(phraseset_result.scalars().all())
             
-            # Filter out phrasesets where AI was a contributor (in-memory check since we need loaded relationships)
-            filtered_phrasesets = []
-            for phraseset in waiting_phrasesets:
-                try:
-                    # Safely get player IDs from loaded relationships
-                    contributor_player_ids = {
-                        r.player_id
-                        for r in (
-                            phraseset.prompt_round,
-                            phraseset.copy_round_1,
-                            phraseset.copy_round_2,
-                        )
-                        if r
-                    }
-                    
-                    # Skip if AI player was a contributor
-                    if ai_player.player_id not in contributor_player_ids:
-                        filtered_phrasesets.append(phraseset)
-                    else:
-                        logger.debug(f"Skipping phraseset {phraseset.phraseset_id} - AI was a contributor")
-                        
-                except Exception as e:
-                    logger.error(f"Error checking phraseset {phraseset.phraseset_id} contributors: {e}")
-                    # Skip this phraseset to avoid further errors
-                    continue
+            # # Filter out phrasesets where AI was a contributor (in-memory check since we need loaded relationships)
+            # filtered_phrasesets = []
+            # for phraseset in waiting_phrasesets:
+            #     try:
+            #         # Safely get player IDs from loaded relationships
+            #         contributor_player_ids = {
+            #             r.player_id
+            #             for r in (
+            #                 phraseset.prompt_round,
+            #                 phraseset.copy_round_1,
+            #                 phraseset.copy_round_2,
+            #             )
+            #             if r
+            #         }
+            #
+            #         # Skip if AI player was a contributor
+            #         if ai_player.player_id not in contributor_player_ids:
+            #             filtered_phrasesets.append(phraseset)
+            #         else:
+            #             logger.debug(f"Skipping phraseset {phraseset.phraseset_id} - AI was a contributor")
+            #
+            #     except Exception as e:
+            #         logger.error(f"Error checking phraseset {phraseset.phraseset_id} contributors: {e}")
+            #         # Skip this phraseset to avoid further errors
+            #         continue
+            filtered_phrasesets = waiting_phrasesets
             
             stats["phrasesets_checked"] = len(filtered_phrasesets)
-            logger.info(f"Found {len(filtered_phrasesets)} phrasesets waiting for AI backup votes")
+            logger.info(
+                f"Found {len(filtered_phrasesets)} phrasesets waiting for AI backup votes: {filtered_phrasesets}")
             
             # Initialize services once for all votes (performance improvement)
             from backend.services.vote_service import VoteService

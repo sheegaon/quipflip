@@ -5,6 +5,8 @@ This module provides reusable prompt construction logic used by both
 Gemini and OpenAI AI providers, eliminating code duplication.
 """
 
+import random
+
 
 def build_copy_prompt(original_phrase: str, existing_copy_phrase: str = None) -> str:
     """
@@ -58,6 +60,15 @@ def build_vote_prompt(prompt_text: str, phrases: list[str]) -> str:
         A formatted prompt string for AI vote generation
     """
     phrases_formatted = "\n".join([f"{i+1}. {phrase}" for i, phrase in enumerate(phrases)])
+    considerations = [
+        "- The original is often more natural and straightforward",
+        "- Copies may try too hard or be slightly awkward",
+        "- The original usually best matches the prompt intent",
+        "- Look for subtle differences in word choice and phrasing",
+        "- Consider the length and complexity of each phrase",
+    ]
+    chosen_considerations = list(set(random.choices(considerations, k=2)))  # Shuffle considerations for variety
+    chosen_considerations = ''.join([f"\n{c}" for c in chosen_considerations])
 
     return f"""You are playing a word game where you need to identify the original phrase.
 
@@ -71,9 +82,6 @@ Prompt: "{prompt_text}"
 Phrases:
 {phrases_formatted}
 
-Consider:
-- The original is often more natural and straightforward
-- Copies may try too hard or be slightly awkward
-- The original usually best matches the prompt intent
+Consider:{chosen_considerations}
 
 Respond with ONLY the number (1, 2, or 3) of the phrase you believe is the original."""
