@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { useTutorial } from '../contexts/TutorialContext';
@@ -6,12 +6,13 @@ import { Timer } from '../components/Timer';
 import { Header } from '../components/Header';
 import TutorialWelcome from '../components/Tutorial/TutorialWelcome';
 import { dashboardLogger } from '../utils/logger';
+import type { PendingResult } from '../api/types';
 
 const formatWaitingCount = (count: number): string => (count > 10 ? 'over 10' : count.toString());
 
 export const Dashboard: React.FC = () => {
   const { state, actions } = useGame();
-  const { player, activeRound, phrasesetSummary, roundAvailability } = state;
+  const { player, activeRound, pendingResults, phrasesetSummary, roundAvailability } = state;
   const { refreshDashboard } = actions;
   const { startTutorial, skipTutorial, advanceStep } = useTutorial();
   const navigate = useNavigate();
@@ -62,11 +63,17 @@ export const Dashboard: React.FC = () => {
     return `${activeRound.round_type.charAt(0).toUpperCase()}${activeRound.round_type.slice(1)}`;
   }, [activeRound?.round_type]);
 
-  // Refresh when page becomes visible
+  // Refresh when page becomes visible (with debouncing)
+  const lastVisibilityRefreshRef = useRef<number>(0);
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        refreshDashboard();
+        const now = Date.now();
+        // Debounce: only refresh if more than 5 seconds since last refresh
+        if (now - lastVisibilityRefreshRef.current > 5000) {
+          lastVisibilityRefreshRef.current = now;
+          refreshDashboard();
+        }
       }
     };
 
@@ -91,7 +98,7 @@ export const Dashboard: React.FC = () => {
     const expiresAt = new Date(activeRound.expires_at).getTime();
     const now = Date.now();
     const isExpired = expiresAt <= now;
-    
+
     dashboardLogger.debug('Round expiration check:', {
       roundId: activeRound.round_id,
       expiresAt: activeRound.expires_at,
@@ -100,7 +107,7 @@ export const Dashboard: React.FC = () => {
       isExpired,
       timeDiff: expiresAt - now
     });
-    
+
     setIsRoundExpired(isExpired);
   }, [activeRound?.round_id, activeRound?.expires_at]);
 
@@ -120,14 +127,14 @@ export const Dashboard: React.FC = () => {
       dashboardLogger.debug('Ignoring prompt button click - already starting round:', startingRound);
       return;
     }
-    
+
     dashboardLogger.info('Starting prompt round...');
     dashboardLogger.debug('Player state before start:', {
       balance: player?.balance,
       outstandingPrompts: player?.outstanding_prompts,
       canPrompt: roundAvailability?.can_prompt
     });
-    
+
     setStartingRound('prompt');
     try {
       dashboardLogger.debug('Calling actions.startPromptRound()...');
@@ -148,7 +155,7 @@ export const Dashboard: React.FC = () => {
       dashboardLogger.debug('Ignoring copy button click - already starting round:', startingRound);
       return;
     }
-    
+
     dashboardLogger.info('Starting copy round...');
     dashboardLogger.debug('Player state before start:', {
       balance: player?.balance,
@@ -156,7 +163,7 @@ export const Dashboard: React.FC = () => {
       promptsWaiting: roundAvailability?.prompts_waiting,
       copyCost: roundAvailability?.copy_cost
     });
-    
+
     setStartingRound('copy');
     try {
       dashboardLogger.debug('Calling actions.startCopyRound()...');
@@ -177,14 +184,14 @@ export const Dashboard: React.FC = () => {
       dashboardLogger.debug('Ignoring vote button click - already starting round:', startingRound);
       return;
     }
-    
+
     dashboardLogger.info('Starting vote round...');
     dashboardLogger.debug('Player state before start:', {
       balance: player?.balance,
       canVote: roundAvailability?.can_vote,
       phrasesetsWaiting: roundAvailability?.phrasesets_waiting
     });
-    
+
     setStartingRound('vote');
     try {
       dashboardLogger.debug('Calling actions.startVoteRound()...');
@@ -209,6 +216,9 @@ export const Dashboard: React.FC = () => {
   const unclaimedCopyCount = phrasesetSummary?.finalized.unclaimed_copies ?? 0;
   const totalUnclaimedCount = unclaimedPromptCount + unclaimedCopyCount;
   const totalUnclaimedAmount = phrasesetSummary?.total_unclaimed_amount ?? 0;
+
+  // Filter pending results to only show unclaimed ones
+  const unclaimedPendingResults = pendingResults.filter((result: PendingResult) => !result.payout_claimed);
 
   if (!player) {
     return (
@@ -251,20 +261,33 @@ export const Dashboard: React.FC = () => {
           </div>
         )}
 
-        {totalUnclaimedCount > 0 && (
+        {/* Consolidated Results & Prizes Notification */}
+        {(unclaimedPendingResults.length > 0 || totalUnclaimedCount > 0) && (
           <div className="tile-card bg-quip-turquoise bg-opacity-10 border-2 border-quip-turquoise p-4 mb-6 slide-up-enter">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="font-display font-semibold text-quip-turquoise">Quip-tastic! Prizes Ready to Claim</p>
-                <p className="text-sm text-quip-teal">
-                  {unclaimedPromptCount} prompt{unclaimedPromptCount === 1 ? '' : 's'} • {unclaimedCopyCount} cop{unclaimedCopyCount === 1 ? 'y' : 'ies'} • ${totalUnclaimedAmount} total
+              <div className="flex-1">
+                <p className="font-display font-semibold text-quip-turquoise">
+                  {totalUnclaimedCount > 0 ? 'Quip-tastic! Results & Prizes Ready!' : 'Results Ready!'}
                 </p>
+                <div className="text-sm text-quip-teal space-y-1">
+                  {unclaimedPendingResults.length > 0 && (
+                    <p>
+                      {unclaimedPendingResults.length} quipset{unclaimedPendingResults.length > 1 ? 's' : ''} finalized
+                      {totalUnclaimedCount === 0 && ' - view your results'}
+                    </p>
+                  )}
+                  {totalUnclaimedCount > 0 && (
+                    <p>
+                      {unclaimedPromptCount} prompt{unclaimedPromptCount === 1 ? '' : 's'} • {unclaimedCopyCount} cop{unclaimedCopyCount === 1 ? 'y' : 'ies'} • ${totalUnclaimedAmount} to claim
+                    </p>
+                  )}
+                </div>
               </div>
               <button
                 onClick={handleClaimResults}
                 className="w-full sm:w-auto bg-quip-turquoise hover:bg-quip-teal text-white font-bold py-2 px-6 rounded-tile transition-all hover:shadow-tile-sm"
               >
-                Claim Prizes
+                {totalUnclaimedCount > 0 ? 'View & Claim' : 'View Results'}
               </button>
             </div>
           </div>

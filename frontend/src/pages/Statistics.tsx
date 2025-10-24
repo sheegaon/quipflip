@@ -4,6 +4,7 @@ import type { PlayerStatistics } from '../api/types';
 import { Header } from '../components/Header';
 import WinRateChart from '../components/statistics/WinRateChart';
 import EarningsChart from '../components/statistics/EarningsChart';
+import CostsChart from '../components/statistics/CostsChart';
 import FrequencyChart from '../components/statistics/FrequencyChart';
 import PerformanceRadar from '../components/statistics/PerformanceRadar';
 import TopContentTable from '../components/statistics/TopContentTable';
@@ -14,16 +15,20 @@ const Statistics: React.FC = () => {
   const [data, setData] = useState<PlayerStatistics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [chartsReady, setChartsReady] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
-    
+
     const fetchData = async () => {
       try {
         setLoading(true);
         setError(null);
+        setChartsReady(false);
         const statisticsData = await getStatistics(controller.signal);
         setData(statisticsData);
+        // Give the DOM a moment to settle before rendering charts
+        setTimeout(() => setChartsReady(true), 100);
       } catch (err) {
         if (err instanceof Error && err.name === 'CanceledError') return;
         setError('Failed to load statistics. Please try again.');
@@ -89,33 +94,69 @@ const Statistics: React.FC = () => {
           {/* Win Rate Chart */}
           <div className="tile-card p-6">
             <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Win Rates by Role</h2>
-            <WinRateChart
-              promptStats={data.prompt_stats}
-              copyStats={data.copy_stats}
-              voterStats={data.voter_stats}
-            />
+            {chartsReady ? (
+              <WinRateChart
+                promptStats={data.prompt_stats}
+                copyStats={data.copy_stats}
+                voterStats={data.voter_stats}
+              />
+            ) : (
+              <div className="w-full h-80 flex items-center justify-center">
+                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-quip-orange border-r-transparent"></div>
+              </div>
+            )}
           </div>
 
           {/* Earnings Chart */}
           <div className="tile-card p-6">
             <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Earnings Breakdown</h2>
-            <EarningsChart earnings={data.earnings} />
+            {chartsReady ? (
+              <EarningsChart earnings={data.earnings} />
+            ) : (
+              <div className="w-full h-80 flex items-center justify-center">
+                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-quip-orange border-r-transparent"></div>
+              </div>
+            )}
+          </div>
+
+          {/* Costs Chart */}
+          <div className="tile-card p-6">
+            <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Costs Breakdown</h2>
+            {chartsReady ? (
+              <CostsChart earnings={data.earnings} />
+            ) : (
+              <div className="w-full h-80 flex items-center justify-center">
+                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-quip-orange border-r-transparent"></div>
+              </div>
+            )}
           </div>
 
           {/* Performance Radar */}
           <div className="tile-card p-6">
             <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Role Performance</h2>
-            <PerformanceRadar
-              promptStats={data.prompt_stats}
-              copyStats={data.copy_stats}
-              voterStats={data.voter_stats}
-            />
+            {chartsReady ? (
+              <PerformanceRadar
+                promptStats={data.prompt_stats}
+                copyStats={data.copy_stats}
+                voterStats={data.voter_stats}
+              />
+            ) : (
+              <div className="w-full h-80 flex items-center justify-center">
+                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-quip-orange border-r-transparent"></div>
+              </div>
+            )}
           </div>
 
           {/* Play Frequency */}
           <div className="tile-card p-6">
             <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Activity Metrics</h2>
-            <FrequencyChart frequency={data.frequency} />
+            {chartsReady ? (
+              <FrequencyChart frequency={data.frequency} />
+            ) : (
+              <div className="w-full h-80 flex items-center justify-center">
+                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-quip-orange border-r-transparent"></div>
+              </div>
+            )}
           </div>
         </div>
 

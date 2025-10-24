@@ -31,11 +31,11 @@ const statusOptions: { value: StatusFilter; label: string }[] = [
 export const Tracking: React.FC = () => {
   const { state, actions } = useGame();
   const { player, phrasesetSummary } = state;
-  const { refreshBalance, refreshDashboard, getPlayerPhrasesets, getPhrasesetDetails, claimPhrasesetPrize } = actions;
+  const { getPlayerPhrasesets, getPhrasesetDetails, claimPhrasesetPrize } = actions;
 
   // Smart polling for active phraseset details
   const { startPoll, stopPoll } = useSmartPolling();
-  
+
   // Enhanced loading states
   const { setLoading, clearLoading, getLoadingState } = useLoadingState();
 
@@ -51,13 +51,23 @@ export const Tracking: React.FC = () => {
   // Store the last fetched details to compare for changes
   const lastDetailsRef = useRef<PhrasesetDetailsType | null>(null);
 
+  // Track if we're currently fetching to prevent duplicate calls
+  const isFetchingRef = useRef(false);
+  const isFetchingDetailsRef = useRef(false);
+
   const fetchPhrasesets = useCallback(async () => {
-    setLoading('phrasesets', { 
-      isLoading: true, 
+    // Prevent duplicate concurrent fetches
+    if (isFetchingRef.current) {
+      return;
+    }
+
+    isFetchingRef.current = true;
+    setLoading('phrasesets', {
+      isLoading: true,
       type: 'refresh',
       message: 'Loading your past rounds...'
     });
-    
+
     try {
       const data = await getPlayerPhrasesets({
         role: roleFilter,
@@ -65,15 +75,23 @@ export const Tracking: React.FC = () => {
         limit: 100,
         offset: 0,
       });
-      
+
       setPhrasesets(data.phrasesets);
       if (data.phrasesets.length > 0) {
-        const first = data.phrasesets.find((item: PhrasesetSummary) =>
+        const currentlySelected = data.phrasesets.find((item: PhrasesetSummary) =>
           item.phraseset_id ? item.phraseset_id === selectedId : item.prompt_round_id === selectedId
-        ) ?? data.phrasesets[0];
-        const id = first.phraseset_id ?? first.prompt_round_id;
-        setSelectedId(id);
-        setSelectedSummary(first);
+        );
+
+        if (currentlySelected) {
+          // Keep the current selection
+          setSelectedSummary(currentlySelected);
+        } else if (!selectedId) {
+          // No previous selection, select first item
+          const first = data.phrasesets[0];
+          const id = first.phraseset_id ?? first.prompt_round_id;
+          setSelectedId(id);
+          setSelectedSummary(first);
+        }
       } else {
         setSelectedId(null);
         setSelectedSummary(null);
@@ -83,54 +101,67 @@ export const Tracking: React.FC = () => {
     } catch (err) {
       const errorMessage = getActionErrorMessage('load-tracking', err);
       setError(errorMessage);
+      // Don't set phrasesets to empty on error - keep previous data if available
     } finally {
       clearLoading('phrasesets');
+      isFetchingRef.current = false;
     }
-  }, [roleFilter, statusFilter, selectedId, getPlayerPhrasesets, setLoading, clearLoading]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roleFilter, statusFilter, selectedId, getPlayerPhrasesets]);
 
   const fetchDetails = useCallback(async (phraseset: PhrasesetSummary | null) => {
     if (!phraseset || !phraseset.phraseset_id) {
       setDetails(null);
       lastDetailsRef.current = null;
       stopPoll('phraseset-details');
+      isFetchingDetailsRef.current = false;
       return;
     }
-    
-    setLoading('details', { 
-      isLoading: true, 
+
+    // Prevent duplicate concurrent fetches
+    if (isFetchingDetailsRef.current) {
+      return;
+    }
+
+    isFetchingDetailsRef.current = true;
+    setLoading('details', {
+      isLoading: true,
       type: 'refresh',
       message: 'Loading details...'
     });
-    
+
     try {
       const data = await getPhrasesetDetails(phraseset.phraseset_id);
-      
+
       // Only update state if the data has actually changed
-      const hasChanged = !lastDetailsRef.current || 
+      const hasChanged = !lastDetailsRef.current ||
         JSON.stringify(lastDetailsRef.current) !== JSON.stringify(data);
-      
+
       if (hasChanged) {
         setDetails(data);
         lastDetailsRef.current = data;
       }
-      
+
       setError(null);
     } catch (err) {
       const errorMessage = getActionErrorMessage('load-details', err);
       setError(errorMessage);
+      // Don't clear details on error - keep previous data if available
     } finally {
       clearLoading('details');
+      isFetchingDetailsRef.current = false;
     }
-  }, [getPhrasesetDetails, setLoading, clearLoading, stopPoll]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [getPhrasesetDetails, stopPoll]);
 
   useEffect(() => {
     fetchPhrasesets();
   }, [fetchPhrasesets]);
 
   useEffect(() => {
-    if (selectedSummary) {
-      fetchDetails(selectedSummary);
-    }
+    if (!selectedSummary) return;
+
+    fetchDetails(selectedSummary);
   }, [selectedSummary, fetchDetails]);
 
   // Smart polling for active phraseset details
@@ -139,7 +170,7 @@ export const Tracking: React.FC = () => {
       stopPoll('phraseset-details');
       return;
     }
-    
+
     if (details?.status === 'finalized') {
       stopPoll('phraseset-details');
       return;
@@ -162,19 +193,19 @@ export const Tracking: React.FC = () => {
   };
 
   const handleClaim = async (phrasesetId: string) => {
-    setLoading('claim', { 
-      isLoading: true, 
+    setLoading('claim', {
+      isLoading: true,
       type: 'submit',
       message: 'Claiming your prize...'
     });
-    
+
     try {
       await claimPhrasesetPrize(phrasesetId);
+      // claimPhrasesetPrize already triggers dashboard refresh which updates balance
+      // Only need to refresh local data
       await Promise.all([
         fetchDetails(selectedSummary),
         fetchPhrasesets(),
-        refreshBalance(),
-        refreshDashboard(),
       ]);
       setError(null);
     } catch (err) {

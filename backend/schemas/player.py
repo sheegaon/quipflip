@@ -76,6 +76,10 @@ class EarningsBreakdown(BaseModel):
     vote_earnings: int
     daily_bonuses: int
     total_earnings: int
+    prompt_costs: int
+    copy_costs: int
+    vote_costs: int
+    total_costs: int
 
 
 class PlayFrequency(BaseModel):

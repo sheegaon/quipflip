@@ -47,10 +47,10 @@ export const VoteRound: React.FC = () => {
       setIsSubmitting(true);
       setError(null);
       const result = await apiClient.submitVote(roundData.phraseset_id, phrase);
-      
+
       // Update the round state immediately to prevent issues
       actions.refreshDashboard(); // Trigger refresh to get latest state
-      
+
       setSuccessMessage(result.correct ? getRandomMessage('voteSubmitted') : null);
       setVoteResult(result);
 

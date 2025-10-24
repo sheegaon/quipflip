@@ -382,12 +382,47 @@ class StatisticsService:
         copy_earnings = earnings_stats.copy_earnings or 0
         total_earnings = daily_bonuses + vote_earnings + prompt_earnings + copy_earnings
 
+        # Calculate costs (negative transactions)
+        costs_result = await self.db.execute(
+            select(
+                func.sum(case(
+                    (Transaction.type == "prompt_entry", func.abs(Transaction.amount)),
+                    else_=0
+                )).label("prompt_costs"),
+                func.sum(case(
+                    (Transaction.type == "copy_entry", func.abs(Transaction.amount)),
+                    else_=0
+                )).label("copy_costs"),
+                func.sum(case(
+                    (Transaction.type == "vote_entry", func.abs(Transaction.amount)),
+                    else_=0
+                )).label("vote_costs")
+            )
+            .where(
+                and_(
+                    Transaction.player_id == player_id,
+                    Transaction.amount < 0
+                )
+            )
+        )
+
+        costs_stats = costs_result.one()
+
+        prompt_costs = costs_stats.prompt_costs or 0
+        copy_costs = costs_stats.copy_costs or 0
+        vote_costs = costs_stats.vote_costs or 0
+        total_costs = prompt_costs + copy_costs + vote_costs
+
         return EarningsBreakdown(
             prompt_earnings=prompt_earnings,
             copy_earnings=copy_earnings,
             vote_earnings=vote_earnings,
             daily_bonuses=daily_bonuses,
             total_earnings=total_earnings,
+            prompt_costs=prompt_costs,
+            copy_costs=copy_costs,
+            vote_costs=vote_costs,
+            total_costs=total_costs,
         )
 
     async def _calculate_play_frequency(

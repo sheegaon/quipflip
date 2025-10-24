@@ -134,6 +134,10 @@ class RoundService:
 
             await self.db.refresh(round_object)
 
+        # Invalidate dashboard cache to ensure fresh data
+        from backend.utils.cache import dashboard_cache
+        dashboard_cache.invalidate_player_data(player.player_id)
+
         logger.info(f"Started prompt round {round_object.round_id} for player {player.player_id}")
         return round_object
 
@@ -199,6 +203,10 @@ class RoundService:
             await quest_service.check_balanced_player(player.player_id)
         except Exception as e:
             logger.error(f"Failed to update quest progress for prompt round: {e}", exc_info=True)
+
+        # Invalidate dashboard cache to ensure fresh data
+        from backend.utils.cache import dashboard_cache
+        dashboard_cache.invalidate_player_data(player.player_id)
 
         logger.info(f"Submitted phrase for prompt round {round_id}: {phrase}")
         return round_object
@@ -320,6 +328,10 @@ class RoundService:
             # Commit all changes atomically INSIDE the lock
             await self.db.commit()
             await self.db.refresh(round_object)
+
+        # Invalidate dashboard cache to ensure fresh data
+        from backend.utils.cache import dashboard_cache
+        dashboard_cache.invalidate_player_data(player.player_id)
 
         logger.info(
             f"Started copy round {round_object.round_id} for player {player.player_id}, "
@@ -443,6 +455,10 @@ class RoundService:
             await quest_service.check_balanced_player(player.player_id)
         except Exception as e:
             logger.error(f"Failed to update quest progress for copy round: {e}", exc_info=True)
+
+        # Invalidate dashboard cache to ensure fresh data
+        from backend.utils.cache import dashboard_cache
+        dashboard_cache.invalidate_player_data(player.player_id)
 
         logger.info(f"Submitted phrase for copy round {round_id}: {phrase}")
         return round_object

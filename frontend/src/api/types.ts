@@ -335,6 +335,10 @@ export interface EarningsBreakdown {
   vote_earnings: number;
   daily_bonuses: number;
   total_earnings: number;
+  prompt_costs: number;
+  copy_costs: number;
+  vote_costs: number;
+  total_costs: number;
 }
 
 export interface PlayFrequency {

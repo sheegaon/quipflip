@@ -175,6 +175,10 @@ class VoteService:
             await self.db.commit()
             await self.db.refresh(round)
 
+        # Invalidate dashboard cache to ensure fresh data
+        from backend.utils.cache import dashboard_cache
+        dashboard_cache.invalidate_player_data(player.player_id)
+
         logger.info(f"Started vote round {round.round_id} for phraseset {phraseset.phraseset_id}")
         return round, phraseset
 
@@ -406,6 +410,10 @@ class VoteService:
             await quest_service.check_balanced_player(player.player_id)
         except Exception as e:
             logger.error(f"Failed to update quest progress for vote: {e}", exc_info=True)
+
+        # Invalidate dashboard cache to ensure fresh data
+        from backend.utils.cache import dashboard_cache
+        dashboard_cache.invalidate_player_data(player.player_id)
 
         logger.info(
             f"Vote submitted: phraseset={phraseset.phraseset_id}, player={player.player_id}, "
