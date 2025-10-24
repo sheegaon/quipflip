@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
+import { useQuests } from '../contexts/QuestContext';
 import { BalanceFlipper } from './BalanceFlipper';
 import { TreasureChestIcon } from './TreasureChestIcon';
 
@@ -8,6 +9,7 @@ export const Header: React.FC = () => {
   const { state, actions } = useGame();
   const { player, username, phrasesetSummary, unclaimedResults } = state;
   const { logout } = actions;
+  const { hasClaimableQuests } = useQuests();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -129,11 +131,11 @@ export const Header: React.FC = () => {
             <button
               onClick={() => navigate('/quests')}
               className="relative group"
-              title={player.daily_bonus_available ? "View available rewards" : "No rewards available"}
+              title={(player.daily_bonus_available || hasClaimableQuests) ? "View available rewards" : "No rewards available"}
             >
               <TreasureChestIcon
                 className="w-7 h-7 md:w-10 md:h-10 transition-transform group-hover:scale-110"
-                isAvailable={player.daily_bonus_available}
+                isAvailable={player.daily_bonus_available || hasClaimableQuests}
               />
             </button>
             {/* Flipcoin Balance */}
