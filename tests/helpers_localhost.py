@@ -307,7 +307,7 @@ class AssertionHelper:
         assert "daily_bonus_available" in data
         assert "daily_bonus_amount" in data
         assert "outstanding_prompts" in data
-        assert data["starting_balance"] == 1000
+        assert data["starting_balance"] == 5000
 
     @staticmethod
     def assert_error_response(response: httpx.Response, expected_status: int):

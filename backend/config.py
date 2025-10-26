@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     refresh_token_cookie_name: str = "quipflip_refresh_token"
 
     # Game Constants (all values in whole dollars)
-    starting_balance: int = 1000
+    starting_balance: int = 5000
     daily_bonus_amount: int = 100
     prompt_cost: int = 100
     copy_cost_normal: int = 50

@@ -8,7 +8,7 @@
 3. ✅ **Player pseudonyms** - Auto-generated hidden names shown to other players in results
 4. ✅ **Balance management and transactions** - Full amount deducted immediately, refunds on timeout
 5. ✅ **Core game loop** - Prompt (random assignment), copy, vote with full lifecycle
-6. ✅ **Word validation** - NASPA dictionary (191k words) with 1-5 words, 4-100 chars, A-Z only
+6. ✅ **Word validation** - NASPA dictionary (191k words) with 2-5 words, 4-100 chars, A-Z only
 7. ✅ **Queue system** - FIFO with Redis/in-memory fallback
 8. ✅ **Scoring and payouts** - Proportional distribution with rounding
 9. ✅ **One-round-at-a-time enforcement** - Via active_round_id in player table

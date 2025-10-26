@@ -10,6 +10,7 @@ from backend.services.transaction_service import TransactionService
 from backend.services.scoring_service import ScoringService
 from backend.config import get_settings
 import uuid
+from datetime import datetime, timedelta, UTC
 
 settings = get_settings()
 
@@ -60,6 +61,7 @@ async def test_prize_pool_initialization(db_session):
         prompt_text="Test prompt",
         submitted_phrase="ORIGINAL",
         cost=settings.prompt_cost,
+        expires_at=datetime.now(UTC) + timedelta(minutes=3),
     )
     db_session.add(prompt_round)
     await db_session.commit()
@@ -74,6 +76,7 @@ async def test_prize_pool_initialization(db_session):
         copy_phrase="COPY ONE",
         cost=settings.copy_cost_normal,
         system_contribution=0,
+        expires_at=datetime.now(UTC) + timedelta(minutes=3),
     )
     copy2 = Round(
         round_id=uuid.uuid4(),
@@ -84,6 +87,7 @@ async def test_prize_pool_initialization(db_session):
         copy_phrase="COPY TWO",
         cost=settings.copy_cost_discount,
         system_contribution=10,  # Got discount
+        expires_at=datetime.now(UTC) + timedelta(minutes=3),
     )
     db_session.add_all([copy1, copy2])
     await db_session.commit()
@@ -106,54 +110,55 @@ async def test_prize_pool_initialization(db_session):
 @pytest.mark.asyncio
 async def test_prize_pool_updates_with_votes(db_session):
     """Test that prize pool updates correctly as votes come in."""
-    # Create test players
+    # Create test players with unique IDs to avoid conflicts
+    test_id = uuid.uuid4().hex[:8]
     player1 = Player(
         player_id=uuid.uuid4(),
-        username="prompter",
-        username_canonical="prompter",
-        pseudonym="Prompter",
-        pseudonym_canonical="prompter",
-        email="prompter@test.com",
+        username=f"prompter_{test_id}",
+        username_canonical=f"prompter_{test_id}",
+        pseudonym=f"Prompter_{test_id}",
+        pseudonym_canonical=f"prompter_{test_id}",
+        email=f"prompter_{test_id}@test.com",
         password_hash="hash",
         balance=1000,
     )
     player2 = Player(
         player_id=uuid.uuid4(),
-        username="copier1",
-        username_canonical="copier1",
-        pseudonym="Copier1",
-        pseudonym_canonical="copier1",
-        email="copier1@test.com",
+        username=f"copier1_{test_id}",
+        username_canonical=f"copier1_{test_id}",
+        pseudonym=f"Copier1_{test_id}",
+        pseudonym_canonical=f"copier1_{test_id}",
+        email=f"copier1_{test_id}@test.com",
         password_hash="hash",
         balance=1000,
     )
     player3 = Player(
         player_id=uuid.uuid4(),
-        username="copier2",
-        username_canonical="copier2",
-        pseudonym="Copier2",
-        pseudonym_canonical="copier2",
-        email="copier2@test.com",
+        username=f"copier2_{test_id}",
+        username_canonical=f"copier2_{test_id}",
+        pseudonym=f"Copier2_{test_id}",
+        pseudonym_canonical=f"copier2_{test_id}",
+        email=f"copier2_{test_id}@test.com",
         password_hash="hash",
         balance=1000,
     )
     voter1 = Player(
         player_id=uuid.uuid4(),
-        username="voter1",
-        username_canonical="voter1",
-        pseudonym="Voter1",
-        pseudonym_canonical="voter1",
-        email="voter1@test.com",
+        username=f"voter1_{test_id}",
+        username_canonical=f"voter1_{test_id}",
+        pseudonym=f"Voter1_{test_id}",
+        pseudonym_canonical=f"voter1_{test_id}",
+        email=f"voter1_{test_id}@test.com",
         password_hash="hash",
         balance=1000,
     )
     voter2 = Player(
         player_id=uuid.uuid4(),
-        username="voter2",
-        username_canonical="voter2",
-        pseudonym="Voter2",
-        pseudonym_canonical="voter2",
-        email="voter2@test.com",
+        username=f"voter2_{test_id}",
+        username_canonical=f"voter2_{test_id}",
+        pseudonym=f"Voter2_{test_id}",
+        pseudonym_canonical=f"voter2_{test_id}",
+        email=f"voter2_{test_id}@test.com",
         password_hash="hash",
         balance=1000,
     )
@@ -169,6 +174,7 @@ async def test_prize_pool_updates_with_votes(db_session):
         prompt_text="Test prompt",
         submitted_phrase="ORIGINAL",
         cost=settings.prompt_cost,
+        expires_at=datetime.now(UTC) + timedelta(minutes=3),
     )
     db_session.add(prompt_round)
     await db_session.commit()
@@ -182,6 +188,7 @@ async def test_prize_pool_updates_with_votes(db_session):
         copy_phrase="COPY ONE",
         cost=settings.copy_cost_normal,
         system_contribution=0,
+        expires_at=datetime.now(UTC) + timedelta(minutes=3),
     )
     copy2 = Round(
         round_id=uuid.uuid4(),
@@ -192,6 +199,7 @@ async def test_prize_pool_updates_with_votes(db_session):
         copy_phrase="COPY TWO",
         cost=settings.copy_cost_normal,
         system_contribution=0,
+        expires_at=datetime.now(UTC) + timedelta(minutes=3),
     )
     db_session.add_all([copy1, copy2])
     await db_session.commit()
@@ -256,34 +264,35 @@ async def test_prize_pool_updates_with_votes(db_session):
 @pytest.mark.asyncio
 async def test_scoring_uses_dynamic_prize_pool(db_session):
     """Test that scoring service uses the dynamically updated prize pool."""
-    # Create test players
+    # Create test players with unique IDs to avoid conflicts
+    test_id = uuid.uuid4().hex[:8]
     player1 = Player(
         player_id=uuid.uuid4(),
-        username="prompter",
-        username_canonical="prompter",
-        pseudonym="Prompter",
-        pseudonym_canonical="prompter",
-        email="prompter@test.com",
+        username=f"prompter_{test_id}",
+        username_canonical=f"prompter_{test_id}",
+        pseudonym=f"Prompter_{test_id}",
+        pseudonym_canonical=f"prompter_{test_id}",
+        email=f"prompter_{test_id}@test.com",
         password_hash="hash",
         balance=1000,
     )
     player2 = Player(
         player_id=uuid.uuid4(),
-        username="copier1",
-        username_canonical="copier1",
-        pseudonym="Copier1",
-        pseudonym_canonical="copier1",
-        email="copier1@test.com",
+        username=f"copier1_{test_id}",
+        username_canonical=f"copier1_{test_id}",
+        pseudonym=f"Copier1_{test_id}",
+        pseudonym_canonical=f"copier1_{test_id}",
+        email=f"copier1_{test_id}@test.com",
         password_hash="hash",
         balance=1000,
     )
     player3 = Player(
         player_id=uuid.uuid4(),
-        username="copier2",
-        username_canonical="copier2",
-        pseudonym="Copier2",
-        pseudonym_canonical="copier2",
-        email="copier2@test.com",
+        username=f"copier2_{test_id}",
+        username_canonical=f"copier2_{test_id}",
+        pseudonym=f"Copier2_{test_id}",
+        pseudonym_canonical=f"copier2_{test_id}",
+        email=f"copier2_{test_id}@test.com",
         password_hash="hash",
         balance=1000,
     )
@@ -299,6 +308,7 @@ async def test_scoring_uses_dynamic_prize_pool(db_session):
         prompt_text="Test prompt",
         submitted_phrase="ORIGINAL",
         cost=settings.prompt_cost,
+        expires_at=datetime.now(UTC) + timedelta(minutes=3),
     )
     copy1 = Round(
         round_id=uuid.uuid4(),
@@ -309,6 +319,7 @@ async def test_scoring_uses_dynamic_prize_pool(db_session):
         copy_phrase="COPY ONE",
         cost=settings.copy_cost_normal,
         system_contribution=0,
+        expires_at=datetime.now(UTC) + timedelta(minutes=3),
     )
     copy2 = Round(
         round_id=uuid.uuid4(),
@@ -319,6 +330,7 @@ async def test_scoring_uses_dynamic_prize_pool(db_session):
         copy_phrase="COPY TWO",
         cost=settings.copy_cost_normal,
         system_contribution=0,
+        expires_at=datetime.now(UTC) + timedelta(minutes=3),
     )
     db_session.add_all([prompt_round, copy1, copy2])
     await db_session.commit()

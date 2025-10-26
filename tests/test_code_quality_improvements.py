@@ -144,11 +144,11 @@ class TestSystemVote:
 
         assert vote.voted_phrase == "ORIGINAL"
         assert vote.correct is True
-        assert vote.payout == 5
+        assert vote.payout == 20
 
         # Verify payout
         await db_session.refresh(ai_player)
-        assert ai_player.balance == initial_balance + 5
+        assert ai_player.balance == initial_balance + 20
 
     @pytest.mark.asyncio
     async def test_submit_system_vote_incorrect(self, db_session, player_factory):

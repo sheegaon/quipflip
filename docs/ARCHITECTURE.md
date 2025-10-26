@@ -118,7 +118,7 @@ See [API.md](API.md) for complete REST API documentation including:
 
 ### Phrase Validation
 - Dictionary: NASPA word list (~191,000 words) for individual word validation
-- Phrase length: 1-5 words (4-100 characters total including spaces)
+- Phrase length: 2-5 words (4-100 characters total including spaces)
 - Format: Letters A-Z and spaces only (case-insensitive, stored uppercase)
 - Connecting words: A, I always allowed (count toward 5-word limit)
 - Copy validation: Must differ from original and be semantically distinct (cosine similarity < 0.85)

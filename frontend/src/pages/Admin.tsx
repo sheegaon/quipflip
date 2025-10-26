@@ -68,7 +68,7 @@ const Admin: React.FC = () => {
         // In production, this would come from a backend endpoint
         const mockConfig: GameConfig = {
           // Game Constants
-          starting_balance: 1000,
+          starting_balance: 5000,
           daily_bonus_amount: 100,
           prompt_cost: 100,
           copy_cost_normal: 50,

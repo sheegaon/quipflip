@@ -230,7 +230,7 @@ export const PromptRound: React.FC = () => {
               maxLength={100}
             />
             <p className="text-sm text-quip-teal mt-1">
-              1-5 words (4-100 characters), A-Z and spaces only
+              2-5 words (4-100 characters), A-Z and spaces only
             </p>
           </div>
 
