@@ -1,11 +1,13 @@
 """Admin routes for administrative operations."""
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
 from backend.config import get_settings
-from backend.dependencies import get_current_player
+from backend.dependencies import get_current_player, get_session
 from backend.models.player import Player
 from backend.services.phrase_validator import get_phrase_validator
-from typing import Annotated, Optional
+from backend.services.system_config_service import SystemConfigService
+from typing import Annotated, Optional, Any
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -100,60 +102,63 @@ class GameConfigResponse(BaseModel):
 
 @router.get("/config", response_model=GameConfigResponse)
 async def get_game_config(
-    player: Annotated[Player, Depends(get_current_player)]
+    player: Annotated[Player, Depends(get_current_player)],
+    session: Annotated[AsyncSession, Depends(get_session)]
 ) -> GameConfigResponse:
     """
-    Get current game configuration values.
+    Get current game configuration values (from database overrides or environment defaults).
 
     Args:
         player: Current authenticated player (required to access this endpoint)
+        session: Database session
 
     Returns:
         GameConfigResponse with all configuration values
     """
-    settings = get_settings()
+    service = SystemConfigService(session)
+    config = await service.get_all_config()
 
     return GameConfigResponse(
         # Game Constants
-        starting_balance=settings.starting_balance,
-        daily_bonus_amount=settings.daily_bonus_amount,
-        prompt_cost=settings.prompt_cost,
-        copy_cost_normal=settings.copy_cost_normal,
-        copy_cost_discount=settings.copy_cost_discount,
-        vote_cost=settings.vote_cost,
-        vote_payout_correct=settings.vote_payout_correct,
-        abandoned_penalty=settings.abandoned_penalty,
-        prize_pool_base=settings.prize_pool_base,
-        max_outstanding_quips=settings.max_outstanding_quips,
-        copy_discount_threshold=settings.copy_discount_threshold,
+        starting_balance=config.get("starting_balance", 5000),
+        daily_bonus_amount=config.get("daily_bonus_amount", 100),
+        prompt_cost=config.get("prompt_cost", 100),
+        copy_cost_normal=config.get("copy_cost_normal", 50),
+        copy_cost_discount=config.get("copy_cost_discount", 40),
+        vote_cost=config.get("vote_cost", 10),
+        vote_payout_correct=config.get("vote_payout_correct", 20),
+        abandoned_penalty=config.get("abandoned_penalty", 5),
+        prize_pool_base=config.get("prize_pool_base", 200),
+        max_outstanding_quips=config.get("max_outstanding_quips", 10),
+        copy_discount_threshold=config.get("copy_discount_threshold", 10),
 
         # Timing
-        prompt_round_seconds=settings.prompt_round_seconds,
-        copy_round_seconds=settings.copy_round_seconds,
-        vote_round_seconds=settings.vote_round_seconds,
-        grace_period_seconds=settings.grace_period_seconds,
+        prompt_round_seconds=config.get("prompt_round_seconds", 180),
+        copy_round_seconds=config.get("copy_round_seconds", 180),
+        vote_round_seconds=config.get("vote_round_seconds", 60),
+        grace_period_seconds=config.get("grace_period_seconds", 5),
 
         # Vote finalization
-        vote_max_votes=settings.vote_max_votes,
-        vote_closing_threshold=settings.vote_closing_threshold,
-        vote_closing_window_seconds=settings.vote_closing_window_seconds,
-        vote_minimum_threshold=settings.vote_minimum_threshold,
-        vote_minimum_window_seconds=settings.vote_minimum_window_seconds,
+        vote_max_votes=config.get("vote_max_votes", 20),
+        vote_closing_threshold=config.get("vote_closing_threshold", 5),
+        vote_closing_window_seconds=config.get("vote_closing_window_seconds", 60),
+        vote_minimum_threshold=config.get("vote_minimum_threshold", 3),
+        vote_minimum_window_seconds=config.get("vote_minimum_window_seconds", 600),
 
         # Phrase Validation
-        phrase_min_words=settings.phrase_min_words,
-        phrase_max_words=settings.phrase_max_words,
-        phrase_max_length=settings.phrase_max_length,
-        phrase_min_char_per_word=settings.phrase_min_char_per_word,
-        phrase_max_char_per_word=settings.phrase_max_char_per_word,
-        significant_word_min_length=settings.significant_word_min_length,
+        phrase_min_words=config.get("phrase_min_words", 2),
+        phrase_max_words=config.get("phrase_max_words", 5),
+        phrase_max_length=config.get("phrase_max_length", 100),
+        phrase_min_char_per_word=config.get("phrase_min_char_per_word", 2),
+        phrase_max_char_per_word=config.get("phrase_max_char_per_word", 15),
+        significant_word_min_length=config.get("significant_word_min_length", 4),
 
         # AI Service
-        ai_provider=settings.ai_provider,
-        ai_openai_model=settings.ai_openai_model,
-        ai_gemini_model=settings.ai_gemini_model,
-        ai_timeout_seconds=settings.ai_timeout_seconds,
-        ai_backup_delay_minutes=settings.ai_backup_delay_minutes,
+        ai_provider=config.get("ai_provider", "openai"),
+        ai_openai_model=config.get("ai_openai_model", "gpt-5-nano"),
+        ai_gemini_model=config.get("ai_gemini_model", "gemini-2.5-flash-lite"),
+        ai_timeout_seconds=config.get("ai_timeout_seconds", 30),
+        ai_backup_delay_minutes=config.get("ai_backup_delay_minutes", 15),
     )
 
 
@@ -282,3 +287,66 @@ async def test_phrase_validation(
         dictionary_check_passed=format_valid,  # If format passed, dictionary passed
         word_conflicts=word_conflicts
     )
+
+
+class UpdateConfigRequest(BaseModel):
+    """Request model for updating configuration."""
+    key: str
+    value: Any
+
+
+class UpdateConfigResponse(BaseModel):
+    """Response model for configuration update."""
+    success: bool
+    key: str
+    value: Any
+    message: Optional[str] = None
+
+
+@router.patch("/config", response_model=UpdateConfigResponse)
+async def update_config(
+    request: UpdateConfigRequest,
+    player: Annotated[Player, Depends(get_current_player)],
+    session: Annotated[AsyncSession, Depends(get_session)]
+) -> UpdateConfigResponse:
+    """
+    Update a configuration value.
+
+    Args:
+        request: Configuration update request
+        player: Current authenticated player (required to access this endpoint)
+        session: Database session
+
+    Returns:
+        UpdateConfigResponse with the updated value
+
+    Raises:
+        HTTPException: If configuration key is invalid or value is out of range
+    """
+    try:
+        service = SystemConfigService(session)
+
+        # Update the configuration
+        config_entry = await service.set_config_value(
+            request.key,
+            request.value,
+            updated_by=str(player.player_id)
+        )
+
+        # Get the deserialized value to return
+        deserialized_value = service._deserialize_value(
+            config_entry.value,
+            config_entry.value_type
+        )
+
+        return UpdateConfigResponse(
+            success=True,
+            key=request.key,
+            value=deserialized_value,
+            message=f"Configuration '{request.key}' updated successfully"
+        )
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update configuration: {str(e)}")

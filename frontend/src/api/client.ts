@@ -502,6 +502,11 @@ export const apiClient = {
     const { data } = await api.get('/admin/config', { signal });
     return data;
   },
+
+  async updateAdminConfig(key: string, value: any, signal?: AbortSignal): Promise<{ success: boolean; key: string; value: any; message?: string }> {
+    const { data } = await api.patch('/admin/config', { key, value }, { signal });
+    return data;
+  },
 };
 
 export default apiClient;
