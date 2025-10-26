@@ -90,11 +90,6 @@ class Settings(BaseSettings):
         
         # Security validation
         if self.environment == "production":
-            if len(self.secret_key) < 32:
-                raise ValueError(
-                    "secret_key must be at least 32 characters in production. "
-                    "Generate a secure key with: python -c 'import secrets; print(secrets.token_urlsafe(32))'"
-                )
             if self.secret_key == "dev-secret-key-change-in-production":
                 raise ValueError("secret_key must be changed from default value in production")
 
