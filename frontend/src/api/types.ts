@@ -97,6 +97,7 @@ export interface RoundAvailability {
   prompt_cost: number;
   vote_cost: number;
   vote_payout_correct: number;
+  abandoned_penalty: number;
 }
 
 export interface StartPromptResponse {

@@ -68,6 +68,7 @@ class RoundAvailability(BaseModel):
     prompt_cost: int
     vote_cost: int
     vote_payout_correct: int
+    abandoned_penalty: int
 
 
 class RoundDetails(BaseSchema):

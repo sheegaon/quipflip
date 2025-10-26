@@ -422,6 +422,7 @@ async def get_dashboard_data(
         prompt_cost=settings.prompt_cost,
         vote_cost=settings.vote_cost,
         vote_payout_correct=settings.vote_payout_correct,
+        abandoned_penalty=settings.abandoned_penalty,
     )
 
     dashboard_data = DashboardDataResponse(

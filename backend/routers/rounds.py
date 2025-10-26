@@ -238,6 +238,7 @@ async def get_rounds_available(
         prompt_cost=settings.prompt_cost,
         vote_cost=settings.vote_cost,
         vote_payout_correct=settings.vote_payout_correct,
+        abandoned_penalty=settings.abandoned_penalty,
     )
 
 

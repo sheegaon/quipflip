@@ -12,7 +12,7 @@ import type { PromptState } from '../api/types';
 
 export const PromptRound: React.FC = () => {
   const { state } = useGame();
-  const { activeRound } = state;
+  const { activeRound, roundAvailability } = state;
   const { currentStep, advanceStep } = useTutorial();
   const navigate = useNavigate();
   const [phrase, setPhrase] = useState('');
@@ -23,6 +23,9 @@ export const PromptRound: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const roundData = activeRound?.round_type === 'prompt' ? activeRound.state as PromptState : null;
+
+  // Get dynamic penalty from config or use default
+  const abandonedPenalty = roundAvailability?.abandoned_penalty || 5;
   const { isExpired } = useTimer(roundData?.expires_at || null);
 
   // Load existing feedback
@@ -259,7 +262,7 @@ export const PromptRound: React.FC = () => {
         {/* Info */}
         <div className="mt-6 p-4 bg-quip-navy bg-opacity-5 rounded-tile">
           <p className="text-sm text-quip-teal">
-            <strong className="text-quip-navy">Cost:</strong> <CurrencyDisplay amount={roundData.cost} iconClassName="w-3 h-3" textClassName="text-sm" /> (<CurrencyDisplay amount={95} iconClassName="w-3 h-3" textClassName="text-sm" /> refunded if you don't submit in time)
+            <strong className="text-quip-navy">Cost:</strong> <CurrencyDisplay amount={roundData.cost} iconClassName="w-3 h-3" textClassName="text-sm" /> (<CurrencyDisplay amount={roundData.cost - abandonedPenalty} iconClassName="w-3 h-3" textClassName="text-sm" /> refunded if you don't submit in time)
           </p>
         </div>
       </div>
