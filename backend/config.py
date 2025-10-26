@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     redis_url: str = ""
 
     # Application
-    frontend_url: str = "https://quipflip-amber.vercel.app"
+    frontend_url: str = "https://quipflip.xyz"
     phrase_validator_url: str = "http://localhost:9000"
     environment: str = "development"
     secret_key: str = "dev-secret-key-change-in-production"  # Must be at least 32 characters in production
