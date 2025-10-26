@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { useTutorial } from '../contexts/TutorialContext';
 import { Header } from '../components/Header';
-import { extractErrorMessage } from '../api/client';
+import apiClient, { extractErrorMessage } from '../api/client';
 
 const Settings: React.FC = () => {
   const { state } = useGame();
@@ -53,27 +53,18 @@ const Settings: React.FC = () => {
     e.preventDefault();
     setAdminPasswordError(null);
 
-    // For now, we'll use the player's current password for authentication
-    // This validates against the backend by attempting to login
+    // Validate the password against the backend secret_key
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: player.email,
-          password: adminPassword,
-        }),
-        credentials: 'include',
-      });
+      const result = await apiClient.validateAdminPassword(adminPassword);
 
-      if (response.ok) {
+      if (result.valid) {
         // Password is correct, navigate to admin
         navigate('/admin');
       } else {
-        setAdminPasswordError('Incorrect password');
+        setAdminPasswordError('Incorrect admin password');
       }
     } catch (err) {
-      setAdminPasswordError('Failed to verify password');
+      setAdminPasswordError(extractErrorMessage(err) || 'Failed to verify password');
     }
   };
 
@@ -193,7 +184,7 @@ const Settings: React.FC = () => {
               <div className="bg-white border-2 border-quip-navy border-opacity-20 rounded-tile p-3 text-quip-navy">
                 <div className="flex items-center gap-2">
                   <img src="/flipcoin.png" alt="Flipcoin" className="w-6 h-6" />
-                  <span className="text-xl">{player.starting_balance}</span>
+                  <span className="text-2xl font-bold text-quip-orange">{player.starting_balance}</span>
                 </div>
               </div>
             </div>
@@ -219,7 +210,7 @@ const Settings: React.FC = () => {
         <div className="tile-card p-6 mb-6 border-2 border-quip-orange border-opacity-30">
           <h2 className="text-2xl font-display font-bold text-quip-navy mb-4">Admin Access</h2>
           <p className="text-quip-teal mb-4">
-            Access administrative settings and configuration. Requires password verification.
+            Access administrative settings and configuration. Requires the application admin password (secret key).
           </p>
 
           {!showAdminPasswordPrompt ? (
@@ -233,14 +224,14 @@ const Settings: React.FC = () => {
             <form onSubmit={handleAdminPasswordSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-semibold text-quip-teal mb-2">
-                  Enter your password to continue
+                  Enter admin password (secret key)
                 </label>
                 <input
                   type="password"
                   value={adminPassword}
                   onChange={(e) => setAdminPassword(e.target.value)}
                   className="w-full md:w-96 border-2 border-quip-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-quip-orange"
-                  placeholder="Password"
+                  placeholder="Admin password"
                   autoFocus
                 />
                 {adminPasswordError && (

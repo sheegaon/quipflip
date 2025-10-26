@@ -21,6 +21,7 @@ export const Dashboard: React.FC = () => {
   const [isRoundExpired, setIsRoundExpired] = useState(false);
   const [startingRound, setStartingRound] = useState<string | null>(null);
   const [roundStartError, setRoundStartError] = useState<string | null>(null);
+  const [hasClickedViewResults, setHasClickedViewResults] = useState(false);
 
   // Log component mount and key state changes
   useEffect(() => {
@@ -224,6 +225,7 @@ export const Dashboard: React.FC = () => {
   };
 
   const handleViewResults = () => {
+    setHasClickedViewResults(true);
     navigate('/tracking');
   };
 
@@ -278,7 +280,7 @@ export const Dashboard: React.FC = () => {
         )}
 
         {/* Consolidated Results Notification */}
-        {(unviewedPendingResults.length > 0 || totalUnviewedCount > 0) && (
+        {!hasClickedViewResults && (unviewedPendingResults.length > 0 || totalUnviewedCount > 0) && (
           <div className="tile-card bg-quip-turquoise bg-opacity-10 border-2 border-quip-turquoise p-4 mb-6 slide-up-enter">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex-1">
@@ -342,7 +344,6 @@ export const Dashboard: React.FC = () => {
                   <h3 className="font-display font-semibold text-lg text-quip-navy">Prompt Round</h3>
                 </div>
                 <span className="text-quip-orange-deep font-bold flex items-center gap-1">
-                  <span>-</span>
                   <CurrencyDisplay amount={roundAvailability?.prompt_cost || 100} iconClassName="w-4 h-4" textClassName="font-bold" />
                 </span>
               </div>
@@ -380,7 +381,6 @@ export const Dashboard: React.FC = () => {
                     />
                   )}
                   <span className="flex items-center gap-1">
-                    <span>-</span>
                     <CurrencyDisplay amount={roundAvailability?.copy_cost || 100} iconClassName="w-4 h-4" textClassName="font-bold" />
                   </span>
                 </span>
@@ -415,7 +415,6 @@ export const Dashboard: React.FC = () => {
                   <h3 className="font-display font-semibold text-lg text-quip-orange-deep">Vote Round</h3>
                 </div>
                 <span className="text-quip-orange-deep font-bold flex items-center gap-1">
-                  <span>-</span>
                   <CurrencyDisplay amount={roundAvailability?.vote_cost || 10} iconClassName="w-4 h-4" textClassName="font-bold" />
                 </span>
               </div>

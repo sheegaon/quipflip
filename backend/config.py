@@ -56,7 +56,7 @@ class Settings(BaseSettings):
 
     # Phrase Validation
     use_phrase_validator_api: bool = True
-    phrase_min_words: int = 1
+    phrase_min_words: int = 2
     phrase_max_words: int = 5
     phrase_max_length: int = 100
     phrase_min_char_per_word: int = 2

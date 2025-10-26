@@ -12,6 +12,7 @@ export const Header: React.FC = () => {
   const { hasClaimableQuests } = useQuests();
   const navigate = useNavigate();
   const location = useLocation();
+  const [hasClickedResults, setHasClickedResults] = React.useState(false);
 
   // Show back arrow on Statistics, Tracking, Quests, and Results pages
   const showBackArrow = location.pathname === '/statistics' || location.pathname === '/tracking' || location.pathname === '/quests' || location.pathname === '/results';
@@ -35,8 +36,17 @@ export const Header: React.FC = () => {
     : 'View your in-progress rounds';
 
   const unclaimedCount = unclaimedResults?.length ?? 0;
-  const showUnclaimedIndicator = unclaimedCount > 0;
-  const unclaimedLabel = `${unclaimedCount} result${unclaimedCount === 1 ? '' : 's'} ready to view and claim`;
+  const displayCount = hasClickedResults ? 0 : unclaimedCount;
+  // Show badge once user has had results (either currently has some, or has clicked before)
+  const showUnclaimedIndicator = unclaimedCount > 0 || hasClickedResults;
+  const unclaimedLabel = displayCount > 0
+    ? `${displayCount} result${displayCount === 1 ? '' : 's'} ready to view and claim`
+    : 'View your results';
+
+  const handleResultsClick = () => {
+    setHasClickedResults(true);
+    navigate('/results');
+  };
 
   return (
     <div className="bg-white shadow-tile-sm">
@@ -93,12 +103,16 @@ export const Header: React.FC = () => {
             {showUnclaimedIndicator && (
               <button
                 type="button"
-                onClick={() => navigate('/results')}
-                className="flex items-center gap-1 rounded-full bg-quip-orange bg-opacity-10 px-3 py-1 text-xs font-semibold text-quip-orange transition-colors hover:bg-quip-orange hover:bg-opacity-20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-quip-orange"
+                onClick={handleResultsClick}
+                className={`flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 ${
+                  displayCount > 0
+                    ? 'bg-quip-orange bg-opacity-10 text-quip-orange hover:bg-quip-orange hover:bg-opacity-20 focus-visible:ring-quip-orange'
+                    : 'bg-gray-200 text-black hover:bg-gray-300 focus-visible:ring-gray-400'
+                }`}
                 title={unclaimedLabel}
                 aria-label={unclaimedLabel}
               >
-                <span>{unclaimedCount}</span>
+                <span>{displayCount}</span>
                 <img
                   src="/icon_results.svg"
                   alt="Results ready to view"

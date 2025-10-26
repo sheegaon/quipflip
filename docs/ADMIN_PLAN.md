@@ -4,10 +4,28 @@
 
 The Admin panel is accessible from Settings page after password verification.
 
+### How to Access Admin Panel
+
+1. **Login to Quipflip** with any player account
+2. **Navigate to Statistics** (click username in header)
+3. **Click Settings** button (gear icon in top right)
+4. **Scroll to "Admin Access"** section
+5. **Click "Access Admin Panel"** button
+6. **Enter the admin password** - This is the `SECRET_KEY` environment variable:
+   - Found in `.env` file as `SECRET_KEY=your-secret-here`
+   - Default value: `dev-secret-key-change-in-production`
+   - Current value in your environment: Check `.env` file
+7. **Click Continue** to access the admin panel
+
+**Note:** Any authenticated user who knows the secret key can access the admin panel. For production, you should implement role-based access control (see Phase 6 below).
+
 ### Implemented Features
 - **Password Protection**
-  - Validates user's current password before granting access
-  - Uses existing login endpoint for verification
+  - Validates against application `SECRET_KEY` environment variable
+  - Uses dedicated `/admin/validate-password` endpoint
+  - Backend endpoint: `POST /admin/validate-password`
+  - Request: `{ "password": "your-secret-key" }`
+  - Response: `{ "valid": true | false }`
 
 - **Read-Only Configuration Display**
   - Organized into 4 tabs: Economics, Timing, Validation, AI Service

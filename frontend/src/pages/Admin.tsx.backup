@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { Header } from '../components/Header';
-import apiClient, { extractErrorMessage } from '../api/client';
+import { extractErrorMessage } from '../api/client';
 
 interface GameConfig {
   // Game Constants
@@ -56,24 +56,60 @@ const Admin: React.FC = () => {
   const [config, setConfig] = useState<GameConfig | null>(null);
   const [activeTab, setActiveTab] = useState<'economics' | 'timing' | 'validation' | 'ai'>('economics');
 
-  // Phrase validator state - TODO: Implement phrase validator tab UI
-  // const [validationType, setValidationType] = useState<'basic' | 'prompt' | 'copy'>('basic');
-  // const [testPhrase, setTestPhrase] = useState('');
-  // const [promptText, setPromptText] = useState('');
-  // const [originalPhrase, setOriginalPhrase] = useState('');
-  // const [otherCopyPhrase, setOtherCopyPhrase] = useState('');
-  // const [validationResult, setValidationResult] = useState<any | null>(null);
-  // const [validating, setValidating] = useState(false);
-
   useEffect(() => {
+    // For MVP, we'll use the values from RoundAvailability which includes some config values
+    // In the future, we'd create a dedicated /admin/config endpoint
     const loadConfig = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        // Fetch actual configuration from backend
-        const configData = await apiClient.getAdminConfig();
-        setConfig(configData);
+        // Mock data based on backend config.py defaults
+        // In production, this would come from a backend endpoint
+        const mockConfig: GameConfig = {
+          // Game Constants
+          starting_balance: 5000,
+          daily_bonus_amount: 100,
+          prompt_cost: 100,
+          copy_cost_normal: 50,
+          copy_cost_discount: 40,
+          vote_cost: 10,
+          vote_payout_correct: 20,
+          abandoned_penalty: 5,
+          prize_pool_base: 200,
+          max_outstanding_quips: 10,
+          copy_discount_threshold: 10,
+
+          // Timing
+          prompt_round_seconds: 180,
+          copy_round_seconds: 180,
+          vote_round_seconds: 60,
+          grace_period_seconds: 5,
+
+          // Vote finalization
+          vote_max_votes: 20,
+          vote_closing_threshold: 5,
+          vote_closing_window_seconds: 60,
+          vote_minimum_threshold: 3,
+          vote_minimum_window_seconds: 600,
+
+          // Phrase Validation
+          phrase_min_words: 2,
+          phrase_max_words: 5,
+          phrase_max_length: 100,
+          phrase_min_char_per_word: 2,
+          phrase_max_char_per_word: 15,
+          significant_word_min_length: 4,
+
+          // AI Service
+          ai_provider: 'openai',
+          ai_openai_model: 'gpt-5-nano',
+          ai_gemini_model: 'gemini-2.5-flash-lite',
+          ai_timeout_seconds: 30,
+          ai_backup_delay_minutes: 15,
+        };
+
+        setConfig(mockConfig);
       } catch (err) {
         setError(extractErrorMessage(err) || 'Failed to load configuration');
       } finally {
