@@ -48,6 +48,22 @@ interface GameConfig {
   ai_backup_delay_minutes: number;
 }
 
+interface ValidationResult {
+  is_valid: boolean;
+  error_message: string | null;
+  word_count: number;
+  phrase_length: number;
+  words: string[];
+  prompt_relevance_score: number | null;
+  similarity_to_original: number | null;
+  similarity_to_other_copy: number | null;
+  prompt_relevance_threshold: number | null;
+  similarity_threshold: number | null;
+  format_check_passed: boolean;
+  dictionary_check_passed: boolean;
+  word_conflicts: string[];
+}
+
 const Admin: React.FC = () => {
   const { state } = useGame();
   const { player } = state;
@@ -55,9 +71,18 @@ const Admin: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [config, setConfig] = useState<GameConfig | null>(null);
-  const [activeTab, setActiveTab] = useState<'economics' | 'timing' | 'validation' | 'ai'>('economics');
+  const [activeTab, setActiveTab] = useState<'economics' | 'timing' | 'validation' | 'phrase_validator' | 'ai'>('economics');
   const [editMode, setEditMode] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+
+  // Phrase Validator state
+  const [validationType, setValidationType] = useState<'basic' | 'prompt' | 'copy'>('basic');
+  const [testPhrase, setTestPhrase] = useState('');
+  const [promptText, setPromptText] = useState('');
+  const [originalPhrase, setOriginalPhrase] = useState('');
+  const [otherCopyPhrase, setOtherCopyPhrase] = useState('');
+  const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
+  const [validating, setValidating] = useState(false);
 
   useEffect(() => {
     const loadConfig = async () => {
@@ -96,6 +121,41 @@ const Admin: React.FC = () => {
       setTimeout(() => setSaveMessage(null), 3000);
     } catch (err) {
       throw err; // Re-throw to let EditableConfigField handle it
+    }
+  };
+
+  const handleTestPhrase = async () => {
+    if (!testPhrase.trim()) {
+      return;
+    }
+
+    try {
+      setValidating(true);
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/admin/test-phrase-validation`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('quipflip_access_token')}`,
+        },
+        body: JSON.stringify({
+          phrase: testPhrase,
+          validation_type: validationType,
+          prompt_text: validationType !== 'basic' ? promptText || null : null,
+          original_phrase: validationType === 'copy' ? originalPhrase || null : null,
+          other_copy_phrase: validationType === 'copy' ? otherCopyPhrase || null : null,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to validate phrase');
+      }
+
+      const data = await response.json();
+      setValidationResult(data);
+    } catch (err) {
+      setError(extractErrorMessage(err) || 'Failed to test phrase validation');
+    } finally {
+      setValidating(false);
     }
   };
 
@@ -240,6 +300,16 @@ const Admin: React.FC = () => {
               }`}
             >
               Validation
+            </button>
+            <button
+              onClick={() => setActiveTab('phrase_validator')}
+              className={`flex-1 min-w-[100px] py-3 px-4 rounded-tile font-bold transition-all ${
+                activeTab === 'phrase_validator'
+                  ? 'bg-green-600 text-white shadow-tile-sm'
+                  : 'bg-white text-quip-navy hover:bg-green-600 hover:bg-opacity-10'
+              }`}
+            >
+              Phrase Tester
             </button>
             <button
               onClick={() => setActiveTab('ai')}
@@ -635,6 +705,289 @@ const Admin: React.FC = () => {
                 />
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Phrase Validator Tab */}
+        {activeTab === 'phrase_validator' && (
+          <div className="space-y-6">
+            <div className="tile-card p-6">
+              <h2 className="text-2xl font-display font-bold text-quip-navy mb-4">Phrase Validation Tester</h2>
+              <p className="text-quip-teal mb-6">
+                Test phrase validation as if submitting to a prompt or copy round. See similarity scores and validation details.
+              </p>
+
+              {/* Validation Type Selector */}
+              <div className="mb-6">
+                <label className="block text-sm font-semibold text-quip-navy mb-2">Validation Type</label>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setValidationType('basic')}
+                    className={`px-4 py-2 rounded-tile font-bold transition-all ${
+                      validationType === 'basic'
+                        ? 'bg-quip-navy text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    Basic Format
+                  </button>
+                  <button
+                    onClick={() => setValidationType('prompt')}
+                    className={`px-4 py-2 rounded-tile font-bold transition-all ${
+                      validationType === 'prompt'
+                        ? 'bg-quip-navy text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    Prompt Round
+                  </button>
+                  <button
+                    onClick={() => setValidationType('copy')}
+                    className={`px-4 py-2 rounded-tile font-bold transition-all ${
+                      validationType === 'copy'
+                        ? 'bg-quip-turquoise text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    Copy Round
+                  </button>
+                </div>
+              </div>
+
+              {/* Test Phrase Input */}
+              <div className="mb-4">
+                <label className="block text-sm font-semibold text-quip-navy mb-2">Test Phrase</label>
+                <input
+                  type="text"
+                  value={testPhrase}
+                  onChange={(e) => setTestPhrase(e.target.value)}
+                  className="w-full border-2 border-quip-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-quip-orange"
+                  placeholder="Enter phrase to validate..."
+                />
+              </div>
+
+              {/* Prompt Text (for prompt and copy validation) */}
+              {validationType !== 'basic' && (
+                <div className="mb-4">
+                  <label className="block text-sm font-semibold text-quip-navy mb-2">Prompt Text</label>
+                  <input
+                    type="text"
+                    value={promptText}
+                    onChange={(e) => setPromptText(e.target.value)}
+                    className="w-full border-2 border-quip-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-quip-orange"
+                    placeholder="Enter the original prompt..."
+                  />
+                </div>
+              )}
+
+              {/* Copy-specific fields */}
+              {validationType === 'copy' && (
+                <>
+                  <div className="mb-4">
+                    <label className="block text-sm font-semibold text-quip-navy mb-2">Original Phrase (Required for Copy)</label>
+                    <input
+                      type="text"
+                      value={originalPhrase}
+                      onChange={(e) => setOriginalPhrase(e.target.value)}
+                      className="w-full border-2 border-quip-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-quip-orange"
+                      placeholder="Enter the original prompt phrase..."
+                    />
+                  </div>
+                  <div className="mb-4">
+                    <label className="block text-sm font-semibold text-quip-navy mb-2">Other Copy Phrase (Optional)</label>
+                    <input
+                      type="text"
+                      value={otherCopyPhrase}
+                      onChange={(e) => setOtherCopyPhrase(e.target.value)}
+                      className="w-full border-2 border-quip-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-quip-orange"
+                      placeholder="Enter the other copy phrase if it exists..."
+                    />
+                  </div>
+                </>
+              )}
+
+              {/* Submit Button */}
+              <button
+                onClick={handleTestPhrase}
+                disabled={validating || !testPhrase.trim()}
+                className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm"
+              >
+                {validating ? 'Validating...' : 'Test Validation'}
+              </button>
+            </div>
+
+            {/* Validation Results */}
+            {validationResult && (
+              <div className="tile-card p-6">
+                <h3 className="text-xl font-display font-bold text-quip-navy mb-4">Validation Results</h3>
+
+                {/* Overall Status */}
+                <div className={`p-4 rounded-tile mb-6 ${validationResult.is_valid ? 'bg-green-100 border-2 border-green-500' : 'bg-red-100 border-2 border-red-500'}`}>
+                  <div className="flex items-center gap-3">
+                    {validationResult.is_valid ? (
+                      <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    ) : (
+                      <svg className="w-8 h-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    )}
+                    <div className="flex-1">
+                      <p className={`font-bold text-lg ${validationResult.is_valid ? 'text-green-800' : 'text-red-800'}`}>
+                        {validationResult.is_valid ? 'Valid Phrase' : 'Invalid Phrase'}
+                      </p>
+                      {validationResult.error_message && (
+                        <p className="text-red-700 text-sm mt-1">{validationResult.error_message}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Basic Details */}
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  <div className="bg-gray-50 border-2 border-gray-200 rounded-tile p-4">
+                    <p className="text-sm text-quip-teal mb-1">Word Count</p>
+                    <p className="text-2xl font-bold text-quip-navy">{validationResult.word_count}</p>
+                    <p className="text-xs text-quip-teal mt-1">Limit: {config.phrase_min_words}-{config.phrase_max_words}</p>
+                  </div>
+                  <div className="bg-gray-50 border-2 border-gray-200 rounded-tile p-4">
+                    <p className="text-sm text-quip-teal mb-1">Character Count</p>
+                    <p className="text-2xl font-bold text-quip-navy">{validationResult.phrase_length}</p>
+                    <p className="text-xs text-quip-teal mt-1">Max: {config.phrase_max_length}</p>
+                  </div>
+                </div>
+
+                {/* Words */}
+                <div className="mb-6">
+                  <p className="text-sm font-semibold text-quip-navy mb-2">Words Detected</p>
+                  <div className="flex flex-wrap gap-2">
+                    {validationResult.words.map((word, idx) => (
+                      <span key={idx} className="bg-quip-navy bg-opacity-10 text-quip-navy px-3 py-1 rounded-full text-sm font-semibold">
+                        {word}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Similarity Scores */}
+                {(validationResult.prompt_relevance_score !== null ||
+                  validationResult.similarity_to_original !== null ||
+                  validationResult.similarity_to_other_copy !== null) && (
+                  <div className="space-y-4 mb-6">
+                    <h4 className="text-lg font-display font-bold text-quip-navy">Similarity Scores</h4>
+
+                    {validationResult.prompt_relevance_score !== null && (
+                      <div>
+                        <div className="flex justify-between text-sm mb-1">
+                          <span className="text-quip-teal">Prompt Relevance</span>
+                          <span className="font-bold text-quip-navy">{validationResult.prompt_relevance_score.toFixed(4)}</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-4">
+                          <div
+                            className={`h-4 rounded-full ${
+                              validationResult.prompt_relevance_score >= (validationResult.prompt_relevance_threshold || 0.05)
+                                ? 'bg-green-500'
+                                : 'bg-red-500'
+                            }`}
+                            style={{ width: `${Math.min(validationResult.prompt_relevance_score * 100, 100)}%` }}
+                          ></div>
+                        </div>
+                        <p className="text-xs text-quip-teal mt-1">
+                          Threshold: {validationResult.prompt_relevance_threshold?.toFixed(2)} (minimum required)
+                        </p>
+                      </div>
+                    )}
+
+                    {validationResult.similarity_to_original !== null && (
+                      <div>
+                        <div className="flex justify-between text-sm mb-1">
+                          <span className="text-quip-teal">Similarity to Original</span>
+                          <span className="font-bold text-quip-navy">{validationResult.similarity_to_original.toFixed(4)}</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-4">
+                          <div
+                            className={`h-4 rounded-full ${
+                              validationResult.similarity_to_original < (validationResult.similarity_threshold || 0.8)
+                                ? 'bg-green-500'
+                                : 'bg-red-500'
+                            }`}
+                            style={{ width: `${validationResult.similarity_to_original * 100}%` }}
+                          ></div>
+                        </div>
+                        <p className="text-xs text-quip-teal mt-1">
+                          Threshold: {validationResult.similarity_threshold?.toFixed(2)} (maximum allowed)
+                        </p>
+                      </div>
+                    )}
+
+                    {validationResult.similarity_to_other_copy !== null && (
+                      <div>
+                        <div className="flex justify-between text-sm mb-1">
+                          <span className="text-quip-teal">Similarity to Other Copy</span>
+                          <span className="font-bold text-quip-navy">{validationResult.similarity_to_other_copy.toFixed(4)}</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-4">
+                          <div
+                            className={`h-4 rounded-full ${
+                              validationResult.similarity_to_other_copy < (validationResult.similarity_threshold || 0.8)
+                                ? 'bg-green-500'
+                                : 'bg-red-500'
+                            }`}
+                            style={{ width: `${validationResult.similarity_to_other_copy * 100}%` }}
+                          ></div>
+                        </div>
+                        <p className="text-xs text-quip-teal mt-1">
+                          Threshold: {validationResult.similarity_threshold?.toFixed(2)} (maximum allowed)
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Word Conflicts */}
+                {validationResult.word_conflicts.length > 0 && (
+                  <div className="mb-6">
+                    <p className="text-sm font-semibold text-quip-navy mb-2">Word Conflicts</p>
+                    <div className="flex flex-wrap gap-2">
+                      {validationResult.word_conflicts.map((word, idx) => (
+                        <span key={idx} className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm font-semibold border-2 border-red-300">
+                          {word}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Validation Checks */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className={`p-3 rounded-tile border-2 ${
+                    validationResult.format_check_passed
+                      ? 'bg-green-50 border-green-300'
+                      : 'bg-red-50 border-red-300'
+                  }`}>
+                    <p className="text-sm font-semibold">Format Check</p>
+                    <p className={`text-lg font-bold ${
+                      validationResult.format_check_passed ? 'text-green-700' : 'text-red-700'
+                    }`}>
+                      {validationResult.format_check_passed ? 'Passed' : 'Failed'}
+                    </p>
+                  </div>
+                  <div className={`p-3 rounded-tile border-2 ${
+                    validationResult.dictionary_check_passed
+                      ? 'bg-green-50 border-green-300'
+                      : 'bg-red-50 border-red-300'
+                  }`}>
+                    <p className="text-sm font-semibold">Dictionary Check</p>
+                    <p className={`text-lg font-bold ${
+                      validationResult.dictionary_check_passed ? 'text-green-700' : 'text-red-700'
+                    }`}>
+                      {validationResult.dictionary_check_passed ? 'Passed' : 'Failed'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

@@ -3,7 +3,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from backend.config import get_settings
-from backend.dependencies import get_current_player, get_session
+from backend.database import get_db
+from backend.dependencies import get_current_player
 from backend.models.player import Player
 from backend.services.phrase_validator import get_phrase_validator
 from backend.services.system_config_service import SystemConfigService
@@ -103,7 +104,7 @@ class GameConfigResponse(BaseModel):
 @router.get("/config", response_model=GameConfigResponse)
 async def get_game_config(
     player: Annotated[Player, Depends(get_current_player)],
-    session: Annotated[AsyncSession, Depends(get_session)]
+    session: Annotated[AsyncSession, Depends(get_db)]
 ) -> GameConfigResponse:
     """
     Get current game configuration values (from database overrides or environment defaults).
@@ -307,7 +308,7 @@ class UpdateConfigResponse(BaseModel):
 async def update_config(
     request: UpdateConfigRequest,
     player: Annotated[Player, Depends(get_current_player)],
-    session: Annotated[AsyncSession, Depends(get_session)]
+    session: Annotated[AsyncSession, Depends(get_db)]
 ) -> UpdateConfigResponse:
     """
     Update a configuration value.
