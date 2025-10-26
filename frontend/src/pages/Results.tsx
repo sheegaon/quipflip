@@ -3,7 +3,7 @@ import { useGame } from '../contexts/GameContext';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Header } from '../components/Header';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
-import apiClient, { extractErrorMessage } from '../api/client';
+import { extractErrorMessage } from '../api/client';
 import { loadingMessages } from '../utils/brandedMessages';
 import type { PhrasesetResults } from '../api/types';
 

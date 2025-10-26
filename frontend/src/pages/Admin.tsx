@@ -1,0 +1,545 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useGame } from '../contexts/GameContext';
+import { Header } from '../components/Header';
+import { extractErrorMessage } from '../api/client';
+
+interface GameConfig {
+  // Game Constants
+  starting_balance: number;
+  daily_bonus_amount: number;
+  prompt_cost: number;
+  copy_cost_normal: number;
+  copy_cost_discount: number;
+  vote_cost: number;
+  vote_payout_correct: number;
+  abandoned_penalty: number;
+  prize_pool_base: number;
+  max_outstanding_quips: number;
+  copy_discount_threshold: number;
+
+  // Timing
+  prompt_round_seconds: number;
+  copy_round_seconds: number;
+  vote_round_seconds: number;
+  grace_period_seconds: number;
+
+  // Vote finalization thresholds
+  vote_max_votes: number;
+  vote_closing_threshold: number;
+  vote_closing_window_seconds: number;
+  vote_minimum_threshold: number;
+  vote_minimum_window_seconds: number;
+
+  // Phrase Validation
+  phrase_min_words: number;
+  phrase_max_words: number;
+  phrase_max_length: number;
+  phrase_min_char_per_word: number;
+  phrase_max_char_per_word: number;
+  significant_word_min_length: number;
+
+  // AI Service (read-only for now)
+  ai_provider: string;
+  ai_openai_model: string;
+  ai_gemini_model: string;
+  ai_timeout_seconds: number;
+  ai_backup_delay_minutes: number;
+}
+
+const Admin: React.FC = () => {
+  const { state } = useGame();
+  const { player } = state;
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [config, setConfig] = useState<GameConfig | null>(null);
+  const [activeTab, setActiveTab] = useState<'economics' | 'timing' | 'validation' | 'ai'>('economics');
+
+  useEffect(() => {
+    // For MVP, we'll use the values from RoundAvailability which includes some config values
+    // In the future, we'd create a dedicated /admin/config endpoint
+    const loadConfig = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Mock data based on backend config.py defaults
+        // In production, this would come from a backend endpoint
+        const mockConfig: GameConfig = {
+          // Game Constants
+          starting_balance: 1000,
+          daily_bonus_amount: 100,
+          prompt_cost: 100,
+          copy_cost_normal: 50,
+          copy_cost_discount: 40,
+          vote_cost: 10,
+          vote_payout_correct: 20,
+          abandoned_penalty: 5,
+          prize_pool_base: 200,
+          max_outstanding_quips: 10,
+          copy_discount_threshold: 10,
+
+          // Timing
+          prompt_round_seconds: 180,
+          copy_round_seconds: 180,
+          vote_round_seconds: 60,
+          grace_period_seconds: 5,
+
+          // Vote finalization
+          vote_max_votes: 20,
+          vote_closing_threshold: 5,
+          vote_closing_window_seconds: 60,
+          vote_minimum_threshold: 3,
+          vote_minimum_window_seconds: 600,
+
+          // Phrase Validation
+          phrase_min_words: 1,
+          phrase_max_words: 5,
+          phrase_max_length: 100,
+          phrase_min_char_per_word: 2,
+          phrase_max_char_per_word: 15,
+          significant_word_min_length: 4,
+
+          // AI Service
+          ai_provider: 'openai',
+          ai_openai_model: 'gpt-5-nano',
+          ai_gemini_model: 'gemini-2.5-flash-lite',
+          ai_timeout_seconds: 30,
+          ai_backup_delay_minutes: 15,
+        };
+
+        setConfig(mockConfig);
+      } catch (err) {
+        setError(extractErrorMessage(err) || 'Failed to load configuration');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadConfig();
+  }, []);
+
+  if (!player) {
+    return (
+      <div className="min-h-screen bg-quip-cream bg-pattern">
+        <Header />
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center">Loading...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-quip-cream bg-pattern">
+        <Header />
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center py-12">
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-quip-orange border-r-transparent"></div>
+            <p className="mt-4 text-quip-navy font-display">Loading admin panel...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !config) {
+    return (
+      <div className="min-h-screen bg-quip-cream bg-pattern">
+        <Header />
+        <div className="container mx-auto px-4 py-8 max-w-4xl">
+          <div className="tile-card p-8">
+            <h1 className="text-2xl font-display font-bold text-quip-navy mb-4">Admin Panel</h1>
+            <div className="text-red-600">{error || 'Failed to load configuration'}</div>
+            <button
+              onClick={() => navigate('/settings')}
+              className="mt-4 bg-quip-navy hover:bg-quip-teal text-white font-bold py-2 px-4 rounded-tile transition-all"
+            >
+              Back to Settings
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const ConfigField: React.FC<{ label: string; value: number | string; unit?: string; description?: string }> = ({
+    label,
+    value,
+    unit,
+    description,
+  }) => (
+    <div className="border-b border-gray-200 last:border-b-0 py-3">
+      <div className="flex justify-between items-start">
+        <div className="flex-1">
+          <label className="block text-sm font-semibold text-quip-navy mb-1">{label}</label>
+          {description && <p className="text-xs text-quip-teal">{description}</p>}
+        </div>
+        <div className="bg-white border-2 border-quip-navy border-opacity-20 rounded px-3 py-1 min-w-[100px] text-right">
+          <span className="font-bold text-quip-navy">{value}</span>
+          {unit && <span className="text-sm text-quip-teal ml-1">{unit}</span>}
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-quip-cream bg-pattern">
+      <Header />
+      <div className="container mx-auto px-4 py-8 max-w-6xl">
+        {/* Header */}
+        <div className="tile-card p-6 mb-6 border-2 border-quip-orange">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-display font-bold text-quip-navy">Admin Panel</h1>
+              <p className="text-quip-teal mt-1">View and manage game configuration</p>
+            </div>
+            <button
+              onClick={() => navigate('/settings')}
+              className="bg-quip-navy hover:bg-quip-teal text-white font-bold py-2 px-4 rounded-tile transition-all hover:shadow-tile-sm"
+            >
+              Back to Settings
+            </button>
+          </div>
+        </div>
+
+        {/* Info Banner */}
+        <div className="tile-card p-4 mb-6 bg-blue-50 border-2 border-blue-300">
+          <div className="flex items-start gap-3">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div>
+              <p className="text-blue-900 font-semibold">Read-Only Mode</p>
+              <p className="text-blue-700 text-sm mt-1">
+                This is the v1 admin panel showing current configuration values. Editing capabilities will be added in a future update.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="tile-card p-2 mb-6">
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setActiveTab('economics')}
+              className={`flex-1 min-w-[120px] py-3 px-4 rounded-tile font-bold transition-all ${
+                activeTab === 'economics'
+                  ? 'bg-quip-orange text-white shadow-tile-sm'
+                  : 'bg-white text-quip-navy hover:bg-quip-orange hover:bg-opacity-10'
+              }`}
+            >
+              Economics
+            </button>
+            <button
+              onClick={() => setActiveTab('timing')}
+              className={`flex-1 min-w-[120px] py-3 px-4 rounded-tile font-bold transition-all ${
+                activeTab === 'timing'
+                  ? 'bg-quip-turquoise text-white shadow-tile-sm'
+                  : 'bg-white text-quip-navy hover:bg-quip-turquoise hover:bg-opacity-10'
+              }`}
+            >
+              Timing
+            </button>
+            <button
+              onClick={() => setActiveTab('validation')}
+              className={`flex-1 min-w-[120px] py-3 px-4 rounded-tile font-bold transition-all ${
+                activeTab === 'validation'
+                  ? 'bg-quip-navy text-white shadow-tile-sm'
+                  : 'bg-white text-quip-navy hover:bg-quip-navy hover:bg-opacity-10'
+              }`}
+            >
+              Validation
+            </button>
+            <button
+              onClick={() => setActiveTab('ai')}
+              className={`flex-1 min-w-[120px] py-3 px-4 rounded-tile font-bold transition-all ${
+                activeTab === 'ai'
+                  ? 'bg-purple-600 text-white shadow-tile-sm'
+                  : 'bg-white text-quip-navy hover:bg-purple-600 hover:bg-opacity-10'
+              }`}
+            >
+              AI Service
+            </button>
+          </div>
+        </div>
+
+        {/* Economics Tab */}
+        {activeTab === 'economics' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="tile-card p-6">
+              <h2 className="text-xl font-display font-bold text-quip-navy mb-4 flex items-center gap-2">
+                <img src="/flipcoin.png" alt="" className="w-6 h-6" />
+                Player Balances
+              </h2>
+              <div className="space-y-2">
+                <ConfigField
+                  label="Starting Balance"
+                  value={config.starting_balance}
+                  unit="flipcoins"
+                  description="Initial balance for new players"
+                />
+                <ConfigField
+                  label="Daily Bonus Amount"
+                  value={config.daily_bonus_amount}
+                  unit="flipcoins"
+                  description="Daily login bonus reward"
+                />
+              </div>
+            </div>
+
+            <div className="tile-card p-6">
+              <h2 className="text-xl font-display font-bold text-quip-navy mb-4 flex items-center gap-2">
+                <img src="/icon_prompt.svg" alt="" className="w-6 h-6" />
+                Round Costs
+              </h2>
+              <div className="space-y-2">
+                <ConfigField
+                  label="Prompt Cost"
+                  value={config.prompt_cost}
+                  unit="flipcoins"
+                  description="Cost to start a prompt round"
+                />
+                <ConfigField
+                  label="Copy Cost (Normal)"
+                  value={config.copy_cost_normal}
+                  unit="flipcoins"
+                  description="Standard cost to start a copy round"
+                />
+                <ConfigField
+                  label="Copy Cost (Discount)"
+                  value={config.copy_cost_discount}
+                  unit="flipcoins"
+                  description="Discounted cost when many prompts waiting"
+                />
+                <ConfigField
+                  label="Copy Discount Threshold"
+                  value={config.copy_discount_threshold}
+                  unit="prompts"
+                  description="Prompts needed to activate discount"
+                />
+                <ConfigField
+                  label="Vote Cost"
+                  value={config.vote_cost}
+                  unit="flipcoins"
+                  description="Cost to start a vote round"
+                />
+              </div>
+            </div>
+
+            <div className="tile-card p-6">
+              <h2 className="text-xl font-display font-bold text-quip-navy mb-4 flex items-center gap-2">
+                <img src="/icon_vote.svg" alt="" className="w-6 h-6" />
+                Payouts & Penalties
+              </h2>
+              <div className="space-y-2">
+                <ConfigField
+                  label="Vote Payout (Correct)"
+                  value={config.vote_payout_correct}
+                  unit="flipcoins"
+                  description="Reward for voting correctly"
+                />
+                <ConfigField
+                  label="Prize Pool Base"
+                  value={config.prize_pool_base}
+                  unit="flipcoins"
+                  description="Base prize pool for phrasesets"
+                />
+                <ConfigField
+                  label="Abandoned Penalty"
+                  value={config.abandoned_penalty}
+                  unit="flipcoins"
+                  description="Penalty for abandoned rounds"
+                />
+              </div>
+            </div>
+
+            <div className="tile-card p-6">
+              <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Game Limits</h2>
+              <div className="space-y-2">
+                <ConfigField
+                  label="Max Outstanding Prompts"
+                  value={config.max_outstanding_quips}
+                  unit="prompts"
+                  description="Maximum concurrent prompts per player"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Timing Tab */}
+        {activeTab === 'timing' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="tile-card p-6">
+              <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Round Durations</h2>
+              <div className="space-y-2">
+                <ConfigField
+                  label="Prompt Round Duration"
+                  value={config.prompt_round_seconds}
+                  unit="seconds"
+                  description="Time to submit a prompt"
+                />
+                <ConfigField
+                  label="Copy Round Duration"
+                  value={config.copy_round_seconds}
+                  unit="seconds"
+                  description="Time to submit a copy"
+                />
+                <ConfigField
+                  label="Vote Round Duration"
+                  value={config.vote_round_seconds}
+                  unit="seconds"
+                  description="Time to submit a vote"
+                />
+                <ConfigField
+                  label="Grace Period"
+                  value={config.grace_period_seconds}
+                  unit="seconds"
+                  description="Extra time after expiration"
+                />
+              </div>
+            </div>
+
+            <div className="tile-card p-6">
+              <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Vote Finalization</h2>
+              <div className="space-y-2">
+                <ConfigField
+                  label="Maximum Votes"
+                  value={config.vote_max_votes}
+                  unit="votes"
+                  description="Auto-finalize after this many votes"
+                />
+                <ConfigField
+                  label="Closing Threshold"
+                  value={config.vote_closing_threshold}
+                  unit="votes"
+                  description="Votes to enter closing window"
+                />
+                <ConfigField
+                  label="Closing Window"
+                  value={config.vote_closing_window_seconds}
+                  unit="seconds"
+                  description="Time to get more votes before closing"
+                />
+                <ConfigField
+                  label="Minimum Threshold"
+                  value={config.vote_minimum_threshold}
+                  unit="votes"
+                  description="Minimum votes to start timeout"
+                />
+                <ConfigField
+                  label="Minimum Window"
+                  value={config.vote_minimum_window_seconds}
+                  unit="seconds"
+                  description="Max time before auto-finalizing"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Validation Tab */}
+        {activeTab === 'validation' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="tile-card p-6">
+              <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Word Limits</h2>
+              <div className="space-y-2">
+                <ConfigField
+                  label="Minimum Words"
+                  value={config.phrase_min_words}
+                  unit="words"
+                  description="Fewest words allowed in a phrase"
+                />
+                <ConfigField
+                  label="Maximum Words"
+                  value={config.phrase_max_words}
+                  unit="words"
+                  description="Most words allowed in a phrase"
+                />
+                <ConfigField
+                  label="Significant Word Min Length"
+                  value={config.significant_word_min_length}
+                  unit="chars"
+                  description="Min chars for content words"
+                />
+              </div>
+            </div>
+
+            <div className="tile-card p-6">
+              <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Character Limits</h2>
+              <div className="space-y-2">
+                <ConfigField
+                  label="Max Phrase Length"
+                  value={config.phrase_max_length}
+                  unit="chars"
+                  description="Total character limit"
+                />
+                <ConfigField
+                  label="Min Characters Per Word"
+                  value={config.phrase_min_char_per_word}
+                  unit="chars"
+                  description="Minimum characters per word"
+                />
+                <ConfigField
+                  label="Max Characters Per Word"
+                  value={config.phrase_max_char_per_word}
+                  unit="chars"
+                  description="Maximum characters per word"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* AI Service Tab */}
+        {activeTab === 'ai' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="tile-card p-6">
+              <h2 className="text-xl font-display font-bold text-quip-navy mb-4">AI Provider Settings</h2>
+              <div className="space-y-2">
+                <ConfigField
+                  label="Active Provider"
+                  value={config.ai_provider}
+                  description="Current AI service provider"
+                />
+                <ConfigField
+                  label="OpenAI Model"
+                  value={config.ai_openai_model}
+                  description="Model used for OpenAI requests"
+                />
+                <ConfigField
+                  label="Gemini Model"
+                  value={config.ai_gemini_model}
+                  description="Model used for Gemini requests"
+                />
+              </div>
+            </div>
+
+            <div className="tile-card p-6">
+              <h2 className="text-xl font-display font-bold text-quip-navy mb-4">AI Backup System</h2>
+              <div className="space-y-2">
+                <ConfigField
+                  label="Backup Delay"
+                  value={config.ai_backup_delay_minutes}
+                  unit="minutes"
+                  description="Wait time before AI provides backups"
+                />
+                <ConfigField
+                  label="API Timeout"
+                  value={config.ai_timeout_seconds}
+                  unit="seconds"
+                  description="Timeout for AI API calls"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default Admin;
