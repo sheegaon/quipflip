@@ -12,6 +12,7 @@ from backend.models.prompt_feedback import PromptFeedback
 from backend.models.phraseset_activity import PhrasesetActivity
 from backend.models.refresh_token import RefreshToken
 from backend.models.quest import Quest, QuestTemplate
+from backend.models.system_config import SystemConfig
 
 __all__ = [
     "Player",
@@ -28,4 +29,5 @@ __all__ = [
     "RefreshToken",
     "Quest",
     "QuestTemplate",
+    "SystemConfig",
 ]

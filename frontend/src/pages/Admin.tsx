@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { Header } from '../components/Header';
 import apiClient, { extractErrorMessage } from '../api/client';
+import { EditableConfigField } from '../components/EditableConfigField';
 
 interface GameConfig {
   // Game Constants
@@ -47,6 +48,22 @@ interface GameConfig {
   ai_backup_delay_minutes: number;
 }
 
+interface ValidationResult {
+  is_valid: boolean;
+  error_message: string | null;
+  word_count: number;
+  phrase_length: number;
+  words: string[];
+  prompt_relevance_score: number | null;
+  similarity_to_original: number | null;
+  similarity_to_other_copy: number | null;
+  prompt_relevance_threshold: number | null;
+  similarity_threshold: number | null;
+  format_check_passed: boolean;
+  dictionary_check_passed: boolean;
+  word_conflicts: string[];
+}
+
 const Admin: React.FC = () => {
   const { state } = useGame();
   const { player } = state;
@@ -54,16 +71,18 @@ const Admin: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [config, setConfig] = useState<GameConfig | null>(null);
-  const [activeTab, setActiveTab] = useState<'economics' | 'timing' | 'validation' | 'ai'>('economics');
+  const [activeTab, setActiveTab] = useState<'economics' | 'timing' | 'validation' | 'phrase_validator' | 'ai'>('economics');
+  const [editMode, setEditMode] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
-  // Phrase validator state - TODO: Implement phrase validator tab UI
-  // const [validationType, setValidationType] = useState<'basic' | 'prompt' | 'copy'>('basic');
-  // const [testPhrase, setTestPhrase] = useState('');
-  // const [promptText, setPromptText] = useState('');
-  // const [originalPhrase, setOriginalPhrase] = useState('');
-  // const [otherCopyPhrase, setOtherCopyPhrase] = useState('');
-  // const [validationResult, setValidationResult] = useState<any | null>(null);
-  // const [validating, setValidating] = useState(false);
+  // Phrase Validator state
+  const [validationType, setValidationType] = useState<'basic' | 'prompt' | 'copy'>('basic');
+  const [testPhrase, setTestPhrase] = useState('');
+  const [promptText, setPromptText] = useState('');
+  const [originalPhrase, setOriginalPhrase] = useState('');
+  const [otherCopyPhrase, setOtherCopyPhrase] = useState('');
+  const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
+  const [validating, setValidating] = useState(false);
 
   useEffect(() => {
     const loadConfig = async () => {
@@ -83,6 +102,62 @@ const Admin: React.FC = () => {
 
     loadConfig();
   }, []);
+
+  const handleSaveConfig = async (key: string, value: number | string) => {
+    try {
+      setSaveMessage(null);
+      const result = await apiClient.updateAdminConfig(key, value);
+
+      // Update local config state
+      if (config) {
+        setConfig({
+          ...config,
+          [key]: result.value
+        });
+      }
+
+      // Show success message
+      setSaveMessage(`Successfully updated ${key}`);
+      setTimeout(() => setSaveMessage(null), 3000);
+    } catch (err) {
+      throw err; // Re-throw to let EditableConfigField handle it
+    }
+  };
+
+  const handleTestPhrase = async () => {
+    if (!testPhrase.trim()) {
+      return;
+    }
+
+    try {
+      setValidating(true);
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/admin/test-phrase-validation`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('quipflip_access_token')}`,
+        },
+        body: JSON.stringify({
+          phrase: testPhrase,
+          validation_type: validationType,
+          prompt_text: validationType !== 'basic' ? promptText || null : null,
+          original_phrase: validationType === 'copy' ? originalPhrase || null : null,
+          other_copy_phrase: validationType === 'copy' ? otherCopyPhrase || null : null,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to validate phrase');
+      }
+
+      const data = await response.json();
+      setValidationResult(data);
+    } catch (err) {
+      setError(extractErrorMessage(err) || 'Failed to test phrase validation');
+    } finally {
+      setValidating(false);
+    }
+  };
 
   if (!player) {
     return (
@@ -129,26 +204,6 @@ const Admin: React.FC = () => {
     );
   }
 
-  const ConfigField: React.FC<{ label: string; value: number | string; unit?: string; description?: string }> = ({
-    label,
-    value,
-    unit,
-    description,
-  }) => (
-    <div className="border-b border-gray-200 last:border-b-0 py-3">
-      <div className="flex justify-between items-start">
-        <div className="flex-1">
-          <label className="block text-sm font-semibold text-quip-navy mb-1">{label}</label>
-          {description && <p className="text-xs text-quip-teal">{description}</p>}
-        </div>
-        <div className="bg-white border-2 border-quip-navy border-opacity-20 rounded px-3 py-1 min-w-[100px] text-right">
-          <span className="font-bold text-quip-navy">{value}</span>
-          {unit && <span className="text-sm text-quip-teal ml-1">{unit}</span>}
-        </div>
-      </div>
-    </div>
-  );
-
   return (
     <div className="min-h-screen bg-quip-cream bg-pattern">
       <Header />
@@ -160,29 +215,58 @@ const Admin: React.FC = () => {
               <h1 className="text-3xl font-display font-bold text-quip-navy">Admin Panel</h1>
               <p className="text-quip-teal mt-1">View and manage game configuration</p>
             </div>
-            <button
-              onClick={() => navigate('/settings')}
-              className="bg-quip-navy hover:bg-quip-teal text-white font-bold py-2 px-4 rounded-tile transition-all hover:shadow-tile-sm"
-            >
-              Back to Settings
-            </button>
-          </div>
-        </div>
-
-        {/* Info Banner */}
-        <div className="tile-card p-4 mb-6 bg-blue-50 border-2 border-blue-300">
-          <div className="flex items-start gap-3">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <div>
-              <p className="text-blue-900 font-semibold">Read-Only Mode</p>
-              <p className="text-blue-700 text-sm mt-1">
-                This is the v1 admin panel showing current configuration values. Editing capabilities will be added in a future update.
-              </p>
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <span className="text-sm font-semibold text-quip-navy">Edit Mode</span>
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    checked={editMode}
+                    onChange={(e) => setEditMode(e.target.checked)}
+                    className="sr-only"
+                  />
+                  <div className={`block w-14 h-8 rounded-full transition-colors ${editMode ? 'bg-green-600' : 'bg-gray-300'}`}></div>
+                  <div className={`dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition-transform ${editMode ? 'transform translate-x-6' : ''}`}></div>
+                </div>
+              </label>
+              <button
+                onClick={() => navigate('/settings')}
+                className="bg-quip-navy hover:bg-quip-teal text-white font-bold py-2 px-4 rounded-tile transition-all hover:shadow-tile-sm"
+              >
+                Back to Settings
+              </button>
             </div>
           </div>
         </div>
+
+        {/* Success Message */}
+        {saveMessage && (
+          <div className="tile-card p-4 mb-6 bg-green-50 border-2 border-green-300">
+            <div className="flex items-start gap-3">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p className="text-green-900 font-semibold">{saveMessage}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Info Banner - only show when NOT in edit mode */}
+        {!editMode && (
+          <div className="tile-card p-4 mb-6 bg-blue-50 border-2 border-blue-300">
+            <div className="flex items-start gap-3">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div>
+                <p className="text-blue-900 font-semibold">Read-Only Mode</p>
+                <p className="text-blue-700 text-sm mt-1">
+                  Enable Edit Mode above to modify configuration values. Click on any value to edit it.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Tab Navigation */}
         <div className="tile-card p-2 mb-6">
@@ -218,6 +302,16 @@ const Admin: React.FC = () => {
               Validation
             </button>
             <button
+              onClick={() => setActiveTab('phrase_validator')}
+              className={`flex-1 min-w-[100px] py-3 px-4 rounded-tile font-bold transition-all ${
+                activeTab === 'phrase_validator'
+                  ? 'bg-green-600 text-white shadow-tile-sm'
+                  : 'bg-white text-quip-navy hover:bg-green-600 hover:bg-opacity-10'
+              }`}
+            >
+              Phrase Tester
+            </button>
+            <button
               onClick={() => setActiveTab('ai')}
               className={`flex-1 min-w-[120px] py-3 px-4 rounded-tile font-bold transition-all ${
                 activeTab === 'ai'
@@ -239,17 +333,29 @@ const Admin: React.FC = () => {
                 Player Balances
               </h2>
               <div className="space-y-2">
-                <ConfigField
+                <EditableConfigField
                   label="Starting Balance"
                   value={config.starting_balance}
+                  configKey="starting_balance"
                   unit="flipcoins"
                   description="Initial balance for new players"
+                  type="number"
+                  min={1000}
+                  max={10000}
+                  onSave={handleSaveConfig}
+                  disabled={!editMode}
                 />
-                <ConfigField
+                <EditableConfigField
                   label="Daily Bonus Amount"
                   value={config.daily_bonus_amount}
+                  configKey="daily_bonus_amount"
                   unit="flipcoins"
                   description="Daily login bonus reward"
+                  type="number"
+                  min={50}
+                  max={500}
+                  onSave={handleSaveConfig}
+                  disabled={!editMode}
                 />
               </div>
             </div>
@@ -260,35 +366,65 @@ const Admin: React.FC = () => {
                 Round Costs
               </h2>
               <div className="space-y-2">
-                <ConfigField
+                <EditableConfigField
                   label="Prompt Cost"
                   value={config.prompt_cost}
                   unit="flipcoins"
                   description="Cost to start a prompt round"
+                configKey="prompt_cost"
+                  type="number"
+                  min={50}
+                  max={500}
+                  onSave={handleSaveConfig}
+                  disabled={!editMode}
                 />
-                <ConfigField
+                <EditableConfigField
                   label="Copy Cost (Normal)"
                   value={config.copy_cost_normal}
                   unit="flipcoins"
                   description="Standard cost to start a copy round"
+                configKey="copy_cost_normal"
+                  type="number"
+                  min={25}
+                  max={250}
+                  onSave={handleSaveConfig}
+                  disabled={!editMode}
                 />
-                <ConfigField
+                <EditableConfigField
                   label="Copy Cost (Discount)"
                   value={config.copy_cost_discount}
                   unit="flipcoins"
                   description="Discounted cost when many prompts waiting"
+                configKey="copy_cost_discount"
+                  type="number"
+                  min={20}
+                  max={200}
+                  onSave={handleSaveConfig}
+                  disabled={!editMode}
                 />
-                <ConfigField
+                <EditableConfigField
                   label="Copy Discount Threshold"
                   value={config.copy_discount_threshold}
                   unit="prompts"
                   description="Prompts needed to activate discount"
+                configKey="copy_discount_threshold"
+                  type="number"
+                  min={5}
+                  max={30}
+                  onSave={handleSaveConfig}
+                  disabled={!editMode}
                 />
-                <ConfigField
+                <EditableConfigField
                   label="Vote Cost"
                   value={config.vote_cost}
                   unit="flipcoins"
                   description="Cost to start a vote round"
+                configKey="vote_cost"
+                  type="number"
+                  min={5}
+                  max={50}
+                  onSave={handleSaveConfig}
+                  disabled={!editMode}
                 />
               </div>
             </div>
@@ -299,23 +435,41 @@ const Admin: React.FC = () => {
                 Payouts & Penalties
               </h2>
               <div className="space-y-2">
-                <ConfigField
+                <EditableConfigField
                   label="Vote Payout (Correct)"
                   value={config.vote_payout_correct}
                   unit="flipcoins"
                   description="Reward for voting correctly"
+                configKey="vote_payout_correct"
+                  type="number"
+                  min={10}
+                  max={100}
+                  onSave={handleSaveConfig}
+                  disabled={!editMode}
                 />
-                <ConfigField
+                <EditableConfigField
                   label="Prize Pool Base"
                   value={config.prize_pool_base}
                   unit="flipcoins"
                   description="Base prize pool for phrasesets"
+                configKey="prize_pool_base"
+                  type="number"
+                  min={100}
+                  max={1000}
+                  onSave={handleSaveConfig}
+                  disabled={!editMode}
                 />
-                <ConfigField
+                <EditableConfigField
                   label="Abandoned Penalty"
                   value={config.abandoned_penalty}
                   unit="flipcoins"
                   description="Penalty for abandoned rounds"
+                configKey="abandoned_penalty"
+                  type="number"
+                  min={0}
+                  max={50}
+                  onSave={handleSaveConfig}
+                  disabled={!editMode}
                 />
               </div>
             </div>
@@ -323,11 +477,17 @@ const Admin: React.FC = () => {
             <div className="tile-card p-6">
               <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Game Limits</h2>
               <div className="space-y-2">
-                <ConfigField
+                <EditableConfigField
                   label="Max Outstanding Prompts"
                   value={config.max_outstanding_quips}
                   unit="prompts"
                   description="Maximum concurrent prompts per player"
+                configKey="max_outstanding_quips"
+                  type="number"
+                  min={3}
+                  max={50}
+                  onSave={handleSaveConfig}
+                  disabled={!editMode}
                 />
               </div>
             </div>
@@ -340,29 +500,53 @@ const Admin: React.FC = () => {
             <div className="tile-card p-6">
               <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Round Durations</h2>
               <div className="space-y-2">
-                <ConfigField
+                <EditableConfigField
                   label="Prompt Round Duration"
                   value={config.prompt_round_seconds}
                   unit="seconds"
                   description="Time to submit a prompt"
+                configKey="prompt_round_seconds"
+                  type="number"
+                  min={60}
+                  max={600}
+                  onSave={handleSaveConfig}
+                  disabled={!editMode}
                 />
-                <ConfigField
+                <EditableConfigField
                   label="Copy Round Duration"
                   value={config.copy_round_seconds}
                   unit="seconds"
                   description="Time to submit a copy"
+                configKey="copy_round_seconds"
+                  type="number"
+                  min={60}
+                  max={600}
+                  onSave={handleSaveConfig}
+                  disabled={!editMode}
                 />
-                <ConfigField
+                <EditableConfigField
                   label="Vote Round Duration"
                   value={config.vote_round_seconds}
                   unit="seconds"
                   description="Time to submit a vote"
+                configKey="vote_round_seconds"
+                  type="number"
+                  min={30}
+                  max={300}
+                  onSave={handleSaveConfig}
+                  disabled={!editMode}
                 />
-                <ConfigField
+                <EditableConfigField
                   label="Grace Period"
                   value={config.grace_period_seconds}
                   unit="seconds"
                   description="Extra time after expiration"
+                configKey="grace_period_seconds"
+                  type="number"
+                  min={0}
+                  max={30}
+                  onSave={handleSaveConfig}
+                  disabled={!editMode}
                 />
               </div>
             </div>
@@ -370,35 +554,65 @@ const Admin: React.FC = () => {
             <div className="tile-card p-6">
               <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Vote Finalization</h2>
               <div className="space-y-2">
-                <ConfigField
+                <EditableConfigField
                   label="Maximum Votes"
                   value={config.vote_max_votes}
                   unit="votes"
                   description="Auto-finalize after this many votes"
+                configKey="vote_max_votes"
+                  type="number"
+                  min={10}
+                  max={100}
+                  onSave={handleSaveConfig}
+                  disabled={!editMode}
                 />
-                <ConfigField
+                <EditableConfigField
                   label="Closing Threshold"
                   value={config.vote_closing_threshold}
                   unit="votes"
                   description="Votes to enter closing window"
+                configKey="vote_closing_threshold"
+                  type="number"
+                  min={3}
+                  max={20}
+                  onSave={handleSaveConfig}
+                  disabled={!editMode}
                 />
-                <ConfigField
+                <EditableConfigField
                   label="Closing Window"
                   value={config.vote_closing_window_seconds}
                   unit="seconds"
                   description="Time to get more votes before closing"
+                configKey="vote_closing_window_seconds"
+                  type="number"
+                  min={30}
+                  max={300}
+                  onSave={handleSaveConfig}
+                  disabled={!editMode}
                 />
-                <ConfigField
+                <EditableConfigField
                   label="Minimum Threshold"
                   value={config.vote_minimum_threshold}
                   unit="votes"
                   description="Minimum votes to start timeout"
+                configKey="vote_minimum_threshold"
+                  type="number"
+                  min={2}
+                  max={10}
+                  onSave={handleSaveConfig}
+                  disabled={!editMode}
                 />
-                <ConfigField
+                <EditableConfigField
                   label="Minimum Window"
                   value={config.vote_minimum_window_seconds}
                   unit="seconds"
                   description="Max time before auto-finalizing"
+                configKey="vote_minimum_window_seconds"
+                  type="number"
+                  min={300}
+                  max={3600}
+                  onSave={handleSaveConfig}
+                  disabled={!editMode}
                 />
               </div>
             </div>
@@ -411,23 +625,41 @@ const Admin: React.FC = () => {
             <div className="tile-card p-6">
               <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Word Limits</h2>
               <div className="space-y-2">
-                <ConfigField
+                <EditableConfigField
                   label="Minimum Words"
                   value={config.phrase_min_words}
                   unit="words"
                   description="Fewest words allowed in a phrase"
+                configKey="phrase_min_words"
+                  type="number"
+                  min={1}
+                  max={5}
+                  onSave={handleSaveConfig}
+                  disabled={!editMode}
                 />
-                <ConfigField
+                <EditableConfigField
                   label="Maximum Words"
                   value={config.phrase_max_words}
                   unit="words"
                   description="Most words allowed in a phrase"
+                configKey="phrase_max_words"
+                  type="number"
+                  min={3}
+                  max={10}
+                  onSave={handleSaveConfig}
+                  disabled={!editMode}
                 />
-                <ConfigField
+                <EditableConfigField
                   label="Significant Word Min Length"
                   value={config.significant_word_min_length}
                   unit="chars"
                   description="Min chars for content words"
+                configKey="significant_word_min_length"
+                  type="number"
+                  min={3}
+                  max={6}
+                  onSave={handleSaveConfig}
+                  disabled={!editMode}
                 />
               </div>
             </div>
@@ -435,26 +667,327 @@ const Admin: React.FC = () => {
             <div className="tile-card p-6">
               <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Character Limits</h2>
               <div className="space-y-2">
-                <ConfigField
+                <EditableConfigField
                   label="Max Phrase Length"
                   value={config.phrase_max_length}
                   unit="chars"
                   description="Total character limit"
+                configKey="phrase_max_length"
+                  type="number"
+                  min={50}
+                  max={200}
+                  onSave={handleSaveConfig}
+                  disabled={!editMode}
                 />
-                <ConfigField
+                <EditableConfigField
                   label="Min Characters Per Word"
                   value={config.phrase_min_char_per_word}
                   unit="chars"
                   description="Minimum characters per word"
+                configKey="phrase_min_char_per_word"
+                  type="number"
+                  min={1}
+                  max={5}
+                  onSave={handleSaveConfig}
+                  disabled={!editMode}
                 />
-                <ConfigField
+                <EditableConfigField
                   label="Max Characters Per Word"
                   value={config.phrase_max_char_per_word}
                   unit="chars"
                   description="Maximum characters per word"
+                configKey="phrase_max_char_per_word"
+                  type="number"
+                  min={10}
+                  max={30}
+                  onSave={handleSaveConfig}
+                  disabled={!editMode}
                 />
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Phrase Validator Tab */}
+        {activeTab === 'phrase_validator' && (
+          <div className="space-y-6">
+            <div className="tile-card p-6">
+              <h2 className="text-2xl font-display font-bold text-quip-navy mb-4">Phrase Validation Tester</h2>
+              <p className="text-quip-teal mb-6">
+                Test phrase validation as if submitting to a prompt or copy round. See similarity scores and validation details.
+              </p>
+
+              {/* Validation Type Selector */}
+              <div className="mb-6">
+                <label className="block text-sm font-semibold text-quip-navy mb-2">Validation Type</label>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setValidationType('basic')}
+                    className={`px-4 py-2 rounded-tile font-bold transition-all ${
+                      validationType === 'basic'
+                        ? 'bg-quip-navy text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    Basic Format
+                  </button>
+                  <button
+                    onClick={() => setValidationType('prompt')}
+                    className={`px-4 py-2 rounded-tile font-bold transition-all ${
+                      validationType === 'prompt'
+                        ? 'bg-quip-navy text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    Prompt Round
+                  </button>
+                  <button
+                    onClick={() => setValidationType('copy')}
+                    className={`px-4 py-2 rounded-tile font-bold transition-all ${
+                      validationType === 'copy'
+                        ? 'bg-quip-turquoise text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    Copy Round
+                  </button>
+                </div>
+              </div>
+
+              {/* Test Phrase Input */}
+              <div className="mb-4">
+                <label className="block text-sm font-semibold text-quip-navy mb-2">Test Phrase</label>
+                <input
+                  type="text"
+                  value={testPhrase}
+                  onChange={(e) => setTestPhrase(e.target.value)}
+                  className="w-full border-2 border-quip-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-quip-orange"
+                  placeholder="Enter phrase to validate..."
+                />
+              </div>
+
+              {/* Prompt Text (for prompt and copy validation) */}
+              {validationType !== 'basic' && (
+                <div className="mb-4">
+                  <label className="block text-sm font-semibold text-quip-navy mb-2">Prompt Text</label>
+                  <input
+                    type="text"
+                    value={promptText}
+                    onChange={(e) => setPromptText(e.target.value)}
+                    className="w-full border-2 border-quip-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-quip-orange"
+                    placeholder="Enter the original prompt..."
+                  />
+                </div>
+              )}
+
+              {/* Copy-specific fields */}
+              {validationType === 'copy' && (
+                <>
+                  <div className="mb-4">
+                    <label className="block text-sm font-semibold text-quip-navy mb-2">Original Phrase (Required for Copy)</label>
+                    <input
+                      type="text"
+                      value={originalPhrase}
+                      onChange={(e) => setOriginalPhrase(e.target.value)}
+                      className="w-full border-2 border-quip-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-quip-orange"
+                      placeholder="Enter the original prompt phrase..."
+                    />
+                  </div>
+                  <div className="mb-4">
+                    <label className="block text-sm font-semibold text-quip-navy mb-2">Other Copy Phrase (Optional)</label>
+                    <input
+                      type="text"
+                      value={otherCopyPhrase}
+                      onChange={(e) => setOtherCopyPhrase(e.target.value)}
+                      className="w-full border-2 border-quip-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-quip-orange"
+                      placeholder="Enter the other copy phrase if it exists..."
+                    />
+                  </div>
+                </>
+              )}
+
+              {/* Submit Button */}
+              <button
+                onClick={handleTestPhrase}
+                disabled={validating || !testPhrase.trim()}
+                className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm"
+              >
+                {validating ? 'Validating...' : 'Test Validation'}
+              </button>
+            </div>
+
+            {/* Validation Results */}
+            {validationResult && (
+              <div className="tile-card p-6">
+                <h3 className="text-xl font-display font-bold text-quip-navy mb-4">Validation Results</h3>
+
+                {/* Overall Status */}
+                <div className={`p-4 rounded-tile mb-6 ${validationResult.is_valid ? 'bg-green-100 border-2 border-green-500' : 'bg-red-100 border-2 border-red-500'}`}>
+                  <div className="flex items-center gap-3">
+                    {validationResult.is_valid ? (
+                      <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    ) : (
+                      <svg className="w-8 h-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    )}
+                    <div className="flex-1">
+                      <p className={`font-bold text-lg ${validationResult.is_valid ? 'text-green-800' : 'text-red-800'}`}>
+                        {validationResult.is_valid ? 'Valid Phrase' : 'Invalid Phrase'}
+                      </p>
+                      {validationResult.error_message && (
+                        <p className="text-red-700 text-sm mt-1">{validationResult.error_message}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Basic Details */}
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  <div className="bg-gray-50 border-2 border-gray-200 rounded-tile p-4">
+                    <p className="text-sm text-quip-teal mb-1">Word Count</p>
+                    <p className="text-2xl font-bold text-quip-navy">{validationResult.word_count}</p>
+                    <p className="text-xs text-quip-teal mt-1">Limit: {config.phrase_min_words}-{config.phrase_max_words}</p>
+                  </div>
+                  <div className="bg-gray-50 border-2 border-gray-200 rounded-tile p-4">
+                    <p className="text-sm text-quip-teal mb-1">Character Count</p>
+                    <p className="text-2xl font-bold text-quip-navy">{validationResult.phrase_length}</p>
+                    <p className="text-xs text-quip-teal mt-1">Max: {config.phrase_max_length}</p>
+                  </div>
+                </div>
+
+                {/* Words */}
+                <div className="mb-6">
+                  <p className="text-sm font-semibold text-quip-navy mb-2">Words Detected</p>
+                  <div className="flex flex-wrap gap-2">
+                    {validationResult.words.map((word, idx) => (
+                      <span key={idx} className="bg-quip-navy bg-opacity-10 text-quip-navy px-3 py-1 rounded-full text-sm font-semibold">
+                        {word}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Similarity Scores */}
+                {(validationResult.prompt_relevance_score !== null ||
+                  validationResult.similarity_to_original !== null ||
+                  validationResult.similarity_to_other_copy !== null) && (
+                  <div className="space-y-4 mb-6">
+                    <h4 className="text-lg font-display font-bold text-quip-navy">Similarity Scores</h4>
+
+                    {validationResult.prompt_relevance_score !== null && (
+                      <div>
+                        <div className="flex justify-between text-sm mb-1">
+                          <span className="text-quip-teal">Prompt Relevance</span>
+                          <span className="font-bold text-quip-navy">{validationResult.prompt_relevance_score.toFixed(4)}</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-4">
+                          <div
+                            className={`h-4 rounded-full ${
+                              validationResult.prompt_relevance_score >= (validationResult.prompt_relevance_threshold || 0.05)
+                                ? 'bg-green-500'
+                                : 'bg-red-500'
+                            }`}
+                            style={{ width: `${Math.min(validationResult.prompt_relevance_score * 100, 100)}%` }}
+                          ></div>
+                        </div>
+                        <p className="text-xs text-quip-teal mt-1">
+                          Threshold: {validationResult.prompt_relevance_threshold?.toFixed(2)} (minimum required)
+                        </p>
+                      </div>
+                    )}
+
+                    {validationResult.similarity_to_original !== null && (
+                      <div>
+                        <div className="flex justify-between text-sm mb-1">
+                          <span className="text-quip-teal">Similarity to Original</span>
+                          <span className="font-bold text-quip-navy">{validationResult.similarity_to_original.toFixed(4)}</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-4">
+                          <div
+                            className={`h-4 rounded-full ${
+                              validationResult.similarity_to_original < (validationResult.similarity_threshold || 0.8)
+                                ? 'bg-green-500'
+                                : 'bg-red-500'
+                            }`}
+                            style={{ width: `${validationResult.similarity_to_original * 100}%` }}
+                          ></div>
+                        </div>
+                        <p className="text-xs text-quip-teal mt-1">
+                          Threshold: {validationResult.similarity_threshold?.toFixed(2)} (maximum allowed)
+                        </p>
+                      </div>
+                    )}
+
+                    {validationResult.similarity_to_other_copy !== null && (
+                      <div>
+                        <div className="flex justify-between text-sm mb-1">
+                          <span className="text-quip-teal">Similarity to Other Copy</span>
+                          <span className="font-bold text-quip-navy">{validationResult.similarity_to_other_copy.toFixed(4)}</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-4">
+                          <div
+                            className={`h-4 rounded-full ${
+                              validationResult.similarity_to_other_copy < (validationResult.similarity_threshold || 0.8)
+                                ? 'bg-green-500'
+                                : 'bg-red-500'
+                            }`}
+                            style={{ width: `${validationResult.similarity_to_other_copy * 100}%` }}
+                          ></div>
+                        </div>
+                        <p className="text-xs text-quip-teal mt-1">
+                          Threshold: {validationResult.similarity_threshold?.toFixed(2)} (maximum allowed)
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Word Conflicts */}
+                {validationResult.word_conflicts.length > 0 && (
+                  <div className="mb-6">
+                    <p className="text-sm font-semibold text-quip-navy mb-2">Word Conflicts</p>
+                    <div className="flex flex-wrap gap-2">
+                      {validationResult.word_conflicts.map((word, idx) => (
+                        <span key={idx} className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm font-semibold border-2 border-red-300">
+                          {word}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Validation Checks */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className={`p-3 rounded-tile border-2 ${
+                    validationResult.format_check_passed
+                      ? 'bg-green-50 border-green-300'
+                      : 'bg-red-50 border-red-300'
+                  }`}>
+                    <p className="text-sm font-semibold">Format Check</p>
+                    <p className={`text-lg font-bold ${
+                      validationResult.format_check_passed ? 'text-green-700' : 'text-red-700'
+                    }`}>
+                      {validationResult.format_check_passed ? 'Passed' : 'Failed'}
+                    </p>
+                  </div>
+                  <div className={`p-3 rounded-tile border-2 ${
+                    validationResult.dictionary_check_passed
+                      ? 'bg-green-50 border-green-300'
+                      : 'bg-red-50 border-red-300'
+                  }`}>
+                    <p className="text-sm font-semibold">Dictionary Check</p>
+                    <p className={`text-lg font-bold ${
+                      validationResult.dictionary_check_passed ? 'text-green-700' : 'text-red-700'
+                    }`}>
+                      {validationResult.dictionary_check_passed ? 'Passed' : 'Failed'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -464,20 +997,33 @@ const Admin: React.FC = () => {
             <div className="tile-card p-6">
               <h2 className="text-xl font-display font-bold text-quip-navy mb-4">AI Provider Settings</h2>
               <div className="space-y-2">
-                <ConfigField
+                <EditableConfigField
                   label="Active Provider"
                   value={config.ai_provider}
                   description="Current AI service provider"
+                configKey="ai_provider"
+                  type="select"
+                  options={["openai", "gemini"]}
+                  onSave={handleSaveConfig}
+                  disabled={!editMode}
                 />
-                <ConfigField
+                <EditableConfigField
                   label="OpenAI Model"
                   value={config.ai_openai_model}
                   description="Model used for OpenAI requests"
+                configKey="ai_openai_model"
+                  type="text"
+                  onSave={handleSaveConfig}
+                  disabled={!editMode}
                 />
-                <ConfigField
+                <EditableConfigField
                   label="Gemini Model"
                   value={config.ai_gemini_model}
                   description="Model used for Gemini requests"
+                configKey="ai_gemini_model"
+                  type="text"
+                  onSave={handleSaveConfig}
+                  disabled={!editMode}
                 />
               </div>
             </div>
@@ -485,17 +1031,29 @@ const Admin: React.FC = () => {
             <div className="tile-card p-6">
               <h2 className="text-xl font-display font-bold text-quip-navy mb-4">AI Backup System</h2>
               <div className="space-y-2">
-                <ConfigField
+                <EditableConfigField
                   label="Backup Delay"
                   value={config.ai_backup_delay_minutes}
                   unit="minutes"
                   description="Wait time before AI provides backups"
+                configKey="ai_backup_delay_minutes"
+                  type="number"
+                  min={5}
+                  max={60}
+                  onSave={handleSaveConfig}
+                  disabled={!editMode}
                 />
-                <ConfigField
+                <EditableConfigField
                   label="API Timeout"
                   value={config.ai_timeout_seconds}
                   unit="seconds"
                   description="Timeout for AI API calls"
+                configKey="ai_timeout_seconds"
+                  type="number"
+                  min={10}
+                  max={120}
+                  onSave={handleSaveConfig}
+                  disabled={!editMode}
                 />
               </div>
             </div>
