@@ -31,8 +31,11 @@ const Statistics: React.FC = () => {
         setChartsReady(false);
         const statisticsData = await getStatistics(controller.signal);
         setData(statisticsData);
-        // Give the DOM a moment to settle before rendering charts
-        setTimeout(() => setChartsReady(true), 100);
+        // Wait for the DOM to fully render and settle before enabling charts
+        // This prevents Recharts dimension errors by ensuring containers have proper sizes
+        requestAnimationFrame(() => {
+          setTimeout(() => setChartsReady(true), 250);
+        });
       } catch (err) {
         if (err instanceof Error && err.name === 'CanceledError') return;
         setError(extractErrorMessage(err) || 'Failed to load statistics. Please try again.');
