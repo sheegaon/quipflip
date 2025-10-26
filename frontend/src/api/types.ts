@@ -93,6 +93,10 @@ export interface RoundAvailability {
   copy_discount_active: boolean;
   copy_cost: number;
   current_round_id: string | null;
+  // Game constants from config
+  prompt_cost: number;
+  vote_cost: number;
+  vote_payout_correct: number;
 }
 
 export interface StartPromptResponse {

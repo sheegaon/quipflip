@@ -31,9 +31,11 @@ class PhraseSet(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     finalized_at = Column(DateTime(timezone=True), nullable=True)
 
-    # Prize pool
-    total_pool = Column(Integer, default=300, nullable=False)
-    system_contribution = Column(Integer, default=0, nullable=False)  # 0 or 10
+    # Prize pool tracking
+    total_pool = Column(Integer, default=200, nullable=False)  # Dynamic: base + vote contributions - correct payouts
+    vote_contributions = Column(Integer, default=0, nullable=False)  # Total vote_cost added from votes
+    vote_payouts_paid = Column(Integer, default=0, nullable=False)  # Total vote_payout_correct paid out
+    system_contribution = Column(Integer, default=0, nullable=False)  # Copy discount contributions (0, 10, or 20)
 
     # Relationships
     prompt_round = relationship("Round", foreign_keys=[prompt_round_id])

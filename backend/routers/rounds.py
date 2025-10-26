@@ -19,6 +19,7 @@ from backend.services.transaction_service import TransactionService
 from backend.services.round_service import RoundService
 from backend.services.vote_service import VoteService
 from backend.services.queue_service import QueueService
+from backend.config import get_settings
 from backend.utils.exceptions import (
     InsufficientBalanceError,
     AlreadyInRoundError,
@@ -35,6 +36,7 @@ import random
 import logging
 
 logger = logging.getLogger(__name__)
+settings = get_settings()
 
 router = APIRouter()
 
@@ -232,6 +234,10 @@ async def get_rounds_available(
         copy_discount_active=QueueService.is_copy_discount_active(),
         copy_cost=QueueService.get_copy_cost(),
         current_round_id=player.active_round_id,
+        # Game constants from config
+        prompt_cost=settings.prompt_cost,
+        vote_cost=settings.vote_cost,
+        vote_payout_correct=settings.vote_payout_correct,
     )
 
 

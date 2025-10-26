@@ -11,7 +11,7 @@ import type { VoteResponse, VoteState } from '../api/types';
 
 export const VoteRound: React.FC = () => {
   const { state } = useGame();
-  const { activeRound } = state;
+  const { activeRound, roundAvailability } = state;
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -20,6 +20,11 @@ export const VoteRound: React.FC = () => {
 
   const roundData = activeRound?.round_type === 'vote' ? activeRound.state as VoteState : null;
   const { isExpired } = useTimer(roundData?.expires_at || null);
+
+  // Get dynamic values from config or use defaults
+  const voteCost = roundAvailability?.vote_cost || 10;
+  const votePayoutCorrect = roundAvailability?.vote_payout_correct || 20;
+  const netGain = votePayoutCorrect - voteCost;
 
   // Redirect if already submitted
   useEffect(() => {
@@ -148,7 +153,7 @@ export const VoteRound: React.FC = () => {
 
         {isExpired && (
           <div className="text-center text-quip-orange-deep font-semibold">
-            Time's up! You forfeited <CurrencyDisplay amount={1} iconClassName="w-4 h-4" textClassName="font-semibold" />
+            Time's up! You forfeited <CurrencyDisplay amount={voteCost} iconClassName="w-4 h-4" textClassName="font-semibold" />
           </div>
         )}
 
@@ -168,7 +173,7 @@ export const VoteRound: React.FC = () => {
         {/* Info */}
         <div className="mt-6 p-4 bg-quip-orange bg-opacity-5 rounded-tile">
           <p className="text-sm text-quip-teal inline-flex items-center flex-wrap gap-1">
-            <strong className="text-quip-navy">Cost:</strong> <CurrencyDisplay amount={1} iconClassName="w-3 h-3" textClassName="text-sm" /> • <strong className="text-quip-navy">Correct answer:</strong> +<CurrencyDisplay amount={5} iconClassName="w-3 h-3" textClassName="text-sm" /> (+<CurrencyDisplay amount={4} iconClassName="w-3 h-3" textClassName="text-sm" /> net)
+            <strong className="text-quip-navy">Cost:</strong> <CurrencyDisplay amount={voteCost} iconClassName="w-3 h-3" textClassName="text-sm" /> • <strong className="text-quip-navy">Correct answer:</strong> +<CurrencyDisplay amount={votePayoutCorrect} iconClassName="w-3 h-3" textClassName="text-sm" /> (+<CurrencyDisplay amount={netGain} iconClassName="w-3 h-3" textClassName="text-sm" /> net)
           </p>
         </div>
       </div>

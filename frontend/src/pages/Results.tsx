@@ -15,8 +15,6 @@ export const Results: React.FC = () => {
   const [results, setResults] = useState<PhrasesetResults | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [claiming, setClaiming] = useState(false);
-  const [showClaimAnimation, setShowClaimAnimation] = useState(false);
 
   useEffect(() => {
     // Auto-select first pending result if available
@@ -48,33 +46,6 @@ export const Results: React.FC = () => {
 
   const handleSelectPhraseset = (phrasesetId: string) => {
     setSelectedPhrasesetId(phrasesetId);
-  };
-
-  const handleClaim = async () => {
-    if (!selectedPhrasesetId || claiming) return;
-
-    try {
-      setClaiming(true);
-      setShowClaimAnimation(true);
-      await apiClient.claimPhrasesetPrize(selectedPhrasesetId);
-
-      // Refresh dashboard and results
-      await refreshDashboard();
-
-      // Refresh the current results to update the claimed status
-      const data = await apiClient.getPhrasesetResults(selectedPhrasesetId);
-      setResults(data);
-
-      // Hide animation after a short delay
-      setTimeout(() => {
-        setShowClaimAnimation(false);
-      }, 1000);
-    } catch (err) {
-      setError(extractErrorMessage(err) || 'Unable to claim the payout. Please try again.');
-      setShowClaimAnimation(false);
-    } finally {
-      setClaiming(false);
-    }
   };
 
   if (pendingResults.length === 0) {
@@ -171,40 +142,17 @@ export const Results: React.FC = () => {
                       <p className="text-xl font-bold text-quip-navy">{results.your_points}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-quip-teal">Payout:</p>
-                      <p className="text-2xl font-display font-bold text-quip-turquoise relative">
-                        {showClaimAnimation && (
-                          <span className="absolute inset-0 flex items-center justify-center">
-                            <img src="/flipcoin.png" alt="" className="w-8 h-8 balance-flip-active" />
-                          </span>
-                        )}
+                      <p className="text-sm text-quip-teal">Earnings:</p>
+                      <p className="text-2xl font-display font-bold text-quip-turquoise">
                         {results.your_payout} FC
                       </p>
                     </div>
                   </div>
-                  {results.already_collected ? (
-                    <p className="text-sm text-quip-teal mt-3 italic">
-                      ✓ Payout already collected
+                  <div className="mt-4 p-3 bg-quip-turquoise bg-opacity-5 rounded-tile border border-quip-turquoise border-opacity-20">
+                    <p className="text-sm text-quip-teal text-center">
+                      ✓ Automatically added to your balance when voting completed
                     </p>
-                  ) : (
-                    <button
-                      onClick={handleClaim}
-                      disabled={claiming}
-                      className="mt-4 w-full bg-quip-turquoise hover:bg-quip-teal disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm inline-flex items-center justify-center gap-2"
-                    >
-                      {claiming ? (
-                        <>
-                          <img src="/flipcoin.png" alt="" className="w-6 h-6 balance-flip-active" />
-                          Claiming...
-                        </>
-                      ) : (
-                        <>
-                          <img src="/flipcoin.png" alt="" className="w-6 h-6" />
-                          Claim {results.your_payout} FC
-                        </>
-                      )}
-                    </button>
-                  )}
+                  </div>
                 </div>
 
                 {/* Vote Results */}

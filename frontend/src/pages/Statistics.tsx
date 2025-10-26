@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { extractErrorMessage } from '../api/client';
 import type { PlayerStatistics } from '../api/types';
@@ -12,6 +13,7 @@ import PerformanceRadar from '../components/statistics/PerformanceRadar';
 import TopContentTable from '../components/statistics/TopContentTable';
 
 const Statistics: React.FC = () => {
+  const navigate = useNavigate();
   const { actions } = useGame();
   const { getStatistics } = actions;
   const [data, setData] = useState<PlayerStatistics | null>(null);
@@ -79,19 +81,31 @@ const Statistics: React.FC = () => {
         {/* Header */}
         <div className="tile-card p-6 mb-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
+            <div className="flex-1">
               <h1 className="text-3xl font-display font-bold text-quip-navy">{data.username}'s Statistics</h1>
               <p className="text-quip-teal mt-1">{data.email}</p>
               <p className="text-quip-teal text-sm mt-1">Track your performance and progress</p>
             </div>
-            <div className="text-right">
-              <div className="text-sm text-quip-teal">Current Balance</div>
-              <div className="text-3xl font-bold text-quip-orange">
-                <CurrencyDisplay
-                  amount={data.overall_balance}
-                  iconClassName="w-8 h-8"
-                  textClassName="text-3xl font-bold text-quip-orange"
-                />
+            <div className="flex flex-col sm:flex-row items-end gap-4">
+              <button
+                onClick={() => navigate('/settings')}
+                className="flex items-center gap-2 bg-quip-navy hover:bg-quip-teal text-white font-bold py-2 px-4 rounded-tile transition-all hover:shadow-tile-sm"
+                title="Account Settings"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+                </svg>
+                <span className="hidden sm:inline">Settings</span>
+              </button>
+              <div className="text-right">
+                <div className="text-sm text-quip-teal">Current Balance</div>
+                <div className="text-3xl font-bold text-quip-orange">
+                  <CurrencyDisplay
+                    amount={data.overall_balance}
+                    iconClassName="w-8 h-8"
+                    textClassName="text-3xl font-bold text-quip-orange"
+                  />
+                </div>
               </div>
             </div>
           </div>

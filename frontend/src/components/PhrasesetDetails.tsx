@@ -12,8 +12,6 @@ interface PhrasesetDetailsProps {
   phraseset: PhrasesetDetailsType | null;
   summary?: PhrasesetSummary | null;
   loading?: boolean;
-  claiming?: boolean;
-  onClaim?: (phrasesetId: string) => void;
 }
 
 const STATUS_LABELS: Record<PhrasesetStatus, string> = {
@@ -41,8 +39,6 @@ export const PhrasesetDetails: React.FC<PhrasesetDetailsProps> = ({
   phraseset,
   summary,
   loading,
-  claiming,
-  onClaim,
 }) => {
   if (loading) {
     return (
@@ -119,8 +115,6 @@ export const PhrasesetDetails: React.FC<PhrasesetDetailsProps> = ({
     );
   }
 
-  const canClaim = phraseset.status === 'finalized' && !phraseset.payout_claimed && phraseset.phraseset_id;
-
   return (
     <div className="bg-white rounded-lg shadow p-6 space-y-6">
       <header className="space-y-3">
@@ -140,14 +134,18 @@ export const PhrasesetDetails: React.FC<PhrasesetDetailsProps> = ({
             )}
           </div>
           <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <p className="text-xs text-green-700 uppercase tracking-wide">Payout</p>
+            <p className="text-xs text-green-700 uppercase tracking-wide">Earnings</p>
             <p className="text-lg font-semibold text-green-900">
               {phraseset.your_payout != null ? `$${phraseset.your_payout}` : '—'}
             </p>
-            <p className="text-xs text-green-700 mt-3 uppercase tracking-wide">Status</p>
-            <p className="text-sm font-medium text-green-800">
-              {phraseset.payout_claimed ? 'Claimed' : 'Not Claimed'}
-            </p>
+            {phraseset.status === 'finalized' && (
+              <>
+                <p className="text-xs text-green-700 mt-3 uppercase tracking-wide">Status</p>
+                <p className="text-sm font-medium text-green-800">
+                  ✓ Auto-added at finalization
+                </p>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -267,18 +265,6 @@ export const PhrasesetDetails: React.FC<PhrasesetDetailsProps> = ({
               </ul>
             </div>
           </div>
-        </section>
-      )}
-
-      {canClaim && (
-        <section>
-          <button
-            onClick={() => phraseset.phraseset_id && onClaim?.(phraseset.phraseset_id)}
-            disabled={claiming}
-            className="w-full sm:w-auto bg-green-600 hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold py-2 px-6 rounded-lg"
-          >
-            {claiming ? 'Claiming…' : `Claim $${phraseset.your_payout ?? 0}`}
-          </button>
         </section>
       )}
 
