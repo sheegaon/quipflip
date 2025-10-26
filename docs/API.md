@@ -183,8 +183,8 @@ Get player balance and status.
 **Response:**
 ```json
 {
-  "balance": 1000,
-  "starting_balance": 1000,
+  "balance": 5000,
+  "starting_balance": 5000,
   "daily_bonus_available": false,
   "daily_bonus_amount": 100,
   "last_login_date": "2025-01-06",

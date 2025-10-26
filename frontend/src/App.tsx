@@ -14,6 +14,8 @@ import { Results } from './pages/Results';
 import { Tracking } from './pages/Tracking';
 import { Quests } from './pages/Quests';
 import Statistics from './pages/Statistics';
+import Settings from './pages/Settings';
+import Admin from './pages/Admin';
 import { ErrorNotification } from './components/ErrorNotification';
 import TutorialOverlay from './components/Tutorial/TutorialOverlay';
 
@@ -99,6 +101,22 @@ const AppRoutes: React.FC = () => {
           element={
             <ProtectedRoute>
               <Statistics />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute>
+              <Settings />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute>
+              <Admin />
             </ProtectedRoute>
           }
         />

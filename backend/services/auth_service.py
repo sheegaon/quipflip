@@ -43,6 +43,7 @@ class AuthService:
     async def register_player(self, email: str, password: str) -> Player:
         """Create a new player with provided credentials."""
         from backend.services.username_service import UsernameService
+        from backend.services.quest_service import QuestService
 
         email_normalized = email.strip().lower()
         password_hash = hash_password(password)
@@ -61,6 +62,12 @@ class AuthService:
                 pseudonym_canonical=pseudonym_canonical,
             )
             logger.info("Created player %s via credential signup with username %s and pseudonym %s", player.player_id, username_display, pseudonym_display)
+
+            # Initialize starter quests for new player
+            quest_service = QuestService(self.db)
+            await quest_service.initialize_quests_for_player(player.player_id)
+            logger.info("Initialized starter quests for player %s", player.player_id)
+
             return player
         except ValueError as exc:
             message = str(exc)

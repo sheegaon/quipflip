@@ -250,6 +250,8 @@ class PhraseValidator:
                 if word_upper not in self.COMMON_WORDS:
                     significant_words.add(word.lower())
 
+        return significant_words
+
     def _are_words_too_similar(self, word1: str, word2: str) -> bool:
         """Determine if two words are too similar based on sequence matching."""
         if word1 == word2:

@@ -45,9 +45,9 @@ class ScoringService:
         copy2_points = copy2_votes * 2
         total_points = original_points + copy1_points + copy2_points
 
-        # Calculate prize pool (total_pool - correct votes * 5)
-        correct_votes = original_votes
-        prize_pool = phraseset.total_pool - (correct_votes * 5)
+        # Prize pool is already dynamically updated in phraseset.total_pool
+        # It includes: base + vote_contributions - vote_payouts_paid
+        prize_pool = phraseset.total_pool
 
         # Distribute proportionally (rounded down)
         if total_points == 0:

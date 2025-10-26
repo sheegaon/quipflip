@@ -10,7 +10,7 @@ from datetime import datetime, UTC
 import uuid
 
 from backend.services.ai.ai_service import AIService, AICopyError, AIVoteError, AIServiceError
-from backend.services.ai_metrics_service import AIMetricsService
+from backend.services.ai.metrics_service import AIMetricsService
 from backend.services.phrase_validator import PhraseValidator
 from backend.models.player import Player
 from backend.models.round import Round
@@ -77,7 +77,7 @@ class TestAIServiceProviderSelection:
         mock_validator = MagicMock()
         mock_get_validator.return_value = mock_validator
 
-        with patch('backend.services.ai_service.get_settings') as mock_settings:
+        with patch('backend.services.ai.ai_service.get_settings') as mock_settings:
             settings = mock_settings.return_value
             settings.ai_provider = 'openai'
             settings.openai_api_key = 'sk-test'
@@ -92,7 +92,7 @@ class TestAIServiceProviderSelection:
         mock_validator = MagicMock()
         mock_get_validator.return_value = mock_validator
 
-        with patch('backend.services.ai_service.get_settings') as mock_settings:
+        with patch('backend.services.ai.ai_service.get_settings') as mock_settings:
             settings = mock_settings.return_value
             settings.ai_provider = 'gemini'
             settings.gemini_api_key = 'test-key'
@@ -107,7 +107,7 @@ class TestAIServiceProviderSelection:
         mock_validator = MagicMock()
         mock_get_validator.return_value = mock_validator
 
-        with patch('backend.services.ai_service.get_settings') as mock_settings:
+        with patch('backend.services.ai.ai_service.get_settings') as mock_settings:
             settings = mock_settings.return_value
             settings.ai_provider = 'gemini'
             settings.openai_api_key = 'sk-test'
@@ -123,7 +123,7 @@ class TestAIServiceProviderSelection:
         mock_validator = MagicMock()
         mock_get_validator.return_value = mock_validator
 
-        with patch('backend.services.ai_service.get_settings') as mock_settings:
+        with patch('backend.services.ai.ai_service.get_settings') as mock_settings:
             settings = mock_settings.return_value
             settings.ai_provider = 'openai'
             settings.openai_api_key = None
@@ -137,7 +137,7 @@ class TestAICopyGeneration:
     """Test AI copy phrase generation."""
 
     @pytest.mark.asyncio
-    @patch('backend.services.openai_api.generate_copy')
+    @patch('backend.services.ai.openai_api.generate_copy')
     @patch.dict('os.environ', {'OPENAI_API_KEY': 'sk-test'})
     async def test_generate_copy_with_openai(
             self, mock_openai, db_session, mock_prompt_round
@@ -157,7 +157,7 @@ class TestAICopyGeneration:
         mock_openai.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch('backend.services.gemini_api.generate_copy')
+    @patch('backend.services.ai.gemini_api.generate_copy')
     @patch('backend.services.phrase_validator.get_phrase_validator')
     @patch.dict('os.environ', {'GEMINI_API_KEY': 'test-key'}, clear=True)
     async def test_generate_copy_with_gemini(
@@ -171,7 +171,7 @@ class TestAICopyGeneration:
         mock_validator.validate_copy = AsyncMock(return_value=(True, ""))
         mock_get_validator.return_value = mock_validator
 
-        with patch('backend.services.ai_service.get_settings') as mock_settings:
+        with patch('backend.services.ai.ai_service.get_settings') as mock_settings:
             settings = mock_settings.return_value
             settings.ai_provider = 'gemini'
             settings.gemini_api_key = 'test-key'
@@ -189,7 +189,7 @@ class TestAICopyGeneration:
             mock_gemini.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch('backend.services.openai_api.generate_copy')
+    @patch('backend.services.ai.openai_api.generate_copy')
     @patch.dict('os.environ', {'OPENAI_API_KEY': 'sk-test'})
     async def test_generate_copy_validation_failure(
             self, mock_openai, db_session, mock_prompt_round
@@ -208,7 +208,7 @@ class TestAICopyGeneration:
                 )
 
     @pytest.mark.asyncio
-    @patch('backend.services.openai_api.generate_copy')
+    @patch('backend.services.ai.openai_api.generate_copy')
     @patch.dict('os.environ', {'OPENAI_API_KEY': 'sk-test'})
     async def test_generate_copy_api_failure(
             self, mock_openai, db_session, mock_prompt_round
@@ -229,12 +229,15 @@ class TestAIVoting:
     """Test AI vote generation."""
 
     @pytest.mark.asyncio
-    @patch('backend.services.ai_vote_helper.generate_vote_choice')
+    @patch('backend.services.ai.ai_service.random.shuffle')
+    @patch('backend.services.ai.vote_helper.generate_vote_choice')
     @patch.dict('os.environ', {'OPENAI_API_KEY': 'sk-test'})
     async def test_generate_vote_choice(
-            self, mock_vote, db_session, mock_validator, mock_phraseset
+            self, mock_vote, mock_shuffle, db_session, mock_validator, mock_phraseset
     ):
         """Should generate vote choice using AI."""
+        # Don't shuffle the phrases (keep order: original, copy1, copy2)
+        mock_shuffle.return_value = None
         # AI chooses index 0 (original phrase)
         mock_vote.return_value = 0
 
@@ -245,12 +248,15 @@ class TestAIVoting:
         mock_vote.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch('backend.services.ai_vote_helper.generate_vote_choice')
+    @patch('backend.services.ai.ai_service.random.shuffle')
+    @patch('backend.services.ai.vote_helper.generate_vote_choice')
     @patch.dict('os.environ', {'OPENAI_API_KEY': 'sk-test'})
     async def test_generate_vote_incorrect_choice(
-            self, mock_vote, db_session, mock_validator, mock_phraseset
+            self, mock_vote, mock_shuffle, db_session, mock_validator, mock_phraseset
     ):
         """Should handle incorrect vote choices."""
+        # Don't shuffle the phrases (keep order: original, copy1, copy2)
+        mock_shuffle.return_value = None
         # AI chooses index 1 (copy phrase)
         mock_vote.return_value = 1
 
@@ -264,7 +270,7 @@ class TestAIMetrics:
     """Test AI metrics tracking."""
 
     @pytest.mark.asyncio
-    @patch('backend.services.openai_api.generate_copy')
+    @patch('backend.services.ai.openai_api.generate_copy')
     @patch.dict('os.environ', {'OPENAI_API_KEY': 'sk-test'})
     async def test_metrics_recorded_on_success(
             self, mock_openai, db_session, mock_prompt_round
@@ -292,7 +298,7 @@ class TestAIMetrics:
         assert metric.validation_passed is True
 
     @pytest.mark.asyncio
-    @patch('backend.services.openai_api.generate_copy')
+    @patch('backend.services.ai.openai_api.generate_copy')
     @patch.dict('os.environ', {'OPENAI_API_KEY': 'sk-test'})
     async def test_metrics_recorded_on_failure(
             self, mock_openai, db_session, mock_prompt_round
@@ -320,12 +326,15 @@ class TestAIMetrics:
         assert metric.validation_passed is False
 
     @pytest.mark.asyncio
-    @patch('backend.services.ai_vote_helper.generate_vote_choice')
+    @patch('backend.services.ai.ai_service.random.shuffle')
+    @patch('backend.services.ai.vote_helper.generate_vote_choice')
     @patch.dict('os.environ', {'OPENAI_API_KEY': 'sk-test'})
     async def test_vote_metrics_track_correctness(
-            self, mock_vote, db_session, mock_validator, mock_phraseset
+            self, mock_vote, mock_shuffle, db_session, mock_validator, mock_phraseset
     ):
         """Should track whether AI vote was correct."""
+        # Don't shuffle the phrases (keep order: original, copy1, copy2)
+        mock_shuffle.return_value = None
         mock_vote.return_value = 0  # Correct choice
 
         service = AIService(db_session)
@@ -471,14 +480,14 @@ class TestAIPlayerManagement:
     @patch.dict('os.environ', {'OPENAI_API_KEY': 'sk-test'})
     async def test_get_or_create_ai_player_reuses_existing(self, db_session):
         """Should reuse existing AI player."""
-        # Create AI player first
+        # Create AI player first with the default username
         ai_player = Player(
             player_id=uuid.uuid4(),
-            username="AI_BACKUP",
-            username_canonical="ai_backup",
+            username="AI_COPY_BACKUP",
+            username_canonical="ai_copy_backup",
             pseudonym="AI Assistant",
             pseudonym_canonical="ai assistant",
-            email="ai@quipflip.internal",
+            email="ai_copy_backup@quipflip.internal",
             password_hash="not-used",
             balance=1000,
         )
@@ -490,6 +499,6 @@ class TestAIPlayerManagement:
         with patch('backend.services.player_service.PlayerService.create_player') as mock_create:
             player = await service._get_or_create_ai_player()
 
-            assert player.username == "AI_BACKUP"
+            assert player.username == "AI_COPY_BACKUP"
             assert player.player_id == ai_player.player_id
             mock_create.assert_not_called()

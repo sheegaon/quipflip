@@ -54,8 +54,18 @@ def _map_quest_to_response(quest: Quest) -> QuestResponse:
         current = progress.get("consecutive_days", 0)
     elif "current" in progress:
         current = progress.get("current", 0)
+    # Handle balanced_player quest with dict target
+    elif "votes" in progress and isinstance(target, dict):
+        # For balanced_player, use votes as the primary progress indicator
+        current = progress.get("votes", 0)
+        target = target.get("votes", 10)
     else:
         current = 0
+
+    # Ensure target is an integer (handle dict edge cases)
+    if isinstance(target, dict):
+        # Fallback: use the "votes" target or first value if dict
+        target = target.get("votes", list(target.values())[0] if target else 0)
 
     # Calculate percentage
     percentage = (current / target * 100) if target > 0 else 0

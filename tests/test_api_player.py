@@ -51,8 +51,8 @@ async def test_get_balance(test_app):
 
         assert response.status_code == 200
         data = response.json()
-        assert data["balance"] == 1000
-        assert data["starting_balance"] == 1000
+        assert data["balance"] == 5000
+        assert data["starting_balance"] == 5000
         assert data["username"] == create_data["username"]
         assert "daily_bonus_available" in data
         assert "outstanding_prompts" in data

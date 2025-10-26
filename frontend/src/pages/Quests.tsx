@@ -19,6 +19,7 @@ export const Quests: React.FC = () => {
     activeQuests,
     claimableQuests,
     loading: questsLoading,
+    error: questError,
     refreshQuests,
     claimQuest
   } = useQuests();
@@ -248,8 +249,23 @@ export const Quests: React.FC = () => {
             </button>
           </div>
 
+          {/* Error State */}
+          {questError && (
+            <div className="text-center py-12">
+              <div className="text-4xl mb-4">⚠️</div>
+              <h3 className="text-xl font-display font-bold text-red-600 mb-2">Failed to Load Quests</h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-4">{questError}</p>
+              <button
+                onClick={() => refreshQuests()}
+                className="bg-quip-turquoise hover:bg-quip-teal text-white font-bold py-2 px-6 rounded-lg transition-all"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+
           {/* Loading State */}
-          {questsLoading && (
+          {!questError && questsLoading && (
             <div className="text-center py-12">
               <div className="text-4xl mb-4">⏳</div>
               <p className="text-gray-600 dark:text-gray-400">Loading quests...</p>
@@ -257,7 +273,7 @@ export const Quests: React.FC = () => {
           )}
 
           {/* Empty State */}
-          {!questsLoading && quests.length === 0 && (
+          {!questError && !questsLoading && quests.length === 0 && (
             <div className="text-center py-12">
               <div className="text-6xl mb-4">🎯</div>
               <h3 className="text-xl font-display font-bold text-quip-navy mb-2">No Quests Available</h3>

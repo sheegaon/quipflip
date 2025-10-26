@@ -21,6 +21,7 @@ export const Dashboard: React.FC = () => {
   const [isRoundExpired, setIsRoundExpired] = useState(false);
   const [startingRound, setStartingRound] = useState<string | null>(null);
   const [roundStartError, setRoundStartError] = useState<string | null>(null);
+  const [hasClickedViewResults, setHasClickedViewResults] = useState(false);
 
   // Log component mount and key state changes
   useEffect(() => {
@@ -223,18 +224,19 @@ export const Dashboard: React.FC = () => {
     }
   };
 
-  const handleClaimResults = () => {
+  const handleViewResults = () => {
+    setHasClickedViewResults(true);
     navigate('/tracking');
   };
 
   // Hide certain dashboard elements during tutorial to reduce overwhelm
-  const unclaimedPromptCount = phrasesetSummary?.finalized.unclaimed_prompts ?? 0;
-  const unclaimedCopyCount = phrasesetSummary?.finalized.unclaimed_copies ?? 0;
-  const totalUnclaimedCount = unclaimedPromptCount + unclaimedCopyCount;
-  const totalUnclaimedAmount = phrasesetSummary?.total_unclaimed_amount ?? 0;
+  const unviewedPromptCount = phrasesetSummary?.finalized.unclaimed_prompts ?? 0;
+  const unviewedCopyCount = phrasesetSummary?.finalized.unclaimed_copies ?? 0;
+  const totalUnviewedCount = unviewedPromptCount + unviewedCopyCount;
+  const totalUnviewedAmount = phrasesetSummary?.total_unclaimed_amount ?? 0;
 
-  // Filter pending results to only show unclaimed ones
-  const unclaimedPendingResults = pendingResults.filter((result: PendingResult) => !result.payout_claimed);
+  // Filter pending results to only show unviewed ones (payout_claimed=false means not yet viewed)
+  const unviewedPendingResults = pendingResults.filter((result: PendingResult) => !result.payout_claimed);
 
   if (!player) {
     return (
@@ -277,33 +279,33 @@ export const Dashboard: React.FC = () => {
           </div>
         )}
 
-        {/* Consolidated Results & Prizes Notification */}
-        {(unclaimedPendingResults.length > 0 || totalUnclaimedCount > 0) && (
+        {/* Consolidated Results Notification */}
+        {!hasClickedViewResults && (unviewedPendingResults.length > 0 || totalUnviewedCount > 0) && (
           <div className="tile-card bg-quip-turquoise bg-opacity-10 border-2 border-quip-turquoise p-4 mb-6 slide-up-enter">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex-1">
                 <p className="font-display font-semibold text-quip-turquoise">
-                  {totalUnclaimedCount > 0 ? 'Quip-tastic! Results & Prizes Ready!' : 'Results Ready!'}
+                  {totalUnviewedCount > 0 ? 'Quip-tastic! New Results Ready!' : 'Results Ready!'}
                 </p>
                 <div className="text-sm text-quip-teal space-y-1">
-                  {unclaimedPendingResults.length > 0 && (
+                  {unviewedPendingResults.length > 0 && (
                     <p>
-                      {unclaimedPendingResults.length} quipset{unclaimedPendingResults.length > 1 ? 's' : ''} finalized
-                      {totalUnclaimedCount === 0 && ' - view your results'}
+                      {unviewedPendingResults.length} quipset{unviewedPendingResults.length > 1 ? 's' : ''} finalized
+                      {totalUnviewedCount === 0 && ' - view your results'}
                     </p>
                   )}
-                  {totalUnclaimedCount > 0 && (
+                  {totalUnviewedCount > 0 && (
                     <p>
-                      {unclaimedPromptCount} prompt{unclaimedPromptCount === 1 ? '' : 's'} • {unclaimedCopyCount} cop{unclaimedCopyCount === 1 ? 'y' : 'ies'} • <CurrencyDisplay amount={totalUnclaimedAmount} iconClassName="w-3 h-3" textClassName="text-sm" /> to claim
+                      {unviewedPromptCount} prompt{unviewedPromptCount === 1 ? '' : 's'} • {unviewedCopyCount} cop{unviewedCopyCount === 1 ? 'y' : 'ies'} • <CurrencyDisplay amount={totalUnviewedAmount} iconClassName="w-3 h-3" textClassName="text-sm" /> earned
                     </p>
                   )}
                 </div>
               </div>
               <button
-                onClick={handleClaimResults}
+                onClick={handleViewResults}
                 className="w-full sm:w-auto bg-quip-turquoise hover:bg-quip-teal text-white font-bold py-2 px-6 rounded-tile transition-all hover:shadow-tile-sm"
               >
-                {totalUnclaimedCount > 0 ? 'View & Claim' : 'View Results'}
+                View Results
               </button>
             </div>
           </div>
@@ -341,7 +343,9 @@ export const Dashboard: React.FC = () => {
                   <img src="/icon_prompt.svg" alt="" className="w-8 h-8" />
                   <h3 className="font-display font-semibold text-lg text-quip-navy">Prompt Round</h3>
                 </div>
-                <span className="text-quip-orange-deep font-bold">-<CurrencyDisplay amount={100} iconClassName="w-4 h-4" textClassName="font-bold" showIcon={false} /></span>
+                <span className="text-quip-orange-deep font-bold flex items-center gap-1">
+                  <CurrencyDisplay amount={roundAvailability?.prompt_cost || 100} iconClassName="w-4 h-4" textClassName="font-bold" />
+                </span>
               </div>
               <p className="text-sm text-quip-teal mb-3">
                 Submit a phrase for a creative prompt
@@ -355,7 +359,7 @@ export const Dashboard: React.FC = () => {
                  roundAvailability?.can_prompt ? 'Start Prompt Round' :
                  activeRound?.round_type === 'prompt' ? 'Active Round - Use Continue Above' :
                  activeRound?.round_id ? 'Complete Current Round First' :
-                 player.balance < 100 ? 'Insufficient Balance' :
+                 player.balance < (roundAvailability?.prompt_cost || 100) ? 'Insufficient Balance' :
                  player.outstanding_prompts >= 10 ? 'Too Many Outstanding Prompts' :
                  'Not Available'}
               </button>
@@ -376,7 +380,9 @@ export const Dashboard: React.FC = () => {
                       className="h-7"
                     />
                   )}
-                  -<CurrencyDisplay amount={roundAvailability?.copy_cost || 100} iconClassName="w-4 h-4" textClassName="font-bold" showIcon={false} />
+                  <span className="flex items-center gap-1">
+                    <CurrencyDisplay amount={roundAvailability?.copy_cost || 100} iconClassName="w-4 h-4" textClassName="font-bold" />
+                  </span>
                 </span>
               </div>
               <p className="text-sm text-quip-teal mb-1">
@@ -408,7 +414,9 @@ export const Dashboard: React.FC = () => {
                   <img src="/icon_vote.svg" alt="" className="w-8 h-8" />
                   <h3 className="font-display font-semibold text-lg text-quip-orange-deep">Vote Round</h3>
                 </div>
-                <span className="text-quip-orange-deep font-bold">-<CurrencyDisplay amount={1} iconClassName="w-4 h-4" textClassName="font-bold" showIcon={false} /></span>
+                <span className="text-quip-orange-deep font-bold flex items-center gap-1">
+                  <CurrencyDisplay amount={roundAvailability?.vote_cost || 10} iconClassName="w-4 h-4" textClassName="font-bold" />
+                </span>
               </div>
               <p className="text-sm text-quip-teal mb-1">
                 Identify the original phrase from three options
@@ -427,7 +435,7 @@ export const Dashboard: React.FC = () => {
                 {startingRound === 'vote' ? 'Starting Round...' :
                  roundAvailability?.can_vote ? 'Start Vote Round' :
                  roundAvailability?.phrasesets_waiting === 0 ? 'No Quip Sets Available' :
-                 player.balance < 1 ? 'Insufficient Balance' :
+                 player.balance < (roundAvailability?.vote_cost || 10) ? 'Insufficient Balance' :
                  'Not Available'}
               </button>
             </div>

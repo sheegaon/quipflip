@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     redis_url: str = ""
 
     # Application
-    frontend_url: str = "https://quipflip-amber.vercel.app"
+    frontend_url: str = "https://quipflip.xyz"
     phrase_validator_url: str = "http://localhost:9000"
     environment: str = "development"
     secret_key: str = "dev-secret-key-change-in-production"  # Must be at least 32 characters in production
@@ -29,15 +29,15 @@ class Settings(BaseSettings):
     refresh_token_cookie_name: str = "quipflip_refresh_token"
 
     # Game Constants (all values in whole dollars)
-    starting_balance: int = 1000
+    starting_balance: int = 5000
     daily_bonus_amount: int = 100
     prompt_cost: int = 100
-    copy_cost_normal: int = 100
-    copy_cost_discount: int = 90
-    vote_cost: int = 1
-    vote_payout_correct: int = 5
+    copy_cost_normal: int = 50
+    copy_cost_discount: int = 40
+    vote_cost: int = 10
+    vote_payout_correct: int = 20
     abandoned_penalty: int = 5
-    prize_pool: int = 300
+    prize_pool_base: int = 200  # Base prize pool (prompt + 2 copies contribution)
     max_outstanding_quips: int = 10
     copy_discount_threshold: int = 10  # quips waiting to trigger discount
 
@@ -56,7 +56,7 @@ class Settings(BaseSettings):
 
     # Phrase Validation
     use_phrase_validator_api: bool = True
-    phrase_min_words: int = 1
+    phrase_min_words: int = 2
     phrase_max_words: int = 5
     phrase_max_length: int = 100
     phrase_min_char_per_word: int = 2

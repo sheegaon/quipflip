@@ -345,8 +345,15 @@ class VoteService:
                 auto_commit=False,  # Defer commit to end of this method
             )
 
-        # Update phraseset vote count
+        # Update phraseset vote count and prize pool
         phraseset.vote_count += 1
+        # Add vote cost to prize pool
+        phraseset.vote_contributions += settings.vote_cost
+        phraseset.total_pool += settings.vote_cost
+        # Deduct payout from prize pool if correct
+        if correct:
+            phraseset.vote_payouts_paid += payout
+            phraseset.total_pool -= payout
 
         await self.activity_service.record_activity(
             activity_type="vote_submitted",
@@ -488,8 +495,15 @@ class VoteService:
         # Clear player's active round
         player.active_round_id = None
 
-        # Update phraseset vote count
+        # Update phraseset vote count and prize pool
         phraseset.vote_count += 1
+        # Add vote cost to prize pool
+        phraseset.vote_contributions += settings.vote_cost
+        phraseset.total_pool += settings.vote_cost
+        # Deduct payout from prize pool if correct
+        if correct:
+            phraseset.vote_payouts_paid += payout
+            phraseset.total_pool -= payout
 
         await self.activity_service.record_activity(
             activity_type="vote_submitted",
@@ -778,19 +792,24 @@ class VoteService:
                     break
 
             # Create result view
+            # Note: payout_claimed is set to False because payouts are automatically
+            # distributed at finalization. This flag now tracks whether the player has
+            # explicitly "acknowledged" their results via the claim action.
+            # For Option A (current): This remains False, money already added at finalization
+            # For Option B (future): Change finalization to NOT auto-pay, and claim endpoint will pay
             result_view = ResultView(
                 view_id=uuid.uuid4(),
                 phraseset_id=phraseset_id,
                 player_id=player_id,
                 payout_amount=player_payout,
-                payout_claimed=True,
+                payout_claimed=False,  # Changed from True - payout already given at finalization
                 first_viewed_at=datetime.now(UTC),
-                payout_claimed_at=datetime.now(UTC),
+                payout_claimed_at=None,  # Not claimed yet
             )
             self.db.add(result_view)
             await self.db.commit()
 
-            logger.info(f"Player {player_id} collected payout ${player_payout} from phraseset {phraseset_id}")
+            logger.info(f"Player {player_id} viewed results for phraseset {phraseset_id} (payout ${player_payout} was auto-distributed at finalization)")
         else:
             updated = False
             if not result_view.first_viewed_at:

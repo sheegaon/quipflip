@@ -36,7 +36,7 @@ export const errorMessages = {
     invalidPhrase: "That phrase isn't valid. Please try a different word or phrase.",
     duplicatePhrase: "That phrase has already been used. Try something more creative!",
     wordNotFound: "That word isn't in our dictionary. Please try a different word.",
-    phraseTooLong: "Your phrase is too long. Keep it to 1-5 words (4-100 characters).",
+    phraseTooLong: "Your phrase is too long. Keep it to 2-5 words (4-100 characters).",
     phraseTooShort: "Your phrase is too short. Please enter at least 2 characters.",
     invalidCharacters: "Please use only letters A-Z and spaces in your phrase.",
   },

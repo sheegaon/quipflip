@@ -23,7 +23,7 @@ def build_copy_prompt(original_phrase: str, existing_copy_phrase: str = None) ->
 
 Rules:
 - 1-15 characters per word
-- 1-5 words total
+- 2-5 words total, 4-100 characters total
 - Letters and spaces only
 - Each word must pass dictionary validation
 - Phrase should be similar enough to be believable as the original"""

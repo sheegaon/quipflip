@@ -12,7 +12,7 @@ import type { CopyState } from '../api/types';
 
 export const CopyRound: React.FC = () => {
   const { state } = useGame();
-  const { activeRound } = state;
+  const { activeRound, roundAvailability } = state;
   const { currentStep, advanceStep } = useTutorial();
   const navigate = useNavigate();
   const [phrase, setPhrase] = useState('');
@@ -22,6 +22,9 @@ export const CopyRound: React.FC = () => {
 
   const roundData = activeRound?.round_type === 'copy' ? activeRound.state as CopyState : null;
   const { isExpired } = useTimer(roundData?.expires_at || null);
+
+  // Get dynamic penalty from config or use default
+  const abandonedPenalty = roundAvailability?.abandoned_penalty || 5;
 
   // Redirect if already submitted
   useEffect(() => {
@@ -153,7 +156,7 @@ export const CopyRound: React.FC = () => {
               maxLength={100}
             />
             <p className="text-sm text-quip-teal mt-1">
-              1-5 words (4-100 characters), A-Z and spaces only, must be different from the original
+              2-5 words (4-100 characters), A-Z and spaces only, must be different from the original
             </p>
           </div>
 
@@ -188,7 +191,7 @@ export const CopyRound: React.FC = () => {
             )}
           </p>
           <p className="text-sm text-quip-teal mt-1">
-            If you don't submit, <CurrencyDisplay amount={roundData.discount_active ? 85 : 95} iconClassName="w-3 h-3" textClassName="text-sm" /> will be refunded (<CurrencyDisplay amount={roundData.discount_active ? 5 : 5} iconClassName="w-3 h-3" textClassName="text-sm" /> penalty)
+            If you don't submit, <CurrencyDisplay amount={roundData.cost - abandonedPenalty} iconClassName="w-3 h-3" textClassName="text-sm" /> will be refunded (<CurrencyDisplay amount={abandonedPenalty} iconClassName="w-3 h-3" textClassName="text-sm" /> penalty)
           </p>
         </div>
       </div>

@@ -418,6 +418,11 @@ async def get_dashboard_data(
         copy_discount_active=QueueService.is_copy_discount_active(),
         copy_cost=QueueService.get_copy_cost(),
         current_round_id=player.active_round_id,
+        # Game constants from config
+        prompt_cost=settings.prompt_cost,
+        vote_cost=settings.vote_cost,
+        vote_payout_correct=settings.vote_payout_correct,
+        abandoned_penalty=settings.abandoned_penalty,
     )
 
     dashboard_data = DashboardDataResponse(

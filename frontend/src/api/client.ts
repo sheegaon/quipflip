@@ -491,6 +491,17 @@ export const apiClient = {
     const { data } = await api.post(`/quests/${questId}/claim`, {}, { signal });
     return data;
   },
+
+  // Admin endpoints
+  async validateAdminPassword(password: string, signal?: AbortSignal): Promise<{ valid: boolean }> {
+    const { data } = await api.post('/admin/validate-password', { password }, { signal });
+    return data;
+  },
+
+  async getAdminConfig(signal?: AbortSignal): Promise<any> {
+    const { data } = await api.get('/admin/config', { signal });
+    return data;
+  },
 };
 
 export default apiClient;

@@ -55,7 +55,7 @@ class SubmitPhraseResponse(BaseModel):
 
 
 class RoundAvailability(BaseModel):
-    """Round availability status."""
+    """Round availability status with game constants."""
     can_prompt: bool
     can_copy: bool
     can_vote: bool
@@ -64,6 +64,11 @@ class RoundAvailability(BaseModel):
     copy_discount_active: bool
     copy_cost: int
     current_round_id: UUID | None
+    # Game constants (from config)
+    prompt_cost: int
+    vote_cost: int
+    vote_payout_correct: int
+    abandoned_penalty: int
 
 
 class RoundDetails(BaseSchema):

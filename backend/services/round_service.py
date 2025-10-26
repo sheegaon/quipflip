@@ -501,8 +501,9 @@ class RoundService:
             logger.error(f"Cannot create phraseset: copy_round {copy2.round_id} missing copy_phrase")
             return None
 
-        total_pool = self.settings.prize_pool
+        # Calculate initial prize pool: base + system contributions from copy discounts
         system_contribution = copy1.system_contribution + copy2.system_contribution
+        initial_pool = self.settings.prize_pool_base + system_contribution
 
         phraseset = PhraseSet(
             phraseset_id=uuid.uuid4(),
@@ -516,7 +517,9 @@ class RoundService:
             copy_phrase_2=copy2.copy_phrase.upper(),
             status="open",
             vote_count=0,
-            total_pool=total_pool,
+            total_pool=initial_pool,
+            vote_contributions=0,
+            vote_payouts_paid=0,
             system_contribution=system_contribution,
         )
 

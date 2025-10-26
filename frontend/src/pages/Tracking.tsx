@@ -32,7 +32,7 @@ const statusOptions: { value: StatusFilter; label: string }[] = [
 export const Tracking: React.FC = () => {
   const { state, actions } = useGame();
   const { player, phrasesetSummary } = state;
-  const { getPlayerPhrasesets, getPhrasesetDetails, claimPhrasesetPrize } = actions;
+  const { getPlayerPhrasesets, getPhrasesetDetails } = actions;
 
   // Smart polling for active phraseset details
   const { startPoll, stopPoll } = useSmartPolling();
@@ -193,36 +193,11 @@ export const Tracking: React.FC = () => {
     setSelectedSummary(summary);
   };
 
-  const handleClaim = async (phrasesetId: string) => {
-    setLoading('claim', {
-      isLoading: true,
-      type: 'submit',
-      message: 'Claiming your prize...'
-    });
-
-    try {
-      await claimPhrasesetPrize(phrasesetId);
-      // claimPhrasesetPrize already triggers dashboard refresh which updates balance
-      // Only need to refresh local data
-      await Promise.all([
-        fetchDetails(selectedSummary),
-        fetchPhrasesets(),
-      ]);
-      setError(null);
-    } catch (err) {
-      const errorMessage = getActionErrorMessage('claim-prize', err);
-      setError(errorMessage);
-    } finally {
-      clearLoading('claim');
-    }
-  };
-
   const totalTracked = useMemo(() => phrasesets.length, [phrasesets.length]);
 
   // Loading states
   const listLoading = getLoadingState('phrasesets')?.isLoading || false;
   const detailsLoading = getLoadingState('details')?.isLoading || false;
-  const claiming = getLoadingState('claim')?.isLoading || false;
 
   if (!player) {
     return (
@@ -265,7 +240,7 @@ export const Tracking: React.FC = () => {
               </p>
             </div>
             <div className="tile-card p-4 bg-quip-turquoise bg-opacity-10">
-              <p className="text-xs uppercase text-quip-teal font-medium">Unclaimed</p>
+              <p className="text-xs uppercase text-quip-teal font-medium">Total Earned</p>
               <p className="text-lg font-display font-semibold text-quip-turquoise">
                 <CurrencyDisplay
                   amount={phrasesetSummary.total_unclaimed_amount}
@@ -273,6 +248,7 @@ export const Tracking: React.FC = () => {
                   textClassName="text-lg font-display font-semibold text-quip-turquoise"
                 />
               </p>
+              <p className="text-xs text-quip-teal mt-1">from finalized quips</p>
             </div>
           </div>
         )}
@@ -341,8 +317,6 @@ export const Tracking: React.FC = () => {
               phraseset={details}
               summary={selectedSummary}
               loading={detailsLoading}
-              claiming={claiming}
-              onClaim={handleClaim}
             />
           </div>
         </div>
