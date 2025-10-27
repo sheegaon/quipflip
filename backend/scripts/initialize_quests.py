@@ -2,7 +2,6 @@
 import asyncio
 import logging
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.database import AsyncSessionLocal
 from backend.models.player import Player
