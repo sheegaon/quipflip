@@ -41,7 +41,7 @@ class PendingResult(BaseSchema):
     prompt_text: str
     completed_at: datetime
     role: str  # "prompt" or "copy"
-    payout_claimed: bool
+    payout_claimed: bool  # Note: This field is actually tracking result_viewed status in the backend
 
 
 class PendingResultsResponse(BaseModel):
