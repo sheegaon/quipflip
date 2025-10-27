@@ -21,7 +21,10 @@ export const Dashboard: React.FC = () => {
   const [isRoundExpired, setIsRoundExpired] = useState(false);
   const [startingRound, setStartingRound] = useState<string | null>(null);
   const [roundStartError, setRoundStartError] = useState<string | null>(null);
-  const [hasClickedViewResults, setHasClickedViewResults] = useState(false);
+  const [hasClickedViewResults, setHasClickedViewResults] = useState(() => {
+    // Check if user has clicked "View Results" in this session
+    return sessionStorage.getItem('hasClickedViewResults') === 'true';
+  });
 
   // Log component mount and key state changes
   useEffect(() => {
@@ -48,6 +51,16 @@ export const Dashboard: React.FC = () => {
       dashboardLogger.debug('Active round cleared');
     }
   }, [activeRound]);
+
+  // Reset "viewed results" flag when new results arrive
+  useEffect(() => {
+    const unviewedCount = pendingResults.filter((result) => !result.payout_claimed).length;
+    if (unviewedCount > 0 && hasClickedViewResults) {
+      // New results arrived, reset the flag so notification shows again
+      setHasClickedViewResults(false);
+      sessionStorage.removeItem('hasClickedViewResults');
+    }
+  }, [pendingResults, hasClickedViewResults]);
 
   const handleStartTutorial = async () => {
     await startTutorial();
@@ -226,7 +239,8 @@ export const Dashboard: React.FC = () => {
 
   const handleViewResults = () => {
     setHasClickedViewResults(true);
-    navigate('/tracking');
+    sessionStorage.setItem('hasClickedViewResults', 'true');
+    navigate('/results');
   };
 
   // Hide certain dashboard elements during tutorial to reduce overwhelm

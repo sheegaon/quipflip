@@ -211,7 +211,7 @@ async def test_phrase_validation(
     phrase_length = len(phrase)
 
     # Start with basic validation
-    format_valid, format_error = await validator.validate(phrase)
+    format_valid, format_error = validator.validate(phrase)
 
     # Initialize response fields
     is_valid = False
@@ -227,7 +227,7 @@ async def test_phrase_validation(
         error_message = format_error if not format_valid else None
 
     elif request.validation_type == "prompt":
-        is_valid, error_message = await validator.validate_prompt_phrase(
+        is_valid, error_message = validator.validate_prompt_phrase(
             phrase,
             request.prompt_text
         )
@@ -245,7 +245,7 @@ async def test_phrase_validation(
             word_conflicts.append(error_message.split("'")[1])
 
     elif request.validation_type == "copy":
-        is_valid, error_message = await validator.validate_copy(
+        is_valid, error_message = validator.validate_copy(
             phrase,
             request.original_phrase or "",
             request.other_copy_phrase,

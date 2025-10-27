@@ -10,7 +10,7 @@ import uuid
 
 from backend.models.player import Player
 from backend.models.round import Round
-from backend.models.phraseset import PhraseSet
+from backend.models.phraseset import Phraseset
 from backend.models.vote import Vote
 from backend.services.vote_service import VoteService
 from backend.services.transaction_service import TransactionService
@@ -108,7 +108,7 @@ async def test_phraseset_with_players(db_session):
     await db_session.flush()
 
     # Create phraseset
-    phraseset = PhraseSet(
+    phraseset = Phraseset(
         phraseset_id=uuid.uuid4(),
         prompt_round_id=prompt_round.round_id,
         copy_round_1_id=copy1_round.round_id,

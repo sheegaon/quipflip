@@ -20,7 +20,7 @@ class PhrasesetActivity(Base):
     payload = Column("metadata", JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
 
-    phraseset = relationship("PhraseSet", back_populates="activities")
+    phraseset = relationship("Phraseset", back_populates="activities")
     prompt_round = relationship("Round", foreign_keys=[prompt_round_id])
     player = relationship("Player", back_populates="phraseset_activities")
 

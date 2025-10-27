@@ -5,7 +5,7 @@ from uuid import uuid4
 
 from backend.models.player import Player
 from backend.models.round import Round
-from backend.models.phraseset import PhraseSet
+from backend.models.phraseset import Phraseset
 from backend.models.vote import Vote
 from backend.models.transaction import Transaction
 from backend.services.statistics_service import StatisticsService
@@ -205,7 +205,7 @@ async def test_get_player_statistics_win_rate(db_session):
     # Create 2 phrasesets linked to the first 2 prompt rounds (these will be "wins")
     phrasesets = []
     for i in range(2):
-        phraseset = PhraseSet(
+        phraseset = Phraseset(
             phraseset_id=uuid4(),
             prompt_round_id=prompt_rounds[i].round_id,  # Link to actual prompt round
             copy_round_1_id=uuid4(),

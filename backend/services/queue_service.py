@@ -17,13 +17,13 @@ class QueueService:
     """Service for managing game queues."""
 
     @staticmethod
-    def add_prompt_to_queue(prompt_round_id: UUID):
+    def add_prompt_round_to_queue(prompt_round_id: UUID):
         """Add prompt to queue waiting for copy players."""
         queue_client.push(PROMPT_QUEUE, {"prompt_round_id": str(prompt_round_id)})
         logger.info(f"Added prompt to queue: {prompt_round_id}")
 
     @staticmethod
-    def get_next_prompt() -> UUID | None:
+    def get_next_prompt_round() -> UUID | None:
         """Get next prompt from queue (FIFO)."""
         item = queue_client.pop(PROMPT_QUEUE)
         if item:
@@ -32,7 +32,7 @@ class QueueService:
         return None
 
     @staticmethod
-    def remove_prompt_from_queue(prompt_round_id: UUID) -> bool:
+    def remove_prompt_round_from_queue(prompt_round_id: UUID) -> bool:
         """Remove specific prompt from queue (for abandoned rounds)."""
         item = {"prompt_round_id": str(prompt_round_id)}
         removed = queue_client.remove(PROMPT_QUEUE, item)
@@ -41,14 +41,14 @@ class QueueService:
         return removed
 
     @staticmethod
-    def get_prompts_waiting() -> int:
-        """Get count of prompts waiting for copies."""
+    def get_prompt_rounds_waiting() -> int:
+        """Get count of prompt rounds waiting for copies."""
         return queue_client.length(PROMPT_QUEUE)
 
     @staticmethod
     def is_copy_discount_active() -> bool:
         """Check if copy discount should be applied."""
-        waiting = QueueService.get_prompts_waiting()
+        waiting = QueueService.get_prompt_rounds_waiting()
         active = waiting > settings.copy_discount_threshold
         if active:
             logger.debug(f"Copy discount active: {waiting} quips waiting")
@@ -75,9 +75,9 @@ class QueueService:
         return queue_client.length(PHRASESET_QUEUE)
 
     @staticmethod
-    def has_prompts_available() -> bool:
-        """Check if prompts available for copy rounds."""
-        return QueueService.get_prompts_waiting() > 0
+    def has_prompt_rounds_available() -> bool:
+        """Check if prompt rounds available for copy rounds."""
+        return QueueService.get_prompt_rounds_waiting() > 0
 
     @staticmethod
     def has_phrasesets_available() -> bool:

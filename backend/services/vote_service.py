@@ -12,7 +12,7 @@ import logging
 
 from backend.models.player import Player
 from backend.models.round import Round
-from backend.models.phraseset import PhraseSet
+from backend.models.phraseset import Phraseset
 from backend.models.vote import Vote
 from backend.models.result_view import ResultView
 from backend.services.transaction_service import TransactionService
@@ -31,15 +31,15 @@ class VoteService:
         self.db = db
         self.activity_service = ActivityService(db)
 
-    async def _load_available_phrasesets_for_player(self, player_id: UUID) -> list[PhraseSet]:
+    async def _load_available_phrasesets_for_player(self, player_id: UUID) -> list[Phraseset]:
         """Load phrasesets the player can vote on (excludes contributors and already-voted)."""
         result = await self.db.execute(
-            select(PhraseSet)
-            .where(PhraseSet.status.in_(["open", "closing"]))
+            select(Phraseset)
+            .where(Phraseset.status.in_(["open", "closing"]))
             .options(
-                selectinload(PhraseSet.prompt_round),
-                selectinload(PhraseSet.copy_round_1),
-                selectinload(PhraseSet.copy_round_2),
+                selectinload(Phraseset.prompt_round),
+                selectinload(Phraseset.copy_round_1),
+                selectinload(Phraseset.copy_round_2),
             )
         )
         all_phrasesets = list(result.scalars().all())
@@ -90,7 +90,7 @@ class VoteService:
         available = [ws for ws in candidate_phrasesets if ws.phraseset_id not in voted_ids]
         return available
 
-    async def get_available_phrasesets_for_player(self, player_id: UUID) -> PhraseSet | None:
+    async def get_available_phrasesets_for_player(self, player_id: UUID) -> Phraseset | None:
         """
         Get available phraseset for voting with priority:
         1. Phrasesets with >=5 votes (FIFO by fifth_vote_at)
@@ -145,9 +145,9 @@ class VoteService:
         try:
             # Get all active phrasesets that could potentially be finalized
             result = await self.db.execute(
-                select(PhraseSet)
-                .where(PhraseSet.status.in_(["open", "closing"]))
-                .order_by(PhraseSet.created_at.asc())  # Process oldest first
+                select(Phraseset)
+                .where(Phraseset.status.in_(["open", "closing"]))
+                .order_by(Phraseset.created_at.asc())  # Process oldest first
             )
             active_phrasesets = list(result.scalars().all())
             
@@ -207,7 +207,7 @@ class VoteService:
         self,
         player: Player,
         transaction_service: TransactionService,
-    ) -> tuple[Round, PhraseSet]:
+    ) -> tuple[Round, Phraseset]:
         """
         Start a vote round.
 
@@ -270,7 +270,7 @@ class VoteService:
 
     async def submit_system_vote(
         self,
-        phraseset: PhraseSet,
+        phraseset: Phraseset,
         player: Player,
         chosen_phrase: str,
         transaction_service: TransactionService,
@@ -387,7 +387,7 @@ class VoteService:
     async def submit_vote(
         self,
         round: Round,
-        phraseset: PhraseSet,
+        phraseset: Phraseset,
         phrase: str,
         player: Player,
         transaction_service: TransactionService,
@@ -418,12 +418,12 @@ class VoteService:
 
         # Refresh phraseset with relationships
         result = await self.db.execute(
-            sql_select(PhraseSet)
-            .where(PhraseSet.phraseset_id == phraseset.phraseset_id)
+            sql_select(Phraseset)
+            .where(Phraseset.phraseset_id == phraseset.phraseset_id)
             .options(
-                selectinload(PhraseSet.prompt_round),
-                selectinload(PhraseSet.copy_round_1),
-                selectinload(PhraseSet.copy_round_2),
+                selectinload(Phraseset.prompt_round),
+                selectinload(Phraseset.copy_round_1),
+                selectinload(Phraseset.copy_round_2),
             )
         )
         phraseset_with_relations = result.scalar_one()
@@ -550,7 +550,7 @@ class VoteService:
         )
         return vote
 
-    async def _update_vote_timeline(self, phraseset: PhraseSet, auto_commit: bool = True) -> None:
+    async def _update_vote_timeline(self, phraseset: Phraseset, auto_commit: bool = True) -> None:
         """Update vote timeline markers based on configured thresholds.
 
         Args:
@@ -599,7 +599,7 @@ class VoteService:
 
     async def check_and_finalize(
         self,
-        phraseset: PhraseSet,
+        phraseset: Phraseset,
         transaction_service: TransactionService,
         auto_commit: bool = True,
     ) -> None:
@@ -649,7 +649,7 @@ class VoteService:
 
     async def _finalize_phraseset(
         self,
-        phraseset: PhraseSet,
+        phraseset: Phraseset,
         transaction_service: TransactionService,
         auto_commit: bool = True,
     ) -> None:
@@ -748,7 +748,7 @@ class VoteService:
 
         First view collects payout (idempotent).
         """
-        phraseset = await self.db.get(PhraseSet, phraseset_id)
+        phraseset = await self.db.get(Phraseset, phraseset_id)
         if not phraseset:
             raise ValueError("Phraseset not found")
 
@@ -759,6 +759,14 @@ class VoteService:
         prompt_round = await self.db.get(Round, phraseset.prompt_round_id)
         copy1_round = await self.db.get(Round, phraseset.copy_round_1_id)
         copy2_round = await self.db.get(Round, phraseset.copy_round_2_id)
+
+        # Validate that all required rounds exist
+        if not prompt_round:
+            raise ValueError("Prompt round not found for this phraseset")
+        if not copy1_round:
+            raise ValueError("Copy round 1 not found for this phraseset")
+        if not copy2_round:
+            raise ValueError("Copy round 2 not found for this phraseset")
 
         contributor_map = {
             prompt_round.player_id: ("prompt", phraseset.original_phrase),

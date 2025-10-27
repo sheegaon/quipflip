@@ -2,7 +2,7 @@
 from backend.models.player import Player
 from backend.models.prompt import Prompt
 from backend.models.round import Round
-from backend.models.phraseset import PhraseSet
+from backend.models.phraseset import Phraseset
 from backend.models.vote import Vote
 from backend.models.transaction import Transaction
 from backend.models.daily_bonus import DailyBonus
@@ -18,7 +18,7 @@ __all__ = [
     "Player",
     "Prompt",
     "Round",
-    "PhraseSet",
+    "Phraseset",
     "Vote",
     "Transaction",
     "DailyBonus",

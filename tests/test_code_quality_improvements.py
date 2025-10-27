@@ -20,7 +20,7 @@ from backend.services.transaction_service import TransactionService
 from backend.services.phrase_validation_client import PhraseValidationClient
 from backend.utils.datetime_helpers import ensure_utc
 from backend.models.round import Round
-from backend.models.phraseset import PhraseSet
+from backend.models.phraseset import Phraseset
 from backend.config import get_settings
 from backend.utils.exceptions import AlreadyVotedError
 
@@ -113,7 +113,7 @@ class TestSystemVote:
         await db_session.flush()
 
         # Create phraseset
-        phraseset = PhraseSet(
+        phraseset = Phraseset(
             phraseset_id=uuid.uuid4(),
             prompt_round_id=prompt_round.round_id,
             copy_round_1_id=copy1_round.round_id,
@@ -194,7 +194,7 @@ class TestSystemVote:
         await db_session.flush()
 
         # Create phraseset
-        phraseset = PhraseSet(
+        phraseset = Phraseset(
             phraseset_id=uuid.uuid4(),
             prompt_round_id=prompt_round.round_id,
             copy_round_1_id=copy1_round.round_id,
@@ -275,7 +275,7 @@ class TestSystemVote:
         await db_session.flush()
 
         # Create phraseset
-        phraseset = PhraseSet(
+        phraseset = Phraseset(
             phraseset_id=uuid.uuid4(),
             prompt_round_id=prompt_round.round_id,
             copy_round_1_id=copy1_round.round_id,

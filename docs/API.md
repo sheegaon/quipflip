@@ -985,7 +985,7 @@ Visit `/redoc` for alternative ReDoc documentation.
 - **Dictionary**: NASPA word list
 - **Copy validation**: Must differ from original phrase
 
-### PhraseSet Voting Lifecycle
+### Phraseset Voting Lifecycle
 1. **Open**: 0-2 votes submitted
 2. **Closing**: 3+ votes, 10-minute window starts
 3. **Rapid closing**: 5+ votes, 60-second window starts

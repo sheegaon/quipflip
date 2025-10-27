@@ -2,7 +2,7 @@
 import pytest
 from backend.models.player import Player
 from backend.models.round import Round
-from backend.models.phraseset import PhraseSet
+from backend.models.phraseset import Phraseset
 from backend.models.vote import Vote
 from backend.services.round_service import RoundService
 from backend.services.vote_service import VoteService
@@ -204,7 +204,7 @@ async def test_prize_pool_updates_with_votes(db_session):
     db_session.add_all([copy1, copy2])
     await db_session.commit()
 
-    phraseset = PhraseSet(
+    phraseset = Phraseset(
         phraseset_id=uuid.uuid4(),
         prompt_round_id=prompt_round.round_id,
         copy_round_1_id=copy1.round_id,
@@ -336,7 +336,7 @@ async def test_scoring_uses_dynamic_prize_pool(db_session):
     await db_session.commit()
 
     # Create phraseset with simulated voting
-    phraseset = PhraseSet(
+    phraseset = Phraseset(
         phraseset_id=uuid.uuid4(),
         prompt_round_id=prompt_round.round_id,
         copy_round_1_id=copy1.round_id,

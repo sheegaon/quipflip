@@ -34,7 +34,7 @@ const Statistics: React.FC = () => {
         // Wait for the DOM to fully render and settle before enabling charts
         // This prevents Recharts dimension errors by ensuring containers have proper sizes
         requestAnimationFrame(() => {
-          setTimeout(() => setChartsReady(true), 250);
+          setTimeout(() => setChartsReady(true), 100);
         });
       } catch (err) {
         if (err instanceof Error && err.name === 'CanceledError') return;

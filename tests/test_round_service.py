@@ -11,7 +11,7 @@ import uuid
 from backend.models.player import Player
 from backend.models.prompt import Prompt
 from backend.models.round import Round
-from backend.models.phraseset import PhraseSet
+from backend.models.phraseset import Phraseset
 from backend.services.round_service import RoundService
 from backend.services.transaction_service import TransactionService
 from backend.utils.exceptions import (

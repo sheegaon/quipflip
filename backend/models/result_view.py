@@ -21,7 +21,7 @@ class ResultView(Base):
     payout_claimed_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
-    phraseset = relationship("PhraseSet", back_populates="result_views")
+    phraseset = relationship("Phraseset", back_populates="result_views")
     player = relationship("Player", back_populates="result_views")
 
     # Constraints - one view per player per phraseset

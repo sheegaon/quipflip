@@ -8,7 +8,7 @@ import uuid
 
 from backend.models.player import Player
 from backend.models.round import Round
-from backend.models.phraseset import PhraseSet
+from backend.models.phraseset import Phraseset
 from backend.models.vote import Vote
 from backend.services.scoring_service import ScoringService
 from backend.config import get_settings
@@ -95,7 +95,7 @@ async def finalized_phraseset_with_votes(db_session):
 
     # Create phraseset with votes
     # Voting pattern: 3 correct (ORIGINAL), 4 for COPY ONE, 2 for COPY TWO
-    phraseset = PhraseSet(
+    phraseset = Phraseset(
         phraseset_id=uuid.uuid4(),
         prompt_round_id=prompt_round.round_id,
         copy_round_1_id=copy1_round.round_id,
@@ -231,7 +231,7 @@ class TestPayoutCalculation:
         db_session.add(prompt_round)
         await db_session.flush()
 
-        phraseset = PhraseSet(
+        phraseset = Phraseset(
             phraseset_id=uuid.uuid4(),
             prompt_round_id=prompt_round.round_id,
             copy_round_1_id=uuid.uuid4(),

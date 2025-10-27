@@ -8,7 +8,7 @@ import asyncio
 
 from backend.models.player import Player
 from backend.models.round import Round
-from backend.models.phraseset import PhraseSet
+from backend.models.phraseset import Phraseset
 from backend.models.transaction import Transaction
 from backend.models.vote import Vote
 from backend.schemas.player import (
@@ -141,8 +141,8 @@ class StatisticsService:
                     func.count(Transaction.transaction_id).label("win_count")
                 )
                 .select_from(Transaction)
-                .join(PhraseSet, Transaction.reference_id == PhraseSet.phraseset_id)
-                .join(Round, PhraseSet.prompt_round_id == Round.round_id)
+                .join(Phraseset, Transaction.reference_id == Phraseset.phraseset_id)
+                .join(Round, Phraseset.prompt_round_id == Round.round_id)
                 .where(
                     and_(
                         Transaction.player_id == player_id,
@@ -161,11 +161,11 @@ class StatisticsService:
                     func.count(Transaction.transaction_id).label("win_count")
                 )
                 .select_from(Transaction)
-                .join(PhraseSet, Transaction.reference_id == PhraseSet.phraseset_id)
+                .join(Phraseset, Transaction.reference_id == Phraseset.phraseset_id)
                 .join(
                     Round,
-                    (PhraseSet.copy_round_1_id == Round.round_id) |
-                    (PhraseSet.copy_round_2_id == Round.round_id)
+                    (Phraseset.copy_round_1_id == Round.round_id) |
+                    (Phraseset.copy_round_2_id == Round.round_id)
                 )
                 .where(
                     and_(
@@ -194,27 +194,27 @@ class StatisticsService:
             # Count phrasesets this player participated in
             if role == "prompt":
                 phraseset_result = await self.db.execute(
-                    select(func.count(PhraseSet.phraseset_id))
-                    .join(Round, PhraseSet.prompt_round_id == Round.round_id)
+                    select(func.count(Phraseset.phraseset_id))
+                    .join(Round, Phraseset.prompt_round_id == Round.round_id)
                     .where(
                         and_(
                             Round.player_id == player_id,
-                            PhraseSet.status == "finalized"
+                            Phraseset.status == "finalized"
                         )
                     )
                 )
             else:  # copy
                 phraseset_result = await self.db.execute(
-                    select(func.count(PhraseSet.phraseset_id))
+                    select(func.count(Phraseset.phraseset_id))
                     .where(
                         and_(
-                            (PhraseSet.copy_round_1_id.in_(
+                            (Phraseset.copy_round_1_id.in_(
                                 select(Round.round_id).where(Round.player_id == player_id)
                             )) |
-                            (PhraseSet.copy_round_2_id.in_(
+                            (Phraseset.copy_round_2_id.in_(
                                 select(Round.round_id).where(Round.player_id == player_id)
                             )),
-                            PhraseSet.status == "finalized"
+                            Phraseset.status == "finalized"
                         )
                     )
                 )
@@ -225,22 +225,22 @@ class StatisticsService:
                 # For prompts, count votes for the original phrase using aggregated query
                 votes_result = await self.db.execute(
                     select(
-                        func.count(distinct(PhraseSet.phraseset_id)).label("phraseset_count"),
+                        func.count(distinct(Phraseset.phraseset_id)).label("phraseset_count"),
                         func.count(Vote.vote_id).label("total_votes")
                     )
-                    .select_from(PhraseSet)
-                    .join(Round, PhraseSet.prompt_round_id == Round.round_id)
+                    .select_from(Phraseset)
+                    .join(Round, Phraseset.prompt_round_id == Round.round_id)
                     .outerjoin(
                         Vote,
                         and_(
-                            Vote.phraseset_id == PhraseSet.phraseset_id,
-                            Vote.voted_phrase == PhraseSet.original_phrase
+                            Vote.phraseset_id == Phraseset.phraseset_id,
+                            Vote.voted_phrase == Phraseset.original_phrase
                         )
                     )
                     .where(
                         and_(
                             Round.player_id == player_id,
-                            PhraseSet.status == "finalized"
+                            Phraseset.status == "finalized"
                         )
                     )
                 )
@@ -253,15 +253,15 @@ class StatisticsService:
                 # For copies, count votes for their copy phrases using aggregated query
                 votes_result = await self.db.execute(
                     select(
-                        func.count(distinct(PhraseSet.phraseset_id)).label("phraseset_count"),
+                        func.count(distinct(Phraseset.phraseset_id)).label("phraseset_count"),
                         func.count(Vote.vote_id).label("total_votes")
                     )
-                    .select_from(PhraseSet)
+                    .select_from(Phraseset)
                     .join(
                         Round,
                         and_(
-                            (PhraseSet.copy_round_1_id == Round.round_id) |
-                            (PhraseSet.copy_round_2_id == Round.round_id),
+                            (Phraseset.copy_round_1_id == Round.round_id) |
+                            (Phraseset.copy_round_2_id == Round.round_id),
                             Round.player_id == player_id,
                             Round.round_type == "copy",
                             Round.copy_phrase.isnot(None)
@@ -270,11 +270,11 @@ class StatisticsService:
                     .outerjoin(
                         Vote,
                         and_(
-                            Vote.phraseset_id == PhraseSet.phraseset_id,
+                            Vote.phraseset_id == Phraseset.phraseset_id,
                             Vote.voted_phrase == Round.copy_phrase
                         )
                     )
-                    .where(PhraseSet.status == "finalized")
+                    .where(Phraseset.status == "finalized")
                 )
                 votes_stats = votes_result.one()
                 phraseset_count = votes_stats.phraseset_count or 0
@@ -352,17 +352,17 @@ class StatisticsService:
             )
             .select_from(Transaction)
             .outerjoin(
-                PhraseSet,
+                Phraseset,
                 and_(
-                    Transaction.reference_id == PhraseSet.phraseset_id,
+                    Transaction.reference_id == Phraseset.phraseset_id,
                     Transaction.type == "prize_payout"
                 )
             )
             .outerjoin(
                 Round,
-                (PhraseSet.prompt_round_id == Round.round_id) |
-                (PhraseSet.copy_round_1_id == Round.round_id) |
-                (PhraseSet.copy_round_2_id == Round.round_id)
+                (Phraseset.prompt_round_id == Round.round_id) |
+                (Phraseset.copy_round_1_id == Round.round_id) |
+                (Phraseset.copy_round_2_id == Round.round_id)
             )
             .where(
                 and_(
@@ -555,11 +555,11 @@ class StatisticsService:
                 func.coalesce(func.sum(Transaction.amount), 0).label("earnings")
             )
             .select_from(Round)
-            .join(PhraseSet, PhraseSet.prompt_round_id == Round.round_id)
+            .join(Phraseset, Phraseset.prompt_round_id == Round.round_id)
             .outerjoin(
                 Vote,
                 and_(
-                    Vote.phraseset_id == PhraseSet.phraseset_id,
+                    Vote.phraseset_id == Phraseset.phraseset_id,
                     Vote.voted_phrase == Round.submitted_phrase
                 )
             )
@@ -567,7 +567,7 @@ class StatisticsService:
                 Transaction,
                 and_(
                     Transaction.player_id == player_id,
-                    Transaction.reference_id == PhraseSet.phraseset_id,
+                    Transaction.reference_id == Phraseset.phraseset_id,
                     Transaction.type == "prize_payout"
                 )
             )
@@ -577,7 +577,7 @@ class StatisticsService:
                     Round.round_type == "prompt",
                     Round.status == "submitted",
                     Round.submitted_phrase.isnot(None),
-                    PhraseSet.status == "finalized"
+                    Phraseset.status == "finalized"
                 )
             )
             .group_by(Round.submitted_phrase)
@@ -592,14 +592,14 @@ class StatisticsService:
             )
             .select_from(Round)
             .join(
-                PhraseSet,
-                (PhraseSet.copy_round_1_id == Round.round_id) |
-                (PhraseSet.copy_round_2_id == Round.round_id)
+                Phraseset,
+                (Phraseset.copy_round_1_id == Round.round_id) |
+                (Phraseset.copy_round_2_id == Round.round_id)
             )
             .outerjoin(
                 Vote,
                 and_(
-                    Vote.phraseset_id == PhraseSet.phraseset_id,
+                    Vote.phraseset_id == Phraseset.phraseset_id,
                     Vote.voted_phrase == Round.copy_phrase
                 )
             )
@@ -607,7 +607,7 @@ class StatisticsService:
                 Transaction,
                 and_(
                     Transaction.player_id == player_id,
-                    Transaction.reference_id == PhraseSet.phraseset_id,
+                    Transaction.reference_id == Phraseset.phraseset_id,
                     Transaction.type == "prize_payout"
                 )
             )
@@ -617,7 +617,7 @@ class StatisticsService:
                     Round.round_type == "copy",
                     Round.status == "submitted",
                     Round.copy_phrase.isnot(None),
-                    PhraseSet.status == "finalized"
+                    Phraseset.status == "finalized"
                 )
             )
             .group_by(Round.copy_phrase)

@@ -5,7 +5,7 @@ from backend.database import get_db
 from backend.dependencies import get_current_player, enforce_vote_rate_limit
 from backend.models.player import Player
 from backend.models.round import Round
-from backend.models.phraseset import PhraseSet
+from backend.models.phraseset import Phraseset
 from backend.schemas.phraseset import (
     VoteRequest,
     VoteResponse,
@@ -59,7 +59,7 @@ async def submit_vote(
         raise HTTPException(status_code=400, detail="Phraseset does not match active round")
 
     # Get phraseset
-    phraseset = await db.get(PhraseSet, phraseset_id)
+    phraseset = await db.get(Phraseset, phraseset_id)
     if not phraseset:
         raise HTTPException(status_code=404, detail="Phraseset not found")
 

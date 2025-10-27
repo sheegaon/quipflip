@@ -40,7 +40,7 @@ class Round(Base):
     # Relationships
     player = relationship("Player", back_populates="rounds", foreign_keys=[player_id])
     prompt = relationship("Prompt", back_populates="rounds")
-    phraseset = relationship("PhraseSet", back_populates="vote_rounds", foreign_keys=[phraseset_id])
+    phraseset = relationship("Phraseset", back_populates="vote_rounds", foreign_keys=[phraseset_id])
     copy1_player = relationship("Player", foreign_keys=[copy1_player_id])
     copy2_player = relationship("Player", foreign_keys=[copy2_player_id])
 

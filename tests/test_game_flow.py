@@ -202,7 +202,7 @@ async def test_cannot_copy_own_prompt(db_session, player_factory):
     await db_session.refresh(player)
 
     # Prompt should now be in queue
-    prompts_before = QueueService.get_prompts_waiting()
+    prompts_before = QueueService.get_prompt_rounds_waiting()
     assert prompts_before >= 1
 
     initial_balance = player.balance
