@@ -304,9 +304,9 @@ class PhraseValidator:
         if not is_valid:
             return False, error
 
-        is_valid, error = self._check_prompt_relevance(phrase, prompt_text)
-        if not is_valid:
-            return False, error
+        # is_valid, error = self._check_prompt_relevance(phrase, prompt_text)
+        # if not is_valid:
+        #     return False, error
 
         return True, ""
 
