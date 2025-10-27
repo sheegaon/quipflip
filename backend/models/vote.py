@@ -20,7 +20,7 @@ class Vote(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False, index=True)
 
     # Relationships
-    phraseset = relationship("PhraseSet", back_populates="votes")
+    phraseset = relationship("Phraseset", back_populates="votes")
     player = relationship("Player", back_populates="votes")
 
     # Constraints

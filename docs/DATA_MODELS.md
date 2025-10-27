@@ -67,7 +67,7 @@
 - Indexes: `prompt_id`
 - Relationships: `rounds`, `feedbacks`
 
-### PhraseSet
+### Phraseset
 - `phraseset_id` (UUID, primary key)
 - `prompt_round_id` (UUID, references rounds.round_id, indexed)
 - `copy_round_1_id` (UUID, references rounds.round_id)
@@ -259,7 +259,7 @@ Each transaction stores `balance_after`:
 - **Decision**: Include for audit and debugging
 
 ### Denormalized Fields
-`prompt_text` stored in both Prompt and PhraseSet tables:
+`prompt_text` stored in both Prompt and Phraseset tables:
 - **Pros**: Faster queries, no joins needed for display
 - **Cons**: Data duplication
 - **Decision**: Denormalize for read performance (game is read-heavy)

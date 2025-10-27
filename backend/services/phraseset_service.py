@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.models.player import Player
-from backend.models.phraseset import PhraseSet
+from backend.models.phraseset import Phraseset
 from backend.models.result_view import ResultView
 from backend.models.round import Round
 from backend.models.vote import Vote
@@ -145,7 +145,7 @@ class PhrasesetService:
         player_id: UUID,
     ) -> dict:
         """Return full detail view for a phraseset the player contributed to."""
-        phraseset = await self.db.get(PhraseSet, phraseset_id)
+        phraseset = await self.db.get(Phraseset, phraseset_id)
         if not phraseset:
             raise ValueError("Phraseset not found")
 
@@ -290,7 +290,7 @@ class PhrasesetService:
         player_id: UUID,
     ) -> dict:
         """Mark a finalized phraseset payout as claimed."""
-        phraseset = await self.db.get(PhraseSet, phraseset_id)
+        phraseset = await self.db.get(Phraseset, phraseset_id)
         if not phraseset:
             raise ValueError("Phraseset not found")
         if phraseset.status != "finalized":
@@ -334,7 +334,7 @@ class PhrasesetService:
 
     async def is_contributor(self, phraseset_id: UUID, player_id: UUID) -> bool:
         """Return True if player contributed to the phraseset."""
-        phraseset = await self.db.get(PhraseSet, phraseset_id)
+        phraseset = await self.db.get(Phraseset, phraseset_id)
         if not phraseset:
             return False
         prompt_round, copy1_round, copy2_round = await self._load_contributor_rounds(phraseset)
@@ -394,7 +394,7 @@ class PhrasesetService:
             return []
 
         phraseset_result = await self.db.execute(
-            select(PhraseSet).where(PhraseSet.prompt_round_id.in_(all_prompt_ids))
+            select(Phraseset).where(Phraseset.prompt_round_id.in_(all_prompt_ids))
         )
         phrasesets = list(phraseset_result.scalars().all())
         phraseset_map = {phraseset.prompt_round_id: phraseset for phraseset in phrasesets}
@@ -497,7 +497,7 @@ class PhrasesetService:
 
         return contributions
 
-    async def _load_contributor_rounds(self, phraseset: PhraseSet) -> tuple[Round, Round, Round]:
+    async def _load_contributor_rounds(self, phraseset: Phraseset) -> tuple[Round, Round, Round]:
         """Load prompt and copy rounds for a phraseset."""
         prompt_round = await self.db.get(Round, phraseset.prompt_round_id)
         copy1_round = await self.db.get(Round, phraseset.copy_round_1_id)
@@ -508,7 +508,7 @@ class PhrasesetService:
 
     async def _load_result_view(
         self,
-        phraseset: PhraseSet,
+        phraseset: Phraseset,
         player_id: UUID,
         create_if_missing: bool = False,
     ) -> ResultView:
@@ -555,7 +555,7 @@ class PhrasesetService:
 
     async def _get_payouts_cached(
         self,
-        phraseset: PhraseSet,
+        phraseset: Phraseset,
         cache: dict[UUID, dict],
     ) -> dict:
         """Calculate payouts with memoization for repeated access."""
@@ -573,7 +573,7 @@ class PhrasesetService:
     def _identify_player_role(
         self,
         player_id: UUID,
-        phraseset: PhraseSet,
+        phraseset: Phraseset,
         prompt_round: Round,
         copy1_round: Round,
         copy2_round: Round,
@@ -587,7 +587,7 @@ class PhrasesetService:
             return "copy", phraseset.copy_phrase_2
         return "copy", None
 
-    def _derive_status(self, prompt_round: Optional[Round], phraseset: Optional[PhraseSet]) -> str:
+    def _derive_status(self, prompt_round: Optional[Round], phraseset: Optional[Phraseset]) -> str:
         """Normalize status values between prompt rounds and phrasesets."""
         if phraseset:
             mapping = {
@@ -609,7 +609,7 @@ class PhrasesetService:
     def _determine_updated_at(
         self,
         prompt_round: Optional[Round],
-        phraseset: Optional[PhraseSet],
+        phraseset: Optional[Phraseset],
         fallback: Optional[datetime] = None,
     ) -> Optional[datetime]:
         """Derive an updated timestamp for summary ordering."""
@@ -625,7 +625,7 @@ class PhrasesetService:
                 return value
         return None
 
-    def _count_votes(self, phraseset: PhraseSet, votes: list[Vote]) -> dict:
+    def _count_votes(self, phraseset: Phraseset, votes: list[Vote]) -> dict:
         """Aggregate vote counts by phrase for detail view."""
         counts = {
             phraseset.original_phrase: 0,

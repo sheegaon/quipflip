@@ -10,7 +10,7 @@ import logging
 from backend.models.player import Player
 from backend.models.prompt import Prompt
 from backend.models.round import Round
-from backend.models.phraseset import PhraseSet
+from backend.models.phraseset import Phraseset
 from backend.models.player_abandoned_prompt import PlayerAbandonedPrompt
 from backend.services.transaction_service import TransactionService
 from backend.services.queue_service import QueueService
@@ -179,7 +179,7 @@ class RoundService:
         player.active_round_id = None
 
         # Add to queue
-        QueueService.add_prompt_to_queue(round_object.round_id)
+        QueueService.add_prompt_round_to_queue(round_object.round_id)
 
         await self.activity_service.record_activity(
             activity_type="prompt_created",
@@ -230,10 +230,10 @@ class RoundService:
 
         for attempt in range(max_attempts):
             # Get next prompt from queue
-            prompt_round_id = QueueService.get_next_prompt()
+            prompt_round_id = QueueService.get_next_prompt_round()
             if not prompt_round_id:
                 await self.ensure_prompt_queue_populated()
-                prompt_round_id = QueueService.get_next_prompt()
+                prompt_round_id = QueueService.get_next_prompt_round()
                 if not prompt_round_id:
                     raise NoPromptsAvailableError("No prompts available")
 
@@ -246,7 +246,7 @@ class RoundService:
             # CRITICAL: Check if player is trying to copy their own prompt
             if prompt_round.player_id == player.player_id:
                 # Put back in queue and try another
-                QueueService.add_prompt_to_queue(prompt_round_id)
+                QueueService.add_prompt_round_to_queue(prompt_round_id)
                 logger.info(f"Player {player.player_id} got their own prompt, retrying...")
                 continue
 
@@ -258,7 +258,7 @@ class RoundService:
                 .where(Round.player_id == player.player_id)
             )
             if existing_copy_result.scalar_one_or_none():
-                QueueService.add_prompt_to_queue(prompt_round_id)
+                QueueService.add_prompt_round_to_queue(prompt_round_id)
                 logger.info(
                     f"Player {player.player_id} already submitted a copy for prompt {prompt_round_id}, retrying..."
                 )
@@ -274,7 +274,7 @@ class RoundService:
             )
             if result.scalar_one_or_none():
                 # Put back in queue and try another
-                QueueService.add_prompt_to_queue(prompt_round_id)
+                QueueService.add_prompt_round_to_queue(prompt_round_id)
                 logger.info(f"Player {player.player_id} abandoned this prompt recently, retrying...")
                 continue
 
@@ -425,7 +425,7 @@ class RoundService:
 
             if prompt_round.copy2_player_id is None:
                 # Ensure prompt stays available for a second copy
-                QueueService.add_prompt_to_queue(prompt_round.round_id)
+                QueueService.add_prompt_round_to_queue(prompt_round.round_id)
 
         await self.db.flush()
 
@@ -463,7 +463,7 @@ class RoundService:
         logger.info(f"Submitted phrase for copy round {round_id}: {phrase}")
         return round_object
 
-    async def create_phraseset_if_ready(self, prompt_round: Round) -> PhraseSet | None:
+    async def create_phraseset_if_ready(self, prompt_round: Round) -> Phraseset | None:
         """
         Create phraseset when two copies submitted.
 
@@ -505,7 +505,7 @@ class RoundService:
         system_contribution = copy1.system_contribution + copy2.system_contribution
         initial_pool = self.settings.prize_pool_base + system_contribution
 
-        phraseset = PhraseSet(
+        phraseset = Phraseset(
             phraseset_id=uuid.uuid4(),
             prompt_round_id=prompt_round.round_id,
             copy_round_1_id=copy1.round_id,
@@ -599,7 +599,7 @@ class RoundService:
             )
 
             # Return prompt to queue
-            QueueService.add_prompt_to_queue(round_object.prompt_round_id)
+            QueueService.add_prompt_round_to_queue(round_object.prompt_round_id)
 
             # Track abandonment for cooldown
             abandonment = PlayerAbandonedPrompt(
@@ -679,7 +679,7 @@ class RoundService:
         Returns:
             True if queue has items after running, False otherwise.
         """
-        if QueueService.get_prompts_waiting() > 0:
+        if QueueService.get_prompt_rounds_waiting() > 0:
             return True
 
         rehydrated = await self._rehydrate_prompt_queue()
@@ -697,15 +697,15 @@ class RoundService:
         # Use a shared lock so only one worker rebuilds the queue at a time.
         with lock_client.lock("rehydrate_prompt_queue", timeout=5):
             # Another worker might have already filled the queue while we were waiting.
-            if QueueService.get_prompts_waiting() > 0:
+            if QueueService.get_prompt_rounds_waiting() > 0:
                 return 0
 
             result = await self.db.execute(
                 select(Round.round_id)
-                .join(PhraseSet, PhraseSet.prompt_round_id == Round.round_id, isouter=True)
+                .join(Phraseset, Phraseset.prompt_round_id == Round.round_id, isouter=True)
                 .where(Round.round_type == "prompt")
                 .where(Round.status == "submitted")
-                .where(PhraseSet.phraseset_id.is_(None))  # Use proper NULL check
+                .where(Phraseset.phraseset_id.is_(None))  # Use proper NULL check
                 .order_by(Round.created_at.asc())
             )
             prompt_ids = list(result.scalars().all())
@@ -714,7 +714,7 @@ class RoundService:
                 return 0
 
             for prompt_round_id in prompt_ids:
-                QueueService.add_prompt_to_queue(prompt_round_id)
+                QueueService.add_prompt_round_to_queue(prompt_round_id)
 
             logger.info(f"Rehydrated prompt queue with {len(prompt_ids)} prompts from database")
             return len(prompt_ids)

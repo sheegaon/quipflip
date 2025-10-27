@@ -12,7 +12,7 @@ repo/
 │   ├── main.py           # ASGI entrypoint
 │   ├── routers/          # Route modules (players, rounds, phrasesets, quests, health)
 │   ├── services/         # Business logic (rounds, votes, phrasesets, players, quests)
-│   ├── models/           # ORM models (Player, Round, PhraseSet, Quest, etc.)
+│   ├── models/           # ORM models (Player, Round, Phraseset, Quest, etc.)
 │   ├── schemas/          # Pydantic request/response schemas
 │   ├── utils/            # Queue/lock abstractions, JSON encoders, helpers
 │   └── migrations/       # Alembic migrations
@@ -133,7 +133,7 @@ For voting displays, phrase order is randomized per-voter (not stored in databas
 ## Code Quality Patterns
 
 ### Denormalized Data Pattern
-PhraseSet uses denormalized fields for performance while maintaining referential integrity:
+Phraseset uses denormalized fields for performance while maintaining referential integrity:
 
 ```python
 # Denormalized fields (copied from source rounds)

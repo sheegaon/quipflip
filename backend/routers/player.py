@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.database import get_db
 from backend.dependencies import get_current_player
 from backend.models.player import Player
-from backend.models.phraseset import PhraseSet
+from backend.models.phraseset import Phraseset
 from backend.models.round import Round
 from backend.schemas.player import (
     PlayerBalance,
@@ -223,7 +223,7 @@ async def get_current_round(
         })
     elif round.round_type == "vote":
         # Get phraseset for voting
-        phraseset = await db.get(PhraseSet, round.phraseset_id)
+        phraseset = await db.get(Phraseset, round.phraseset_id)
         if phraseset:
             # Randomize word order per-voter
             import random

@@ -9,7 +9,7 @@ import logging
 
 from backend.models.player import Player
 from backend.models.daily_bonus import DailyBonus
-from backend.models.phraseset import PhraseSet
+from backend.models.phraseset import Phraseset
 from backend.models.round import Round
 from backend.config import get_settings
 from backend.utils.exceptions import DailyBonusNotAvailableError
@@ -166,9 +166,9 @@ class PlayerService:
 
         # Count phrasesets linked to those rounds that are open/closing
         result = await self.db.execute(
-            select(func.count(PhraseSet.phraseset_id))
-            .where(PhraseSet.prompt_round_id.in_(select(prompt_rounds_subq)))
-            .where(PhraseSet.status.in_(["open", "closing"]))
+            select(func.count(Phraseset.phraseset_id))
+            .where(Phraseset.prompt_round_id.in_(select(prompt_rounds_subq)))
+            .where(Phraseset.status.in_(["open", "closing"]))
         )
         count = result.scalar() or 0
         logger.debug(f"Player {player_id} has {count} outstanding prompts")
@@ -210,7 +210,7 @@ class PlayerService:
             return False, "already_in_round"
 
         # Check prompts available
-        if not QueueService.has_prompts_available():
+        if not QueueService.has_prompt_rounds_available():
             return False, "no_prompts_available"
 
         return True, ""

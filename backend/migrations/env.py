@@ -26,7 +26,7 @@ from backend.database import Base
 from backend.config import get_settings
 # Import all models so Alembic can detect them
 from backend.models import (
-    Player, Prompt, Round, PhraseSet, Vote,
+    Player, Prompt, Round, Phraseset, Vote,
     Transaction, DailyBonus, ResultView, PlayerAbandonedPrompt
 )
 

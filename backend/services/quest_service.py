@@ -12,7 +12,7 @@ from backend.models.player import Player
 from backend.models.vote import Vote
 from backend.models.round import Round
 from backend.models.prompt import Prompt
-from backend.models.phraseset import PhraseSet
+from backend.models.phraseset import Phraseset
 from backend.models.prompt_feedback import PromptFeedback
 from backend.services.transaction_service import TransactionService
 
@@ -370,7 +370,7 @@ class QuestService:
         """Check if any player earned the deceptive copy bonus."""
         # Get phraseset
         result = await self.db.execute(
-            select(PhraseSet).where(PhraseSet.phraseset_id == phraseset_id)
+            select(Phraseset).where(Phraseset.phraseset_id == phraseset_id)
         )
         phraseset = result.scalar_one_or_none()
 
@@ -447,7 +447,7 @@ class QuestService:
         """Check if the original prompt player earned the obvious original bonus."""
         # Get phraseset
         result = await self.db.execute(
-            select(PhraseSet).where(PhraseSet.phraseset_id == phraseset_id)
+            select(Phraseset).where(Phraseset.phraseset_id == phraseset_id)
         )
         phraseset = result.scalar_one_or_none()
 

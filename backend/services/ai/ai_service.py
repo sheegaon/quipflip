@@ -17,7 +17,8 @@ from sqlalchemy.orm import selectinload
 from backend.config import get_settings
 from backend.models.player import Player
 from backend.models.round import Round
-from backend.models.phraseset import PhraseSet
+from backend.models.phraseset import Phraseset
+from backend.models.phraseset_activity import PhrasesetActivity
 from backend.models.vote import Vote
 from backend.services.ai.metrics_service import AIMetricsService, MetricsTracker
 from backend.services.player_service import PlayerService
@@ -297,7 +298,7 @@ class AIService:
             logger.info(f"AI ({self.provider}) generated valid copy: '{phrase}' for original: '{original_phrase}'")
             return phrase
 
-    async def generate_vote_choice(self, phraseset: PhraseSet) -> str:
+    async def generate_vote_choice(self, phraseset: Phraseset) -> str:
         """
         Generate a vote choice using the configured AI provider with metrics tracking.
 
@@ -312,7 +313,7 @@ class AIService:
         """
         from backend.services.ai.vote_helper import generate_vote_choice
 
-        # Extract prompt and phrases from denormalized fields on PhraseSet
+        # Extract prompt and phrases from denormalized fields on Phraseset
         prompt_text = phraseset.prompt_text
         phrases = [
             phraseset.original_phrase,
@@ -426,13 +427,13 @@ class AIService:
             result = await self.db.execute(
                 select(Round)
                 .join(Player, Player.player_id == Round.player_id)
-                .outerjoin(PhraseSet, PhraseSet.prompt_round_id == Round.round_id)
+                .outerjoin(Phraseset, Phraseset.prompt_round_id == Round.round_id)
                 .where(Round.round_type == 'prompt')
                 .where(Round.status == 'submitted')
                 .where(Round.created_at <= cutoff_time)
                 .where(Round.player_id != ai_copy_player.player_id)
                 .where(~Player.username.like('%test%'))  # Exclude test players
-                .where(PhraseSet.phraseset_id.is_(None))  # No phraseset yet
+                .where(Phraseset.phraseset_id.is_(None))  # No phraseset yet
                 .order_by(Round.created_at.asc())  # Process oldest first
                 .limit(self.settings.ai_backup_batch_size)  # Configurable batch size
             )
@@ -525,24 +526,34 @@ class AIService:
 
             # Get all phrasesets that meet our basic criteria
             phraseset_result = await self.db.execute(
-                select(PhraseSet)
-                # .join(Round, Round.round_id == PhraseSet.prompt_round_id)
+                select(Phraseset)
+                # .join(Round, Round.round_id == Phraseset.prompt_round_id)
                 # .join(Player, Player.player_id == Round.player_id)
-                .where(PhraseSet.status.in_(["open", "closing"]))
-                .where(PhraseSet.created_at <= cutoff_time)
+                .where(Phraseset.status.in_(["open", "closing"]))
+                .where(Phraseset.created_at <= cutoff_time)
                 # .where(~Player.username.like('%test%'))  # Exclude test players
-                # .where(PhraseSet.phraseset_id.not_in(ai_voted_subquery))  # Exclude already voted
+                # .where(Phraseset.phraseset_id.not_in(ai_voted_subquery))  # Exclude already voted
                 .options(
-                    selectinload(PhraseSet.prompt_round),
-                    selectinload(PhraseSet.copy_round_1),
-                    selectinload(PhraseSet.copy_round_2),
+                    selectinload(Phraseset.prompt_round),
+                    selectinload(Phraseset.copy_round_1),
+                    selectinload(Phraseset.copy_round_2),
                 )
-                .order_by(PhraseSet.created_at.asc())  # Process oldest first
+                .order_by(Phraseset.created_at.asc())  # Process oldest first
                 .limit(self.settings.ai_backup_batch_size)  # Use configured batch size
             )
             
+            # Filter out phrasesets with activity after cutoff_time
             waiting_phrasesets = list(phraseset_result.scalars().all())
-            
+            filtered_phrasesets = []
+            for phraseset in waiting_phrasesets:
+                activity = await self.db.execute(
+                    select(PhrasesetActivity)
+                    .where(PhrasesetActivity.phraseset_id == phraseset.phraseset_id)
+                    .where(PhrasesetActivity.created_at > cutoff_time)
+                )
+                if len(activity.scalars().all()) == 0:
+                    filtered_phrasesets.append(phraseset)
+
             # # Filter out phrasesets where AI was a contributor (in-memory check since we need loaded relationships)
             # filtered_phrasesets = []
             # for phraseset in waiting_phrasesets:
@@ -568,8 +579,7 @@ class AIService:
             #         logger.error(f"Error checking phraseset {phraseset.phraseset_id} contributors: {e}")
             #         # Skip this phraseset to avoid further errors
             #         continue
-            filtered_phrasesets = waiting_phrasesets
-            
+
             stats["phrasesets_checked"] = len(filtered_phrasesets)
             logger.info(
                 f"Found {len(filtered_phrasesets)} phrasesets waiting for AI backup votes: {filtered_phrasesets}")

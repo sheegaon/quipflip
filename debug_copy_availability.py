@@ -48,7 +48,7 @@ async def debug_copy_availability():
             print(f"   Prompt rounds: {total_prompts}")
             print(f"   Copy rounds: {total_copies}")
             print(f"   Vote rounds: {total_votes}")
-            print(f"   PhraseSet: {total_phrasesets}")
+            print(f"   Phraseset: {total_phrasesets}")
 
             print_section("PROMPT ROUNDS WAITING FOR COPIES")
 

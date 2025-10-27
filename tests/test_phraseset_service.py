@@ -5,7 +5,7 @@ from uuid import uuid4
 
 from backend.models.player import Player
 from backend.models.round import Round
-from backend.models.phraseset import PhraseSet
+from backend.models.phraseset import Phraseset
 from backend.models.vote import Vote
 from backend.services.phraseset_service import PhrasesetService
 
@@ -69,7 +69,7 @@ async def test_get_phrasesets_and_claim(db_session):
     copy_round_2 = _copy_round(copy_two.player_id, prompt_round.round_id, "GENEROSITY")
 
     phraseset_id = uuid4()
-    phraseset = PhraseSet(
+    phraseset = Phraseset(
         phraseset_id=phraseset_id,
         prompt_round_id=prompt_round.round_id,
         copy_round_1_id=copy_round_1.round_id,
@@ -207,7 +207,7 @@ async def test_phraseset_excludes_non_selected_copy_rounds(db_session):
     rejected_round = _copy_round(rejected_player.player_id, prompt_round.round_id, "SADNESS")
 
     phraseset_id = uuid4()
-    phraseset = PhraseSet(
+    phraseset = Phraseset(
         phraseset_id=phraseset_id,
         prompt_round_id=prompt_round.round_id,
         copy_round_1_id=selected_round_1.round_id,  # Only the selected rounds

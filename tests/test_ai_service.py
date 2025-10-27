@@ -14,7 +14,7 @@ from backend.services.ai.metrics_service import AIMetricsService
 from backend.services.phrase_validator import PhraseValidator
 from backend.models.player import Player
 from backend.models.round import Round
-from backend.models.phraseset import PhraseSet
+from backend.models.phraseset import Phraseset
 from backend.models.ai_metric import AIMetric
 
 
@@ -45,7 +45,7 @@ def mock_prompt_round():
 @pytest.fixture
 def mock_phraseset():
     """Create a mock phraseset for voting tests."""
-    phraseset = MagicMock(spec=PhraseSet)
+    phraseset = MagicMock(spec=Phraseset)
     phraseset.phraseset_id = uuid.uuid4()
 
     # Mock the properties that generate_vote_choice uses

@@ -1,4 +1,4 @@
-"""PhraseSet model."""
+"""Phraseset model."""
 from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Index
 from sqlalchemy.orm import relationship
 import uuid
@@ -7,8 +7,8 @@ from backend.database import Base
 from backend.models.base import get_uuid_column
 
 
-class PhraseSet(Base):
-    """PhraseSet model for voting."""
+class Phraseset(Base):
+    """Phraseset model for voting."""
     __tablename__ = "phrasesets"
 
     phraseset_id = get_uuid_column(primary_key=True, default=uuid.uuid4)
@@ -57,4 +57,4 @@ class PhraseSet(Base):
     )
 
     def __repr__(self):
-        return f"<PhraseSet(phraseset_id={self.phraseset_id}, status={self.status}, vote_count={self.vote_count})>"
+        return f"<Phraseset(phraseset_id={self.phraseset_id}, status={self.status}, vote_count={self.vote_count})>"

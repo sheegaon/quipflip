@@ -4,7 +4,7 @@ from sqlalchemy import select
 from uuid import UUID, uuid4
 import logging
 
-from backend.models.phraseset import PhraseSet
+from backend.models.phraseset import Phraseset
 from backend.models.vote import Vote
 from backend.models.round import Round
 
@@ -17,7 +17,7 @@ class ScoringService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def calculate_payouts(self, phraseset: PhraseSet) -> dict:
+    async def calculate_payouts(self, phraseset: Phraseset) -> dict:
         """
         Calculate points and payouts for phraseset.
 

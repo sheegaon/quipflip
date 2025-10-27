@@ -24,7 +24,7 @@ class RoundStatus(str, Enum):
 
 
 class PhraseSetStatus(str, Enum):
-    """PhraseSet status enumeration for type safety."""
+    """Phraseset status enumeration for type safety."""
     OPEN = "open"
     CLOSING = "closing"
     CLOSED = "closed"

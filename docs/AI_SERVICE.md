@@ -193,7 +193,7 @@ except AICopyError as e:
 ```python
 async def generate_vote_choice(
     self,
-    phraseset: PhraseSet,
+    phraseset: Phraseset,
 ) -> str:
     """
     Generate a vote choice using configured AI provider with metrics tracking.
