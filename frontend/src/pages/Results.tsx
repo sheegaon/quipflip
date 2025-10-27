@@ -74,10 +74,10 @@ export const Results: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Pending Results List */}
+          {/* Latest Results List */}
           <div className="lg:col-span-1">
             <div className="tile-card p-4">
-              <h2 className="font-display font-bold text-lg mb-4 text-quip-navy">Pending Results</h2>
+              <h2 className="font-display font-bold text-lg mb-4 text-quip-navy">Latest Results</h2>
               <div className="space-y-2">
                 {pendingResults.map((result) => (
                   <button
