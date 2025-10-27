@@ -208,7 +208,7 @@ class PhraseValidator:
 
         # Check word count
         if len(words) < self.settings.phrase_min_words:
-            return False, f"Phrase must contain at least {self.settings.phrase_min_words} word"
+            return False, f"Phrase must contain at least {self.settings.phrase_min_words} words"
 
         if len(words) > self.settings.phrase_max_words:
             return False, f"Phrase must contain at most {self.settings.phrase_max_words} words"
