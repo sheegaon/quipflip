@@ -507,6 +507,38 @@ export const apiClient = {
     const { data } = await api.patch('/admin/config', { key, value }, { signal });
     return data;
   },
+
+  async testPhraseValidation(
+    phrase: string,
+    validationType: 'basic' | 'prompt' | 'copy',
+    promptText?: string | null,
+    originalPhrase?: string | null,
+    otherCopyPhrase?: string | null,
+    signal?: AbortSignal
+  ): Promise<{
+    is_valid: boolean;
+    error_message: string | null;
+    word_count: number;
+    phrase_length: number;
+    words: string[];
+    prompt_relevance_score: number | null;
+    similarity_to_original: number | null;
+    similarity_to_other_copy: number | null;
+    prompt_relevance_threshold: number | null;
+    similarity_threshold: number | null;
+    format_check_passed: boolean;
+    dictionary_check_passed: boolean;
+    word_conflicts: string[];
+  }> {
+    const { data } = await api.post('/admin/test-phrase-validation', {
+      phrase,
+      validation_type: validationType,
+      prompt_text: promptText,
+      original_phrase: originalPhrase,
+      other_copy_phrase: otherCopyPhrase,
+    }, { signal });
+    return data;
+  },
 };
 
 export default apiClient;

@@ -205,6 +205,42 @@ class SystemConfigService:
             "min": 3,
             "max": 6,
         },
+        "use_phrase_validator_api": {
+            "type": "bool",
+            "category": "validation",
+            "description": "Use external phrase validator API service",
+        },
+        "use_sentence_transformers": {
+            "type": "bool",
+            "category": "validation",
+            "description": "Use sentence transformers for similarity checking",
+        },
+        "similarity_model": {
+            "type": "string",
+            "category": "validation",
+            "description": "Sentence transformer model name",
+        },
+        "prompt_relevance_threshold": {
+            "type": "float",
+            "category": "validation",
+            "description": "Cosine similarity threshold for prompt relevance",
+            "min": 0.0,
+            "max": 1.0,
+        },
+        "similarity_threshold": {
+            "type": "float",
+            "category": "validation",
+            "description": "Cosine similarity threshold for rejecting similar phrases",
+            "min": 0.0,
+            "max": 1.0,
+        },
+        "word_similarity_threshold": {
+            "type": "float",
+            "category": "validation",
+            "description": "Minimum ratio for considering words too similar",
+            "min": 0.0,
+            "max": 1.0,
+        },
 
         # AI Service
         "ai_provider": {
@@ -236,6 +272,20 @@ class SystemConfigService:
             "description": "Wait time before AI provides backups",
             "min": 5,
             "max": 60,
+        },
+        "ai_backup_batch_size": {
+            "type": "int",
+            "category": "ai",
+            "description": "Maximum rounds to process per backup cycle",
+            "min": 1,
+            "max": 50,
+        },
+        "ai_backup_sleep_seconds": {
+            "type": "int",
+            "category": "ai",
+            "description": "Sleep time between backup cycles",
+            "min": 300,
+            "max": 7200,
         },
     }
 

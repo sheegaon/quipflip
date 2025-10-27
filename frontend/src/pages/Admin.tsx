@@ -131,26 +131,13 @@ const Admin: React.FC = () => {
 
     try {
       setValidating(true);
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/admin/test-phrase-validation`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('quipflip_access_token')}`,
-        },
-        body: JSON.stringify({
-          phrase: testPhrase,
-          validation_type: validationType,
-          prompt_text: validationType !== 'basic' ? promptText || null : null,
-          original_phrase: validationType === 'copy' ? originalPhrase || null : null,
-          other_copy_phrase: validationType === 'copy' ? otherCopyPhrase || null : null,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to validate phrase');
-      }
-
-      const data = await response.json();
+      const data = await apiClient.testPhraseValidation(
+        testPhrase,
+        validationType,
+        validationType !== 'basic' ? promptText || null : null,
+        validationType === 'copy' ? originalPhrase || null : null,
+        validationType === 'copy' ? otherCopyPhrase || null : null
+      );
       setValidationResult(data);
     } catch (err) {
       setError(extractErrorMessage(err) || 'Failed to test phrase validation');
@@ -369,9 +356,9 @@ const Admin: React.FC = () => {
                 <EditableConfigField
                   label="Prompt Cost"
                   value={config.prompt_cost}
+                  configKey="prompt_cost"
                   unit="flipcoins"
                   description="Cost to start a prompt round"
-                configKey="prompt_cost"
                   type="number"
                   min={50}
                   max={500}
@@ -381,9 +368,9 @@ const Admin: React.FC = () => {
                 <EditableConfigField
                   label="Copy Cost (Normal)"
                   value={config.copy_cost_normal}
+                  configKey="copy_cost_normal"
                   unit="flipcoins"
                   description="Standard cost to start a copy round"
-                configKey="copy_cost_normal"
                   type="number"
                   min={25}
                   max={250}
@@ -393,9 +380,10 @@ const Admin: React.FC = () => {
                 <EditableConfigField
                   label="Copy Cost (Discount)"
                   value={config.copy_cost_discount}
+                  configKey="copy_cost_discount"
                   unit="flipcoins"
                   description="Discounted cost when many prompts waiting"
-                configKey="copy_cost_discount"
+                
                   type="number"
                   min={20}
                   max={200}
@@ -405,9 +393,10 @@ const Admin: React.FC = () => {
                 <EditableConfigField
                   label="Copy Discount Threshold"
                   value={config.copy_discount_threshold}
+                  configKey="copy_discount_threshold"
                   unit="prompts"
                   description="Prompts needed to activate discount"
-                configKey="copy_discount_threshold"
+                
                   type="number"
                   min={5}
                   max={30}
@@ -417,9 +406,10 @@ const Admin: React.FC = () => {
                 <EditableConfigField
                   label="Vote Cost"
                   value={config.vote_cost}
+                  configKey="vote_cost"
                   unit="flipcoins"
                   description="Cost to start a vote round"
-                configKey="vote_cost"
+                
                   type="number"
                   min={5}
                   max={50}
@@ -438,9 +428,10 @@ const Admin: React.FC = () => {
                 <EditableConfigField
                   label="Vote Payout (Correct)"
                   value={config.vote_payout_correct}
+                  configKey="vote_payout_correct"
                   unit="flipcoins"
                   description="Reward for voting correctly"
-                configKey="vote_payout_correct"
+                
                   type="number"
                   min={10}
                   max={100}
@@ -450,9 +441,10 @@ const Admin: React.FC = () => {
                 <EditableConfigField
                   label="Prize Pool Base"
                   value={config.prize_pool_base}
+                  configKey="prize_pool_base"
                   unit="flipcoins"
                   description="Base prize pool for phrasesets"
-                configKey="prize_pool_base"
+                
                   type="number"
                   min={100}
                   max={1000}
@@ -462,9 +454,10 @@ const Admin: React.FC = () => {
                 <EditableConfigField
                   label="Abandoned Penalty"
                   value={config.abandoned_penalty}
+                  configKey="abandoned_penalty"
                   unit="flipcoins"
                   description="Penalty for abandoned rounds"
-                configKey="abandoned_penalty"
+                
                   type="number"
                   min={0}
                   max={50}
@@ -480,9 +473,10 @@ const Admin: React.FC = () => {
                 <EditableConfigField
                   label="Max Outstanding Prompts"
                   value={config.max_outstanding_quips}
+                  configKey="max_outstanding_quips"
                   unit="prompts"
                   description="Maximum concurrent prompts per player"
-                configKey="max_outstanding_quips"
+                
                   type="number"
                   min={3}
                   max={50}
@@ -503,9 +497,10 @@ const Admin: React.FC = () => {
                 <EditableConfigField
                   label="Prompt Round Duration"
                   value={config.prompt_round_seconds}
+                  configKey="prompt_round_seconds"
                   unit="seconds"
                   description="Time to submit a prompt"
-                configKey="prompt_round_seconds"
+                
                   type="number"
                   min={60}
                   max={600}
@@ -515,9 +510,10 @@ const Admin: React.FC = () => {
                 <EditableConfigField
                   label="Copy Round Duration"
                   value={config.copy_round_seconds}
+                  configKey="copy_round_seconds"
                   unit="seconds"
                   description="Time to submit a copy"
-                configKey="copy_round_seconds"
+                
                   type="number"
                   min={60}
                   max={600}
@@ -527,9 +523,10 @@ const Admin: React.FC = () => {
                 <EditableConfigField
                   label="Vote Round Duration"
                   value={config.vote_round_seconds}
+                  configKey="vote_round_seconds"
                   unit="seconds"
                   description="Time to submit a vote"
-                configKey="vote_round_seconds"
+                
                   type="number"
                   min={30}
                   max={300}
@@ -539,9 +536,10 @@ const Admin: React.FC = () => {
                 <EditableConfigField
                   label="Grace Period"
                   value={config.grace_period_seconds}
+                  configKey="grace_period_seconds"
                   unit="seconds"
                   description="Extra time after expiration"
-                configKey="grace_period_seconds"
+                
                   type="number"
                   min={0}
                   max={30}
@@ -557,9 +555,10 @@ const Admin: React.FC = () => {
                 <EditableConfigField
                   label="Maximum Votes"
                   value={config.vote_max_votes}
+                  configKey="vote_max_votes"
                   unit="votes"
                   description="Auto-finalize after this many votes"
-                configKey="vote_max_votes"
+                
                   type="number"
                   min={10}
                   max={100}
@@ -569,9 +568,10 @@ const Admin: React.FC = () => {
                 <EditableConfigField
                   label="Closing Threshold"
                   value={config.vote_closing_threshold}
+                  configKey="vote_closing_threshold"
                   unit="votes"
                   description="Votes to enter closing window"
-                configKey="vote_closing_threshold"
+                
                   type="number"
                   min={3}
                   max={20}
@@ -581,9 +581,10 @@ const Admin: React.FC = () => {
                 <EditableConfigField
                   label="Closing Window"
                   value={config.vote_closing_window_seconds}
+                  configKey="vote_closing_window_seconds"
                   unit="seconds"
                   description="Time to get more votes before closing"
-                configKey="vote_closing_window_seconds"
+                
                   type="number"
                   min={30}
                   max={300}
@@ -593,9 +594,10 @@ const Admin: React.FC = () => {
                 <EditableConfigField
                   label="Minimum Threshold"
                   value={config.vote_minimum_threshold}
+                  configKey="vote_minimum_threshold"
                   unit="votes"
                   description="Minimum votes to start timeout"
-                configKey="vote_minimum_threshold"
+                
                   type="number"
                   min={2}
                   max={10}
@@ -605,9 +607,10 @@ const Admin: React.FC = () => {
                 <EditableConfigField
                   label="Minimum Window"
                   value={config.vote_minimum_window_seconds}
+                  configKey="vote_minimum_window_seconds"
                   unit="seconds"
                   description="Max time before auto-finalizing"
-                configKey="vote_minimum_window_seconds"
+                
                   type="number"
                   min={300}
                   max={3600}
@@ -628,9 +631,10 @@ const Admin: React.FC = () => {
                 <EditableConfigField
                   label="Minimum Words"
                   value={config.phrase_min_words}
+                  configKey="phrase_min_words"
                   unit="words"
                   description="Fewest words allowed in a phrase"
-                configKey="phrase_min_words"
+                
                   type="number"
                   min={1}
                   max={5}
@@ -640,9 +644,10 @@ const Admin: React.FC = () => {
                 <EditableConfigField
                   label="Maximum Words"
                   value={config.phrase_max_words}
+                  configKey="phrase_max_words"
                   unit="words"
                   description="Most words allowed in a phrase"
-                configKey="phrase_max_words"
+                
                   type="number"
                   min={3}
                   max={10}
@@ -652,9 +657,10 @@ const Admin: React.FC = () => {
                 <EditableConfigField
                   label="Significant Word Min Length"
                   value={config.significant_word_min_length}
+                  configKey="significant_word_min_length"
                   unit="chars"
                   description="Min chars for content words"
-                configKey="significant_word_min_length"
+                
                   type="number"
                   min={3}
                   max={6}
@@ -670,9 +676,10 @@ const Admin: React.FC = () => {
                 <EditableConfigField
                   label="Max Phrase Length"
                   value={config.phrase_max_length}
+                  configKey="phrase_max_length"
                   unit="chars"
                   description="Total character limit"
-                configKey="phrase_max_length"
+                
                   type="number"
                   min={50}
                   max={200}
@@ -682,9 +689,10 @@ const Admin: React.FC = () => {
                 <EditableConfigField
                   label="Min Characters Per Word"
                   value={config.phrase_min_char_per_word}
+                  configKey="phrase_min_char_per_word"
                   unit="chars"
                   description="Minimum characters per word"
-                configKey="phrase_min_char_per_word"
+                
                   type="number"
                   min={1}
                   max={5}
@@ -694,9 +702,10 @@ const Admin: React.FC = () => {
                 <EditableConfigField
                   label="Max Characters Per Word"
                   value={config.phrase_max_char_per_word}
+                  configKey="phrase_max_char_per_word"
                   unit="chars"
                   description="Maximum characters per word"
-                configKey="phrase_max_char_per_word"
+                
                   type="number"
                   min={10}
                   max={30}
@@ -1034,9 +1043,10 @@ const Admin: React.FC = () => {
                 <EditableConfigField
                   label="Backup Delay"
                   value={config.ai_backup_delay_minutes}
+                  configKey="ai_backup_delay_minutes"
                   unit="minutes"
                   description="Wait time before AI provides backups"
-                configKey="ai_backup_delay_minutes"
+                
                   type="number"
                   min={5}
                   max={60}
@@ -1046,9 +1056,10 @@ const Admin: React.FC = () => {
                 <EditableConfigField
                   label="API Timeout"
                   value={config.ai_timeout_seconds}
+                  configKey="ai_timeout_seconds"
                   unit="seconds"
                   description="Timeout for AI API calls"
-                configKey="ai_timeout_seconds"
+                
                   type="number"
                   min={10}
                   max={120}

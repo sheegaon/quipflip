@@ -760,6 +760,14 @@ class VoteService:
         copy1_round = await self.db.get(Round, phraseset.copy_round_1_id)
         copy2_round = await self.db.get(Round, phraseset.copy_round_2_id)
 
+        # Validate that all required rounds exist
+        if not prompt_round:
+            raise ValueError("Prompt round not found for this phraseset")
+        if not copy1_round:
+            raise ValueError("Copy round 1 not found for this phraseset")
+        if not copy2_round:
+            raise ValueError("Copy round 2 not found for this phraseset")
+
         contributor_map = {
             prompt_round.player_id: ("prompt", phraseset.original_phrase),
             copy1_round.player_id: ("copy", phraseset.copy_phrase_1),
