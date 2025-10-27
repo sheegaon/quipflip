@@ -14,8 +14,19 @@ export const Header: React.FC = () => {
   const location = useLocation();
   const [hasClickedResults, setHasClickedResults] = React.useState(false);
 
-  // Show back arrow on Statistics, Tracking, Quests, and Results pages
-  const showBackArrow = location.pathname === '/statistics' || location.pathname === '/tracking' || location.pathname === '/quests' || location.pathname === '/results';
+  // Show back arrow on certain pages
+  const showBackArrow = location.pathname === '/statistics' || location.pathname === '/tracking' || location.pathname === '/quests' || location.pathname === '/results' || location.pathname === '/settings' || location.pathname === '/admin';
+
+  // Determine where back arrow should navigate based on current page
+  const getBackNavigation = () => {
+    if (location.pathname === '/settings') {
+      return '/statistics';
+    }
+    if (location.pathname === '/admin') {
+      return '/settings';
+    }
+    return '/dashboard';
+  };
 
   if (!player) {
     return null;
@@ -55,10 +66,10 @@ export const Header: React.FC = () => {
           {/* Left: Logo + Back Arrow (on certain pages) */}
           <div className="flex items-center gap-1 md:gap-3">
             <button
-              onClick={showBackArrow ? () => navigate('/dashboard') : undefined}
+              onClick={showBackArrow ? () => navigate(getBackNavigation()) : undefined}
               className={`flex items-center gap-0 md:gap-2 ${showBackArrow ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
               disabled={!showBackArrow}
-              title={showBackArrow ? "Back to Dashboard" : undefined}
+              title={showBackArrow ? (location.pathname === '/settings' ? "Back to Statistics" : "Back to Dashboard") : undefined}
             >
               {showBackArrow && (
                 <img
