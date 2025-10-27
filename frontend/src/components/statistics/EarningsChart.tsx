@@ -7,10 +7,10 @@ interface EarningsChartProps {
 }
 
 const COLORS = {
-  prompts: '#f97316', // orange-500
-  copies: '#14b8a6', // turquoise-500
-  votes: '#0891b2', // teal-600
-  bonuses: '#fb923c', // orange-400
+  prompts: '#0B2137',
+  copies: '#10B4A4',
+  votes: '#FF9A3D',
+  bonuses: '#FBBF24',
 };
 
 export default function EarningsChart({ earnings }: EarningsChartProps) {
