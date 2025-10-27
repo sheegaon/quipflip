@@ -387,7 +387,7 @@ export const Dashboard: React.FC = () => {
                   <h3 className="font-display font-semibold text-lg text-quip-turquoise">Copy Round</h3>
                 </div>
                 <span className="flex items-center gap-2 text-quip-orange-deep font-bold">
-                  {roundAvailability?.copy_discount_active && (
+                  {roundAvailability?.copy_discount_active && roundAvailability?.prompts_waiting > 0 && (
                     <img
                       src="/badge_copy-discount.svg"
                       alt="Copy discount active"
