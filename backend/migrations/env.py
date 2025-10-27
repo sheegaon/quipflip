@@ -82,8 +82,6 @@ async def run_async_migrations() -> None:
             if parsed_url.password:
                 password = parsed_url.password
                 logger.info(f"Migration password length: {len(password)}")
-                logger.info(f"Migration password starts: {password[:4]}...")
-                logger.info(f"Migration password ends: ...{password[-4:]}")
     except Exception as e:
         logger.error(f"Failed to parse migration URL: {e}")
     

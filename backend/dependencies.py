@@ -29,8 +29,8 @@ def _mask_identifier(identifier: str) -> str:
     if not identifier:
         return "<missing>"
     if len(identifier) <= 8:
-        return f"{identifier[:2]}…{identifier[-2:]}"
-    return f"{identifier[:4]}…{identifier[-4:]}"
+        return f"{identifier[:2]}...{identifier[-2:]}"
+    return f"{identifier[:4]}...{identifier[-4:]}"
 
 
 async def _enforce_rate_limit(scope: str, identifier: str | None, limit: int) -> None:
@@ -52,7 +52,7 @@ async def _enforce_rate_limit(scope: str, identifier: str | None, limit: int) ->
         headers["Retry-After"] = str(retry_after)
 
     masked_identifier = _mask_identifier(identifier)
-    logger.warning("Rate limit exceeded for scope=%s identifier=%s", scope, masked_identifier)
+    logger.warning(f"Rate limit exceeded for {scope=} {masked_identifier=}")
     raise HTTPException(status_code=429, detail=RATE_LIMIT_ERROR_MESSAGE, headers=headers or None)
 
 
