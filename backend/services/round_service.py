@@ -410,9 +410,7 @@ class RoundService:
                 prompt_round.copy2_player_id = player.player_id
             else:
                 logger.warning(
-                    "Prompt round %s already has two copy players; new submission still accepted",
-                    prompt_round.round_id,
-                )
+                    f"Prompt round {prompt_round.round_id} already has two copy players; new submission still accepted")
 
             await self.activity_service.record_activity(
                 activity_type="copy1_submitted" if is_first_copy else "copy2_submitted",
@@ -503,7 +501,7 @@ class RoundService:
 
         # Calculate initial prize pool: base + system contributions from copy discounts
         system_contribution = copy1.system_contribution + copy2.system_contribution
-        initial_pool = self.settings.prize_pool_base + system_contribution
+        initial_pool = self.settings.prize_pool_base
 
         phraseset = Phraseset(
             phraseset_id=uuid.uuid4(),
@@ -527,11 +525,7 @@ class RoundService:
         await self.db.flush()
 
         QueueService.add_phraseset_to_queue(phraseset.phraseset_id)
-        logger.info(
-            "Created phraseset %s from prompt %s",
-            phraseset.phraseset_id,
-            prompt_round.round_id,
-        )
+        logger.info(f"Created phraseset {phraseset.phraseset_id} from prompt {prompt_round.round_id}")
 
         return phraseset
 

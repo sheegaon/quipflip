@@ -7,7 +7,7 @@ import { Header } from '../components/Header';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import WinRateChart from '../components/statistics/WinRateChart';
 import EarningsChart from '../components/statistics/EarningsChart';
-import CostsChart from '../components/statistics/CostsChart';
+import SpendingChart from '../components/statistics/SpendingChart';
 import FrequencyChart from '../components/statistics/FrequencyChart';
 import PerformanceRadar from '../components/statistics/PerformanceRadar';
 import TopContentTable from '../components/statistics/TopContentTable';
@@ -144,11 +144,11 @@ const Statistics: React.FC = () => {
             )}
           </div>
 
-          {/* Costs Chart */}
+          {/* Spending Chart */}
           <div className="tile-card p-6">
-            <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Costs Breakdown</h2>
+            <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Spending Breakdown</h2>
             {chartsReady ? (
-              <CostsChart earnings={data.earnings} />
+              <SpendingChart earnings={data.earnings} />
             ) : (
               <div className="w-full h-80 flex items-center justify-center">
                 <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-quip-orange border-r-transparent"></div>

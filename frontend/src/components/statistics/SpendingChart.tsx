@@ -1,17 +1,17 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, PieLabelRenderProps } from 'recharts';
 import type { EarningsBreakdown } from '../../api/types';
 
-interface CostsChartProps {
+interface SpendingChartProps {
   earnings: EarningsBreakdown;
 }
 
 const COLORS = {
-  prompts: '#ef4444', // red-500
-  copies: '#f97316', // orange-500
-  votes: '#fb923c', // orange-400
+  prompts: '#0B2137',
+  copies: '#10B4A4',
+  votes: '#FF9A3D',
 };
 
-export default function CostsChart({ earnings }: CostsChartProps) {
+export default function SpendingChart({ earnings }: SpendingChartProps) {
   const data = [
     { name: 'Prompt Costs', value: earnings.prompt_costs, color: COLORS.prompts },
     { name: 'Copy Costs', value: earnings.copy_costs, color: COLORS.copies },

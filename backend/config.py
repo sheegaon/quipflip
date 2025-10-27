@@ -20,15 +20,15 @@ class Settings(BaseSettings):
 
     # Application
     frontend_url: str = "https://quipflip.xyz"
-    phrase_validator_url: str = "http://localhost:9000"
+    phrase_validator_url: str = "https://quipflip-pvw-f508f6eb7783.herokuapp.com"
     environment: str = "development"
-    secret_key: str = "dev-secret-key-change-in-production"  # Must be at least 32 characters in production
+    secret_key: str = "dev-secret-key-change-in-production"
     jwt_algorithm: str = "HS256"  # Use HS256 for symmetric signing
     access_token_exp_minutes: int = 120  # Access tokens valid for 2 hours
     refresh_token_exp_days: int = 30  # Longer-lived refresh tokens
     refresh_token_cookie_name: str = "quipflip_refresh_token"
 
-    # Game Constants (all values in whole dollars)
+    # Game Constants (all values in whole flipcoins)
     starting_balance: int = 5000
     daily_bonus_amount: int = 100
     prompt_cost: int = 100
