@@ -30,10 +30,6 @@ export const Quests: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<QuestCategory>('all');
   const [successMessage, setSuccessMessage] = useState<string>('');
 
-  useEffect(() => {
-    refreshQuests();
-  }, [refreshQuests]);
-
   if (!player) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">

@@ -129,43 +129,41 @@ export const ResultsProvider: React.FC<{
 
   // Sync viewedResultIds with pendingResults
   useEffect(() => {
-    setResultsState(prev => ({
-      ...prev,
-      viewedResultIds: (() => {
-        const previous = prev.viewedResultIds;
-        const pendingResults = prev.pendingResults;
-        
-        // If no pending results, clear all viewed IDs
-        if (pendingResults.length === 0) {
-          return previous.size === 0 ? previous : new Set();
-        }
+    setResultsState(prev => {
+      const pendingResults = prev.pendingResults;
+      const previous = prev.viewedResultIds;
+      
+      // If no pending results, clear all viewed IDs
+      if (pendingResults.length === 0) {
+        return previous.size === 0 ? prev : { ...prev, viewedResultIds: new Set() };
+      }
 
-        // Create new set starting from server-side viewed state
-        const next = new Set<string>();
-        
-        // Add all result IDs that are marked as viewed on server or were previously viewed locally
-        pendingResults.forEach((result) => {
-          const id = result.phraseset_id;
-          if (id && (result.result_viewed || previous.has(id))) {
-            next.add(id);
-          }
+      // Create new set starting from server-side viewed state
+      const next = new Set<string>();
+      
+      // Add all result IDs that are marked as viewed on server or were previously viewed locally
+      pendingResults.forEach((result) => {
+        const id = result.phraseset_id;
+        if (id && (result.result_viewed || previous.has(id))) {
+          next.add(id);
+        }
+      });
+
+      // Return previous state if no changes to avoid unnecessary re-renders
+      const hasChanges = next.size !== previous.size || !Array.from(next).every(id => previous.has(id));
+      if (hasChanges) {
+        gameContextLogger.debug('🔄 Updated viewed result IDs:', {
+          previous: previous.size,
+          new: next.size,
+          added: Array.from(next).filter(id => !previous.has(id)),
+          removed: Array.from(previous).filter(id => !next.has(id))
         });
-
-        // Return previous set if no changes to avoid unnecessary re-renders
-        const hasChanges = next.size !== previous.size || !Array.from(next).every(id => previous.has(id));
-        if (hasChanges) {
-          gameContextLogger.debug('🔄 Updated viewed result IDs:', {
-            previous: previous.size,
-            new: next.size,
-            added: Array.from(next).filter(id => !previous.has(id)),
-            removed: Array.from(previous).filter(id => !next.has(id))
-          });
-        }
-        
-        return hasChanges ? next : previous;
-      })()
-    }));
-  }, [resultsState.pendingResults]);
+        return { ...prev, viewedResultIds: next };
+      }
+      
+      return prev; // No changes, return same state object
+    });
+  }, []); // Remove dependency array completely since we read from prev state
 
   const refreshPlayerPhrasesets = useCallback(async (
     params: PlayerPhrasesetParams = {},

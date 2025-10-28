@@ -177,15 +177,7 @@ export const QuestProvider: React.FC<{
     refreshQuests().catch((err) => {
       gameContextLogger.error('❌ Failed to auto-load quests:', err);
     });
-  }, [isAuthenticated, refreshQuests]);
-
-  // Update hasClaimableQuests when claimableQuests changes
-  useEffect(() => {
-    setQuestState(prev => ({
-      ...prev,
-      hasClaimableQuests: prev.claimableQuests.length > 0
-    }));
-  }, [questState.claimableQuests]);
+  }, [isAuthenticated]); // Remove refreshQuests from dependency array
 
   const actions: QuestActions = {
     refreshQuests,
