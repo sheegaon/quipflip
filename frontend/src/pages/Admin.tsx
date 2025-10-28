@@ -4,8 +4,8 @@ import { useGame } from '../contexts/GameContext';
 import { Header } from '../components/Header';
 import apiClient, { extractErrorMessage } from '../api/client';
 import { EditableConfigField } from '../components/EditableConfigField';
-import type { AdminPlayerSummary } from '../api/types';
 import { adminLogger } from '../utils/logger';
+import type { AdminPlayerSummary } from '../api/types';
 
 interface GameConfig {
   // Game Constants
@@ -254,6 +254,79 @@ const Admin: React.FC = () => {
       setAdminDeleteValue('');
       setAdminDeleteConfirm('');
     } catch (err) {
+      setAdminDeleteError(extractErrorMessage(err, 'admin-delete-player') || 'Failed to delete player');
+    } finally {
+      setAdminDeleteActionLoading(false);
+    }
+  };
+
+  const handleAdminDeleteSearch = async () => {
+    const trimmed = adminDeleteValue.trim();
+    if (!trimmed) {
+      setAdminDeleteError('Enter a value to search.');
+      setAdminDeleteLookup(null);
+      return;
+    }
+
+    try {
+      setAdminDeleteLoading(true);
+      setAdminDeleteError(null);
+      setAdminDeleteSuccess(null);
+      setAdminDeleteLookup(null);
+      const params = adminDeleteIdentifier === 'email' ? { email: trimmed } : { username: trimmed };
+      const result = await apiClient.adminSearchPlayer(params);
+      setAdminDeleteLookup(result);
+      setAdminDeleteConfirm('');
+    } catch (err: any) {
+      if (err?.detail === 'player_not_found') {
+        setAdminDeleteError('No account found with that identifier.');
+      } else {
+        setAdminDeleteError(extractErrorMessage(err, 'admin-search-player') || 'Failed to find player');
+      }
+    } finally {
+      setAdminDeleteLoading(false);
+    }
+  };
+
+  const handleAdminDeleteClear = () => {
+    setAdminDeleteValue('');
+    setAdminDeleteLookup(null);
+    setAdminDeleteError(null);
+    setAdminDeleteSuccess(null);
+    setAdminDeleteConfirm('');
+  };
+
+  useEffect(() => {
+    if (!adminDeleteSuccess) {
+      return;
+    }
+    const timer = window.setTimeout(() => setAdminDeleteSuccess(null), 4000);
+    return () => window.clearTimeout(timer);
+  }, [adminDeleteSuccess]);
+
+  const handleAdminDeleteAccount = async () => {
+    if (!adminDeleteLookup) {
+      setAdminDeleteError('Search for a player before deleting.');
+      return;
+    }
+
+    if (adminDeleteConfirm.trim().toUpperCase() !== 'DELETE') {
+      setAdminDeleteError('Type DELETE to confirm.');
+      return;
+    }
+
+    try {
+      setAdminDeleteActionLoading(true);
+      setAdminDeleteError(null);
+      const result = await apiClient.adminDeletePlayer({
+        player_id: adminDeleteLookup.player_id,
+        confirmation: 'DELETE',
+      });
+      setAdminDeleteSuccess(`Deleted ${result.deleted_username} (${result.deleted_email}).`);
+      setAdminDeleteLookup(null);
+      setAdminDeleteValue('');
+      setAdminDeleteConfirm('');
+    } catch (err: any) {
       setAdminDeleteError(extractErrorMessage(err, 'admin-delete-player') || 'Failed to delete player');
     } finally {
       setAdminDeleteActionLoading(false);

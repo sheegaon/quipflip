@@ -224,10 +224,13 @@ async def validate_admin_password(
 async def search_player(
     email: Optional[EmailLike] = Query(None),
     username: Optional[str] = Query(None),
-    player: Annotated[Player, Depends(get_current_player)] = None,
-    session: Annotated[AsyncSession, Depends(get_db)] = None,
+    player: Annotated[Player, Depends(get_current_player)],
+    session: Annotated[AsyncSession, Depends(get_db)],
 ) -> AdminPlayerSummary:
     """Search for a player by email or username."""
+
+    if not player.is_admin:
+        raise HTTPException(status_code=403, detail="admin_only")
 
     if not email and not username:
         raise HTTPException(status_code=400, detail="missing_identifier")
@@ -258,10 +261,13 @@ async def search_player(
 @router.delete("/players", response_model=AdminDeletePlayerResponse)
 async def delete_player_admin(
     request: AdminDeletePlayerRequest,
-    player: Annotated[Player, Depends(get_current_player)] = None,
-    session: Annotated[AsyncSession, Depends(get_db)] = None,
+    player: Annotated[Player, Depends(get_current_player)],
+    session: Annotated[AsyncSession, Depends(get_db)],
 ) -> AdminDeletePlayerResponse:
     """Delete a player account and associated data via admin panel."""
+
+    if not player.is_admin:
+        raise HTTPException(status_code=403, detail="admin_only")
 
     identifier = request.player_id or request.email or request.username
     if not identifier:

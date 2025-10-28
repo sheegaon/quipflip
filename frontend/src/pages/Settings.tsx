@@ -38,6 +38,38 @@ const formatDate = (dateString?: string | null) => {
   });
 };
 
+const validatePasswordStrength = (password: string): string | null => {
+  if (password.length < 8) {
+    return 'Password must be at least 8 characters long.';
+  }
+
+  if (!/[A-Z]/.test(password) || !/[a-z]/.test(password)) {
+    return 'Password must include both uppercase and lowercase letters.';
+  }
+
+  if (!/[0-9]/.test(password)) {
+    return 'Password must include at least one number.';
+  }
+
+  return null;
+};
+
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const formatDate = (dateString?: string | null) => {
+  if (!dateString) {
+    return 'Not recorded';
+  }
+
+  return new Date(dateString).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
+
 const Settings: React.FC = () => {
   const { state, actions } = useGame();
   const { player } = state;
@@ -139,6 +171,43 @@ const Settings: React.FC = () => {
       const message = extractErrorMessage(err) || 'Failed to verify password';
       settingsLogger.error('Failed to validate admin password', err);
       setAdminPasswordError(message);
+    }
+  };
+
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError(null);
+    setPasswordSuccess(null);
+
+    if (!passwordForm.currentPassword || !passwordForm.newPassword) {
+      setPasswordError('Please provide both your current and new passwords.');
+      return;
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordError('New passwords do not match.');
+      return;
+    }
+
+    const strengthError = validatePasswordStrength(passwordForm.newPassword);
+    if (strengthError) {
+      setPasswordError(strengthError);
+      return;
+    }
+
+    try {
+      setPasswordLoading(true);
+      const response = await apiClient.changePassword({
+        current_password: passwordForm.currentPassword,
+        new_password: passwordForm.newPassword,
+      });
+
+      setPasswordSuccess(response.message || 'Password updated successfully.');
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (err) {
+      setPasswordError(extractErrorMessage(err, 'change-password') || 'Failed to update password');
+    } finally {
+      setPasswordLoading(false);
     }
   };
 
@@ -594,7 +663,7 @@ const Settings: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={deleteLoading}
+                  disabled={deleteLoading || deleteConfirmation.trim().toUpperCase() !== 'DELETE'}
                   className="bg-red-600 hover:bg-red-700 disabled:bg-red-300 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm"
                 >
                   {deleteLoading ? 'Deleting...' : 'Confirm Delete'}
