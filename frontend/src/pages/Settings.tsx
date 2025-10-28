@@ -583,7 +583,7 @@ const Settings: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={deleteLoading}
+                  disabled={deleteLoading || deleteConfirmation.trim().toUpperCase() !== 'DELETE'}
                   className="bg-red-600 hover:bg-red-700 disabled:bg-red-300 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm"
                 >
                   {deleteLoading ? 'Deleting...' : 'Confirm Delete'}
