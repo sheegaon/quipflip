@@ -210,16 +210,6 @@ class SystemConfigService:
             "category": "validation",
             "description": "Use external phrase validator API service",
         },
-        "use_sentence_transformers": {
-            "type": "bool",
-            "category": "validation",
-            "description": "Use sentence transformers for similarity checking",
-        },
-        "similarity_model": {
-            "type": "string",
-            "category": "validation",
-            "description": "Sentence transformer model name",
-        },
         "prompt_relevance_threshold": {
             "type": "float",
             "category": "validation",
