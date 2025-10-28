@@ -83,6 +83,13 @@ async def create_player(
         )
     except AuthError as exc:
         message = str(exc)
+        # Check if this is a password validation error
+        if any(keyword in message for keyword in [
+            "Password must be at least",
+            "Password must include both uppercase and lowercase",
+            "Password must include at least one number"
+        ]):
+            raise HTTPException(status_code=422, detail=message) from exc
         if message == "username_generation_failed":
             raise HTTPException(status_code=500, detail="username_generation_failed") from exc
         if message == "email_taken":

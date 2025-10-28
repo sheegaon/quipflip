@@ -266,7 +266,7 @@ async def lifespan(app_instance: FastAPI):
 app = FastAPI(
     title="Quipflip API",
     description="Phase 2 - Phrase association game backend",
-    version="1.2.0",
+    version="1.3.0",
     lifespan=lifespan,
 )
 

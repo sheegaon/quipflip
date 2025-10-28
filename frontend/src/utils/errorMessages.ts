@@ -136,7 +136,17 @@ export const getContextualErrorMessage = (
     };
   }
 
-  if (normalizedError.includes('invalid credentials') || normalizedError.includes('password')) {
+  // Check for password validation errors (422 status) before generic password errors
+  if (error?.status === 422 && normalizedError.includes('password must')) {
+    return {
+      message: errorDetail, // Use the specific validation message
+      suggestion: "Please check password requirements",
+      retryable: true,
+      category: 'account'
+    };
+  }
+
+  if (normalizedError.includes('invalid credentials') || (normalizedError.includes('password') && !normalizedError.includes('password must'))) {
     return {
       message: errorMessages.auth.invalidCredentials,
       suggestion: "Double-check your username and password",
