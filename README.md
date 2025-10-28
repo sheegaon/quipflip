@@ -5,9 +5,9 @@ A multiplayer phrase association game with monetary stakes. Players respond to p
 ## 🎮 Game Overview
 
 Quipflip is a three-phase game where players:
-1. **Prompt** - Submit a phrase for a creative prompt (\$100)
-2. **Copy** - Submit a similar phrase without seeing the prompt (\$100 or \$90)
-3. **Vote** - Identify the original phrase from three options (\$1)
+1. **Prompt** - Submit a phrase for a creative prompt (100 flipcoins)
+2. **Copy** - Submit a similar phrase without seeing the prompt (50 or 40 flipcoins)
+3. **Vote** - Identify the original phrase from three options (10 flipcoins)
 
 Winners split a prize pool based on vote performance. See full game rules below.
 
@@ -94,31 +94,31 @@ pytest tests/
 ## Round Types
 
 ### 1. Prompt Round
-- **Cost**: \$100 (full amount deducted immediately, \$90 refunded on timeout)
+- **Cost**: 100 flipcoins (full amount deducted immediately, 95 flipcoins refunded on timeout)
 - **Process**: Player receives a randomly assigned prompt (e.g., “my deepest desire is to be (a)”) and submits a short phrase.
 - **Phrase Requirements**:
-  - 1–5 words (2–100 characters total)
+  - 2–5 words (2–100 characters total)
   - Letters A–Z and spaces only (case insensitive)
   - Each word must appear in the NASPA dictionary (common connectors like “a”, “an”, “the”, “I” are always allowed)
 - **Timing**: 3-minute (180-second) submission window
-- **Abandonment**: If the timer expires, the round is cancelled, \$10 is forfeited, and the remaining \$90 is refunded. The prompt is re-queued for other players.
+- **Abandonment**: If the timer expires, the round is cancelled, 5 flipcoins are forfeited, and the remaining 95 flipcoins are refunded. The prompt is re-queued for other players.
 - **Queue**: Submitted prompts enter the prompt queue until two copy players claim them (future phases will add AI backups after long waits).
 
 ### 2. Copy Round
-- **Cost**: \$100 or \$90 (full amount deducted immediately, \$90 refunded on timeout)
-- **Dynamic Pricing**: When more than 10 prompts are waiting, copy rounds drop to \$90; the system contributes \$10 so the phraseset prize pool remains \$300.
+- **Cost**: 50 or 40 flipcoins (full amount deducted immediately, refund available on timeout)
+- **Dynamic Pricing**: When more than 10 prompts are waiting, copy rounds drop to 40 flipcoins; the system contributes to keep the phraseset prize pool at 200 flipcoins.
 - **Process**: Player sees only the original player’s phrase (not the prompt) and must submit a similar or related phrase.
 - **Phrase Requirements**: Same as the prompt round, plus the submission cannot match the original phrase.
 - **Duplicate Handling**: Exact duplicates are rejected and the player must submit a different phrase while the timer continues.
 - **Timing**: 3-minute (180-second) submission window
-- **Abandonment**: Expiring forfeits \$10 (or \$9 on discounted rounds) and refunds the remainder. The prompt returns to the queue and the player is blocked from retrying that prompt for 24 hours.
+- **Abandonment**: Expiring forfeits 5 flipcoins and refunds the remainder. The prompt returns to the queue and the player is blocked from retrying that prompt for 24 hours.
 - **Queue**: Once two distinct copy phrases are submitted, the trio forms a phraseset and moves to the voting queue.
 
 ### 3. Vote Round
-- **Cost**: \$1 (deducted immediately)
+- **Cost**: 10 flipcoins (deducted immediately)
 - **Process**: Player sees the original prompt and three phrases (1 original + 2 copies in voter-specific random order) and selects the phrase they believe is the original.
 - **Timing**: 60-second hard limit (frontend enforces, backend allows a 5-second grace period)
-- **Abandonment**: No vote = forfeited \$1 entry fee.
+- **Abandonment**: No vote = forfeited 10 flipcoins entry fee.
 - **Voting Pool**:
   - Minimum 3 votes required before finalization (future phases will auto-fill with AI if needed).
   - Maximum 20 votes per phraseset.
@@ -146,10 +146,10 @@ pytest tests/
 ## Scoring & Payouts
 
 ### Prize Pool Formation
-- **Contributions**: \$100 each from 3 players = \$300 total pool (system contributes \$10 when copy discount active)
-- **Vote Payments Deducted**: \$5 per correct vote (max \$100 for 20 votes)
-- **Rake**: Vote entry fees (\$1 per voter) are rake and don't enter prize pool
-- **Remaining Prize Pool**: \$300 - (correct votes × \$5) = distributed to contributors proportionally to points earned, rounded down to nearest \$1 and remainder is raked
+- **Contributions**: 100 + 50 + 50 flipcoins from 3 players = 200 flipcoins total pool (system contributes when copy discount active)
+- **Vote Payments Deducted**: 20 flipcoins per correct vote (max 400 flipcoins for 20 votes)
+- **Rake**: Vote entry fees (10 flipcoins per voter) are rake and don't enter prize pool
+- **Remaining Prize Pool**: 200 flipcoins - (correct votes × 20 flipcoins) = distributed to contributors proportionally to points earned, rounded down to nearest flipcoin and remainder is raked
 
 ### Points Distribution
 - **Vote for Original**: 1 point to original (prompt) player
@@ -161,38 +161,38 @@ pytest tests/
   - Total: 16 points
 
 ### Payout Calculation
-- Prize pool split proportionally by points earned, rounded down to nearest \$1 (remainder is raked)
-- **Example** (continuing above with \$250 remaining pool after \$50 in vote payments):
-  - Original player: 4/16 × \$250 = \$62
-  - Copy A player: 6/16 × \$250 = \$93
-  - Copy B player: 6/16 × \$250 = \$93
+- Prize pool split proportionally by points earned, rounded down to nearest flipcoin (remainder is raked)
+- **Example** (continuing above with remaining pool after vote payments):
+  - Original player: 4/16 × remaining pool
+  - Copy A player: 6/16 × remaining pool
+  - Copy B player: 6/16 × remaining pool
 
 ### Voter Payouts
-- **Correct vote**: \$5 gross (\$4 net after \$1 entry fee)
-- **Incorrect vote**: \$0 (lose \$1 entry fee)
+- **Correct vote**: 20 flipcoins gross (10 flipcoins net after 10 flipcoins entry fee)
+- **Incorrect vote**: 0 flipcoins (lose 10 flipcoins entry fee)
 
 ---
 
 ## Player Economics
 
 ### Starting Balance
-- New players begin with **\$1000**
+- New players begin with **5000 flipcoins**
 
 ### Daily Login Bonus
-- **\$100** credited once per UTC calendar date, excluding player creation date
+- **100 flipcoins** credited once per UTC calendar date, excluding player creation date
 - First bonus available the day after account creation
 - Automatically tracks via `last_login_date` field
 
 ### Transaction Costs
-- Prompt round: -\$100 (deducted immediately, \$90 refunded on timeout)
-- Copy round: -\$100 or -\$90 (deducted immediately, \$90 or \$81 refunded on timeout)
-- Vote round: -\$1 (deducted immediately)
+- Prompt round: -100 flipcoins (deducted immediately, 95 flipcoins refunded on timeout)
+- Copy round: -50 or -40 flipcoins (deducted immediately, refund available on timeout)
+- Vote round: -10 flipcoins (deducted immediately)
 
 ### Revenue Opportunities
-- Correct votes: +\$4 net (+\$5 gross - \$1 entry)
+- Correct votes: +10 flipcoins net (+20 flipcoins gross - 10 flipcoins entry)
 - Prize pool earnings: Variable based on performance and votes received
-- Daily login bonus: +\$100
-- *Future Ideas:* Correct voter bonus upon 5 correct votes in a row: +\$10
+- Daily login bonus: +100 flipcoins
+- *Future Ideas:* Correct voter bonus upon 5 correct votes in a row: +10 flipcoins
 
 ---
 
@@ -207,7 +207,7 @@ At any time (if not already in an active round), players can choose to:
 ### Queue System
 - **Prompt Queue**: Submitted prompts waiting for copy players (FIFO)
 - **Copy Assignment**: FIFO from prompt queue when player calls POST /rounds/copy
-- **Copy Queue Discount**: When `prompts_waiting > 10`, copy rounds cost \$90 (the system contributes \$10 per phraseset)
+- **Copy Queue Discount**: When `prompts_waiting > 10`, copy rounds cost 40 flipcoins (the system contributes per phraseset)
 - **Vote Queue**: Complete phrasesets waiting for voters
 - **Vote Assignment Priority**:
   1. Phrasesets with ≥5 votes (FIFO by 5th vote time)
@@ -244,7 +244,7 @@ At any time (if not already in an active round), players can choose to:
 - **Grace period**: Voters who called POST /rounds/vote within the 60-second window get their full 60 seconds to vote, even if this extends past the window
 
 ### Abandonment Handling
-- **Prompt abandonment**: Round cancelled, \$10 penalty forfeited (\$90 refunded), prompt removed from queue
-- **Copy abandonment**: Round cancelled, \$10 or \$9 penalty forfeited (rest refunded), prompt_round returned to queue for other players (original player blocked 24h)
-- **Vote abandonment**: Player loses \$1, vote not counted
+- **Prompt abandonment**: Round cancelled, 5 flipcoins penalty forfeited (95 flipcoins refunded), prompt removed from queue
+- **Copy abandonment**: Round cancelled, 5 flipcoins penalty forfeited (rest refunded), prompt_round returned to queue for other players (original player blocked 24h)
+- **Vote abandonment**: Player loses 10 flipcoins, vote not counted
 - **Implementation**: Backend timeout cleanup job processes expired rounds periodically
