@@ -76,18 +76,23 @@ export const PromptRound: React.FC = () => {
   // Redirect if no active prompt round - but NOT during the submission process
   useEffect(() => {
     if (!activeRound || activeRound.round_type !== 'prompt') {
-      // Don't start a new round if we're showing success message (submission in progress)
+      // Don't navigate if we're showing success message (submission in progress)
       if (successMessage) {
         return;
       }
 
-      // Special case for tutorial
-      if (currentStep === 'prompt_round') {
-        advanceStep('copy_round');
-        navigate('/dashboard');
-      } else {
-        navigate('/dashboard');
-      }
+      // Add a small delay to prevent race conditions during navigation
+      const timeoutId = setTimeout(() => {
+        // Special case for tutorial
+        if (currentStep === 'prompt_round') {
+          advanceStep('copy_round');
+          navigate('/dashboard');
+        } else {
+          navigate('/dashboard');
+        }
+      }, 100);
+
+      return () => clearTimeout(timeoutId);
     }
   }, [activeRound, currentStep, advanceStep, navigate, successMessage]);
 

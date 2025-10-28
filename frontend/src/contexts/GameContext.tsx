@@ -107,32 +107,8 @@ export const GameProvider: React.FC<{
       setUsername(nextUsername);
       setIsAuthenticated(true);
       
-      gameContextLogger.debug('⏰ Starting delayed dashboard load after login...');
-      // Immediately load dashboard data after successful login
-      setTimeout(async () => {
-        try {
-          gameContextLogger.debug('📞 Making initial dashboard API call after login...');
-          const data = await apiClient.getDashboardData();
-          gameContextLogger.debug('✅ Initial dashboard data received:', {
-            playerBalance: data.player?.balance,
-            activeRound: data.current_round ? `${data.current_round.round_type} (${data.current_round.state?.status})` : 'none',
-            pendingResults: data.pending_results?.length || 0,
-            unclaimedResults: data.unclaimed_results?.length || 0
-          });
-          
-          setPlayer(data.player);
-          setActiveRound(data.current_round);
-          setPendingResults(data.pending_results);
-          setPhrasesetSummary(data.phraseset_summary);
-          setUnclaimedResults(data.unclaimed_results);
-          setRoundAvailability(data.round_availability);
-          setError(null);
-        } catch (err) {
-          gameContextLogger.error('❌ Failed to load dashboard after login:', err);
-          const errorMessage = getActionErrorMessage('load-dashboard', err);
-          setError(errorMessage);
-        }
-      }, 100);
+      // Remove the delayed dashboard load - let the initial dashboard load effect handle it
+      gameContextLogger.debug('✅ Session started, authentication state will trigger dashboard load');
   }, []);
 
   const logout = useCallback(async () => {
@@ -160,6 +136,8 @@ export const GameProvider: React.FC<{
         setPhrasesetSummary(null);
         setUnclaimedResults([]);
         setRoundAvailability(null);
+        setLoading(false);
+        setError(null);
         gameContextLogger.debug('✅ Logout cleanup completed');
       }
   }, [stopPoll]);

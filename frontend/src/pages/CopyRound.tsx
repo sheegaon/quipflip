@@ -49,19 +49,24 @@ export const CopyRound: React.FC = () => {
   // Redirect if no active copy round - but NOT during the submission process
   useEffect(() => {
     if (!activeRound || activeRound.round_type !== 'copy') {
-      // Don't start a new round if we're showing success message (submission in progress)
+      // Don't navigate if we're showing success message (submission in progress)
       if (successMessage) {
         return;
       }
 
-      // Special case for tutorial
-      if (currentStep === 'copy_round') {
-        advanceStep('vote_round');
-        navigate('/dashboard');
-      } else {
-        // Redirect to dashboard instead of starting new rounds
-        navigate('/dashboard');
-      }
+      // Add a small delay to prevent race conditions during navigation
+      const timeoutId = setTimeout(() => {
+        // Special case for tutorial
+        if (currentStep === 'copy_round') {
+          advanceStep('vote_round');
+          navigate('/dashboard');
+        } else {
+          // Redirect to dashboard instead of starting new rounds
+          navigate('/dashboard');
+        }
+      }, 100);
+
+      return () => clearTimeout(timeoutId);
     }
   }, [activeRound, currentStep, advanceStep, navigate, successMessage]);
 

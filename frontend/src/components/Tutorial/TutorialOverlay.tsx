@@ -63,6 +63,7 @@ const TutorialOverlay: React.FC<TutorialOverlayProps> = ({ onComplete }) => {
   const [highlightRect, setHighlightRect] = useState<DOMRect | null>(null);
   const [isVisible, setIsVisible] = useState(false);
   const [cardDimensions, setCardDimensions] = useState({ width: CARD_DEFAULT_WIDTH, height: CARD_DEFAULT_HEIGHT });
+  const [isNavigating, setIsNavigating] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
   const step = currentStep ? getTutorialStep(currentStep as TutorialProgress) : null;
@@ -101,26 +102,44 @@ const TutorialOverlay: React.FC<TutorialOverlayProps> = ({ onComplete }) => {
   }, [isActive, currentStep, step]);
 
   const handleNext = async () => {
-    // Regular tutorial progression
-    if (step?.nextStep) {
-      advanceStep(step.nextStep);
-    } else {
-      completeTutorial();
+    if (isNavigating) return;
+    setIsNavigating(true);
+    try {
+      // Regular tutorial progression
+      if (step?.nextStep) {
+        advanceStep(step.nextStep);
+      } else {
+        completeTutorial();
+      }
+    } finally {
+      setIsNavigating(false);
     }
   };
 
   const handleBack = async () => {
-    if (currentStep) {
-      const prevStep = getPreviousStep(currentStep as TutorialProgress);
-      if (prevStep) {
-        advanceStep(prevStep);
+    if (isNavigating) return;
+    setIsNavigating(true);
+    try {
+      if (currentStep) {
+        const prevStep = getPreviousStep(currentStep as TutorialProgress);
+        if (prevStep) {
+          advanceStep(prevStep);
+        }
       }
+    } finally {
+      setIsNavigating(false);
     }
   };
 
   const handleSkip = async () => {
-    await skipTutorial();
-    onComplete?.();
+    if (isNavigating) return;
+    setIsNavigating(true);
+    try {
+      await skipTutorial();
+      onComplete?.();
+    } finally {
+      setIsNavigating(false);
+    }
   };
 
   if (!isVisible || !step) {
@@ -188,9 +207,10 @@ const TutorialOverlay: React.FC<TutorialOverlayProps> = ({ onComplete }) => {
 
             <button
               onClick={handleNext}
+              disabled={isNavigating}
               className="tutorial-btn tutorial-btn-primary"
             >
-              {step.nextStep ? 'Next' : 'Finish'}
+              {isNavigating ? 'Loading...' : (step.nextStep ? 'Next' : 'End Tutorial')}
             </button>
           </div>
         </div>

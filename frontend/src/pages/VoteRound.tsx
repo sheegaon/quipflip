@@ -44,11 +44,16 @@ export const VoteRound: React.FC = () => {
         return;
       }
 
-      // Redirect to dashboard instead of starting new rounds
-      if (currentStep === 'vote_round') {
-        advanceStep('view_results');
-      }
-      navigate('/dashboard');
+      // Add a small delay to prevent race conditions during navigation
+      const timeoutId = setTimeout(() => {
+        // Redirect to dashboard instead of starting new rounds
+        if (currentStep === 'vote_round') {
+          advanceStep('view_results');
+        }
+        navigate('/dashboard');
+      }, 100);
+
+      return () => clearTimeout(timeoutId);
     }
   }, [activeRound, navigate, successMessage, voteResult, currentStep, advanceStep]);
 
