@@ -188,21 +188,7 @@ export const Results: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="tile-card bg-white p-4">
-                  <h3 className="font-display font-bold text-lg text-quip-navy mb-3">Final Rankings</h3>
-                  <div className="space-y-2">
-                    {results.rankings.map((ranking, index) => (
-                      <div key={ranking.player} className="p-3 border-2 border-quip-teal border-opacity-20 rounded-tile">
-                        <div className="flex justify-between items-center">
-                          <span className="font-semibold text-quip-navy">
-                            {index + 1}. {ranking.player}
-                          </span>
-                          <span className="text-quip-turquoise font-bold">{ranking.points} pts</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                {/* Removed Final Rankings section since rankings property doesn't exist in PhrasesetResults */}
               </div>
             )}
           </div>

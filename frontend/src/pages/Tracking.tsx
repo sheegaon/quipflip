@@ -119,7 +119,7 @@ export const Tracking: React.FC = () => {
       return;
     }
 
-    refreshPhrasesetDetails(selectedSummary.phraseset_id, { force: !hasDetailsData })
+    refreshPhrasesetDetails(selectedSummary.phraseset_id!, { force: !hasDetailsData })
       .catch((err) => {
         console.error('Failed to refresh phraseset details:', err);
       });
@@ -137,7 +137,7 @@ export const Tracking: React.FC = () => {
     }
 
     startPoll(PollConfigs.PHRASESET_DETAILS, async () => {
-      await refreshPhrasesetDetails(selectedSummary.phraseset_id, { force: true });
+      await refreshPhrasesetDetails(selectedSummary.phraseset_id!, { force: true });
     });
 
     return () => {
@@ -220,7 +220,7 @@ export const Tracking: React.FC = () => {
                 <div className="bg-quip-orange bg-opacity-10 border-2 border-quip-orange rounded-tile p-3 text-center">
                   <p className="text-xs text-quip-orange-deep uppercase tracking-wide">Finalized</p>
                   <p className="text-2xl font-display font-bold text-quip-orange-deep">
-                    {phrasesetSummary?.finalized?.total ?? 0}
+                    {(phrasesetSummary?.finalized?.prompts ?? 0) + (phrasesetSummary?.finalized?.copies ?? 0)}
                   </p>
                 </div>
               </div>
@@ -276,11 +276,11 @@ export const Tracking: React.FC = () => {
             <div className="tile-card p-0 overflow-hidden">
               {listLoadingState?.isLoading ? (
                 <div className="p-6">
-                  <InlineLoadingSpinner isLoading message={listLoadingState.message} />
+                  <InlineLoadingSpinner message={listLoadingState.message} />
                 </div>
               ) : (
                 <PhrasesetList
-                  items={phrasesets}
+                  phrasesets={phrasesets}
                   selectedId={selectedId}
                   onSelect={handleSelect}
                 />
@@ -290,12 +290,12 @@ export const Tracking: React.FC = () => {
             <div className="tile-card p-0 overflow-hidden">
               {detailsLoadingState?.isLoading ? (
                 <div className="p-6">
-                  <InlineLoadingSpinner isLoading message={detailsLoadingState.message} />
+                  <InlineLoadingSpinner message={detailsLoadingState.message} />
                 </div>
               ) : selectedSummary ? (
                 <PhrasesetDetails
+                  phraseset={details as PhrasesetDetailsType | null}
                   summary={selectedSummary}
-                  details={details as PhrasesetDetailsType | null}
                 />
               ) : (
                 <div className="p-6 text-center text-quip-teal">
