@@ -7,7 +7,7 @@ React + TypeScript frontend for the Quipflip phrase association game.
 ### Phase 1 MVP (Complete)
 
 - ✅ Player authentication with JWT tokens (access + refresh tokens, HTTP-only cookies)
-- ✅ Registration and login with username/password
+- ✅ Registration and login with email/password (username generated server-side)
 - ✅ Dashboard with balance display
 - ✅ Daily bonus claiming
 - ✅ Three round types (Prompt, Copy, Vote)
@@ -126,7 +126,7 @@ The `GameContext` manages global state:
 
 ## User Flow
 
-1. **Landing Page** - Create account (username/email/password with auto-suggested username) or login (email/password)
+1. **Landing Page** - Create account with email & password (username generated automatically) or login with email & password
 2. **Dashboard** - View balance, claim bonus, select round type, access phraseset tracking
 3. **Round Screens** - Complete prompt/copy/vote rounds with timers and feedback
 4. **Results** - View finalized phrasesets with pseudonym display, vote breakdown and collect payouts

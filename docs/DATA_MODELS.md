@@ -10,7 +10,7 @@
 - `pseudonym_canonical` (string) - lowercase form for lookups
 - `email` (string, unique) - player email for authentication
 - `password_hash` (string) - bcrypt hashed password
-- `balance` (integer, default 1000) - current balance in Flipcoins (f)
+- `balance` (integer, default 1000) - current balance in Flipcoins (f); new accounts are seeded from `settings.starting_balance` (5000f by default)
 - `created_at` (timestamp)
 - `last_login_date` (date, nullable) - UTC date for daily bonus tracking
 - `active_round_id` (UUID, nullable, references rounds.round_id) - enforces one-round-at-a-time
@@ -32,7 +32,7 @@
 - `status` (string) - 'active', 'submitted', 'expired', 'abandoned'
 - `created_at` (timestamp, indexed)
 - `expires_at` (timestamp, indexed)
-- `cost` (integer) - amount deducted (100, 90, or 1)
+- `cost` (integer) - amount deducted (prompt: 100, copy: 50 or 40 with discount, vote: 10)
 
 - **Prompt-specific fields** (nullable for non-prompt rounds):
   - `prompt_id` (UUID, references prompts.prompt_id)
@@ -83,7 +83,7 @@
 - `closes_at` (timestamp, nullable) - calculated closure time
 - `created_at` (timestamp)
 - `finalized_at` (timestamp, nullable)
-- `total_pool` (integer, default 300) - includes system contribution if applicable
+- `total_pool` (integer, default 200) - base prize pool (prompt + copies) before vote contributions
 - `system_contribution` (integer, default 0) - 0 or 10 for discounted copies
 - Indexes: `phraseset_id`, `prompt_round_id`, `fifth_vote_at`, composite `(status, vote_count)`
 - Relationships: `prompt_round`, `copy_round_1`, `copy_round_2`, `votes`, `vote_rounds`, `result_views`, `activities`

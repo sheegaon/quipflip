@@ -22,9 +22,9 @@ Authorization: Bearer <access_token>
 - Clients can also send the refresh token explicitly in request bodies if needed.
 
 **Getting Tokens:**
-- Use `POST /player` to register with a username, email, and password.
+- Use `POST /player` to register with an email and password (the backend generates a username and pseudonym automatically).
 - Use `POST /auth/login` with your email and password to obtain fresh tokens.
-- Tokens expire after 15 minutes; call `POST /auth/refresh` (or rely on the cookie) to obtain a new pair.
+- Access tokens default to a 120-minute lifetime (`ACCESS_TOKEN_EXP_MINUTES`); call `POST /auth/refresh` (or rely on the cookie) to obtain a new pair when they expire.
 
 ## Response Format
 
@@ -107,11 +107,12 @@ Create a new player account (no authentication required).
 curl -X POST http://localhost:8000/player \
   -H "Content-Type: application/json" \
   -d '{
-        "username": "Prompt Pirate",
         "email": "prompt.pirate@example.com",
         "password": "SuperSecure123!"
       }'
 ```
+
+**Note:** The backend assigns both the public username and hidden pseudonym; clients should not send custom values.
 
 **Response (201 Created):**
 ```json
@@ -200,7 +201,7 @@ Claim daily login bonus (100f).
 {
   "success": true,
   "amount": 100,
-  "new_balance": 1100
+    "new_balance": 5100
 }
 ```
 
@@ -969,13 +970,13 @@ Visit `/redoc` for alternative ReDoc documentation.
 - **Grace period**: 5 seconds (not shown to users - allows late submissions)
 
 ### Economics
-- **Starting balance**: 1000f
+- **Starting balance**: 5000f
 - **Daily bonus**: 100f
 - **Prompt cost**: 100f
-- **Copy cost**: 100f normal, 90f with discount
-- **Vote cost**: 1f
-- **Vote payout (correct)**: 5f
-- **Phraseset prize pool**: 300f
+- **Copy cost**: 50f normal, 40f with discount
+- **Vote cost**: 10f
+- **Vote payout (correct)**: 20f
+- **Phraseset prize pool**: 200f base (plus copy/vote contributions)
 - **Copy discount threshold**: >10 prompts waiting
 - **Max outstanding prompts**: 10 per player
 
