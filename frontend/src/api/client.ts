@@ -131,9 +131,7 @@ const performTokenRefresh = async (): Promise<string | null> => {
       '/auth/refresh',
       { refresh_token: null },
       {
-        headers: {
-          'X-Skip-Auth': 'true',
-        },
+        skipAuth: true,
       },
     )
     .then((response) => {
@@ -154,11 +152,9 @@ const performTokenRefresh = async (): Promise<string | null> => {
 
 // Request interceptor to attach auth headers and log outgoing requests
 api.interceptors.request.use((config) => {
-  if (config.headers && !config.headers['X-Skip-Auth'] && accessToken) {
+  if (!config.skipAuth && accessToken) {
+    config.headers = config.headers ?? {};
     config.headers.Authorization = `Bearer ${accessToken}`;
-  }
-  if (config.headers?.['X-Skip-Auth']) {
-    delete config.headers['X-Skip-Auth'];
   }
 
   const method = config.method?.toUpperCase() || 'UNKNOWN';
@@ -189,11 +185,12 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    const originalRequest = error.config as (AxiosRequestConfig & { _retry?: boolean }) | undefined;
+    const originalRequest = error.config as (AxiosRequestConfig & { _retry?: boolean; skipAuth?: boolean }) | undefined;
     if (
       error.response?.status === 401 &&
       originalRequest &&
       !originalRequest._retry &&
+      !originalRequest.skipAuth &&
       originalRequest.url !== '/auth/login' &&
       originalRequest.url !== '/auth/refresh' &&
       originalRequest.url !== '/auth/logout'
@@ -295,17 +292,17 @@ export const apiClient = {
     payload: { email: string; password: string },
     signal?: AbortSignal,
   ): Promise<AuthTokenResponse> {
-    const { data} = await api.post('/auth/login', payload, {
+    const { data} = await api.post<AuthTokenResponse>('/auth/login', payload, {
       signal,
-      headers: { 'X-Skip-Auth': 'true' },
+      skipAuth: true,
     });
     return data;
   },
 
   async suggestUsername(signal?: AbortSignal): Promise<SuggestUsernameResponse> {
-    const { data } = await api.get('/auth/suggest-username', {
+    const { data } = await api.get<SuggestUsernameResponse>('/auth/suggest-username', {
       signal,
-      headers: { 'X-Skip-Auth': 'true' },
+      skipAuth: true,
     });
     return data;
   },
@@ -316,7 +313,7 @@ export const apiClient = {
       {},
       {
         signal,
-        headers: { 'X-Skip-Auth': 'true' },
+        skipAuth: true,
       },
     );
     return data;
@@ -328,7 +325,7 @@ export const apiClient = {
       {},
       {
         signal,
-        headers: { 'X-Skip-Auth': 'true' },
+        skipAuth: true,
       },
     );
     clearStoredCredentials();
