@@ -128,6 +128,7 @@ class PhraseValidationClient:
             (is_valid, error_message)
         """
         payload = {"phrase": phrase}
+        logger.info(f"Validating phrase: {phrase}")
         return await self._make_request("/validate", payload)
 
     async def validate_prompt_phrase(self, phrase: str, prompt_text: str | None) -> Tuple[bool, str]:
@@ -145,6 +146,7 @@ class PhraseValidationClient:
             "phrase": phrase,
             "prompt_text": prompt_text
         }
+        logger.info(f"Validating prompt phrase: {phrase} against prompt text: {prompt_text}")
         return await self._make_request("/validate/prompt", payload)
 
     async def validate_copy(
@@ -172,6 +174,8 @@ class PhraseValidationClient:
             "other_copy_phrase": other_copy_phrase,
             "prompt_text": prompt_text
         }
+        logger.info(f"Validating copy phrase: {phrase} against original: {original_phrase} prompt: {prompt_text} "
+                    f"and other copy: {other_copy_phrase}")
         return await self._make_request("/validate/copy", payload)
 
     async def health_check(self) -> bool:

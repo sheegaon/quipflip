@@ -22,9 +22,9 @@ Authorization: Bearer <access_token>
 - Clients can also send the refresh token explicitly in request bodies if needed.
 
 **Getting Tokens:**
-- Use `POST /player` to register with a username, email, and password.
+- Use `POST /player` to register with an email and password (the backend generates a username and pseudonym automatically).
 - Use `POST /auth/login` with your email and password to obtain fresh tokens.
-- Tokens expire after 15 minutes; call `POST /auth/refresh` (or rely on the cookie) to obtain a new pair.
+- Access tokens default to a 120-minute lifetime (`ACCESS_TOKEN_EXP_MINUTES`); call `POST /auth/refresh` (or rely on the cookie) to obtain a new pair when they expire.
 
 ## Response Format
 
@@ -107,11 +107,12 @@ Create a new player account (no authentication required).
 curl -X POST http://localhost:8000/player \
   -H "Content-Type: application/json" \
   -d '{
-        "username": "Prompt Pirate",
         "email": "prompt.pirate@example.com",
         "password": "SuperSecure123!"
       }'
 ```
+
+**Note:** The backend assigns both the public username and hidden pseudonym; clients should not send custom values.
 
 **Response (201 Created):**
 ```json
@@ -120,7 +121,7 @@ curl -X POST http://localhost:8000/player \
   "username": "Prompt Pirate",
   "access_token": "<jwt access token>",
   "refresh_token": "<refresh token>",
-  "expires_in": 900,
+  "expires_in": 7200,
   "balance": 1000,
   "message": "Player created! Your account is ready to play. An access token and refresh token have been issued for authentication.",
   "token_type": "bearer"
@@ -150,7 +151,7 @@ curl -X POST http://localhost:8000/auth/login \
   "username": "Prompt Pirate",
   "access_token": "<jwt access token>",
   "refresh_token": "<refresh token>",
-  "expires_in": 900,
+  "expires_in": 7200,
   "token_type": "bearer"
 }
 ```
@@ -200,7 +201,7 @@ Claim daily login bonus (100f).
 {
   "success": true,
   "amount": 100,
-  "new_balance": 1100
+  "new_balance": 5100
 }
 ```
 
@@ -236,7 +237,7 @@ Get currently active round.
     "round_id": "uuid",
     "status": "active",
     "expires_at": "2025-01-06T12:34:56",
-    "cost": 90,
+    "cost": 40,
     "original_phrase": "FAMOUS",
     "discount_active": true
   },
@@ -458,7 +459,7 @@ Start a prompt round (-100f).
 - `max_outstanding_quips` - Player has 10 open/closing phrasesets
 
 #### `POST /rounds/copy`
-Start a copy round (-100f or -90f).
+Start a copy round (-50f or -40f).
 
 **Response:**
 ```json
@@ -467,7 +468,7 @@ Start a copy round (-100f or -90f).
   "original_phrase": "FAMOUS",
   "prompt_round_id": "uuid",
   "expires_at": "2025-01-06T12:36:00",
-  "cost": 90,
+  "cost": 40,
   "discount_active": true
 }
 ```
@@ -478,7 +479,7 @@ Start a copy round (-100f or -90f).
 - `insufficient_balance` - Balance < cost
 
 #### `POST /rounds/vote`
-Start a vote round (-1f).
+Start a vote round (-10f).
 
 **Response:**
 ```json
@@ -494,7 +495,7 @@ Start a vote round (-1f).
 **Errors:**
 - `no_phrasesets_available` - No phrasesets in queue
 - `already_in_round` - Player already in active round
-- `insufficient_balance` - Balance < 1f
+- `insufficient_balance` - Balance < 10f
 
 #### `POST /rounds/{round_id}/submit`
 Submit phrase for prompt or copy round.
@@ -582,7 +583,7 @@ Get round availability status.
   "prompts_waiting": 12,
   "phrasesets_waiting": 0,
   "copy_discount_active": true,
-  "copy_cost": 90,
+  "copy_cost": 50,
   "current_round_id": null
 }
 ```
@@ -969,13 +970,13 @@ Visit `/redoc` for alternative ReDoc documentation.
 - **Grace period**: 5 seconds (not shown to users - allows late submissions)
 
 ### Economics
-- **Starting balance**: 1000f
+- **Starting balance**: 5000f
 - **Daily bonus**: 100f
 - **Prompt cost**: 100f
-- **Copy cost**: 100f normal, 90f with discount
-- **Vote cost**: 1f
-- **Vote payout (correct)**: 5f
-- **Phraseset prize pool**: 300f
+- **Copy cost**: 50f normal, 40f with discount
+- **Vote cost**: 10f
+- **Vote payout (correct)**: 20f
+- **Phraseset prize pool**: 200f base (plus copy/vote contributions)
 - **Copy discount threshold**: >10 prompts waiting
 - **Max outstanding prompts**: 10 per player
 
@@ -1003,11 +1004,11 @@ Visit `/redoc` for alternative ReDoc documentation.
 CORS is enabled for all origins in development. For production:
 - Configure `CORS_ORIGINS` environment variable
 - Include credentials in requests if using cookies
-- API key authentication via headers is recommended
+- Ensure the frontend sends `Authorization: Bearer <access_token>` with `withCredentials=true` so cookies and headers arrive together
 
 ### State Management
 **Required state to track:**
-- Current player API key (persistent storage)
+- Current access token (persisted client-side; refresh handled via HTTP-only cookie)
 - Current balance (update from `/player/balance`)
 - Active round state (poll `/player/current-round` or update after actions)
 - Pending results count (from `/player/pending-results`)

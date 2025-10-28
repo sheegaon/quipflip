@@ -9,6 +9,7 @@ import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { useTimer } from '../hooks/useTimer';
 import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
 import type { PromptState } from '../api/types';
+import { promptRoundLogger } from '../utils/logger';
 
 export const PromptRound: React.FC = () => {
   const { state } = useGame();
@@ -28,6 +29,18 @@ export const PromptRound: React.FC = () => {
   const abandonedPenalty = roundAvailability?.abandoned_penalty || 5;
   const { isExpired } = useTimer(roundData?.expires_at || null);
 
+  useEffect(() => {
+    if (!roundData) {
+      promptRoundLogger.debug('Prompt round page mounted without active round');
+    } else {
+      promptRoundLogger.debug('Prompt round page mounted', {
+        roundId: roundData.round_id,
+        expiresAt: roundData.expires_at,
+        status: roundData.status,
+      });
+    }
+  }, [roundData?.round_id, roundData?.expires_at, roundData?.status]);
+
   // Load existing feedback
   useEffect(() => {
     if (!roundData) return;
@@ -37,10 +50,14 @@ export const PromptRound: React.FC = () => {
       try {
         const feedbackResponse = await apiClient.getPromptFeedback(roundData.round_id, controller.signal);
         setFeedbackType(feedbackResponse.feedback_type);
+        promptRoundLogger.debug('Loaded existing prompt feedback', {
+          roundId: roundData.round_id,
+          feedbackType: feedbackResponse.feedback_type,
+        });
       } catch (err: any) {
         // Feedback not found or aborted is ok
         if (err.name !== 'AbortError' && err.code !== 'ERR_CANCELED') {
-          console.debug('Feedback not found:', err);
+          promptRoundLogger.warn('Failed to load existing feedback', err);
         }
       }
     };
@@ -59,17 +76,23 @@ export const PromptRound: React.FC = () => {
   // Redirect if no active prompt round - but NOT during the submission process
   useEffect(() => {
     if (!activeRound || activeRound.round_type !== 'prompt') {
-      // Don't start a new round if we're showing success message (submission in progress)
+      // Don't navigate if we're showing success message (submission in progress)
       if (successMessage) {
         return;
       }
 
-      // Special case for tutorial
-      if (currentStep === 'prompt_round') {
-        advanceStep('copy_round').then(() => navigate('/dashboard'));
-      } else {
-        navigate('/dashboard');
-      }
+      // Add a small delay to prevent race conditions during navigation
+      const timeoutId = setTimeout(() => {
+        // Special case for tutorial
+        if (currentStep === 'prompt_round') {
+          advanceStep('copy_round');
+          navigate('/dashboard');
+        } else {
+          navigate('/dashboard');
+        }
+      }, 100);
+
+      return () => clearTimeout(timeoutId);
     }
   }, [activeRound, currentStep, advanceStep, navigate, successMessage]);
 
@@ -80,12 +103,20 @@ export const PromptRound: React.FC = () => {
 
     try {
       setIsSubmittingFeedback(true);
+      promptRoundLogger.debug('Submitting prompt feedback', {
+        roundId: roundData.round_id,
+        feedbackType: newFeedbackType,
+      });
       if (newFeedbackType === null) return; // Can't delete feedback yet
 
       await apiClient.submitPromptFeedback(roundData.round_id, newFeedbackType);
       setFeedbackType(newFeedbackType);
+      promptRoundLogger.info('Prompt feedback submitted', {
+        roundId: roundData.round_id,
+        feedbackType: newFeedbackType,
+      });
     } catch (err) {
-      console.error('Failed to submit feedback:', err);
+      promptRoundLogger.error('Failed to submit feedback', err);
     } finally {
       setIsSubmittingFeedback(false);
     }
@@ -107,23 +138,34 @@ export const PromptRound: React.FC = () => {
     setError(null);
 
     try {
+      promptRoundLogger.debug('Submitting prompt round phrase', {
+        roundId: roundData.round_id,
+      });
       await apiClient.submitPhrase(roundData.round_id, phrase.trim());
 
       // Show success message first to prevent navigation race condition
       const message = getRandomMessage('promptSubmitted');
       setSuccessMessage(message);
+      promptRoundLogger.info('Prompt round phrase submitted successfully', {
+        roundId: roundData.round_id,
+        message,
+      });
 
       // Advance tutorial if in prompt_round step
       if (currentStep === 'prompt_round') {
-        await advanceStep('copy_round');
+        advanceStep('copy_round');
       }
 
       // Navigate after delay - refresh will happen on dashboard
       setTimeout(() => {
+        promptRoundLogger.debug('Navigating back to dashboard after prompt submission');
         navigate('/dashboard');
       }, 1500);
     } catch (err) {
-      setError(extractErrorMessage(err) || 'Unable to submit your phrase. Please check your connection and try again.');
+      const message = extractErrorMessage(err) || 'Unable to submit your phrase. Please check your connection and try again.';
+      promptRoundLogger.error('Failed to submit prompt round phrase', err);
+      setError(message);
+    } finally {
       setIsSubmitting(false);
     }
   };

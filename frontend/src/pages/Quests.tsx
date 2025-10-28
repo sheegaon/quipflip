@@ -1,37 +1,43 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useGame } from '../contexts/GameContext';
 import { useQuests } from '../contexts/QuestContext';
 import { Header } from '../components/Header';
 import { QuestCard } from '../components/QuestCard';
 import { SuccessNotification } from '../components/SuccessNotification';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
-import { QuestCategory } from '../api/types';
+import type { Quest } from '../api/types';
+import { questsLogger } from '../utils/logger';
+
+// Quest categories for filtering
+const QUEST_CATEGORIES = ['all', 'streak', 'quality', 'activity', 'milestone'] as const;
+type QuestCategory = typeof QUEST_CATEGORIES[number];
 
 export const Quests: React.FC = () => {
-  const { state, actions } = useGame();
-  const { player } = state;
-  const { claimBonus } = actions;
+  const { state: gameState, actions: gameActions } = useGame();
+  const { player } = gameState;
+  const { claimBonus } = gameActions;
   const [isClaiming, setIsClaiming] = useState(false);
 
-  // Quest context
+  const { state: questState, actions: questActions } = useQuests();
   const {
     quests,
     activeQuests,
     claimableQuests,
     loading: questsLoading,
     error: questError,
-    refreshQuests,
-    claimQuest
-  } = useQuests();
+  } = questState;
+  const { refreshQuests, claimQuest } = questActions;
 
-  // Filter and notification state
-  const [selectedCategory, setSelectedCategory] = useState<QuestCategory | 'all'>('all');
+  const [selectedCategory, setSelectedCategory] = useState<QuestCategory>('all');
   const [successMessage, setSuccessMessage] = useState<string>('');
 
-  // Load quests on mount
   useEffect(() => {
-    refreshQuests();
-  }, [refreshQuests]);
+    questsLogger.debug('Quests page mounted', {
+      totalQuests: quests.length,
+      activeQuests: activeQuests.length,
+      claimableQuests: claimableQuests.length,
+    });
+  }, [quests.length, activeQuests.length, claimableQuests.length]);
 
   if (!player) {
     return (
@@ -42,71 +48,63 @@ export const Quests: React.FC = () => {
   }
 
   const handleClaimBonus = async () => {
-    console.log('🎁 Claim bonus button clicked');
-    console.log('🔍 claimBonus function:', claimBonus);
-    console.log('🔍 claimBonus function type:', typeof claimBonus);
+    if (isClaiming) return;
 
-    if (isClaiming) {
-      console.log('❌ Already claiming, ignoring click');
-      return;
-    }
-
-    console.log('✅ Starting claim process...');
     setIsClaiming(true);
     try {
-      console.log('📞 Calling claimBonus action...');
+      questsLogger.info('Claiming daily bonus');
       await claimBonus();
-      console.log('✅ Claim bonus completed successfully');
       setSuccessMessage(`Daily bonus claimed! +${player.daily_bonus_amount}f`);
-      // Refresh quests after claiming daily bonus (might unlock daily quests)
       await refreshQuests();
+      questsLogger.info('Daily bonus claimed successfully');
     } catch (err) {
-      console.error('❌ Claim bonus failed:', err);
-      // Error is already handled in context
+      questsLogger.error('Claim bonus failed', err);
     } finally {
       setIsClaiming(false);
-      console.log('🔄 Claim process finished, resetting state');
+      questsLogger.debug('Claim bonus flow completed');
     }
   };
 
   const handleClaimQuest = async (questId: string) => {
     try {
+      questsLogger.info('Claiming quest reward', { questId });
       const result = await claimQuest(questId);
       setSuccessMessage(`Quest reward claimed! +${result.reward_amount}f`);
-      // refreshQuests is already called in claimQuest
+      questsLogger.info('Quest reward claimed successfully', {
+        questId,
+        reward: result.reward_amount,
+      });
     } catch (err) {
-      console.error('Failed to claim quest:', err);
-      // Error is already handled in context
+      questsLogger.error('Failed to claim quest', err);
     }
   };
 
-  // Filter quests by category
+  const handleCategoryChange = (category: QuestCategory) => {
+    questsLogger.debug('Quest category changed', { category });
+    setSelectedCategory(category);
+  };
+
   const filteredQuests = selectedCategory === 'all'
     ? quests
-    : quests.filter(q => q.category === selectedCategory);
+    : quests.filter((q: Quest) => q.category === selectedCategory);
 
   const filteredActiveQuests = selectedCategory === 'all'
     ? activeQuests
-    : activeQuests.filter(q => q.category === selectedCategory);
+    : activeQuests.filter((q: Quest) => q.category === selectedCategory);
 
   const filteredClaimableQuests = selectedCategory === 'all'
     ? claimableQuests
-    : claimableQuests.filter(q => q.category === selectedCategory);
+    : claimableQuests.filter((q: Quest) => q.category === selectedCategory);
 
-  const claimedQuests = filteredQuests.filter(q => q.status === 'claimed');
+  const claimedQuests = filteredQuests.filter((q: Quest) => q.status === 'claimed');
 
-  // Get category counts
-  const getCategoryCounts = () => {
-    return {
-      all: quests.length,
-      streak: quests.filter(q => q.category === 'streak').length,
-      quality: quests.filter(q => q.category === 'quality').length,
-      activity: quests.filter(q => q.category === 'activity').length,
-      milestone: quests.filter(q => q.category === 'milestone').length,
-    };
+  const categoryStats = {
+    all: quests.length,
+    streak: quests.filter((q: Quest) => q.category === 'streak').length,
+    quality: quests.filter((q: Quest) => q.category === 'quality').length,
+    activity: quests.filter((q: Quest) => q.category === 'activity').length,
+    milestone: quests.filter((q: Quest) => q.category === 'milestone').length,
   };
-
-  const categoryCounts = getCategoryCounts();
 
   return (
     <div className="min-h-screen bg-quip-cream bg-pattern">
@@ -117,7 +115,6 @@ export const Quests: React.FC = () => {
           <h1 className="text-3xl font-display font-bold text-quip-navy">Rewards & Quests</h1>
         </div>
 
-        {/* Daily Bonus Section */}
         <div className="tile-card p-6 mb-6">
           <div className="flex items-center gap-3 mb-4">
             <img src="/flipcoin.png" alt="Daily Bonus" className="w-12 h-12" />
@@ -157,7 +154,6 @@ export const Quests: React.FC = () => {
           )}
         </div>
 
-        {/* Success Notification */}
         {successMessage && (
           <SuccessNotification
             message={successMessage}
@@ -165,7 +161,6 @@ export const Quests: React.FC = () => {
           />
         )}
 
-        {/* Quests Section */}
         <div className="tile-card p-6">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-12 h-12 bg-quip-orange rounded-tile flex items-center justify-center">
@@ -177,7 +172,6 @@ export const Quests: React.FC = () => {
             </div>
           </div>
 
-          {/* Summary Stats */}
           {!questsLoading && quests.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
               <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 border-2 border-green-200 dark:border-green-700">
@@ -195,61 +189,22 @@ export const Quests: React.FC = () => {
             </div>
           )}
 
-          {/* Category Filter Tabs */}
           <div className="flex flex-wrap gap-2 mb-6 pb-4 border-b border-gray-200 dark:border-gray-700">
-            <button
-              onClick={() => setSelectedCategory('all')}
-              className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                selectedCategory === 'all'
-                  ? 'bg-quip-turquoise text-white'
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
-              }`}
-            >
-              All ({categoryCounts.all})
-            </button>
-            <button
-              onClick={() => setSelectedCategory('streak')}
-              className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                selectedCategory === 'streak'
-                  ? 'bg-orange-500 text-white'
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
-              }`}
-            >
-              🔥 Streaks ({categoryCounts.streak})
-            </button>
-            <button
-              onClick={() => setSelectedCategory('quality')}
-              className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                selectedCategory === 'quality'
-                  ? 'bg-purple-500 text-white'
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
-              }`}
-            >
-              ⭐ Quality ({categoryCounts.quality})
-            </button>
-            <button
-              onClick={() => setSelectedCategory('activity')}
-              className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                selectedCategory === 'activity'
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
-              }`}
-            >
-              ⚡ Activity ({categoryCounts.activity})
-            </button>
-            <button
-              onClick={() => setSelectedCategory('milestone')}
-              className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                selectedCategory === 'milestone'
-                  ? 'bg-yellow-500 text-white'
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
-              }`}
-            >
-              🏆 Milestones ({categoryCounts.milestone})
-            </button>
+            {QUEST_CATEGORIES.map((category) => (
+              <button
+                key={category}
+                onClick={() => handleCategoryChange(category)}
+                className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                  selectedCategory === category
+                    ? 'bg-quip-turquoise text-white'
+                    : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+                }`}
+              >
+                {category.charAt(0).toUpperCase() + category.slice(1)} ({categoryStats[category]})
+              </button>
+            ))}
           </div>
 
-          {/* Error State */}
           {questError && (
             <div className="text-center py-12">
               <div className="text-4xl mb-4">⚠️</div>
@@ -264,7 +219,6 @@ export const Quests: React.FC = () => {
             </div>
           )}
 
-          {/* Loading State */}
           {!questError && questsLoading && (
             <div className="text-center py-12">
               <div className="text-4xl mb-4">⏳</div>
@@ -272,7 +226,6 @@ export const Quests: React.FC = () => {
             </div>
           )}
 
-          {/* Empty State */}
           {!questError && !questsLoading && quests.length === 0 && (
             <div className="text-center py-12">
               <div className="text-6xl mb-4">🎯</div>
@@ -283,14 +236,13 @@ export const Quests: React.FC = () => {
             </div>
           )}
 
-          {/* Claimable Quests */}
           {!questsLoading && filteredClaimableQuests.length > 0 && (
             <div className="mb-8">
               <h3 className="text-xl font-bold text-green-600 dark:text-green-400 mb-4 flex items-center gap-2">
                 🎉 Claimable Quests ({filteredClaimableQuests.length})
               </h3>
               <div className="space-y-4">
-                {filteredClaimableQuests.map((quest) => (
+                {filteredClaimableQuests.map((quest: Quest) => (
                   <QuestCard
                     key={quest.quest_id}
                     quest={quest}
@@ -301,14 +253,13 @@ export const Quests: React.FC = () => {
             </div>
           )}
 
-          {/* Active Quests */}
           {!questsLoading && filteredActiveQuests.length > 0 && (
             <div className="mb-8">
               <h3 className="text-xl font-bold text-blue-600 dark:text-blue-400 mb-4">
                 Active Quests ({filteredActiveQuests.length})
               </h3>
               <div className="space-y-4">
-                {filteredActiveQuests.map((quest) => (
+                {filteredActiveQuests.map((quest: Quest) => (
                   <QuestCard
                     key={quest.quest_id}
                     quest={quest}
@@ -318,14 +269,13 @@ export const Quests: React.FC = () => {
             </div>
           )}
 
-          {/* Claimed Quests */}
           {!questsLoading && claimedQuests.length > 0 && (
             <div>
               <h3 className="text-xl font-bold text-gray-600 dark:text-gray-400 mb-4">
                 Claimed Quests ({claimedQuests.length})
               </h3>
               <div className="space-y-4">
-                {claimedQuests.map((quest) => (
+                {claimedQuests.map((quest: Quest) => (
                   <QuestCard
                     key={quest.quest_id}
                     quest={quest}
@@ -335,7 +285,6 @@ export const Quests: React.FC = () => {
             </div>
           )}
 
-          {/* Empty Filter State */}
           {!questsLoading && quests.length > 0 && filteredQuests.length === 0 && (
             <div className="text-center py-12">
               <div className="text-4xl mb-4">🔍</div>

@@ -28,87 +28,37 @@ The Settings page is accessible from the Statistics page and provides:
 
 ---
 
-## Phase 2: Account Management (Backend Required)
+## Phase 2: Account Management (Completed)
+
+Phase 2 shipped in the Phase 2 settings work and is live in the current build. The following
+features were delivered end-to-end across the backend and frontend:
 
 ### Change Password
-**Priority:** High
-**User Story:** As a player, I want to change my password for security reasons.
-
-**Backend Requirements:**
-- Create `POST /player/password` endpoint
-- Request body: `{ current_password: string, new_password: string }`
-- Validate current password matches
-- Enforce password requirements (min length, complexity)
-- Return success/error response
-
-**Frontend Implementation:**
-- Add password change form to Settings page
-- Current password field (for verification)
-- New password field
-- Confirm new password field
-- Client-side validation matching backend rules
-- Success/error notifications
-
----
+**Shipped Functionality:**
+- `POST /player/password` endpoint validates the current password, applies the strengthened
+  password policy, and rotates active credentials after a successful change.
+- Settings page now includes current/new/confirm password inputs with matching client-side
+  validation and inline error messaging.
 
 ### Change Email Address
-**Priority:** High
-**User Story:** As a player, I want to update my email address.
-
-**Backend Requirements:**
-- Create `PATCH /player/email` endpoint
-- Request body: `{ new_email: string, password: string }`
-- Validate password for security
-- Check email uniqueness (not already taken)
-- Optional: Send verification email to new address
-- Return updated player data
-
-**Frontend Implementation:**
-- Add email change form to Settings page
-- New email input field
-- Password field (for verification)
-- Email format validation
-- Handle uniqueness errors gracefully
-- Success notification with updated email display
-
----
+**Shipped Functionality:**
+- `PATCH /player/email` endpoint verifies the caller's password, enforces uniqueness, and
+  returns the updated player profile.
+- Settings UI contains an email update form that surfaces validation errors (format or
+  duplication) and refreshes the displayed account info on success.
 
 ### Delete Account
-**Priority:** Medium
-**User Story:** As a player, I want to permanently delete my account and all associated data.
+**Shipped Functionality:**
+- `DELETE /player/account` endpoint reuses the centralized cleanup service to remove the player
+  and all associated data after verifying the password and a "DELETE" confirmation token.
+- The frontend implements the multi-step confirmation modal, collects the password, clears
+  local auth state, and routes back to the landing page when the deletion succeeds.
 
-**Backend Requirements:**
-- Create `DELETE /player/account` endpoint
-- Request body: `{ password: string, confirmation: string }`
-- Validate password
-- Use existing `CleanupService.cleanup_test_players()` logic
-- Delete cascading:
-  - All votes
-  - All transactions
-  - All daily bonuses
-  - All result views
-  - All abandoned prompts
-  - All prompt feedback
-  - All phraseset activities
-  - All refresh tokens
-  - All quests
-  - All rounds
-  - Player record
-- Return success response
-- Clear all session tokens
-
-**Frontend Implementation:**
-- Add "Delete Account" section (separate, warning-styled)
-- Multi-step confirmation process:
-  1. "Delete Account" button (red/warning)
-  2. Modal with explanation of consequences
-  3. Password input for verification
-  4. Type "DELETE" to confirm
-  5. Final confirmation button
-- On success:
-  - Clear local storage
-  - Navigate to landing page
-  - Show farewell message
+### Administrative Controls
+**Shipped Functionality:**
+- Admins can search for any account via `GET /admin/players/search` and trigger the same
+  cleanup workflow through `DELETE /admin/players`, both of which now enforce admin-only access
+  before performing the lookup or deletion.
 
 ---
 

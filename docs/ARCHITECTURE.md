@@ -29,7 +29,7 @@ The backend is designed around a clear service layer (`backend/services`) that e
 - **Framework**: FastAPI (async Python web framework)
 - **Database**: PostgreSQL (production) / SQLite (development)
 - **ORM**: SQLAlchemy (async)
-- **Authentication**: JWT access tokens with refresh token rotation (legacy API key fallback)
+- **Authentication**: JWT access tokens with refresh token rotation
 - **Validation**: Pydantic schemas + NASPA word dictionary + sentence-transformers similarity
 - **Queueing & Locks**: Redis-backed when available with in-memory/threaded fallback
 
@@ -39,7 +39,6 @@ JWT authentication with short-lived access tokens and 30-day refresh tokens. See
 - Authorization header format (`Authorization: Bearer <token>`)
 - Credential-based login (`POST /auth/login`)
 - Refresh token endpoint (`POST /auth/refresh`)
-- Legacy API key rotation endpoint
 
 ---
 

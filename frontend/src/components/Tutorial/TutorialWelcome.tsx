@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTutorial } from '../../contexts/TutorialContext';
 import './TutorialWelcome.css';
 
@@ -9,11 +9,33 @@ interface TutorialWelcomeProps {
 
 const TutorialWelcome: React.FC<TutorialWelcomeProps> = ({ onStart, onSkip }) => {
   const { tutorialStatus } = useTutorial();
+  const [isSkipping, setIsSkipping] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
 
   // Only show if tutorial hasn't been started or completed
-  if (!tutorialStatus || tutorialStatus.tutorial_progress !== 'not_started') {
+  if (tutorialStatus !== 'inactive') {
     return null;
   }
+
+  const handleSkip = async () => {
+    if (isSkipping || isStarting) return;
+    setIsSkipping(true);
+    try {
+      await onSkip();
+    } finally {
+      setIsSkipping(false);
+    }
+  };
+
+  const handleStart = async () => {
+    if (isSkipping || isStarting) return;
+    setIsStarting(true);
+    try {
+      await onStart();
+    } finally {
+      setIsStarting(false);
+    }
+  };
 
   return (
     <div className="tutorial-welcome-overlay">
@@ -47,16 +69,18 @@ const TutorialWelcome: React.FC<TutorialWelcomeProps> = ({ onStart, onSkip }) =>
 
         <div className="tutorial-welcome-actions">
           <button
-            onClick={onSkip}
+            onClick={handleSkip}
+            disabled={isSkipping || isStarting}
             className="tutorial-welcome-btn tutorial-welcome-btn-secondary"
           >
-            Skip for Now
+            {isSkipping ? 'Skipping...' : 'Skip for Now'}
           </button>
           <button
-            onClick={onStart}
+            onClick={handleStart}
+            disabled={isSkipping || isStarting}
             className="tutorial-welcome-btn tutorial-welcome-btn-primary"
           >
-            Start Tutorial
+            {isStarting ? 'Starting...' : 'Start Tutorial'}
           </button>
         </div>
       </div>

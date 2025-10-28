@@ -47,7 +47,7 @@ async def test_prompt(db_session):
     """Create a test prompt."""
     prompt = Prompt(
         prompt_id=uuid.uuid4(),
-        prompt_text="What do you call a happy event?",
+        text="What do you call a happy event?",
         enabled=True,
     )
     db_session.add(prompt)
@@ -77,7 +77,7 @@ class TestPromptRoundCreation:
         assert round_obj.status == "active"
         assert round_obj.player_id == player_with_balance.player_id
         assert round_obj.prompt_id == test_prompt.prompt_id
-        assert round_obj.prompt_text == test_prompt.prompt_text
+        assert round_obj.prompt_text == test_prompt.text
         assert round_obj.cost == settings.prompt_cost
 
         # Verify balance was deducted
@@ -179,7 +179,7 @@ class TestPromptSubmission:
             round_type="prompt",
             status="active",
             prompt_id=test_prompt.prompt_id,
-            prompt_text=test_prompt.prompt_text,
+            prompt_text=test_prompt.text,
             cost=settings.prompt_cost,
             expires_at=datetime.now(UTC) - timedelta(minutes=1),  # Expired
         )
@@ -210,7 +210,7 @@ class TestCopyRoundCreation:
             round_type="prompt",
             status="submitted",
             prompt_id=test_prompt.prompt_id,
-            prompt_text=test_prompt.prompt_text,
+            prompt_text=test_prompt.text,
             submitted_phrase="CELEBRATION",
             cost=settings.prompt_cost,
             expires_at=datetime.now(UTC) + timedelta(minutes=3),

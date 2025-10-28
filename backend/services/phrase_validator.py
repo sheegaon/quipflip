@@ -243,11 +243,6 @@ class PhraseValidator:
 
         return True, ""
 
-    def _check_prompt_relevance(self, phrase: str, prompt_text: str | None) -> tuple[bool, str]:
-        """Check if phrase is relevant to the prompt text."""
-        similarity = self.calculate_similarity(phrase, prompt_text)
-        return similarity >= self.settings.prompt_relevance_threshold, "Phrase not relevant to prompt"
-
     async def validate_prompt_phrase(self, phrase: str, prompt_text: str | None) -> tuple[bool, str]:
         """Validate a prompt submission against the originating prompt text."""
 

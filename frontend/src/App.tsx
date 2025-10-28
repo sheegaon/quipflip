@@ -2,9 +2,8 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
-import { GameProvider, useGame } from './contexts/GameContext';
-import { QuestProvider } from './contexts/QuestContext';
-import { TutorialProvider } from './contexts/TutorialContext';
+import { useGame } from './contexts/GameContext';
+import { AppProviders } from './contexts/AppProviders';
 import { Landing } from './pages/Landing';
 import { Dashboard } from './pages/Dashboard';
 import { PromptRound } from './pages/PromptRound';
@@ -135,15 +134,11 @@ function App() {
         v7_relativeSplatPath: true,
       }}
     >
-      <GameProvider>
-        <QuestProvider>
-          <TutorialProvider>
-            <AppRoutes />
-            <Analytics />
-            <SpeedInsights />
-          </TutorialProvider>
-        </QuestProvider>
-      </GameProvider>
+      <AppProviders>
+        <AppRoutes />
+        <Analytics />
+        <SpeedInsights />
+      </AppProviders>
     </Router>
   );
 }
