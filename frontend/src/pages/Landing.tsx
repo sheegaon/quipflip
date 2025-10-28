@@ -47,14 +47,8 @@ export const Landing: React.FC = () => {
       setIsLoading(true);
       setError(null);
       
-      // Generate username from email (backend expects this)
-      const emailPrefix = registerEmail.trim().split('@')[0];
-      const baseUsername = emailPrefix.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-      const timestamp = Date.now().toString().slice(-4);
-      const generatedUsername = `${baseUsername}${timestamp}`;
-      
+      // Backend auto-generates the username/pseudonym, so send only credentials
       const response = await apiClient.createPlayer({
-        username: generatedUsername,
         email: registerEmail.trim(),
         password: registerPassword,
       });
