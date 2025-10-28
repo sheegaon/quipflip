@@ -4,25 +4,25 @@ React + TypeScript frontend for the Quipflip phrase association game.
 
 ## Features
 
-### Phase 1 MVP (Complete)
-
-- ✅ Player authentication with JWT tokens (access + refresh tokens, HTTP-only cookies)
-- ✅ Registration and login with username/password
-- ✅ Dashboard with balance display
-- ✅ Daily bonus claiming
-- ✅ Three round types (Prompt, Copy, Vote)
-- ✅ Real-time countdown timers
-- ✅ Results viewing with vote breakdown
-- ✅ Phraseset tracking (view all phrasesets by role and status)
-- ✅ Prompt feedback (like/dislike prompts)
-- ✅ Unclaimed results with claim functionality
-- ✅ Responsive design with Tailwind CSS and custom branding
-- ✅ Error handling and notifications
-- ✅ Automatic state polling and updates
-- ✅ Robust request cancellation (no memory leaks)
-- ✅ Automatic token refresh on 401 errors
-- ✅ Vercel Analytics integration
-- ✅ React Router v7 future flags enabled (clean console)
+- Player authentication with JWT tokens (access + refresh tokens, HTTP-only cookies)
+- Registration and login with username/password
+- Dashboard with balance display and quick actions
+- Daily bonus claiming and payout collection
+- Three round types (Prompt, Copy, Vote)
+- Real-time countdown timers on every round type
+- Comprehensive results views with vote breakdown
+- Phraseset tracking (view all phrasesets by role and status)
+- Prompt feedback (like/dislike prompts)
+- Unclaimed results with claim functionality
+- Responsive design with Tailwind CSS and custom branding
+- Guided tutorial for first-time players
+- Dedicated settings page for managing profile and preferences
+- Admin tools for moderating prompts, tracking players, and reviewing reports
+- Error handling, notifications, and optimistic UI states
+- Automatic state polling and updates
+- Robust request cancellation (no memory leaks)
+- Automatic token refresh on 401 errors
+- Analytics and logging integrations
 
 ## Tech Stack
 
@@ -124,13 +124,16 @@ The `GameContext` manages global state:
 - Pending results, phraseset summary, unclaimed results: Every 90 seconds
 - All data fetched on initial authentication
 
-## User Flow
+## Page Overview
 
-1. **Landing Page** - Create account (username/email/password with auto-suggested username) or login (email/password)
-2. **Dashboard** - View balance, claim bonus, select round type, access phraseset tracking
-3. **Round Screens** - Complete prompt/copy/vote rounds with timers and feedback
-4. **Results** - View finalized phrasesets with pseudonym display, vote breakdown and collect payouts
-5. **Tracking** - View all your phrasesets organized by role (prompt/copy/vote) and status
+1. **Landing Page** – Create an account (username/email/password with auto-suggested username) or log in.
+2. **Dashboard** – View balance, claim bonuses, start new rounds, and access tracking tools.
+3. **Tutorial Overlay** – Interactive walkthrough introducing first-time players to game mechanics and UI.
+4. **Round Screens** – Complete prompt/copy/vote rounds with timers, live validation, and feedback controls.
+5. **Results Page** – Review finalized phrasesets with pseudonym display, vote breakdown, and collect payouts.
+6. **Tracking Page** – Browse all phrasesets organized by role (prompt/copy/vote) and status with filtering.
+7. **Settings Page** – Manage profile info, notification preferences, and authentication devices.
+8. **Admin Page** – Moderate prompts, audit phrasesets, and review player activity.
 
 ## Key Components
 
@@ -145,12 +148,27 @@ The `GameContext` manages global state:
 - Error handling and notifications
 - API key persistence
 
-### Round Pages
-- **PromptRound** - Submit a phrase for a creative prompt with like/dislike feedback
-- **CopyRound** - Submit a similar phrase without seeing the prompt
-- **VoteRound** - Identify the original phrase from three options
-- **Results** - View vote breakdown and collect payouts
-- **PhrasesetTracking** - Browse all phrasesets by role and status with filtering
+### Round Experiences
+- **PromptRound** – Submit a phrase for a creative prompt with like/dislike feedback and tutorial hints.
+- **CopyRound** – Submit a similar phrase without seeing the prompt, with real-time validation.
+- **VoteRound** – Identify the original phrase from three options with responsive layouts.
+- **Results** – View vote breakdown and collect payouts.
+- **PhrasesetTracking** – Browse all phrasesets by role and status with filtering.
+
+### Tutorial System
+- Reusable step configuration in `src/config/tutorial.ts`.
+- Context-aware overlays guiding players through complex flows.
+- Tracks completion to avoid re-showing to returning players.
+
+### Admin Tools
+- Admin dashboard components for reviewing prompts and rounds.
+- Moderation actions surfaced via reusable tables and detail drawers.
+- Metrics widgets highlighting platform health.
+
+### Settings Modules
+- Profile editor with avatar, display name, and pseudonym controls.
+- Notification preference toggles backed by persistent storage.
+- Security view for managing authentication devices.
 
 ## Error Handling
 
@@ -173,10 +191,9 @@ Uses Tailwind CSS utility classes for:
 ## Future Enhancements (Phase 2+)
 
 See [FRONTEND_PLAN.md](../docs/FRONTEND_PLAN.md) for planned features:
-- Transaction history
-- Enhanced statistics
-- Settings/account page
-- Analytics dashboard review
+- Transaction history export
+- Enhanced player statistics
+- Advanced admin analytics dashboards
 - Progressive Web App (PWA)
 - Push notifications
 - Dark mode
