@@ -1,6 +1,7 @@
 """Cleanup service for database maintenance tasks."""
 import logging
 import re
+from uuid import UUID
 from datetime import UTC, datetime, timedelta
 from typing import Optional
 
@@ -231,33 +232,15 @@ class CleanupService:
 
         return list(unique_players.values())
 
-    async def cleanup_test_players(self, dry_run: bool = False) -> dict[str, int]:
-        """
-        Remove all test player data from the database.
+    async def _delete_players_by_ids(self, player_ids: list[UUID]) -> dict[str, int]:
+        """Delete players and related data for the provided IDs."""
 
-        Args:
-            dry_run: If True, return counts without deleting
-
-        Returns:
-            Dictionary with counts of deleted entities
-        """
-        # Find test players
-        test_players = await self.get_test_players()
-
-        if not test_players:
-            logger.debug("No test players found")
+        if not player_ids:
             return {}
 
-        logger.info(f"Found {len(test_players)} test player(s)")
-
-        if dry_run:
-            return {"would_delete_players": len(test_players)}
-
-        # Extract player IDs for cascade deletion
-        player_ids = [player.player_id for player in test_players]
+        deletion_counts: dict[str, int] = {}
 
         # Delete related data first (in order to respect foreign keys)
-        deletion_counts = {}
 
         # 1. Votes (references player_id)
         result = await self.db.execute(
@@ -329,9 +312,47 @@ class CleanupService:
         # Commit the transaction
         await self.db.commit()
 
+        return deletion_counts
+
+    async def cleanup_test_players(self, dry_run: bool = False) -> dict[str, int]:
+        """
+        Remove all test player data from the database.
+
+        Args:
+            dry_run: If True, return counts without deleting
+
+        Returns:
+            Dictionary with counts of deleted entities
+        """
+        # Find test players
+        test_players = await self.get_test_players()
+
+        if not test_players:
+            logger.debug("No test players found")
+            return {}
+
+        logger.info(f"Found {len(test_players)} test player(s)")
+
+        if dry_run:
+            return {"would_delete_players": len(test_players)}
+
+        # Extract player IDs for cascade deletion
+        player_ids = [player.player_id for player in test_players]
+        deletion_counts = await self._delete_players_by_ids(player_ids)
+
         total_deleted = sum(deletion_counts.values())
         logger.info(f"Deleted test players and {total_deleted} associated records")
 
+        return deletion_counts
+
+    async def delete_player(self, player_id: UUID) -> dict[str, int]:
+        """Delete a single player and associated data."""
+
+        deletion_counts = await self._delete_players_by_ids([player_id])
+        if deletion_counts:
+            logger.info("Deleted player %s and related data", player_id)
+        else:
+            logger.debug("No records deleted for player %s", player_id)
         return deletion_counts
 
     # ===== Run All Cleanup Tasks =====
