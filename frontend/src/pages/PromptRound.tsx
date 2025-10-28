@@ -66,7 +66,8 @@ export const PromptRound: React.FC = () => {
 
       // Special case for tutorial
       if (currentStep === 'prompt_round') {
-        advanceStep('copy_round').then(() => navigate('/dashboard'));
+        advanceStep('copy_round');
+        navigate('/dashboard');
       } else {
         navigate('/dashboard');
       }
@@ -115,7 +116,7 @@ export const PromptRound: React.FC = () => {
 
       // Advance tutorial if in prompt_round step
       if (currentStep === 'prompt_round') {
-        await advanceStep('copy_round');
+        advanceStep('copy_round');
       }
 
       // Navigate after delay - refresh will happen on dashboard

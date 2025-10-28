@@ -154,6 +154,6 @@ What initially appeared as a test failure was actually a **validation of good UX
 
 **Files Modified:**
 - [tests/e2e/tutorial-interaction.spec.ts](tests/e2e/tutorial-interaction.spec.ts) - Fixed overlay handling
-- [TEST_REPORT.md](TEST_REPORT.md) - Updated test count to 16
+- [TEST_REPORT.md](FRONTEND_TEST_REPORT) - Updated test count to 16
 
 **Final Status:** ✅ All tests passing

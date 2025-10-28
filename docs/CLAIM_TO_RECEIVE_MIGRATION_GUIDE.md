@@ -1,4 +1,4 @@
-# Migration Guide: Transitioning to Option B (True Claim-to-Receive System)
+# Migration Guide: Transitioning to a True Claim-to-Receive System
 
 ## Overview
 

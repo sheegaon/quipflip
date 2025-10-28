@@ -8,7 +8,7 @@ import apiClient, { extractErrorMessage } from '../api/client';
 const Settings: React.FC = () => {
   const { state } = useGame();
   const { player } = state;
-  const { resetTutorial: resetTutorialAction } = useTutorial();
+  const { resetTutorial } = useTutorial();
   const navigate = useNavigate();
   const [resettingTutorial, setResettingTutorial] = useState(false);
   const [tutorialResetSuccess, setTutorialResetSuccess] = useState(false);
@@ -33,7 +33,7 @@ const Settings: React.FC = () => {
       setResettingTutorial(true);
       setError(null);
       setTutorialResetSuccess(false);
-      await resetTutorialAction();
+      await resetTutorial();
       setTutorialResetSuccess(true);
       setTimeout(() => setTutorialResetSuccess(false), 3000);
     } catch (err) {

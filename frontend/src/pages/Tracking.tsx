@@ -11,6 +11,7 @@ import { PhrasesetList } from '../components/PhrasesetList';
 import { PhrasesetDetails } from '../components/PhrasesetDetails';
 import { Header } from '../components/Header';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
+import { useResults } from '../contexts/ResultsContext';
 
 type RoleFilter = 'all' | 'prompt' | 'copy';
 type StatusFilter = 'all' | 'in_progress' | 'voting' | 'finalized' | 'abandoned';
@@ -30,17 +31,17 @@ const statusOptions: { value: StatusFilter; label: string }[] = [
 ];
 
 export const Tracking: React.FC = () => {
-  const { state, actions } = useGame();
+  const { state: gameState } = useGame();
+  const { state: resultsState, actions: resultsActions } = useResults();
+  const { player, phrasesetSummary } = gameState;
   const {
-    player,
-    phrasesetSummary,
     playerPhrasesets,
     phrasesetDetails,
-  } = state;
+  } = resultsState;
   const {
     refreshPlayerPhrasesets,
     refreshPhrasesetDetails,
-  } = actions;
+  } = resultsActions;
 
   const { startPoll, stopPoll } = useSmartPolling();
   const { setLoading, clearLoading, getLoadingState } = useLoadingState();
@@ -71,7 +72,7 @@ export const Tracking: React.FC = () => {
 
   useEffect(() => {
     refreshPlayerPhrasesets(params, { force: !hasCachedData })
-      .catch((err) => {
+      .catch((err: any) => {
         console.error('Failed to refresh phrasesets:', err);
       });
   }, [paramsKey, refreshPlayerPhrasesets, params, hasCachedData]);
@@ -120,7 +121,7 @@ export const Tracking: React.FC = () => {
     }
 
     refreshPhrasesetDetails(selectedSummary.phraseset_id!, { force: !hasDetailsData })
-      .catch((err) => {
+      .catch((err: any) => {
         console.error('Failed to refresh phraseset details:', err);
       });
   }, [selectedSummary?.phraseset_id, refreshPhrasesetDetails, hasDetailsData, stopPoll]);

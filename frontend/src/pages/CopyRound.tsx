@@ -43,7 +43,8 @@ export const CopyRound: React.FC = () => {
 
       // Special case for tutorial
       if (currentStep === 'copy_round') {
-        advanceStep('vote_round').then(() => navigate('/dashboard'));
+        advanceStep('vote_round');
+        navigate('/dashboard');
       } else {
         // Redirect to dashboard instead of starting new rounds
         navigate('/dashboard');
@@ -67,7 +68,7 @@ export const CopyRound: React.FC = () => {
 
       // Advance tutorial if in copy_round step
       if (currentStep === 'copy_round') {
-        await advanceStep('vote_round');
+        advanceStep('vote_round');
       }
 
       // Navigate after brief delay - refresh will happen on dashboard

@@ -9,7 +9,8 @@ export const Header: React.FC = () => {
   const { state, actions } = useGame();
   const { player, username, phrasesetSummary, unclaimedResults } = state;
   const { logout } = actions;
-  const { hasClaimableQuests } = useQuests();
+  const { state: questState } = useQuests();
+  const { hasClaimableQuests } = questState;
   const navigate = useNavigate();
   const location = useLocation();
   const [hasClickedResults, setHasClickedResults] = React.useState(false);

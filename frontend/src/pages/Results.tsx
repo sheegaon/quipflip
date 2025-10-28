@@ -1,14 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { useGame } from '../contexts/GameContext';
+import { useResults } from '../contexts/ResultsContext';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Header } from '../components/Header';
 import { loadingMessages } from '../utils/brandedMessages';
 import type { PhrasesetResults } from '../api/types';
 
 export const Results: React.FC = () => {
-  const { state, actions } = useGame();
-  const { pendingResults, phrasesetResults } = state;
-  const { refreshDashboard, refreshPhrasesetResults, markResultsViewed } = actions;
+  const { actions: gameActions } = useGame();
+  const { state: resultsState, actions: resultsActions } = useResults();
+  const { pendingResults, phrasesetResults } = resultsState;
+  const { refreshDashboard } = gameActions;
+  const { refreshPhrasesetResults, markResultsViewed } = resultsActions;
   const [selectedPhrasesetId, setSelectedPhrasesetId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -29,14 +32,19 @@ export const Results: React.FC = () => {
   useEffect(() => {
     if (!selectedPhrasesetId) return;
 
-    refreshPhrasesetResults(selectedPhrasesetId, { force: !currentEntry?.data })
-      .then(async () => {
-        await refreshDashboard();
-      })
-      .catch((err) => {
-        console.error('Failed to refresh phraseset results:', err);
-      });
-  }, [selectedPhrasesetId, currentEntry?.data, refreshPhrasesetResults, refreshDashboard]);
+    const entry = phrasesetResults[selectedPhrasesetId];
+    const shouldFetch = !entry?.data && !entry?.loading;
+
+    if (shouldFetch) {
+      refreshPhrasesetResults(selectedPhrasesetId, { force: false })
+        .then(async () => {
+          await refreshDashboard();
+        })
+        .catch((err) => {
+          console.error('Failed to refresh phraseset results:', err);
+        });
+    }
+  }, [selectedPhrasesetId, phrasesetResults, refreshPhrasesetResults, refreshDashboard]);
 
   const handleSelectPhraseset = (phrasesetId: string) => {
     setSelectedPhrasesetId(phrasesetId);

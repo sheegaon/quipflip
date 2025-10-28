@@ -11,7 +11,7 @@ const TutorialWelcome: React.FC<TutorialWelcomeProps> = ({ onStart, onSkip }) =>
   const { tutorialStatus } = useTutorial();
 
   // Only show if tutorial hasn't been started or completed
-  if (!tutorialStatus || tutorialStatus.tutorial_progress !== 'not_started') {
+  if (!tutorialStatus || tutorialStatus !== 'inactive') {
     return null;
   }
 

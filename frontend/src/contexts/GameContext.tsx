@@ -4,7 +4,6 @@ import apiClient from '../api/client';
 import { useSmartPolling, PollConfigs } from '../utils/smartPolling';
 import { getActionErrorMessage } from '../utils/errorMessages';
 import { gameContextLogger } from '../utils/logger';
-import { buildPhrasesetListKey, type PhrasesetListKeyParams } from '../utils/gameKeys';
 import type {
   Player,
   ActiveRound,
@@ -13,45 +12,7 @@ import type {
   PhrasesetDashboardSummary,
   UnclaimedResult,
   AuthTokenResponse,
-  Quest,
-  ClaimQuestRewardResponse,
-  PhrasesetListResponse,
-  PhrasesetDetails as PhrasesetDetailsType,
-  PhrasesetResults,
 } from '../api/types';
-
-type PlayerPhrasesetParams = PhrasesetListKeyParams;
-
-interface QuestState {
-  quests: Quest[];
-  activeQuests: Quest[];
-  claimableQuests: Quest[];
-  loading: boolean;
-  error: string | null;
-  lastUpdated: number | null;
-}
-
-interface PhrasesetListCacheEntry {
-  params: PlayerPhrasesetParams;
-  data: PhrasesetListResponse | null;
-  loading: boolean;
-  error: string | null;
-  lastFetched: number | null;
-}
-
-interface PhrasesetDetailsCacheEntry {
-  data: PhrasesetDetailsType | null;
-  loading: boolean;
-  error: string | null;
-  lastFetched: number | null;
-}
-
-interface PhrasesetResultsCacheEntry {
-  data: PhrasesetResults | null;
-  loading: boolean;
-  error: string | null;
-  lastFetched: number | null;
-}
 
 interface GameState {
   isAuthenticated: boolean;
@@ -64,17 +25,6 @@ interface GameState {
   roundAvailability: RoundAvailability | null;
   loading: boolean;
   error: string | null;
-  quests: Quest[];
-  activeQuests: Quest[];
-  claimableQuests: Quest[];
-  questsLoading: boolean;
-  questsError: string | null;
-  hasClaimableQuests: boolean;
-  questLastUpdated: number | null;
-  playerPhrasesets: Record<string, PhrasesetListCacheEntry>;
-  phrasesetDetails: Record<string, PhrasesetDetailsCacheEntry>;
-  phrasesetResults: Record<string, PhrasesetResultsCacheEntry>;
-  viewedResultIds: Set<string>;
 }
 
 interface GameActions {
@@ -84,28 +34,11 @@ interface GameActions {
   refreshBalance: (signal?: AbortSignal) => Promise<void>;
   claimBonus: () => Promise<void>;
   clearError: () => void;
-  refreshQuests: () => Promise<void>;
-  clearQuestError: () => void;
-  claimQuest: (questId: string) => Promise<ClaimQuestRewardResponse>;
   navigateAfterDelay: (path: string, delay?: number) => void;
   startPromptRound: () => Promise<void>;
   startCopyRound: () => Promise<void>;
   startVoteRound: () => Promise<void>;
-  refreshPlayerPhrasesets: (
-    params?: PlayerPhrasesetParams,
-    options?: { force?: boolean },
-  ) => Promise<PhrasesetListResponse | null>;
-  refreshPhrasesetDetails: (
-    phrasesetId: string,
-    options?: { force?: boolean },
-  ) => Promise<PhrasesetDetailsType | null>;
-  refreshPhrasesetResults: (
-    phrasesetId: string,
-    options?: { force?: boolean },
-  ) => Promise<PhrasesetResults | null>;
   claimPhrasesetPrize: (phrasesetId: string) => Promise<void>;
-  getStatistics: (signal?: AbortSignal) => Promise<any>;
-  markResultsViewed: (phrasesetIds: string[]) => void;
 }
 
 interface GameContextType {
@@ -115,7 +48,11 @@ interface GameContextType {
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
 
-export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const GameProvider: React.FC<{ 
+  children: React.ReactNode;
+  onPendingResultsChange?: (results: PendingResult[]) => void;
+  onDashboardTrigger?: () => void;
+}> = ({ children, onPendingResultsChange, onDashboardTrigger }) => {
   // Navigation hook - use directly since we're inside Router
   const navigate = useNavigate();
   
@@ -133,110 +70,25 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [roundAvailability, setRoundAvailability] = useState<RoundAvailability | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [questState, setQuestState] = useState<QuestState>({
-    quests: [],
-    activeQuests: [],
-    claimableQuests: [],
-    loading: false,
-    error: null,
-    lastUpdated: null,
-  });
-  const [phrasesetListCache, setPhrasesetListCache] = useState<Record<string, PhrasesetListCacheEntry>>({});
-  const [phrasesetDetailsCache, setPhrasesetDetailsCache] = useState<Record<string, PhrasesetDetailsCacheEntry>>({});
-  const [phrasesetResultsCache, setPhrasesetResultsCache] = useState<Record<string, PhrasesetResultsCacheEntry>>({});
-  const [viewedResultIds, setViewedResultIds] = useState<Set<string>>(() => {
-    if (typeof window === 'undefined') {
-      return new Set();
-    }
 
-    try {
-      const stored = window.sessionStorage.getItem('viewedResultIds');
-      if (!stored) {
-        return new Set();
-      }
-
-      const parsed: unknown = JSON.parse(stored);
-      if (Array.isArray(parsed)) {
-        return new Set(parsed.filter((value): value is string => typeof value === 'string'));
-      }
-    } catch (err) {
-      console.warn('Failed to restore viewed results from sessionStorage', err);
-    }
-
-    return new Set();
-  });
-
+  // Notify other contexts when pending results change
   useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
+    if (onPendingResultsChange) {
+      onPendingResultsChange(pendingResults);
     }
-
-    try {
-      window.sessionStorage.setItem('viewedResultIds', JSON.stringify(Array.from(viewedResultIds)));
-    } catch (err) {
-      console.warn('Failed to persist viewed results to sessionStorage', err);
-    }
-  }, [viewedResultIds]);
-
-  useEffect(() => {
-    setViewedResultIds((previous) => {
-      if (pendingResults.length === 0) {
-        if (previous.size === 0) {
-          return previous;
-        }
-        return new Set();
-      }
-
-      const validIds = new Set(pendingResults.map((result) => result.phraseset_id));
-      const next = new Set<string>();
-      let changed = false;
-
-      pendingResults.forEach((result) => {
-        const id = result.phraseset_id;
-        if (!id) {
-          return;
-        }
-
-        if (result.result_viewed || previous.has(id)) {
-          if (!next.has(id)) {
-            next.add(id);
-            if (!previous.has(id)) {
-              changed = true;
-            }
-          }
-        }
-      });
-
-      previous.forEach((id) => {
-        if (validIds.has(id)) {
-          if (!next.has(id)) {
-            next.add(id);
-            changed = true;
-          }
-        } else {
-          changed = true;
-        }
-      });
-
-      if (!changed && next.size === previous.size) {
-        return previous;
-      }
-
-      return next;
-    });
-  }, [pendingResults]);
+  }, [pendingResults, onPendingResultsChange]);
 
   // Initialize session on mount
   useEffect(() => {
-    gameContextLogger.debug('Initializing session...');
+    gameContextLogger.debug('🚀 Initializing GameContext session...');
     const initializeSession = async () => {
       const storedUsername = apiClient.getStoredUsername();
-      gameContextLogger.debug('Stored username:', storedUsername);
+      gameContextLogger.debug('👤 Stored username from API client:', storedUsername);
       if (storedUsername) {
         setUsername(storedUsername);
       }
       const token = await apiClient.ensureAccessToken();
-      gameContextLogger.debug('Access token check result:', { hasToken: !!token });
+      gameContextLogger.debug('🔑 Access token check result:', { hasToken: !!token });
       setIsAuthenticated(Boolean(token));
     };
     initializeSession();
@@ -244,19 +96,30 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Monitor authentication state changes
   useEffect(() => {
-    gameContextLogger.debug('Authentication state changed:', { isAuthenticated, username });
+    gameContextLogger.debug('🔄 Authentication state changed:', { isAuthenticated, username });
   }, [isAuthenticated, username]);
 
   // Create stable actions object using useCallback for all methods
   const startSession = useCallback((nextUsername: string, tokens: AuthTokenResponse) => {
+      gameContextLogger.debug('🎯 GameContext startSession called:', { username: nextUsername });
+      
       apiClient.setSession(nextUsername, tokens);
       setUsername(nextUsername);
       setIsAuthenticated(true);
       
+      gameContextLogger.debug('⏰ Starting delayed dashboard load after login...');
       // Immediately load dashboard data after successful login
       setTimeout(async () => {
         try {
+          gameContextLogger.debug('📞 Making initial dashboard API call after login...');
           const data = await apiClient.getDashboardData();
+          gameContextLogger.debug('✅ Initial dashboard data received:', {
+            playerBalance: data.player?.balance,
+            activeRound: data.current_round ? `${data.current_round.round_type} (${data.current_round.state?.status})` : 'none',
+            pendingResults: data.pending_results?.length || 0,
+            unclaimedResults: data.unclaimed_results?.length || 0
+          });
+          
           setPlayer(data.player);
           setActiveRound(data.current_round);
           setPendingResults(data.pending_results);
@@ -265,7 +128,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setRoundAvailability(data.round_availability);
           setError(null);
         } catch (err) {
-          console.error('Failed to load dashboard after login:', err);
+          gameContextLogger.error('❌ Failed to load dashboard after login:', err);
           const errorMessage = getActionErrorMessage('load-dashboard', err);
           setError(errorMessage);
         }
@@ -273,15 +136,21 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const logout = useCallback(async () => {
+      gameContextLogger.debug('🚪 GameContext logout called');
+      
       try {
+        gameContextLogger.debug('📞 Calling apiClient.logout...');
         await apiClient.logout();
+        gameContextLogger.debug('✅ API logout successful');
       } catch (err) {
-        console.warn('Failed to logout cleanly', err);
+        gameContextLogger.warn('⚠️ Failed to logout cleanly:', err);
       } finally {
+        gameContextLogger.debug('🛑 Stopping all polling...');
         // Stop all polling
         stopPoll('dashboard');
         stopPoll('balance');
         
+        gameContextLogger.debug('🧹 Clearing session and state...');
         apiClient.clearSession();
         setIsAuthenticated(false);
         setUsername(null);
@@ -291,53 +160,56 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setPhrasesetSummary(null);
         setUnclaimedResults([]);
         setRoundAvailability(null);
-        setQuestState({
-          quests: [],
-          activeQuests: [],
-          claimableQuests: [],
-          loading: false,
-          error: null,
-          lastUpdated: null,
-        });
-        setPhrasesetListCache({});
-        setPhrasesetDetailsCache({});
-        setPhrasesetResultsCache({});
+        gameContextLogger.debug('✅ Logout cleanup completed');
       }
   }, [stopPoll]);
 
   const refreshDashboard = useCallback(async (signal?: AbortSignal) => {
-      gameContextLogger.debug('refreshDashboard called');
+      gameContextLogger.debug('🔄 GameContext refreshDashboard called');
       // Check token directly instead of relying on state
       const token = await apiClient.ensureAccessToken();
-      gameContextLogger.debug('Token check for dashboard refresh:', { hasToken: !!token });
+      gameContextLogger.debug('🔑 Token check for dashboard refresh:', { hasToken: !!token });
       
       if (!token) {
-        gameContextLogger.warn('No valid token, skipping dashboard refresh');
+        gameContextLogger.warn('❌ No valid token, skipping dashboard refresh');
         setIsAuthenticated(false);
         return;
       }
 
       // Ensure authentication state is correct
       if (!isAuthenticated) {
-        gameContextLogger.debug('Setting authenticated to true after token check');
+        gameContextLogger.debug('🔄 Setting authenticated to true after token check');
         setIsAuthenticated(true);
       }
 
       try {
-        gameContextLogger.debug('Making dashboard API call...');
+        gameContextLogger.debug('📞 Making dashboard API call...');
         const data = await apiClient.getDashboardData(signal);
-        gameContextLogger.debug('✅ Dashboard data received successfully');
-        gameContextLogger.debug('Current round from API:', {
+        gameContextLogger.debug('✅ Dashboard data received successfully:', {
+          playerBalance: data.player?.balance,
+          playerOutstandingPrompts: data.player?.outstanding_prompts,
           currentRound: data.current_round ? {
             id: data.current_round.round_id,
             type: data.current_round.round_type,
             status: data.current_round.state?.status
+          } : 'null',
+          pendingResultsCount: data.pending_results?.length || 0,
+          unclaimedResultsCount: data.unclaimed_results?.length || 0,
+          roundAvailability: data.round_availability ? {
+            promptsWaiting: data.round_availability.prompts_waiting,
+            phrasesetsWaiting: data.round_availability.phrasesets_waiting,
+            promptCost: data.round_availability.prompt_cost,
+            copyCost: data.round_availability.copy_cost
           } : 'null'
         });
 
         // Update all dashboard state at once
         setPlayer(data.player);
         if (data.player.username && data.player.username !== username) {
+          gameContextLogger.debug('👤 Username mismatch, updating session:', {
+            stored: username,
+            received: data.player.username
+          });
           apiClient.setSession(data.player.username);
           setUsername(data.player.username);
         }
@@ -349,14 +221,18 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
           // Only show active rounds; clear completed/expired/abandoned rounds
           if (roundStatus === 'active') {
-            gameContextLogger.debug('Setting active round:', data.current_round);
+            gameContextLogger.debug('✅ Setting active round:', {
+              roundId: data.current_round.round_id,
+              roundType: data.current_round.round_type,
+              status: roundStatus
+            });
             setActiveRound(data.current_round);
           } else {
-            gameContextLogger.debug(`Round status is ${roundStatus}, clearing active round`);
+            gameContextLogger.debug(`🚫 Round status is ${roundStatus}, clearing active round`);
             setActiveRound(null);
           }
         } else {
-          gameContextLogger.debug('No current round from API, clearing active round');
+          gameContextLogger.debug('⭕ No current round from API, clearing active round');
           setActiveRound(null);
         }
         
@@ -365,45 +241,69 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUnclaimedResults(data.unclaimed_results);
         setRoundAvailability(data.round_availability);
         setError(null);
+        
+        gameContextLogger.debug('✅ Dashboard state updated successfully');
       } catch (err) {
-        if (err instanceof Error && err.name === 'CanceledError') return;
+        if (err instanceof Error && err.name === 'CanceledError') {
+          gameContextLogger.debug('⏹️ Dashboard refresh canceled');
+          return;
+        }
 
-        gameContextLogger.error('Dashboard refresh failed:', err);
+        gameContextLogger.error('❌ Dashboard refresh failed:', err);
         const errorMessage = getActionErrorMessage('load-dashboard', err);
         setError(errorMessage);
 
         // Handle auth errors
         if (errorMessage.toLowerCase().includes('session') || errorMessage.toLowerCase().includes('login')) {
-          gameContextLogger.warn('Auth error detected, logging out');
+          gameContextLogger.warn('🚪 Auth error detected, logging out');
           logout();
         }
       }
-  }, [isAuthenticated, username]);
+  }, [isAuthenticated, username, logout]);
 
   const refreshBalance = useCallback(async (signal?: AbortSignal) => {
+      gameContextLogger.debug('💰 GameContext refreshBalance called');
       // Check token directly instead of relying on stale state
       const token = await apiClient.ensureAccessToken();
+      gameContextLogger.debug('🔑 Token check for balance refresh:', { hasToken: !!token });
+      
       if (!token) {
+        gameContextLogger.warn('❌ No valid token for balance refresh');
         setIsAuthenticated(false);
         return;
       }
 
       // Ensure authentication state is correct
       if (!isAuthenticated) {
+        gameContextLogger.debug('🔄 Setting authenticated to true after token check');
         setIsAuthenticated(true);
       }
 
       try {
+        gameContextLogger.debug('📞 Calling apiClient.getBalance...');
         const data = await apiClient.getBalance(signal);
+        gameContextLogger.debug('✅ Balance data received:', {
+          balance: data.balance,
+          username: data.username
+        });
+        
         setPlayer(data);
         if (data.username && data.username !== username) {
+          gameContextLogger.debug('👤 Username mismatch in balance, updating session:', {
+            stored: username,
+            received: data.username
+          });
           apiClient.setSession(data.username);
           setUsername(data.username);
         }
         setError(null);
       } catch (err) {
-        if (err instanceof Error && err.name === 'CanceledError') return;
+        if (err instanceof Error && err.name === 'CanceledError') {
+          gameContextLogger.debug('⏹️ Balance refresh canceled');
+          return;
+        }
 
+        gameContextLogger.error('❌ Balance refresh failed:', err);
         const errorMessage = getActionErrorMessage('refresh-balance', err);
         
         // Only show balance refresh errors if they're auth-related
@@ -412,401 +312,106 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           logout();
         }
       }
-  }, [isAuthenticated, username]);
+  }, [isAuthenticated, username, logout]);
 
   const claimBonus = useCallback(async () => {
-      console.log('🎯 GameContext claimBonus called');
+      gameContextLogger.debug('🎯 GameContext claimBonus called');
       
       // Check token directly instead of relying on stale state
       const token = await apiClient.ensureAccessToken();
-      console.log('🔍 Token check for claim bonus:', { hasToken: !!token });
+      gameContextLogger.debug('🔑 Token check for claim bonus:', { hasToken: !!token });
       
       if (!token) {
-        console.log('❌ No valid token, aborting claim bonus');
+        gameContextLogger.warn('❌ No valid token, aborting claim bonus');
         setIsAuthenticated(false);
         return;
       }
 
       // Ensure authentication state is correct
       if (!isAuthenticated) {
-        console.log('🔄 Setting authenticated to true after token check');
+        gameContextLogger.debug('🔄 Setting authenticated to true after token check');
         setIsAuthenticated(true);
       }
 
       try {
-        console.log('🔄 Setting loading to true');
+        gameContextLogger.debug('🔄 Setting loading to true');
         setLoading(true);
-        console.log('📞 Calling apiClient.claimDailyBonus()...');
+        gameContextLogger.debug('📞 Calling apiClient.claimDailyBonus()...');
         await apiClient.claimDailyBonus();
-        console.log('✅ API call successful');
+        gameContextLogger.debug('✅ Claim bonus API call successful');
         
         // Trigger immediate dashboard refresh
-        console.log('🔄 Triggering dashboard refresh');
+        gameContextLogger.debug('🔄 Triggering dashboard refresh after bonus claim');
         triggerPoll('dashboard');
         
+        if (onDashboardTrigger) {
+          gameContextLogger.debug('🔄 Calling external dashboard trigger');
+          onDashboardTrigger();
+        }
+        
         setError(null);
-        console.log('✅ Claim bonus completed successfully');
+        gameContextLogger.debug('✅ Claim bonus completed successfully');
       } catch (err) {
-        console.error('❌ Claim bonus API call failed:', err);
+        gameContextLogger.error('❌ Claim bonus failed:', err);
         const message = getActionErrorMessage('claim-bonus', err);
-        console.log('📝 Error message:', message);
+        gameContextLogger.debug('📝 Setting error message:', message);
         setError(message);
 
         // Handle auth errors
         if (message.toLowerCase().includes('session') || message.toLowerCase().includes('login')) {
-          console.log('🚪 Auth error detected, logging out');
+          gameContextLogger.warn('🚪 Auth error in claim bonus, logging out');
           logout();
         }
 
         throw err;
       } finally {
-        console.log('🔄 Setting loading to false');
+        gameContextLogger.debug('🔄 Setting loading to false');
         setLoading(false);
       }
-  }, [isAuthenticated, triggerPoll, logout]);
-
-  const refreshQuests = useCallback(async () => {
-      const token = await apiClient.ensureAccessToken();
-      if (!token) {
-        setIsAuthenticated(false);
-        setQuestState((prev) => ({
-          ...prev,
-          loading: false,
-          error: 'Authentication required. Please log in again.',
-        }));
-        return;
-      }
-
-      setQuestState((prev) => ({
-        ...prev,
-        loading: true,
-        error: null,
-      }));
-
-      try {
-        const [allQuestsResponse, activeQuestsResponse, claimableQuestsResponse] = await Promise.all([
-          apiClient.getQuests(),
-          apiClient.getActiveQuests(),
-          apiClient.getClaimableQuests(),
-        ]);
-
-        setQuestState({
-          quests: allQuestsResponse.quests,
-          activeQuests: activeQuestsResponse,
-          claimableQuests: claimableQuestsResponse,
-          loading: false,
-          error: null,
-          lastUpdated: Date.now(),
-        });
-      } catch (err) {
-        const errorMessage = getActionErrorMessage('load-quests', err);
-        setQuestState((prev) => ({
-          ...prev,
-          loading: false,
-          error: errorMessage,
-        }));
-        throw err;
-      }
-  }, []);
-
-  const clearQuestError = useCallback(() => {
-      setQuestState((prev) => ({
-        ...prev,
-        error: null,
-      }));
-  }, []);
-
-  const claimQuest = useCallback(async (questId: string): Promise<ClaimQuestRewardResponse> => {
-      const token = await apiClient.ensureAccessToken();
-      if (!token) {
-        setIsAuthenticated(false);
-        setQuestState((prev) => ({
-          ...prev,
-          loading: false,
-          error: 'Authentication required. Please log in again.',
-        }));
-        throw new Error('Authentication required');
-      }
-
-      setQuestState((prev) => ({
-        ...prev,
-        loading: true,
-        error: null,
-      }));
-
-      try {
-        const response = await apiClient.claimQuestReward(questId);
-
-        await refreshQuests();
-        triggerPoll('dashboard');
-        return response;
-      } catch (err) {
-        const errorMessage = getActionErrorMessage('claim-quest', err);
-        setQuestState((prev) => ({
-          ...prev,
-          loading: false,
-          error: errorMessage,
-        }));
-        throw err;
-      } finally {
-        setQuestState((prev) => ({
-          ...prev,
-          loading: false,
-        }));
-      }
-  }, [refreshQuests, triggerPoll]);
-
-  const refreshPlayerPhrasesets = useCallback(async (
-      params: PlayerPhrasesetParams = {},
-      options: { force?: boolean } = {},
-    ): Promise<PhrasesetListResponse | null> => {
-      const key = buildPhrasesetListKey(params);
-      const cached = phrasesetListCache[key];
-
-      const token = await apiClient.ensureAccessToken();
-      if (!token) {
-        setIsAuthenticated(false);
-        setPhrasesetListCache((prev) => ({
-          ...prev,
-          [key]: {
-            params,
-            data: cached?.data ?? null,
-            loading: false,
-            error: 'Authentication required. Please log in again.',
-            lastFetched: cached?.lastFetched ?? null,
-          },
-        }));
-        return null;
-      }
-
-      if (cached?.data && !options.force) {
-        return cached.data;
-      }
-
-      setPhrasesetListCache((prev) => ({
-        ...prev,
-        [key]: {
-          params,
-          data: cached?.data ?? null,
-          loading: true,
-          error: null,
-          lastFetched: cached?.lastFetched ?? null,
-        },
-      }));
-
-      try {
-        const data = await apiClient.getPlayerPhrasesets(params);
-        setPhrasesetListCache((prev) => ({
-          ...prev,
-          [key]: {
-            params,
-            data,
-            loading: false,
-            error: null,
-            lastFetched: Date.now(),
-          },
-        }));
-        return data;
-      } catch (err) {
-        const errorMessage = getActionErrorMessage('load-tracking', err);
-        setPhrasesetListCache((prev) => ({
-          ...prev,
-          [key]: {
-            params,
-            data: cached?.data ?? null,
-            loading: false,
-            error: errorMessage,
-            lastFetched: cached?.lastFetched ?? null,
-          },
-        }));
-        throw err;
-      }
-  }, [phrasesetListCache]);
-
-  const refreshPhrasesetDetails = useCallback(async (
-      phrasesetId: string,
-      options: { force?: boolean } = {},
-    ): Promise<PhrasesetDetailsType | null> => {
-      const cached = phrasesetDetailsCache[phrasesetId];
-
-      const token = await apiClient.ensureAccessToken();
-      if (!token) {
-        setIsAuthenticated(false);
-        setPhrasesetDetailsCache((prev) => ({
-          ...prev,
-          [phrasesetId]: {
-            data: cached?.data ?? null,
-            loading: false,
-            error: 'Authentication required. Please log in again.',
-            lastFetched: cached?.lastFetched ?? null,
-          },
-        }));
-        return null;
-      }
-
-      if (cached?.data && !options.force) {
-        return cached.data;
-      }
-
-      setPhrasesetDetailsCache((prev) => ({
-        ...prev,
-        [phrasesetId]: {
-          data: cached?.data ?? null,
-          loading: true,
-          error: null,
-          lastFetched: cached?.lastFetched ?? null,
-        },
-      }));
-
-      try {
-        const data = await apiClient.getPhrasesetDetails(phrasesetId);
-        setPhrasesetDetailsCache((prev) => ({
-          ...prev,
-          [phrasesetId]: {
-            data,
-            loading: false,
-            error: null,
-            lastFetched: Date.now(),
-          },
-        }));
-        return data;
-      } catch (err) {
-        const errorMessage = getActionErrorMessage('load-details', err);
-        setPhrasesetDetailsCache((prev) => ({
-          ...prev,
-          [phrasesetId]: {
-            data: cached?.data ?? null,
-            loading: false,
-            error: errorMessage,
-            lastFetched: cached?.lastFetched ?? null,
-          },
-        }));
-        throw err;
-      }
-  }, [phrasesetDetailsCache]);
-
-  const refreshPhrasesetResults = useCallback(async (
-      phrasesetId: string,
-      options: { force?: boolean } = {},
-    ): Promise<PhrasesetResults | null> => {
-      const cached = phrasesetResultsCache[phrasesetId];
-
-      const token = await apiClient.ensureAccessToken();
-      if (!token) {
-        setIsAuthenticated(false);
-        setPhrasesetResultsCache((prev) => ({
-          ...prev,
-          [phrasesetId]: {
-            data: cached?.data ?? null,
-            loading: false,
-            error: 'Authentication required. Please log in again.',
-            lastFetched: cached?.lastFetched ?? null,
-          },
-        }));
-        return null;
-      }
-
-      if (cached?.data && !options.force) {
-        return cached.data;
-      }
-
-      setPhrasesetResultsCache((prev) => ({
-        ...prev,
-        [phrasesetId]: {
-          data: cached?.data ?? null,
-          loading: true,
-          error: null,
-          lastFetched: cached?.lastFetched ?? null,
-        },
-      }));
-
-      try {
-        const data = await apiClient.getPhrasesetResults(phrasesetId);
-        setPhrasesetResultsCache((prev) => ({
-          ...prev,
-          [phrasesetId]: {
-            data,
-            loading: false,
-            error: null,
-            lastFetched: Date.now(),
-          },
-        }));
-        return data;
-      } catch (err) {
-        const errorStr = String(err);
-        const notReady =
-          errorStr.includes('Copy round') && errorStr.includes('not found') ||
-          errorStr.includes('404') ||
-          errorStr.toLowerCase().includes('not found');
-
-        if (notReady) {
-          const friendlyMessage = 'This quipset is not ready for results viewing yet. It may still be in progress or missing some data.';
-          setPhrasesetResultsCache((prev) => ({
-            ...prev,
-            [phrasesetId]: {
-              data: null,
-              loading: false,
-              error: friendlyMessage,
-              lastFetched: Date.now(),
-            },
-          }));
-          return null;
-        }
-
-        const errorMessage = getActionErrorMessage('load-results', err);
-        setPhrasesetResultsCache((prev) => ({
-          ...prev,
-          [phrasesetId]: {
-            data: cached?.data ?? null,
-            loading: false,
-            error: errorMessage,
-            lastFetched: cached?.lastFetched ?? null,
-          },
-        }));
-        throw err;
-      }
-  }, [phrasesetResultsCache]);
+  }, [isAuthenticated, triggerPoll, logout, onDashboardTrigger]);
 
   const clearError = useCallback(() => {
+      gameContextLogger.debug('🧹 Clearing game context error');
       setError(null);
   }, []);
 
   const navigateAfterDelay = useCallback((path: string, delay: number = 1500) => {
-      setTimeout(() => navigate(path), delay);
+      gameContextLogger.debug('🧭 Navigating after delay:', { path, delay });
+      setTimeout(() => {
+        gameContextLogger.debug('🧭 Executing delayed navigation to:', path);
+        navigate(path);
+      }, delay);
   }, [navigate]);
 
   const startPromptRound = useCallback(async () => {
-      gameContextLogger.info('startPromptRound called');
-
-      // Check token directly instead of relying on state
+      gameContextLogger.debug('🎯 GameContext startPromptRound called');
+      
       const token = await apiClient.ensureAccessToken();
-      gameContextLogger.debug('Token check for prompt round:', { hasToken: !!token });
-
+      gameContextLogger.debug('🔑 Token check for start prompt round:', { hasToken: !!token });
+      
       if (!token) {
-        gameContextLogger.warn('No valid token, aborting prompt round start');
+        gameContextLogger.warn('❌ No valid token, aborting start prompt round');
         setIsAuthenticated(false);
         return;
       }
 
-      // Ensure authentication state is correct
       if (!isAuthenticated) {
-        gameContextLogger.debug('Setting authenticated to true after token check');
+        gameContextLogger.debug('🔄 Setting authenticated to true after token check');
         setIsAuthenticated(true);
       }
 
-      gameContextLogger.debug('Starting prompt round API call...');
-      gameContextLogger.debug('Current round availability:', roundAvailability);
-      gameContextLogger.debug('Current player state:', {
-        balance: player?.balance,
-        outstandingPrompts: player?.outstanding_prompts
-      });
-
       try {
+        gameContextLogger.debug('🔄 Setting loading to true');
         setLoading(true);
         setError(null);
-        gameContextLogger.debug('Calling apiClient.startPromptRound()...');
+        gameContextLogger.debug('📞 Calling apiClient.startPromptRound()...');
         const response = await apiClient.startPromptRound();
-        gameContextLogger.info('✅ API call successful, response:', response);
+        gameContextLogger.debug('✅ Start prompt round API call successful:', {
+          roundId: response.round_id,
+          expiresAt: response.expires_at,
+          promptText: response.prompt_text,
+          cost: response.cost
+        });
         
         const newActiveRound = {
           round_type: 'prompt' as const,
@@ -821,58 +426,58 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           },
         };
         
-        gameContextLogger.debug('Setting active round:', newActiveRound);
         setActiveRound(newActiveRound);
-        
-        // Trigger immediate dashboard refresh to update availability
-        gameContextLogger.debug('Triggering dashboard refresh...');
+        gameContextLogger.debug('🔄 Triggering dashboard refresh after starting prompt round');
         triggerPoll('dashboard');
-
-        gameContextLogger.info('✅ Prompt round started successfully');
+        
+        if (onDashboardTrigger) {
+          gameContextLogger.debug('🔄 Calling external dashboard trigger');
+          onDashboardTrigger();
+        }
+        
+        gameContextLogger.debug('✅ Start prompt round completed successfully');
       } catch (err) {
-        gameContextLogger.error('Failed to start prompt round:', err);
+        gameContextLogger.error('❌ Start prompt round failed:', err);
         const errorMessage = getActionErrorMessage('start-prompt', err);
-        gameContextLogger.debug('Setting error message:', errorMessage);
+        gameContextLogger.debug('📝 Setting error message:', errorMessage);
         setError(errorMessage);
         throw err;
       } finally {
+        gameContextLogger.debug('🔄 Setting loading to false');
         setLoading(false);
       }
-  }, [isAuthenticated, roundAvailability, player?.balance, player?.outstanding_prompts, triggerPoll]);
+  }, [isAuthenticated, triggerPoll, onDashboardTrigger]);
 
   const startCopyRound = useCallback(async () => {
-      gameContextLogger.info('startCopyRound called');
-
-      // Check token directly instead of relying on state
+      gameContextLogger.debug('🎯 GameContext startCopyRound called');
+      
       const token = await apiClient.ensureAccessToken();
-      gameContextLogger.debug('Token check for copy round:', { hasToken: !!token });
-
+      gameContextLogger.debug('🔑 Token check for start copy round:', { hasToken: !!token });
+      
       if (!token) {
-        gameContextLogger.warn('No valid token, aborting copy round start');
+        gameContextLogger.warn('❌ No valid token, aborting start copy round');
         setIsAuthenticated(false);
         return;
       }
 
-      // Ensure authentication state is correct
       if (!isAuthenticated) {
-        gameContextLogger.debug('Setting authenticated to true after token check');
+        gameContextLogger.debug('🔄 Setting authenticated to true after token check');
         setIsAuthenticated(true);
       }
 
-      gameContextLogger.debug('Starting copy round API call...');
-      gameContextLogger.debug('Current round availability:', roundAvailability);
-      gameContextLogger.debug('Current player state:', {
-        balance: player?.balance,
-        promptsWaiting: roundAvailability?.prompts_waiting,
-        copyCost: roundAvailability?.copy_cost
-      });
-
       try {
+        gameContextLogger.debug('🔄 Setting loading to true');
         setLoading(true);
         setError(null);
-        gameContextLogger.debug('Calling apiClient.startCopyRound()...');
+        gameContextLogger.debug('📞 Calling apiClient.startCopyRound()...');
         const response = await apiClient.startCopyRound();
-        gameContextLogger.info('✅ API call successful, response:', response);
+        gameContextLogger.debug('✅ Start copy round API call successful:', {
+          roundId: response.round_id,
+          expiresAt: response.expires_at,
+          originalPhrase: response.original_phrase,
+          cost: response.cost,
+          discountActive: response.discount_active
+        });
         
         const newActiveRound = {
           round_type: 'copy' as const,
@@ -888,56 +493,58 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           },
         };
         
-        gameContextLogger.debug('Setting active round:', newActiveRound);
         setActiveRound(newActiveRound);
-        
-        gameContextLogger.debug('Triggering dashboard refresh...');
+        gameContextLogger.debug('🔄 Triggering dashboard refresh after starting copy round');
         triggerPoll('dashboard');
-
-        gameContextLogger.info('✅ Copy round started successfully');
+        
+        if (onDashboardTrigger) {
+          gameContextLogger.debug('🔄 Calling external dashboard trigger');
+          onDashboardTrigger();
+        }
+        
+        gameContextLogger.debug('✅ Start copy round completed successfully');
       } catch (err) {
-        gameContextLogger.error('Failed to start copy round:', err);
+        gameContextLogger.error('❌ Start copy round failed:', err);
         const errorMessage = getActionErrorMessage('start-copy', err);
-        gameContextLogger.debug('Setting error message:', errorMessage);
+        gameContextLogger.debug('📝 Setting error message:', errorMessage);
         setError(errorMessage);
         throw err;
       } finally {
+        gameContextLogger.debug('🔄 Setting loading to false');
         setLoading(false);
       }
-  }, [isAuthenticated, roundAvailability, player?.balance, triggerPoll]);
+  }, [isAuthenticated, triggerPoll, onDashboardTrigger]);
 
   const startVoteRound = useCallback(async () => {
-      gameContextLogger.info('startVoteRound called');
-
-      // Check token directly instead of relying on state
+      gameContextLogger.debug('🎯 GameContext startVoteRound called');
+      
       const token = await apiClient.ensureAccessToken();
-      gameContextLogger.debug('Token check for vote round:', { hasToken: !!token });
-
+      gameContextLogger.debug('🔑 Token check for start vote round:', { hasToken: !!token });
+      
       if (!token) {
-        gameContextLogger.warn('No valid token, aborting vote round start');
+        gameContextLogger.warn('❌ No valid token, aborting start vote round');
         setIsAuthenticated(false);
         return;
       }
 
-      // Ensure authentication state is correct
       if (!isAuthenticated) {
-        gameContextLogger.debug('Setting authenticated to true after token check');
+        gameContextLogger.debug('🔄 Setting authenticated to true after token check');
         setIsAuthenticated(true);
       }
 
-      gameContextLogger.debug('Starting vote round API call...');
-      gameContextLogger.debug('Current round availability:', roundAvailability);
-      gameContextLogger.debug('Current player state:', {
-        balance: player?.balance,
-        phrasesetsWaiting: roundAvailability?.phrasesets_waiting
-      });
-
       try {
+        gameContextLogger.debug('🔄 Setting loading to true');
         setLoading(true);
         setError(null);
-        gameContextLogger.debug('Calling apiClient.startVoteRound()...');
+        gameContextLogger.debug('📞 Calling apiClient.startVoteRound()...');
         const response = await apiClient.startVoteRound();
-        gameContextLogger.info('✅ API call successful, response:', response);
+        gameContextLogger.debug('✅ Start vote round API call successful:', {
+          roundId: response.round_id,
+          expiresAt: response.expires_at,
+          phrasesetId: response.phraseset_id,
+          promptText: response.prompt_text,
+          phrases: response.phrases
+        });
         
         const newActiveRound = {
           round_type: 'vote' as const,
@@ -953,106 +560,79 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           },
         };
         
-        gameContextLogger.debug('Setting active round:', newActiveRound);
         setActiveRound(newActiveRound);
-        
-        gameContextLogger.debug('Triggering dashboard refresh...');
+        gameContextLogger.debug('🔄 Triggering dashboard refresh after starting vote round');
         triggerPoll('dashboard');
-
-        gameContextLogger.info('✅ Vote round started successfully');
+        
+        if (onDashboardTrigger) {
+          gameContextLogger.debug('🔄 Calling external dashboard trigger');
+          onDashboardTrigger();
+        }
+        
+        gameContextLogger.debug('✅ Start vote round completed successfully');
       } catch (err) {
-        gameContextLogger.error('Failed to start vote round:', err);
+        gameContextLogger.error('❌ Start vote round failed:', err);
         const errorMessage = getActionErrorMessage('start-vote', err);
-        gameContextLogger.debug('Setting error message:', errorMessage);
+        gameContextLogger.debug('📝 Setting error message:', errorMessage);
         setError(errorMessage);
         throw err;
       } finally {
+        gameContextLogger.debug('🔄 Setting loading to false');
         setLoading(false);
       }
-  }, [isAuthenticated, roundAvailability, player?.balance, triggerPoll]);
+  }, [isAuthenticated, triggerPoll, onDashboardTrigger]);
 
   const claimPhrasesetPrize = useCallback(async (phrasesetId: string) => {
-      // Check token directly instead of relying on stale state
+      gameContextLogger.debug('🎯 GameContext claimPhrasesetPrize called:', { phrasesetId });
+      
       const token = await apiClient.ensureAccessToken();
+      gameContextLogger.debug('🔑 Token check for claim phraseset prize:', { hasToken: !!token });
+      
       if (!token) {
+        gameContextLogger.warn('❌ No valid token, aborting claim phraseset prize');
         setIsAuthenticated(false);
         return;
       }
 
-      // Ensure authentication state is correct
       if (!isAuthenticated) {
+        gameContextLogger.debug('🔄 Setting authenticated to true after token check');
         setIsAuthenticated(true);
       }
 
       try {
+        gameContextLogger.debug('📞 Calling apiClient.claimPhrasesetPrize...');
         await apiClient.claimPhrasesetPrize(phrasesetId);
+        gameContextLogger.debug('✅ Claim phraseset prize API call successful');
         
-        // Trigger immediate dashboard refresh to update balance
+        gameContextLogger.debug('🔄 Triggering dashboard refresh after claiming phraseset prize');
         triggerPoll('dashboard');
         
+        if (onDashboardTrigger) {
+          gameContextLogger.debug('🔄 Calling external dashboard trigger');
+          onDashboardTrigger();
+        }
+        
         setError(null);
+        gameContextLogger.debug('✅ Claim phraseset prize completed successfully');
       } catch (err) {
+        gameContextLogger.error('❌ Claim phraseset prize failed:', err);
         const errorMessage = getActionErrorMessage('claim-prize', err);
+        gameContextLogger.debug('📝 Setting error message:', errorMessage);
         setError(errorMessage);
         throw err;
       }
-  }, [isAuthenticated, triggerPoll]);
-
-  const getStatistics = useCallback(async (signal?: AbortSignal) => {
-      // Check token directly instead of relying on stale state
-      const token = await apiClient.ensureAccessToken();
-      if (!token) {
-        setIsAuthenticated(false);
-        return null;
-      }
-
-      // Ensure authentication state is correct
-      if (!isAuthenticated) {
-        setIsAuthenticated(true);
-      }
-
-      try {
-        const data = await apiClient.getStatistics(signal);
-        return data;
-      } catch (err) {
-        const errorMessage = getActionErrorMessage('load-statistics', err);
-        setError(errorMessage);
-        throw err;
-      }
-  }, [isAuthenticated]);
-
-  const markResultsViewed = useCallback((phrasesetIds: string[]) => {
-      if (!phrasesetIds || phrasesetIds.length === 0) {
-        return;
-      }
-
-      setViewedResultIds((previous) => {
-        let changed = false;
-        const next = new Set(previous);
-
-        phrasesetIds.forEach((id) => {
-          if (!id) {
-            return;
-          }
-
-          if (!next.has(id)) {
-            next.add(id);
-            changed = true;
-          }
-        });
-
-        return changed ? next : previous;
-      });
-    }, []);
+  }, [isAuthenticated, triggerPoll, onDashboardTrigger]);
 
   // Set up smart polling when authenticated
   useEffect(() => {
     if (!isAuthenticated) {
+      gameContextLogger.debug('🛑 Stopping all polling due to unauthenticated state');
       stopPoll('dashboard');
       stopPoll('balance');
       return;
     }
 
+    gameContextLogger.debug('🔄 Starting smart polling for dashboard and balance');
     // Start dashboard polling with smart intervals
     startPoll(PollConfigs.DASHBOARD, async () => {
       await refreshDashboard();
@@ -1065,6 +645,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Cleanup function
     return () => {
+      gameContextLogger.debug('🛑 Cleaning up polling on unmount');
       stopPoll('dashboard');
       stopPoll('balance');
     };
@@ -1082,35 +663,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (hasInitialLoadRef.current) return;
     hasInitialLoadRef.current = true;
 
+    gameContextLogger.debug('🚀 Performing initial dashboard load');
     const controller = new AbortController();
     refreshDashboard(controller.signal);
 
     return () => controller.abort();
   }, [isAuthenticated, refreshDashboard]);
-
-  // Quest auto-loading when authenticated
-  const hasQuestLoadRef = useRef(false);
-  useEffect(() => {
-    if (!isAuthenticated) {
-      hasQuestLoadRef.current = false;
-      setQuestState({
-        quests: [],
-        activeQuests: [],
-        claimableQuests: [],
-        loading: false,
-        error: null,
-        lastUpdated: null,
-      });
-      return;
-    }
-
-    if (hasQuestLoadRef.current) return;
-    hasQuestLoadRef.current = true;
-
-    refreshQuests().catch((err) => {
-      gameContextLogger.error('Failed to refresh quests:', err);
-    });
-  }, [isAuthenticated, refreshQuests]);
 
   const state: GameState = {
     isAuthenticated,
@@ -1123,17 +681,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     roundAvailability,
     loading,
     error,
-    quests: questState.quests,
-    activeQuests: questState.activeQuests,
-    claimableQuests: questState.claimableQuests,
-    questsLoading: questState.loading,
-    questsError: questState.error,
-    hasClaimableQuests: questState.claimableQuests.length > 0,
-    questLastUpdated: questState.lastUpdated,
-    playerPhrasesets: phrasesetListCache,
-    phrasesetDetails: phrasesetDetailsCache,
-    phrasesetResults: phrasesetResultsCache,
-    viewedResultIds,
   };
 
   const actions: GameActions = {
@@ -1143,19 +690,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     refreshBalance,
     claimBonus,
     clearError,
-    refreshQuests,
-    clearQuestError,
-    claimQuest,
     navigateAfterDelay,
     startPromptRound,
     startCopyRound,
     startVoteRound,
-    refreshPlayerPhrasesets,
-    refreshPhrasesetDetails,
-    refreshPhrasesetResults,
     claimPhrasesetPrize,
-    getStatistics,
-    markResultsViewed,
   };
 
   const value: GameContextType = {

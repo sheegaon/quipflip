@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useGame } from '../contexts/GameContext';
+import { useResults } from '../contexts/ResultsContext';
 import { extractErrorMessage } from '../api/client';
 import type { PlayerStatistics } from '../api/types';
 import { Header } from '../components/Header';
@@ -14,7 +14,7 @@ import TopContentTable from '../components/statistics/TopContentTable';
 
 const Statistics: React.FC = () => {
   const navigate = useNavigate();
-  const { actions } = useGame();
+  const { actions } = useResults();
   const { getStatistics } = actions;
   const [data, setData] = useState<PlayerStatistics | null>(null);
   const [loading, setLoading] = useState(true);

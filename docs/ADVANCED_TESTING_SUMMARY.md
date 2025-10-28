@@ -224,7 +224,7 @@ The vote round showed:
 - [package.json](package.json) - Added @types/node dependency
 
 ### Documentation
-- [TEST_REPORT.md](TEST_REPORT.md) - Comprehensive test report
+- [TEST_REPORT.md](FRONTEND_TEST_REPORT) - Comprehensive test report
 - [TEST_FIX_SUMMARY.md](TEST_FIX_SUMMARY.md) - Tutorial overlay fix explanation
 - [ADVANCED_TESTING_SUMMARY.md](ADVANCED_TESTING_SUMMARY.md) - This document
 

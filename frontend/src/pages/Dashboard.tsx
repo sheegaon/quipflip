@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
+import { useResults } from '../contexts/ResultsContext';
 import { useTutorial } from '../contexts/TutorialContext';
 import { extractErrorMessage } from '../api/client';
 import { Timer } from '../components/Timer';
@@ -14,6 +15,7 @@ const formatWaitingCount = (count: number): string => (count > 10 ? 'over 10' : 
 
 export const Dashboard: React.FC = () => {
   const { state, actions } = useGame();
+  const { state: resultsState, actions: resultsActions } = useResults();
   const {
     player,
     activeRound,
@@ -21,10 +23,11 @@ export const Dashboard: React.FC = () => {
     phrasesetSummary,
     roundAvailability,
     error: contextError,
-    viewedResultIds,
   } = state;
-  const { refreshDashboard, clearError, markResultsViewed } = actions;
+  const { refreshDashboard, clearError } = actions;
   const { startTutorial, skipTutorial, advanceStep } = useTutorial();
+  const { viewedResultIds } = resultsState;
+  const { markResultsViewed } = resultsActions;
   const navigate = useNavigate();
   const [isRoundExpired, setIsRoundExpired] = useState(false);
   const [startingRound, setStartingRound] = useState<string | null>(null);
@@ -58,8 +61,8 @@ export const Dashboard: React.FC = () => {
 
 
   const handleStartTutorial = async () => {
-    await startTutorial();
-    await advanceStep('dashboard');
+    startTutorial();
+    advanceStep('dashboard');
   };
 
   const handleSkipTutorial = async () => {
