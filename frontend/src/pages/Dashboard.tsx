@@ -21,9 +21,9 @@ export const Dashboard: React.FC = () => {
   const [isRoundExpired, setIsRoundExpired] = useState(false);
   const [startingRound, setStartingRound] = useState<string | null>(null);
   const [roundStartError, setRoundStartError] = useState<string | null>(null);
-  const [hasClickedViewResults, setHasClickedViewResults] = useState(() => {
-    // Check if user has clicked "View Results" in this session
-    return sessionStorage.getItem('hasClickedViewResults') === 'true';
+  const [viewedResultIds, setViewedResultIds] = useState(() => {
+    const stored = sessionStorage.getItem('viewedResultIds');
+    return stored ? new Set(JSON.parse(stored)) : new Set<string>();
   });
 
   // Log component mount and key state changes
@@ -52,15 +52,20 @@ export const Dashboard: React.FC = () => {
     }
   }, [activeRound]);
 
-  // Reset "viewed results" flag when new results arrive
+  // Reset viewed results when completely new results arrive (different set of IDs)
   useEffect(() => {
-    const unviewedCount = pendingResults.filter((result) => !result.payout_claimed).length;
-    if (unviewedCount > 0 && hasClickedViewResults) {
-      // New results arrived, reset the flag so notification shows again
-      setHasClickedViewResults(false);
-      sessionStorage.removeItem('hasClickedViewResults');
+    const currentResultIds = new Set(pendingResults.map(r => r.phraseset_id));
+    const hasNewResults = Array.from(currentResultIds).some(id => !viewedResultIds.has(id));
+    
+    // Only reset if there are genuinely new results that haven't been seen before
+    if (hasNewResults && pendingResults.length > 0) {
+      // Keep the existing viewed results, don't reset completely
+      const existingViewed = Array.from(viewedResultIds).filter(id => currentResultIds.has(id));
+      const newViewedSet = new Set(existingViewed);
+      setViewedResultIds(newViewedSet);
+      sessionStorage.setItem('viewedResultIds', JSON.stringify(Array.from(newViewedSet)));
     }
-  }, [pendingResults, hasClickedViewResults]);
+  }, [pendingResults, viewedResultIds]);
 
   const handleStartTutorial = async () => {
     await startTutorial();
@@ -238,8 +243,11 @@ export const Dashboard: React.FC = () => {
   };
 
   const handleViewResults = () => {
-    setHasClickedViewResults(true);
-    sessionStorage.setItem('hasClickedViewResults', 'true');
+    // Mark all current pending results as viewed
+    const allCurrentIds = pendingResults.map(r => r.phraseset_id);
+    const newViewedSet = new Set([...viewedResultIds, ...allCurrentIds]);
+    setViewedResultIds(newViewedSet);
+    sessionStorage.setItem('viewedResultIds', JSON.stringify(Array.from(newViewedSet)));
     navigate('/results');
   };
 
@@ -249,8 +257,13 @@ export const Dashboard: React.FC = () => {
   const totalUnviewedCount = unviewedPromptCount + unviewedCopyCount;
   const totalUnviewedAmount = phrasesetSummary?.total_unclaimed_amount ?? 0;
 
-  // Filter pending results to only show unviewed ones (payout_claimed=false means not yet viewed)
-  const unviewedPendingResults = pendingResults.filter((result: PendingResult) => !result.payout_claimed);
+  // Filter pending results to only show unviewed ones
+  const unviewedPendingResults = pendingResults.filter((result: PendingResult) => 
+    !result.payout_claimed && !viewedResultIds.has(result.phraseset_id)
+  );
+
+  // Show notification if there are unviewed pending results OR unclaimed finalized results
+  const shouldShowResultsNotification = unviewedPendingResults.length > 0 || totalUnviewedCount > 0;
 
   if (!player) {
     return (
@@ -294,7 +307,7 @@ export const Dashboard: React.FC = () => {
         )}
 
         {/* Consolidated Results Notification */}
-        {!hasClickedViewResults && (unviewedPendingResults.length > 0 || totalUnviewedCount > 0) && (
+        {shouldShowResultsNotification && (
           <div className="tile-card bg-quip-turquoise bg-opacity-10 border-2 border-quip-turquoise p-4 mb-6 slide-up-enter">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex-1">

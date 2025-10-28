@@ -94,10 +94,10 @@ class PhrasesetService:
             role_key = "prompts" if entry["your_role"] == "prompt" else "copies"
             summary[bucket][role_key] += 1
 
-            if is_finalized and not entry.get("payout_claimed", False) and entry.get("your_payout"):
+            if is_finalized and not entry.get("result_viewed", False) and entry.get("your_payout"):
                 summary["finalized"][f"unclaimed_{role_key}"] += 1
                 summary["total_unclaimed_amount"] += entry["your_payout"] or 0
-            if not is_finalized and not entry.get("payout_claimed", False) and entry.get("your_payout"):
+            if not is_finalized and not entry.get("result_viewed", False) and entry.get("your_payout"):
                 summary["in_progress"][f"unclaimed_{role_key}"] += 1
 
         return summary
@@ -113,7 +113,7 @@ class PhrasesetService:
                 continue
             if entry["phraseset_id"] is None:
                 continue
-            if entry.get("payout_claimed"):
+            if entry.get("result_viewed"):
                 continue
             if entry.get("your_payout") is None:
                 continue
@@ -197,7 +197,7 @@ class PhrasesetService:
         result_view = await self._load_result_view(phraseset, player_id)
         payouts_cache: dict[UUID, dict] = {}
         your_payout = None
-        payout_claimed = result_view.payout_claimed if result_view else False
+        result_viewed = result_view.result_viewed if result_view else False
         if phraseset.status == "finalized":
             payouts = await self._get_payouts_cached(phraseset, payouts_cache)
             your_payout = self._extract_player_payout(payouts, player_id)
@@ -278,7 +278,7 @@ class PhrasesetService:
             "your_role": your_role,
             "your_phrase": your_phrase,
             "your_payout": your_payout,
-            "payout_claimed": payout_claimed,
+            "payout_claimed": result_viewed,
             "activity": activity_payload,
             "created_at": self._ensure_utc(phraseset.created_at),
             "finalized_at": self._ensure_utc(phraseset.finalized_at),

@@ -520,6 +520,23 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const data = await apiClient.getPhrasesetResults(phrasesetId);
         return data;
       } catch (err) {
+        // Handle specific API errors more gracefully
+        const errorStr = String(err);
+        
+        // If it's a "not found" error for copy rounds, return null instead of throwing
+        if (errorStr.includes('Copy round') && errorStr.includes('not found')) {
+          gameContextLogger.warn(`Phraseset ${phrasesetId} not ready for results viewing:`, errorStr);
+          return null;
+        }
+        
+        // If it's a 404 or phraseset not found, return null
+        if (errorStr.includes('404') || errorStr.includes('not found') || errorStr.includes('Phraseset not found')) {
+          gameContextLogger.warn(`Phraseset ${phrasesetId} not found:`, errorStr);
+          return null;
+        }
+        
+        // For other errors, still throw but with better logging
+        gameContextLogger.error(`Error fetching results for phraseset ${phrasesetId}:`, err);
         const errorMessage = getActionErrorMessage('load-results', err);
         setError(errorMessage);
         throw err;
