@@ -1004,11 +1004,11 @@ Visit `/redoc` for alternative ReDoc documentation.
 CORS is enabled for all origins in development. For production:
 - Configure `CORS_ORIGINS` environment variable
 - Include credentials in requests if using cookies
-- API key authentication via headers is recommended
+- Ensure the frontend sends `Authorization: Bearer <access_token>` with `withCredentials=true` so cookies and headers arrive together
 
 ### State Management
 **Required state to track:**
-- Current player API key (persistent storage)
+- Current access token (persisted client-side; refresh handled via HTTP-only cookie)
 - Current balance (update from `/player/balance`)
 - Active round state (poll `/player/current-round` or update after actions)
 - Pending results count (from `/player/pending-results`)

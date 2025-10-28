@@ -143,7 +143,7 @@ The `GameContext` manages global state:
 - Centralized state management
 - Automatic polling for updates
 - Error handling and notifications
-- API key persistence
+- Session token persistence
 
 ### Round Pages
 - **PromptRound** - Submit a phrase for a creative prompt with like/dislike feedback
