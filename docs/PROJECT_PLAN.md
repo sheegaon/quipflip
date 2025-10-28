@@ -37,7 +37,7 @@
 2. ✅ **AI copy providers (OpenAI + Gemini)** - Configurable AI backup system (COMPLETE)
 3. ✅ **Player statistics system** - Comprehensive win rates, earnings breakdown, performance metrics with charts (COMPLETE)
 4. ✅ **Tutorial/onboarding flow** - Interactive tutorial with guided tours for new players (COMPLETE)
-5. ✅ **Quest/Achievement system** - 16 achievement types with automatic progress tracking and rewards (COMPLETE - Backend done, UI in progress)
+5. ✅ **Quest/Achievement system** - 16 achievement types with automatic progress tracking, rewards, and full frontend UI (COMPLETE)
 6. ✅ **UI Enhancement Plan** - Mobile responsiveness, currency icon replacement, navigation improvements (PLANNED in UI_ENHANCEMENT_PLAN.md)
 7. **Transaction history endpoint** - GET /player/transactions with pagination
 8. **Advanced rate limiting** - Per-endpoint, per-player rate limits
@@ -248,13 +248,12 @@ See [QUEST_SYSTEM_PLAN.md](QUEST_SYSTEM_PLAN.md) for complete implementation det
 ## Security Considerations
 
 ### Authentication & Authorization (Phase 1)
-- **API Key-based**: UUID v4 keys, unique per player, stored securely
-- **HTTPS only**: Enforce in production (Heroku provides this)
-- **Header-based**: `X-API-Key` header required for all authenticated endpoints
-- **Validation**: Check Authorization header (or legacy key) on every request, return 401 if invalid/missing
-- **Rate limiting (Planned)**: Prevent brute force on tokens/keys, limit requests per identifier
-- **No password storage**: MVP has no passwords, just keys (simpler, mobile-friendly)
-- **Future**: Phase 2+ adds JWT with refresh tokens for enhanced security
+- **Email + Password Login**: Players authenticate with credentials that are hashed using bcrypt before storage.
+- **JWT Access Tokens**: Short-lived bearer tokens issued on login and attached via the `Authorization: Bearer <token>` header.
+- **Refresh Tokens with Rotation**: Long-lived refresh tokens stored server-side (hashed) and rotated on every exchange; delivered via HTTP-only cookie helper.
+- **Mandatory HTTPS**: Required in production deployments (Heroku provides TLS termination).
+- **Rate Limiting (Active)**: Global per-player request limits plus stricter voting limits enforced through `RateLimiter` dependency utilities.
+- **Token Validation**: Every authenticated endpoint depends on `get_current_player`, which verifies and decodes JWTs, enforces limits, and loads the current player.
 
 ### Anti-Cheat Measures
 - Server-side timer validation (grace period but not exploitable)
