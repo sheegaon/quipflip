@@ -6,54 +6,6 @@ import { Header } from '../components/Header';
 import apiClient, { extractErrorMessage } from '../api/client';
 import { settingsLogger } from '../utils/logger';
 
-const validatePasswordStrength = (password: string): string | null => {
-  if (password.length < 8) {
-    return 'Password must be at least 8 characters long.';
-  }
-
-  if (!/[A-Z]/.test(password) || !/[a-z]/.test(password)) {
-    return 'Password must include both uppercase and lowercase letters.';
-  }
-
-  if (!/[0-9]/.test(password)) {
-    return 'Password must include at least one number.';
-  }
-
-  return null;
-};
-
-const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-const formatDate = (dateString?: string | null) => {
-  if (!dateString) {
-    return 'Not recorded';
-  }
-
-  return new Date(dateString).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-};
-
-const validatePasswordStrength = (password: string): string | null => {
-  if (password.length < 8) {
-    return 'Password must be at least 8 characters long.';
-  }
-
-  if (!/[A-Z]/.test(password) || !/[a-z]/.test(password)) {
-    return 'Password must include both uppercase and lowercase letters.';
-  }
-
-  if (!/[0-9]/.test(password)) {
-    return 'Password must include at least one number.';
-  }
-
-  return null;
-};
-
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const formatDate = (dateString?: string | null) => {
@@ -186,49 +138,6 @@ const Settings: React.FC = () => {
 
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
       setPasswordError('New passwords do not match.');
-      return;
-    }
-
-    const strengthError = validatePasswordStrength(passwordForm.newPassword);
-    if (strengthError) {
-      setPasswordError(strengthError);
-      return;
-    }
-
-    try {
-      setPasswordLoading(true);
-      const response = await apiClient.changePassword({
-        current_password: passwordForm.currentPassword,
-        new_password: passwordForm.newPassword,
-      });
-
-      setPasswordSuccess(response.message || 'Password updated successfully.');
-      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-    } catch (err) {
-      setPasswordError(extractErrorMessage(err, 'change-password') || 'Failed to update password');
-    } finally {
-      setPasswordLoading(false);
-    }
-  };
-
-  const handlePasswordSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setPasswordError(null);
-    setPasswordSuccess(null);
-
-    if (!passwordForm.currentPassword || !passwordForm.newPassword) {
-      setPasswordError('Please provide both your current and new passwords.');
-      return;
-    }
-
-    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      setPasswordError('New passwords do not match.');
-      return;
-    }
-
-    const strengthError = validatePasswordStrength(passwordForm.newPassword);
-    if (strengthError) {
-      setPasswordError(strengthError);
       return;
     }
 
@@ -442,7 +351,7 @@ const Settings: React.FC = () => {
         <div className="tile-card p-6 mb-6">
           <h2 className="text-2xl font-display font-bold text-quip-navy mb-4">Change Password</h2>
           <p className="text-quip-teal mb-4">
-            Update your password to keep your account secure. Passwords must include upper and lowercase letters and at least one number.
+            Update your password to keep your account secure.
           </p>
           {passwordError && <p className="text-red-600 mb-3">{passwordError}</p>}
           {passwordSuccess && <p className="text-green-600 mb-3">{passwordSuccess}</p>}
