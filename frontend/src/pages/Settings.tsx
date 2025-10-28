@@ -4,6 +4,7 @@ import { useGame } from '../contexts/GameContext';
 import { useTutorial } from '../contexts/TutorialContext';
 import { Header } from '../components/Header';
 import apiClient, { extractErrorMessage } from '../api/client';
+import { settingsLogger } from '../utils/logger';
 
 const Settings: React.FC = () => {
   const { state } = useGame();
@@ -33,13 +34,18 @@ const Settings: React.FC = () => {
       setResettingTutorial(true);
       setError(null);
       setTutorialResetSuccess(false);
+      settingsLogger.debug('Resetting tutorial progress');
       resetTutorial();
       setTutorialResetSuccess(true);
+      settingsLogger.info('Tutorial progress reset');
       setTimeout(() => setTutorialResetSuccess(false), 3000);
     } catch (err) {
-      setError(extractErrorMessage(err) || 'Failed to reset tutorial');
+      const message = extractErrorMessage(err) || 'Failed to reset tutorial';
+      settingsLogger.error('Failed to reset tutorial', err);
+      setError(message);
     } finally {
       setResettingTutorial(false);
+      settingsLogger.debug('Reset tutorial flow completed');
     }
   };
 
@@ -47,6 +53,7 @@ const Settings: React.FC = () => {
     setShowAdminPasswordPrompt(true);
     setAdminPassword('');
     setAdminPasswordError(null);
+    settingsLogger.debug('Admin access prompt opened');
   };
 
   const handleAdminPasswordSubmit = async (e: React.FormEvent) => {
@@ -59,12 +66,16 @@ const Settings: React.FC = () => {
 
       if (result.valid) {
         // Password is correct, navigate to admin
+        settingsLogger.info('Admin password validated, navigating to admin');
         navigate('/admin');
       } else {
         setAdminPasswordError('Incorrect admin password');
+        settingsLogger.warn('Invalid admin password provided');
       }
     } catch (err) {
-      setAdminPasswordError(extractErrorMessage(err) || 'Failed to verify password');
+      const message = extractErrorMessage(err) || 'Failed to verify password';
+      settingsLogger.error('Failed to validate admin password', err);
+      setAdminPasswordError(message);
     }
   };
 
