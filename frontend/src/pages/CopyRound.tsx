@@ -100,6 +100,7 @@ export const CopyRound: React.FC = () => {
       const message = extractErrorMessage(err) || 'Unable to submit your phrase. The round may have expired or there may be a connection issue.';
       copyRoundLogger.error('Failed to submit copy round phrase', err);
       setError(message);
+    } finally {
       setIsSubmitting(false);
     }
   };

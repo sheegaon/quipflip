@@ -99,6 +99,7 @@ export const VoteRound: React.FC = () => {
       const message = extractErrorMessage(err) || 'Unable to submit your vote. The round may have expired or someone else may have already voted.';
       voteRoundLogger.error('Failed to submit vote', err);
       setError(message);
+    } finally {
       setIsSubmitting(false);
     }
   };

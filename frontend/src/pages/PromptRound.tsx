@@ -160,6 +160,7 @@ export const PromptRound: React.FC = () => {
       const message = extractErrorMessage(err) || 'Unable to submit your phrase. Please check your connection and try again.';
       promptRoundLogger.error('Failed to submit prompt round phrase', err);
       setError(message);
+    } finally {
       setIsSubmitting(false);
     }
   };
