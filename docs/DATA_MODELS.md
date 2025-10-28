@@ -105,12 +105,12 @@
 - `view_id` (UUID, primary key)
 - `phraseset_id` (UUID, references phrasesets.phraseset_id, indexed)
 - `player_id` (UUID, references players.player_id, indexed)
-- `payout_claimed` (boolean, default false, indexed)
+- `result_viewed` (boolean, default false, indexed)
 - `payout_amount` (integer) - prize pool payout for contributor
 - `viewed_at` (timestamp) - most recent view timestamp
 - `first_viewed_at` (timestamp, nullable) - when the player first saw the results
-- `payout_claimed_at` (timestamp, nullable) - when payout_claimed flipped to true
-- Indexes: `view_id`, `phraseset_id`, `player_id`, `payout_claimed`
+- `result_viewed_at` (timestamp, nullable) - when result_viewed flipped to true
+- Indexes: `view_id`, `phraseset_id`, `player_id`, `result_viewed`
 - Constraints: Unique composite `(player_id, phraseset_id)` - one view record per player per phraseset
 - Relationships: `phraseset`, `player`
 - Note: Used for idempotent prize collection

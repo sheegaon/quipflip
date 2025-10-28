@@ -68,7 +68,7 @@ class PhrasesetSummary(BaseSchema):
     has_copy1: bool
     has_copy2: bool
     your_payout: Optional[int]
-    payout_claimed: Optional[bool]
+    result_viewed: Optional[bool]
     new_activity_count: int = 0
 
 
@@ -143,7 +143,7 @@ class PhrasesetDetails(BaseSchema):
     your_role: Literal["prompt", "copy"]
     your_phrase: Optional[str]
     your_payout: Optional[int]
-    payout_claimed: bool
+    result_viewed: bool
     activity: list[PhrasesetActivityEntry]
     created_at: datetime
     finalized_at: Optional[datetime]

@@ -7,7 +7,7 @@ This document provides a roadmap for transitioning from **Option A** (current: a
 **Current State (Option A):**
 - Payouts are automatically added to player balance when phraseset is finalized
 - UI shows "automatically added" messaging
-- `payout_claimed` flag tracks whether player has viewed results (not whether they claimed money)
+- `result_viewed` flag tracks whether player has viewed results (not whether they claimed money)
 - Claim endpoint exists but doesn't distribute money (just toggles flag)
 
 **Desired State (Option B):**

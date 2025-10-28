@@ -40,7 +40,7 @@ result_view = ResultView(
     phraseset_id=phraseset_id,
     player_id=player_id,
     payout_amount=player_payout,
-    payout_claimed=True,  # ❌ Immediately marked as claimed
+    result_viewed=True,  # ❌ Immediately marked as claimed
     first_viewed_at=datetime.now(UTC),
     payout_claimed_at=datetime.now(UTC),
 )

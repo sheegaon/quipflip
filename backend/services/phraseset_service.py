@@ -278,7 +278,7 @@ class PhrasesetService:
             "your_role": your_role,
             "your_phrase": your_phrase,
             "your_payout": your_payout,
-            "payout_claimed": result_viewed,
+            "result_viewed": result_viewed,
             "activity": activity_payload,
             "created_at": self._ensure_utc(phraseset.created_at),
             "finalized_at": self._ensure_utc(phraseset.finalized_at),

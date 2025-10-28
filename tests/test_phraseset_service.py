@@ -152,10 +152,10 @@ async def test_get_phrasesets_and_claim(db_session):
     summary = summaries[0]
     assert summary["status"] == "finalized"
     assert summary["your_role"] == "prompt"
-    assert summary["payout_claimed"] is False or summary["payout_claimed"] is None
+    assert summary["result_viewed"] is False or summary["result_viewed"] is None
 
     details = await service.get_phraseset_details(phraseset_id, prompt_player.player_id)
-    assert details["payout_claimed"] is False
+    assert details["result_viewed"] is False
     assert details["your_role"] == "prompt"
     assert details["your_phrase"] == "KINDNESS"
 
