@@ -130,7 +130,7 @@ const Settings: React.FC = () => {
       setError(null);
       setTutorialResetSuccess(false);
       settingsLogger.debug('Resetting tutorial progress');
-      resetTutorial();
+      await resetTutorial();
       setTutorialResetSuccess(true);
       settingsLogger.info('Tutorial progress reset');
       setTimeout(() => setTutorialResetSuccess(false), 3000);

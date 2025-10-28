@@ -1,351 +1,268 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { gameContextLogger } from '../utils/logger';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+import apiClient from '../api/client';
+import { getActionErrorMessage } from '../utils/errorMessages';
+import { tutorialLogger } from '../utils/logger';
+import type { TutorialProgress, TutorialStatus } from '../api/types';
+import { getNextStep } from '../config/tutorialSteps';
 
-interface TutorialStep {
-  id: string;
-  title: string;
-  description: string;
-  completed: boolean;
-  optional?: boolean;
+export type TutorialLifecycleStatus = 'loading' | 'inactive' | 'active' | 'completed' | 'error';
+
+interface TutorialContextState {
+  status: TutorialStatus | null;
+  tutorialStatus: TutorialLifecycleStatus;
+  isActive: boolean;
+  currentStep: TutorialProgress | null;
+  loading: boolean;
+  error: string | null;
 }
 
-interface TutorialState {
-  currentStep: string | null;
-  completedSteps: Set<string>;
-  availableSteps: TutorialStep[];
-  isActive: boolean;
-  showHints: boolean;
-  tutorialMode: 'guided' | 'discovery' | 'disabled';
+interface RefreshOptions {
+  signal?: AbortSignal;
+  showLoading?: boolean;
 }
 
 interface TutorialActions {
-  startTutorial: (mode?: 'guided' | 'discovery') => void;
-  completeStep: (stepId: string) => void;
-  skipStep: (stepId: string) => void;
-  goToStep: (stepId: string) => void;
-  nextStep: () => void;
-  previousStep: () => void;
-  endTutorial: () => void;
-  resetTutorial: () => void;
-  toggleHints: () => void;
-  setTutorialMode: (mode: 'guided' | 'discovery' | 'disabled') => void;
-  // Add aliases for backward compatibility with step parameters
-  advanceStep: (stepId?: string) => void;
-  skipTutorial: () => void;
-  completeTutorial: () => void;
+  startTutorial: () => Promise<void>;
+  advanceStep: (stepId?: TutorialProgress) => Promise<void>;
+  skipTutorial: () => Promise<void>;
+  completeTutorial: () => Promise<void>;
+  resetTutorial: () => Promise<void>;
+  refreshStatus: (options?: RefreshOptions) => Promise<void>;
 }
 
-interface TutorialContextType {
-  state: TutorialState;
+interface TutorialContextType extends TutorialContextState {
+  state: TutorialContextState;
   actions: TutorialActions;
-  // Flatten some commonly used properties for easier access
-  isActive: boolean;
-  currentStep: string | null;
-  tutorialStatus: string;
-  startTutorial: (mode?: 'guided' | 'discovery') => void;
-  advanceStep: (stepId?: string) => void;
-  skipTutorial: () => void;
-  completeTutorial: () => void;
-  resetTutorial: () => void;
+  startTutorial: () => Promise<void>;
+  advanceStep: (stepId?: TutorialProgress) => Promise<void>;
+  skipTutorial: () => Promise<void>;
+  completeTutorial: () => Promise<void>;
+  resetTutorial: () => Promise<void>;
+  refreshStatus: (options?: RefreshOptions) => Promise<void>;
 }
-
-const TUTORIAL_STEPS: TutorialStep[] = [
-  {
-    id: 'welcome',
-    title: 'Welcome to QuipFlip',
-    description: 'Learn the basics of playing QuipFlip',
-    completed: false,
-  },
-  {
-    id: 'dashboard',
-    title: 'Your Dashboard',
-    description: 'Understand your game dashboard and status',
-    completed: false,
-  },
-  {
-    id: 'create-prompt',
-    title: 'Create a Prompt',
-    description: 'Learn how to create engaging prompts',
-    completed: false,
-  },
-  {
-    id: 'write-copy',
-    title: 'Write Copy',
-    description: 'Master the art of writing compelling copy',
-    completed: false,
-  },
-  {
-    id: 'vote-rounds',
-    title: 'Vote on Phrases',
-    description: 'Learn how voting works and earn rewards',
-    completed: false,
-  },
-  {
-    id: 'view-results',
-    title: 'View Results',
-    description: 'Check your performance and earnings',
-    completed: false,
-  },
-  {
-    id: 'quests',
-    title: 'Complete Quests',
-    description: 'Discover quests and bonus rewards',
-    completed: false,
-    optional: true,
-  },
-];
 
 const TutorialContext = createContext<TutorialContextType | undefined>(undefined);
 
 export const TutorialProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [tutorialState, setTutorialState] = useState<TutorialState>(() => {
-    // Load tutorial state from localStorage
-    if (typeof window === 'undefined') {
-      return {
-        currentStep: null,
-        completedSteps: new Set(),
-        availableSteps: TUTORIAL_STEPS,
-        isActive: false,
-        showHints: true,
-        tutorialMode: 'guided',
-      };
-    }
+  const [status, setStatus] = useState<TutorialStatus | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
+  const currentStep = useMemo<TutorialProgress | null>(() => {
+    if (!status) return null;
+    const progress = status.tutorial_progress;
+    if (progress === 'not_started' || progress === 'completed') {
+      return null;
+    }
+    return progress;
+  }, [status]);
+
+  const isActive = useMemo(
+    () => Boolean(status && !status.tutorial_completed && status.tutorial_progress !== 'not_started'),
+    [status],
+  );
+
+  const lifecycleStatus = useMemo<TutorialLifecycleStatus>(() => {
+    if (loading && !status) {
+      return 'loading';
+    }
+    if (error) {
+      return 'error';
+    }
+    if (!status) {
+      return 'inactive';
+    }
+    if (status.tutorial_completed) {
+      return 'completed';
+    }
+    if (status.tutorial_progress === 'not_started') {
+      return 'inactive';
+    }
+    return 'active';
+  }, [status, loading, error]);
+
+  const ensureToken = useCallback(async (): Promise<string | null> => {
     try {
-      const stored = localStorage.getItem('tutorialState');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        return {
-          currentStep: parsed.currentStep || null,
-          completedSteps: new Set(parsed.completedSteps || []),
-          availableSteps: TUTORIAL_STEPS.map(step => ({
-            ...step,
-            completed: parsed.completedSteps?.includes(step.id) || false,
-          })),
-          isActive: parsed.isActive || false,
-          showHints: parsed.showHints !== undefined ? parsed.showHints : true,
-          tutorialMode: parsed.tutorialMode || 'guided',
-        };
+      const token = await apiClient.ensureAccessToken();
+      if (!token) {
+        tutorialLogger.debug('No access token available for tutorial operation');
+        setStatus(null);
       }
+      return token;
     } catch (err) {
-      gameContextLogger.warn('Failed to load tutorial state from localStorage:', err);
+      tutorialLogger.error('Failed to ensure access token for tutorial', err);
+      setError(getActionErrorMessage('tutorial-auth', err));
+      return null;
     }
-
-    return {
-      currentStep: null,
-      completedSteps: new Set(),
-      availableSteps: TUTORIAL_STEPS,
-      isActive: false,
-      showHints: true,
-      tutorialMode: 'guided',
-    };
-  });
-
-  // Persist tutorial state to localStorage
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    try {
-      const stateToStore = {
-        currentStep: tutorialState.currentStep,
-        completedSteps: Array.from(tutorialState.completedSteps),
-        isActive: tutorialState.isActive,
-        showHints: tutorialState.showHints,
-        tutorialMode: tutorialState.tutorialMode,
-      };
-      localStorage.setItem('tutorialState', JSON.stringify(stateToStore));
-      gameContextLogger.debug('📚 Tutorial state persisted to localStorage');
-    } catch (err) {
-      gameContextLogger.warn('Failed to persist tutorial state:', err);
-    }
-  }, [tutorialState]);
-
-  const startTutorial = useCallback((mode: 'guided' | 'discovery' = 'guided') => {
-    gameContextLogger.debug('📚 Starting tutorial in mode:', mode);
-    setTutorialState(prev => ({
-      ...prev,
-      isActive: true,
-      tutorialMode: mode,
-      currentStep: prev.completedSteps.has('welcome') ? null : 'welcome',
-    }));
   }, []);
 
-  const completeStep = useCallback((stepId: string) => {
-    gameContextLogger.debug('✅ Completing tutorial step:', stepId);
-    setTutorialState(prev => {
-      const newCompletedSteps = new Set(prev.completedSteps);
-      newCompletedSteps.add(stepId);
-      
-      const updatedSteps = prev.availableSteps.map(step =>
-        step.id === stepId ? { ...step, completed: true } : step
-      );
+  const refreshStatus = useCallback(
+    async (options: RefreshOptions = {}) => {
+      const { signal, showLoading = true } = options;
+      if (showLoading) {
+        setLoading(true);
+      }
+      try {
+        const token = await ensureToken();
+        if (!token) {
+          tutorialLogger.debug('Skipping tutorial status refresh without valid session');
+          setError(null);
+          return;
+        }
 
-      // Auto-advance to next step in guided mode
-      let nextStep = prev.currentStep;
-      if (prev.tutorialMode === 'guided' && prev.currentStep === stepId) {
-        const currentIndex = TUTORIAL_STEPS.findIndex(step => step.id === stepId);
-        const nextIndex = currentIndex + 1;
-        nextStep = nextIndex < TUTORIAL_STEPS.length ? TUTORIAL_STEPS[nextIndex].id : null;
-        
-        if (nextStep) {
-          gameContextLogger.debug('🎯 Auto-advancing to next step:', nextStep);
-        } else {
-          gameContextLogger.debug('🎉 Tutorial completed!');
+        tutorialLogger.debug('Fetching tutorial status from backend');
+        const data = await apiClient.getTutorialStatus(signal);
+        setStatus(data);
+        setError(null);
+      } catch (err: any) {
+        if (err?.name === 'AbortError' || err?.code === 'ERR_CANCELED') {
+          tutorialLogger.debug('Tutorial status request aborted');
+          return;
+        }
+        const message = getActionErrorMessage('load-tutorial-status', err);
+        tutorialLogger.error('Failed to load tutorial status', err);
+        setError(message);
+      } finally {
+        if (showLoading) {
+          setLoading(false);
         }
       }
+    },
+    [ensureToken],
+  );
 
-      return {
-        ...prev,
-        completedSteps: newCompletedSteps,
-        availableSteps: updatedSteps,
-        currentStep: nextStep,
-        isActive: nextStep !== null,
-      };
-    });
-  }, []);
-
-  const skipStep = useCallback((stepId: string) => {
-    gameContextLogger.debug('⏭️ Skipping tutorial step:', stepId);
-    setTutorialState(prev => {
-      if (prev.currentStep === stepId) {
-        const currentIndex = TUTORIAL_STEPS.findIndex(step => step.id === stepId);
-        const nextIndex = currentIndex + 1;
-        const nextStep = nextIndex < TUTORIAL_STEPS.length ? TUTORIAL_STEPS[nextIndex].id : null;
-        
-        return {
-          ...prev,
-          currentStep: nextStep,
-          isActive: nextStep !== null,
-        };
+  const updateProgress = useCallback(
+    async (progress: TutorialProgress) => {
+      const token = await ensureToken();
+      if (!token) {
+        return;
       }
-      return prev;
-    });
-  }, []);
 
-  const goToStep = useCallback((stepId: string) => {
-    gameContextLogger.debug('🎯 Going to tutorial step:', stepId);
-    setTutorialState(prev => ({
-      ...prev,
-      currentStep: stepId,
-      isActive: true,
-    }));
-  }, []);
+      setLoading(true);
+      try {
+        tutorialLogger.debug('Updating tutorial progress', { progress });
+        const response = await apiClient.updateTutorialProgress(progress);
+        setStatus(response.tutorial_status);
+        setError(null);
+      } catch (err) {
+        const message = getActionErrorMessage('update-tutorial-progress', err);
+        tutorialLogger.error('Failed to update tutorial progress', err);
+        setError(message);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [ensureToken],
+  );
 
-  const nextStep = useCallback(() => {
-    setTutorialState(prev => {
-      if (!prev.currentStep) return prev;
-      
-      const currentIndex = TUTORIAL_STEPS.findIndex(step => step.id === prev.currentStep);
-      const nextIndex = currentIndex + 1;
-      const nextStepId = nextIndex < TUTORIAL_STEPS.length ? TUTORIAL_STEPS[nextIndex].id : null;
-      
-      gameContextLogger.debug('➡️ Moving to next tutorial step:', nextStepId);
-      
-      return {
-        ...prev,
-        currentStep: nextStepId,
-        isActive: nextStepId !== null,
-      };
-    });
-  }, []);
+  const startTutorial = useCallback(async () => {
+    tutorialLogger.debug('Starting tutorial');
+    await updateProgress('welcome');
+  }, [updateProgress]);
 
-  const previousStep = useCallback(() => {
-    setTutorialState(prev => {
-      if (!prev.currentStep) return prev;
-      
-      const currentIndex = TUTORIAL_STEPS.findIndex(step => step.id === prev.currentStep);
-      const previousIndex = currentIndex - 1;
-      const previousStepId = previousIndex >= 0 ? TUTORIAL_STEPS[previousIndex].id : null;
-      
-      gameContextLogger.debug('⬅️ Moving to previous tutorial step:', previousStepId);
-      
-      return {
-        ...prev,
-        currentStep: previousStepId,
-        isActive: true,
-      };
-    });
-  }, []);
+  const completeTutorial = useCallback(async () => {
+    tutorialLogger.debug('Completing tutorial');
+    await updateProgress('completed');
+  }, [updateProgress]);
 
-  const endTutorial = useCallback(() => {
-    gameContextLogger.debug('🛑 Ending tutorial');
-    setTutorialState(prev => ({
-      ...prev,
-      isActive: false,
-      currentStep: null,
-    }));
-  }, []);
+  const advanceStep = useCallback(
+    async (stepId?: TutorialProgress) => {
+      const nextStep = stepId ?? (status ? getNextStep(status.tutorial_progress) ?? undefined : undefined);
 
-  const resetTutorial = useCallback(() => {
-    gameContextLogger.debug('🔄 Resetting tutorial');
-    setTutorialState({
-      currentStep: null,
-      completedSteps: new Set(),
-      availableSteps: TUTORIAL_STEPS,
-      isActive: false,
-      showHints: true,
-      tutorialMode: 'guided',
-    });
-  }, []);
+      if (!nextStep) {
+        tutorialLogger.debug('No next tutorial step available', {
+          current: status?.tutorial_progress ?? 'none',
+        });
+        return;
+      }
 
-  const toggleHints = useCallback(() => {
-    setTutorialState(prev => {
-      const newShowHints = !prev.showHints;
-      gameContextLogger.debug('💡 Toggling tutorial hints:', newShowHints);
-      return {
-        ...prev,
-        showHints: newShowHints,
-      };
-    });
-  }, []);
+      if (nextStep === 'completed') {
+        await completeTutorial();
+        return;
+      }
 
-  const setTutorialMode = useCallback((mode: 'guided' | 'discovery' | 'disabled') => {
-    gameContextLogger.debug('📚 Setting tutorial mode:', mode);
-    setTutorialState(prev => ({
-      ...prev,
-      tutorialMode: mode,
-      isActive: mode !== 'disabled' && prev.isActive,
-    }));
-  }, []);
+      await updateProgress(nextStep);
+    },
+    [status, completeTutorial, updateProgress],
+  );
 
-  const advanceStepWithParam = useCallback((stepId?: string) => {
-    if (stepId) {
-      goToStep(stepId);
-    } else {
-      nextStep();
+  const skipTutorial = useCallback(async () => {
+    tutorialLogger.debug('Skipping tutorial');
+    await completeTutorial();
+  }, [completeTutorial]);
+
+  const resetTutorial = useCallback(async () => {
+    const token = await ensureToken();
+    if (!token) {
+      return;
     }
-  }, [goToStep, nextStep]);
 
-  const actions: TutorialActions = {
-    startTutorial,
-    completeStep,
-    skipStep,
-    goToStep,
-    nextStep,
-    previousStep,
-    endTutorial,
-    resetTutorial,
-    toggleHints,
-    setTutorialMode,
-    // Add aliases for backward compatibility
-    advanceStep: advanceStepWithParam,
-    skipTutorial: endTutorial,
-    completeTutorial: endTutorial,
-  };
+    setLoading(true);
+    try {
+      tutorialLogger.debug('Resetting tutorial via backend');
+      const data = await apiClient.resetTutorial();
+      setStatus(data);
+      setError(null);
+    } catch (err) {
+      const message = getActionErrorMessage('reset-tutorial', err);
+      tutorialLogger.error('Failed to reset tutorial', err);
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
+  }, [ensureToken]);
 
-  const value: TutorialContextType = {
-    state: tutorialState,
-    actions,
-    // Flatten commonly used properties
-    isActive: tutorialState.isActive,
-    currentStep: tutorialState.currentStep,
-    tutorialStatus: tutorialState.isActive ? 'active' : 'inactive',
-    startTutorial,
-    advanceStep: advanceStepWithParam,
-    skipTutorial: endTutorial,
-    completeTutorial: endTutorial,
-    resetTutorial,
-  };
+  useEffect(() => {
+    const controller = new AbortController();
+    refreshStatus({ signal: controller.signal });
+    return () => controller.abort();
+  }, [refreshStatus]);
+
+  const state: TutorialContextState = useMemo(
+    () => ({
+      status,
+      tutorialStatus: lifecycleStatus,
+      isActive,
+      currentStep,
+      loading,
+      error,
+    }),
+    [status, lifecycleStatus, isActive, currentStep, loading, error],
+  );
+
+  const actions: TutorialActions = useMemo(
+    () => ({
+      startTutorial,
+      advanceStep,
+      skipTutorial,
+      completeTutorial,
+      resetTutorial,
+      refreshStatus,
+    }),
+    [startTutorial, advanceStep, skipTutorial, completeTutorial, resetTutorial, refreshStatus],
+  );
+
+  const value = useMemo<TutorialContextType>(
+    () => ({
+      ...state,
+      state,
+      actions,
+      startTutorial: actions.startTutorial,
+      advanceStep: actions.advanceStep,
+      skipTutorial: actions.skipTutorial,
+      completeTutorial: actions.completeTutorial,
+      resetTutorial: actions.resetTutorial,
+      refreshStatus: actions.refreshStatus,
+    }),
+    [state, actions],
+  );
 
   return <TutorialContext.Provider value={value}>{children}</TutorialContext.Provider>;
 };

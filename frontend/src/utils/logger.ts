@@ -92,5 +92,6 @@ export const settingsLogger = createLogger('Settings');
 export const adminLogger = createLogger('Admin');
 export const loadingSpinnerLogger = createLogger('LoadingSpinner');
 export const apiLogger = createLogger('API');
+export const tutorialLogger = createLogger('Tutorial');
 
 export default createLogger;
