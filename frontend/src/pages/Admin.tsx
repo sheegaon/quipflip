@@ -231,7 +231,7 @@ const Admin: React.FC = () => {
       setAdminDeleteLookup(null);
       setAdminDeleteValue('');
       setAdminDeleteConfirm('');
-    } catch (err) {
+    } catch (err: any) {
       setAdminDeleteError(extractErrorMessage(err, 'admin-delete-player') || 'Failed to delete player');
     } finally {
       setAdminDeleteActionLoading(false);
