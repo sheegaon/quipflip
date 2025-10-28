@@ -61,8 +61,9 @@ export const Dashboard: React.FC = () => {
 
 
   const handleStartTutorial = async () => {
-    startTutorial();
-    advanceStep('dashboard');
+    dashboardLogger.debug('Starting tutorial from dashboard');
+    await startTutorial();
+    await advanceStep('dashboard');
   };
 
   const handleSkipTutorial = async () => {

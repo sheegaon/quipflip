@@ -14,7 +14,7 @@ import { voteRoundLogger } from '../utils/logger';
 export const VoteRound: React.FC = () => {
   const { state } = useGame();
   const { activeRound, roundAvailability } = state;
-  const { currentStep, advanceStep } = useTutorial();
+  const { currentStep, completeTutorial } = useTutorial();
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -48,14 +48,14 @@ export const VoteRound: React.FC = () => {
       const timeoutId = setTimeout(() => {
         // Redirect to dashboard instead of starting new rounds
         if (currentStep === 'vote_round') {
-          advanceStep('view_results');
+          completeTutorial();
         }
         navigate('/dashboard');
       }, 100);
 
       return () => clearTimeout(timeoutId);
     }
-  }, [activeRound, navigate, successMessage, voteResult, currentStep, advanceStep]);
+  }, [activeRound, navigate, successMessage, voteResult, currentStep, completeTutorial]);
 
   useEffect(() => {
     if (!roundData) {
@@ -92,7 +92,7 @@ export const VoteRound: React.FC = () => {
       });
 
       if (currentStep === 'vote_round') {
-        advanceStep('view_results');
+        completeTutorial();
       }
 
       // Navigate after showing results for 3 seconds - refresh will happen on dashboard
