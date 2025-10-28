@@ -196,4 +196,4 @@ class DeleteAccountRequest(BaseModel):
     """Request payload for self-serve account deletion."""
 
     password: constr(min_length=1, max_length=128)
-    confirmation: constr(pattern=r"^DELETE$", min_length=6, max_length=6)
+    confirmation: constr(pattern=r"^DELETE$")
