@@ -14,19 +14,21 @@ const formatWaitingCount = (count: number): string => (count > 10 ? 'over 10' : 
 
 export const Dashboard: React.FC = () => {
   const { state, actions } = useGame();
-  const { player, activeRound, pendingResults, phrasesetSummary, roundAvailability, error: contextError } = state;
-  const { refreshDashboard, clearError } = actions;
+  const {
+    player,
+    activeRound,
+    pendingResults,
+    phrasesetSummary,
+    roundAvailability,
+    error: contextError,
+    viewedResultIds,
+  } = state;
+  const { refreshDashboard, clearError, markResultsViewed } = actions;
   const { startTutorial, skipTutorial, advanceStep } = useTutorial();
   const navigate = useNavigate();
   const [isRoundExpired, setIsRoundExpired] = useState(false);
   const [startingRound, setStartingRound] = useState<string | null>(null);
   const [roundStartError, setRoundStartError] = useState<string | null>(null);
-  const [viewedResultIds, setViewedResultIds] = useState(() => {
-    const stored = sessionStorage.getItem('viewedResultIds');
-    return stored ? new Set<string>(JSON.parse(stored)) : new Set<string>();
-  });
-
-  const previousPendingResultsRef = useRef<string[]>([]);
 
   // Log component mount and key state changes
   useEffect(() => {
@@ -54,29 +56,6 @@ export const Dashboard: React.FC = () => {
     }
   }, [activeRound]);
 
-  // Reset viewed results when completely new results arrive (different set of IDs)
-  useEffect(() => {
-    const currentResultIds = pendingResults.map(r => r.phraseset_id);
-    const previousResultIds = previousPendingResultsRef.current;
-    
-    // Check if there are genuinely new results that weren't in the previous set
-    const hasNewResults = currentResultIds.some(id => !previousResultIds.includes(id));
-    
-    // Only reset if there are genuinely new results that haven't been seen before
-    if (hasNewResults && pendingResults.length > 0) {
-      // Keep the existing viewed results for IDs that still exist, remove ones that don't
-      setViewedResultIds(prevViewed => {
-        const currentIdSet = new Set(currentResultIds);
-        const existingViewed = Array.from(prevViewed).filter(id => currentIdSet.has(id));
-        const newViewedSet = new Set(existingViewed);
-        sessionStorage.setItem('viewedResultIds', JSON.stringify(Array.from(newViewedSet)));
-        return newViewedSet;
-      });
-    }
-    
-    // Update the ref with current IDs for next comparison
-    previousPendingResultsRef.current = currentResultIds;
-  }, [pendingResults]); // Only depend on pendingResults, not viewedResultIds
 
   const handleStartTutorial = async () => {
     await startTutorial();
@@ -256,9 +235,7 @@ export const Dashboard: React.FC = () => {
   const handleViewResults = () => {
     // Mark all current pending results as viewed
     const allCurrentIds = pendingResults.map(r => r.phraseset_id);
-    const newViewedSet = new Set([...viewedResultIds, ...allCurrentIds]);
-    setViewedResultIds(newViewedSet);
-    sessionStorage.setItem('viewedResultIds', JSON.stringify(Array.from(newViewedSet)));
+    markResultsViewed(allCurrentIds);
     navigate('/results');
   };
 
@@ -269,7 +246,7 @@ export const Dashboard: React.FC = () => {
   const totalUnviewedAmount = phrasesetSummary?.total_unclaimed_amount ?? 0;
 
   // Filter pending results to only show unviewed ones
-  const unviewedPendingResults = pendingResults.filter((result: PendingResult) => 
+  const unviewedPendingResults = pendingResults.filter((result: PendingResult) =>
     !result.result_viewed && !viewedResultIds.has(result.phraseset_id)
   );
 
