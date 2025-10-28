@@ -224,8 +224,8 @@ async def validate_admin_password(
 async def search_player(
     email: Optional[EmailLike] = Query(None),
     username: Optional[str] = Query(None),
-    player: Annotated[Player, Depends(get_current_player)] = None,
-    session: Annotated[AsyncSession, Depends(get_db)] = None,
+    player: Annotated[Player, Depends(get_current_player)],
+    session: Annotated[AsyncSession, Depends(get_db)],
 ) -> AdminPlayerSummary:
     """Search for a player by email or username."""
 
