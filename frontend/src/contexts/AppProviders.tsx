@@ -1,17 +1,18 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { GameProvider, useGame } from './GameContext';
 import { QuestProvider } from './QuestContext';
-import { TutorialProvider } from './TutorialContext';
+import { TutorialProvider, useTutorial } from './TutorialContext';
 import { ResultsProvider, useResults } from './ResultsContext';
 import { gameContextLogger } from '../utils/logger';
 
 // Inner component that has access to GameContext
-const ContextBridge: React.FC<{ 
+const ContextBridge: React.FC<{
   children: React.ReactNode;
   onDashboardTrigger: () => void;
 }> = ({ children, onDashboardTrigger }) => {
   const { state: gameState } = useGame();
   const { actions: resultsActions } = useResults();
+  const { refreshStatus } = useTutorial();
 
   // Sync pending results to ResultsContext when they change
   React.useEffect(() => {
@@ -21,8 +22,14 @@ const ContextBridge: React.FC<{
     resultsActions.setPendingResults(gameState.pendingResults);
   }, [gameState.pendingResults]); // Remove resultsActions from dependency array
 
+  useEffect(() => {
+    refreshStatus({ showLoading: false }).catch((err) => {
+      gameContextLogger.error('❌ Failed to refresh tutorial status after auth change', err);
+    });
+  }, [gameState.isAuthenticated, refreshStatus]);
+
   return (
-    <QuestProvider 
+    <QuestProvider
       isAuthenticated={gameState.isAuthenticated}
       onDashboardTrigger={onDashboardTrigger}
     >
