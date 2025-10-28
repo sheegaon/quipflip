@@ -222,10 +222,10 @@ async def validate_admin_password(
 
 @router.get("/players/search", response_model=AdminPlayerSummary)
 async def search_player(
-    email: Optional[EmailLike] = Query(None),
-    username: Optional[str] = Query(None),
     player: Annotated[Player, Depends(get_current_player)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    email: Optional[EmailLike] = Query(None),
+    username: Optional[str] = Query(None),
 ) -> AdminPlayerSummary:
     """Search for a player by email or username."""
 
@@ -262,7 +262,7 @@ async def search_player(
 async def delete_player_admin(
     request: AdminDeletePlayerRequest,
     player: Annotated[Player, Depends(get_current_player)],
-    session: Annotated[AsyncSession, Depends(get_db)],
+    session: Annotated[AsyncSession, Depends(get_db)]
 ) -> AdminDeletePlayerResponse:
     """Delete a player account and associated data via admin panel."""
 
@@ -338,7 +338,7 @@ async def test_phrase_validation(
         error_message = format_error if not format_valid else None
 
     elif request.validation_type == "prompt":
-        is_valid, error_message = validator.validate_prompt_phrase(
+        is_valid, error_message = await validator.validate_prompt_phrase(
             phrase,
             request.prompt_text
         )
