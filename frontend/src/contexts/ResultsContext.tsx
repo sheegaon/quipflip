@@ -163,7 +163,7 @@ export const ResultsProvider: React.FC<{
       
       return prev; // No changes, return same state object
     });
-  }, []); // Remove dependency array completely since we read from prev state
+  }, [resultsState.pendingResults]); // Add dependency on pendingResults
 
   const refreshPlayerPhrasesets = useCallback(async (
     params: PlayerPhrasesetParams = {},

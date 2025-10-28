@@ -41,7 +41,7 @@ export const Results: React.FC = () => {
     if (!selectedPhrasesetId) return;
 
     const entry = phrasesetResults[selectedPhrasesetId];
-    const shouldFetch = !entry?.data && !entry?.loading;
+    const shouldFetch = !entry?.data && !entry?.loading && !entry?.error;
 
     if (shouldFetch) {
       resultsLogger.debug('Fetching phraseset results', { selectedPhrasesetId });

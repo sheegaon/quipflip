@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useSmartPolling, PollConfigs } from '../utils/smartPolling';
 import { useLoadingState, InlineLoadingSpinner } from '../components/LoadingSpinner';
 import type {
@@ -74,8 +74,14 @@ export const Tracking: React.FC = () => {
   const listError = listEntry?.error ?? null;
 
   const hasCachedData = Boolean(listEntry?.data);
+  const hasListError = Boolean(listEntry?.error);
 
   useEffect(() => {
+    // Don't fetch if we already have data or if there's an error
+    if (hasCachedData || hasListError) {
+      return;
+    }
+
     refreshPlayerPhrasesets(params, { force: !hasCachedData })
       .then((data) => {
         trackingLogger.debug('Player phrasesets refreshed', {
@@ -86,7 +92,7 @@ export const Tracking: React.FC = () => {
       .catch((err: any) => {
         trackingLogger.error('Failed to refresh phrasesets', err);
       });
-  }, [paramsKey, refreshPlayerPhrasesets, params, hasCachedData]);
+  }, [paramsKey, hasCachedData, hasListError]); // Remove refreshPlayerPhrasesets and params from dependencies
 
   useEffect(() => {
     if (phrasesets.length === 0) {
@@ -124,10 +130,16 @@ export const Tracking: React.FC = () => {
   const detailsError = selectedDetailsEntry?.error ?? null;
 
   const hasDetailsData = Boolean(selectedDetailsEntry?.data);
+  const hasDetailsError = Boolean(selectedDetailsEntry?.error);
 
   useEffect(() => {
     if (!selectedSummary?.phraseset_id) {
       stopPoll('phraseset-details');
+      return;
+    }
+
+    // Don't fetch if we already have data or if there's an error
+    if (hasDetailsData || hasDetailsError) {
       return;
     }
 
@@ -141,7 +153,7 @@ export const Tracking: React.FC = () => {
       .catch((err: any) => {
         trackingLogger.error('Failed to refresh phraseset details', err);
       });
-  }, [selectedSummary?.phraseset_id, refreshPhrasesetDetails, hasDetailsData, stopPoll]);
+  }, [selectedSummary?.phraseset_id, hasDetailsData, hasDetailsError, stopPoll]); // Removed refreshPhrasesetDetails from dependencies
 
   useEffect(() => {
     if (!selectedSummary?.phraseset_id) {
@@ -176,7 +188,7 @@ export const Tracking: React.FC = () => {
     } else {
       clearLoading('phrasesets');
     }
-  }, [listLoading, setLoading, clearLoading]);
+  }, [listLoading]); // Remove setLoading and clearLoading from dependencies
 
   useEffect(() => {
     if (detailsLoading) {
@@ -188,7 +200,7 @@ export const Tracking: React.FC = () => {
     } else {
       clearLoading('details');
     }
-  }, [detailsLoading, setLoading, clearLoading]);
+  }, [detailsLoading]); // Remove setLoading and clearLoading from dependencies
 
   const handleSelect = (summary: PhrasesetSummary) => {
     const id = summary.phraseset_id ?? summary.prompt_round_id;

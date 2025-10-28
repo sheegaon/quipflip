@@ -133,13 +133,19 @@ export const Dashboard: React.FC = () => {
     }
   }, [activeRoundRoute, navigate]);
 
-  const handleRoundExpired = useCallback(() => {
+  const handleRoundExpired = useCallback(async () => {
     dashboardLogger.debug('Round expired, setting flag and triggering refresh');
     setIsRoundExpired(true);
-    // Immediately refresh dashboard to clear expired round
-    refreshDashboard().catch((err) => {
+    
+    try {
+      // Refresh dashboard to clear expired round and get latest state
+      await refreshDashboard();
+      dashboardLogger.debug('Dashboard refreshed successfully after round expiration');
+    } catch (err) {
       dashboardLogger.error('Failed to refresh dashboard after expiration:', err);
-    });
+      // Even if refresh fails, ensure the expired state is set
+      setIsRoundExpired(true);
+    }
   }, [refreshDashboard]);
 
   const handleStartPrompt = async () => {
