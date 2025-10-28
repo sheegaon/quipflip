@@ -1,6 +1,7 @@
 """FastAPI application entry point."""
 import asyncio
-from fastapi import FastAPI
+import time
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 import logging
 from logging.handlers import RotatingFileHandler
@@ -17,15 +18,27 @@ from backend.middleware.deduplication import deduplication_middleware
 logs_dir = Path("logs")
 logs_dir.mkdir(exist_ok=True)
 
-# Set up log file path (no timestamp - using rotation instead)
+# Set up log file paths
 log_file = logs_dir / "quipflip.log"
+sql_log_file = logs_dir / "quipflip_sql.log"
+api_log_file = logs_dir / "quipflip_api.log"
 
-# Print log file location to console immediately
-print(f"Logging to: {log_file.absolute()}")
+# Print log file locations to console immediately
+print(f"General logging to: {log_file.absolute()}")
+print(f"SQL logging to: {sql_log_file.absolute()}")
+print(f"API requests logging to: {api_log_file.absolute()}")
 
-# Create rotating file handler (1MB max size, keep 10 backup files)
-rotating_handler = RotatingFileHandler(log_file, maxBytes=1024 * 1024, backupCount=10)  # 1 MB
+# Create rotating file handler for general logs (1MB max size, keep 5 backup files)
+rotating_handler = RotatingFileHandler(log_file, maxBytes=1024 * 1024, backupCount=5)  # 1 MB
 rotating_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+
+# Create rotating file handler for SQL logs (1MB max size, keep 5 backup files)
+sql_rotating_handler = RotatingFileHandler(sql_log_file, maxBytes=1024 * 1024, backupCount=5)  # 1 MB
+sql_rotating_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+
+# Create rotating file handler for API request logs (2MB max size, keep 15 backup files)
+api_rotating_handler = RotatingFileHandler(api_log_file, maxBytes=2 * 1024 * 1024, backupCount=15, encoding='utf-8')  # 2 MB
+api_rotating_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 
 # Configure logging with both console and rotating file handlers
 # Force=True ensures we override any existing configuration (e.g., from uvicorn)
@@ -43,6 +56,13 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
+# Create dedicated API request logger
+api_logger = logging.getLogger("quipflip.api")
+api_logger.handlers.clear()  # Remove any existing handlers
+api_logger.addHandler(api_rotating_handler)
+api_logger.setLevel(logging.INFO)
+api_logger.propagate = False  # Prevent propagation to root logger
+
 # Add the rotating file handler to the root logger explicitly
 root_logger = logging.getLogger()
 if not any(isinstance(h, RotatingFileHandler) for h in root_logger.handlers):
@@ -54,6 +74,13 @@ uvicorn_access_logger.setLevel(logging.INFO)
 # Add rotating file handler to uvicorn access logger if it doesn't have one
 if rotating_handler not in uvicorn_access_logger.handlers:
     uvicorn_access_logger.addHandler(rotating_handler)
+
+# Configure SQLAlchemy engine logger to write to separate SQL log file
+sqlalchemy_logger = logging.getLogger("sqlalchemy.engine.Engine")
+sqlalchemy_logger.handlers.clear()  # Remove any existing handlers
+sqlalchemy_logger.addHandler(sql_rotating_handler)
+sqlalchemy_logger.setLevel(logging.INFO)
+sqlalchemy_logger.propagate = False  # Prevent propagation to root logger to avoid duplication
 
 # Test that logging is working
 logger.info("=" * 100)
@@ -83,7 +110,6 @@ class SQLTransactionFilter(logging.Filter):
 
 
 # Apply the filter to SQLAlchemy engine logger
-sqlalchemy_logger = logging.getLogger("sqlalchemy.engine.Engine")
 sqlalchemy_logger.addFilter(SQLTransactionFilter())
 
 settings = get_settings()
@@ -269,6 +295,73 @@ app = FastAPI(
     version="1.3.0",
     lifespan=lifespan,
 )
+
+
+# Comprehensive API Request Logging Middleware
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """
+    Comprehensive request logging middleware that captures all API requests and responses.
+    Logs to dedicated API log file with detailed information including timing, status codes,
+    client info, and request/response details.
+    """
+    start_time = time.time()
+    
+    # Extract client information
+    client_ip = request.client.host if request.client else "unknown"
+    user_agent = request.headers.get("user-agent", "unknown")
+    
+    # Extract request details
+    method = request.method
+    url = str(request.url)
+    path = request.url.path
+    query_params = str(request.query_params) if request.query_params else ""
+    
+    # Log request start
+    request_id = f"{method}:{path}:{int(start_time * 1000) % 100000}"  # Simple request ID
+    
+    api_logger.info(f">> {request_id} | START | {method} {path} | IP: {client_ip} | UA: {user_agent[:50]}...")
+    
+    # Add query params if present
+    if query_params:
+        api_logger.info(f">> {request_id} | QUERY | {query_params}")
+    
+    # Process request and measure response time
+    try:
+        response = await call_next(request)
+        process_time = time.time() - start_time
+        
+        # Log successful response
+        api_logger.info(
+            f"<< {request_id} | COMPLETE | {method} {path} | "
+            f"Status: {response.status_code} | "
+            f"Time: {process_time:.3f}s | "
+            f"IP: {client_ip}"
+        )
+        
+        # Add response headers for debugging if needed
+        if response.status_code >= 400:
+            content_type = response.headers.get("content-type", "unknown")
+            api_logger.warning(
+                f"<< {request_id} | ERROR_RESPONSE | "
+                f"Content-Type: {content_type}"
+            )
+        
+        return response
+        
+    except Exception as e:
+        process_time = time.time() - start_time
+        
+        # Log exception
+        api_logger.error(
+            f"<< {request_id} | EXCEPTION | {method} {path} | "
+            f"Error: {str(e)[:100]} | "
+            f"Time: {process_time:.3f}s | "
+            f"IP: {client_ip}"
+        )
+        
+        # Re-raise the exception
+        raise
 
 
 # CORS middleware with environment-based origins
