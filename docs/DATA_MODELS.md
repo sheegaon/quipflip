@@ -38,7 +38,7 @@
 
 - **Prompt-specific fields** (nullable for non-prompt rounds):
   - `prompt_id` (UUID, references prompts.prompt_id)
-  - `prompt_text` (string) - denormalized for performance
+  - `text` (string) - denormalized for performance
   - `submitted_phrase` (string, nullable) - prompt player's phrase
   - `phraseset_status` (string, nullable) - waiting_copies, waiting_copy1, active, finalized, abandoned
   - `copy1_player_id` (UUID, nullable, references players.player_id, indexed)
