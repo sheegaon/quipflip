@@ -97,8 +97,8 @@ Your goal is to identify which phrase was the original. Choose carefully - corre
     target: '.tutorial-vote-round',
     position: 'top',
     action: 'wait',
-    nextStep: 'completed',
-    showSkip: true,
+    // Removed nextStep to show "End Tutorial" button
+    showSkip: false, // Hide skip button on final tutorial step
     showBack: false,
   },
 
