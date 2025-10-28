@@ -71,7 +71,7 @@ export interface PendingResult {
   prompt_text: string;
   completed_at: string;
   role: string;
-  payout_claimed: boolean;
+  result_viewed: boolean;
 }
 
 export interface PendingResultsResponse {
@@ -180,7 +180,7 @@ export interface PhrasesetSummary {
   has_copy1: boolean;
   has_copy2: boolean;
   your_payout: number | null;
-  payout_claimed: boolean | null;
+  result_viewed: boolean | null;
   new_activity_count: number;
 }
 
@@ -260,7 +260,7 @@ export interface PhrasesetDetails {
   your_role: 'prompt' | 'copy';
   your_phrase: string | null;
   your_payout: number | null;
-  payout_claimed: boolean;
+  result_viewed: boolean;
   activity: PhrasesetActivityEntry[];
   created_at: string;
   finalized_at: string | null;
@@ -340,10 +340,10 @@ export interface EarningsBreakdown {
   vote_earnings: number;
   daily_bonuses: number;
   total_earnings: number;
-  prompt_costs: number;
-  copy_costs: number;
-  vote_costs: number;
-  total_costs: number;
+  prompt_spending: number;
+  copy_spending: number;
+  vote_spending: number;
+  total_spending: number;
 }
 
 export interface PlayFrequency {

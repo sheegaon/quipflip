@@ -281,7 +281,7 @@ async def get_pending_results(
                 prompt_text=entry["prompt_text"],
                 completed_at=ensure_utc(finalized_at),
                 role=entry["your_role"],
-                payout_claimed=entry.get("payout_claimed", False),
+                result_viewed=entry.get("result_viewed", False),
             )
         )
 

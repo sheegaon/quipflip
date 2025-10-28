@@ -24,6 +24,7 @@ from backend.services.ai.metrics_service import AIMetricsService, MetricsTracker
 from backend.services.player_service import PlayerService
 from backend.services.round_service import RoundService
 from .prompt_builder import build_copy_prompt
+from backend.services.queue_service import QueueService
 
 
 logger = logging.getLogger(__name__)
@@ -472,6 +473,13 @@ class AIService:
             # Process each waiting prompt
             for prompt_round in final_prompts:
                 try:
+                    # Try to claim the prompt in the queue so only one worker (AI or other) processes it
+                    claimed = QueueService.remove_prompt_round_from_queue(prompt_round.round_id)
+                    if not claimed:
+                        # Someone else claimed or removed it from the queue
+                        logger.debug(f"Skipping prompt {prompt_round.round_id} - could not claim from queue")
+                        continue
+
                     # Generate AI copy phrase with proper validation context
                     copy_phrase = await self.generate_copy_phrase(prompt_round.submitted_phrase, prompt_round)
 
@@ -512,6 +520,12 @@ class AIService:
                 except Exception as e:
                     logger.error(f"Failed to generate AI copy for prompt {prompt_round.round_id}: {e}")
                     stats["errors"] += 1
+                    # Put the prompt back into the queue so it can be retried later
+                    try:
+                        QueueService.add_prompt_round_to_queue(prompt_round.round_id)
+                        logger.debug(f"Re-enqueued prompt {prompt_round.round_id} after AI failure")
+                    except Exception as q_e:
+                        logger.error(f"Failed to re-enqueue prompt {prompt_round.round_id}: {q_e}")
                     continue
 
             # Query for phrasesets waiting for votes that:

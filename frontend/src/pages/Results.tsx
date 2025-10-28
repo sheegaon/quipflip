@@ -31,6 +31,14 @@ export const Results: React.FC = () => {
         setLoading(true);
         setError(null);
         const data = await getPhrasesetResults(selectedPhrasesetId);
+        
+        // Handle case where phraseset is not ready for results viewing
+        if (data === null) {
+          setError('This quipset is not ready for results viewing yet. It may still be in progress or missing some data.');
+          setResults(null);
+          return;
+        }
+        
         setResults(data);
         // Refresh dashboard to update pending results and balance (in case payout was collected)
         await refreshDashboard();
@@ -93,7 +101,7 @@ export const Results: React.FC = () => {
                       {result.prompt_text}
                     </p>
                     <p className="text-xs text-quip-teal mt-1">
-                      Role: {result.role} • {result.payout_claimed ? 'Claimed' : '✨ New!'}
+                      Role: {result.role} • {result.result_viewed ? 'Viewed' : '✨ New!'}
                     </p>
                   </button>
                 ))}

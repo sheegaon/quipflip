@@ -41,7 +41,7 @@ class PendingResult(BaseSchema):
     prompt_text: str
     completed_at: datetime
     role: str  # "prompt" or "copy"
-    payout_claimed: bool
+    result_viewed: bool  # Note: This field is actually tracking result_viewed status in the backend
 
 
 class PendingResultsResponse(BaseModel):
@@ -76,10 +76,10 @@ class EarningsBreakdown(BaseModel):
     vote_earnings: int
     daily_bonuses: int
     total_earnings: int
-    prompt_costs: int
-    copy_costs: int
-    vote_costs: int
-    total_costs: int
+    prompt_spending: int
+    copy_spending: int
+    vote_spending: int
+    total_spending: int
 
 
 class PlayFrequency(BaseModel):

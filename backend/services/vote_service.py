@@ -799,20 +799,15 @@ class VoteService:
                     player_payout = payout_info["payout"]
                     break
 
-            # Create result view
-            # Note: payout_claimed is set to False because payouts are automatically
-            # distributed at finalization. This flag now tracks whether the player has
-            # explicitly "acknowledged" their results via the claim action.
-            # For Option A (current): This remains False, money already added at finalization
-            # For Option B (future): Change finalization to NOT auto-pay, and claim endpoint will pay
+            # Create result view and mark as viewed since player is viewing results now
             result_view = ResultView(
                 view_id=uuid.uuid4(),
                 phraseset_id=phraseset_id,
                 player_id=player_id,
                 payout_amount=player_payout,
-                payout_claimed=False,  # Changed from True - payout already given at finalization
+                result_viewed=True,  # Mark as viewed since player is viewing results now
                 first_viewed_at=datetime.now(UTC),
-                payout_claimed_at=None,  # Not claimed yet
+                result_viewed_at=datetime.now(UTC),  # Set viewed timestamp
             )
             self.db.add(result_view)
             await self.db.commit()
@@ -820,11 +815,13 @@ class VoteService:
             logger.info(f"Player {player_id} viewed results for phraseset {phraseset_id} (payout ${player_payout} was auto-distributed at finalization)")
         else:
             updated = False
+            # Mark as viewed if not already viewed
+            if not result_view.result_viewed:
+                result_view.result_viewed = True
+                result_view.result_viewed_at = datetime.now(UTC)
+                updated = True
             if not result_view.first_viewed_at:
                 result_view.first_viewed_at = datetime.now(UTC)
-                updated = True
-            if result_view.payout_claimed and not result_view.payout_claimed_at:
-                result_view.payout_claimed_at = result_view.first_viewed_at or datetime.now(UTC)
                 updated = True
             if updated:
                 await self.db.commit()
@@ -869,6 +866,6 @@ class VoteService:
             "your_payout": result_view.payout_amount,
             "total_pool": phraseset.total_pool,
             "total_votes": phraseset.vote_count,
-            "already_collected": result_view.payout_claimed,
+            "result_viewed": result_view.result_viewed,
             "finalized_at": phraseset.finalized_at,
         }

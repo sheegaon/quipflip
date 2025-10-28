@@ -264,7 +264,7 @@ See [QUEST_SYSTEM_PLAN.md](QUEST_SYSTEM_PLAN.md) for complete implementation det
 
 ### Data Integrity
 - **Atomic transactions**: All balance updates use database transactions
-- **Idempotent prize collection**: ResultView table tracks payout_claimed flag
+- **Idempotent prize collection**: ResultView table tracks result_viewed flag
 - **Transaction ledger**: Every balance change creates Transaction record with balance_after
 - **Optimistic locking**: Prevent race conditions on concurrent operations
 - **Distributed locks**: Use Redis (or fallback) for critical sections (balance updates, queue operations)
@@ -403,7 +403,7 @@ See [QUEST_SYSTEM_PLAN.md](QUEST_SYSTEM_PLAN.md) for complete implementation det
 
 **Result Views Table:**
 - `player_id, phraseset_id` (composite unique, for idempotent collection)
-- `payout_claimed` (for finding pending results)
+- `result_viewed` (for finding pending results)
 
 ---
 

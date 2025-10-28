@@ -288,7 +288,7 @@ Get list of finalized phrasesets awaiting result viewing.
       "prompt_text": "the meaning of life is",
       "completed_at": "2025-01-06T12:00:00",
       "role": "prompt",
-      "payout_claimed": false
+      "result_viewed": false
     }
   ]
 }
@@ -682,7 +682,7 @@ Get full contributor view for a phraseset the player participated in.
   "your_role": "prompt",
   "your_phrase": "FAMOUS",
   "your_payout": 150,
-  "payout_claimed": true,
+  "result_viewed": true,
   "activity": [
     {
       "activity_id": "uuid",

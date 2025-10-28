@@ -388,15 +388,15 @@ class StatisticsService:
                 func.sum(case(
                     (Transaction.type == "prompt_entry", func.abs(Transaction.amount)),
                     else_=0
-                )).label("prompt_costs"),
+                )).label("prompt_spending"),
                 func.sum(case(
                     (Transaction.type == "copy_entry", func.abs(Transaction.amount)),
                     else_=0
-                )).label("copy_costs"),
+                )).label("copy_spending"),
                 func.sum(case(
                     (Transaction.type == "vote_entry", func.abs(Transaction.amount)),
                     else_=0
-                )).label("vote_costs")
+                )).label("vote_spending")
             )
             .where(
                 and_(
@@ -408,10 +408,10 @@ class StatisticsService:
 
         costs_stats = costs_result.one()
 
-        prompt_costs = costs_stats.prompt_costs or 0
-        copy_costs = costs_stats.copy_costs or 0
-        vote_costs = costs_stats.vote_costs or 0
-        total_costs = prompt_costs + copy_costs + vote_costs
+        prompt_spending = costs_stats.prompt_spending or 0
+        copy_spending = costs_stats.copy_spending or 0
+        vote_spending = costs_stats.vote_spending or 0
+        total_spending = prompt_spending + copy_spending + vote_spending
 
         return EarningsBreakdown(
             prompt_earnings=prompt_earnings,
@@ -419,10 +419,10 @@ class StatisticsService:
             vote_earnings=vote_earnings,
             daily_bonuses=daily_bonuses,
             total_earnings=total_earnings,
-            prompt_costs=prompt_costs,
-            copy_costs=copy_costs,
-            vote_costs=vote_costs,
-            total_costs=total_costs,
+            prompt_spending=prompt_spending,
+            copy_spending=copy_spending,
+            vote_spending=vote_spending,
+            total_spending=total_spending,
         )
 
     async def _calculate_play_frequency(

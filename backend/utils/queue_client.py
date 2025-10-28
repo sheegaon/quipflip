@@ -68,8 +68,15 @@ class QueueClient:
             result = self.redis.lindex(queue_name, index)
             return json.loads(result) if result else None
         else:
-            # In-memory doesn't support peek efficiently, return None
-            return None
+            with self._memory_lock:
+                queue = self._memory_queues.get(queue_name)
+                if not queue:
+                    return None
+                with queue.mutex:
+                    try:
+                        return queue.queue[index]
+                    except IndexError:
+                        return None
 
     def remove(self, queue_name: str, item: dict) -> bool:
         """Remove specific item from queue (for abandoned rounds)."""
@@ -78,6 +85,18 @@ class QueueClient:
             removed = self.redis.lrem(queue_name, 1, json.dumps(item))
             return removed > 0
         else:
-            # In-memory doesn't support remove efficiently
-            # For MVP, we'll just skip this functionality
-            return False
+            with self._memory_lock:
+                queue = self._memory_queues.get(queue_name)
+                if not queue:
+                    return False
+                with queue.mutex:
+                    try:
+                        queue.queue.remove(item)
+                    except ValueError:
+                        return False
+
+                    if queue.unfinished_tasks > 0:
+                        queue.unfinished_tasks -= 1
+                        if queue.unfinished_tasks == 0:
+                            queue.all_tasks_done.notify_all()
+                    return True
