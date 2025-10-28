@@ -30,4 +30,4 @@ class ResultView(Base):
     )
 
     def __repr__(self):
-        return f"<ResultView(view_id={self.view_id}, claimed={self.result_viewed})>"
+        return f"<ResultView(view_id={self.view_id}, viewed={self.result_viewed})>"

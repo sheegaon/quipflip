@@ -103,7 +103,7 @@ class PhrasesetService:
         return summary
 
     async def get_unclaimed_results(self, player_id: UUID) -> dict:
-        """Return finalized phrasesets with unclaimed payouts."""
+        """Return finalized phrasesets with unviewed results."""
         contributions = await self._build_contributions(player_id)
         unclaimed: list[dict] = []
         total_amount = 0
@@ -289,7 +289,7 @@ class PhrasesetService:
         phraseset_id: UUID,
         player_id: UUID,
     ) -> dict:
-        """Mark a finalized phraseset payout as claimed."""
+        """Mark a finalized phraseset result as viewed (legacy endpoint for compatibility)."""
         phraseset = await self.db.get(Phraseset, phraseset_id)
         if not phraseset:
             raise ValueError("Phraseset not found")
@@ -306,14 +306,14 @@ class PhrasesetService:
             raise ValueError("Not a contributor to this phraseset")
 
         result_view = await self._load_result_view(phraseset, player_id, create_if_missing=True)
-        already_claimed = result_view.payout_claimed
+        already_viewed = result_view.result_viewed
 
         if not result_view.first_viewed_at:
             result_view.first_viewed_at = datetime.now(UTC)
 
-        if not result_view.payout_claimed:
-            result_view.payout_claimed = True
-            result_view.payout_claimed_at = datetime.now(UTC)
+        if not result_view.result_viewed:
+            result_view.result_viewed = True
+            result_view.result_viewed_at = datetime.now(UTC)
             await self.db.commit()
         else:
             await self.db.commit()
@@ -322,14 +322,14 @@ class PhrasesetService:
         if player:
             await self.db.refresh(player)
 
-        # Invalidate cached contributions since payout_claimed status changed
+        # Invalidate cached contributions since result_viewed status changed
         self._invalidate_contributions_cache(player_id)
 
         return {
             "success": True,
             "amount": result_view.payout_amount,
             "new_balance": player.balance if player else 0,
-            "already_claimed": already_claimed,
+            "already_claimed": already_viewed,  # For compatibility with frontend
         }
 
     async def is_contributor(self, phraseset_id: UUID, player_id: UUID) -> bool:
@@ -418,7 +418,7 @@ class PhrasesetService:
         for prompt_round in prompt_rounds:
             phraseset = phraseset_map.get(prompt_round.round_id)
             result_view = result_view_map.get(phraseset.phraseset_id) if phraseset else None
-            payout_claimed = result_view.payout_claimed if result_view else False
+            result_viewed = result_view.result_viewed if result_view else False
             your_payout = None
             if phraseset and phraseset.status == "finalized":
                 payouts = await self._get_payouts_cached(phraseset, payout_cache)
@@ -443,7 +443,7 @@ class PhrasesetService:
                     "has_copy1": bool(prompt_round.copy1_player_id),
                     "has_copy2": bool(prompt_round.copy2_player_id),
                     "your_payout": your_payout,
-                    "payout_claimed": payout_claimed,
+                    "result_viewed": result_viewed,
                     "new_activity_count": 0,
                 }
             )
@@ -459,7 +459,7 @@ class PhrasesetService:
                     continue
 
             result_view = result_view_map.get(phraseset.phraseset_id) if phraseset else None
-            payout_claimed = result_view.payout_claimed if result_view else False
+            result_viewed = result_view.result_viewed if result_view else False
             your_payout = None
             if phraseset and phraseset.status == "finalized":
                 payouts = await self._get_payouts_cached(phraseset, payout_cache)
@@ -484,7 +484,7 @@ class PhrasesetService:
                     "has_copy1": bool(prompt_round.copy1_player_id) if prompt_round else bool(phraseset),
                     "has_copy2": bool(prompt_round.copy2_player_id) if prompt_round else bool(phraseset),
                     "your_payout": your_payout,
-                    "payout_claimed": payout_claimed,
+                    "result_viewed": result_viewed,
                     "new_activity_count": 0,
                 }
             )
@@ -528,7 +528,7 @@ class PhrasesetService:
                 phraseset_id=phraseset.phraseset_id,
                 player_id=player_id,
                 payout_amount=payout_amount,
-                payout_claimed=False,
+                result_viewed=False,  # Updated to use result_viewed
             )
             self.db.add(result_view)
             await self.db.flush()

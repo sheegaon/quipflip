@@ -101,7 +101,7 @@ export const Results: React.FC = () => {
                       {result.prompt_text}
                     </p>
                     <p className="text-xs text-quip-teal mt-1">
-                      Role: {result.role} • {result.payout_claimed ? 'Claimed' : '✨ New!'}
+                      Role: {result.role} • {result.payout_claimed ? 'Viewed' : '✨ New!'}
                     </p>
                   </button>
                 ))}
