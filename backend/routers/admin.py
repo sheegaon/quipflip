@@ -263,9 +263,9 @@ async def delete_player_admin(
 ) -> AdminDeletePlayerResponse:
     """Delete a player account and associated data via admin panel."""
 
-    identifier = request.player_id or request.email or request.username
-    if not identifier:
+    if not any((request.player_id, request.email, request.username)):
         raise HTTPException(status_code=400, detail="missing_identifier")
+
 
     player_service = PlayerService(session)
     target_player: Player | None = None
