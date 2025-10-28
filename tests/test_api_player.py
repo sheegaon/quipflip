@@ -3,6 +3,7 @@ import pytest
 from uuid import uuid4
 
 from httpx import AsyncClient, ASGITransport
+from backend.config import get_settings
 
 
 @pytest.mark.asyncio
@@ -23,7 +24,8 @@ async def test_create_player(test_app):
     assert "access_token" in data
     assert "refresh_token" in data
     assert "username" in data
-    assert data["balance"] == 1000
+    settings = get_settings()
+    assert data["balance"] == settings.starting_balance
     assert "message" in data
     assert data["username"]
     assert "Player created!" in data["message"]

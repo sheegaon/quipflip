@@ -32,6 +32,10 @@ import type {
   QuestListResponse,
   ClaimQuestRewardResponse,
   DashboardData,
+  ChangePasswordResponse,
+  UpdateEmailResponse,
+  AdminPlayerSummary,
+  AdminDeletePlayerResponse,
 } from './types';
 
 // Base URL - configure based on environment
@@ -331,6 +335,33 @@ export const apiClient = {
     clearStoredCredentials();
   },
 
+  async changePassword(
+    payload: { current_password: string; new_password: string },
+    signal?: AbortSignal,
+  ): Promise<ChangePasswordResponse> {
+    const { data } = await api.post<ChangePasswordResponse>('/player/password', payload, { signal });
+    if (data?.access_token) {
+      setAccessToken(data.access_token, data.expires_in);
+    }
+    return data;
+  },
+
+  async updateEmail(
+    payload: { new_email: string; password: string },
+    signal?: AbortSignal,
+  ): Promise<UpdateEmailResponse> {
+    const { data } = await api.patch<UpdateEmailResponse>('/player/email', payload, { signal });
+    return data;
+  },
+
+  async deleteAccount(
+    payload: { password: string; confirmation: string },
+    signal?: AbortSignal,
+  ): Promise<void> {
+    await api.delete('/player/account', { data: payload, signal });
+    clearStoredCredentials();
+  },
+
   async getBalance(signal?: AbortSignal): Promise<Player> {
     const { data } = await api.get('/player/balance', { signal });
     return data;
@@ -502,6 +533,25 @@ export const apiClient = {
 
   async updateAdminConfig(key: string, value: any, signal?: AbortSignal): Promise<{ success: boolean; key: string; value: any; message?: string }> {
     const { data } = await api.patch('/admin/config', { key, value }, { signal });
+    return data;
+  },
+
+  async adminSearchPlayer(
+    params: { email?: string; username?: string },
+    signal?: AbortSignal,
+  ): Promise<AdminPlayerSummary> {
+    const { data } = await api.get('/admin/players/search', { params, signal });
+    return data;
+  },
+
+  async adminDeletePlayer(
+    payload: { player_id?: string; email?: string; username?: string; confirmation: 'DELETE' },
+    signal?: AbortSignal,
+  ): Promise<AdminDeletePlayerResponse> {
+    const { data } = await api.delete('/admin/players', {
+      data: payload,
+      signal,
+    });
     return data;
   },
 

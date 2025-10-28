@@ -20,7 +20,12 @@ from backend.utils.simple_jwt import (
     ExpiredSignatureError,
     InvalidTokenError,
 )
-from backend.utils.passwords import hash_password, verify_password
+from backend.utils.passwords import (
+    hash_password,
+    verify_password,
+    validate_password_strength,
+    PasswordValidationError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +51,11 @@ class AuthService:
         from backend.services.quest_service import QuestService
 
         email_normalized = email.strip().lower()
+        try:
+            validate_password_strength(password)
+        except PasswordValidationError as exc:
+            raise AuthError(str(exc)) from exc
+
         password_hash = hash_password(password)
 
         # Generate unique username and pseudonym for this player

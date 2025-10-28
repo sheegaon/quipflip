@@ -4,6 +4,7 @@ import { useGame } from '../contexts/GameContext';
 import { Header } from '../components/Header';
 import apiClient, { extractErrorMessage } from '../api/client';
 import { EditableConfigField } from '../components/EditableConfigField';
+import type { AdminPlayerSummary } from '../api/types';
 import { adminLogger } from '../utils/logger';
 
 interface GameConfig {
@@ -84,6 +85,15 @@ const Admin: React.FC = () => {
   const [otherCopyPhrase, setOtherCopyPhrase] = useState('');
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [validating, setValidating] = useState(false);
+  type AdminDeleteIdentifier = 'email' | 'username';
+  const [adminDeleteIdentifier, setAdminDeleteIdentifier] = useState<AdminDeleteIdentifier>('email');
+  const [adminDeleteValue, setAdminDeleteValue] = useState('');
+  const [adminDeleteLookup, setAdminDeleteLookup] = useState<AdminPlayerSummary | null>(null);
+  const [adminDeleteLoading, setAdminDeleteLoading] = useState(false);
+  const [adminDeleteActionLoading, setAdminDeleteActionLoading] = useState(false);
+  const [adminDeleteError, setAdminDeleteError] = useState<string | null>(null);
+  const [adminDeleteSuccess, setAdminDeleteSuccess] = useState<string | null>(null);
+  const [adminDeleteConfirm, setAdminDeleteConfirm] = useState('');
 
   useEffect(() => {
     const loadConfig = async () => {
@@ -108,6 +118,15 @@ const Admin: React.FC = () => {
 
     loadConfig();
   }, []);
+
+  const formatDateTime = (value: string) =>
+    new Date(value).toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
 
   const handleSaveConfig = async (key: string, value: number | string) => {
     try {
@@ -165,6 +184,79 @@ const Admin: React.FC = () => {
     } finally {
       setValidating(false);
       adminLogger.debug('Phrase validation test flow completed');
+    }
+  };
+
+  const handleAdminDeleteSearch = async () => {
+    const trimmed = adminDeleteValue.trim();
+    if (!trimmed) {
+      setAdminDeleteError('Enter a value to search.');
+      setAdminDeleteLookup(null);
+      return;
+    }
+
+    try {
+      setAdminDeleteLoading(true);
+      setAdminDeleteError(null);
+      setAdminDeleteSuccess(null);
+      setAdminDeleteLookup(null);
+      const params = adminDeleteIdentifier === 'email' ? { email: trimmed } : { username: trimmed };
+      const result = await apiClient.adminSearchPlayer(params);
+      setAdminDeleteLookup(result);
+      setAdminDeleteConfirm('');
+    } catch (err: any) {
+      if (err?.detail === 'player_not_found') {
+        setAdminDeleteError('No account found with that identifier.');
+      } else {
+        setAdminDeleteError(extractErrorMessage(err, 'admin-search-player') || 'Failed to find player');
+      }
+    } finally {
+      setAdminDeleteLoading(false);
+    }
+  };
+
+  const handleAdminDeleteClear = () => {
+    setAdminDeleteValue('');
+    setAdminDeleteLookup(null);
+    setAdminDeleteError(null);
+    setAdminDeleteSuccess(null);
+    setAdminDeleteConfirm('');
+  };
+
+  useEffect(() => {
+    if (!adminDeleteSuccess) {
+      return;
+    }
+    const timer = window.setTimeout(() => setAdminDeleteSuccess(null), 4000);
+    return () => window.clearTimeout(timer);
+  }, [adminDeleteSuccess]);
+
+  const handleAdminDeleteAccount = async () => {
+    if (!adminDeleteLookup) {
+      setAdminDeleteError('Search for a player before deleting.');
+      return;
+    }
+
+    if (adminDeleteConfirm.trim().toUpperCase() !== 'DELETE') {
+      setAdminDeleteError('Type DELETE to confirm.');
+      return;
+    }
+
+    try {
+      setAdminDeleteActionLoading(true);
+      setAdminDeleteError(null);
+      const result = await apiClient.adminDeletePlayer({
+        player_id: adminDeleteLookup.player_id,
+        confirmation: 'DELETE',
+      });
+      setAdminDeleteSuccess(`Deleted ${result.deleted_username} (${result.deleted_email}).`);
+      setAdminDeleteLookup(null);
+      setAdminDeleteValue('');
+      setAdminDeleteConfirm('');
+    } catch (err) {
+      setAdminDeleteError(extractErrorMessage(err, 'admin-delete-player') || 'Failed to delete player');
+    } finally {
+      setAdminDeleteActionLoading(false);
     }
   };
 
@@ -246,6 +338,100 @@ const Admin: React.FC = () => {
               </button>
             </div>
           </div>
+        </div>
+
+        <div className="tile-card p-6 mb-6 border-2 border-red-200">
+          <h2 className="text-2xl font-display font-bold text-red-700 mb-2">Account Cleanup</h2>
+          <p className="text-quip-teal mb-4">
+            Search for a player and permanently delete their account. This action cannot be undone and will remove all related gameplay data.
+          </p>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-semibold text-quip-teal mb-2">Search by</label>
+              <select
+                value={adminDeleteIdentifier}
+                onChange={(e) => setAdminDeleteIdentifier(e.target.value as AdminDeleteIdentifier)}
+                className="w-full border-2 border-quip-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-quip-orange"
+              >
+                <option value="email">Email</option>
+                <option value="username">Username</option>
+              </select>
+            </div>
+            <div className="lg:col-span-2">
+              <label className="block text-sm font-semibold text-quip-teal mb-2">Identifier</label>
+              <input
+                type="text"
+                value={adminDeleteValue}
+                onChange={(e) => setAdminDeleteValue(e.target.value)}
+                className="w-full border-2 border-quip-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-quip-orange"
+                placeholder={adminDeleteIdentifier === 'email' ? 'player@example.com' : 'username'}
+              />
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-3 mb-4">
+            <button
+              onClick={handleAdminDeleteSearch}
+              className="bg-quip-orange hover:bg-quip-orange-deep text-white font-bold py-2 px-4 rounded-tile transition-all hover:shadow-tile-sm"
+              disabled={adminDeleteLoading}
+            >
+              {adminDeleteLoading ? 'Searching...' : 'Find Player'}
+            </button>
+            <button
+              onClick={handleAdminDeleteClear}
+              className="bg-gray-200 hover:bg-gray-300 text-quip-navy font-bold py-2 px-4 rounded-tile transition-all"
+              disabled={adminDeleteLoading || adminDeleteActionLoading}
+            >
+              Clear
+            </button>
+          </div>
+          {adminDeleteError && <p className="text-red-600 mb-3">{adminDeleteError}</p>}
+          {adminDeleteSuccess && <p className="text-green-600 mb-3">{adminDeleteSuccess}</p>}
+          {adminDeleteLookup && (
+            <div className="bg-red-50 border-2 border-red-200 rounded-tile p-4">
+              <h3 className="text-lg font-display font-bold text-red-700 mb-2">Player Overview</h3>
+              <dl className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-quip-navy mb-4">
+                <div>
+                  <dt className="font-semibold">Username</dt>
+                  <dd>{adminDeleteLookup.username}</dd>
+                </div>
+                <div>
+                  <dt className="font-semibold">Email</dt>
+                  <dd>{adminDeleteLookup.email}</dd>
+                </div>
+                <div>
+                  <dt className="font-semibold">Balance</dt>
+                  <dd>{adminDeleteLookup.balance}</dd>
+                </div>
+                <div>
+                  <dt className="font-semibold">Outstanding Prompts</dt>
+                  <dd>{adminDeleteLookup.outstanding_prompts}</dd>
+                </div>
+                <div className="md:col-span-2">
+                  <dt className="font-semibold">Created</dt>
+                  <dd>{formatDateTime(adminDeleteLookup.created_at)}</dd>
+                </div>
+              </dl>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-semibold text-quip-teal mb-2">Type DELETE to confirm</label>
+                  <input
+                    type="text"
+                    value={adminDeleteConfirm}
+                    onChange={(e) => setAdminDeleteConfirm(e.target.value)}
+                    className="w-full border-2 border-red-300 rounded-tile p-3 focus:outline-none focus:border-red-500"
+                    placeholder="DELETE"
+                  />
+                </div>
+                <button
+                  onClick={handleAdminDeleteAccount}
+                  className="bg-red-600 hover:bg-red-700 disabled:bg-red-300 disabled:cursor-not-allowed text-white font-bold py-2 px-4 rounded-tile transition-all hover:shadow-tile-sm"
+                  disabled={adminDeleteActionLoading || adminDeleteConfirm.trim().toUpperCase() !== 'DELETE'}
+                >
+                  {adminDeleteActionLoading ? 'Deleting...' : 'Delete Player'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Success Message */}

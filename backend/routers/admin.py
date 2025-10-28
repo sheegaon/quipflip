@@ -1,13 +1,18 @@
 """Admin routes for administrative operations."""
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, constr
 from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import datetime
+from uuid import UUID
 from backend.config import get_settings
 from backend.database import get_db
 from backend.dependencies import get_current_player
 from backend.models.player import Player
 from backend.services.phrase_validator import get_phrase_validator
 from backend.services.system_config_service import SystemConfigService
+from backend.services.player_service import PlayerService
+from backend.services.cleanup_service import CleanupService
+from backend.schemas.auth import EmailLike
 from typing import Annotated, Optional, Any
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -21,6 +26,35 @@ class ValidatePasswordRequest(BaseModel):
 class ValidatePasswordResponse(BaseModel):
     """Response model for admin password validation."""
     valid: bool
+
+
+class AdminPlayerSummary(BaseModel):
+    """Summary information for a player returned in admin search."""
+
+    player_id: UUID
+    username: str
+    email: EmailLike
+    balance: int
+    created_at: datetime
+    outstanding_prompts: int
+
+
+class AdminDeletePlayerRequest(BaseModel):
+    """Request model for deleting a player via admin panel."""
+
+    player_id: Optional[UUID] = None
+    email: Optional[EmailLike] = None
+    username: Optional[str] = None
+    confirmation: constr(pattern=r"^DELETE$", min_length=6, max_length=6)
+
+
+class AdminDeletePlayerResponse(BaseModel):
+    """Response after deleting a player from admin panel."""
+
+    deleted_player_id: UUID
+    deleted_username: str
+    deleted_email: EmailLike
+    deletion_counts: dict[str, int]
 
 
 class TestPhraseValidationRequest(BaseModel):
@@ -184,6 +218,77 @@ async def validate_admin_password(
     is_valid = request.password == settings.secret_key
 
     return ValidatePasswordResponse(valid=is_valid)
+
+
+@router.get("/players/search", response_model=AdminPlayerSummary)
+async def search_player(
+    email: Optional[EmailLike] = Query(None),
+    username: Optional[str] = Query(None),
+    player: Annotated[Player, Depends(get_current_player)] = None,
+    session: Annotated[AsyncSession, Depends(get_db)] = None,
+) -> AdminPlayerSummary:
+    """Search for a player by email or username."""
+
+    if not email and not username:
+        raise HTTPException(status_code=400, detail="missing_identifier")
+
+    player_service = PlayerService(session)
+    target_player: Player | None = None
+
+    if email:
+        target_player = await player_service.get_player_by_email(email)
+    elif username:
+        target_player = await player_service.get_player_by_username(username)
+
+    if not target_player:
+        raise HTTPException(status_code=404, detail="player_not_found")
+
+    outstanding = await player_service.get_outstanding_prompts_count(target_player.player_id)
+
+    return AdminPlayerSummary(
+        player_id=target_player.player_id,
+        username=target_player.username,
+        email=target_player.email,
+        balance=target_player.balance,
+        created_at=target_player.created_at,
+        outstanding_prompts=outstanding,
+    )
+
+
+@router.delete("/players", response_model=AdminDeletePlayerResponse)
+async def delete_player_admin(
+    request: AdminDeletePlayerRequest,
+    player: Annotated[Player, Depends(get_current_player)] = None,
+    session: Annotated[AsyncSession, Depends(get_db)] = None,
+) -> AdminDeletePlayerResponse:
+    """Delete a player account and associated data via admin panel."""
+
+    identifier = request.player_id or request.email or request.username
+    if not identifier:
+        raise HTTPException(status_code=400, detail="missing_identifier")
+
+    player_service = PlayerService(session)
+    target_player: Player | None = None
+
+    if request.player_id:
+        target_player = await player_service.get_player_by_id(request.player_id)
+    elif request.email:
+        target_player = await player_service.get_player_by_email(request.email)
+    elif request.username:
+        target_player = await player_service.get_player_by_username(request.username)
+
+    if not target_player:
+        raise HTTPException(status_code=404, detail="player_not_found")
+
+    cleanup_service = CleanupService(session)
+    deletion_counts = await cleanup_service.delete_player(target_player.player_id)
+
+    return AdminDeletePlayerResponse(
+        deleted_player_id=target_player.player_id,
+        deleted_username=target_player.username,
+        deleted_email=target_player.email,
+        deletion_counts=deletion_counts,
+    )
 
 
 @router.post("/test-phrase-validation", response_model=TestPhraseValidationResponse)
