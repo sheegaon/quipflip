@@ -33,7 +33,7 @@ const Settings: React.FC = () => {
       setResettingTutorial(true);
       setError(null);
       setTutorialResetSuccess(false);
-      await resetTutorial();
+      resetTutorial();
       setTutorialResetSuccess(true);
       setTimeout(() => setTutorialResetSuccess(false), 3000);
     } catch (err) {
