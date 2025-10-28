@@ -261,8 +261,8 @@ async def search_player(
 @router.delete("/players", response_model=AdminDeletePlayerResponse)
 async def delete_player_admin(
     request: AdminDeletePlayerRequest,
-    player: Annotated[Player, Depends(get_current_player)] = None,
-    session: Annotated[AsyncSession, Depends(get_db)] = None,
+    player: Annotated[Player, Depends(get_current_player)],
+    session: Annotated[AsyncSession, Depends(get_db)],
 ) -> AdminDeletePlayerResponse:
     """Delete a player account and associated data via admin panel."""
 
