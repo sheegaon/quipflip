@@ -182,13 +182,13 @@ const Admin: React.FC = () => {
       const result = await apiClient.adminSearchPlayer(params);
       setAdminDeleteLookup(result);
       setAdminDeleteConfirm('');
-    } catch (err: any) {
-      if (err?.detail === 'player_not_found') {
+    } catch (err) {
+      const apiError = err as { detail?: string };
+      if (apiError?.detail === 'player_not_found') {
         setAdminDeleteError('No account found with that identifier.');
       } else {
         setAdminDeleteError(extractErrorMessage(err, 'admin-search-player') || 'Failed to find player');
       }
-    } finally {
       setAdminDeleteLoading(false);
     }
   };
