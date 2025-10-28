@@ -591,8 +591,8 @@ class QuestService:
             select(func.count()).select_from(Round).where(
                 and_(
                     Round.player_id == player_id,
-                    Round.type == RoundType.PROMPT.value,
-                    Round.status == RoundStatus.SUBMITTED.value,
+                    Round.round_type == "prompt",
+                    Round.status == "submitted",
                     Round.created_at >= window_start
                 )
             )
@@ -603,8 +603,8 @@ class QuestService:
             select(func.count()).select_from(Round).where(
                 and_(
                     Round.player_id == player_id,
-                    Round.type == RoundType.COPY.value,
-                    Round.status == RoundStatus.SUBMITTED.value,
+                    Round.round_type == "copy",
+                    Round.status == "submitted",
                     Round.created_at >= window_start
                 )
             )
