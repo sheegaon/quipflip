@@ -866,6 +866,6 @@ class VoteService:
             "your_payout": result_view.payout_amount,
             "total_pool": phraseset.total_pool,
             "total_votes": phraseset.vote_count,
-            "already_collected": result_view.result_viewed,  # Changed from result_viewed to result_viewed
+            "result_viewed": result_view.result_viewed,
             "finalized_at": phraseset.finalized_at,
         }
