@@ -10,7 +10,7 @@
 - `pseudonym_canonical` (string) - lowercase form for lookups
 - `email` (string, unique) - player email for authentication
 - `password_hash` (string) - bcrypt hashed password
-- `balance` (integer, default 1000) - current balance in Flipcoins (f); new accounts are seeded from `settings.starting_balance` (5000f by default)
+- `balance` (integer, database default 1000) - current balance in Flipcoins (f); new accounts are seeded from `settings.starting_balance` (5000f by default)
 - `created_at` (timestamp)
 - `last_login_date` (date, nullable) - UTC date for daily bonus tracking
 - `active_round_id` (UUID, nullable, references rounds.round_id) - enforces one-round-at-a-time
@@ -18,12 +18,14 @@
 - `tutorial_progress` (string, default 'not_started') - current tutorial step
 - `tutorial_started_at` (timestamp, nullable) - when tutorial was started
 - `tutorial_completed_at` (timestamp, nullable) - when tutorial was completed
+- `is_admin` (computed property) - returns true if player has admin access (currently: any authenticated user who knows SECRET_KEY)
 - Indexes: `player_id`, `active_round_id`, `pseudonym`
 - Constraints: Unique `username_canonical`
 - Relationships: `active_round`, `rounds`, `transactions`, `votes`, `daily_bonuses`, `result_views`, `abandoned_prompts`, `phraseset_activities`, `refresh_tokens`, `quests`
 
 **Authentication**: JWT access/refresh tokens (stored in `refresh_tokens` table)
 **Registration**: Email and password only; username is randomly generated and cannot be changed
+**Admin Access**: Currently any user with SECRET_KEY knowledge; future plans include role-based access control
 
 ### Round (Unified for Prompt, Copy, and Vote)
 - `round_id` (UUID, primary key)
