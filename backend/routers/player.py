@@ -18,6 +18,11 @@ from backend.schemas.player import (
     UpdateTutorialProgressRequest,
     UpdateTutorialProgressResponse,
     DashboardDataResponse,
+    ChangePasswordRequest,
+    ChangePasswordResponse,
+    UpdateEmailRequest,
+    UpdateEmailResponse,
+    DeleteAccountRequest,
 )
 from backend.schemas.phraseset import (
     PhrasesetListResponse,
@@ -38,7 +43,13 @@ from backend.utils.exceptions import DailyBonusNotAvailableError
 from backend.config import get_settings
 from backend.schemas.auth import RegisterRequest
 from backend.services.auth_service import AuthService, AuthError
-from backend.utils.cookies import set_refresh_cookie
+from backend.services.cleanup_service import CleanupService
+from backend.utils.cookies import set_refresh_cookie, clear_refresh_cookie
+from backend.utils.passwords import (
+    verify_password,
+    validate_password_strength,
+    PasswordValidationError,
+)
 from datetime import datetime, UTC, timedelta
 from sqlalchemy import select
 import logging
@@ -486,3 +497,87 @@ async def reset_tutorial(
     """Reset tutorial progress for the current player."""
     tutorial_service = TutorialService(db)
     return await tutorial_service.reset_tutorial(player.player_id)
+
+
+@router.post("/password", response_model=ChangePasswordResponse)
+async def change_password(
+    request: ChangePasswordRequest,
+    response: Response,
+    player: Player = Depends(get_current_player),
+    db: AsyncSession = Depends(get_db),
+):
+    """Allow the current player to change their password."""
+
+    if not verify_password(request.current_password, player.password_hash):
+        raise HTTPException(status_code=401, detail="invalid_current_password")
+
+    if verify_password(request.new_password, player.password_hash):
+        raise HTTPException(status_code=400, detail="password_unchanged")
+
+    try:
+        validate_password_strength(request.new_password)
+    except PasswordValidationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    player_service = PlayerService(db)
+    await player_service.update_password(player, request.new_password)
+
+    auth_service = AuthService(db)
+    access_token, refresh_token, expires_in = await auth_service.issue_tokens(player)
+    set_refresh_cookie(response, refresh_token, expires_days=settings.refresh_token_exp_days)
+
+    return ChangePasswordResponse(
+        message="Password updated successfully.",
+        access_token=access_token,
+        refresh_token=refresh_token,
+        expires_in=expires_in,
+    )
+
+
+@router.patch("/email", response_model=UpdateEmailResponse)
+async def update_email(
+    request: UpdateEmailRequest,
+    player: Player = Depends(get_current_player),
+    db: AsyncSession = Depends(get_db),
+):
+    """Allow the current player to update their email address."""
+
+    if not verify_password(request.password, player.password_hash):
+        raise HTTPException(status_code=401, detail="invalid_password")
+
+    player_service = PlayerService(db)
+
+    if player.email and player.email.lower() == request.new_email.strip().lower():
+        return UpdateEmailResponse(email=player.email)
+
+    try:
+        updated = await player_service.update_email(player, request.new_email)
+    except ValueError as exc:
+        message = str(exc)
+        if message == "email_taken":
+            raise HTTPException(status_code=409, detail="email_taken") from exc
+        if message == "invalid_email":
+            raise HTTPException(status_code=422, detail="invalid_email") from exc
+        raise
+
+    return UpdateEmailResponse(email=updated.email)
+
+
+@router.delete("/account", status_code=204)
+async def delete_account(
+    request: DeleteAccountRequest,
+    response: Response,
+    player: Player = Depends(get_current_player),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete the current player's account and related data."""
+
+    if not verify_password(request.password, player.password_hash):
+        raise HTTPException(status_code=401, detail="invalid_password")
+
+    cleanup_service = CleanupService(db)
+    await cleanup_service.delete_player(player.player_id)
+
+    clear_refresh_cookie(response)
+    response.status_code = 204
+    return None

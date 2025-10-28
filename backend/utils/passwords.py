@@ -4,6 +4,35 @@ from __future__ import annotations
 import bcrypt
 
 
+class PasswordValidationError(ValueError):
+    """Raised when a password fails strength validation."""
+
+
+def validate_password_strength(password: str) -> None:
+    """Validate password complexity requirements.
+
+    The policy requires:
+    - Minimum length of 8 characters
+    - At least one lowercase letter
+    - At least one uppercase letter
+    - At least one digit
+
+    Raises:
+        PasswordValidationError: If any requirement is not met.
+    """
+
+    if len(password) < 8:
+        raise PasswordValidationError("Password must be at least 8 characters long.")
+
+    if password.lower() == password or password.upper() == password:
+        raise PasswordValidationError(
+            "Password must include both uppercase and lowercase letters."
+        )
+
+    if not any(char.isdigit() for char in password):
+        raise PasswordValidationError("Password must include at least one number.")
+
+
 def hash_password(password: str) -> str:
     """Hash a password using bcrypt."""
     password_bytes = password.encode('utf-8')

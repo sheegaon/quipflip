@@ -1,10 +1,10 @@
 """Player-related Pydantic schemas."""
-from pydantic import BaseModel
+from pydantic import BaseModel, constr
 from datetime import date, datetime
 from typing import Optional, Literal
 from uuid import UUID
 from backend.schemas.base import BaseSchema
-from backend.schemas.auth import AuthTokenResponse
+from backend.schemas.auth import AuthTokenResponse, EmailLike
 from backend.schemas.round import RoundAvailability
 from backend.schemas.phraseset import PhrasesetDashboardSummary, UnclaimedResult
 
@@ -160,3 +160,40 @@ class DashboardDataResponse(BaseSchema):
 
     # From /rounds/available
     round_availability: RoundAvailability
+
+
+class ChangePasswordRequest(BaseModel):
+    """Request payload for password change."""
+
+    current_password: constr(min_length=1, max_length=128)
+    new_password: constr(min_length=8, max_length=128)
+
+
+class ChangePasswordResponse(BaseModel):
+    """Response after password update."""
+
+    message: str
+    access_token: str
+    refresh_token: str
+    expires_in: int
+    token_type: str = "bearer"
+
+
+class UpdateEmailRequest(BaseModel):
+    """Request payload for updating email address."""
+
+    new_email: EmailLike
+    password: constr(min_length=1, max_length=128)
+
+
+class UpdateEmailResponse(BaseModel):
+    """Response payload containing updated email."""
+
+    email: EmailLike
+
+
+class DeleteAccountRequest(BaseModel):
+    """Request payload for self-serve account deletion."""
+
+    password: constr(min_length=1, max_length=128)
+    confirmation: constr(pattern=r"^DELETE$", min_length=6, max_length=6)

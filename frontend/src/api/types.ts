@@ -14,6 +14,34 @@ export interface Player {
   created_at: string;
 }
 
+export interface ChangePasswordResponse {
+  message: string;
+  access_token: string;
+  refresh_token: string;
+  expires_in: number;
+  token_type: 'bearer';
+}
+
+export interface UpdateEmailResponse {
+  email: string;
+}
+
+export interface AdminPlayerSummary {
+  player_id: string;
+  username: string;
+  email: string;
+  balance: number;
+  created_at: string;
+  outstanding_prompts: number;
+}
+
+export interface AdminDeletePlayerResponse {
+  deleted_player_id: string;
+  deleted_username: string;
+  deleted_email: string;
+  deletion_counts: Record<string, number>;
+}
+
 export interface AuthTokenResponse {
   access_token: string;
   refresh_token: string;
