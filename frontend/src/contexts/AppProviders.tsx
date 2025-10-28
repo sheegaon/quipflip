@@ -19,7 +19,7 @@ const ContextBridge: React.FC<{
       count: gameState.pendingResults.length
     });
     resultsActions.setPendingResults(gameState.pendingResults);
-  }, [gameState.pendingResults, resultsActions]);
+  }, [gameState.pendingResults]); // Remove resultsActions from dependency array
 
   return (
     <QuestProvider 
