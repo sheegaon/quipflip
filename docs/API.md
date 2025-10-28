@@ -201,7 +201,7 @@ Claim daily login bonus (100f).
 {
   "success": true,
   "amount": 100,
-    "new_balance": 5100
+  "new_balance": 5100
 }
 ```
 
