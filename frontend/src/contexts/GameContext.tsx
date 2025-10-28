@@ -4,6 +4,7 @@ import apiClient from '../api/client';
 import { useSmartPolling, PollConfigs } from '../utils/smartPolling';
 import { getActionErrorMessage } from '../utils/errorMessages';
 import { gameContextLogger } from '../utils/logger';
+import { buildPhrasesetListKey, type PhrasesetListKeyParams } from '../utils/gameKeys';
 import type {
   Player,
   ActiveRound,
@@ -12,19 +13,67 @@ import type {
   PhrasesetDashboardSummary,
   UnclaimedResult,
   AuthTokenResponse,
+  Quest,
+  ClaimQuestRewardResponse,
+  PhrasesetListResponse,
+  PhrasesetDetails as PhrasesetDetailsType,
+  PhrasesetResults,
 } from '../api/types';
+
+type PlayerPhrasesetParams = PhrasesetListKeyParams;
+
+interface QuestState {
+  quests: Quest[];
+  activeQuests: Quest[];
+  claimableQuests: Quest[];
+  loading: boolean;
+  error: string | null;
+  lastUpdated: number | null;
+}
+
+interface PhrasesetListCacheEntry {
+  params: PlayerPhrasesetParams;
+  data: PhrasesetListResponse | null;
+  loading: boolean;
+  error: string | null;
+  lastFetched: number | null;
+}
+
+interface PhrasesetDetailsCacheEntry {
+  data: PhrasesetDetailsType | null;
+  loading: boolean;
+  error: string | null;
+  lastFetched: number | null;
+}
+
+interface PhrasesetResultsCacheEntry {
+  data: PhrasesetResults | null;
+  loading: boolean;
+  error: string | null;
+  lastFetched: number | null;
+}
 
 interface GameState {
   isAuthenticated: boolean;
   username: string | null;
   player: Player | null;
   activeRound: ActiveRound | null;
-  pendingResults: PendingResult[]; 
+  pendingResults: PendingResult[];
   phrasesetSummary: PhrasesetDashboardSummary | null;
-  unclaimedResults: UnclaimedResult[]; 
+  unclaimedResults: UnclaimedResult[];
   roundAvailability: RoundAvailability | null;
   loading: boolean;
   error: string | null;
+  quests: Quest[];
+  activeQuests: Quest[];
+  claimableQuests: Quest[];
+  questsLoading: boolean;
+  questsError: string | null;
+  hasClaimableQuests: boolean;
+  questLastUpdated: number | null;
+  playerPhrasesets: Record<string, PhrasesetListCacheEntry>;
+  phrasesetDetails: Record<string, PhrasesetDetailsCacheEntry>;
+  phrasesetResults: Record<string, PhrasesetResultsCacheEntry>;
 }
 
 interface GameActions {
@@ -34,13 +83,25 @@ interface GameActions {
   refreshBalance: (signal?: AbortSignal) => Promise<void>;
   claimBonus: () => Promise<void>;
   clearError: () => void;
+  refreshQuests: () => Promise<void>;
+  clearQuestError: () => void;
+  claimQuest: (questId: string) => Promise<ClaimQuestRewardResponse>;
   navigateAfterDelay: (path: string, delay?: number) => void;
   startPromptRound: () => Promise<void>;
   startCopyRound: () => Promise<void>;
   startVoteRound: () => Promise<void>;
-  getPhrasesetResults: (phrasesetId: string) => Promise<any>;
-  getPlayerPhrasesets: (params: any) => Promise<any>;
-  getPhrasesetDetails: (phrasesetId: string) => Promise<any>;
+  refreshPlayerPhrasesets: (
+    params?: PlayerPhrasesetParams,
+    options?: { force?: boolean },
+  ) => Promise<PhrasesetListResponse | null>;
+  refreshPhrasesetDetails: (
+    phrasesetId: string,
+    options?: { force?: boolean },
+  ) => Promise<PhrasesetDetailsType | null>;
+  refreshPhrasesetResults: (
+    phrasesetId: string,
+    options?: { force?: boolean },
+  ) => Promise<PhrasesetResults | null>;
   claimPhrasesetPrize: (phrasesetId: string) => Promise<void>;
   getStatistics: (signal?: AbortSignal) => Promise<any>;
 }
@@ -70,6 +131,17 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [roundAvailability, setRoundAvailability] = useState<RoundAvailability | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [questState, setQuestState] = useState<QuestState>({
+    quests: [],
+    activeQuests: [],
+    claimableQuests: [],
+    loading: false,
+    error: null,
+    lastUpdated: null,
+  });
+  const [phrasesetListCache, setPhrasesetListCache] = useState<Record<string, PhrasesetListCacheEntry>>({});
+  const [phrasesetDetailsCache, setPhrasesetDetailsCache] = useState<Record<string, PhrasesetDetailsCacheEntry>>({});
+  const [phrasesetResultsCache, setPhrasesetResultsCache] = useState<Record<string, PhrasesetResultsCacheEntry>>({});
 
   // Initialize session on mount
   useEffect(() => {
@@ -136,6 +208,17 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setPhrasesetSummary(null);
         setUnclaimedResults([]);
         setRoundAvailability(null);
+        setQuestState({
+          quests: [],
+          activeQuests: [],
+          claimableQuests: [],
+          loading: false,
+          error: null,
+          lastUpdated: null,
+        });
+        setPhrasesetListCache({});
+        setPhrasesetDetailsCache({});
+        setPhrasesetResultsCache({});
       }
   }, [stopPoll]);
 
@@ -298,6 +381,308 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setLoading(false);
       }
   }, [isAuthenticated, triggerPoll, logout]);
+
+  const refreshQuests = useCallback(async () => {
+      const token = await apiClient.ensureAccessToken();
+      if (!token) {
+        setIsAuthenticated(false);
+        setQuestState((prev) => ({
+          ...prev,
+          loading: false,
+          error: 'Authentication required. Please log in again.',
+        }));
+        return;
+      }
+
+      setQuestState((prev) => ({
+        ...prev,
+        loading: true,
+        error: null,
+      }));
+
+      try {
+        const [allQuestsResponse, activeQuestsResponse, claimableQuestsResponse] = await Promise.all([
+          apiClient.getQuests(),
+          apiClient.getActiveQuests(),
+          apiClient.getClaimableQuests(),
+        ]);
+
+        setQuestState({
+          quests: allQuestsResponse.quests,
+          activeQuests: activeQuestsResponse,
+          claimableQuests: claimableQuestsResponse,
+          loading: false,
+          error: null,
+          lastUpdated: Date.now(),
+        });
+      } catch (err) {
+        const errorMessage = getActionErrorMessage('load-quests', err);
+        setQuestState((prev) => ({
+          ...prev,
+          loading: false,
+          error: errorMessage,
+        }));
+        throw err;
+      }
+  }, []);
+
+  const clearQuestError = useCallback(() => {
+      setQuestState((prev) => ({
+        ...prev,
+        error: null,
+      }));
+  }, []);
+
+  const claimQuest = useCallback(async (questId: string): Promise<ClaimQuestRewardResponse> => {
+      const token = await apiClient.ensureAccessToken();
+      if (!token) {
+        setIsAuthenticated(false);
+        setQuestState((prev) => ({
+          ...prev,
+          loading: false,
+          error: 'Authentication required. Please log in again.',
+        }));
+        throw new Error('Authentication required');
+      }
+
+      setQuestState((prev) => ({
+        ...prev,
+        loading: true,
+        error: null,
+      }));
+
+      try {
+        const response = await apiClient.claimQuestReward(questId);
+
+        await refreshQuests();
+        triggerPoll('dashboard');
+        return response;
+      } catch (err) {
+        const errorMessage = getActionErrorMessage('claim-quest', err);
+        setQuestState((prev) => ({
+          ...prev,
+          loading: false,
+          error: errorMessage,
+        }));
+        throw err;
+      } finally {
+        setQuestState((prev) => ({
+          ...prev,
+          loading: false,
+        }));
+      }
+  }, [refreshQuests, triggerPoll]);
+
+  const refreshPlayerPhrasesets = useCallback(async (
+      params: PlayerPhrasesetParams = {},
+      options: { force?: boolean } = {},
+    ): Promise<PhrasesetListResponse | null> => {
+      const key = buildPhrasesetListKey(params);
+      const cached = phrasesetListCache[key];
+
+      const token = await apiClient.ensureAccessToken();
+      if (!token) {
+        setIsAuthenticated(false);
+        setPhrasesetListCache((prev) => ({
+          ...prev,
+          [key]: {
+            params,
+            data: cached?.data ?? null,
+            loading: false,
+            error: 'Authentication required. Please log in again.',
+            lastFetched: cached?.lastFetched ?? null,
+          },
+        }));
+        return null;
+      }
+
+      if (cached?.data && !options.force) {
+        return cached.data;
+      }
+
+      setPhrasesetListCache((prev) => ({
+        ...prev,
+        [key]: {
+          params,
+          data: cached?.data ?? null,
+          loading: true,
+          error: null,
+          lastFetched: cached?.lastFetched ?? null,
+        },
+      }));
+
+      try {
+        const data = await apiClient.getPlayerPhrasesets(params);
+        setPhrasesetListCache((prev) => ({
+          ...prev,
+          [key]: {
+            params,
+            data,
+            loading: false,
+            error: null,
+            lastFetched: Date.now(),
+          },
+        }));
+        return data;
+      } catch (err) {
+        const errorMessage = getActionErrorMessage('load-tracking', err);
+        setPhrasesetListCache((prev) => ({
+          ...prev,
+          [key]: {
+            params,
+            data: cached?.data ?? null,
+            loading: false,
+            error: errorMessage,
+            lastFetched: cached?.lastFetched ?? null,
+          },
+        }));
+        throw err;
+      }
+  }, [phrasesetListCache]);
+
+  const refreshPhrasesetDetails = useCallback(async (
+      phrasesetId: string,
+      options: { force?: boolean } = {},
+    ): Promise<PhrasesetDetailsType | null> => {
+      const cached = phrasesetDetailsCache[phrasesetId];
+
+      const token = await apiClient.ensureAccessToken();
+      if (!token) {
+        setIsAuthenticated(false);
+        setPhrasesetDetailsCache((prev) => ({
+          ...prev,
+          [phrasesetId]: {
+            data: cached?.data ?? null,
+            loading: false,
+            error: 'Authentication required. Please log in again.',
+            lastFetched: cached?.lastFetched ?? null,
+          },
+        }));
+        return null;
+      }
+
+      if (cached?.data && !options.force) {
+        return cached.data;
+      }
+
+      setPhrasesetDetailsCache((prev) => ({
+        ...prev,
+        [phrasesetId]: {
+          data: cached?.data ?? null,
+          loading: true,
+          error: null,
+          lastFetched: cached?.lastFetched ?? null,
+        },
+      }));
+
+      try {
+        const data = await apiClient.getPhrasesetDetails(phrasesetId);
+        setPhrasesetDetailsCache((prev) => ({
+          ...prev,
+          [phrasesetId]: {
+            data,
+            loading: false,
+            error: null,
+            lastFetched: Date.now(),
+          },
+        }));
+        return data;
+      } catch (err) {
+        const errorMessage = getActionErrorMessage('load-details', err);
+        setPhrasesetDetailsCache((prev) => ({
+          ...prev,
+          [phrasesetId]: {
+            data: cached?.data ?? null,
+            loading: false,
+            error: errorMessage,
+            lastFetched: cached?.lastFetched ?? null,
+          },
+        }));
+        throw err;
+      }
+  }, [phrasesetDetailsCache]);
+
+  const refreshPhrasesetResults = useCallback(async (
+      phrasesetId: string,
+      options: { force?: boolean } = {},
+    ): Promise<PhrasesetResults | null> => {
+      const cached = phrasesetResultsCache[phrasesetId];
+
+      const token = await apiClient.ensureAccessToken();
+      if (!token) {
+        setIsAuthenticated(false);
+        setPhrasesetResultsCache((prev) => ({
+          ...prev,
+          [phrasesetId]: {
+            data: cached?.data ?? null,
+            loading: false,
+            error: 'Authentication required. Please log in again.',
+            lastFetched: cached?.lastFetched ?? null,
+          },
+        }));
+        return null;
+      }
+
+      if (cached?.data && !options.force) {
+        return cached.data;
+      }
+
+      setPhrasesetResultsCache((prev) => ({
+        ...prev,
+        [phrasesetId]: {
+          data: cached?.data ?? null,
+          loading: true,
+          error: null,
+          lastFetched: cached?.lastFetched ?? null,
+        },
+      }));
+
+      try {
+        const data = await apiClient.getPhrasesetResults(phrasesetId);
+        setPhrasesetResultsCache((prev) => ({
+          ...prev,
+          [phrasesetId]: {
+            data,
+            loading: false,
+            error: null,
+            lastFetched: Date.now(),
+          },
+        }));
+        return data;
+      } catch (err) {
+        const errorStr = String(err);
+        const notReady =
+          errorStr.includes('Copy round') && errorStr.includes('not found') ||
+          errorStr.includes('404') ||
+          errorStr.toLowerCase().includes('not found');
+
+        if (notReady) {
+          const friendlyMessage = 'This quipset is not ready for results viewing yet. It may still be in progress or missing some data.';
+          setPhrasesetResultsCache((prev) => ({
+            ...prev,
+            [phrasesetId]: {
+              data: null,
+              loading: false,
+              error: friendlyMessage,
+              lastFetched: Date.now(),
+            },
+          }));
+          return null;
+        }
+
+        const errorMessage = getActionErrorMessage('load-results', err);
+        setPhrasesetResultsCache((prev) => ({
+          ...prev,
+          [phrasesetId]: {
+            data: cached?.data ?? null,
+            loading: false,
+            error: errorMessage,
+            lastFetched: cached?.lastFetched ?? null,
+          },
+        }));
+        throw err;
+      }
+  }, [phrasesetResultsCache]);
 
   const clearError = useCallback(() => {
       setError(null);
@@ -503,92 +888,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
   }, [isAuthenticated, roundAvailability, player?.balance, triggerPoll]);
 
-  const getPhrasesetResults = useCallback(async (phrasesetId: string) => {
-      // Check token directly instead of relying on stale state
-      const token = await apiClient.ensureAccessToken();
-      if (!token) {
-        setIsAuthenticated(false);
-        return null;
-      }
-
-      // Ensure authentication state is correct
-      if (!isAuthenticated) {
-        setIsAuthenticated(true);
-      }
-
-      try {
-        const data = await apiClient.getPhrasesetResults(phrasesetId);
-        return data;
-      } catch (err) {
-        // Handle specific API errors more gracefully
-        const errorStr = String(err);
-        
-        // If it's a "not found" error for copy rounds, return null instead of throwing
-        if (errorStr.includes('Copy round') && errorStr.includes('not found')) {
-          gameContextLogger.warn(`Phraseset ${phrasesetId} not ready for results viewing:`, errorStr);
-          return null;
-        }
-        
-        // If it's a 404 or phraseset not found, return null
-        if (errorStr.includes('404') || errorStr.includes('not found') || errorStr.includes('Phraseset not found')) {
-          gameContextLogger.warn(`Phraseset ${phrasesetId} not found:`, errorStr);
-          return null;
-        }
-        
-        // For other errors, still throw but with better logging
-        gameContextLogger.error(`Error fetching results for phraseset ${phrasesetId}:`, err);
-        const errorMessage = getActionErrorMessage('load-results', err);
-        setError(errorMessage);
-        throw err;
-      }
-  }, [isAuthenticated]);
-
-  const getPlayerPhrasesets = useCallback(async (params: any) => {
-      // Check token directly instead of relying on stale state
-      const token = await apiClient.ensureAccessToken();
-      if (!token) {
-        setIsAuthenticated(false);
-        return { phrasesets: [], total: 0, has_more: false };
-      }
-
-      // Ensure authentication state is correct
-      if (!isAuthenticated) {
-        setIsAuthenticated(true);
-      }
-
-      try {
-        const data = await apiClient.getPlayerPhrasesets(params);
-        return data;
-      } catch (err) {
-        const errorMessage = getActionErrorMessage('load-tracking', err);
-        setError(errorMessage);
-        throw err;
-      }
-  }, [isAuthenticated]);
-
-  const getPhrasesetDetails = useCallback(async (phrasesetId: string) => {
-      // Check token directly instead of relying on stale state
-      const token = await apiClient.ensureAccessToken();
-      if (!token) {
-        setIsAuthenticated(false);
-        return null;
-      }
-
-      // Ensure authentication state is correct
-      if (!isAuthenticated) {
-        setIsAuthenticated(true);
-      }
-
-      try {
-        const data = await apiClient.getPhrasesetDetails(phrasesetId);
-        return data;
-      } catch (err) {
-        const errorMessage = getActionErrorMessage('load-details', err);
-        setError(errorMessage);
-        throw err;
-      }
-  }, [isAuthenticated]);
-
   const claimPhrasesetPrize = useCallback(async (phrasesetId: string) => {
       // Check token directly instead of relying on stale state
       const token = await apiClient.ensureAccessToken();
@@ -682,6 +981,30 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => controller.abort();
   }, [isAuthenticated, refreshDashboard]);
 
+  // Quest auto-loading when authenticated
+  const hasQuestLoadRef = useRef(false);
+  useEffect(() => {
+    if (!isAuthenticated) {
+      hasQuestLoadRef.current = false;
+      setQuestState({
+        quests: [],
+        activeQuests: [],
+        claimableQuests: [],
+        loading: false,
+        error: null,
+        lastUpdated: null,
+      });
+      return;
+    }
+
+    if (hasQuestLoadRef.current) return;
+    hasQuestLoadRef.current = true;
+
+    refreshQuests().catch((err) => {
+      gameContextLogger.error('Failed to refresh quests:', err);
+    });
+  }, [isAuthenticated, refreshQuests]);
+
   const state: GameState = {
     isAuthenticated,
     username,
@@ -693,6 +1016,16 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     roundAvailability,
     loading,
     error,
+    quests: questState.quests,
+    activeQuests: questState.activeQuests,
+    claimableQuests: questState.claimableQuests,
+    questsLoading: questState.loading,
+    questsError: questState.error,
+    hasClaimableQuests: questState.claimableQuests.length > 0,
+    questLastUpdated: questState.lastUpdated,
+    playerPhrasesets: phrasesetListCache,
+    phrasesetDetails: phrasesetDetailsCache,
+    phrasesetResults: phrasesetResultsCache,
   };
 
   const actions: GameActions = {
@@ -702,13 +1035,16 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     refreshBalance,
     claimBonus,
     clearError,
+    refreshQuests,
+    clearQuestError,
+    claimQuest,
     navigateAfterDelay,
     startPromptRound,
     startCopyRound,
     startVoteRound,
-    getPhrasesetResults,
-    getPlayerPhrasesets,
-    getPhrasesetDetails,
+    refreshPlayerPhrasesets,
+    refreshPhrasesetDetails,
+    refreshPhrasesetResults,
     claimPhrasesetPrize,
     getStatistics,
   };
