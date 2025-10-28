@@ -27,103 +27,20 @@ The Admin panel is accessible from Settings page after password verification.
   - Request: `{ "password": "your-secret-key" }`
   - Response: `{ "valid": true | false }`
 
-- **Read-Only Configuration Display**
-  - Organized into 4 tabs: Economics, Timing, Validation, AI Service
-  - Displays all game configuration values from `backend/config.py`
-  - Clean, organized presentation with descriptions
+- **Configuration Editing & Persistence**
+  - Live edit mode with inline validation for all economics, timing, validation, and AI settings
+  - `system_config` table stores overrides with metadata and audit fields (`updated_at`, `updated_by`)
+  - `SystemConfigService` handles schema validation, serialization, and cache invalidation
+  - API endpoints:
+    - `GET /admin/config` returns merged defaults + overrides
+    - `PATCH /admin/config` updates a single key with type and bounds validation
+  - Frontend Admin page uses `EditableConfigField` for inline editing, success banners, and edit-mode toggle
 
 - **Configuration Categories:**
   - **Economics:** Costs, payouts, balances, limits
   - **Timing:** Round durations, grace periods, vote windows
   - **Validation:** Phrase word/character limits
   - **AI Service:** Provider settings, models, timeouts
-
----
-
-## Phase 2: Configuration Editing
-
-### Backend Requirements
-
-#### Create Admin Configuration Endpoint
-**Endpoint:** `GET /admin/config`
-- Returns current configuration values
-- Requires authentication
-- Optional: Require admin role/permission
-
-**Endpoint:** `PATCH /admin/config`
-- Request body: `{ key: string, value: number | string }`
-- Validates configuration key exists
-- Validates value type and constraints
-- Updates configuration (in-memory or database)
-- Returns updated config
-- Logs change with timestamp and user
-
-#### Configuration Storage Options
-
-**Option 1: Environment Variables (Current)**
-- Pros: Simple, already implemented
-- Cons: Requires restart to apply changes, not persistent
-
-**Option 2: Database Table**
-- Create `system_config` table:
-  ```sql
-  CREATE TABLE system_config (
-    key VARCHAR(100) PRIMARY KEY,
-    value TEXT NOT NULL,
-    value_type VARCHAR(20) NOT NULL,  -- 'int', 'float', 'string', 'bool'
-    description TEXT,
-    category VARCHAR(50),  -- 'economics', 'timing', 'validation', 'ai'
-    updated_at TIMESTAMP,
-    updated_by VARCHAR(100)  -- player_id or username
-  );
-  ```
-- Pros: Persistent, no restart needed, audit trail
-- Cons: More complex, need migration
-
-**Option 3: Redis Cache (If available)**
-- Store in Redis with TTL
-- Pros: Fast, no restart needed
-- Cons: Not persistent if Redis restarts
-
-**Recommended:** Option 2 (Database Table) for persistence and audit trail
-
----
-
-### Frontend Implementation
-
-#### Editable Configuration Fields
-
-Replace read-only `ConfigField` component with `EditableConfigField`:
-
-```typescript
-interface EditableConfigFieldProps {
-  label: string;
-  value: number | string;
-  configKey: string;
-  unit?: string;
-  description?: string;
-  min?: number;
-  max?: number;
-  type: 'number' | 'text' | 'select';
-  options?: string[];  // For select type
-  onSave: (key: string, value: number | string) => Promise<void>;
-}
-```
-
-**Features:**
-- Click to edit mode
-- Inline validation
-- Save/Cancel buttons
-- Optimistic updates
-- Error handling
-- Loading states
-
-#### Batch Edit Mode
-- "Edit Mode" toggle at top of page
-- Edit multiple fields
-- "Save All Changes" button
-- Preview changes before applying
-- Confirm dialog with list of changes
 
 ---
 
