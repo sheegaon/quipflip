@@ -165,7 +165,6 @@ export const Dashboard: React.FC = () => {
       dashboardLogger.error('❌ Failed to start prompt round:', err);
       const errorMsg = extractErrorMessage(err) || 'Unable to start prompt round. Please try again.';
       setRoundStartError(errorMsg);
-      console.error('Failed to start prompt round:', err);
     } finally {
       setStartingRound(null);
       dashboardLogger.debug('Prompt round start process completed');
@@ -197,7 +196,6 @@ export const Dashboard: React.FC = () => {
       dashboardLogger.error('❌ Failed to start copy round:', err);
       const errorMsg = extractErrorMessage(err) || 'Unable to start copy round. Please try again.';
       setRoundStartError(errorMsg);
-      console.error('Failed to start copy round:', err);
     } finally {
       setStartingRound(null);
       dashboardLogger.debug('Copy round start process completed');
@@ -228,7 +226,6 @@ export const Dashboard: React.FC = () => {
       dashboardLogger.error('❌ Failed to start vote round:', err);
       const errorMsg = extractErrorMessage(err) || 'Unable to start vote round. Please try again.';
       setRoundStartError(errorMsg);
-      console.error('Failed to start vote round:', err);
     } finally {
       setStartingRound(null);
       dashboardLogger.debug('Vote round start process completed');

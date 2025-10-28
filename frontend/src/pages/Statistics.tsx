@@ -11,6 +11,7 @@ import SpendingChart from '../components/statistics/SpendingChart';
 import FrequencyChart from '../components/statistics/FrequencyChart';
 import PerformanceRadar from '../components/statistics/PerformanceRadar';
 import TopContentTable from '../components/statistics/TopContentTable';
+import { statisticsLogger } from '../utils/logger';
 
 const Statistics: React.FC = () => {
   const navigate = useNavigate();
@@ -29,8 +30,14 @@ const Statistics: React.FC = () => {
         setLoading(true);
         setError(null);
         setChartsReady(false);
+        statisticsLogger.debug('Fetching player statistics');
         const statisticsData = await getStatistics(controller.signal);
         setData(statisticsData);
+        statisticsLogger.info('Player statistics loaded', {
+          username: statisticsData?.username,
+          promptRounds: statisticsData?.prompt_stats?.total_rounds,
+          copyRounds: statisticsData?.copy_stats?.total_rounds,
+        });
         // Wait for the DOM to fully render and settle before enabling charts
         // This prevents Recharts dimension errors by ensuring containers have proper sizes
         requestAnimationFrame(() => {
@@ -38,9 +45,12 @@ const Statistics: React.FC = () => {
         });
       } catch (err) {
         if (err instanceof Error && err.name === 'CanceledError') return;
-        setError(extractErrorMessage(err) || 'Failed to load statistics. Please try again.');
+        const message = extractErrorMessage(err) || 'Failed to load statistics. Please try again.';
+        statisticsLogger.error('Failed to load player statistics', err);
+        setError(message);
       } finally {
         setLoading(false);
+        statisticsLogger.debug('Statistics fetch flow completed');
       }
     };
 

@@ -12,6 +12,7 @@ import { PhrasesetDetails } from '../components/PhrasesetDetails';
 import { Header } from '../components/Header';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { useResults } from '../contexts/ResultsContext';
+import { trackingLogger } from '../utils/logger';
 
 type RoleFilter = 'all' | 'prompt' | 'copy';
 type StatusFilter = 'all' | 'in_progress' | 'voting' | 'finalized' | 'abandoned';
@@ -51,6 +52,10 @@ export const Tracking: React.FC = () => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [infoExpanded, setInfoExpanded] = useState(false);
 
+  useEffect(() => {
+    trackingLogger.debug('Tracking page mounted');
+  }, []);
+
   const params = useMemo(() => ({
     role: roleFilter === 'all' ? undefined : roleFilter,
     status: statusFilter === 'all' ? undefined : statusFilter,
@@ -72,8 +77,14 @@ export const Tracking: React.FC = () => {
 
   useEffect(() => {
     refreshPlayerPhrasesets(params, { force: !hasCachedData })
+      .then((data) => {
+        trackingLogger.debug('Player phrasesets refreshed', {
+          cached: hasCachedData,
+          count: data?.phrasesets?.length ?? 0,
+        });
+      })
       .catch((err: any) => {
-        console.error('Failed to refresh phrasesets:', err);
+        trackingLogger.error('Failed to refresh phrasesets', err);
       });
   }, [paramsKey, refreshPlayerPhrasesets, params, hasCachedData]);
 
@@ -121,8 +132,14 @@ export const Tracking: React.FC = () => {
     }
 
     refreshPhrasesetDetails(selectedSummary.phraseset_id!, { force: !hasDetailsData })
+      .then(() => {
+        trackingLogger.debug('Phraseset details refreshed', {
+          phrasesetId: selectedSummary.phraseset_id,
+          forced: !hasDetailsData,
+        });
+      })
       .catch((err: any) => {
-        console.error('Failed to refresh phraseset details:', err);
+        trackingLogger.error('Failed to refresh phraseset details', err);
       });
   }, [selectedSummary?.phraseset_id, refreshPhrasesetDetails, hasDetailsData, stopPoll]);
 
@@ -138,6 +155,9 @@ export const Tracking: React.FC = () => {
     }
 
     startPoll(PollConfigs.PHRASESET_DETAILS, async () => {
+      trackingLogger.debug('Polling phraseset details', {
+        phrasesetId: selectedSummary.phraseset_id,
+      });
       await refreshPhrasesetDetails(selectedSummary.phraseset_id!, { force: true });
     });
 
@@ -172,7 +192,22 @@ export const Tracking: React.FC = () => {
 
   const handleSelect = (summary: PhrasesetSummary) => {
     const id = summary.phraseset_id ?? summary.prompt_round_id;
+    trackingLogger.debug('Phraseset selected from list', {
+      summaryId: id,
+      status: summary.status,
+      role: summary.your_role,
+    });
     setSelectedId(id ?? null);
+  };
+
+  const handleRoleFilterChange = (nextRole: RoleFilter) => {
+    trackingLogger.debug('Role filter changed', { nextRole });
+    setRoleFilter(nextRole);
+  };
+
+  const handleStatusFilterChange = (nextStatus: StatusFilter) => {
+    trackingLogger.debug('Status filter changed', { nextStatus });
+    setStatusFilter(nextStatus);
   };
 
   const totalTracked = useMemo(() => phrasesets.length, [phrasesets.length]);
@@ -231,7 +266,7 @@ export const Tracking: React.FC = () => {
                   <label className="block text-xs font-semibold text-quip-teal mb-2">Role</label>
                   <select
                     value={roleFilter}
-                    onChange={(event) => setRoleFilter(event.target.value as RoleFilter)}
+                    onChange={(event) => handleRoleFilterChange(event.target.value as RoleFilter)}
                     className="w-full rounded-tile border-2 border-quip-teal bg-white p-2 text-sm"
                   >
                     {roleOptions.map((option) => (
@@ -245,7 +280,7 @@ export const Tracking: React.FC = () => {
                   <label className="block text-xs font-semibold text-quip-teal mb-2">Status</label>
                   <select
                     value={statusFilter}
-                    onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
+                    onChange={(event) => handleStatusFilterChange(event.target.value as StatusFilter)}
                     className="w-full rounded-tile border-2 border-quip-teal bg-white p-2 text-sm"
                   >
                     {statusOptions.map((option) => (

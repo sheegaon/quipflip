@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import apiClient, { extractErrorMessage } from '../api/client';
+import { landingLogger } from '../utils/logger';
 
 export const Landing: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -15,50 +16,64 @@ export const Landing: React.FC = () => {
   const { startSession } = actions;
   const navigate = useNavigate();
 
+  useEffect(() => {
+    landingLogger.debug('Landing page rendered');
+  }, []);
+
   const handleCreatePlayer = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Frontend validation
     if (!registerEmail.trim()) {
       setError('Please provide an email address.');
+      landingLogger.warn('Registration attempted without email');
       return;
     }
     // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(registerEmail.trim())) {
       setError('Please provide a valid email address.');
+      landingLogger.warn('Registration attempted with invalid email format', { registerEmail });
       return;
     }
 
     if (!registerPassword) {
       setError('Please provide a password.');
+      landingLogger.warn('Registration attempted without password');
       return;
     }
     if (registerPassword.length < 8) {
       setError('Password must be at least 8 characters long.');
+      landingLogger.warn('Registration attempted with short password');
       return;
     }
     if (registerPassword.length > 128) {
       setError('Password must be 128 characters or less.');
+      landingLogger.warn('Registration attempted with overly long password');
       return;
     }
 
     try {
       setIsLoading(true);
       setError(null);
-      
+      landingLogger.info('Creating player account');
+
       // Backend auto-generates the username/pseudonym, so send only credentials
       const response = await apiClient.createPlayer({
         email: registerEmail.trim(),
         password: registerPassword,
       });
-      
+
+      landingLogger.info('Player created successfully, starting session', { username: response.username });
       startSession(response.username, response);
       navigate('/dashboard');
     } catch (err) {
-      setError(extractErrorMessage(err) || 'Unable to create your account. Please try again or contact support if the problem persists.');
+      const message = extractErrorMessage(err) || 'Unable to create your account. Please try again or contact support if the problem persists.';
+      landingLogger.error('Failed to create player account', err);
+      setError(message);
     } finally {
       setIsLoading(false);
+      landingLogger.debug('Create player flow completed');
     }
   };
 
@@ -66,25 +81,31 @@ export const Landing: React.FC = () => {
     e.preventDefault();
     if (!loginEmail.trim() || !loginPassword.trim()) {
       setError('Please enter your email and password.');
+      landingLogger.warn('Login attempted with missing credentials');
       return;
     }
 
     try {
       setIsLoading(true);
       setError(null);
-      
+      landingLogger.info('Attempting login for existing player', { loginEmail });
+
       // Send email and password to backend (now with correct field names)
       const response = await apiClient.login({
         email: loginEmail.trim(),
         password: loginPassword,
       });
-      
+
+      landingLogger.info('Login successful, starting session', { username: response.username });
       startSession(response.username, response);
       navigate('/dashboard');
     } catch (err) {
-      setError(extractErrorMessage(err) || 'Login failed. Please check your email and password, or create a new account.');
+      const message = extractErrorMessage(err) || 'Login failed. Please check your email and password, or create a new account.';
+      landingLogger.error('Login failed', err);
+      setError(message);
     } finally {
       setIsLoading(false);
+      landingLogger.debug('Existing player login flow completed');
     }
   };
 

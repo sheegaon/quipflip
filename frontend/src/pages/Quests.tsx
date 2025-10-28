@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useGame } from '../contexts/GameContext';
 import { useQuests } from '../contexts/QuestContext';
 import { Header } from '../components/Header';
@@ -6,6 +6,7 @@ import { QuestCard } from '../components/QuestCard';
 import { SuccessNotification } from '../components/SuccessNotification';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import type { Quest } from '../api/types';
+import { questsLogger } from '../utils/logger';
 
 // Quest categories for filtering
 const QUEST_CATEGORIES = ['all', 'streak', 'quality', 'activity', 'milestone'] as const;
@@ -30,6 +31,14 @@ export const Quests: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<QuestCategory>('all');
   const [successMessage, setSuccessMessage] = useState<string>('');
 
+  useEffect(() => {
+    questsLogger.debug('Quests page mounted', {
+      totalQuests: quests.length,
+      activeQuests: activeQuests.length,
+      claimableQuests: claimableQuests.length,
+    });
+  }, [quests.length, activeQuests.length, claimableQuests.length]);
+
   if (!player) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
@@ -43,23 +52,36 @@ export const Quests: React.FC = () => {
 
     setIsClaiming(true);
     try {
+      questsLogger.info('Claiming daily bonus');
       await claimBonus();
       setSuccessMessage(`Daily bonus claimed! +${player.daily_bonus_amount}f`);
       await refreshQuests();
+      questsLogger.info('Daily bonus claimed successfully');
     } catch (err) {
-      console.error('Claim bonus failed:', err);
+      questsLogger.error('Claim bonus failed', err);
     } finally {
       setIsClaiming(false);
+      questsLogger.debug('Claim bonus flow completed');
     }
   };
 
   const handleClaimQuest = async (questId: string) => {
     try {
+      questsLogger.info('Claiming quest reward', { questId });
       const result = await claimQuest(questId);
       setSuccessMessage(`Quest reward claimed! +${result.reward_amount}f`);
+      questsLogger.info('Quest reward claimed successfully', {
+        questId,
+        reward: result.reward_amount,
+      });
     } catch (err) {
-      console.error('Failed to claim quest:', err);
+      questsLogger.error('Failed to claim quest', err);
     }
+  };
+
+  const handleCategoryChange = (category: QuestCategory) => {
+    questsLogger.debug('Quest category changed', { category });
+    setSelectedCategory(category);
   };
 
   const filteredQuests = selectedCategory === 'all'
@@ -171,7 +193,7 @@ export const Quests: React.FC = () => {
             {QUEST_CATEGORIES.map((category) => (
               <button
                 key={category}
-                onClick={() => setSelectedCategory(category)}
+                onClick={() => handleCategoryChange(category)}
                 className={`px-4 py-2 rounded-lg font-medium transition-all ${
                   selectedCategory === category
                     ? 'bg-quip-turquoise text-white'

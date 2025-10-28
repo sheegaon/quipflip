@@ -9,6 +9,7 @@ import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { useTimer } from '../hooks/useTimer';
 import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
 import type { CopyState } from '../api/types';
+import { copyRoundLogger } from '../utils/logger';
 
 export const CopyRound: React.FC = () => {
   const { state } = useGame();
@@ -25,6 +26,18 @@ export const CopyRound: React.FC = () => {
 
   // Get dynamic penalty from config or use default
   const abandonedPenalty = roundAvailability?.abandoned_penalty || 5;
+
+  useEffect(() => {
+    if (!roundData) {
+      copyRoundLogger.debug('Copy round page mounted without active round');
+    } else {
+      copyRoundLogger.debug('Copy round page mounted', {
+        roundId: roundData.round_id,
+        expiresAt: roundData.expires_at,
+        status: roundData.status,
+      });
+    }
+  }, [roundData?.round_id, roundData?.expires_at, roundData?.status]);
 
   // Redirect if already submitted
   useEffect(() => {
@@ -60,11 +73,18 @@ export const CopyRound: React.FC = () => {
     setError(null);
 
     try {
+      copyRoundLogger.debug('Submitting copy round phrase', {
+        roundId: roundData.round_id,
+      });
       await apiClient.submitPhrase(roundData.round_id, phrase.trim());
 
       // Show success message first to prevent navigation race condition
       const message = getRandomMessage('copySubmitted');
       setSuccessMessage(message);
+      copyRoundLogger.info('Copy round phrase submitted successfully', {
+        roundId: roundData.round_id,
+        message,
+      });
 
       // Advance tutorial if in copy_round step
       if (currentStep === 'copy_round') {
@@ -73,10 +93,13 @@ export const CopyRound: React.FC = () => {
 
       // Navigate after brief delay - refresh will happen on dashboard
       setTimeout(() => {
+        copyRoundLogger.debug('Navigating back to dashboard after copy submission');
         navigate('/dashboard');
       }, 1500);
     } catch (err) {
-      setError(extractErrorMessage(err) || 'Unable to submit your phrase. The round may have expired or there may be a connection issue.');
+      const message = extractErrorMessage(err) || 'Unable to submit your phrase. The round may have expired or there may be a connection issue.';
+      copyRoundLogger.error('Failed to submit copy round phrase', err);
+      setError(message);
       setIsSubmitting(false);
     }
   };

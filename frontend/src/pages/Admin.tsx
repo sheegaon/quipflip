@@ -4,6 +4,7 @@ import { useGame } from '../contexts/GameContext';
 import { Header } from '../components/Header';
 import apiClient, { extractErrorMessage } from '../api/client';
 import { EditableConfigField } from '../components/EditableConfigField';
+import { adminLogger } from '../utils/logger';
 
 interface GameConfig {
   // Game Constants
@@ -89,14 +90,19 @@ const Admin: React.FC = () => {
       try {
         setLoading(true);
         setError(null);
+        adminLogger.debug('Loading admin configuration');
 
         // Fetch actual configuration from backend
         const configData = await apiClient.getAdminConfig();
         setConfig(configData);
+        adminLogger.info('Admin configuration loaded');
       } catch (err) {
-        setError(extractErrorMessage(err) || 'Failed to load configuration');
+        const message = extractErrorMessage(err) || 'Failed to load configuration';
+        adminLogger.error('Failed to load admin configuration', err);
+        setError(message);
       } finally {
         setLoading(false);
+        adminLogger.debug('Admin configuration load completed');
       }
     };
 
@@ -106,6 +112,7 @@ const Admin: React.FC = () => {
   const handleSaveConfig = async (key: string, value: number | string) => {
     try {
       setSaveMessage(null);
+      adminLogger.debug('Updating admin config value', { key, value });
       const result = await apiClient.updateAdminConfig(key, value);
 
       // Update local config state
@@ -119,7 +126,9 @@ const Admin: React.FC = () => {
       // Show success message
       setSaveMessage(`Successfully updated ${key}`);
       setTimeout(() => setSaveMessage(null), 3000);
+      adminLogger.info('Admin config updated', { key });
     } catch (err) {
+      adminLogger.error('Failed to update admin config value', err);
       throw err; // Re-throw to let EditableConfigField handle it
     }
   };
@@ -131,6 +140,12 @@ const Admin: React.FC = () => {
 
     try {
       setValidating(true);
+      adminLogger.debug('Testing phrase validation', {
+        validationType,
+        hasPrompt: Boolean(promptText),
+        hasOriginal: Boolean(originalPhrase),
+        hasOtherCopy: Boolean(otherCopyPhrase),
+      });
       const data = await apiClient.testPhraseValidation(
         testPhrase,
         validationType,
@@ -139,10 +154,17 @@ const Admin: React.FC = () => {
         validationType === 'copy' ? otherCopyPhrase || null : null
       );
       setValidationResult(data);
+      adminLogger.info('Phrase validation test completed', {
+        validationType,
+        isValid: data.is_valid,
+      });
     } catch (err) {
-      setError(extractErrorMessage(err) || 'Failed to test phrase validation');
+      const message = extractErrorMessage(err) || 'Failed to test phrase validation';
+      adminLogger.error('Failed to test phrase validation', err);
+      setError(message);
     } finally {
       setValidating(false);
+      adminLogger.debug('Phrase validation test flow completed');
     }
   };
 

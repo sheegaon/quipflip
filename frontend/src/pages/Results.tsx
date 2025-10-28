@@ -5,6 +5,7 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Header } from '../components/Header';
 import { loadingMessages } from '../utils/brandedMessages';
 import type { PhrasesetResults } from '../api/types';
+import { resultsLogger } from '../utils/logger';
 
 export const Results: React.FC = () => {
   const { actions: gameActions } = useGame();
@@ -15,11 +16,18 @@ export const Results: React.FC = () => {
   const [selectedPhrasesetId, setSelectedPhrasesetId] = useState<string | null>(null);
 
   useEffect(() => {
+    resultsLogger.debug('Results page mounted', {
+      pendingResults: pendingResults.length,
+    });
+  }, [pendingResults.length]);
+
+  useEffect(() => {
     if (pendingResults.length > 0 && !selectedPhrasesetId) {
       const initialId = pendingResults[0].phraseset_id;
       setSelectedPhrasesetId(initialId);
       if (initialId) {
         markResultsViewed([initialId]);
+        resultsLogger.debug('Defaulting to first pending result', { initialId });
       }
     }
   }, [pendingResults, selectedPhrasesetId, markResultsViewed]);
@@ -36,12 +44,14 @@ export const Results: React.FC = () => {
     const shouldFetch = !entry?.data && !entry?.loading;
 
     if (shouldFetch) {
+      resultsLogger.debug('Fetching phraseset results', { selectedPhrasesetId });
       refreshPhrasesetResults(selectedPhrasesetId, { force: false })
         .then(async () => {
           await refreshDashboard();
+          resultsLogger.debug('Phraseset results fetched, dashboard refresh triggered', { selectedPhrasesetId });
         })
         .catch((err) => {
-          console.error('Failed to refresh phraseset results:', err);
+          resultsLogger.error('Failed to refresh phraseset results', err);
         });
     }
   }, [selectedPhrasesetId, phrasesetResults, refreshPhrasesetResults, refreshDashboard]);
@@ -49,6 +59,7 @@ export const Results: React.FC = () => {
   const handleSelectPhraseset = (phrasesetId: string) => {
     setSelectedPhrasesetId(phrasesetId);
     markResultsViewed([phrasesetId]);
+    resultsLogger.debug('Phraseset selected', { phrasesetId });
   };
 
   if (pendingResults.length === 0) {
