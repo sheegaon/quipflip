@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useSmartPolling, PollConfigs } from '../utils/smartPolling';
 import { useLoadingState, InlineLoadingSpinner } from '../components/LoadingSpinner';
 import type {
@@ -50,6 +50,12 @@ export const Tracking: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('in_progress');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [infoExpanded, setInfoExpanded] = useState(false);
+
+  const refreshPhrasesetDetailsRef = useRef(refreshPhrasesetDetails);
+
+  useEffect(() => {
+    refreshPhrasesetDetailsRef.current = refreshPhrasesetDetails;
+  }, [refreshPhrasesetDetails]);
 
   useEffect(() => {
     trackingLogger.debug('Tracking page mounted');
@@ -169,13 +175,13 @@ export const Tracking: React.FC = () => {
       trackingLogger.debug('Polling phraseset details', {
         phrasesetId: selectedSummary.phraseset_id,
       });
-      await refreshPhrasesetDetails(selectedSummary.phraseset_id!, { force: true });
+      await refreshPhrasesetDetailsRef.current(selectedSummary.phraseset_id!, { force: true });
     });
 
     return () => {
       stopPoll('phraseset-details');
     };
-  }, [selectedSummary?.phraseset_id, selectedDetailsEntry?.data?.status, refreshPhrasesetDetails, startPoll, stopPoll]);
+  }, [selectedSummary?.phraseset_id, selectedDetailsEntry?.data?.status, startPoll, stopPoll]);
 
   useEffect(() => {
     if (listLoading) {
