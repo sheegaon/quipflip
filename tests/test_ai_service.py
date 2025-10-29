@@ -454,11 +454,17 @@ class TestAIPlayerManagement:
         """Should create AI player if it doesn't exist."""
         service = AIService(db_session)
 
-        with patch('backend.services.player_service.PlayerService.create_player') as mock_create:
+        with (
+            patch(
+                'backend.services.username_service.UsernameService.generate_unique_username',
+                new=AsyncMock(return_value=("AI BACKUP", "aibackup")),
+            ) as mock_generate,
+            patch('backend.services.player_service.PlayerService.create_player') as mock_create,
+        ):
             mock_player = Player(
                 player_id=uuid.uuid4(),
                 username="AI_BACKUP",
-                email="ai@quipflip.internal",
+                email="ai_copy_backup@quipflip.internal",
                 balance=1000,
             )
             mock_create.return_value = mock_player
@@ -467,16 +473,17 @@ class TestAIPlayerManagement:
 
             assert player.username == "AI_BACKUP"
             mock_create.assert_called_once()
+            mock_generate.assert_awaited_once()
 
     @pytest.mark.asyncio
     @patch.dict('os.environ', {'OPENAI_API_KEY': 'sk-test'})
     async def test_get_or_create_ai_player_reuses_existing(self, db_session):
         """Should reuse existing AI player."""
-        # Create AI player first with the default username
+        # Create AI player first with a randomized username
         ai_player = Player(
             player_id=uuid.uuid4(),
-            username="AI_COPY_BACKUP",
-            username_canonical="ai_copy_backup",
+            username="AI Copy Runner",
+            username_canonical="aicopyrunner",
             pseudonym="AI Assistant",
             pseudonym_canonical="ai assistant",
             email="ai_copy_backup@quipflip.internal",
@@ -491,7 +498,7 @@ class TestAIPlayerManagement:
         with patch('backend.services.player_service.PlayerService.create_player') as mock_create:
             player = await service._get_or_create_ai_player()
 
-            assert player.username == "AI_COPY_BACKUP"
+            assert player.username == "AI Copy Runner"
             assert player.player_id == ai_player.player_id
             mock_create.assert_not_called()
 

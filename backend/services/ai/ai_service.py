@@ -23,6 +23,11 @@ from backend.models.vote import Vote
 from backend.services.ai.metrics_service import AIMetricsService, MetricsTracker
 from backend.services.player_service import PlayerService
 from backend.services.round_service import RoundService
+from backend.services.username_service import (
+    UsernameService,
+    canonicalize_username,
+    normalize_username,
+)
 from .prompt_builder import build_copy_prompt
 from backend.services.queue_service import QueueService
 
@@ -31,6 +36,7 @@ logger = logging.getLogger(__name__)
 
 
 AI_PLAYER_EMAIL_DOMAIN = "@quipflip.internal"
+AI_COPY_PLAYER_EMAIL = f"ai_copy_backup{AI_PLAYER_EMAIL_DOMAIN}"
 
 
 class AIServiceError(RuntimeError):
@@ -122,7 +128,12 @@ class AIService:
         logger.error("No AI provider API keys found (OPENAI_API_KEY or GEMINI_API_KEY)")
         raise AIServiceError("No AI provider configured - set OPENAI_API_KEY or GEMINI_API_KEY")
 
-    async def _get_or_create_ai_player(self, username="AI_COPY_BACKUP") -> Player:
+    async def _get_or_create_ai_player(
+        self,
+        username: str | None = None,
+        *,
+        email: str | None = None,
+    ) -> Player:
         """
         Get or create the AI player account.
 
@@ -137,22 +148,49 @@ class AIService:
             This method should NOT commit or refresh the session.
         """
         try:
+            username_service = UsernameService(self.db)
+
+            normalized_username = None
+            canonical_username = None
+            if username:
+                normalized_username = normalize_username(username)
+                canonical_username = canonicalize_username(normalized_username)
+                if not canonical_username:
+                    raise AIServiceError("Invalid AI username provided.")
+
+            if email:
+                target_email = email.strip().lower()
+            elif canonical_username:
+                target_email = f"{canonical_username}{AI_PLAYER_EMAIL_DOMAIN}"
+            else:
+                target_email = AI_COPY_PLAYER_EMAIL
+
             # Check if AI player exists
-            result = await self.db.execute(select(Player).where(Player.username == username))
+            result = await self.db.execute(
+                select(Player).where(Player.email == target_email)
+            )
             ai_player = result.scalar_one_or_none()
 
             if not ai_player:
                 # Create AI player
                 player_service = PlayerService(self.db)
 
+                if normalized_username is None or canonical_username is None:
+                    normalized_username, canonical_username = await username_service.generate_unique_username()
+                else:
+                    existing_username = await self.db.execute(
+                        select(Player).where(Player.username_canonical == canonical_username)
+                    )
+                    if existing_username.scalar_one_or_none() is not None:
+                        normalized_username, canonical_username = await username_service.generate_unique_username()
+
                 ai_player = await player_service.create_player(
-                    username=username,
-                    email=f"{username.lower()}@quipflip.internal",
+                    username=normalized_username,
+                    email=target_email,
                     password_hash="not-used-for-ai-player",
                     pseudonym="Clever Lexical Runner",
                     pseudonym_canonical="cleverlexicalrunner",
                 )
-                # Note: Do not commit here - let caller manage transaction
                 logger.info("Created AI backup player account")
             else:
                 # Validate AI player is in good state
