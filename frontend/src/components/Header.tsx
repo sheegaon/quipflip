@@ -188,7 +188,7 @@ export const Header: React.FC = () => {
               />
             </button>
             {/* Flipcoin Balance */}
-            <div className="flex items-center gap-2 tutorial-balance">
+            <div className="flex items-center gap-2 tutorial-balance border border-white/10 rounded-xl px-2 py-1">
               <img src="/flipcoin.png" alt="Flipcoin" className="w-6 h-6 md:w-10 md:h-10" />
               <BalanceFlipper
                 value={player.balance}
