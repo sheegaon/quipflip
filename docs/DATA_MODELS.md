@@ -10,15 +10,14 @@
 - `pseudonym_canonical` (string) - lowercase form for lookups
 - `email` (string, unique) - player email for authentication
 - `password_hash` (string) - bcrypt hashed password
-- `balance` (integer, database default 1000) - current balance in Flipcoins (f); new accounts are seeded from `settings.starting_balance` (5000f by default)
+- `balance` (integer, database default 1000) - current Flipcoin balance. New accounts are seeded from `settings.starting_balance` (5000f by default) when created via the service layer.
 - `created_at` (timestamp)
 - `last_login_date` (date, nullable) - UTC date for daily bonus tracking
 - `active_round_id` (UUID, nullable, references rounds.round_id) - enforces one-round-at-a-time
 - `tutorial_completed` (boolean, default false) - whether player has finished tutorial
-- `tutorial_progress` (string, default 'not_started') - current tutorial step
+- `tutorial_progress` (string, default 'not_started') - current tutorial step (`not_started`, `welcome`, `dashboard`, `prompt_round`, `prompt_round_paused`, `copy_round`, `copy_round_paused`, `vote_round`, `completed`)
 - `tutorial_started_at` (timestamp, nullable) - when tutorial was started
 - `tutorial_completed_at` (timestamp, nullable) - when tutorial was completed
-- `is_admin` (computed property) - returns true if player has admin access (currently: any authenticated user who knows SECRET_KEY)
 - Indexes: `player_id`, `active_round_id`, `pseudonym`
 - Constraints: Unique `username_canonical`
 - Relationships: `active_round`, `rounds`, `transactions`, `votes`, `daily_bonuses`, `result_views`, `abandoned_prompts`, `phraseset_activities`, `refresh_tokens`, `quests`
@@ -38,9 +37,9 @@
 
 - **Prompt-specific fields** (nullable for non-prompt rounds):
   - `prompt_id` (UUID, references prompts.prompt_id)
-  - `text` (string) - denormalized for performance
+  - `prompt_text` (string) - denormalized for performance
   - `submitted_phrase` (string, nullable) - prompt player's phrase
-  - `phraseset_status` (string, nullable) - waiting_copies, waiting_copy1, active, finalized, abandoned
+  - `phraseset_status` (string, nullable) - 'waiting_copies', 'waiting_copy1', 'active', 'voting', 'closing', 'finalized', 'abandoned'
   - `copy1_player_id` (UUID, nullable, references players.player_id, indexed)
   - `copy2_player_id` (UUID, nullable, references players.player_id, indexed)
 
@@ -86,6 +85,8 @@
 - `created_at` (timestamp)
 - `finalized_at` (timestamp, nullable)
 - `total_pool` (integer, default 200) - base prize pool (prompt + copies) before vote contributions
+- `vote_contributions` (integer, default 0) - total Flipcoins contributed by vote entry fees
+- `vote_payouts_paid` (integer, default 0) - total paid out to correct voters
 - `system_contribution` (integer, default 0) - 0 or 10 for discounted copies
 - Indexes: `phraseset_id`, `prompt_round_id`, `fifth_vote_at`, composite `(status, vote_count)`
 - Relationships: `prompt_round`, `copy_round_1`, `copy_round_2`, `votes`, `vote_rounds`, `result_views`, `activities`
