@@ -175,13 +175,13 @@ class AIService:
                 # Create AI player
                 player_service = PlayerService(self.db)
 
-                if normalized_username is None or canonical_username is None:
+                if normalized_username is None:
                     normalized_username, canonical_username = await username_service.generate_unique_username()
                 else:
-                    existing_username = await self.db.execute(
-                        select(Player).where(Player.username_canonical == canonical_username)
+                    is_username_taken = await self.db.scalar(
+                        select(Player.player_id).where(Player.username_canonical == canonical_username)
                     )
-                    if existing_username.scalar_one_or_none() is not None:
+                    if is_username_taken:
                         normalized_username, canonical_username = await username_service.generate_unique_username()
 
                 ai_player = await player_service.create_player(
