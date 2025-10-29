@@ -8,10 +8,10 @@ import { TreasureChestIcon } from './TreasureChestIcon';
 
 export const Header: React.FC = () => {
   const { state, actions } = useGame();
-  const { player, username, phrasesetSummary, unclaimedResults } = state;
+  const { player, username, phrasesetSummary } = state;
   const { logout, refreshDashboard } = actions;
   const { state: resultsState, actions: resultsActions } = useResults();
-  const { viewedResultIds } = resultsState;
+  const { pendingResults, viewedResultIds } = resultsState;
   const { markResultsViewed } = resultsActions;
   const { state: questState } = useQuests();
   const { hasClaimableQuests } = questState;
@@ -51,16 +51,17 @@ export const Header: React.FC = () => {
     : 'View your in-progress rounds';
 
   // Calculate unviewed results by filtering out viewed ones
-  const unviewedResults = (unclaimedResults || []).filter(result => 
-    !viewedResultIds.has(result.phraseset_id)
+  const unviewedResults = pendingResults.filter(result =>
+    !result.result_viewed && !viewedResultIds.has(result.phraseset_id)
   );
   const unviewedCount = unviewedResults.length;
-  
-  // Show trophy after user has had results (either currently has some, or has had some before)
-  const hasEverHadResults = unclaimedResults && unclaimedResults.length > 0;
-  const showUnclaimedIndicator = hasEverHadResults;
-  
-  const unclaimedLabel = unviewedCount > 0
+
+  // Show trophy after user has ever had finalized results
+  const finalizedPrompts = phrasesetSummary?.finalized.prompts ?? 0;
+  const finalizedCopies = phrasesetSummary?.finalized.copies ?? 0;
+  const showResultsIndicator = (finalizedPrompts + finalizedCopies) > 0;
+
+  const resultsLabel = unviewedCount > 0
     ? `${unviewedCount} result${unviewedCount === 1 ? '' : 's'} ready to view`
     : 'View your results';
 
@@ -134,7 +135,7 @@ export const Header: React.FC = () => {
                 )}
               </button>
             )}
-            {showUnclaimedIndicator && (
+            {showResultsIndicator && (
               <button
                 type="button"
                 onClick={handleResultsClick}
@@ -143,8 +144,8 @@ export const Header: React.FC = () => {
                     ? 'bg-quip-orange bg-opacity-10 text-quip-orange hover:bg-quip-orange hover:bg-opacity-20 focus-visible:ring-quip-orange'
                     : 'bg-gray-200 text-black hover:bg-gray-300 focus-visible:ring-gray-400'
                 }`}
-                title={unclaimedLabel}
-                aria-label={unclaimedLabel}
+                title={resultsLabel}
+                aria-label={resultsLabel}
               >
                 <span>{unviewedCount}</span>
                 <img
