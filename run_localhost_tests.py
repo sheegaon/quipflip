@@ -54,18 +54,18 @@ def check_server() -> bool:
     try:
         response = httpx.get(f"{BASE_URL}/health", timeout=5.0)
         if response.status_code == 200:
-            print(f"{Colors.GREEN}✓ Server is running at {BASE_URL}{Colors.NC}")
+            print(f"{Colors.GREEN}Server is running at {BASE_URL}{Colors.NC}")
             return True
         else:
-            print(f"{Colors.RED}✗ Server returned status {response.status_code}{Colors.NC}")
+            print(f"{Colors.RED}Server returned status {response.status_code}{Colors.NC}")
             return False
     except httpx.ConnectError:
-        print(f"{Colors.RED}✗ Cannot connect to server at {BASE_URL}{Colors.NC}")
+        print(f"{Colors.RED}Cannot connect to server at {BASE_URL}{Colors.NC}")
         print(f"{Colors.RED}Please start the server with:{Colors.NC}")
         print(f"{Colors.YELLOW}  uvicorn backend.main:app --reload{Colors.NC}")
         return False
     except Exception as e:
-        print(f"{Colors.RED}✗ Unexpected error: {e}{Colors.NC}")
+        print(f"{Colors.RED}Unexpected error: {e}{Colors.NC}")
         return False
 
 
@@ -106,16 +106,16 @@ def run_test_file(test_file: str, test_name: str, extra_args: list) -> bool:
     try:
         result = subprocess.run(cmd, check=False)
         if result.returncode == 0:
-            print(f"\n{Colors.GREEN}✓ {test_name} completed successfully{Colors.NC}")
+            print(f"\n{Colors.GREEN}{test_name} completed successfully{Colors.NC}")
             return True
         else:
-            print(f"\n{Colors.RED}✗ {test_name} failed{Colors.NC}")
+            print(f"\n{Colors.RED}{test_name} failed{Colors.NC}")
             return False
     except FileNotFoundError:
-        print(f"{Colors.RED}✗ pytest not found. Install with: pip install pytest{Colors.NC}")
+        print(f"{Colors.RED}pytest not found. Install with: pip install pytest{Colors.NC}")
         return False
     except Exception as e:
-        print(f"{Colors.RED}✗ Error running tests: {e}{Colors.NC}")
+        print(f"{Colors.RED}Error running tests: {e}{Colors.NC}")
         return False
 
 
@@ -175,7 +175,7 @@ def run_tests(test_type: str, extra_args: list):
         passed = sum(results)
         total = len(results)
         if passed == total:
-            print(f"{Colors.GREEN}All {total} test suites passed! ✓{Colors.NC}")
+            print(f"{Colors.GREEN}All {total} test suites passed!{Colors.NC}")
         else:
             print(f"{Colors.YELLOW}{passed}/{total} test suites passed{Colors.NC}")
             if passed < total:
