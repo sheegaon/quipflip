@@ -147,48 +147,102 @@ QUEST_CONFIGS = {
 class QuestService:
     """Service for managing player quests."""
 
+    STARTER_QUEST_TYPES: List[QuestType] = [
+        QuestType.HOT_STREAK_5,
+        QuestType.ROUND_COMPLETION_5,
+        QuestType.BALANCED_PLAYER,
+        QuestType.LOGIN_STREAK_7,
+        QuestType.FEEDBACK_CONTRIBUTOR_10,
+        QuestType.MILESTONE_VOTES_100,
+        QuestType.MILESTONE_PROMPTS_50,
+        QuestType.MILESTONE_COPIES_100,
+    ]
+
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def initialize_quests_for_player(self, player_id: UUID) -> List[Quest]:
-        """Initialize starter quests for a new player."""
-        starter_quests = [
-            QuestType.HOT_STREAK_5,
-            QuestType.ROUND_COMPLETION_5,
-            QuestType.BALANCED_PLAYER,
-            QuestType.LOGIN_STREAK_7,
-            QuestType.FEEDBACK_CONTRIBUTOR_10,
-            QuestType.MILESTONE_VOTES_100,
-            QuestType.MILESTONE_PROMPTS_50,
-            QuestType.MILESTONE_COPIES_100,
-        ]
-
+    async def initialize_quests_for_player(
+        self, player_id: UUID, *, auto_commit: bool = True
+    ) -> List[Quest]:
+        """Ensure all starter quests exist for the player."""
         quests = []
-        for quest_type in starter_quests:
-            quest = await self._create_quest(player_id, quest_type)
+        for quest_type in self.STARTER_QUEST_TYPES:
+            quest = await self._create_quest(
+                player_id, quest_type, check_existing=True
+            )
             quests.append(quest)
 
-        await self.db.commit()
-        logger.info(f"Initialized {len(quests)} quests for player {player_id}")
+        if auto_commit:
+            await self.db.commit()
+        else:
+            await self.db.flush()
+
+        logger.info(
+            "Ensured starter quests exist for player %s (total=%d)",
+            player_id,
+            len(self.STARTER_QUEST_TYPES),
+        )
         return quests
 
-    async def _create_quest(self, player_id: UUID, quest_type: QuestType) -> Quest:
+    async def create_missing_starter_quests(
+        self,
+        player_id: UUID,
+        missing_quest_types: List[QuestType],
+        *,
+        auto_commit: bool = True,
+    ) -> List[Quest]:
+        """Create only the missing starter quests for a player."""
+        if not missing_quest_types:
+            return []
+
+        quests = []
+        for quest_type in missing_quest_types:
+            quests.append(
+                await self._create_quest(
+                    player_id, quest_type, check_existing=False
+                )
+            )
+
+        if auto_commit:
+            await self.db.commit()
+        else:
+            await self.db.flush()
+
+        logger.info(
+            "Created %d missing starter quests for player %s",
+            len(quests),
+            player_id,
+        )
+        return quests
+
+    async def _create_quest(
+        self,
+        player_id: UUID,
+        quest_type: QuestType,
+        *,
+        check_existing: bool = True,
+    ) -> Quest:
         """Create a new quest for a player."""
         config = QUEST_CONFIGS[quest_type]
 
-        # Check if quest already exists
-        existing_result = await self.db.execute(
-            select(Quest).where(
-                and_(
-                    Quest.player_id == player_id,
-                    Quest.quest_type == quest_type.value
+        if check_existing:
+            # Check if quest already exists
+            existing_result = await self.db.execute(
+                select(Quest).where(
+                    and_(
+                        Quest.player_id == player_id,
+                        Quest.quest_type == quest_type.value
+                    )
                 )
             )
-        )
-        existing_quest = existing_result.scalar_one_or_none()
-        if existing_quest:
-            logger.info(f"Quest {quest_type.value} already exists for player {player_id}")
-            return existing_quest
+            existing_quest = existing_result.scalar_one_or_none()
+            if existing_quest:
+                logger.info(
+                    "Quest %s already exists for player %s",
+                    quest_type.value,
+                    player_id,
+                )
+                return existing_quest
 
         quest = Quest(
             quest_id=uuid.uuid4(),
