@@ -4,7 +4,7 @@ const BASE_URL = 'http://localhost:5173';
 const TEST_EMAIL = `test_${Date.now()}@example.com`;
 const TEST_PASSWORD = 'TestPass123!';
 
-test.describe('QuipFlip Interactive Tests', () => {
+test.describe('Quipflip Interactive Tests', () => {
   test('should complete registration and explore dashboard', async ({ page }) => {
     console.log('\n=== Starting Interactive Test ===\n');
 

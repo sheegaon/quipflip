@@ -1,636 +1,205 @@
-# Quipflip AI Service - Comprehensive Documentation
+# Quipflip AI Service
 
 ## Overview
 
-The Quipflip AI Service provides automated backup copy generation and voting when human players are unavailable. It supports multiple AI providers (OpenAI, Gemini) with automatic fallback, comprehensive metrics tracking, and production-ready reliability.
+The AI service fills in for missing players by generating backup copy phrases and casting votes when human activity is low. It supports both OpenAI and Google Gemini models, records detailed telemetry for every AI operation, and integrates with the existing queue, phrase validation, and round management services so that AI decisions follow the same rules as real players.
 
-## Table of Contents
-
-1. [Architecture](#architecture)
-2. [Features](#features)
-3. [Configuration](#configuration)
-4. [API Reference](#api-reference)
-5. [Database Schema](#database-schema)
-6. [Testing](#testing)
-7. [Performance & Costs](#performance--costs)
-8. [Security](#security)
-9. [Troubleshooting](#troubleshooting)
-10. [Implementation Status](#implementation-status)
-
-## Architecture
-
-### Service Structure
+## Module Layout
 
 ```
-backend/services/
-├── ai_service.py              # Main orchestrator with provider selection
-├── ai_vote_helper.py          # AI voting logic for phrase identification
-├── ai_metrics_service.py      # Comprehensive metrics tracking
-├── openai_api.py              # OpenAI (GPT-5 Nano) integration
-├── gemini_api.py              # Gemini (Flash Lite) integration
-└── prompt_builder.py          # Shared prompt construction
+backend/services/ai/
+├── ai_service.py       # High level coordinator for copy generation, voting, and backup cycles
+├── gemini_api.py       # Lightweight wrapper around the Google Gemini SDK
+├── metrics_service.py  # Telemetry helpers (AIMetricsService + MetricsTracker)
+├── openai_api.py       # Lightweight wrapper around the OpenAI SDK
+├── prompt_builder.py   # Shared prompt templates for copy and vote prompts
+└── vote_helper.py      # Provider-specific vote selection helpers
 ```
 
-### Database Integration
+Related models and helpers live in other packages:
 
 ```
-backend/models/
-└── ai_metric.py               # AIMetric model for usage tracking
+backend/models/ai_metric.py   # ORM model persisted by AIMetricsService
+backend/services/queue_service.py  # Used to claim work during backup cycles
+backend/services/round_service.py  # Used to build phrasesets when AI copies arrive
+backend/services/vote_service.py   # Used to submit AI votes with full transaction handling
+backend/services/phrase_validator.py (or phrase_validation_client.py)  # Validation rules reused by AI copies
 ```
 
-### Core Components
+## Key Capabilities
 
-1. **AICopyService** - Main service orchestrator
-2. **AI Provider APIs** - OpenAI and Gemini integrations
-3. **AIMetricsService** - Usage and performance tracking
-4. **AIVoteHelper** - AI-powered voting assistance
-5. **MetricsTracker** - Context manager for automatic tracking
+### Provider selection
 
-## Features
+* `AIService` inspects `Settings.ai_provider` and the configured API keys.
+* The requested provider is used when its API key is present.
+* If the requested provider is unavailable the code falls back to the other provider when possible.
+* If no provider is configured an `AIServiceError` is raised.
 
-### ✅ Multi-Provider AI Support
+### Copy generation
 
-#### OpenAI Integration
-- **Model**: GPT-5 Nano (configurable)
-- **Advantages**: High-quality responses, well-tested
-- **Performance**: ~800ms copy, ~600ms vote
-- **Cost**: ~$0.0001 per copy, ~$0.00008 per vote
+* `AIService.generate_copy_phrase(original_phrase, prompt_round)` builds a prompt with `prompt_builder.build_copy_prompt`, incorporating any existing copies to enforce diversity.
+* Copies are generated through `openai_api.generate_copy` or `gemini_api.generate_copy` and validated with the same validator used for human submissions (local validator or the remote Phrase Validation API depending on configuration).
+* When a response is too similar to an existing copy the service retries once with updated instructions.
+* Every attempt is wrapped in `MetricsTracker`, capturing latency, provider, model, success, and validation outcome in `ai_metrics`.
 
-#### Gemini Integration
-- **Model**: gemini-2.5-flash-lite (configurable)
-- **Advantages**: Fast responses, cost-effective
-- **Performance**: ~500ms copy, ~400ms vote
-- **Cost**: ~$0.00005 per copy, ~$0.00004 per vote
+### Vote generation
 
-#### Smart Provider Selection
-1. Use configured provider if API key available
-2. Fall back to alternate provider if primary unavailable
-3. Default to OpenAI if both available
-4. Error if no provider configured
+* `AIService.generate_vote_choice(phraseset)` assembles the original phrase and two copies, shuffles them, and calls `vote_helper.generate_vote_choice`.
+* `vote_helper` contains provider-specific implementations for OpenAI and Gemini. They both rely on `prompt_builder.build_vote_prompt` to produce the voting instructions.
+* The tracker logs whether the AI selected the original phrase so that accuracy can be measured later.
 
-### ✅ AI Copy Generation
+### Backup cycle automation
 
-- Generates backup phrases when human players unavailable
-- Full phrase validation (length, characters, dictionary, similarity)
-- Transaction safety with proper error handling
-- Automatic retry logic and fallback behavior
+* `AIService.run_backup_cycle()` creates or retrieves a dedicated AI player, then:
+  1. Finds prompt rounds that have been waiting longer than `Settings.ai_backup_delay_minutes` and are still missing copies.
+  2. Skips prompts the AI recently attempted (based on previous metrics entries).
+  3. Generates copies, submits them as the AI player, and lets `RoundService` finalize phrasesets when both copies are present.
+  4. Finds phrasesets that have been idle past the same delay but already have at least one human vote.
+  5. Generates AI votes using `VoteService.submit_system_vote`, crediting payouts and recording metrics like any other vote.
+* The method commits all successful work in one transaction and rolls back on failure. Statistics are logged for observability.
 
-### ✅ AI Voting System
+### Metrics and analytics
 
-- Analyzes prompt + 3 phrases to identify original
-- Smart prompt engineering for accuracy
-- Fallback to random choice if AI parsing fails
-- Correctness tracking for performance analysis
-
-### ✅ Comprehensive Metrics Tracking
-
-#### Tracked Metrics
-- **Operation Details**: type (copy/vote), provider, model
-- **Performance**: success/failure, latency (ms), error messages
-- **Cost Tracking**: estimated cost in USD per operation
-- **Context**: prompt/response lengths for analysis
-- **Copy Validation**: whether generated phrase passed validation
-- **Vote Accuracy**: whether AI vote was correct
-
-#### Analytics Capabilities
-- Success rates by provider and operation type
-- Cost analysis and budget monitoring
-- Performance benchmarking
-- Vote accuracy statistics
-
-### ✅ Transaction Safety
-
-- Fixed critical transaction management bug
-- Proper lifecycle management in `run_backup_cycle()`
-- Prevents partial state on operation failure
-- Comprehensive rollback handling
+* `AIMetricsService.record_operation` stores a row in `ai_metrics` with provider, model, latency, validation or vote correctness, and an estimated cost based on prompt/response lengths.
+* `AIMetricsService.get_stats` returns aggregate counts, success rates, cost totals, average latency, and breakdowns per provider/type for a time window (default: 24 hours).
+* `AIMetricsService.get_vote_accuracy` reports how often AI votes matched the original phrase.
+* `MetricsTracker` is an async context manager that simplifies latency measurement and automatic failure logging.
 
 ## Configuration
 
-### Environment Variables
+The AI service reads its configuration from `backend.config.Settings` (environment variables of the same name override defaults):
 
-```bash
-# Provider Selection
-AI_PROVIDER=openai  # Options: "openai" or "gemini"
+| Setting | Purpose | Default |
+| --- | --- | --- |
+| `OPENAI_API_KEY` | Enables OpenAI copy/vote generation | unset |
+| `GEMINI_API_KEY` | Enables Gemini copy/vote generation | unset |
+| `AI_PROVIDER` | Preferred provider (`"openai"`, `"gemini"`, or `"none"`) | `openai` |
+| `AI_OPENAI_MODEL` | OpenAI model name passed to the API | `gpt-5-nano` |
+| `AI_GEMINI_MODEL` | Gemini model name passed to the API | `gemini-2.5-flash-lite` |
+| `AI_TIMEOUT_SECONDS` | Request timeout for provider calls | `60` |
+| `AI_BACKUP_DELAY_MINUTES` | Age threshold before AI copies/votes run | `15` |
+| `AI_BACKUP_BATCH_SIZE` | Max prompts/phrasesets processed per cycle | `3` |
+| `AI_BACKUP_SLEEP_SECONDS` | Recommended sleep between scheduled cycles | `3600` |
 
-# API Keys (at least one required)
-OPENAI_API_KEY=sk-...
-GEMINI_API_KEY=...
-
-# Model Configuration (optional)
-AI_OPENAI_MODEL=gpt-5-nano
-AI_GEMINI_MODEL=gemini-2.5-flash-lite
-
-# Service Configuration
-AI_TIMEOUT_SECONDS=30
-AI_BACKUP_DELAY_MINUTES=10
-```
-
-### Config.py Settings
-
-```python
-# AI Copy Service
-ai_provider: str = "openai"
-ai_openai_model: str = "gpt-5-nano"
-ai_gemini_model: str = "gemini-2.5-flash-lite"
-ai_timeout_seconds: int = 30
-ai_backup_delay_minutes: int = 10
-```
+When `Settings.use_phrase_validator_api` is `True`, the service uses the remote validator via `phrase_validation_client`; otherwise it falls back to the local validator.
 
 ## API Reference
 
-### AICopyService
-
-#### Initialize Service
+### Creating an `AIService`
 
 ```python
+from sqlalchemy.ext.asyncio import AsyncSession
 from backend.services.ai.ai_service import AIService
-from backend.services.phrase_validator import PhraseValidator
-from backend.database import get_db
 
-validator = PhraseValidator()
-db = get_db()
-ai_service = AIService(db, validator)
+ai_service = AIService(db_session)  # db_session: AsyncSession
 ```
 
-#### Generate Copy Phrase
+`AIService` pulls configuration during construction and lazily loads the phrase validator.
+
+### `generate_copy_phrase`
 
 ```python
-async def generate_copy_phrase(
-    self,
-    original_phrase: str,
-    prompt_text: str,
-) -> str:
-    """
-    Generate a copy phrase using configured AI provider with metrics tracking.
-    
-    Args:
-        original_phrase: The original phrase to create a copy of
-        prompt_text: The prompt text for context
-    
-    Returns:
-        Generated and validated copy phrase
-    
-    Raises:
-        AICopyError: If generation or validation fails
-    """
-```
-
-**Usage Example:**
-
-```python
-try:
-    copy_phrase = await ai_service.generate_copy_phrase(original_phrase="happy birthday")
-    print(f"AI generated: {copy_phrase}")
-    await db.commit()  # Commits both phrase and metrics
-except AICopyError as e:
-    logger.error(f"Failed: {e}")
-    await db.rollback()
-```
-
-#### Generate Vote Choice
-
-```python
-async def generate_vote_choice(
-    self,
-    phraseset: Phraseset,
-) -> str:
-    """
-    Generate a vote choice using configured AI provider with metrics tracking.
-    
-    Args:
-        phraseset: The phraseset to vote on (must have prompt and phrases loaded)
-    
-    Returns:
-        The chosen phrase (one of the 3 phrases in the phraseset)
-    
-    Raises:
-        AIVoteError: If vote generation fails
-    """
-```
-
-**Usage Example:**
-
-```python
-try:
-    chosen_phrase = await ai_service.generate_vote_choice(phraseset)
-    print(f"AI voted for: {chosen_phrase}")
-    await db.commit()  # Commits vote and metrics
-except AIVoteError as e:
-    logger.error(f"Vote failed: {e}")
-```
-
-#### Run Backup Cycle
-
-```python
-async def run_backup_cycle(self) -> dict:
-    """
-    Run backup cycle to provide AI copies for waiting prompts.
-    
-    Returns:
-        Dictionary with cycle statistics
-    """
-```
-
-### AIMetricsService
-
-#### Get Performance Statistics
-
-```python
-from backend.services.ai_metrics_service import AIMetricsService
-from datetime import datetime, UTC, timedelta
-
-metrics_service = AIMetricsService(db)
-
-# Get stats for last 24 hours
-stats = await metrics_service.get_stats(
-    since=datetime.now(UTC) - timedelta(days=1),
-    provider="openai"  # Optional filter
+copy = await ai_service.generate_copy_phrase(
+    original_phrase="HAPPY BIRTHDAY",
+    prompt_round=prompt_round,  # backend.models.round.Round instance
 )
-
-print(f"Success rate: {stats.success_rate:.1f}%")
-print(f"Total cost: ${stats.total_cost_usd:.4f}")
-print(f"Avg latency: {stats.avg_latency_ms:.0f}ms")
 ```
 
-#### Get Vote Accuracy
+* Returns an uppercase phrase ready to store on a copy round.
+* Raises `AICopyError` when generation fails or validation rejects the result.
+* Metrics are queued on the current SQLAlchemy session; the caller is responsible for committing.
+
+### `generate_vote_choice`
 
 ```python
-accuracy = await metrics_service.get_vote_accuracy(
-    since=datetime.now(UTC) - timedelta(days=7),
-    provider="gemini"  # Optional filter
-)
-
-print(f"Vote accuracy: {accuracy['accuracy_percent']:.1f}%")
-print(f"Total votes: {accuracy['total_votes']}")
+choice = await ai_service.generate_vote_choice(phraseset)  # returns the chosen phrase string
 ```
 
-## Database Schema
+* Accepts a fully populated `backend.models.phraseset.Phraseset` (prompt text and phrase fields are used).
+* Returns the phrase text selected by the AI.
+* Raises `AIVoteError` if the provider cannot return a valid choice.
 
-### AIMetric Table
+### `run_backup_cycle`
 
-```sql
-CREATE TABLE ai_metrics (
-    metric_id VARCHAR(36) PRIMARY KEY,
-    operation_type VARCHAR(50) NOT NULL,     -- "copy_generation" or "vote_generation"
-    provider VARCHAR(50) NOT NULL,           -- "openai" or "gemini"
-    model VARCHAR(100) NOT NULL,             -- e.g., "gpt-5-nano"
-    success BOOLEAN NOT NULL,
-    latency_ms INTEGER,
-    error_message VARCHAR(500),
-    estimated_cost_usd FLOAT,
-    prompt_length INTEGER,
-    response_length INTEGER,
-    validation_passed BOOLEAN,               -- For copy generation
-    vote_correct BOOLEAN,                    -- For vote generation
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL
-);
-
--- Indexes for efficient queries
-CREATE INDEX ix_ai_metrics_operation_type ON ai_metrics(operation_type);
-CREATE INDEX ix_ai_metrics_provider ON ai_metrics(provider);
-CREATE INDEX ix_ai_metrics_success ON ai_metrics(success);
-CREATE INDEX ix_ai_metrics_created_at ON ai_metrics(created_at);
-CREATE INDEX ix_ai_metrics_created_at_success ON ai_metrics(created_at, success);
-CREATE INDEX ix_ai_metrics_operation_provider ON ai_metrics(operation_type, provider);
+```python
+await ai_service.run_backup_cycle()
 ```
 
-### Migration
+* Orchestrates both copy and vote catch-up tasks as described above.
+* Does not return a value; success and error counts are logged.
+* Commits at the end of a successful cycle. On failure it rolls back and logs the error.
 
-Apply the database migration:
+### Metrics helpers
 
-```bash
-alembic upgrade head
+```python
+from backend.services.ai.metrics_service import AIMetricsService, MetricsTracker
+
+metrics = AIMetricsService(db_session)
+stats = await metrics.get_stats()
+accuracy = await metrics.get_vote_accuracy()
+
+async with MetricsTracker(metrics,
+                          operation_type="copy_generation",
+                          provider="openai",
+                          model="gpt-5-nano") as tracker:
+    # ... call provider ...
+    tracker.set_result(result_text,
+                       success=True,
+                       response_length=len(result_text),
+                       validation_passed=True)
 ```
 
-Verify migration:
+## Data Model
 
-```bash
-alembic current
-# Should show: 057f3d5c9698 (head)
-```
+`backend/models/ai_metric.py` defines the `ai_metrics` table with the following notable columns and behaviour:
+
+* Primary key `metric_id` uses UUIDs generated by `uuid.uuid4`.
+* `operation_type` distinguishes copy and vote flows (`"copy_generation"` or `"vote_generation"`).
+* `provider` and `model` capture the configured backend (for example `"openai"` / `"gpt-5-nano"`).
+* `success`, `latency_ms`, and `error_message` describe the outcome of the provider call. Latency is stored in milliseconds and can be `NULL` on hard failures where no timing is captured.
+* `estimated_cost_usd` is a nullable float populated when the provider cost helper can estimate token usage.
+* `prompt_length` and `response_length` store character lengths for prompts and responses when available. These fields are optional so that the service can log operations even if a provider omits size metadata.
+* `validation_passed` is set for copy-generation attempts. It is `NULL` on vote operations.
+* `vote_correct` is set for vote-generation attempts and is `NULL` for copy operations.
+* `created_at` defaults to `datetime.now(UTC)` and is indexed for efficient time-window analytics.
+
+Additional composite indexes support common dashboards and alerts:
+
+* `ix_ai_metrics_created_at_success` accelerates time-bounded success-rate checks.
+* `ix_ai_metrics_operation_provider` groups operations by type and provider for breakdowns.
+* `ix_ai_metrics_op_created` is used by the metrics service to retrieve the most recent operations of each type.
+
+## External Dependencies
+
+* `openai` – optional dependency used when OpenAI is the provider.
+* `google-genai` – optional dependency used when Gemini is the provider.
+* The phrase validation service (remote API or local validator) must be available so that AI copies follow the same rules as player submissions.
 
 ## Testing
 
-### Comprehensive Integration Tests
+Automated coverage lives in `tests/test_ai_service.py` and focuses on the following scenarios:
 
-**Test Coverage** - 17 test cases in `tests/test_ai_service.py`:
+* Provider selection fallbacks (`AIService` initialization) across all combinations of configured API keys.
+* Copy generation success paths, validation failures, and provider exceptions. External SDK calls are mocked so no real OpenAI or Gemini requests are issued.
+* Vote generation, including correctness tracking, shuffled phrase ordering, and error-handling around `vote_helper` responses.
+* Metrics recording for copy and vote operations, plus aggregation via `AIMetricsService.get_stats` and `get_vote_accuracy`.
+* AI player management helpers that create the backup player when missing and reuse the persisted record when present.
+* Backup cycle behaviour that filters phrasesets, requires existing human votes before adding AI votes, and submits system votes via the vote service.
 
-1. **Provider Selection** (4 tests)
-   - Select OpenAI when configured
-   - Select Gemini when configured
-   - Fallback to available provider
-   - Error when no providers available
+Current gaps include:
 
-2. **Copy Generation** (4 tests)
-   - Generate with OpenAI
-   - Generate with Gemini
-   - Handle validation failures
-   - Handle API failures
+* No coverage for running `run_backup_cycle` end-to-end with real provider integrations or phrase validation API calls.
+* No assertions around the token-cost estimation logic beyond verifying that `estimated_cost_usd` is populated when supplied.
+* Gemini-specific voting pathways rely on shared mocks and are not exercised with provider-specific prompts.
 
-3. **Voting** (2 tests)
-   - Generate correct vote choice
-   - Handle incorrect vote choice
-
-4. **Metrics** (3 tests)
-   - Record metrics on success
-   - Record metrics on failure
-   - Track vote correctness
-
-5. **Analytics** (2 tests)
-   - Calculate statistics
-   - Calculate vote accuracy
-
-6. **Player Management** (2 tests)
-   - Create AI player
-   - Reuse existing AI player
-
-### Run Tests
+Run the suite with:
 
 ```bash
-# Run all AI service tests
 pytest tests/test_ai_service.py -v
-
-# Run specific test class
-pytest tests/test_ai_service.py::TestAIVoting -v
-
-# Run with coverage
-pytest tests/test_ai_service.py --cov=backend.services.ai_service --cov-report=html
 ```
 
-### Manual Testing
-
-Test individual providers:
-
-```bash
-# Test Gemini
-python -c "from backend.services import gemini_api; import asyncio; print(asyncio.run(gemini_api.generate_copy('happy day', 'A feeling of joy')))"
-
-# Test OpenAI
-python -c "from backend.services import openai_api; import asyncio; print(asyncio.run(openai_api.generate_copy('happy day', 'A feeling of joy')))"
-```
-
-## Performance & Costs
-
-### Performance Characteristics
-
-| Provider | Copy Latency | Vote Latency | Success Rate |
-|----------|-------------|-------------|-------------|
-| OpenAI   | ~800ms      | ~600ms      | 95%+        |
-| Gemini   | ~500ms      | ~400ms      | 90%+        |
-
-### Cost Analysis
-
-| Provider | Copy Cost | Vote Cost | Monthly (500 ops) |
-|----------|-----------|-----------|------------------|
-| OpenAI   | $0.0001   | $0.00008  | $2.70           |
-| Gemini   | $0.00005  | $0.00004  | $1.35           |
-
-### Vote Accuracy (Estimated)
-
-- **OpenAI**: 65-75% correct (vs 33% random baseline)
-- **Gemini**: 60-70% correct (vs 33% random baseline)
-
-### Cost Tracking Models
-
-```python
-COST_PER_1K_TOKENS = {
-    "gpt-5-nano": {"input": 0.00005, "output": 0.00015},
-    "gpt-4": {"input": 0.03, "output": 0.06},
-    "gpt-3.5-turbo": {"input": 0.0015, "output": 0.002},
-    "gemini-2.5-flash-lite": {"input": 0.00001, "output": 0.00003},
-    "gemini-1.5-pro": {"input": 0.00125, "output": 0.005},
-}
-```
-
-## Security
-
-### Best Practices
-
-- **API Keys**: Store in environment variables, never in code
-- **Local Development**: Use `.env` file (gitignored)
-- **Production**: Use platform secrets (Heroku Config Vars)
-- **Rate Limiting**: Implement to prevent abuse
-- **Monitoring**: Track anomalous usage patterns
-
-### Security Considerations
-
-- All AI operations are logged with timestamps
-- API usage is tracked for billing and abuse detection
-- Phrase validation prevents injection attacks
-- Transaction rollback prevents partial state corruption
-
-## Troubleshooting
-
-### Common Issues
-
-#### "No AI provider configured" Error
-
-**Cause**: Neither `OPENAI_API_KEY` nor `GEMINI_API_KEY` is set.
-
-**Solution**: Add at least one API key to your `.env` file.
-
-#### Import Errors
-
-**Cause**: Required packages not installed.
-
-**Solution**:
-```bash
-pip install openai>=1.0.0 google-genai==1.45.0
-```
-
-#### Provider Fallback Not Working
-
-**Cause**: Configured provider has invalid API key.
-
-**Solution**: Check API key validity and permissions.
-
-#### Metrics Not Recording
-
-**Cause**: Missing `await db.commit()` after AI operations.
-
-**Solution**: Ensure transaction is committed after operations.
-
-#### Vote Accuracy Always 0%
-
-**Cause**: Phrasesets missing prompt_round data.
-
-**Solution**: Ensure phrasesets loaded with `selectinload()`.
-
-#### Cost Estimates Incorrect
-
-**Cause**: Outdated pricing in `COST_PER_1K_TOKENS`.
-
-**Solution**: Update with latest provider pricing.
-
-## Implementation Status
-
-### ✅ Completed Features
-
-1. **AI Copy Generation**
-   - Multi-provider support (OpenAI + Gemini)
-   - Automatic provider fallback
-   - Phrase validation integration
-   - Transaction safety fixes
-
-2. **AI Voting System**
-   - Intelligent original phrase identification
-   - Provider-agnostic interface
-   - Correctness tracking
-
-3. **Metrics & Analytics**
-   - Comprehensive operation tracking
-   - Cost estimation and monitoring
-   - Performance benchmarking
-   - Success rate analysis
-
-4. **Database Integration**
-   - AIMetric model and migration
-   - Efficient indexing for queries
-   - Proper relationship management
-
-5. **Testing**
-   - 17 comprehensive integration tests
-   - Provider mocking and edge cases
-   - Performance and accuracy validation
-
-6. **Documentation**
-   - Complete API reference
-   - Configuration guide
-   - Troubleshooting handbook
-
-### ⏸️ TODO (Phase 3)
-
-1. **Background Scheduler**: Integrate Celery/APScheduler
-2. **Queue Integration**: Connect to prompt queue queries
-3. **Metrics Dashboard**: API endpoints for analytics
-4. **Real-time Monitoring**: WebSocket updates
-5. **A/B Testing**: Automated provider comparison
-
-### 🔮 Future Enhancements
-
-1. **Additional Providers**: Anthropic Claude, Cohere
-2. **Quality Scoring**: Rate AI-generated content
-3. **Adaptive Learning**: Adjust strategies based on success
-4. **Cost Alerts**: Notify on threshold breaches
-5. **Caching**: Cache similar prompts to reduce API calls
-
-## Dependencies
-
-### Required Packages
-
-```txt
-openai>=1.0.0          # For OpenAI GPT models
-google-genai==1.45.0   # For Gemini models
-```
-
-### Installation
-
-```bash
-pip install -r requirements.txt
-```
-
-## Quick Start Guide
-
-### 1. Setup Environment
-
-```bash
-# Copy environment template
-cp .env.example .env
-
-# Add your API keys
-echo "OPENAI_API_KEY=sk-your-key-here" >> .env
-echo "GEMINI_API_KEY=your-gemini-key-here" >> .env
-```
-
-### 2. Run Database Migration
-
-```bash
-alembic upgrade head
-```
-
-### 3. Test Setup
-
-```python
-from backend.services.ai.ai_service import AIService
-from backend.services.phrase_validator import PhraseValidator
-
-
-# Initialize
-async def test_ai_service(db):
-   validator = PhraseValidator(db)
-   ai_service = AIService(db, validator)
-
-   # Generate copy
-   phrase = await ai_service.generate_copy_phrase(
-      original_phrase="test phrase",
-      prompt_text="test prompt"
-   )
-
-   await db.commit()
-   return phrase
-```
-
-### 4. Monitor Performance
-
-```python
-from backend.services.ai_metrics_service import AIMetricsService
-
-async def check_performance(db):
-    metrics = AIMetricsService(db)
-    stats = await metrics.get_stats()
-    
-    print(f"Success rate: {stats.success_rate:.1f}%")
-    print(f"Total cost: ${stats.total_cost_usd:.4f}")
-```
-
-## Conclusion
-
-The Quipflip AI Service is a production-ready system that provides:
-
-- **Reliability**: Multi-provider fallback and transaction safety
-- **Observability**: Comprehensive metrics and performance tracking
-- **Scalability**: Configurable providers and cost-effective operation
-- **Quality**: Phrase validation and vote accuracy monitoring
-
-The service successfully handles both copy generation and voting scenarios, with full metrics tracking for operational excellence. It's ready for production deployment with proper monitoring and cost controls in place.
-
-## Recent Code Quality Improvements (2025-10-22)
-
-### ✅ Refactored AI Voting to Use VoteService
-
-**Issue**: The AI voting logic duplicated 200+ lines of complex business logic from VoteService, creating a significant maintainability risk.
-
-**Solution**: Created `VoteService.submit_system_vote()` method for programmatic/AI voting that both AI and human votes now use. This provides:
-- **Single source of truth** for all voting logic
-- **Performance improvements**: Services instantiated once instead of in loop
-- **Eliminated code duplication**: Removed ~70 lines of duplicated code from AI service
-- **Consistent behavior**: AI and human votes use identical business rules
-
-See [vote_service.py:174-277](../backend/services/vote_service.py#L174-L277) for implementation.
-
-### ✅ Added Timezone Utility Function
-
-Created `backend/utils/datetime_helpers.py` with `ensure_utc()` function that centralizes timezone-naive datetime handling, eliminating 6+ blocks of duplicated timezone normalization code.
-
-### ✅ Fixed Resource Leaks
-
-**aiohttp Session Management**: Updated phrase_validation_client.py with:
-- Async context manager support
-- Lazy session creation
-- Proper cleanup in main.py lifespan
-
-### ✅ Improved Data Validation
-
-Added validation in RoundService.create_phraseset_if_ready() to ensure all denormalized fields exist before creating phrasesets, preventing data corruption.
-
-### ✅ Enhanced Error Handling
-
-Improved AI player initialization with:
-- Balance validation warnings
-- Automatic stuck round cleanup
-- Comprehensive error logging
-
-### ✅ Fixed Startup Race Conditions
-
-Added 10-second startup delay and health checks to AI backup cycle to ensure phrase validator is ready before AI operations begin.
+## Troubleshooting tips
+
+* Verify that at least one API key is configured; missing keys raise `AIServiceError` during initialization.
+* When `MetricsTracker` records repeated failures, inspect `ai_metrics.error_message` for provider error details.
+* Queue contention can prevent the AI from claiming prompts. Check `QueueService.remove_prompt_round_from_queue` logs if copies are skipped.

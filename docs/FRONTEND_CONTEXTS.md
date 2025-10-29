@@ -1,6 +1,6 @@
 # Frontend Context Architecture
 
-This document describes the current state of the QuipFlip frontend context architecture, which is organized into specialized contexts for different domains of application state.
+This document describes the current state of the Quipflip frontend context architecture, which is organized into specialized contexts for different domains of application state.
 
 ## Overview
 
@@ -135,7 +135,7 @@ interface TutorialState {
 
 ### Tutorial Steps
 
-1. **welcome**: Introduction to QuipFlip
+1. **welcome**: Introduction to Quipflip
 2. **dashboard**: Understanding the dashboard
 3. **create-prompt**: Creating engaging prompts
 4. **write-copy**: Writing compelling copy

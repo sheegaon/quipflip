@@ -4,7 +4,7 @@ const BASE_URL = 'http://localhost:5173';
 const TEST_EMAIL = `tutorial_test_${Date.now()}@example.com`;
 const TEST_PASSWORD = 'TestPass123!';
 
-test.describe('QuipFlip Tutorial and Round Interaction', () => {
+test.describe('Quipflip Tutorial and Round Interaction', () => {
   test('should complete tutorial and start a round', async ({ page }) => {
     console.log('\n=== Tutorial and Round Interaction Test ===\n');
 

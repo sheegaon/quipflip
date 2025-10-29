@@ -26,6 +26,10 @@ Authorization: Bearer <access_token>
 - Use `POST /auth/login` with your email and password to obtain fresh tokens.
 - Access tokens default to a 120-minute lifetime (`ACCESS_TOKEN_EXP_MINUTES`); call `POST /auth/refresh` (or rely on the cookie) to obtain a new pair when they expire.
 
+## Data Model Reference
+
+Field-level definitions for database entities live in [DATA_MODELS.md](DATA_MODELS.md). This API guide focuses on HTTP requests and response envelopes; whenever you see a player, round, phraseset, quest, or transaction object referenced here, the authoritative schema lives in that document.
+
 ## Response Format
 
 ### Success Response
@@ -76,8 +80,8 @@ Get API information.
 **Response:**
 ```json
 {
-  "message": "Quipflip API - Phase 1 MVP",
-  "version": "1.0.0",
+  "message": "Quipflip API - Phase 2 MVP",
+  "version": "1.1.0",
   "environment": "development",
   "docs": "/docs"
 }
@@ -114,6 +118,8 @@ curl -X POST http://localhost:8000/player \
 
 **Note:** The backend assigns both the public username and hidden pseudonym; clients should not send custom values.
 
+See [Player](DATA_MODELS.md#player) for persisted fields.
+
 **Response (201 Created):**
 ```json
 {
@@ -131,6 +137,16 @@ curl -X POST http://localhost:8000/player \
 **Important:** Store the refresh token securely in HTTP-only cookies or secure storage.
 
 ### Authentication Endpoints
+
+#### `GET /auth/suggest-username`
+Generate a random, available display name. Useful for previewing what the registration flow will assign.
+
+**Response:**
+```json
+{
+  "suggested_username": "Prompt Pirate"
+}
+```
 
 #### `POST /auth/login`
 Exchange an email and password for a new access token + refresh token pair.
@@ -184,11 +200,14 @@ Get player balance and status.
 **Response:**
 ```json
 {
+  "username": "Prompt Pirate",
+  "email": "prompt.pirate@example.com",
   "balance": 5000,
   "starting_balance": 5000,
   "daily_bonus_available": false,
   "daily_bonus_amount": 100,
   "last_login_date": "2025-01-06",
+  "created_at": "2025-01-01T12:00:00Z",
   "outstanding_prompts": 0
 }
 ```
@@ -295,6 +314,79 @@ Get list of finalized phrasesets awaiting result viewing.
 }
 ```
 
+#### `GET /player/phrasesets`
+Retrieve a paginated list of the current player's prompt and copy contributions.
+
+- Query params: `role` (`all`, `prompt`, `copy`), `status` (`all` or any [phraseset status](DATA_MODELS.md#phraseset)), `limit` (1-100), `offset` (>=0).
+- Response mirrors `PhrasesetListResponse` with summaries derived from [Phraseset](DATA_MODELS.md#phraseset) rows.
+
+```json
+{
+  "phrasesets": [
+    {
+      "phraseset_id": "uuid",
+      "prompt_round_id": "uuid",
+      "prompt_text": "the meaning of life is",
+      "your_role": "prompt",
+      "status": "voting",
+      "created_at": "2025-01-06T11:55:00Z",
+      "vote_count": 3,
+      "has_copy1": true,
+      "has_copy2": false,
+      "your_payout": null,
+      "result_viewed": false,
+      "new_activity_count": 1
+    }
+  ],
+  "total": 42,
+  "has_more": true
+}
+```
+
+#### `GET /player/phrasesets/summary`
+Dashboard-friendly counts of in-progress and finalized phrasesets. Useful for quick stats cards.
+
+```json
+{
+  "in_progress": {"prompts": 2, "copies": 1, "unclaimed_prompts": 0, "unclaimed_copies": 0},
+  "finalized": {"prompts": 18, "copies": 22, "unclaimed_prompts": 1, "unclaimed_copies": 0},
+  "total_unclaimed_amount": 175
+}
+```
+
+#### `GET /player/unclaimed-results`
+Returns finalized phrasesets where the player still has unclaimed payouts. Mirrors [ResultView](DATA_MODELS.md#resultview) tracking.
+
+```json
+{
+  "unclaimed": [
+    {
+      "phraseset_id": "uuid",
+      "prompt_text": "my deepest desire is to be (a/an)",
+      "your_role": "copy",
+      "your_phrase": "POPULAR",
+      "finalized_at": "2025-01-05T18:12:04Z",
+      "your_payout": 95
+    }
+  ],
+  "total_unclaimed_amount": 95
+}
+```
+
+#### `GET /player/dashboard`
+Batched endpoint that composes balance, current round, pending results, phraseset summary, unclaimed results, and round availability. Ideal for a single dashboard fetch.
+
+```json
+{
+  "player": { "username": "Prompt Pirate", "balance": 4985, "daily_bonus_available": true, "created_at": "2025-01-01T12:00:00Z" },
+  "current_round": { "round_id": null, "round_type": null, "state": null, "expires_at": null },
+  "pending_results": [],
+  "phraseset_summary": { "in_progress": {"prompts": 1, "copies": 0, "unclaimed_prompts": 0, "unclaimed_copies": 0}, "finalized": {"prompts": 5, "copies": 8, "unclaimed_prompts": 1, "unclaimed_copies": 0}, "total_unclaimed_amount": 120 },
+  "unclaimed_results": [],
+  "round_availability": { "can_prompt": true, "can_copy": false, "can_vote": true, "prompts_waiting": 3, "phrasesets_waiting": 7, "copy_discount_active": false, "copy_cost": 50, "current_round_id": null, "prompt_cost": 100, "vote_cost": 10, "vote_payout_correct": 5, "abandoned_penalty": 50 }
+}
+```
+
 #### `GET /player/statistics`
 Get comprehensive player statistics including win rates, earnings breakdown, and performance metrics.
 
@@ -303,6 +395,7 @@ Get comprehensive player statistics including win rates, earnings breakdown, and
 {
   "player_id": "uuid",
   "username": "Prompt Pirate",
+  "email": "prompt.pirate@example.com",
   "overall_balance": 1250,
   "prompt_stats": {
     "role": "prompt",
@@ -336,7 +429,11 @@ Get comprehensive player statistics including win rates, earnings breakdown, and
     "copy_earnings": 380,
     "vote_earnings": 200,
     "daily_bonuses": 300,
-    "total_earnings": 1330
+    "total_earnings": 1330,
+    "prompt_spending": 1200,
+    "copy_spending": 600,
+    "vote_spending": 500,
+    "total_spending": 2300
   },
   "frequency": {
     "total_rounds_played": 85,
@@ -370,6 +467,8 @@ Get comprehensive player statistics including win rates, earnings breakdown, and
 - Win rate is percentage of rounds with positive earnings
 - Vote accuracy is percentage of correct votes
 - Best performing phrases ranked by votes received
+
+Statistics aggregate data from [Player](DATA_MODELS.md#player), [Round](DATA_MODELS.md#round-unified-for-prompt-copy-and-vote), [Phraseset](DATA_MODELS.md#phraseset), and [Transaction](DATA_MODELS.md#transaction-ledger) tables.
 
 #### `GET /player/tutorial/status`
 Get the tutorial status for the current player.
@@ -431,6 +530,31 @@ Reset the tutorial progress (useful for testing or replaying tutorial).
 }
 ```
 
+#### `POST /player/password`
+Change the player's password after validating the current password and strength requirements. Returns fresh tokens.
+
+```json
+{
+  "message": "Password updated successfully.",
+  "access_token": "<jwt access token>",
+  "refresh_token": "<refresh token>",
+  "expires_in": 7200,
+  "token_type": "bearer"
+}
+```
+
+#### `PATCH /player/email`
+Update the player's email address (requires current password confirmation).
+
+```json
+{
+  "email": "new.address@example.com"
+}
+```
+
+#### `DELETE /player/account`
+Permanently delete the authenticated player's account, associated quests, rounds, and tokens. Responds with `204 No Content` on success and clears the refresh-token cookie.
+
 ---
 
 ### Round Endpoints
@@ -438,10 +562,7 @@ Reset the tutorial progress (useful for testing or replaying tutorial).
 #### `POST /rounds/prompt`
 Start a prompt round (-100f).
 
-**Request Body:**
-```json
-{}
-```
+**Request Body:** _None_
 
 **Response:**
 ```json
@@ -460,6 +581,8 @@ Start a prompt round (-100f).
 
 #### `POST /rounds/copy`
 Start a copy round (-50f or -40f).
+
+**Request Body:** _None_
 
 **Response:**
 ```json
@@ -480,6 +603,8 @@ Start a copy round (-50f or -40f).
 
 #### `POST /rounds/vote`
 Start a vote round (-10f).
+
+**Request Body:** _None_
 
 **Response:**
 ```json
@@ -523,6 +648,8 @@ Submit phrase for prompt or copy round.
 
 #### `POST /rounds/{round_id}/feedback`
 Submit thumbs up/down feedback for a prompt round.
+
+Feedback records persist to [PromptFeedback](DATA_MODELS.md#promptfeedback).
 
 **Request Body:**
 ```json
@@ -584,7 +711,11 @@ Get round availability status.
   "phrasesets_waiting": 0,
   "copy_discount_active": true,
   "copy_cost": 50,
-  "current_round_id": null
+  "current_round_id": null,
+  "prompt_cost": 100,
+  "vote_cost": 10,
+  "vote_payout_correct": 5,
+  "abandoned_penalty": 50
 }
 ```
 
@@ -605,9 +736,13 @@ Get round details.
 }
 ```
 
+See [Round](DATA_MODELS.md#round-unified-for-prompt-copy-and-vote) for persisted round attributes.
+
 ---
 
 ### Phraseset Endpoints
+
+Phraseset payloads map onto [Phraseset](DATA_MODELS.md#phraseset), [Vote](DATA_MODELS.md#vote), and [ResultView](DATA_MODELS.md#resultview) database records.
 
 #### `POST /phrasesets/{phraseset_id}/vote`
 Submit vote for phraseset.
@@ -632,7 +767,9 @@ Submit vote for phraseset.
 **Errors:**
 - `expired` - Past grace period
 - `already_voted` - Already voted on this phraseset
-- `player_not_in_round` - Not in active vote round
+- `No active vote round` - Player has no active vote round
+- `Not in a vote round` - Active round isn't a vote round
+- `Phraseset does not match active round`
 
 #### `GET /phrasesets/{phraseset_id}/details`
 Get full contributor view for a phraseset the player participated in.
@@ -648,9 +785,9 @@ Get full contributor view for a phraseset the player participated in.
   "copy_phrase_1": "POPULAR",
   "copy_phrase_2": "WEALTHY",
   "contributors": [
-    {"player_id": "uuid", "username": "Prompt Pirate", "is_you": true, "phrase": "FAMOUS"},
-    {"player_id": "uuid", "username": "Copy Cat", "is_you": false, "phrase": "POPULAR"},
-    {"player_id": "uuid", "username": "Shadow Scribe", "is_you": false, "phrase": "WEALTHY"}
+    {"player_id": "uuid", "username": "Prompt Pirate", "pseudonym": "Prompt Pirate", "is_you": true, "phrase": "FAMOUS"},
+    {"player_id": "uuid", "username": "Copy Cat", "pseudonym": "Copy Cat", "is_you": false, "phrase": "POPULAR"},
+    {"player_id": "uuid", "username": "Shadow Scribe", "pseudonym": "Shadow Scribe", "is_you": false, "phrase": "WEALTHY"}
   ],
   "vote_count": 10,
   "third_vote_at": "2025-01-06T12:10:00Z",
@@ -661,6 +798,7 @@ Get full contributor view for a phraseset the player participated in.
       "vote_id": "uuid",
       "voter_id": "uuid",
       "voter_username": "Voter 1",
+      "voter_pseudonym": "Voter 1",
       "voted_phrase": "FAMOUS",
       "correct": true,
       "voted_at": "2025-01-06T12:10:30Z"
@@ -703,6 +841,8 @@ Get full contributor view for a phraseset the player participated in.
 - `Phraseset not found` - Invalid phraseset ID
 - `Not a contributor to this phraseset` - Player did not submit the prompt or copies
 
+`results` is only populated when the phraseset status resolves to `finalized`.
+
 #### `GET /phrasesets/{phraseset_id}/results`
 Get phraseset results (collects prize on first view).
 
@@ -718,6 +858,7 @@ Get phraseset results (collects prize on first view).
   "your_phrase": "FAMOUS",
   "your_role": "prompt",
   "your_points": 4,
+  "total_points": 9,
   "your_payout": 62,
   "total_pool": 250,
   "total_votes": 10,
@@ -751,6 +892,8 @@ Explicitly mark a phraseset payout as claimed (idempotent).
 ---
 
 ### Quest Endpoints
+
+Quest responses correspond to [Quest](DATA_MODELS.md#quest) rows (with extra derived fields) and reference configuration stored in `quest_templates` (see [QuestTemplate](DATA_MODELS.md#questtemplate)).
 
 #### `GET /quests`
 Get all quests for the current player.
@@ -848,6 +991,12 @@ Get completed but unclaimed quests for the current player.
   }
 ]
 ```
+
+#### `GET /quests/active`
+List only active quests (status = `active`). Response shape matches `GET /quests` but filters to active entries.
+
+#### `GET /quests/claimable`
+List quests that are completed but not yet claimed. Useful for badge counters in the client.
 
 #### `GET /quests/{quest_id}`
 Get a single quest by ID.
@@ -949,7 +1098,12 @@ curl -H "Authorization: Bearer <access_token>" http://localhost:8000/phrasesets/
 
 ## Rate Limiting
 
-Rate limiting has not yet been implemented in the backend. It remains a roadmap item for future phases; clients should still implement sensible retry/backoff behaviour to prepare for eventual enforcement.
+Per-player rate limiting is enforced via Redis:
+
+- General authenticated traffic: 100 requests per 60-second window (scoped to player ID).
+- Vote submissions: 20 votes per 60-second window (stricter dependency on `/phrasesets/{phraseset_id}/vote`).
+
+Clients should surface friendly messaging for `429 Too Many Requests` responses and honour the optional `Retry-After` header.
 
 ---
 
