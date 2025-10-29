@@ -4,7 +4,6 @@ import { useResults } from '../contexts/ResultsContext';
 import { extractErrorMessage } from '../api/client';
 import type { PlayerStatistics } from '../api/types';
 import { Header } from '../components/Header';
-import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import WinRateChart from '../components/statistics/WinRateChart';
 import EarningsChart from '../components/statistics/EarningsChart';
 import SpendingChart from '../components/statistics/SpendingChart';
@@ -110,16 +109,6 @@ const Statistics: React.FC = () => {
                 </svg>
                 <span className="hidden sm:inline">Settings</span>
               </button>
-              <div className="text-right">
-                <div className="text-sm text-quip-teal">Current Balance</div>
-                <div className="text-3xl font-bold text-quip-orange">
-                  <CurrencyDisplay
-                    amount={data.overall_balance}
-                    iconClassName="w-8 h-8"
-                    textClassName="text-3xl font-bold text-quip-orange"
-                  />
-                </div>
-              </div>
             </div>
           </div>
         </div>
