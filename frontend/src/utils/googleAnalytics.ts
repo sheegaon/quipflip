@@ -12,7 +12,7 @@ export const trackPageView = (path: string): void => {
   }
 
   const measurementId = getMeasurementId();
-  const gtag = window.gtag;
+const gtag = window?.gtag;
 
   if (!measurementId || typeof gtag !== 'function') {
     return;
