@@ -163,8 +163,12 @@ export const Quests: React.FC = () => {
 
         <div className="tile-card p-6">
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 bg-quip-orange rounded-tile flex items-center justify-center">
-              <span className="text-2xl">🎯</span>
+            <div className="flex h-12 w-12 items-center justify-center rounded-tile border border-white/60 bg-quip-orange bg-opacity-10">
+              <img
+                src="/icon_quest_overview.svg"
+                alt="Rewards and quests overview"
+                className="h-8 w-8"
+              />
             </div>
             <div>
               <h2 className="text-2xl font-display font-bold text-quip-orange-deep">Quests</h2>
@@ -207,7 +211,11 @@ export const Quests: React.FC = () => {
 
           {questError && (
             <div className="text-center py-12">
-              <div className="text-4xl mb-4">⚠️</div>
+              <img
+                src="/icon_state_error.svg"
+                alt="Quest loading error"
+                className="mx-auto mb-4 h-16 w-16"
+              />
               <h3 className="text-xl font-display font-bold text-red-600 mb-2">Failed to Load Quests</h3>
               <p className="text-gray-600 dark:text-gray-400 mb-4">{questError}</p>
               <button
@@ -221,14 +229,22 @@ export const Quests: React.FC = () => {
 
           {!questError && questsLoading && (
             <div className="text-center py-12">
-              <div className="text-4xl mb-4">⏳</div>
+              <img
+                src="/icon_state_loading.svg"
+                alt="Quests loading"
+                className="mx-auto mb-4 h-14 w-14 animate-spin"
+              />
               <p className="text-gray-600 dark:text-gray-400">Loading quests...</p>
             </div>
           )}
 
           {!questError && !questsLoading && quests.length === 0 && (
             <div className="text-center py-12">
-              <div className="text-6xl mb-4">🎯</div>
+              <img
+                src="/icon_state_empty.svg"
+                alt="No quests available"
+                className="mx-auto mb-4 h-20 w-20"
+              />
               <h3 className="text-xl font-display font-bold text-quip-navy mb-2">No Quests Available</h3>
               <p className="text-quip-teal">
                 Complete some rounds to unlock quest challenges!
@@ -238,8 +254,13 @@ export const Quests: React.FC = () => {
 
           {!questsLoading && filteredClaimableQuests.length > 0 && (
             <div className="mb-8">
-              <h3 className="text-xl font-bold text-green-600 dark:text-green-400 mb-4 flex items-center gap-2">
-                🎉 Claimable Quests ({filteredClaimableQuests.length})
+              <h3 className="mb-4 flex items-center gap-3 text-xl font-bold text-green-600 dark:text-green-400">
+                <img
+                  src="/icon_quest_claimable.svg"
+                  alt="Claimable quests"
+                  className="h-7 w-7"
+                />
+                Claimable Quests ({filteredClaimableQuests.length})
               </h3>
               <div className="space-y-4">
                 {filteredClaimableQuests.map((quest: Quest) => (
@@ -287,7 +308,11 @@ export const Quests: React.FC = () => {
 
           {!questsLoading && quests.length > 0 && filteredQuests.length === 0 && (
             <div className="text-center py-12">
-              <div className="text-4xl mb-4">🔍</div>
+              <img
+                src="/icon_state_filter_empty.svg"
+                alt="No quests in selected category"
+                className="mx-auto mb-4 h-16 w-16"
+              />
               <p className="text-gray-600 dark:text-gray-400">
                 No quests in this category
               </p>
