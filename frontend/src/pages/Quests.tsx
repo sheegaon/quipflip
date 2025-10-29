@@ -323,3 +323,5 @@ export const Quests: React.FC = () => {
     </div>
   );
 };
+
+export default Quests;
