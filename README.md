@@ -183,7 +183,7 @@ pytest tests/
 ### Daily Login Bonus
 - **100f** credited once per UTC calendar date, excluding player creation date
 - First bonus available the day after account creation
-- Automatically tracks via `last_login_date` field
+- Automatically tracks via `last_login_date` UTC timestamp field
 
 ### Transaction Costs
 - Prompt round: -100f (deducted immediately, 95f refunded on timeout)

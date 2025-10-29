@@ -17,6 +17,10 @@ from backend.models.player import Player
 from backend.models.daily_bonus import DailyBonus
 from backend.services.player_service import PlayerService
 from backend.services.transaction_service import TransactionService
+from backend.config import get_settings
+
+
+settings = get_settings()
 
 
 @pytest.mark.asyncio
@@ -43,7 +47,7 @@ async def test_new_player_no_bonus_on_creation_day(test_app):
 
         # Daily bonus should NOT be available on creation day
         assert balance_data["daily_bonus_available"] is False
-        assert balance_data["daily_bonus_amount"] == 100
+        assert balance_data["daily_bonus_amount"] == settings.daily_bonus_amount
 
 
 @pytest.mark.asyncio
@@ -76,7 +80,7 @@ async def test_daily_bonus_available_after_login(test_app, db_session):
             .where(Player.player_id == player_id)
             .values(
                 created_at=yesterday,
-                last_login_date=date.today() - timedelta(days=1)
+                last_login_date=yesterday
             )
         )
         await db_session.commit()
@@ -96,10 +100,14 @@ async def test_daily_bonus_available_after_login(test_app, db_session):
 
         # This is the key assertion - bonus should be available after login
         assert balance_data["daily_bonus_available"] is True
-        assert balance_data["daily_bonus_amount"] == 100
+        assert balance_data["daily_bonus_amount"] == settings.daily_bonus_amount
 
         # Verify last_login_date was updated (for tracking)
-        assert balance_data["last_login_date"] == str(date.today())
+        last_login_iso = balance_data["last_login_date"]
+        assert last_login_iso is not None
+        last_login_dt = datetime.fromisoformat(last_login_iso)
+        assert last_login_dt.date() == date.today()
+        assert last_login_dt.tzinfo is not None
 
 
 @pytest.mark.asyncio
@@ -125,8 +133,8 @@ async def test_daily_bonus_uses_dailybonus_table_not_last_login(db_session):
     await db_session.commit()
     await db_session.refresh(player)
 
-    # Set last_login_date to today (simulating a login)
-    player.last_login_date = date.today()
+    # Set last_login_date to now (simulating a login)
+    player.last_login_date = datetime.now(UTC)
     await db_session.commit()
     await db_session.refresh(player)
 
@@ -181,8 +189,8 @@ async def test_claim_daily_bonus_makes_it_unavailable(test_app, db_session):
         assert claim_response.status_code == 200
         claim_data = claim_response.json()
         assert claim_data["success"] is True
-        assert claim_data["amount"] == 100
-        assert claim_data["new_balance"] == 1100  # 1000 starting + 100 bonus
+        assert claim_data["amount"] == settings.daily_bonus_amount
+        assert claim_data["new_balance"] == settings.starting_balance + settings.daily_bonus_amount
 
         # Verify bonus is now unavailable
         balance_response = await client.get("/player/balance", headers=headers)
@@ -196,7 +204,7 @@ async def test_claim_daily_bonus_makes_it_unavailable(test_app, db_session):
         )
         bonus_record = result.scalar_one_or_none()
         assert bonus_record is not None
-        assert bonus_record.amount == 100
+        assert bonus_record.amount == settings.daily_bonus_amount
 
 
 @pytest.mark.asyncio
@@ -315,7 +323,7 @@ async def test_dashboard_endpoint_includes_bonus_status(test_app, db_session):
         assert "daily_bonus_available" in player_data
         assert "daily_bonus_amount" in player_data
         assert player_data["daily_bonus_available"] is True
-        assert player_data["daily_bonus_amount"] == 100
+        assert player_data["daily_bonus_amount"] == settings.daily_bonus_amount
 
 
 @pytest.mark.asyncio

@@ -29,7 +29,7 @@ async def login(
         raise HTTPException(status_code=401, detail=str(exc)) from exc
 
     # Update last_login_date for tracking purposes
-    player.last_login_date = datetime.now(UTC).date()
+    player.last_login_date = datetime.now(UTC)
     await db.commit()
 
     access_token, refresh_token, expires_in = await auth_service.issue_tokens(player)

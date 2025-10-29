@@ -4,7 +4,6 @@ from sqlalchemy import (
     String,
     Integer,
     DateTime,
-    Date,
     ForeignKey,
     UniqueConstraint,
     Boolean,
@@ -29,7 +28,7 @@ class Player(Base):
     password_hash = Column(String(255), nullable=False)
     balance = Column(Integer, default=1000, nullable=False)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
-    last_login_date = Column(Date, nullable=True)
+    last_login_date = Column(DateTime(timezone=True), nullable=True)
     active_round_id = get_uuid_column(ForeignKey("rounds.round_id", ondelete="SET NULL"), nullable=True)
 
     # Tutorial tracking

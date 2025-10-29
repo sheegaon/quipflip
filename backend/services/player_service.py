@@ -2,7 +2,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from sqlalchemy.exc import IntegrityError
-from datetime import date
+from datetime import date, datetime, UTC
 from uuid import UUID
 import uuid
 import logging
@@ -56,7 +56,7 @@ class PlayerService:
             email=email.strip().lower(),
             password_hash=password_hash,
             balance=settings.starting_balance,
-            last_login_date=date.today(),  # Set to today so no bonus on creation
+            last_login_date=datetime.now(UTC),  # Track creation login time with precision
         )
         self.db.add(player)
         try:

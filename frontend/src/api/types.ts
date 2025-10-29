@@ -9,7 +9,7 @@ export interface Player {
   starting_balance: number;
   daily_bonus_available: boolean;
   daily_bonus_amount: number;
-  last_login_date: string;
+  last_login_date: string | null;
   outstanding_prompts: number;
   created_at: string;
 }
