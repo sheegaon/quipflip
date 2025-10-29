@@ -51,8 +51,14 @@ export const Tracking: React.FC = () => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [infoExpanded, setInfoExpanded] = useState(false);
 
+  const refreshPlayerPhrasesetsRef = useRef(refreshPlayerPhrasesets);
   const refreshPhrasesetDetailsRef = useRef(refreshPhrasesetDetails);
+  const lastRequestedListKeyRef = useRef<string | null>(null);
+  const lastRequestedDetailsIdRef = useRef<string | null>(null);
 
+  useEffect(() => {
+    refreshPlayerPhrasesetsRef.current = refreshPlayerPhrasesets;
+  }, [refreshPlayerPhrasesets]);
   useEffect(() => {
     refreshPhrasesetDetailsRef.current = refreshPhrasesetDetails;
   }, [refreshPhrasesetDetails]);
@@ -78,26 +84,30 @@ export const Tracking: React.FC = () => {
   const listLoading = listEntry?.loading ?? false;
   const listError = listEntry?.error ?? null;
 
-  const hasCachedData = Boolean(listEntry?.data);
-  const hasListError = Boolean(listEntry?.error);
-
   useEffect(() => {
-    // Don't fetch if we already have data or if there's an error
-    if (hasCachedData || hasListError) {
+    if (lastRequestedListKeyRef.current === paramsKey) {
+      trackingLogger.debug('Skipping duplicate list refresh for params', { paramsKey });
       return;
     }
 
-    refreshPlayerPhrasesets(params, { force: !hasCachedData })
+    lastRequestedListKeyRef.current = paramsKey;
+
+    trackingLogger.debug('Forcing player phrasesets refresh on navigation', {
+      params,
+      paramsKey,
+    });
+
+    refreshPlayerPhrasesetsRef.current(params, { force: true })
       .then((data) => {
         trackingLogger.debug('Player phrasesets refreshed', {
-          cached: hasCachedData,
+          forced: true,
           count: data?.phrasesets?.length ?? 0,
         });
       })
       .catch((err: any) => {
         trackingLogger.error('Failed to refresh phrasesets', err);
       });
-  }, [paramsKey, hasCachedData, hasListError]); // Remove refreshPlayerPhrasesets and params from dependencies
+  }, [params, paramsKey]);
 
   useEffect(() => {
     if (phrasesets.length === 0) {
@@ -134,31 +144,38 @@ export const Tracking: React.FC = () => {
   const detailsLoading = selectedDetailsEntry?.loading ?? false;
   const detailsError = selectedDetailsEntry?.error ?? null;
 
-  const hasDetailsData = Boolean(selectedDetailsEntry?.data);
-  const hasDetailsError = Boolean(selectedDetailsEntry?.error);
-
   useEffect(() => {
     if (!selectedSummary?.phraseset_id) {
+      trackingLogger.debug('No phraseset selected, stopping detail polling');
+      lastRequestedDetailsIdRef.current = null;
       stopPoll('phraseset-details');
       return;
     }
 
-    // Don't fetch if we already have data or if there's an error
-    if (hasDetailsData || hasDetailsError) {
+    if (lastRequestedDetailsIdRef.current === selectedSummary.phraseset_id) {
+      trackingLogger.debug('Skipping duplicate details refresh for phraseset', {
+        phrasesetId: selectedSummary.phraseset_id,
+      });
       return;
     }
 
-    refreshPhrasesetDetails(selectedSummary.phraseset_id!, { force: !hasDetailsData })
+    lastRequestedDetailsIdRef.current = selectedSummary.phraseset_id;
+
+    trackingLogger.debug('Forcing phraseset details refresh on selection', {
+      phrasesetId: selectedSummary.phraseset_id,
+    });
+
+    refreshPhrasesetDetailsRef.current(selectedSummary.phraseset_id!, { force: true })
       .then(() => {
         trackingLogger.debug('Phraseset details refreshed', {
           phrasesetId: selectedSummary.phraseset_id,
-          forced: !hasDetailsData,
+          forced: true,
         });
       })
       .catch((err: any) => {
         trackingLogger.error('Failed to refresh phraseset details', err);
       });
-  }, [selectedSummary?.phraseset_id, hasDetailsData, hasDetailsError, stopPoll]); // Removed refreshPhrasesetDetails from dependencies
+  }, [selectedSummary?.phraseset_id, stopPoll]);
 
   useEffect(() => {
     if (!selectedSummary?.phraseset_id) {
@@ -247,7 +264,7 @@ export const Tracking: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-1 space-y-6">
+          <div className="lg:col-span-2 space-y-6">
             <div className="tile-card p-4">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="font-display font-bold text-lg text-quip-navy">Your Activity</h2>
@@ -310,9 +327,26 @@ export const Tracking: React.FC = () => {
               </div>
             </div>
 
+            <div className="tile-card p-0 overflow-hidden">
+              {detailsLoadingState?.isLoading ? (
+                <div className="p-6">
+                  <InlineLoadingSpinner message={detailsLoadingState.message} />
+                </div>
+              ) : selectedSummary ? (
+                <PhrasesetDetails
+                  phraseset={details as PhrasesetDetailsType | null}
+                  summary={selectedSummary}
+                />
+              ) : (
+                <div className="p-6 text-center text-quip-teal">
+                  Select a round to see more information.
+                </div>
+              )}
+            </div>
+
           </div>
 
-          <div className="lg:col-span-2 space-y-4">
+          <div className="lg:col-span-1 space-y-4">
             {combinedError && (
               <div className="bg-red-100 border-2 border-red-400 text-red-700 rounded-tile p-3">
                 {combinedError}
@@ -330,23 +364,6 @@ export const Tracking: React.FC = () => {
                   selectedId={selectedId}
                   onSelect={handleSelect}
                 />
-              )}
-            </div>
-
-            <div className="tile-card p-0 overflow-hidden">
-              {detailsLoadingState?.isLoading ? (
-                <div className="p-6">
-                  <InlineLoadingSpinner message={detailsLoadingState.message} />
-                </div>
-              ) : selectedSummary ? (
-                <PhrasesetDetails
-                  phraseset={details as PhrasesetDetailsType | null}
-                  summary={selectedSummary}
-                />
-              ) : (
-                <div className="p-6 text-center text-quip-teal">
-                  Select a round to see more information.
-                </div>
               )}
             </div>
           </div>

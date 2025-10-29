@@ -384,6 +384,13 @@ export interface PlayFrequency {
   member_since: string;
 }
 
+export interface HistoricalTrendPoint {
+  period: string;
+  win_rate: number;
+  earnings: number;
+  rounds_played: number;
+}
+
 export interface BestPerformingPhrase {
   phrase: string;
   votes: number;
@@ -400,6 +407,7 @@ export interface PlayerStatistics {
   voter_stats: RoleStatistics;
   earnings: EarningsBreakdown;
   frequency: PlayFrequency;
+  historical_trends?: HistoricalTrendPoint[];
   favorite_prompts: string[];
   best_performing_phrases: BestPerformingPhrase[];
 }

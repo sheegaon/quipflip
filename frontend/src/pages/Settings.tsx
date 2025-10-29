@@ -13,44 +13,63 @@ const userTimeZone =
     ? Intl.DateTimeFormat().resolvedOptions().timeZone
     : undefined;
 
-const formatDate = (dateString?: string | null) => {
-  if (!dateString) {
-    return 'Not recorded';
-  }
+const dateOnlyPattern = /^\d{4}-\d{2}-\d{2}$/;
 
-  const dateOnlyPattern = /^\d{4}-\d{2}-\d{2}$/;
+const parseDateString = (dateString?: string | null) => {
+  if (!dateString) {
+    return null;
+  }
 
   if (dateOnlyPattern.test(dateString)) {
     const [year, month, day] = dateString.split('-').map(Number);
-    const date = new Date(year, month - 1, day);
-
-    return date.toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
+    return new Date(year, month - 1, day);
   }
 
+  const parsedDate = new Date(dateString);
+  return Number.isNaN(parsedDate.getTime()) ? null : parsedDate;
+};
+
+const getDateFormatterOptions = (includeTime: boolean): Intl.DateTimeFormatOptions => {
   const options: Intl.DateTimeFormatOptions = {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
   };
+
+  if (includeTime) {
+    options.hour = '2-digit';
+    options.minute = '2-digit';
+  }
 
   if (userTimeZone) {
     options.timeZone = userTimeZone;
-    options.timeZoneName = 'short';
+
+    if (includeTime) {
+      options.timeZoneName = 'short';
+    }
   }
 
-  const date = new Date(dateString);
+  return options;
+};
 
-  if (Number.isNaN(date.getTime())) {
+const formatDate = (dateString?: string | null) => {
+  const date = parseDateString(dateString);
+
+  if (!date) {
     return 'Not recorded';
   }
 
-  return date.toLocaleString(undefined, options);
+  return date.toLocaleDateString(undefined, getDateFormatterOptions(false));
+};
+
+const formatDateTime = (dateString?: string | null) => {
+  const date = parseDateString(dateString);
+
+  if (!date) {
+    return 'Not recorded';
+  }
+
+  return date.toLocaleString(undefined, getDateFormatterOptions(true));
 };
 
 const Settings: React.FC = () => {
@@ -333,7 +352,7 @@ const Settings: React.FC = () => {
             <div>
               <label className="block text-sm font-semibold text-quip-teal mb-1">Last Login</label>
               <div className="bg-white border-2 border-quip-navy border-opacity-20 rounded-tile p-3 text-quip-navy">
-                {formatDate(player.last_login_date)}
+                {formatDateTime(player.last_login_date)}
               </div>
             </div>
           </div>
@@ -442,6 +461,20 @@ const Settings: React.FC = () => {
           </button>
         </div>
 
+        {/* Delete Account */}
+        <div className="tile-card p-6 mb-6 bg-red-50 border-2 border-red-300">
+          <h2 className="text-2xl font-display font-bold text-red-700 mb-4">Delete Account</h2>
+          <p className="text-red-700 mb-4">
+            Permanently delete your account and all associated data. This action cannot be undone.
+          </p>
+          <button
+            onClick={openDeleteModal}
+            className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm"
+          >
+            Delete My Account
+          </button>
+        </div>
+
         {/* Admin Access */}
         <div className="tile-card p-6 mb-6 border-2 border-quip-orange border-opacity-30">
           <h2 className="text-2xl font-display font-bold text-quip-navy mb-4">Admin Access</h2>
@@ -491,35 +524,6 @@ const Settings: React.FC = () => {
               </div>
             </form>
           )}
-        </div>
-
-        {/* Delete Account */}
-        <div className="tile-card p-6 mb-6 bg-red-50 border-2 border-red-300">
-          <h2 className="text-2xl font-display font-bold text-red-700 mb-4">Delete Account</h2>
-          <p className="text-red-700 mb-4">
-            Permanently delete your account and all associated data. This action cannot be undone.
-          </p>
-          <button
-            onClick={openDeleteModal}
-            className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm"
-          >
-            Delete My Account
-          </button>
-        </div>
-
-        {/* Future Features (Placeholder) */}
-        <div className="tile-card p-6 mb-6 bg-gray-50 border-2 border-gray-300 opacity-60">
-          <h2 className="text-2xl font-display font-bold text-gray-600 mb-4">Coming Soon</h2>
-          <ul className="space-y-2 text-gray-600">
-            <li className="flex items-center gap-2">
-              <span className="text-gray-400">📊</span>
-              Export Account Data
-            </li>
-            <li className="flex items-center gap-2">
-              <span className="text-gray-400">🔔</span>
-              Notification Preferences
-            </li>
-          </ul>
         </div>
       </div>
 

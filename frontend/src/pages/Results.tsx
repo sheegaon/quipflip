@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useGame } from '../contexts/GameContext';
 import { useResults } from '../contexts/ResultsContext';
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -16,6 +16,17 @@ export const Results: React.FC = () => {
   const [selectedPhrasesetId, setSelectedPhrasesetId] = useState<string | null>(null);
   const [expandedVotes, setExpandedVotes] = useState<Record<string, boolean>>({});
   const [showBreakdown, setShowBreakdown] = useState<boolean>(false);
+
+  const refreshPhrasesetResultsRef = useRef(refreshPhrasesetResults);
+  const refreshDashboardRef = useRef(refreshDashboard);
+
+  useEffect(() => {
+    refreshPhrasesetResultsRef.current = refreshPhrasesetResults;
+  }, [refreshPhrasesetResults]);
+
+  useEffect(() => {
+    refreshDashboardRef.current = refreshDashboard;
+  }, [refreshDashboard]);
 
   useEffect(() => {
     resultsLogger.debug('Results page mounted', {
@@ -42,21 +53,16 @@ export const Results: React.FC = () => {
   useEffect(() => {
     if (!selectedPhrasesetId) return;
 
-    const entry = phrasesetResults[selectedPhrasesetId];
-    const shouldFetch = !entry?.data && !entry?.loading && !entry?.error;
-
-    if (shouldFetch) {
-      resultsLogger.debug('Fetching phraseset results', { selectedPhrasesetId });
-      refreshPhrasesetResults(selectedPhrasesetId, { force: false })
-        .then(async () => {
-          await refreshDashboard();
-          resultsLogger.debug('Phraseset results fetched, dashboard refresh triggered', { selectedPhrasesetId });
-        })
-        .catch((err) => {
-          resultsLogger.error('Failed to refresh phraseset results', err);
-        });
-    }
-  }, [selectedPhrasesetId, phrasesetResults, refreshPhrasesetResults, refreshDashboard]);
+    resultsLogger.debug('Forcing phraseset results refresh on selection', { selectedPhrasesetId });
+    refreshPhrasesetResultsRef.current(selectedPhrasesetId, { force: true })
+      .then(async () => {
+        await refreshDashboardRef.current();
+        resultsLogger.debug('Phraseset results fetched, dashboard refresh triggered', { selectedPhrasesetId });
+      })
+      .catch((err) => {
+        resultsLogger.error('Failed to refresh phraseset results', err);
+      });
+  }, [selectedPhrasesetId]);
 
   const handleSelectPhraseset = (phrasesetId: string) => {
     setSelectedPhrasesetId(phrasesetId);
@@ -131,32 +137,6 @@ export const Results: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-1">
-            <div className="tile-card p-4">
-              <h2 className="font-display font-bold text-lg mb-4 text-quip-navy">Latest Results</h2>
-              <div className="space-y-2">
-                {pendingResults.map((result) => (
-                  <button
-                    key={result.phraseset_id}
-                    onClick={() => handleSelectPhraseset(result.phraseset_id)}
-                    className={`w-full text-left p-3 rounded-tile transition-all ${
-                      selectedPhrasesetId === result.phraseset_id
-                        ? 'bg-quip-turquoise bg-opacity-10 border-2 border-quip-turquoise'
-                        : 'bg-quip-cream hover:bg-quip-turquoise hover:bg-opacity-5 border-2 border-transparent'
-                    }`}
-                  >
-                    <p className="text-sm font-semibold text-quip-navy truncate">
-                      {result.prompt_text}
-                    </p>
-                    <p className="text-xs text-quip-teal mt-1">
-                      Role: {result.role} • {result.result_viewed ? 'Viewed' : '✨ New!'}
-                    </p>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
           <div className="lg:col-span-2">
             {loading && (
               <div className="tile-card p-8 flex justify-center">
@@ -302,6 +282,32 @@ export const Results: React.FC = () => {
                 {/* Removed Final Rankings section since rankings property doesn't exist in PhrasesetResults */}
               </div>
             )}
+          </div>
+
+          <div className="lg:col-span-1">
+            <div className="tile-card p-4">
+              <h2 className="font-display font-bold text-lg mb-4 text-quip-navy">Latest Results</h2>
+              <div className="space-y-2">
+                {pendingResults.map((result) => (
+                  <button
+                    key={result.phraseset_id}
+                    onClick={() => handleSelectPhraseset(result.phraseset_id)}
+                    className={`w-full text-left p-3 rounded-tile transition-all ${
+                      selectedPhrasesetId === result.phraseset_id
+                        ? 'bg-quip-turquoise bg-opacity-10 border-2 border-quip-turquoise'
+                        : 'bg-quip-cream hover:bg-quip-turquoise hover:bg-opacity-5 border-2 border-transparent'
+                    }`}
+                  >
+                    <p className="text-sm font-semibold text-quip-navy truncate">
+                      {result.prompt_text}
+                    </p>
+                    <p className="text-xs text-quip-teal mt-1">
+                      Role: {result.role} • {result.result_viewed ? 'Viewed' : '✨ New!'}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>
