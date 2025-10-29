@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
+import { useTutorial } from '../contexts/TutorialContext';
 import apiClient, { extractErrorMessage } from '../api/client';
 import { Timer } from '../components/Timer';
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -8,10 +9,12 @@ import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { useTimer } from '../hooks/useTimer';
 import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
 import type { VoteResponse, VoteState } from '../api/types';
+import { voteRoundLogger } from '../utils/logger';
 
 export const VoteRound: React.FC = () => {
   const { state } = useGame();
   const { activeRound, roundAvailability } = state;
+  const { currentStep, completeTutorial } = useTutorial();
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -41,10 +44,31 @@ export const VoteRound: React.FC = () => {
         return;
       }
 
-      // Redirect to dashboard instead of starting new rounds
-      navigate('/dashboard');
+      // Add a small delay to prevent race conditions during navigation
+      const timeoutId = setTimeout(() => {
+        // Redirect to dashboard instead of starting new rounds
+        if (currentStep === 'vote_round') {
+          completeTutorial();
+        }
+        navigate('/dashboard');
+      }, 100);
+
+      return () => clearTimeout(timeoutId);
     }
-  }, [activeRound, navigate, successMessage, voteResult]);
+  }, [activeRound, navigate, successMessage, voteResult, currentStep, completeTutorial]);
+
+  useEffect(() => {
+    if (!roundData) {
+      voteRoundLogger.debug('Vote round page mounted without active round');
+    } else {
+      voteRoundLogger.debug('Vote round page mounted', {
+        roundId: roundData.round_id,
+        expiresAt: roundData.expires_at,
+        status: roundData.status,
+        prompt: roundData.prompt_text,
+      });
+    }
+  }, [roundData?.round_id, roundData?.expires_at, roundData?.status, roundData?.prompt_text]);
 
   const handleVote = async (phrase: string) => {
     if (!roundData || isSubmitting) return;
@@ -52,18 +76,35 @@ export const VoteRound: React.FC = () => {
     try {
       setIsSubmitting(true);
       setError(null);
+      voteRoundLogger.debug('Submitting vote', {
+        roundId: roundData.round_id,
+        phrasesetId: roundData.phraseset_id,
+        choice: phrase,
+      });
       const result = await apiClient.submitVote(roundData.phraseset_id, phrase);
 
       const message = result.correct ? getRandomMessage('voteSubmitted') : null;
       setSuccessMessage(message);
       setVoteResult(result);
+      voteRoundLogger.info('Vote submitted', {
+        roundId: roundData.round_id,
+        correct: result.correct,
+      });
+
+      if (currentStep === 'vote_round') {
+        completeTutorial();
+      }
 
       // Navigate after showing results for 3 seconds - refresh will happen on dashboard
       setTimeout(() => {
+        voteRoundLogger.debug('Navigating back to dashboard after vote submission');
         navigate('/dashboard');
       }, 3000);
     } catch (err) {
-      setError(extractErrorMessage(err) || 'Unable to submit your vote. The round may have expired or someone else may have already voted.');
+      const message = extractErrorMessage(err) || 'Unable to submit your vote. The round may have expired or someone else may have already voted.';
+      voteRoundLogger.error('Failed to submit vote', err);
+      setError(message);
+    } finally {
       setIsSubmitting(false);
     }
   };

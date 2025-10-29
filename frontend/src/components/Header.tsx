@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
+import { useResults } from '../contexts/ResultsContext';
 import { useQuests } from '../contexts/QuestContext';
 import { BalanceFlipper } from './BalanceFlipper';
 import { TreasureChestIcon } from './TreasureChestIcon';
@@ -8,11 +9,14 @@ import { TreasureChestIcon } from './TreasureChestIcon';
 export const Header: React.FC = () => {
   const { state, actions } = useGame();
   const { player, username, phrasesetSummary, unclaimedResults } = state;
-  const { logout } = actions;
-  const { hasClaimableQuests } = useQuests();
+  const { logout, refreshDashboard } = actions;
+  const { state: resultsState, actions: resultsActions } = useResults();
+  const { viewedResultIds } = resultsState;
+  const { markResultsViewed } = resultsActions;
+  const { state: questState } = useQuests();
+  const { hasClaimableQuests } = questState;
   const navigate = useNavigate();
   const location = useLocation();
-  const [hasClickedResults, setHasClickedResults] = React.useState(false);
 
   // Show back arrow on certain pages
   const showBackArrow = location.pathname === '/statistics' || location.pathname === '/tracking' || location.pathname === '/quests' || location.pathname === '/results' || location.pathname === '/settings' || location.pathname === '/admin';
@@ -46,16 +50,35 @@ export const Header: React.FC = () => {
     ? `In-progress rounds: ${inProgressLabelParts.join(' and ')}`
     : 'View your in-progress rounds';
 
-  const unclaimedCount = unclaimedResults?.length ?? 0;
-  const displayCount = hasClickedResults ? 0 : unclaimedCount;
-  // Show badge once user has had results (either currently has some, or has clicked before)
-  const showUnclaimedIndicator = unclaimedCount > 0 || hasClickedResults;
-  const unclaimedLabel = displayCount > 0
-    ? `${displayCount} result${displayCount === 1 ? '' : 's'} ready to view and claim`
+  // Calculate unviewed results by filtering out viewed ones
+  const unviewedResults = (unclaimedResults || []).filter(result => 
+    !viewedResultIds.has(result.phraseset_id)
+  );
+  const unviewedCount = unviewedResults.length;
+  
+  // Show trophy after user has had results (either currently has some, or has had some before)
+  const hasEverHadResults = unclaimedResults && unclaimedResults.length > 0;
+  const showUnclaimedIndicator = hasEverHadResults;
+  
+  const unclaimedLabel = unviewedCount > 0
+    ? `${unviewedCount} result${unviewedCount === 1 ? '' : 's'} ready to view`
     : 'View your results';
 
-  const handleResultsClick = () => {
-    setHasClickedResults(true);
+  const handleResultsClick = async () => {
+    // Mark all unviewed results as viewed when clicking
+    const unviewedIds = unviewedResults.map(result => result.phraseset_id);
+    if (unviewedIds.length > 0) {
+      markResultsViewed(unviewedIds);
+    }
+    
+    // Refresh dashboard to get latest data before navigating
+    try {
+      await refreshDashboard();
+    } catch (err) {
+      // Continue navigation even if refresh fails
+      console.warn('Failed to refresh dashboard in header:', err);
+    }
+    
     navigate('/results');
   };
 
@@ -116,14 +139,14 @@ export const Header: React.FC = () => {
                 type="button"
                 onClick={handleResultsClick}
                 className={`flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 ${
-                  displayCount > 0
+                  unviewedCount > 0
                     ? 'bg-quip-orange bg-opacity-10 text-quip-orange hover:bg-quip-orange hover:bg-opacity-20 focus-visible:ring-quip-orange'
                     : 'bg-gray-200 text-black hover:bg-gray-300 focus-visible:ring-gray-400'
                 }`}
                 title={unclaimedLabel}
                 aria-label={unclaimedLabel}
               >
-                <span>{displayCount}</span>
+                <span>{unviewedCount}</span>
                 <img
                   src="/icon_results.svg"
                   alt="Results ready to view"

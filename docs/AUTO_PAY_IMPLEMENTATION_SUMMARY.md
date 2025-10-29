@@ -1,4 +1,4 @@
-# Option A Implementation Summary
+# Auto Pay Implementation Summary
 
 **Date:** 2025-10-25
 **Status:** ✅ Complete
@@ -40,7 +40,7 @@ result_view = ResultView(
     phraseset_id=phraseset_id,
     player_id=player_id,
     payout_amount=player_payout,
-    payout_claimed=True,  # ❌ Immediately marked as claimed
+    result_viewed=True,  # ❌ Immediately marked as claimed
     first_viewed_at=datetime.now(UTC),
     payout_claimed_at=datetime.now(UTC),
 )
@@ -321,7 +321,7 @@ This semantic shift allows us to reuse the same flag for both systems without da
 
 ## Migration Path to Option B
 
-The [Option B Migration Guide](./OPTION_B_MIGRATION_GUIDE.md) provides complete instructions for transitioning to a true claim-to-receive system. Key points:
+The [Option B Migration Guide](./CLAIM_TO_RECEIVE_MIGRATION_GUIDE) provides complete instructions for transitioning to a true claim-to-receive system. Key points:
 
 1. **All backend endpoints already exist** - just need to move transaction creation
 2. **All frontend components can be restored** - claim buttons, handlers, etc.

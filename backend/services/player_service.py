@@ -13,6 +13,7 @@ from backend.models.phraseset import Phraseset
 from backend.models.round import Round
 from backend.config import get_settings
 from backend.utils.exceptions import DailyBonusNotAvailableError
+from backend.utils.passwords import hash_password
 from backend.services.username_service import (
     UsernameService,
     canonicalize_username,
@@ -77,6 +78,18 @@ class PlayerService:
             if "uq_players_email" in error_message or "email" in error_message:
                 raise ValueError("email_taken") from exc
             raise
+
+    async def get_player_by_email(self, email: str) -> Player | None:
+        """Get a player by email address."""
+
+        normalized_email = email.strip().lower()
+        if not normalized_email:
+            return None
+
+        result = await self.db.execute(
+            select(Player).where(Player.email == normalized_email)
+        )
+        return result.scalar_one_or_none()
 
     async def get_player_by_id(self, player_id: UUID) -> Player | None:
         """Get player by ID."""
@@ -173,6 +186,34 @@ class PlayerService:
         count = result.scalar() or 0
         logger.debug(f"Player {player_id} has {count} outstanding prompts")
         return count
+
+    async def update_email(self, player: Player, new_email: str) -> Player:
+        """Update a player's email address."""
+
+        normalized_email = new_email.strip().lower()
+        if not normalized_email:
+            raise ValueError("invalid_email")
+
+        player.email = normalized_email
+
+        try:
+            await self.db.commit()
+        except IntegrityError as exc:
+            await self.db.rollback()
+            error_message = str(exc).lower()
+            if "uq_players_email" in error_message or "email" in error_message:
+                raise ValueError("email_taken") from exc
+            raise
+
+        await self.db.refresh(player)
+        return player
+
+    async def update_password(self, player: Player, new_password: str) -> None:
+        """Update a player's password hash."""
+
+        player.password_hash = hash_password(new_password)
+        await self.db.commit()
+        await self.db.refresh(player)
 
     async def can_start_prompt_round(self, player: Player) -> tuple[bool, str]:
         """

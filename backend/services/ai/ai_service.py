@@ -30,6 +30,9 @@ from backend.services.queue_service import QueueService
 logger = logging.getLogger(__name__)
 
 
+AI_PLAYER_EMAIL_DOMAIN = "@quipflip.internal"
+
+
 class AIServiceError(RuntimeError):
     """Raised when AI service fails."""
 
@@ -539,12 +542,20 @@ class AIService:
             # ai_voted_subquery = select(Vote.phraseset_id).where(Vote.player_id == ai_player.player_id)
 
             # Get all phrasesets that meet our basic criteria
+            human_vote_phrasesets_subquery = (
+                select(Vote.phraseset_id)
+                .join(Player, Player.player_id == Vote.player_id)
+                .where(~Player.email.like(f"%{AI_PLAYER_EMAIL_DOMAIN}"))
+                .distinct()
+            )
+
             phraseset_result = await self.db.execute(
                 select(Phraseset)
                 # .join(Round, Round.round_id == Phraseset.prompt_round_id)
                 # .join(Player, Player.player_id == Round.player_id)
                 .where(Phraseset.status.in_(["open", "closing"]))
                 .where(Phraseset.created_at <= cutoff_time)
+                .where(Phraseset.phraseset_id.in_(human_vote_phrasesets_subquery))
                 # .where(~Player.username.like('%test%'))  # Exclude test players
                 # .where(Phraseset.phraseset_id.not_in(ai_voted_subquery))  # Exclude already voted
                 .options(

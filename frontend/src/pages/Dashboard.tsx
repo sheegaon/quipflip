@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
+import { useResults } from '../contexts/ResultsContext';
 import { useTutorial } from '../contexts/TutorialContext';
 import { extractErrorMessage } from '../api/client';
 import { Timer } from '../components/Timer';
@@ -14,17 +15,23 @@ const formatWaitingCount = (count: number): string => (count > 10 ? 'over 10' : 
 
 export const Dashboard: React.FC = () => {
   const { state, actions } = useGame();
-  const { player, activeRound, pendingResults, phrasesetSummary, roundAvailability, error: contextError } = state;
+  const { state: resultsState, actions: resultsActions } = useResults();
+  const {
+    player,
+    activeRound,
+    pendingResults,
+    phrasesetSummary,
+    roundAvailability,
+    error: contextError,
+  } = state;
   const { refreshDashboard, clearError } = actions;
   const { startTutorial, skipTutorial, advanceStep } = useTutorial();
+  const { viewedResultIds } = resultsState;
+  const { markResultsViewed } = resultsActions;
   const navigate = useNavigate();
   const [isRoundExpired, setIsRoundExpired] = useState(false);
   const [startingRound, setStartingRound] = useState<string | null>(null);
   const [roundStartError, setRoundStartError] = useState<string | null>(null);
-  const [hasClickedViewResults, setHasClickedViewResults] = useState(() => {
-    // Check if user has clicked "View Results" in this session
-    return sessionStorage.getItem('hasClickedViewResults') === 'true';
-  });
 
   // Log component mount and key state changes
   useEffect(() => {
@@ -52,17 +59,9 @@ export const Dashboard: React.FC = () => {
     }
   }, [activeRound]);
 
-  // Reset "viewed results" flag when new results arrive
-  useEffect(() => {
-    const unviewedCount = pendingResults.filter((result) => !result.payout_claimed).length;
-    if (unviewedCount > 0 && hasClickedViewResults) {
-      // New results arrived, reset the flag so notification shows again
-      setHasClickedViewResults(false);
-      sessionStorage.removeItem('hasClickedViewResults');
-    }
-  }, [pendingResults, hasClickedViewResults]);
 
   const handleStartTutorial = async () => {
+    dashboardLogger.debug('Starting tutorial from dashboard');
     await startTutorial();
     await advanceStep('dashboard');
   };
@@ -134,13 +133,19 @@ export const Dashboard: React.FC = () => {
     }
   }, [activeRoundRoute, navigate]);
 
-  const handleRoundExpired = useCallback(() => {
+  const handleRoundExpired = useCallback(async () => {
     dashboardLogger.debug('Round expired, setting flag and triggering refresh');
     setIsRoundExpired(true);
-    // Immediately refresh dashboard to clear expired round
-    refreshDashboard().catch((err) => {
+    
+    try {
+      // Refresh dashboard to clear expired round and get latest state
+      await refreshDashboard();
+      dashboardLogger.debug('Dashboard refreshed successfully after round expiration');
+    } catch (err) {
       dashboardLogger.error('Failed to refresh dashboard after expiration:', err);
-    });
+      // Even if refresh fails, ensure the expired state is set
+      setIsRoundExpired(true);
+    }
   }, [refreshDashboard]);
 
   const handleStartPrompt = async () => {
@@ -167,7 +172,6 @@ export const Dashboard: React.FC = () => {
       dashboardLogger.error('❌ Failed to start prompt round:', err);
       const errorMsg = extractErrorMessage(err) || 'Unable to start prompt round. Please try again.';
       setRoundStartError(errorMsg);
-      console.error('Failed to start prompt round:', err);
     } finally {
       setStartingRound(null);
       dashboardLogger.debug('Prompt round start process completed');
@@ -199,7 +203,6 @@ export const Dashboard: React.FC = () => {
       dashboardLogger.error('❌ Failed to start copy round:', err);
       const errorMsg = extractErrorMessage(err) || 'Unable to start copy round. Please try again.';
       setRoundStartError(errorMsg);
-      console.error('Failed to start copy round:', err);
     } finally {
       setStartingRound(null);
       dashboardLogger.debug('Copy round start process completed');
@@ -230,7 +233,6 @@ export const Dashboard: React.FC = () => {
       dashboardLogger.error('❌ Failed to start vote round:', err);
       const errorMsg = extractErrorMessage(err) || 'Unable to start vote round. Please try again.';
       setRoundStartError(errorMsg);
-      console.error('Failed to start vote round:', err);
     } finally {
       setStartingRound(null);
       dashboardLogger.debug('Vote round start process completed');
@@ -238,8 +240,9 @@ export const Dashboard: React.FC = () => {
   };
 
   const handleViewResults = () => {
-    setHasClickedViewResults(true);
-    sessionStorage.setItem('hasClickedViewResults', 'true');
+    // Mark all current pending results as viewed
+    const allCurrentIds = pendingResults.map(r => r.phraseset_id);
+    markResultsViewed(allCurrentIds);
     navigate('/results');
   };
 
@@ -249,8 +252,13 @@ export const Dashboard: React.FC = () => {
   const totalUnviewedCount = unviewedPromptCount + unviewedCopyCount;
   const totalUnviewedAmount = phrasesetSummary?.total_unclaimed_amount ?? 0;
 
-  // Filter pending results to only show unviewed ones (payout_claimed=false means not yet viewed)
-  const unviewedPendingResults = pendingResults.filter((result: PendingResult) => !result.payout_claimed);
+  // Filter pending results to only show unviewed ones
+  const unviewedPendingResults = pendingResults.filter((result: PendingResult) =>
+    !result.result_viewed && !viewedResultIds.has(result.phraseset_id)
+  );
+
+  // Show notification if there are unviewed pending results OR unclaimed finalized results
+  const shouldShowResultsNotification = unviewedPendingResults.length > 0 || totalUnviewedCount > 0;
 
   if (!player) {
     return (
@@ -294,7 +302,7 @@ export const Dashboard: React.FC = () => {
         )}
 
         {/* Consolidated Results Notification */}
-        {!hasClickedViewResults && (unviewedPendingResults.length > 0 || totalUnviewedCount > 0) && (
+        {shouldShowResultsNotification && (
           <div className="tile-card bg-quip-turquoise bg-opacity-10 border-2 border-quip-turquoise p-4 mb-6 slide-up-enter">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex-1">

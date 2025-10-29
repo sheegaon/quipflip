@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useTutorial } from '../../contexts/TutorialContext';
 import { getTutorialStep, getPreviousStep } from '../../config/tutorialSteps';
+import type { TutorialProgress } from '../../api/types';
 import './TutorialOverlay.css';
 
 interface TutorialOverlayProps {
@@ -62,9 +63,10 @@ const TutorialOverlay: React.FC<TutorialOverlayProps> = ({ onComplete }) => {
   const [highlightRect, setHighlightRect] = useState<DOMRect | null>(null);
   const [isVisible, setIsVisible] = useState(false);
   const [cardDimensions, setCardDimensions] = useState({ width: CARD_DEFAULT_WIDTH, height: CARD_DEFAULT_HEIGHT });
+  const [isNavigating, setIsNavigating] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
-  const step = getTutorialStep(currentStep);
+  const step = currentStep ? getTutorialStep(currentStep as TutorialProgress) : null;
 
   // Measure card dimensions dynamically
   useEffect(() => {
@@ -100,59 +102,44 @@ const TutorialOverlay: React.FC<TutorialOverlayProps> = ({ onComplete }) => {
   }, [isActive, currentStep, step]);
 
   const handleNext = async () => {
-    // // Special case: When on prompt_round step, navigate to actual prompt round and pause tutorial
-    // if (step?.id === 'prompt_round') {
-    //   try {
-    //     // Set tutorial to paused state
-    //     await advanceStep('prompt_round_paused');
-    //     // Navigate to prompt round page
-    //     window.location.href = '/prompt';
-    //     return;
-    //   } catch (error) {
-    //     console.error('Failed to pause tutorial for prompt round:', error);
-    //     // If pause fails, just navigate directly without pausing tutorial
-    //     // This allows the user to continue even if backend validation fails
-    //     window.location.href = '/prompt';
-    //     return;
-    //   }
-    // }
-    //
-    // // Special case: When on copy_round step, navigate to actual copy round and pause tutorial
-    // if (step?.id === 'copy_round') {
-    //   try {
-    //     // Set tutorial to paused state
-    //     await advanceStep('copy_round_paused');
-    //     // Navigate to copy round page
-    //     window.location.href = '/copy';
-    //     return;
-    //   } catch (error) {
-    //     console.error('Failed to pause tutorial for copy round:', error);
-    //     // If pause fails, just navigate directly without pausing tutorial
-    //     // This allows the user to continue even if backend validation fails
-    //     window.location.href = '/copy';
-    //     return;
-    //   }
-    // }
-
-    // Regular tutorial progression
-    if (step?.nextStep) {
-      await advanceStep(step.nextStep);
-    } else {
-      await completeTutorial();
-      onComplete?.();
+    if (isNavigating) return;
+    setIsNavigating(true);
+    try {
+      // Regular tutorial progression
+      if (step?.nextStep) {
+        advanceStep(step.nextStep);
+      } else {
+        completeTutorial();
+      }
+    } finally {
+      setIsNavigating(false);
     }
   };
 
   const handleBack = async () => {
-    const prevStep = getPreviousStep(currentStep);
-    if (prevStep) {
-      await advanceStep(prevStep);
+    if (isNavigating) return;
+    setIsNavigating(true);
+    try {
+      if (currentStep) {
+        const prevStep = getPreviousStep(currentStep as TutorialProgress);
+        if (prevStep) {
+          advanceStep(prevStep);
+        }
+      }
+    } finally {
+      setIsNavigating(false);
     }
   };
 
   const handleSkip = async () => {
-    await skipTutorial();
-    onComplete?.();
+    if (isNavigating) return;
+    setIsNavigating(true);
+    try {
+      await skipTutorial();
+      onComplete?.();
+    } finally {
+      setIsNavigating(false);
+    }
   };
 
   if (!isVisible || !step) {
@@ -220,9 +207,10 @@ const TutorialOverlay: React.FC<TutorialOverlayProps> = ({ onComplete }) => {
 
             <button
               onClick={handleNext}
+              disabled={isNavigating}
               className="tutorial-btn tutorial-btn-primary"
             >
-              {step.nextStep ? 'Next' : 'Finish'}
+              {isNavigating ? 'Loading...' : (step.nextStep ? 'Next' : 'End Tutorial')}
             </button>
           </div>
         </div>

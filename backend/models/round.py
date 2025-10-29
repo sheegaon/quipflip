@@ -17,7 +17,7 @@ class Round(Base):
     status = Column(String(20), nullable=False)  # active, submitted, expired, abandoned
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False, index=True)
     expires_at = Column(DateTime(timezone=True), nullable=False, index=True)
-    cost = Column(Integer, nullable=False)  # 100, 90, or 1
+    cost = Column(Integer, nullable=False)
 
     # Prompt-specific fields (nullable for non-prompt rounds)
     prompt_id = get_uuid_column(ForeignKey("prompts.prompt_id"), nullable=True)

@@ -15,6 +15,14 @@ export default {
         'quip-orange-deep': '#E26A00',
         'quip-cream': '#FFF6EE',
         'quip-navy': '#0B2137',
+        // Quest category palette
+        'quest-streak': '#FF9A3D',
+        'quest-quality': '#FF6B6B',
+        'quest-quality-dark': '#D64545',
+        'quest-quality-light': '#FF8A8A',
+        'quest-milestone': '#FFC857',
+        'quest-milestone-dark': '#C88200',
+        'quest-milestone-light': '#FFB347',
       },
       fontFamily: {
         'display': ['Poppins', 'Inter', 'system-ui', 'sans-serif'],

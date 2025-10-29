@@ -23,7 +23,7 @@
 - ✓ Direct navigation to `/settings` route works
 - ✓ Page loads without errors
 - ✓ Dashboard structure visible in background
-- ⚠ Settings page may not have dedicated navigation link (direct URL access works)
+- ✓ Header gear icon opens Settings page (no need for manual URL entry)
 
 **Expected Settings Features** (from source code):
 - Account Information (username, email, pseudonym)
@@ -44,7 +44,7 @@
 **Features Verified:**
 - ✓ Direct navigation to `/quests` route works
 - ✓ Page loads without errors
-- ⚠ Quests page may not have visible navigation link (direct URL works)
+- ✓ Treasure chest icon in header links directly to Quests page
 
 **Expected Quest Features** (from source code):
 - Daily Bonus section with claim button
@@ -137,13 +137,8 @@
 7. **Balance System** - Coin balance (5000 starting, 4990 after vote) tracked correctly
 
 ### 🔍 Observations
-1. **Navigation Links** - Settings, Quests, and Results may not have visible nav links in header
-   - Pages accessible via direct URL
-   - May need to check Header component for navigation menu
-2. **Page Discovery** - Users may need to discover features through:
-   - Direct URL entry
-   - Documentation
-   - Tutorial guidance
+1. **Navigation Links** - Header now includes Settings (gear), Quests (treasure chest), and Results indicators; ensure tooltips remain clear.
+2. **Page Discovery** - Tutorial cues could still highlight new Rewards & Quests page for first-time players.
 3. **Round Availability** - Prompt/Copy rounds may not always be available
    - Depends on game state and available phrasesets
    - Vote rounds had "3 quip sets waiting"
@@ -229,7 +224,7 @@ The vote round showed:
 - [package.json](package.json) - Added @types/node dependency
 
 ### Documentation
-- [TEST_REPORT.md](TEST_REPORT.md) - Comprehensive test report
+- [TEST_REPORT.md](FRONTEND_TEST_REPORT) - Comprehensive test report
 - [TEST_FIX_SUMMARY.md](TEST_FIX_SUMMARY.md) - Tutorial overlay fix explanation
 - [ADVANCED_TESTING_SUMMARY.md](ADVANCED_TESTING_SUMMARY.md) - This document
 

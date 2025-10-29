@@ -10,7 +10,7 @@
 - `pseudonym_canonical` (string) - lowercase form for lookups
 - `email` (string, unique) - player email for authentication
 - `password_hash` (string) - bcrypt hashed password
-- `balance` (integer, default 1000) - current balance in Flipcoins (f)
+- `balance` (integer, database default 1000) - current balance in Flipcoins (f); new accounts are seeded from `settings.starting_balance` (5000f by default)
 - `created_at` (timestamp)
 - `last_login_date` (date, nullable) - UTC date for daily bonus tracking
 - `active_round_id` (UUID, nullable, references rounds.round_id) - enforces one-round-at-a-time
@@ -18,12 +18,14 @@
 - `tutorial_progress` (string, default 'not_started') - current tutorial step
 - `tutorial_started_at` (timestamp, nullable) - when tutorial was started
 - `tutorial_completed_at` (timestamp, nullable) - when tutorial was completed
+- `is_admin` (computed property) - returns true if player has admin access (currently: any authenticated user who knows SECRET_KEY)
 - Indexes: `player_id`, `active_round_id`, `pseudonym`
 - Constraints: Unique `username_canonical`
 - Relationships: `active_round`, `rounds`, `transactions`, `votes`, `daily_bonuses`, `result_views`, `abandoned_prompts`, `phraseset_activities`, `refresh_tokens`, `quests`
 
 **Authentication**: JWT access/refresh tokens (stored in `refresh_tokens` table)
 **Registration**: Email and password only; username is randomly generated and cannot be changed
+**Admin Access**: Currently any user with SECRET_KEY knowledge; future plans include role-based access control
 
 ### Round (Unified for Prompt, Copy, and Vote)
 - `round_id` (UUID, primary key)
@@ -32,11 +34,11 @@
 - `status` (string) - 'active', 'submitted', 'expired', 'abandoned'
 - `created_at` (timestamp, indexed)
 - `expires_at` (timestamp, indexed)
-- `cost` (integer) - amount deducted (100, 90, or 1)
+- `cost` (integer) - amount deducted (prompt: 100, copy: 50 or 40 with discount, vote: 10)
 
 - **Prompt-specific fields** (nullable for non-prompt rounds):
   - `prompt_id` (UUID, references prompts.prompt_id)
-  - `prompt_text` (string) - denormalized for performance
+  - `text` (string) - denormalized for performance
   - `submitted_phrase` (string, nullable) - prompt player's phrase
   - `phraseset_status` (string, nullable) - waiting_copies, waiting_copy1, active, finalized, abandoned
   - `copy1_player_id` (UUID, nullable, references players.player_id, indexed)
@@ -83,7 +85,7 @@
 - `closes_at` (timestamp, nullable) - calculated closure time
 - `created_at` (timestamp)
 - `finalized_at` (timestamp, nullable)
-- `total_pool` (integer, default 300) - includes system contribution if applicable
+- `total_pool` (integer, default 200) - base prize pool (prompt + copies) before vote contributions
 - `system_contribution` (integer, default 0) - 0 or 10 for discounted copies
 - Indexes: `phraseset_id`, `prompt_round_id`, `fifth_vote_at`, composite `(status, vote_count)`
 - Relationships: `prompt_round`, `copy_round_1`, `copy_round_2`, `votes`, `vote_rounds`, `result_views`, `activities`
@@ -105,12 +107,12 @@
 - `view_id` (UUID, primary key)
 - `phraseset_id` (UUID, references phrasesets.phraseset_id, indexed)
 - `player_id` (UUID, references players.player_id, indexed)
-- `payout_claimed` (boolean, default false, indexed)
+- `result_viewed` (boolean, default false, indexed)
 - `payout_amount` (integer) - prize pool payout for contributor
 - `viewed_at` (timestamp) - most recent view timestamp
 - `first_viewed_at` (timestamp, nullable) - when the player first saw the results
-- `payout_claimed_at` (timestamp, nullable) - when payout_claimed flipped to true
-- Indexes: `view_id`, `phraseset_id`, `player_id`, `payout_claimed`
+- `result_viewed_at` (timestamp, nullable) - when result_viewed flipped to true
+- Indexes: `view_id`, `phraseset_id`, `player_id`, `result_viewed`
 - Constraints: Unique composite `(player_id, phraseset_id)` - one view record per player per phraseset
 - Relationships: `phraseset`, `player`
 - Note: Used for idempotent prize collection

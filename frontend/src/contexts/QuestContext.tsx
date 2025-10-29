@@ -1,143 +1,202 @@
-import React, { createContext, useContext, useState, useCallback, useEffect, useRef, ReactNode } from 'react';
-import { Quest, ClaimQuestRewardResponse } from '../api/types';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import apiClient from '../api/client';
-import { useGame } from './GameContext';
+import { getActionErrorMessage } from '../utils/errorMessages';
+import { gameContextLogger } from '../utils/logger';
+import type { Quest, ClaimQuestRewardResponse } from '../api/types';
 
-interface QuestContextType {
+interface QuestState {
   quests: Quest[];
   activeQuests: Quest[];
   claimableQuests: Quest[];
-  hasClaimableQuests: boolean;
   loading: boolean;
   error: string | null;
+  lastUpdated: number | null;
+  hasClaimableQuests: boolean;
+}
+
+interface QuestActions {
   refreshQuests: () => Promise<void>;
+  clearQuestError: () => void;
   claimQuest: (questId: string) => Promise<ClaimQuestRewardResponse>;
-  clearError: () => void;
+}
+
+interface QuestContextType {
+  state: QuestState;
+  actions: QuestActions;
 }
 
 const QuestContext = createContext<QuestContextType | undefined>(undefined);
 
-export const useQuests = () => {
+export const QuestProvider: React.FC<{ 
+  children: React.ReactNode;
+  isAuthenticated: boolean;
+  onDashboardTrigger: () => void;
+}> = ({ children, isAuthenticated, onDashboardTrigger }) => {
+  const [questState, setQuestState] = useState<QuestState>({
+    quests: [],
+    activeQuests: [],
+    claimableQuests: [],
+    loading: false,
+    error: null,
+    lastUpdated: null,
+    hasClaimableQuests: false,
+  });
+
+  const refreshQuests = useCallback(async () => {
+    gameContextLogger.debug('🎯 QuestContext refreshQuests called');
+    
+    const token = await apiClient.ensureAccessToken();
+    if (!token) {
+      gameContextLogger.warn('❌ No valid token for quest refresh');
+      setQuestState((prev) => ({
+        ...prev,
+        loading: false,
+        error: 'Authentication required. Please log in again.',
+      }));
+      return;
+    }
+
+    gameContextLogger.debug('🔄 Setting quest loading state to true');
+    setQuestState((prev) => ({
+      ...prev,
+      loading: true,
+      error: null,
+    }));
+
+    try {
+      gameContextLogger.debug('📞 Making parallel quest API calls...');
+      const [allQuestsResponse, activeQuestsResponse, claimableQuestsResponse] = await Promise.all([
+        apiClient.getQuests(),
+        apiClient.getActiveQuests(),
+        apiClient.getClaimableQuests(),
+      ]);
+
+      gameContextLogger.debug('✅ Quest API calls successful:', {
+        totalQuests: allQuestsResponse.quests.length,
+        activeQuests: activeQuestsResponse.length,
+        claimableQuests: claimableQuestsResponse.length
+      });
+
+      setQuestState({
+        quests: allQuestsResponse.quests,
+        activeQuests: activeQuestsResponse,
+        claimableQuests: claimableQuestsResponse,
+        loading: false,
+        error: null,
+        lastUpdated: Date.now(),
+        hasClaimableQuests: claimableQuestsResponse.length > 0,
+      });
+
+      gameContextLogger.debug('✅ Quest state updated successfully');
+    } catch (err) {
+      gameContextLogger.error('❌ Quest refresh failed:', err);
+      const errorMessage = getActionErrorMessage('load-quests', err);
+      setQuestState((prev) => ({
+        ...prev,
+        loading: false,
+        error: errorMessage,
+      }));
+      throw err;
+    }
+  }, []);
+
+  const clearQuestError = useCallback(() => {
+    gameContextLogger.debug('🧹 Clearing quest error');
+    setQuestState((prev) => ({
+      ...prev,
+      error: null,
+    }));
+  }, []);
+
+  const claimQuest = useCallback(async (questId: string): Promise<ClaimQuestRewardResponse> => {
+    gameContextLogger.debug('🎯 QuestContext claimQuest called:', { questId });
+
+    const token = await apiClient.ensureAccessToken();
+    if (!token) {
+      gameContextLogger.warn('❌ No valid token for quest claim');
+      setQuestState((prev) => ({
+        ...prev,
+        error: 'Authentication required. Please log in again.',
+      }));
+      throw new Error('Authentication required');
+    }
+
+    gameContextLogger.debug('🔄 Setting quest loading state for claim');
+    setQuestState((prev) => ({
+      ...prev,
+      loading: true,
+      error: null,
+    }));
+
+    try {
+      gameContextLogger.debug('📞 Calling apiClient.claimQuestReward...');
+      const response = await apiClient.claimQuestReward(questId);
+      gameContextLogger.debug('✅ Quest claim successful:', response);
+
+      gameContextLogger.debug('🔄 Refreshing quests after claim...');
+      await refreshQuests();
+      
+      gameContextLogger.debug('🔄 Triggering dashboard refresh after quest claim');
+      onDashboardTrigger();
+      
+      return response;
+    } catch (err) {
+      gameContextLogger.error('❌ Quest claim failed:', err);
+      const errorMessage = getActionErrorMessage('claim-quest', err);
+      setQuestState((prev) => ({
+        ...prev,
+        error: errorMessage,
+      }));
+      throw err;
+    } finally {
+      gameContextLogger.debug('🔄 Setting quest loading to false');
+      setQuestState((prev) => ({
+        ...prev,
+        loading: false,
+      }));
+    }
+  }, [refreshQuests, onDashboardTrigger]);
+
+  // Auto-load quests when authenticated
+  useEffect(() => {
+    if (!isAuthenticated) {
+      gameContextLogger.debug('🚪 User not authenticated, clearing quest state');
+      setQuestState({
+        quests: [],
+        activeQuests: [],
+        claimableQuests: [],
+        loading: false,
+        error: null,
+        lastUpdated: null,
+        hasClaimableQuests: false,
+      });
+      return;
+    }
+
+    gameContextLogger.debug('🔄 User authenticated, loading quests...');
+    refreshQuests().catch((err) => {
+      gameContextLogger.error('❌ Failed to auto-load quests:', err);
+    });
+  }, [isAuthenticated]); // Remove refreshQuests from dependency array
+
+  const actions: QuestActions = {
+    refreshQuests,
+    clearQuestError,
+    claimQuest,
+  };
+
+  const value: QuestContextType = {
+    state: questState,
+    actions,
+  };
+
+  return <QuestContext.Provider value={value}>{children}</QuestContext.Provider>;
+};
+
+export const useQuests = (): QuestContextType => {
   const context = useContext(QuestContext);
   if (!context) {
     throw new Error('useQuests must be used within a QuestProvider');
   }
   return context;
-};
-
-interface QuestProviderProps {
-  children: ReactNode;
-}
-
-export const QuestProvider: React.FC<QuestProviderProps> = ({ children }) => {
-  const { state } = useGame();
-  const { isAuthenticated } = state;
-
-  const [quests, setQuests] = useState<Quest[]>([]);
-  const [activeQuests, setActiveQuests] = useState<Quest[]>([]);
-  const [claimableQuests, setClaimableQuests] = useState<Quest[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const hasClaimableQuests = claimableQuests.length > 0;
-  const hasInitialLoadRef = useRef(false);
-
-  const clearError = useCallback(() => {
-    setError(null);
-  }, []);
-
-  const refreshQuests = useCallback(async () => {
-    console.log('🎯 QuestContext: refreshQuests() called');
-    setLoading(true);
-    setError(null);
-
-    try {
-      console.log('🎯 QuestContext: Fetching quest data from API...');
-      // Fetch all quest lists in parallel
-      const [allQuestsResponse, activeQuestsResponse, claimableQuestsResponse] = await Promise.all([
-        apiClient.getQuests(),
-        apiClient.getActiveQuests(),
-        apiClient.getClaimableQuests()
-      ]);
-
-      console.log('🎯 QuestContext: API responses received:', {
-        totalQuests: allQuestsResponse.quests.length,
-        activeQuests: activeQuestsResponse.length,
-        claimableQuests: claimableQuestsResponse.length,
-        counts: {
-          active: allQuestsResponse.active_count,
-          completed: allQuestsResponse.completed_count,
-          claimed: allQuestsResponse.claimed_count,
-        }
-      });
-
-      setQuests(allQuestsResponse.quests);
-      setActiveQuests(activeQuestsResponse);
-      setClaimableQuests(claimableQuestsResponse);
-
-      console.log('🎯 QuestContext: Quest state updated successfully');
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load quests';
-      setError(errorMessage);
-      console.error('❌ QuestContext: Error refreshing quests:', err);
-      console.error('❌ QuestContext: Error details:', errorMessage);
-    } finally {
-      setLoading(false);
-      console.log('🎯 QuestContext: refreshQuests() completed');
-    }
-  }, []);
-
-  const claimQuest = useCallback(async (questId: string): Promise<ClaimQuestRewardResponse> => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await apiClient.claimQuestReward(questId);
-
-      // Refresh quests after successful claim to update UI
-      await refreshQuests();
-
-      return response;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to claim quest reward';
-      setError(errorMessage);
-      console.error('Error claiming quest:', err);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, [refreshQuests]);
-
-  // Auto-refresh quests when user becomes authenticated
-  useEffect(() => {
-    if (!isAuthenticated) {
-      hasInitialLoadRef.current = false;
-      return;
-    }
-
-    // Prevent duplicate loads in React StrictMode
-    if (hasInitialLoadRef.current) return;
-    hasInitialLoadRef.current = true;
-
-    console.log('🎯 QuestContext: User authenticated, auto-loading quests');
-    refreshQuests();
-  }, [isAuthenticated, refreshQuests]);
-
-  const value: QuestContextType = {
-    quests,
-    activeQuests,
-    claimableQuests,
-    hasClaimableQuests,
-    loading,
-    error,
-    refreshQuests,
-    claimQuest,
-    clearError,
-  };
-
-  return (
-    <QuestContext.Provider value={value}>
-      {children}
-    </QuestContext.Provider>
-  );
 };

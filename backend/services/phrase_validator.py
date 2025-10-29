@@ -110,29 +110,8 @@ class PhraseValidator:
         self.dictionary: Set[str] = _load_dictionary()
         logger.info(f"Loaded dictionary with {len(self.dictionary)} words")
 
-        # Choose similarity approach based on configuration
-        if self.settings.use_sentence_transformers:
-            try:
-                logger.info(f"Loading sentence transformer model: {self.settings.similarity_model}")
-                from sentence_transformers import SentenceTransformer
-                self._similarity_model = SentenceTransformer(self.settings.similarity_model)
-                self._similarity_calculator = None
-                logger.info("Sentence transformer model loaded successfully")
-            except ImportError:
-                logger.error("sentence-transformers not installed but use_sentence_transformers=True")
-                logger.info("Falling back to lightweight similarity calculator")
-                self._similarity_model = None
-                self._similarity_calculator = LightweightSimilarityCalculator()
-            except Exception as e:
-                logger.error(f"Failed to load sentence transformer model: {e}")
-                logger.info("Falling back to lightweight similarity calculator")
-                self._similarity_model = None
-                self._similarity_calculator = LightweightSimilarityCalculator()
-        else:
-            # Use lightweight similarity calculator
-            self._similarity_model = None
-            self._similarity_calculator = LightweightSimilarityCalculator()
-            logger.info("Lightweight similarity calculator initialized")
+        self._similarity_calculator = LightweightSimilarityCalculator()
+        logger.info("Lightweight similarity calculator initialized")
 
     async def common_words(self) -> Set[str]:
         """Get set of common words allowed to be reused."""
@@ -149,30 +128,7 @@ class PhraseValidator:
         Returns:
             Similarity score between 0.0 and 1.0
         """
-        if self._similarity_model is not None:
-            # Use sentence transformers
-            try:
-                # Normalize phrases
-                phrase1 = phrase1.strip().lower()
-                phrase2 = phrase2.strip().lower()
-
-                # Get embeddings
-                embeddings = self._similarity_model.encode([phrase1, phrase2])
-
-                # Calculate cosine similarity
-                from sklearn.metrics.pairwise import cosine_similarity
-                similarity = cosine_similarity([embeddings[0]], [embeddings[1]])[0][0]
-
-                logger.debug(f"Similarity between '{phrase1}' and '{phrase2}': {similarity:.4f}")
-                return float(similarity)
-            except Exception as e:
-                logger.error(f"Error calculating similarity with sentence transformers: {e}")
-                # If similarity check fails, be conservative and allow the phrase
-                logger.warning("Sentence transformer similarity check failed, allowing phrase")
-                return 0.0
-        else:
-            # Use lightweight similarity calculator
-            return self._similarity_calculator.calculate_similarity(phrase1, phrase2)
+        return self._similarity_calculator.calculate_similarity(phrase1, phrase2)
 
     def validate(self, phrase: str) -> tuple[bool, str]:
         """
@@ -287,11 +243,6 @@ class PhraseValidator:
 
         return True, ""
 
-    def _check_prompt_relevance(self, phrase: str, prompt_text: str | None) -> tuple[bool, str]:
-        """Check if phrase is relevant to the prompt text."""
-        similarity = self.calculate_similarity(phrase, prompt_text)
-        return similarity >= self.settings.prompt_relevance_threshold, "Phrase not relevant to prompt"
-
     async def validate_prompt_phrase(self, phrase: str, prompt_text: str | None) -> tuple[bool, str]:
         """Validate a prompt submission against the originating prompt text."""
 
@@ -303,10 +254,6 @@ class PhraseValidator:
         is_valid, error = self._check_significant_word_conflicts(phrase, comparisons)
         if not is_valid:
             return False, error
-
-        # is_valid, error = self._check_prompt_relevance(phrase, prompt_text)
-        # if not is_valid:
-        #     return False, error
 
         return True, ""
 

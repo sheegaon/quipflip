@@ -1,12 +1,9 @@
-"""
-Comprehensive integration tests for AI service.
-
-Tests AI copy generation, voting, metrics tracking, and error handling.
-"""
+"""Comprehensive integration tests for AI service."""
 
 import pytest
-from unittest.mock import patch, MagicMock
-from datetime import datetime, UTC
+from unittest.mock import patch, MagicMock, AsyncMock
+from dataclasses import dataclass
+from datetime import datetime, UTC, timedelta
 import uuid
 
 from backend.services.ai.ai_service import AIService, AICopyError, AIVoteError, AIServiceError
@@ -16,14 +13,29 @@ from backend.models.player import Player
 from backend.models.round import Round
 from backend.models.phraseset import Phraseset
 from backend.models.ai_metric import AIMetric
+from backend.models.vote import Vote
+from backend.config import get_settings
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def mock_validator():
     """Mock phrase validator."""
-    validator = MagicMock(spec=PhraseValidator)
-    validator.validate.return_value = (True, "")
-    return validator
+    settings = get_settings()
+    original_openai_api_key = settings.openai_api_key
+    original_use_validator = settings.use_phrase_validator_api
+
+    if not settings.openai_api_key:
+        settings.openai_api_key = "sk-test"
+    settings.use_phrase_validator_api = False
+
+    with patch("backend.services.phrase_validator.get_phrase_validator") as mock_get_validator:
+        validator = MagicMock(spec=PhraseValidator)
+        validator.validate.return_value = (True, "")
+        mock_get_validator.return_value = validator
+        yield validator
+
+    settings.openai_api_key = original_openai_api_key
+    settings.use_phrase_validator_api = original_use_validator
 
 
 @pytest.fixture
@@ -71,12 +83,8 @@ class TestAIServiceProviderSelection:
     """Test AI provider selection logic."""
 
     @patch.dict('os.environ', {'OPENAI_API_KEY': 'sk-test', 'AI_PROVIDER': 'openai'})
-    @patch('backend.services.phrase_validator.get_phrase_validator')
-    def test_select_openai_when_configured(self, mock_get_validator, db_session):
+    def test_select_openai_when_configured(self, db_session):
         """Should select OpenAI when configured and API key available."""
-        mock_validator = MagicMock()
-        mock_get_validator.return_value = mock_validator
-
         with patch('backend.services.ai.ai_service.get_settings') as mock_settings:
             settings = mock_settings.return_value
             settings.ai_provider = 'openai'
@@ -86,12 +94,8 @@ class TestAIServiceProviderSelection:
             assert service.provider == "openai"
 
     @patch.dict('os.environ', {'GEMINI_API_KEY': 'test-key', 'AI_PROVIDER': 'gemini'}, clear=True)
-    @patch('backend.services.phrase_validator.get_phrase_validator')
-    def test_select_gemini_when_configured(self, mock_get_validator, db_session):
+    def test_select_gemini_when_configured(self, db_session, mock_validator):
         """Should select Gemini when configured and API key available."""
-        mock_validator = MagicMock()
-        mock_get_validator.return_value = mock_validator
-
         with patch('backend.services.ai.ai_service.get_settings') as mock_settings:
             settings = mock_settings.return_value
             settings.ai_provider = 'gemini'
@@ -101,12 +105,8 @@ class TestAIServiceProviderSelection:
             assert service.provider == "gemini"
 
     @patch.dict('os.environ', {'OPENAI_API_KEY': 'sk-test'}, clear=True)
-    @patch('backend.services.phrase_validator.get_phrase_validator')
-    def test_fallback_to_openai_when_gemini_unavailable(self, mock_get_validator, db_session):
+    def test_fallback_to_openai_when_gemini_unavailable(self, db_session):
         """Should fallback to OpenAI when Gemini configured but unavailable."""
-        mock_validator = MagicMock()
-        mock_get_validator.return_value = mock_validator
-
         with patch('backend.services.ai.ai_service.get_settings') as mock_settings:
             settings = mock_settings.return_value
             settings.ai_provider = 'gemini'
@@ -117,12 +117,8 @@ class TestAIServiceProviderSelection:
             assert service.provider == "openai"
 
     @patch.dict('os.environ', {}, clear=True)
-    @patch('backend.services.phrase_validator.get_phrase_validator')
-    def test_raise_error_when_no_provider_available(self, mock_get_validator, db_session):
+    def test_raise_error_when_no_provider_available(self, db_session):
         """Should raise error when no API keys available."""
-        mock_validator = MagicMock()
-        mock_get_validator.return_value = mock_validator
-
         with patch('backend.services.ai.ai_service.get_settings') as mock_settings:
             settings = mock_settings.return_value
             settings.ai_provider = 'openai'
@@ -158,18 +154,14 @@ class TestAICopyGeneration:
 
     @pytest.mark.asyncio
     @patch('backend.services.ai.gemini_api.generate_copy')
-    @patch('backend.services.phrase_validator.get_phrase_validator')
     @patch.dict('os.environ', {'GEMINI_API_KEY': 'test-key'}, clear=True)
     async def test_generate_copy_with_gemini(
-            self, mock_get_validator, mock_gemini, db_session, mock_prompt_round
+            self, mock_gemini, db_session, mock_prompt_round, mock_validator
     ):
         """Should generate copy using Gemini."""
         mock_gemini.return_value = "merry festivity"
-        mock_validator = MagicMock()
         # Mock validate_copy as an async function
-        from unittest.mock import AsyncMock
         mock_validator.validate_copy = AsyncMock(return_value=(True, ""))
-        mock_get_validator.return_value = mock_validator
 
         with patch('backend.services.ai.ai_service.get_settings') as mock_settings:
             settings = mock_settings.return_value
@@ -502,3 +494,194 @@ class TestAIPlayerManagement:
             assert player.username == "AI_COPY_BACKUP"
             assert player.player_id == ai_player.player_id
             mock_create.assert_not_called()
+
+
+@dataclass
+class PhrasesetScenario:
+    """Container for phraseset test data."""
+
+    prompt_round: Round
+    copy_rounds: tuple[Round, Round]
+    phraseset: Phraseset
+
+
+async def _create_phraseset_scenario(
+    db_session,
+    *,
+    base_settings,
+    prompter,
+    copy_players,
+    prompt_text,
+    original_phrase,
+    copy_phrases,
+    created_at,
+    include_human_vote=False,
+    human_voter=None,
+):
+    """Create a phraseset scenario for backup cycle tests."""
+
+    if len(copy_players) != 2:
+        raise ValueError("copy_players must contain exactly two players")
+    if len(copy_phrases) != 2:
+        raise ValueError("copy_phrases must contain exactly two entries")
+
+    prompt_round = Round(
+        round_id=uuid.uuid4(),
+        player_id=prompter.player_id,
+        round_type="prompt",
+        status="submitted",
+        created_at=created_at - timedelta(minutes=2),
+        expires_at=created_at + timedelta(minutes=1),
+        cost=base_settings.prompt_cost,
+        prompt_text=prompt_text,
+        submitted_phrase=original_phrase,
+        phraseset_status="active",
+        copy1_player_id=copy_players[0].player_id,
+        copy2_player_id=copy_players[1].player_id,
+    )
+
+    copy_rounds = []
+    for index, (copy_player, copy_phrase) in enumerate(zip(copy_players, copy_phrases), start=1):
+        copy_rounds.append(
+            Round(
+                round_id=uuid.uuid4(),
+                player_id=copy_player.player_id,
+                round_type="copy",
+                status="submitted",
+                created_at=created_at - timedelta(minutes=1, seconds=45 - (index * 15)),
+                expires_at=created_at + timedelta(minutes=2),
+                cost=base_settings.copy_cost_normal,
+                prompt_round_id=prompt_round.round_id,
+                original_phrase=original_phrase,
+                copy_phrase=copy_phrase,
+                system_contribution=0,
+            )
+        )
+
+    db_session.add_all([prompt_round, *copy_rounds])
+    await db_session.flush()
+
+    phraseset = Phraseset(
+        phraseset_id=uuid.uuid4(),
+        prompt_round_id=prompt_round.round_id,
+        copy_round_1_id=copy_rounds[0].round_id,
+        copy_round_2_id=copy_rounds[1].round_id,
+        prompt_text=prompt_text,
+        original_phrase=original_phrase,
+        copy_phrase_1=copy_phrases[0],
+        copy_phrase_2=copy_phrases[1],
+        status="open",
+        created_at=created_at - timedelta(minutes=1),
+        vote_count=1 if include_human_vote else 0,
+        total_pool=(
+            base_settings.prize_pool_base
+            + base_settings.vote_cost
+            - base_settings.vote_payout_correct
+            if include_human_vote
+            else base_settings.prize_pool_base
+        ),
+        vote_contributions=base_settings.vote_cost if include_human_vote else 0,
+        vote_payouts_paid=base_settings.vote_payout_correct if include_human_vote else 0,
+        system_contribution=0,
+    )
+
+    db_session.add(phraseset)
+
+    vote = None
+    if include_human_vote:
+        if human_voter is None:
+            raise ValueError("human_voter is required when include_human_vote is True")
+        vote = Vote(
+            vote_id=uuid.uuid4(),
+            phraseset_id=phraseset.phraseset_id,
+            player_id=human_voter.player_id,
+            voted_phrase=original_phrase,
+            correct=True,
+            payout=base_settings.vote_payout_correct,
+            created_at=created_at - timedelta(seconds=30),
+        )
+        db_session.add(vote)
+
+    return PhrasesetScenario(prompt_round, (copy_rounds[0], copy_rounds[1]), phraseset), vote
+
+
+class TestAIBackupCycle:
+    """Test AI backup cycle behavior."""
+
+    @pytest.mark.asyncio
+    async def test_run_backup_cycle_skips_phrasesets_without_human_votes(
+        self,
+        db_session,
+        player_factory,
+    ):
+        """AI should only vote on phrasesets that already have human votes."""
+
+        base_settings = get_settings()
+        custom_settings = base_settings.model_copy(
+            update={
+                "openai_api_key": "sk-test",
+                "use_phrase_validator_api": False,
+                "ai_backup_delay_minutes": 0,
+                "ai_backup_batch_size": 5,
+            }
+        )
+
+        prompter = await player_factory()
+        copier1 = await player_factory()
+        copier2 = await player_factory()
+        copier3 = await player_factory()
+        copier4 = await player_factory()
+        human_voter = await player_factory()
+
+        now = datetime.now(UTC)
+
+        scenario_with_vote, _ = await _create_phraseset_scenario(
+            db_session,
+            base_settings=base_settings,
+            prompter=prompter,
+            copy_players=(copier1, copier2),
+            prompt_text="Prompt with human vote",
+            original_phrase="ORIGINAL ONE",
+            copy_phrases=("COPY ONE A", "COPY ONE B"),
+            created_at=now,
+            include_human_vote=True,
+            human_voter=human_voter,
+        )
+        _ = await _create_phraseset_scenario(
+            db_session,
+            base_settings=base_settings,
+            prompter=prompter,
+            copy_players=(copier3, copier4),
+            prompt_text="Prompt without human vote",
+            original_phrase="ORIGINAL TWO",
+            copy_phrases=("COPY TWO A", "COPY TWO B"),
+            created_at=now,
+            include_human_vote=False,
+        )
+
+        await db_session.commit()
+
+        async def fake_generate_vote_choice(self, phraseset):
+            return phraseset.original_phrase
+
+        with (
+            patch("backend.services.ai.ai_service.get_settings", return_value=custom_settings),
+            patch.object(AIService, "generate_vote_choice", new=fake_generate_vote_choice),
+            patch(
+                "backend.services.vote_service.VoteService.submit_system_vote",
+                new_callable=AsyncMock,
+            ) as mock_submit_vote,
+            patch("random.randint", return_value=1234),
+        ):
+            mock_submit_vote.return_value = MagicMock(
+                voted_phrase="ORIGINAL ONE",
+                correct=True,
+                payout=base_settings.vote_payout_correct,
+            )
+
+            service = AIService(db_session)
+            await service.run_backup_cycle()
+
+        assert mock_submit_vote.await_count == 1
+        called_phraseset = mock_submit_vote.await_args_list[0].kwargs["phraseset"]
+        assert called_phraseset.phraseset_id == scenario_with_vote.phraseset.phraseset_id
