@@ -35,29 +35,29 @@ export const QuestCard: React.FC<QuestCardProps> = ({
         return {
           iconSrc: '/icon_quest_streak.svg',
           iconAlt: 'Streak quest icon',
-          iconWrapper: 'bg-[#FF9A3D1A]',
-          badgeClass: 'bg-[#FF9A3D1A] text-quip-orange-deep'
+          iconWrapper: 'bg-quest-streak/10',
+          badgeClass: 'bg-quest-streak/10 text-quip-orange-deep'
         };
       case 'quality':
         return {
           iconSrc: '/icon_quest_quality.svg',
           iconAlt: 'Quality quest icon',
-          iconWrapper: 'bg-[#FF6B6B1F]',
-          badgeClass: 'bg-[#FF6B6B1F] text-[#D64545] dark:text-[#FF8A8A]'
+          iconWrapper: 'bg-quest-quality/10',
+          badgeClass: 'bg-quest-quality/10 text-quest-quality-dark dark:text-quest-quality-light'
         };
       case 'activity':
         return {
           iconSrc: '/icon_quest_activity.svg',
           iconAlt: 'Activity quest icon',
-          iconWrapper: 'bg-[#10B4A41A]',
-          badgeClass: 'bg-[#10B4A41A] text-quip-teal'
+          iconWrapper: 'bg-quip-turquoise/10',
+          badgeClass: 'bg-quip-turquoise/10 text-quip-teal'
         };
       case 'milestone':
         return {
           iconSrc: '/icon_quest_milestone.svg',
           iconAlt: 'Milestone quest icon',
-          iconWrapper: 'bg-[#FFC8571F]',
-          badgeClass: 'bg-[#FFC8571F] text-[#C88200] dark:text-[#FFB347]'
+          iconWrapper: 'bg-quest-milestone/10',
+          badgeClass: 'bg-quest-milestone/10 text-quest-milestone-dark dark:text-quest-milestone-light'
         };
       default:
         return {
