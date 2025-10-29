@@ -1,4 +1,4 @@
-"""Script to initialize quests for all existing players who don't have them."""
+"""Script to ensure all existing players have the full starter quest set."""
 import asyncio
 import logging
 from sqlalchemy import select
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 async def initialize_quests_for_all_players():
-    """Initialize starter quests for all players who don't have any quests yet."""
+    """Ensure every player has the full starter quest set."""
     async with AsyncSessionLocal() as db:
         try:
             # Get all players
@@ -22,32 +22,56 @@ async def initialize_quests_for_all_players():
 
             logger.info(f"Found {len(players)} total players")
 
+            quest_service = QuestService(db)
+            starter_quests = QuestService.STARTER_QUEST_TYPES
+
             initialized_count = 0
+            topped_up_count = 0
             skipped_count = 0
 
             for player in players:
-                # Check if player already has quests
+                # Fetch existing quests for the player
                 quest_result = await db.execute(
-                    select(Quest).where(Quest.player_id == player.player_id).limit(1)
+                    select(Quest.quest_type).where(Quest.player_id == player.player_id)
                 )
-                existing_quest = quest_result.scalar_one_or_none()
+                existing_quests = {row[0] for row in quest_result.all()}
 
-                if existing_quest:
-                    logger.info(f"Player {player.username} ({player.player_id}) already has quests, skipping")
-                    skipped_count += 1
+                missing_quest_types = [
+                    quest_type for quest_type in starter_quests if quest_type.value not in existing_quests
+                ]
+
+                if not existing_quests:
+                    logger.info(
+                        f"Initializing quests for player {player.username} ({player.player_id})..."
+                    )
+                    quests = await quest_service.initialize_quests_for_player(player.player_id)
+                    logger.info(f"  ✓ Initialized {len(quests)} quests for {player.username}")
+                    initialized_count += 1
                     continue
 
-                # Initialize quests for this player
-                logger.info(f"Initializing quests for player {player.username} ({player.player_id})...")
-                quest_service = QuestService(db)
-                quests = await quest_service.initialize_quests_for_player(player.player_id)
-                logger.info(f"  ✓ Initialized {len(quests)} quests for {player.username}")
-                initialized_count += 1
+                if missing_quest_types:
+                    quest_names = ", ".join(qt.value for qt in missing_quest_types)
+                    logger.info(
+                        "Player %s (%s) is missing %d quests: %s. Adding missing quests.",
+                        player.username,
+                        player.player_id,
+                        len(missing_quest_types),
+                        quest_names,
+                    )
+                    await quest_service.initialize_quests_for_player(player.player_id)
+                    topped_up_count += 1
+                    continue
+
+                logger.info(
+                    f"Player {player.username} ({player.player_id}) already has all starter quests, skipping"
+                )
+                skipped_count += 1
 
             await db.commit()
 
             logger.info(f"\n=== Summary ===")
             logger.info(f"Players initialized: {initialized_count}")
+            logger.info(f"Players topped up with missing quests: {topped_up_count}")
             logger.info(f"Players skipped (already had quests): {skipped_count}")
             logger.info(f"Total players processed: {len(players)}")
 

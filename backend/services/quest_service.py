@@ -147,21 +147,23 @@ QUEST_CONFIGS = {
 class QuestService:
     """Service for managing player quests."""
 
+    STARTER_QUEST_TYPES: List[QuestType] = [
+        QuestType.HOT_STREAK_5,
+        QuestType.ROUND_COMPLETION_5,
+        QuestType.BALANCED_PLAYER,
+        QuestType.LOGIN_STREAK_7,
+        QuestType.FEEDBACK_CONTRIBUTOR_10,
+        QuestType.MILESTONE_VOTES_100,
+        QuestType.MILESTONE_PROMPTS_50,
+        QuestType.MILESTONE_COPIES_100,
+    ]
+
     def __init__(self, db: AsyncSession):
         self.db = db
 
     async def initialize_quests_for_player(self, player_id: UUID) -> List[Quest]:
         """Initialize starter quests for a new player."""
-        starter_quests = [
-            QuestType.HOT_STREAK_5,
-            QuestType.ROUND_COMPLETION_5,
-            QuestType.BALANCED_PLAYER,
-            QuestType.LOGIN_STREAK_7,
-            QuestType.FEEDBACK_CONTRIBUTOR_10,
-            QuestType.MILESTONE_VOTES_100,
-            QuestType.MILESTONE_PROMPTS_50,
-            QuestType.MILESTONE_COPIES_100,
-        ]
+        starter_quests = self.STARTER_QUEST_TYPES
 
         quests = []
         for quest_type in starter_quests:

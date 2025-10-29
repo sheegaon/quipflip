@@ -144,6 +144,39 @@ async def initialize_phrase_validation():
         raise e
 
 
+async def initialize_missing_player_quests():
+    """Ensure all players have their starter quests."""
+    from sqlalchemy import select, func
+
+    from backend.database import AsyncSessionLocal
+    from backend.models.player import Player
+    from backend.models.quest import Quest
+    from backend.scripts.initialize_quests import initialize_quests_for_all_players
+
+    try:
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(
+                select(func.count())
+                .select_from(Player)
+                .outerjoin(Quest, Quest.player_id == Player.player_id)
+                .where(Quest.quest_id.is_(None))
+            )
+            players_missing_quests = result.scalar() or 0
+
+        if players_missing_quests:
+            logger.info(
+                "Detected %s players without initialized quests. Running initialization script.",
+                players_missing_quests,
+            )
+            await initialize_quests_for_all_players()
+        else:
+            logger.info("All players already have quests initialized")
+
+    except Exception as e:
+        logger.error(f"Failed to verify or initialize player quests: {e}")
+        raise
+
+
 async def ai_backup_cycle():
     """
     Background task to run AI backup cycles.
@@ -240,6 +273,9 @@ async def lifespan(app_instance: FastAPI):
 
     # Synchronize prompts between file and database
     await sync_prompts_with_database()
+
+    # Initialize quests for any players who don't have them yet
+    await initialize_missing_player_quests()
 
     # Start background tasks
     ai_backup_task = None
