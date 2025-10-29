@@ -27,7 +27,7 @@ async function registerAndLogin(page: any) {
   return { email: TEST_EMAIL, password: TEST_PASSWORD };
 }
 
-test.describe('Advanced QuipFlip Features', () => {
+test.describe('Advanced Quipflip Features', () => {
   test('should navigate and explore Settings page', async ({ page }) => {
     console.log('\n=== Settings Page Test ===\n');
 

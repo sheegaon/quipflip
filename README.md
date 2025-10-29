@@ -64,7 +64,7 @@ Frontend runs at **http://localhost:5173**
 
 **For Game Design:**
 - **[README.md](README.md)** - This file (complete game rules)
-- **[PLAN.md](docs/PROJECT_PLAN)** - Implementation phases and roadmap
+- **[PLAN.md](docs/DEVELOPMENT_PLAN)** - Implementation phases and roadmap
 
 ## 🛠️ Tech Stack
 
