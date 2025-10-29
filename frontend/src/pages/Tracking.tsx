@@ -10,7 +10,6 @@ import { buildPhrasesetListKey } from '../utils/gameKeys';
 import { PhrasesetList } from '../components/PhrasesetList';
 import { PhrasesetDetails } from '../components/PhrasesetDetails';
 import { Header } from '../components/Header';
-import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { useResults } from '../contexts/ResultsContext';
 import { trackingLogger } from '../utils/logger';
 
@@ -34,7 +33,7 @@ const statusOptions: { value: StatusFilter; label: string }[] = [
 export const Tracking: React.FC = () => {
   const { state: gameState } = useGame();
   const { state: resultsState, actions: resultsActions } = useResults();
-  const { player, phrasesetSummary } = gameState;
+  const { phrasesetSummary } = gameState;
   const {
     playerPhrasesets,
     phrasesetDetails,
@@ -305,13 +304,6 @@ export const Tracking: React.FC = () => {
               </div>
             </div>
 
-            <div className="tile-card p-4">
-              <h3 className="font-display font-bold text-lg text-quip-navy mb-2">Current Balance</h3>
-              <div className="flex items-center gap-3">
-                <img src="/flipcoin.png" alt="Flipcoin" className="w-10 h-10" />
-                <CurrencyDisplay amount={player?.balance ?? 0} textClassName="text-2xl font-display font-bold text-quip-turquoise" />
-              </div>
-            </div>
           </div>
 
           <div className="lg:col-span-2 space-y-4">
