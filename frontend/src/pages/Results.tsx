@@ -131,32 +131,6 @@ export const Results: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-1">
-            <div className="tile-card p-4">
-              <h2 className="font-display font-bold text-lg mb-4 text-quip-navy">Latest Results</h2>
-              <div className="space-y-2">
-                {pendingResults.map((result) => (
-                  <button
-                    key={result.phraseset_id}
-                    onClick={() => handleSelectPhraseset(result.phraseset_id)}
-                    className={`w-full text-left p-3 rounded-tile transition-all ${
-                      selectedPhrasesetId === result.phraseset_id
-                        ? 'bg-quip-turquoise bg-opacity-10 border-2 border-quip-turquoise'
-                        : 'bg-quip-cream hover:bg-quip-turquoise hover:bg-opacity-5 border-2 border-transparent'
-                    }`}
-                  >
-                    <p className="text-sm font-semibold text-quip-navy truncate">
-                      {result.prompt_text}
-                    </p>
-                    <p className="text-xs text-quip-teal mt-1">
-                      Role: {result.role} • {result.result_viewed ? 'Viewed' : '✨ New!'}
-                    </p>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
           <div className="lg:col-span-2">
             {loading && (
               <div className="tile-card p-8 flex justify-center">
@@ -302,6 +276,32 @@ export const Results: React.FC = () => {
                 {/* Removed Final Rankings section since rankings property doesn't exist in PhrasesetResults */}
               </div>
             )}
+          </div>
+
+          <div className="lg:col-span-1">
+            <div className="tile-card p-4">
+              <h2 className="font-display font-bold text-lg mb-4 text-quip-navy">Latest Results</h2>
+              <div className="space-y-2">
+                {pendingResults.map((result) => (
+                  <button
+                    key={result.phraseset_id}
+                    onClick={() => handleSelectPhraseset(result.phraseset_id)}
+                    className={`w-full text-left p-3 rounded-tile transition-all ${
+                      selectedPhrasesetId === result.phraseset_id
+                        ? 'bg-quip-turquoise bg-opacity-10 border-2 border-quip-turquoise'
+                        : 'bg-quip-cream hover:bg-quip-turquoise hover:bg-opacity-5 border-2 border-transparent'
+                    }`}
+                  >
+                    <p className="text-sm font-semibold text-quip-navy truncate">
+                      {result.prompt_text}
+                    </p>
+                    <p className="text-xs text-quip-teal mt-1">
+                      Role: {result.role} • {result.result_viewed ? 'Viewed' : '✨ New!'}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>
