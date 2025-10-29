@@ -14,7 +14,10 @@ export const trackPageView = (path: string): void => {
   const measurementId = getMeasurementId();
 const gtag = window?.gtag;
 
-  if (!measurementId || typeof gtag !== 'function') {
+if (!measurementId || typeof gtag !== 'function') {
+  console.error('Google Analytics not initialized properly');
+  return;
+}
     return;
   }
 
