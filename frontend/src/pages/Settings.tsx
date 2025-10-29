@@ -18,6 +18,19 @@ const formatDate = (dateString?: string | null) => {
     return 'Not recorded';
   }
 
+  const dateOnlyPattern = /^\d{4}-\d{2}-\d{2}$/;
+
+  if (dateOnlyPattern.test(dateString)) {
+    const [year, month, day] = dateString.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+
+    return date.toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  }
+
   const options: Intl.DateTimeFormatOptions = {
     year: 'numeric',
     month: 'long',
@@ -31,7 +44,13 @@ const formatDate = (dateString?: string | null) => {
     options.timeZoneName = 'short';
   }
 
-  return new Date(dateString).toLocaleString(undefined, options);
+  const date = new Date(dateString);
+
+  if (Number.isNaN(date.getTime())) {
+    return 'Not recorded';
+  }
+
+  return date.toLocaleString(undefined, options);
 };
 
 const Settings: React.FC = () => {
