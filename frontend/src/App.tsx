@@ -8,6 +8,24 @@ import { ErrorNotification } from './components/ErrorNotification';
 import TutorialOverlay from './components/Tutorial/TutorialOverlay';
 import { trackPageView } from './utils/googleAnalytics';
 
+// Suppress some logging messages
+if (typeof window !== 'undefined') {
+  const originalConsoleLog = console.log;
+  console.log = (...args) => {
+    const message = args.join(' ');
+    // Vercel analytics warnings when blocked by ad blockers
+    if (
+      message.includes('[Vercel Web Analytics]') ||
+      message.includes('[Vercel Speed Insights]') ||
+      message.includes('va.vercel-scripts.com')
+    ) {
+      // Silently ignore Vercel analytics warnings
+      return;
+    }
+    originalConsoleLog.apply(console, args);
+  };
+}
+
 const Landing = lazy(() => import('./pages/Landing'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const PromptRound = lazy(() => import('./pages/PromptRound'));
