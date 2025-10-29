@@ -3,7 +3,7 @@ const getMeasurementId = (): string | undefined => {
     return import.meta.env.VITE_GA_MEASUREMENT_ID;
   }
 
-return window.GA_MEASUREMENT_ID ?? import.meta.env.VITE_GA_MEASUREMENT_ID;
+  return window.GA_MEASUREMENT_ID ?? import.meta.env.VITE_GA_MEASUREMENT_ID;
 };
 
 export const trackPageView = (path: string): void => {
@@ -12,12 +12,10 @@ export const trackPageView = (path: string): void => {
   }
 
   const measurementId = getMeasurementId();
-const gtag = window?.gtag;
+  const gtag = window?.gtag;
 
-if (!measurementId || typeof gtag !== 'function') {
-  console.error('Google Analytics not initialized properly');
-  return;
-}
+  if (!measurementId || typeof gtag !== 'function') {
+    console.error('Google Analytics not initialized properly');
     return;
   }
 
