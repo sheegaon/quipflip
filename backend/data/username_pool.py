@@ -124,7 +124,7 @@ def _build_username_pool() -> list[str]:
 
     def add(name: str) -> None:
         normalized = _normalize(name)
-        if not normalized or normalized in seen or len(normalized) > 20:
+        if not normalized or normalized in seen or len(normalized) > 28:
             return
         seen.add(normalized)
         pool.append(normalized)
