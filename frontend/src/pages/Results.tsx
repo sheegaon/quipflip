@@ -269,8 +269,8 @@ export const Results: React.FC = () => {
                                 <p className="text-sm text-quip-teal italic">No votes for this phrase yet.</p>
                               ) : (
                                 <ul className="space-y-1">
-                                  {vote.voters.map((voter) => (
-                                    <li key={`${vote.phrase}-${voter}`} className="text-sm text-quip-navy">
+                                  {vote.voters.map((voter, index) => (
+                                    <li key={`${vote.phrase}-${voter}-${index}`} className="text-sm text-quip-navy">
                                       {voter}
                                     </li>
                                   ))}
