@@ -168,6 +168,7 @@ export interface VoteResult {
   phrase: string;
   vote_count: number;
   is_original: boolean;
+  voters: string[];
 }
 
 export interface PhrasesetResults {
@@ -176,6 +177,7 @@ export interface PhrasesetResults {
   your_phrase: string;
   your_role: string;
   your_points: number;
+  total_points: number;
   your_payout: number;
   total_pool: number;
   total_votes: number;
