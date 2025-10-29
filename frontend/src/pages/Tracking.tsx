@@ -310,6 +310,23 @@ export const Tracking: React.FC = () => {
               </div>
             </div>
 
+            <div className="tile-card p-0 overflow-hidden">
+              {detailsLoadingState?.isLoading ? (
+                <div className="p-6">
+                  <InlineLoadingSpinner message={detailsLoadingState.message} />
+                </div>
+              ) : selectedSummary ? (
+                <PhrasesetDetails
+                  phraseset={details as PhrasesetDetailsType | null}
+                  summary={selectedSummary}
+                />
+              ) : (
+                <div className="p-6 text-center text-quip-teal">
+                  Select a round to see more information.
+                </div>
+              )}
+            </div>
+
           </div>
 
           <div className="lg:col-span-2 space-y-4">
@@ -330,23 +347,6 @@ export const Tracking: React.FC = () => {
                   selectedId={selectedId}
                   onSelect={handleSelect}
                 />
-              )}
-            </div>
-
-            <div className="tile-card p-0 overflow-hidden">
-              {detailsLoadingState?.isLoading ? (
-                <div className="p-6">
-                  <InlineLoadingSpinner message={detailsLoadingState.message} />
-                </div>
-              ) : selectedSummary ? (
-                <PhrasesetDetails
-                  phraseset={details as PhrasesetDetailsType | null}
-                  summary={selectedSummary}
-                />
-              ) : (
-                <div className="p-6 text-center text-quip-teal">
-                  Select a round to see more information.
-                </div>
               )}
             </div>
           </div>
