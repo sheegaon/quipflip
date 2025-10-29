@@ -165,6 +165,12 @@ export const Results: React.FC = () => {
                     <div>
                       <p className="text-sm text-quip-teal">Your Phrase:</p>
                       <p className="text-xl font-bold text-quip-navy">{results.your_phrase}</p>
+                      {results.your_role === 'copy' && (
+                        <div className="mt-2">
+                          <p className="text-sm text-quip-teal">Original Phrase:</p>
+                          <p className="text-lg font-semibold text-quip-navy">{results.original_phrase}</p>
+                        </div>
+                      )}
                     </div>
                     <div>
                       <p className="text-sm text-quip-teal">Your Role:</p>

@@ -876,6 +876,7 @@ class VoteService:
             "votes": votes_display,
             "your_phrase": phrase,
             "your_role": role,
+            "original_phrase": phraseset.original_phrase,
             "your_points": points,
             "total_points": total_points,
             "your_payout": result_view.payout_amount,
