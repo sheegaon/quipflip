@@ -53,7 +53,7 @@ const Statistics: React.FC = () => {
 
       return {
         period: periodDate.toISOString(),
-        win_rate: Number(trendWinRate.toFixed(1)),
+        win_rate: Math.round(trendWinRate * 10) / 10,
         earnings: Math.round(cumulativeEarnings),
         rounds_played: Math.round(cumulativeRounds),
       };
