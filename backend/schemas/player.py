@@ -12,11 +12,13 @@ from backend.schemas.phraseset import PhrasesetDashboardSummary, UnclaimedResult
 class PlayerBalance(BaseSchema):
     """Player balance response."""
     username: str
+    email: EmailLike
     balance: int
     starting_balance: int
     daily_bonus_available: bool
     daily_bonus_amount: int
     last_login_date: Optional[date]
+    created_at: datetime
     outstanding_prompts: int
 
 
