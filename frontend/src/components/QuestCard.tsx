@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Quest, QuestCategory, QuestStatus } from '../api/types';
 import { QuestProgressBar } from './QuestProgressBar';
+import { CurrencyDisplay } from './CurrencyDisplay';
 
 interface QuestCardProps {
   quest: Quest;
@@ -135,9 +136,11 @@ export const QuestCard: React.FC<QuestCardProps> = ({
           </div>
         </div>
         <div className="flex flex-col items-end gap-1 ml-2">
-          <span className="font-bold text-lg text-quip-turquoise whitespace-nowrap">
-            ${quest.reward_amount}
-          </span>
+          <CurrencyDisplay 
+            amount={quest.reward_amount} 
+            iconClassName="w-4 h-4" 
+            textClassName="font-bold text-lg text-quip-turquoise whitespace-nowrap" 
+          />
           {getStatusBadge(quest.status)}
         </div>
       </div>

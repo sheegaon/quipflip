@@ -68,14 +68,14 @@ async def initialize_quests_for_all_players():
                     if len(existing_quests) == 0:
                         initialized_count += 1
                         logger.info(
-                            "  ✓ Ensured starter quests exist for %s (processed %d quests)",
+                            "  Ensured starter quests exist for %s (processed %d quests)",
                             username,
                             len(missing_quest_types),
                         )
                     else:
                         topped_up_count += 1
                         logger.info(
-                            "  ✓ Ensured %d missing starter quests exist for %s",
+                            "  Ensured %d missing starter quests exist for %s",
                             len(missing_quest_types),
                             username,
                         )

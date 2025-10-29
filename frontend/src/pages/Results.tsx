@@ -15,6 +15,7 @@ export const Results: React.FC = () => {
   const { refreshPhrasesetResults, markResultsViewed } = resultsActions;
   const [selectedPhrasesetId, setSelectedPhrasesetId] = useState<string | null>(null);
   const [expandedVotes, setExpandedVotes] = useState<Record<string, boolean>>({});
+  const [showBreakdown, setShowBreakdown] = useState<boolean>(false);
 
   useEffect(() => {
     resultsLogger.debug('Results page mounted', {
@@ -68,6 +69,10 @@ export const Results: React.FC = () => {
       ...prev,
       [phrase]: !prev[phrase],
     }));
+  };
+
+  const toggleBreakdown = () => {
+    setShowBreakdown((prev) => !prev);
   };
 
   const performanceBreakdown = useMemo(() => {
@@ -211,10 +216,21 @@ export const Results: React.FC = () => {
                       </p>
                     </div>
                     <div className="p-4 bg-white bg-opacity-80 rounded-tile border border-quip-turquoise border-opacity-20">
-                      <p className="text-sm text-quip-teal font-medium">Prize Pool Breakdown</p>
-                      <p className="text-sm text-quip-navy">{performanceBreakdown.poolShareText}</p>
-                      <p className="text-sm text-quip-navy">{performanceBreakdown.totalPointsLabel}</p>
-                      <p className="text-sm font-semibold text-quip-turquoise">{performanceBreakdown.breakdownLine}</p>
+                      <button
+                        type="button"
+                        onClick={toggleBreakdown}
+                        className="text-sm font-medium text-quip-turquoise hover:text-quip-navy focus:outline-none"
+                      >
+                        {showBreakdown ? 'Hide Prize Pool Breakdown' : 'Show Prize Pool Breakdown'}
+                      </button>
+                      {showBreakdown && (
+                        <div className="mt-2">
+                          <p className="text-sm text-quip-teal font-medium">Prize Pool Breakdown</p>
+                          <p className="text-sm text-quip-navy">{performanceBreakdown.poolShareText}</p>
+                          <p className="text-sm text-quip-navy">{performanceBreakdown.totalPointsLabel}</p>
+                          <p className="text-sm font-semibold text-quip-turquoise">{performanceBreakdown.breakdownLine}</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

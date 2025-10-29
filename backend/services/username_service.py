@@ -45,7 +45,21 @@ class UsernameService:
         """Generate a unique (display, canonical) username pair."""
         taken = await self._existing_canonicals()
         pool = USERNAME_POOL.copy()
-        random.shuffle(pool)
+
+        # Group by length and shuffle within each group
+        length_groups = {}
+        for username in pool:
+            length = 0 if len(username) < 15 else len(username)
+            if length not in length_groups:
+                length_groups[length] = []
+            length_groups[length].append(username)
+
+        # Shuffle each length group and combine in order
+        pool = []
+        for length in sorted(length_groups.keys()):
+            group = length_groups[length]
+            random.shuffle(group)
+            pool.extend(group)
 
         normalized_pool: list[tuple[str, str]] = []
         for candidate in pool:
