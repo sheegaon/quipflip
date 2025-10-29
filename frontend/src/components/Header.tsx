@@ -59,8 +59,7 @@ export const Header: React.FC = () => {
   // Show trophy after user has ever had finalized results
   const finalizedPrompts = phrasesetSummary?.finalized.prompts ?? 0;
   const finalizedCopies = phrasesetSummary?.finalized.copies ?? 0;
-  const hasPastResults = pendingResults.length > 0 || (finalizedPrompts + finalizedCopies) > 0;
-  const showResultsIndicator = hasPastResults;
+  const showResultsIndicator = (finalizedPrompts + finalizedCopies) > 0;
 
   const resultsLabel = unviewedCount > 0
     ? `${unviewedCount} result${unviewedCount === 1 ? '' : 's'} ready to view`
