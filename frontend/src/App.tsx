@@ -31,6 +31,19 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   return <>{children}</>;
 };
 
+const suspenseFallback = (
+  <div className="flex min-h-screen items-center justify-center bg-quip-navy/5">
+    <span className="text-lg font-semibold text-quip-navy">Loading...</span>
+  </div>
+);
+
+const renderWithSuspense = (element: React.ReactNode) => (
+  <Suspense fallback={suspenseFallback}>{element}</Suspense>
+);
+
+const renderProtectedRoute = (element: React.ReactNode) =>
+  renderWithSuspense(<ProtectedRoute>{element}</ProtectedRoute>);
+
 // App Routes
 const AppRoutes: React.FC = () => {
   const { state } = useGame();
@@ -39,21 +52,6 @@ const AppRoutes: React.FC = () => {
   useEffect(() => {
     trackPageView(`${location.pathname}${location.search}`);
   }, [location.pathname, location.search]);
-
-  const renderWithSuspense = (element: React.ReactNode) => (
-    <Suspense
-      fallback={
-        <div className="flex min-h-screen items-center justify-center bg-quip-navy/5">
-          <span className="text-lg font-semibold text-quip-navy">Loading...</span>
-        </div>
-      }
-    >
-      {element}
-    </Suspense>
-  );
-
-  const renderProtectedRoute = (element: React.ReactNode) =>
-    renderWithSuspense(<ProtectedRoute>{element}</ProtectedRoute>);
 
   return (
     <>
