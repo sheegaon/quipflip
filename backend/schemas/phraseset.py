@@ -31,10 +31,12 @@ class VoteResponse(BaseModel):
 
 
 class PhraseVoteCount(BaseModel):
-    """Phrase with vote count."""
+    """Phrase with vote count and voter details."""
+
     phrase: str
     vote_count: int
     is_original: bool
+    voters: list[str]
 
 
 class PhraseSetResults(BaseSchema):
@@ -44,6 +46,7 @@ class PhraseSetResults(BaseSchema):
     your_phrase: str
     your_role: str  # "prompt" or "copy"
     your_points: int
+    total_points: int
     your_payout: int
     total_pool: int
     total_votes: int

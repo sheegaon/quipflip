@@ -828,7 +828,9 @@ class VoteService:
 
         # Get all votes for display
         votes_result = await self.db.execute(
-            select(Vote).where(Vote.phraseset_id == phraseset_id)
+            select(Vote)
+            .where(Vote.phraseset_id == phraseset_id)
+            .options(selectinload(Vote.player))
         )
         all_votes = list(votes_result.scalars().all())
 
@@ -838,8 +840,15 @@ class VoteService:
             phraseset.copy_phrase_1: 0,
             phraseset.copy_phrase_2: 0,
         }
+        voter_lists: dict[str, list[str]] = {
+            phraseset.original_phrase: [],
+            phraseset.copy_phrase_1: [],
+            phraseset.copy_phrase_2: [],
+        }
         for vote in all_votes:
             vote_counts[vote.voted_phrase] += 1
+            username = vote.player.username if vote.player else "Unknown Player"
+            voter_lists[vote.voted_phrase].append(username)
 
         # Calculate points
         points = 0
@@ -850,11 +859,16 @@ class VoteService:
 
         # Build response
         votes_display = []
+        total_points = 0
         for w in [phraseset.original_phrase, phraseset.copy_phrase_1, phraseset.copy_phrase_2]:
+            is_original = w == phraseset.original_phrase
+            phrase_points = vote_counts[w] * (1 if is_original else 2)
+            total_points += phrase_points
             votes_display.append({
                 "phrase": w,
                 "vote_count": vote_counts[w],
-                "is_original": (w == phraseset.original_phrase),
+                "is_original": is_original,
+                "voters": voter_lists[w],
             })
 
         return {
@@ -863,6 +877,7 @@ class VoteService:
             "your_phrase": phrase,
             "your_role": role,
             "your_points": points,
+            "total_points": total_points,
             "your_payout": result_view.payout_amount,
             "total_pool": phraseset.total_pool,
             "total_votes": phraseset.vote_count,

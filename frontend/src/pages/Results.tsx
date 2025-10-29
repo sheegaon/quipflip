@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useGame } from '../contexts/GameContext';
 import { useResults } from '../contexts/ResultsContext';
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -14,6 +14,7 @@ export const Results: React.FC = () => {
   const { refreshDashboard } = gameActions;
   const { refreshPhrasesetResults, markResultsViewed } = resultsActions;
   const [selectedPhrasesetId, setSelectedPhrasesetId] = useState<string | null>(null);
+  const [expandedVotes, setExpandedVotes] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     resultsLogger.debug('Results page mounted', {
@@ -61,6 +62,43 @@ export const Results: React.FC = () => {
     markResultsViewed([phrasesetId]);
     resultsLogger.debug('Phraseset selected', { phrasesetId });
   };
+
+  const toggleVotersList = (phrase: string) => {
+    setExpandedVotes((prev) => ({
+      ...prev,
+      [phrase]: !prev[phrase],
+    }));
+  };
+
+  const performanceBreakdown = useMemo(() => {
+    if (!results) {
+      return {
+        poolShareText: '',
+        totalPointsLabel: '',
+        breakdownLine: '',
+      };
+    }
+
+    const formattedPool = `${results.total_pool.toLocaleString()} FC`;
+    const totalPoints = `${results.total_points.toLocaleString()} pts`;
+
+    if (results.total_points === 0) {
+      return {
+        poolShareText: `Final prize pool: ${formattedPool}`,
+        totalPointsLabel: 'Total points: 0 (prize pool split evenly)',
+        breakdownLine: `Earnings: ${results.your_payout.toLocaleString()} FC`,
+      };
+    }
+
+    const ratio = `${results.your_points.toLocaleString()} / ${results.total_points.toLocaleString()}`;
+    const earningsLine = `${results.total_pool.toLocaleString()} FC × (${ratio}) = ${results.your_payout.toLocaleString()} FC`;
+
+    return {
+      poolShareText: `Final prize pool: ${formattedPool}`,
+      totalPointsLabel: `Total points: ${totalPoints}`,
+      breakdownLine: `Earnings: ${earningsLine}`,
+    };
+  }, [results]);
 
   if (pendingResults.length === 0) {
     return (
@@ -152,16 +190,32 @@ export const Results: React.FC = () => {
                       <p className="text-xl font-bold text-quip-navy">{results.your_points}</p>
                     </div>
                     <div>
+                      <p className="text-sm text-quip-teal">Total Points:</p>
+                      <p className="text-xl font-bold text-quip-navy">{results.total_points}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-quip-teal">Final Prize Pool:</p>
+                      <p className="text-xl font-bold text-quip-navy">{results.total_pool} FC</p>
+                    </div>
+                    <div>
                       <p className="text-sm text-quip-teal">Earnings:</p>
                       <p className="text-2xl font-display font-bold text-quip-turquoise">
                         {results.your_payout} FC
                       </p>
                     </div>
                   </div>
-                  <div className="mt-4 p-3 bg-quip-turquoise bg-opacity-5 rounded-tile border border-quip-turquoise border-opacity-20">
-                    <p className="text-sm text-quip-teal text-center">
-                      ✓ Automatically added to your balance when voting completed
-                    </p>
+                  <div className="mt-4 space-y-2">
+                    <div className="p-3 bg-quip-turquoise bg-opacity-5 rounded-tile border border-quip-turquoise border-opacity-20">
+                      <p className="text-sm text-quip-teal text-center">
+                        ✓ Automatically added to your balance when voting completed
+                      </p>
+                    </div>
+                    <div className="p-4 bg-white bg-opacity-80 rounded-tile border border-quip-turquoise border-opacity-20">
+                      <p className="text-sm text-quip-teal font-medium">Prize Pool Breakdown</p>
+                      <p className="text-sm text-quip-navy">{performanceBreakdown.poolShareText}</p>
+                      <p className="text-sm text-quip-navy">{performanceBreakdown.totalPointsLabel}</p>
+                      <p className="text-sm font-semibold text-quip-turquoise">{performanceBreakdown.breakdownLine}</p>
+                    </div>
                   </div>
                 </div>
 
@@ -179,8 +233,8 @@ export const Results: React.FC = () => {
                               : 'bg-quip-cream border-quip-teal border-opacity-30'
                           }`}
                         >
-                          <div className="flex justify-between items-center">
-                            <div className="flex items-center gap-3">
+                          <div className="flex justify-between items-start gap-4">
+                            <div className="flex items-start gap-3">
                               <span className="text-2xl font-display font-bold text-quip-teal text-opacity-50">
                                 #{index + 1}
                               </span>
@@ -193,6 +247,13 @@ export const Results: React.FC = () => {
                                     </span>
                                   )}
                                 </p>
+                                <button
+                                  type="button"
+                                  onClick={() => toggleVotersList(vote.phrase)}
+                                  className="mt-2 inline-flex items-center text-sm font-medium text-quip-turquoise hover:text-quip-navy focus:outline-none"
+                                >
+                                  {expandedVotes[vote.phrase] ? 'Hide voters' : 'Show voters'} ({vote.voters.length})
+                                </button>
                               </div>
                             </div>
                             <div className="text-right">
@@ -202,6 +263,21 @@ export const Results: React.FC = () => {
                               <p className="text-xs text-quip-teal">votes</p>
                             </div>
                           </div>
+                          {expandedVotes[vote.phrase] && (
+                            <div className="mt-4 bg-white bg-opacity-80 rounded-tile border border-quip-teal border-opacity-20 p-3">
+                              {vote.voters.length === 0 ? (
+                                <p className="text-sm text-quip-teal italic">No votes for this phrase yet.</p>
+                              ) : (
+                                <ul className="space-y-1">
+                                  {vote.voters.map((voter, index) => (
+                                    <li key={`${vote.phrase}-${voter}-${index}`} className="text-sm text-quip-navy">
+                                      {voter}
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                            </div>
+                          )}
                         </div>
                       ))}
                   </div>

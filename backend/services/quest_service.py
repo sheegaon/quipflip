@@ -1,8 +1,10 @@
 """Quest service for managing player quests and achievements."""
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_
+from sqlalchemy.dialects.postgresql import insert as postgres_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+from sqlalchemy.exc import IntegrityError
 from uuid import UUID
-import uuid
 import logging
 from datetime import datetime, timedelta, UTC, date
 from typing import List, Optional, Dict, Any
@@ -147,61 +149,228 @@ QUEST_CONFIGS = {
 class QuestService:
     """Service for managing player quests."""
 
+    STARTER_QUEST_TYPES: List[QuestType] = [
+        QuestType.HOT_STREAK_5,
+        QuestType.ROUND_COMPLETION_5,
+        QuestType.BALANCED_PLAYER,
+        QuestType.LOGIN_STREAK_7,
+        QuestType.FEEDBACK_CONTRIBUTOR_10,
+        QuestType.MILESTONE_VOTES_100,
+        QuestType.MILESTONE_PROMPTS_50,
+        QuestType.MILESTONE_COPIES_100,
+    ]
+
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def initialize_quests_for_player(self, player_id: UUID) -> List[Quest]:
-        """Initialize starter quests for a new player."""
-        starter_quests = [
-            QuestType.HOT_STREAK_5,
-            QuestType.ROUND_COMPLETION_5,
-            QuestType.BALANCED_PLAYER,
-            QuestType.LOGIN_STREAK_7,
-            QuestType.FEEDBACK_CONTRIBUTOR_10,
-            QuestType.MILESTONE_VOTES_100,
-            QuestType.MILESTONE_PROMPTS_50,
-            QuestType.MILESTONE_COPIES_100,
-        ]
+    async def initialize_quests_for_player(
+        self, player_id: UUID, *, auto_commit: bool = True
+    ) -> List[Quest]:
+        """Ensure all starter quests exist for the player.
 
-        quests = []
-        for quest_type in starter_quests:
-            quest = await self._create_quest(player_id, quest_type)
-            quests.append(quest)
+        Args:
+            player_id: Player UUID to align with the starter quest set.
+            auto_commit: When ``True`` (default) the session is committed on
+                success. When ``False`` the caller is responsible for committing
+                and this method will ``flush`` the pending changes instead.
 
-        await self.db.commit()
-        logger.info(f"Initialized {len(quests)} quests for player {player_id}")
+        Returns:
+            A list of quest instances representing the player's starter quests.
+        """
+
+        quests: List[Quest] = []
+        try:
+            for quest_type in self.STARTER_QUEST_TYPES:
+                try:
+                    quest = await self._create_quest(
+                        player_id, quest_type, check_existing=True
+                    )
+                    quests.append(quest)
+                except Exception:
+                    logger.exception(
+                        "Failed to ensure quest %s for player %s",
+                        quest_type.value,
+                        player_id,
+                    )
+
+            if auto_commit:
+                await self.db.commit()
+        except Exception:
+            await self.db.rollback()
+            raise
+        finally:
+            if not auto_commit and getattr(self.db, "in_transaction", lambda: False)():
+                try:
+                    await self.db.flush()
+                except Exception:
+                    logger.exception(
+                        "Failed to flush quest initialization changes for player %s",
+                        player_id,
+                    )
+
+        logger.info(
+            "Ensured starter quests exist for player %s (total=%d)",
+            player_id,
+            len(self.STARTER_QUEST_TYPES),
+        )
         return quests
 
-    async def _create_quest(self, player_id: UUID, quest_type: QuestType) -> Quest:
-        """Create a new quest for a player."""
-        config = QUEST_CONFIGS[quest_type]
+    async def create_missing_starter_quests(
+        self,
+        player_id: UUID,
+        missing_quest_types: List[QuestType],
+        *,
+        auto_commit: bool = True,
+    ) -> List[Quest]:
+        """Create only the missing starter quests for a player.
 
-        # Check if quest already exists
+        Args:
+            player_id: Player receiving additional starter quests.
+            missing_quest_types: Quest types that are not currently assigned to
+                the player.
+            auto_commit: When ``True`` (default) the session is committed on
+                success. When ``False`` the caller is responsible for committing
+                and the method flushes the pending changes instead.
+
+        Returns:
+            The quests that now exist for the player (newly created or
+            previously present when a race condition is detected).
+        """
+
+        if not missing_quest_types:
+            return []
+
+        quests: List[Quest] = []
+        try:
+            for quest_type in missing_quest_types:
+                try:
+                    quests.append(
+                        await self._create_quest(
+                            player_id, quest_type, check_existing=False
+                        )
+                    )
+                except Exception:
+                    logger.exception(
+                        "Failed to create quest %s for player %s",
+                        quest_type.value,
+                        player_id,
+                    )
+
+            if auto_commit:
+                await self.db.commit()
+        except Exception:
+            await self.db.rollback()
+            raise
+        finally:
+            if not auto_commit and getattr(self.db, "in_transaction", lambda: False)():
+                try:
+                    await self.db.flush()
+                except Exception:
+                    logger.exception(
+                        "Failed to flush missing quest creation for player %s",
+                        player_id,
+                    )
+
+        logger.info(
+            "Ensured %d missing starter quests exist for player %s",
+            len(missing_quest_types),
+            player_id,
+        )
+        return quests
+
+    async def _create_quest(
+        self,
+        player_id: UUID,
+        quest_type: QuestType,
+        *,
+        check_existing: bool = True,
+    ) -> Quest:
+        """Create a new quest for a player, avoiding duplicates via UPSERT."""
+
+        config = QUEST_CONFIGS.get(quest_type)
+        if not config:
+            raise ValueError(f"Unknown quest configuration for type {quest_type}")
+
+        if check_existing:
+            existing_quest = await self._get_existing_quest(player_id, quest_type)
+            if existing_quest:
+                logger.info(
+                    "Quest %s already exists for player %s",
+                    quest_type.value,
+                    player_id,
+                )
+                return existing_quest
+
+        reward_amount = config.get("reward")
+        if reward_amount is None:
+            raise ValueError(
+                f"Quest configuration for {quest_type.value} is missing a reward amount"
+            )
+
+        quest_values = {
+            "player_id": player_id,
+            "quest_type": quest_type.value,
+            "status": QuestStatus.ACTIVE.value,
+            "progress": self._get_initial_progress(quest_type),
+            "reward_amount": reward_amount,
+        }
+
+        bind = self.db.get_bind()
+        dialect_name = (bind.dialect.name if bind is not None else "").lower()
+        if "sqlite" in dialect_name:
+            insert_stmt = sqlite_insert(Quest)
+        else:
+            insert_stmt = postgres_insert(Quest)
+
+        stmt = insert_stmt.values(**quest_values)
+        if hasattr(stmt, "on_conflict_do_nothing"):
+            stmt = stmt.on_conflict_do_nothing(
+                index_elements=["player_id", "quest_type"]
+            )
+
+        try:
+            result = await self.db.execute(stmt)
+        except IntegrityError as exc:
+            logger.warning(
+                "Integrity error while creating quest %s for player %s: %s",
+                quest_type.value,
+                player_id,
+                exc,
+            )
+            return await self._get_existing_quest(player_id, quest_type)
+
+        if getattr(result, "rowcount", None) == 1:
+            logger.info(
+                "Created quest %s for player %s",
+                quest_type.value,
+                player_id,
+            )
+        else:
+            logger.info(
+                "Quest %s already existed for player %s (detected via upsert)",
+                quest_type.value,
+                player_id,
+            )
+
+        quest = await self._get_existing_quest(player_id, quest_type)
+        if quest is None:
+            raise RuntimeError(
+                f"Quest {quest_type.value} for player {player_id} could not be loaded after upsert"
+            )
+        return quest
+
+    async def _get_existing_quest(
+        self, player_id: UUID, quest_type: QuestType
+    ) -> Optional[Quest]:
         existing_result = await self.db.execute(
             select(Quest).where(
                 and_(
                     Quest.player_id == player_id,
-                    Quest.quest_type == quest_type.value
+                    Quest.quest_type == quest_type.value,
                 )
             )
         )
-        existing_quest = existing_result.scalar_one_or_none()
-        if existing_quest:
-            logger.info(f"Quest {quest_type.value} already exists for player {player_id}")
-            return existing_quest
-
-        quest = Quest(
-            quest_id=uuid.uuid4(),
-            player_id=player_id,
-            quest_type=quest_type.value,
-            status=QuestStatus.ACTIVE.value,
-            progress=self._get_initial_progress(quest_type),
-            reward_amount=config["reward"],
-        )
-
-        self.db.add(quest)
-        logger.info(f"Created quest {quest_type.value} for player {player_id}")
-        return quest
+        return existing_result.scalar_one_or_none()
 
     def _get_initial_progress(self, quest_type: QuestType) -> Dict[str, Any]:
         """Get initial progress structure for a quest type."""
