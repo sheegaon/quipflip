@@ -3,7 +3,7 @@ const getMeasurementId = (): string | undefined => {
     return import.meta.env.VITE_GA_MEASUREMENT_ID;
   }
 
-  return window.GA_MEASUREMENT_ID || import.meta.env.VITE_GA_MEASUREMENT_ID;
+return window.GA_MEASUREMENT_ID ?? import.meta.env.VITE_GA_MEASUREMENT_ID;
 };
 
 export const trackPageView = (path: string): void => {
