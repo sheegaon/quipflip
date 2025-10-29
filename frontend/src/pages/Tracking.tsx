@@ -247,7 +247,7 @@ export const Tracking: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-1 space-y-6">
+          <div className="lg:col-span-2 space-y-6">
             <div className="tile-card p-4">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="font-display font-bold text-lg text-quip-navy">Your Activity</h2>
@@ -329,7 +329,7 @@ export const Tracking: React.FC = () => {
 
           </div>
 
-          <div className="lg:col-span-2 space-y-4">
+          <div className="lg:col-span-1 space-y-4">
             {combinedError && (
               <div className="bg-red-100 border-2 border-red-400 text-red-700 rounded-tile p-3">
                 {combinedError}
