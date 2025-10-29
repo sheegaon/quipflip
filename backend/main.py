@@ -144,6 +144,20 @@ async def initialize_phrase_validation():
         raise e
 
 
+async def initialize_missing_player_quests():
+    """Ensure all players have their starter quests."""
+    from backend.scripts.initialize_quests import initialize_quests_for_all_players
+
+    try:
+        logger.info(
+            "Running quest initialization script to align all players with starter quests."
+        )
+        await initialize_quests_for_all_players()
+    except Exception as e:
+        logger.error(f"Failed to initialize player quests: {e}")
+        raise
+
+
 async def ai_backup_cycle():
     """
     Background task to run AI backup cycles.
@@ -240,6 +254,9 @@ async def lifespan(app_instance: FastAPI):
 
     # Synchronize prompts between file and database
     await sync_prompts_with_database()
+
+    # Initialize quests for any players who don't have them yet
+    await initialize_missing_player_quests()
 
     # Start background tasks
     ai_backup_task = None
