@@ -132,11 +132,13 @@ async def get_balance(
 
     return PlayerBalance(
         username=player.username,
+        email=player.email,
         balance=player.balance,
         starting_balance=settings.starting_balance,
         daily_bonus_available=bonus_available,
         daily_bonus_amount=settings.daily_bonus_amount,
         last_login_date=player.last_login_date,
+        created_at=player.created_at,
         outstanding_prompts=outstanding,
     )
 

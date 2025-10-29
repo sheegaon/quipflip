@@ -8,18 +8,30 @@ import { settingsLogger } from '../utils/logger';
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+const userTimeZone =
+  typeof Intl !== 'undefined' && typeof Intl.DateTimeFormat === 'function'
+    ? Intl.DateTimeFormat().resolvedOptions().timeZone
+    : undefined;
+
 const formatDate = (dateString?: string | null) => {
   if (!dateString) {
     return 'Not recorded';
   }
 
-  return new Date(dateString).toLocaleDateString('en-US', {
+  const options: Intl.DateTimeFormatOptions = {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
-  });
+  };
+
+  if (userTimeZone) {
+    options.timeZone = userTimeZone;
+    options.timeZoneName = 'short';
+  }
+
+  return new Date(dateString).toLocaleString(undefined, options);
 };
 
 const Settings: React.FC = () => {
@@ -290,15 +302,8 @@ const Settings: React.FC = () => {
             <div>
               <label className="block text-sm font-semibold text-quip-teal mb-1">Email</label>
               <div className="bg-white border-2 border-quip-navy border-opacity-20 rounded-tile p-3 text-quip-navy">
-                {player.email}
+                {player.email || 'Not available'}
               </div>
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-quip-teal mb-1">Anonymous Pseudonym</label>
-              <div className="bg-white border-2 border-quip-navy border-opacity-20 rounded-tile p-3 text-quip-navy">
-                {player.pseudonym}
-              </div>
-              <p className="text-xs text-quip-teal mt-1">This is how other players see you in results</p>
             </div>
             <div>
               <label className="block text-sm font-semibold text-quip-teal mb-1">Account Created</label>
@@ -310,38 +315,6 @@ const Settings: React.FC = () => {
               <label className="block text-sm font-semibold text-quip-teal mb-1">Last Login</label>
               <div className="bg-white border-2 border-quip-navy border-opacity-20 rounded-tile p-3 text-quip-navy">
                 {formatDate(player.last_login_date)}
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-quip-teal mb-1">Outstanding Prompts</label>
-              <div className="bg-white border-2 border-quip-navy border-opacity-20 rounded-tile p-3 text-quip-navy">
-                {player.outstanding_prompts} / 10
-              </div>
-              <p className="text-xs text-quip-teal mt-1">Active prompts waiting for copies</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Balance Information */}
-        <div className="tile-card p-6 mb-6">
-          <h2 className="text-2xl font-display font-bold text-quip-navy mb-4">Balance Information</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-semibold text-quip-teal mb-1">Current Balance</label>
-              <div className="bg-white border-2 border-quip-orange border-opacity-30 rounded-tile p-3">
-                <div className="flex items-center gap-2">
-                  <img src="/flipcoin.png" alt="Flipcoin" className="w-6 h-6" />
-                  <span className="text-2xl font-bold text-quip-orange">{player.balance}</span>
-                </div>
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-quip-teal mb-1">Starting Balance</label>
-              <div className="bg-white border-2 border-quip-navy border-opacity-20 rounded-tile p-3 text-quip-navy">
-                <div className="flex items-center gap-2">
-                  <img src="/flipcoin.png" alt="Flipcoin" className="w-6 h-6" />
-                  <span className="text-2xl font-bold text-quip-orange">{player.starting_balance}</span>
-                </div>
               </div>
             </div>
           </div>

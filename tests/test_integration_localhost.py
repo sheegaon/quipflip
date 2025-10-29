@@ -157,6 +157,8 @@ class TestPlayerManagement:
         data = response.json()
         assert data["balance"] == 5000
         assert data["starting_balance"] == 5000
+        assert data["email"].endswith("@example.com")
+        assert "created_at" in data
         assert "daily_bonus_available" in data
         assert data["daily_bonus_amount"] == 100
         assert "outstanding_prompts" in data
