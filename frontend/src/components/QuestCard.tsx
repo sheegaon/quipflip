@@ -32,15 +32,40 @@ export const QuestCard: React.FC<QuestCardProps> = ({
   const getCategoryInfo = (category: QuestCategory) => {
     switch (category) {
       case 'streak':
-        return { icon: '🔥', color: 'text-orange-600', bgColor: 'bg-orange-100 dark:bg-orange-900/20' };
+        return {
+          iconSrc: '/icon_quest_streak.svg',
+          iconAlt: 'Streak quest icon',
+          iconWrapper: 'bg-quest-streak/10',
+          badgeClass: 'bg-quest-streak/10 text-quip-orange-deep'
+        };
       case 'quality':
-        return { icon: '⭐', color: 'text-purple-600', bgColor: 'bg-purple-100 dark:bg-purple-900/20' };
+        return {
+          iconSrc: '/icon_quest_quality.svg',
+          iconAlt: 'Quality quest icon',
+          iconWrapper: 'bg-quest-quality/10',
+          badgeClass: 'bg-quest-quality/10 text-quest-quality-dark dark:text-quest-quality-light'
+        };
       case 'activity':
-        return { icon: '⚡', color: 'text-blue-600', bgColor: 'bg-blue-100 dark:bg-blue-900/20' };
+        return {
+          iconSrc: '/icon_quest_activity.svg',
+          iconAlt: 'Activity quest icon',
+          iconWrapper: 'bg-quip-turquoise/10',
+          badgeClass: 'bg-quip-turquoise/10 text-quip-teal'
+        };
       case 'milestone':
-        return { icon: '🏆', color: 'text-yellow-600', bgColor: 'bg-yellow-100 dark:bg-yellow-900/20' };
+        return {
+          iconSrc: '/icon_quest_milestone.svg',
+          iconAlt: 'Milestone quest icon',
+          iconWrapper: 'bg-quest-milestone/10',
+          badgeClass: 'bg-quest-milestone/10 text-quest-milestone-dark dark:text-quest-milestone-light'
+        };
       default:
-        return { icon: '🎯', color: 'text-gray-600', bgColor: 'bg-gray-100 dark:bg-gray-900/20' };
+        return {
+          iconSrc: '/icon_quest_overview.svg',
+          iconAlt: 'Quest icon',
+          iconWrapper: 'bg-gray-100 dark:bg-gray-800',
+          badgeClass: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'
+        };
     }
   };
 
@@ -83,9 +108,15 @@ export const QuestCard: React.FC<QuestCardProps> = ({
     <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-4 transition-all hover:shadow-lg ${className}`}>
       {/* Header: Icon, Name, Reward */}
       <div className="flex items-start justify-between mb-3">
-        <div className="flex items-start gap-2 flex-1">
-          <div className={`text-2xl ${categoryInfo.color}`}>
-            {categoryInfo.icon}
+        <div className="flex items-start gap-3 flex-1">
+          <div
+            className={`flex h-12 w-12 items-center justify-center rounded-xl border border-white/60 shadow-sm ${categoryInfo.iconWrapper}`}
+          >
+            <img
+              src={categoryInfo.iconSrc}
+              alt={categoryInfo.iconAlt}
+              className="h-9 w-9"
+            />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
@@ -125,8 +156,15 @@ export const QuestCard: React.FC<QuestCardProps> = ({
 
       {/* Category Badge and Claim Button */}
       <div className="flex items-center justify-between gap-2">
-        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${categoryInfo.bgColor} ${categoryInfo.color}`}>
-          {categoryInfo.icon}
+        <span
+          className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium ${categoryInfo.badgeClass}`}
+        >
+          <img
+            src={categoryInfo.iconSrc}
+            alt=""
+            aria-hidden="true"
+            className="h-4 w-4"
+          />
           <span className="capitalize">{quest.category}</span>
         </span>
 
