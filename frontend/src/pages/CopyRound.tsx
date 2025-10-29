@@ -228,3 +228,5 @@ export const CopyRound: React.FC = () => {
     </div>
   );
 };
+
+export default CopyRound;

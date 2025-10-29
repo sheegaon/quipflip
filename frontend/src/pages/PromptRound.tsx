@@ -311,3 +311,5 @@ export const PromptRound: React.FC = () => {
     </div>
   );
 };
+
+export default PromptRound;

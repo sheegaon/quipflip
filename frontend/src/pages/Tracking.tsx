@@ -355,3 +355,5 @@ export const Tracking: React.FC = () => {
     </div>
   );
 };
+
+export default Tracking;

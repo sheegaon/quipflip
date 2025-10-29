@@ -221,3 +221,5 @@ export const VoteRound: React.FC = () => {
     </div>
   );
 };
+
+export default VoteRound;

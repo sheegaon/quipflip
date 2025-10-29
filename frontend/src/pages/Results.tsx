@@ -292,3 +292,5 @@ export const Results: React.FC = () => {
     </div>
   );
 };
+
+export default Results;
