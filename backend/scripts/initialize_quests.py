@@ -3,10 +3,10 @@ import asyncio
 import logging
 from sqlalchemy import select
 
-from ..database import AsyncSessionLocal
-from ..models.player import Player
-from ..models.quest import Quest
-from ..services.quest_service import QuestService
+from backend.database import AsyncSessionLocal
+from backend.models.player import Player
+from backend.models.quest import Quest
+from backend.services.quest_service import QuestService
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
