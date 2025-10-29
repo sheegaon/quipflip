@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useGame } from '../contexts/GameContext';
 import { useResults } from '../contexts/ResultsContext';
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -16,6 +16,17 @@ export const Results: React.FC = () => {
   const [selectedPhrasesetId, setSelectedPhrasesetId] = useState<string | null>(null);
   const [expandedVotes, setExpandedVotes] = useState<Record<string, boolean>>({});
   const [showBreakdown, setShowBreakdown] = useState<boolean>(false);
+
+  const refreshPhrasesetResultsRef = useRef(refreshPhrasesetResults);
+  const refreshDashboardRef = useRef(refreshDashboard);
+
+  useEffect(() => {
+    refreshPhrasesetResultsRef.current = refreshPhrasesetResults;
+  }, [refreshPhrasesetResults]);
+
+  useEffect(() => {
+    refreshDashboardRef.current = refreshDashboard;
+  }, [refreshDashboard]);
 
   useEffect(() => {
     resultsLogger.debug('Results page mounted', {
@@ -42,21 +53,16 @@ export const Results: React.FC = () => {
   useEffect(() => {
     if (!selectedPhrasesetId) return;
 
-    const entry = phrasesetResults[selectedPhrasesetId];
-    const shouldFetch = !entry?.data && !entry?.loading && !entry?.error;
-
-    if (shouldFetch) {
-      resultsLogger.debug('Fetching phraseset results', { selectedPhrasesetId });
-      refreshPhrasesetResults(selectedPhrasesetId, { force: false })
-        .then(async () => {
-          await refreshDashboard();
-          resultsLogger.debug('Phraseset results fetched, dashboard refresh triggered', { selectedPhrasesetId });
-        })
-        .catch((err) => {
-          resultsLogger.error('Failed to refresh phraseset results', err);
-        });
-    }
-  }, [selectedPhrasesetId, phrasesetResults, refreshPhrasesetResults, refreshDashboard]);
+    resultsLogger.debug('Forcing phraseset results refresh on selection', { selectedPhrasesetId });
+    refreshPhrasesetResultsRef.current(selectedPhrasesetId, { force: true })
+      .then(async () => {
+        await refreshDashboardRef.current();
+        resultsLogger.debug('Phraseset results fetched, dashboard refresh triggered', { selectedPhrasesetId });
+      })
+      .catch((err) => {
+        resultsLogger.error('Failed to refresh phraseset results', err);
+      });
+  }, [selectedPhrasesetId]);
 
   const handleSelectPhraseset = (phrasesetId: string) => {
     setSelectedPhrasesetId(phrasesetId);

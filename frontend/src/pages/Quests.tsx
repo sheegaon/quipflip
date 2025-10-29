@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useGame } from '../contexts/GameContext';
 import { useQuests } from '../contexts/QuestContext';
 import { Header } from '../components/Header';
@@ -30,6 +30,7 @@ export const Quests: React.FC = () => {
 
   const [selectedCategory, setSelectedCategory] = useState<QuestCategory>('all');
   const [successMessage, setSuccessMessage] = useState<string>('');
+  const hasRequestedQuestsRef = useRef(false);
 
   useEffect(() => {
     questsLogger.debug('Quests page mounted', {
@@ -38,6 +39,23 @@ export const Quests: React.FC = () => {
       claimableQuests: claimableQuests.length,
     });
   }, [quests.length, activeQuests.length, claimableQuests.length]);
+
+  useEffect(() => {
+    if (hasRequestedQuestsRef.current) {
+      return;
+    }
+
+    if (questsLoading) {
+      questsLogger.debug('Quests already loading, waiting to trigger page refresh');
+      return;
+    }
+
+    hasRequestedQuestsRef.current = true;
+    questsLogger.debug('Forcing quest refresh on navigation');
+    refreshQuests().catch((err) => {
+      questsLogger.error('Failed to refresh quests on navigation', err);
+    });
+  }, [questsLoading, refreshQuests]);
 
   if (!player) {
     return (
