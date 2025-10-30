@@ -87,6 +87,27 @@ class SystemConfigService:
             "min": 3,
             "max": 50,
         },
+        "guest_max_outstanding_quips": {
+            "type": "int",
+            "category": "economics",
+            "description": "Maximum concurrent prompts for guest players",
+            "min": 1,
+            "max": 10,
+        },
+        "guest_vote_incorrect_streak_limit": {
+            "type": "int",
+            "category": "economics",
+            "description": "Incorrect guest votes in a row before lockout",
+            "min": 1,
+            "max": 10,
+        },
+        "guest_vote_lock_hours": {
+            "type": "int",
+            "category": "economics",
+            "description": "Guest vote lock duration in hours",
+            "min": 1,
+            "max": 168,
+        },
         "copy_discount_threshold": {
             "type": "int",
             "category": "economics",

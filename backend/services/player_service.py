@@ -12,6 +12,7 @@ from backend.models.daily_bonus import DailyBonus
 from backend.models.phraseset import Phraseset
 from backend.models.round import Round
 from backend.config import get_settings
+from backend.utils.datetime_helpers import ensure_utc
 from backend.utils.exceptions import DailyBonusNotAvailableError
 from backend.utils.passwords import hash_password
 from backend.services.username_service import (
@@ -232,7 +233,12 @@ class PlayerService:
 
         # Check outstanding prompts
         count = await self.get_outstanding_prompts_count(player.player_id)
-        if count >= settings.max_outstanding_quips:
+        limit = (
+            settings.guest_max_outstanding_quips
+            if player.is_guest
+            else settings.max_outstanding_quips
+        )
+        if count >= limit:
             return False, "max_outstanding_quips"
 
         return True, ""
@@ -264,6 +270,12 @@ class PlayerService:
     ) -> tuple[bool, str]:
         """Check if player can start vote round."""
         from backend.services.queue_service import QueueService
+
+        # Check guest vote lockout
+        if player.is_guest and player.guest_vote_locked_until:
+            locked_until = ensure_utc(player.guest_vote_locked_until)
+            if locked_until > datetime.now(UTC):
+                return False, "guest_vote_locked"
 
         # Check balance
         if player.balance < settings.vote_cost:

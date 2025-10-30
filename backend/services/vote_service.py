@@ -31,6 +31,28 @@ class VoteService:
         self.db = db
         self.activity_service = ActivityService(db)
 
+    def _update_guest_vote_state(self, player: Player, correct: bool) -> None:
+        """Update guest voting streaks and lockouts based on vote result."""
+
+        if not player.is_guest:
+            return
+
+        if correct:
+            player.guest_incorrect_vote_streak = 0
+            player.guest_vote_locked_until = None
+            return
+
+        player.guest_incorrect_vote_streak = (player.guest_incorrect_vote_streak or 0) + 1
+        if player.guest_incorrect_vote_streak >= settings.guest_vote_incorrect_streak_limit:
+            player.guest_vote_locked_until = datetime.now(UTC) + timedelta(hours=settings.guest_vote_lock_hours)
+            player.guest_incorrect_vote_streak = 0
+            logger.info(
+                "Guest %s locked from voting until %s after %s incorrect votes",
+                player.player_id,
+                player.guest_vote_locked_until,
+                settings.guest_vote_incorrect_streak_limit,
+            )
+
     async def _load_available_phrasesets_for_player(self, player_id: UUID) -> list[Phraseset]:
         """Load phrasesets the player can vote on (excludes contributors and already-voted)."""
         result = await self.db.execute(
@@ -335,6 +357,9 @@ class VoteService:
         self.db.add(vote)
         await self.db.flush()
 
+        # Update guest streaks/lockouts
+        self._update_guest_vote_state(player, correct)
+
         # Give payout if correct (deferred commit)
         if correct:
             await transaction_service.create_transaction(
@@ -477,6 +502,9 @@ class VoteService:
 
         self.db.add(vote)
         await self.db.flush()
+
+        # Update guest streaks/lockouts
+        self._update_guest_vote_state(player, correct)
 
         # Give payout if correct (deferred commit)
         if correct:
