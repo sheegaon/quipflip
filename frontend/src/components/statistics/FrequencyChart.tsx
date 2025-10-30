@@ -1,4 +1,5 @@
 import type { PlayFrequency } from '../../api/types';
+import { formatDateInUserZone } from '../../utils/datetime';
 
 interface FrequencyChartProps {
   frequency: PlayFrequency;
@@ -25,13 +26,13 @@ export default function FrequencyChart({ frequency }: FrequencyChartProps) {
         <div>
           <div className="text-quip-teal">Member Since</div>
           <div className="font-medium text-quip-navy">
-            {new Date(frequency.member_since).toLocaleDateString()}
+            {formatDateInUserZone(frequency.member_since)}
           </div>
         </div>
         <div>
           <div className="text-quip-teal">Last Active</div>
           <div className="font-medium text-quip-navy">
-            {new Date(frequency.last_active).toLocaleDateString()}
+            {formatDateInUserZone(frequency.last_active)}
           </div>
         </div>
       </div>

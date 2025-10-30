@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Quest, QuestCategory, QuestStatus } from '../api/types';
 import { QuestProgressBar } from './QuestProgressBar';
 import { CurrencyDisplay } from './CurrencyDisplay';
+import { formatDateInUserZone } from '../utils/datetime';
 
 interface QuestCardProps {
   quest: Quest;
@@ -185,7 +186,7 @@ export const QuestCard: React.FC<QuestCardProps> = ({
         {/* Claimed indicator */}
         {quest.status === 'claimed' && quest.claimed_at && (
           <span className="text-xs text-gray-500 dark:text-gray-400">
-            Claimed {new Date(quest.claimed_at).toLocaleDateString()}
+            Claimed {formatDateInUserZone(quest.claimed_at)}
           </span>
         )}
       </div>
