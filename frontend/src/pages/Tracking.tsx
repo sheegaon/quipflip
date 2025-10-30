@@ -284,7 +284,7 @@ export const Tracking: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-3 mb-4">
                 <div className="bg-quip-navy bg-opacity-5 border-2 border-quip-navy rounded-tile p-3 text-center">
-                  <p className="text-xs text-quip-teal uppercase tracking-wide">Total Rounds</p>
+                  <p className="text-xs text-quip-teal uppercase tracking-wide">Rounds Meeting Criteria</p>
                   <p className="text-2xl font-display font-bold text-quip-navy">{totalTracked}</p>
                 </div>
                 <div className="bg-quip-orange bg-opacity-10 border-2 border-quip-orange rounded-tile p-3 text-center">

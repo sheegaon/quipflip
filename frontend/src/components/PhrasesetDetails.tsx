@@ -59,6 +59,12 @@ export const PhrasesetDetails: React.FC<PhrasesetDetailsProps> = ({
                   <p className="text-md font-semibold text-blue-900">{summary.your_phrase}</p>
                 </>
               )}
+              {summary.your_role === 'copy' && summary.original_phrase && (
+                <>
+                  <p className="text-xs text-blue-700 mt-3 uppercase tracking-wide">Original Phrase</p>
+                  <p className="text-md font-semibold text-blue-900">{summary.original_phrase}</p>
+                </>
+              )}
             </div>
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
               <p className="text-xs text-gray-700 uppercase tracking-wide">Status</p>

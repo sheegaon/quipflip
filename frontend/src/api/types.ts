@@ -213,6 +213,7 @@ export interface PhrasesetSummary {
   prompt_text: string;
   your_role: 'prompt' | 'copy';
   your_phrase: string | null;
+  original_phrase?: string | null;
   status: PhrasesetStatus;
   created_at: string;
   updated_at: string | null;
