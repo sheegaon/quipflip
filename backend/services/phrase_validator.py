@@ -37,54 +37,73 @@ def _load_dictionary() -> Set[str]:
 
 class LightweightSimilarityCalculator:
     """Lightweight similarity calculator using TF-IDF and string matching."""
-    
-    def __init__(self):
-        from sklearn.feature_extraction.text import TfidfVectorizer
 
-        self.vectorizer = TfidfVectorizer(
-            ngram_range=(1, 2),  # Use unigrams and bigrams
-            lowercase=True,
-            stop_words=None,  # Don't remove stop words for short phrases
-            max_features=1000   # Limit features for efficiency
-        )
-    
+    def __init__(self):
+        self._tfidf_available = False
+        try:
+            from sklearn.feature_extraction.text import TfidfVectorizer
+
+            self.vectorizer = TfidfVectorizer(
+                ngram_range=(1, 2),  # Use unigrams and bigrams
+                lowercase=True,
+                stop_words=None,  # Don't remove stop words for short phrases
+                max_features=1000,  # Limit features for efficiency
+            )
+            self._tfidf_available = True
+        except ModuleNotFoundError:
+            self.vectorizer = None
+            logger.warning(
+                "scikit-learn not installed; falling back to basic similarity checks"
+            )
+
     def calculate_similarity(self, phrase1: str, phrase2: str) -> float:
         """
         Calculate similarity using a combination of TF-IDF cosine similarity,
         Jaccard similarity, and string similarity.
         """
-        from sklearn.metrics.pairwise import cosine_similarity
-
         try:
             # Normalize phrases
             phrase1 = phrase1.strip().lower()
             phrase2 = phrase2.strip().lower()
-            
+
             if phrase1 == phrase2:
                 return 1.0
-            
-            # TF-IDF cosine similarity
-            tfidf_matrix = self.vectorizer.fit_transform([phrase1, phrase2])
-            tfidf_similarity = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:2])[0][0]
-            
+
+            tfidf_similarity = 0.0
+            tfidf_weight = 0.5 if self._tfidf_available else 0.0
+
+            if self._tfidf_available and self.vectorizer is not None:
+                from sklearn.metrics.pairwise import cosine_similarity
+
+                tfidf_matrix = self.vectorizer.fit_transform([phrase1, phrase2])
+                tfidf_similarity = float(
+                    cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:2])[0][0]
+                )
+
             # Jaccard similarity (word overlap)
             words1 = set(phrase1.split())
             words2 = set(phrase2.split())
             jaccard_similarity = len(words1 & words2) / len(words1 | words2) if words1 | words2 else 0
-            
+
             # String similarity using difflib
             string_similarity = SequenceMatcher(None, phrase1, phrase2).ratio()
-            
+
+            jaccard_weight = 0.3
+            string_weight = 0.2
+            total_weight = tfidf_weight + jaccard_weight + string_weight
+            if total_weight == 0:
+                total_weight = 1.0
+
             # Weighted combination (can be tuned)
             combined_similarity = (
-                0.5 * tfidf_similarity +
-                0.3 * jaccard_similarity +
-                0.2 * string_similarity
-            )
-            
+                tfidf_weight * tfidf_similarity
+                + jaccard_weight * jaccard_similarity
+                + string_weight * string_similarity
+            ) / total_weight
+
             logger.debug(f"Similarity between '{phrase1}' and '{phrase2}': {combined_similarity:.4f}")
             return float(combined_similarity)
-            
+
         except Exception as e:
             logger.error(f"Error calculating similarity: {e}")
             # If similarity check fails, be conservative and allow the phrase
