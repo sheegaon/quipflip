@@ -1,13 +1,22 @@
 """Tests for guest account limitations."""
+import uuid
 import pytest
 from fastapi import status
 from httpx import AsyncClient, ASGITransport
 from datetime import datetime, UTC, timedelta
 from uuid import UUID
-from sqlalchemy import select, update
+from sqlalchemy import select
+
+from backend.config import get_settings
 from backend.models.player import Player
 from backend.models.round import Round
+from backend.models.phraseset import Phraseset
 from backend.services.player_service import PlayerService
+from backend.services.transaction_service import TransactionService
+from backend.services.vote_service import VoteService
+
+
+settings = get_settings()
 
 
 class TestGuestOutstandingRoundsLimit:
@@ -28,15 +37,15 @@ class TestGuestOutstandingRoundsLimit:
             )
             player = result.scalar_one()
 
-            # Mock the outstanding prompts count to be 3
+            # Mock the outstanding prompts count to be at the guest limit
             # This tests the logic without needing to create full phrasesets
             from unittest.mock import AsyncMock, patch
 
             with patch.object(PlayerService, 'get_outstanding_prompts_count', new_callable=AsyncMock) as mock_count:
-                # Set mock to return 3 outstanding prompts
-                mock_count.return_value = 3
+                # Set mock to return the guest limit for outstanding prompts
+                mock_count.return_value = settings.guest_max_outstanding_quips
 
-                # Try to start a round (should fail for guest at limit of 3)
+                # Try to start a round (should fail for guest at the configured limit)
                 player_service = PlayerService(db_session)
                 can_start, error = await player_service.can_start_prompt_round(player)
                 assert not can_start
@@ -84,10 +93,10 @@ class TestGuestOutstandingRoundsLimit:
 
 
 class TestGuestVoteLockout:
-    """Test that guests are locked out for 24 hours after 3 consecutive incorrect votes."""
+    """Test that guests are locked out according to configured vote lockout rules."""
 
     async def test_guest_locked_out_after_3_incorrect_votes(self, test_app, db_session):
-        """Test that guests are locked out after 3 consecutive incorrect votes."""
+        """Test that guests are locked out after the configured number of incorrect votes."""
         async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
             # Create guest
             create_response = await client.post("/player/guest")
@@ -102,8 +111,8 @@ class TestGuestVoteLockout:
             player = result.scalar_one()
 
             # Simulate active lockout (future timestamp)
-            player.consecutive_incorrect_votes = 3
-            lockout_time = datetime.now(UTC) + timedelta(hours=24)
+            player.consecutive_incorrect_votes = settings.guest_vote_lockout_threshold
+            lockout_time = datetime.now(UTC) + timedelta(hours=settings.guest_vote_lockout_hours)
             player.vote_lockout_until = lockout_time
             await db_session.commit()
 
@@ -124,7 +133,7 @@ class TestGuestVoteLockout:
             assert error == "vote_lockout_active"
 
     async def test_guest_lockout_expires_after_24_hours(self, test_app, db_session):
-        """Test that guest lockout expires after 24 hours."""
+        """Test that expired guest lockouts are cleared automatically."""
         async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
             # Create guest
             create_response = await client.post("/player/guest")
@@ -139,8 +148,10 @@ class TestGuestVoteLockout:
             player = result.scalar_one()
 
             # Simulate expired lockout (set lockout_until to 1 hour ago)
-            player.consecutive_incorrect_votes = 3
-            expired_lockout_time = datetime.now(UTC) - timedelta(hours=1)
+            player.consecutive_incorrect_votes = settings.guest_vote_lockout_threshold
+            expired_lockout_time = datetime.now(UTC) - timedelta(
+                hours=settings.guest_vote_lockout_hours + 1
+            )
             player.vote_lockout_until = expired_lockout_time
             await db_session.commit()
 
@@ -153,11 +164,13 @@ class TestGuestVoteLockout:
             # Verify lockout is in the past
             assert player.vote_lockout_until < datetime.now(UTC)
 
-            # Check if player can start vote round (lockout should auto-clear)
+            # Refresh lockout state and ensure it was cleared
             player_service = PlayerService(db_session)
+            cleared = await player_service.refresh_vote_lockout_state(player)
+            assert cleared
             can_start, error = await player_service.can_start_vote_round(player)
 
-            # After the check, lockout should be cleared (get fresh instance to verify)
+            # After the refresh, lockout should be cleared (get fresh instance to verify)
             result = await db_session.execute(
                 select(Player).where(Player.player_id == player_id)
             )
@@ -219,14 +232,136 @@ class TestGuestVoteLockout:
             )
             player = result.scalar_one()
 
-            # Simulate 2 consecutive incorrect votes
-            player.consecutive_incorrect_votes = 2
+            # Simulate vote context to exercise VoteService logic
+            unique_id = uuid.uuid4().hex[:8]
+
+            prompter = Player(
+                player_id=uuid.uuid4(),
+                username=f"prompter_{unique_id}",
+                username_canonical=f"prompter_{unique_id}",
+                pseudonym=f"Prompter_{unique_id}",
+                pseudonym_canonical=f"prompter_{unique_id}",
+                email=f"prompter_{unique_id}@example.com",
+                password_hash="hash",
+                balance=1000,
+            )
+            copier1 = Player(
+                player_id=uuid.uuid4(),
+                username=f"copier1_{unique_id}",
+                username_canonical=f"copier1_{unique_id}",
+                pseudonym=f"Copier1_{unique_id}",
+                pseudonym_canonical=f"copier1_{unique_id}",
+                email=f"copier1_{unique_id}@example.com",
+                password_hash="hash",
+                balance=1000,
+            )
+            copier2 = Player(
+                player_id=uuid.uuid4(),
+                username=f"copier2_{unique_id}",
+                username_canonical=f"copier2_{unique_id}",
+                pseudonym=f"Copier2_{unique_id}",
+                pseudonym_canonical=f"copier2_{unique_id}",
+                email=f"copier2_{unique_id}@example.com",
+                password_hash="hash",
+                balance=1000,
+            )
+            db_session.add_all([prompter, copier1, copier2])
             await db_session.commit()
-            await db_session.refresh(player)
 
-            assert player.consecutive_incorrect_votes == 2
+            prompt_round = Round(
+                round_id=uuid.uuid4(),
+                player_id=prompter.player_id,
+                round_type="prompt",
+                status="submitted",
+                prompt_text="Test prompt",
+                submitted_phrase="ORIGINAL",
+                cost=settings.prompt_cost,
+                expires_at=datetime.now(UTC) + timedelta(minutes=5),
+            )
+            copy1_round = Round(
+                round_id=uuid.uuid4(),
+                player_id=copier1.player_id,
+                round_type="copy",
+                status="submitted",
+                prompt_round_id=prompt_round.round_id,
+                original_phrase="ORIGINAL",
+                copy_phrase="COPY ONE",
+                cost=settings.copy_cost_normal,
+                system_contribution=0,
+                expires_at=datetime.now(UTC) + timedelta(minutes=5),
+            )
+            copy2_round = Round(
+                round_id=uuid.uuid4(),
+                player_id=copier2.player_id,
+                round_type="copy",
+                status="submitted",
+                prompt_round_id=prompt_round.round_id,
+                original_phrase="ORIGINAL",
+                copy_phrase="COPY TWO",
+                cost=settings.copy_cost_normal,
+                system_contribution=0,
+                expires_at=datetime.now(UTC) + timedelta(minutes=5),
+            )
+            db_session.add_all([prompt_round, copy1_round, copy2_round])
+            await db_session.flush()
 
-            # After a correct vote, the counter should be reset (this is tested in vote_service.py)
-            # We can verify the logic exists by checking the model has the field
-            assert hasattr(player, 'consecutive_incorrect_votes')
-            assert hasattr(player, 'vote_lockout_until')
+            phraseset = Phraseset(
+                phraseset_id=uuid.uuid4(),
+                prompt_round_id=prompt_round.round_id,
+                copy_round_1_id=copy1_round.round_id,
+                copy_round_2_id=copy2_round.round_id,
+                prompt_text="Test prompt",
+                original_phrase="ORIGINAL",
+                copy_phrase_1="COPY ONE",
+                copy_phrase_2="COPY TWO",
+                status="open",
+                vote_count=0,
+                total_pool=settings.prize_pool_base,
+                vote_contributions=0,
+                vote_payouts_paid=0,
+                system_contribution=0,
+            )
+            db_session.add(phraseset)
+            await db_session.flush()
+
+            vote_round = Round(
+                round_id=uuid.uuid4(),
+                player_id=player.player_id,
+                round_type="vote",
+                status="active",
+                phraseset_id=phraseset.phraseset_id,
+                prompt_round_id=prompt_round.round_id,
+                cost=settings.vote_cost,
+                expires_at=datetime.now(UTC) + timedelta(minutes=5),
+            )
+            player.active_round_id = vote_round.round_id
+            db_session.add(vote_round)
+
+            prior_incorrect = max(1, settings.guest_vote_lockout_threshold - 1)
+            player.consecutive_incorrect_votes = prior_incorrect
+            await db_session.commit()
+
+            # Reload entities to avoid stale state before invoking the service
+            player = (await db_session.execute(
+                select(Player).where(Player.player_id == player_id)
+            )).scalar_one()
+            vote_round = await db_session.get(Round, vote_round.round_id)
+            phraseset = await db_session.get(Phraseset, phraseset.phraseset_id)
+
+            vote_service = VoteService(db_session)
+            transaction_service = TransactionService(db_session)
+
+            await vote_service.submit_vote(
+                vote_round,
+                phraseset,
+                phraseset.original_phrase,
+                player,
+                transaction_service,
+            )
+
+            refreshed_player = (await db_session.execute(
+                select(Player).where(Player.player_id == player_id)
+            )).scalar_one()
+
+            assert refreshed_player.consecutive_incorrect_votes == 0
+            assert refreshed_player.vote_lockout_until is None

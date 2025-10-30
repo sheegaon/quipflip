@@ -497,13 +497,15 @@ class VoteService:
                 # Increment consecutive incorrect votes
                 player.consecutive_incorrect_votes += 1
 
-                # Lock out guest for 24 hours after 3 consecutive incorrect votes
-                if player.consecutive_incorrect_votes >= 3:
-                    lockout_duration = timedelta(hours=24)
+                # Lock out guest after configurable number of incorrect votes
+                if player.consecutive_incorrect_votes >= settings.guest_vote_lockout_threshold:
+                    lockout_duration = timedelta(hours=settings.guest_vote_lockout_hours)
                     player.vote_lockout_until = datetime.now(UTC) + lockout_duration
                     logger.warning(
-                        f"Guest player {player.player_id} locked out from voting for 24 hours "
-                        f"due to {player.consecutive_incorrect_votes} consecutive incorrect votes"
+                        "Guest player %s locked out from voting for %s hour(s) due to %s consecutive incorrect votes",
+                        player.player_id,
+                        settings.guest_vote_lockout_hours,
+                        player.consecutive_incorrect_votes,
                     )
 
         # Update round

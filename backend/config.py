@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     abandoned_penalty: int = 5
     prize_pool_base: int = 200  # Base prize pool (prompt + 2 copies contribution)
     max_outstanding_quips: int = 10
+    guest_max_outstanding_quips: int = 3
+    guest_vote_lockout_threshold: int = 3
+    guest_vote_lockout_hours: int = 24
     copy_discount_threshold: int = 10  # quips waiting to trigger discount
 
     # Timing

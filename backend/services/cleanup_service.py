@@ -5,7 +5,7 @@ from uuid import UUID
 from datetime import UTC, datetime, timedelta
 from typing import Optional
 
-from sqlalchemy import delete, select, text
+from sqlalchemy import delete, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.models import (
@@ -425,27 +425,27 @@ class CleanupService:
         """
         cutoff_date = datetime.now(UTC) - timedelta(days=days_old)
 
-        # Find guests who haven't logged in for 30+ days and don't already have " X" suffix
-        stmt = select(Player).where(
-            Player.is_guest == True,  # noqa: E712
-            Player.last_login_date < cutoff_date,
-            ~Player.username.endswith(" X")  # Don't process already-recycled usernames
+        # Use a single UPDATE statement for efficiency, avoiding loading all objects into memory.
+        update_stmt = (
+            update(Player)
+            .where(
+                Player.is_guest == True,  # noqa: E712
+                Player.last_login_date < cutoff_date,
+                ~Player.username.endswith(" X"),
+            )
+            .values(
+                username=Player.username + " X",
+                username_canonical=Player.username_canonical + "x",
+            )
+            .execution_options(synchronize_session=False)
         )
-        result = await self.db.execute(stmt)
-        inactive_guests = result.scalars().all()
 
-        if not inactive_guests:
+        result = await self.db.execute(update_stmt)
+        recycled_count = result.rowcount or 0
+
+        if recycled_count == 0:
             logger.debug("No guest usernames to recycle")
             return 0
-
-        logger.info(f"Found {len(inactive_guests)} guest username(s) to recycle (>{days_old} days inactive)")
-
-        # Update each guest's username and canonical_username
-        recycled_count = 0
-        for guest in inactive_guests:
-            guest.username = guest.username + " X"
-            guest.username_canonical = guest.username_canonical + "x"
-            recycled_count += 1
 
         await self.db.commit()
 
