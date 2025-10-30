@@ -6,6 +6,7 @@ import uuid
 from datetime import datetime, UTC
 from backend.database import Base
 from backend.models.base import get_uuid_column
+from sqlalchemy.ext.mutable import MutableDict
 
 
 class QuestType(str, Enum):
@@ -62,7 +63,9 @@ class Quest(Base):
     player_id = get_uuid_column(ForeignKey("players.player_id", ondelete="CASCADE"), nullable=False, index=True)
     quest_type = Column(String(50), nullable=False, index=True)
     status = Column(String(20), nullable=False, default=QuestStatus.ACTIVE.value, index=True)
-    progress = Column(JSON, nullable=False, default=dict)  # Flexible progress tracking
+    progress = Column(
+        MutableDict.as_mutable(JSON), nullable=False, default=dict
+    )  # Flexible progress tracking
     reward_amount = Column(Integer, nullable=False)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     completed_at = Column(DateTime(timezone=True), nullable=True)
