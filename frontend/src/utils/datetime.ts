@@ -15,11 +15,7 @@ type DateLike = string | number | Date | null | undefined;
 const sanitiseDateString = (rawValue: string) => {
   let value = rawValue.trim();
 
-  if (dateOnlyPattern.test(value)) {
-    return `${value}T00:00:00Z`;
-  }
-
-  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d{1,9})?$/.test(value)) {
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(?::\d{2}(?:\.\d{1,9})?)?$/.test(value)) {
     value = value.replace(' ', 'T');
   }
 
@@ -48,13 +44,28 @@ export const parseDateLike = (value: DateLike): Date | null => {
     return null;
   }
 
-  const sanitised = sanitiseDateString(value);
+  const trimmed = value.trim();
+
+  if (dateOnlyPattern.test(trimmed)) {
+    const parts = trimmed.split('-').map(Number);
+
+    if (parts.length !== 3 || parts.some(Number.isNaN)) {
+      return null;
+    }
+
+    const [year, month, day] = parts;
+    const date = new Date(year, month - 1, day);
+
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  const sanitised = sanitiseDateString(trimmed);
   const parsed = new Date(sanitised);
 
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 };
 
-type BaseFormatOptions = {
+export type BaseFormatOptions = {
   fallback?: string;
   includeSeconds?: boolean;
 };
