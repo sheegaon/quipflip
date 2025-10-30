@@ -13,7 +13,9 @@
 
 ## Backend changes
 
-* **Player model**: add `is_guest: bool` (default `false`).
+* **Player model**: add `is_guest: bool` (default `false`), plus fields for vote lockout tracking:
+  * `consecutive_incorrect_votes: int` - tracks consecutive incorrect votes
+  * `vote_lockout_until: datetime` - timestamp when lockout expires
 * **Create guest**: add `POST /player/guest` that:
 
   * Creates a `Player` with `is_guest=true`, random email/password, same starting balance and pseudonym generation.
@@ -23,6 +25,14 @@
   * Validates uniqueness, sets credentials, flips `is_guest=false`, continues same `player_id` (balance, stats, outstanding rounds preserved).
   * Returns a fresh token pair.
 * **Rate limits** (guest scope): per-IP + per-device (fingerprint/cookie) buckets that are stricter than for registered users.
+* **Guest limitations**:
+  * Limited to 3 outstanding prompts (vs 10 for regular players)
+  * 24-hour vote lockout after 3 consecutive incorrect votes
+  * Lockout automatically clears after expiration
+  * Consecutive vote counter resets on correct vote
+* **Cleanup**:
+  * Inactive guests (7+ days, no rounds) are deleted
+  * Guest usernames are recycled after 30+ days of inactivity (appends " X" to free up username)
 
 ## Frontend changes
 
