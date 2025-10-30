@@ -20,6 +20,9 @@ rate_limiter = RateLimiter(settings.redis_url or None)
 
 GENERAL_RATE_LIMIT = 100
 VOTE_RATE_LIMIT = 20
+GUEST_GENERAL_RATE_LIMIT = 50  # Stricter limit for guests
+GUEST_VOTE_RATE_LIMIT = 10  # Stricter limit for guest votes
+GUEST_CREATION_RATE_LIMIT = 5  # Per IP limit for creating guest accounts
 RATE_LIMIT_WINDOW_SECONDS = 60
 RATE_LIMIT_ERROR_MESSAGE = "Rate limit exceeded. Try again later."
 
@@ -85,8 +88,10 @@ async def get_current_player(
     if not player:
         raise HTTPException(status_code=401, detail="invalid_token")
 
-    await _enforce_rate_limit("general", str(player.player_id), GENERAL_RATE_LIMIT)
-    logger.debug("Authenticated player via JWT: %s", player.player_id)
+    # Apply stricter rate limits for guest accounts
+    limit = GUEST_GENERAL_RATE_LIMIT if player.is_guest else GENERAL_RATE_LIMIT
+    await _enforce_rate_limit("general", str(player.player_id), limit)
+    logger.debug("Authenticated player via JWT: %s (guest=%s)", player.player_id, player.is_guest)
     return player
 
 
@@ -103,5 +108,32 @@ async def enforce_vote_rate_limit(
     - Automatically handles authentication errors via get_current_player
     - Returns the player to avoid redundant get_current_player calls in endpoints
     """
-    await _enforce_rate_limit("vote_submit", str(player.player_id), VOTE_RATE_LIMIT)
+    # Apply stricter vote rate limits for guest accounts
+    limit = GUEST_VOTE_RATE_LIMIT if player.is_guest else VOTE_RATE_LIMIT
+    await _enforce_rate_limit("vote_submit", str(player.player_id), limit)
     return player
+
+
+async def enforce_guest_creation_rate_limit(
+    x_forwarded_for: str | None = Header(default=None, alias="X-Forwarded-For"),
+    x_real_ip: str | None = Header(default=None, alias="X-Real-IP"),
+) -> None:
+    """Enforce rate limits on guest account creation per IP address.
+
+    Uses X-Forwarded-For or X-Real-IP headers to identify the client IP.
+    This prevents abuse by limiting how many guest accounts can be created
+    from a single IP address.
+    """
+    # Extract client IP from headers (proxy-aware)
+    client_ip = None
+    if x_forwarded_for:
+        # X-Forwarded-For can be a comma-separated list, take the first (client) IP
+        client_ip = x_forwarded_for.split(",")[0].strip()
+    elif x_real_ip:
+        client_ip = x_real_ip.strip()
+
+    if not client_ip:
+        # If no IP headers, allow the request (localhost development)
+        return
+
+    await _enforce_rate_limit("guest_creation", client_ip, GUEST_CREATION_RATE_LIMIT)

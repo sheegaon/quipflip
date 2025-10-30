@@ -36,6 +36,8 @@ import type {
   UpdateEmailResponse,
   AdminPlayerSummary,
   AdminDeletePlayerResponse,
+  CreateGuestResponse,
+  UpgradeGuestResponse,
 } from './types';
 
 // Base URL - configure based on environment
@@ -289,6 +291,25 @@ export const apiClient = {
     signal?: AbortSignal,
   ): Promise<CreatePlayerResponse> {
     const { data } = await api.post('/player', payload, { signal });
+    return data;
+  },
+
+  async createGuest(signal?: AbortSignal): Promise<CreateGuestResponse> {
+    const { data } = await api.post<CreateGuestResponse>('/player/guest', {}, {
+      signal,
+      skipAuth: true,
+    });
+    return data;
+  },
+
+  async upgradeGuest(
+    payload: { email: string; password: string },
+    signal?: AbortSignal,
+  ): Promise<UpgradeGuestResponse> {
+    const { data } = await api.post<UpgradeGuestResponse>('/player/upgrade', payload, { signal });
+    if (data?.access_token) {
+      setAccessToken(data.access_token, data.expires_in);
+    }
     return data;
   },
 

@@ -80,6 +80,7 @@ JWT authentication with short-lived access tokens and 30-day refresh tokens. See
 
 ### Backend Responsibilities
 - Player accounts, username recovery, and wallet management
+- Guest account creation and upgrade flow
 - Daily login bonus tracking and distribution
 - Tutorial progress tracking and persistence
 - Quest system (16 achievement types with automatic progress tracking)
@@ -96,6 +97,7 @@ JWT authentication with short-lived access tokens and 30-day refresh tokens. See
 - Scoring calculations and payout distribution
 - Transaction logging and audit trail (including quest rewards)
 - Anti-cheat enforcement (self-voting prevention, duplicate vote checks)
+- Rate limiting (guest-specific: 50 req/min general, 10 req/min voting, 5 guest creations/min per IP)
 - Results preparation and storage
 - One-round-at-a-time constraint enforcement
 

@@ -12,6 +12,7 @@ export interface Player {
   last_login_date: string | null;
   outstanding_prompts: number;
   created_at: string;
+  is_guest?: boolean;
 }
 
 export interface ChangePasswordResponse {
@@ -53,6 +54,17 @@ export interface AuthTokenResponse {
 
 export interface CreatePlayerResponse extends AuthTokenResponse {
   balance: number;
+  message: string;
+}
+
+export interface CreateGuestResponse extends AuthTokenResponse {
+  balance: number;
+  email: string;
+  password: string;
+  message: string;
+}
+
+export interface UpgradeGuestResponse extends AuthTokenResponse {
   message: string;
 }
 

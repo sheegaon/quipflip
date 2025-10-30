@@ -7,6 +7,8 @@ React + TypeScript frontend for the Quipflip phrase association game.
 ### Phase 1 MVP (Complete)
 
 - ✅ Player authentication with JWT tokens (access + refresh tokens, HTTP-only cookies)
+- ✅ Guest account creation (instant play without signup)
+- ✅ Guest account upgrade to full account
 - ✅ Registration and login with email/password (username generated server-side)
 - ✅ Dashboard with balance display
 - ✅ Daily bonus claiming

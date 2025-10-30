@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from backend.database import get_db
-from backend.dependencies import get_current_player
+from backend.dependencies import get_current_player, enforce_guest_creation_rate_limit
 from backend.models.player import Player
 from backend.models.phraseset import Phraseset
 from backend.models.round import Round
@@ -23,6 +23,9 @@ from backend.schemas.player import (
     UpdateEmailRequest,
     UpdateEmailResponse,
     DeleteAccountRequest,
+    CreateGuestResponse,
+    UpgradeGuestRequest,
+    UpgradeGuestResponse,
 )
 from backend.schemas.phraseset import (
     PhrasesetListResponse,
@@ -117,6 +120,91 @@ async def create_player(
     )
 
 
+@router.post("/guest", response_model=CreateGuestResponse, status_code=201)
+async def create_guest_player(
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+    _rate_limit: None = Depends(enforce_guest_creation_rate_limit),
+):
+    """Create a guest account with auto-generated credentials."""
+
+    auth_service = AuthService(db)
+    try:
+        player, guest_password = await auth_service.register_guest()
+    except AuthError as exc:
+        message = str(exc)
+        if message == "username_generation_failed":
+            raise HTTPException(status_code=500, detail="username_generation_failed") from exc
+        if message == "guest_email_generation_failed":
+            raise HTTPException(status_code=500, detail="guest_email_generation_failed") from exc
+        raise
+
+    access_token, refresh_token, expires_in = await auth_service.issue_tokens(player)
+    set_refresh_cookie(response, refresh_token, expires_days=settings.refresh_token_exp_days)
+
+    return CreateGuestResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        expires_in=expires_in,
+        token_type="bearer",
+        player_id=player.player_id,
+        username=player.username,
+        balance=player.balance,
+        email=player.email,
+        password=guest_password,
+        message=(
+            f"Guest account created! Your temporary credentials are:\n"
+            f"Email: {player.email}\n"
+            f"Password: {guest_password}\n\n"
+            f"You can upgrade to a full account anytime to choose your own email and password."
+        ),
+    )
+
+
+@router.post("/upgrade", response_model=UpgradeGuestResponse)
+async def upgrade_guest_account(
+    request: UpgradeGuestRequest,
+    response: Response,
+    player: Player = Depends(get_current_player),
+    db: AsyncSession = Depends(get_db),
+):
+    """Upgrade a guest account to a full account."""
+
+    auth_service = AuthService(db)
+    try:
+        upgraded_player = await auth_service.upgrade_guest(player, request.email, request.password)
+    except AuthError as exc:
+        message = str(exc)
+        if message == "not_a_guest":
+            raise HTTPException(status_code=400, detail="not_a_guest") from exc
+        if message == "email_taken":
+            raise HTTPException(status_code=409, detail="email_taken") from exc
+        # Check if this is a password validation error
+        if any(keyword in message for keyword in [
+            "Password must be at least",
+            "Password must include both uppercase and lowercase",
+            "Password must include at least one number"
+        ]):
+            raise HTTPException(status_code=422, detail=message) from exc
+        if message == "upgrade_failed":
+            raise HTTPException(status_code=500, detail="upgrade_failed") from exc
+        raise
+
+    # Issue fresh tokens after upgrade
+    access_token, refresh_token, expires_in = await auth_service.issue_tokens(upgraded_player)
+    set_refresh_cookie(response, refresh_token, expires_days=settings.refresh_token_exp_days)
+
+    return UpgradeGuestResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        expires_in=expires_in,
+        token_type="bearer",
+        player_id=upgraded_player.player_id,
+        username=upgraded_player.username,
+        message="Account upgraded successfully! You can now log in with your new credentials.",
+    )
+
+
 @router.get("/balance", response_model=PlayerBalance)
 async def get_balance(
     player: Player = Depends(get_current_player),
@@ -141,6 +229,7 @@ async def get_balance(
         last_login_date=ensure_utc(player.last_login_date),
         created_at=player.created_at,
         outstanding_prompts=outstanding,
+        is_guest=player.is_guest,
     )
 
 
