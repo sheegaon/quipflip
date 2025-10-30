@@ -30,7 +30,7 @@ def upgrade() -> None:
             existing_type=sa.Date(),
             type_=sa.DateTime(timezone=True),
             existing_nullable=True,
-            postgresql_using="timezone('UTC', last_login_date::timestamp)",
+            postgresql_using="last_login_date::timestamp AT TIME ZONE 'UTC'",
         )
     else:
         with op.batch_alter_table('players', schema=None) as batch_op:
