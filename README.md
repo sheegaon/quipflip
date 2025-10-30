@@ -87,6 +87,20 @@ Frontend runs at **http://localhost:5173**
 pytest tests/
 ```
 
+## 👤 Account Types
+
+### Guest Accounts
+- **Quick Start**: Play instantly without email/password signup
+- **Auto-Generated Credentials**: Email (`guest####@quipflip.xyz`) and password (`QuipGuest`) provided after creation
+- **Rate Limits**: Stricter limits to prevent abuse (50 req/min general, 10 req/min voting)
+- **Upgrade Path**: Convert to full account anytime in Settings to save progress permanently
+
+### Full Accounts
+- **Custom Credentials**: Choose your own email and password
+- **Higher Limits**: Standard rate limits (100 req/min general, 20 req/min voting)
+- **Cross-Device**: Access your account from any device
+- **Permanent**: All progress saved indefinitely
+
 ---
 
 # Complete Game Rules

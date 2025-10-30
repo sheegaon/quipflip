@@ -20,6 +20,7 @@ class PlayerBalance(BaseSchema):
     last_login_date: Optional[datetime]
     created_at: datetime
     outstanding_prompts: int
+    is_guest: bool = False
 
 
 class ClaimDailyBonusResponse(BaseModel):
@@ -199,3 +200,25 @@ class DeleteAccountRequest(BaseModel):
 
     password: constr(min_length=1, max_length=128)
     confirmation: constr(pattern=r"^DELETE$", min_length=6, max_length=6)
+
+
+class CreateGuestResponse(AuthTokenResponse):
+    """Create guest player response returning tokens and guest credentials."""
+
+    balance: int
+    email: str
+    password: str  # Auto-generated password to show user
+    message: str
+
+
+class UpgradeGuestRequest(BaseModel):
+    """Request payload for upgrading guest account to full account."""
+
+    email: EmailLike
+    password: constr(min_length=8, max_length=128)
+
+
+class UpgradeGuestResponse(AuthTokenResponse):
+    """Response after upgrading guest account."""
+
+    message: str

@@ -45,6 +45,69 @@ class AuthService:
     # ------------------------------------------------------------------
     # Registration
     # ------------------------------------------------------------------
+    async def register_guest(self) -> tuple[Player, str]:
+        """Create a guest account with auto-generated credentials.
+
+        Returns:
+            tuple[Player, str]: The created player and the auto-generated password
+        """
+        from backend.services.username_service import UsernameService
+        from backend.services.quest_service import QuestService
+        import random
+
+        # Generate random 4-digit number for email
+        random_digits = str(random.randint(1000, 9999))
+        guest_email = f"guest{random_digits}@quipflip.xyz"
+        guest_password = "QuipGuest"
+
+        password_hash = hash_password(guest_password)
+
+        # Generate unique username and pseudonym for this player
+        username_service = UsernameService(self.db)
+        username_display, username_canonical = await username_service.generate_unique_username()
+        pseudonym_display, pseudonym_canonical = await username_service.generate_unique_username()
+
+        # Try to create the guest account, retry with new email if collision
+        max_retries = 10
+        for attempt in range(max_retries):
+            try:
+                player = await self.player_service.create_player(
+                    username=username_display,
+                    email=guest_email,
+                    password_hash=password_hash,
+                    pseudonym=pseudonym_display,
+                    pseudonym_canonical=pseudonym_canonical,
+                )
+                # Mark as guest after creation
+                player.is_guest = True
+                await self.db.commit()
+                await self.db.refresh(player)
+
+                logger.info("Created guest player %s with email %s", player.player_id, guest_email)
+
+                # Initialize starter quests for new guest
+                quest_service = QuestService(self.db)
+                await quest_service.initialize_quests_for_player(player.player_id)
+                logger.info("Initialized starter quests for guest %s", player.player_id)
+
+                return player, guest_password
+            except ValueError as exc:
+                message = str(exc)
+                if message == "email_taken" and attempt < max_retries - 1:
+                    # Generate new random number and retry
+                    random_digits = str(random.randint(1000, 9999))
+                    guest_email = f"guest{random_digits}@quipflip.xyz"
+                    continue
+                elif message == "username_taken":
+                    raise AuthError("username_generation_failed") from exc
+                elif message == "email_taken":
+                    raise AuthError("guest_email_generation_failed") from exc
+                elif message == "invalid_username":
+                    raise AuthError("invalid_username") from exc
+                raise
+
+        raise AuthError("guest_email_generation_failed")
+
     async def register_player(self, email: str, password: str) -> Player:
         """Create a new player with provided credentials."""
         from backend.services.username_service import UsernameService
@@ -89,6 +152,51 @@ class AuthService:
             if message == "invalid_username":
                 raise AuthError("invalid_username") from exc
             raise
+
+    async def upgrade_guest(self, player: Player, email: str, password: str) -> Player:
+        """Upgrade a guest account to a full account.
+
+        Args:
+            player: The guest player to upgrade
+            email: New email for the account
+            password: New password for the account
+
+        Returns:
+            Player: The upgraded player
+
+        Raises:
+            AuthError: If player is not a guest, email is taken, or password is invalid
+        """
+        if not player.is_guest:
+            raise AuthError("not_a_guest")
+
+        email_normalized = email.strip().lower()
+
+        # Validate password strength
+        try:
+            validate_password_strength(password)
+        except PasswordValidationError as exc:
+            raise AuthError(str(exc)) from exc
+
+        # Check if email is already taken
+        existing = await self.player_service.get_player_by_email(email_normalized)
+        if existing and existing.player_id != player.player_id:
+            raise AuthError("email_taken")
+
+        # Update player credentials
+        player.email = email_normalized
+        player.password_hash = hash_password(password)
+        player.is_guest = False
+
+        try:
+            await self.db.commit()
+            await self.db.refresh(player)
+            logger.info("Upgraded guest %s to full account with email %s", player.player_id, email_normalized)
+            return player
+        except Exception as exc:
+            await self.db.rollback()
+            logger.error("Failed to upgrade guest %s: %s", player.player_id, exc)
+            raise AuthError("upgrade_failed") from exc
 
     # ------------------------------------------------------------------
     # Authentication

@@ -14,6 +14,7 @@
 - `created_at` (timestamp)
 - `last_login_date` (timestamp with timezone, nullable) - UTC timestamp for last login tracking
 - `active_round_id` (UUID, nullable, references rounds.round_id) - enforces one-round-at-a-time
+- `is_guest` (boolean, default false) - whether this is a guest account with auto-generated credentials
 - `tutorial_completed` (boolean, default false) - whether player has finished tutorial
 - `tutorial_progress` (string, default 'not_started') - current tutorial step (`not_started`, `welcome`, `dashboard`, `prompt_round`, `prompt_round_paused`, `copy_round`, `copy_round_paused`, `vote_round`, `completed`)
 - `tutorial_started_at` (timestamp, nullable) - when tutorial was started
@@ -23,7 +24,10 @@
 - Relationships: `active_round`, `rounds`, `transactions`, `votes`, `daily_bonuses`, `result_views`, `abandoned_prompts`, `phraseset_activities`, `refresh_tokens`, `quests`
 
 **Authentication**: JWT access/refresh tokens (stored in `refresh_tokens` table)
-**Registration**: Email and password only; username is randomly generated and cannot be changed
+**Registration**:
+- Guest accounts: Created via `POST /player/guest` with auto-generated credentials (email: `guest####@quipflip.xyz`, password: `QuipGuest`)
+- Full accounts: Created via `POST /player` with email and password; username is randomly generated and cannot be changed
+- Upgrade: Guest accounts can be upgraded to full accounts via `POST /player/upgrade`
 **Admin Access**: Currently any user with SECRET_KEY knowledge; future plans include role-based access control
 
 ### Round (Unified for Prompt, Copy, and Vote)

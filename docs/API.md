@@ -22,9 +22,11 @@ Authorization: Bearer <access_token>
 - Clients can also send the refresh token explicitly in request bodies if needed.
 
 **Getting Tokens:**
+- Use `POST /player/guest` to create a guest account instantly (no email/password required).
 - Use `POST /player` to register with an email and password (the backend generates a username and pseudonym automatically).
 - Use `POST /auth/login` with your email and password to obtain fresh tokens.
 - Access tokens default to a 120-minute lifetime (`ACCESS_TOKEN_EXP_MINUTES`); call `POST /auth/refresh` (or rely on the cookie) to obtain a new pair when they expire.
+- Use `POST /player/upgrade` to convert a guest account to a full account.
 
 ## Data Model Reference
 
@@ -103,6 +105,36 @@ Health check endpoint (no authentication required).
 
 ### Player Endpoints
 
+#### `POST /player/guest`
+Create a guest account instantly (no authentication required). Guest accounts allow immediate play without email/password signup.
+
+**Request:**
+```bash
+curl -X POST http://localhost:8000/player/guest
+```
+
+**Response (201 Created):**
+```json
+{
+  "player_id": "3555a0e9-d46d-4a36-8756-f0e9c836d822",
+  "username": "Prompt Pirate",
+  "access_token": "<jwt access token>",
+  "refresh_token": "<refresh token>",
+  "expires_in": 7200,
+  "balance": 5000,
+  "email": "guest1234@quipflip.xyz",
+  "password": "QuipGuest",
+  "message": "Guest account created! Your temporary credentials are:\nEmail: guest1234@quipflip.xyz\nPassword: QuipGuest\n\nYou can upgrade to a full account anytime to choose your own email and password.",
+  "token_type": "bearer"
+}
+```
+
+**Important:**
+- Guest credentials are auto-generated and shown only once
+- Save these credentials to log in later
+- Guest accounts can be upgraded to full accounts via `POST /player/upgrade`
+- Guest accounts have stricter rate limits (50 req/min general, 10 req/min voting vs 100/20 for full accounts)
+
 #### `POST /player`
 Create a new player account (no authentication required).
 
@@ -128,13 +160,45 @@ See [Player](DATA_MODELS.md#player) for persisted fields.
   "access_token": "<jwt access token>",
   "refresh_token": "<refresh token>",
   "expires_in": 7200,
-  "balance": 1000,
+  "balance": 5000,
   "message": "Player created! Your account is ready to play. An access token and refresh token have been issued for authentication.",
   "token_type": "bearer"
 }
 ```
 
 **Important:** Store the refresh token securely in HTTP-only cookies or secure storage.
+
+#### `POST /player/upgrade`
+Upgrade a guest account to a full account with custom email and password. Preserves all progress, balance, and stats.
+
+**Request:**
+```bash
+curl -X POST http://localhost:8000/player/upgrade \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <guest_access_token>" \
+  -d '{
+        "email": "prompt.pirate@example.com",
+        "password": "SuperSecure123!"
+      }'
+```
+
+**Response (200 OK):**
+```json
+{
+  "player_id": "3555a0e9-d46d-4a36-8756-f0e9c836d822",
+  "username": "Prompt Pirate",
+  "access_token": "<new jwt access token>",
+  "refresh_token": "<new refresh token>",
+  "expires_in": 7200,
+  "message": "Account upgraded successfully! You can now log in with your new credentials.",
+  "token_type": "bearer"
+}
+```
+
+**Errors:**
+- `400 not_a_guest` - Account is already a full account
+- `409 email_taken` - Email already in use by another account
+- `422 <password error>` - Password doesn't meet requirements (min 8 chars, uppercase, lowercase, number)
 
 ### Authentication Endpoints
 
@@ -208,7 +272,8 @@ Get player balance and status.
   "daily_bonus_amount": 100,
   "last_login_date": "2025-01-06T18:45:00Z",
   "created_at": "2025-01-01T12:00:00Z",
-  "outstanding_prompts": 0
+  "outstanding_prompts": 0,
+  "is_guest": false
 }
 ```
 

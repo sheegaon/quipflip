@@ -11,6 +11,7 @@ export const Landing: React.FC = () => {
   const [registerPassword, setRegisterPassword] = useState('');
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
+  const [guestCredentials, setGuestCredentials] = useState<{ email: string; password: string } | null>(null);
 
   const { actions } = useGame();
   const { startSession } = actions;
@@ -109,6 +110,38 @@ export const Landing: React.FC = () => {
     }
   };
 
+  const handlePlayAsGuest = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      landingLogger.info('Creating guest account');
+
+      const response = await apiClient.createGuest();
+
+      landingLogger.info('Guest created successfully, starting session', { username: response.username });
+
+      // Show guest credentials to user
+      setGuestCredentials({ email: response.email, password: response.password });
+
+      // Store guest credentials temporarily for tutorial display
+      localStorage.setItem('quipflip_guest_credentials', JSON.stringify({
+        email: response.email,
+        password: response.password,
+        timestamp: Date.now()
+      }));
+
+      startSession(response.username, response);
+      navigate('/dashboard');
+    } catch (err) {
+      const message = extractErrorMessage(err) || 'Unable to create guest account. Please try again.';
+      landingLogger.error('Failed to create guest account', err);
+      setError(message);
+    } finally {
+      setIsLoading(false);
+      landingLogger.debug('Guest account creation completed');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-quip-orange to-quip-turquoise flex items-center justify-center p-4 bg-pattern">
       <div className="max-w-md w-full tile-card p-8 animate-slide-up">
@@ -126,6 +159,35 @@ export const Landing: React.FC = () => {
             {error}
           </div>
         )}
+
+        {guestCredentials && (
+          <div className="mb-6 p-4 bg-blue-100 border border-blue-400 text-blue-900 rounded">
+            <p className="font-semibold mb-2">Guest Account Created!</p>
+            <p className="text-sm mb-1">Email: {guestCredentials.email}</p>
+            <p className="text-sm">Password: {guestCredentials.password}</p>
+            <p className="text-xs mt-2 text-blue-700">Save these credentials to log in later, or upgrade your account in Settings.</p>
+          </div>
+        )}
+
+        {/* Play Instantly Button */}
+        <div className="mb-6">
+          <button
+            onClick={handlePlayAsGuest}
+            disabled={isLoading}
+            className="w-full bg-gradient-to-r from-quip-orange to-quip-turquoise hover:from-quip-orange-deep hover:to-quip-teal disabled:bg-gray-400 text-white font-bold py-4 px-4 rounded-tile transition-all hover:shadow-tile-sm transform hover:-translate-y-0.5 text-lg"
+          >
+            {isLoading ? 'Creating Guest Account...' : 'Play Instantly'}
+          </button>
+        </div>
+
+        <div className="relative mb-6">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-300"></div>
+          </div>
+          <div className="relative flex justify-center text-sm">
+            <span className="px-2 bg-white text-gray-500">or</span>
+          </div>
+        </div>
 
         <div className="space-y-6">
           {/* New Player */}
@@ -193,7 +255,7 @@ export const Landing: React.FC = () => {
               </button>
             </form>
             <p className="text-sm text-gray-600 mt-2">
-              Forgot your password? Email support@quipflip.gg for assistance.
+              Forgot your password? Email support@quipflip.xyz for assistance.
             </p>
           </div>
         </div>

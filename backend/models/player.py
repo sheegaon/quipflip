@@ -30,6 +30,7 @@ class Player(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     last_login_date = Column(DateTime(timezone=True), nullable=True)
     active_round_id = get_uuid_column(ForeignKey("rounds.round_id", ondelete="SET NULL"), nullable=True)
+    is_guest = Column(Boolean, default=False, nullable=False)
 
     # Tutorial tracking
     tutorial_completed = Column(Boolean, default=False, nullable=False)

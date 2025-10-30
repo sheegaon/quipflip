@@ -46,6 +46,15 @@ const Settings: React.FC = () => {
   const [emailSuccess, setEmailSuccess] = useState<string | null>(null);
   const [emailLoading, setEmailLoading] = useState(false);
 
+  const [upgradeForm, setUpgradeForm] = useState({
+    email: '',
+    password: '',
+    confirmPassword: '',
+  });
+  const [upgradeError, setUpgradeError] = useState<string | null>(null);
+  const [upgradeSuccess, setUpgradeSuccess] = useState<string | null>(null);
+  const [upgradeLoading, setUpgradeLoading] = useState(false);
+
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
@@ -147,6 +156,58 @@ const Settings: React.FC = () => {
       setPasswordError(extractErrorMessage(err, 'change-password') || 'Failed to update password');
     } finally {
       setPasswordLoading(false);
+    }
+  };
+
+  const handleUpgradeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setUpgradeError(null);
+    setUpgradeSuccess(null);
+
+    if (!emailPattern.test(upgradeForm.email)) {
+      setUpgradeError('Please enter a valid email address.');
+      return;
+    }
+
+    if (!upgradeForm.password || upgradeForm.password.length < 8) {
+      setUpgradeError('Password must be at least 8 characters long.');
+      return;
+    }
+
+    if (upgradeForm.password !== upgradeForm.confirmPassword) {
+      setUpgradeError('Passwords do not match.');
+      return;
+    }
+
+    try {
+      setUpgradeLoading(true);
+      settingsLogger.info('Upgrading guest account');
+
+      await apiClient.upgradeGuest({
+        email: upgradeForm.email.trim(),
+        password: upgradeForm.password,
+      });
+
+      settingsLogger.info('Guest account upgraded successfully');
+      setUpgradeSuccess('Account upgraded successfully! You can now log in with your new credentials.');
+      setUpgradeForm({ email: '', password: '', confirmPassword: '' });
+      await refreshBalance();
+
+      // Redirect to dashboard after a short delay
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 2000);
+    } catch (err: any) {
+      if (err?.detail === 'not_a_guest') {
+        setUpgradeError('This account is already a full account.');
+      } else if (err?.detail === 'email_taken') {
+        setUpgradeError('That email address is already in use.');
+      } else {
+        setUpgradeError(extractErrorMessage(err) || 'Failed to upgrade account');
+      }
+      settingsLogger.error('Failed to upgrade guest account', err);
+    } finally {
+      setUpgradeLoading(false);
     }
   };
 
@@ -300,6 +361,74 @@ const Settings: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Upgrade Guest Account */}
+        {player.is_guest && (
+          <div className="tile-card p-6 mb-6 bg-gradient-to-br from-orange-50 to-cyan-50 border-2 border-quip-orange">
+            <h2 className="text-2xl font-display font-bold text-quip-navy mb-4">
+              Upgrade Your Guest Account
+            </h2>
+            <p className="text-quip-navy mb-4">
+              You're currently using a guest account with limited access. Upgrade to a full account to:
+            </p>
+            <ul className="list-disc list-inside text-quip-navy mb-4 space-y-1">
+              <li>Save your progress permanently</li>
+              <li>Access your account from any device</li>
+              <li>Never lose your Flipcoins and stats</li>
+            </ul>
+            {upgradeError && <p className="text-red-600 mb-3">{upgradeError}</p>}
+            {upgradeSuccess && <p className="text-green-600 mb-3">{upgradeSuccess}</p>}
+            <form onSubmit={handleUpgradeSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="flex flex-col">
+                <label className="text-sm font-semibold text-quip-teal mb-2">Email Address</label>
+                <input
+                  type="email"
+                  value={upgradeForm.email}
+                  onChange={(e) => setUpgradeForm((prev) => ({ ...prev, email: e.target.value }))}
+                  className="border-2 border-quip-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-quip-orange bg-white"
+                  placeholder="your@email.com"
+                  disabled={upgradeLoading}
+                  required
+                />
+              </div>
+              <div className="flex flex-col">
+                <label className="text-sm font-semibold text-quip-teal mb-2">Password</label>
+                <input
+                  type="password"
+                  value={upgradeForm.password}
+                  onChange={(e) => setUpgradeForm((prev) => ({ ...prev, password: e.target.value }))}
+                  className="border-2 border-quip-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-quip-orange bg-white"
+                  placeholder="Min 8 characters"
+                  disabled={upgradeLoading}
+                  minLength={8}
+                  required
+                />
+              </div>
+              <div className="flex flex-col">
+                <label className="text-sm font-semibold text-quip-teal mb-2">Confirm Password</label>
+                <input
+                  type="password"
+                  value={upgradeForm.confirmPassword}
+                  onChange={(e) => setUpgradeForm((prev) => ({ ...prev, confirmPassword: e.target.value }))}
+                  className="border-2 border-quip-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-quip-orange bg-white"
+                  placeholder="Re-enter password"
+                  disabled={upgradeLoading}
+                  minLength={8}
+                  required
+                />
+              </div>
+              <div className="md:col-span-3 flex justify-end">
+                <button
+                  type="submit"
+                  disabled={upgradeLoading}
+                  className="bg-quip-orange hover:bg-quip-orange-deep disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm"
+                >
+                  {upgradeLoading ? 'Upgrading...' : 'Upgrade Account'}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
 
         {/* Change Password */}
         <div className="tile-card p-6 mb-6">

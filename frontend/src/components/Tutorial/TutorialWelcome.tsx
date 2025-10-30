@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTutorial } from '../../contexts/TutorialContext';
+import { useGame } from '../../contexts/GameContext';
 import './TutorialWelcome.css';
 
 interface TutorialWelcomeProps {
@@ -7,10 +8,47 @@ interface TutorialWelcomeProps {
   onSkip: () => void;
 }
 
+interface GuestCredentials {
+  email: string;
+  password: string;
+  timestamp: number;
+}
+
 const TutorialWelcome: React.FC<TutorialWelcomeProps> = ({ onStart, onSkip }) => {
   const { tutorialStatus } = useTutorial();
+  const { state } = useGame();
+  const { player } = state;
   const [isSkipping, setIsSkipping] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
+  const [guestCredentials, setGuestCredentials] = useState<GuestCredentials | null>(null);
+
+  // Check for guest credentials in localStorage
+  useEffect(() => {
+    if (player?.is_guest) {
+      const stored = localStorage.getItem('quipflip_guest_credentials');
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored) as GuestCredentials;
+          // Only use if less than 5 minutes old
+          if (Date.now() - parsed.timestamp < 5 * 60 * 1000) {
+            setGuestCredentials(parsed);
+          } else {
+            // Clean up old credentials
+            localStorage.removeItem('quipflip_guest_credentials');
+          }
+        } catch (e) {
+          console.error('Failed to parse guest credentials', e);
+        }
+      }
+    }
+  }, [player?.is_guest]);
+
+  // Clean up credentials when tutorial starts or is skipped
+  const cleanupCredentials = () => {
+    if (guestCredentials) {
+      localStorage.removeItem('quipflip_guest_credentials');
+    }
+  };
 
   // Only show if tutorial hasn't been started or completed
   if (tutorialStatus !== 'inactive') {
@@ -21,6 +59,7 @@ const TutorialWelcome: React.FC<TutorialWelcomeProps> = ({ onStart, onSkip }) =>
     if (isSkipping || isStarting) return;
     setIsSkipping(true);
     try {
+      cleanupCredentials();
       await onSkip();
     } finally {
       setIsSkipping(false);
@@ -31,6 +70,7 @@ const TutorialWelcome: React.FC<TutorialWelcomeProps> = ({ onStart, onSkip }) =>
     if (isSkipping || isStarting) return;
     setIsStarting(true);
     try {
+      cleanupCredentials();
       await onStart();
     } finally {
       setIsStarting(false);
@@ -42,6 +82,27 @@ const TutorialWelcome: React.FC<TutorialWelcomeProps> = ({ onStart, onSkip }) =>
       <div className="tutorial-welcome-modal">
         <div className="tutorial-welcome-content">
           <h1 className="tutorial-welcome-title">Welcome to Quipflip!</h1>
+
+          {guestCredentials && player?.is_guest ? (
+            <>
+              <div className="tutorial-guest-credentials bg-gradient-to-r from-quip-orange to-quip-turquoise text-white p-6 rounded-tile mb-6 shadow-lg">
+                <p className="font-bold mb-3 text-lg">
+                  Your Guest Account Credentials
+                </p>
+                <div className="bg-white bg-opacity-20 p-4 rounded-lg mb-3 backdrop-blur-sm">
+                  <p className="my-1 font-mono text-sm">
+                    <strong>Email:</strong> {guestCredentials.email}
+                  </p>
+                  <p className="my-1 font-mono text-sm">
+                    <strong>Password:</strong> {guestCredentials.password}
+                  </p>
+                </div>
+                <p className="text-sm opacity-95">
+                  Save these credentials to log in later! You can upgrade to a full account anytime in Settings.
+                </p>
+              </div>
+            </>
+          ) : null}
 
           <p className="tutorial-welcome-description">
             Quipflip is a creative word game where you can:

@@ -85,7 +85,7 @@ Successfully tested the Quipflip frontend application at http://localhost:5173 u
 - **Features:**
   - "Returning Player" section with email/password fields
   - Orange "Login" button
-  - Password recovery text: "Forgot your password? Email support@quipflip.gg for assistance"
+  - Password recovery text: "Forgot your password? Email support@quipflip.xyz for assistance"
   - Clear separation between registration and login sections
 
 ### 8. Console Errors ✓
