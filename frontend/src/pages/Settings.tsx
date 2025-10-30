@@ -5,72 +5,15 @@ import { useTutorial } from '../contexts/TutorialContext';
 import { Header } from '../components/Header';
 import apiClient, { extractErrorMessage } from '../api/client';
 import { settingsLogger } from '../utils/logger';
+import { formatDateInUserZone, formatDateTimeInUserZone } from '../utils/datetime';
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-const userTimeZone =
-  typeof Intl !== 'undefined' && typeof Intl.DateTimeFormat === 'function'
-    ? Intl.DateTimeFormat().resolvedOptions().timeZone
-    : undefined;
+const formatDate = (dateString?: string | null) =>
+  formatDateInUserZone(dateString, { fallback: 'Not recorded' });
 
-const dateOnlyPattern = /^\d{4}-\d{2}-\d{2}$/;
-
-const parseDateString = (dateString?: string | null) => {
-  if (!dateString) {
-    return null;
-  }
-
-  if (dateOnlyPattern.test(dateString)) {
-    const [year, month, day] = dateString.split('-').map(Number);
-    return new Date(year, month - 1, day);
-  }
-
-  const parsedDate = new Date(dateString);
-  return Number.isNaN(parsedDate.getTime()) ? null : parsedDate;
-};
-
-const getDateFormatterOptions = (includeTime: boolean): Intl.DateTimeFormatOptions => {
-  const options: Intl.DateTimeFormatOptions = {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  };
-
-  if (includeTime) {
-    options.hour = '2-digit';
-    options.minute = '2-digit';
-  }
-
-  if (userTimeZone) {
-    options.timeZone = userTimeZone;
-
-    if (includeTime) {
-      options.timeZoneName = 'short';
-    }
-  }
-
-  return options;
-};
-
-const formatDate = (dateString?: string | null) => {
-  const date = parseDateString(dateString);
-
-  if (!date) {
-    return 'Not recorded';
-  }
-
-  return date.toLocaleDateString(undefined, getDateFormatterOptions(false));
-};
-
-const formatDateTime = (dateString?: string | null) => {
-  const date = parseDateString(dateString);
-
-  if (!date) {
-    return 'Not recorded';
-  }
-
-  return date.toLocaleString(undefined, getDateFormatterOptions(true));
-};
+const formatDateTime = (dateString?: string | null) =>
+  formatDateTimeInUserZone(dateString, { fallback: 'Not recorded' });
 
 const Settings: React.FC = () => {
   const { state, actions } = useGame();

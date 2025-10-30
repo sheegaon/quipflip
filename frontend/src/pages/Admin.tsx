@@ -6,6 +6,7 @@ import apiClient, { extractErrorMessage } from '../api/client';
 import { EditableConfigField } from '../components/EditableConfigField';
 import { adminLogger } from '../utils/logger';
 import type { AdminPlayerSummary } from '../api/types';
+import { formatDateTimeInUserZone } from '../utils/datetime';
 
 interface GameConfig {
   // Game Constants
@@ -118,15 +119,6 @@ const Admin: React.FC = () => {
 
     loadConfig();
   }, []);
-
-  const formatDateTime = (value: string) =>
-    new Date(value).toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
 
   const handleSaveConfig = async (key: string, value: number | string) => {
     try {
@@ -408,7 +400,7 @@ const Admin: React.FC = () => {
                 </div>
                 <div className="md:col-span-2">
                   <dt className="font-semibold">Created</dt>
-                  <dd>{formatDateTime(adminDeleteLookup.created_at)}</dd>
+                  <dd>{formatDateTimeInUserZone(adminDeleteLookup.created_at)}</dd>
                 </div>
               </dl>
               <div className="space-y-3">

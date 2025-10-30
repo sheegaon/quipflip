@@ -1,5 +1,6 @@
 import React from 'react';
 import type { PhrasesetActivityEntry } from '../api/types';
+import { formatDateTimeInUserZone } from '../utils/datetime';
 
 interface ActivityTimelineProps {
   activities: PhrasesetActivityEntry[];
@@ -13,14 +14,6 @@ const ACTIVITY_MAP: Record<string, { icon: string; title: string }> = {
   third_vote_reached: { icon: '3️⃣', title: 'Reached 3 Votes' },
   fifth_vote_reached: { icon: '5️⃣', title: 'Reached 5 Votes' },
   finalized: { icon: '✅', title: 'Phraseset Finalized' },
-};
-
-const formatDateTime = (value: string) => {
-  try {
-    return new Date(value).toLocaleString();
-  } catch (err) {
-    return value;
-  }
 };
 
 export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ activities }) => {
@@ -48,7 +41,9 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ activities }
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-sm font-semibold text-gray-800">{config.title}</p>
-                <span className="text-xs text-gray-500">{formatDateTime(activity.created_at)}</span>
+                <span className="text-xs text-gray-500">
+                  {formatDateTimeInUserZone(activity.created_at)}
+                </span>
               </div>
               {(activity.player_username || activity.player_id) && (
                 <p className="text-xs text-gray-600 mt-1">

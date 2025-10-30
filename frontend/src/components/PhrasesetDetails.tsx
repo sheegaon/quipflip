@@ -7,6 +7,7 @@ import type {
 import { StatusBadge } from './StatusBadge';
 import { ProgressBar } from './ProgressBar';
 import { ActivityTimeline } from './ActivityTimeline';
+import { formatDateTimeInUserZone } from '../utils/datetime';
 
 interface PhrasesetDetailsProps {
   phraseset: PhrasesetDetailsType | null;
@@ -25,15 +26,6 @@ const STATUS_LABELS: Record<PhrasesetStatus, string> = {
 };
 
 const formatStatusLabel = (status: PhrasesetStatus) => STATUS_LABELS[status] ?? status.replace('_', ' ');
-
-const formatDateTime = (value: string | null) => {
-  if (!value) return '—';
-  try {
-    return new Date(value).toLocaleString();
-  } catch (err) {
-    return value;
-  }
-};
 
 export const PhrasesetDetails: React.FC<PhrasesetDetailsProps> = ({
   phraseset,
@@ -93,12 +85,12 @@ export const PhrasesetDetails: React.FC<PhrasesetDetailsProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <span className="font-semibold text-gray-700">Created:</span>{' '}
-              {formatDateTime(summary.created_at)}
+              {formatDateTimeInUserZone(summary.created_at)}
             </div>
             {summary.updated_at && (
               <div>
                 <span className="font-semibold text-gray-700">Updated:</span>{' '}
-                {formatDateTime(summary.updated_at)}
+                {formatDateTimeInUserZone(summary.updated_at)}
               </div>
             )}
           </div>
@@ -161,23 +153,23 @@ export const PhrasesetDetails: React.FC<PhrasesetDetailsProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-gray-600 mt-4">
           <div>
             <span className="font-semibold text-gray-700">Created:</span>{' '}
-            {formatDateTime(phraseset.created_at)}
+            {formatDateTimeInUserZone(phraseset.created_at)}
           </div>
           <div>
             <span className="font-semibold text-gray-700">Third vote:</span>{' '}
-            {formatDateTime(phraseset.third_vote_at)}
+            {formatDateTimeInUserZone(phraseset.third_vote_at)}
           </div>
           <div>
             <span className="font-semibold text-gray-700">Fifth vote:</span>{' '}
-            {formatDateTime(phraseset.fifth_vote_at)}
+            {formatDateTimeInUserZone(phraseset.fifth_vote_at)}
           </div>
           <div>
             <span className="font-semibold text-gray-700">Closes:</span>{' '}
-            {formatDateTime(phraseset.closes_at)}
+            {formatDateTimeInUserZone(phraseset.closes_at)}
           </div>
           <div>
             <span className="font-semibold text-gray-700">Finalized:</span>{' '}
-            {formatDateTime(phraseset.finalized_at)}
+            {formatDateTimeInUserZone(phraseset.finalized_at)}
           </div>
           <div>
             <span className="font-semibold text-gray-700">Total Pool:</span> ${phraseset.total_pool}
@@ -235,7 +227,9 @@ export const PhrasesetDetails: React.FC<PhrasesetDetailsProps> = ({
                         {vote.correct ? 'Correct' : 'Incorrect'}
                       </span>
                     </td>
-                    <td className="px-4 py-2 text-gray-600">{formatDateTime(vote.voted_at)}</td>
+                    <td className="px-4 py-2 text-gray-600">
+                      {formatDateTimeInUserZone(vote.voted_at)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
