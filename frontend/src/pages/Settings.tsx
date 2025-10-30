@@ -240,7 +240,7 @@ const Settings: React.FC = () => {
       setUpgradeLoading(true);
       settingsLogger.info('Upgrading guest account');
 
-      const response = await apiClient.upgradeGuest({
+      await apiClient.upgradeGuest({
         email: upgradeForm.email.trim(),
         password: upgradeForm.password,
       });

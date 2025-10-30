@@ -121,7 +121,7 @@ curl -X POST http://localhost:8000/player/guest
   "access_token": "<jwt access token>",
   "refresh_token": "<refresh token>",
   "expires_in": 7200,
-  "balance": 1000,
+  "balance": 5000,
   "email": "guest1234@quipflip.xyz",
   "password": "QuipGuest",
   "message": "Guest account created! Your temporary credentials are:\nEmail: guest1234@quipflip.xyz\nPassword: QuipGuest\n\nYou can upgrade to a full account anytime to choose your own email and password.",
@@ -160,7 +160,7 @@ See [Player](DATA_MODELS.md#player) for persisted fields.
   "access_token": "<jwt access token>",
   "refresh_token": "<refresh token>",
   "expires_in": 7200,
-  "balance": 1000,
+  "balance": 5000,
   "message": "Player created! Your account is ready to play. An access token and refresh token have been issued for authentication.",
   "token_type": "bearer"
 }
