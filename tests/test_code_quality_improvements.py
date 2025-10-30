@@ -455,9 +455,9 @@ class TestGameBalanceSettings:
 
         assert hasattr(settings, 'vote_max_votes')
         assert hasattr(settings, 'vote_closing_threshold')
-        assert hasattr(settings, 'vote_closing_window_seconds')
+        assert hasattr(settings, 'vote_closing_window_minutes')
         assert hasattr(settings, 'vote_minimum_threshold')
-        assert hasattr(settings, 'vote_minimum_window_seconds')
+        assert hasattr(settings, 'vote_minimum_window_minutes')
 
     def test_vote_finalization_defaults(self):
         """Should have sensible default values."""
@@ -465,9 +465,9 @@ class TestGameBalanceSettings:
 
         assert settings.vote_max_votes == 20
         assert settings.vote_closing_threshold == 5
-        assert settings.vote_closing_window_seconds == 60
+        assert settings.vote_closing_window_minutes == 1
         assert settings.vote_minimum_threshold == 3
-        assert settings.vote_minimum_window_seconds == 600
+        assert settings.vote_minimum_window_minutes == 10
 
     def test_settings_are_integers(self):
         """Should all be integer values."""
@@ -475,6 +475,6 @@ class TestGameBalanceSettings:
 
         assert isinstance(settings.vote_max_votes, int)
         assert isinstance(settings.vote_closing_threshold, int)
-        assert isinstance(settings.vote_closing_window_seconds, int)
+        assert isinstance(settings.vote_closing_window_minutes, int)
         assert isinstance(settings.vote_minimum_threshold, int)
-        assert isinstance(settings.vote_minimum_window_seconds, int)
+        assert isinstance(settings.vote_minimum_window_minutes, int)

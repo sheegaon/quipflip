@@ -53,9 +53,9 @@ class Settings(BaseSettings):
     # Vote finalization thresholds
     vote_max_votes: int = 20  # Maximum votes before auto-finalization
     vote_closing_threshold: int = 5  # Votes needed to enter closing window
-    vote_closing_window_seconds: int = 60  # Closing window duration (60 seconds)
+    vote_closing_window_minutes: int = 1  # Closing window duration (1 minute)
     vote_minimum_threshold: int = 3  # Minimum votes to start timeout window
-    vote_minimum_window_seconds: int = 600  # Minimum vote window duration (10 minutes)
+    vote_minimum_window_minutes: int = 10  # Minimum vote window duration (10 minutes)
 
     # Phrase Validation
     use_phrase_validator_api: bool = True

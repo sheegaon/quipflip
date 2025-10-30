@@ -591,14 +591,14 @@ class VoteService:
             )
             logger.info(
                 f"Phraseset {phraseset.phraseset_id} reached {settings.vote_minimum_threshold} votes, "
-                f"{settings.vote_minimum_window_seconds}s window starts"
+                f"{settings.vote_minimum_window_minutes}min window starts"
             )
 
         # Mark closing threshold timestamp and change status to closing
         if phraseset.vote_count == settings.vote_closing_threshold and not phraseset.fifth_vote_at:
             phraseset.fifth_vote_at = datetime.now(UTC)
             phraseset.status = "closing"
-            phraseset.closes_at = datetime.now(UTC) + timedelta(seconds=settings.vote_closing_window_seconds)
+            phraseset.closes_at = datetime.now(UTC) + timedelta(minutes=settings.vote_closing_window_minutes)
             if prompt_round:
                 prompt_round.phraseset_status = "closing"
             await self.activity_service.record_activity(
@@ -611,7 +611,7 @@ class VoteService:
             )
             logger.info(
                 f"Phraseset {phraseset.phraseset_id} reached {settings.vote_closing_threshold} votes, "
-                f"{settings.vote_closing_window_seconds}sec closing window"
+                f"{settings.vote_closing_window_minutes}min closing window"
             )
 
         if auto_commit:
@@ -647,21 +647,21 @@ class VoteService:
         # Closing threshold+ votes and closing window elapsed
         elif phraseset.vote_count >= settings.vote_closing_threshold and phraseset.fifth_vote_at:
             elapsed = (current_time - ensure_utc(phraseset.fifth_vote_at)).total_seconds()
-            if elapsed >= settings.vote_closing_window_seconds:
+            if elapsed >= settings.vote_closing_window_minutes * 60:
                 should_finalize = True
                 logger.info(
                     f"{phraseset.phraseset_id=} 5th vote closing window expired "
-                    f"({elapsed=} >= {settings.vote_closing_window_seconds}s)"
+                    f"({elapsed=} >= {settings.vote_closing_window_minutes * 60}s)"
                 )
 
         # Minimum threshold votes and minimum window elapsed (no closing vote yet)
         elif phraseset.vote_count >= settings.vote_minimum_threshold and phraseset.third_vote_at:
             elapsed = (current_time - ensure_utc(phraseset.third_vote_at)).total_seconds()
-            if elapsed >= settings.vote_minimum_window_seconds:
+            if elapsed >= settings.vote_minimum_window_minutes * 60:
                 should_finalize = True
                 logger.info(
                     f"{phraseset.phraseset_id=} 3rd vote minimum window expired "
-                    f"({elapsed=} >= {settings.vote_minimum_window_seconds}s)"
+                    f"({elapsed=} >= {settings.vote_minimum_window_minutes * 60}s)"
                 )
 
         if should_finalize:

@@ -115,9 +115,9 @@ class GameConfigResponse(BaseModel):
     # Vote finalization thresholds
     vote_max_votes: int
     vote_closing_threshold: int
-    vote_closing_window_seconds: int
+    vote_closing_window_minutes: int
     vote_minimum_threshold: int
-    vote_minimum_window_seconds: int
+    vote_minimum_window_minutes: int
 
     # Phrase Validation
     phrase_min_words: int
@@ -133,6 +133,8 @@ class GameConfigResponse(BaseModel):
     ai_gemini_model: str
     ai_timeout_seconds: int
     ai_backup_delay_minutes: int
+    ai_backup_batch_size: int
+    ai_backup_sleep_seconds: int
 
 
 @router.get("/config", response_model=GameConfigResponse)
@@ -176,9 +178,9 @@ async def get_game_config(
         # Vote finalization
         vote_max_votes=config.get("vote_max_votes", 20),
         vote_closing_threshold=config.get("vote_closing_threshold", 5),
-        vote_closing_window_seconds=config.get("vote_closing_window_seconds", 60),
+        vote_closing_window_minutes=config.get("vote_closing_window_minutes", 1),
         vote_minimum_threshold=config.get("vote_minimum_threshold", 3),
-        vote_minimum_window_seconds=config.get("vote_minimum_window_seconds", 600),
+        vote_minimum_window_minutes=config.get("vote_minimum_window_minutes", 10),
 
         # Phrase Validation
         phrase_min_words=config.get("phrase_min_words", 2),
@@ -194,6 +196,8 @@ async def get_game_config(
         ai_gemini_model=config.get("ai_gemini_model", "gemini-2.5-flash-lite"),
         ai_timeout_seconds=config.get("ai_timeout_seconds", 30),
         ai_backup_delay_minutes=config.get("ai_backup_delay_minutes", 15),
+        ai_backup_batch_size=config.get("ai_backup_batch_size", 3),
+        ai_backup_sleep_seconds=config.get("ai_backup_sleep_seconds", 3600),
     )
 
 

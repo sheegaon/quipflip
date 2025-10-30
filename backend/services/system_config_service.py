@@ -140,12 +140,12 @@ class SystemConfigService:
             "min": 3,
             "max": 20,
         },
-        "vote_closing_window_seconds": {
+        "vote_closing_window_minutes": {
             "type": "int",
             "category": "timing",
             "description": "Time to get more votes before closing",
-            "min": 30,
-            "max": 300,
+            "min": 1,
+            "max": 10,
         },
         "vote_minimum_threshold": {
             "type": "int",
@@ -154,12 +154,12 @@ class SystemConfigService:
             "min": 2,
             "max": 10,
         },
-        "vote_minimum_window_seconds": {
+        "vote_minimum_window_minutes": {
             "type": "int",
             "category": "timing",
             "description": "Max time before auto-finalizing",
-            "min": 300,
-            "max": 3600,
+            "min": 5,
+            "max": 60,
         },
 
         # Phrase Validation
