@@ -21,6 +21,7 @@ from backend.models import (
     RefreshToken,
     Quest,
 )
+from backend.services.username_service import canonicalize_username
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +51,13 @@ class CleanupService:
 
     def __init__(self, db: AsyncSession):
         self.db = db
+
+    @staticmethod
+    def _has_recycled_suffix(username: str | None) -> bool:
+        """Return True if the username already carries a recycled suffix."""
+        if not username:
+            return False
+        return username.endswith(" X") or bool(re.search(r" X\d+$", username))
 
     # ===== Refresh Token Cleanup =====
 
@@ -413,7 +421,8 @@ class CleanupService:
     async def recycle_inactive_guest_usernames(self, days_old: int = 30) -> int:
         """
         Recycle usernames from guest accounts that haven't logged in for 30+ days
-        by appending " X" to username and "x" to username_canonical.
+        by appending " X" (and numeric suffixes if needed) while ensuring the
+        canonical username remains unique.
 
         This allows those usernames to be reused by new players.
 

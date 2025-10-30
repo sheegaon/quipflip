@@ -10,7 +10,6 @@ import EarningsChart from '../components/statistics/EarningsChart';
 import SpendingChart from '../components/statistics/SpendingChart';
 import FrequencyChart from '../components/statistics/FrequencyChart';
 import PerformanceRadar from '../components/statistics/PerformanceRadar';
-import TopContentTable from '../components/statistics/TopContentTable';
 import HistoricalTrendsChart from '../components/statistics/HistoricalTrendsChart';
 import { statisticsLogger } from '../utils/logger';
 
@@ -296,31 +295,6 @@ const Statistics: React.FC = () => {
           </div>
         </div>
 
-        {/* Top Content Tables */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          {/* Favorite Prompts */}
-          <div className="tile-card p-6">
-            <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Top Earning Prompts</h2>
-            <TopContentTable
-              items={data.favorite_prompts.map((prompt) => ({ text: prompt }))}
-              emptyMessage="No prompts yet. Start a prompt round to earn!"
-            />
-          </div>
-
-          {/* Best Performing Phrases */}
-          <div className="tile-card p-6">
-            <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Best Performing Phrases</h2>
-            <TopContentTable
-              items={data.best_performing_phrases.map((phrase) => ({
-                text: phrase.phrase,
-                votes: phrase.votes,
-                earnings: phrase.earnings,
-              }))}
-              emptyMessage="No phrases yet. Submit some phrases to see your best performers!"
-              showStats
-            />
-          </div>
-        </div>
       </div>
     </div>
   );
