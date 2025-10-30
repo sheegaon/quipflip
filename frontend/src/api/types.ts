@@ -13,6 +13,8 @@ export interface Player {
   outstanding_prompts: number;
   created_at: string;
   is_guest?: boolean;
+  locked_until?: string | null;
+  flag_dismissal_streak?: number;
 }
 
 export interface ChangePasswordResponse {
@@ -104,6 +106,40 @@ export interface ActiveRound {
   round_type: 'prompt' | 'copy' | 'vote' | null;
   expires_at: string | null;
   state: PromptState | CopyState | VoteState | null;
+}
+
+export interface FlagCopyRoundResponse {
+  flag_id: string;
+  refund_amount: number;
+  penalty_kept: number;
+  status: 'pending' | 'confirmed' | 'dismissed';
+  message: string;
+}
+
+export interface FlaggedPromptItem {
+  flag_id: string;
+  prompt_round_id: string;
+  copy_round_id: string | null;
+  reporter_player_id: string;
+  reporter_username: string;
+  prompt_player_id: string;
+  prompt_username: string;
+  reviewer_player_id: string | null;
+  reviewer_username: string | null;
+  status: 'pending' | 'confirmed' | 'dismissed';
+  original_phrase: string;
+  prompt_text: string | null;
+  round_cost: number;
+  partial_refund_amount: number;
+  penalty_kept: number;
+  queue_removed: boolean;
+  previous_phraseset_status: string | null;
+  created_at: string;
+  reviewed_at: string | null;
+}
+
+export interface FlaggedPromptListResponse {
+  flags: FlaggedPromptItem[];
 }
 
 export interface PendingResult {

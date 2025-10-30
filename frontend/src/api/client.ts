@@ -38,6 +38,9 @@ import type {
   AdminDeletePlayerResponse,
   CreateGuestResponse,
   UpgradeGuestResponse,
+  FlagCopyRoundResponse,
+  FlaggedPromptListResponse,
+  FlaggedPromptItem,
 } from './types';
 
 // Base URL - configure based on environment
@@ -455,6 +458,11 @@ export const apiClient = {
     return data;
   },
 
+  async flagCopyRound(roundId: string, signal?: AbortSignal): Promise<FlagCopyRoundResponse> {
+    const { data } = await api.post(`/rounds/${roundId}/flag`, {}, { signal });
+    return data;
+  },
+
   // Phraseset endpoints
   async submitVote(phrasesetId: string, phrase: string, signal?: AbortSignal): Promise<VoteResponse> {
     const { data } = await api.post(`/phrasesets/${phrasesetId}/vote`, { phrase }, { signal });
@@ -573,6 +581,27 @@ export const apiClient = {
       data: payload,
       signal,
     });
+    return data;
+  },
+
+  async getFlaggedPrompts(
+    status: 'pending' | 'confirmed' | 'dismissed' | 'all' = 'pending',
+    signal?: AbortSignal,
+  ): Promise<FlaggedPromptListResponse> {
+    const queryStatus = status === 'all' ? undefined : status;
+    const { data } = await api.get('/admin/flags', {
+      params: queryStatus ? { status: queryStatus } : undefined,
+      signal,
+    });
+    return data;
+  },
+
+  async resolveFlaggedPrompt(
+    flagId: string,
+    action: 'confirm' | 'dismiss',
+    signal?: AbortSignal,
+  ): Promise<FlaggedPromptItem> {
+    const { data } = await api.post(`/admin/flags/${flagId}/resolve`, { action }, { signal });
     return data;
   },
 

@@ -37,6 +37,7 @@ const Quests = lazy(() => import('./pages/Quests'));
 const Statistics = lazy(() => import('./pages/Statistics'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Admin = lazy(() => import('./pages/Admin'));
+const AdminFlagged = lazy(() => import('./pages/AdminFlagged'));
 
 // Protected Route wrapper
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -125,6 +126,10 @@ const AppRoutes: React.FC = () => {
         <Route
           path="/admin"
           element={renderProtectedRoute(<Admin />)}
+        />
+        <Route
+          path="/admin/flags"
+          element={renderProtectedRoute(<AdminFlagged />)}
         />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

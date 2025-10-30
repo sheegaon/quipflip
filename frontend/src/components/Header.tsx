@@ -19,7 +19,8 @@ export const Header: React.FC = () => {
   const location = useLocation();
 
   // Show back arrow on certain pages
-  const showBackArrow = location.pathname === '/statistics' || location.pathname === '/tracking' || location.pathname === '/quests' || location.pathname === '/results' || location.pathname === '/settings' || location.pathname === '/admin';
+  const isAdminRoute = location.pathname === '/admin' || location.pathname.startsWith('/admin/');
+  const showBackArrow = location.pathname === '/statistics' || location.pathname === '/tracking' || location.pathname === '/quests' || location.pathname === '/results' || location.pathname === '/settings' || isAdminRoute;
 
   // Determine where back arrow should navigate based on current page
   const getBackNavigation = () => {
@@ -28,6 +29,9 @@ export const Header: React.FC = () => {
     }
     if (location.pathname === '/admin') {
       return '/settings';
+    }
+    if (location.pathname.startsWith('/admin/')) {
+      return '/admin';
     }
     return '/dashboard';
   };

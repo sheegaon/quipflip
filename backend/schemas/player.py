@@ -21,6 +21,8 @@ class PlayerBalance(BaseSchema):
     created_at: datetime
     outstanding_prompts: int
     is_guest: bool = False
+    locked_until: Optional[datetime] = None
+    flag_dismissal_streak: int
 
 
 class ClaimDailyBonusResponse(BaseModel):

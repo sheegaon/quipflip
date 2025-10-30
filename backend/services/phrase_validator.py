@@ -2,8 +2,9 @@
 import os
 import re
 import logging
+import importlib.util
 from difflib import SequenceMatcher
-from typing import Set
+from typing import Set, Optional
 
 from backend.config import get_settings
 
@@ -21,15 +22,17 @@ def _parse_phrase(phrase: str) -> list[str]:
     return words
 
 
-def _load_dictionary() -> Set[str]:
-    """Load word list from file."""
+def _load_dictionary() -> Optional[Set[str]]:
+    """Load word list from file if available."""
     # Path relative to this file
     data_path = os.path.join(os.path.dirname(__file__), "../data/dictionary.txt")
 
     if not os.path.exists(data_path):
-        logger.error(f"Dictionary file not found at: {data_path}")
-        logger.error("Run: python scripts/download_dictionary.py")
-        raise FileNotFoundError(f"Dictionary file not found: {data_path}")
+        logger.warning(
+            "Dictionary file not found at %s; falling back to relaxed dictionary checks",
+            data_path,
+        )
+        return None
 
     with open(data_path, "r") as f:
         return {line.strip().upper() for line in f if line.strip()}
@@ -39,33 +42,45 @@ class LightweightSimilarityCalculator:
     """Lightweight similarity calculator using TF-IDF and string matching."""
     
     def __init__(self):
-        from sklearn.feature_extraction.text import TfidfVectorizer
+        self._tfidf_enabled = False
+        sklearn_spec = importlib.util.find_spec("sklearn")
+        if sklearn_spec is not None:
+            from sklearn.feature_extraction.text import TfidfVectorizer
 
-        self.vectorizer = TfidfVectorizer(
-            ngram_range=(1, 2),  # Use unigrams and bigrams
-            lowercase=True,
-            stop_words=None,  # Don't remove stop words for short phrases
-            max_features=1000   # Limit features for efficiency
-        )
+            self.vectorizer = TfidfVectorizer(
+                ngram_range=(1, 2),  # Use unigrams and bigrams
+                lowercase=True,
+                stop_words=None,  # Don't remove stop words for short phrases
+                max_features=1000   # Limit features for efficiency
+            )
+            self._tfidf_enabled = True
+        else:
+            self.vectorizer = None
+            logger.warning(
+                "scikit-learn not installed; falling back to string-based similarity only"
+            )
     
     def calculate_similarity(self, phrase1: str, phrase2: str) -> float:
         """
         Calculate similarity using a combination of TF-IDF cosine similarity,
         Jaccard similarity, and string similarity.
         """
-        from sklearn.metrics.pairwise import cosine_similarity
 
         try:
             # Normalize phrases
             phrase1 = phrase1.strip().lower()
             phrase2 = phrase2.strip().lower()
-            
+
             if phrase1 == phrase2:
                 return 1.0
-            
-            # TF-IDF cosine similarity
-            tfidf_matrix = self.vectorizer.fit_transform([phrase1, phrase2])
-            tfidf_similarity = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:2])[0][0]
+
+            if self._tfidf_enabled and self.vectorizer is not None:
+                from sklearn.metrics.pairwise import cosine_similarity
+
+                tfidf_matrix = self.vectorizer.fit_transform([phrase1, phrase2])
+                tfidf_similarity = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:2])[0][0]
+            else:
+                tfidf_similarity = 0.0
             
             # Jaccard similarity (word overlap)
             words1 = set(phrase1.split())
@@ -80,6 +95,8 @@ class LightweightSimilarityCalculator:
                 0.5 * tfidf_similarity +
                 0.3 * jaccard_similarity +
                 0.2 * string_similarity
+            ) if self._tfidf_enabled else (
+                0.6 * jaccard_similarity + 0.4 * string_similarity
             )
             
             logger.debug(f"Similarity between '{phrase1}' and '{phrase2}': {combined_similarity:.4f}")
@@ -107,8 +124,13 @@ class PhraseValidator:
     def __init__(self):
         self.settings = get_settings()
 
-        self.dictionary: Set[str] = _load_dictionary()
-        logger.info(f"Loaded dictionary with {len(self.dictionary)} words")
+        dictionary = _load_dictionary()
+        self.dictionary: Set[str] = dictionary or set()
+        self._dictionary_enforced = dictionary is not None
+        if self._dictionary_enforced:
+            logger.info(f"Loaded dictionary with {len(self.dictionary)} words")
+        else:
+            logger.warning("Dictionary unavailable; skipping strict dictionary validation")
 
         self._similarity_calculator = LightweightSimilarityCalculator()
         logger.info("Lightweight similarity calculator initialized")
@@ -185,7 +207,7 @@ class PhraseValidator:
                 return False, f"Each word must be at most {self.settings.phrase_max_char_per_word} characters"
 
             # Check dictionary
-            if word_upper not in self.dictionary:
+            if self._dictionary_enforced and word_upper not in self.dictionary:
                 return False, f"Word '{word}' not in dictionary"
 
         return True, ""

@@ -222,6 +222,9 @@ class PlayerService:
         Returns:
             (can_start, error_code)
         """
+        if player.locked_until and player.locked_until > datetime.now(UTC):
+            return False, "player_locked"
+
         # Check balance
         if player.balance < settings.prompt_cost:
             return False, "insufficient_balance"
@@ -240,6 +243,9 @@ class PlayerService:
     async def can_start_copy_round(self, player: Player) -> tuple[bool, str]:
         """Check if player can start copy round."""
         from backend.services.queue_service import QueueService
+
+        if player.locked_until and player.locked_until > datetime.now(UTC):
+            return False, "player_locked"
 
         # Check balance (need to check against current cost)
         copy_cost = QueueService.get_copy_cost()
@@ -264,6 +270,9 @@ class PlayerService:
     ) -> tuple[bool, str]:
         """Check if player can start vote round."""
         from backend.services.queue_service import QueueService
+
+        if player.locked_until and player.locked_until > datetime.now(UTC):
+            return False, "player_locked"
 
         # Check balance
         if player.balance < settings.vote_cost:
