@@ -345,7 +345,7 @@ async def test_phrase_validation(
 
         # Calculate prompt relevance score if prompt provided
         if request.prompt_text:
-            prompt_relevance_score = validator.calculate_similarity(
+            prompt_relevance_score = await validator.calculate_similarity(
                 phrase,
                 request.prompt_text
             )
@@ -356,7 +356,7 @@ async def test_phrase_validation(
             word_conflicts.append(error_message.split("'")[1])
 
     elif request.validation_type == "copy":
-        is_valid, error_message = validator.validate_copy(
+        is_valid, error_message = await validator.validate_copy(
             phrase,
             request.original_phrase or "",
             request.other_copy_phrase,
@@ -365,13 +365,13 @@ async def test_phrase_validation(
 
         # Calculate similarity scores
         if request.original_phrase:
-            similarity_to_original = validator.calculate_similarity(
+            similarity_to_original = await validator.calculate_similarity(
                 phrase,
                 request.original_phrase
             )
 
         if request.other_copy_phrase:
-            similarity_to_other_copy = validator.calculate_similarity(
+            similarity_to_other_copy = await validator.calculate_similarity(
                 phrase,
                 request.other_copy_phrase
             )
