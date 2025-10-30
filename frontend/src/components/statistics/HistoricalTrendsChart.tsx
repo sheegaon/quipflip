@@ -74,7 +74,7 @@ export default function HistoricalTrendsChart({ trends }: HistoricalTrendsChartP
       .sort((a, b) => a.timestamp - b.timestamp);
 
     return rawData.map((point, index) => {
-      let earningsPerDay = point.cumulativeEarnings;
+      let earningsPerDay = 0;
 
       if (index > 0) {
         const previous = rawData[index - 1];
