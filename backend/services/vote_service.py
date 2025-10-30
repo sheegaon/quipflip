@@ -871,12 +871,11 @@ class VoteService:
                 "voters": voter_lists[w],
             })
 
-        return {
+        results_payload = {
             "prompt_text": phraseset.prompt_text,
             "votes": votes_display,
             "your_phrase": phrase,
             "your_role": role,
-            "original_phrase": phraseset.original_phrase,
             "your_points": points,
             "total_points": total_points,
             "your_payout": result_view.payout_amount,
@@ -885,3 +884,8 @@ class VoteService:
             "already_collected": result_view.result_viewed,  # Add the missing field
             "finalized_at": phraseset.finalized_at,
         }
+
+        if role == "copy":
+            results_payload["original_phrase"] = phraseset.original_phrase
+
+        return results_payload

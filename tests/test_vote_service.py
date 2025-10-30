@@ -414,3 +414,77 @@ class TestVoteBalanceAccounting:
         # Pool should grow by vote_cost * 5 (no payouts for wrong answers)
         expected_pool = initial_pool + (settings.vote_cost * 5)
         assert phraseset.total_pool == expected_pool
+
+
+class TestPhrasesetResults:
+    """Tests for contributor results payloads."""
+
+    @pytest.mark.asyncio
+    async def test_copy_role_includes_original_phrase(self, db_session, test_phraseset_with_players):
+        """Copy contributors should receive the original phrase in results."""
+        phraseset = test_phraseset_with_players["phraseset"]
+        copier = test_phraseset_with_players["copier1"]
+        voter = test_phraseset_with_players["voter"]
+
+        phraseset.status = "finalized"
+        phraseset.finalized_at = datetime.now(UTC)
+        phraseset.vote_count = 1
+        await db_session.flush()
+
+        vote = Vote(
+            vote_id=uuid.uuid4(),
+            phraseset_id=phraseset.phraseset_id,
+            player_id=voter.player_id,
+            voted_phrase=phraseset.copy_phrase_1,
+            correct=False,
+            payout=0,
+        )
+        db_session.add(vote)
+        await db_session.commit()
+
+        vote_service = VoteService(db_session)
+        transaction_service = TransactionService(db_session)
+
+        results = await vote_service.get_phraseset_results(
+            phraseset.phraseset_id,
+            copier.player_id,
+            transaction_service,
+        )
+
+        assert results["your_role"] == "copy"
+        assert results["original_phrase"] == phraseset.original_phrase
+
+    @pytest.mark.asyncio
+    async def test_prompt_role_omits_original_phrase(self, db_session, test_phraseset_with_players):
+        """Prompt contributors should not receive the redundant original phrase."""
+        phraseset = test_phraseset_with_players["phraseset"]
+        prompter = test_phraseset_with_players["prompter"]
+        voter = test_phraseset_with_players["voter"]
+
+        phraseset.status = "finalized"
+        phraseset.finalized_at = datetime.now(UTC)
+        phraseset.vote_count = 1
+        await db_session.flush()
+
+        vote = Vote(
+            vote_id=uuid.uuid4(),
+            phraseset_id=phraseset.phraseset_id,
+            player_id=voter.player_id,
+            voted_phrase=phraseset.copy_phrase_1,
+            correct=False,
+            payout=0,
+        )
+        db_session.add(vote)
+        await db_session.commit()
+
+        vote_service = VoteService(db_session)
+        transaction_service = TransactionService(db_session)
+
+        results = await vote_service.get_phraseset_results(
+            phraseset.phraseset_id,
+            prompter.player_id,
+            transaction_service,
+        )
+
+        assert results["your_role"] == "prompt"
+        assert "original_phrase" not in results
