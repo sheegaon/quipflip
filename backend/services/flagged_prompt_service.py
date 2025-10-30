@@ -128,7 +128,7 @@ class FlaggedPromptService:
             flag.status = "dismissed"
 
             if reporter:
-                reporter.flag_dismissal_streak = (reporter.flag_dismissal_streak or 0) + 1
+                reporter.flag_dismissal_streak = reporter.flag_dismissal_streak + 1
                 if reporter.flag_dismissal_streak >= 5:
                     lock_until = now + timedelta(hours=24)
                     if reporter.locked_until and reporter.locked_until > now:
@@ -162,35 +162,12 @@ class FlaggedPromptService:
         if prompt_owner:
             dashboard_cache.invalidate_player_data(prompt_owner.player_id)
 
-        reviewer_alias = aliased(Player)
-        reporter_alias = aliased(Player)
-        prompt_alias = aliased(Player)
+        reporter_username = reporter.username if reporter else "Unknown Reporter"
+        prompt_username = prompt_owner.username if prompt_owner else "Unknown Player"
+        reviewer_username = admin.username
 
-        query = (
-            select(
-                FlaggedPrompt,
-                reporter_alias.username,
-                prompt_alias.username,
-                reviewer_alias.username,
-            )
-            .join(reporter_alias, FlaggedPrompt.reporter_player_id == reporter_alias.player_id)
-            .join(prompt_alias, FlaggedPrompt.prompt_player_id == prompt_alias.player_id)
-            .join(
-                reviewer_alias,
-                FlaggedPrompt.reviewer_player_id == reviewer_alias.player_id,
-                isouter=True,
-            )
-            .where(FlaggedPrompt.flag_id == flag.flag_id)
-        )
-
-        result = await self.db.execute(query)
-        record = result.first()
-        if not record:
-            return None
-
-        resolved_flag, reporter_username, prompt_username, reviewer_username = record
         return FlaggedPromptRecord(
-            flag=resolved_flag,
+            flag=flag,
             reporter_username=reporter_username,
             prompt_username=prompt_username,
             reviewer_username=reviewer_username,
