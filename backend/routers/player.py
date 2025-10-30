@@ -508,6 +508,7 @@ async def get_dashboard_data(
 
     can_prompt, _ = await player_service.can_start_prompt_round(player)
     can_copy, _ = await player_service.can_start_copy_round(player)
+    await player_service.refresh_vote_lockout_state(player)
     can_vote, _ = await player_service.can_start_vote_round(
         player,
         vote_service,

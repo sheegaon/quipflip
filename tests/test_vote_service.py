@@ -8,6 +8,8 @@ import pytest
 from datetime import datetime, timedelta, UTC
 import uuid
 
+from sqlalchemy import delete
+
 from backend.models.player import Player
 from backend.models.round import Round
 from backend.models.phraseset import Phraseset
@@ -488,3 +490,87 @@ class TestPhrasesetResults:
 
         assert results["your_role"] == "prompt"
         assert "original_phrase" not in results
+
+
+class TestGuestVoteLockoutFlow:
+    """Validate guest-specific vote tracking within VoteService.submit_vote."""
+
+    @pytest.mark.asyncio
+    async def test_guest_vote_lockout_progression(self, db_session, test_phraseset_with_players):
+        """Guest votes should increment, reset, and lock out according to settings."""
+
+        phraseset_id = test_phraseset_with_players["phraseset"].phraseset_id
+        guest_id = test_phraseset_with_players["voter"].player_id
+
+        # Mark voter as guest and ensure clean slate
+        guest = await db_session.get(Player, guest_id)
+        guest.is_guest = True
+        guest.consecutive_incorrect_votes = 0
+        guest.vote_lockout_until = None
+        await db_session.commit()
+
+        phraseset = await db_session.get(Phraseset, phraseset_id)
+        incorrect_phrases = [phraseset.copy_phrase_1, phraseset.copy_phrase_2]
+        original_phrase = phraseset.original_phrase
+
+        vote_service = VoteService(db_session)
+        transaction_service = TransactionService(db_session)
+
+        async def submit_guest_vote(phrase: str) -> Player:
+            current_player = await db_session.get(Player, guest_id)
+            phraseset_obj = await db_session.get(Phraseset, phraseset_id)
+
+            vote_round = Round(
+                round_id=uuid.uuid4(),
+                player_id=current_player.player_id,
+                round_type="vote",
+                status="active",
+                phraseset_id=phraseset_obj.phraseset_id,
+                prompt_round_id=phraseset_obj.prompt_round_id,
+                cost=settings.vote_cost,
+                expires_at=datetime.now(UTC) + timedelta(minutes=5),
+            )
+            current_player.active_round_id = vote_round.round_id
+            db_session.add(vote_round)
+            await db_session.flush()
+
+            vote = await vote_service.submit_vote(
+                vote_round,
+                phraseset_obj,
+                phrase,
+                current_player,
+                transaction_service,
+            )
+
+            await db_session.execute(delete(Vote).where(Vote.vote_id == vote.vote_id))
+            await db_session.commit()
+
+            return await db_session.get(Player, guest_id)
+
+        # Incorrect votes should increment the counter
+        guest = await submit_guest_vote(incorrect_phrases[0])
+        assert guest.consecutive_incorrect_votes == 1
+        assert guest.vote_lockout_until is None
+
+        guest = await submit_guest_vote(incorrect_phrases[1])
+        assert guest.consecutive_incorrect_votes == 2
+        assert guest.vote_lockout_until is None
+
+        # Correct vote resets the counter
+        guest = await submit_guest_vote(original_phrase)
+        assert guest.consecutive_incorrect_votes == 0
+        assert guest.vote_lockout_until is None
+
+        # Reach configured threshold again to trigger lockout
+        for attempt in range(settings.guest_vote_lockout_threshold):
+            phrase = incorrect_phrases[attempt % len(incorrect_phrases)]
+            guest = await submit_guest_vote(phrase)
+
+        assert guest.consecutive_incorrect_votes == settings.guest_vote_lockout_threshold
+        assert guest.vote_lockout_until is not None
+
+        expected_duration = timedelta(hours=settings.guest_vote_lockout_hours)
+        tolerance = timedelta(seconds=5)
+        remaining = guest.vote_lockout_until - datetime.now(UTC)
+        assert remaining <= expected_duration
+        assert remaining >= max(expected_duration - tolerance, timedelta(0))
