@@ -364,7 +364,7 @@ const Settings: React.FC = () => {
 
         {/* Upgrade Guest Account */}
         {player.is_guest && (
-          <div className="tile-card p-6 mb-6 bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-300">
+          <div className="tile-card p-6 mb-6 bg-gradient-to-br from-orange-50 to-cyan-50 border-2 border-quip-orange">
             <h2 className="text-2xl font-display font-bold text-quip-navy mb-4">
               Upgrade Your Guest Account
             </h2>

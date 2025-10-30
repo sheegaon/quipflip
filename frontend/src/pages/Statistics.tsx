@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useResults } from '../contexts/ResultsContext';
+import { useGame } from '../contexts/GameContext';
 import { extractErrorMessage } from '../api/client';
 import type { HistoricalTrendPoint, PlayerStatistics } from '../api/types';
 import { Header } from '../components/Header';
@@ -17,6 +18,8 @@ const Statistics: React.FC = () => {
   const navigate = useNavigate();
   const { actions } = useResults();
   const { getStatistics } = actions;
+  const { state } = useGame();
+  const { player } = state;
   const [data, setData] = useState<PlayerStatistics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -151,6 +154,37 @@ const Statistics: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Guest Upgrade Card */}
+        {player?.is_guest && (
+          <div className="tile-card p-6 mb-6 bg-gradient-to-br from-orange-50 to-cyan-50 border-2 border-quip-orange">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="flex-1">
+                <h2 className="text-2xl font-display font-bold text-quip-navy mb-2">
+                  Upgrade Your Account
+                </h2>
+                <p className="text-quip-navy mb-3">
+                  You're using a guest account. Upgrade to a full account to:
+                </p>
+                <ul className="list-disc list-inside text-quip-navy text-sm space-y-1 mb-3">
+                  <li>Save your progress permanently</li>
+                  <li>Access your account from any device</li>
+                  <li>Never lose your stats and Flipcoins</li>
+                  <li>Get higher rate limits for smoother gameplay</li>
+                </ul>
+              </div>
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={() => navigate('/settings')}
+                  className="bg-gradient-to-r from-quip-orange to-quip-turquoise hover:from-quip-orange-deep hover:to-quip-teal text-white font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm whitespace-nowrap"
+                >
+                  Upgrade Now
+                </button>
+                <p className="text-xs text-center text-gray-600">Quick & Easy</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Charts Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">

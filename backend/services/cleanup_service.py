@@ -355,6 +355,61 @@ class CleanupService:
             logger.debug("No records deleted for player %s", player_id)
         return deletion_counts
 
+    # ===== Inactive Guest Player Cleanup =====
+
+    async def cleanup_inactive_guest_players(self, days_old: int = 7) -> int:
+        """
+        Remove guest accounts that:
+        1. Have is_guest=True
+        2. Were created more than days_old days ago
+        3. Have not played any rounds (no rounds associated with their player_id)
+
+        Args:
+            days_old: Delete guests older than this many days (default: 7)
+
+        Returns:
+            Number of inactive guest players deleted
+        """
+        cutoff_date = datetime.now(UTC) - timedelta(days=days_old)
+
+        # Find inactive guests
+        stmt = select(Player).where(
+            Player.is_guest == True,  # noqa: E712
+            Player.created_at < cutoff_date
+        )
+        result = await self.db.execute(stmt)
+        all_old_guests = result.scalars().all()
+
+        if not all_old_guests:
+            logger.debug("No old guest players found")
+            return 0
+
+        # Filter to those with no rounds
+        inactive_guest_ids = []
+        for guest in all_old_guests:
+            # Check if player has any rounds
+            rounds_stmt = select(Round).where(Round.player_id == guest.player_id).limit(1)
+            rounds_result = await self.db.execute(rounds_stmt)
+            has_rounds = rounds_result.scalar_one_or_none() is not None
+
+            if not has_rounds:
+                inactive_guest_ids.append(guest.player_id)
+
+        if not inactive_guest_ids:
+            logger.debug(f"Found {len(all_old_guests)} old guest(s), but all have played rounds")
+            return 0
+
+        logger.info(f"Found {len(inactive_guest_ids)} inactive guest player(s) to clean up (>{days_old} days old, no rounds)")
+
+        # Delete inactive guests and their related data
+        deletion_counts = await self._delete_players_by_ids(inactive_guest_ids)
+
+        deleted_count = deletion_counts.get('players', 0)
+        if deleted_count > 0:
+            logger.info(f"Cleaned up {deleted_count} inactive guest player(s)")
+
+        return deleted_count
+
     # ===== Run All Cleanup Tasks =====
 
     async def run_all_cleanup_tasks(self) -> dict[str, int]:
@@ -375,6 +430,7 @@ class CleanupService:
             "expired_tokens": await self.cleanup_expired_refresh_tokens(),
             "old_revoked_tokens": await self.cleanup_old_revoked_tokens(),
             "orphaned_rounds": await self.cleanup_orphaned_rounds(),
+            "inactive_guests": await self.cleanup_inactive_guest_players(),
         }
 
         test_player_results = await self.cleanup_test_players()

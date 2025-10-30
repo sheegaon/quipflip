@@ -123,6 +123,13 @@ export const Landing: React.FC = () => {
       // Show guest credentials to user
       setGuestCredentials({ email: response.email, password: response.password });
 
+      // Store guest credentials temporarily for tutorial display
+      localStorage.setItem('quipflip_guest_credentials', JSON.stringify({
+        email: response.email,
+        password: response.password,
+        timestamp: Date.now()
+      }));
+
       startSession(response.username, response);
       navigate('/dashboard');
     } catch (err) {
