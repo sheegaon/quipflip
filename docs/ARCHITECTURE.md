@@ -50,10 +50,10 @@ JWT authentication with short-lived access tokens and 30-day refresh tokens. See
 - **Deferred Collection**: Prizes are claimed the first time contributors view results (tracked via `result_views`)
 - **Results Content**:
   - For contributors: All votes shown, reveal which phrase was original, points earned, payout amount
-  - For voters: Correct answer revealed immediately after vote submission, 5f credited if correct. Show voters vote tally thus far and add to status area so players can check back to see final vote tally.
+  - For voters: Correct answer revealed immediately after vote submission, payout equals the configured `vote_payout_correct` amount if correct. Show voters vote tally thus far and add to status area so players can check back to see final vote tally.
 
 ### Result Timing
-- **For Voters**: Immediate feedback after vote submission (correct/incorrect, original phrase revealed, 5f payout if correct)
+- **For Voters**: Immediate feedback after vote submission (correct/incorrect, original phrase revealed, payout if correct equal to configured `vote_payout_correct`)
 - **For Contributors**: Results available immediately after voting period closes
 - **Prize Collection**: Requires viewing results screen to credit account
 

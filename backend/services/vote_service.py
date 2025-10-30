@@ -3,7 +3,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from datetime import datetime, UTC, timedelta
-from backend.utils.exceptions import NoPhrasesetsAvailableError,  AlreadyVotedError, RoundExpiredError
+from backend.utils.exceptions import (
+    NoPhrasesetsAvailableError,
+    AlreadyVotedError,
+    RoundExpiredError,
+    InvalidPhraseError,
+    SelfVotingError,
+)
 from backend.utils.datetime_helpers import ensure_utc
 from uuid import UUID
 import uuid
@@ -297,6 +303,27 @@ class VoteService:
             ValueError: If phrase is not valid
             AlreadyVotedError: If player already voted on this phraseset
         """
+        # Prevent self-voting (load contributor IDs lazily)
+        contributor_ids: set[UUID] = set()
+        for round_id in [
+            phraseset.prompt_round_id,
+            phraseset.copy_round_1_id,
+            phraseset.copy_round_2_id,
+        ]:
+            if not round_id:
+                continue
+            round_obj = await self.db.get(Round, round_id)
+            if round_obj:
+                contributor_ids.add(round_obj.player_id)
+
+        if player.player_id in contributor_ids:
+            logger.error(
+                "Player %s attempted system vote on their own phraseset %s",
+                player.player_id,
+                phraseset.phraseset_id,
+            )
+            raise SelfVotingError("Cannot vote on phraseset you contributed to")
+
         # Normalize phrase
         phrase = chosen_phrase.strip().upper()
 
@@ -307,7 +334,7 @@ class VoteService:
             phraseset.copy_phrase_2,
         }
         if phrase not in valid_phrases:
-            raise ValueError(f"Phrase must be one of: {', '.join(valid_phrases)}")
+            raise InvalidPhraseError(f"Phrase must be one of: {', '.join(sorted(valid_phrases))}")
 
         # Check if already voted
         existing = await self.db.execute(
@@ -321,6 +348,14 @@ class VoteService:
         # Determine if correct
         correct = phrase == phraseset.original_phrase
         payout = settings.vote_payout_correct if correct else 0
+
+        # Charge vote cost up-front
+        await transaction_service.create_transaction(
+            player.player_id,
+            -settings.vote_cost,
+            "vote_entry",
+            auto_commit=False,
+        )
 
         # Create vote
         vote = Vote(
@@ -870,19 +905,25 @@ class VoteService:
             username = vote.player.username if vote.player else "Unknown Player"
             voter_lists[vote.voted_phrase].append(username)
 
-        # Calculate points
+        # Calculate points based on configured multipliers
+        correct_multiplier = settings.correct_vote_points
+        incorrect_multiplier = settings.incorrect_vote_points
+
         points = 0
         if phrase == phraseset.original_phrase:
-            points = vote_counts[phrase] * 1
+            points = vote_counts[phrase] * correct_multiplier
         else:
-            points = vote_counts[phrase] * 2
+            points = vote_counts[phrase] * incorrect_multiplier
 
         # Build response
         votes_display = []
         total_points = 0
+        total_votes = 0
         for w in [phraseset.original_phrase, phraseset.copy_phrase_1, phraseset.copy_phrase_2]:
             is_original = w == phraseset.original_phrase
-            phrase_points = vote_counts[w] * (1 if is_original else 2)
+            multiplier = correct_multiplier if is_original else incorrect_multiplier
+            phrase_points = vote_counts[w] * multiplier
+            total_votes += vote_counts[w]
             total_points += phrase_points
             votes_display.append({
                 "phrase": w,
@@ -890,6 +931,9 @@ class VoteService:
                 "is_original": is_original,
                 "voters": voter_lists[w],
             })
+
+        correct_vote_count = vote_counts[phraseset.original_phrase]
+        incorrect_vote_count = total_votes - correct_vote_count
 
         results_payload = {
             "prompt_text": phraseset.prompt_text,
@@ -900,9 +944,17 @@ class VoteService:
             "total_points": total_points,
             "your_payout": result_view.payout_amount,
             "total_pool": phraseset.total_pool,
-            "total_votes": phraseset.vote_count,
+            "total_votes": total_votes,
             "already_collected": result_view.result_viewed,  # Add the missing field
             "finalized_at": phraseset.finalized_at,
+            "correct_vote_count": correct_vote_count,
+            "incorrect_vote_count": incorrect_vote_count,
+            "correct_vote_points": correct_multiplier,
+            "incorrect_vote_points": incorrect_multiplier,
+            "prize_pool_base": settings.prize_pool_base,
+            "vote_cost": settings.vote_cost,
+            "vote_payout_correct": settings.vote_payout_correct,
+            "system_contribution": phraseset.system_contribution,
         }
 
         if role == "copy":

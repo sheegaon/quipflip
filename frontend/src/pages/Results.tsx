@@ -90,24 +90,83 @@ export const Results: React.FC = () => {
       };
     }
 
-    const formattedPool = `${results.total_pool.toLocaleString()} FC`;
-    const totalPoints = `${results.total_points.toLocaleString()} pts`;
+    const {
+      correct_vote_count,
+      incorrect_vote_count,
+      correct_vote_points,
+      incorrect_vote_points,
+      total_points,
+      total_pool,
+      your_points,
+      your_payout,
+      prize_pool_base,
+      vote_cost,
+      vote_payout_correct,
+      system_contribution,
+    } = results;
 
-    if (results.total_points === 0) {
-      return {
-        poolShareText: `Final prize pool: ${formattedPool}`,
-        totalPointsLabel: 'Total points: 0 (prize pool split evenly)',
-        breakdownLine: `Earnings: ${results.your_payout.toLocaleString()} FC`,
-      };
+    const formatPointsTerm = (
+      count: number,
+      pointsPerVote: number,
+      descriptor: 'correct' | 'incorrect',
+    ) => {
+      const voteWord = count === 1 ? 'vote' : 'votes';
+      const pointSuffix = pointsPerVote === 1 ? 'pt' : 'pts';
+      return `${count.toLocaleString()} ${descriptor} ${voteWord} × ${pointsPerVote.toLocaleString()} ${pointSuffix}`;
+    };
+
+
+    const pointsBreakdownBase = `${formatPointsTerm(correct_vote_count, correct_vote_points, 'correct')} + ${formatPointsTerm(incorrect_vote_count, incorrect_vote_points, 'incorrect')} = ${total_points.toLocaleString()} total pts`;
+
+    const pointsBreakdown =
+      total_points === 0
+        ? `${pointsBreakdownBase} (prize pool split evenly)`
+        : pointsBreakdownBase;
+
+    const poolTerms: string[] = [];
+    poolTerms.push(`${prize_pool_base.toLocaleString()} FC base`);
+
+    if (system_contribution !== 0) {
+      const systemSign = system_contribution > 0 ? '+' : '-';
+      poolTerms.push(
+        `${systemSign} ${Math.abs(system_contribution).toLocaleString()} FC system contribution`,
+      );
     }
 
-    const ratio = `${results.your_points.toLocaleString()} / ${results.total_points.toLocaleString()}`;
-    const earningsLine = `${results.total_pool.toLocaleString()} FC × (${ratio}) = ${results.your_payout.toLocaleString()} FC`;
+    const formatContributionTerm = (
+      count: number,
+      perVoteEffect: number,
+      descriptor: 'correct' | 'incorrect',
+    ) => {
+      const voteWord = count === 1 ? 'vote' : 'votes';
+      const magnitude = Math.abs(perVoteEffect).toLocaleString();
+      if (count === 0 || perVoteEffect === 0) {
+        return `+ ${count.toLocaleString()} ${descriptor} ${voteWord} x ${magnitude} FC`;
+      }
+      const sign = perVoteEffect < 0 ? '-' : '+';
+      return `${sign} ${count.toLocaleString()} ${descriptor} ${voteWord} x ${magnitude} FC`;
+    };
+
+    const correctPerVoteEffect = vote_cost - vote_payout_correct;
+    const incorrectPerVoteEffect = vote_cost;
+
+    poolTerms.push(formatContributionTerm(correct_vote_count, correctPerVoteEffect, 'correct'));
+    poolTerms.push(formatContributionTerm(incorrect_vote_count, incorrectPerVoteEffect, 'incorrect'));
+
+    const poolBreakdown = `${poolTerms.join(' ')} = ${total_pool.toLocaleString()} FC`;
+
+    let earningsLine: string;
+    if (total_points === 0) {
+      earningsLine = `Earnings: ${your_payout.toLocaleString()} FC (split evenly)`;
+    } else {
+      const ratio = `${your_points.toLocaleString()} / ${total_points.toLocaleString()}`;
+      earningsLine = `Earnings: ${total_pool.toLocaleString()} FC x (${ratio}) = ${your_payout.toLocaleString()} FC`;
+    }
 
     return {
-      poolShareText: `Final prize pool: ${formattedPool}`,
-      totalPointsLabel: `Total points: ${totalPoints}`,
-      breakdownLine: `Earnings: ${earningsLine}`,
+      poolShareText: poolBreakdown,
+      totalPointsLabel: pointsBreakdown,
+      breakdownLine: earningsLine,
     };
   }, [results]);
 
