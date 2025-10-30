@@ -133,7 +133,10 @@ async def enforce_guest_creation_rate_limit(
         client_ip = x_real_ip.strip()
 
     if not client_ip:
-        # If no IP headers, allow the request (localhost development)
+        if settings.environment == "production":
+            logger.error("Could not determine client IP for guest creation rate limit. Check proxy headers.")
+            raise HTTPException(status_code=500, detail="Server configuration error.")
+        # Allow for local development if no IP headers are present.
         return
 
     await _enforce_rate_limit("guest_creation", client_ip, GUEST_CREATION_RATE_LIMIT)
