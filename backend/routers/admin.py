@@ -319,30 +319,7 @@ async def list_flagged_prompts(
     service = FlaggedPromptService(session)
     records = await service.list_flags(normalized_status)
 
-    flags = [
-        FlaggedPromptItem(
-            flag_id=record.flag.flag_id,
-            prompt_round_id=record.flag.prompt_round_id,
-            copy_round_id=record.flag.copy_round_id,
-            reporter_player_id=record.flag.reporter_player_id,
-            reporter_username=record.reporter_username,
-            prompt_player_id=record.flag.prompt_player_id,
-            prompt_username=record.prompt_username,
-            reviewer_player_id=record.flag.reviewer_player_id,
-            reviewer_username=record.reviewer_username,
-            status=record.flag.status,
-            original_phrase=record.flag.original_phrase,
-            prompt_text=record.flag.prompt_text,
-            round_cost=record.flag.round_cost,
-            partial_refund_amount=record.flag.partial_refund_amount,
-            penalty_kept=record.flag.penalty_kept,
-            queue_removed=record.flag.queue_removed,
-            previous_phraseset_status=record.flag.previous_phraseset_status,
-            created_at=record.flag.created_at,
-            reviewed_at=record.flag.reviewed_at,
-        )
-        for record in records
-    ]
+    flags = [FlaggedPromptItem.from_record(record) for record in records]
 
     return FlaggedPromptListResponse(flags=flags)
 
@@ -373,28 +350,7 @@ async def resolve_flagged_prompt(
     if not record:
         raise HTTPException(status_code=404, detail="flag_not_found")
 
-    flag = record.flag
-    return FlaggedPromptItem(
-        flag_id=flag.flag_id,
-        prompt_round_id=flag.prompt_round_id,
-        copy_round_id=flag.copy_round_id,
-        reporter_player_id=flag.reporter_player_id,
-        reporter_username=record.reporter_username,
-        prompt_player_id=flag.prompt_player_id,
-        prompt_username=record.prompt_username,
-        reviewer_player_id=flag.reviewer_player_id,
-        reviewer_username=record.reviewer_username,
-        status=flag.status,
-        original_phrase=flag.original_phrase,
-        prompt_text=flag.prompt_text,
-        round_cost=flag.round_cost,
-        partial_refund_amount=flag.partial_refund_amount,
-        penalty_kept=flag.penalty_kept,
-        queue_removed=flag.queue_removed,
-        previous_phraseset_status=flag.previous_phraseset_status,
-        created_at=flag.created_at,
-        reviewed_at=flag.reviewed_at,
-    )
+    return FlaggedPromptItem.from_record(record)
 
 
 @router.post("/test-phrase-validation", response_model=TestPhraseValidationResponse)
