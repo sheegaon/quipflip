@@ -34,6 +34,10 @@ class Player(Base):
     locked_until = Column(DateTime(timezone=True), nullable=True)
     flag_dismissal_streak = Column(Integer, default=0, nullable=False)
 
+    # Guest vote lockout tracking
+    consecutive_incorrect_votes = Column(Integer, default=0, nullable=False)
+    vote_lockout_until = Column(DateTime(timezone=True), nullable=True)
+
     # Tutorial tracking
     tutorial_completed = Column(Boolean, default=False, nullable=False)
     tutorial_progress = Column(String(20), default='not_started', nullable=False)

@@ -346,3 +346,265 @@ class TestGuestCleanup:
             )
             player = result.scalar_one_or_none()
             assert player is not None
+
+
+class TestUsernameRecycling:
+    """Test username recycling for inactive guest accounts."""
+
+    async def test_recycle_inactive_guest_usernames(self, test_app, db_session):
+        """Test that inactive guest usernames are recycled after 30+ days."""
+        from backend.services.cleanup_service import CleanupService
+        from datetime import timedelta, UTC, datetime
+        from uuid import UUID
+        from sqlalchemy import select, update
+
+        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+            # Create a guest account
+            create_response = await client.post("/player/guest")
+            assert create_response.status_code == status.HTTP_201_CREATED
+            guest_data = create_response.json()
+            guest_id = guest_data["player_id"]
+
+            # Get original username and canonical_username
+            result = await db_session.execute(
+                select(Player).where(Player.player_id == UUID(guest_id))
+            )
+            player = result.scalar_one()
+            original_username = player.username
+            original_canonical = player.username_canonical
+
+            # Artificially age the last login date (31 days ago)
+            old_login_date = datetime.now(UTC) - timedelta(days=31)
+            await db_session.execute(
+                update(Player)
+                .where(Player.player_id == UUID(guest_id))
+                .values(last_login_date=old_login_date)
+            )
+            await db_session.commit()
+            db_session.expire_all()
+
+            # Run username recycling
+            cleanup_service = CleanupService(db_session)
+            recycled_count = await cleanup_service.recycle_inactive_guest_usernames(days_old=30)
+
+            # Verify count
+            assert recycled_count == 1
+
+            # Verify username was modified
+            result = await db_session.execute(
+                select(Player).where(Player.player_id == UUID(guest_id))
+            )
+            player = result.scalar_one()
+            assert player.username == original_username + " X"
+            assert player.username_canonical == original_canonical + "x"
+
+    async def test_recycle_handles_canonical_conflicts(self, test_app, db_session):
+        """Test recycling retries when canonical username conflicts exist."""
+        from backend.services.cleanup_service import CleanupService
+        from datetime import timedelta, UTC, datetime
+        from uuid import UUID
+        from sqlalchemy import select, update
+
+        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+            # Create the guest account we will recycle
+            guest_response = await client.post("/player/guest")
+            assert guest_response.status_code == status.HTTP_201_CREATED
+            guest_data = guest_response.json()
+            guest_id = guest_data["player_id"]
+
+            # Normalize the guest username to a predictable value
+            await db_session.execute(
+                update(Player)
+                .where(Player.player_id == UUID(guest_id))
+                .values(username="Foo", username_canonical="foo")
+            )
+
+            # Age the guest login so it qualifies for recycling
+            old_login_date = datetime.now(UTC) - timedelta(days=31)
+            await db_session.execute(
+                update(Player)
+                .where(Player.player_id == UUID(guest_id))
+                .values(last_login_date=old_login_date)
+            )
+
+            # Create another player whose canonical username would conflict with the recycled form
+            create_response = await client.post(
+                "/player",
+                json={
+                    "username": "Foox",
+                    "email": "foox_conflict@example.com",
+                    "password": "StrongPass123",
+                },
+            )
+            assert create_response.status_code == status.HTTP_201_CREATED
+
+            conflict_player = create_response.json()
+            conflict_player_id = conflict_player["player_id"]
+
+            await db_session.execute(
+                update(Player)
+                .where(Player.player_id == UUID(conflict_player_id))
+                .values(username="Foox", username_canonical="foox")
+            )
+
+            await db_session.commit()
+            db_session.expire_all()
+
+            cleanup_service = CleanupService(db_session)
+            recycled_count = await cleanup_service.recycle_inactive_guest_usernames(days_old=30)
+
+            assert recycled_count == 1
+
+            result = await db_session.execute(
+                select(Player).where(Player.player_id == UUID(guest_id))
+            )
+            player = result.scalar_one()
+            assert player.username == "Foo X2"
+            assert player.username_canonical == "foox2"
+
+    async def test_username_recycling_does_not_affect_recent_logins(self, test_app, db_session):
+        """Test that guests who logged in recently are not recycled."""
+        from backend.services.cleanup_service import CleanupService
+        from datetime import timedelta, UTC, datetime
+        from uuid import UUID
+        from sqlalchemy import select, update
+
+        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+            # Create a guest account
+            create_response = await client.post("/player/guest")
+            assert create_response.status_code == status.HTTP_201_CREATED
+            guest_data = create_response.json()
+            guest_id = guest_data["player_id"]
+
+            # Get original username
+            result = await db_session.execute(
+                select(Player).where(Player.player_id == UUID(guest_id))
+            )
+            player = result.scalar_one()
+            original_username = player.username
+
+            # Set last login to 25 days ago (less than 30)
+            recent_login_date = datetime.now(UTC) - timedelta(days=25)
+            await db_session.execute(
+                update(Player)
+                .where(Player.player_id == UUID(guest_id))
+                .values(last_login_date=recent_login_date)
+            )
+            await db_session.commit()
+            db_session.expire_all()
+
+            # Run username recycling
+            cleanup_service = CleanupService(db_session)
+            recycled_count = await cleanup_service.recycle_inactive_guest_usernames(days_old=30)
+
+            # Verify no recycling occurred
+            assert recycled_count == 0
+
+            # Verify username unchanged
+            result = await db_session.execute(
+                select(Player).where(Player.player_id == UUID(guest_id))
+            )
+            player = result.scalar_one()
+            assert player.username == original_username
+
+    async def test_username_recycling_does_not_affect_upgraded_accounts(self, test_app, db_session):
+        """Test that upgraded accounts (is_guest=False) are not recycled."""
+        from backend.services.cleanup_service import CleanupService
+        from datetime import timedelta, UTC, datetime
+        from uuid import UUID
+        from sqlalchemy import select, update
+
+        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+            # Create a guest account
+            create_response = await client.post("/player/guest")
+            assert create_response.status_code == status.HTTP_201_CREATED
+            guest_data = create_response.json()
+
+            # Upgrade the guest
+            await client.post(
+                "/player/upgrade",
+                json={
+                    "email": "upgraded_user@example.com",
+                    "password": "SecurePass123"
+                },
+                headers={"Authorization": f"Bearer {guest_data['access_token']}"}
+            )
+
+            guest_id = guest_data["player_id"]
+
+            # Get upgraded username
+            result = await db_session.execute(
+                select(Player).where(Player.player_id == UUID(guest_id))
+            )
+            player = result.scalar_one()
+            original_username = player.username
+            assert player.is_guest is False  # Verify it's been upgraded
+
+            # Artificially age the last login date (31 days ago)
+            old_login_date = datetime.now(UTC) - timedelta(days=31)
+            await db_session.execute(
+                update(Player)
+                .where(Player.player_id == UUID(guest_id))
+                .values(last_login_date=old_login_date)
+            )
+            await db_session.commit()
+
+            # Run username recycling
+            cleanup_service = CleanupService(db_session)
+            recycled_count = await cleanup_service.recycle_inactive_guest_usernames(days_old=30)
+
+            # Verify no recycling occurred (upgraded accounts should not be recycled)
+            # Note: recycled_count might be > 0 if there are other guests, but our player should be unchanged
+            result = await db_session.execute(
+                select(Player).where(Player.player_id == UUID(guest_id))
+            )
+            player = result.scalar_one()
+            assert player.username == original_username  # Should not have " X" appended
+
+    async def test_username_recycling_is_idempotent(self, test_app, db_session):
+        """Test that running username recycling multiple times doesn't double-append."""
+        from backend.services.cleanup_service import CleanupService
+        from datetime import timedelta, UTC, datetime
+        from uuid import UUID
+        from sqlalchemy import select, update
+
+        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+            # Create a guest account
+            create_response = await client.post("/player/guest")
+            assert create_response.status_code == status.HTTP_201_CREATED
+            guest_data = create_response.json()
+            guest_id = guest_data["player_id"]
+
+            # Artificially age the last login date (31 days ago)
+            old_login_date = datetime.now(UTC) - timedelta(days=31)
+            await db_session.execute(
+                update(Player)
+                .where(Player.player_id == UUID(guest_id))
+                .values(last_login_date=old_login_date)
+            )
+            await db_session.commit()
+
+            # Run username recycling first time
+            cleanup_service = CleanupService(db_session)
+            first_count = await cleanup_service.recycle_inactive_guest_usernames(days_old=30)
+            assert first_count == 1
+
+            # Get username after first recycling
+            result = await db_session.execute(
+                select(Player).where(Player.player_id == UUID(guest_id))
+            )
+            player = result.scalar_one()
+            username_after_first = player.username
+            canonical_after_first = player.username_canonical
+
+            # Run username recycling again
+            second_count = await cleanup_service.recycle_inactive_guest_usernames(days_old=30)
+            assert second_count == 0  # Should not process already-recycled usernames
+
+            # Verify username unchanged (not double-appended)
+            result = await db_session.execute(
+                select(Player).where(Player.player_id == UUID(guest_id))
+            )
+            player = result.scalar_one()
+            assert player.username == username_after_first  # Should not be "username X X"
+            assert player.username_canonical == canonical_after_first
