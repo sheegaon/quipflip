@@ -404,12 +404,6 @@ export interface HistoricalTrendPoint {
   rounds_played: number;
 }
 
-export interface BestPerformingPhrase {
-  phrase: string;
-  votes: number;
-  earnings: number;
-}
-
 export interface PlayerStatistics {
   player_id: string;
   username: string;
@@ -421,8 +415,6 @@ export interface PlayerStatistics {
   earnings: EarningsBreakdown;
   frequency: PlayFrequency;
   historical_trends?: HistoricalTrendPoint[];
-  favorite_prompts: string[];
-  best_performing_phrases: BestPerformingPhrase[];
 }
 
 export type TutorialProgress =

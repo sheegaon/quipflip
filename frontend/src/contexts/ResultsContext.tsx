@@ -38,7 +38,6 @@ interface StatisticsData {
   totalRounds: number;
   totalEarnings: number;
   averageScore: number;
-  bestPerformance: any;
   recentActivity: any[];
 }
 
@@ -482,7 +481,6 @@ export const ResultsProvider: React.FC<{
         totalRounds: (data?.prompt_stats?.total_rounds || 0) + (data?.copy_stats?.total_rounds || 0) + (data?.voter_stats?.total_rounds || 0),
         totalEarnings: data?.earnings?.total_earnings || 0,
         averageScore: (data?.prompt_stats?.win_rate + data?.copy_stats?.win_rate + data?.voter_stats?.win_rate) / 3 || 0,
-        bestPerformance: data?.best_performing_phrases?.[0] || null,
         recentActivity: data?.frequency?.last_active ? [data.frequency.last_active] : [],
       };
 
