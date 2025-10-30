@@ -21,6 +21,7 @@ from backend.models import (
     RefreshToken,
     Quest,
 )
+from backend.services.username_service import canonicalize_username
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +51,13 @@ class CleanupService:
 
     def __init__(self, db: AsyncSession):
         self.db = db
+
+    @staticmethod
+    def _has_recycled_suffix(username: str | None) -> bool:
+        """Return True if the username already carries a recycled suffix."""
+        if not username:
+            return False
+        return username.endswith(" X") or bool(re.search(r" X\d+$", username))
 
     # ===== Refresh Token Cleanup =====
 
@@ -413,7 +421,8 @@ class CleanupService:
     async def recycle_inactive_guest_usernames(self, days_old: int = 30) -> int:
         """
         Recycle usernames from guest accounts that haven't logged in for 30+ days
-        by appending " X" to username and "x" to username_canonical.
+        by appending " X" (and numeric suffixes if needed) while ensuring the
+        canonical username remains unique.
 
         This allows those usernames to be reused by new players.
 
@@ -425,14 +434,16 @@ class CleanupService:
         """
         cutoff_date = datetime.now(UTC) - timedelta(days=days_old)
 
-        # Find guests who haven't logged in for 30+ days and don't already have " X" suffix
+        # Find guests who haven't logged in for 30+ days
         stmt = select(Player).where(
             Player.is_guest == True,  # noqa: E712
             Player.last_login_date < cutoff_date,
-            ~Player.username.endswith(" X")  # Don't process already-recycled usernames
         )
         result = await self.db.execute(stmt)
-        inactive_guests = result.scalars().all()
+        potential_guests = result.scalars().all()
+        inactive_guests = [
+            guest for guest in potential_guests if not self._has_recycled_suffix(guest.username)
+        ]
 
         if not inactive_guests:
             logger.debug("No guest usernames to recycle")
@@ -440,11 +451,29 @@ class CleanupService:
 
         logger.info(f"Found {len(inactive_guests)} guest username(s) to recycle (>{days_old} days inactive)")
 
+        # Collect existing canonicals so we can ensure uniqueness as we recycle.
+        # TODO Loading all canonical usernames from the players table into memory with set(result.scalars().all())
+        #  could lead to significant memory consumption and performance issues as the number of players grows.
+        #  For a large table with millions of players, this could exhaust the available memory.
+        result = await self.db.execute(select(Player.username_canonical))
+        existing_canonicals = set(result.scalars().all())
+
         # Update each guest's username and canonical_username
         recycled_count = 0
         for guest in inactive_guests:
-            guest.username = guest.username + " X"
-            guest.username_canonical = guest.username_canonical + "x"
+            base_username = f"{guest.username} X"
+            candidate_username = base_username
+            candidate_canonical = canonicalize_username(candidate_username)
+
+            suffix = 2
+            while candidate_canonical in existing_canonicals:
+                candidate_username = f"{guest.username} X{suffix}"
+                candidate_canonical = canonicalize_username(candidate_username)
+                suffix += 1
+
+            guest.username = candidate_username
+            guest.username_canonical = candidate_canonical
+            existing_canonicals.add(candidate_canonical)
             recycled_count += 1
 
         await self.db.commit()
