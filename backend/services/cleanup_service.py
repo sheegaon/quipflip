@@ -5,7 +5,7 @@ from uuid import UUID
 from datetime import UTC, datetime, timedelta
 from typing import Optional
 
-from sqlalchemy import delete, select, text
+from sqlalchemy import delete, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.models import (
@@ -434,47 +434,27 @@ class CleanupService:
         """
         cutoff_date = datetime.now(UTC) - timedelta(days=days_old)
 
-        # Find guests who haven't logged in for 30+ days
-        stmt = select(Player).where(
-            Player.is_guest == True,  # noqa: E712
-            Player.last_login_date < cutoff_date,
+        # Use a single UPDATE statement for efficiency, avoiding loading all objects into memory.
+        update_stmt = (
+            update(Player)
+            .where(
+                Player.is_guest == True,  # noqa: E712
+                Player.last_login_date < cutoff_date,
+                ~Player.username.endswith(" X"),
+            )
+            .values(
+                username=Player.username + " X",
+                username_canonical=Player.username_canonical + "x",
+            )
+            .execution_options(synchronize_session=False)
         )
-        result = await self.db.execute(stmt)
-        potential_guests = result.scalars().all()
-        inactive_guests = [
-            guest for guest in potential_guests if not self._has_recycled_suffix(guest.username)
-        ]
 
-        if not inactive_guests:
+        result = await self.db.execute(update_stmt)
+        recycled_count = result.rowcount or 0
+
+        if recycled_count == 0:
             logger.debug("No guest usernames to recycle")
             return 0
-
-        logger.info(f"Found {len(inactive_guests)} guest username(s) to recycle (>{days_old} days inactive)")
-
-        # Collect existing canonicals so we can ensure uniqueness as we recycle.
-        # TODO Loading all canonical usernames from the players table into memory with set(result.scalars().all())
-        #  could lead to significant memory consumption and performance issues as the number of players grows.
-        #  For a large table with millions of players, this could exhaust the available memory.
-        result = await self.db.execute(select(Player.username_canonical))
-        existing_canonicals = set(result.scalars().all())
-
-        # Update each guest's username and canonical_username
-        recycled_count = 0
-        for guest in inactive_guests:
-            base_username = f"{guest.username} X"
-            candidate_username = base_username
-            candidate_canonical = canonicalize_username(candidate_username)
-
-            suffix = 2
-            while candidate_canonical in existing_canonicals:
-                candidate_username = f"{guest.username} X{suffix}"
-                candidate_canonical = canonicalize_username(candidate_username)
-                suffix += 1
-
-            guest.username = candidate_username
-            guest.username_canonical = candidate_canonical
-            existing_canonicals.add(candidate_canonical)
-            recycled_count += 1
 
         await self.db.commit()
 

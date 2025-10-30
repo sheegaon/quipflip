@@ -125,6 +125,7 @@ async def start_vote_round(
     vote_service = VoteService(db)
 
     # Check if can start
+    await player_service.refresh_vote_lockout_state(player)
     can_start, error = await player_service.can_start_vote_round(player, vote_service)
     if not can_start:
         raise HTTPException(status_code=400, detail=error)

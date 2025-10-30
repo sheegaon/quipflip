@@ -235,11 +235,33 @@ class PlayerService:
 
         # Check outstanding prompts (guests have a lower limit)
         count = await self.get_outstanding_prompts_count(player.player_id)
-        max_outstanding = 3 if player.is_guest else settings.max_outstanding_quips
+        max_outstanding = (
+            settings.guest_max_outstanding_quips
+            if player.is_guest
+            else settings.max_outstanding_quips
+        )
         if count >= max_outstanding:
             return False, "max_outstanding_quips"
 
         return True, ""
+
+    async def refresh_vote_lockout_state(self, player: Player) -> bool:
+        """Clear expired vote lockouts for guest players."""
+
+        if not player.is_guest or not player.vote_lockout_until:
+            return False
+
+        current_time = datetime.now(UTC)
+        if current_time < player.vote_lockout_until:
+            return False
+
+        player.vote_lockout_until = None
+        player.consecutive_incorrect_votes = 0
+        await self.db.commit()
+        await self.db.refresh(player)
+
+        logger.info("Cleared expired vote lockout for guest %s", player.player_id)
+        return True
 
     async def can_start_copy_round(self, player: Player) -> tuple[bool, str]:
         """Check if player can start copy round."""
@@ -277,11 +299,6 @@ class PlayerService:
         if player.is_guest and player.vote_lockout_until:
             if datetime.now(UTC) < player.vote_lockout_until:
                 return False, "vote_lockout_active"
-            else:
-                # Lockout expired, clear it
-                player.vote_lockout_until = None
-                player.consecutive_incorrect_votes = 0
-                await self.db.commit()
 
         if player.locked_until and player.locked_until > datetime.now(UTC):
             return False, "player_locked"
