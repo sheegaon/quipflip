@@ -106,7 +106,7 @@ class TestGuestAccountUpgrade:
             upgrade_response = await client.post(
                 "/player/upgrade",
                 json={
-                    "email": "upgraded@example.com",
+                    "email": "upgraded1@example.com",
                     "password": "SecurePass123"
                 },
                 headers={"Authorization": f"Bearer {guest_data['access_token']}"}
@@ -130,7 +130,7 @@ class TestGuestAccountUpgrade:
             await client.post(
                 "/player/upgrade",
                 json={
-                    "email": "upgraded@example.com",
+                    "email": "upgraded2@example.com",
                     "password": "SecurePass123"
                 },
                 headers={"Authorization": f"Bearer {guest_data['access_token']}"}
@@ -145,7 +145,7 @@ class TestGuestAccountUpgrade:
             player = result.scalar_one()
 
             assert player.is_guest is False
-            assert player.email == "upgraded@example.com"
+            assert player.email == "upgraded2@example.com"
 
     async def test_upgrade_with_duplicate_email_fails(self, test_app):
         """Test that upgrading with an already-used email fails."""
@@ -210,7 +210,7 @@ class TestGuestAccountUpgrade:
             guest_data = create_response.json()
 
             # Upgrade guest
-            new_email = "upgraded@example.com"
+            new_email = "upgraded3@example.com"
             new_password = "SecurePass123"
             await client.post(
                 "/player/upgrade",
