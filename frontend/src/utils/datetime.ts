@@ -101,7 +101,7 @@ export const formatDateTimeInUserZone = (
   return date.toLocaleString(undefined, formatOptions);
 };
 
-type DateOnlyFormatOptions = {
+export type DateOnlyFormatOptions = {
   fallback?: string;
 };
 
