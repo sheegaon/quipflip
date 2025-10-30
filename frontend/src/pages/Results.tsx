@@ -112,9 +112,9 @@ export const Results: React.FC = () => {
     ) => {
       const voteWord = count === 1 ? 'vote' : 'votes';
       const pointSuffix = pointsPerVote === 1 ? 'pt' : 'pts';
-      const descriptorFor = count === 1 ? `for ${descriptor} vote` : `for ${descriptor} votes`;
-      return `${count.toLocaleString()} ${descriptor} ${voteWord} x ${pointsPerVote.toLocaleString()} ${pointSuffix} ${descriptorFor}`;
+      return `${count.toLocaleString()} ${descriptor} ${voteWord} × ${pointsPerVote.toLocaleString()} ${pointSuffix}`;
     };
+
 
     const pointsBreakdownBase = `${formatPointsTerm(correct_vote_count, correct_vote_points, 'correct')} + ${formatPointsTerm(incorrect_vote_count, incorrect_vote_points, 'incorrect')} = ${total_points.toLocaleString()} total pts`;
 
