@@ -356,7 +356,7 @@ async def test_phrase_validation(
             word_conflicts.append(error_message.split("'")[1])
 
     elif request.validation_type == "copy":
-        is_valid, error_message = validator.validate_copy(
+        is_valid, error_message = await validator.validate_copy(
             phrase,
             request.original_phrase or "",
             request.other_copy_phrase,
