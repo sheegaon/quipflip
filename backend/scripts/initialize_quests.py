@@ -24,7 +24,7 @@ async def initialize_quests_for_all_players():
                 select(Player.player_id, Player.username)
             )
             players = players_result.all()
-            logger.info(f"Found {len(players)} total players")
+            logger.debug(f"Found {len(players)} total players")
 
             if not players:
                 return
@@ -53,12 +53,9 @@ async def initialize_quests_for_all_players():
 
                 if missing_quest_types:
                     quest_names = ", ".join(qt.value for qt in missing_quest_types)
-                    logger.info(
-                        "Ensuring starter quests for player %s (%s); %d missing quests: %s",
-                        username,
-                        player_id,
-                        len(missing_quest_types),
-                        quest_names,
+                    logger.debug(
+                        f"Ensuring starter quests for player {username} ({player_id}); {len(missing_quest_types)} "
+                        f"missing quests: {quest_names}"
                     )
                     await quest_service.create_missing_starter_quests(
                         player_id,
@@ -67,33 +64,25 @@ async def initialize_quests_for_all_players():
                     )
                     if len(existing_quests) == 0:
                         initialized_count += 1
-                        logger.info(
-                            "  Ensured starter quests exist for %s (processed %d quests)",
-                            username,
-                            len(missing_quest_types),
+                        logger.debug(
+                            f"Ensured starter quests exist for {username} (processed {len(missing_quest_types)} quests)"
                         )
                     else:
                         topped_up_count += 1
-                        logger.info(
-                            "  Ensured %d missing starter quests exist for %s",
-                            len(missing_quest_types),
-                            username,
+                        logger.debug(
+                            f"Ensured {len(missing_quest_types)} missing starter quests exist for {username}"
                         )
                     quests_by_player[player_id] = existing_quests.union(
                         {quest_type.value for quest_type in missing_quest_types}
                     )
                     continue
 
-                logger.info(
-                    "Player %s (%s) already has all starter quests, skipping",
-                    username,
-                    player_id,
-                )
+                logger.debug(f"Player {username} ({player_id}) already has all starter quests, skipping")
                 skipped_count += 1
 
             await db.commit()
 
-            logger.info("\n=== Summary ===")
+            logger.info("=== Summary ===")
             logger.info(f"Players initialized: {initialized_count}")
             logger.info(f"Players topped up with missing quests: {topped_up_count}")
             logger.info(f"Players skipped (already had quests): {skipped_count}")

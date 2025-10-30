@@ -51,6 +51,7 @@ from backend.utils.passwords import (
     PasswordValidationError,
 )
 from datetime import datetime, UTC, timedelta
+from typing import Optional
 from sqlalchemy import select
 import logging
 
@@ -60,7 +61,7 @@ settings = get_settings()
 router = APIRouter()
 
 
-def ensure_utc(dt: datetime) -> datetime:
+def ensure_utc(dt: Optional[datetime]) -> Optional[datetime]:
     """Ensure datetime has UTC timezone for proper JSON serialization."""
     if dt and dt.tzinfo is None:
         return dt.replace(tzinfo=UTC)
@@ -137,7 +138,7 @@ async def get_balance(
         starting_balance=settings.starting_balance,
         daily_bonus_available=bonus_available,
         daily_bonus_amount=settings.daily_bonus_amount,
-        last_login_date=player.last_login_date,
+        last_login_date=ensure_utc(player.last_login_date),
         created_at=player.created_at,
         outstanding_prompts=outstanding,
     )

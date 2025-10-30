@@ -12,7 +12,7 @@
 - `password_hash` (string) - bcrypt hashed password
 - `balance` (integer, database default 1000) - current Flipcoin balance. New accounts are seeded from `settings.starting_balance` (5000f by default) when created via the service layer.
 - `created_at` (timestamp)
-- `last_login_date` (date, nullable) - UTC date for daily bonus tracking
+- `last_login_date` (timestamp with timezone, nullable) - UTC timestamp for last login tracking
 - `active_round_id` (UUID, nullable, references rounds.round_id) - enforces one-round-at-a-time
 - `tutorial_completed` (boolean, default false) - whether player has finished tutorial
 - `tutorial_progress` (string, default 'not_started') - current tutorial step (`not_started`, `welcome`, `dashboard`, `prompt_round`, `prompt_round_paused`, `copy_round`, `copy_round_paused`, `vote_round`, `completed`)

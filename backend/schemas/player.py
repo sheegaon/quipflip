@@ -1,6 +1,6 @@
 """Player-related Pydantic schemas."""
 from pydantic import BaseModel, constr
-from datetime import date, datetime
+from datetime import datetime
 from typing import Optional, Literal
 from uuid import UUID
 from backend.schemas.base import BaseSchema
@@ -17,7 +17,7 @@ class PlayerBalance(BaseSchema):
     starting_balance: int
     daily_bonus_available: bool
     daily_bonus_amount: int
-    last_login_date: Optional[date]
+    last_login_date: Optional[datetime]
     created_at: datetime
     outstanding_prompts: int
 

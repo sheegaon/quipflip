@@ -206,7 +206,7 @@ Get player balance and status.
   "starting_balance": 5000,
   "daily_bonus_available": false,
   "daily_bonus_amount": 100,
-  "last_login_date": "2025-01-06",
+  "last_login_date": "2025-01-06T18:45:00Z",
   "created_at": "2025-01-01T12:00:00Z",
   "outstanding_prompts": 0
 }

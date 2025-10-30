@@ -51,7 +51,7 @@ The Admin panel is accessible from Settings page after password verification.
 **Endpoint:** `GET /admin/players`
 - Query params: `{ search?: string, limit?: number, offset?: number }`
 - Returns paginated list of players
-- Include: username, email, balance, created_at, last_login_date
+- Include: username, email, balance, created_at, last_login_date (UTC timestamp)
 - Optional filters: active/inactive, balance range, date range
 
 **Endpoint:** `GET /admin/players/{player_id}`
