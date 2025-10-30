@@ -169,11 +169,8 @@ export const Landing: React.FC = () => {
             disabled={isLoading}
             className="w-full bg-gradient-to-r from-quip-orange to-quip-turquoise hover:from-quip-orange-deep hover:to-quip-teal disabled:bg-gray-400 text-white font-bold py-4 px-4 rounded-tile transition-all hover:shadow-tile-sm transform hover:-translate-y-0.5 text-lg"
           >
-            {isLoading ? 'Creating Guest Account...' : '🎮 Play Instantly (No Sign-Up)'}
+            {isLoading ? 'Creating Guest Account...' : 'Play Instantly'}
           </button>
-          <p className="text-xs text-center text-gray-600 mt-2">
-            Start playing immediately with a guest account. Upgrade anytime to save your progress.
-          </p>
         </div>
 
         <div className="relative mb-6">
