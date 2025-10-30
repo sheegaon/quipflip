@@ -53,6 +53,14 @@ class PhraseSetResults(BaseSchema):
     total_votes: int
     already_collected: bool
     finalized_at: datetime
+    correct_vote_count: int
+    incorrect_vote_count: int
+    correct_vote_points: int
+    incorrect_vote_points: int
+    prize_pool_base: int
+    vote_cost: int
+    vote_payout_correct: int
+    system_contribution: int
 
 
 class PhrasesetSummary(BaseSchema):

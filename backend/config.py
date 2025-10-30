@@ -36,6 +36,8 @@ class Settings(BaseSettings):
     copy_cost_discount: int = 40
     vote_cost: int = 10
     vote_payout_correct: int = 20
+    correct_vote_points: int = 1
+    incorrect_vote_points: int = 2
     abandoned_penalty: int = 5
     prize_pool_base: int = 200  # Base prize pool (prompt + 2 copies contribution)
     max_outstanding_quips: int = 10

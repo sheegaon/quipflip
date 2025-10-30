@@ -196,6 +196,14 @@ export interface PhrasesetResults {
   total_votes: number;
   already_collected: boolean;
   finalized_at: string;
+  correct_vote_count: number;
+  incorrect_vote_count: number;
+  correct_vote_points: number;
+  incorrect_vote_points: number;
+  prize_pool_base: number;
+  vote_cost: number;
+  vote_payout_correct: number;
+  system_contribution: number;
 }
 
 export type PhrasesetStatus =

@@ -7,8 +7,12 @@ import logging
 from backend.models.phraseset import Phraseset
 from backend.models.vote import Vote
 from backend.models.round import Round
+from backend.config import get_settings
 
 logger = logging.getLogger(__name__)
+
+
+settings = get_settings()
 
 
 class ScoringService:
@@ -39,10 +43,10 @@ class ScoringService:
         copy1_votes = sum(1 for v in votes if v.voted_phrase == phraseset.copy_phrase_1)
         copy2_votes = sum(1 for v in votes if v.voted_phrase == phraseset.copy_phrase_2)
 
-        # Calculate points (1 for original, 2 for copies)
-        original_points = original_votes * 1
-        copy1_points = copy1_votes * 2
-        copy2_points = copy2_votes * 2
+        # Calculate points based on configured multipliers
+        original_points = original_votes * settings.correct_vote_points
+        copy1_points = copy1_votes * settings.incorrect_vote_points
+        copy2_points = copy2_votes * settings.incorrect_vote_points
         total_points = original_points + copy1_points + copy2_points
 
         # Prize pool is already dynamically updated in phraseset.total_pool
