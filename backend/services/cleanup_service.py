@@ -452,6 +452,9 @@ class CleanupService:
         logger.info(f"Found {len(inactive_guests)} guest username(s) to recycle (>{days_old} days inactive)")
 
         # Collect existing canonicals so we can ensure uniqueness as we recycle.
+        # TODO Loading all canonical usernames from the players table into memory with set(result.scalars().all())
+        #  could lead to significant memory consumption and performance issues as the number of players grows.
+        #  For a large table with millions of players, this could exhaust the available memory.
         result = await self.db.execute(select(Player.username_canonical))
         existing_canonicals = set(result.scalars().all())
 
