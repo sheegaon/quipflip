@@ -6,6 +6,7 @@ import apiClient, { extractErrorMessage } from '../api/client';
 import { Timer } from '../components/Timer';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
+import { ThumbFeedbackButton } from '../components/ThumbFeedbackButton';
 import { useTimer } from '../hooks/useTimer';
 import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
 import type { PromptState } from '../api/types';
@@ -225,33 +226,19 @@ export const PromptRound: React.FC = () => {
           </p>
 
           {/* Feedback Icons */}
-          <div className="absolute top-1 md:top-4 right-2 md:right-5 flex gap-1 md:gap-2">
-            <button
+          <div className="absolute top-1 md:top-4 right-2 md:right-5 flex gap-2 md:gap-3">
+            <ThumbFeedbackButton
+              type="like"
+              isActive={feedbackType === 'like'}
               onClick={() => handleFeedback('like')}
               disabled={isSubmittingFeedback || roundData.status === 'submitted'}
-              className={`text-lg md:text-2xl transition-all ${
-                feedbackType === 'like'
-                  ? 'opacity-100 scale-110'
-                  : 'opacity-40 hover:opacity-70 hover:scale-105'
-              } disabled:opacity-30 disabled:cursor-not-allowed`}
-              title="I like this prompt"
-              aria-label="Like this prompt"
-            >
-              👍
-            </button>
-            <button
+            />
+            <ThumbFeedbackButton
+              type="dislike"
+              isActive={feedbackType === 'dislike'}
               onClick={() => handleFeedback('dislike')}
               disabled={isSubmittingFeedback || roundData.status === 'submitted'}
-              className={`text-lg md:text-2xl transition-all ${
-                feedbackType === 'dislike'
-                  ? 'opacity-100 scale-110'
-                  : 'opacity-40 hover:opacity-70 hover:scale-105'
-              } disabled:opacity-30 disabled:cursor-not-allowed`}
-              title="I dislike this prompt"
-              aria-label="Dislike this prompt"
-            >
-              👎
-            </button>
+            />
           </div>
         </div>
 
