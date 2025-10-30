@@ -31,9 +31,9 @@ interface GameConfig {
   // Vote finalization thresholds
   vote_max_votes: number;
   vote_closing_threshold: number;
-  vote_closing_window_seconds: number;
+  vote_closing_window_minutes: number;
   vote_minimum_threshold: number;
-  vote_minimum_window_seconds: number;
+  vote_minimum_window_minutes: number;
 
   // Phrase Validation
   phrase_min_words: number;
@@ -49,6 +49,8 @@ interface GameConfig {
   ai_gemini_model: string;
   ai_timeout_seconds: number;
   ai_backup_delay_minutes: number;
+  ai_backup_batch_size: number;
+  ai_backup_sleep_seconds: number;
 }
 
 interface ValidationResult {
@@ -780,14 +782,14 @@ const Admin: React.FC = () => {
                 />
                 <EditableConfigField
                   label="Closing Window"
-                  value={config.vote_closing_window_seconds}
-                  configKey="vote_closing_window_seconds"
-                  unit="seconds"
+                  value={config.vote_closing_window_minutes}
+                  configKey="vote_closing_window_minutes"
+                  unit="minutes"
                   description="Time to get more votes before closing"
-                
+
                   type="number"
-                  min={30}
-                  max={300}
+                  min={1}
+                  max={10}
                   onSave={handleSaveConfig}
                   disabled={!editMode}
                 />
@@ -806,14 +808,14 @@ const Admin: React.FC = () => {
                 />
                 <EditableConfigField
                   label="Minimum Window"
-                  value={config.vote_minimum_window_seconds}
-                  configKey="vote_minimum_window_seconds"
-                  unit="seconds"
+                  value={config.vote_minimum_window_minutes}
+                  configKey="vote_minimum_window_minutes"
+                  unit="minutes"
                   description="Max time before auto-finalizing"
-                
+
                   type="number"
-                  min={300}
-                  max={3600}
+                  min={5}
+                  max={60}
                   onSave={handleSaveConfig}
                   disabled={!editMode}
                 />
@@ -1246,10 +1248,23 @@ const Admin: React.FC = () => {
                   configKey="ai_backup_delay_minutes"
                   unit="minutes"
                   description="Wait time before AI provides backups"
-                
+
                   type="number"
                   min={5}
                   max={60}
+                  onSave={handleSaveConfig}
+                  disabled={!editMode}
+                />
+                <EditableConfigField
+                  label="Backup Batch Size"
+                  value={config.ai_backup_batch_size}
+                  configKey="ai_backup_batch_size"
+                  unit="rounds"
+                  description="Maximum rounds processed per cycle"
+
+                  type="number"
+                  min={1}
+                  max={50}
                   onSave={handleSaveConfig}
                   disabled={!editMode}
                 />
@@ -1259,10 +1274,23 @@ const Admin: React.FC = () => {
                   configKey="ai_timeout_seconds"
                   unit="seconds"
                   description="Timeout for AI API calls"
-                
+
                   type="number"
                   min={10}
                   max={120}
+                  onSave={handleSaveConfig}
+                  disabled={!editMode}
+                />
+                <EditableConfigField
+                  label="Backup Sleep"
+                  value={config.ai_backup_sleep_seconds}
+                  configKey="ai_backup_sleep_seconds"
+                  unit="seconds"
+                  description="Sleep between backup cycles"
+
+                  type="number"
+                  min={300}
+                  max={7200}
                   onSave={handleSaveConfig}
                   disabled={!editMode}
                 />

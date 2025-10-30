@@ -194,9 +194,9 @@ All game balance constants centralized in settings for easy tuning:
 # In config.py
 vote_max_votes: int = 20
 vote_closing_threshold: int = 5
-vote_closing_window_seconds: int = 60
+vote_closing_window_minutes: int = 1
 vote_minimum_threshold: int = 3
-vote_minimum_window_seconds: int = 600
+vote_minimum_window_minutes: int = 10
 
 # Usage in services
 if phraseset.vote_count >= settings.vote_max_votes:
