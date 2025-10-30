@@ -49,8 +49,6 @@ const TutorialWelcome: React.FC<TutorialWelcomeProps> = ({ onStart, onSkip }) =>
       }
     }
 
-    setGuestCredentials(null);
-    setShowGuestCredentialsScreen(false);
   }, [player?.is_guest]);
 
   // Clean up credentials when tutorial starts or is skipped
