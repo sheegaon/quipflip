@@ -45,7 +45,7 @@ class PhraseSetResults(BaseSchema):
     votes: list[PhraseVoteCount]
     your_phrase: str
     your_role: str  # "prompt" or "copy"
-    original_phrase: str
+    original_phrase: Optional[str] = None
     your_points: int
     total_points: int
     your_payout: int
