@@ -434,23 +434,82 @@ class CleanupService:
         """
         cutoff_date = datetime.now(UTC) - timedelta(days=days_old)
 
-        # Use a single UPDATE statement for efficiency, avoiding loading all objects into memory.
-        update_stmt = (
-            update(Player)
-            .where(
-                Player.is_guest == True,  # noqa: E712
-                Player.last_login_date < cutoff_date,
-                ~Player.username.endswith(" X"),
-            )
-            .values(
-                username=Player.username + " X",
-                username_canonical=Player.username_canonical + "x",
-            )
-            .execution_options(synchronize_session=False)
+        stmt = select(Player).where(
+            Player.is_guest == True,  # noqa: E712
+            Player.last_login_date < cutoff_date,
         )
 
-        result = await self.db.execute(update_stmt)
-        recycled_count = result.rowcount or 0
+        result = await self.db.execute(stmt)
+        candidates = [player for player in result.scalars() if player and not self._has_recycled_suffix(player.username)]
+
+        if not candidates:
+            logger.debug("No guest usernames to recycle")
+            return 0
+
+        recycled_count = 0
+        reserved_canonicals: set[str] = set()
+
+        for guest in candidates:
+            base_username = guest.username or ""
+
+            if not base_username.strip():
+                logger.debug("Skipping guest %s with empty username", guest.player_id)
+                continue
+
+            suffix_index = 1
+            updated = False
+
+            while suffix_index < 1000:  # reasonable guard to avoid infinite loops
+                if suffix_index == 1:
+                    new_username = f"{base_username} X"
+                else:
+                    new_username = f"{base_username} X{suffix_index}"
+
+                canonical = canonicalize_username(new_username)
+
+                if not canonical:
+                    logger.debug(
+                        "Skipping candidate username '%s' for guest %s due to empty canonical",
+                        new_username,
+                        guest.player_id,
+                    )
+                    break
+
+                if canonical in reserved_canonicals:
+                    suffix_index += 1
+                    continue
+
+                conflict_stmt = (
+                    select(Player.player_id)
+                    .where(
+                        Player.username_canonical == canonical,
+                        Player.player_id != guest.player_id,
+                    )
+                    .limit(1)
+                )
+                conflict_result = await self.db.execute(conflict_stmt)
+                conflict_player_id = conflict_result.scalar_one_or_none()
+
+                if conflict_player_id is not None:
+                    suffix_index += 1
+                    continue
+
+                await self.db.execute(
+                    update(Player)
+                    .where(Player.player_id == guest.player_id)
+                    .values(username=new_username, username_canonical=canonical)
+                )
+
+                reserved_canonicals.add(canonical)
+                recycled_count += 1
+                updated = True
+                break
+
+            if not updated:
+                logger.warning(
+                    "Unable to recycle username for guest %s after exhausting suffix attempts",
+                    guest.player_id,
+                )
 
         if recycled_count == 0:
             logger.debug("No guest usernames to recycle")
@@ -458,8 +517,7 @@ class CleanupService:
 
         await self.db.commit()
 
-        if recycled_count > 0:
-            logger.info(f"Recycled {recycled_count} guest username(s)")
+        logger.info(f"Recycled {recycled_count} guest username(s)")
 
         return recycled_count
 
