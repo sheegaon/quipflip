@@ -128,12 +128,7 @@ class AIService:
         logger.error("No AI provider API keys found (OPENAI_API_KEY or GEMINI_API_KEY)")
         raise AIServiceError("No AI provider configured - set OPENAI_API_KEY or GEMINI_API_KEY")
 
-    async def _get_or_create_ai_player(
-        self,
-        username: str | None = None,
-        *,
-        email: str | None = None,
-    ) -> Player:
+    async def _get_or_create_ai_player(self, email: str | None = None) -> Player:
         """
         Get or create the AI player account.
 
@@ -150,20 +145,7 @@ class AIService:
         try:
             username_service = UsernameService(self.db)
 
-            normalized_username = None
-            canonical_username = None
-            if username:
-                normalized_username = normalize_username(username)
-                canonical_username = canonicalize_username(normalized_username)
-                if not canonical_username:
-                    raise AIServiceError("Invalid AI username provided.")
-
-            if email:
-                target_email = email.strip().lower()
-            elif canonical_username:
-                target_email = f"{canonical_username}{AI_PLAYER_EMAIL_DOMAIN}"
-            else:
-                target_email = AI_COPY_PLAYER_EMAIL
+            target_email = email.strip().lower() if email else AI_COPY_PLAYER_EMAIL
 
             # Check if AI player exists
             result = await self.db.execute(
@@ -175,14 +157,7 @@ class AIService:
                 # Create AI player
                 player_service = PlayerService(self.db)
 
-                if normalized_username is None:
-                    normalized_username, canonical_username = await username_service.generate_unique_username()
-                else:
-                    is_username_taken = await self.db.scalar(
-                        select(Player.player_id).where(Player.username_canonical == canonical_username)
-                    )
-                    if is_username_taken:
-                        normalized_username, canonical_username = await username_service.generate_unique_username()
+                normalized_username, canonical_username = await username_service.generate_unique_username()
 
                 ai_player = await player_service.create_player(
                     username=normalized_username,
@@ -397,7 +372,7 @@ class AIService:
 
             return chosen_phrase
 
-    async def _has_ai_attempted_prompt(self, prompt_round_id: str, lookback_hours: int = 24) -> bool:
+    async def _has_ai_attempted_prompt_recently(self, prompt_round_id: str, lookback_hours: int = 6) -> bool:
         """
         Check if AI has already attempted to generate a copy for this prompt.
 
@@ -469,13 +444,13 @@ class AIService:
             result = await self.db.execute(
                 select(Round)
                 .join(Player, Player.player_id == Round.player_id)
-                .outerjoin(Phraseset, Phraseset.prompt_round_id == Round.round_id)
+                .outerjoin(PhrasesetActivity, PhrasesetActivity.prompt_round_id == Round.round_id)
                 .where(Round.round_type == 'prompt')
                 .where(Round.status == 'submitted')
                 .where(Round.created_at <= cutoff_time)
                 .where(Round.player_id != ai_copy_player.player_id)
-                .where(~Player.username.like('%test%'))  # Exclude test players
-                .where(Phraseset.phraseset_id.is_(None))  # No phraseset yet
+                # .where(~Player.username.like('%test%'))  # Exclude test players
+                .where(PhrasesetActivity.phraseset_id.is_(None))  # Not yet a phraseset
                 .order_by(Round.created_at.asc())  # Process oldest first
                 .limit(self.settings.ai_backup_batch_size)  # Configurable batch size
             )
@@ -498,7 +473,7 @@ class AIService:
             # Filter out prompts that AI has already attempted recently
             final_prompts = []
             for prompt_round in filtered_prompts:
-                has_attempted = await self._has_ai_attempted_prompt(str(prompt_round.round_id))
+                has_attempted = await self._has_ai_attempted_prompt_recently(str(prompt_round.round_id))
                 if not has_attempted:
                     final_prompts.append(prompt_round)
                 else:
@@ -605,7 +580,11 @@ class AIService:
                 .limit(self.settings.ai_backup_batch_size)  # Use configured batch size
             )
             
-            # Filter out phrasesets with activity after cutoff_time
+            # Get or create AI voter player (within transaction)
+            ai_voter_player = await self._get_or_create_ai_player(
+                f"ai_voter_{random.randint(0, 9)}{AI_PLAYER_EMAIL_DOMAIN}")
+
+            # Filter out phrasesets with activity after cutoff_time and in which this AI has voted
             waiting_phrasesets = list(phraseset_result.scalars().all())
             filtered_phrasesets = []
             for phraseset in waiting_phrasesets:
@@ -615,33 +594,13 @@ class AIService:
                     .where(PhrasesetActivity.created_at > cutoff_time)
                 )
                 if len(activity.scalars().all()) == 0:
-                    filtered_phrasesets.append(phraseset)
-
-            # # Filter out phrasesets where AI was a contributor (in-memory check since we need loaded relationships)
-            # filtered_phrasesets = []
-            # for phraseset in waiting_phrasesets:
-            #     try:
-            #         # Safely get player IDs from loaded relationships
-            #         contributor_player_ids = {
-            #             r.player_id
-            #             for r in (
-            #                 phraseset.prompt_round,
-            #                 phraseset.copy_round_1,
-            #                 phraseset.copy_round_2,
-            #             )
-            #             if r
-            #         }
-            #
-            #         # Skip if AI player was a contributor
-            #         if ai_player.player_id not in contributor_player_ids:
-            #             filtered_phrasesets.append(phraseset)
-            #         else:
-            #             logger.debug(f"Skipping phraseset {phraseset.phraseset_id} - AI was a contributor")
-            #
-            #     except Exception as e:
-            #         logger.error(f"Error checking phraseset {phraseset.phraseset_id} contributors: {e}")
-            #         # Skip this phraseset to avoid further errors
-            #         continue
+                    voter_activity = await self.db.execute(
+                        select(PhrasesetActivity)
+                        .where(PhrasesetActivity.phraseset_id == phraseset.phraseset_id)
+                        .where(PhrasesetActivity.player_id == ai_voter_player.player_id)
+                    )
+                    if len(voter_activity.scalars().all()) == 0:
+                        filtered_phrasesets.append(phraseset)
 
             stats["phrasesets_checked"] = len(filtered_phrasesets)
             logger.info(
@@ -653,9 +612,6 @@ class AIService:
             vote_service = VoteService(self.db)
             transaction_service = TransactionService(self.db)
 
-            # Get or create AI copy player (within transaction)
-            ai_vote_player = await self._get_or_create_ai_player(f"AI_VOTE_BACKUP_{random.randint(1000, 9999)}")
-
             # Process each waiting phraseset
             for phraseset in filtered_phrasesets:
                 try:
@@ -665,7 +621,7 @@ class AIService:
                     # Use VoteService for centralized voting logic
                     vote = await vote_service.submit_system_vote(
                         phraseset=phraseset,
-                        player=ai_vote_player,
+                        player=ai_voter_player,
                         chosen_phrase=chosen_phrase,
                         transaction_service=transaction_service,
                     )
