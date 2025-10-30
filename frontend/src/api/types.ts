@@ -176,7 +176,7 @@ export interface PhrasesetResults {
   votes: VoteResult[];
   your_phrase: string;
   your_role: string;
-  original_phrase: string;
+  original_phrase?: string;
   your_points: number;
   total_points: number;
   your_payout: number;
