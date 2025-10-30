@@ -62,6 +62,7 @@ class PhrasesetSummary(BaseSchema):
     prompt_text: str
     your_role: Literal["prompt", "copy"]
     your_phrase: Optional[str]
+    original_phrase: Optional[str] = None
     status: Literal["waiting_copies", "waiting_copy1", "active", "voting", "closing", "finalized", "abandoned"]
     created_at: datetime
     updated_at: Optional[datetime]

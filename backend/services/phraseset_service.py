@@ -474,6 +474,7 @@ class PhrasesetService:
                     "prompt_text": phraseset.prompt_text if phraseset else (prompt_round.prompt_text if prompt_round else ""),
                     "your_role": "copy",
                     "your_phrase": copy_round.copy_phrase,
+                    "original_phrase": copy_round.original_phrase,
                     "status": self._derive_status(prompt_round, phraseset),
                     "created_at": self._ensure_utc(copy_round.created_at),
                     "updated_at": self._determine_updated_at(prompt_round, phraseset, fallback=copy_round.created_at),
@@ -562,7 +563,6 @@ class PhrasesetService:
         if phraseset.phraseset_id not in cache:
             cache[phraseset.phraseset_id] = await self.scoring_service.calculate_payouts(phraseset)
         return cache[phraseset.phraseset_id]
-
     def _extract_player_payout(self, payouts: dict, player_id: UUID) -> Optional[int]:
         """Get payout value for specific player from payout structure."""
         for info in payouts.values():
