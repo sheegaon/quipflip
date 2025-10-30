@@ -448,7 +448,7 @@ Batched endpoint that composes balance, current round, pending results, phrasese
   "pending_results": [],
   "phraseset_summary": { "in_progress": {"prompts": 1, "copies": 0, "unclaimed_prompts": 0, "unclaimed_copies": 0}, "finalized": {"prompts": 5, "copies": 8, "unclaimed_prompts": 1, "unclaimed_copies": 0}, "total_unclaimed_amount": 120 },
   "unclaimed_results": [],
-  "round_availability": { "can_prompt": true, "can_copy": false, "can_vote": true, "prompts_waiting": 3, "phrasesets_waiting": 7, "copy_discount_active": false, "copy_cost": 50, "current_round_id": null, "prompt_cost": 100, "vote_cost": 10, "vote_payout_correct": 5, "abandoned_penalty": 50 }
+  "round_availability": { "can_prompt": true, "can_copy": false, "can_vote": true, "prompts_waiting": 3, "phrasesets_waiting": 7, "copy_discount_active": false, "copy_cost": 50, "current_round_id": null, "prompt_cost": 100, "vote_cost": 10, "vote_payout_correct": 20, "abandoned_penalty": 50 }
 }
 ```
 
@@ -779,7 +779,7 @@ Get round availability status.
   "current_round_id": null,
   "prompt_cost": 100,
   "vote_cost": 10,
-  "vote_payout_correct": 5,
+  "vote_payout_correct": 20,
   "abandoned_penalty": 50
 }
 ```
@@ -916,19 +916,27 @@ Get phraseset results (collects prize on first view).
 {
   "prompt_text": "my deepest desire is to be (a/an)",
   "votes": [
-    {"phrase": "FAMOUS", "vote_count": 4, "is_original": true},
-    {"phrase": "POPULAR", "vote_count": 3, "is_original": false},
-    {"phrase": "WEALTHY", "vote_count": 3, "is_original": false}
+    {"phrase": "FAMOUS", "vote_count": 3, "is_original": true},
+    {"phrase": "POPULAR", "vote_count": 1, "is_original": false},
+    {"phrase": "WEALTHY", "vote_count": 0, "is_original": false}
   ],
   "your_phrase": "FAMOUS",
   "your_role": "prompt",
-  "your_points": 4,
-  "total_points": 9,
-  "your_payout": 62,
-  "total_pool": 250,
-  "total_votes": 10,
+  "your_points": 3,
+  "total_points": 5,
+  "your_payout": 108,
+  "total_pool": 180,
+  "total_votes": 4,
   "already_collected": true,
-  "finalized_at": "2025-01-06T13:00:00"
+  "finalized_at": "2025-01-06T13:00:00Z",
+  "correct_vote_count": 3,
+  "incorrect_vote_count": 1,
+  "correct_vote_points": 1,
+  "incorrect_vote_points": 2,
+  "prize_pool_base": 200,
+  "vote_cost": 10,
+  "vote_payout_correct": 20,
+  "system_contribution": 0
 }
 ```
 

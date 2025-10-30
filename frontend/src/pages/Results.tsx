@@ -113,7 +113,7 @@ export const Results: React.FC = () => {
       const voteWord = count === 1 ? 'vote' : 'votes';
       const pointSuffix = pointsPerVote === 1 ? 'pt' : 'pts';
       const descriptorFor = count === 1 ? `for ${descriptor} vote` : `for ${descriptor} votes`;
-      return `${count.toLocaleString()} ${descriptor} ${voteWord} × ${pointsPerVote.toLocaleString()} ${pointSuffix} ${descriptorFor}`;
+      return `${count.toLocaleString()} ${descriptor} ${voteWord} x ${pointsPerVote.toLocaleString()} ${pointSuffix} ${descriptorFor}`;
     };
 
     const pointsBreakdownBase = `${formatPointsTerm(correct_vote_count, correct_vote_points, 'correct')} + ${formatPointsTerm(incorrect_vote_count, incorrect_vote_points, 'incorrect')} = ${total_points.toLocaleString()} total pts`;
@@ -141,10 +141,10 @@ export const Results: React.FC = () => {
       const voteWord = count === 1 ? 'vote' : 'votes';
       const magnitude = Math.abs(perVoteEffect).toLocaleString();
       if (count === 0 || perVoteEffect === 0) {
-        return `+ ${count.toLocaleString()} ${descriptor} ${voteWord} × ${magnitude} FC`;
+        return `+ ${count.toLocaleString()} ${descriptor} ${voteWord} x ${magnitude} FC`;
       }
       const sign = perVoteEffect < 0 ? '-' : '+';
-      return `${sign} ${count.toLocaleString()} ${descriptor} ${voteWord} × ${magnitude} FC`;
+      return `${sign} ${count.toLocaleString()} ${descriptor} ${voteWord} x ${magnitude} FC`;
     };
 
     const correctPerVoteEffect = vote_cost - vote_payout_correct;
@@ -160,7 +160,7 @@ export const Results: React.FC = () => {
       earningsLine = `Earnings: ${your_payout.toLocaleString()} FC (split evenly)`;
     } else {
       const ratio = `${your_points.toLocaleString()} / ${total_points.toLocaleString()}`;
-      earningsLine = `Earnings: ${total_pool.toLocaleString()} FC × (${ratio}) = ${your_payout.toLocaleString()} FC`;
+      earningsLine = `Earnings: ${total_pool.toLocaleString()} FC x (${ratio}) = ${your_payout.toLocaleString()} FC`;
     }
 
     return {

@@ -3,7 +3,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from datetime import datetime, UTC, timedelta
-from backend.utils.exceptions import NoPhrasesetsAvailableError,  AlreadyVotedError, RoundExpiredError
+from backend.utils.exceptions import (
+    NoPhrasesetsAvailableError,
+    AlreadyVotedError,
+    RoundExpiredError,
+    InvalidPhraseError,
+    SelfVotingError,
+)
 from backend.utils.datetime_helpers import ensure_utc
 from uuid import UUID
 import uuid
@@ -297,6 +303,27 @@ class VoteService:
             ValueError: If phrase is not valid
             AlreadyVotedError: If player already voted on this phraseset
         """
+        # Prevent self-voting (load contributor IDs lazily)
+        contributor_ids: set[UUID] = set()
+        for round_id in [
+            phraseset.prompt_round_id,
+            phraseset.copy_round_1_id,
+            phraseset.copy_round_2_id,
+        ]:
+            if not round_id:
+                continue
+            round_obj = await self.db.get(Round, round_id)
+            if round_obj:
+                contributor_ids.add(round_obj.player_id)
+
+        if player.player_id in contributor_ids:
+            logger.error(
+                "Player %s attempted system vote on their own phraseset %s",
+                player.player_id,
+                phraseset.phraseset_id,
+            )
+            raise SelfVotingError("Cannot vote on phraseset you contributed to")
+
         # Normalize phrase
         phrase = chosen_phrase.strip().upper()
 
@@ -307,7 +334,7 @@ class VoteService:
             phraseset.copy_phrase_2,
         }
         if phrase not in valid_phrases:
-            raise ValueError(f"Phrase must be one of: {', '.join(valid_phrases)}")
+            raise InvalidPhraseError(f"Phrase must be one of: {', '.join(sorted(valid_phrases))}")
 
         # Check if already voted
         existing = await self.db.execute(
@@ -321,6 +348,14 @@ class VoteService:
         # Determine if correct
         correct = phrase == phraseset.original_phrase
         payout = settings.vote_payout_correct if correct else 0
+
+        # Charge vote cost up-front
+        await transaction_service.create_transaction(
+            player.player_id,
+            -settings.vote_cost,
+            "vote_entry",
+            auto_commit=False,
+        )
 
         # Create vote
         vote = Vote(
