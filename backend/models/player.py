@@ -32,6 +32,10 @@ class Player(Base):
     active_round_id = get_uuid_column(ForeignKey("rounds.round_id", ondelete="SET NULL"), nullable=True)
     is_guest = Column(Boolean, default=False, nullable=False)
 
+    # Guest vote lockout tracking
+    consecutive_incorrect_votes = Column(Integer, default=0, nullable=False)
+    vote_lockout_until = Column(DateTime(timezone=True), nullable=True)
+
     # Tutorial tracking
     tutorial_completed = Column(Boolean, default=False, nullable=False)
     tutorial_progress = Column(String(20), default='not_started', nullable=False)

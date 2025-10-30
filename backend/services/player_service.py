@@ -230,9 +230,10 @@ class PlayerService:
         if player.active_round_id is not None:
             return False, "already_in_round"
 
-        # Check outstanding prompts
+        # Check outstanding prompts (guests have a lower limit)
         count = await self.get_outstanding_prompts_count(player.player_id)
-        if count >= settings.max_outstanding_quips:
+        max_outstanding = 3 if player.is_guest else settings.max_outstanding_quips
+        if count >= max_outstanding:
             return False, "max_outstanding_quips"
 
         return True, ""
@@ -264,6 +265,17 @@ class PlayerService:
     ) -> tuple[bool, str]:
         """Check if player can start vote round."""
         from backend.services.queue_service import QueueService
+        from datetime import datetime, UTC
+
+        # Check if guest is locked out from voting
+        if player.is_guest and player.vote_lockout_until:
+            if datetime.now(UTC) < player.vote_lockout_until:
+                return False, "vote_lockout_active"
+            else:
+                # Lockout expired, clear it
+                player.vote_lockout_until = None
+                player.consecutive_incorrect_votes = 0
+                await self.db.commit()
 
         # Check balance
         if player.balance < settings.vote_cost:

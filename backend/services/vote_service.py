@@ -488,6 +488,24 @@ class VoteService:
                 auto_commit=False,  # Defer commit to end of this method
             )
 
+        # Track consecutive incorrect votes for guests
+        if player.is_guest:
+            if correct:
+                # Reset consecutive incorrect votes on correct vote
+                player.consecutive_incorrect_votes = 0
+            else:
+                # Increment consecutive incorrect votes
+                player.consecutive_incorrect_votes += 1
+
+                # Lock out guest for 24 hours after 3 consecutive incorrect votes
+                if player.consecutive_incorrect_votes >= 3:
+                    lockout_duration = timedelta(hours=24)
+                    player.vote_lockout_until = datetime.now(UTC) + lockout_duration
+                    logger.warning(
+                        f"Guest player {player.player_id} locked out from voting for 24 hours "
+                        f"due to {player.consecutive_incorrect_votes} consecutive incorrect votes"
+                    )
+
         # Update round
         round.status = "submitted"
         round.vote_submitted_at = datetime.now(UTC)

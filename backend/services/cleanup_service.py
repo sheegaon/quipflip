@@ -410,6 +410,50 @@ class CleanupService:
 
         return deleted_count
 
+    async def recycle_inactive_guest_usernames(self, days_old: int = 30) -> int:
+        """
+        Recycle usernames from guest accounts that haven't logged in for 30+ days
+        by appending " X" to username and "x" to username_canonical.
+
+        This allows those usernames to be reused by new players.
+
+        Args:
+            days_old: Recycle usernames for guests inactive for this many days (default: 30)
+
+        Returns:
+            Number of guest usernames recycled
+        """
+        cutoff_date = datetime.now(UTC) - timedelta(days=days_old)
+
+        # Find guests who haven't logged in for 30+ days and don't already have " X" suffix
+        stmt = select(Player).where(
+            Player.is_guest == True,  # noqa: E712
+            Player.last_login_date < cutoff_date,
+            ~Player.username.endswith(" X")  # Don't process already-recycled usernames
+        )
+        result = await self.db.execute(stmt)
+        inactive_guests = result.scalars().all()
+
+        if not inactive_guests:
+            logger.debug("No guest usernames to recycle")
+            return 0
+
+        logger.info(f"Found {len(inactive_guests)} guest username(s) to recycle (>{days_old} days inactive)")
+
+        # Update each guest's username and canonical_username
+        recycled_count = 0
+        for guest in inactive_guests:
+            guest.username = guest.username + " X"
+            guest.username_canonical = guest.username_canonical + "x"
+            recycled_count += 1
+
+        await self.db.commit()
+
+        if recycled_count > 0:
+            logger.info(f"Recycled {recycled_count} guest username(s)")
+
+        return recycled_count
+
     # ===== Run All Cleanup Tasks =====
 
     async def run_all_cleanup_tasks(self) -> dict[str, int]:
@@ -431,6 +475,7 @@ class CleanupService:
             "old_revoked_tokens": await self.cleanup_old_revoked_tokens(),
             "orphaned_rounds": await self.cleanup_orphaned_rounds(),
             "inactive_guests": await self.cleanup_inactive_guest_players(),
+            "recycled_guest_usernames": await self.recycle_inactive_guest_usernames(),
         }
 
         test_player_results = await self.cleanup_test_players()
