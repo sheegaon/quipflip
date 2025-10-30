@@ -82,7 +82,7 @@ async def initialize_quests_for_all_players():
 
             await db.commit()
 
-            logger.info("\n=== Summary ===")
+            logger.info("=== Summary ===")
             logger.info(f"Players initialized: {initialized_count}")
             logger.info(f"Players topped up with missing quests: {topped_up_count}")
             logger.info(f"Players skipped (already had quests): {skipped_count}")
