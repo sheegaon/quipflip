@@ -1,6 +1,7 @@
 """Round service for managing prompt, copy, and vote rounds."""
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, text, or_
+from sqlalchemy import select, func, text, or_, union
+from sqlalchemy.orm import aliased
 from datetime import datetime, UTC, timedelta
 from typing import Optional
 from uuid import UUID
@@ -60,28 +61,73 @@ class RoundService:
             # Get random enabled prompt (inside lock to keep session consistent)
             # Prefer prompts the player has not yet seen to avoid repeats until
             # all prompts have been exhausted.
-            seen_prompts_subquery = (
+            copy_round_alias = aliased(Round)
+            copy_prompt_round_alias = aliased(Round)
+            vote_round_alias = aliased(Round)
+            vote_prompt_round_alias = aliased(Round)
+            phraseset_alias = aliased(Phraseset)
+
+            prompt_round_seen = (
                 select(Round.prompt_id)
                 .where(Round.player_id == player.player_id)
-                .where(Round.round_type == "prompt")
                 .where(Round.prompt_id.is_not(None))
-                .distinct()
+            )
+
+            copy_round_seen = (
+                select(copy_prompt_round_alias.prompt_id)
+                .select_from(copy_round_alias)
+                .join(
+                    copy_prompt_round_alias,
+                    copy_round_alias.prompt_round_id == copy_prompt_round_alias.round_id,
+                )
+                .where(copy_round_alias.player_id == player.player_id)
+                .where(copy_round_alias.round_type == "copy")
+                .where(copy_prompt_round_alias.prompt_id.is_not(None))
+            )
+
+            vote_round_seen = (
+                select(vote_prompt_round_alias.prompt_id)
+                .select_from(vote_round_alias)
+                .join(
+                    phraseset_alias,
+                    vote_round_alias.phraseset_id == phraseset_alias.phraseset_id,
+                )
+                .join(
+                    vote_prompt_round_alias,
+                    phraseset_alias.prompt_round_id == vote_prompt_round_alias.round_id,
+                )
+                .where(vote_round_alias.player_id == player.player_id)
+                .where(vote_round_alias.round_type == "vote")
+                .where(vote_prompt_round_alias.prompt_id.is_not(None))
+            )
+
+            seen_prompts_subquery = (
+                union(
+                    prompt_round_seen,
+                    copy_round_seen,
+                    vote_round_seen,
+                ).subquery()
             )
 
             base_stmt = select(Prompt).where(Prompt.enabled == True)
 
-            # Try to get an unseen prompt first
-            prompt_stmt = base_stmt.where(Prompt.prompt_id.not_in(seen_prompts_subquery))
+            prompt_stmt = (
+                base_stmt.outerjoin(
+                    seen_prompts_subquery,
+                    seen_prompts_subquery.c.prompt_id == Prompt.prompt_id,
+                )
+                .where(seen_prompts_subquery.c.prompt_id.is_(None))
+            )
+
             result = await self.db.execute(prompt_stmt.order_by(func.random()).limit(1))
             prompt = result.scalar_one_or_none()
 
-            # If the player has seen every prompt, allow repeats.
             if not prompt:
-                result = await self.db.execute(base_stmt.order_by(func.random()).limit(1))
-                prompt = result.scalar_one_or_none()
-
-            if not prompt:
-                raise ValueError("No prompts available in library")
+                logger.info(
+                    "Player %s has seen all available prompts; no unseen prompts remaining",
+                    player.player_id,
+                )
+                raise NoPromptsAvailableError("no_unseen_prompts_available")
 
             # Create transaction (deduct full amount immediately)
             # Use skip_lock=True since we already have the lock

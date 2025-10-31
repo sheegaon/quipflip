@@ -73,6 +73,12 @@ async def start_prompt_round(
             expires_at=ensure_utc(round_object.expires_at),
             cost=round_object.cost,
         )
+    except NoPromptsAvailableError:
+        message = (
+            "There are no new prompts available for you right now. Please check back later "
+            "as we add more prompts, and keep enjoying copy and vote rounds in the meantime!"
+        )
+        raise HTTPException(status_code=400, detail=message)
     except Exception as e:
         logger.error(f"Error starting prompt round: {e}")
         raise HTTPException(status_code=500, detail=str(e))

@@ -7,6 +7,7 @@ Tests round creation, lifecycle, expiration, and phraseset creation.
 import pytest
 from datetime import datetime, timedelta, UTC
 import uuid
+from sqlalchemy import select, update
 
 from backend.models.player import Player
 from backend.models.prompt import Prompt
@@ -18,6 +19,7 @@ from backend.utils.exceptions import (
     RoundExpiredError,
     RoundNotFoundError,
     InvalidPhraseError,
+    NoPromptsAvailableError,
 )
 from backend.config import get_settings
 
@@ -47,7 +49,8 @@ async def test_prompt(db_session):
     """Create a test prompt."""
     prompt = Prompt(
         prompt_id=uuid.uuid4(),
-        text="What do you call a happy event?",
+        text=f"What do you call a happy event? {uuid.uuid4()}",
+        category="simple",
         enabled=True,
     )
     db_session.add(prompt)
@@ -116,6 +119,201 @@ class TestPromptRoundCreation:
         expected_expiry_max = after_time + timedelta(minutes=3)
 
         assert expected_expiry_min <= round_obj.expires_at <= expected_expiry_max
+
+    @pytest.mark.asyncio
+    async def test_start_prompt_round_skips_prompts_seen_in_other_rounds(
+        self,
+        db_session,
+        player_with_balance,
+    ):
+        """Should not repeat prompts seen in prompt, copy, or vote rounds."""
+        round_service = RoundService(db_session)
+        transaction_service = TransactionService(db_session)
+
+        # Disable any existing prompts to control the pool for this test
+        await db_session.execute(update(Prompt).values(enabled=False))
+        await db_session.commit()
+
+        prompt_texts = [
+            "Prompt Alpha",
+            "Prompt Bravo",
+            "Prompt Charlie",
+            "Prompt Delta",
+        ]
+        prompts = []
+        for text in prompt_texts:
+            prompt = Prompt(
+                prompt_id=uuid.uuid4(),
+                text=f"{text} {uuid.uuid4()}",
+                category="simple",
+                enabled=True,
+            )
+            db_session.add(prompt)
+            prompts.append(prompt)
+        await db_session.commit()
+
+        prompt_alpha, prompt_bravo, prompt_charlie, prompt_delta = prompts
+
+        # Player has previously seen Prompt Alpha in a prompt round
+        prior_prompt_round = Round(
+            round_id=uuid.uuid4(),
+            player_id=player_with_balance.player_id,
+            round_type="prompt",
+            status="submitted",
+            prompt_id=prompt_alpha.prompt_id,
+            prompt_text=prompt_alpha.text,
+            submitted_phrase="ALPHA",
+            cost=settings.prompt_cost,
+            expires_at=datetime.now(UTC) + timedelta(minutes=3),
+        )
+
+        # Player has seen Prompt Bravo through a copy round
+        copy_source_prompt_round = Round(
+            round_id=uuid.uuid4(),
+            player_id=uuid.uuid4(),
+            round_type="prompt",
+            status="submitted",
+            prompt_id=prompt_bravo.prompt_id,
+            prompt_text=prompt_bravo.text,
+            submitted_phrase="BRAVO",
+            cost=settings.prompt_cost,
+            expires_at=datetime.now(UTC) + timedelta(minutes=3),
+        )
+        player_copy_round = Round(
+            round_id=uuid.uuid4(),
+            player_id=player_with_balance.player_id,
+            round_type="copy",
+            status="submitted",
+            prompt_round_id=copy_source_prompt_round.round_id,
+            original_phrase="BRAVO",
+            copy_phrase="BRAVO COPY",
+            cost=settings.copy_cost_normal,
+            expires_at=datetime.now(UTC) + timedelta(minutes=3),
+        )
+
+        # Player has seen Prompt Charlie through a vote round
+        vote_prompt_round = Round(
+            round_id=uuid.uuid4(),
+            player_id=uuid.uuid4(),
+            round_type="prompt",
+            status="submitted",
+            prompt_id=prompt_charlie.prompt_id,
+            prompt_text=prompt_charlie.text,
+            submitted_phrase="CHARLIE",
+            cost=settings.prompt_cost,
+            expires_at=datetime.now(UTC) + timedelta(minutes=3),
+        )
+        copy_round_one = Round(
+            round_id=uuid.uuid4(),
+            player_id=uuid.uuid4(),
+            round_type="copy",
+            status="submitted",
+            prompt_round_id=vote_prompt_round.round_id,
+            original_phrase="CHARLIE",
+            copy_phrase="CHARLIE COPY 1",
+            cost=settings.copy_cost_normal,
+            expires_at=datetime.now(UTC) + timedelta(minutes=3),
+        )
+        copy_round_two = Round(
+            round_id=uuid.uuid4(),
+            player_id=uuid.uuid4(),
+            round_type="copy",
+            status="submitted",
+            prompt_round_id=vote_prompt_round.round_id,
+            original_phrase="CHARLIE",
+            copy_phrase="CHARLIE COPY 2",
+            cost=settings.copy_cost_normal,
+            expires_at=datetime.now(UTC) + timedelta(minutes=3),
+        )
+        phraseset = Phraseset(
+            phraseset_id=uuid.uuid4(),
+            prompt_round_id=vote_prompt_round.round_id,
+            copy_round_1_id=copy_round_one.round_id,
+            copy_round_2_id=copy_round_two.round_id,
+            prompt_text=prompt_charlie.text,
+            original_phrase="CHARLIE",
+            copy_phrase_1="CHARLIE COPY 1",
+            copy_phrase_2="CHARLIE COPY 2",
+            status="open",
+            vote_count=0,
+            total_pool=200,
+        )
+        player_vote_round = Round(
+            round_id=uuid.uuid4(),
+            player_id=player_with_balance.player_id,
+            round_type="vote",
+            status="submitted",
+            phraseset_id=phraseset.phraseset_id,
+            cost=settings.vote_cost,
+            expires_at=datetime.now(UTC) + timedelta(minutes=1),
+        )
+
+        db_session.add_all(
+            [
+                prior_prompt_round,
+                copy_source_prompt_round,
+                player_copy_round,
+                vote_prompt_round,
+                copy_round_one,
+                copy_round_two,
+                phraseset,
+                player_vote_round,
+            ]
+        )
+        await db_session.commit()
+
+        round_obj = await round_service.start_prompt_round(
+            player_with_balance,
+            transaction_service,
+        )
+
+        assert round_obj.prompt_id == prompt_delta.prompt_id
+
+    @pytest.mark.asyncio
+    async def test_start_prompt_round_raises_when_all_prompts_seen(
+        self,
+        db_session,
+        player_with_balance,
+    ):
+        """Should raise an error when no unseen prompts remain."""
+        round_service = RoundService(db_session)
+        transaction_service = TransactionService(db_session)
+
+        await db_session.execute(update(Prompt).values(enabled=False))
+        await db_session.commit()
+
+        prompts = []
+        for text in ["Prompt Echo", "Prompt Foxtrot"]:
+            prompt = Prompt(
+                prompt_id=uuid.uuid4(),
+                text=f"{text} {uuid.uuid4()}",
+                category="simple",
+                enabled=True,
+            )
+            db_session.add(prompt)
+            prompts.append(prompt)
+        await db_session.commit()
+
+        for prompt in prompts:
+            seen_round = Round(
+                round_id=uuid.uuid4(),
+                player_id=player_with_balance.player_id,
+                round_type="prompt",
+                status="submitted",
+                prompt_id=prompt.prompt_id,
+                prompt_text=prompt.text,
+                submitted_phrase="SEEN",
+                cost=settings.prompt_cost,
+                expires_at=datetime.now(UTC) + timedelta(minutes=3),
+            )
+            db_session.add(seen_round)
+        await db_session.commit()
+
+        with pytest.raises(NoPromptsAvailableError):
+            await round_service.start_prompt_round(
+                player_with_balance,
+                transaction_service,
+            )
 
 
 class TestPromptSubmission:
