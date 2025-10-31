@@ -12,7 +12,7 @@ const ThumbSvg: React.FC<{ direction: 'up' | 'down' }> = ({ direction }) => (
     viewBox="0 0 20 24"
     fill="currentColor"
     xmlns="http://www.w3.org/2000/svg"
-    className={`w-5 h-5 md:w-6 md:h-6 ${direction === 'down' ? 'rotate-180' : ''}`}
+    className={`w-5 h-5 md:w-7 md:h-7 ${direction === 'down' ? 'rotate-180' : ''}`}
   >
     {/* Rounded, emoji-style thumb - base section (wider) */}
     <path
