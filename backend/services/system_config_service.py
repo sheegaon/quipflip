@@ -270,12 +270,12 @@ class SystemConfigService:
             "min": 1,
             "max": 50,
         },
-        "ai_backup_sleep_seconds": {
+        "ai_backup_sleep_minutes": {
             "type": "int",
             "category": "ai",
-            "description": "Sleep time between backup cycles",
-            "min": 300,
-            "max": 7200,
+            "description": "Sleep time between backup cycles (minutes)",
+            "min": 5,
+            "max": 120,
         },
     }
 
@@ -391,12 +391,27 @@ class SystemConfigService:
         result = await self.session.execute(select(SystemConfig))
         db_configs = result.scalars().all()
 
+        legacy_sleep_key = "ai_backup_sleep_seconds"
+
         for config_entry in db_configs:
             if config_entry.key in self.CONFIG_SCHEMA:
                 config_dict[config_entry.key] = self._deserialize_value(
                     config_entry.value,
                     config_entry.value_type
                 )
+            elif config_entry.key == legacy_sleep_key:
+                legacy_value = self._deserialize_value(
+                    config_entry.value,
+                    config_entry.value_type,
+                )
+                migrated_minutes = max(1, int(round(legacy_value / 60)))
+                logger.info(
+                    "Migrated legacy %s=%s to ai_backup_sleep_minutes=%s",
+                    legacy_sleep_key,
+                    legacy_value,
+                    migrated_minutes,
+                )
+                config_dict["ai_backup_sleep_minutes"] = migrated_minutes
 
         return config_dict
 
