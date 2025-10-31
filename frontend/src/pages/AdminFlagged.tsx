@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { Header } from '../components/Header';
@@ -34,7 +34,7 @@ const AdminFlagged: React.FC = () => {
   const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const loadFlags = async (nextStatus: FlagStatusFilter) => {
+  const loadFlags = useCallback(async (nextStatus: FlagStatusFilter) => {
     try {
       setLoading(true);
       setError(null);
@@ -46,11 +46,21 @@ const AdminFlagged: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
+    if (!player) {
+      return;
+    }
+
+    if (!player.is_admin) {
+      setError('You do not have permission to review flagged phrases.');
+      setLoading(false);
+      return;
+    }
+
     loadFlags(statusFilter);
-  }, [statusFilter]);
+  }, [loadFlags, player, statusFilter]);
 
   useEffect(() => {
     if (!successMessage) {
@@ -84,6 +94,20 @@ const AdminFlagged: React.FC = () => {
       <div className="min-h-screen bg-quip-cream bg-pattern">
         <Header />
         <div className="flex items-center justify-center py-16 text-quip-teal">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!player.is_admin) {
+    return (
+      <div className="min-h-screen bg-quip-cream bg-pattern">
+        <Header />
+        <div className="flex items-center justify-center py-16">
+          <div className="rounded-tile border border-quip-orange/40 bg-white/80 p-6 text-center text-quip-teal">
+            <p className="text-lg font-semibold text-quip-navy">Admin access required</p>
+            <p className="mt-2 text-sm">You do not have permission to view flagged phrases.</p>
+          </div>
+        </div>
       </div>
     );
   }
