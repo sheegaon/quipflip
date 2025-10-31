@@ -850,6 +850,8 @@ class RoundService:
         """
         # Use a single query with proper joins to count available prompts
         # This is much more efficient than the previous multiple-query approach
+        cutoff_time = datetime.now(UTC) - timedelta(hours=24)
+
         result = await self.db.execute(
             text("""
                 WITH player_prompt_rounds AS (
@@ -870,7 +872,7 @@ class RoundService:
                     SELECT pap.prompt_round_id
                     FROM player_abandoned_prompts pap
                     WHERE LOWER(REPLACE(CAST(pap.player_id AS TEXT), '-', '')) = :player_id_clean
-                    AND pap.abandoned_at > (CURRENT_TIMESTAMP - INTERVAL '24 hours')
+                    AND pap.abandoned_at > :cutoff_time
                 ),
                 all_available_prompts AS (
                     SELECT r.round_id
@@ -888,7 +890,8 @@ class RoundService:
                 AND a.round_id NOT IN (SELECT prompt_round_id FROM player_abandoned_cooldown WHERE prompt_round_id IS NOT NULL)
             """),
             {
-                "player_id_clean": str(player_id).replace('-', '').lower()
+                "player_id_clean": str(player_id).replace('-', '').lower(),
+                "cutoff_time": cutoff_time,
             }
         )
 
