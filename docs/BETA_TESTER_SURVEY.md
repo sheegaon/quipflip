@@ -1,5 +1,72 @@
 Here’s the trimmed survey, then I’ll show you the steps + a Codex-style prompt.
 
+## Prompt for Codex
+
+You are helping me implement an in-app beta tester survey for my game Quipflip.
+
+Context:
+- Frontend: React + TypeScript + Vite, already using React Router and Context for auth/game state.
+- Backend: FastAPI with JWT auth. We already have routers like /player, /rounds, /phrasesets.
+- I want to add ONE hardcoded survey called "beta_oct_2025".
+- Authenticated players only. We know the player_id from the JWT on the backend and from context on the frontend.
+
+Tasks:
+
+1. FRONTEND (React + TS)
+- Create a React component called `BetaSurveyPage`.
+- Render the questions listed below.
+- Store answers in component state.
+- On submit, POST to `/feedback/beta-survey` with JSON:
+  {
+    survey_id: "beta_oct_2025",
+    answers: [
+      { question_id: "q1", value: 4 },
+      { question_id: "q2", value: "Vote" },
+      ...
+    ]
+  }
+- If the request succeeds, show a thank-you message and navigate back to dashboard.
+- Add basic validation: required for Q1, Q2, Q5, Q6, Q7, Q10, Q11.
+
+2. BACKEND (FastAPI)
+- Add a new router module, e.g. `routers/feedback.py`.
+- Create endpoint: POST `/feedback/beta-survey`
+  - Requires auth (reuse existing dependency).
+  - Request model:
+    ```python
+    class SurveyAnswer(BaseModel):
+        question_id: str
+        value: Any
+
+    class SurveySubmission(BaseModel):
+        survey_id: str
+        answers: list[SurveyAnswer]
+    ```
+  - On request, read current_user / player_id from the dependency.
+  - Insert into a table `survey_responses` with columns:
+    - id (uuid)
+    - player_id (uuid)
+    - survey_id (text)
+    - payload (JSONB)
+    - created_at (timestamp, utc)
+  - If the player has already submitted for `beta_oct_2025`, just return 200 with a message like "already submitted".
+- Add a GET `/feedback/beta-survey` (admin only, can stub auth) that returns the last 100 submissions.
+
+3. DATABASE
+- Generate SQLAlchemy model for `survey_responses`.
+- Generate an Alembic migration to create the table.
+
+4. STYLE
+- Use the existing Tailwind setup in the project for inputs and buttons. Form should be mobile-friendly.
+
+Output:
+- React component code (BetaSurveyPage.tsx)
+- FastAPI router code (feedback.py)
+- SQLAlchemy model + Alembic migration snippet
+- Example JSON payload from the frontend
+- Any necessary additions to `main.py` to include the new router
+
+
 ## Quipflip Beta Tester Survey (In-App)
 
 ### 💬 Section 1 — Gameplay Experience
@@ -129,77 +196,3 @@ Here’s the trimmed survey, then I’ll show you the steps + a Codex-style prom
 6. **Add an admin view later**
 
    * Simple React page that calls `GET /feedback/beta-survey` and lists responses.
-
----
-
-## Prompt to feed to Codex
-
-You can drop this into your AI coding assistant to get a React component + FastAPI endpoint scaffold.
-
-````text
-You are helping me implement an in-app beta tester survey for my game Quipflip.
-
-Context:
-- Frontend: React + TypeScript + Vite, already using React Router and Context for auth/game state.
-- Backend: FastAPI with JWT auth. We already have routers like /player, /rounds, /phrasesets.
-- I want to add ONE hardcoded survey called "beta_oct_2025".
-- Authenticated players only. We know the player_id from the JWT on the backend and from context on the frontend.
-
-Tasks:
-
-1. FRONTEND (React + TS)
-- Create a React component called `BetaSurveyPage`.
-- Render the questions listed above.
-- Store answers in component state.
-- On submit, POST to `/feedback/beta-survey` with JSON:
-  {
-    survey_id: "beta_oct_2025",
-    answers: [
-      { question_id: "q1", value: 4 },
-      { question_id: "q2", value: "Vote" },
-      ...
-    ]
-  }
-- If the request succeeds, show a thank-you message and navigate back to dashboard.
-- Add basic validation: required for Q1, Q2, Q5, Q6, Q7, Q10, Q11.
-
-2. BACKEND (FastAPI)
-- Add a new router module, e.g. `routers/feedback.py`.
-- Create endpoint: POST `/feedback/beta-survey`
-  - Requires auth (reuse existing dependency).
-  - Request model:
-    ```python
-    class SurveyAnswer(BaseModel):
-        question_id: str
-        value: Any
-
-    class SurveySubmission(BaseModel):
-        survey_id: str
-        answers: list[SurveyAnswer]
-    ```
-  - On request, read current_user / player_id from the dependency.
-  - Insert into a table `survey_responses` with columns:
-    - id (uuid)
-    - player_id (uuid)
-    - survey_id (text)
-    - payload (JSONB)
-    - created_at (timestamp, utc)
-  - If the player has already submitted for `beta_oct_2025`, just return 200 with a message like "already submitted".
-- Add a GET `/feedback/beta-survey` (admin only, can stub auth) that returns the last 100 submissions.
-
-3. DATABASE
-- Generate SQLAlchemy model for `survey_responses`.
-- Generate an Alembic migration to create the table.
-
-4. STYLE
-- Use the existing Tailwind setup in the project for inputs and buttons. Form should be mobile-friendly.
-
-Output:
-- React component code (BetaSurveyPage.tsx)
-- FastAPI router code (feedback.py)
-- SQLAlchemy model + Alembic migration snippet
-- Example JSON payload from the frontend
-- Any necessary additions to `main.py` to include the new router
-````
-
-That should be enough for Codex/Cursor/Copilot to spit out the actual code that matches your existing project shape.
