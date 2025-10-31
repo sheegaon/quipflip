@@ -437,6 +437,13 @@ export interface HealthResponse {
   redis: string;
 }
 
+export interface ApiInfo {
+  message: string;
+  version: string;
+  environment: string;
+  docs: string;
+}
+
 export interface SubmitPromptFeedbackRequest {
   feedback_type: 'like' | 'dislike';
 }
