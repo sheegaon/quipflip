@@ -478,55 +478,64 @@ class RoundService:
     ) -> tuple[Round, int, int]:
         """Abandon an active prompt or copy round and process refund."""
 
-        round_object = await self.db.get(Round, round_id)
-        if not round_object or round_object.player_id != player.player_id:
-            raise RoundNotFoundError("Round not found")
+        from backend.utils import lock_client
 
-        if round_object.status != "active":
-            raise ValueError("Round is not active")
-
-        if round_object.round_type not in {"prompt", "copy"}:
-            raise ValueError("Only prompt or copy rounds can be abandoned")
-
-        refund_amount = 0
-        penalty_kept = 0
-
-        round_object.status = "abandoned"
-        round_object.expires_at = datetime.now(UTC)
-
-        if player.active_round_id == round_id:
-            player.active_round_id = None
-
-        if round_object.round_type == "prompt":
-            penalty_kept = self.settings.abandoned_penalty
-            refund_amount = max(round_object.cost - penalty_kept, 0)
-            round_object.phraseset_status = "abandoned"
-        else:
-            penalty_kept = self.settings.abandoned_penalty
-            refund_amount = max(round_object.cost - penalty_kept, 0)
-
-            if round_object.prompt_round_id:
-                QueueService.add_prompt_round_to_queue(round_object.prompt_round_id)
-
-                abandonment = PlayerAbandonedPrompt(
-                    id=uuid.uuid4(),
-                    player_id=player.player_id,
-                    prompt_round_id=round_object.prompt_round_id,
-                )
-                self.db.add(abandonment)
-
-        if refund_amount > 0:
-            await transaction_service.create_transaction(
-                player.player_id,
-                refund_amount,
-                "refund",
-                round_object.round_id,
-                auto_commit=False,
+        lock_name = f"abandon_round:{round_id}"
+        with lock_client.lock(lock_name, timeout=10):
+            result = await self.db.execute(
+                select(Round).where(Round.round_id == round_id).with_for_update()
             )
+            round_object = result.scalar_one_or_none()
 
-        await self.db.flush()
-        await self.db.commit()
-        await self.db.refresh(round_object)
+            if not round_object or round_object.player_id != player.player_id:
+                raise RoundNotFoundError("Round not found")
+
+            if round_object.status != "active":
+                raise ValueError("Round is not active")
+
+            if round_object.round_type not in {"prompt", "copy"}:
+                raise ValueError("Only prompt or copy rounds can be abandoned")
+
+            refund_amount = 0
+            penalty_kept = 0
+
+            round_object.status = "abandoned"
+            round_object.expires_at = datetime.now(UTC)
+
+            if player.active_round_id == round_id:
+                player.active_round_id = None
+
+            if round_object.round_type == "prompt":
+                penalty_kept = self.settings.abandoned_penalty
+                refund_amount = max(round_object.cost - penalty_kept, 0)
+                round_object.phraseset_status = "abandoned"
+            else:
+                penalty_kept = self.settings.abandoned_penalty
+                refund_amount = max(round_object.cost - penalty_kept, 0)
+
+                if round_object.prompt_round_id:
+                    QueueService.add_prompt_round_to_queue(round_object.prompt_round_id)
+
+                    abandonment = PlayerAbandonedPrompt(
+                        id=uuid.uuid4(),
+                        player_id=player.player_id,
+                        prompt_round_id=round_object.prompt_round_id,
+                    )
+                    self.db.add(abandonment)
+
+            if refund_amount > 0:
+                await transaction_service.create_transaction(
+                    player.player_id,
+                    refund_amount,
+                    "refund",
+                    round_object.round_id,
+                    auto_commit=False,
+                    skip_lock=True,
+                )
+
+            await self.db.flush()
+            await self.db.commit()
+            await self.db.refresh(round_object)
 
         from backend.utils.cache import dashboard_cache
 
