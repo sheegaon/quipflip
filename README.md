@@ -90,7 +90,7 @@ pytest tests/
 ## 👤 Account Types
 
 ### Guest Accounts
-- **Quick Start**: Play instantly without email/password signup
+- **Quick Start**: Play now without email/password signup
 - **Auto-Generated Credentials**: Email (`guest####@quipflip.xyz`) and password (`QuipGuest`) provided after creation
 - **Rate Limits**: Stricter limits to prevent abuse (50 req/min general, 10 req/min voting)
 - **Upgrade Path**: Convert to full account anytime in Settings to save progress permanently
