@@ -109,6 +109,10 @@ class PlayerService:
         """Check if daily bonus can be claimed."""
         today = date.today()
 
+        # Guest players cannot claim daily bonuses
+        if player.is_guest:
+            return False
+
         # No bonus on creation date
         if player.created_at.date() == today:
             return False

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useGame } from '../contexts/GameContext';
 import { useQuests } from '../contexts/QuestContext';
 import { Header } from '../components/Header';
@@ -7,6 +7,7 @@ import { SuccessNotification } from '../components/SuccessNotification';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import type { Quest } from '../api/types';
 import { questsLogger } from '../utils/logger';
+import { isSameDay } from '../utils/date';
 
 // Quest categories for filtering
 const QUEST_CATEGORIES = ['all', 'streak', 'quality', 'activity', 'milestone'] as const;
@@ -64,6 +65,16 @@ export const Quests: React.FC = () => {
       </div>
     );
   }
+
+  const isGuestPlayer = Boolean(player.is_guest);
+  const isFirstDayPlayer = useMemo(() => {
+    if (!player.created_at) {
+      return false;
+    }
+
+    const createdAtDate = new Date(player.created_at);
+    return isSameDay(createdAtDate, new Date());
+  }, [player.created_at]);
 
   const handleClaimBonus = async () => {
     if (isClaiming) return;
@@ -165,8 +176,22 @@ export const Quests: React.FC = () => {
           ) : (
             <div className="bg-gray-100 border-2 border-gray-300 rounded-tile p-4">
               <div className="text-center">
-                <p className="text-gray-600 mb-2">Daily bonus already claimed today</p>
-                <p className="text-sm text-gray-500">Come back tomorrow for your next bonus!</p>
+                {isGuestPlayer ? (
+                  <>
+                    <p className="text-gray-600 mb-2">Daily bonus is only available for registered players</p>
+                    <p className="text-sm text-gray-500">Upgrade your guest account to start earning daily rewards.</p>
+                  </>
+                ) : isFirstDayPlayer ? (
+                  <>
+                    <p className="text-gray-600 mb-2">Daily bonus unlocks after your first day</p>
+                    <p className="text-sm text-gray-500">Come back tomorrow to claim your first daily reward!</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-gray-600 mb-2">Daily bonus already claimed today</p>
+                    <p className="text-sm text-gray-500">Come back tomorrow for your next bonus!</p>
+                  </>
+                )}
               </div>
             </div>
           )}
