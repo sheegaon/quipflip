@@ -2,7 +2,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from sqlalchemy.exc import IntegrityError
-from datetime import date, datetime, UTC
+from datetime import datetime, UTC
 from uuid import UUID
 import uuid
 import logging
@@ -107,7 +107,16 @@ class PlayerService:
 
     async def is_daily_bonus_available(self, player: Player) -> bool:
         """Check if daily bonus can be claimed."""
-        today = date.today()
+        # Use UTC for "today" to match how timestamps are stored.
+        # ``date.today()`` relies on the server's local timezone, which
+        # could allow newly created users to claim the bonus if the server
+        # is running behind UTC. Since ``created_at`` is stored in UTC,
+        # convert the current time to UTC before comparing dates.
+        today = datetime.now(UTC).date()
+
+        # Guest players cannot claim daily bonuses
+        if player.is_guest:
+            return False
 
         # No bonus on creation date
         if player.created_at.date() == today:
@@ -134,7 +143,7 @@ class PlayerService:
         if not await self.is_daily_bonus_available(player):
             raise DailyBonusNotAvailableError("Daily bonus not available")
 
-        today = date.today()
+        today = datetime.now(UTC).date()
 
         # Create bonus record
         bonus = DailyBonus(
@@ -222,6 +231,9 @@ class PlayerService:
         Returns:
             (can_start, error_code)
         """
+        if player.locked_until and player.locked_until > datetime.now(UTC):
+            return False, "player_locked"
+
         # Check balance
         if player.balance < settings.prompt_cost:
             return False, "insufficient_balance"
@@ -264,6 +276,9 @@ class PlayerService:
         """Check if player can start copy round."""
         from backend.services.queue_service import QueueService
 
+        if player.locked_until and player.locked_until > datetime.now(UTC):
+            return False, "player_locked"
+
         # Check balance (need to check against current cost)
         copy_cost = QueueService.get_copy_cost()
         if player.balance < copy_cost:
@@ -293,6 +308,9 @@ class PlayerService:
         if player.is_guest and player.vote_lockout_until:
             if datetime.now(UTC) < player.vote_lockout_until:
                 return False, "vote_lockout_active"
+
+        if player.locked_until and player.locked_until > datetime.now(UTC):
+            return False, "player_locked"
 
         # Check balance
         if player.balance < settings.vote_cost:

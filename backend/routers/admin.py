@@ -12,7 +12,14 @@ from backend.services.phrase_validator import get_phrase_validator
 from backend.services.system_config_service import SystemConfigService
 from backend.services.player_service import PlayerService
 from backend.services.cleanup_service import CleanupService
+from backend.services.flagged_prompt_service import FlaggedPromptService
+from backend.services.transaction_service import TransactionService
 from backend.schemas.auth import EmailLike
+from backend.schemas.flagged_prompt import (
+    FlaggedPromptListResponse,
+    FlaggedPromptItem,
+    ResolveFlaggedPromptRequest,
+)
 from typing import Annotated, Optional, Any
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -299,6 +306,55 @@ async def delete_player_admin(
         deleted_email=target_player.email,
         deletion_counts=deletion_counts,
     )
+
+
+@router.get("/flags", response_model=FlaggedPromptListResponse)
+async def list_flagged_prompts(
+    player: Annotated[Player, Depends(get_current_player)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    status: Optional[str] = Query("pending"),
+) -> FlaggedPromptListResponse:
+    """Retrieve flagged prompt phrases for review."""
+
+    if not player.is_admin:
+        raise HTTPException(status_code=403, detail="admin_only")
+
+    normalized_status = status if status not in {None, "all", ""} else None
+    service = FlaggedPromptService(session)
+    records = await service.list_flags(normalized_status)
+
+    flags = [FlaggedPromptItem.from_record(record) for record in records]
+
+    return FlaggedPromptListResponse(flags=flags)
+
+
+@router.post("/flags/{flag_id}/resolve", response_model=FlaggedPromptItem)
+async def resolve_flagged_prompt(
+    flag_id: UUID,
+    request: ResolveFlaggedPromptRequest,
+    player: Annotated[Player, Depends(get_current_player)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> FlaggedPromptItem:
+    """Resolve a flagged prompt by confirming or dismissing it."""
+
+    if not player.is_admin:
+        raise HTTPException(status_code=403, detail="admin_only")
+
+    service = FlaggedPromptService(session)
+    transaction_service = TransactionService(session)
+
+    try:
+        record = await service.resolve_flag(flag_id, request.action, player, transaction_service)
+    except ValueError as exc:
+        detail = str(exc)
+        if detail in {"flag_already_resolved", "invalid_action"}:
+            raise HTTPException(status_code=400, detail=detail) from exc
+        raise
+
+    if not record:
+        raise HTTPException(status_code=404, detail="flag_not_found")
+
+    return FlaggedPromptItem.from_record(record)
 
 
 @router.post("/test-phrase-validation", response_model=TestPhraseValidationResponse)

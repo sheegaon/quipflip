@@ -12,6 +12,7 @@ import type {
   PhrasesetDashboardSummary,
   UnclaimedResult,
   AuthTokenResponse,
+  FlagCopyRoundResponse,
 } from '../api/types';
 
 interface GameState {
@@ -39,6 +40,7 @@ interface GameActions {
   startCopyRound: () => Promise<void>;
   startVoteRound: () => Promise<void>;
   claimPhrasesetPrize: (phrasesetId: string) => Promise<void>;
+  flagCopyRound: (roundId: string) => Promise<FlagCopyRoundResponse>;
 }
 
 interface GameContextType {
@@ -428,7 +430,7 @@ export const GameProvider: React.FC<{
 
   const startCopyRound = useCallback(async () => {
       gameContextLogger.debug('🎯 GameContext startCopyRound called');
-      
+
       const token = await apiClient.ensureAccessToken();
       gameContextLogger.debug('🔑 Token check for start copy round:', { hasToken: !!token });
       
@@ -492,6 +494,30 @@ export const GameProvider: React.FC<{
         setLoading(false);
       }
   }, [isAuthenticated, triggerPoll, onDashboardTrigger]);
+
+  const flagCopyRound = useCallback(async (roundId: string): Promise<FlagCopyRoundResponse> => {
+      gameContextLogger.debug('🚩 GameContext flagCopyRound called', { roundId });
+
+      const token = await apiClient.ensureAccessToken();
+      gameContextLogger.debug('🔑 Token check for flag copy round:', { hasToken: !!token });
+
+      if (!token) {
+        gameContextLogger.warn('❌ No valid token, aborting flag copy round');
+        setIsAuthenticated(false);
+        throw new Error('missing_token');
+      }
+
+      try {
+        gameContextLogger.debug('📞 Calling apiClient.flagCopyRound()...', { roundId });
+        const response = await apiClient.flagCopyRound(roundId);
+        gameContextLogger.info('✅ Copy round flagged successfully', { roundId, flagId: response.flag_id });
+        await refreshDashboard();
+        return response;
+      } catch (err) {
+        gameContextLogger.error('❌ Failed to flag copy round:', err);
+        throw err;
+      }
+  }, [refreshDashboard]);
 
   const startVoteRound = useCallback(async () => {
       gameContextLogger.debug('🎯 GameContext startVoteRound called');
@@ -671,6 +697,7 @@ export const GameProvider: React.FC<{
     navigateAfterDelay,
     startPromptRound,
     startCopyRound,
+    flagCopyRound,
     startVoteRound,
     claimPhrasesetPrize,
   };

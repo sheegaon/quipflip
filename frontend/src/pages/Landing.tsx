@@ -169,14 +169,14 @@ export const Landing: React.FC = () => {
           </div>
         )}
 
-        {/* Play Instantly Button */}
+        {/* Play Now Button */}
         <div className="mb-6">
           <button
             onClick={handlePlayAsGuest}
             disabled={isLoading}
             className="w-full bg-gradient-to-r from-quip-orange to-quip-turquoise hover:from-quip-orange-deep hover:to-quip-teal disabled:bg-gray-400 text-white font-bold py-4 px-4 rounded-tile transition-all hover:shadow-tile-sm transform hover:-translate-y-0.5 text-lg"
           >
-            {isLoading ? 'Creating Guest Account...' : 'Play Instantly'}
+            {isLoading ? 'Creating Guest Account...' : 'Play Now'}
           </button>
         </div>
 

@@ -1,6 +1,6 @@
 """Round service for managing prompt, copy, and vote rounds."""
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, text
+from sqlalchemy import select, func, text, or_
 from datetime import datetime, UTC, timedelta
 from typing import Optional
 from uuid import UUID
@@ -10,6 +10,7 @@ import logging
 from backend.models.player import Player
 from backend.models.prompt import Prompt
 from backend.models.round import Round
+from backend.models.flagged_prompt import FlaggedPrompt
 from backend.models.phraseset import Phraseset
 from backend.models.player_abandoned_prompt import PlayerAbandonedPrompt
 from backend.services.transaction_service import TransactionService
@@ -243,6 +244,14 @@ class RoundService:
                 logger.warning(f"Prompt round not found in DB: {prompt_round_id}")
                 continue  # Try next prompt
 
+            if prompt_round.phraseset_status in {"flagged_pending", "flagged_removed"}:
+                logger.info(
+                    "Prompt %s is flagged (status=%s), skipping for copy queue",
+                    prompt_round_id,
+                    prompt_round.phraseset_status,
+                )
+                continue
+
             # CRITICAL: Check if player is trying to copy their own prompt
             if prompt_round.player_id == player.player_id:
                 # Put back in queue and try another
@@ -461,6 +470,90 @@ class RoundService:
         logger.info(f"Submitted phrase for copy round {round_id}: {phrase}")
         return round_object
 
+    async def flag_copy_round(
+        self,
+        round_id: UUID,
+        player: Player,
+        transaction_service: TransactionService,
+    ) -> FlaggedPrompt:
+        """Flag an active copy round as inappropriate and abandon it."""
+
+        round_object = await self.db.get(Round, round_id)
+        if not round_object or round_object.round_type != "copy" or round_object.player_id != player.player_id:
+            raise RoundNotFoundError("Round not found")
+
+        if round_object.status != "active":
+            raise ValueError("Round is not active")
+
+        if not round_object.prompt_round_id:
+            raise ValueError("Copy round missing prompt reference")
+
+        prompt_round = await self.db.get(Round, round_object.prompt_round_id)
+        if not prompt_round:
+            raise ValueError("Prompt round not found for flag")
+
+        # Remove prompt from queue so no additional copy rounds are assigned
+        queue_removed = QueueService.remove_prompt_round_from_queue(prompt_round.round_id)
+        previous_status = prompt_round.phraseset_status
+        prompt_round.phraseset_status = "flagged_pending"
+
+        # Abandon the copy round immediately
+        round_object.status = "abandoned"
+        round_object.expires_at = datetime.now(UTC)
+
+        # Clear player's active round
+        if player.active_round_id == round_object.round_id:
+            player.active_round_id = None
+
+        # Partial refund following abandoned round rules
+        refund_amount = max(round_object.cost - self.settings.abandoned_penalty, 0)
+        penalty_kept = max(round_object.cost - refund_amount, 0)
+
+        if refund_amount > 0:
+            await transaction_service.create_transaction(
+                player.player_id,
+                refund_amount,
+                "refund",
+                round_object.round_id,
+                auto_commit=False,
+            )
+
+        flag = FlaggedPrompt(
+            flag_id=uuid.uuid4(),
+            prompt_round_id=prompt_round.round_id,
+            copy_round_id=round_object.round_id,
+            reporter_player_id=player.player_id,
+            prompt_player_id=prompt_round.player_id,
+            original_phrase=(round_object.original_phrase or "").upper(),
+            prompt_text=prompt_round.prompt_text,
+            previous_phraseset_status=previous_status,
+            queue_removed=queue_removed,
+            round_cost=round_object.cost,
+            partial_refund_amount=refund_amount,
+            penalty_kept=penalty_kept,
+        )
+        self.db.add(flag)
+
+        await self.db.flush()
+        await self.db.commit()
+        await self.db.refresh(flag)
+
+        # Invalidate dashboard cache for involved players
+        from backend.utils.cache import dashboard_cache
+
+        dashboard_cache.invalidate_player_data(player.player_id)
+        if prompt_round.player_id:
+            dashboard_cache.invalidate_player_data(prompt_round.player_id)
+
+        logger.info(
+            "Copy round %s flagged by player %s; prompt %s marked pending review",
+            round_id,
+            player.player_id,
+            prompt_round.round_id,
+        )
+
+        return flag
+
     async def create_phraseset_if_ready(self, prompt_round: Round) -> Phraseset | None:
         """
         Create phraseset when two copies submitted.
@@ -649,6 +742,7 @@ class RoundService:
                     LEFT JOIN phrasesets p ON p.prompt_round_id = r.round_id
                     WHERE r.round_type = 'prompt'
                     AND r.status = 'submitted'
+                    AND (r.phraseset_status IS NULL OR r.phraseset_status NOT IN ('flagged_pending','flagged_removed'))
                     AND p.phraseset_id IS NULL
                 )
                 SELECT COUNT(*) as available_count
@@ -699,6 +793,12 @@ class RoundService:
                 .join(Phraseset, Phraseset.prompt_round_id == Round.round_id, isouter=True)
                 .where(Round.round_type == "prompt")
                 .where(Round.status == "submitted")
+                .where(
+                    or_(
+                        Round.phraseset_status.is_(None),
+                        Round.phraseset_status.notin_(["flagged_pending", "flagged_removed"]),
+                    )
+                )
                 .where(Phraseset.phraseset_id.is_(None))  # Use proper NULL check
                 .order_by(Round.created_at.asc())
             )

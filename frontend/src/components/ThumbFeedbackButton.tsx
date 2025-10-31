@@ -9,25 +9,25 @@ type ThumbFeedbackButtonProps = {
 
 const ThumbSvg: React.FC<{ direction: 'up' | 'down' }> = ({ direction }) => (
   <svg
-    viewBox="0 0 24 24"
-    fill="none"
+    viewBox="0 0 20 24"
+    fill="currentColor"
     xmlns="http://www.w3.org/2000/svg"
-    className={`w-4 h-4 md:w-5 md:h-5 ${direction === 'down' ? 'rotate-180' : ''}`}
+    className={`w-5 h-5 md:w-7 md:h-7 ${direction === 'down' ? 'rotate-180' : ''}`}
   >
+    {/* Rounded, emoji-style thumb - base section (wider) */}
     <path
-      d="M6 11.5H4.75C3.784 11.5 3 12.284 3 13.25V19.5C3 20.328 3.672 21 4.5 21H6C6.828 21 7.5 20.328 7.5 19.5V13.25C7.5 12.284 6.716 11.5 5.75 11.5H6Z"
-      fill="currentColor"
+      d="M5 10.5C5 9.67 5.67 9 6.5 9H8.5C9.33 9 10 9.67 10 10.5V19.5C10 20.33 9.33 21 8.5 21H6.5C5.67 21 5 20.33 5 19.5V10.5Z"
+      fillOpacity="0.9"
     />
+    {/* Main thumb section (wider) */}
     <path
-      d="M8.75 11.5H16.5C18.433 11.5 20 13.067 20 15V16.114C20 16.408 19.959 16.701 19.878 16.984L18.86 20.553C18.482 21.867 17.3 22.75 15.933 22.75H10.5C9.25736 22.75 8.25 21.7426 8.25 20.5V12C8.25 11.724 8.474 11.5 8.75 11.5Z"
-      fill="currentColor"
+      d="M10.5 11H15.5C16.6 11 17.5 11.9 17.5 13V14.5C17.5 14.8 17.45 15.1 17.35 15.4L16.2 18.9C15.9 19.8 15.1 20.5 14.1 20.5H11.5C10.95 20.5 10.5 20.05 10.5 19.5V11Z"
+      fillOpacity="0.9"
     />
+    {/* Extended thumb gesture (wider) */}
     <path
-      d="M8.5 11.5L10.839 5.014C11.255 3.918 12.305 3.191 13.479 3.25L14.165 3.284C15.673 3.36 16.85 4.635 16.85 6.144V9.5H19C20.657 9.5 22 10.843 22 12.5V13.011C22 13.333 21.95 13.652 21.853 13.958L20.838 17.164"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
+      d="M10 11V6C10 4.62 11.12 3.5 12.5 3.5C12.78 3.5 13 3.72 13 4V7.5C13 8.33 13.67 9 14.5 9H16C16.55 9 17 9.45 17 10C17 10.28 16.89 10.54 16.71 10.71L11.71 15.71C11.29 16.13 10.5 15.83 10.5 15.26V11.5C10.5 11.22 10.28 11 10 11Z"
+      fillOpacity="0.95"
     />
   </svg>
 );

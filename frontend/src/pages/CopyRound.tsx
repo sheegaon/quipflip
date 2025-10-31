@@ -8,18 +8,23 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { useTimer } from '../hooks/useTimer';
 import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
-import type { CopyState } from '../api/types';
+import type { CopyState, FlagCopyRoundResponse } from '../api/types';
 import { copyRoundLogger } from '../utils/logger';
 
 export const CopyRound: React.FC = () => {
-  const { state } = useGame();
+  const { state, actions } = useGame();
   const { activeRound, roundAvailability } = state;
+  const { flagCopyRound } = actions;
   const { currentStep, advanceStep } = useTutorial();
   const navigate = useNavigate();
   const [phrase, setPhrase] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [showFlagConfirm, setShowFlagConfirm] = useState(false);
+  const [isFlagging, setIsFlagging] = useState(false);
+  const [flagError, setFlagError] = useState<string | null>(null);
+  const [flagResult, setFlagResult] = useState<FlagCopyRoundResponse | null>(null);
 
   const roundData = activeRound?.round_type === 'copy' ? activeRound.state as CopyState : null;
   const { isExpired } = useTimer(roundData?.expires_at || null);
@@ -76,6 +81,7 @@ export const CopyRound: React.FC = () => {
 
     setIsSubmitting(true);
     setError(null);
+    setFlagResult(null);
 
     try {
       copyRoundLogger.debug('Submitting copy round phrase', {
@@ -110,6 +116,49 @@ export const CopyRound: React.FC = () => {
     }
   };
 
+  const handleOpenFlagConfirm = () => {
+    setFlagError(null);
+    setShowFlagConfirm(true);
+  };
+
+  const handleCancelFlag = () => {
+    setShowFlagConfirm(false);
+  };
+
+  const handleConfirmFlag = async () => {
+    if (!roundData) return;
+
+    setIsFlagging(true);
+    setFlagError(null);
+
+    try {
+      copyRoundLogger.debug('Flagging copy round phrase', {
+        roundId: roundData.round_id,
+      });
+      const response = await flagCopyRound(roundData.round_id);
+      setFlagResult(response);
+      setSuccessMessage('Thanks for looking out!');
+      setShowFlagConfirm(false);
+      copyRoundLogger.info('Copy round flagged', {
+        roundId: roundData.round_id,
+        flagId: response.flag_id,
+      });
+
+      setTimeout(() => {
+        copyRoundLogger.debug('Navigating back to dashboard after flagging copy round');
+        navigate('/dashboard');
+      }, 1500);
+    } catch (err) {
+      const message = extractErrorMessage(err, 'flag-copy-round') ||
+        'Unable to flag this phrase right now. Please try again.';
+      copyRoundLogger.error('Failed to flag copy round', err);
+      setFlagError(message);
+      setShowFlagConfirm(false);
+    } finally {
+      setIsFlagging(false);
+    }
+  };
+
   if (!roundData) {
     return (
       <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center">
@@ -129,7 +178,22 @@ export const CopyRound: React.FC = () => {
           <h2 className="text-2xl font-display font-bold text-quip-turquoise mb-2 success-message">
             {successMessage}
           </h2>
-          <p className="text-quip-teal">Returning to dashboard...</p>
+          {flagResult ? (
+            <div className="text-quip-teal space-y-2">
+              <p>
+                We refunded{' '}
+                <CurrencyDisplay
+                  amount={flagResult.refund_amount}
+                  iconClassName="w-4 h-4"
+                  textClassName="font-semibold text-quip-turquoise"
+                />
+                . Our team will review this phrase shortly.
+              </p>
+              <p>Returning to dashboard...</p>
+            </div>
+          ) : (
+            <p className="text-quip-teal">Returning to dashboard...</p>
+          )}
         </div>
       </div>
     );
@@ -159,7 +223,18 @@ export const CopyRound: React.FC = () => {
         </div>
 
         {/* Original Phrase */}
-        <div className="bg-quip-turquoise bg-opacity-5 border-2 border-quip-turquoise rounded-tile p-6 mb-6">
+        <div className="bg-quip-turquoise bg-opacity-5 border-2 border-quip-turquoise rounded-tile p-6 mb-6 relative">
+          <button
+            type="button"
+            onClick={handleOpenFlagConfirm}
+            disabled={isSubmitting || isFlagging}
+            className="absolute top-3 right-3 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-quip-orange shadow-tile-sm transition hover:scale-105 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-quip-orange disabled:cursor-not-allowed disabled:opacity-50"
+            title="Flag this phrase"
+            aria-label="Flag this phrase"
+          >
+            <span className="sr-only">Flag this phrase</span>
+            <img src="/icon_flag.svg" alt="" className="h-5 w-5 pointer-events-none" aria-hidden="true" />
+          </button>
           <p className="text-sm text-quip-teal mb-2 text-center font-medium">Original Phrase:</p>
           <p className="text-3xl text-center font-display font-bold text-quip-turquoise">
             {roundData.original_phrase}
@@ -167,9 +242,10 @@ export const CopyRound: React.FC = () => {
         </div>
 
         {/* Error Message */}
-        {error && (
-          <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
-            {error}
+        {(error || flagError) && (
+          <div className="mb-4 space-y-1 rounded border border-red-400 bg-red-100 p-4 text-red-700">
+            {error && <p>{error}</p>}
+            {flagError && <p>{flagError}</p>}
           </div>
         )}
 
@@ -182,7 +258,7 @@ export const CopyRound: React.FC = () => {
               onChange={(e) => setPhrase(e.target.value)}
               placeholder="Enter your phrase"
               className="tutorial-copy-input w-full px-4 py-3 text-lg border-2 border-quip-teal rounded-tile focus:outline-none focus:ring-2 focus:ring-quip-turquoise"
-              disabled={isExpired || isSubmitting}
+              disabled={isExpired || isSubmitting || isFlagging}
               maxLength={100}
             />
             <p className="text-sm text-quip-teal mt-1">
@@ -192,12 +268,42 @@ export const CopyRound: React.FC = () => {
 
           <button
             type="submit"
-            disabled={isExpired || isSubmitting || !phrase.trim()}
+            disabled={isExpired || isSubmitting || isFlagging || !phrase.trim()}
             className="w-full bg-quip-turquoise hover:bg-quip-teal disabled:bg-gray-400 text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm text-lg"
           >
             {isExpired ? "Time's Up" : isSubmitting ? loadingMessages.submitting : 'Submit Phrase'}
           </button>
         </form>
+
+        {showFlagConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-quip-navy/60 p-4">
+            <div className="w-full max-w-md rounded-tile bg-white p-6 shadow-tile-lg">
+              <h3 className="text-xl font-display font-bold text-quip-navy mb-2">Flag this phrase?</h3>
+              <p className="text-quip-teal">
+                Are you sure you want to mark this phrase as “offensive, inappropriate, or nonsensical”? This will abandon the round
+                and we'll review the phrase.
+              </p>
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={handleCancelFlag}
+                  className="rounded-tile border-2 border-quip-navy px-4 py-2 font-semibold text-quip-navy transition hover:bg-quip-navy hover:text-white"
+                  disabled={isFlagging}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmFlag}
+                  disabled={isFlagging}
+                  className="rounded-tile bg-quip-orange px-4 py-2 font-semibold text-white shadow-tile-sm transition hover:bg-quip-orange/90 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isFlagging ? 'Flagging...' : 'Yes, flag it'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Home Button */}
         <button
