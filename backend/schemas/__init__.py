@@ -28,6 +28,14 @@ from backend.schemas.phraseset import (
     UnclaimedResultsResponse,
 )
 from backend.schemas.vote import VoteDetail
+from backend.schemas.feedback import (
+    SurveySubmission,
+    SurveyAnswer,
+    SurveySubmissionResponse,
+    SurveyStatusResponse,
+    SurveyResponseRecord,
+    SurveyResponseList,
+)
 
 __all__ = [
     "PlayerBalance",
@@ -53,4 +61,10 @@ __all__ = [
     "ClaimPrizeResponse",
     "UnclaimedResultsResponse",
     "VoteDetail",
+    "SurveySubmission",
+    "SurveyAnswer",
+    "SurveySubmissionResponse",
+    "SurveyStatusResponse",
+    "SurveyResponseRecord",
+    "SurveyResponseList",
 ]

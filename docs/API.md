@@ -763,6 +763,86 @@ Get existing feedback for a round.
 }
 ```
 
+### Survey Feedback Endpoints
+
+Authenticated players can share structured beta feedback through the dedicated survey router.
+
+#### `POST /feedback/beta-survey`
+Submit a beta survey response for the current player.
+
+**Request Body:**
+```json
+{
+  "survey_id": "beta_oct_2025",
+  "answers": [
+    {
+      "question_id": "q1",
+      "value": 4
+    },
+    {
+      "question_id": "q2",
+      "value": ["prompt", "vote"]
+    }
+  ]
+}
+```
+
+**Response (new submission):**
+```json
+{
+  "status": "submitted",
+  "message": "thank you"
+}
+```
+
+**Response (duplicate submission):**
+```json
+{
+  "status": "already_submitted",
+  "message": "already submitted"
+}
+```
+
+**Errors:**
+- `unknown_survey` – request references an unrecognised survey ID
+
+#### `GET /feedback/beta-survey/status`
+Return eligibility + completion state for the current player.
+
+**Response:**
+```json
+{
+  "eligible": true,
+  "has_submitted": false,
+  "total_rounds": 12
+}
+```
+
+#### `GET /feedback/beta-survey`
+List the 100 most recent beta survey submissions. **Admin only.**
+
+**Response:**
+```json
+{
+  "submissions": [
+    {
+      "response_id": "uuid",
+      "player_id": "uuid",
+      "survey_id": "beta_oct_2025",
+      "payload": {
+        "answers": [
+          {
+            "question_id": "q1",
+            "value": 4
+          }
+        ]
+      },
+      "created_at": "2025-01-06T12:00:00Z"
+    }
+  ]
+}
+```
+
 #### `GET /rounds/available`
 Get round availability status.
 

@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useResults } from '../contexts/ResultsContext';
 import { useGame } from '../contexts/GameContext';
-import { extractErrorMessage } from '../api/client';
+import apiClient, { extractErrorMessage } from '../api/client';
 import type { HistoricalTrendPoint, PlayerStatistics } from '../api/types';
 import { Header } from '../components/Header';
 import WinRateChart from '../components/statistics/WinRateChart';
@@ -12,6 +12,8 @@ import FrequencyChart from '../components/statistics/FrequencyChart';
 import PerformanceRadar from '../components/statistics/PerformanceRadar';
 import HistoricalTrendsChart from '../components/statistics/HistoricalTrendsChart';
 import { statisticsLogger } from '../utils/logger';
+import { hasCompletedSurvey } from '../utils/betaSurvey';
+import type { BetaSurveyStatusResponse } from '../api/types';
 
 const Statistics: React.FC = () => {
   const navigate = useNavigate();
@@ -23,6 +25,7 @@ const Statistics: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [chartsReady, setChartsReady] = useState(false);
+  const [surveyStatus, setSurveyStatus] = useState<BetaSurveyStatusResponse | null>(null);
 
   const historicalTrends = useMemo<HistoricalTrendPoint[]>(() => {
     if (!data) return [];
@@ -61,6 +64,38 @@ const Statistics: React.FC = () => {
       };
     });
   }, [data]);
+
+  useEffect(() => {
+    const playerId = player?.player_id;
+    if (!playerId) {
+      setSurveyStatus(null);
+      return;
+    }
+
+    let cancelled = false;
+    const controller = new AbortController();
+
+    const fetchStatus = async () => {
+      try {
+        const status = await apiClient.getBetaSurveyStatus(controller.signal);
+        if (!cancelled) {
+          setSurveyStatus(status);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          statisticsLogger.warn('Failed to load beta survey status in statistics view', err);
+          setSurveyStatus(null);
+        }
+      }
+    };
+
+    fetchStatus();
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [player?.player_id]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -127,10 +162,30 @@ const Statistics: React.FC = () => {
     );
   }
 
+  const surveyCompleted = player?.player_id ? hasCompletedSurvey(player.player_id) : false;
+
   return (
     <div className="min-h-screen bg-quip-cream bg-pattern">
       <Header />
       <div className="container mx-auto px-4 py-8">
+        {surveyStatus?.eligible && !surveyStatus.has_submitted && !surveyCompleted && (
+          <div className="tile-card mb-6 border-2 border-quip-teal bg-quip-teal/10 p-6">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h2 className="text-2xl font-display font-bold text-quip-navy">Beta survey now available</h2>
+                <p className="mt-1 text-quip-navy/80">
+                  You&apos;ve played {surveyStatus.total_rounds} rounds. Share your thoughts and help us level up Quipflip!
+                </p>
+              </div>
+              <button
+                onClick={() => navigate('/survey/beta')}
+                className="rounded-tile bg-quip-navy px-6 py-2 font-semibold text-white shadow-tile-sm transition hover:bg-quip-teal"
+              >
+                Start survey
+              </button>
+            </div>
+          </div>
+        )}
         {/* Header */}
         <div className="tile-card p-6 mb-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">

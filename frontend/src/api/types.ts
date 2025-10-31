@@ -160,6 +160,39 @@ export interface DailyBonusResponse {
   new_balance: number;
 }
 
+export interface BetaSurveyAnswerPayload {
+  question_id: string;
+  value: number | string | string[] | Record<string, unknown> | null;
+}
+
+export interface BetaSurveySubmissionRequest {
+  survey_id: string;
+  answers: BetaSurveyAnswerPayload[];
+}
+
+export interface BetaSurveySubmissionResponse {
+  status: 'submitted' | 'already_submitted';
+  message: string;
+}
+
+export interface BetaSurveyStatusResponse {
+  eligible: boolean;
+  has_submitted: boolean;
+  total_rounds: number;
+}
+
+export interface BetaSurveySubmissionRecord {
+  response_id: string;
+  player_id: string;
+  survey_id: string;
+  payload: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface BetaSurveyListResponse {
+  submissions: BetaSurveySubmissionRecord[];
+}
+
 export interface RoundAvailability {
   can_prompt: boolean;
   can_copy: boolean;

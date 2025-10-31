@@ -21,7 +21,7 @@
 - `tutorial_completed_at` (timestamp, nullable) - when tutorial was completed
 - Indexes: `player_id`, `active_round_id`, `pseudonym`
 - Constraints: Unique `username_canonical`
-- Relationships: `active_round`, `rounds`, `transactions`, `votes`, `daily_bonuses`, `result_views`, `abandoned_prompts`, `phraseset_activities`, `refresh_tokens`, `quests`
+- Relationships: `active_round`, `rounds`, `transactions`, `votes`, `daily_bonuses`, `result_views`, `abandoned_prompts`, `phraseset_activities`, `refresh_tokens`, `quests`, `survey_responses`
 
 **Authentication**: JWT access/refresh tokens (stored in `refresh_tokens` table)
 **Registration**:
@@ -181,6 +181,16 @@
 - Constraints: Unique composite `(player_id, round_id)` - one feedback per player per round
 - Relationships: `player`, `prompt`, `round`
 - Note: Tracks player feedback on prompts for quality improvement and quest progress
+
+### SurveyResponse
+- `response_id` (UUID, primary key)
+- `player_id` (UUID, references players.player_id, indexed, cascade delete)
+- `survey_id` (string, indexed) - currently `beta_oct_2025`
+- `payload` (JSONB) - serialized answers array captured from the frontend
+- `created_at` (timestamp with timezone, default now())
+- Indexes: `player_id`, `survey_id`, unique composite `(player_id, survey_id)`
+- Relationships: `player`
+- Note: Stores one submission per player for each in-app survey; payload is schema-less for flexibility
 
 ---
 

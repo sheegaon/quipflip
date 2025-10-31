@@ -3,13 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { useResults } from '../contexts/ResultsContext';
 import { useTutorial } from '../contexts/TutorialContext';
-import { extractErrorMessage } from '../api/client';
+import apiClient, { extractErrorMessage } from '../api/client';
 import { Timer } from '../components/Timer';
 import { Header } from '../components/Header';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import TutorialWelcome from '../components/Tutorial/TutorialWelcome';
 import { dashboardLogger } from '../utils/logger';
 import type { PendingResult } from '../api/types';
+import type { BetaSurveyStatusResponse } from '../api/types';
+import { hasDismissedSurvey, markSurveyDismissed, hasCompletedSurvey } from '../utils/betaSurvey';
 
 const formatWaitingCount = (count: number): string => (count > 10 ? 'over 10' : count.toString());
 
@@ -32,6 +34,8 @@ export const Dashboard: React.FC = () => {
   const [isRoundExpired, setIsRoundExpired] = useState(false);
   const [startingRound, setStartingRound] = useState<string | null>(null);
   const [roundStartError, setRoundStartError] = useState<string | null>(null);
+  const [surveyStatus, setSurveyStatus] = useState<BetaSurveyStatusResponse | null>(null);
+  const [showSurveyPrompt, setShowSurveyPrompt] = useState(false);
 
   // Log component mount and key state changes
   useEffect(() => {
@@ -59,6 +63,50 @@ export const Dashboard: React.FC = () => {
     }
   }, [activeRound]);
 
+  useEffect(() => {
+    const playerId = player?.player_id;
+    if (!playerId) {
+      setSurveyStatus(null);
+      setShowSurveyPrompt(false);
+      return;
+    }
+
+    let cancelled = false;
+    const controller = new AbortController();
+
+    const fetchStatus = async () => {
+      try {
+        const status = await apiClient.getBetaSurveyStatus(controller.signal);
+        if (cancelled) return;
+        const dismissed = hasDismissedSurvey(playerId);
+        const completedLocal = hasCompletedSurvey(playerId);
+        const shouldShow = status.eligible && !status.has_submitted && !dismissed && !completedLocal;
+
+        dashboardLogger.debug('Beta survey status resolved', {
+          eligible: status.eligible,
+          hasSubmitted: status.has_submitted,
+          totalRounds: status.total_rounds,
+          dismissed,
+          completedLocal,
+          shouldShow,
+        });
+
+        setSurveyStatus(status);
+        setShowSurveyPrompt(shouldShow);
+      } catch (error) {
+        if (cancelled) return;
+        dashboardLogger.warn('Failed to fetch beta survey status', error);
+      }
+    };
+
+    fetchStatus();
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [player?.player_id]);
+
 
   const handleStartTutorial = async () => {
     dashboardLogger.debug('Starting tutorial from dashboard');
@@ -69,6 +117,18 @@ export const Dashboard: React.FC = () => {
   const handleSkipTutorial = async () => {
     await skipTutorial();
   };
+
+  const handleSurveyStart = useCallback(() => {
+    setShowSurveyPrompt(false);
+    navigate('/survey/beta');
+  }, [navigate]);
+
+  const handleSurveyDismiss = useCallback(() => {
+    if (player?.player_id) {
+      markSurveyDismissed(player.player_id);
+    }
+    setShowSurveyPrompt(false);
+  }, [player?.player_id]);
 
   const activeRoundRoute = useMemo(() => {
     return activeRound?.round_type ? `/${activeRound.round_type}` : null;
@@ -462,10 +522,43 @@ export const Dashboard: React.FC = () => {
               </button>
             </div>
           </div>
-        </div>
       </div>
     </div>
-  );
+      {showSurveyPrompt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="tile-card w-full max-w-lg space-y-4 p-6">
+            <h2 className="text-2xl font-display font-bold text-quip-navy">
+              Share your beta feedback
+            </h2>
+            <p className="text-quip-navy">
+              We&apos;d love to hear how Quipflip feels after ten rounds. Take a short survey to help us tune the beta experience.
+            </p>
+            {surveyStatus && (
+              <p className="text-sm text-quip-teal">
+                You&apos;ve completed <span className="font-semibold">{surveyStatus.total_rounds}</span> rounds so far — perfect!
+              </p>
+            )}
+            <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={handleSurveyDismiss}
+                className="rounded-tile border border-quip-navy/20 px-5 py-2 font-semibold text-quip-navy transition hover:border-quip-teal hover:text-quip-teal"
+              >
+                Maybe later
+              </button>
+              <button
+                type="button"
+                onClick={handleSurveyStart}
+                className="rounded-tile bg-quip-navy px-6 py-2 font-semibold text-white shadow-tile-sm transition hover:bg-quip-teal"
+              >
+                Take the survey
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+  </div>
+);
 };
 
 export default Dashboard;
