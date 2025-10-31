@@ -14,6 +14,7 @@ import type {
   VoteResponse,
   PhrasesetResults,
   HealthResponse,
+  ApiInfo,
   ApiError,
   AuthTokenResponse,
   SuggestUsernameResponse,
@@ -290,6 +291,11 @@ export const apiClient = {
   // Health & Info
   async getHealth(signal?: AbortSignal): Promise<HealthResponse> {
     const { data } = await api.get('/health', { signal });
+    return data;
+  },
+
+  async getApiInfo(signal?: AbortSignal): Promise<ApiInfo> {
+    const { data } = await api.get<ApiInfo>('/', { signal, skipAuth: true });
     return data;
   },
 

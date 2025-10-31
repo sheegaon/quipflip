@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useResults } from '../contexts/ResultsContext';
 import { useGame } from '../contexts/GameContext';
 import apiClient, { extractErrorMessage } from '../api/client';
-import type { HistoricalTrendPoint, PlayerStatistics } from '../api/types';
+import type { ApiInfo, HistoricalTrendPoint, PlayerStatistics } from '../api/types';
 import { Header } from '../components/Header';
 import WinRateChart from '../components/statistics/WinRateChart';
 import EarningsChart from '../components/statistics/EarningsChart';
@@ -26,6 +26,7 @@ const Statistics: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [chartsReady, setChartsReady] = useState(false);
   const [surveyStatus, setSurveyStatus] = useState<BetaSurveyStatusResponse | null>(null);
+  const [appInfo, setAppInfo] = useState<ApiInfo | null>(null);
 
   const historicalTrends = useMemo<HistoricalTrendPoint[]>(() => {
     if (!data) return [];
@@ -133,6 +134,27 @@ const Statistics: React.FC = () => {
 
     return () => controller.abort();
   }, [getStatistics]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const fetchAppInfo = async () => {
+      try {
+        const info = await apiClient.getApiInfo(controller.signal);
+        setAppInfo(info);
+      } catch (err) {
+        if (err instanceof Error && err.name === 'CanceledError') return;
+        statisticsLogger.warn('Failed to load API info for statistics view', err);
+        setAppInfo(null);
+      }
+    };
+
+    fetchAppInfo();
+
+    return () => {
+      controller.abort();
+    };
+  }, []);
 
   if (loading) {
     return (
@@ -347,6 +369,10 @@ const Statistics: React.FC = () => {
               </div>
             )}
           </div>
+        </div>
+
+        <div className="mt-10 text-center text-xs text-quip-navy/60" aria-live="polite">
+          {appInfo?.version ? `Quipflip version ${appInfo.version}` : 'Quipflip version unavailable'}
         </div>
 
       </div>
