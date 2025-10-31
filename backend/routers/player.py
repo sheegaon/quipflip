@@ -220,6 +220,7 @@ async def get_balance(
     outstanding = await player_service.get_outstanding_prompts_count(player.player_id)
 
     return PlayerBalance(
+        player_id=player.player_id,
         username=player.username,
         email=player.email,
         balance=player.balance,
@@ -230,6 +231,7 @@ async def get_balance(
         created_at=player.created_at,
         outstanding_prompts=outstanding,
         is_guest=player.is_guest,
+        is_admin=player.is_admin,
         locked_until=ensure_utc(player.locked_until),
         flag_dismissal_streak=player.flag_dismissal_streak,
     )

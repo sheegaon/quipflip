@@ -24,7 +24,7 @@ async def player_with_balance(db_session):
         pseudonym_canonical=f"testplayer{test_id}",
         email=f"test_{test_id}@test.com",
         password_hash="hash",
-        balance=1000,
+        balance=5000,
     )
     db_session.add(player)
     await db_session.commit()
@@ -134,7 +134,7 @@ class TestTransactionTypes:
         )
 
         await db_session.refresh(player_with_balance)
-        assert player_with_balance.balance == 900
+        assert player_with_balance.balance == 4900
 
     @pytest.mark.asyncio
     async def test_copy_entry_transaction(self, db_session, player_with_balance):
@@ -148,7 +148,7 @@ class TestTransactionTypes:
         )
 
         await db_session.refresh(player_with_balance)
-        assert player_with_balance.balance == 900
+        assert player_with_balance.balance == 4900
 
     @pytest.mark.asyncio
     async def test_vote_payout_transaction(self, db_session, player_with_balance):
@@ -162,7 +162,7 @@ class TestTransactionTypes:
         )
 
         await db_session.refresh(player_with_balance)
-        assert player_with_balance.balance == 1020
+        assert player_with_balance.balance == 5020
 
     @pytest.mark.asyncio
     async def test_phraseset_payout_transaction(self, db_session, player_with_balance):
@@ -176,7 +176,7 @@ class TestTransactionTypes:
         )
 
         await db_session.refresh(player_with_balance)
-        assert player_with_balance.balance == 1150
+        assert player_with_balance.balance == 5150
 
 
 class TestBalanceConsistency:
@@ -215,11 +215,11 @@ class TestBalanceConsistency:
 
         # Deduct more than available balance
         await transaction_service.create_transaction(
-            player_with_balance.player_id, -1500, "overdraft"
+            player_with_balance.player_id, -6000, "overdraft"
         )
 
         await db_session.refresh(player_with_balance)
-        assert player_with_balance.balance == -500  # Started with 1000
+        assert player_with_balance.balance == -1000  # Started with 5000
 
     @pytest.mark.asyncio
     async def test_zero_amount_transaction(self, db_session, player_with_balance):
@@ -298,7 +298,7 @@ class TestConcurrency:
             pseudonym_canonical=f"concurrent{test_id}",
             email=f"concurrent_{test_id}@test.com",
             password_hash="hash",
-            balance=1000,
+            balance=5000,
         )
         db_session.add(player)
         await db_session.commit()
@@ -311,4 +311,4 @@ class TestConcurrency:
         await transaction_service.create_transaction(player.player_id, -100, "tx3")
 
         await db_session.refresh(player)
-        assert player.balance == 700  # 1000 - 300
+        assert player.balance == 4700  # 5000 - 300

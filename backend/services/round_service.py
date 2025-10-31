@@ -542,8 +542,9 @@ class RoundService:
             if round_object.round_type not in {"prompt", "copy"}:
                 raise ValueError("Only prompt or copy rounds can be abandoned")
 
-            refund_amount = 0
-            penalty_kept = 0
+            # Calculate refund and penalty (same for both round types)
+            penalty_kept = self.settings.abandoned_penalty
+            refund_amount = max(round_object.cost - penalty_kept, 0)
 
             round_object.status = "abandoned"
             round_object.expires_at = datetime.now(UTC)
@@ -552,13 +553,8 @@ class RoundService:
                 player.active_round_id = None
 
             if round_object.round_type == "prompt":
-                penalty_kept = self.settings.abandoned_penalty
-                refund_amount = max(round_object.cost - penalty_kept, 0)
                 round_object.phraseset_status = "abandoned"
-            else:
-                penalty_kept = self.settings.abandoned_penalty
-                refund_amount = max(round_object.cost - penalty_kept, 0)
-
+            else:  # copy round
                 if round_object.prompt_round_id:
                     QueueService.add_prompt_round_to_queue(round_object.prompt_round_id)
 
@@ -722,7 +718,7 @@ class RoundService:
 
         # Calculate initial prize pool: base + system contributions from copy discounts
         system_contribution = copy1.system_contribution + copy2.system_contribution
-        initial_pool = self.settings.prize_pool_base
+        initial_pool = self.settings.prize_pool_base + system_contribution
 
         phraseset = Phraseset(
             phraseset_id=uuid.uuid4(),
@@ -845,6 +841,12 @@ class RoundService:
 
         Optimized version that uses a single efficient query instead of multiple
         complex subqueries to reduce database load.
+
+        Excludes:
+        - Player's own prompts
+        - Prompts the player has already submitted copies for
+        - Flagged prompts
+        - Prompts the player abandoned in the last 24 hours (cooldown)
         """
         # Use a single query with proper joins to count available prompts
         # This is much more efficient than the previous multiple-query approach
@@ -864,6 +866,12 @@ class RoundService:
                     AND r.round_type = 'copy'
                     AND r.status = 'submitted'
                 ),
+                player_abandoned_cooldown AS (
+                    SELECT pap.prompt_round_id
+                    FROM player_abandoned_prompts pap
+                    WHERE LOWER(REPLACE(CAST(pap.player_id AS TEXT), '-', '')) = :player_id_clean
+                    AND pap.abandoned_at > datetime('now', '-24 hours')
+                ),
                 all_available_prompts AS (
                     SELECT r.round_id
                     FROM rounds r
@@ -877,14 +885,15 @@ class RoundService:
                 FROM all_available_prompts a
                 WHERE a.round_id NOT IN (SELECT round_id FROM player_prompt_rounds)
                 AND a.round_id NOT IN (SELECT prompt_round_id FROM player_copy_rounds WHERE prompt_round_id IS NOT NULL)
+                AND a.round_id NOT IN (SELECT prompt_round_id FROM player_abandoned_cooldown WHERE prompt_round_id IS NOT NULL)
             """),
             {
                 "player_id_clean": str(player_id).replace('-', '').lower()
             }
         )
-        
+
         available_count = result.scalar() or 0
-        
+
         logger.debug(f"Available prompts for player {player_id}: {available_count}")
         return available_count
 

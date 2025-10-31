@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { GameProvider, useGame } from './GameContext';
 import { QuestProvider } from './QuestContext';
 import { TutorialProvider, useTutorial } from './TutorialContext';
@@ -9,8 +9,12 @@ import { gameContextLogger } from '../utils/logger';
 const ContextBridge: React.FC<{
   children: React.ReactNode;
   onDashboardTrigger: () => void;
-}> = ({ children, onDashboardTrigger }) => {
-  const { state: gameState } = useGame();
+  dashboardRefreshToken: number;
+}> = ({ children, onDashboardTrigger, dashboardRefreshToken }) => {
+  const {
+    state: gameState,
+    actions: { refreshDashboard, refreshBalance },
+  } = useGame();
   const { actions: resultsActions } = useResults();
   const { refreshStatus } = useTutorial();
 
@@ -28,6 +32,46 @@ const ContextBridge: React.FC<{
     });
   }, [gameState.isAuthenticated, refreshStatus]);
 
+  useEffect(() => {
+    if (dashboardRefreshToken === 0) {
+      return;
+    }
+
+    const abortController = new AbortController();
+    gameContextLogger.debug('🔄 ContextBridge processing dashboard trigger', {
+      dashboardRefreshToken,
+    });
+
+    const refreshData = async () => {
+      try {
+        gameContextLogger.debug('📊 Refreshing dashboard data after trigger');
+        await refreshDashboard(abortController.signal);
+      } catch (err) {
+        if (!abortController.signal.aborted) {
+          gameContextLogger.error('❌ Failed to refresh dashboard after trigger', err);
+        }
+      }
+
+      try {
+        gameContextLogger.debug('💰 Refreshing balance data after trigger');
+        await refreshBalance(abortController.signal);
+      } catch (err) {
+        if (!abortController.signal.aborted) {
+          gameContextLogger.error('❌ Failed to refresh balance after trigger', err);
+        }
+      }
+    };
+
+    refreshData();
+
+    return () => {
+      gameContextLogger.debug('🛑 Cleaning up dashboard trigger effect', {
+        dashboardRefreshToken,
+      });
+      abortController.abort();
+    };
+  }, [dashboardRefreshToken, refreshDashboard, refreshBalance]);
+
   return (
     <QuestProvider
       isAuthenticated={gameState.isAuthenticated}
@@ -39,17 +83,22 @@ const ContextBridge: React.FC<{
 };
 
 export const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [dashboardRefreshToken, setDashboardRefreshToken] = useState(0);
+
   const handleDashboardTrigger = useCallback(() => {
     gameContextLogger.debug('🔄 Dashboard trigger requested from child contexts');
-    // This could trigger additional refresh logic if needed
+    setDashboardRefreshToken((token) => token + 1);
   }, []);
 
   return (
     <TutorialProvider>
-      <GameProvider 
+      <GameProvider
         onDashboardTrigger={handleDashboardTrigger}
       >
-        <InnerProviders onDashboardTrigger={handleDashboardTrigger}>
+        <InnerProviders
+          onDashboardTrigger={handleDashboardTrigger}
+          dashboardRefreshToken={dashboardRefreshToken}
+        >
           {children}
         </InnerProviders>
       </GameProvider>
@@ -58,15 +107,19 @@ export const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children
 };
 
 // Component that wraps contexts needing access to GameContext
-const InnerProviders: React.FC<{ 
+const InnerProviders: React.FC<{
   children: React.ReactNode;
   onDashboardTrigger: () => void;
-}> = ({ children, onDashboardTrigger }) => {
+  dashboardRefreshToken: number;
+}> = ({ children, onDashboardTrigger, dashboardRefreshToken }) => {
   const { state: gameState } = useGame();
 
   return (
     <ResultsProvider isAuthenticated={gameState.isAuthenticated}>
-      <ContextBridge onDashboardTrigger={onDashboardTrigger}>
+      <ContextBridge
+        onDashboardTrigger={onDashboardTrigger}
+        dashboardRefreshToken={dashboardRefreshToken}
+      >
         {children}
       </ContextBridge>
     </ResultsProvider>

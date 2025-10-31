@@ -30,7 +30,7 @@ async def finalized_phraseset_with_votes(db_session):
         pseudonym_canonical=f"prompter_{test_id}",
         email=f"prompter_{test_id}@test.com",
         password_hash="hash",
-        balance=1000,
+        balance=5000,
     )
     copier1 = Player(
         player_id=uuid.uuid4(),
@@ -40,7 +40,7 @@ async def finalized_phraseset_with_votes(db_session):
         pseudonym_canonical=f"copier1_{test_id}",
         email=f"copier1_{test_id}@test.com",
         password_hash="hash",
-        balance=1000,
+        balance=5000,
     )
     copier2 = Player(
         player_id=uuid.uuid4(),
@@ -50,7 +50,7 @@ async def finalized_phraseset_with_votes(db_session):
         pseudonym_canonical=f"copier2_{test_id}",
         email=f"copier2_{test_id}@test.com",
         password_hash="hash",
-        balance=1000,
+        balance=5000,
     )
     db_session.add_all([prompter, copier1, copier2])
     await db_session.commit()
@@ -213,7 +213,7 @@ class TestPayoutCalculation:
             pseudonym_canonical=f"prompter_{test_id}",
             email=f"prompter_{test_id}@test.com",
             password_hash="hash",
-            balance=1000,
+            balance=5000,
         )
         db_session.add(prompter)
         await db_session.commit()
@@ -260,63 +260,7 @@ class TestPayoutCalculation:
         assert "copy2" in payouts
 
 
-class TestPayoutDistribution:
-    """Test the actual distribution of payouts to players."""
-
-    @pytest.mark.asyncio
-    async def test_distribute_payouts_updates_balances(self, db_session, finalized_phraseset_with_votes):
-        """Should update player balances when distributing payouts."""
-        phraseset = finalized_phraseset_with_votes["phraseset"]
-        prompter = finalized_phraseset_with_votes["prompter"]
-        copier1 = finalized_phraseset_with_votes["copier1"]
-        copier2 = finalized_phraseset_with_votes["copier2"]
-
-        scoring_service = ScoringService(db_session)
-
-        # Get initial balances
-        await db_session.refresh(prompter)
-        await db_session.refresh(copier1)
-        await db_session.refresh(copier2)
-        initial_prompter = prompter.balance
-        initial_copier1 = copier1.balance
-        initial_copier2 = copier2.balance
-
-        # Calculate and distribute payouts
-        payouts = await scoring_service.calculate_payouts(phraseset)
-        await scoring_service.distribute_payouts(phraseset, payouts)
-
-        # Refresh and verify balances changed
-        await db_session.refresh(prompter)
-        await db_session.refresh(copier1)
-        await db_session.refresh(copier2)
-
-        # All balances should have increased
-        assert prompter.balance > initial_prompter
-        assert copier1.balance > initial_copier1
-        assert copier2.balance > initial_copier2
-
-    @pytest.mark.asyncio
-    async def test_total_distributed_equals_pool(self, db_session, finalized_phraseset_with_votes):
-        """Should distribute the entire prize pool."""
-        phraseset = finalized_phraseset_with_votes["phraseset"]
-        prompter = finalized_phraseset_with_votes["prompter"]
-        copier1 = finalized_phraseset_with_votes["copier1"]
-        copier2 = finalized_phraseset_with_votes["copier2"]
-
-        scoring_service = ScoringService(db_session)
-
-        initial_total = prompter.balance + copier1.balance + copier2.balance
-        prize_pool = phraseset.total_pool
-
-        payouts = await scoring_service.calculate_payouts(phraseset)
-        await scoring_service.distribute_payouts(phraseset, payouts)
-
-        await db_session.refresh(prompter)
-        await db_session.refresh(copier1)
-        await db_session.refresh(copier2)
-
-        final_total = prompter.balance + copier1.balance + copier2.balance
-        total_distributed = final_total - initial_total
-
-        # Total distributed should equal prize pool (with small rounding tolerance)
-        assert abs(total_distributed - prize_pool) <= 2
+# NOTE: TestPayoutDistribution class removed - payout distribution is now
+# integrated into the finalization process in VoteService._finalize_phraseset()
+# rather than being a separate ScoringService method. See vote_service.py for
+# payout distribution logic.
