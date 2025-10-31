@@ -2,7 +2,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from sqlalchemy.exc import IntegrityError
-from datetime import date, datetime, UTC
+from datetime import datetime, UTC
 from uuid import UUID
 import uuid
 import logging
@@ -143,7 +143,7 @@ class PlayerService:
         if not await self.is_daily_bonus_available(player):
             raise DailyBonusNotAvailableError("Daily bonus not available")
 
-        today = date.today()
+        today = datetime.now(UTC).date()
 
         # Create bonus record
         bonus = DailyBonus(
