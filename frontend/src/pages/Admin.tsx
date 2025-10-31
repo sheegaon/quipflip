@@ -287,12 +287,6 @@ const Admin: React.FC = () => {
           <div className="tile-card p-8">
             <h1 className="text-2xl font-display font-bold text-quip-navy mb-4">Admin Panel</h1>
             <div className="text-red-600">{error || 'Failed to load configuration'}</div>
-            <button
-              onClick={() => navigate('/settings')}
-              className="mt-4 bg-quip-navy hover:bg-quip-teal text-white font-bold py-2 px-4 rounded-tile transition-all"
-            >
-              Back to Settings
-            </button>
           </div>
         </div>
       </div>
@@ -330,12 +324,6 @@ const Admin: React.FC = () => {
                   <div className={`dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition-transform ${editMode ? 'transform translate-x-6' : ''}`}></div>
                 </div>
               </label>
-              <button
-                onClick={() => navigate('/settings')}
-                className="bg-quip-navy hover:bg-quip-teal text-white font-bold py-2 px-4 rounded-tile transition-all hover:shadow-tile-sm"
-              >
-                Back to Settings
-              </button>
             </div>
           </div>
         </div>
