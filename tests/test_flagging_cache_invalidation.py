@@ -31,6 +31,17 @@ async def test_prompts_waiting_count_after_flagging(db_session, player_factory):
     player_b.balance = 1000
     await db_session.commit()
 
+    # Seed test prompts
+    from backend.models.prompt import Prompt
+    import uuid
+    prompts = [
+        Prompt(prompt_id=uuid.uuid4(), text="A FEELING GOOD", category="test", enabled=True),
+        Prompt(prompt_id=uuid.uuid4(), text="SOMETHING WILD", category="test", enabled=True),
+    ]
+    for p in prompts:
+        db_session.add(p)
+    await db_session.commit()
+
     # Services
     round_service = RoundService(db_session)
     transaction_service_a = TransactionService(db_session)
@@ -110,6 +121,17 @@ async def test_dashboard_endpoint_shows_correct_count_after_flagging(
     player_a.balance = 1000
     player_b = await player_factory()
     player_b.balance = 1000
+    await db_session.commit()
+
+    # Seed test prompts
+    from backend.models.prompt import Prompt
+    import uuid
+    prompts = [
+        Prompt(prompt_id=uuid.uuid4(), text="TEST PROMPT ONE", category="test", enabled=True),
+        Prompt(prompt_id=uuid.uuid4(), text="TEST PROMPT TWO", category="test", enabled=True),
+    ]
+    for p in prompts:
+        db_session.add(p)
     await db_session.commit()
 
     # Services
