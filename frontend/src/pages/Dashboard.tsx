@@ -134,16 +134,16 @@ export const Dashboard: React.FC = () => {
 
   const activeRoundRoute = useMemo(() => {
     return activeRound?.round_type ? `/${activeRound.round_type}` : null;
-  }, [activeRound?.round_type]);
+  }, [activeRound]);
 
   const activeRoundLabel = useMemo(() => {
     if (!activeRound?.round_type) return '';
     return `${activeRound.round_type.charAt(0).toUpperCase()}${activeRound.round_type.slice(1)}`;
-  }, [activeRound?.round_type]);
+  }, [activeRound]);
 
   const canAbandonRound = useMemo(() => {
     return activeRound?.round_type === 'prompt' || activeRound?.round_type === 'copy';
-  }, [activeRound?.round_type]);
+  }, [activeRound]);
 
   // Refresh when page becomes visible (with debouncing)
   const lastVisibilityRefreshRef = useRef<number>(0);
@@ -197,7 +197,7 @@ export const Dashboard: React.FC = () => {
     if (!isExpired) {
       setAbandonError(null);
     }
-  }, [activeRound?.round_id, activeRound?.expires_at]);
+  }, [activeRound]);
 
   const handleContinueRound = useCallback(() => {
     if (activeRoundRoute) {
@@ -247,7 +247,7 @@ export const Dashboard: React.FC = () => {
     } finally {
       setIsAbandoningRound(false);
     }
-  }, [abandonRound, activeRound?.round_id, activeRound?.round_type, canAbandonRound, isAbandoningRound]);
+  }, [abandonRound, activeRound, canAbandonRound, isAbandoningRound]);
 
   const handleStartPrompt = async () => {
     if (startingRound) {
@@ -578,8 +578,10 @@ export const Dashboard: React.FC = () => {
               </button>
             </div>
           </div>
+        </div>
       </div>
-    </div>
+
+      {/* Beta Survey Modal */}
       {showSurveyPrompt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
           <div className="tile-card w-full max-w-lg space-y-4 p-6">
@@ -613,8 +615,8 @@ export const Dashboard: React.FC = () => {
           </div>
         </div>
       )}
-  </div>
-);
+    </div>
+  );
 };
 
 export default Dashboard;

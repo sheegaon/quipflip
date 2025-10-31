@@ -35,7 +35,7 @@ async def test_prompt_round_lifecycle(db_session, player_factory):
     assert round.round_type == "prompt"
     assert round.status == "active"
     assert round.cost == 100
-    assert player.balance == 900  # $1000 - $100
+    assert player.balance == 4900  # $5000 - $100
 
     # Submit word (minimum 4 characters)
     round = await round_service.submit_prompt_phrase(
@@ -115,7 +115,7 @@ async def test_transaction_ledger_tracking(db_session, player_factory):
     assert len(transactions) == 1
     assert transactions[0].amount == -100
     assert transactions[0].type == "prompt_entry"
-    assert transactions[0].balance_after == 900
+    assert transactions[0].balance_after == 4900
 
 
 @pytest.mark.asyncio

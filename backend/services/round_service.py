@@ -542,8 +542,9 @@ class RoundService:
             if round_object.round_type not in {"prompt", "copy"}:
                 raise ValueError("Only prompt or copy rounds can be abandoned")
 
-            refund_amount = 0
-            penalty_kept = 0
+            # Calculate refund and penalty (same for both round types)
+            penalty_kept = self.settings.abandoned_penalty
+            refund_amount = max(round_object.cost - penalty_kept, 0)
 
             round_object.status = "abandoned"
             round_object.expires_at = datetime.now(UTC)
@@ -552,13 +553,8 @@ class RoundService:
                 player.active_round_id = None
 
             if round_object.round_type == "prompt":
-                penalty_kept = self.settings.abandoned_penalty
-                refund_amount = max(round_object.cost - penalty_kept, 0)
                 round_object.phraseset_status = "abandoned"
-            else:
-                penalty_kept = self.settings.abandoned_penalty
-                refund_amount = max(round_object.cost - penalty_kept, 0)
-
+            else:  # copy round
                 if round_object.prompt_round_id:
                     QueueService.add_prompt_round_to_queue(round_object.prompt_round_id)
 
