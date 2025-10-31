@@ -39,6 +39,9 @@ def _mask_identifier(identifier: str) -> str:
 async def _enforce_rate_limit(scope: str, identifier: str | None, limit: int) -> None:
     """Apply a rate limit for the provided scope and identifier."""
 
+    if settings.environment != "production":
+        return
+
     if not identifier:
         return
 
