@@ -107,7 +107,12 @@ class PlayerService:
 
     async def is_daily_bonus_available(self, player: Player) -> bool:
         """Check if daily bonus can be claimed."""
-        today = date.today()
+        # Use UTC for "today" to match how timestamps are stored.
+        # ``date.today()`` relies on the server's local timezone, which
+        # could allow newly created users to claim the bonus if the server
+        # is running behind UTC. Since ``created_at`` is stored in UTC,
+        # convert the current time to UTC before comparing dates.
+        today = datetime.now(UTC).date()
 
         # Guest players cannot claim daily bonuses
         if player.is_guest:
