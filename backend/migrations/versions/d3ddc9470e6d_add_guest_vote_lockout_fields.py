@@ -1,7 +1,7 @@
 """add guest vote lockout fields
 
 Revision ID: d3ddc9470e6d
-Revises: 0c5e8a127691
+Revises: guest_lockout_001
 Create Date: 2025-10-30
 
 """
@@ -13,45 +13,43 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = 'd3ddc9470e6d'
-down_revision: Union[str, None] = '0c5e8a127691'
+down_revision: Union[str, None] = 'guest_lockout_001'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Check if we're using SQLite or PostgreSQL
+    """Add lockout tracking fields to the players table."""
+
     conn = op.get_bind()
-    dialect_name = conn.dialect.name
+    inspector = sa.inspect(conn)
+    existing_columns = {column["name"] for column in inspector.get_columns("players")}
 
-    # Add consecutive_incorrect_votes column with appropriate server_default
-    if dialect_name == 'sqlite':
-        # SQLite: Use string literal for server_default
+    if "consecutive_incorrect_votes" not in existing_columns:
+        if conn.dialect.name == "sqlite":
+            server_default = "0"
+        else:
+            server_default = sa.text("0")
+
         op.add_column(
             "players",
             sa.Column(
                 "consecutive_incorrect_votes",
                 sa.Integer(),
                 nullable=False,
-                server_default="0",
-            ),
-        )
-    else:
-        # PostgreSQL: Use text() for server_default
-        op.add_column(
-            "players",
-            sa.Column(
-                "consecutive_incorrect_votes",
-                sa.Integer(),
-                nullable=False,
-                server_default=sa.text("0"),
+                server_default=server_default,
             ),
         )
 
-    # Add vote_lockout_until column (works the same for both)
-    op.add_column(
-        "players",
-        sa.Column("vote_lockout_until", sa.DateTime(timezone=True), nullable=True),
-    )
+    if "vote_lockout_until" not in existing_columns:
+        op.add_column(
+            "players",
+            sa.Column(
+                "vote_lockout_until",
+                sa.DateTime(timezone=True),
+                nullable=True,
+            ),
+        )
 
 
 def downgrade() -> None:
