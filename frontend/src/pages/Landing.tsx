@@ -154,6 +154,23 @@ export const Landing: React.FC = () => {
           />
         </div>
 
+        <p className="text-center text-quip-navy text-lg font-medium mb-4">
+          A multiplayer phrase association game
+        </p>
+
+        <div className="mb-6 border-t border-gray-200" aria-hidden="true"></div>
+
+        {/* Play Now Button */}
+        <div className="mb-6">
+          <button
+            onClick={handlePlayAsGuest}
+            disabled={isLoading}
+            className="w-full bg-gradient-to-r from-quip-orange to-quip-turquoise hover:from-quip-orange-deep hover:to-quip-teal disabled:bg-gray-400 text-white font-bold py-4 px-4 rounded-tile transition-all hover:shadow-tile-sm transform hover:-translate-y-0.5 text-lg"
+          >
+            {isLoading ? 'Creating Guest Account...' : 'Play Now'}
+          </button>
+        </div>
+
         {error && (
           <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
             {error}
@@ -168,17 +185,6 @@ export const Landing: React.FC = () => {
             <p className="text-xs mt-2 text-blue-700">Save these credentials to log in later, or upgrade your account in Settings.</p>
           </div>
         )}
-
-        {/* Play Now Button */}
-        <div className="mb-6">
-          <button
-            onClick={handlePlayAsGuest}
-            disabled={isLoading}
-            className="w-full bg-gradient-to-r from-quip-orange to-quip-turquoise hover:from-quip-orange-deep hover:to-quip-teal disabled:bg-gray-400 text-white font-bold py-4 px-4 rounded-tile transition-all hover:shadow-tile-sm transform hover:-translate-y-0.5 text-lg"
-          >
-            {isLoading ? 'Creating Guest Account...' : 'Play Now'}
-          </button>
-        </div>
 
         <div className="relative mb-6">
           <div className="absolute inset-0 flex items-center">
