@@ -885,9 +885,9 @@ class RoundService:
                 )
                 SELECT COUNT(*) as available_count
                 FROM all_available_prompts a
-                WHERE a.round_id NOT IN (SELECT round_id FROM player_prompt_rounds)
-                AND a.round_id NOT IN (SELECT prompt_round_id FROM player_copy_rounds WHERE prompt_round_id IS NOT NULL)
-                AND a.round_id NOT IN (SELECT prompt_round_id FROM player_abandoned_cooldown WHERE prompt_round_id IS NOT NULL)
+                WHERE NOT EXISTS (SELECT 1 FROM player_prompt_rounds ppr WHERE ppr.round_id = a.round_id)
+                AND NOT EXISTS (SELECT 1 FROM player_copy_rounds pcr WHERE pcr.prompt_round_id = a.round_id)
+                AND NOT EXISTS (SELECT 1 FROM player_abandoned_cooldown pac WHERE pac.prompt_round_id = a.round_id)
             """)
         query = query.bindparams(
             bindparam("player_id_clean", type_=String),
