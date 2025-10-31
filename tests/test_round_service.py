@@ -9,21 +9,30 @@ from datetime import datetime, timedelta, UTC
 import uuid
 from sqlalchemy import select, update
 
+from sqlalchemy import select
+
 from backend.models.player import Player
 from backend.models.prompt import Prompt
 from backend.models.round import Round
 from backend.models.phraseset import Phraseset
+from backend.models.player_abandoned_prompt import PlayerAbandonedPrompt
 from backend.services.round_service import RoundService
 from backend.services.transaction_service import TransactionService
+from backend.services.queue_service import QueueService
 from backend.utils.exceptions import (
     RoundExpiredError,
-    RoundNotFoundError,
     InvalidPhraseError,
     NoPromptsAvailableError,
 )
 from backend.config import get_settings
 
 settings = get_settings()
+
+
+def drain_prompt_queue():
+    """Utility helper to clear the in-memory prompt queue between tests."""
+    while QueueService.get_next_prompt_round():
+        continue
 
 
 @pytest.fixture
@@ -47,10 +56,11 @@ async def player_with_balance(db_session):
 @pytest.fixture
 async def test_prompt(db_session):
     """Create a test prompt."""
+    prompt_text = f"What do you call a happy event? {uuid.uuid4().hex[:6]}"
     prompt = Prompt(
         prompt_id=uuid.uuid4(),
-        text=f"What do you call a happy event? {uuid.uuid4()}",
-        category="simple",
+        text=prompt_text,
+        category="fun",
         enabled=True,
     )
     db_session.add(prompt)
@@ -118,7 +128,12 @@ class TestPromptRoundCreation:
         expected_expiry_min = before_time + timedelta(minutes=3)
         expected_expiry_max = after_time + timedelta(minutes=3)
 
-        assert expected_expiry_min <= round_obj.expires_at <= expected_expiry_max
+        expires_at = (
+            round_obj.expires_at.replace(tzinfo=UTC)
+            if round_obj.expires_at.tzinfo is None
+            else round_obj.expires_at
+        )
+        assert expected_expiry_min <= expires_at <= expected_expiry_max
 
     @pytest.mark.asyncio
     async def test_start_prompt_round_skips_prompts_seen_in_other_rounds(
@@ -334,12 +349,13 @@ class TestPromptSubmission:
         # Submit phrase
         submitted_round = await round_service.submit_prompt_phrase(
             round_obj.round_id,
+            "Joyful Celebration",
             player_with_balance,
-            "CELEBRATION",
+            transaction_service,
         )
 
         assert submitted_round.status == "submitted"
-        assert submitted_round.submitted_phrase == "CELEBRATION"
+        assert submitted_round.submitted_phrase == "JOYFUL CELEBRATION"
 
         # Player should no longer have active round
         await db_session.refresh(player_with_balance)
@@ -360,8 +376,9 @@ class TestPromptSubmission:
         with pytest.raises(InvalidPhraseError):
             await round_service.submit_prompt_phrase(
                 round_obj.round_id,
+                "Happy Fun Silly Witty Clever Joyful",  # 6 words (> max)
                 player_with_balance,
-                "TOO MANY WORDS HERE NOW",  # > 5 words
+                transaction_service,
             )
 
     @pytest.mark.asyncio
@@ -387,8 +404,9 @@ class TestPromptSubmission:
         with pytest.raises(RoundExpiredError):
             await round_service.submit_prompt_phrase(
                 expired_round.round_id,
-                player_with_balance,
                 "CELEBRATION",
+                player_with_balance,
+                transaction_service,
             )
 
 
@@ -419,9 +437,11 @@ class TestCopyRoundCreation:
         initial_balance = player_with_balance.balance
 
         # Start copy round
+        drain_prompt_queue()
+        QueueService.add_prompt_round_to_queue(prompt_round.round_id)
+
         copy_round = await round_service.start_copy_round(
             player_with_balance,
-            prompt_round,
             transaction_service,
         )
 
@@ -435,6 +455,112 @@ class TestCopyRoundCreation:
         # Verify balance was deducted (normal cost)
         await db_session.refresh(player_with_balance)
         assert player_with_balance.balance == initial_balance - settings.copy_cost_normal
+
+
+class TestAbandonRound:
+    """Tests for abandoning active rounds."""
+
+    @pytest.mark.asyncio
+    async def test_abandon_prompt_round(self, db_session, player_with_balance, test_prompt):
+        """Prompt players should receive a partial refund and clear active round state."""
+        round_service = RoundService(db_session)
+        transaction_service = TransactionService(db_session)
+
+        # Start a prompt round to set up the abandonment scenario
+        prompt_round = await round_service.start_prompt_round(
+            player_with_balance,
+            transaction_service
+        )
+        await db_session.refresh(player_with_balance)
+        balance_after_charge = player_with_balance.balance
+
+        abandoned_round, refund_amount, penalty_kept = await round_service.abandon_round(
+            prompt_round.round_id,
+            player_with_balance,
+            transaction_service,
+        )
+
+        assert abandoned_round.status == "abandoned"
+        assert abandoned_round.phraseset_status == "abandoned"
+        assert refund_amount == max(prompt_round.cost - settings.abandoned_penalty, 0)
+        assert penalty_kept == settings.abandoned_penalty
+
+        await db_session.refresh(player_with_balance)
+        assert player_with_balance.active_round_id is None
+        assert player_with_balance.balance == balance_after_charge + refund_amount
+
+    @pytest.mark.asyncio
+    async def test_abandon_copy_round_returns_prompt(self, db_session, player_with_balance, test_prompt):
+        """Abandoning a copy round should refund, requeue, and track the abandonment."""
+        round_service = RoundService(db_session)
+        transaction_service = TransactionService(db_session)
+
+        # Create a submitted prompt round owned by a different player
+        prompter = Player(
+            player_id=uuid.uuid4(),
+            username=f"prompter_{uuid.uuid4().hex[:8]}",
+            username_canonical=f"prompter_{uuid.uuid4().hex[:8]}",
+            pseudonym=f"Prompter_{uuid.uuid4().hex[:8]}",
+            pseudonym_canonical=f"prompter_{uuid.uuid4().hex[:8]}",
+            email=f"prompter_{uuid.uuid4().hex[:8]}@test.com",
+            password_hash="hash",
+            balance=1000,
+        )
+        db_session.add(prompter)
+        await db_session.commit()
+
+        prompt_round = Round(
+            round_id=uuid.uuid4(),
+            player_id=prompter.player_id,
+            round_type="prompt",
+            status="submitted",
+            prompt_id=test_prompt.prompt_id,
+            prompt_text=test_prompt.text,
+            submitted_phrase="CELEBRATION",
+            cost=settings.prompt_cost,
+            expires_at=datetime.now(UTC) + timedelta(minutes=3),
+        )
+        db_session.add(prompt_round)
+        await db_session.commit()
+
+        drain_prompt_queue()
+        QueueService.add_prompt_round_to_queue(prompt_round.round_id)
+
+        copy_round = await round_service.start_copy_round(
+            player_with_balance,
+            transaction_service,
+        )
+        await db_session.refresh(player_with_balance)
+        balance_after_charge = player_with_balance.balance
+
+        assert copy_round.prompt_round_id == prompt_round.round_id
+
+        abandoned_round, refund_amount, penalty_kept = await round_service.abandon_round(
+            copy_round.round_id,
+            player_with_balance,
+            transaction_service,
+        )
+
+        assert abandoned_round.status == "abandoned"
+        assert abandoned_round.round_type == "copy"
+        assert refund_amount == max(copy_round.cost - settings.abandoned_penalty, 0)
+        assert penalty_kept == settings.abandoned_penalty
+
+        await db_session.refresh(player_with_balance)
+        assert player_with_balance.active_round_id is None
+        assert player_with_balance.balance == balance_after_charge + refund_amount
+
+        # Prompt should be re-queued for other players
+        assert QueueService.remove_prompt_round_from_queue(prompt_round.round_id) is True
+
+        # Player abandonment cooldown should be tracked
+        result = await db_session.execute(
+            select(PlayerAbandonedPrompt).where(
+                PlayerAbandonedPrompt.player_id == player_with_balance.player_id,
+                PlayerAbandonedPrompt.prompt_round_id == prompt_round.round_id,
+            )
+        )
+        assert result.scalar_one_or_none() is not None
 
 
 class TestPhrasesetCreation:

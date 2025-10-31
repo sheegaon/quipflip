@@ -3,13 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { useResults } from '../contexts/ResultsContext';
 import { useTutorial } from '../contexts/TutorialContext';
-import { extractErrorMessage } from '../api/client';
+import apiClient, { extractErrorMessage } from '../api/client';
 import { Timer } from '../components/Timer';
 import { Header } from '../components/Header';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import TutorialWelcome from '../components/Tutorial/TutorialWelcome';
 import { dashboardLogger } from '../utils/logger';
 import type { PendingResult } from '../api/types';
+import type { BetaSurveyStatusResponse } from '../api/types';
+import { hasDismissedSurvey, markSurveyDismissed, hasCompletedSurvey } from '../utils/betaSurvey';
 
 const formatWaitingCount = (count: number): string => (count > 10 ? 'over 10' : count.toString());
 
@@ -24,7 +26,7 @@ export const Dashboard: React.FC = () => {
     roundAvailability,
     error: contextError,
   } = state;
-  const { refreshDashboard, clearError } = actions;
+  const { refreshDashboard, clearError, abandonRound } = actions;
   const { startTutorial, skipTutorial, advanceStep } = useTutorial();
   const { viewedResultIds } = resultsState;
   const { markResultsViewed } = resultsActions;
@@ -32,6 +34,10 @@ export const Dashboard: React.FC = () => {
   const [isRoundExpired, setIsRoundExpired] = useState(false);
   const [startingRound, setStartingRound] = useState<string | null>(null);
   const [roundStartError, setRoundStartError] = useState<string | null>(null);
+  const [surveyStatus, setSurveyStatus] = useState<BetaSurveyStatusResponse | null>(null);
+  const [showSurveyPrompt, setShowSurveyPrompt] = useState(false);
+  const [isAbandoningRound, setIsAbandoningRound] = useState(false);
+  const [abandonError, setAbandonError] = useState<string | null>(null);
 
   // Log component mount and key state changes
   useEffect(() => {
@@ -59,6 +65,50 @@ export const Dashboard: React.FC = () => {
     }
   }, [activeRound]);
 
+  useEffect(() => {
+    const playerId = player?.player_id;
+    if (!playerId) {
+      setSurveyStatus(null);
+      setShowSurveyPrompt(false);
+      return;
+    }
+
+    let cancelled = false;
+    const controller = new AbortController();
+
+    const fetchStatus = async () => {
+      try {
+        const status = await apiClient.getBetaSurveyStatus(controller.signal);
+        if (cancelled) return;
+        const dismissed = hasDismissedSurvey(playerId);
+        const completedLocal = hasCompletedSurvey(playerId);
+        const shouldShow = status.eligible && !status.has_submitted && !dismissed && !completedLocal;
+
+        dashboardLogger.debug('Beta survey status resolved', {
+          eligible: status.eligible,
+          hasSubmitted: status.has_submitted,
+          totalRounds: status.total_rounds,
+          dismissed,
+          completedLocal,
+          shouldShow,
+        });
+
+        setSurveyStatus(status);
+        setShowSurveyPrompt(shouldShow);
+      } catch (error) {
+        if (cancelled) return;
+        dashboardLogger.warn('Failed to fetch beta survey status', error);
+      }
+    };
+
+    fetchStatus();
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [player?.player_id]);
+
 
   const handleStartTutorial = async () => {
     dashboardLogger.debug('Starting tutorial from dashboard');
@@ -70,6 +120,18 @@ export const Dashboard: React.FC = () => {
     await skipTutorial();
   };
 
+  const handleSurveyStart = useCallback(() => {
+    setShowSurveyPrompt(false);
+    navigate('/survey/beta');
+  }, [navigate]);
+
+  const handleSurveyDismiss = useCallback(() => {
+    if (player?.player_id) {
+      markSurveyDismissed(player.player_id);
+    }
+    setShowSurveyPrompt(false);
+  }, [player?.player_id]);
+
   const activeRoundRoute = useMemo(() => {
     return activeRound?.round_type ? `/${activeRound.round_type}` : null;
   }, [activeRound?.round_type]);
@@ -77,6 +139,10 @@ export const Dashboard: React.FC = () => {
   const activeRoundLabel = useMemo(() => {
     if (!activeRound?.round_type) return '';
     return `${activeRound.round_type.charAt(0).toUpperCase()}${activeRound.round_type.slice(1)}`;
+  }, [activeRound?.round_type]);
+
+  const canAbandonRound = useMemo(() => {
+    return activeRound?.round_type === 'prompt' || activeRound?.round_type === 'copy';
   }, [activeRound?.round_type]);
 
   // Refresh when page becomes visible (with debouncing)
@@ -103,11 +169,14 @@ export const Dashboard: React.FC = () => {
   useEffect(() => {
     if (!activeRound?.round_id) {
       setIsRoundExpired(false);
+      setAbandonError(null);
+      setIsAbandoningRound(false);
       return;
     }
 
     if (!activeRound.expires_at) {
       setIsRoundExpired(false);
+      setAbandonError(null);
       return;
     }
 
@@ -125,6 +194,9 @@ export const Dashboard: React.FC = () => {
     });
 
     setIsRoundExpired(isExpired);
+    if (!isExpired) {
+      setAbandonError(null);
+    }
   }, [activeRound?.round_id, activeRound?.expires_at]);
 
   const handleContinueRound = useCallback(() => {
@@ -136,7 +208,7 @@ export const Dashboard: React.FC = () => {
   const handleRoundExpired = useCallback(async () => {
     dashboardLogger.debug('Round expired, setting flag and triggering refresh');
     setIsRoundExpired(true);
-    
+
     try {
       // Refresh dashboard to clear expired round and get latest state
       await refreshDashboard();
@@ -147,6 +219,35 @@ export const Dashboard: React.FC = () => {
       setIsRoundExpired(true);
     }
   }, [refreshDashboard]);
+
+  const handleAbandonRound = useCallback(async () => {
+    if (!activeRound?.round_id || !canAbandonRound || isAbandoningRound) {
+      return;
+    }
+
+    dashboardLogger.debug('Abandon round requested from dashboard', {
+      roundId: activeRound.round_id,
+      roundType: activeRound.round_type,
+    });
+
+    try {
+      setIsAbandoningRound(true);
+      setAbandonError(null);
+      const response = await abandonRound(activeRound.round_id);
+      dashboardLogger.info('Round abandoned via dashboard', {
+        roundId: response.round_id,
+        refundAmount: response.refund_amount,
+        penaltyKept: response.penalty_kept,
+      });
+    } catch (err) {
+      dashboardLogger.error('Failed to abandon round from dashboard', err);
+      const errorMsg = extractErrorMessage(err, 'abandon-round') ||
+        'Unable to abandon the round. Please try again.';
+      setAbandonError(errorMsg);
+    } finally {
+      setIsAbandoningRound(false);
+    }
+  }, [abandonRound, activeRound?.round_id, activeRound?.round_type, canAbandonRound, isAbandoningRound]);
 
   const handleStartPrompt = async () => {
     if (startingRound) {
@@ -276,7 +377,19 @@ export const Dashboard: React.FC = () => {
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Active Round Notification */}
         {activeRound?.round_id && !isRoundExpired && (
-          <div className="tile-card bg-quip-orange bg-opacity-10 border-2 border-quip-orange p-4 mb-6 slide-up-enter">
+          <div className="tile-card bg-quip-orange bg-opacity-10 border-2 border-quip-orange p-4 mb-6 slide-up-enter relative">
+            {canAbandonRound && (
+              <button
+                type="button"
+                onClick={handleAbandonRound}
+                disabled={isAbandoningRound}
+                className={`absolute -top-3 -right-3 flex h-8 w-8 items-center justify-center rounded-full border-2 border-red-500 text-lg font-semibold text-red-500 shadow-sm transition-colors duration-150 ${isAbandoningRound ? 'bg-red-100 cursor-not-allowed opacity-70' : 'bg-white hover:bg-red-500 hover:text-white'}`}
+                title="Abandon round (refund minus penalty)"
+                aria-label="Abandon round"
+              >
+                <span aria-hidden="true">×</span>
+              </button>
+            )}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex-1">
                 <p className="font-display font-semibold text-quip-orange-deep">
@@ -290,6 +403,9 @@ export const Dashboard: React.FC = () => {
                     compact
                   />
                 </div>
+                {abandonError && (
+                  <p className="mt-3 text-sm text-red-600">{abandonError}</p>
+                )}
               </div>
               <button
                 onClick={handleContinueRound}
@@ -462,10 +578,43 @@ export const Dashboard: React.FC = () => {
               </button>
             </div>
           </div>
-        </div>
       </div>
     </div>
-  );
+      {showSurveyPrompt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="tile-card w-full max-w-lg space-y-4 p-6">
+            <h2 className="text-2xl font-display font-bold text-quip-navy">
+              Share your beta feedback
+            </h2>
+            <p className="text-quip-navy">
+              We&apos;d love to hear how Quipflip feels after ten rounds. Take a short survey to help us tune the beta experience.
+            </p>
+            {surveyStatus && (
+              <p className="text-sm text-quip-teal">
+                You&apos;ve completed <span className="font-semibold">{surveyStatus.total_rounds}</span> rounds so far — perfect!
+              </p>
+            )}
+            <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={handleSurveyDismiss}
+                className="rounded-tile border border-quip-navy/20 px-5 py-2 font-semibold text-quip-navy transition hover:border-quip-teal hover:text-quip-teal"
+              >
+                Maybe later
+              </button>
+              <button
+                type="button"
+                onClick={handleSurveyStart}
+                className="rounded-tile bg-quip-navy px-6 py-2 font-semibold text-white shadow-tile-sm transition hover:bg-quip-teal"
+              >
+                Take the survey
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+  </div>
+);
 };
 
 export default Dashboard;

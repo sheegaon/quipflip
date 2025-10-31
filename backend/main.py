@@ -11,7 +11,7 @@ from contextlib import asynccontextmanager
 
 from backend.config import get_settings
 from backend.services.prompt_seeder import sync_prompts_with_database
-from backend.routers import health, player, rounds, phrasesets, prompt_feedback, auth, quests, admin
+from backend.routers import health, player, rounds, phrasesets, prompt_feedback, auth, quests, admin, feedback
 from backend.middleware.deduplication import deduplication_middleware
 
 # Create logs directory if it doesn't exist
@@ -199,7 +199,7 @@ async def ai_backup_cycle():
             logger.error(f"AI backup cycle error: {e}")
 
         # Wait before next cycle
-        await asyncio.sleep(settings.ai_backup_sleep_seconds)
+        await asyncio.sleep(settings.ai_backup_sleep_minutes * 60)
 
 
 async def cleanup_cycle():
@@ -264,7 +264,10 @@ async def lifespan(app_instance: FastAPI):
 
     try:
         ai_backup_task = asyncio.create_task(ai_backup_cycle())
-        logger.info(f"AI backup cycle task started (runs every {settings.ai_backup_sleep_seconds} seconds)")
+        logger.info(
+            "AI backup cycle task started (runs every %s minutes)",
+            settings.ai_backup_sleep_minutes,
+        )
     except Exception as e:
         logger.error(f"Failed to start AI backup cycle: {e}")
 
@@ -425,6 +428,7 @@ app.include_router(prompt_feedback.router, prefix="/rounds", tags=["prompt_feedb
 app.include_router(phrasesets.router, prefix="/phrasesets", tags=["phrasesets"])
 app.include_router(quests.router, prefix="/quests", tags=["quests"])
 app.include_router(admin.router, tags=["admin"])
+app.include_router(feedback.router, tags=["feedback"])
 
 
 @app.get("/")

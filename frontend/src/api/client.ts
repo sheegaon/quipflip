@@ -39,8 +39,13 @@ import type {
   CreateGuestResponse,
   UpgradeGuestResponse,
   FlagCopyRoundResponse,
+  AbandonRoundResponse,
   FlaggedPromptListResponse,
   FlaggedPromptItem,
+  BetaSurveySubmissionRequest,
+  BetaSurveySubmissionResponse,
+  BetaSurveyStatusResponse,
+  BetaSurveyListResponse,
 } from './types';
 
 // Base URL - configure based on environment
@@ -463,6 +468,11 @@ export const apiClient = {
     return data;
   },
 
+  async abandonRound(roundId: string, signal?: AbortSignal): Promise<AbandonRoundResponse> {
+    const { data } = await api.post(`/rounds/${roundId}/abandon`, {}, { signal });
+    return data;
+  },
+
   // Phraseset endpoints
   async submitVote(phrasesetId: string, phrase: string, signal?: AbortSignal): Promise<VoteResponse> {
     const { data } = await api.post(`/phrasesets/${phrasesetId}/vote`, { phrase }, { signal });
@@ -520,6 +530,24 @@ export const apiClient = {
 
   async resetTutorial(signal?: AbortSignal): Promise<TutorialStatus> {
     const { data } = await api.post('/player/tutorial/reset', {}, { signal });
+    return data;
+  },
+
+  async submitBetaSurvey(
+    payload: BetaSurveySubmissionRequest,
+    signal?: AbortSignal,
+  ): Promise<BetaSurveySubmissionResponse> {
+    const { data } = await api.post<BetaSurveySubmissionResponse>('/feedback/beta-survey', payload, { signal });
+    return data;
+  },
+
+  async getBetaSurveyStatus(signal?: AbortSignal): Promise<BetaSurveyStatusResponse> {
+    const { data } = await api.get<BetaSurveyStatusResponse>('/feedback/beta-survey/status', { signal });
+    return data;
+  },
+
+  async listBetaSurveyResponses(signal?: AbortSignal): Promise<BetaSurveyListResponse> {
+    const { data } = await api.get<BetaSurveyListResponse>('/feedback/beta-survey', { signal });
     return data;
   },
 

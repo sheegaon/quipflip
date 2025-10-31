@@ -79,7 +79,7 @@ The AI service reads its configuration from `backend.config.Settings` (environme
 | `AI_TIMEOUT_SECONDS` | Request timeout for provider calls | `60` |
 | `AI_BACKUP_DELAY_MINUTES` | Age threshold before AI copies/votes run | `15` |
 | `AI_BACKUP_BATCH_SIZE` | Max prompts/phrasesets processed per cycle | `3` |
-| `AI_BACKUP_SLEEP_SECONDS` | Recommended sleep between scheduled cycles | `3600` |
+| `AI_BACKUP_SLEEP_MINUTES` | Recommended sleep between scheduled cycles | `60` |
 
 When `Settings.use_phrase_validator_api` is `True`, the service uses the remote validator via `phrase_validation_client`; otherwise it falls back to the local validator.
 

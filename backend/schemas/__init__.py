@@ -14,6 +14,7 @@ from backend.schemas.round import (
     SubmitPhraseResponse,
     RoundAvailability,
     RoundDetails,
+    AbandonRoundResponse,
 )
 from backend.schemas.phraseset import (
     VoteRequest,
@@ -28,6 +29,14 @@ from backend.schemas.phraseset import (
     UnclaimedResultsResponse,
 )
 from backend.schemas.vote import VoteDetail
+from backend.schemas.feedback import (
+    SurveySubmission,
+    SurveyAnswer,
+    SurveySubmissionResponse,
+    SurveyStatusResponse,
+    SurveyResponseRecord,
+    SurveyResponseList,
+)
 
 __all__ = [
     "PlayerBalance",
@@ -42,6 +51,7 @@ __all__ = [
     "SubmitPhraseResponse",
     "RoundAvailability",
     "RoundDetails",
+    "AbandonRoundResponse",
     "VoteRequest",
     "VoteResponse",
     "PhraseVoteCount",
@@ -53,4 +63,10 @@ __all__ = [
     "ClaimPrizeResponse",
     "UnclaimedResultsResponse",
     "VoteDetail",
+    "SurveySubmission",
+    "SurveyAnswer",
+    "SurveySubmissionResponse",
+    "SurveyStatusResponse",
+    "SurveyResponseRecord",
+    "SurveyResponseList",
 ]

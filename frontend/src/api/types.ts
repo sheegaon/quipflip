@@ -116,6 +116,15 @@ export interface FlagCopyRoundResponse {
   message: string;
 }
 
+export interface AbandonRoundResponse {
+  round_id: string;
+  round_type: 'prompt' | 'copy';
+  status: 'abandoned';
+  refund_amount: number;
+  penalty_kept: number;
+  message: string;
+}
+
 export interface FlaggedPromptItem {
   flag_id: string;
   prompt_round_id: string;
@@ -158,6 +167,39 @@ export interface DailyBonusResponse {
   success: boolean;
   amount: number;
   new_balance: number;
+}
+
+export interface BetaSurveyAnswerPayload {
+  question_id: string;
+  value: number | string | string[] | Record<string, unknown> | null;
+}
+
+export interface BetaSurveySubmissionRequest {
+  survey_id: string;
+  answers: BetaSurveyAnswerPayload[];
+}
+
+export interface BetaSurveySubmissionResponse {
+  status: 'submitted' | 'already_submitted';
+  message: string;
+}
+
+export interface BetaSurveyStatusResponse {
+  eligible: boolean;
+  has_submitted: boolean;
+  total_rounds: number;
+}
+
+export interface BetaSurveySubmissionRecord {
+  response_id: string;
+  player_id: string;
+  survey_id: string;
+  payload: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface BetaSurveyListResponse {
+  submissions: BetaSurveySubmissionRecord[];
 }
 
 export interface RoundAvailability {

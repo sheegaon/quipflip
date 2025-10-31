@@ -10,7 +10,7 @@ Quipflip is a FastAPI-based backend service with a stateless REST API architectu
 repo/
 ├── backend/              # FastAPI application, SQLAlchemy models, and services
 │   ├── main.py           # ASGI entrypoint
-│   ├── routers/          # Route modules (players, rounds, phrasesets, quests, health)
+│   ├── routers/          # Route modules (players, rounds, phrasesets, quests, feedback, health)
 │   ├── services/         # Business logic (rounds, votes, phrasesets, players, quests)
 │   ├── models/           # ORM models (Player, Round, Phraseset, Quest, etc.)
 │   ├── schemas/          # Pydantic request/response schemas

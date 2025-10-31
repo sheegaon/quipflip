@@ -711,6 +711,29 @@ Submit phrase for prompt or copy round.
 - `expired` - Past grace period
 - `not_found` - Round not found or not owned by player
 
+#### `POST /rounds/{round_id}/abandon`
+Immediately abandon an active prompt or copy round. The player receives an instant refund minus the configured abandonment penalty and the prompt is returned to the queue when applicable.
+
+**Request Body:** _None_
+
+**Response:**
+```json
+{
+  "round_id": "uuid",
+  "round_type": "prompt",
+  "status": "abandoned",
+  "refund_amount": 95,
+  "penalty_kept": 5,
+  "message": "Round abandoned"
+}
+```
+
+**Errors:**
+- `round_not_found` - Round does not exist or belongs to another player
+- `Round is not active` - Attempted to abandon a round that has already completed or expired
+- `Only prompt or copy rounds can be abandoned` - Tried to abandon a vote round
+- `abandon_failed` - Unexpected server error while processing the abandonment
+
 #### `POST /rounds/{round_id}/feedback`
 Submit thumbs up/down feedback for a prompt round.
 
@@ -760,6 +783,86 @@ Get existing feedback for a round.
   "feedback_type": null,
   "feedback_id": null,
   "last_updated_at": null
+}
+```
+
+### Survey Feedback Endpoints
+
+Authenticated players can share structured beta feedback through the dedicated survey router.
+
+#### `POST /feedback/beta-survey`
+Submit a beta survey response for the current player.
+
+**Request Body:**
+```json
+{
+  "survey_id": "beta_oct_2025",
+  "answers": [
+    {
+      "question_id": "q1",
+      "value": 4
+    },
+    {
+      "question_id": "q2",
+      "value": ["prompt", "vote"]
+    }
+  ]
+}
+```
+
+**Response (new submission):**
+```json
+{
+  "status": "submitted",
+  "message": "thank you"
+}
+```
+
+**Response (duplicate submission):**
+```json
+{
+  "status": "already_submitted",
+  "message": "already submitted"
+}
+```
+
+**Errors:**
+- `unknown_survey` – request references an unrecognised survey ID
+
+#### `GET /feedback/beta-survey/status`
+Return eligibility + completion state for the current player.
+
+**Response:**
+```json
+{
+  "eligible": true,
+  "has_submitted": false,
+  "total_rounds": 12
+}
+```
+
+#### `GET /feedback/beta-survey`
+List the 100 most recent beta survey submissions. **Admin only.**
+
+**Response:**
+```json
+{
+  "submissions": [
+    {
+      "response_id": "uuid",
+      "player_id": "uuid",
+      "survey_id": "beta_oct_2025",
+      "payload": {
+        "answers": [
+          {
+            "question_id": "q1",
+            "value": 4
+          }
+        ]
+      },
+      "created_at": "2025-01-06T12:00:00Z"
+    }
+  ]
 }
 ```
 

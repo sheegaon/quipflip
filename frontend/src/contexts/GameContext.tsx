@@ -13,6 +13,7 @@ import type {
   UnclaimedResult,
   AuthTokenResponse,
   FlagCopyRoundResponse,
+  AbandonRoundResponse,
 } from '../api/types';
 
 interface GameState {
@@ -41,6 +42,7 @@ interface GameActions {
   startVoteRound: () => Promise<void>;
   claimPhrasesetPrize: (phrasesetId: string) => Promise<void>;
   flagCopyRound: (roundId: string) => Promise<FlagCopyRoundResponse>;
+  abandonRound: (roundId: string) => Promise<AbandonRoundResponse>;
 }
 
 interface GameContextType {
@@ -519,6 +521,34 @@ export const GameProvider: React.FC<{
       }
   }, [refreshDashboard]);
 
+  const abandonRound = useCallback(async (roundId: string): Promise<AbandonRoundResponse> => {
+      gameContextLogger.debug('🛑 GameContext abandonRound called', { roundId });
+
+      const token = await apiClient.ensureAccessToken();
+      gameContextLogger.debug('🔑 Token check for abandon round:', { hasToken: !!token });
+
+      if (!token) {
+        gameContextLogger.warn('❌ No valid token, aborting abandon round');
+        setIsAuthenticated(false);
+        throw new Error('missing_token');
+      }
+
+      try {
+        gameContextLogger.debug('📞 Calling apiClient.abandonRound()...', { roundId });
+        const response = await apiClient.abandonRound(roundId);
+        gameContextLogger.info('✅ Round abandoned successfully', {
+          roundId,
+          refundAmount: response.refund_amount,
+          penaltyKept: response.penalty_kept,
+        });
+        await refreshDashboard();
+        return response;
+      } catch (err) {
+        gameContextLogger.error('❌ Failed to abandon round:', err);
+        throw err;
+      }
+  }, [refreshDashboard]);
+
   const startVoteRound = useCallback(async () => {
       gameContextLogger.debug('🎯 GameContext startVoteRound called');
       
@@ -698,6 +728,7 @@ export const GameProvider: React.FC<{
     startPromptRound,
     startCopyRound,
     flagCopyRound,
+    abandonRound,
     startVoteRound,
     claimPhrasesetPrize,
   };

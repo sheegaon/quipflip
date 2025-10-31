@@ -141,7 +141,7 @@ class GameConfigResponse(BaseModel):
     ai_timeout_seconds: int
     ai_backup_delay_minutes: int
     ai_backup_batch_size: int
-    ai_backup_sleep_seconds: int
+    ai_backup_sleep_minutes: int
 
 
 @router.get("/config", response_model=GameConfigResponse)
@@ -204,7 +204,7 @@ async def get_game_config(
         ai_timeout_seconds=config.get("ai_timeout_seconds", 30),
         ai_backup_delay_minutes=config.get("ai_backup_delay_minutes", 15),
         ai_backup_batch_size=config.get("ai_backup_batch_size", 3),
-        ai_backup_sleep_seconds=config.get("ai_backup_sleep_seconds", 3600),
+        ai_backup_sleep_minutes=config.get("ai_backup_sleep_minutes", 60),
     )
 
 

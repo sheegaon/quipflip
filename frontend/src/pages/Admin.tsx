@@ -50,7 +50,7 @@ interface GameConfig {
   ai_timeout_seconds: number;
   ai_backup_delay_minutes: number;
   ai_backup_batch_size: number;
-  ai_backup_sleep_seconds: number;
+  ai_backup_sleep_minutes: number;
 }
 
 interface ValidationResult {
@@ -1277,14 +1277,14 @@ const Admin: React.FC = () => {
                 />
                 <EditableConfigField
                   label="Backup Sleep"
-                  value={config.ai_backup_sleep_seconds}
-                  configKey="ai_backup_sleep_seconds"
-                  unit="seconds"
+                  value={config.ai_backup_sleep_minutes}
+                  configKey="ai_backup_sleep_minutes"
+                  unit="minutes"
                   description="Sleep between backup cycles"
 
                   type="number"
-                  min={300}
-                  max={7200}
+                  min={5}
+                  max={120}
                   onSave={handleSaveConfig}
                   disabled={!editMode}
                 />
