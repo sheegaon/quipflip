@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useGame } from '../contexts/GameContext';
 import { useQuests } from '../contexts/QuestContext';
 import { Header } from '../components/Header';
@@ -7,16 +7,11 @@ import { SuccessNotification } from '../components/SuccessNotification';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import type { Quest } from '../api/types';
 import { questsLogger } from '../utils/logger';
+import { isSameDay } from '../utils/date';
 
 // Quest categories for filtering
 const QUEST_CATEGORIES = ['all', 'streak', 'quality', 'activity', 'milestone'] as const;
 type QuestCategory = typeof QUEST_CATEGORIES[number];
-
-const isSameDay = (first: Date, second: Date): boolean => (
-  first.getFullYear() === second.getFullYear()
-  && first.getMonth() === second.getMonth()
-  && first.getDate() === second.getDate()
-);
 
 export const Quests: React.FC = () => {
   const { state: gameState, actions: gameActions } = useGame();
@@ -72,8 +67,14 @@ export const Quests: React.FC = () => {
   }
 
   const isGuestPlayer = Boolean(player.is_guest);
-  const createdAtDate = player.created_at ? new Date(player.created_at) : null;
-  const isFirstDayPlayer = createdAtDate ? isSameDay(createdAtDate, new Date()) : false;
+  const isFirstDayPlayer = useMemo(() => {
+    if (!player.created_at) {
+      return false;
+    }
+
+    const createdAtDate = new Date(player.created_at);
+    return isSameDay(createdAtDate, new Date());
+  }, [player.created_at]);
 
   const handleClaimBonus = async () => {
     if (isClaiming) return;
