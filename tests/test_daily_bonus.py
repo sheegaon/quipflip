@@ -51,6 +51,45 @@ async def test_new_player_no_bonus_on_creation_day(test_app):
 
 
 @pytest.mark.asyncio
+async def test_guest_players_cannot_claim_daily_bonus(test_app, db_session):
+    """Guest accounts should not have access to the daily bonus."""
+
+    async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+        response = await client.post("/player/guest")
+        assert response.status_code == 201
+        data = response.json()
+        token = data["access_token"]
+        player_id = data["player_id"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        # Initial balance check - bonus should not be available
+        balance_response = await client.get("/player/balance", headers=headers)
+        assert balance_response.status_code == 200
+        balance_data = balance_response.json()
+        assert balance_data["daily_bonus_available"] is False
+        assert balance_data.get("is_guest") is True
+
+        # Move the creation date back so first-day logic isn't the only blocker
+        two_days_ago = datetime.now(UTC) - timedelta(days=2)
+        await db_session.execute(
+            update(Player)
+            .where(Player.player_id == player_id)
+            .values(created_at=two_days_ago)
+        )
+        await db_session.commit()
+
+        # Attempting to claim should fail for guests
+        claim_response = await client.post("/player/claim-daily-bonus", headers=headers)
+        assert claim_response.status_code == 400
+        assert "not available" in claim_response.json()["detail"].lower()
+
+        # Bonus should remain unavailable afterwards
+        balance_response = await client.get("/player/balance", headers=headers)
+        assert balance_response.status_code == 200
+        assert balance_response.json()["daily_bonus_available"] is False
+
+
+@pytest.mark.asyncio
 async def test_daily_bonus_available_after_login(test_app, db_session):
     """Daily bonus should remain available after logging in.
 
