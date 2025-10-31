@@ -92,7 +92,7 @@ export const Header: React.FC = () => {
       <div className="max-w-6xl mx-auto px-1 py-0 md:px-4 md:py-3">
         <div className="flex justify-between items-center">
           {/* Left: Logo + Back Arrow (on certain pages) */}
-          <div className="flex items-center gap-1 md:gap-3">
+          <div className="flex items-center gap-0.5 md:gap-3">
             <button
               onClick={showBackArrow ? () => navigate(getBackNavigation()) : undefined}
               className={`flex items-center gap-0 md:gap-2 ${showBackArrow ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
@@ -103,22 +103,22 @@ export const Header: React.FC = () => {
                 <img
                   src="/icon_back_arrow.svg"
                   alt=""
-                  className="w-4 h-4 md:w-6 md:h-6"
+                  className="w-5 h-5 md:w-9 md:h-9"
                   aria-hidden="true"
                 />
               )}
-              <img src="/large_icon.png" alt="Quipflip" className="h-10 w-auto" />
+              <img src="/large_icon.png" alt="Quipflip" className="md:h-14 h-6 w-auto" />
             </button>
             {showInProgressIndicator && (
               <button
                 type="button"
                 onClick={() => navigate('/tracking')}
-                className="flex items-center gap-3 rounded-full bg-quip-cream px-3 py-1 text-xs font-semibold text-quip-navy transition-colors hover:bg-quip-teal-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-quip-teal"
+                className="flex items-center gap-2 rounded-full bg-quip-cream px-1 md:px-3 py-1 text-xs font-semibold text-quip-navy transition-colors hover:bg-quip-teal-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-quip-teal"
                 title={inProgressLabel}
                 aria-label={inProgressLabel}
               >
                 {inProgressPrompts > 0 && (
-                  <span className="flex items-center gap-1">
+                  <span className="flex items-center md:gap-1 gap-0.5">
                     <span>{inProgressPrompts}</span>
                     <img
                       src="/icon_prompt.svg"
@@ -128,7 +128,7 @@ export const Header: React.FC = () => {
                   </span>
                 )}
                 {inProgressCopies > 0 && (
-                  <span className="flex items-center gap-1">
+                  <span className="flex items-center md:gap-1 gap-0.5">
                     <span>{inProgressCopies}</span>
                     <img
                       src="/icon_copy.svg"
@@ -143,7 +143,7 @@ export const Header: React.FC = () => {
               <button
                 type="button"
                 onClick={handleResultsClick}
-                className={`flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 ${
+                className={`flex items-center gap-1 rounded-full px-1 md:px-3 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 ${
                   unviewedCount > 0
                     ? 'bg-quip-orange bg-opacity-10 text-quip-orange hover:bg-quip-orange hover:bg-opacity-20 focus-visible:ring-quip-orange'
                     : 'bg-gray-200 text-black hover:bg-gray-300 focus-visible:ring-gray-400'
@@ -161,7 +161,7 @@ export const Header: React.FC = () => {
             )}
           </div>
 
-          {/* Center: Username (clickable to stats) */}
+          {/* Center: Username (clickable to player page) */}
           <div className="flex-1 text-center">
             <button
               onClick={() => navigate('/statistics')}
@@ -179,7 +179,7 @@ export const Header: React.FC = () => {
           </div>
 
           {/* Right: Daily Bonus + Flipcoins + Logout */}
-          <div className="flex items-center gap-1 md:gap-4">
+          <div className="flex items-center gap-0.5 md:gap-4">
             {/* Treasure Chest - Always visible, navigates to quests page */}
             <button
               onClick={() => navigate('/quests')}
@@ -192,16 +192,16 @@ export const Header: React.FC = () => {
               />
             </button>
             {/* Flipcoin Balance */}
-            <div className="flex items-center gap-2 tutorial-balance border border-white/10 rounded-xl px-2 py-1">
-              <img src="/flipcoin.png" alt="Flipcoin" className="w-6 h-6 md:w-10 md:h-10" />
+            <div className="flex items-center gap-0.5 tutorial-balance border border-white/10 rounded-xl px-1 md:px-3 py-1">
+              <img src="/flipcoin.png" alt="Flipcoin" className="w-5 h-5 md:w-8 md:h-8" />
               <BalanceFlipper
                 value={player.balance}
-                className="text-xl md:text-4xl font-display font-bold text-quip-turquoise"
+                className="text-xl md:text-3xl font-display font-bold text-quip-turquoise"
               />
             </div>
             {/* Logout Button */}
             <button onClick={logout} className="text-quip-teal hover:text-quip-turquoise" title="Logout">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 md:h-9 w-6 md:w-9" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 md:h-10 w-6 md:w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
               </svg>
             </button>
