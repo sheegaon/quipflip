@@ -99,9 +99,9 @@ async def test_prize_pool_initialization(db_session):
     assert phraseset is not None, "Phraseset should be created"
 
     # Verify initial prize pool = base + system contribution
-    expected_initial_pool = settings.prize_pool_base + 10  # 10 from copy2 discount
+    expected_initial_pool = settings.prize_pool_base
     assert phraseset.total_pool == expected_initial_pool, \
-        f"Initial pool should be {expected_initial_pool} (base={settings.prize_pool_base} + discount=10)"
+        f"Initial pool should be {expected_initial_pool} (base={settings.prize_pool_base})"
     assert phraseset.vote_contributions == 0, "No votes yet"
     assert phraseset.vote_payouts_paid == 0, "No payouts yet"
     assert phraseset.system_contribution == 10, "System contribution should be 10"

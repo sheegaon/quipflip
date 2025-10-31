@@ -716,9 +716,9 @@ class RoundService:
             logger.error(f"Cannot create phraseset: copy_round {copy2.round_id} missing copy_phrase")
             return None
 
-        # Calculate initial prize pool: base + system contributions from copy discounts
+        # Note: system contribution is implicitly included in the prize pool base, it is only tracked for transparency
         system_contribution = copy1.system_contribution + copy2.system_contribution
-        initial_pool = self.settings.prize_pool_base + system_contribution
+        initial_pool = self.settings.prize_pool_base
 
         phraseset = Phraseset(
             phraseset_id=uuid.uuid4(),
@@ -850,6 +850,8 @@ class RoundService:
         """
         # Use a single query with proper joins to count available prompts
         # This is much more efficient than the previous multiple-query approach
+        cutoff_time = datetime.now(UTC) - timedelta(hours=self.settings.abandoned_prompt_cooldown_hours)
+
         result = await self.db.execute(
             text("""
                 WITH player_prompt_rounds AS (
@@ -870,7 +872,7 @@ class RoundService:
                     SELECT pap.prompt_round_id
                     FROM player_abandoned_prompts pap
                     WHERE LOWER(REPLACE(CAST(pap.player_id AS TEXT), '-', '')) = :player_id_clean
-                    AND pap.abandoned_at > (CURRENT_TIMESTAMP - INTERVAL '24 hours')
+                    AND pap.abandoned_at > :cutoff_time
                 ),
                 all_available_prompts AS (
                     SELECT r.round_id
@@ -888,7 +890,8 @@ class RoundService:
                 AND a.round_id NOT IN (SELECT prompt_round_id FROM player_abandoned_cooldown WHERE prompt_round_id IS NOT NULL)
             """),
             {
-                "player_id_clean": str(player_id).replace('-', '').lower()
+                "player_id_clean": str(player_id).replace('-', '').lower(),
+                "cutoff_time": cutoff_time,
             }
         )
 

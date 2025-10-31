@@ -95,6 +95,7 @@
 - Indexes: `phraseset_id`, `prompt_round_id`, `fifth_vote_at`, composite `(status, vote_count)`
 - Relationships: `prompt_round`, `copy_round_1`, `copy_round_2`, `votes`, `vote_rounds`, `result_views`, `activities`
 - Note: Phrase positions randomized per-voter, NOT stored in database
+- Note: System contribution is already included in base prize pool
 
 ### Vote
 - `vote_id` (UUID, primary key)

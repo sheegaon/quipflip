@@ -13,6 +13,7 @@ export interface Player {
   outstanding_prompts: number;
   created_at: string;
   is_guest?: boolean;
+  is_admin?: boolean;
   locked_until?: string | null;
   flag_dismissal_streak?: number;
 }
