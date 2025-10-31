@@ -5,6 +5,7 @@ from functools import lru_cache
 from sqlalchemy.engine.url import make_url, URL
 from typing import Optional
 import logging
+import os
 
 SQLITE_LOCAL_URL = "sqlite+aiosqlite:///./quipflip.db"
 
@@ -82,7 +83,7 @@ class Settings(BaseSettings):
     ai_timeout_seconds: int = 60  # Timeout for AI API calls
     ai_backup_delay_minutes: int = 15  # Delay before AI provides backup copies/votes
     ai_backup_batch_size: int = 3  # Maximum number of copy or vote rounds to process per backup cycle
-    ai_backup_sleep_seconds: int = 3600  # Sleep time between backup cycles (1 hour)
+    ai_backup_sleep_minutes: int = 60  # Sleep time between backup cycles (1 hour)
 
     @model_validator(mode="after")
     def validate_all_config(self):
@@ -91,6 +92,24 @@ class Settings(BaseSettings):
         
         logger.info("=== CONFIG VALIDATION DEBUG ===")
         
+        # Legacy support for AI backup sleep environment variables
+        if not os.getenv("AI_BACKUP_SLEEP_MINUTES"):
+            legacy_seconds = os.getenv("AI_BACKUP_SLEEP_SECONDS")
+            if legacy_seconds:
+                try:
+                    seconds_value = int(legacy_seconds)
+                    converted_minutes = max(1, int(round(seconds_value / 60)))
+                    logger.info(
+                        "Converted legacy AI_BACKUP_SLEEP_SECONDS=%s to %s minutes",
+                        legacy_seconds,
+                        converted_minutes,
+                    )
+                    self.ai_backup_sleep_minutes = converted_minutes
+                except ValueError as exc:
+                    raise ValueError(
+                        "AI_BACKUP_SLEEP_SECONDS must be an integer value"
+                    ) from exc
+
         # Security validation
         if self.environment == "production":
             if self.secret_key == "dev-secret-key-change-in-production":
