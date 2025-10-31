@@ -435,8 +435,8 @@ app.include_router(feedback.router, tags=["feedback"])
 async def root():
     """Root endpoint."""
     return {
-        "message": "Quipflip API - Phase 2 MVP",
-        "version": "1.1.0",
+        "message": "Quipflip API - Phase 3 Beta",
+        "version": "1.2.0",
         "environment": settings.environment,
         "docs": "/docs",
     }
