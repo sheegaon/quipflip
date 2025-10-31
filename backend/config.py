@@ -40,6 +40,7 @@ class Settings(BaseSettings):
     correct_vote_points: int = 1
     incorrect_vote_points: int = 2
     abandoned_penalty: int = 5
+    abandoned_prompt_cooldown_hours: int = 24
     prize_pool_base: int = 200  # Base prize pool (prompt + 2 copies contribution)
     max_outstanding_quips: int = 10
     guest_max_outstanding_quips: int = 3
@@ -55,10 +56,10 @@ class Settings(BaseSettings):
 
     # Vote finalization thresholds
     vote_max_votes: int = 20  # Maximum votes before auto-finalization
-    vote_closing_threshold: int = 5  # Votes needed to enter closing window
-    vote_closing_window_minutes: int = 1  # Closing window duration (1 minute)
     vote_minimum_threshold: int = 3  # Minimum votes to start timeout window
-    vote_minimum_window_minutes: int = 10  # Minimum vote window duration (10 minutes)
+    vote_minimum_window_minutes: int = 60  # Minimum vote window duration
+    vote_closing_threshold: int = 5  # Votes needed to enter closing window
+    vote_closing_window_minutes: int = 10  # Closing window duration
 
     # Phrase Validation
     use_phrase_validator_api: bool = True
@@ -81,9 +82,9 @@ class Settings(BaseSettings):
     ai_openai_model: str = "gpt-5-nano"  # OpenAI model for copy generation
     ai_gemini_model: str = "gemini-2.5-flash-lite"  # Gemini model for copy generation
     ai_timeout_seconds: int = 60  # Timeout for AI API calls
-    ai_backup_delay_minutes: int = 15  # Delay before AI provides backup copies/votes
-    ai_backup_batch_size: int = 3  # Maximum number of copy or vote rounds to process per backup cycle
-    ai_backup_sleep_minutes: int = 60  # Sleep time between backup cycles (1 hour)
+    ai_backup_delay_minutes: int = 60  # Delay before AI provides backup copies/votes
+    ai_backup_batch_size: int = 2  # Maximum number of copy or vote rounds to process per backup cycle
+    ai_backup_sleep_minutes: int = 120  # Sleep time between backup cycles (1 hour)
 
     @model_validator(mode="after")
     def validate_all_config(self):
