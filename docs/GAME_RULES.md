@@ -15,7 +15,7 @@ Quipflip revolves around three sequential round types—prompt creation, copywri
 - Abandoning or timing out of a prompt or copy round refunds the original fee minus `abandoned_penalty`; copy round abandonments also return the prompt to the queue and log a cooldown marker.
 
 ### Prize pools and payouts
-- When two copies are submitted, `RoundService.create_phraseset_if_ready` seeds a phraseset’s `total_pool` with `prize_pool_base`, plus any `system_contribution` captured when discounts apply.
+- When two copies are submitted, `RoundService.create_phraseset_if_ready` seeds a phraseset’s `total_pool` with `prize_pool_base`. Any `system_contribution` recorded when discounts apply is stored alongside the phraseset for reporting but is not folded into the distributable pool.
 - Every vote adds `vote_cost` to the pool; correct voters immediately receive `vote_payout_correct`, and that payout is subtracted from the pool’s running total.
 - Final payouts divide the remaining `total_pool` in proportion to `correct_vote_points` for the original phrase versus `incorrect_vote_points` for each copy. If no votes were cast, contributors split the pot evenly.
 
@@ -41,22 +41,22 @@ Quipflip revolves around three sequential round types—prompt creation, copywri
 ## Voting Finalization and Scoring
 - `_update_vote_timeline` marks when a phraseset hits `vote_minimum_threshold`, transitions to `closing` at `vote_closing_threshold`, and schedules `closes_at` using `vote_closing_window_minutes`.
 - `check_and_finalize` automatically finalizes phrasesets when any of the following are true: the vote count reaches `vote_max_votes`, the closing window duration (`vote_closing_window_minutes`) expires after hitting `vote_closing_threshold`, or the minimum window (`vote_minimum_window_minutes`) expires after reaching `vote_minimum_threshold`.
-- Finalization records activity, updates prompt round status, creates or updates `ResultView` rows so contributors can acknowledge their rewards, and issues `prize_payout` transactions based on the proportional scoring logic described earlier.
+- Finalization records activity, updates prompt round status, and issues `prize_payout` transactions based on the proportional scoring logic described earlier. Contributors’ `ResultView` rows are created or updated later when they open the results screen.
 
 ### Scoring workflow
-1. When a phraseset is built, its `total_pool` starts at `prize_pool_base` and may include `system_contribution` if copy discounts applied.
+1. When a phraseset is built, its `total_pool` starts at `prize_pool_base`; any `system_contribution` from discounted copy entries is tracked separately and not added to this balance.
 2. Each vote charges `vote_cost` and increases `vote_contributions`. Correct voters are immediately credited `vote_payout_correct`, which is subtracted from `total_pool` so only the remaining balance is shared among contributors.
 3. The scoring service counts how many voters chose the original versus each copy. The original earns `correct_vote_points` per correct vote, while each copy earns `incorrect_vote_points` for every voter they fooled. These points determine the share of the remaining pool that each participant receives.
 4. If everyone had zero points (no votes or only invalid submissions), the pool is split evenly across prompt, copy1, and copy2 contributors.
 
 ### Worked example
-Imagine a phraseset where the pool currently holds `prize_pool_base + system_contribution + (5 * vote_cost) - (3 * vote_payout_correct)` because five players voted and three of them already collected the correct-vote stipend. If three voters picked the original phrase, one chose copy 1, and one chose copy 2:
+Imagine a phraseset where the pool currently holds `prize_pool_base + (5 * vote_cost) - (3 * vote_payout_correct)` because five players voted and three of them already collected the correct-vote stipend (any `system_contribution` from copy discounts is tracked separately). If three voters picked the original phrase, one chose copy 1, and one chose copy 2:
 
 - The original earns `3 * correct_vote_points`.
 - Copy 1 earns `1 * incorrect_vote_points`.
 - Copy 2 earns `1 * incorrect_vote_points`.
 
-The scoring service multiplies each point total by the remaining pool, divides by the combined points, and rounds down. Any leftover Flipcoins caused by flooring remain in the phraseset and are picked up by `ResultView` payouts the next time contributors open the results screen.
+The scoring service multiplies each point total by the remaining pool, divides by the combined points, and rounds down. Any leftover Flipcoins caused by flooring remain stored in the phraseset’s `total_pool` and are not redistributed.
 
 ## Player Limits and Penalties
 - Players may only hold one active round at a time, must have enough balance to cover the relevant cost, and cannot participate while `locked_until` is in the future (used for moderation actions).
@@ -85,5 +85,5 @@ The [AI Service guide](AI_SERVICE.md) details how automated players stay aligned
 - **Player limits:** `max_outstanding_quips`, `guest_max_outstanding_quips`, `guest_vote_lockout_threshold`, `guest_vote_lockout_hours`, `abandoned_prompt_cooldown_hours`.
 - **Timing:** `prompt_round_seconds`, `copy_round_seconds`, `vote_round_seconds`, `grace_period_seconds`, `ai_timeout_seconds`, `ai_backup_delay_minutes`, `ai_backup_batch_size`, `ai_backup_sleep_minutes`.
 - **Voting thresholds:** `vote_max_votes`, `vote_minimum_threshold`, `vote_minimum_window_minutes`, `vote_closing_threshold`, `vote_closing_window_minutes`, `correct_vote_points`, `incorrect_vote_points`.
-- **Phrase validation:** `use_phrase_validator_api`, `phrase_validator_url`, `phrase_min_words`, `phrase_max_words`, `phrase_max_length`, `phrase_min_char_per_word`, `phrase_max_char_per_word`, `significant_word_min_length`, `prompt_relevance_threshold`, `similarity_threshold`, `word_similarity_threshold`.
+- **Phrase validation:** `use_phrase_validator_api`, `phrase_validator_url`, `phrase_min_words`, `phrase_max_words`, `phrase_max_length`, `phrase_min_char_per_word`, `phrase_max_char_per_word`, `significant_word_min_length`, `similarity_threshold`, `word_similarity_threshold`.
 - **AI providers:** `ai_provider`, `ai_openai_model`, `ai_gemini_model`, `openai_api_key`, `gemini_api_key` (environment-driven).
