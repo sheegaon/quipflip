@@ -841,6 +841,12 @@ class RoundService:
 
         Optimized version that uses a single efficient query instead of multiple
         complex subqueries to reduce database load.
+
+        Excludes:
+        - Player's own prompts
+        - Prompts the player has already submitted copies for
+        - Flagged prompts
+        - Prompts the player abandoned in the last 24 hours (cooldown)
         """
         # Use a single query with proper joins to count available prompts
         # This is much more efficient than the previous multiple-query approach
@@ -860,6 +866,12 @@ class RoundService:
                     AND r.round_type = 'copy'
                     AND r.status = 'submitted'
                 ),
+                player_abandoned_cooldown AS (
+                    SELECT pap.prompt_round_id
+                    FROM player_abandoned_prompts pap
+                    WHERE LOWER(REPLACE(CAST(pap.player_id AS TEXT), '-', '')) = :player_id_clean
+                    AND pap.abandoned_at > datetime('now', '-24 hours')
+                ),
                 all_available_prompts AS (
                     SELECT r.round_id
                     FROM rounds r
@@ -873,14 +885,15 @@ class RoundService:
                 FROM all_available_prompts a
                 WHERE a.round_id NOT IN (SELECT round_id FROM player_prompt_rounds)
                 AND a.round_id NOT IN (SELECT prompt_round_id FROM player_copy_rounds WHERE prompt_round_id IS NOT NULL)
+                AND a.round_id NOT IN (SELECT prompt_round_id FROM player_abandoned_cooldown WHERE prompt_round_id IS NOT NULL)
             """),
             {
                 "player_id_clean": str(player_id).replace('-', '').lower()
             }
         )
-        
+
         available_count = result.scalar() or 0
-        
+
         logger.debug(f"Available prompts for player {player_id}: {available_count}")
         return available_count
 

@@ -148,7 +148,7 @@ async def test_dashboard_endpoint_shows_correct_count_after_flagging(
     prompt_round = await round_service.start_prompt_round(player_a, transaction_service_a)
     await round_service.submit_prompt_phrase(
         prompt_round.round_id,
-        "ANOTHER TEST",
+        "VALID PHRASE",
         player_a,
         transaction_service_a,
     )
@@ -191,3 +191,89 @@ async def test_dashboard_endpoint_shows_correct_count_after_flagging(
 
     # If there was only 1 prompt and we flagged it, count should be 0
     # (or less by 1 if there were multiple prompts)
+
+
+@pytest.mark.asyncio
+async def test_abandoned_prompt_not_counted_in_available(db_session, player_factory):
+    """
+    Test that abandoned prompts within 24h cooldown are excluded from available count.
+
+    This is the root cause of the bug where dashboard shows prompts_waiting > 0
+    but starting a copy round fails with no_prompts_available.
+    """
+    from backend.models.prompt import Prompt
+    from backend.models.player_abandoned_prompt import PlayerAbandonedPrompt
+    from datetime import datetime, UTC
+    import uuid
+
+    settings = get_settings()
+
+    # Create two players
+    player_a = await player_factory()
+    player_a.balance = 1000
+    player_b = await player_factory()
+    player_b.balance = 1000
+    await db_session.commit()
+
+    # Seed test prompt
+    prompt = Prompt(prompt_id=uuid.uuid4(), text="ABANDONABLE", category="test", enabled=True)
+    db_session.add(prompt)
+    await db_session.commit()
+
+    # Services
+    round_service = RoundService(db_session)
+    transaction_service_a = TransactionService(db_session)
+    transaction_service_b = TransactionService(db_session)
+
+    # Player A creates a prompt
+    prompt_round = await round_service.start_prompt_round(player_a, transaction_service_a)
+    await round_service.submit_prompt_phrase(
+        prompt_round.round_id,
+        "SOMETHING COOL",
+        player_a,
+        transaction_service_a,
+    )
+    await db_session.refresh(player_a)
+
+    # Player B checks available - should see 1
+    count_before = await round_service.get_available_prompts_count(player_b.player_id)
+    assert count_before == 1, f"Expected 1 available prompt, got {count_before}"
+
+    # Player B starts and immediately abandons the copy round
+    copy_round = await round_service.start_copy_round(player_b, transaction_service_b)
+    await db_session.refresh(player_b)
+
+    # Abandon the round (this creates a 24h cooldown)
+    abandoned_round, refund, penalty = await round_service.abandon_round(
+        copy_round.round_id,
+        player_b,
+        transaction_service_b,
+    )
+    await db_session.refresh(player_b)
+
+    # CRITICAL: Now check if Player B sees the correct count
+    # The abandoned prompt should NOT be available for 24 hours
+    count_after = await round_service.get_available_prompts_count(player_b.player_id)
+    assert count_after == 0, (
+        f"Expected 0 prompts available after abandoning (24h cooldown), got {count_after}. "
+        "This is the exact bug - dashboard shows prompts_waiting but can't start copy round!"
+    )
+
+    # Verify the cooldown entry was created
+    from sqlalchemy import select
+    from backend.models.player_abandoned_prompt import PlayerAbandonedPrompt
+
+    result = await db_session.execute(
+        select(PlayerAbandonedPrompt).where(
+            PlayerAbandonedPrompt.player_id == player_b.player_id
+        )
+    )
+    cooldown_entry = result.scalar_one_or_none()
+    assert cooldown_entry is not None, "Cooldown entry should exist in player_abandoned_prompts"
+    assert cooldown_entry.prompt_round_id == prompt_round.round_id
+
+    # Verify that trying to start another copy round will fail
+    from backend.utils.exceptions import NoPromptsAvailableError
+
+    with pytest.raises(NoPromptsAvailableError):
+        await round_service.start_copy_round(player_b, transaction_service_b)

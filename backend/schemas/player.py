@@ -11,6 +11,7 @@ from backend.schemas.phraseset import PhrasesetDashboardSummary, UnclaimedResult
 
 class PlayerBalance(BaseSchema):
     """Player balance response."""
+    player_id: UUID
     username: str
     email: EmailLike
     balance: int
