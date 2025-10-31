@@ -232,7 +232,7 @@ export const CopyRound: React.FC = () => {
             title="Flag this phrase"
             aria-label="Flag this phrase"
           >
-            <img src="/icon_flag.svg" alt="" className="w-5 h-5" aria-hidden="true" />
+            <img src="/icon_flag.svg" alt="" className="w-5 h-5 pointer-events-none" aria-hidden="true" />
           </button>
           <p className="text-sm text-quip-teal mb-2 text-center font-medium">Original Phrase:</p>
           <p className="text-3xl text-center font-display font-bold text-quip-turquoise">
