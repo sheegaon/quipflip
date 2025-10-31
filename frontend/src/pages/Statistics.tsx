@@ -136,27 +136,22 @@ const Statistics: React.FC = () => {
   }, [getStatistics]);
 
   useEffect(() => {
-    let cancelled = false;
     const controller = new AbortController();
 
     const fetchAppInfo = async () => {
       try {
         const info = await apiClient.getApiInfo(controller.signal);
-        if (!cancelled) {
-          setAppInfo(info);
-        }
+        setAppInfo(info);
       } catch (err) {
-        if (!cancelled) {
-          statisticsLogger.warn('Failed to load API info for statistics view', err);
-          setAppInfo(null);
-        }
+        if (err instanceof Error && err.name === 'CanceledError') return;
+        statisticsLogger.warn('Failed to load API info for statistics view', err);
+        setAppInfo(null);
       }
     };
 
     fetchAppInfo();
 
     return () => {
-      cancelled = true;
       controller.abort();
     };
   }, []);
