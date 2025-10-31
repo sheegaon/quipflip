@@ -57,12 +57,15 @@ interface GameState {
 - `startCopyRound()`: Start a new copy round
 - `startVoteRound()`: Start a new vote round
 - `claimPhrasesetPrize(phrasesetId)`: Claim completed round prize
+- `flagCopyRound(roundId)`: Report a problematic copy round for moderation
+- `abandonRound(roundId)`: Abandon the active prompt or copy round and trigger a partial refund
 
 ### Features
 
 - **Smart Polling**: Automatically polls dashboard and balance data
 - **Authentication Management**: Handles token validation and session state
 - **Round State Management**: Tracks active rounds and their progression
+- **Round Control Actions**: Supports flagging problematic copy rounds and abandoning active rounds with automatic refunds
 - **Error Handling**: Centralized error management with detailed logging
 - **Navigation Utilities**: Delayed navigation helpers
 

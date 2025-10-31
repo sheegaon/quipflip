@@ -39,6 +39,7 @@ import type {
   CreateGuestResponse,
   UpgradeGuestResponse,
   FlagCopyRoundResponse,
+  AbandonRoundResponse,
   FlaggedPromptListResponse,
   FlaggedPromptItem,
 } from './types';
@@ -460,6 +461,11 @@ export const apiClient = {
 
   async flagCopyRound(roundId: string, signal?: AbortSignal): Promise<FlagCopyRoundResponse> {
     const { data } = await api.post(`/rounds/${roundId}/flag`, {}, { signal });
+    return data;
+  },
+
+  async abandonRound(roundId: string, signal?: AbortSignal): Promise<AbandonRoundResponse> {
+    const { data } = await api.post(`/rounds/${roundId}/abandon`, {}, { signal });
     return data;
   },
 

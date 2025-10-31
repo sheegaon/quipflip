@@ -14,6 +14,7 @@ from backend.schemas.round import (
     SubmitPhraseResponse,
     RoundAvailability,
     RoundDetails,
+    AbandonRoundResponse,
 )
 from backend.schemas.phraseset import (
     VoteRequest,
@@ -42,6 +43,7 @@ __all__ = [
     "SubmitPhraseResponse",
     "RoundAvailability",
     "RoundDetails",
+    "AbandonRoundResponse",
     "VoteRequest",
     "VoteResponse",
     "PhraseVoteCount",

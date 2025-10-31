@@ -711,6 +711,29 @@ Submit phrase for prompt or copy round.
 - `expired` - Past grace period
 - `not_found` - Round not found or not owned by player
 
+#### `POST /rounds/{round_id}/abandon`
+Immediately abandon an active prompt or copy round. The player receives an instant refund minus the configured abandonment penalty and the prompt is returned to the queue when applicable.
+
+**Request Body:** _None_
+
+**Response:**
+```json
+{
+  "round_id": "uuid",
+  "round_type": "prompt",
+  "status": "abandoned",
+  "refund_amount": 95,
+  "penalty_kept": 5,
+  "message": "Round abandoned"
+}
+```
+
+**Errors:**
+- `round_not_found` - Round does not exist or belongs to another player
+- `Round is not active` - Attempted to abandon a round that has already completed or expired
+- `Only prompt or copy rounds can be abandoned` - Tried to abandon a vote round
+- `abandon_failed` - Unexpected server error while processing the abandonment
+
 #### `POST /rounds/{round_id}/feedback`
 Submit thumbs up/down feedback for a prompt round.
 

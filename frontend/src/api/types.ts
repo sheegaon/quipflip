@@ -116,6 +116,15 @@ export interface FlagCopyRoundResponse {
   message: string;
 }
 
+export interface AbandonRoundResponse {
+  round_id: string;
+  round_type: 'prompt' | 'copy';
+  status: 'abandoned';
+  refund_amount: number;
+  penalty_kept: number;
+  message: string;
+}
+
 export interface FlaggedPromptItem {
   flag_id: string;
   prompt_round_id: string;
