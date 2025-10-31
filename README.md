@@ -263,4 +263,5 @@ At any time (if not already in an active round), players can choose to:
 - **Prompt abandonment**: Round cancelled, 5f penalty forfeited (95f refunded), prompt removed from queue
 - **Copy abandonment**: Round cancelled, 5f penalty forfeited (45f refunded on 50f rounds, 35f on discounted rounds), prompt_round returned to queue for other players (original player blocked 24h)
 - **Vote abandonment**: Player loses 10f, vote not counted
+- **Manual abandon action**: Players can click the red × on the dashboard countdown card to abandon an active prompt or copy round instantly; the same penalty/refund rules apply immediately
 - **Implementation**: Backend timeout cleanup job processes expired rounds periodically

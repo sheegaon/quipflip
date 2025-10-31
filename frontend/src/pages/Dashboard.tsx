@@ -26,7 +26,7 @@ export const Dashboard: React.FC = () => {
     roundAvailability,
     error: contextError,
   } = state;
-  const { refreshDashboard, clearError } = actions;
+  const { refreshDashboard, clearError, abandonRound } = actions;
   const { startTutorial, skipTutorial, advanceStep } = useTutorial();
   const { viewedResultIds } = resultsState;
   const { markResultsViewed } = resultsActions;
@@ -36,6 +36,8 @@ export const Dashboard: React.FC = () => {
   const [roundStartError, setRoundStartError] = useState<string | null>(null);
   const [surveyStatus, setSurveyStatus] = useState<BetaSurveyStatusResponse | null>(null);
   const [showSurveyPrompt, setShowSurveyPrompt] = useState(false);
+  const [isAbandoningRound, setIsAbandoningRound] = useState(false);
+  const [abandonError, setAbandonError] = useState<string | null>(null);
 
   // Log component mount and key state changes
   useEffect(() => {
@@ -139,6 +141,10 @@ export const Dashboard: React.FC = () => {
     return `${activeRound.round_type.charAt(0).toUpperCase()}${activeRound.round_type.slice(1)}`;
   }, [activeRound?.round_type]);
 
+  const canAbandonRound = useMemo(() => {
+    return activeRound?.round_type === 'prompt' || activeRound?.round_type === 'copy';
+  }, [activeRound?.round_type]);
+
   // Refresh when page becomes visible (with debouncing)
   const lastVisibilityRefreshRef = useRef<number>(0);
   useEffect(() => {
@@ -163,11 +169,14 @@ export const Dashboard: React.FC = () => {
   useEffect(() => {
     if (!activeRound?.round_id) {
       setIsRoundExpired(false);
+      setAbandonError(null);
+      setIsAbandoningRound(false);
       return;
     }
 
     if (!activeRound.expires_at) {
       setIsRoundExpired(false);
+      setAbandonError(null);
       return;
     }
 
@@ -185,6 +194,9 @@ export const Dashboard: React.FC = () => {
     });
 
     setIsRoundExpired(isExpired);
+    if (!isExpired) {
+      setAbandonError(null);
+    }
   }, [activeRound?.round_id, activeRound?.expires_at]);
 
   const handleContinueRound = useCallback(() => {
@@ -196,7 +208,7 @@ export const Dashboard: React.FC = () => {
   const handleRoundExpired = useCallback(async () => {
     dashboardLogger.debug('Round expired, setting flag and triggering refresh');
     setIsRoundExpired(true);
-    
+
     try {
       // Refresh dashboard to clear expired round and get latest state
       await refreshDashboard();
@@ -207,6 +219,35 @@ export const Dashboard: React.FC = () => {
       setIsRoundExpired(true);
     }
   }, [refreshDashboard]);
+
+  const handleAbandonRound = useCallback(async () => {
+    if (!activeRound?.round_id || !canAbandonRound || isAbandoningRound) {
+      return;
+    }
+
+    dashboardLogger.debug('Abandon round requested from dashboard', {
+      roundId: activeRound.round_id,
+      roundType: activeRound.round_type,
+    });
+
+    try {
+      setIsAbandoningRound(true);
+      setAbandonError(null);
+      const response = await abandonRound(activeRound.round_id);
+      dashboardLogger.info('Round abandoned via dashboard', {
+        roundId: response.round_id,
+        refundAmount: response.refund_amount,
+        penaltyKept: response.penalty_kept,
+      });
+    } catch (err) {
+      dashboardLogger.error('Failed to abandon round from dashboard', err);
+      const errorMsg = extractErrorMessage(err, 'abandon-round') ||
+        'Unable to abandon the round. Please try again.';
+      setAbandonError(errorMsg);
+    } finally {
+      setIsAbandoningRound(false);
+    }
+  }, [abandonRound, activeRound?.round_id, activeRound?.round_type, canAbandonRound, isAbandoningRound]);
 
   const handleStartPrompt = async () => {
     if (startingRound) {
@@ -336,7 +377,19 @@ export const Dashboard: React.FC = () => {
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Active Round Notification */}
         {activeRound?.round_id && !isRoundExpired && (
-          <div className="tile-card bg-quip-orange bg-opacity-10 border-2 border-quip-orange p-4 mb-6 slide-up-enter">
+          <div className="tile-card bg-quip-orange bg-opacity-10 border-2 border-quip-orange p-4 mb-6 slide-up-enter relative">
+            {canAbandonRound && (
+              <button
+                type="button"
+                onClick={handleAbandonRound}
+                disabled={isAbandoningRound}
+                className={`absolute -top-3 -right-3 flex h-8 w-8 items-center justify-center rounded-full border-2 border-red-500 text-lg font-semibold text-red-500 shadow-sm transition-colors duration-150 ${isAbandoningRound ? 'bg-red-100 cursor-not-allowed opacity-70' : 'bg-white hover:bg-red-500 hover:text-white'}`}
+                title="Abandon round (refund minus penalty)"
+                aria-label="Abandon round"
+              >
+                <span aria-hidden="true">×</span>
+              </button>
+            )}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex-1">
                 <p className="font-display font-semibold text-quip-orange-deep">
@@ -350,6 +403,9 @@ export const Dashboard: React.FC = () => {
                     compact
                   />
                 </div>
+                {abandonError && (
+                  <p className="mt-3 text-sm text-red-600">{abandonError}</p>
+                )}
               </div>
               <button
                 onClick={handleContinueRound}

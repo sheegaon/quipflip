@@ -14,6 +14,7 @@ from backend.schemas.round import (
     RoundAvailability,
     RoundDetails,
     FlagCopyRoundResponse,
+    AbandonRoundResponse,
 )
 from backend.services.player_service import PlayerService
 from backend.services.transaction_service import TransactionService
@@ -230,6 +231,40 @@ async def flag_copy_round(
         penalty_kept=flag.penalty_kept,
         status=flag.status,
         message="Copy round flagged",
+    )
+
+
+@router.post("/{round_id}/abandon", response_model=AbandonRoundResponse)
+async def abandon_round(
+    round_id: UUID = Path(...),
+    player: Player = Depends(get_current_player),
+    db: AsyncSession = Depends(get_db),
+):
+    """Abandon an active prompt or copy round."""
+
+    transaction_service = TransactionService(db)
+    round_service = RoundService(db)
+
+    try:
+        round_object, refund_amount, penalty_kept = await round_service.abandon_round(
+            round_id, player, transaction_service
+        )
+    except RoundNotFoundError:
+        raise HTTPException(status_code=404, detail="round_not_found")
+    except ValueError as exc:
+        detail = str(exc)
+        raise HTTPException(status_code=400, detail=detail) from exc
+    except Exception as exc:  # pragma: no cover - unexpected errors logged
+        logger.error(f"Error abandoning round {round_id}: {exc}")
+        raise HTTPException(status_code=500, detail="abandon_failed") from exc
+
+    return AbandonRoundResponse(
+        round_id=round_object.round_id,
+        round_type=round_object.round_type,
+        status=round_object.status,
+        refund_amount=refund_amount,
+        penalty_kept=penalty_kept,
+        message="Round abandoned",
     )
 
 
