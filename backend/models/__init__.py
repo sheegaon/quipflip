@@ -13,6 +13,7 @@ from backend.models.phraseset_activity import PhrasesetActivity
 from backend.models.refresh_token import RefreshToken
 from backend.models.quest import Quest, QuestTemplate
 from backend.models.system_config import SystemConfig
+from backend.models.flagged_prompt import FlaggedPrompt
 
 __all__ = [
     "Player",
@@ -30,4 +31,5 @@ __all__ = [
     "Quest",
     "QuestTemplate",
     "SystemConfig",
+    "FlaggedPrompt",
 ]

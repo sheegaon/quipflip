@@ -311,6 +311,12 @@ const Admin: React.FC = () => {
               <p className="text-quip-teal mt-1">View and manage game configuration</p>
             </div>
             <div className="flex items-center gap-3">
+              <button
+                onClick={() => navigate('/admin/flags')}
+                className="rounded-tile border-2 border-quip-teal px-4 py-2 text-sm font-semibold text-quip-teal transition hover:bg-quip-teal hover:text-white"
+              >
+                Review flagged phrases
+              </button>
               <label className="flex items-center gap-2 cursor-pointer">
                 <span className="text-sm font-semibold text-quip-navy">Edit Mode</span>
                 <div className="relative">

@@ -31,6 +31,8 @@ class Player(Base):
     last_login_date = Column(DateTime(timezone=True), nullable=True)
     active_round_id = get_uuid_column(ForeignKey("rounds.round_id", ondelete="SET NULL"), nullable=True)
     is_guest = Column(Boolean, default=False, nullable=False)
+    locked_until = Column(DateTime(timezone=True), nullable=True)
+    flag_dismissal_streak = Column(Integer, default=0, nullable=False)
 
     # Guest vote lockout tracking
     consecutive_incorrect_votes = Column(Integer, default=0, nullable=False)

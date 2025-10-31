@@ -1,6 +1,7 @@
 """Round-related Pydantic schemas."""
 from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 from backend.schemas.base import BaseSchema
 import re
@@ -81,3 +82,13 @@ class RoundDetails(BaseSchema):
     original_phrase: str | None = None
     submitted_phrase: str | None = None
     cost: int
+
+
+class FlagCopyRoundResponse(BaseModel):
+    """Response when a copy round is flagged by a player."""
+
+    flag_id: UUID
+    refund_amount: int
+    penalty_kept: int
+    status: Literal["pending", "confirmed", "dismissed"]
+    message: str

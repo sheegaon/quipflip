@@ -39,6 +39,7 @@ export const errorMessages = {
     phraseTooLong: "Your phrase is too long. Keep it to 2-5 words (4-100 characters).",
     phraseTooShort: "Your phrase is too short. Please enter at least 2 characters.",
     invalidCharacters: "Please use only letters A-Z and spaces in your phrase.",
+    playerLocked: "Your account is temporarily locked while we review recent reports. Please try again in about 24 hours.",
   },
 
   // Account and registration errors
@@ -187,6 +188,15 @@ export const getContextualErrorMessage = (
     return {
       message: errorMessages.game.noPromptsAvailable,
       suggestion: "Create a prompt round first",
+      retryable: false,
+      category: 'game'
+    };
+  }
+
+  if (normalizedError.includes('player_locked')) {
+    return {
+      message: errorMessages.game.playerLocked,
+      suggestion: 'Thanks for your patience while we finish reviewing things.',
       retryable: false,
       category: 'game'
     };

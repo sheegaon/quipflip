@@ -230,6 +230,8 @@ async def get_balance(
         created_at=player.created_at,
         outstanding_prompts=outstanding,
         is_guest=player.is_guest,
+        locked_until=ensure_utc(player.locked_until),
+        flag_dismissal_streak=player.flag_dismissal_streak,
     )
 
 

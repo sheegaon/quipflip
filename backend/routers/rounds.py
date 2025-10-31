@@ -13,6 +13,7 @@ from backend.schemas.round import (
     SubmitPhraseResponse,
     RoundAvailability,
     RoundDetails,
+    FlagCopyRoundResponse,
 )
 from backend.services.player_service import PlayerService
 from backend.services.transaction_service import TransactionService
@@ -191,6 +192,39 @@ async def submit_phrase(
     except Exception as e:
         logger.error(f"Error submitting phrase: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{round_id}/flag", response_model=FlagCopyRoundResponse)
+async def flag_copy_round(
+    round_id: UUID = Path(...),
+    player: Player = Depends(get_current_player),
+    db: AsyncSession = Depends(get_db),
+):
+    """Flag an active copy round and trigger administrative review."""
+
+    transaction_service = TransactionService(db)
+    round_service = RoundService(db)
+
+    try:
+        flag = await round_service.flag_copy_round(round_id, player, transaction_service)
+    except RoundNotFoundError:
+        raise HTTPException(status_code=404, detail="round_not_found")
+    except ValueError as exc:
+        detail = str(exc)
+        if detail == "Round is not active":
+            raise HTTPException(status_code=400, detail="round_not_active") from exc
+        raise HTTPException(status_code=400, detail=detail) from exc
+    except Exception as exc:  # pragma: no cover - unexpected errors logged
+        logger.error(f"Error flagging copy round: {exc}")
+        raise HTTPException(status_code=500, detail="flag_failed") from exc
+
+    return FlagCopyRoundResponse(
+        flag_id=flag.flag_id,
+        refund_amount=flag.partial_refund_amount,
+        penalty_kept=flag.penalty_kept,
+        status=flag.status,
+        message="Copy round flagged",
+    )
 
 
 @router.get("/available", response_model=RoundAvailability)
