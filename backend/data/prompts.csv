@@ -108,7 +108,6 @@ text,category
 "my weirdest habit is",confessions
 "the last time I cried was",confessions
 "the most embarrassing thing I've done is",confessions
-"a rainy day is",daily_life
 "brunch is just",daily_life
 "checking my phone is",daily_life
 "checking the weather is",daily_life
@@ -237,6 +236,7 @@ text,category
 "my toxic trait is",relatable
 "peak relaxation is",relatable
 "the perfect holiday dish is",seasonal
+"a rainy day is",seasonal
 "a pumpkin spice latte is",seasonal_fall
 "apple picking is",seasonal_fall
 "carving a pumpkin is",seasonal_fall
