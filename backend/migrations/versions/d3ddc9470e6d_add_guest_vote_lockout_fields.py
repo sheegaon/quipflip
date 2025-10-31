@@ -1,7 +1,7 @@
 """add guest vote lockout fields
 
 Revision ID: d3ddc9470e6d
-Revises: 0c5e8a127691
+Revises: guest_lockout_001
 Create Date: 2025-10-30
 
 """
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = 'd3ddc9470e6d'
-down_revision: Union[str, None] = '0c5e8a127691'
+down_revision: Union[str, None] = 'guest_lockout_001'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

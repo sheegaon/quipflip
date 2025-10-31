@@ -16,7 +16,7 @@ VERSIONS_DIR = Path(__file__).resolve().parents[1] / "backend" / "migrations" / 
 
 
 def _parse_revisions() -> dict[str, str | None]:
-    revision_pattern = re.compile(r"revision:\s*.*?['\"]([0-9a-f]+)['\"]")
+    revision_pattern = re.compile(r"revision:\s*.*?['\"]([^'\"]+)['\"]")
     down_revision_pattern = re.compile(r"down_revision:\s*.*?['\"]([^'\"]*)['\"]")
 
     revisions: dict[str, str | None] = {}
