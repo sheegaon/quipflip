@@ -25,10 +25,23 @@ from backend.dependencies import (  # noqa: E402
     VOTE_RATE_LIMIT,
     _enforce_rate_limit,
     rate_limiter,
+    settings,
 )
 
 
 test_app = FastAPI()
+
+
+@pytest.fixture(autouse=True)
+def force_production_environment():
+    """Ensure rate limits remain enabled during these tests."""
+
+    original_env = settings.environment
+    settings.environment = "production"
+    try:
+        yield
+    finally:
+        settings.environment = original_env
 
 
 async def general_limit_dependency(x_api_key: str = Header(..., alias="X-API-Key")) -> None:
