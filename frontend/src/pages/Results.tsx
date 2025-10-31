@@ -102,8 +102,12 @@ export const Results: React.FC = () => {
       prize_pool_base,
       vote_cost,
       vote_payout_correct,
-      system_contribution,
     } = results;
+
+    const voteTypeEmoji: Record<'correct' | 'incorrect', string> = {
+      correct: '✅',
+      incorrect: '❌',
+    };
 
     const formatPointsTerm = (
       count: number,
@@ -112,11 +116,26 @@ export const Results: React.FC = () => {
     ) => {
       const voteWord = count === 1 ? 'vote' : 'votes';
       const pointSuffix = pointsPerVote === 1 ? 'pt' : 'pts';
-      return `${count.toLocaleString()} ${descriptor} ${voteWord} × ${pointsPerVote.toLocaleString()} ${pointSuffix}`;
+      const emoji = voteTypeEmoji[descriptor];
+      return `${count.toLocaleString()} ${emoji} ${voteWord} × ${pointsPerVote.toLocaleString()} ${pointSuffix}`;
     };
 
+    const pointTerms: string[] = [];
+    if (correct_vote_count > 0) {
+      pointTerms.push(
+        formatPointsTerm(correct_vote_count, correct_vote_points, 'correct'),
+      );
+    }
+    if (incorrect_vote_count > 0) {
+      pointTerms.push(
+        formatPointsTerm(incorrect_vote_count, incorrect_vote_points, 'incorrect'),
+      );
+    }
 
-    const pointsBreakdownBase = `${formatPointsTerm(correct_vote_count, correct_vote_points, 'correct')} + ${formatPointsTerm(incorrect_vote_count, incorrect_vote_points, 'incorrect')} = ${total_points.toLocaleString()} total pts`;
+    const pointsBreakdownBase =
+      pointTerms.length > 0
+        ? `${pointTerms.join(' + ')} = ${total_points.toLocaleString()} total pts`
+        : `${total_points.toLocaleString()} total pts`;
 
     const pointsBreakdown =
       total_points === 0
@@ -126,13 +145,6 @@ export const Results: React.FC = () => {
     const poolTerms: string[] = [];
     poolTerms.push(`${prize_pool_base.toLocaleString()} FC base`);
 
-    if (system_contribution !== 0) {
-      const systemSign = system_contribution > 0 ? '+' : '-';
-      poolTerms.push(
-        `${systemSign} ${Math.abs(system_contribution).toLocaleString()} FC system contribution`,
-      );
-    }
-
     const formatContributionTerm = (
       count: number,
       perVoteEffect: number,
@@ -141,7 +153,8 @@ export const Results: React.FC = () => {
       const voteWord = count === 1 ? 'vote' : 'votes';
       const sign = perVoteEffect < 0 ? '-' : '+';
       const magnitude = Math.abs(perVoteEffect).toLocaleString();
-      return `${sign} ${count.toLocaleString()} ${descriptor} ${voteWord} x ${magnitude} FC`;
+      const emoji = voteTypeEmoji[descriptor];
+      return `${sign} ${count.toLocaleString()} ${emoji} ${voteWord} × ${magnitude} FC`;
     };
 
     const correctPerVoteEffect = vote_cost - vote_payout_correct;
