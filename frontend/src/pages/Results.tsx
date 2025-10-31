@@ -139,19 +139,24 @@ export const Results: React.FC = () => {
       descriptor: 'correct' | 'incorrect',
     ) => {
       const voteWord = count === 1 ? 'vote' : 'votes';
-      const magnitude = Math.abs(perVoteEffect).toLocaleString();
-      if (count === 0 || perVoteEffect === 0) {
-        return `+ ${count.toLocaleString()} ${descriptor} ${voteWord} x ${magnitude} FC`;
-      }
       const sign = perVoteEffect < 0 ? '-' : '+';
+      const magnitude = Math.abs(perVoteEffect).toLocaleString();
       return `${sign} ${count.toLocaleString()} ${descriptor} ${voteWord} x ${magnitude} FC`;
     };
 
     const correctPerVoteEffect = vote_cost - vote_payout_correct;
     const incorrectPerVoteEffect = vote_cost;
 
-    poolTerms.push(formatContributionTerm(correct_vote_count, correctPerVoteEffect, 'correct'));
-    poolTerms.push(formatContributionTerm(incorrect_vote_count, incorrectPerVoteEffect, 'incorrect'));
+    if (correct_vote_count > 0) {
+      poolTerms.push(
+        formatContributionTerm(correct_vote_count, correctPerVoteEffect, 'correct'),
+      );
+    }
+    if (incorrect_vote_count > 0) {
+      poolTerms.push(
+        formatContributionTerm(incorrect_vote_count, incorrectPerVoteEffect, 'incorrect'),
+      );
+    }
 
     const poolBreakdown = `${poolTerms.join(' ')} = ${total_pool.toLocaleString()} FC`;
 
