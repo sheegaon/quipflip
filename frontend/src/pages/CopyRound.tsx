@@ -228,11 +228,12 @@ export const CopyRound: React.FC = () => {
             type="button"
             onClick={handleOpenFlagConfirm}
             disabled={isSubmitting || isFlagging}
-            className="absolute top-3 right-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-quip-orange shadow-tile-sm transition hover:scale-105 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-quip-orange disabled:cursor-not-allowed disabled:opacity-50"
+            className="absolute top-3 right-3 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-quip-orange shadow-tile-sm transition hover:scale-105 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-quip-orange disabled:cursor-not-allowed disabled:opacity-50"
             title="Flag this phrase"
             aria-label="Flag this phrase"
           >
-            <img src="/icon_flag.svg" alt="" className="w-5 h-5 pointer-events-none" aria-hidden="true" />
+            <span className="sr-only">Flag this phrase</span>
+            <img src="/icon_flag.svg" alt="" className="h-5 w-5 pointer-events-none" aria-hidden="true" />
           </button>
           <p className="text-sm text-quip-teal mb-2 text-center font-medium">Original Phrase:</p>
           <p className="text-3xl text-center font-display font-bold text-quip-turquoise">
