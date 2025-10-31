@@ -542,8 +542,15 @@ export const apiClient = {
   },
 
   async getBetaSurveyStatus(signal?: AbortSignal): Promise<BetaSurveyStatusResponse> {
-    const { data } = await api.get<BetaSurveyStatusResponse>('/feedback/beta-survey/status', { signal });
-    return data;
+    logApi('get', '/feedback/beta-survey/status', 'start');
+    try {
+      const { data } = await api.get<BetaSurveyStatusResponse>('/feedback/beta-survey/status', { signal });
+      logApi('get', '/feedback/beta-survey/status', 'success', data);
+      return data;
+    } catch (error) {
+      logApi('get', '/feedback/beta-survey/status', 'error', error);
+      throw error;
+    }
   },
 
   async listBetaSurveyResponses(signal?: AbortSignal): Promise<BetaSurveyListResponse> {

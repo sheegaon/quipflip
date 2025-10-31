@@ -718,7 +718,7 @@ class RoundService:
 
         # Calculate initial prize pool: base + system contributions from copy discounts
         system_contribution = copy1.system_contribution + copy2.system_contribution
-        initial_pool = self.settings.prize_pool_base
+        initial_pool = self.settings.prize_pool_base + system_contribution
 
         phraseset = Phraseset(
             phraseset_id=uuid.uuid4(),

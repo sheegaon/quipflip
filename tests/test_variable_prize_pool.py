@@ -27,7 +27,7 @@ async def test_prize_pool_initialization(db_session):
         pseudonym_canonical="prompter",
         email="prompter@test.com",
         password_hash="hash",
-        balance=1000,
+        balance=5000,
     )
     player2 = Player(
         player_id=uuid.uuid4(),
@@ -37,7 +37,7 @@ async def test_prize_pool_initialization(db_session):
         pseudonym_canonical="copier1",
         email="copier1@test.com",
         password_hash="hash",
-        balance=1000,
+        balance=5000,
     )
     player3 = Player(
         player_id=uuid.uuid4(),
@@ -47,7 +47,7 @@ async def test_prize_pool_initialization(db_session):
         pseudonym_canonical="copier2",
         email="copier2@test.com",
         password_hash="hash",
-        balance=1000,
+        balance=5000,
     )
     db_session.add_all([player1, player2, player3])
     await db_session.commit()

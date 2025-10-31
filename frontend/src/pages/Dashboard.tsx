@@ -67,7 +67,10 @@ export const Dashboard: React.FC = () => {
 
   useEffect(() => {
     const playerId = player?.player_id;
+    dashboardLogger.debug('[Beta Survey] useEffect triggered', { playerId: playerId || 'undefined' });
+
     if (!playerId) {
+      dashboardLogger.debug('[Beta Survey] No player ID, skipping survey check');
       setSurveyStatus(null);
       setShowSurveyPrompt(false);
       return;
@@ -78,13 +81,20 @@ export const Dashboard: React.FC = () => {
 
     const fetchStatus = async () => {
       try {
+        dashboardLogger.debug('[Beta Survey] Fetching survey status from API...');
         const status = await apiClient.getBetaSurveyStatus(controller.signal);
-        if (cancelled) return;
+        dashboardLogger.debug('[Beta Survey] API response received', status);
+
+        if (cancelled) {
+          dashboardLogger.debug('[Beta Survey] Request was cancelled');
+          return;
+        }
+
         const dismissed = hasDismissedSurvey(playerId);
         const completedLocal = hasCompletedSurvey(playerId);
         const shouldShow = status.eligible && !status.has_submitted && !dismissed && !completedLocal;
 
-        dashboardLogger.debug('Beta survey status resolved', {
+        dashboardLogger.debug('[Beta Survey] Status resolved', {
           eligible: status.eligible,
           hasSubmitted: status.has_submitted,
           totalRounds: status.total_rounds,
@@ -95,9 +105,18 @@ export const Dashboard: React.FC = () => {
 
         setSurveyStatus(status);
         setShowSurveyPrompt(shouldShow);
+
+        if (shouldShow) {
+          dashboardLogger.info('[Beta Survey] ✨ SHOWING SURVEY PROMPT ✨');
+        } else {
+          dashboardLogger.debug('[Beta Survey] Not showing survey prompt');
+        }
       } catch (error) {
-        if (cancelled) return;
-        dashboardLogger.warn('Failed to fetch beta survey status', error);
+        if (cancelled) {
+          dashboardLogger.debug('[Beta Survey] Request was cancelled (in catch)');
+          return;
+        }
+        dashboardLogger.warn('[Beta Survey] Failed to fetch survey status', error);
       }
     };
 

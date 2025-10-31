@@ -215,7 +215,7 @@ export const PromptRound: React.FC = () => {
         {/* Instructions */}
         <div className="bg-quip-orange bg-opacity-10 border-2 border-quip-orange rounded-tile p-4 mb-6">
           <p className="text-sm text-quip-navy">
-            <strong>💡 Tip:</strong> Type a word or short phrase that completes the sentence.
+            <strong>💡 Tip:</strong> Type a short phrase that completes the sentence.
           </p>
         </div>
 
@@ -226,7 +226,7 @@ export const PromptRound: React.FC = () => {
           </p>
 
           {/* Feedback Icons */}
-          <div className="absolute top-1 md:top-4 right-2 md:right-5 flex gap-2 md:gap-3">
+          <div className="absolute top-1 md:top-2 right-1 md:right-3 flex gap-1 md:gap-1.5">
             <ThumbFeedbackButton
               type="like"
               isActive={feedbackType === 'like'}

@@ -146,9 +146,9 @@ class TestSystemVote:
         assert vote.correct is True
         assert vote.payout == 20
 
-        # Verify payout
+        # Verify balance change (net = payout - vote_cost = 20 - 10 = +10)
         await db_session.refresh(ai_player)
-        assert ai_player.balance == initial_balance + 20
+        assert ai_player.balance == initial_balance + 10
 
     @pytest.mark.asyncio
     async def test_submit_system_vote_incorrect(self, db_session, player_factory):
@@ -227,9 +227,9 @@ class TestSystemVote:
         assert vote.correct is False
         assert vote.payout == 0
 
-        # Verify no payout
+        # Verify balance decreased by vote_cost (no payout for incorrect)
         await db_session.refresh(ai_player)
-        assert ai_player.balance == initial_balance
+        assert ai_player.balance == initial_balance - 10
 
     @pytest.mark.asyncio
     async def test_submit_system_vote_prevents_duplicate(self, db_session, player_factory):
