@@ -850,7 +850,7 @@ class RoundService:
         """
         # Use a single query with proper joins to count available prompts
         # This is much more efficient than the previous multiple-query approach
-        cutoff_time = datetime.now(UTC) - timedelta(hours=24)
+        cutoff_time = datetime.now(UTC) - timedelta(hours=self.settings.abandoned_prompt_cooldown_hours)
 
         result = await self.db.execute(
             text("""
