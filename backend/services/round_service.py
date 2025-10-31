@@ -1,6 +1,7 @@
 """Round service for managing prompt, copy, and vote rounds."""
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, text, or_, union
+from sqlalchemy import select, func, text, or_, union, bindparam
+from sqlalchemy.types import DateTime, String
 from sqlalchemy.orm import aliased
 from datetime import datetime, UTC, timedelta
 from typing import Optional
@@ -852,8 +853,7 @@ class RoundService:
         # This is much more efficient than the previous multiple-query approach
         cutoff_time = datetime.now(UTC) - timedelta(hours=self.settings.abandoned_prompt_cooldown_hours)
 
-        result = await self.db.execute(
-            text("""
+        query = text("""
                 WITH player_prompt_rounds AS (
                     SELECT r.round_id
                     FROM rounds r
@@ -885,14 +885,21 @@ class RoundService:
                 )
                 SELECT COUNT(*) as available_count
                 FROM all_available_prompts a
-                WHERE a.round_id NOT IN (SELECT round_id FROM player_prompt_rounds)
-                AND a.round_id NOT IN (SELECT prompt_round_id FROM player_copy_rounds WHERE prompt_round_id IS NOT NULL)
-                AND a.round_id NOT IN (SELECT prompt_round_id FROM player_abandoned_cooldown WHERE prompt_round_id IS NOT NULL)
-            """),
+                WHERE NOT EXISTS (SELECT 1 FROM player_prompt_rounds ppr WHERE ppr.round_id = a.round_id)
+                AND NOT EXISTS (SELECT 1 FROM player_copy_rounds pcr WHERE pcr.prompt_round_id = a.round_id)
+                AND NOT EXISTS (SELECT 1 FROM player_abandoned_cooldown pac WHERE pac.prompt_round_id = a.round_id)
+            """)
+        query = query.bindparams(
+            bindparam("player_id_clean", type_=String),
+            bindparam("cutoff_time", type_=DateTime(timezone=True)),
+        )
+
+        result = await self.db.execute(
+            query,
             {
                 "player_id_clean": str(player_id).replace('-', '').lower(),
                 "cutoff_time": cutoff_time,
-            }
+            },
         )
 
         available_count = result.scalar() or 0
