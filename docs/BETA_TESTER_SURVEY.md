@@ -2,7 +2,7 @@ Here’s the trimmed survey, then I’ll show you the steps + a Codex-style prom
 
 ## Prompt for Codex
 
-You are helping me implement an in-app beta tester survey for my game Quipflip.
+You are helping me implement an in-app beta tester survey for my game Quipflip. All players who have completed 10 or more rounds of any type will be asked via dashboard pop-up (only ONCE) if they wish to complete the survey. If they choose to dismiss the survey then there will be an element with the option to start the survey on the statistics page.
 
 Context:
 - Frontend: React + TypeScript + Vite, already using React Router and Context for auth/game state.
