@@ -53,12 +53,6 @@ const AdminFlagged: React.FC = () => {
       return;
     }
 
-    if (!player.is_admin) {
-      setError('You do not have permission to review flagged phrases.');
-      setLoading(false);
-      return;
-    }
-
     loadFlags(statusFilter);
   }, [loadFlags, player, statusFilter]);
 
