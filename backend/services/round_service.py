@@ -320,8 +320,8 @@ class RoundService:
                 )
                 continue
 
-            # Check if player abandoned this prompt in last 24h
-            cutoff = datetime.now(UTC) - timedelta(hours=24)
+            # Check if player abandoned this prompt within cooldown period
+            cutoff = datetime.now(UTC) - timedelta(hours=self.settings.abandoned_prompt_cooldown_hours)
             result = await self.db.execute(
                 select(PlayerAbandonedPrompt)
                 .where(PlayerAbandonedPrompt.player_id == player.player_id)
