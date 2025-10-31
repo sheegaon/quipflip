@@ -1,12 +1,15 @@
 """Alembic environment configuration."""
 from logging.config import fileConfig
-from sqlalchemy import pool
-from sqlalchemy.engine import Connection
-from sqlalchemy.ext.asyncio import async_engine_from_config
-from sqlalchemy.engine.url import make_url
-from alembic import context
 import asyncio
 import logging
+import ssl
+from typing import Optional
+
+from alembic import context
+from sqlalchemy import pool
+from sqlalchemy.engine import Connection
+from sqlalchemy.engine.url import URL, make_url
+from sqlalchemy.ext.asyncio import async_engine_from_config
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -72,6 +75,7 @@ async def run_async_migrations() -> None:
     logger.info(f"Migration URL length: {len(url) if url else 'None'}")
     
     # Parse URL for debugging
+    parsed_url: Optional[URL] = None
     try:
         if url:
             parsed_url = make_url(url)
@@ -87,14 +91,26 @@ async def run_async_migrations() -> None:
     
     # Add SSL configuration for Heroku/production if needed
     needs_ssl = url and (
-        "heroku" in url or 
-        "amazonaws" in url or 
+        "heroku" in url or
+        "amazonaws" in url or
         get_settings().environment == "production"
     )
-    
+
     if needs_ssl:
-        configuration["sqlalchemy.connect_args"] = {"ssl": "require"}
-        logger.info("Migration SSL enabled (ssl=require)")
+        ssl_context = ssl.create_default_context()
+        sslmode = None
+        if parsed_url is not None:
+            sslmode = parsed_url.query.get("sslmode") if hasattr(parsed_url, "query") else None
+
+        if sslmode and sslmode.lower() in {"require", "allow", "prefer"}:
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+            logger.info("Migration SSL context configured without certificate verification (sslmode=%s)", sslmode)
+        else:
+            logger.info("Migration SSL context will verify certificates")
+
+        configuration.setdefault("sqlalchemy.connect_args", {})["ssl"] = ssl_context
+        logger.info("Migration SSL enabled for asyncpg connections")
     else:
         logger.info("Migration SSL disabled")
     
