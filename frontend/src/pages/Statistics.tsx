@@ -12,6 +12,7 @@ import FrequencyChart from '../components/statistics/FrequencyChart';
 import PerformanceRadar from '../components/statistics/PerformanceRadar';
 import HistoricalTrendsChart from '../components/statistics/HistoricalTrendsChart';
 import { statisticsLogger } from '../utils/logger';
+import { hasCompletedSurvey } from '../utils/betaSurvey';
 import type { BetaSurveyStatusResponse } from '../api/types';
 
 const Statistics: React.FC = () => {
@@ -161,11 +162,13 @@ const Statistics: React.FC = () => {
     );
   }
 
+  const surveyCompleted = player?.player_id ? hasCompletedSurvey(player.player_id) : false;
+
   return (
     <div className="min-h-screen bg-quip-cream bg-pattern">
       <Header />
       <div className="container mx-auto px-4 py-8">
-        {surveyStatus?.eligible && !surveyStatus.has_submitted && (
+        {surveyStatus?.eligible && !surveyStatus.has_submitted && !surveyCompleted && (
           <div className="tile-card mb-6 border-2 border-quip-teal bg-quip-teal/10 p-6">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
