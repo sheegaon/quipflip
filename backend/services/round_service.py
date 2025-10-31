@@ -870,7 +870,7 @@ class RoundService:
                     SELECT pap.prompt_round_id
                     FROM player_abandoned_prompts pap
                     WHERE LOWER(REPLACE(CAST(pap.player_id AS TEXT), '-', '')) = :player_id_clean
-                    AND pap.abandoned_at > datetime('now', '-24 hours')
+                    AND pap.abandoned_at > (CURRENT_TIMESTAMP - INTERVAL '24 hours')
                 ),
                 all_available_prompts AS (
                     SELECT r.round_id
