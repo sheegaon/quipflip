@@ -292,4 +292,5 @@ Quest progress stored as JSON field:
 PhrasesetActivity uses flexible JSON payload:
 - **Pros**: Can track diverse event types without schema changes
 - **Cons**: Queries on payload data are less efficient
-- **Decision**: Use JSON for flexibility in activity tracking and future analytics
+- **Decision**: Use JSON for flexibility in activity tracking and future analytics.
+- **Common activity types**: `vote_submitted`, `third_vote_reached`, `fifth_vote_reached`, `finalized`, and `finalization_error` (raised when a phraseset is closed due to missing round references).
