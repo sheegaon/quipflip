@@ -1,9 +1,16 @@
 """Vote service for managing voting rounds and finalization."""
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, or_
-from sqlalchemy.orm import selectinload
-from sqlalchemy.exc import IntegrityError
+import asyncio
+import random
+import time
+import uuid
+import logging
 from datetime import datetime, UTC, timedelta
+from uuid import UUID
+
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, and_, or_, insert as sa_insert
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.orm import selectinload
 from backend.utils.exceptions import (
     NoPhrasesetsAvailableError,
     AlreadyVotedError,
@@ -12,10 +19,6 @@ from backend.utils.exceptions import (
     SelfVotingError,
 )
 from backend.utils.datetime_helpers import ensure_utc
-from uuid import UUID
-import uuid
-import random
-import logging
 
 from backend.models.player import Player
 from backend.models.round import Round
@@ -34,9 +37,20 @@ settings = get_settings()
 class VoteService:
     """Service for managing voting."""
 
+    _finalization_lock: asyncio.Lock | None = None
+    _last_finalization_check: float = 0.0
+
     def __init__(self, db: AsyncSession):
         self.db = db
         self.activity_service = ActivityService(db)
+
+    @classmethod
+    def _get_finalization_lock(cls) -> asyncio.Lock:
+        """Lazily create the lock used to throttle finalization checks."""
+
+        if cls._finalization_lock is None:
+            cls._finalization_lock = asyncio.Lock()
+        return cls._finalization_lock
 
     async def _load_available_phrasesets_for_player(self, player_id: UUID) -> list[Phraseset]:
         """Load phrasesets the player can vote on (excludes contributors and already-voted)."""
@@ -105,6 +119,23 @@ class VoteService:
         )
         return list(result.scalars().all())
 
+    async def _ensure_recent_finalization(self) -> None:
+        """Throttle expensive finalization checks to run at most once per interval."""
+
+        interval = settings.vote_finalization_refresh_interval_seconds
+        if interval <= 0:
+            await self._check_and_finalize_active_phrasesets()
+            return
+
+        lock = self._get_finalization_lock()
+        async with lock:
+            now = time.monotonic()
+            if now - self._last_finalization_check < interval:
+                return
+            self._last_finalization_check = now
+
+        await self._check_and_finalize_active_phrasesets()
+
     async def _get_contributor_ids(self, phraseset: Phraseset) -> set[UUID]:
         """Load all contributor player IDs for a phraseset with a single query."""
         round_ids = [
@@ -138,41 +169,61 @@ class VoteService:
                 player_payout = payout_info["payout"]
                 break
 
-        result_view = ResultView(
-            view_id=uuid.uuid4(),
-            phraseset_id=phraseset_id,
-            player_id=player_id,
-            payout_amount=player_payout,
-            result_viewed=True,
-            first_viewed_at=datetime.now(UTC),
-            result_viewed_at=datetime.now(UTC),
-        )
-        self.db.add(result_view)
+        now = datetime.now(UTC)
+        values = {
+            "view_id": uuid.uuid4(),
+            "phraseset_id": phraseset_id,
+            "player_id": player_id,
+            "payout_amount": player_payout,
+            "result_viewed": True,
+            "first_viewed_at": now,
+            "result_viewed_at": now,
+        }
 
-        try:
-            await self.db.commit()
-        except IntegrityError:
-            await self.db.rollback()
-            logger.debug(
-                "Result view already exists for player %s and phraseset %s; using existing record",
+        dialect = self.db.bind.dialect.name if self.db.bind else ""
+        if dialect == "postgresql":
+            stmt = (
+                pg_insert(ResultView)
+                .values(**values)
+                .on_conflict_do_nothing(
+                    index_elements=[ResultView.player_id, ResultView.phraseset_id]
+                )
+            )
+        else:
+            stmt = sa_insert(ResultView).values(**values)
+            if dialect == "sqlite":
+                stmt = stmt.prefix_with("OR IGNORE")
+
+        result = await self.db.execute(stmt)
+        await self.db.flush()
+
+        inserted = bool(getattr(result, "rowcount", 0))
+
+        select_stmt = (
+            select(ResultView)
+            .where(ResultView.phraseset_id == phraseset_id)
+            .where(ResultView.player_id == player_id)
+        )
+        result_view = (await self.db.execute(select_stmt)).scalar_one()
+
+        if not inserted:
+            if result_view.payout_amount != player_payout:
+                result_view.payout_amount = player_payout
+            if not result_view.result_viewed:
+                result_view.result_viewed = True
+            if not result_view.first_viewed_at:
+                result_view.first_viewed_at = now
+            if not result_view.result_viewed_at:
+                result_view.result_viewed_at = now
+        else:
+            logger.info(
+                "Player %s viewed results for phraseset %s (payout $%s was auto-distributed at finalization)",
                 player_id,
                 phraseset_id,
+                result_view.payout_amount,
             )
-            result = await self.db.execute(
-                select(ResultView)
-                .where(ResultView.phraseset_id == phraseset_id)
-                .where(ResultView.player_id == player_id)
-            )
-            existing_view = result.scalar_one()
-            return existing_view, False
 
-        logger.info(
-            "Player %s viewed results for phraseset %s (payout $%s was auto-distributed at finalization)",
-            player_id,
-            phraseset_id,
-            result_view.payout_amount,
-        )
-        return result_view, True
+        return result_view, inserted
 
     async def get_available_phrasesets_for_player(self, player_id: UUID) -> Phraseset | None:
         """
@@ -208,14 +259,12 @@ class VoteService:
 
     async def count_available_phrasesets_for_player(self, player_id: UUID) -> int:
         """Count how many phrasesets the player can vote on.
-        
+
         First checks and finalizes any phrasesets that meet finalization criteria
         to ensure accurate availability counts.
         """
-        # First, check and finalize any active phrasesets that meet finalization criteria
-        # This ensures we get accurate counts after any eligible phrasesets are finalized
-        await self._check_and_finalize_active_phrasesets()
-        
+        await self._ensure_recent_finalization()
+
         # Then count available phrasesets for this player
         available = await self._load_available_phrasesets_for_player(player_id)
         return len(available)
@@ -986,25 +1035,28 @@ class VoteService:
         result_view = result.scalar_one_or_none()
         created_new = False
 
+        commit_needed = False
         if not result_view:
             result_view, created_new = await self._create_result_view_for_player(
                 phraseset,
                 phraseset_id,
                 player_id,
             )
+            commit_needed = created_new
+        else:
+            created_new = False
 
         if not created_new:
-            updated = False
-            # Mark as viewed if not already viewed
             if not result_view.result_viewed:
                 result_view.result_viewed = True
                 result_view.result_viewed_at = datetime.now(UTC)
-                updated = True
+                commit_needed = True
             if not result_view.first_viewed_at:
                 result_view.first_viewed_at = datetime.now(UTC)
-                updated = True
-            if updated:
-                await self.db.commit()
+                commit_needed = True
+
+        if commit_needed:
+            await self.db.commit()
 
         # Get all votes for display
         votes_result = await self.db.execute(

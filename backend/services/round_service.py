@@ -207,8 +207,7 @@ class RoundService:
             transaction_service: TransactionService,
     ) -> Optional[Round]:
         """Submit word for prompt round."""
-        # Get round
-        round_object = await self.db.get(Round, round_id)
+        round_object = await self._lock_round_for_update(round_id)
         if not round_object or round_object.player_id != player.player_id:
             raise RoundNotFoundError("Round not found")
 
@@ -548,6 +547,14 @@ class RoundService:
 
         return prompt_round
 
+    async def _lock_round_for_update(self, round_id: UUID) -> Optional[Round]:
+        """Lock a round record for update to avoid concurrent submissions."""
+
+        result = await self.db.execute(
+            select(Round).where(Round.round_id == round_id).with_for_update()
+        )
+        return result.scalar_one_or_none()
+
     async def submit_copy_phrase(
             self,
             round_id: UUID,
@@ -556,8 +563,7 @@ class RoundService:
             transaction_service: TransactionService,
     ) -> Optional[Round]:
         """Submit phrase for copy round."""
-        # Get round
-        round_object = await self.db.get(Round, round_id)
+        round_object = await self._lock_round_for_update(round_id)
         if not round_object or round_object.player_id != player.player_id:
             raise RoundNotFoundError("Round not found")
 
