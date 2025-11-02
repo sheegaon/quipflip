@@ -86,6 +86,10 @@ class Settings(BaseSettings):
     ai_backup_batch_size: int = 2  # Maximum number of copy or vote rounds to process per backup cycle
     ai_backup_sleep_minutes: int = 120  # Sleep time between backup cycles (1 hour)
 
+    # Round service tuning
+    round_lock_timeout_seconds: int = 10  # Shared timeout for distributed locks in round flows
+    copy_round_max_attempts: int = 10  # Attempts to find a valid prompt when starting copy rounds
+
     @model_validator(mode="after")
     def validate_all_config(self):
         """Validate security configuration and normalize Postgres URLs."""
