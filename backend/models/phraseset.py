@@ -54,6 +54,9 @@ class Phraseset(Base):
     # Indexes
     __table_args__ = (
         Index('ix_phrasesets_status_vote_count', 'status', 'vote_count'),
+        Index('ix_phrasesets_status_fifth_vote_at', 'status', 'fifth_vote_at'),
+        Index('ix_phrasesets_status_third_vote_at', 'status', 'third_vote_at'),
+        Index('ix_phrasesets_status_created_at', 'status', 'created_at'),
     )
 
     def __repr__(self):
