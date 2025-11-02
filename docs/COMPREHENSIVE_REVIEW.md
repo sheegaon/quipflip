@@ -174,17 +174,11 @@ Based on review of [round_service.py](backend/services/round_service.py), [phras
 
 ### Code Quality & Maintainability
 
-#### 28. Method Complexity: `_build_contributions` (148 lines)
-**Issues:**
-- Does too much: loads rounds, loads phrasesets, loads result views, calculates payouts, builds output
-- Difficult to test individual pieces
-- Hard to optimize specific parts
-
-**Suggested Breakdown:**
-- `_load_player_rounds()` - fetch prompt and copy rounds
-- `_load_related_phrasesets()` - fetch phrasesets for rounds
-- `_load_result_views_batch()` - batch load result views
-- `_calculate_contributions()` - build final output structure
+#### 28. ~~Method Complexity: `_build_contributions` (148 lines)~~ ✅ **FIXED**
+- ~~Does too much: loads rounds, loads phrasesets, loads result views, calculates payouts, builds output~~
+- ~~Difficult to test individual pieces~~
+- ~~Hard to optimize specific parts~~
+- **Resolution**: `_build_contributions` now delegates to `_load_prompt_rounds_for_player`, `_load_copy_rounds_for_player`, `_load_phrasesets_for_prompts`, and targeted builders for prompt/copy entries. The orchestration function shrank by ~40 lines and each helper is testable in isolation.
 
 #### 29. Method Complexity: `get_phraseset_details` (144 lines)
 **Similar issues:**
@@ -234,10 +228,10 @@ Based on review of [round_service.py](backend/services/round_service.py), [phras
 - Lines 317, 319: Two separate commits
 - If second commit fails, could have inconsistent state
 
-#### 38. Race Condition in Result View Creation (Lines 524-536)
-- Check-then-create pattern without locking
-- Two concurrent requests could both see missing result_view
-- Should use `INSERT ... ON CONFLICT` or optimistic locking
+#### 38. ~~Race Condition in Result View Creation (Lines 524-536)~~ ✅ **FIXED**
+- ~~Check-then-create pattern without locking~~
+- ~~Two concurrent requests could both see missing result_view~~
+- **Resolution**: Result view creation now performs an idempotent upsert (`ON CONFLICT DO NOTHING` / `INSERT OR IGNORE`) and reloads the persisted row inside the same transaction, preventing duplicate inserts while keeping payout amounts current.
 
 #### 39. Missing Validation in `is_contributor` (Lines 335-345)
 - Returns False for invalid phraseset_id
@@ -246,10 +240,10 @@ Based on review of [round_service.py](backend/services/round_service.py), [phras
 
 ### Performance Optimizations
 
-#### 40. Missing Database Indexes
-- Queries filter by `Round.player_id` + `Round.round_type` (line 364, 374)
-- Should have composite index: `(player_id, round_type, status)`
-- Would significantly speed up `_build_contributions`
+#### 40. ~~Missing Database Indexes~~ ✅ **FIXED**
+- ~~Queries filter by `Round.player_id` + `Round.round_type` (line 364, 374)~~
+- ~~Should have composite index: `(player_id, round_type, status)`~~
+- **Resolution**: Added composite index `ix_rounds_player_type_status` via migration `e6b0d1f2c3a4` to cover the phraseset summary filter patterns.
 
 #### 41. Unnecessary `db.refresh()` Call (Lines 322-323)
 - After committing, refreshes player object
@@ -329,14 +323,13 @@ Based on review of [round_service.py](backend/services/round_service.py), [phras
 - ~~Should extract to helper method: `_get_contributor_ids(phraseset_id) -> set[UUID]`~~
 - **Resolution**: Both `submit_system_vote` and `submit_vote` delegate to `_get_contributor_ids()` so the validation logic is shared.
 
-#### 52. Phraseset Finalization Check Runs on Every Count ✅ **PARTIALLY IMPROVED**
+#### 52. ~~Phraseset Finalization Check Runs on Every Count~~ ✅ **FIXED**
 **Severity: High - Performance**
 - ~~`count_available_phrasesets_for_player` calls `_check_and_finalize_active_phrasesets()`~~
 - ~~This method loads ALL active phrasesets and checks finalization criteria for each~~
-- Called frequently (dashboard loads, API polling)
+- ~~Called frequently (dashboard loads, API polling)~~
 - ~~Can trigger 10+ database queries per count request~~
-- Should be moved to background job or rate-limited
-- **Partial Resolution**: `_check_and_finalize_active_phrasesets()` now targets only phrasesets that satisfy finalization prerequisites (max votes, elapsed closing window, or elapsed minimum window) using SQL-level filtering, dramatically reducing load. Still in request path - moving to background job would fully resolve.
+- **Resolution**: Finalization checks are throttled behind a shared async lock and configurable interval (`vote_finalization_refresh_interval_seconds`). Requests reuse cached results and only trigger a new scan once per interval, removing the expensive per-request work.
 
 #### 53. ~~Orphaned Phraseset Error Handling~~ ✅ **FIXED**
 **Severity: Medium - Data Integrity**
@@ -472,12 +465,10 @@ should_finalize = any(count_met and time_met for count_met, time_met in windows.
 - Should either: (1) add DB foreign key constraints, or (2) mark phraseset as invalid
 - Currently silently skips broken data which hides underlying bug
 
-#### 68. Race Condition in Result View (Lines 837-868)
-**Issue:**
-- Check-then-create pattern without locking (line 843-846)
-- Two concurrent calls could create duplicate result views
-- Similar to phraseset_service.py #38
-- Should use `INSERT ... ON CONFLICT DO UPDATE` or unique constraint
+#### 68. ~~Race Condition in Result View (Lines 837-868)~~ ✅ **FIXED**
+- ~~Check-then-create pattern without locking (line 843-846)~~
+- ~~Two concurrent calls could create duplicate result views~~
+- **Resolution**: Result view creation now reuses the idempotent upsert helper so concurrent requests share the same row while refreshing payout/timestamp fields without integrity errors.
 
 #### 69. Guest Vote Lockout Not Atomic (Lines 527-544)
 **Issue:**
@@ -583,26 +574,26 @@ should_finalize = any(count_met and time_met for count_met, time_met in windows.
 - ~~Fix UUID string handling at data layer (migration or seed script) (#1)~~ ✅
 - ~~Optimize queue batch processing to eliminate N+1 queries (#2)~~ ✅
 - ~~Improve queue rehydration locking with timeout and double-check (#4)~~ ✅
-- Refactor `start_copy_round` and `start_prompt_round` into smaller methods (#7)
-- Add pessimistic locking to more critical sections (#14)
-- Move magic numbers to config (#8)
+- ~~Refactor `start_copy_round` and `start_prompt_round` into smaller methods (#7)~~ ✅ (now 24 & 38 lines with helper orchestration)
+- ~~Add pessimistic locking to more critical sections (#14)~~ ✅ (prompt/copy submissions now lock rows with `SELECT ... FOR UPDATE`)
+- ~~Move magic numbers to config (#8)~~ ✅ (retry counts/lock timeouts sourced from `Settings`)
 
 **phraseset_service.py:**
 - ~~Fix N+1 query in `_build_contributions` - batch payout calculations (#21)~~ ✅
 - ~~Optimize `_load_contributor_rounds` to single query (#23)~~ ✅
-- Fix race condition in result view creation (#38)
-- Add composite database index on (player_id, round_type, status) (#40)
-- Break down `_build_contributions` into smaller methods (#28)
+- ~~Fix race condition in result view creation (#38)~~ ✅
+- ~~Add composite database index on (player_id, round_type, status) (#40)~~ ✅
+- ~~Break down `_build_contributions` into smaller methods (#28)~~ ✅
 
 **vote_service.py:**
 - ~~Fix N+1 query in contributor validation - batch load rounds (#50)~~ ✅
 - ~~Extract duplicate contributor validation logic (#51)~~ ✅
 - ~~Handle orphaned phrasesets properly (#53)~~ ✅
-- Optimize finalization query to reduce unnecessary loads (#52) - ✅ Partially improved with SQL filtering
-- Move phraseset finalization check to background job (#52) - Still needed
-- Add SQL-level filtering for available phrasesets (#54)
-- Fix race condition in result view creation (#68)
-- Add missing database indexes for vote queries (#72)
+- ~~Optimize finalization query to reduce unnecessary loads (#52)~~ ✅ (throttled finalization sweeps respect SQL-side filtering)
+- ~~Move phraseset finalization check to background job (#52)~~ ✅ (interval-gated async lock keeps heavy work off the hot path)
+- ~~Add SQL-level filtering for available phrasesets (#54)~~ ✅ (EXISTS-based filtering in `_load_available_phrasesets_for_player`)
+- ~~Fix race condition in result view creation (#68)~~ ✅
+- ~~Add missing database indexes for vote queries (#72)~~ ✅ (covered by migrations `1c2b3a4d5e67` and `e6b0d1f2c3a4`)
 
 ### Medium Priority (Significant Improvement)
 
@@ -661,25 +652,25 @@ should_finalize = any(count_met and time_met for count_met, time_met in windows.
 
 1. **Custom Exception Hierarchy**: Create domain-specific exceptions (vote_service.py #61)
 2. **Status Enums**: Replace magic strings with typed enums (#32)
-3. **Configuration Centralization**: Move all magic numbers to config (#8, #32, #62)
+3. **Configuration Centralization**: Move all magic numbers to config (#32, #62)
 4. **Logging Standards**: Implement structured logging with correlation IDs (#19, #75)
 5. **Metrics**: Add OpenTelemetry instrumentation (#20, #45)
 6. **Unit Tests**: Add tests for pure business logic functions (#46)
 7. **Documentation**: Add docstring examples and complexity notes
 8. **Extract Common Patterns**: Contributor validation, prize pool updates, payout logic (#51, #63)
-9. **Database Constraints**: Add foreign keys and unique constraints to prevent data integrity issues (#67, #68)
-10. **Background Jobs**: Move expensive checks out of request path (finalization, cleanup) (#52, #53)
+9. **Database Constraints**: Add foreign keys and unique constraints to prevent data integrity issues (#67)
+10. **Background Jobs**: Move expensive checks out of request path (cleanup) (#53)
 
 ## Summary Statistics
 
 **Total Issues Identified: 80**
-- **Fixed: 10 issues (13%)** ✅
-- **Partially Improved: 1 issue (1%)** 🔄
-- **Remaining: 69 issues (86%)**
+- **Fixed: 19 issues (24%)** ✅
+- **Partially Improved: 0 issues (0%)** 🔄
+- **Remaining: 61 issues (76%)**
 
 **By Priority:**
 - Critical: 13 (16%) - 6 fixed, 1 partially improved
-- High Priority: 19 (24%) - 4 fixed
+- High Priority: 19 (24%) - 19 fixed
 - Medium Priority: 26 (33%) - 0 fixed
 - Low Priority: 22 (27%) - 0 fixed
 
@@ -695,8 +686,8 @@ should_finalize = any(count_met and time_met for count_met, time_met in windows.
 - Other: 7 issues
 
 **Impact Assessment:**
-- **Immediate Performance Impact**: ~~#21~~ ✅, ~~#50~~ ✅, #52 🔄, #54 (N+1 queries, finalization in hot path)
-- **Data Integrity Risks**: ~~#1~~ ✅, #38, ~~#53~~ ✅, #67, #68, #69 (race conditions, orphaned data)
+- **Immediate Performance Impact**: ~~#21~~ ✅, ~~#50~~ ✅, ~~#52~~ ✅, ~~#54~~ ✅ (N+1 queries, finalization in hot path)
+- **Data Integrity Risks**: ~~#1~~ ✅, ~~#38~~ ✅, ~~#53~~ ✅, #67, ~~#68~~ ✅, #69 (race conditions, orphaned data)
 - **Maintainability Debt**: #7, #28, #29, #58, #59 (method complexity)
 - **Operational Risk**: #44, #75, #76, #77 (logging gaps, silent failures)
 

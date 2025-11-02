@@ -14,8 +14,10 @@ from backend.models.player import Player
 from backend.models.round import Round
 from backend.models.phraseset import Phraseset
 from backend.models.vote import Vote
+from backend.models.result_view import ResultView
 from backend.services.vote_service import VoteService
 from backend.services.transaction_service import TransactionService
+from backend.services.scoring_service import ScoringService
 from backend.config import get_settings
 from backend.utils.exceptions import InvalidPhraseError
 
@@ -490,6 +492,51 @@ class TestPhrasesetResults:
 
         assert results["your_role"] == "prompt"
         assert "original_phrase" not in results
+
+    @pytest.mark.asyncio
+    async def test_existing_result_view_marks_as_viewed(
+        self,
+        db_session,
+        test_phraseset_with_players,
+    ):
+        """Existing result views should be marked as viewed and committed."""
+
+        phraseset = test_phraseset_with_players["phraseset"]
+        prompter = test_phraseset_with_players["prompter"]
+
+        phraseset.status = "finalized"
+        phraseset.finalized_at = datetime.now(UTC)
+        phraseset.vote_count = 0
+
+        scoring_service = ScoringService(db_session)
+        payouts = await scoring_service.calculate_payouts(phraseset)
+        prompter_payout = payouts["original"]["payout"]
+
+        preexisting_view = ResultView(
+            view_id=uuid.uuid4(),
+            phraseset_id=phraseset.phraseset_id,
+            player_id=prompter.player_id,
+            payout_amount=prompter_payout,
+            result_viewed=False,
+        )
+        db_session.add(preexisting_view)
+        await db_session.commit()
+
+        vote_service = VoteService(db_session)
+        transaction_service = TransactionService(db_session)
+
+        results = await vote_service.get_phraseset_results(
+            phraseset.phraseset_id,
+            prompter.player_id,
+            transaction_service,
+        )
+
+        await db_session.refresh(preexisting_view)
+
+        assert results["already_collected"] is False
+        assert preexisting_view.result_viewed is True
+        assert preexisting_view.result_viewed_at is not None
+        assert preexisting_view.first_viewed_at is not None
 
 
 class TestGuestVoteLockoutFlow:
