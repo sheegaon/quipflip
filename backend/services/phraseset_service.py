@@ -326,13 +326,11 @@ class PhrasesetService:
                 result_view.result_viewed = True
                 result_view.result_viewed_at = datetime.now(UTC)
 
-        try:
+        if self.db.in_transaction():
+            await _apply_claim_updates()
+        else:
             async with self.db.begin():
                 await _apply_claim_updates()
-        except InvalidRequestError as exc:
-            if "already begun" not in str(exc).lower():
-                raise
-            await _apply_claim_updates()
 
         player = await self.db.get(Player, player_id)
         if player:
