@@ -124,17 +124,22 @@ Based on review of [round_service.py](backend/services/round_service.py), [phras
 - Then iterates through each phraseset calling `calculate_payouts` individually (lines 424, 465)
 - For a player with 50 phrasesets, this triggers 50+ separate payout calculations
 - Each payout calculation may trigger additional queries via `scoring_service`
+- ✅ **Update:** `_build_contributions` now uses the new `ScoringService.calculate_payouts_bulk` helper
+  to fetch payouts for all finalized phrasesets in a single set of queries, eliminating the N+1 pattern.
 
 #### 22. Missing Line Between Method (Line 566)
 **Severity: Low - Code Style**
 - Missing blank line before `_extract_player_payout` method definition
 - Violates PEP 8 style guidelines
+- ✅ **Update:** Added the missing blank line for consistency with project style.
 
 #### 23. Inefficient Multiple Database Round Loads (Lines 501-508)
 **Severity: Medium**
 - `_load_contributor_rounds` makes 3 separate `db.get()` calls
 - Should use a single query with `select().where(Round.round_id.in_([...]))`
 - Called multiple times per request in detail views
+- ✅ **Update:** Contributor rounds are now loaded with a single `SELECT ... IN (...)` query, removing the
+  redundant round fetches.
 
 ### Efficiency Improvements
 
