@@ -61,11 +61,11 @@ class QueueClient:
         if self.backend == "redis":
             # ``lpop`` only supports ``count`` on newer Redis versions, so fall back to
             # issuing multiple pops to keep behaviour consistent across backends.
+            pipe = self.redis.pipeline()
             for _ in range(count):
-                result = self.redis.lpop(queue_name)
-                if result is None:
-                    break
-                items.append(json.loads(result))
+                pipe.lpop(queue_name)
+            results = pipe.execute()
+            items.extend(json.loads(r) for r in results if r is not None)
         else:
             with self._memory_lock:
                 queue = self._memory_queues.get(queue_name)
