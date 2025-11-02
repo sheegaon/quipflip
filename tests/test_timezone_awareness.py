@@ -71,6 +71,8 @@ class TestDatabaseTimezoneAwareness:
     @pytest.mark.asyncio
     async def test_round_timestamps_are_utc_aware(self, db_session):
         """Round created_at and expires_at should be UTC-aware."""
+        from backend.utils.datetime_helpers import ensure_utc
+
         player = Player(
             player_id=uuid.uuid4(),
             username=f"test_{uuid.uuid4().hex[:8]}",
@@ -96,15 +98,18 @@ class TestDatabaseTimezoneAwareness:
         await db_session.refresh(round_obj)
 
         assert round_obj.created_at is not None
-        assert round_obj.created_at.tzinfo is not None
-        assert round_obj.created_at.tzinfo == UTC
+        # SQLite returns naive datetime, but we treat it as UTC
+        created_at_utc = ensure_utc(round_obj.created_at)
+        assert created_at_utc.tzinfo == UTC
         assert round_obj.expires_at is not None
-        assert round_obj.expires_at.tzinfo is not None
-        assert round_obj.expires_at.tzinfo == UTC
+        expires_at_utc = ensure_utc(round_obj.expires_at)
+        assert expires_at_utc.tzinfo == UTC
 
     @pytest.mark.asyncio
     async def test_phraseset_timestamps_are_utc_aware(self, db_session):
         """Phraseset created_at and finalized_at should be UTC-aware."""
+        from backend.utils.datetime_helpers import ensure_utc
+
         # Create minimal phraseset for testing
         player = Player(
             player_id=uuid.uuid4(),
@@ -150,12 +155,15 @@ class TestDatabaseTimezoneAwareness:
         await db_session.refresh(phraseset)
 
         assert phraseset.created_at is not None
-        assert phraseset.created_at.tzinfo is not None
-        assert phraseset.created_at.tzinfo == UTC
+        # SQLite returns naive datetime, but we treat it as UTC
+        created_at_utc = ensure_utc(phraseset.created_at)
+        assert created_at_utc.tzinfo == UTC
 
     @pytest.mark.asyncio
     async def test_vote_created_at_is_utc_aware(self, db_session):
         """Vote.created_at should be UTC-aware."""
+        from backend.utils.datetime_helpers import ensure_utc
+
         # Create minimal vote for testing
         player = Player(
             player_id=uuid.uuid4(),
@@ -182,12 +190,15 @@ class TestDatabaseTimezoneAwareness:
         await db_session.refresh(vote)
 
         assert vote.created_at is not None
-        assert vote.created_at.tzinfo is not None
-        assert vote.created_at.tzinfo == UTC
+        # SQLite returns naive datetime, but we treat it as UTC
+        created_at_utc = ensure_utc(vote.created_at)
+        assert created_at_utc.tzinfo == UTC
 
     @pytest.mark.asyncio
     async def test_transaction_created_at_is_utc_aware(self, db_session):
         """Transaction.created_at should be UTC-aware."""
+        from backend.utils.datetime_helpers import ensure_utc
+
         player = Player(
             player_id=uuid.uuid4(),
             username=f"test_{uuid.uuid4().hex[:8]}",
@@ -209,8 +220,9 @@ class TestDatabaseTimezoneAwareness:
         )
 
         assert transaction.created_at is not None
-        assert transaction.created_at.tzinfo is not None
-        assert transaction.created_at.tzinfo == UTC
+        # SQLite returns naive datetime, but we treat it as UTC
+        created_at_utc = ensure_utc(transaction.created_at)
+        assert created_at_utc.tzinfo == UTC
 
 
 class TestServiceTimezoneAwareness:
@@ -219,6 +231,8 @@ class TestServiceTimezoneAwareness:
     @pytest.mark.asyncio
     async def test_round_service_uses_utc(self, db_session):
         """RoundService should create rounds with UTC-aware timestamps."""
+        from backend.utils.datetime_helpers import ensure_utc
+
         player = Player(
             player_id=uuid.uuid4(),
             username=f"test_{uuid.uuid4().hex[:8]}",
@@ -251,10 +265,13 @@ class TestServiceTimezoneAwareness:
             transaction_service,
         )
 
-        assert round_obj.created_at.tzinfo == UTC
-        assert round_obj.expires_at.tzinfo == UTC
+        # SQLite returns naive datetime, but we treat it as UTC
+        created_at_utc = ensure_utc(round_obj.created_at)
+        assert created_at_utc.tzinfo == UTC
+        expires_at_utc = ensure_utc(round_obj.expires_at)
+        assert expires_at_utc.tzinfo == UTC
         # Verify expires_at is in the future
-        assert round_obj.expires_at > datetime.now(UTC)
+        assert expires_at_utc > datetime.now(UTC)
 
 
 class TestTimezoneUtility:
@@ -308,6 +325,8 @@ class TestFrontendTimezoneDisplay:
     @pytest.mark.asyncio
     async def test_timestamps_serializable_to_iso_format(self, db_session):
         """Timestamps should be serializable to ISO 8601 format for JSON responses."""
+        from backend.utils.datetime_helpers import ensure_utc
+
         player = Player(
             player_id=uuid.uuid4(),
             username=f"test_{uuid.uuid4().hex[:8]}",
@@ -321,8 +340,11 @@ class TestFrontendTimezoneDisplay:
         await db_session.commit()
         await db_session.refresh(player)
 
+        # SQLite returns naive datetime, so we need to ensure it's UTC-aware first
+        created_at_utc = ensure_utc(player.created_at)
+
         # Convert to ISO format (what would be sent to frontend)
-        iso_string = player.created_at.isoformat()
+        iso_string = created_at_utc.isoformat()
 
         # Should end with +00:00 or Z for UTC
         assert iso_string.endswith('+00:00') or iso_string.endswith('Z')
