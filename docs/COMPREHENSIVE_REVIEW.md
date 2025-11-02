@@ -309,32 +309,19 @@ Based on review of [round_service.py](backend/services/round_service.py), [phras
 
 #### 50. N+1 Query in Contributor Validation (Lines 306-318, 449-476)
 **Severity: High**
-- `submit_system_vote` loads 3 rounds individually: `await self.db.get(Round, round_id)` in loop (lines 315)
-- `submit_vote` reloads entire phraseset with relationships despite already having it (lines 454-464)
-- Should batch-load all contributor rounds in a single query
-- This pattern is repeated twice in the same file
+- ✅ **Resolved.** Contributor IDs are now fetched by `_get_contributor_ids()` using a single batched query reused by `submit_system_vote` and `submit_vote`.
 
 #### 51. Duplicate Contributor Validation Logic (Lines 306-326, 449-476)
 **Severity: Medium**
-- Nearly identical contributor checking code in `submit_system_vote` and `submit_vote`
-- Lines 306-318 use lazy loading with `db.get()`
-- Lines 449-476 use eager loading with `selectinload()`
-- Should extract to helper method: `_get_contributor_ids(phraseset_id) -> set[UUID]`
+- ✅ **Resolved.** Both `submit_system_vote` and `submit_vote` delegate to `_get_contributor_ids()` so the validation logic is shared.
 
 #### 52. Phraseset Finalization Check Runs on Every Count (Lines 137-139)
 **Severity: High - Performance**
-- `count_available_phrasesets_for_player` calls `_check_and_finalize_active_phrasesets()`
-- This method loads ALL active phrasesets and checks finalization criteria for each
-- Called frequently (dashboard loads, API polling)
-- Can trigger 10+ database queries per count request
-- Should be moved to background job or rate-limited
+- ✅ **Resolved.** `_check_and_finalize_active_phrasesets()` now targets only phrasesets that satisfy finalization prerequisites (max votes, elapsed closing window, or elapsed minimum window), dramatically reducing load on frequent availability checks.
 
 #### 53. Orphaned Phraseset Error Handling (Lines 186-196)
 **Severity: Medium - Data Integrity**
-- Catches "missing round references" errors and logs warning
-- Leaves orphaned phrasesets in limbo (never finalized, never cleaned up)
-- Comment says "let manual cleanup handle it" but provides no cleanup mechanism
-- Should mark as failed/abandoned or have automated cleanup
+- ✅ **Resolved.** Orphaned phrasesets are now marked `closed`, annotated with a `finalization_error` activity entry, and committed immediately so they are excluded from future processing.
 
 ### Efficiency Improvements
 

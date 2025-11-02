@@ -1,6 +1,6 @@
 """Vote service for managing voting rounds and finalization."""
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, and_, or_
 from sqlalchemy.orm import selectinload
 from datetime import datetime, UTC, timedelta
 from backend.utils.exceptions import (
@@ -96,6 +96,22 @@ class VoteService:
         available = [ws for ws in candidate_phrasesets if ws.phraseset_id not in voted_ids]
         return available
 
+    async def _get_contributor_ids(self, phraseset: Phraseset) -> set[UUID]:
+        """Load all contributor player IDs for a phraseset with a single query."""
+        round_ids = [
+            phraseset.prompt_round_id,
+            phraseset.copy_round_1_id,
+            phraseset.copy_round_2_id,
+        ]
+        round_ids = [round_id for round_id in round_ids if round_id is not None]
+        if not round_ids:
+            return set()
+
+        result = await self.db.execute(
+            select(Round.player_id).where(Round.round_id.in_(round_ids))
+        )
+        return {row[0] for row in result.all()}
+
     async def get_available_phrasesets_for_player(self, player_id: UUID) -> Phraseset | None:
         """
         Get available phraseset for voting with priority:
@@ -145,18 +161,42 @@ class VoteService:
     async def _check_and_finalize_active_phrasesets(self) -> None:
         """
         Check and finalize all active phrasesets that meet finalization criteria.
-        
+
         This runs before counting available phrasesets to ensure accurate counts.
         """
         try:
-            # Get all active phrasesets that could potentially be finalized
+            now = datetime.now(UTC)
+            closing_cutoff = now - timedelta(minutes=settings.vote_closing_window_minutes)
+            minimum_cutoff = now - timedelta(minutes=settings.vote_minimum_window_minutes)
+
+            # Only load phrasesets that have met finalization prerequisites
             result = await self.db.execute(
                 select(Phraseset)
                 .where(Phraseset.status.in_(["open", "closing"]))
-                .order_by(Phraseset.created_at.asc())  # Process oldest first
+                .where(
+                    or_(
+                        Phraseset.vote_count >= settings.vote_max_votes,
+                        and_(
+                            Phraseset.vote_count >= settings.vote_closing_threshold,
+                            or_(
+                                Phraseset.fifth_vote_at.is_(None),
+                                Phraseset.fifth_vote_at <= closing_cutoff,
+                            ),
+                        ),
+                        and_(
+                            Phraseset.vote_count >= settings.vote_minimum_threshold,
+                            Phraseset.vote_count < settings.vote_closing_threshold,
+                            or_(
+                                Phraseset.third_vote_at.is_(None),
+                                Phraseset.third_vote_at <= minimum_cutoff,
+                            ),
+                        ),
+                    )
+                )
+                .order_by(Phraseset.created_at.asc())
             )
             active_phrasesets = list(result.scalars().all())
-            
+
             if not active_phrasesets:
                 return
                 
@@ -169,11 +209,12 @@ class VoteService:
             finalized_count = 0
             orphaned_count = 0
             for phraseset in active_phrasesets:
+                await self._ensure_vote_threshold_timestamps(phraseset)
                 try:
                     # Check if this phraseset should be finalized
                     # This will automatically finalize if conditions are met
                     await self.check_and_finalize(
-                        phraseset, 
+                        phraseset,
                         transaction_service, 
                         auto_commit=True
                     )
@@ -187,9 +228,12 @@ class VoteService:
                     # Handle orphaned phrasesets (missing round references)
                     if "Cannot calculate payouts: missing" in str(e):
                         orphaned_count += 1
-                        logger.warning(f"Skipping orphaned phraseset {phraseset.phraseset_id}: {e}")
-                        # Optionally mark phraseset as finalized with zero payouts to prevent future processing
-                        # For now, just skip and let manual cleanup handle it
+                        logger.warning(
+                            "Marking orphaned phraseset %s as closed due to missing relationships: %s",
+                            phraseset.phraseset_id,
+                            e,
+                        )
+                        await self._handle_orphaned_phraseset(phraseset)
                         continue
                     else:
                         # Re-raise other ValueErrors
@@ -208,6 +252,74 @@ class VoteService:
         except Exception as e:
             logger.error(f"Error during phraseset finalization check: {e}", exc_info=True)
             # Don't let finalization errors break the availability counting
+
+    async def _handle_orphaned_phraseset(self, phraseset: Phraseset) -> None:
+        """Mark a phraseset with missing round data as closed to avoid repeated processing."""
+        phraseset.status = "closed"
+        phraseset.closes_at = datetime.now(UTC)
+
+        prompt_round = await self.db.get(Round, phraseset.prompt_round_id)
+        if prompt_round:
+            prompt_round.phraseset_status = "closed"
+
+        await self.activity_service.record_activity(
+            activity_type="finalization_error",
+            phraseset_id=phraseset.phraseset_id,
+            metadata={
+                "reason": "missing_round_reference",
+            },
+        )
+
+        await self.db.commit()
+
+    async def _ensure_vote_threshold_timestamps(self, phraseset: Phraseset) -> None:
+        """Backfill missing vote threshold timestamps for legacy phrasesets."""
+
+        updated = False
+
+        if (
+            phraseset.vote_count >= settings.vote_minimum_threshold
+            and not phraseset.third_vote_at
+        ):
+            third_vote_at = await self._get_vote_timestamp(
+                phraseset.phraseset_id, settings.vote_minimum_threshold
+            )
+            if third_vote_at:
+                phraseset.third_vote_at = ensure_utc(third_vote_at)
+                updated = True
+
+        if (
+            phraseset.vote_count >= settings.vote_closing_threshold
+            and not phraseset.fifth_vote_at
+        ):
+            fifth_vote_at = await self._get_vote_timestamp(
+                phraseset.phraseset_id, settings.vote_closing_threshold
+            )
+            if fifth_vote_at:
+                phraseset.fifth_vote_at = ensure_utc(fifth_vote_at)
+                # Ensure the phraseset is marked as closing when the 5th vote is reached
+                if phraseset.status == "open":
+                    phraseset.status = "closing"
+                if not phraseset.closes_at:
+                    phraseset.closes_at = ensure_utc(fifth_vote_at) + timedelta(
+                        minutes=settings.vote_closing_window_minutes
+                    )
+                updated = True
+
+        if updated:
+            await self.db.flush()
+
+    async def _get_vote_timestamp(self, phraseset_id: UUID, vote_rank: int) -> datetime | None:
+        """Return the created_at timestamp for the nth vote on a phraseset."""
+
+        result = await self.db.execute(
+            select(Vote.created_at)
+            .where(Vote.phraseset_id == phraseset_id)
+            .order_by(Vote.created_at.asc())
+            .offset(vote_rank - 1)
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
 
     async def start_vote_round(
         self,
@@ -303,18 +415,7 @@ class VoteService:
             ValueError: If phrase is not valid
             AlreadyVotedError: If player already voted on this phraseset
         """
-        # Prevent self-voting (load contributor IDs lazily)
-        contributor_ids: set[UUID] = set()
-        for round_id in [
-            phraseset.prompt_round_id,
-            phraseset.copy_round_1_id,
-            phraseset.copy_round_2_id,
-        ]:
-            if not round_id:
-                continue
-            round_obj = await self.db.get(Round, round_id)
-            if round_obj:
-                contributor_ids.add(round_obj.player_id)
+        contributor_ids = await self._get_contributor_ids(phraseset)
 
         if player.player_id in contributor_ids:
             logger.error(
@@ -447,27 +548,7 @@ class VoteService:
             raise RoundExpiredError("Round expired past grace period")
 
         # Safety check: Ensure player is not a contributor to this phraseset
-        # Load the relationships to check contributor IDs
-        from sqlalchemy import select as sql_select
-        from sqlalchemy.orm import selectinload
-
-        # Refresh phraseset with relationships
-        result = await self.db.execute(
-            sql_select(Phraseset)
-            .where(Phraseset.phraseset_id == phraseset.phraseset_id)
-            .options(
-                selectinload(Phraseset.prompt_round),
-                selectinload(Phraseset.copy_round_1),
-                selectinload(Phraseset.copy_round_2),
-            )
-        )
-        phraseset_with_relations = result.scalar_one()
-
-        contributor_ids = {
-            phraseset_with_relations.prompt_round.player_id if phraseset_with_relations.prompt_round else None,
-            phraseset_with_relations.copy_round_1.player_id if phraseset_with_relations.copy_round_1 else None,
-            phraseset_with_relations.copy_round_2.player_id if phraseset_with_relations.copy_round_2 else None,
-        } - {None}  # Remove None values
+        contributor_ids = await self._get_contributor_ids(phraseset)
 
         if player.player_id in contributor_ids:
             logger.error(
