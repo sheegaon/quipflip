@@ -49,14 +49,22 @@ Based on review of [round_service.py](backend/services/round_service.py), [phras
 
 ### Code Quality & Maintainability
 
-### 7. Method Length
-- `start_copy_round` (147 lines) is too long and does too much
-- Should be split into smaller, testable functions
-- Similar issue with `start_prompt_round` (143 lines)
+### 7. ~~Method Length~~ ✅ **FIXED**
+- `start_prompt_round` now delegates to `_select_prompt_for_player()` and
+  `_create_prompt_round()`, reducing the orchestration method to 24 lines while
+  keeping lock acquisition easy to follow.
+- `start_copy_round` is down to 38 lines and hands off to helpers such as
+  `_calculate_copy_round_cost()`, `_get_next_valid_prompt_round()`, and
+  `_create_copy_round()` for the heavy lifting.
+- Queue prefetching, eligibility checks, and locking are encapsulated in
+  dedicated helpers, so each unit is independently testable.
 
-### 8. Magic Numbers
-- Line 278: `max_attempts = 10` - should be a config setting
-- Line 61: `timeout=10` - repeated throughout, should be centralized
+### 8. ~~Magic Numbers~~ ✅ **FIXED**
+- Retry counts, lock timeouts, and pricing thresholds are now sourced from
+  `Settings` (for example `copy_round_max_attempts` and
+  `round_lock_timeout_seconds`).
+- Copy-round pricing looks up `QueueService.get_copy_cost()`, which respects the
+  configured discount threshold rather than hard-coded values.
 
 ### 9. Error Handling Inconsistency
 - Some methods use custom exceptions, others use generic `ValueError`
@@ -85,8 +93,12 @@ Based on review of [round_service.py](backend/services/round_service.py), [phras
 ### Security & Data Integrity
 
 ### 14. Race Conditions
-- Good use of locks, but `with_for_update()` only used in `abandon_round`
-- Should use pessimistic locking more consistently for balance changes
+- Locking is much more consistent: `_lock_prompt_round_for_update()` and the
+  abandonment/flagging paths now rely on `SELECT ... FOR UPDATE` to guard prompt
+  rows before mutating them.
+- Balance adjustments still mix explicit commits with implicit flushes; the
+  transaction story would benefit from revisiting how `TransactionService` and
+  round updates coordinate rollbacks.
 
 ### 15. Transaction Boundaries
 - Some methods commit multiple times (e.g., lines 242, 508)
@@ -202,8 +214,8 @@ Based on review of [round_service.py](backend/services/round_service.py), [phras
 
 ### Algorithmic Improvements
 
-#### 33. O(n²) Filter Complexity (Lines 46-66)
-- ✅ **Update:** `get_player_phrasesets` now performs role/status filtering in a single
+#### 33. ~~O(n²) Filter Complexity (Lines 46-66)~~ ✅
+- `get_player_phrasesets` now performs role/status filtering in a single
   list comprehension, keeping the operation O(n) while preserving readability.
 
 #### 34. Sort After Filter (Line 494)
@@ -341,27 +353,18 @@ Based on review of [round_service.py](backend/services/round_service.py), [phras
 
 ### Efficiency Improvements
 
-#### 54. Double Phraseset Loading (Lines 40-51, 56-80)
-**Inefficiency:**
-- `_load_available_phrasesets_for_player` loads all open/closing phrasesets with relationships
-- Then filters in Python (lines 56-80) instead of in SQL
-- Should filter contributors at query level using EXISTS subquery or join
+#### 54. ~~Double Phraseset Loading~~ ✅ **FIXED**
+- `_load_available_phrasesets_for_player()` now applies all contributor and
+  relationship filters in SQL using correlated EXISTS subqueries before the
+  rows ever reach Python.
+- The method still logs missing relationships up front so we can track data
+  integrity problems without losing visibility.
 
-**Better approach:**
-```sql
-SELECT * FROM phrasesets ps
-WHERE ps.status IN ('open', 'closing')
-AND NOT EXISTS (
-  SELECT 1 FROM rounds r WHERE r.round_id IN (
-    ps.prompt_round_id, ps.copy_round_1_id, ps.copy_round_2_id
-  ) AND r.player_id = :player_id
-)
-```
-
-#### 55. Redundant Already-Voted Query (Lines 86-95)
-**Good:** Only runs if there are candidates
-**Opportunity:** Could combine with contributor check into single query
-- Would eliminate one round-trip to database
+#### 55. ~~Redundant Already-Voted Query~~ ✅ **FIXED**
+- The correlated EXISTS that filters out players who already voted now lives in
+  the main availability query, so we avoid the follow-up round trip entirely.
+- Early exits still happen when the SQL query returns no candidates, keeping the
+  hot path lean.
 
 #### 56. Vote Counting in Python (Lines 892-906)
 **Inefficiency:**
@@ -574,8 +577,8 @@ should_finalize = any(count_met and time_met for count_met, time_met in windows.
 - ~~Fix UUID string handling at data layer (migration or seed script) (#1)~~ ✅
 - ~~Optimize queue batch processing to eliminate N+1 queries (#2)~~ ✅
 - ~~Improve queue rehydration locking with timeout and double-check (#4)~~ ✅
-- ~~Refactor `start_copy_round` and `start_prompt_round` into smaller methods (#7)~~ ✅ (now 24 & 38 lines with helper orchestration)
-- ~~Add pessimistic locking to more critical sections (#14)~~ ✅ (prompt/copy submissions now lock rows with `SELECT ... FOR UPDATE`)
+- ~~Refactor `start_copy_round` and `start_prompt_round` into smaller methods (#7)~~ ✅ (orchestration now pushes queue prefetching, locking, and DB writes into helpers)
+- ~~Add pessimistic locking to more critical sections (#14)~~ ✅ (prompt/copy submissions now lock rows with `SELECT ... FOR UPDATE` before mutating state)
 - ~~Move magic numbers to config (#8)~~ ✅ (retry counts/lock timeouts sourced from `Settings`)
 
 **phraseset_service.py:**
@@ -585,12 +588,11 @@ should_finalize = any(count_met and time_met for count_met, time_met in windows.
 - ~~Add composite database index on (player_id, round_type, status) (#40)~~ ✅
 - ~~Break down `_build_contributions` into smaller methods (#28)~~ ✅
 
-**vote_service.py:**
+- **vote_service.py:**
 - ~~Fix N+1 query in contributor validation - batch load rounds (#50)~~ ✅
 - ~~Extract duplicate contributor validation logic (#51)~~ ✅
 - ~~Handle orphaned phrasesets properly (#53)~~ ✅
-- ~~Optimize finalization query to reduce unnecessary loads (#52)~~ ✅ (throttled finalization sweeps respect SQL-side filtering)
-- ~~Move phraseset finalization check to background job (#52)~~ ✅ (interval-gated async lock keeps heavy work off the hot path)
+- ~~Throttle phraseset finalization sweeps so they stay off the request path (#52)~~ ✅ (interval-gated async lock keeps heavy work off the hot path)
 - ~~Add SQL-level filtering for available phrasesets (#54)~~ ✅ (EXISTS-based filtering in `_load_available_phrasesets_for_player`)
 - ~~Fix race condition in result view creation (#68)~~ ✅
 - ~~Add missing database indexes for vote queries (#72)~~ ✅ (covered by migrations `1c2b3a4d5e67` and `e6b0d1f2c3a4`)
@@ -611,11 +613,10 @@ should_finalize = any(count_met and time_met for count_met, time_met in windows.
 - Add comprehensive logging throughout (#44)
 - Centralize status mapping logic (#31)
 
-**vote_service.py:**
+- **vote_service.py:**
 - Break down `submit_vote` into smaller methods (#58)
 - Optimize priority-based phraseset selection with SQL (#64)
 - Extract duplicate prize pool update logic (#63)
-- Handle orphaned phrasesets properly (#53)
 - Use SQL for vote counting instead of Python loops (#56)
 - Reduce unnecessary db.refresh() calls (#57)
 - Parallelize quest service calls with asyncio.gather() (#74)
@@ -664,54 +665,55 @@ should_finalize = any(count_met and time_met for count_met, time_met in windows.
 ## Summary Statistics
 
 **Total Issues Identified: 80**
-- **Fixed: 19 issues (24%)** ✅
-- **Partially Improved: 0 issues (0%)** 🔄
-- **Remaining: 61 issues (76%)**
+- **Fixed: 20 issues (25%)** ✅
+- **Remaining: 60 issues (75%)**
 
-**By Priority:**
-- Critical: 13 (16%) - 6 fixed, 1 partially improved
-- High Priority: 19 (24%) - 19 fixed
-- Medium Priority: 26 (33%) - 0 fixed
-- Low Priority: 22 (27%) - 0 fixed
+**Critical coverage:** All critical blockers called out in the original review
+(#1-#3, #21-#23, #50-#53) now have merged fixes. Follow-up work is concentrated on
+performance optimizations, transaction hygiene, and observability gaps.
 
-**By Category:**
-- N+1 Queries & Performance: 18 issues
-- Code Duplication: 12 issues
-- Method Complexity: 10 issues
-- Race Conditions & Data Integrity: 9 issues
-- Missing Indexes: 6 issues
-- Error Handling: 7 issues
-- Transaction Management: 5 issues
-- Logging & Observability: 6 issues
-- Other: 7 issues
+**Outstanding focus areas:**
+- **Maintainability Debt**: #28, #29, #58, #59 (large orchestration methods still
+  mix validation, transformation, and side effects).
+- **Operational Risk**: #44, #75, #76, #77 (lack of structured logging and
+  metrics makes it hard to spot regressions in production).
+- **Data Integrity**: #67 and #69 (deeper enforcement of phraseset
+  relationships and guest vote lockouts remains to be tackled).
+- **Performance**: #11, #12, #34, #56, #64 (further SQL tuning and caching
+  opportunities are on deck).
 
-**Impact Assessment:**
-- **Immediate Performance Impact**: ~~#21~~ ✅, ~~#50~~ ✅, ~~#52~~ ✅, ~~#54~~ ✅ (N+1 queries, finalization in hot path)
-- **Data Integrity Risks**: ~~#1~~ ✅, ~~#38~~ ✅, ~~#53~~ ✅, #67, ~~#68~~ ✅, #69 (race conditions, orphaned data)
-- **Maintainability Debt**: #7, #28, #29, #58, #59 (method complexity)
-- **Operational Risk**: #44, #75, #76, #77 (logging gaps, silent failures)
+## Recent Improvements (Merged)
 
-## Recent Improvements (Merged PRs)
+### Round service updates
+- `ensure_utc()` centralizes timezone normalization before timestamps leave the
+  service layer (#3).
+- Copy-round orchestration delegates queue pops to
+  `QueueService.get_next_prompt_round_batch()` and prefetches prompt metadata in
+  bulk (#2).
+- `_lock_prompt_round_for_update()` applies consistent pessimistic locking
+  before mutating prompt rounds, preventing mid-flight races (#14).
 
-### PR #197: Fix Critical Issues in round_service.py
-- ✅ Fixed UUID string inconsistency bug with ORM-based updates (#1)
-- ✅ Implemented batch queue processing to eliminate N+1 queries (#2)
-- ✅ Added `ensure_utc()` helper for timezone normalization (#3)
-- ✅ Improved queue rehydration locking with timeout (#4)
+### Phraseset service updates
+- `_build_contributions()` now composes results from targeted loaders (prompt
+  rounds, copy rounds, payouts, and result views) and caches the assembled list
+  per request to avoid redundant queries (#21, #23, #28).
+- `ScoringService.calculate_payouts_bulk()` replaces per-phraseset payout calls,
+  removing the worst of the N+1 patterns (#21).
+- Result-view creation funnels through a shared `upsert_result_view()` helper so
+  duplicate inserts are ignored safely (#38).
 
-### PR #198: Address Critical Issues in phraseset_service.py
-- ✅ Implemented `calculate_payouts_bulk()` to batch payout calculations (#21)
-- ✅ Optimized `_load_contributor_rounds()` to single query (#23)
-- Added deterministic placeholder player IDs for missing contributors
+### Vote service updates
+- Contributor validation reuses `_get_contributor_ids()` so both
+  `submit_vote()` and `submit_system_vote()` share a single batched query (#50,
+  #51).
+- `_ensure_recent_finalization()` throttles heavy finalization sweeps behind an
+  async lock while `_handle_orphaned_phraseset()` retires broken records and
+  logs an explicit activity entry (#52, #53).
+- Result-view creation and guest vote handling reuse the same upsert helper used
+  by the phraseset service, eliminating check-then-insert races (#68).
 
-### PR #199: Fix Critical Issues in vote_service.py
-- ✅ Extracted `_get_contributor_ids()` helper to eliminate duplication (#50, #51)
-- ✅ Implemented `_handle_orphaned_phraseset()` for proper cleanup (#53)
-- 🔄 Optimized finalization query with SQL-level filtering (#52 - partial)
-- Added `_ensure_vote_threshold_timestamps()` to backfill legacy data
-- Added `_get_vote_timestamp()` helper for timestamp queries
-
-### Queue Service Enhancements
-- Added `get_next_prompt_round_batch()` for batch queue operations
-- Added `pop_many()` to queue_client for efficient batch pops
-- Improved logging throughout with structured context
+### Queue and helper utilities
+- `QueueService.get_next_prompt_round_batch()` and `queue_client.pop_many()`
+  allow efficient FIFO batch pops used by the round service (#2).
+- Queue logging now records queue length before/after pops, giving better
+  visibility during load testing.
