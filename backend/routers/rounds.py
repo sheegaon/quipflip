@@ -91,6 +91,8 @@ async def start_copy_round(
     db: AsyncSession = Depends(get_db),
 ):
     """Start a copy round."""
+    logger.info(f"[API /rounds/copy] Request from player {player.player_id}")
+
     player_service = PlayerService(db)
     transaction_service = TransactionService(db)
     round_service = RoundService(db)
@@ -101,11 +103,13 @@ async def start_copy_round(
     # Check if can start
     can_start, error = await player_service.can_start_copy_round(player)
     if not can_start:
+        logger.warning(f"[API /rounds/copy] Player {player.player_id} cannot start copy round: {error}")
         raise HTTPException(status_code=400, detail=error)
 
     try:
         round_object = await round_service.start_copy_round(player, transaction_service)
 
+        logger.info(f"[API /rounds/copy] Successfully started copy round {round_object.round_id} for player {player.player_id}")
         return StartCopyRoundResponse(
             round_id=round_object.round_id,
             original_phrase=round_object.original_phrase,
@@ -114,10 +118,11 @@ async def start_copy_round(
             cost=round_object.cost,
             discount_active=QueueService.is_copy_discount_active(),
         )
-    except NoPromptsAvailableError:
+    except NoPromptsAvailableError as e:
+        logger.error(f"[API /rounds/copy] No prompts available for player {player.player_id}: {str(e)}")
         raise HTTPException(status_code=400, detail="no_prompts_available")
     except Exception as e:
-        logger.error(f"Error starting copy round: {e}")
+        logger.error(f"[API /rounds/copy] Error starting copy round for player {player.player_id}: {e}", exc_info=True)
         raise HTTPException(status_code=400, detail=str(e))
 
 

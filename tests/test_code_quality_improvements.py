@@ -465,9 +465,9 @@ class TestGameBalanceSettings:
 
         assert settings.vote_max_votes == 20
         assert settings.vote_closing_threshold == 5
-        assert settings.vote_closing_window_minutes == 1
+        assert settings.vote_closing_window_minutes == 10
         assert settings.vote_minimum_threshold == 3
-        assert settings.vote_minimum_window_minutes == 10
+        assert settings.vote_minimum_window_minutes == 60
 
     def test_settings_are_integers(self):
         """Should all be integer values."""

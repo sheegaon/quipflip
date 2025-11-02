@@ -74,7 +74,7 @@ class ScoringService:
         copy1_player = copy1_round.player_id if copy1_round else uuid4()
         copy2_player = copy2_round.player_id if copy2_round else uuid4()
 
-        logger.info(
+        logger.debug(
             f"Calculated payouts for phraseset {phraseset.phraseset_id}: "
             f"original={original_payout}, copy1={copy1_payout}, copy2={copy2_payout}"
         )

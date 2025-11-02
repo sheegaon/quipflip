@@ -45,10 +45,10 @@ async def test_copy_available_when_prompts_in_database(db_session, player_factor
     db_session.add(prompt)
     await db_session.commit()
 
-    # Player 1 submits a prompt
+    # Player 1 submits a prompt (must be 2+ words)
     prompt_round = await round_service.start_prompt_round(player1, transaction_service)
     await round_service.submit_prompt_phrase(
-        prompt_round.round_id, "dogs", player1, transaction_service
+        prompt_round.round_id, "big dogs", player1, transaction_service
     )
     await db_session.refresh(player1)
 
@@ -69,7 +69,7 @@ async def test_copy_available_when_prompts_in_database(db_session, player_factor
     copy_round = await round_service.start_copy_round(player2, transaction_service)
     assert copy_round is not None
     assert copy_round.round_type == "copy"
-    assert copy_round.original_phrase == "DOGS"
+    assert copy_round.original_phrase == "BIG DOGS"
 
 
 @pytest.mark.asyncio
@@ -187,27 +187,32 @@ async def test_multiple_prompts_available_count(db_session, player_factory):
     round_service = RoundService(db_session)
     transaction_service = TransactionService(db_session)
 
-    # Disable all existing prompts to ensure we only use our test prompt
+    # Disable all existing prompts to ensure we only use our test prompts
     from backend.models.prompt import Prompt as PromptModel
     from sqlalchemy import update
     await db_session.execute(update(PromptModel).values(enabled=False))
     await db_session.commit()
 
-    # Seed ONE test prompt that's relevant to all phrases we'll submit
-    # Use a prompt with a short word (< 4 chars) that can be shared
-    prompt = Prompt(
+    # Seed TWO test prompts (so player1 can submit 2 prompts without seeing same prompt twice)
+    # Use prompts with short words (< 4 chars) that can be shared
+    prompt1 = Prompt(
         text=f"wet animals {uuid.uuid4().hex[:8]}",
         category="test",
         enabled=True
     )
-    db_session.add(prompt)
+    prompt2 = Prompt(
+        text=f"dry animals {uuid.uuid4().hex[:8]}",
+        category="test",
+        enabled=True
+    )
+    db_session.add_all([prompt1, prompt2])
     await db_session.commit()
 
     # Player 1 submits 2 prompts - use two-word phrases that share "wet" (3 chars, not significant)
-    for word in ["wet fish", "wet frog"]:
+    for phrase in ["wet fish", "dry frog"]:
         prompt_round = await round_service.start_prompt_round(player1, transaction_service)
         await round_service.submit_prompt_phrase(
-            prompt_round.round_id, word, player1, transaction_service
+            prompt_round.round_id, phrase, player1, transaction_service
         )
         await db_session.refresh(player1)
 

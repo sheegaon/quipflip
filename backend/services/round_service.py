@@ -268,8 +268,11 @@ class RoundService:
         - Deduct cost immediately
         - Prevent same player from getting abandoned prompt (24h)
         """
+        logger.info(f"[Copy Round Start] Player {player.player_id} attempting to start copy round")
+
         # Ensure prompt queue is hydrated before we try to pop from it
-        await self.ensure_prompt_queue_populated()
+        queue_populated = await self.ensure_prompt_queue_populated()
+        logger.info(f"[Copy Round Start] Queue populated: {queue_populated}, queue length: {QueueService.get_prompt_rounds_waiting()}")
 
         # Retry logic: try up to 10 times to get a valid prompt
         max_attempts = 10
@@ -277,25 +280,30 @@ class RoundService:
         prompt_round = None
 
         for attempt in range(max_attempts):
+            logger.debug(f"[Copy Round Start] Attempt {attempt + 1}/{max_attempts} for player {player.player_id}")
+
             # Get next prompt from queue
             prompt_round_id = QueueService.get_next_prompt_round()
             if not prompt_round_id:
+                logger.warning(f"[Copy Round Start] No prompt from queue on attempt {attempt + 1}, rehydrating...")
                 await self.ensure_prompt_queue_populated()
                 prompt_round_id = QueueService.get_next_prompt_round()
                 if not prompt_round_id:
+                    logger.error(f"[Copy Round Start] No prompts available after rehydration. Queue length: {QueueService.get_prompt_rounds_waiting()}")
                     raise NoPromptsAvailableError("No prompts available")
 
             # Get prompt round
             prompt_round = await self.db.get(Round, prompt_round_id)
             if not prompt_round:
-                logger.warning(f"Prompt round not found in DB: {prompt_round_id}")
+                logger.warning(f"[Copy Round Start] Prompt round not found in DB: {prompt_round_id} (attempt {attempt + 1})")
                 continue  # Try next prompt
 
             if prompt_round.phraseset_status in {"flagged_pending", "flagged_removed"}:
                 logger.info(
-                    "Prompt %s is flagged (status=%s), skipping for copy queue",
+                    "[Copy Round Start] Prompt %s is flagged (status=%s), skipping for copy queue (attempt %d)",
                     prompt_round_id,
                     prompt_round.phraseset_status,
+                    attempt + 1,
                 )
                 continue
 
@@ -303,7 +311,7 @@ class RoundService:
             if prompt_round.player_id == player.player_id:
                 # Put back in queue and try another
                 QueueService.add_prompt_round_to_queue(prompt_round_id)
-                logger.info(f"Player {player.player_id} got their own prompt, retrying...")
+                logger.info(f"[Copy Round Start] Player {player.player_id} got their own prompt {prompt_round_id}, retrying (attempt {attempt + 1})...")
                 continue
 
             # Prevent player from submitting multiple copies for the same prompt
@@ -316,12 +324,12 @@ class RoundService:
             if existing_copy_result.scalar_one_or_none():
                 QueueService.add_prompt_round_to_queue(prompt_round_id)
                 logger.info(
-                    f"Player {player.player_id} already submitted a copy for prompt {prompt_round_id}, retrying..."
+                    f"[Copy Round Start] Player {player.player_id} already submitted a copy for prompt {prompt_round_id}, retrying (attempt {attempt + 1})..."
                 )
                 continue
 
-            # Check if player abandoned this prompt in last 24h
-            cutoff = datetime.now(UTC) - timedelta(hours=24)
+            # Check if player abandoned this prompt within cooldown period
+            cutoff = datetime.now(UTC) - timedelta(hours=self.settings.abandoned_prompt_cooldown_hours)
             result = await self.db.execute(
                 select(PlayerAbandonedPrompt)
                 .where(PlayerAbandonedPrompt.player_id == player.player_id)
@@ -331,13 +339,18 @@ class RoundService:
             if result.scalar_one_or_none():
                 # Put back in queue and try another
                 QueueService.add_prompt_round_to_queue(prompt_round_id)
-                logger.info(f"Player {player.player_id} abandoned this prompt recently, retrying...")
+                logger.info(f"[Copy Round Start] Player {player.player_id} abandoned prompt {prompt_round_id} recently, retrying (attempt {attempt + 1})...")
                 continue
 
             # Valid prompt found!
+            logger.info(f"[Copy Round Start] Found valid prompt {prompt_round_id} for player {player.player_id} on attempt {attempt + 1}")
             break
         else:
             # Exhausted all attempts
+            logger.error(
+                f"[Copy Round Start] Could not find valid prompt for player {player.player_id} after {max_attempts} attempts. "
+                f"Queue length: {QueueService.get_prompt_rounds_waiting()}"
+            )
             raise NoPromptsAvailableError("Could not find a valid prompt after multiple attempts")
 
         # Get current copy cost (with discount if applicable)
@@ -914,10 +927,15 @@ class RoundService:
         Returns:
             True if queue has items after running, False otherwise.
         """
-        if QueueService.get_prompt_rounds_waiting() > 0:
+        current_queue_length = QueueService.get_prompt_rounds_waiting()
+        logger.debug(f"[Queue Check] Current queue length: {current_queue_length}")
+
+        if current_queue_length > 0:
             return True
 
+        logger.info("[Queue Check] Queue is empty, attempting to rehydrate from database")
         rehydrated = await self._rehydrate_prompt_queue()
+        logger.info(f"[Queue Check] Rehydrated {rehydrated} prompts from database")
         return rehydrated > 0
 
     async def _rehydrate_prompt_queue(self) -> int:
@@ -930,11 +948,15 @@ class RoundService:
         from backend.utils import lock_client
 
         # Use a shared lock so only one worker rebuilds the queue at a time.
+        logger.debug("[Queue Rehydration] Attempting to acquire rehydration lock")
         with lock_client.lock("rehydrate_prompt_queue", timeout=5):
             # Another worker might have already filled the queue while we were waiting.
-            if QueueService.get_prompt_rounds_waiting() > 0:
+            current_queue_length = QueueService.get_prompt_rounds_waiting()
+            if current_queue_length > 0:
+                logger.info(f"[Queue Rehydration] Queue already populated by another worker (length: {current_queue_length})")
                 return 0
 
+            logger.debug("[Queue Rehydration] Querying database for available prompts")
             result = await self.db.execute(
                 select(Round.round_id)
                 .join(Phraseset, Phraseset.prompt_round_id == Round.round_id, isouter=True)
@@ -952,10 +974,11 @@ class RoundService:
             prompt_ids = list(result.scalars().all())
 
             if not prompt_ids:
+                logger.warning("[Queue Rehydration] No available prompts found in database")
                 return 0
 
             for prompt_round_id in prompt_ids:
                 QueueService.add_prompt_round_to_queue(prompt_round_id)
 
-            logger.info(f"Rehydrated prompt queue with {len(prompt_ids)} prompts from database")
+            logger.info(f"[Queue Rehydration] Successfully rehydrated prompt queue with {len(prompt_ids)} prompts from database")
             return len(prompt_ids)

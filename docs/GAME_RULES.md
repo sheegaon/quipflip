@@ -60,8 +60,29 @@ The scoring service multiplies each point total by the remaining pool, divides b
 
 ## Player Limits and Penalties
 - Players may only hold one active round at a time, must have enough balance to cover the relevant cost, and cannot participate while `locked_until` is in the future (used for moderation actions).
-- Guests face stricter controls: fewer outstanding prompts (`guest_max_outstanding_quips`), and a vote lockout kicks in after `guest_vote_lockout_threshold` consecutive incorrect votes, lasting `guest_vote_lockout_hours`. The lockout resets automatically once the timer expires.
 - Abandoning a copy round or letting it time out logs a `PlayerAbandonedPrompt` record; future copy assignments skip prompts abandoned within `abandoned_prompt_cooldown_hours`.
+
+### Guest Account Restrictions
+Guest accounts ("play without registration") face several restrictions designed to prevent abuse while allowing casual exploration:
+
+**Economic limitations:**
+- Cannot claim the daily bonus (`daily_bonus_amount`), which is reserved for registered players
+- Begin with the same `starting_balance` as registered players but have no income source beyond round payouts
+
+**Activity restrictions:**
+- Limited to `guest_max_outstanding_quips` active prompts (typically 3) versus `max_outstanding_quips` (typically 10) for registered players
+- Subject to stricter rate limits: 50 requests per minute (general) and 10 votes per minute, compared to 100 and 20 for registered players
+
+**Vote lockout protection:**
+- A vote lockout automatically triggers after `guest_vote_lockout_threshold` consecutive incorrect votes, lasting `guest_vote_lockout_hours`
+- During lockout, guests cannot start new vote rounds; the error code `vote_lockout_active` is returned
+- The lockout resets automatically when the timer expires, clearing `vote_lockout_until` and resetting `consecutive_incorrect_votes` to zero
+- Correct votes immediately reset the consecutive incorrect count, preventing lockout
+
+**Account lifecycle:**
+- Inactive guest accounts (no login for 30+ days) have their usernames recycled by appending " X" to allow reuse by new players
+- Guest accounts with no rounds played after a configurable number of days (default varies) are permanently deleted along with associated data
+- Guests can upgrade to full accounts by providing an email and password through the account upgrade flow, which validates password strength and checks for email conflicts before converting the `is_guest` flag and updating credentials
 
 ## Phrase Validation Rules
 - The backend either calls the remote Phrase Validation API (`use_phrase_validator_api`) or falls back to the bundled validator. Both enforce word-count bounds (`phrase_min_words`, `phrase_max_words`), per-word length (`phrase_min_char_per_word`, `phrase_max_char_per_word`), overall length (`phrase_max_length`), and dictionary membership, while permitting a short list of connecting words.
