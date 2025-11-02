@@ -367,7 +367,17 @@ async def get_pending_results(
     Fetches all finalized phrasesets (no limit) to ensure power users
     don't miss any results.
     """
-    phraseset_service = PhrasesetService(db)
+    return await _get_pending_results_internal(player, db, None)
+
+
+async def _get_pending_results_internal(
+    player: Player,
+    db: AsyncSession,
+    phraseset_service: Optional[PhrasesetService],
+):
+    """Internal implementation that accepts optional service for reuse."""
+    if phraseset_service is None:
+        phraseset_service = PhrasesetService(db)
 
     # Fetch all finalized phrasesets by using a very high limit
     # This is acceptable because:
@@ -449,7 +459,17 @@ async def get_phraseset_summary(
     db: AsyncSession = Depends(get_db),
 ):
     """Return dashboard summary of phrasesets for the player."""
-    phraseset_service = PhrasesetService(db)
+    return await _get_phraseset_summary_internal(player, db, None)
+
+
+async def _get_phraseset_summary_internal(
+    player: Player,
+    db: AsyncSession,
+    phraseset_service: Optional[PhrasesetService],
+):
+    """Internal implementation that accepts optional service for reuse."""
+    if phraseset_service is None:
+        phraseset_service = PhrasesetService(db)
     summary = await phraseset_service.get_phraseset_summary(player.player_id)
     return PhrasesetDashboardSummary(**summary)
 
@@ -463,7 +483,17 @@ async def get_unclaimed_results(
     db: AsyncSession = Depends(get_db),
 ):
     """Return finalized phrasesets with unclaimed payouts."""
-    phraseset_service = PhrasesetService(db)
+    return await _get_unclaimed_results_internal(player, db, None)
+
+
+async def _get_unclaimed_results_internal(
+    player: Player,
+    db: AsyncSession,
+    phraseset_service: Optional[PhrasesetService],
+):
+    """Internal implementation that accepts optional service for reuse."""
+    if phraseset_service is None:
+        phraseset_service = PhrasesetService(db)
     payload = await phraseset_service.get_unclaimed_results(player.player_id)
     return UnclaimedResultsResponse(**payload)
 
@@ -491,13 +521,18 @@ async def get_dashboard_data(
         return cached_data
     
     logger.debug(f"Generating fresh dashboard data for player {player.player_id}")
-    
+
+    # Create a single PhrasesetService instance to share across calls
+    # This allows the contributions cache to work across all three endpoints,
+    # reducing payout calculations from 3x to 1x per dashboard load
+    phraseset_service = PhrasesetService(db)
+
     # Reuse existing endpoint logic by calling the internal functions
     player_balance = await get_balance(player, db)
     current_round = await get_current_round(player, db)
-    pending_results_response = await get_pending_results(player, db)
-    phraseset_summary = await get_phraseset_summary(player, db)
-    unclaimed_results_response = await get_unclaimed_results(player, db)
+    pending_results_response = await _get_pending_results_internal(player, db, phraseset_service)
+    phraseset_summary = await _get_phraseset_summary_internal(player, db, phraseset_service)
+    unclaimed_results_response = await _get_unclaimed_results_internal(player, db, phraseset_service)
 
     # Round availability needs services
     player_service = PlayerService(db)

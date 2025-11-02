@@ -14,11 +14,11 @@ class TestBasicPhraseValidation:
     """Test basic phrase format validation."""
 
     @pytest.mark.asyncio
-    async def test_valid_single_word(self, validator):
-        """Test valid single word phrase."""
+    async def test_single_word_rejected(self, validator):
+        """Test single word phrase is rejected (game requires 2+ words)."""
         is_valid, error = validator.validate("FREEDOM")
-        assert is_valid
-        assert error == ""
+        assert not is_valid
+        assert "at least 2 words" in error
 
     @pytest.mark.asyncio
     async def test_valid_two_word_phrase(self, validator):
@@ -99,23 +99,26 @@ class TestBasicPhraseValidation:
     @pytest.mark.asyncio
     async def test_word_too_long(self, validator):
         """Test word longer than 15 characters is rejected."""
-        is_valid, error = validator.validate("antidisestablishmentarianisms")  # 29 chars
+        # Use 2-word phrase with one very long word
+        is_valid, error = validator.validate("big antidisestablishmentarianisms")  # 29 chars in second word
         assert not is_valid
         assert "at most 15 characters" in error
 
     @pytest.mark.asyncio
     async def test_word_not_in_dictionary(self, validator):
         """Test word not in dictionary is rejected."""
-        is_valid, error = validator.validate("zzxxyyzz")
+        # Use 2-word phrase with one invalid word
+        is_valid, error = validator.validate("big zzxxyyzz")
         assert not is_valid
         assert "not in dictionary" in error.lower()
 
     @pytest.mark.asyncio
     async def test_case_insensitive_validation(self, validator):
         """Test validation is case insensitive."""
-        is_valid1, _ = validator.validate("FREEDOM")
-        is_valid2, _ = validator.validate("freedom")
-        is_valid3, _ = validator.validate("FrEeDoM")
+        # Use 2-word phrases (game requires 2+ words)
+        is_valid1, _ = validator.validate("BIG FREEDOM")
+        is_valid2, _ = validator.validate("big freedom")
+        is_valid3, _ = validator.validate("BiG FrEeDoM")
         assert is_valid1 and is_valid2 and is_valid3
 
 
@@ -194,21 +197,21 @@ class TestCopyValidation:
     @pytest.mark.asyncio
     async def test_exact_duplicate_rejected(self, validator):
         """Test exact duplicate of original is rejected."""
-        is_valid, error = await validator.validate_copy("freedom", "freedom")
+        is_valid, error = await validator.validate_copy("big freedom", "big freedom")
         assert not is_valid
         assert "same phrase" in error.lower()
 
     @pytest.mark.asyncio
     async def test_case_insensitive_duplicate_rejected(self, validator):
         """Test case-insensitive duplicate is rejected."""
-        is_valid, error = await validator.validate_copy("FREEDOM", "freedom")
+        is_valid, error = await validator.validate_copy("BIG FREEDOM", "big freedom")
         assert not is_valid
         assert "same phrase" in error.lower()
 
     @pytest.mark.asyncio
     async def test_different_phrase_accepted(self, validator):
         """Test different phrase is accepted."""
-        is_valid, error = await validator.validate_copy("liberty", "freedom")
+        is_valid, error = await validator.validate_copy("big liberty", "small freedom")
         assert is_valid
         assert error == ""
 
@@ -216,9 +219,9 @@ class TestCopyValidation:
     async def test_exact_duplicate_of_other_copy_rejected(self, validator):
         """Test exact duplicate of other copy is rejected."""
         is_valid, error = await validator.validate_copy(
-            phrase="independence",
-            original_phrase="freedom",
-            other_copy_phrase="independence"
+            phrase="big independence",
+            original_phrase="small freedom",
+            other_copy_phrase="big independence"
         )
         assert not is_valid
         assert "same phrase" in error.lower()
@@ -308,7 +311,7 @@ class TestSimilarityChecking:
     @pytest.mark.asyncio
     async def test_dissimilar_phrase_accepted(self, validator):
         """Test dissimilar phrase is accepted."""
-        is_valid, error = await validator.validate_copy("computer", "ocean")
+        is_valid, error = await validator.validate_copy("big computer", "small ocean")
         assert is_valid
         assert error == ""
 
@@ -317,9 +320,9 @@ class TestSimilarityChecking:
         """Test similarity check against other copy phrase."""
         # Submit a phrase that's different from both original and other copy
         is_valid, error = await validator.validate_copy(
-            phrase="mountain",
-            original_phrase="ocean",
-            other_copy_phrase="river"
+            phrase="tall mountain",
+            original_phrase="deep ocean",
+            other_copy_phrase="wide river"
         )
         assert is_valid
         assert error == ""
@@ -348,7 +351,7 @@ class TestInvalidFormatCopy:
     @pytest.mark.asyncio
     async def test_copy_word_not_in_dictionary(self, validator):
         """Test copy with invalid word is rejected."""
-        is_valid, error = await validator.validate_copy("zzxxyyzz", "freedom")
+        is_valid, error = await validator.validate_copy("big zzxxyyzz", "small freedom")
         assert not is_valid
         assert "not in dictionary" in error.lower()
 

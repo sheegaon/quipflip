@@ -20,15 +20,18 @@ class QueueService:
     def add_prompt_round_to_queue(prompt_round_id: UUID):
         """Add prompt to queue waiting for copy players."""
         queue_client.push(PROMPT_QUEUE, {"prompt_round_id": str(prompt_round_id)})
-        logger.info(f"Added prompt to queue: {prompt_round_id}")
+        new_length = queue_client.length(PROMPT_QUEUE)
+        logger.info(f"[Queue Push] Added prompt to queue: {prompt_round_id} (queue now has {new_length} items)")
 
     @staticmethod
     def get_next_prompt_round() -> UUID | None:
         """Get next prompt from queue (FIFO)."""
+        queue_length_before = queue_client.length(PROMPT_QUEUE)
         item = queue_client.pop(PROMPT_QUEUE)
         if item:
-            logger.info(f"Retrieved prompt from queue: {item['prompt_round_id']}")
+            logger.info(f"[Queue Pop] Retrieved prompt from queue: {item['prompt_round_id']} (queue had {queue_length_before} items)")
             return UUID(item["prompt_round_id"])
+        logger.debug(f"[Queue Pop] No items in queue (length was {queue_length_before})")
         return None
 
     @staticmethod

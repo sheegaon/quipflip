@@ -145,7 +145,7 @@ async def test_daily_bonus_available_after_login(test_app, db_session):
         last_login_iso = balance_data["last_login_date"]
         assert last_login_iso is not None
         last_login_dt = datetime.fromisoformat(last_login_iso)
-        assert last_login_dt.date() == date.today()
+        assert last_login_dt.date() == datetime.now(UTC).date()
         assert last_login_dt.tzinfo is not None
 
 
@@ -188,7 +188,7 @@ async def test_daily_bonus_uses_dailybonus_table_not_last_login(db_session):
     result = await db_session.execute(
         select(DailyBonus)
         .where(DailyBonus.player_id == player.player_id)
-        .where(DailyBonus.date == date.today())
+        .where(DailyBonus.date == datetime.now(UTC).date())
     )
     bonus_record = result.scalar_one_or_none()
     assert bonus_record is None
@@ -239,7 +239,7 @@ async def test_claim_daily_bonus_makes_it_unavailable(test_app, db_session):
         result = await db_session.execute(
             select(DailyBonus)
             .where(DailyBonus.player_id == player_id)
-            .where(DailyBonus.date == date.today())
+            .where(DailyBonus.date == datetime.now(UTC).date())
         )
         bonus_record = result.scalar_one_or_none()
         assert bonus_record is not None
@@ -386,7 +386,7 @@ async def test_bonus_available_next_day_after_claiming(test_app, db_session):
     await db_session.refresh(player)
 
     # Claim bonus for yesterday
-    yesterday = date.today() - timedelta(days=1)
+    yesterday = datetime.now(UTC).date() - timedelta(days=1)
     bonus_yesterday = DailyBonus(
         player_id=player.player_id,
         amount=100,
@@ -417,4 +417,4 @@ async def test_bonus_available_next_day_after_claiming(test_app, db_session):
     assert len(all_bonuses) == 2
     bonus_dates = {b.date for b in all_bonuses}
     assert yesterday in bonus_dates
-    assert date.today() in bonus_dates
+    assert datetime.now(UTC).date() in bonus_dates
