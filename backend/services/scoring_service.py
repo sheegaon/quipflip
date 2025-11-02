@@ -3,7 +3,7 @@
 from collections import defaultdict
 import logging
 from typing import Iterable
-from uuid import UUID, uuid4
+from uuid import UUID, uuid5
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,6 +17,15 @@ logger = logging.getLogger(__name__)
 
 
 settings = get_settings()
+
+
+PLACEHOLDER_PLAYER_NAMESPACE = UUID("6c057f58-7199-43ff-b4fc-17b77df5e6a2")
+
+
+def _placeholder_player_id(phraseset_id: UUID, role: str) -> UUID:
+    """Return a deterministic placeholder ID for missing contributors."""
+
+    return uuid5(PLACEHOLDER_PLAYER_NAMESPACE, f"{phraseset_id}:{role}")
 
 
 class ScoringService:
@@ -102,9 +111,18 @@ class ScoringService:
             copy1_payout = (copy1_points * prize_pool) // total_points
             copy2_payout = (copy2_points * prize_pool) // total_points
 
-        prompt_player = round_players.get(phraseset.prompt_round_id, uuid4())
-        copy1_player = round_players.get(phraseset.copy_round_1_id, uuid4())
-        copy2_player = round_players.get(phraseset.copy_round_2_id, uuid4())
+        prompt_player = round_players.get(
+            phraseset.prompt_round_id,
+            _placeholder_player_id(phraseset.phraseset_id, "prompt"),
+        )
+        copy1_player = round_players.get(
+            phraseset.copy_round_1_id,
+            _placeholder_player_id(phraseset.phraseset_id, "copy1"),
+        )
+        copy2_player = round_players.get(
+            phraseset.copy_round_2_id,
+            _placeholder_player_id(phraseset.phraseset_id, "copy2"),
+        )
 
         logger.debug(
             "Calculated payouts for phraseset %s: original=%s, copy1=%s, copy2=%s",
@@ -142,19 +160,19 @@ class ScoringService:
             "original": {
                 "points": 0,
                 "payout": 0,
-                "player_id": uuid4(),
+                "player_id": _placeholder_player_id(phraseset.phraseset_id, "prompt"),
                 "phrase": phraseset.original_phrase,
             },
             "copy1": {
                 "points": 0,
                 "payout": 0,
-                "player_id": uuid4(),
+                "player_id": _placeholder_player_id(phraseset.phraseset_id, "copy1"),
                 "phrase": phraseset.copy_phrase_1,
             },
             "copy2": {
                 "points": 0,
                 "payout": 0,
-                "player_id": uuid4(),
+                "player_id": _placeholder_player_id(phraseset.phraseset_id, "copy2"),
                 "phrase": phraseset.copy_phrase_2,
             },
         }
