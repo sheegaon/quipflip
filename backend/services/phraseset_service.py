@@ -4,8 +4,7 @@ from datetime import datetime, UTC
 from typing import Iterable, Optional, Tuple
 from uuid import UUID, uuid4
 
-from sqlalchemy import select, insert as sa_insert
-from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy import select
 from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,6 +15,7 @@ from backend.models.round import Round
 from backend.models.vote import Vote
 from backend.services.activity_service import ActivityService
 from backend.services.scoring_service import ScoringService
+from backend.services.helpers import upsert_result_view
 
 
 class PhrasesetService:
@@ -688,31 +688,12 @@ class PhrasesetService:
             "result_viewed": False,
         }
 
-        dialect = self.db.bind.dialect.name if self.db.bind else ""
-        if dialect == "postgresql":
-            stmt = (
-                pg_insert(ResultView)
-                .values(**values)
-                .on_conflict_do_nothing(
-                    index_elements=[ResultView.player_id, ResultView.phraseset_id]
-                )
-            )
-        else:
-            stmt = sa_insert(ResultView).values(**values)
-            if dialect == "sqlite":
-                stmt = stmt.prefix_with("OR IGNORE")
-
-        result = await self.db.execute(stmt)
-        await self.db.flush()
-
-        inserted = bool(getattr(result, "rowcount", 0))
-
-        reload_stmt = select(ResultView).where(
-            ResultView.phraseset_id == phraseset.phraseset_id,
-            ResultView.player_id == player_id,
+        result_view, inserted = await upsert_result_view(
+            self.db,
+            phraseset_id=phraseset.phraseset_id,
+            player_id=player_id,
+            values=values,
         )
-        reload_result = await self.db.execute(reload_stmt)
-        result_view = reload_result.scalar_one()
 
         # Ensure payout amount reflects current calculation even if record already existed
         if not inserted and result_view.payout_amount != payout_amount:

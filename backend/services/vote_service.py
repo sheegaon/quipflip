@@ -8,8 +8,7 @@ from datetime import datetime, UTC, timedelta
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, or_, insert as sa_insert
-from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy import select, and_, or_
 from sqlalchemy.orm import selectinload
 from backend.utils.exceptions import (
     NoPhrasesetsAvailableError,
@@ -27,6 +26,7 @@ from backend.models.vote import Vote
 from backend.models.result_view import ResultView
 from backend.services.transaction_service import TransactionService
 from backend.services.scoring_service import ScoringService
+from backend.services.helpers import upsert_result_view
 from backend.services.activity_service import ActivityService
 from backend.config import get_settings
 
@@ -154,73 +154,34 @@ class VoteService:
 
     async def _create_result_view_for_player(
         self,
-        phraseset: Phraseset,
+        _phraseset: Phraseset,
         phraseset_id: UUID,
         player_id: UUID,
+        player_payout: int,
     ) -> tuple[ResultView, bool]:
         """Create a result view for the contributor, handling duplicates gracefully."""
 
-        scoring_service = ScoringService(self.db)
-        payouts = await scoring_service.calculate_payouts(phraseset)
-
-        player_payout = 0
-        for payout_info in payouts.values():
-            if payout_info["player_id"] == player_id:
-                player_payout = payout_info["payout"]
-                break
-
-        now = datetime.now(UTC)
         values = {
             "view_id": uuid.uuid4(),
             "phraseset_id": phraseset_id,
             "player_id": player_id,
             "payout_amount": player_payout,
-            "result_viewed": True,
-            "first_viewed_at": now,
-            "result_viewed_at": now,
+            "result_viewed": False,
         }
 
-        dialect = self.db.bind.dialect.name if self.db.bind else ""
-        if dialect == "postgresql":
-            stmt = (
-                pg_insert(ResultView)
-                .values(**values)
-                .on_conflict_do_nothing(
-                    index_elements=[ResultView.player_id, ResultView.phraseset_id]
-                )
-            )
-        else:
-            stmt = sa_insert(ResultView).values(**values)
-            if dialect == "sqlite":
-                stmt = stmt.prefix_with("OR IGNORE")
-
-        result = await self.db.execute(stmt)
-        await self.db.flush()
-
-        inserted = bool(getattr(result, "rowcount", 0))
-
-        select_stmt = (
-            select(ResultView)
-            .where(ResultView.phraseset_id == phraseset_id)
-            .where(ResultView.player_id == player_id)
+        result_view, inserted = await upsert_result_view(
+            self.db,
+            phraseset_id=phraseset_id,
+            player_id=player_id,
+            values=values,
         )
-        result_view = (await self.db.execute(select_stmt)).scalar_one()
 
-        if not inserted:
-            if result_view.payout_amount != player_payout:
-                result_view.payout_amount = player_payout
-            if not result_view.result_viewed:
-                result_view.result_viewed = True
-            if not result_view.first_viewed_at:
-                result_view.first_viewed_at = now
-            if not result_view.result_viewed_at:
-                result_view.result_viewed_at = now
-        else:
+        if inserted:
             logger.info(
                 "Player %s viewed results for phraseset %s (payout $%s was auto-distributed at finalization)",
                 player_id,
                 phraseset_id,
-                result_view.payout_amount,
+                player_payout,
             )
 
         return result_view, inserted
@@ -1026,6 +987,15 @@ class VoteService:
 
         role, phrase = contributor_map[player_id]
 
+        scoring_service = ScoringService(self.db)
+        payouts = await scoring_service.calculate_payouts(phraseset)
+
+        player_payout = 0
+        for payout_info in payouts.values():
+            if payout_info["player_id"] == player_id:
+                player_payout = payout_info["payout"]
+                break
+
         # Get or create result view
         result = await self.db.execute(
             select(ResultView)
@@ -1033,27 +1003,34 @@ class VoteService:
             .where(ResultView.player_id == player_id)
         )
         result_view = result.scalar_one_or_none()
-        created_new = False
+        already_viewed = bool(result_view and result_view.result_viewed)
 
-        commit_needed = False
         if not result_view:
-            result_view, created_new = await self._create_result_view_for_player(
+            result_view, _ = await self._create_result_view_for_player(
                 phraseset,
                 phraseset_id,
                 player_id,
+                player_payout,
             )
-            commit_needed = created_new
-        else:
-            created_new = False
 
-        if not created_new:
-            if not result_view.result_viewed:
-                result_view.result_viewed = True
-                result_view.result_viewed_at = datetime.now(UTC)
-                commit_needed = True
-            if not result_view.first_viewed_at:
-                result_view.first_viewed_at = datetime.now(UTC)
-                commit_needed = True
+        commit_needed = False
+        now = datetime.now(UTC)
+
+        if result_view.payout_amount != player_payout:
+            result_view.payout_amount = player_payout
+            commit_needed = True
+
+        if not result_view.first_viewed_at:
+            result_view.first_viewed_at = now
+            commit_needed = True
+
+        if not result_view.result_viewed:
+            result_view.result_viewed = True
+            commit_needed = True
+
+        if not result_view.result_viewed_at:
+            result_view.result_viewed_at = now
+            commit_needed = True
 
         if commit_needed:
             await self.db.commit()
@@ -1122,7 +1099,7 @@ class VoteService:
             "your_payout": result_view.payout_amount,
             "total_pool": phraseset.total_pool,
             "total_votes": total_votes,
-            "already_collected": result_view.result_viewed,  # Add the missing field
+            "already_collected": already_viewed,
             "finalized_at": phraseset.finalized_at,
             "correct_vote_count": correct_vote_count,
             "incorrect_vote_count": incorrect_vote_count,
