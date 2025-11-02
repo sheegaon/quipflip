@@ -1,11 +1,11 @@
 """Service layer for phraseset tracking and summaries."""
 from __future__ import annotations
-
 from datetime import datetime, UTC
 from typing import Iterable, Optional, Tuple
 from uuid import UUID, uuid4
 
 from sqlalchemy import select
+from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.models.player import Player
@@ -290,33 +290,49 @@ class PhrasesetService:
         player_id: UUID,
     ) -> dict:
         """Mark a finalized phraseset result as viewed (legacy endpoint for compatibility)."""
-        phraseset = await self.db.get(Phraseset, phraseset_id)
-        if not phraseset:
-            raise ValueError("Phraseset not found")
-        if phraseset.status != "finalized":
-            raise ValueError("Phraseset not yet finalized")
+        already_viewed = False
+        payout_amount = 0
+        result_view: Optional[ResultView] = None
 
-        prompt_round, copy1_round, copy2_round = await self._load_contributor_rounds(phraseset)
-        contributor_map = {
-            prompt_round.player_id,
-            copy1_round.player_id,
-            copy2_round.player_id,
-        }
-        if player_id not in contributor_map:
-            raise ValueError("Not a contributor to this phraseset")
+        async def _apply_claim_updates() -> None:
+            nonlocal already_viewed, payout_amount, result_view
 
-        result_view = await self._load_result_view(phraseset, player_id, create_if_missing=True)
-        already_viewed = result_view.result_viewed
+            phraseset_local = await self._lock_phraseset(phraseset_id)
+            if not phraseset_local:
+                raise ValueError("Phraseset not found")
+            if phraseset_local.status != "finalized":
+                raise ValueError("Phraseset not yet finalized")
 
-        if not result_view.first_viewed_at:
-            result_view.first_viewed_at = datetime.now(UTC)
+            prompt_round, copy1_round, copy2_round = await self._load_contributor_rounds(phraseset_local)
+            contributor_map = {
+                prompt_round.player_id,
+                copy1_round.player_id,
+                copy2_round.player_id,
+            }
+            if player_id not in contributor_map:
+                raise ValueError("Not a contributor to this phraseset")
 
-        if not result_view.result_viewed:
-            result_view.result_viewed = True
-            result_view.result_viewed_at = datetime.now(UTC)
-            await self.db.commit()
-        else:
-            await self.db.commit()
+            result_view = await self._load_result_view(phraseset_local, player_id)
+            already_viewed = bool(result_view and result_view.result_viewed)
+            if result_view is None:
+                result_view = await self._create_result_view(phraseset_local, player_id)
+
+            payout_amount = result_view.payout_amount
+
+            if not result_view.first_viewed_at:
+                result_view.first_viewed_at = datetime.now(UTC)
+
+            if not result_view.result_viewed:
+                result_view.result_viewed = True
+                result_view.result_viewed_at = datetime.now(UTC)
+
+        try:
+            async with self.db.begin():
+                await _apply_claim_updates()
+        except InvalidRequestError as exc:
+            if "already begun" not in str(exc).lower():
+                raise
+            await _apply_claim_updates()
 
         player = await self.db.get(Player, player_id)
         if player:
@@ -327,7 +343,7 @@ class PhrasesetService:
 
         return {
             "success": True,
-            "amount": result_view.payout_amount,
+            "amount": payout_amount,
             "new_balance": player.balance if player else 0,
             "already_claimed": already_viewed,  # For compatibility with frontend
         }
@@ -532,33 +548,45 @@ class PhrasesetService:
             raise ValueError("Phraseset contributors missing")
         return prompt_round, copy1_round, copy2_round
 
+    async def _lock_phraseset(self, phraseset_id: UUID) -> Optional[Phraseset]:
+        """Load and lock a phraseset row for update within an active transaction."""
+        result = await self.db.execute(
+            select(Phraseset)
+            .where(Phraseset.phraseset_id == phraseset_id)
+            .with_for_update()
+        )
+        return result.scalar_one_or_none()
+
     async def _load_result_view(
         self,
         phraseset: Phraseset,
         player_id: UUID,
-        create_if_missing: bool = False,
-    ) -> ResultView:
-        """Fetch or optionally create a result view record."""
+    ) -> Optional[ResultView]:
+        """Fetch an existing result view record."""
         result = await self.db.execute(
             select(ResultView)
             .where(ResultView.phraseset_id == phraseset.phraseset_id)
             .where(ResultView.player_id == player_id)
         )
-        result_view = result.scalar_one_or_none()
+        return result.scalar_one_or_none()
 
-        if create_if_missing and not result_view:
-            payouts = await self.scoring_service.calculate_payouts(phraseset)
-            payout_amount = self._extract_player_payout(payouts, player_id) or 0
-            result_view = ResultView(
-                view_id=uuid4(),
-                phraseset_id=phraseset.phraseset_id,
-                player_id=player_id,
-                payout_amount=payout_amount,
-                result_viewed=False,  # Updated to use result_viewed
-            )
-            self.db.add(result_view)
-            await self.db.flush()
-
+    async def _create_result_view(
+        self,
+        phraseset: Phraseset,
+        player_id: UUID,
+    ) -> ResultView:
+        """Create a result view entry for a player with the current payout amount."""
+        payouts = await self.scoring_service.calculate_payouts(phraseset)
+        payout_amount = self._extract_player_payout(payouts, player_id) or 0
+        result_view = ResultView(
+            view_id=uuid4(),
+            phraseset_id=phraseset.phraseset_id,
+            player_id=player_id,
+            payout_amount=payout_amount,
+            result_viewed=False,
+        )
+        self.db.add(result_view)
+        await self.db.flush()
         return result_view
 
     async def _load_players(
