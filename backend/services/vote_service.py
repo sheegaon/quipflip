@@ -2,6 +2,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_
 from sqlalchemy.orm import selectinload
+from sqlalchemy.exc import IntegrityError
 from datetime import datetime, UTC, timedelta
 from backend.utils.exceptions import (
     NoPhrasesetsAvailableError,
@@ -39,62 +40,70 @@ class VoteService:
 
     async def _load_available_phrasesets_for_player(self, player_id: UUID) -> list[Phraseset]:
         """Load phrasesets the player can vote on (excludes contributors and already-voted)."""
+
+        missing_relationships_clause = or_(
+            Phraseset.prompt_round_id.is_(None),
+            Phraseset.copy_round_1_id.is_(None),
+            Phraseset.copy_round_2_id.is_(None),
+        )
+
+        # Log phrasesets with missing relationships so data issues remain visible in production
+        missing_relationships = await self.db.execute(
+            select(
+                Phraseset.phraseset_id,
+                Phraseset.prompt_round_id,
+                Phraseset.copy_round_1_id,
+                Phraseset.copy_round_2_id,
+            )
+            .where(Phraseset.status.in_(["open", "closing"]))
+            .where(missing_relationships_clause)
+        )
+        for phraseset_id, prompt_round_id, copy_round_1_id, copy_round_2_id in missing_relationships.all():
+            logger.warning(
+                "Skipping phraseset %s with missing relationships: prompt_round=%s, copy_round_1=%s, copy_round_2=%s",
+                phraseset_id,
+                prompt_round_id is not None,
+                copy_round_1_id is not None,
+                copy_round_2_id is not None,
+            )
+
+        contributor_exists = (
+            select(1)
+            .select_from(Round)
+            .where(Round.player_id == player_id)
+            .where(
+                or_(
+                    Round.round_id == Phraseset.prompt_round_id,
+                    Round.round_id == Phraseset.copy_round_1_id,
+                    Round.round_id == Phraseset.copy_round_2_id,
+                )
+            )
+            .correlate(Phraseset)
+            .exists()
+        )
+
+        already_voted_exists = (
+            select(1)
+            .select_from(Vote)
+            .where(Vote.player_id == player_id)
+            .where(Vote.phraseset_id == Phraseset.phraseset_id)
+            .correlate(Phraseset)
+            .exists()
+        )
+
         result = await self.db.execute(
             select(Phraseset)
             .where(Phraseset.status.in_(["open", "closing"]))
+            .where(~missing_relationships_clause)
+            .where(~contributor_exists)
+            .where(~already_voted_exists)
             .options(
                 selectinload(Phraseset.prompt_round),
                 selectinload(Phraseset.copy_round_1),
                 selectinload(Phraseset.copy_round_2),
             )
         )
-        all_phrasesets = list(result.scalars().all())
-        if not all_phrasesets:
-            return []
-
-        # Filter out phrasesets where player was a contributor
-        candidate_phrasesets = []
-        for ps in all_phrasesets:
-            # Skip phrasesets with missing relationships (data integrity issue)
-            if not ps.prompt_round or not ps.copy_round_1 or not ps.copy_round_2:
-                logger.warning(
-                    f"Skipping phraseset {ps.phraseset_id} with missing relationships: "
-                    f"prompt_round={ps.prompt_round is not None}, "
-                    f"copy_round_1={ps.copy_round_1 is not None}, "
-                    f"copy_round_2={ps.copy_round_2 is not None}"
-                )
-                continue
-
-            # Get contributor player IDs
-            contributor_ids = {
-                ps.prompt_round.player_id,
-                ps.copy_round_1.player_id,
-                ps.copy_round_2.player_id,
-            }
-
-            # Skip if player was a contributor
-            if player_id in contributor_ids:
-                logger.debug(f"Filtering out phraseset {ps.phraseset_id} - player {player_id} was a contributor")
-                continue
-
-            candidate_phrasesets.append(ps)
-        candidate_ids = [ws.phraseset_id for ws in candidate_phrasesets]
-
-        if not candidate_phrasesets:
-            return []
-
-        # Filter out phrasesets where player already voted
-        voted_ids: set[UUID] = set()
-        if candidate_ids:
-            vote_result = await self.db.execute(
-                select(Vote.phraseset_id)
-                .where(Vote.player_id == player_id)
-                .where(Vote.phraseset_id.in_(candidate_ids))
-            )
-            voted_ids = {row[0] for row in vote_result.all()}
-
-        available = [ws for ws in candidate_phrasesets if ws.phraseset_id not in voted_ids]
-        return available
+        return list(result.scalars().all())
 
     async def _get_contributor_ids(self, phraseset: Phraseset) -> set[UUID]:
         """Load all contributor player IDs for a phraseset with a single query."""
@@ -111,6 +120,59 @@ class VoteService:
             select(Round.player_id).where(Round.round_id.in_(round_ids))
         )
         return {row[0] for row in result.all()}
+
+    async def _create_result_view_for_player(
+        self,
+        phraseset: Phraseset,
+        phraseset_id: UUID,
+        player_id: UUID,
+    ) -> tuple[ResultView, bool]:
+        """Create a result view for the contributor, handling duplicates gracefully."""
+
+        scoring_service = ScoringService(self.db)
+        payouts = await scoring_service.calculate_payouts(phraseset)
+
+        player_payout = 0
+        for payout_info in payouts.values():
+            if payout_info["player_id"] == player_id:
+                player_payout = payout_info["payout"]
+                break
+
+        result_view = ResultView(
+            view_id=uuid.uuid4(),
+            phraseset_id=phraseset_id,
+            player_id=player_id,
+            payout_amount=player_payout,
+            result_viewed=True,
+            first_viewed_at=datetime.now(UTC),
+            result_viewed_at=datetime.now(UTC),
+        )
+        self.db.add(result_view)
+
+        try:
+            await self.db.commit()
+        except IntegrityError:
+            await self.db.rollback()
+            logger.debug(
+                "Result view already exists for player %s and phraseset %s; using existing record",
+                player_id,
+                phraseset_id,
+            )
+            result = await self.db.execute(
+                select(ResultView)
+                .where(ResultView.phraseset_id == phraseset_id)
+                .where(ResultView.player_id == player_id)
+            )
+            existing_view = result.scalar_one()
+            return existing_view, False
+
+        logger.info(
+            "Player %s viewed results for phraseset %s (payout $%s was auto-distributed at finalization)",
+            player_id,
+            phraseset_id,
+            result_view.payout_amount,
+        )
+        return result_view, True
 
     async def get_available_phrasesets_for_player(self, player_id: UUID) -> Phraseset | None:
         """
@@ -922,34 +984,16 @@ class VoteService:
             .where(ResultView.player_id == player_id)
         )
         result_view = result.scalar_one_or_none()
+        created_new = False
 
-        # Calculate payouts if not yet done
         if not result_view:
-            scoring_service = ScoringService(self.db)
-            payouts = await scoring_service.calculate_payouts(phraseset)
-
-            # Find player's payout
-            player_payout = 0
-            for payout_info in payouts.values():
-                if payout_info["player_id"] == player_id:
-                    player_payout = payout_info["payout"]
-                    break
-
-            # Create result view and mark as viewed since player is viewing results now
-            result_view = ResultView(
-                view_id=uuid.uuid4(),
-                phraseset_id=phraseset_id,
-                player_id=player_id,
-                payout_amount=player_payout,
-                result_viewed=True,  # Mark as viewed since player is viewing results now
-                first_viewed_at=datetime.now(UTC),
-                result_viewed_at=datetime.now(UTC),  # Set viewed timestamp
+            result_view, created_new = await self._create_result_view_for_player(
+                phraseset,
+                phraseset_id,
+                player_id,
             )
-            self.db.add(result_view)
-            await self.db.commit()
 
-            logger.info(f"Player {player_id} viewed results for phraseset {phraseset_id} (payout ${player_payout} was auto-distributed at finalization)")
-        else:
+        if not created_new:
             updated = False
             # Mark as viewed if not already viewed
             if not result_view.result_viewed:

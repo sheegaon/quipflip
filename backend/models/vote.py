@@ -26,6 +26,7 @@ class Vote(Base):
     # Constraints
     __table_args__ = (
         UniqueConstraint('player_id', 'phraseset_id', name='uq_player_phraseset_vote'),
+        Index('ix_votes_phraseset_player', 'phraseset_id', 'player_id'),
     )
 
     def __repr__(self):
