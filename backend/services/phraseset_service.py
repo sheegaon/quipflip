@@ -1,11 +1,11 @@
 """Service layer for phraseset tracking and summaries."""
 from __future__ import annotations
-
 from datetime import datetime, UTC
 from typing import Iterable, Optional, Tuple
 from uuid import UUID, uuid4
 
 from sqlalchemy import select
+from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.models.player import Player
@@ -15,6 +15,7 @@ from backend.models.round import Round
 from backend.models.vote import Vote
 from backend.services.activity_service import ActivityService
 from backend.services.scoring_service import ScoringService
+from backend.services.helpers import upsert_result_view
 
 
 class PhrasesetService:
@@ -290,33 +291,49 @@ class PhrasesetService:
         player_id: UUID,
     ) -> dict:
         """Mark a finalized phraseset result as viewed (legacy endpoint for compatibility)."""
-        phraseset = await self.db.get(Phraseset, phraseset_id)
-        if not phraseset:
-            raise ValueError("Phraseset not found")
-        if phraseset.status != "finalized":
-            raise ValueError("Phraseset not yet finalized")
+        already_viewed = False
+        payout_amount = 0
+        result_view: Optional[ResultView] = None
 
-        prompt_round, copy1_round, copy2_round = await self._load_contributor_rounds(phraseset)
-        contributor_map = {
-            prompt_round.player_id,
-            copy1_round.player_id,
-            copy2_round.player_id,
-        }
-        if player_id not in contributor_map:
-            raise ValueError("Not a contributor to this phraseset")
+        async def _apply_claim_updates() -> None:
+            nonlocal already_viewed, payout_amount, result_view
 
-        result_view = await self._load_result_view(phraseset, player_id, create_if_missing=True)
-        already_viewed = result_view.result_viewed
+            phraseset_local = await self._lock_phraseset(phraseset_id)
+            if not phraseset_local:
+                raise ValueError("Phraseset not found")
+            if phraseset_local.status != "finalized":
+                raise ValueError("Phraseset not yet finalized")
 
-        if not result_view.first_viewed_at:
-            result_view.first_viewed_at = datetime.now(UTC)
+            prompt_round, copy1_round, copy2_round = await self._load_contributor_rounds(phraseset_local)
+            contributor_map = {
+                prompt_round.player_id,
+                copy1_round.player_id,
+                copy2_round.player_id,
+            }
+            if player_id not in contributor_map:
+                raise ValueError("Not a contributor to this phraseset")
 
-        if not result_view.result_viewed:
-            result_view.result_viewed = True
-            result_view.result_viewed_at = datetime.now(UTC)
-            await self.db.commit()
-        else:
-            await self.db.commit()
+            result_view = await self._load_result_view(phraseset_local, player_id)
+            already_viewed = bool(result_view and result_view.result_viewed)
+            if result_view is None:
+                result_view = await self._create_result_view(phraseset_local, player_id)
+
+            payout_amount = result_view.payout_amount
+
+            if not result_view.first_viewed_at:
+                result_view.first_viewed_at = datetime.now(UTC)
+
+            if not result_view.result_viewed:
+                result_view.result_viewed = True
+                result_view.result_viewed_at = datetime.now(UTC)
+
+        try:
+            async with self.db.begin():
+                await _apply_claim_updates()
+        except InvalidRequestError as exc:
+            if "already begun" not in str(exc).lower():
+                raise
+            await _apply_claim_updates()
 
         player = await self.db.get(Player, player_id)
         if player:
@@ -327,7 +344,7 @@ class PhrasesetService:
 
         return {
             "success": True,
-            "amount": result_view.payout_amount,
+            "amount": payout_amount,
             "new_balance": player.balance if player else 0,
             "already_claimed": already_viewed,  # For compatibility with frontend
         }
@@ -358,7 +375,49 @@ class PhrasesetService:
         if player_id in self._contributions_cache:
             return self._contributions_cache[player_id]
 
-        # Build contributions if not cached
+        prompt_rounds, prompt_round_map = await self._load_prompt_rounds_for_player(player_id)
+        copy_rounds = await self._load_copy_rounds_for_player(player_id)
+        await self._populate_missing_prompt_rounds(copy_rounds, prompt_round_map)
+
+        if not prompt_round_map:
+            return []
+
+        phrasesets, phraseset_map = await self._load_phrasesets_for_prompts(prompt_round_map)
+        result_view_map = await self._load_result_views_for_player(player_id, phrasesets)
+        payouts_by_phraseset = await self._load_payouts_for_phrasesets(phrasesets)
+
+        contributions = []
+        contributions.extend(
+            self._build_prompt_contribution_entries(
+                prompt_rounds,
+                phraseset_map,
+                result_view_map,
+                payouts_by_phraseset,
+            )
+        )
+        contributions.extend(
+            self._build_copy_contribution_entries(
+                copy_rounds,
+                prompt_round_map,
+                phraseset_map,
+                result_view_map,
+                payouts_by_phraseset,
+            )
+        )
+
+        contributions.sort(
+            key=lambda entry: entry["created_at"] or datetime.now(UTC),
+            reverse=True,
+        )
+
+        self._contributions_cache[player_id] = contributions
+        return contributions
+
+    async def _load_prompt_rounds_for_player(
+        self, player_id: UUID
+    ) -> Tuple[list[Round], dict[UUID, Round]]:
+        """Fetch submitted prompt rounds and build a lookup map."""
+
         prompt_result = await self.db.execute(
             select(Round)
             .where(Round.player_id == player_id)
@@ -367,6 +426,10 @@ class PhrasesetService:
         )
         prompt_rounds = list(prompt_result.scalars().all())
         prompt_round_map = {prompt.round_id: prompt for prompt in prompt_rounds}
+        return prompt_rounds, prompt_round_map
+
+    async def _load_copy_rounds_for_player(self, player_id: UUID) -> list[Round]:
+        """Fetch submitted copy rounds for the player."""
 
         copy_result = await self.db.execute(
             select(Round)
@@ -374,7 +437,14 @@ class PhrasesetService:
             .where(Round.round_type == "copy")
             .where(Round.status == "submitted")
         )
-        copy_rounds = list(copy_result.scalars().all())
+        return list(copy_result.scalars().all())
+
+    async def _populate_missing_prompt_rounds(
+        self,
+        copy_rounds: list[Round],
+        prompt_round_map: dict[UUID, Round],
+    ) -> None:
+        """Ensure prompt rounds referenced by copy rounds are present in the cache."""
 
         copy_prompt_ids = {
             copy.prompt_round_id
@@ -382,47 +452,83 @@ class PhrasesetService:
             if copy.prompt_round_id is not None
         }
         missing_prompt_ids = copy_prompt_ids - set(prompt_round_map.keys())
-        if missing_prompt_ids:
-            missing_prompt_result = await self.db.execute(
-                select(Round).where(Round.round_id.in_(list(missing_prompt_ids)))
-            )
-            for prompt in missing_prompt_result.scalars().all():
-                prompt_round_map[prompt.round_id] = prompt
+        if not missing_prompt_ids:
+            return
 
-        all_prompt_ids = set(prompt_round_map.keys())
-        if not all_prompt_ids:
-            return []
+        missing_prompt_result = await self.db.execute(
+            select(Round).where(Round.round_id.in_(list(missing_prompt_ids)))
+        )
+        for prompt in missing_prompt_result.scalars().all():
+            prompt_round_map[prompt.round_id] = prompt
+
+    async def _load_phrasesets_for_prompts(
+        self, prompt_round_map: dict[UUID, Round]
+    ) -> Tuple[list[Phraseset], dict[UUID, Phraseset]]:
+        """Load phrasesets tied to the supplied prompt rounds."""
+
+        prompt_ids = list(prompt_round_map.keys())
+        if not prompt_ids:
+            return [], {}
 
         phraseset_result = await self.db.execute(
-            select(Phraseset).where(Phraseset.prompt_round_id.in_(all_prompt_ids))
+            select(Phraseset).where(Phraseset.prompt_round_id.in_(prompt_ids))
         )
         phrasesets = list(phraseset_result.scalars().all())
         phraseset_map = {phraseset.prompt_round_id: phraseset for phraseset in phrasesets}
+        return phrasesets, phraseset_map
+
+    async def _load_result_views_for_player(
+        self, player_id: UUID, phrasesets: list[Phraseset]
+    ) -> dict[UUID, ResultView]:
+        """Load any existing result views for the player."""
 
         phraseset_ids = [phraseset.phraseset_id for phraseset in phrasesets]
-        result_view_map: dict[UUID, ResultView] = {}
-        if phraseset_ids:
-            rv_result = await self.db.execute(
-                select(ResultView)
-                .where(ResultView.player_id == player_id)
-                .where(ResultView.phraseset_id.in_(phraseset_ids))
-            )
-            result_view_map = {
-                rv.phraseset_id: rv
-                for rv in rv_result.scalars().all()
-            }
+        if not phraseset_ids:
+            return {}
+
+        rv_result = await self.db.execute(
+            select(ResultView)
+            .where(ResultView.player_id == player_id)
+            .where(ResultView.phraseset_id.in_(phraseset_ids))
+        )
+        return {rv.phraseset_id: rv for rv in rv_result.scalars().all()}
+
+    async def _load_payouts_for_phrasesets(
+        self, phrasesets: list[Phraseset]
+    ) -> dict[UUID, dict]:
+        """Calculate payouts for finalized phrasesets."""
+
+        finalized = [
+            phraseset for phraseset in phrasesets if phraseset.status == "finalized"
+        ]
+        if not finalized:
+            return {}
+        return await self.scoring_service.calculate_payouts_bulk(finalized)
+
+    def _build_prompt_contribution_entries(
+        self,
+        prompt_rounds: list[Round],
+        phraseset_map: dict[UUID, Phraseset],
+        result_view_map: dict[UUID, ResultView],
+        payouts_by_phraseset: dict[UUID, dict],
+    ) -> list[dict]:
+        """Build contribution metadata for prompt rounds."""
 
         contributions: list[dict] = []
-        payout_cache: dict[UUID, dict] = {}
-
         for prompt_round in prompt_rounds:
             phraseset = phraseset_map.get(prompt_round.round_id)
-            result_view = result_view_map.get(phraseset.phraseset_id) if phraseset else None
+            result_view = (
+                result_view_map.get(phraseset.phraseset_id) if phraseset else None
+            )
             result_viewed = result_view.result_viewed if result_view else False
             your_payout = None
             if phraseset and phraseset.status == "finalized":
-                payouts = await self._get_payouts_cached(phraseset, payout_cache)
-                your_payout = self._extract_player_payout(payouts, prompt_round.player_id)
+                payouts = payouts_by_phraseset.get(phraseset.phraseset_id)
+                if payouts:
+                    your_payout = self._extract_player_payout(
+                        payouts,
+                        prompt_round.player_id,
+                    )
                 if result_view and result_view.payout_amount:
                     your_payout = result_view.payout_amount
 
@@ -447,23 +553,41 @@ class PhrasesetService:
                     "new_activity_count": 0,
                 }
             )
+        return contributions
 
+    def _build_copy_contribution_entries(
+        self,
+        copy_rounds: list[Round],
+        prompt_round_map: dict[UUID, Round],
+        phraseset_map: dict[UUID, Phraseset],
+        result_view_map: dict[UUID, ResultView],
+        payouts_by_phraseset: dict[UUID, dict],
+    ) -> list[dict]:
+        """Build contribution metadata for copy rounds."""
+
+        contributions: list[dict] = []
         for copy_round in copy_rounds:
             prompt_round = prompt_round_map.get(copy_round.prompt_round_id)
             phraseset = phraseset_map.get(copy_round.prompt_round_id)
 
-            # Skip if phraseset exists but this copy round is not one of the actual contributors
-            # This can happen when a player submitted a copy but was not selected for the final phraseset
-            if phraseset:
-                if copy_round.round_id not in {phraseset.copy_round_1_id, phraseset.copy_round_2_id}:
-                    continue
+            if phraseset and copy_round.round_id not in {
+                phraseset.copy_round_1_id,
+                phraseset.copy_round_2_id,
+            }:
+                continue
 
-            result_view = result_view_map.get(phraseset.phraseset_id) if phraseset else None
+            result_view = (
+                result_view_map.get(phraseset.phraseset_id) if phraseset else None
+            )
             result_viewed = result_view.result_viewed if result_view else False
             your_payout = None
             if phraseset and phraseset.status == "finalized":
-                payouts = await self._get_payouts_cached(phraseset, payout_cache)
-                your_payout = self._extract_player_payout(payouts, copy_round.player_id)
+                payouts = payouts_by_phraseset.get(phraseset.phraseset_id)
+                if payouts:
+                    your_payout = self._extract_player_payout(
+                        payouts,
+                        copy_round.player_id,
+                    )
                 if result_view and result_view.payout_amount:
                     your_payout = result_view.payout_amount
 
@@ -471,68 +595,109 @@ class PhrasesetService:
                 {
                     "phraseset_id": phraseset.phraseset_id if phraseset else None,
                     "prompt_round_id": copy_round.prompt_round_id,
-                    "prompt_text": phraseset.prompt_text if phraseset else (prompt_round.prompt_text if prompt_round else ""),
+                    "prompt_text": phraseset.prompt_text
+                    if phraseset
+                    else (prompt_round.prompt_text if prompt_round else ""),
                     "your_role": "copy",
                     "your_phrase": copy_round.copy_phrase,
                     "original_phrase": copy_round.original_phrase,
                     "status": self._derive_status(prompt_round, phraseset),
                     "created_at": self._ensure_utc(copy_round.created_at),
-                    "updated_at": self._determine_updated_at(prompt_round, phraseset, fallback=copy_round.created_at),
+                    "updated_at": self._determine_updated_at(
+                        prompt_round, phraseset, fallback=copy_round.created_at
+                    ),
                     "vote_count": phraseset.vote_count if phraseset else 0,
-                    "third_vote_at": self._ensure_utc(phraseset.third_vote_at) if phraseset else None,
-                    "fifth_vote_at": self._ensure_utc(phraseset.fifth_vote_at) if phraseset else None,
-                    "finalized_at": self._ensure_utc(phraseset.finalized_at) if phraseset else None,
-                    "has_copy1": bool(prompt_round.copy1_player_id) if prompt_round else bool(phraseset),
-                    "has_copy2": bool(prompt_round.copy2_player_id) if prompt_round else bool(phraseset),
+                    "third_vote_at": self._ensure_utc(phraseset.third_vote_at)
+                    if phraseset
+                    else None,
+                    "fifth_vote_at": self._ensure_utc(phraseset.fifth_vote_at)
+                    if phraseset
+                    else None,
+                    "finalized_at": self._ensure_utc(phraseset.finalized_at)
+                    if phraseset
+                    else None,
+                    "has_copy1": bool(prompt_round.copy1_player_id)
+                    if prompt_round
+                    else bool(phraseset),
+                    "has_copy2": bool(prompt_round.copy2_player_id)
+                    if prompt_round
+                    else bool(phraseset),
                     "your_payout": your_payout,
                     "result_viewed": result_viewed,
                     "new_activity_count": 0,
                 }
             )
-
-        # Sort descending by created_at
-        contributions.sort(key=lambda entry: entry["created_at"] or datetime.now(UTC), reverse=True)
-
-        # Cache the results for this request
-        self._contributions_cache[player_id] = contributions
-
         return contributions
 
     async def _load_contributor_rounds(self, phraseset: Phraseset) -> tuple[Round, Round, Round]:
-        """Load prompt and copy rounds for a phraseset."""
-        prompt_round = await self.db.get(Round, phraseset.prompt_round_id)
-        copy1_round = await self.db.get(Round, phraseset.copy_round_1_id)
-        copy2_round = await self.db.get(Round, phraseset.copy_round_2_id)
+        """Load prompt and copy rounds for a phraseset using a single query."""
+        round_ids = [
+            phraseset.prompt_round_id,
+            phraseset.copy_round_1_id,
+            phraseset.copy_round_2_id,
+        ]
+        result = await self.db.execute(
+            select(Round).where(Round.round_id.in_(round_ids))
+        )
+        rounds = {round_.round_id: round_ for round_ in result.scalars().all()}
+
+        prompt_round = rounds.get(phraseset.prompt_round_id)
+        copy1_round = rounds.get(phraseset.copy_round_1_id)
+        copy2_round = rounds.get(phraseset.copy_round_2_id)
+
         if not prompt_round or not copy1_round or not copy2_round:
             raise ValueError("Phraseset contributors missing")
         return prompt_round, copy1_round, copy2_round
+
+    async def _lock_phraseset(self, phraseset_id: UUID) -> Optional[Phraseset]:
+        """Load and lock a phraseset row for update within an active transaction."""
+        result = await self.db.execute(
+            select(Phraseset)
+            .where(Phraseset.phraseset_id == phraseset_id)
+            .with_for_update()
+        )
+        return result.scalar_one_or_none()
 
     async def _load_result_view(
         self,
         phraseset: Phraseset,
         player_id: UUID,
-        create_if_missing: bool = False,
-    ) -> ResultView:
-        """Fetch or optionally create a result view record."""
+    ) -> Optional[ResultView]:
+        """Fetch an existing result view record."""
         result = await self.db.execute(
             select(ResultView)
             .where(ResultView.phraseset_id == phraseset.phraseset_id)
             .where(ResultView.player_id == player_id)
         )
-        result_view = result.scalar_one_or_none()
+        return result.scalar_one_or_none()
 
-        if create_if_missing and not result_view:
-            payouts = await self.scoring_service.calculate_payouts(phraseset)
-            payout_amount = self._extract_player_payout(payouts, player_id) or 0
-            result_view = ResultView(
-                view_id=uuid4(),
-                phraseset_id=phraseset.phraseset_id,
-                player_id=player_id,
-                payout_amount=payout_amount,
-                result_viewed=False,  # Updated to use result_viewed
-            )
-            self.db.add(result_view)
-            await self.db.flush()
+    async def _create_result_view(
+        self,
+        phraseset: Phraseset,
+        player_id: UUID,
+    ) -> ResultView:
+        """Create a result view entry for a player with the current payout amount."""
+        payouts = await self.scoring_service.calculate_payouts(phraseset)
+        payout_amount = self._extract_player_payout(payouts, player_id) or 0
+
+        values = {
+            "view_id": uuid4(),
+            "phraseset_id": phraseset.phraseset_id,
+            "player_id": player_id,
+            "payout_amount": payout_amount,
+            "result_viewed": False,
+        }
+
+        result_view, inserted = await upsert_result_view(
+            self.db,
+            phraseset_id=phraseset.phraseset_id,
+            player_id=player_id,
+            values=values,
+        )
+
+        # Ensure payout amount reflects current calculation even if record already existed
+        if not inserted and result_view.payout_amount != payout_amount:
+            result_view.payout_amount = payout_amount
 
         return result_view
 
@@ -563,6 +728,7 @@ class PhrasesetService:
         if phraseset.phraseset_id not in cache:
             cache[phraseset.phraseset_id] = await self.scoring_service.calculate_payouts(phraseset)
         return cache[phraseset.phraseset_id]
+
     def _extract_player_payout(self, payouts: dict, player_id: UUID) -> Optional[int]:
         """Get payout value for specific player from payout structure."""
         for info in payouts.values():

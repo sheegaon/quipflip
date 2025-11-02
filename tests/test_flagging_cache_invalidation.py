@@ -229,7 +229,7 @@ async def test_abandoned_prompt_not_counted_in_available(db_session, player_fact
     prompt_round = await round_service.start_prompt_round(player_a, transaction_service_a)
     await round_service.submit_prompt_phrase(
         prompt_round.round_id,
-        "SOMETHING COOL",
+        "TOTALLY DIFFERENT",
         player_a,
         transaction_service_a,
     )

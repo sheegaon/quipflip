@@ -1,6 +1,6 @@
 """Round service for managing prompt, copy, and vote rounds."""
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, text, or_, union, bindparam
+from sqlalchemy import select, func, text, or_, union, bindparam, update
 from sqlalchemy.types import DateTime, String
 from sqlalchemy.orm import aliased
 from datetime import datetime, UTC, timedelta
@@ -28,6 +28,13 @@ from backend.utils.exceptions import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def ensure_utc(dt: Optional[datetime]) -> Optional[datetime]:
+    """Normalize datetimes returned from SQLite to be timezone aware."""
+    if dt is None:
+        return None
+    return dt if dt.tzinfo is not None else dt.replace(tzinfo=UTC)
 
 
 class RoundService:
@@ -58,129 +65,9 @@ class RoundService:
 
         # Acquire lock for the entire transaction
         lock_name = f"start_prompt_round:{player.player_id}"
-        with lock_client.lock(lock_name, timeout=10):
-            # Get random enabled prompt (inside lock to keep session consistent)
-            # Prefer prompts the player has not yet seen to avoid repeats until
-            # all prompts have been exhausted.
-            copy_round_alias = aliased(Round)
-            copy_prompt_round_alias = aliased(Round)
-            vote_round_alias = aliased(Round)
-            vote_prompt_round_alias = aliased(Round)
-            phraseset_alias = aliased(Phraseset)
-
-            prompt_round_seen = (
-                select(Round.prompt_id)
-                .where(Round.player_id == player.player_id)
-                .where(Round.prompt_id.is_not(None))
-            )
-
-            copy_round_seen = (
-                select(copy_prompt_round_alias.prompt_id)
-                .select_from(copy_round_alias)
-                .join(
-                    copy_prompt_round_alias,
-                    copy_round_alias.prompt_round_id == copy_prompt_round_alias.round_id,
-                )
-                .where(copy_round_alias.player_id == player.player_id)
-                .where(copy_round_alias.round_type == "copy")
-                .where(copy_prompt_round_alias.prompt_id.is_not(None))
-            )
-
-            vote_round_seen = (
-                select(vote_prompt_round_alias.prompt_id)
-                .select_from(vote_round_alias)
-                .join(
-                    phraseset_alias,
-                    vote_round_alias.phraseset_id == phraseset_alias.phraseset_id,
-                )
-                .join(
-                    vote_prompt_round_alias,
-                    phraseset_alias.prompt_round_id == vote_prompt_round_alias.round_id,
-                )
-                .where(vote_round_alias.player_id == player.player_id)
-                .where(vote_round_alias.round_type == "vote")
-                .where(vote_prompt_round_alias.prompt_id.is_not(None))
-            )
-
-            seen_prompts_subquery = (
-                union(
-                    prompt_round_seen,
-                    copy_round_seen,
-                    vote_round_seen,
-                ).subquery()
-            )
-
-            base_stmt = select(Prompt).where(Prompt.enabled == True)
-
-            prompt_stmt = (
-                base_stmt.outerjoin(
-                    seen_prompts_subquery,
-                    seen_prompts_subquery.c.prompt_id == Prompt.prompt_id,
-                )
-                .where(seen_prompts_subquery.c.prompt_id.is_(None))
-            )
-
-            result = await self.db.execute(prompt_stmt.order_by(func.random()).limit(1))
-            prompt = result.scalar_one_or_none()
-
-            if not prompt:
-                logger.info(
-                    "Player %s has seen all available prompts; no unseen prompts remaining",
-                    player.player_id,
-                )
-                raise NoPromptsAvailableError("no_unseen_prompts_available")
-
-            # Create transaction (deduct full amount immediately)
-            # Use skip_lock=True since we already have the lock
-            # Use auto_commit=False to defer commit until all operations complete
-            await transaction_service.create_transaction(
-                player.player_id,
-                -self.settings.prompt_cost,
-                "prompt_entry",
-                auto_commit=False,
-                skip_lock=True,
-            )
-
-            # Create round
-            round_object = Round(
-                round_id=uuid.uuid4(),
-                player_id=player.player_id,
-                round_type="prompt",
-                status="active",
-                cost=self.settings.prompt_cost,
-                expires_at=datetime.now(UTC) + timedelta(seconds=self.settings.prompt_round_seconds),
-                # Prompt-specific fields
-                prompt_id=prompt.prompt_id,
-                prompt_text=prompt.text,
-            )
-
-            # Add round to session BEFORE setting foreign key reference
-            self.db.add(round_object)
-            await self.db.flush()
-
-            # Set player's active round (after adding round to session)
-            player.active_round_id = round_object.round_id
-
-            # Increment usage count while prompt remains attached to this session for atomic commit.
-            # SQLite stores UUID strings inconsistently (with/without hyphens) depending on how the data was seeded,
-            # so match on both representations to keep deployments healthy.
-            prompt_id_hex = prompt.prompt_id.hex
-            prompt_id_str = str(prompt.prompt_id)
-            result = await self.db.execute(
-                text(
-                    "UPDATE prompts "
-                    "SET usage_count = usage_count + 1 "
-                    "WHERE prompt_id IN (:prompt_id_hex, :prompt_id_str)"
-                ),
-                {"prompt_id_hex": prompt_id_hex, "prompt_id_str": prompt_id_str},
-            )
-            if result.rowcount == 0:
-                raise RuntimeError("Failed to update prompt usage count")
-
-            # Commit all changes atomically INSIDE the lock
-            await self.db.commit()
-
-            await self.db.refresh(round_object)
+        with lock_client.lock(lock_name, timeout=self.settings.round_lock_timeout_seconds):
+            prompt = await self._select_prompt_for_player(player)
+            round_object = await self._create_prompt_round(player, prompt, transaction_service)
 
         # Invalidate dashboard cache to ensure fresh data
         from backend.utils.cache import dashboard_cache
@@ -188,6 +75,129 @@ class RoundService:
 
         logger.info(f"Started prompt round {round_object.round_id} for player {player.player_id}")
         return round_object
+
+    async def _select_prompt_for_player(self, player: Player) -> Prompt:
+        """Fetch a random prompt the player has not seen yet."""
+
+        copy_round_alias = aliased(Round)
+        copy_prompt_round_alias = aliased(Round)
+        vote_round_alias = aliased(Round)
+        vote_prompt_round_alias = aliased(Round)
+        phraseset_alias = aliased(Phraseset)
+
+        prompt_round_seen = (
+            select(Round.prompt_id)
+            .where(Round.player_id == player.player_id)
+            .where(Round.prompt_id.is_not(None))
+        )
+
+        copy_round_seen = (
+            select(copy_prompt_round_alias.prompt_id)
+            .select_from(copy_round_alias)
+            .join(
+                copy_prompt_round_alias,
+                copy_round_alias.prompt_round_id == copy_prompt_round_alias.round_id,
+            )
+            .where(copy_round_alias.player_id == player.player_id)
+            .where(copy_round_alias.round_type == "copy")
+            .where(copy_prompt_round_alias.prompt_id.is_not(None))
+        )
+
+        vote_round_seen = (
+            select(vote_prompt_round_alias.prompt_id)
+            .select_from(vote_round_alias)
+            .join(
+                phraseset_alias,
+                vote_round_alias.phraseset_id == phraseset_alias.phraseset_id,
+            )
+            .join(
+                vote_prompt_round_alias,
+                phraseset_alias.prompt_round_id == vote_prompt_round_alias.round_id,
+            )
+            .where(vote_round_alias.player_id == player.player_id)
+            .where(vote_round_alias.round_type == "vote")
+            .where(vote_prompt_round_alias.prompt_id.is_not(None))
+        )
+
+        seen_prompts_subquery = (
+            union(
+                prompt_round_seen,
+                copy_round_seen,
+                vote_round_seen,
+            ).subquery()
+        )
+
+        base_stmt = select(Prompt).where(Prompt.enabled == True)
+
+        prompt_stmt = (
+            base_stmt.outerjoin(
+                seen_prompts_subquery,
+                seen_prompts_subquery.c.prompt_id == Prompt.prompt_id,
+            )
+            .where(seen_prompts_subquery.c.prompt_id.is_(None))
+        )
+
+        result = await self.db.execute(prompt_stmt.order_by(func.random()).limit(1))
+        prompt = result.scalar_one_or_none()
+
+        if not prompt:
+            logger.info(
+                "Player %s has seen all available prompts; no unseen prompts remaining",
+                player.player_id,
+            )
+            raise NoPromptsAvailableError("no_unseen_prompts_available")
+
+        return prompt
+
+    async def _create_prompt_round(
+        self,
+        player: Player,
+        prompt: Prompt,
+        transaction_service: TransactionService,
+    ) -> Round:
+        """Create a prompt round and commit it in a single transaction."""
+
+        await transaction_service.create_transaction(
+            player.player_id,
+            -self.settings.prompt_cost,
+            "prompt_entry",
+            auto_commit=False,
+            skip_lock=True,
+        )
+
+        round_object = Round(
+            round_id=uuid.uuid4(),
+            player_id=player.player_id,
+            round_type="prompt",
+            status="active",
+            cost=self.settings.prompt_cost,
+            expires_at=datetime.now(UTC) + timedelta(seconds=self.settings.prompt_round_seconds),
+            prompt_id=prompt.prompt_id,
+            prompt_text=prompt.text,
+        )
+
+        self.db.add(round_object)
+        await self.db.flush()
+
+        player.active_round_id = round_object.round_id
+        await self._increment_prompt_usage(prompt.prompt_id)
+
+        await self.db.commit()
+        await self.db.refresh(round_object)
+
+        return round_object
+
+    async def _increment_prompt_usage(self, prompt_id: UUID) -> None:
+        """Increment prompt usage with ORM update for atomicity."""
+
+        update_stmt = (
+            update(Prompt)
+            .where(Prompt.prompt_id == prompt_id)
+            .values(usage_count=Prompt.usage_count + 1)
+        )
+        result = await self.db.execute(update_stmt)
+        if result.rowcount == 0:
+            raise RuntimeError("Failed to update prompt usage count")
 
     async def submit_prompt_phrase(
             self,
@@ -197,8 +207,7 @@ class RoundService:
             transaction_service: TransactionService,
     ) -> Optional[Round]:
         """Submit word for prompt round."""
-        # Get round
-        round_object = await self.db.get(Round, round_id)
+        round_object = await self._lock_round_for_update(round_id)
         if not round_object or round_object.player_id != player.player_id:
             raise RoundNotFoundError("Round not found")
 
@@ -207,8 +216,7 @@ class RoundService:
 
         # Check grace period
         # Make grace_cutoff timezone-aware if expires_at is naive (SQLite stores naive)
-        expires_at_aware = round_object.expires_at.replace(
-            tzinfo=UTC) if round_object.expires_at.tzinfo is None else round_object.expires_at
+        expires_at_aware = ensure_utc(round_object.expires_at)
         grace_cutoff = expires_at_aware + timedelta(seconds=self.settings.grace_period_seconds)
         if datetime.now(UTC) > grace_cutoff:
             raise RoundExpiredError("Round expired past grace period")
@@ -270,101 +278,58 @@ class RoundService:
         """
         logger.info(f"[Copy Round Start] Player {player.player_id} attempting to start copy round")
 
-        # Ensure prompt queue is hydrated before we try to pop from it
         queue_populated = await self.ensure_prompt_queue_populated()
-        logger.info(f"[Copy Round Start] Queue populated: {queue_populated}, queue length: {QueueService.get_prompt_rounds_waiting()}")
+        logger.info(
+            f"[Copy Round Start] Queue populated: {queue_populated}, queue length: {QueueService.get_prompt_rounds_waiting()}"
+        )
 
-        # Retry logic: try up to 10 times to get a valid prompt
-        max_attempts = 10
-        prompt_round_id = None
-        prompt_round = None
+        prompt_round = await self._get_next_valid_prompt_round(
+            player, self.settings.copy_round_max_attempts
+        )
 
-        for attempt in range(max_attempts):
-            logger.debug(f"[Copy Round Start] Attempt {attempt + 1}/{max_attempts} for player {player.player_id}")
+        copy_cost, is_discounted, system_contribution = self._calculate_copy_round_cost()
+        round_object = await self._create_copy_round(
+            player,
+            prompt_round,
+            copy_cost,
+            system_contribution,
+            transaction_service,
+        )
 
-            # Get next prompt from queue
-            prompt_round_id = QueueService.get_next_prompt_round()
-            if not prompt_round_id:
-                logger.warning(f"[Copy Round Start] No prompt from queue on attempt {attempt + 1}, rehydrating...")
-                await self.ensure_prompt_queue_populated()
-                prompt_round_id = QueueService.get_next_prompt_round()
-                if not prompt_round_id:
-                    logger.error(f"[Copy Round Start] No prompts available after rehydration. Queue length: {QueueService.get_prompt_rounds_waiting()}")
-                    raise NoPromptsAvailableError("No prompts available")
+        from backend.utils.cache import dashboard_cache
 
-            # Get prompt round
-            prompt_round = await self.db.get(Round, prompt_round_id)
-            if not prompt_round:
-                logger.warning(f"[Copy Round Start] Prompt round not found in DB: {prompt_round_id} (attempt {attempt + 1})")
-                continue  # Try next prompt
+        dashboard_cache.invalidate_player_data(player.player_id)
 
-            if prompt_round.phraseset_status in {"flagged_pending", "flagged_removed"}:
-                logger.info(
-                    "[Copy Round Start] Prompt %s is flagged (status=%s), skipping for copy queue (attempt %d)",
-                    prompt_round_id,
-                    prompt_round.phraseset_status,
-                    attempt + 1,
-                )
-                continue
+        logger.info(
+            f"Started copy round {round_object.round_id} for player {player.player_id}, "
+            f"cost=${copy_cost}, discount={is_discounted}"
+        )
+        return round_object
 
-            # CRITICAL: Check if player is trying to copy their own prompt
-            if prompt_round.player_id == player.player_id:
-                # Put back in queue and try another
-                QueueService.add_prompt_round_to_queue(prompt_round_id)
-                logger.info(f"[Copy Round Start] Player {player.player_id} got their own prompt {prompt_round_id}, retrying (attempt {attempt + 1})...")
-                continue
+    def _calculate_copy_round_cost(self) -> tuple[int, bool, int]:
+        """Return copy round cost, discount flag, and system contribution."""
 
-            # Prevent player from submitting multiple copies for the same prompt
-            existing_copy_result = await self.db.execute(
-                select(Round.round_id)
-                .where(Round.round_type == "copy")
-                .where(Round.prompt_round_id == prompt_round_id)
-                .where(Round.player_id == player.player_id)
-            )
-            if existing_copy_result.scalar_one_or_none():
-                QueueService.add_prompt_round_to_queue(prompt_round_id)
-                logger.info(
-                    f"[Copy Round Start] Player {player.player_id} already submitted a copy for prompt {prompt_round_id}, retrying (attempt {attempt + 1})..."
-                )
-                continue
-
-            # Check if player abandoned this prompt within cooldown period
-            cutoff = datetime.now(UTC) - timedelta(hours=self.settings.abandoned_prompt_cooldown_hours)
-            result = await self.db.execute(
-                select(PlayerAbandonedPrompt)
-                .where(PlayerAbandonedPrompt.player_id == player.player_id)
-                .where(PlayerAbandonedPrompt.prompt_round_id == prompt_round_id)
-                .where(PlayerAbandonedPrompt.abandoned_at > cutoff)
-            )
-            if result.scalar_one_or_none():
-                # Put back in queue and try another
-                QueueService.add_prompt_round_to_queue(prompt_round_id)
-                logger.info(f"[Copy Round Start] Player {player.player_id} abandoned prompt {prompt_round_id} recently, retrying (attempt {attempt + 1})...")
-                continue
-
-            # Valid prompt found!
-            logger.info(f"[Copy Round Start] Found valid prompt {prompt_round_id} for player {player.player_id} on attempt {attempt + 1}")
-            break
-        else:
-            # Exhausted all attempts
-            logger.error(
-                f"[Copy Round Start] Could not find valid prompt for player {player.player_id} after {max_attempts} attempts. "
-                f"Queue length: {QueueService.get_prompt_rounds_waiting()}"
-            )
-            raise NoPromptsAvailableError("Could not find a valid prompt after multiple attempts")
-
-        # Get current copy cost (with discount if applicable)
         copy_cost = QueueService.get_copy_cost()
         is_discounted = copy_cost == self.settings.copy_cost_discount
-        system_contribution = self.settings.copy_cost_normal - copy_cost if is_discounted else 0
+        system_contribution = (
+            self.settings.copy_cost_normal - copy_cost if is_discounted else 0
+        )
+        return copy_cost, is_discounted, system_contribution
 
-        # Acquire lock for the entire transaction
+    async def _create_copy_round(
+        self,
+        player: Player,
+        prompt_round: Round,
+        copy_cost: int,
+        system_contribution: int,
+        transaction_service: TransactionService,
+    ) -> Round:
+        """Create a copy round and persist it atomically."""
+
         from backend.utils import lock_client
+
         lock_name = f"start_copy_round:{player.player_id}"
-        with lock_client.lock(lock_name, timeout=10):
-            # Create transaction
-            # Use skip_lock=True since we already have the lock
-            # Use auto_commit=False to defer commit until all operations complete
+        with lock_client.lock(lock_name, timeout=self.settings.round_lock_timeout_seconds):
             await transaction_service.create_transaction(
                 player.player_id,
                 -copy_cost,
@@ -373,40 +338,222 @@ class RoundService:
                 skip_lock=True,
             )
 
-            # Create round
             round_object = Round(
                 round_id=uuid.uuid4(),
                 player_id=player.player_id,
                 round_type="copy",
                 status="active",
                 cost=copy_cost,
-                expires_at=datetime.now(UTC) + timedelta(seconds=self.settings.copy_round_seconds),
-                # Copy-specific fields
-                prompt_round_id=prompt_round_id,
+                expires_at=datetime.now(UTC)
+                + timedelta(seconds=self.settings.copy_round_seconds),
+                prompt_round_id=prompt_round.round_id,
                 original_phrase=prompt_round.submitted_phrase,
                 system_contribution=system_contribution,
             )
 
-            # Add round to session BEFORE setting foreign key reference
             self.db.add(round_object)
             await self.db.flush()
 
-            # Set player's active round (after adding round to session)
             player.active_round_id = round_object.round_id
 
-            # Commit all changes atomically INSIDE the lock
             await self.db.commit()
             await self.db.refresh(round_object)
 
-        # Invalidate dashboard cache to ensure fresh data
-        from backend.utils.cache import dashboard_cache
-        dashboard_cache.invalidate_player_data(player.player_id)
-
-        logger.info(
-            f"Started copy round {round_object.round_id} for player {player.player_id}, "
-            f"cost=${copy_cost}, discount={is_discounted}"
-        )
         return round_object
+
+    async def _get_next_valid_prompt_round(
+        self,
+        player: Player,
+        max_attempts: int,
+    ) -> Round:
+        """Retrieve and lock the next eligible prompt round for the player."""
+
+        attempts = 0
+        candidate_prompt_round_ids: list[UUID] = []
+        prefetched_rounds: dict[UUID, Round] = {}
+
+        while attempts < max_attempts:
+            if not candidate_prompt_round_ids:
+                candidate_prompt_round_ids = await self._pop_prompt_batch(
+                    max_attempts - attempts
+                )
+                if not candidate_prompt_round_ids:
+                    logger.warning(
+                        f"[Copy Round Start] No prompt batch available (attempt {attempts + 1}), rehydrating queue"
+                    )
+                    await self.ensure_prompt_queue_populated()
+                    candidate_prompt_round_ids = await self._pop_prompt_batch(
+                        max_attempts - attempts
+                    )
+                    if not candidate_prompt_round_ids:
+                        logger.error(
+                            f"[Copy Round Start] No prompts available after rehydration. Queue length: {QueueService.get_prompt_rounds_waiting()}"
+                        )
+                        raise NoPromptsAvailableError("No prompts available")
+
+                await self._prefetch_prompt_rounds(
+                    candidate_prompt_round_ids, prefetched_rounds
+                )
+
+            prompt_round_id = candidate_prompt_round_ids.pop(0)
+            prompt_round = prefetched_rounds.get(prompt_round_id)
+            attempts += 1
+            logger.debug(
+                f"[Copy Round Start] Attempt {attempts}/{max_attempts} for player {player.player_id} using prompt {prompt_round_id}"
+            )
+
+            if not prompt_round:
+                logger.warning(
+                    f"[Copy Round Start] Prompt round not found in DB: {prompt_round_id} (attempt {attempts})"
+                )
+                continue
+
+            if prompt_round.phraseset_status in {"flagged_pending", "flagged_removed"}:
+                logger.info(
+                    "[Copy Round Start] Prompt %s is flagged (status=%s), skipping for copy queue (attempt %d)",
+                    prompt_round_id,
+                    prompt_round.phraseset_status,
+                    attempts,
+                )
+                continue
+
+            should_skip, should_requeue = await self._should_skip_prompt_round(
+                player, prompt_round
+            )
+            if should_skip:
+                if should_requeue:
+                    QueueService.add_prompt_round_to_queue(prompt_round_id)
+                continue
+
+            locked_prompt_round = await self._lock_prompt_round_for_update(
+                prompt_round_id
+            )
+            if not locked_prompt_round:
+                QueueService.add_prompt_round_to_queue(prompt_round_id)
+                continue
+
+            logger.info(
+                f"[Copy Round Start] Found valid prompt {prompt_round_id} for player {player.player_id} on attempt {attempts}"
+            )
+
+            for remaining_prompt_round_id in candidate_prompt_round_ids:
+                QueueService.add_prompt_round_to_queue(remaining_prompt_round_id)
+
+            return locked_prompt_round
+
+        for remaining_prompt_round_id in candidate_prompt_round_ids:
+            QueueService.add_prompt_round_to_queue(remaining_prompt_round_id)
+
+        logger.error(
+            f"[Copy Round Start] Could not find valid prompt for player {player.player_id} after {max_attempts} attempts. "
+            f"Queue length: {QueueService.get_prompt_rounds_waiting()}"
+        )
+        raise NoPromptsAvailableError(
+            "Could not find a valid prompt after multiple attempts"
+        )
+
+    async def _pop_prompt_batch(self, limit: int) -> list[UUID]:
+        """Pop the next batch of prompt IDs from the queue."""
+
+        return QueueService.get_next_prompt_round_batch(limit)
+
+    async def _prefetch_prompt_rounds(
+        self,
+        prompt_ids: list[UUID],
+        prefetched_rounds: dict[UUID, Round],
+    ) -> None:
+        """Load prompt rounds for the provided IDs, updating the cache."""
+
+        ids_to_fetch = [pid for pid in prompt_ids if pid not in prefetched_rounds]
+        if not ids_to_fetch:
+            return
+
+        result = await self.db.execute(select(Round).where(Round.round_id.in_(ids_to_fetch)))
+        prefetched_rounds.update(
+            {round_obj.round_id: round_obj for round_obj in result.scalars()}
+        )
+
+    async def _should_skip_prompt_round(
+        self,
+        player: Player,
+        prompt_round: Round,
+    ) -> tuple[bool, bool]:
+        """Determine if the candidate prompt should be skipped and requeued."""
+
+        if prompt_round.player_id == player.player_id:
+            logger.info(
+                f"[Copy Round Start] Player {player.player_id} got their own prompt {prompt_round.round_id}, retrying..."
+            )
+            return True, True
+
+        existing_copy_result = await self.db.execute(
+            select(Round.round_id)
+            .where(Round.round_type == "copy")
+            .where(Round.prompt_round_id == prompt_round.round_id)
+            .where(Round.player_id == player.player_id)
+        )
+        if existing_copy_result.scalar_one_or_none():
+            logger.info(
+                f"[Copy Round Start] Player {player.player_id} already submitted a copy for prompt {prompt_round.round_id}, retrying..."
+            )
+            return True, True
+
+        cutoff = datetime.now(UTC) - timedelta(
+            hours=self.settings.abandoned_prompt_cooldown_hours
+        )
+        result = await self.db.execute(
+            select(PlayerAbandonedPrompt)
+            .where(PlayerAbandonedPrompt.player_id == player.player_id)
+            .where(PlayerAbandonedPrompt.prompt_round_id == prompt_round.round_id)
+            .where(PlayerAbandonedPrompt.abandoned_at > cutoff)
+        )
+        if result.scalar_one_or_none():
+            logger.info(
+                f"[Copy Round Start] Player {player.player_id} abandoned prompt {prompt_round.round_id} recently, retrying..."
+            )
+            return True, True
+
+        return False, False
+
+    async def _lock_prompt_round_for_update(
+        self, prompt_round_id: UUID
+    ) -> Optional[Round]:
+        """Lock the prompt round row to avoid assignment races."""
+
+        result = await self.db.execute(
+            select(Round)
+            .where(Round.round_id == prompt_round_id)
+            .with_for_update()
+        )
+        prompt_round = result.scalar_one_or_none()
+
+        if not prompt_round:
+            logger.warning(
+                f"[Copy Round Start] Prompt round {prompt_round_id} missing when attempting to lock"
+            )
+            return None
+
+        if prompt_round.status != "submitted":
+            logger.info(
+                f"[Copy Round Start] Prompt {prompt_round_id} no longer submitted (status={prompt_round.status}), skipping"
+            )
+            return None
+
+        if prompt_round.phraseset_status in {"flagged_pending", "flagged_removed"}:
+            logger.info(
+                f"[Copy Round Start] Prompt {prompt_round_id} flagged during locking, skipping"
+            )
+            return None
+
+        return prompt_round
+
+    async def _lock_round_for_update(self, round_id: UUID) -> Optional[Round]:
+        """Lock a round record for update to avoid concurrent submissions."""
+
+        result = await self.db.execute(
+            select(Round).where(Round.round_id == round_id).with_for_update()
+        )
+        return result.scalar_one_or_none()
 
     async def submit_copy_phrase(
             self,
@@ -416,8 +563,7 @@ class RoundService:
             transaction_service: TransactionService,
     ) -> Optional[Round]:
         """Submit phrase for copy round."""
-        # Get round
-        round_object = await self.db.get(Round, round_id)
+        round_object = await self._lock_round_for_update(round_id)
         if not round_object or round_object.player_id != player.player_id:
             raise RoundNotFoundError("Round not found")
 
@@ -426,8 +572,7 @@ class RoundService:
 
         # Check grace period
         # Make grace_cutoff timezone-aware if expires_at is naive (SQLite stores naive)
-        expires_at_aware = round_object.expires_at.replace(
-            tzinfo=UTC) if round_object.expires_at.tzinfo is None else round_object.expires_at
+        expires_at_aware = ensure_utc(round_object.expires_at)
         grace_cutoff = expires_at_aware + timedelta(seconds=self.settings.grace_period_seconds)
         if datetime.now(UTC) > grace_cutoff:
             raise RoundExpiredError("Round expired past grace period")
@@ -541,7 +686,9 @@ class RoundService:
         from backend.utils import lock_client
 
         lock_name = f"abandon_round:{round_id}"
-        with lock_client.lock(lock_name, timeout=10):
+        with lock_client.lock(
+            lock_name, timeout=self.settings.round_lock_timeout_seconds
+        ):
             result = await self.db.execute(
                 select(Round).where(Round.round_id == round_id).with_for_update()
             )
@@ -777,7 +924,7 @@ class RoundService:
 
         expires_at = round_object.expires_at
         expires_at_aware = (
-            expires_at.replace(tzinfo=UTC) if expires_at and expires_at.tzinfo is None else expires_at
+            ensure_utc(expires_at)
         )
         grace_cutoff = (
             expires_at_aware + timedelta(seconds=self.settings.grace_period_seconds) if expires_at_aware else None

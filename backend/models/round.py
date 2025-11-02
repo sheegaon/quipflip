@@ -51,6 +51,7 @@ class Round(Base):
     __table_args__ = (
         Index('ix_rounds_status_created', 'status', 'created_at'),
         Index('ix_rounds_phraseset_status', 'phraseset_status'),
+        Index('ix_rounds_player_type_status', 'player_id', 'round_type', 'status'),
     )
 
     def __repr__(self):
