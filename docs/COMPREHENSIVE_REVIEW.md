@@ -16,15 +16,18 @@ Based on review of [round_service.py](backend/services/round_service.py), [phras
 - The code tries to handle both hyphenated and non-hyphenated UUID strings due to SQLite inconsistencies
 - This is a workaround for a data quality issue that should be fixed at the source
 - The raw SQL update is error-prone and bypasses ORM benefits
+- **Status: Fixed.** Usage count updates now rely on the ORM with proper UUID handling provided by the adaptive column type, removing the brittle raw SQL workaround.
 
 ### 2. N+1 Query Risk in `start_copy_round` (Lines 282-347)
 - The retry loop can execute up to 10 database queries fetching individual rounds
 - Each iteration loads a Round object just to check if it's valid
 - This becomes inefficient under high load
+- **Status: Fixed.** Queue pops are now performed in batches with bulk database hydration so each batch only incurs a single round fetch, keeping retry logic efficient without sacrificing queue fairness.
 
 ### 3. Repeated Pattern: Timezone-Aware Conversions (Lines 210-212, 429-431, 779-781)
 - The same timezone normalization pattern is repeated 3+ times
 - Should be extracted to a utility function
+- **Status: Fixed.** A shared `ensure_utc` helper now normalizes timestamps for SQLite-derived values, eliminating duplicated conversion logic.
 
 ### Efficiency Improvements
 
@@ -95,6 +98,7 @@ Based on review of [round_service.py](backend/services/round_service.py), [phras
 ### 17. Prompt Usage Count Update (Lines 169-178)
 - Raw SQL for a simple counter increment
 - Could use ORM with optimistic locking or `update().values(usage_count=Prompt.usage_count + 1)`
+- **Status: Fixed.** The counter now uses a SQLAlchemy `update` expression so increments occur atomically without bypassing ORM safety guarantees.
 
 ### 18. Activity Service Calls
 - Multiple individual activity records in `submit_copy_phrase`
