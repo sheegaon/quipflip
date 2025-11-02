@@ -301,8 +301,8 @@ class PhrasesetService:
         payout_amount = 0
         result_view: Optional[ResultView] = None
 
-        already_in_transaction = self.db.in_transaction()
-        transaction_ctx = self.db.begin() if not already_in_transaction else _noop_async_context()
+        owns_transaction = not self.db.in_transaction()
+        transaction_ctx = self.db.begin() if owns_transaction else _noop_async_context()
 
         try:
             async with transaction_ctx:
@@ -335,11 +335,11 @@ class PhrasesetService:
                     result_view.result_viewed = True
                     result_view.result_viewed_at = datetime.now(UTC)
         except Exception:
-            if already_in_transaction:
+            if owns_transaction:
                 await self.db.rollback()
             raise
         else:
-            if already_in_transaction:
+            if owns_transaction:
                 await self.db.commit()
 
         player = await self.db.get(Player, player_id)
