@@ -412,8 +412,14 @@ class PhrasesetService:
                 for rv in rv_result.scalars().all()
             }
 
+        finalized_phrasesets = [
+            phraseset for phraseset in phrasesets if phraseset.status == "finalized"
+        ]
+        payouts_by_phraseset = await self.scoring_service.calculate_payouts_bulk(
+            finalized_phrasesets
+        )
+
         contributions: list[dict] = []
-        payout_cache: dict[UUID, dict] = {}
 
         for prompt_round in prompt_rounds:
             phraseset = phraseset_map.get(prompt_round.round_id)
@@ -421,8 +427,12 @@ class PhrasesetService:
             result_viewed = result_view.result_viewed if result_view else False
             your_payout = None
             if phraseset and phraseset.status == "finalized":
-                payouts = await self._get_payouts_cached(phraseset, payout_cache)
-                your_payout = self._extract_player_payout(payouts, prompt_round.player_id)
+                payouts = payouts_by_phraseset.get(phraseset.phraseset_id)
+                if payouts:
+                    your_payout = self._extract_player_payout(
+                        payouts,
+                        prompt_round.player_id,
+                    )
                 if result_view and result_view.payout_amount:
                     your_payout = result_view.payout_amount
 
@@ -462,8 +472,12 @@ class PhrasesetService:
             result_viewed = result_view.result_viewed if result_view else False
             your_payout = None
             if phraseset and phraseset.status == "finalized":
-                payouts = await self._get_payouts_cached(phraseset, payout_cache)
-                your_payout = self._extract_player_payout(payouts, copy_round.player_id)
+                payouts = payouts_by_phraseset.get(phraseset.phraseset_id)
+                if payouts:
+                    your_payout = self._extract_player_payout(
+                        payouts,
+                        copy_round.player_id,
+                    )
                 if result_view and result_view.payout_amount:
                     your_payout = result_view.payout_amount
 
@@ -499,10 +513,21 @@ class PhrasesetService:
         return contributions
 
     async def _load_contributor_rounds(self, phraseset: Phraseset) -> tuple[Round, Round, Round]:
-        """Load prompt and copy rounds for a phraseset."""
-        prompt_round = await self.db.get(Round, phraseset.prompt_round_id)
-        copy1_round = await self.db.get(Round, phraseset.copy_round_1_id)
-        copy2_round = await self.db.get(Round, phraseset.copy_round_2_id)
+        """Load prompt and copy rounds for a phraseset using a single query."""
+        round_ids = [
+            phraseset.prompt_round_id,
+            phraseset.copy_round_1_id,
+            phraseset.copy_round_2_id,
+        ]
+        result = await self.db.execute(
+            select(Round).where(Round.round_id.in_(round_ids))
+        )
+        rounds = {round_.round_id: round_ for round_ in result.scalars().all()}
+
+        prompt_round = rounds.get(phraseset.prompt_round_id)
+        copy1_round = rounds.get(phraseset.copy_round_1_id)
+        copy2_round = rounds.get(phraseset.copy_round_2_id)
+
         if not prompt_round or not copy1_round or not copy2_round:
             raise ValueError("Phraseset contributors missing")
         return prompt_round, copy1_round, copy2_round
@@ -563,6 +588,7 @@ class PhrasesetService:
         if phraseset.phraseset_id not in cache:
             cache[phraseset.phraseset_id] = await self.scoring_service.calculate_payouts(phraseset)
         return cache[phraseset.phraseset_id]
+
     def _extract_player_payout(self, payouts: dict, player_id: UUID) -> Optional[int]:
         """Get payout value for specific player from payout structure."""
         for info in payouts.values():
