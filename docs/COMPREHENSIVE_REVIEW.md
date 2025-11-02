@@ -31,9 +31,13 @@ Based on review of [round_service.py](backend/services/round_service.py), [phras
 
 ### Efficiency Improvements
 
-### 4. Queue Rehydration Locking (Lines 950-957)
-- Good use of distributed locking, but could add timeout handling
-- Could batch-check queue status before acquiring lock
+### 4. Queue Rehydration Locking (Lines 948-1009)
+- ✅ **Update:** `_rehydrate_prompt_queue` now acquires the shared `rehydrate_prompt_queue`
+  lock with a 5-second timeout, double-checks the queue length after entering the
+  critical section, and skips the expensive rehydration when another worker already
+  filled the queue.
+- Further improvements could include instrumentation around rehydration duration and
+  queue length trends to catch slow refills early.
 
 ### 5. Complex Subquery in `start_prompt_round` (Lines 71-121)
 - Three separate subqueries with UNION could be optimized
@@ -207,9 +211,8 @@ Based on review of [round_service.py](backend/services/round_service.py), [phras
 ### Algorithmic Improvements
 
 #### 33. O(n²) Filter Complexity (Lines 46-66)
-- Two separate filter functions applied sequentially
-- Better: combine into single filter pass
-- Could use list comprehension with `and` instead of nested loops
+- ✅ **Update:** `get_player_phrasesets` now performs role/status filtering in a single
+  list comprehension, keeping the operation O(n) while preserving readability.
 
 #### 34. Sort After Filter (Line 494)
 - Sorts all contributions, then filters/paginates in calling method
