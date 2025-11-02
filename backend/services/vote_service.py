@@ -178,14 +178,18 @@ class VoteService:
                         Phraseset.vote_count >= settings.vote_max_votes,
                         and_(
                             Phraseset.vote_count >= settings.vote_closing_threshold,
-                            Phraseset.fifth_vote_at.is_not(None),
-                            Phraseset.fifth_vote_at <= closing_cutoff,
+                            or_(
+                                Phraseset.fifth_vote_at.is_(None),
+                                Phraseset.fifth_vote_at <= closing_cutoff,
+                            ),
                         ),
                         and_(
                             Phraseset.vote_count >= settings.vote_minimum_threshold,
                             Phraseset.vote_count < settings.vote_closing_threshold,
-                            Phraseset.third_vote_at.is_not(None),
-                            Phraseset.third_vote_at <= minimum_cutoff,
+                            or_(
+                                Phraseset.third_vote_at.is_(None),
+                                Phraseset.third_vote_at <= minimum_cutoff,
+                            ),
                         ),
                     )
                 )
@@ -205,11 +209,12 @@ class VoteService:
             finalized_count = 0
             orphaned_count = 0
             for phraseset in active_phrasesets:
+                await self._ensure_vote_threshold_timestamps(phraseset)
                 try:
                     # Check if this phraseset should be finalized
                     # This will automatically finalize if conditions are met
                     await self.check_and_finalize(
-                        phraseset, 
+                        phraseset,
                         transaction_service, 
                         auto_commit=True
                     )
@@ -266,6 +271,55 @@ class VoteService:
         )
 
         await self.db.commit()
+
+    async def _ensure_vote_threshold_timestamps(self, phraseset: Phraseset) -> None:
+        """Backfill missing vote threshold timestamps for legacy phrasesets."""
+
+        updated = False
+
+        if (
+            phraseset.vote_count >= settings.vote_minimum_threshold
+            and not phraseset.third_vote_at
+        ):
+            third_vote_at = await self._get_vote_timestamp(
+                phraseset.phraseset_id, settings.vote_minimum_threshold
+            )
+            if third_vote_at:
+                phraseset.third_vote_at = ensure_utc(third_vote_at)
+                updated = True
+
+        if (
+            phraseset.vote_count >= settings.vote_closing_threshold
+            and not phraseset.fifth_vote_at
+        ):
+            fifth_vote_at = await self._get_vote_timestamp(
+                phraseset.phraseset_id, settings.vote_closing_threshold
+            )
+            if fifth_vote_at:
+                phraseset.fifth_vote_at = ensure_utc(fifth_vote_at)
+                # Ensure the phraseset is marked as closing when the 5th vote is reached
+                if phraseset.status == "open":
+                    phraseset.status = "closing"
+                if not phraseset.closes_at:
+                    phraseset.closes_at = ensure_utc(fifth_vote_at) + timedelta(
+                        minutes=settings.vote_closing_window_minutes
+                    )
+                updated = True
+
+        if updated:
+            await self.db.flush()
+
+    async def _get_vote_timestamp(self, phraseset_id: UUID, vote_rank: int) -> datetime | None:
+        """Return the created_at timestamp for the nth vote on a phraseset."""
+
+        result = await self.db.execute(
+            select(Vote.created_at)
+            .where(Vote.phraseset_id == phraseset_id)
+            .order_by(Vote.created_at.asc())
+            .offset(vote_rank - 1)
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
 
     async def start_vote_round(
         self,
