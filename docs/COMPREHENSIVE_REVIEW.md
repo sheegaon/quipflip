@@ -12,22 +12,22 @@ Based on review of [round_service.py](backend/services/round_service.py), [phras
 
 ### Critical Issues
 
-### 1. UUID String Inconsistency Bug (Lines 167-176)
-- The code tries to handle both hyphenated and non-hyphenated UUID strings due to SQLite inconsistencies
-- This is a workaround for a data quality issue that should be fixed at the source
-- The raw SQL update is error-prone and bypasses ORM benefits
-- **Status: Fixed.** Usage count updates now rely on the ORM with proper UUID handling provided by the adaptive column type, removing the brittle raw SQL workaround.
+### 1. ~~UUID String Inconsistency Bug~~ ✅ **FIXED**
+- ~~The code tries to handle both hyphenated and non-hyphenated UUID strings due to SQLite inconsistencies~~
+- ~~This is a workaround for a data quality issue that should be fixed at the source~~
+- ~~The raw SQL update is error-prone and bypasses ORM benefits~~
+- **Resolution**: Prompt usage count updates now use ORM with SQLAlchemy's `update()` statement, eliminating brittle string matching and leveraging proper UUID handling from the adaptive column type.
 
-### 2. N+1 Query Risk in `start_copy_round` (Lines 282-347)
-- The retry loop can execute up to 10 database queries fetching individual rounds
-- Each iteration loads a Round object just to check if it's valid
-- This becomes inefficient under high load
-- **Status: Fixed.** Queue pops are now performed in batches with bulk database hydration so each batch only incurs a single round fetch, keeping retry logic efficient without sacrificing queue fairness.
+### 2. ~~N+1 Query Risk in `start_copy_round`~~ ✅ **FIXED**
+- ~~The retry loop can execute up to 10 database queries fetching individual rounds~~
+- ~~Each iteration loads a Round object just to check if it's valid~~
+- ~~This becomes inefficient under high load~~
+- **Resolution**: Queue pops now performed in batches using `get_next_prompt_round_batch()` with bulk database hydration. Each batch only incurs a single round fetch, keeping retry logic efficient while preserving FIFO order.
 
-### 3. Repeated Pattern: Timezone-Aware Conversions (Lines 210-212, 429-431, 779-781)
-- The same timezone normalization pattern is repeated 3+ times
-- Should be extracted to a utility function
-- **Status: Fixed.** A shared `ensure_utc` helper now normalizes timestamps for SQLite-derived values, eliminating duplicated conversion logic.
+### 3. ~~Repeated Pattern: Timezone-Aware Conversions~~ ✅ **FIXED**
+- ~~The same timezone normalization pattern is repeated 3+ times~~
+- ~~Should be extracted to a utility function~~
+- **Resolution**: Added shared `ensure_utc()` helper function that normalizes timestamps for SQLite-derived values, eliminating duplicated conversion logic across multiple methods.
 
 ### Efficiency Improvements
 
@@ -125,29 +125,27 @@ Based on review of [round_service.py](backend/services/round_service.py), [phras
 
 ### Critical Issues
 
-#### 21. N+1 Query Problem in `_build_contributions` (Lines 351-499)
+#### 21. ~~N+1 Query Problem in `_build_contributions`~~ ✅ **FIXED**
 **Severity: High**
-- Loads all prompt rounds for a player (line 362-368)
-- Loads all copy rounds for a player (line 371-377)
-- Then iterates through each phraseset calling `calculate_payouts` individually (lines 424, 465)
-- For a player with 50 phrasesets, this triggers 50+ separate payout calculations
-- Each payout calculation may trigger additional queries via `scoring_service`
-- ✅ **Update:** `_build_contributions` now uses the new `ScoringService.calculate_payouts_bulk` helper
-  to fetch payouts for all finalized phrasesets in a single set of queries, eliminating the N+1 pattern.
+- ~~Loads all prompt rounds for a player (line 362-368)~~
+- ~~Loads all copy rounds for a player (line 371-377)~~
+- ~~Then iterates through each phraseset calling `calculate_payouts` individually (lines 424, 465)~~
+- ~~For a player with 50 phrasesets, this triggers 50+ separate payout calculations~~
+- ~~Each payout calculation may trigger additional queries via `scoring_service`~~
+- **Resolution**: Implemented `scoring_service.calculate_payouts_bulk()` that batches all phraseset payout calculations. Pre-loads all votes and rounds with 2 queries, then calculates payouts in memory. Eliminates N+1 pattern completely.
 
-#### 22. Missing Line Between Method (Line 566)
+#### 22. ~~Missing Line Between Method~~ ✅ **FIXED**
 **Severity: Low - Code Style**
-- Missing blank line before `_extract_player_payout` method definition
-- Violates PEP 8 style guidelines
-- ✅ **Update:** Added the missing blank line for consistency with project style.
+- ~~Missing blank line before `_extract_player_payout` method definition~~
+- ~~Violates PEP 8 style guidelines~~
+- **Resolution**: Added missing blank line for consistency with project style.
 
-#### 23. Inefficient Multiple Database Round Loads (Lines 501-508)
+#### 23. ~~Inefficient Multiple Database Round Loads~~ ✅ **FIXED**
 **Severity: Medium**
-- `_load_contributor_rounds` makes 3 separate `db.get()` calls
-- Should use a single query with `select().where(Round.round_id.in_([...]))`
-- Called multiple times per request in detail views
-- ✅ **Update:** Contributor rounds are now loaded with a single `SELECT ... IN (...)` query, removing the
-  redundant round fetches.
+- ~~`_load_contributor_rounds` makes 3 separate `db.get()` calls~~
+- ~~Should use a single query with `select().where(Round.round_id.in_([...]))`~~
+- ~~Called multiple times per request in detail views~~
+- **Resolution**: Refactored `_load_contributor_rounds()` to use single query with `Round.round_id.in_()`, reducing 3 queries to 1. Returns dictionary mapping for efficient lookups.
 
 ### Efficiency Improvements
 
@@ -315,21 +313,38 @@ Based on review of [round_service.py](backend/services/round_service.py), [phras
 
 ### Critical Issues
 
-#### 50. N+1 Query in Contributor Validation (Lines 306-318, 449-476)
+#### 50. ~~N+1 Query in Contributor Validation~~ ✅ **FIXED**
 **Severity: High**
-- ✅ **Resolved.** Contributor IDs are now fetched by `_get_contributor_ids()` using a single batched query reused by `submit_system_vote` and `submit_vote`.
+- ~~`submit_system_vote` loads 3 rounds individually: `await self.db.get(Round, round_id)` in loop (lines 315)~~
+- ~~`submit_vote` reloads entire phraseset with relationships despite already having it (lines 454-464)~~
+- ~~Should batch-load all contributor rounds in a single query~~
+- ~~This pattern is repeated twice in the same file~~
+- **Resolution**: Contributor IDs are now fetched by `_get_contributor_ids()` using a single batched query reused by `submit_system_vote` and `submit_vote`.
 
-#### 51. Duplicate Contributor Validation Logic (Lines 306-326, 449-476)
+#### 51. ~~Duplicate Contributor Validation Logic~~ ✅ **FIXED**
 **Severity: Medium**
-- ✅ **Resolved.** Both `submit_system_vote` and `submit_vote` delegate to `_get_contributor_ids()` so the validation logic is shared.
+- ~~Nearly identical contributor checking code in `submit_system_vote` and `submit_vote`~~
+- ~~Lines 306-318 use lazy loading with `db.get()`~~
+- ~~Lines 449-476 use eager loading with `selectinload()`~~
+- ~~Should extract to helper method: `_get_contributor_ids(phraseset_id) -> set[UUID]`~~
+- **Resolution**: Both `submit_system_vote` and `submit_vote` delegate to `_get_contributor_ids()` so the validation logic is shared.
 
-#### 52. Phraseset Finalization Check Runs on Every Count (Lines 137-139)
+#### 52. Phraseset Finalization Check Runs on Every Count ✅ **PARTIALLY IMPROVED**
 **Severity: High - Performance**
-- ✅ **Resolved.** `_check_and_finalize_active_phrasesets()` now targets only phrasesets that satisfy finalization prerequisites (max votes, elapsed closing window, or elapsed minimum window), dramatically reducing load on frequent availability checks.
+- ~~`count_available_phrasesets_for_player` calls `_check_and_finalize_active_phrasesets()`~~
+- ~~This method loads ALL active phrasesets and checks finalization criteria for each~~
+- Called frequently (dashboard loads, API polling)
+- ~~Can trigger 10+ database queries per count request~~
+- Should be moved to background job or rate-limited
+- **Partial Resolution**: `_check_and_finalize_active_phrasesets()` now targets only phrasesets that satisfy finalization prerequisites (max votes, elapsed closing window, or elapsed minimum window) using SQL-level filtering, dramatically reducing load. Still in request path - moving to background job would fully resolve.
 
-#### 53. Orphaned Phraseset Error Handling (Lines 186-196)
+#### 53. ~~Orphaned Phraseset Error Handling~~ ✅ **FIXED**
 **Severity: Medium - Data Integrity**
-- ✅ **Resolved.** Orphaned phrasesets are now marked `closed`, annotated with a `finalization_error` activity entry, and committed immediately so they are excluded from future processing.
+- ~~Catches "missing round references" errors and logs warning~~
+- ~~Leaves orphaned phrasesets in limbo (never finalized, never cleaned up)~~
+- ~~Comment says "let manual cleanup handle it" but provides no cleanup mechanism~~
+- ~~Should mark as failed/abandoned or have automated cleanup~~
+- **Resolution**: Orphaned phrasesets are now marked `closed`, annotated with a `finalization_error` activity entry, and committed immediately so they are excluded from future processing.
 
 ### Efficiency Improvements
 
@@ -564,23 +579,27 @@ should_finalize = any(count_met and time_met for count_met, time_met in windows.
 ### High Priority (Immediate Impact)
 
 **round_service.py:**
-- Extract timezone normalization to utility function (#3)
+- ~~Extract timezone normalization to utility function (#3)~~ ✅
+- ~~Fix UUID string handling at data layer (migration or seed script) (#1)~~ ✅
+- ~~Optimize queue batch processing to eliminate N+1 queries (#2)~~ ✅
+- ~~Improve queue rehydration locking with timeout and double-check (#4)~~ ✅
 - Refactor `start_copy_round` and `start_prompt_round` into smaller methods (#7)
-- Fix UUID string handling at data layer (migration or seed script) (#1)
 - Add pessimistic locking to more critical sections (#14)
 - Move magic numbers to config (#8)
 
 **phraseset_service.py:**
-- Fix N+1 query in `_build_contributions` - batch payout calculations (#21)
-- Optimize `_load_contributor_rounds` to single query (#23)
+- ~~Fix N+1 query in `_build_contributions` - batch payout calculations (#21)~~ ✅
+- ~~Optimize `_load_contributor_rounds` to single query (#23)~~ ✅
 - Fix race condition in result view creation (#38)
 - Add composite database index on (player_id, round_type, status) (#40)
 - Break down `_build_contributions` into smaller methods (#28)
 
 **vote_service.py:**
-- Move phraseset finalization check out of count method - use background job (#52)
-- Fix N+1 query in contributor validation - batch load rounds (#50)
-- Extract duplicate contributor validation logic (#51)
+- ~~Fix N+1 query in contributor validation - batch load rounds (#50)~~ ✅
+- ~~Extract duplicate contributor validation logic (#51)~~ ✅
+- ~~Handle orphaned phrasesets properly (#53)~~ ✅
+- Optimize finalization query to reduce unnecessary loads (#52) - ✅ Partially improved with SQL filtering
+- Move phraseset finalization check to background job (#52) - Still needed
 - Add SQL-level filtering for available phrasesets (#54)
 - Fix race condition in result view creation (#68)
 - Add missing database indexes for vote queries (#72)
@@ -654,10 +673,15 @@ should_finalize = any(count_met and time_met for count_met, time_met in windows.
 ## Summary Statistics
 
 **Total Issues Identified: 80**
-- Critical: 13 (16%)
-- High Priority: 19 (24%)
-- Medium Priority: 26 (33%)
-- Low Priority: 22 (27%)
+- **Fixed: 10 issues (13%)** ✅
+- **Partially Improved: 1 issue (1%)** 🔄
+- **Remaining: 69 issues (86%)**
+
+**By Priority:**
+- Critical: 13 (16%) - 6 fixed, 1 partially improved
+- High Priority: 19 (24%) - 4 fixed
+- Medium Priority: 26 (33%) - 0 fixed
+- Low Priority: 22 (27%) - 0 fixed
 
 **By Category:**
 - N+1 Queries & Performance: 18 issues
@@ -671,7 +695,32 @@ should_finalize = any(count_met and time_met for count_met, time_met in windows.
 - Other: 7 issues
 
 **Impact Assessment:**
-- **Immediate Performance Impact**: #21, #50, #52, #54 (N+1 queries, finalization in hot path)
-- **Data Integrity Risks**: #1, #38, #53, #67, #68, #69 (race conditions, orphaned data)
+- **Immediate Performance Impact**: ~~#21~~ ✅, ~~#50~~ ✅, #52 🔄, #54 (N+1 queries, finalization in hot path)
+- **Data Integrity Risks**: ~~#1~~ ✅, #38, ~~#53~~ ✅, #67, #68, #69 (race conditions, orphaned data)
 - **Maintainability Debt**: #7, #28, #29, #58, #59 (method complexity)
 - **Operational Risk**: #44, #75, #76, #77 (logging gaps, silent failures)
+
+## Recent Improvements (Merged PRs)
+
+### PR #197: Fix Critical Issues in round_service.py
+- ✅ Fixed UUID string inconsistency bug with ORM-based updates (#1)
+- ✅ Implemented batch queue processing to eliminate N+1 queries (#2)
+- ✅ Added `ensure_utc()` helper for timezone normalization (#3)
+- ✅ Improved queue rehydration locking with timeout (#4)
+
+### PR #198: Address Critical Issues in phraseset_service.py
+- ✅ Implemented `calculate_payouts_bulk()` to batch payout calculations (#21)
+- ✅ Optimized `_load_contributor_rounds()` to single query (#23)
+- Added deterministic placeholder player IDs for missing contributors
+
+### PR #199: Fix Critical Issues in vote_service.py
+- ✅ Extracted `_get_contributor_ids()` helper to eliminate duplication (#50, #51)
+- ✅ Implemented `_handle_orphaned_phraseset()` for proper cleanup (#53)
+- 🔄 Optimized finalization query with SQL-level filtering (#52 - partial)
+- Added `_ensure_vote_threshold_timestamps()` to backfill legacy data
+- Added `_get_vote_timestamp()` helper for timestamp queries
+
+### Queue Service Enhancements
+- Added `get_next_prompt_round_batch()` for batch queue operations
+- Added `pop_many()` to queue_client for efficient batch pops
+- Improved logging throughout with structured context
