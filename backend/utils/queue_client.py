@@ -52,6 +52,33 @@ class QueueClient:
                 except Empty:
                     return None
 
+    def pop_many(self, queue_name: str, count: int) -> List[dict]:
+        """Remove and return up to ``count`` items from the front of the queue."""
+        if count <= 0:
+            return []
+
+        items: List[dict] = []
+        if self.backend == "redis":
+            # ``lpop`` only supports ``count`` on newer Redis versions, so fall back to
+            # issuing multiple pops to keep behaviour consistent across backends.
+            for _ in range(count):
+                result = self.redis.lpop(queue_name)
+                if result is None:
+                    break
+                items.append(json.loads(result))
+        else:
+            with self._memory_lock:
+                queue = self._memory_queues.get(queue_name)
+                if not queue:
+                    return []
+                for _ in range(count):
+                    try:
+                        items.append(queue.get_nowait())
+                    except Empty:
+                        break
+
+        return items
+
     def length(self, queue_name: str) -> int:
         """Get queue length."""
         if self.backend == "redis":

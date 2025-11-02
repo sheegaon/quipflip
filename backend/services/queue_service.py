@@ -35,6 +35,29 @@ class QueueService:
         return None
 
     @staticmethod
+    def get_next_prompt_round_batch(count: int) -> list[UUID]:
+        """Get up to ``count`` prompts from the queue preserving FIFO order."""
+        if count <= 0:
+            return []
+
+        queue_length_before = queue_client.length(PROMPT_QUEUE)
+        items = queue_client.pop_many(PROMPT_QUEUE, count)
+        if not items:
+            logger.debug(
+                f"[Queue Pop] Batch request for {count} prompts returned none (queue length was {queue_length_before})"
+            )
+            return []
+
+        prompt_ids = [UUID(item["prompt_round_id"]) for item in items]
+        logger.info(
+            "[Queue Pop] Retrieved %d prompts from queue (requested %d, queue had %d items)",
+            len(prompt_ids),
+            count,
+            queue_length_before,
+        )
+        return prompt_ids
+
+    @staticmethod
     def remove_prompt_round_from_queue(prompt_round_id: UUID) -> bool:
         """Remove specific prompt from queue (for abandoned rounds)."""
         item = {"prompt_round_id": str(prompt_round_id)}
