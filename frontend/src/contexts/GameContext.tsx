@@ -186,6 +186,16 @@ export const GameProvider: React.FC<{
         });
 
         // Update all dashboard state at once
+        const previousBalance = player?.balance;
+        const newBalance = data.player.balance;
+
+        console.log('💰 [GameContext] Balance update', {
+          previous: previousBalance,
+          new: newBalance,
+          change: newBalance - (previousBalance || 0),
+          timestamp: new Date().toISOString()
+        });
+
         setPlayer(data.player);
         if (data.player.username && data.player.username !== username) {
           gameContextLogger.debug('👤 Username mismatch, updating session:', {
@@ -195,11 +205,18 @@ export const GameProvider: React.FC<{
           apiClient.setSession(data.player.username);
           setUsername(data.player.username);
         }
-        
+
         // Handle active round properly - if it's submitted, expired, or abandoned, clear it
         if (data.current_round) {
           const roundState = data.current_round.state;
           const roundStatus = roundState?.status;
+
+          console.log('🎮 [GameContext] Active round from API', {
+            roundId: data.current_round.round_id,
+            roundType: data.current_round.round_type,
+            status: roundStatus,
+            expiresAt: roundState?.expires_at
+          });
 
           // Only show active rounds; clear completed/expired/abandoned rounds
           if (roundStatus === 'active') {
@@ -210,6 +227,7 @@ export const GameProvider: React.FC<{
             });
             setActiveRound(data.current_round);
           } else {
+            console.log(`🚫 [GameContext] Round status is "${roundStatus}", clearing active round`);
             gameContextLogger.debug(`🚫 Round status is ${roundStatus}, clearing active round`);
             setActiveRound(null);
           }

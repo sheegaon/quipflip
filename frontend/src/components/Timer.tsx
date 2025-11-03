@@ -18,10 +18,15 @@ export const Timer: React.FC<TimerProps> = ({ expiresAt, onExpired, compact = fa
   useEffect(() => {
     if (!onExpired) return;
     if (isExpired && !hasFiredExpired.current) {
+      console.log('⏱️ [Timer] Expired! Calling onExpired callback', {
+        expiresAt,
+        timeRemaining,
+        timestamp: new Date().toISOString()
+      });
       hasFiredExpired.current = true;
       onExpired();
     }
-  }, [isExpired, onExpired]);
+  }, [isExpired, onExpired, expiresAt, timeRemaining]);
 
   if (!expiresAt) return null;
 
