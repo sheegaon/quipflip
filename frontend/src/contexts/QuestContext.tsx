@@ -43,8 +43,6 @@ export const QuestProvider: React.FC<{
   });
 
   const refreshQuests = useCallback(async () => {
-    gameContextLogger.debug('🎯 QuestContext refreshQuests called');
-    
     const token = await apiClient.ensureAccessToken();
     if (!token) {
       gameContextLogger.warn('❌ No valid token for quest refresh');
@@ -56,7 +54,6 @@ export const QuestProvider: React.FC<{
       return;
     }
 
-    gameContextLogger.debug('🔄 Setting quest loading state to true');
     setQuestState((prev) => ({
       ...prev,
       loading: true,
@@ -64,18 +61,11 @@ export const QuestProvider: React.FC<{
     }));
 
     try {
-      gameContextLogger.debug('📞 Making parallel quest API calls...');
       const [allQuestsResponse, activeQuestsResponse, claimableQuestsResponse] = await Promise.all([
         apiClient.getQuests(),
         apiClient.getActiveQuests(),
         apiClient.getClaimableQuests(),
       ]);
-
-      gameContextLogger.debug('✅ Quest API calls successful:', {
-        totalQuests: allQuestsResponse.quests.length,
-        activeQuests: activeQuestsResponse.length,
-        claimableQuests: claimableQuestsResponse.length
-      });
 
       setQuestState({
         quests: allQuestsResponse.quests,
@@ -86,8 +76,6 @@ export const QuestProvider: React.FC<{
         lastUpdated: Date.now(),
         hasClaimableQuests: claimableQuestsResponse.length > 0,
       });
-
-      gameContextLogger.debug('✅ Quest state updated successfully');
     } catch (err) {
       gameContextLogger.error('❌ Quest refresh failed:', err);
       const errorMessage = getActionErrorMessage('load-quests', err);
@@ -101,7 +89,6 @@ export const QuestProvider: React.FC<{
   }, []);
 
   const clearQuestError = useCallback(() => {
-    gameContextLogger.debug('🧹 Clearing quest error');
     setQuestState((prev) => ({
       ...prev,
       error: null,
@@ -109,8 +96,6 @@ export const QuestProvider: React.FC<{
   }, []);
 
   const claimQuest = useCallback(async (questId: string): Promise<ClaimQuestRewardResponse> => {
-    gameContextLogger.debug('🎯 QuestContext claimQuest called:', { questId });
-
     const token = await apiClient.ensureAccessToken();
     if (!token) {
       gameContextLogger.warn('❌ No valid token for quest claim');
@@ -121,7 +106,6 @@ export const QuestProvider: React.FC<{
       throw new Error('Authentication required');
     }
 
-    gameContextLogger.debug('🔄 Setting quest loading state for claim');
     setQuestState((prev) => ({
       ...prev,
       loading: true,
@@ -129,14 +113,10 @@ export const QuestProvider: React.FC<{
     }));
 
     try {
-      gameContextLogger.debug('📞 Calling apiClient.claimQuestReward...');
       const response = await apiClient.claimQuestReward(questId);
-      gameContextLogger.debug('✅ Quest claim successful:', response);
+      gameContextLogger.info('✅ Quest claimed successfully:', { questId, reward: response.reward_amount });
 
-      gameContextLogger.debug('🔄 Refreshing quests after claim...');
       await refreshQuests();
-      
-      gameContextLogger.debug('🔄 Triggering dashboard refresh after quest claim');
       onDashboardTrigger();
       
       return response;
@@ -149,7 +129,6 @@ export const QuestProvider: React.FC<{
       }));
       throw err;
     } finally {
-      gameContextLogger.debug('🔄 Setting quest loading to false');
       setQuestState((prev) => ({
         ...prev,
         loading: false,
@@ -160,7 +139,6 @@ export const QuestProvider: React.FC<{
   // Auto-load quests when authenticated
   useEffect(() => {
     if (!isAuthenticated) {
-      gameContextLogger.debug('🚪 User not authenticated, clearing quest state');
       setQuestState({
         quests: [],
         activeQuests: [],
@@ -173,7 +151,6 @@ export const QuestProvider: React.FC<{
       return;
     }
 
-    gameContextLogger.debug('🔄 User authenticated, loading quests...');
     refreshQuests().catch((err) => {
       gameContextLogger.error('❌ Failed to auto-load quests:', err);
     });
