@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import apiClient, { extractErrorMessage } from '../api/client';
@@ -16,10 +16,6 @@ export const Landing: React.FC = () => {
   const { actions } = useGame();
   const { startSession } = actions;
   const navigate = useNavigate();
-
-  useEffect(() => {
-    landingLogger.debug('Landing page rendered');
-  }, []);
 
   const handleCreatePlayer = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -13,8 +13,9 @@ import type { PromptState } from '../api/types';
 import { promptRoundLogger } from '../utils/logger';
 
 export const PromptRound: React.FC = () => {
-  const { state } = useGame();
+  const { state, actions } = useGame();
   const { activeRound, roundAvailability } = state;
+  const { refreshDashboard } = actions;
   const { currentStep, advanceStep } = useTutorial();
   const navigate = useNavigate();
   const [phrase, setPhrase] = useState('');
@@ -157,7 +158,18 @@ export const PromptRound: React.FC = () => {
         advanceStep('copy_round');
       }
 
-      // Navigate after delay - refresh will happen on dashboard
+      // Immediately refresh dashboard to clear the active round state
+      // This is the proper way to handle normal completion vs timer expiry
+      try {
+        promptRoundLogger.debug('Refreshing dashboard immediately after successful submission to clear active round');
+        await refreshDashboard();
+        promptRoundLogger.debug('Dashboard refreshed successfully - active round should now be cleared');
+      } catch (refreshErr) {
+        promptRoundLogger.warn('Failed to refresh dashboard after submission:', refreshErr);
+        // Continue with navigation even if refresh fails
+      }
+
+      // Navigate after delay - dashboard should now show no active round
       setTimeout(() => {
         promptRoundLogger.debug('Navigating back to dashboard after prompt submission');
         navigate('/dashboard');

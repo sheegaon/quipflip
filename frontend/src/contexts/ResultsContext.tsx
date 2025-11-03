@@ -120,7 +120,6 @@ export const ResultsProvider: React.FC<{
 
     try {
       window.sessionStorage.setItem('viewedResultIds', JSON.stringify(Array.from(resultsState.viewedResultIds)));
-      gameContextLogger.debug('💾 Viewed results persisted to sessionStorage');
     } catch (err) {
       gameContextLogger.warn('❌ Failed to persist viewed results to sessionStorage:', err);
     }
@@ -151,18 +150,12 @@ export const ResultsProvider: React.FC<{
       // Return previous state if no changes to avoid unnecessary re-renders
       const hasChanges = next.size !== previous.size || !Array.from(next).every(id => previous.has(id));
       if (hasChanges) {
-        gameContextLogger.debug('🔄 Updated viewed result IDs:', {
-          previous: previous.size,
-          new: next.size,
-          added: Array.from(next).filter(id => !previous.has(id)),
-          removed: Array.from(previous).filter(id => !next.has(id))
-        });
         return { ...prev, viewedResultIds: next };
       }
       
       return prev; // No changes, return same state object
     });
-  }, [resultsState.pendingResults]); // Add dependency on pendingResults
+  }, [resultsState.pendingResults]);
 
   const refreshPlayerPhrasesets = useCallback(async (
     params: PlayerPhrasesetParams = {},
@@ -551,10 +544,6 @@ export const ResultsProvider: React.FC<{
   }, []);
 
   const setPendingResults = useCallback((results: PendingResult[]) => {
-    gameContextLogger.debug('📋 Setting pending results:', {
-      count: results.length,
-      resultIds: results.map(r => r.phraseset_id)
-    });
     setResultsState(prev => ({
       ...prev,
       pendingResults: results
@@ -564,7 +553,6 @@ export const ResultsProvider: React.FC<{
   // Clear cache when user logs out
   useEffect(() => {
     if (!isAuthenticated) {
-      gameContextLogger.debug('🚪 User logged out, clearing results state');
       setResultsState(prev => ({
         ...prev,
         pendingResults: [],

@@ -14,7 +14,7 @@ import { copyRoundLogger } from '../utils/logger';
 export const CopyRound: React.FC = () => {
   const { state, actions } = useGame();
   const { activeRound, roundAvailability } = state;
-  const { flagCopyRound } = actions;
+  const { flagCopyRound, refreshDashboard } = actions;
   const { currentStep, advanceStep } = useTutorial();
   const navigate = useNavigate();
   const [phrase, setPhrase] = useState('');
@@ -102,7 +102,18 @@ export const CopyRound: React.FC = () => {
         advanceStep('vote_round');
       }
 
-      // Navigate after brief delay - refresh will happen on dashboard
+      // Immediately refresh dashboard to clear the active round state
+      // This is the proper way to handle normal completion vs timer expiry
+      try {
+        copyRoundLogger.debug('Refreshing dashboard immediately after successful submission to clear active round');
+        await refreshDashboard();
+        copyRoundLogger.debug('Dashboard refreshed successfully - active round should now be cleared');
+      } catch (refreshErr) {
+        copyRoundLogger.warn('Failed to refresh dashboard after submission:', refreshErr);
+        // Continue with navigation even if refresh fails
+      }
+
+      // Navigate after delay - dashboard should now show no active round
       setTimeout(() => {
         copyRoundLogger.debug('Navigating back to dashboard after copy submission');
         navigate('/dashboard');

@@ -41,16 +41,7 @@ export const Dashboard: React.FC = () => {
   // Log component mount and key state changes
   useEffect(() => {
     dashboardLogger.debug('Component mounted');
-    dashboardLogger.debug('Initial state:', {
-      player: player ? `${player.username}` : 'null',
-      activeRound: activeRound ? `${activeRound.round_type} (${activeRound.round_id})` : 'null',
-      roundAvailability: roundAvailability || 'null'
-    });
   }, []);
-
-  useEffect(() => {
-    dashboardLogger.debug('Round availability changed:', roundAvailability);
-  }, [roundAvailability]);
 
   useEffect(() => {
     if (activeRound) {
@@ -59,60 +50,45 @@ export const Dashboard: React.FC = () => {
         type: activeRound.round_type,
         expiresAt: activeRound.expires_at
       });
-    } else {
-      dashboardLogger.debug('Active round cleared');
     }
   }, [activeRound]);
 
+  // Beta survey status with proper cleanup to prevent duplicate calls
+  const hasFetchedSurveyRef = useRef(false);
   useEffect(() => {
     const playerId = player?.player_id;
-    dashboardLogger.debug('[Beta Survey] useEffect triggered', { playerId: playerId || 'undefined' });
 
     if (!playerId) {
-      dashboardLogger.debug('[Beta Survey] No player ID, skipping survey check');
       setSurveyStatus(null);
       setShowSurveyPrompt(false);
+      hasFetchedSurveyRef.current = false;
       return;
     }
 
-    let cancelled = false;
+    // Prevent duplicate calls in React StrictMode
+    if (hasFetchedSurveyRef.current) {
+      return;
+    }
+    hasFetchedSurveyRef.current = true;
+
     const controller = new AbortController();
 
     const fetchStatus = async () => {
       try {
-        dashboardLogger.debug('[Beta Survey] Fetching survey status from API...');
         const status = await apiClient.getBetaSurveyStatus(controller.signal);
-        dashboardLogger.debug('[Beta Survey] API response received', status);
-
-        if (cancelled) {
-          dashboardLogger.debug('[Beta Survey] Request was cancelled');
-          return;
-        }
 
         const dismissed = hasDismissedSurvey(playerId);
         const completedLocal = hasCompletedSurvey(playerId);
         const shouldShow = status.eligible && !status.has_submitted && !dismissed && !completedLocal;
-
-        dashboardLogger.debug('[Beta Survey] Status resolved', {
-          eligible: status.eligible,
-          hasSubmitted: status.has_submitted,
-          totalRounds: status.total_rounds,
-          dismissed,
-          completedLocal,
-          shouldShow,
-        });
 
         setSurveyStatus(status);
         setShowSurveyPrompt(shouldShow);
 
         if (shouldShow) {
           dashboardLogger.info('[Beta Survey] ✨ SHOWING SURVEY PROMPT ✨');
-        } else {
-          dashboardLogger.debug('[Beta Survey] Not showing survey prompt');
         }
       } catch (error) {
-        if (cancelled) {
-          dashboardLogger.debug('[Beta Survey] Request was cancelled (in catch)');
+        if (controller.signal.aborted) {
           return;
         }
         dashboardLogger.warn('[Beta Survey] Failed to fetch survey status', error);
@@ -122,11 +98,9 @@ export const Dashboard: React.FC = () => {
     fetchStatus();
 
     return () => {
-      cancelled = true;
       controller.abort();
     };
   }, [player?.player_id]);
-
 
   const handleStartTutorial = async () => {
     dashboardLogger.debug('Starting tutorial from dashboard');
@@ -237,22 +211,12 @@ export const Dashboard: React.FC = () => {
   }, [activeRoundRoute, navigate]);
 
   const handleRoundExpired = useCallback(() => {
-    console.log('⏰ [Dashboard] Timer expired callback triggered', {
-      activeRound: activeRound?.round_id,
-      roundType: activeRound?.round_type,
-      expiresAt: activeRound?.expires_at,
-      timestamp: new Date().toISOString()
-    });
     dashboardLogger.debug('Round expired, setting flag and scheduling refresh in 6 seconds');
     setIsRoundExpired(true);
 
     // Delay refresh by 6 seconds to allow backend to process expiration
     // (Backend has 5-second grace period, so we wait slightly longer)
-    console.log('⏰ [Dashboard] Scheduling refresh in 6 seconds (backend grace period + buffer)...');
     setTimeout(() => {
-      console.log('⏰ [Dashboard] 6-second delay complete, executing refresh now', {
-        timestamp: new Date().toISOString()
-      });
       dashboardLogger.debug('Executing delayed refresh after round expiration');
       void refreshDashboardAfterCountdown(`round:${activeRound?.round_type ?? 'unknown'}`);
     }, 6000);
@@ -277,6 +241,8 @@ export const Dashboard: React.FC = () => {
         refundAmount: response.refund_amount,
         penaltyKept: response.penalty_kept,
       });
+      // No additional refresh needed - abandonRound action already calls refreshDashboard()
+      // which updates both dashboard state and balance immediately
     } catch (err) {
       dashboardLogger.error('Failed to abandon round from dashboard', err);
       const errorMsg = extractErrorMessage(err, 'abandon-round') ||
