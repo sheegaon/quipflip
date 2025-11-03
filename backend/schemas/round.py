@@ -98,7 +98,7 @@ class AbandonRoundResponse(BaseModel):
     """Response when a player abandons an active round."""
 
     round_id: UUID
-    round_type: Literal["prompt", "copy"]
+    round_type: Literal["prompt", "copy", "vote"]
     status: Literal["abandoned"]
     refund_amount: int
     penalty_kept: int

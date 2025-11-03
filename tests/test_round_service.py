@@ -17,6 +17,7 @@ from backend.models.player_abandoned_prompt import PlayerAbandonedPrompt
 from backend.services.round_service import RoundService
 from backend.services.transaction_service import TransactionService
 from backend.services.queue_service import QueueService
+from backend.services.vote_service import VoteService
 from backend.utils.exceptions import (
     RoundExpiredError,
     InvalidPhraseError,
@@ -559,6 +560,120 @@ class TestAbandonRound:
             )
         )
         assert result.scalar_one_or_none() is not None
+
+    @pytest.mark.asyncio
+    async def test_abandon_vote_round(self, db_session, player_with_balance):
+        """Vote rounds should be abandonable with partial refund and cleared state."""
+        round_service = RoundService(db_session)
+        vote_service = VoteService(db_session)
+        transaction_service = TransactionService(db_session)
+
+        # Create other players involved in the phraseset
+        prompter = Player(
+            player_id=uuid.uuid4(),
+            username=f"prompter_{uuid.uuid4().hex[:8]}",
+            username_canonical=f"prompter_{uuid.uuid4().hex[:8]}",
+            pseudonym=f"Prompter_{uuid.uuid4().hex[:8]}",
+            pseudonym_canonical=f"prompter_{uuid.uuid4().hex[:8]}",
+            email=f"prompter_{uuid.uuid4().hex[:8]}@test.com",
+            password_hash="hash",
+            balance=1000,
+        )
+        copier_one = Player(
+            player_id=uuid.uuid4(),
+            username=f"copier1_{uuid.uuid4().hex[:8]}",
+            username_canonical=f"copier1_{uuid.uuid4().hex[:8]}",
+            pseudonym=f"Copier1_{uuid.uuid4().hex[:8]}",
+            pseudonym_canonical=f"copier1_{uuid.uuid4().hex[:8]}",
+            email=f"copier1_{uuid.uuid4().hex[:8]}@test.com",
+            password_hash="hash",
+            balance=1000,
+        )
+        copier_two = Player(
+            player_id=uuid.uuid4(),
+            username=f"copier2_{uuid.uuid4().hex[:8]}",
+            username_canonical=f"copier2_{uuid.uuid4().hex[:8]}",
+            pseudonym=f"Copier2_{uuid.uuid4().hex[:8]}",
+            pseudonym_canonical=f"copier2_{uuid.uuid4().hex[:8]}",
+            email=f"copier2_{uuid.uuid4().hex[:8]}@test.com",
+            password_hash="hash",
+            balance=1000,
+        )
+
+        db_session.add_all([prompter, copier_one, copier_two])
+        await db_session.commit()
+
+        # Create the submitted prompt and copy rounds powering the phraseset
+        prompt_round = Round(
+            round_id=uuid.uuid4(),
+            player_id=prompter.player_id,
+            round_type="prompt",
+            status="submitted",
+            prompt_text="Vote Prompt",
+            submitted_phrase="ORIGINAL",
+            cost=settings.prompt_cost,
+            expires_at=datetime.now(UTC) + timedelta(minutes=3),
+        )
+        copy_round_one = Round(
+            round_id=uuid.uuid4(),
+            player_id=copier_one.player_id,
+            round_type="copy",
+            status="submitted",
+            prompt_round_id=prompt_round.round_id,
+            original_phrase="ORIGINAL",
+            copy_phrase="COPY ONE",
+            cost=settings.copy_cost_normal,
+            expires_at=datetime.now(UTC) + timedelta(minutes=3),
+        )
+        copy_round_two = Round(
+            round_id=uuid.uuid4(),
+            player_id=copier_two.player_id,
+            round_type="copy",
+            status="submitted",
+            prompt_round_id=prompt_round.round_id,
+            original_phrase="ORIGINAL",
+            copy_phrase="COPY TWO",
+            cost=settings.copy_cost_normal,
+            expires_at=datetime.now(UTC) + timedelta(minutes=3),
+        )
+
+        db_session.add_all([prompt_round, copy_round_one, copy_round_two])
+        await db_session.commit()
+
+        phraseset = Phraseset(
+            phraseset_id=uuid.uuid4(),
+            prompt_round_id=prompt_round.round_id,
+            copy_round_1_id=copy_round_one.round_id,
+            copy_round_2_id=copy_round_two.round_id,
+            prompt_text="Vote Prompt",
+            original_phrase="ORIGINAL",
+            copy_phrase_1="COPY ONE",
+            copy_phrase_2="COPY TWO",
+            status="open",
+            vote_count=0,
+            total_pool=200,
+        )
+        db_session.add(phraseset)
+        await db_session.commit()
+
+        vote_round, _ = await vote_service.start_vote_round(player_with_balance, transaction_service)
+        await db_session.refresh(player_with_balance)
+        balance_after_charge = player_with_balance.balance
+
+        abandoned_round, refund_amount, penalty_kept = await round_service.abandon_round(
+            vote_round.round_id,
+            player_with_balance,
+            transaction_service,
+        )
+
+        assert abandoned_round.status == "abandoned"
+        assert abandoned_round.round_type == "vote"
+        assert refund_amount == max(settings.vote_cost - settings.abandoned_penalty, 0)
+        assert penalty_kept == settings.abandoned_penalty
+
+        await db_session.refresh(player_with_balance)
+        assert player_with_balance.active_round_id is None
+        assert player_with_balance.balance == balance_after_charge + refund_amount
 
 
 class TestPhrasesetCreation:

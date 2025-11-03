@@ -712,7 +712,7 @@ Submit phrase for prompt or copy round.
 - `not_found` - Round not found or not owned by player
 
 #### `POST /rounds/{round_id}/abandon`
-Immediately abandon an active prompt or copy round. The player receives an instant refund minus the configured abandonment penalty and the prompt is returned to the queue when applicable.
+Immediately abandon an active prompt, copy, or vote round. The player receives an instant refund minus the configured abandonment penalty. Prompt rounds mark the phraseset as abandoned, copy rounds re-queue the prompt for other players, and vote rounds simply clear the active state.
 
 **Request Body:** _None_
 
@@ -731,7 +731,7 @@ Immediately abandon an active prompt or copy round. The player receives an insta
 **Errors:**
 - `round_not_found` - Round does not exist or belongs to another player
 - `Round is not active` - Attempted to abandon a round that has already completed or expired
-- `Only prompt or copy rounds can be abandoned` - Tried to abandon a vote round
+- `Only prompt, copy, or vote rounds can be abandoned` - Tried to abandon an unsupported round type
 - `abandon_failed` - Unexpected server error while processing the abandonment
 
 #### `POST /rounds/{round_id}/feedback`

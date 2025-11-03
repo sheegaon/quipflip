@@ -705,7 +705,7 @@ class RoundService:
             player: Player,
             transaction_service: TransactionService,
     ) -> tuple[Round, int, int]:
-        """Abandon an active prompt or copy round and process refund."""
+        """Abandon an active prompt, copy, or vote round and process refund."""
 
         from backend.utils import lock_client
 
@@ -724,8 +724,8 @@ class RoundService:
             if round_object.status != "active":
                 raise ValueError("Round is not active")
 
-            if round_object.round_type not in {"prompt", "copy"}:
-                raise ValueError("Only prompt or copy rounds can be abandoned")
+            if round_object.round_type not in {"prompt", "copy", "vote"}:
+                raise ValueError("Only prompt, copy, or vote rounds can be abandoned")
 
             # Calculate refund and penalty (same for both round types)
             penalty_kept = self.settings.abandoned_penalty
@@ -739,7 +739,7 @@ class RoundService:
 
             if round_object.round_type == "prompt":
                 round_object.phraseset_status = "abandoned"
-            else:  # copy round
+            elif round_object.round_type == "copy":
                 if round_object.prompt_round_id:
                     QueueService.add_prompt_round_to_queue(round_object.prompt_round_id)
 
@@ -749,6 +749,9 @@ class RoundService:
                         prompt_round_id=round_object.prompt_round_id,
                     )
                     self.db.add(abandonment)
+            else:  # vote round
+                # No additional queue updates required for vote rounds
+                pass
 
             if refund_amount > 0:
                 await transaction_service.create_transaction(

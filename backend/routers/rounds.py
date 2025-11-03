@@ -245,7 +245,7 @@ async def abandon_round(
     player: Player = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ):
-    """Abandon an active prompt or copy round."""
+    """Abandon an active prompt, copy, or vote round."""
 
     transaction_service = TransactionService(db)
     round_service = RoundService(db)
