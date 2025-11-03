@@ -221,6 +221,8 @@ class StaleAIService:
                         continue
 
                     self.db.add(copy_round)
+                    # Flush to ensure copy_round is visible to create_phraseset_if_ready query
+                    await self.db.flush()
 
                     if current_slot == "copy1":
                         prompt_round.copy1_player_id = stale_handler.player_id

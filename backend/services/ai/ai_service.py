@@ -518,7 +518,9 @@ class AIService:
                     )
                     
                     self.db.add(copy_round)
-                    
+                    # Flush to ensure copy_round is visible to create_phraseset_if_ready query
+                    await self.db.flush()
+
                     # Update prompt round copy assignment
                     if prompt_round.copy1_player_id is None:
                         prompt_round.copy1_player_id = ai_copy_player.player_id
