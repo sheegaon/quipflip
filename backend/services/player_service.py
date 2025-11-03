@@ -232,7 +232,7 @@ class PlayerService:
             raise
 
         await self.db.refresh(player)
-        return self.apply_admin_status(player)
+        return player
 
     async def update_password(self, player: Player, new_password: str) -> None:
         """Update a player's password hash."""
