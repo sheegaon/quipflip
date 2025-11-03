@@ -977,7 +977,7 @@ class RoundService:
         if round_object.round_type == "prompt":
             round_object.status = "expired"
             round_object.phraseset_status = "abandoned"
-            refund_amount = self.settings.prompt_cost - self.settings.abandoned_penalty
+            refund_amount = max(self.settings.prompt_cost - self.settings.abandoned_penalty, 0)
 
             # Create refund transaction
             await transaction_service.create_transaction(
@@ -991,7 +991,7 @@ class RoundService:
 
         elif round_object.round_type == "copy":
             round_object.status = "abandoned"
-            refund_amount = round_object.cost - self.settings.abandoned_penalty
+            refund_amount = max(round_object.cost - self.settings.abandoned_penalty, 0)
 
             # Create refund transaction
             await transaction_service.create_transaction(
@@ -1018,7 +1018,7 @@ class RoundService:
             )
         elif round_object.round_type == "vote":
             round_object.status = "expired"
-            refund_amount = round_object.cost - self.settings.abandoned_penalty
+            refund_amount = max(round_object.cost - self.settings.abandoned_penalty, 0)
 
             # Create refund transaction for vote round expiration
             await transaction_service.create_transaction(
