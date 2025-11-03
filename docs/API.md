@@ -1231,6 +1231,98 @@ Claim a completed quest reward.
 
 ---
 
+### Admin Endpoints
+
+Admin endpoints allow authorized users to view and modify game configuration. Authentication is required for all admin endpoints.
+
+#### `GET /admin/config`
+Get current game configuration values (from database overrides or environment defaults).
+
+**Response:**
+```json
+{
+  "starting_balance": 5000,
+  "daily_bonus_amount": 100,
+  "prompt_cost": 100,
+  "copy_cost_normal": 50,
+  "copy_cost_discount": 40,
+  "vote_cost": 10,
+  "vote_payout_correct": 20,
+  "abandoned_penalty": 5,
+  "prize_pool_base": 200,
+  "max_outstanding_quips": 10,
+  "copy_discount_threshold": 10,
+  "prompt_round_seconds": 180,
+  "copy_round_seconds": 180,
+  "vote_round_seconds": 60,
+  "grace_period_seconds": 5,
+  "vote_max_votes": 20,
+  "vote_closing_threshold": 5,
+  "vote_closing_window_minutes": 1,
+  "vote_minimum_threshold": 3,
+  "vote_minimum_window_minutes": 10,
+  "phrase_min_words": 2,
+  "phrase_max_words": 5,
+  "phrase_max_length": 100,
+  "phrase_min_char_per_word": 2,
+  "phrase_max_char_per_word": 15,
+  "significant_word_min_length": 4,
+  "ai_provider": "openai",
+  "ai_openai_model": "gpt-5-nano",
+  "ai_gemini_model": "gemini-2.5-flash-lite",
+  "ai_timeout_seconds": 30,
+  "ai_backup_delay_minutes": 15,
+  "ai_backup_batch_size": 3,
+  "ai_backup_sleep_minutes": 60,
+  "ai_stale_handler_enabled": true,
+  "ai_stale_threshold_days": 3,
+  "ai_stale_check_interval_hours": 12
+}
+```
+
+**Notes:**
+- Returns all configurable game settings
+- Values may come from database overrides or environment defaults
+- New fields added for stale AI handler:
+  - `ai_stale_handler_enabled` - Enable/disable stale content handler (default: true)
+  - `ai_stale_threshold_days` - Days before content is considered stale (minimum 3, default: 3)
+  - `ai_stale_check_interval_hours` - Hours between stale handler cycles (minimum 1, default: 12)
+
+#### `PATCH /admin/config`
+Update a game configuration value. Requires admin password validation.
+
+**Request:**
+```json
+{
+  "config_key": "ai_stale_threshold_days",
+  "config_value": 5
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Configuration updated successfully",
+  "updated_key": "ai_stale_threshold_days",
+  "new_value": 5
+}
+```
+
+**Errors:**
+- `400 Bad Request` - Invalid configuration key or value
+- `401 Unauthorized` - Not authenticated
+- `403 Forbidden` - Not authorized (admin access required)
+- `422 Validation Error` - Value fails validation (e.g., ai_stale_threshold_days < 3)
+
+**Notes:**
+- All configuration changes are persisted to the database
+- Changes take effect immediately for new rounds/operations
+- Validation rules are enforced (e.g., minimum values, data types)
+- See [Game Rules](GAME_RULES.md) for detailed explanation of each setting
+
+---
+
 ## Example Workflows
 
 ### Complete Game Flow
