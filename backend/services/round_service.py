@@ -1108,7 +1108,7 @@ class RoundService:
 
         available_count = result.scalar() or 0
 
-        logger.info(f"Available prompts for player {player_id}: {available_count}")
+        logger.debug(f"Available prompts for player {player_id}: {available_count}")
         return available_count
 
     async def ensure_prompt_queue_populated(self) -> bool:
