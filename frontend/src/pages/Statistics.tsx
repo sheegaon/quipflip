@@ -92,10 +92,24 @@ const Statistics: React.FC = () => {
       { earnings: number; rounds: number; winRateSum: number; winRateCount: number }
     >();
 
-    parsedPoints.forEach((point) => {
-      const existing = aggregated.get(point.dayKey) ?? { earnings: 0, rounds: 0, winRateSum: 0, winRateCount: 0 };
-      existing.earnings += point.earnings;
-      existing.rounds += point.rounds_played;
+    const sortedPoints = [...parsedPoints].sort((a, b) => a.timestamp - b.timestamp);
+    let previousEarnings = 0;
+    let previousRounds = 0;
+
+    sortedPoints.forEach((point) => {
+      const existing =
+        aggregated.get(point.dayKey) ?? { earnings: 0, rounds: 0, winRateSum: 0, winRateCount: 0 };
+
+      const earningsDelta =
+        point.earnings >= previousEarnings ? point.earnings - previousEarnings : point.earnings;
+      const roundsDelta =
+        point.rounds_played >= previousRounds ? point.rounds_played - previousRounds : point.rounds_played;
+
+      previousEarnings = point.earnings;
+      previousRounds = point.rounds_played;
+
+      existing.earnings += Math.max(0, earningsDelta);
+      existing.rounds += Math.max(0, roundsDelta);
       existing.winRateSum += point.win_rate;
       existing.winRateCount += 1;
       aggregated.set(point.dayKey, existing);
