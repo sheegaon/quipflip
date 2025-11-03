@@ -84,15 +84,12 @@ export const GameProvider: React.FC<{
 
   // Initialize session on mount
   useEffect(() => {
-    gameContextLogger.debug('🚀 Initializing GameContext session...');
     const initializeSession = async () => {
       const storedUsername = apiClient.getStoredUsername();
-      gameContextLogger.debug('👤 Stored username from API client:', storedUsername);
       if (storedUsername) {
         setUsername(storedUsername);
       }
       const token = await apiClient.ensureAccessToken();
-      gameContextLogger.debug('🔑 Access token check result:', { hasToken: !!token });
       setIsAuthenticated(Boolean(token));
     };
     initializeSession();
@@ -100,7 +97,9 @@ export const GameProvider: React.FC<{
 
   // Monitor authentication state changes
   useEffect(() => {
-    gameContextLogger.debug('🔄 Authentication state changed:', { isAuthenticated, username });
+    if (isAuthenticated && username) {
+      gameContextLogger.debug('User authenticated', { username });
+    }
   }, [isAuthenticated, username]);
 
   // Create stable actions object using useCallback for all methods
@@ -119,18 +118,14 @@ export const GameProvider: React.FC<{
       gameContextLogger.debug('🚪 GameContext logout called');
       
       try {
-        gameContextLogger.debug('📞 Calling apiClient.logout...');
         await apiClient.logout();
-        gameContextLogger.debug('✅ API logout successful');
       } catch (err) {
         gameContextLogger.warn('⚠️ Failed to logout cleanly:', err);
       } finally {
-        gameContextLogger.debug('🛑 Stopping all polling...');
         // Stop all polling
         stopPoll('dashboard');
         stopPoll('balance');
         
-        gameContextLogger.debug('🧹 Clearing session and state...');
         apiClient.clearSession();
         setIsAuthenticated(false);
         setUsername(null);
@@ -142,15 +137,12 @@ export const GameProvider: React.FC<{
         setRoundAvailability(null);
         setLoading(false);
         setError(null);
-        gameContextLogger.debug('✅ Logout cleanup completed');
       }
   }, [stopPoll]);
 
   const refreshDashboard = useCallback(async (signal?: AbortSignal) => {
-      gameContextLogger.debug('🔄 GameContext refreshDashboard called');
       // Check token directly instead of relying on state
       const token = await apiClient.ensureAccessToken();
-      gameContextLogger.debug('🔑 Token check for dashboard refresh:', { hasToken: !!token });
       
       if (!token) {
         gameContextLogger.warn('❌ No valid token, skipping dashboard refresh');
@@ -160,29 +152,20 @@ export const GameProvider: React.FC<{
 
       // Ensure authentication state is correct
       if (!isAuthenticated) {
-        gameContextLogger.debug('🔄 Setting authenticated to true after token check');
         setIsAuthenticated(true);
       }
 
       try {
-        gameContextLogger.debug('📞 Making dashboard API call...');
         const data = await apiClient.getDashboardData(signal);
         gameContextLogger.debug('✅ Dashboard data received successfully:', {
           playerBalance: data.player?.balance,
-          playerOutstandingPrompts: data.player?.outstanding_prompts,
           currentRound: data.current_round ? {
             id: data.current_round.round_id,
             type: data.current_round.round_type,
             status: data.current_round.state?.status
           } : 'null',
           pendingResultsCount: data.pending_results?.length || 0,
-          unclaimedResultsCount: data.unclaimed_results?.length || 0,
-          roundAvailability: data.round_availability ? {
-            promptsWaiting: data.round_availability.prompts_waiting,
-            phrasesetsWaiting: data.round_availability.phrasesets_waiting,
-            promptCost: data.round_availability.prompt_cost,
-            copyCost: data.round_availability.copy_cost
-          } : 'null'
+          unclaimedResultsCount: data.unclaimed_results?.length || 0
         });
 
         // Update all dashboard state at once
@@ -227,10 +210,8 @@ export const GameProvider: React.FC<{
         setRoundAvailability(data.round_availability);
         setError(null);
         
-        gameContextLogger.debug('✅ Dashboard state updated successfully');
       } catch (err) {
         if (err instanceof Error && err.name === 'CanceledError') {
-          gameContextLogger.debug('⏹️ Dashboard refresh canceled');
           return;
         }
 

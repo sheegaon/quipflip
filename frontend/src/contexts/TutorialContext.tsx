@@ -92,7 +92,6 @@ export const TutorialProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     try {
       const token = await apiClient.ensureAccessToken();
       if (!token) {
-        tutorialLogger.debug('No access token available for tutorial operation');
         setStatus(null);
       }
       return token;
@@ -112,7 +111,6 @@ export const TutorialProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       try {
         const token = await ensureToken();
         if (!token) {
-          tutorialLogger.debug('Skipping tutorial status refresh without valid session');
           setError(null);
           return;
         }

@@ -17,10 +17,6 @@ export const Landing: React.FC = () => {
   const { startSession } = actions;
   const navigate = useNavigate();
 
-  useEffect(() => {
-    landingLogger.debug('Landing page rendered');
-  }, []);
-
   const handleCreatePlayer = async (e: React.FormEvent) => {
     e.preventDefault();
 

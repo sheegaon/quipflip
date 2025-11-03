@@ -53,25 +53,29 @@ export const Dashboard: React.FC = () => {
     }
   }, [activeRound]);
 
+  // Beta survey status with proper cleanup to prevent duplicate calls
+  const hasFetchedSurveyRef = useRef(false);
   useEffect(() => {
     const playerId = player?.player_id;
 
     if (!playerId) {
       setSurveyStatus(null);
       setShowSurveyPrompt(false);
+      hasFetchedSurveyRef.current = false;
       return;
     }
 
-    let cancelled = false;
+    // Prevent duplicate calls in React StrictMode
+    if (hasFetchedSurveyRef.current) {
+      return;
+    }
+    hasFetchedSurveyRef.current = true;
+
     const controller = new AbortController();
 
     const fetchStatus = async () => {
       try {
         const status = await apiClient.getBetaSurveyStatus(controller.signal);
-
-        if (cancelled) {
-          return;
-        }
 
         const dismissed = hasDismissedSurvey(playerId);
         const completedLocal = hasCompletedSurvey(playerId);
@@ -84,7 +88,7 @@ export const Dashboard: React.FC = () => {
           dashboardLogger.info('[Beta Survey] ✨ SHOWING SURVEY PROMPT ✨');
         }
       } catch (error) {
-        if (cancelled) {
+        if (controller.signal.aborted) {
           return;
         }
         dashboardLogger.warn('[Beta Survey] Failed to fetch survey status', error);
@@ -94,11 +98,9 @@ export const Dashboard: React.FC = () => {
     fetchStatus();
 
     return () => {
-      cancelled = true;
       controller.abort();
     };
   }, [player?.player_id]);
-
 
   const handleStartTutorial = async () => {
     dashboardLogger.debug('Starting tutorial from dashboard');
