@@ -82,6 +82,7 @@ const Admin: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'economics' | 'timing' | 'validation' | 'phrase_validator' | 'ai'>('economics');
   const [editMode, setEditMode] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [pendingFlagCount, setPendingFlagCount] = useState(0);
 
   // Phrase Validator state
   const [validationType, setValidationType] = useState<'basic' | 'prompt' | 'copy'>('basic');
@@ -123,6 +124,19 @@ const Admin: React.FC = () => {
     };
 
     loadConfig();
+  }, []);
+
+  useEffect(() => {
+    const loadPendingFlags = async () => {
+      try {
+        const response = await apiClient.getFlaggedPrompts('pending');
+        setPendingFlagCount(response.flags.length);
+      } catch (err) {
+        adminLogger.error('Failed to load pending flagged prompts', err);
+      }
+    };
+
+    loadPendingFlags();
   }, []);
 
   const handleSaveConfig = async (key: string, value: number | string) => {
@@ -310,7 +324,11 @@ const Admin: React.FC = () => {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => navigate('/admin/flags')}
-                className="rounded-tile border-2 border-quip-teal px-4 py-2 text-sm font-semibold text-quip-teal transition hover:bg-quip-teal hover:text-white"
+                className={`rounded-tile border-2 px-4 py-2 text-sm font-semibold transition ${
+                  pendingFlagCount > 0
+                    ? 'border-red-500 text-red-600 hover:bg-red-600 hover:text-white'
+                    : 'border-quip-teal text-quip-teal hover:bg-quip-teal hover:text-white'
+                }`}
               >
                 Review flagged phrases
               </button>
