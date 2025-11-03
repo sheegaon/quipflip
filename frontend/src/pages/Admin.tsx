@@ -51,6 +51,9 @@ interface GameConfig {
   ai_backup_delay_minutes: number;
   ai_backup_batch_size: number;
   ai_backup_sleep_minutes: number;
+  ai_stale_handler_enabled: boolean;
+  ai_stale_threshold_days: number;
+  ai_stale_check_interval_hours: number;
 }
 
 interface ValidationResult {
@@ -1285,6 +1288,52 @@ const Admin: React.FC = () => {
                   type="number"
                   min={5}
                   max={120}
+                  onSave={handleSaveConfig}
+                  disabled={!editMode}
+                />
+              </div>
+            </div>
+
+            <div className="tile-card p-6">
+              <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Stale AI Handler</h2>
+              <p className="text-sm text-gray-600 mb-4">
+                Handles abandoned content (3+ days old). Processes all stale content every 12 hours by default.
+              </p>
+              <div className="space-y-2">
+                <EditableConfigField
+                  label="Stale Handler Enabled"
+                  value={config.ai_stale_handler_enabled ? "true" : "false"}
+                  configKey="ai_stale_handler_enabled"
+                  description="Enable stale content handler"
+
+                  type="select"
+                  options={["true", "false"]}
+                  onSave={handleSaveConfig}
+                  disabled={!editMode}
+                />
+                <EditableConfigField
+                  label="Stale Threshold"
+                  value={config.ai_stale_threshold_days}
+                  configKey="ai_stale_threshold_days"
+                  unit="days"
+                  description="Age before content is considered stale (min 3 days)"
+
+                  type="number"
+                  min={3}
+                  max={30}
+                  onSave={handleSaveConfig}
+                  disabled={!editMode}
+                />
+                <EditableConfigField
+                  label="Check Interval"
+                  value={config.ai_stale_check_interval_hours}
+                  configKey="ai_stale_check_interval_hours"
+                  unit="hours"
+                  description="Hours between stale content checks"
+
+                  type="number"
+                  min={1}
+                  max={72}
                   onSave={handleSaveConfig}
                   disabled={!editMode}
                 />
