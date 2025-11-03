@@ -271,7 +271,7 @@ class StaleAIService:
                     # Re-enqueue the prompt so it can be retried later
                     try:
                         QueueService.add_prompt_round_to_queue(prompt_round.round_id)
-                        logger.debug(f"Re-enqueued prompt {prompt_round.round_id} after stale AI failure")
+                        logger.info(f"Re-enqueued prompt {prompt_round.round_id} after stale AI failure")
                     except Exception as queue_exc:
                         logger.error(f"Failed to re-enqueue prompt {prompt_round.round_id}: {queue_exc}")
 
@@ -288,7 +288,7 @@ class StaleAIService:
                     # Check if phraseset is still open (race condition protection)
                     await self.db.refresh(phraseset)
                     if phraseset.status not in ["open", "closing"]:
-                        logger.debug(
+                        logger.info(
                             f"Skipping phraseset {phraseset.phraseset_id} - status changed to {phraseset.status}"
                         )
                         continue
@@ -306,7 +306,7 @@ class StaleAIService:
                         .where(Vote.player_id == stale_voter.player_id)
                     )
                     if existing_vote.scalar_one_or_none():
-                        logger.debug(
+                        logger.info(
                             f"Voter {stale_voter_email} already voted on phraseset {phraseset.phraseset_id}, skipping"
                         )
                         continue

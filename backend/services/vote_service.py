@@ -272,7 +272,7 @@ class VoteService:
             if not active_phrasesets:
                 return
                 
-            logger.debug(f"Checking {len(active_phrasesets)} active phrasesets for finalization")
+            logger.info(f"Checking {len(active_phrasesets)} active phrasesets for finalization")
             
             # Import here to avoid circular imports
             from backend.services.transaction_service import TransactionService

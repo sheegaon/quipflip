@@ -517,10 +517,10 @@ async def get_dashboard_data(
     cache_key = f"dashboard:{player.player_id}"
     cached_data = dashboard_cache.get(cache_key)
     if cached_data:
-        logger.debug(f"Returning cached dashboard data for player {player.player_id}")
+        logger.info(f"Returning cached dashboard data for player {player.player_id}")
         return cached_data
     
-    logger.debug(f"Generating fresh dashboard data for player {player.player_id}")
+    logger.info(f"Generating fresh dashboard data for player {player.player_id}")
 
     # Create a single PhrasesetService instance to share across calls
     # This allows the contributions cache to work across all three endpoints,

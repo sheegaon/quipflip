@@ -209,7 +209,7 @@ class PlayerService:
             .where(Phraseset.status.in_(["open", "closing"]))
         )
         count = result.scalar() or 0
-        logger.debug(f"Player {player_id} has {count} outstanding prompts")
+        logger.info(f"Player {player_id} has {count} outstanding prompts")
         return count
 
     async def update_email(self, player: Player, new_email: str) -> Player:

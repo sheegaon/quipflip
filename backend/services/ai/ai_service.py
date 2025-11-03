@@ -207,7 +207,7 @@ class AIService:
                     self.common_words = list(result)
                 elif isinstance(result, set):
                     self.common_words = list(result)
-                    logger.debug(f"Converted set to list for common_words: {len(self.common_words)} words")
+                    logger.info(f"Converted set to list for common_words: {len(self.common_words)} words")
                 else:
                     logger.error(f"phrase_validator.common_words() returned {type(result)}, expected list/tuple/set")
                     self.common_words = []
@@ -478,7 +478,7 @@ class AIService:
                     final_prompts.append(prompt_round)
                 else:
                     stats["prompts_filtered_already_attempted"] += 1
-                    logger.debug(f"Skipping prompt {prompt_round.round_id} - AI already attempted recently")
+                    logger.info(f"Skipping prompt {prompt_round.round_id} - AI already attempted recently")
             
             stats["prompts_checked"] = len(final_prompts)
             logger.info(
@@ -493,7 +493,7 @@ class AIService:
                     claimed = QueueService.remove_prompt_round_from_queue(prompt_round.round_id)
                     if not claimed:
                         # Someone else claimed or removed it from the queue
-                        logger.debug(f"Skipping prompt {prompt_round.round_id} - could not claim from queue")
+                        logger.info(f"Skipping prompt {prompt_round.round_id} - could not claim from queue")
                         continue
 
                     # Generate AI copy phrase with proper validation context
@@ -539,7 +539,7 @@ class AIService:
                     # Put the prompt back into the queue so it can be retried later
                     try:
                         QueueService.add_prompt_round_to_queue(prompt_round.round_id)
-                        logger.debug(f"Re-enqueued prompt {prompt_round.round_id} after AI failure")
+                        logger.info(f"Re-enqueued prompt {prompt_round.round_id} after AI failure")
                     except Exception as q_e:
                         logger.error(f"Failed to re-enqueue prompt {prompt_round.round_id}: {q_e}")
                     continue
