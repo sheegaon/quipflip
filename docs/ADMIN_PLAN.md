@@ -6,37 +6,47 @@ The Admin panel is accessible from Settings page after password verification.
 
 ### How to Access Admin Panel
 
-1. **Login to Quipflip** with any player account
-2. **Navigate to Statistics** (click username in header)
-3. **Click Settings** button (gear icon in top right)
-4. **Scroll to "Admin Access"** section
-5. **Click "Access Admin Panel"** button
-6. **Enter the admin password** - This is the `SECRET_KEY` environment variable:
-   - Found in `.env` file as `SECRET_KEY=your-secret-here`
-   - Default value: `dev-secret-key-change-in-production`
-   - Current value in your environment: Check `.env` file
-7. **Click Continue** to access the admin panel
+1. **Log in with an admin-enabled account.** Emails listed in `ADMIN_EMAILS` (see `backend/config.py`) receive `player.is_admin = true` at login (`backend/services/player_service.py`).
+2. **Open Settings.** From the Statistics page, use the gear icon in the header to navigate to `/settings`.
+3. **Scroll to “Admin Access.”** This tile renders only when `player.is_admin` is true (`frontend/src/pages/Settings.tsx`).
+4. **Click “Access Admin Panel.”** A password prompt appears.
+5. **Enter the admin password (the `SECRET_KEY`).**
+   - Stored in `.env` as `SECRET_KEY=...`
+   - Default development value: `dev-secret-key-change-in-production`
+6. **Submit to continue.** On success the app routes to `/admin` (`frontend/src/pages/Admin.tsx`).
 
-**Note:** Any authenticated user who knows the secret key can access the admin panel. For production, you should implement role-based access control (see Phase 6 below).
+**Note:** The frontend currently blocks non-admin players from launching the panel, but the backend `GET/PATCH /admin/config` endpoints only require authentication. Hardening these routes to enforce `player.is_admin` server-side remains a priority (see “Security Considerations”).
 
 ### Implemented Features
-- **Password Protection**
-  - Validates against application `SECRET_KEY` environment variable
-  - Uses dedicated `/admin/validate-password` endpoint
-  - Backend endpoint: `POST /admin/validate-password`
-  - Request: `{ "password": "your-secret-key" }`
-  - Response: `{ "valid": true | false }`
+- **Admin Account Gating**
+  - Players are marked `is_admin` when their email matches `ADMIN_EMAILS` (`backend/services/player_service.py`).
+  - Settings screen hides the admin tile for non-admins (`frontend/src/pages/Settings.tsx`).
+
+- **Password Challenge (Secret Key)**
+  - Frontend prompts for the application `SECRET_KEY` before navigating to `/admin`.
+  - Endpoint: `POST /admin/validate-password` (`backend/routers/admin.py`) returns `{ "valid": true | false }`.
+  - **Gap:** Config endpoints do not yet enforce `is_admin`; see “Security Considerations.”
 
 - **Configuration Editing & Persistence**
-  - Live edit mode with inline validation for all economics, timing, validation, and AI settings
-  - `system_config` table stores overrides with metadata and audit fields (`updated_at`, `updated_by`)
-  - `SystemConfigService` handles schema validation, serialization, and cache invalidation
-  - API endpoints:
-    - `GET /admin/config` returns merged defaults + overrides
-    - `PATCH /admin/config` updates a single key with type and bounds validation
-  - Frontend Admin page uses `EditableConfigField` for inline editing, success banners, and edit-mode toggle
+  - Live edit toggles in `frontend/src/pages/Admin.tsx` write through to `SystemConfigService`.
+  - `system_config` table captures overrides with metadata (`backend/models/system_config.py`).
+  - API:
+    - `GET /admin/config` — returns merged defaults and overrides.
+    - `PATCH /admin/config` — updates one key with schema validation (`backend/routers/admin.py`).
 
-- **Configuration Categories:**
+- **Flagged Prompt Moderation**
+  - `/admin/flags` lists reports; `/admin/flags/{id}/resolve` confirms or dismisses (`backend/routers/admin.py`).
+  - UI at `frontend/src/pages/AdminFlagged.tsx` supports filtering, resolving, and in-app feedback.
+
+- **Account Cleanup**
+  - Admins can delete players via `/admin/players` DELETE, which wraps `CleanupService.delete_player`.
+  - Admin search is implemented as `/admin/players/search` for quick lookup by email or username.
+
+- **Phrase Validator Sandbox**
+  - `POST /admin/test-phrase-validation` lets admins test prompt/copy validation workflows.
+  - Results display detailed scoring in the Admin “Phrase Validator” tab (`frontend/src/pages/Admin.tsx`).
+
+- **Configuration Categories**
   - **Economics:** Costs, payouts, balances, limits
   - **Timing:** Round durations, grace periods, vote windows
   - **Validation:** Phrase word/character limits
@@ -46,66 +56,37 @@ The Admin panel is accessible from Settings page after password verification.
 
 ## Phase 3: Player Management
 
-### Backend Requirements
+### Backend Status
 
-**Endpoint:** `GET /admin/players`
-- Query params: `{ search?: string, limit?: number, offset?: number }`
-- Returns paginated list of players
-- Include: username, email, balance, created_at, last_login_date (UTC timestamp)
-- Optional filters: active/inactive, balance range, date range
+**Implemented**
+- `GET /admin/players/search` — single-player lookup by email or username; returns `AdminPlayerSummary` (`backend/routers/admin.py`).
+- `DELETE /admin/players` — deletes a player after `"DELETE"` confirmation; wraps `CleanupService` (`backend/routers/admin.py`).
 
-**Endpoint:** `GET /admin/players/{player_id}`
-- Returns detailed player information
-- Include statistics, recent activity, outstanding rounds
-
-**Endpoint:** `PATCH /admin/players/{player_id}/balance`
-- Request body: `{ amount: number, reason: string }`
-- Adjust player balance (add or subtract)
-- Create transaction record with admin note
-- Log the change
-
-**Endpoint:** `DELETE /admin/players/{player_id}`
-- Delete player account (test accounts only, or with confirmation)
-- Uses existing `CleanupService` logic
-- Returns success response
+**Outstanding**
+- Paginated listing endpoint for browsing/filtering players.
+- Player detail endpoint (statistics, outstanding rounds, recent activity).
+- Balance adjustment endpoint that records admin-authored transactions.
+- Server-side audit trail for the above actions.
 
 ---
 
 ### Frontend Implementation
 
-#### Player Search & List
-- Search bar (username or email)
-- Paginated table with columns:
-  - Username
-  - Email
-  - Balance
-  - Outstanding Prompts
-  - Last Login
-  - Created Date
-  - Actions (View, Edit Balance, Delete)
-- Sorting by columns
-- Filters (date range, balance range, active status)
+#### Implemented UI (v1.1)
+- Account cleanup tile on `/settings` for admins only (`frontend/src/pages/Settings.tsx`).
+- Admin panel “Account Cleanup” flow with search, confirmation, and deletion feedback (`frontend/src/pages/Admin.tsx`).
 
-#### Player Detail View
-- Modal or separate page
-- Complete player profile
-- Statistics overview
-- Recent activity timeline
-- Outstanding rounds
-- Transaction history
-- Quick actions (adjust balance, reset tutorial, etc.)
-
-#### Balance Adjustment
-- Modal with input field
-- Add or subtract amount
-- Reason/note field (required)
-- Preview new balance
-- Confirm dialog
-- Create transaction record
+#### Remaining UI Enhancements
+- Paginated player table with sorting & filters (currently only single-record search).
+- Player detail drawer/modal showing statistics and recent activity.
+- Balance adjustment workflow with preview and audit note.
+- Batch actions (reset tutorial, force logout) once backend endpoints exist.
 
 ---
 
 ## Phase 4: System Monitoring
+
+> **Status:** Not implemented. No `/admin/stats` or `/admin/activity` endpoints exist in `backend/routers/admin.py`.
 
 ### Backend Requirements
 
@@ -379,6 +360,7 @@ CREATE TABLE announcements (
 - Principle of least privilege
 - Audit all admin actions
 - IP whitelisting (optional)
+- Enforce `player.is_admin` (and ideally an admin session token) on `GET/PATCH /admin/config` and `/admin/test-phrase-validation`, which currently only require authentication.
 
 ### Data Protection
 - Sanitize all inputs
