@@ -214,6 +214,8 @@ class AuthService:
         if not player or not verify_password(password, player.password_hash):
             raise AuthError("Email/password combination is invalid")
 
+        self.player_service.apply_admin_status(player)
+
         return player
 
     # ------------------------------------------------------------------

@@ -67,6 +67,14 @@ const Settings: React.FC = () => {
     }
   }, [player?.email]);
 
+  useEffect(() => {
+    if (!player?.is_admin && showAdminPasswordPrompt) {
+      setShowAdminPasswordPrompt(false);
+      setAdminPassword('');
+      setAdminPasswordError(null);
+    }
+  }, [player?.is_admin, showAdminPasswordPrompt]);
+
   if (!player) {
     return (
       <div className="min-h-screen bg-quip-cream bg-pattern">
@@ -548,55 +556,57 @@ const Settings: React.FC = () => {
         </div>
 
         {/* Admin Access */}
-        <div className="tile-card p-6 mb-6 border-2 border-quip-orange border-opacity-30">
-          <h2 className="text-2xl font-display font-bold text-quip-navy mb-4">Admin Access</h2>
-          <p className="text-quip-teal mb-4">
-            Access administrative settings and configuration. Requires the application admin password (secret key).
-          </p>
+        {player.is_admin && (
+          <div className="tile-card p-6 mb-6 border-2 border-quip-orange border-opacity-30">
+            <h2 className="text-2xl font-display font-bold text-quip-navy mb-4">Admin Access</h2>
+            <p className="text-quip-teal mb-4">
+              Access administrative settings and configuration. Requires the application admin password (secret key).
+            </p>
 
-          {!showAdminPasswordPrompt ? (
-            <button
-              onClick={handleAdminAccess}
-              className="bg-quip-orange hover:bg-quip-orange-deep text-white font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm"
-            >
-              Access Admin Panel
-            </button>
-          ) : (
-            <form onSubmit={handleAdminPasswordSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-quip-teal mb-2">Enter admin password (secret key)</label>
-                <input
-                  type="password"
-                  value={adminPassword}
-                  onChange={(e) => setAdminPassword(e.target.value)}
-                  className="w-full md:w-96 border-2 border-quip-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-quip-orange"
-                  placeholder="Admin password"
-                  autoFocus
-                />
-                {adminPasswordError && <p className="text-red-600 text-sm mt-1">{adminPasswordError}</p>}
-              </div>
-              <div className="flex gap-3">
-                <button
-                  type="submit"
-                  className="bg-quip-orange hover:bg-quip-orange-deep text-white font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm"
-                >
-                  Continue
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAdminPasswordPrompt(false);
-                    setAdminPassword('');
-                    setAdminPasswordError(null);
-                  }}
-                  className="bg-gray-300 hover:bg-gray-400 text-gray-700 font-bold py-3 px-6 rounded-tile transition-all"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          )}
-        </div>
+            {!showAdminPasswordPrompt ? (
+              <button
+                onClick={handleAdminAccess}
+                className="bg-quip-orange hover:bg-quip-orange-deep text-white font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm"
+              >
+                Access Admin Panel
+              </button>
+            ) : (
+              <form onSubmit={handleAdminPasswordSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-quip-teal mb-2">Enter admin password (secret key)</label>
+                  <input
+                    type="password"
+                    value={adminPassword}
+                    onChange={(e) => setAdminPassword(e.target.value)}
+                    className="w-full md:w-96 border-2 border-quip-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-quip-orange"
+                    placeholder="Admin password"
+                    autoFocus
+                  />
+                  {adminPasswordError && <p className="text-red-600 text-sm mt-1">{adminPasswordError}</p>}
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    type="submit"
+                    className="bg-quip-orange hover:bg-quip-orange-deep text-white font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm"
+                  >
+                    Continue
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAdminPasswordPrompt(false);
+                      setAdminPassword('');
+                      setAdminPasswordError(null);
+                    }}
+                    className="bg-gray-300 hover:bg-gray-400 text-gray-700 font-bold py-3 px-6 rounded-tile transition-all"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        )}
       </div>
 
       {showDeleteModal && (

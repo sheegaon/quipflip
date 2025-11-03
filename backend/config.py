@@ -1,5 +1,5 @@
 """Application configuration management."""
-from pydantic import model_validator
+from pydantic import model_validator, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
 from sqlalchemy.engine.url import make_url, URL
@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     access_token_exp_minutes: int = 120  # Access tokens valid for 2 hours
     refresh_token_exp_days: int = 30  # Longer-lived refresh tokens
     refresh_token_cookie_name: str = "quipflip_refresh_token"
+
+    # Admin access
+    admin_emails: tuple[str, ...] = ("tfishman@gmail.com",)
 
     # Game Constants (all values in whole flipcoins)
     starting_balance: int = 5000
@@ -90,6 +93,29 @@ class Settings(BaseSettings):
     # Round service tuning
     round_lock_timeout_seconds: int = 10  # Shared timeout for distributed locks in round flows
     copy_round_max_attempts: int = 10  # Attempts to find a valid prompt when starting copy rounds
+
+    @field_validator("admin_emails", mode="before")
+    @classmethod
+    def parse_admin_emails(cls, value):
+        """Parse comma-separated admin emails from environment variables."""
+        if value is None:
+            return cls.model_fields["admin_emails"].default
+        if isinstance(value, str):
+            items = [item.strip().lower() for item in value.split(",") if item.strip()]
+        elif isinstance(value, (list, tuple, set)):
+            items = [str(item).strip().lower() for item in value if str(item).strip()]
+        else:
+            raise TypeError("admin_emails must be provided as a string or sequence")
+        # Preserve order while removing duplicates
+        unique_items = list(dict.fromkeys(items))
+        return tuple(unique_items)
+
+    def is_admin_email(self, email: str | None) -> bool:
+        """Determine if the provided email belongs to an administrator."""
+        if not email:
+            return False
+        normalized = email.strip().lower()
+        return normalized in self.admin_emails
 
     @model_validator(mode="after")
     def validate_all_config(self):

@@ -31,6 +31,18 @@ class PlayerService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
+    @staticmethod
+    def _should_be_admin(email: str | None) -> bool:
+        """Determine if the provided email belongs to an administrator."""
+        return settings.is_admin_email(email)
+
+    def apply_admin_status(self, player: Player | None) -> Player | None:
+        """Ensure the player's admin flag reflects configuration."""
+        if not player:
+            return None
+        player.is_admin = self._should_be_admin(player.email)
+        return player
+
     async def create_player(
         self,
         *,
@@ -57,6 +69,7 @@ class PlayerService:
             password_hash=password_hash,
             balance=settings.starting_balance,
             last_login_date=datetime.now(UTC),  # Track creation login time with precision
+            is_admin=self._should_be_admin(email),
         )
         self.db.add(player)
         try:
@@ -89,21 +102,24 @@ class PlayerService:
         result = await self.db.execute(
             select(Player).where(Player.email == normalized_email)
         )
-        return result.scalar_one_or_none()
+        player = result.scalar_one_or_none()
+        return self.apply_admin_status(player)
 
     async def get_player_by_id(self, player_id: UUID) -> Player | None:
         """Get player by ID."""
         result = await self.db.execute(
             select(Player).where(Player.player_id == player_id)
         )
-        return result.scalar_one_or_none()
+        player = result.scalar_one_or_none()
+        return self.apply_admin_status(player)
 
     async def get_player_by_username(self, username: str) -> Player | None:
         """Get player by username lookup."""
         if not is_username_input_valid(username):
             return None
         username_service = UsernameService(self.db)
-        return await username_service.find_player_by_username(username)
+        player = await username_service.find_player_by_username(username)
+        return self.apply_admin_status(player)
 
     async def is_daily_bonus_available(self, player: Player) -> bool:
         """Check if daily bonus can be claimed."""
@@ -204,6 +220,7 @@ class PlayerService:
             raise ValueError("invalid_email")
 
         player.email = normalized_email
+        player.is_admin = self._should_be_admin(normalized_email)
 
         try:
             await self.db.commit()
@@ -215,7 +232,7 @@ class PlayerService:
             raise
 
         await self.db.refresh(player)
-        return player
+        return self.apply_admin_status(player)
 
     async def update_password(self, player: Player, new_password: str) -> None:
         """Update a player's password hash."""
