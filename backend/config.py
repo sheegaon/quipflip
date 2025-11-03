@@ -106,9 +106,8 @@ class Settings(BaseSettings):
             items = [str(item).strip().lower() for item in value if str(item).strip()]
         else:
             raise TypeError("admin_emails must be provided as a string or sequence")
-        # Preserve order while removing duplicates
-        unique_items = list(dict.fromkeys(items))
-        return tuple(unique_items)
+        # Return a set for efficient O(1) lookups.
+        return set(items)
 
     def is_admin_email(self, email: str | None) -> bool:
         """Determine if the provided email belongs to an administrator."""
