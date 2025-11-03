@@ -282,17 +282,20 @@ class WordGenerator:
         seen = set()
 
         for _ in range(count):
-            if unique:
-                # Keep generating until we get a unique phrase
-                max_attempts = 100
-                for _ in range(max_attempts):
-                    phrase = WordGenerator.get_word()
-                    if phrase not in seen:
-                        phrases.append(phrase)
-                        seen.add(phrase)
-                        break
-            else:
+            if not unique:
                 phrases.append(WordGenerator.get_word())
+                continue
+
+            # Keep generating until we get a unique phrase
+            max_attempts = 100
+            for _ in range(max_attempts):
+                phrase = WordGenerator.get_word()
+                if phrase not in seen:
+                    phrases.append(phrase)
+                    seen.add(phrase)
+                    break
+            else:
+                raise RuntimeError(f"Could not generate {count} unique phrases after {max_attempts} attempts.")
 
         return phrases
 
