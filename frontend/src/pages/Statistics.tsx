@@ -57,10 +57,16 @@ const Statistics: React.FC = () => {
       const today = data.frequency?.last_active ? new Date(data.frequency.last_active) : new Date();
       today.setHours(0, 0, 0, 0);
 
-      const totalRounds = data.prompt_stats.total_rounds + data.copy_stats.total_rounds + data.voter_stats.total_rounds;
+      const totalRounds =
+        data.prompt_stats.total_rounds + data.copy_stats.total_rounds + data.voter_stats.total_rounds;
       const totalEarnings = data.earnings.total_earnings;
-      const averageWinRate =
-        (data.prompt_stats.win_rate + data.copy_stats.win_rate + data.voter_stats.win_rate) / 3 || 0;
+
+      const weightedWinRateSum =
+        data.prompt_stats.win_rate * data.prompt_stats.total_rounds +
+        data.copy_stats.win_rate * data.copy_stats.total_rounds +
+        data.voter_stats.win_rate * data.voter_stats.total_rounds;
+
+      const averageWinRate = totalRounds > 0 ? weightedWinRateSum / totalRounds : 0;
 
       return Array.from({ length: DAYS_IN_WEEK }, (_, index) => {
         const progression = (index + 1) / DAYS_IN_WEEK;
