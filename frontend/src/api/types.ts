@@ -204,7 +204,7 @@ export interface WeeklyLeaderboardEntry {
   username: string;
   total_costs: number;
   total_earnings: number;
-  net_earnings: number;
+  net_cost: number;
   rank: number | null;
   is_current_player: boolean;
 }

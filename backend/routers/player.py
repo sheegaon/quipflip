@@ -612,7 +612,10 @@ async def get_weekly_leaderboard(
     """Return weekly leaderboard highlighting the current player."""
 
     scoring_service = ScoringService(db)
-    entries, generated_at = await scoring_service.get_weekly_leaderboard_for_player(player.player_id)
+    entries, generated_at = await scoring_service.get_weekly_leaderboard_for_player(
+        player.player_id,
+        player.username,
+    )
 
     leaders = [
         WeeklyLeaderboardEntry(
@@ -620,7 +623,7 @@ async def get_weekly_leaderboard(
             username=entry["username"],
             total_costs=entry["total_costs"],
             total_earnings=entry["total_earnings"],
-            net_earnings=entry["net_earnings"],
+            net_cost=entry["net_cost"],
             rank=entry["rank"],
             is_current_player=entry["is_current_player"],
         )

@@ -328,8 +328,8 @@ const Statistics: React.FC = () => {
           <div className="tile-card p-6">
             <h2 className="text-xl font-display font-bold text-quip-navy mb-2">Weekly Leaderboard</h2>
             <p className="text-sm text-quip-teal mb-4">
-              Tracking the top net earners over the past seven days. Costs minus earnings let you see who is stretching every
-              dollar the furthest.
+              Ranking the most efficient players over the past seven days by lowest net cost (costs minus earnings). A negative
+              value means you earned more than you spent.
             </p>
             <WeeklyLeaderboard
               leaders={leaderboard?.leaders ?? null}

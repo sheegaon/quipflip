@@ -238,7 +238,7 @@ class RoundService:
         QueueService.add_prompt_round_to_queue(round_object.round_id)
 
         await self.activity_service.record_activity(
-            activity_type="prompt_created",
+            activity_type="prompt_submitted",
             prompt_round_id=round_object.round_id,
             player_id=player.player_id,
             metadata={
