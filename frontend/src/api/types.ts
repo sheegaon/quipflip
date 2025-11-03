@@ -119,7 +119,7 @@ export interface FlagCopyRoundResponse {
 
 export interface AbandonRoundResponse {
   round_id: string;
-  round_type: 'prompt' | 'copy';
+  round_type: 'prompt' | 'copy' | 'vote';
   status: 'abandoned';
   refund_amount: number;
   penalty_kept: number;

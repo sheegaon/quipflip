@@ -14,7 +14,6 @@ import type { BetaSurveyStatusResponse } from '../api/types';
 import { hasDismissedSurvey, markSurveyDismissed, hasCompletedSurvey } from '../utils/betaSurvey';
 
 const formatWaitingCount = (count: number): string => (count > 10 ? 'over 10' : count.toString());
-
 export const Dashboard: React.FC = () => {
   const { state, actions } = useGame();
   const { state: resultsState, actions: resultsActions } = useResults();
@@ -161,8 +160,21 @@ export const Dashboard: React.FC = () => {
   }, [activeRound]);
 
   const canAbandonRound = useMemo(() => {
-    return activeRound?.round_type === 'prompt' || activeRound?.round_type === 'copy';
-  }, [activeRound]);
+    return Boolean(activeRound?.round_type);
+  }, [activeRound?.round_type]);
+
+  const refreshDashboardAfterCountdown = useCallback(
+    async (source: string) => {
+      dashboardLogger.debug('Countdown expired, refreshing dashboard', { source });
+      try {
+        await refreshDashboard();
+        dashboardLogger.debug('Dashboard refreshed successfully after countdown', { source });
+      } catch (err) {
+        dashboardLogger.error('Failed to refresh dashboard after countdown expiration', { source, error: err });
+      }
+    },
+    [refreshDashboard]
+  );
 
   // Refresh when page becomes visible (with debouncing)
   const lastVisibilityRefreshRef = useRef<number>(0);
@@ -224,20 +236,11 @@ export const Dashboard: React.FC = () => {
     }
   }, [activeRoundRoute, navigate]);
 
-  const handleRoundExpired = useCallback(async () => {
+  const handleRoundExpired = useCallback(() => {
     dashboardLogger.debug('Round expired, setting flag and triggering refresh');
     setIsRoundExpired(true);
-
-    try {
-      // Refresh dashboard to clear expired round and get latest state
-      await refreshDashboard();
-      dashboardLogger.debug('Dashboard refreshed successfully after round expiration');
-    } catch (err) {
-      dashboardLogger.error('Failed to refresh dashboard after expiration:', err);
-      // Even if refresh fails, ensure the expired state is set
-      setIsRoundExpired(true);
-    }
-  }, [refreshDashboard]);
+    void refreshDashboardAfterCountdown(`round:${activeRound?.round_type ?? 'unknown'}`);
+  }, [activeRound?.round_type, refreshDashboardAfterCountdown]);
 
   const handleAbandonRound = useCallback(async () => {
     if (!activeRound?.round_id || !canAbandonRound || isAbandoningRound) {
