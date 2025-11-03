@@ -30,7 +30,7 @@ async def test_record_and_attach_activity(db_session, player_factory):
 
     service = ActivityService(db_session)
     activity = await service.record_activity(
-        activity_type="prompt_created",
+        activity_type="prompt_submitted",
         prompt_round_id=prompt_round.round_id,
         player_id=player.player_id,
         metadata={"prompt_text": prompt_round.prompt_text},

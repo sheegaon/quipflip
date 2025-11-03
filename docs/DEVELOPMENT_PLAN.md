@@ -1,5 +1,5 @@
 # Quipflip Development Plan
-*Updated: October 2025*
+*Updated: November 2025*
 
 ## Current Status Overview
 
@@ -11,6 +11,7 @@ Quipflip is a **feature-complete MVP** with a solid foundation for growth. The c
 - **AI Integration**: OpenAI + Gemini providers with automatic fallback
 - **Economic Balance**: Sustainable in-game economy with daily bonuses and quest rewards
 - **Technical Foundation**: JWT auth, Redis queuing, comprehensive logging, error handling
+- **Player Insights**: Weekly net earnings leaderboard with Redis caching and frontend highlight states
 
 ### Architecture Strengths
 - **Scalable Backend**: FastAPI with async PostgreSQL and Redis
@@ -22,16 +23,15 @@ Quipflip is a **feature-complete MVP** with a solid foundation for growth. The c
 
 ## Development Priorities
 
-### 🚨 CRITICAL - Production Readiness
+### 🟥 CRITICAL - Production Readiness
+**Status Snapshot (Nov 2025):** AI scheduling/backup refactor shipped; enhanced rate limiting and query tuning remain in progress.
 *Target: Next 2 weeks | Essential for operational stability*
 
 #### 1. AI Service Reliability
-**Current Issue**: AI backup runs as fragile asyncio task in main process
-**Solution**: Migrate to APScheduler for process isolation and job persistence
+**Status**: ✅ Completed (Nov 2025)
+**Summary**: APScheduler now orchestrates AI backup jobs out-of-process; failure isolation achieved.
 - **Files**: `backend/main.py`, `backend/services/ai/`
-- **Effort**: 6-8 hours
-- **Impact**: Prevents AI failures from crashing main API
-
+- **Follow-up**: Monitor scheduler health metrics once production telemetry is available.
 #### 2. Enhanced Rate Limiting
 **Current Issue**: Basic rate limiting insufficient for production load
 **Solution**: Per-endpoint, per-user rate limits with Redis backing
@@ -46,22 +46,21 @@ Quipflip is a **feature-complete MVP** with a solid foundation for growth. The c
 - **Effort**: 8-12 hours
 - **Impact**: Maintains response times as user base grows
 
-### 🎯 HIGH PRIORITY - User Experience
+### 🟧 HIGH PRIORITY - User Experience
+**Status Snapshot (Nov 2025):** Settings overhaul and admin tools are live; transaction history awaits backend API, results visualization queued.
 *Target: Following 3 weeks | High user value, manageable complexity*
 
 #### 4. Transaction History API
-**Missing Feature**: Players cannot view earnings/spending history
-**Solution**: Paginated transaction endpoint with filtering
-- **Files**: `backend/routers/player.py`, frontend components
-- **Effort**: 4-6 hours
-- **Impact**: Essential for transparency and trust
+**Status**: ⏸️ Pending backend support
+**Needed**: Paginated transaction endpoint with filtering before frontend can proceed.
+- **Owners**: Backend (`backend/routers/player.py`), UI shell planned in frontend.
+- **Impact**: High trust/value; unblock once API contract is finalized.
+- **Blocking**: Depends on Production Readiness item #3 (query/index tuning) to ensure ledger queries stay performant.
 
 #### 5. Settings & Preferences
-**Missing Feature**: No user account management interface
-**Solution**: Settings page with preferences, account info, theme toggle
-- **Files**: Frontend settings page, backend user preferences
-- **Effort**: 8-10 hours
-- **Impact**: Modern UX expectation, foundation for personalization
+**Status**: ✅ Completed (Nov 2025)
+**Summary**: `/settings` now supports email/password updates, tutorial resets, account upgrades, and admin access workflows (frontend + player endpoints).
+- **Follow-up**: Add theme toggle once design tokens land.
 
 #### 6. Enhanced Results Visualization
 **Current State**: Basic results display
@@ -71,13 +70,12 @@ Quipflip is a **feature-complete MVP** with a solid foundation for growth. The c
 - **Impact**: Increases engagement and makes outcomes more compelling
 
 #### 7. Admin Operations API
-**Missing Feature**: No admin tools for production support
-**Solution**: Admin endpoints for testing, monitoring, manual interventions
-- **Files**: `backend/routers/admin.py`, admin middleware
-- **Effort**: 6-8 hours
-- **Impact**: Critical for customer support and debugging
+**Status**: ✅ Completed (Nov 2025)
+**Summary**: Admin endpoints now cover config edits, password validation, player deletion, flagged prompt review, and phrase validation sandbox (`backend/routers/admin.py`).
+- **Follow-up**: Enforce `player.is_admin` server-side and add audit logging.
 
-### 📊 MEDIUM PRIORITY - Analytics & Growth
+### 🟨 MEDIUM PRIORITY - Analytics & Growth
+**Status Snapshot (Nov 2025):** Awaiting metrics dashboards and advanced queue tooling; leaderboard cache groundwork ready to leverage.
 *Target: Month 2 | Data-driven improvements and retention features*
 
 #### 8. Comprehensive Metrics Dashboard
@@ -100,8 +98,10 @@ Quipflip is a **feature-complete MVP** with a solid foundation for growth. The c
 - **Files**: Economics service, configuration management
 - **Effort**: 12-16 hours
 - **Impact**: Optimize player retention and engagement
+- **Dependencies**: Requires live admin metrics dashboard (Priority 8) for calibration.
 
-### 🚀 STRATEGIC - Platform Growth
+### 🟦 STRATEGIC - Platform Growth
+**Status Snapshot (Nov 2025):** Weekly leaderboard launch validated engagement focus; social features remain in discovery pending analytics groundwork.
 *Target: Month 3+ | Expansion and differentiation features*
 
 #### 11. Social Features Foundation
@@ -285,8 +285,8 @@ Quipflip has successfully completed its MVP phase and proven the core concept. T
 The roadmap balances technical debt reduction, user experience improvements, and strategic growth initiatives. Success depends on maintaining the current high-quality user experience while building the operational foundation for scale.
 
 **Next Actions**:
-1. **IMMEDIATE**: Implement APScheduler for AI service reliability
-2. **THIS WEEK**: Enhanced rate limiting and performance optimization  
-3. **NEXT SPRINT**: Transaction history and admin tools for operational support
+1. **IMMEDIATE**: Ship enhanced rate limiting and begin database query/index optimization.
+2. **THIS MONTH**: Deliver transaction history API/endpoints, then wire the frontend ledger view.
+3. **NEXT**: Design the admin metrics dashboard to unblock economic tuning and social feature experiments.
 
 The platform is well-positioned for sustainable growth with this focused, pragmatic approach to development priorities.

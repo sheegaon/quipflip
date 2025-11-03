@@ -15,9 +15,15 @@ Quipflip revolves around three sequential round types—prompt creation, copywri
 - Abandoning or timing out of a prompt or copy round refunds the original fee minus `abandoned_penalty`; copy round abandonments also return the prompt to the queue and log a cooldown marker.
 
 ### Prize pools and payouts
-- When two copies are submitted, `RoundService.create_phraseset_if_ready` seeds a phraseset’s `total_pool` with `prize_pool_base`. Any `system_contribution` recorded when discounts apply is stored alongside the phraseset for reporting but is not folded into the distributable pool.
-- Every vote adds `vote_cost` to the pool; correct voters immediately receive `vote_payout_correct`, and that payout is subtracted from the pool’s running total.
+- When two copies are submitted, `RoundService.create_phraseset_if_ready` seeds a phraseset's `total_pool` with `prize_pool_base`. Any `system_contribution` recorded when discounts apply is stored alongside the phraseset for reporting but is not folded into the distributable pool.
+- Every vote adds `vote_cost` to the pool; correct voters immediately receive `vote_payout_correct`, and that payout is subtracted from the pool's running total.
 - Final payouts divide the remaining `total_pool` in proportion to `correct_vote_points` for the original phrase versus `incorrect_vote_points` for each copy. If no votes were cast, contributors split the pot evenly.
+
+### Weekly net earnings leaderboard
+- Leaderboard rankings are based on the trailing seven days of play and use each player's `net_cost` (total entry costs minus total earnings). Lower values indicate better performance; negative numbers mean the player earned more than they spent.
+- The scoring service keeps a shared cache of the top five performers and refreshes it whenever a phraseset finalizes or if a request encounters a cold cache.
+- The API always appends the requesting player, even when they fall outside the top group, so the frontend can highlight their current standing without exposing full leaderboards.
+- Snapshot timestamps are included in responses so clients can display "last updated" metadata and avoid redundant refreshes.
 
 ## Round Lifecycle
 ### Prompt rounds

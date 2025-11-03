@@ -226,3 +226,22 @@ class UpgradeGuestResponse(AuthTokenResponse):
     """Response after upgrading guest account."""
 
     message: str
+
+
+class WeeklyLeaderboardEntry(BaseModel):
+    """Weekly leaderboard row."""
+
+    player_id: UUID
+    username: str
+    total_costs: int
+    total_earnings: int
+    net_cost: int
+    rank: Optional[int]
+    is_current_player: bool = False
+
+
+class WeeklyLeaderboardResponse(BaseModel):
+    """Weekly leaderboard payload."""
+
+    leaders: list[WeeklyLeaderboardEntry]
+    generated_at: datetime

@@ -535,6 +535,42 @@ Get comprehensive player statistics including win rates, earnings breakdown, and
 
 Statistics aggregate data from [Player](DATA_MODELS.md#player), [Round](DATA_MODELS.md#round-unified-for-prompt-copy-and-vote), [Phraseset](DATA_MODELS.md#phraseset), and [Transaction](DATA_MODELS.md#transaction-ledger) tables.
 
+#### `GET /player/statistics/weekly-leaderboard`
+Get the weekly leaderboard based on net cost (total costs minus total earnings) for the trailing seven days.
+
+**Response:**
+```json
+{
+  "leaders": [
+    {
+      "player_id": "5d62d8cf-287d-4d07-9dde-4dbf7b815f9a",
+      "username": "Witty Walrus",
+      "total_costs": 1400,
+      "total_earnings": 2200,
+      "net_cost": -800,
+      "rank": 1,
+      "is_current_player": false
+    },
+    {
+      "player_id": "d47fce78-6ea0-4dc9-a1d5-9b82e25bd6e6",
+      "username": "Sassy Sparrow",
+      "total_costs": 900,
+      "total_earnings": 850,
+      "net_cost": 50,
+      "rank": 2,
+      "is_current_player": true
+    }
+  ],
+  "generated_at": "2025-01-12T17:05:42.188529+00:00"
+}
+```
+
+**Notes:**
+- Results are sorted by lowest `net_cost` (negative values indicate net earnings). Ties break alphabetically by username.
+- Only the top five players are returned by default. If the current player is outside the top five, their row is appended with `rank: null` and `is_current_player: true`.
+- The scoring service caches leaderboard calculations in Redis for one hour (`leaderboard:weekly`) and refreshes the cache automatically whenever a phraseset finalizes.
+- The `generated_at` timestamp communicates when the snapshot was last recalculated so clients can defer refreshes when data is still fresh.
+
 #### `GET /player/tutorial/status`
 Get the tutorial status for the current player.
 

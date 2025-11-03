@@ -26,6 +26,8 @@ from backend.schemas.player import (
     CreateGuestResponse,
     UpgradeGuestRequest,
     UpgradeGuestResponse,
+    WeeklyLeaderboardEntry,
+    WeeklyLeaderboardResponse,
 )
 from backend.schemas.phraseset import (
     PhrasesetListResponse,
@@ -39,6 +41,7 @@ from backend.services.transaction_service import TransactionService
 from backend.services.round_service import RoundService
 from backend.services.phraseset_service import PhrasesetService
 from backend.services.statistics_service import StatisticsService
+from backend.services.scoring_service import ScoringService
 from backend.services.tutorial_service import TutorialService
 from backend.services.vote_service import VoteService
 from backend.services.queue_service import QueueService
@@ -599,6 +602,38 @@ async def get_player_statistics(
     stats_service = StatisticsService(db)
     stats = await stats_service.get_player_statistics(player.player_id)
     return stats
+
+
+@router.get("/statistics/weekly-leaderboard", response_model=WeeklyLeaderboardResponse)
+async def get_weekly_leaderboard(
+    player: Player = Depends(get_current_player),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return weekly leaderboard highlighting the current player."""
+
+    scoring_service = ScoringService(db)
+    entries, generated_at = await scoring_service.get_weekly_leaderboard_for_player(
+        player.player_id,
+        player.username,
+    )
+
+    leaders = [
+        WeeklyLeaderboardEntry(
+            player_id=entry["player_id"],
+            username=entry["username"],
+            total_costs=entry["total_costs"],
+            total_earnings=entry["total_earnings"],
+            net_cost=entry["net_cost"],
+            rank=entry["rank"],
+            is_current_player=entry["is_current_player"],
+        )
+        for entry in entries
+    ]
+
+    return WeeklyLeaderboardResponse(
+        leaders=leaders,
+        generated_at=generated_at or datetime.now(UTC),
+    )
 
 
 @router.get("/tutorial/status", response_model=TutorialStatus)

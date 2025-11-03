@@ -49,15 +49,14 @@ The Quipflip frontend MVP is **COMPLETE** ✅. This document outlines remaining 
 - Interactive targets retain accessible hit areas while fitting within compact mobile header.
 
 ### 3.2: Currency Icon Replacement
-**Status**: 🚧 Mostly Complete (Quest Cards Pending)
+**Status**: ✅ Complete
 
-**Current State:**
-- Header, balance displays, and daily bonus messaging use flipcoin iconography via `BalanceFlipper` and `CurrencyDisplay`.
-- Some components (e.g., `QuestCard` reward label) still rely on hard-coded `$` prefixes.
+**Delivered Enhancements:**
+- `CurrencyDisplay` centralizes flipcoin icon usage (`frontend/src/components/CurrencyDisplay.tsx`) and is adopted across reward surfaces, including quest cards and admin summaries.
+- Header balance, bonus CTAs, and statistics tiles rely exclusively on flipcoin branding—no stray `$` prefixes remain.
 
-**Next Steps:**
-- Replace remaining `$` strings with `CurrencyDisplay` or equivalent helper for consistency.
-- Audit results/prize breakdowns to ensure icons render with accessible text labels.
+**Ongoing Guardrails:**
+- Default to `CurrencyDisplay` (or `BalanceFlipper`) when adding new currency amounts to keep iconography and accessible labelling consistent.
 
 ### 3.3: Navigation Improvements
 **Status**: ✅ Complete
@@ -74,20 +73,14 @@ The Quipflip frontend MVP is **COMPLETE** ✅. This document outlines remaining 
    - UI labels now reference "Tracking" to match navigation and phraseset dashboard copy.
 
 ### 3.4: Balance Visual Enhancement
-**Status**: ⏸️ Not Started
+**Status**: ✅ Complete
 
-**Goal**: Add subtle border around balance display
+**Delivered Enhancements:**
+- Header balance now sits inside a rounded container with a subtle translucent border for contrast (`frontend/src/components/Header.tsx`).
+- Tutorial balance callouts reuse the same treatment so onboarding visuals stay consistent.
 
-**Implementation:**
-```tsx
-// Wrap balance in bordered container
-<div className="flex items-center gap-2">
-  <img src="/flipcoin.png" />
-  <div className="border-2 border-quip-turquoise rounded-tile px-3 py-1">
-    <BalanceFlipper value={player.balance} />
-  </div>
-</div>
-```
+**Next Steps:**
+- None. Revisit only if future theming introduces contrast concerns.
 
 ---
 
@@ -210,14 +203,14 @@ The Quipflip frontend MVP is **COMPLETE** ✅. This document outlines remaining 
 ## Implementation Priority Queue
 
 ### Next 2 Weeks (High Priority)
-1. **Balance Visual Enhancement** - Add bordered treatment around balance display for readability.
-2. **Enhanced Results Visualization** - Implement vote distribution charting on results view.
-3. **Quest Celebration Effects** - Layer in lightweight animations/confetti for reward claims.
+1. **Weekly Leaderboard UX Polish** - Surface `generated_at`, add a manual refresh affordance, and clarify the net earnings label (`frontend/src/pages/Statistics.tsx`, `frontend/src/components/statistics/WeeklyLeaderboard.tsx`).
+2. **Enhanced Results Visualization** - Implement vote distribution charting on the results view once chart components are finalized.
+3. **Quest Celebration Effects** - Layer lightweight confetti/animation when rewards are claimed (`frontend/src/pages/Quests.tsx`).
 
 ### Next Month (Medium Priority)
-4. **Currency Icon Cleanup** - Replace remaining `$` prefixes (Quest cards, legacy text) with branded helpers.
-5. **Transaction History Page** - Ship paginated ledger UI once backend endpoint is available.
-6. **Account Management Forms** - Prepare change-password/email flows pending API support.
+4. **Transaction History Page** - Ship paginated ledger UI when the backend endpoint lands (new `TransactionHistory` page + row component).
+5. **Account Management Forms** - Expand `/settings` with change-password/email flows once APIs ship (`frontend/src/pages/Settings.tsx`).
+6. **Admin Player Management Grid** - Add sortable/paginated player table atop the existing account cleanup workflow (`frontend/src/pages/Admin.tsx`).
 
 ### Next Quarter (Low Priority)
 7. **Enhanced Results Features** - Charts, social sharing, and historical comparisons.
@@ -248,10 +241,10 @@ The Quipflip frontend MVP is **COMPLETE** ✅. This document outlines remaining 
 ## Development Resources Needed
 
 ### Design Assets
-- Quest category icons (4 types: streak, quality, activity, milestone)
-- Back arrow icon (left-pointing, theme-consistent)
-- Statistics indicator icon (small bar chart)
-- Enhanced flipcoin icon variants
+- Confetti or celebratory animation assets for quest reward feedback.
+- Refresh/clock iconography sized for the weekly leaderboard update controls.
+- Chart color palette guidance for upcoming results visualizations.
+- Optional badge treatments for future leaderboard experiments.
 
 ### Technical Skills
 - React context management and optimization
@@ -287,6 +280,6 @@ The Quipflip frontend MVP is **COMPLETE** ✅. This document outlines remaining 
 
 ---
 
-*Document updated: February 2025*
-*Status: Quest system frontend shipped; focusing on polish and advanced features*
-*Next Milestone: Balance styling + results visualizations*
+*Document updated: November 2025*
+*Status: Quest system + weekly leaderboard shipped; focusing on leaderboard polish and results visuals*
+*Next Milestone: Weekly leaderboard UX polish + results charting*

@@ -237,6 +237,20 @@
 - Relationships: `phraseset`, `prompt_round`, `player`
 - Note: Activity log for tracking phraseset lifecycle events and player interactions
 
+### WeeklyLeaderboardCache
+- `storage` (Redis key) - `leaderboard:weekly`
+- `payload.entries` (array) - cached leaderboard rows with global rank
+  - `player_id` (UUID string)
+  - `username` (string)
+  - `total_costs` (integer)
+  - `total_earnings` (integer)
+  - `net_cost` (integer)
+  - `rank` (integer)
+- `payload.generated_at` (ISO 8601 string) - timestamp when snapshot was calculated
+- TTL: 3600 seconds (1 hour) per write
+- Refresh triggers: automatically recomputed when phrasesets finalize, and on-demand when cache miss occurs
+- Note: Personalization flags (`is_current_player`) are added at request time; the shared cache only stores objective rankings.
+
 ### AIMetric
 - `metric_id` (UUID, primary key)
 - `operation_type` (string, indexed) - 'copy_generation' or 'vote_generation'

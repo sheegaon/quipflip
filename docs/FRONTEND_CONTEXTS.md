@@ -211,6 +211,7 @@ interface ResultsState {
 - **Caching System**: Intelligent caching of phraseset data with timestamps
 - **Viewed Tracking**: Persistent tracking of viewed results in sessionStorage
 - **Statistics Management**: Player performance and earnings statistics
+- **Leaderboard Integration**: Statistics view combines context-managed stats with the `/player/statistics/weekly-leaderboard` API so the weekly net earnings snapshot respects backend caching rules.
 - **State Synchronization**: Syncs with GameContext pending results
 - **Cache Invalidation**: Force refresh options for all data types
 

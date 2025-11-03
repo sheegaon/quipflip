@@ -7,6 +7,7 @@ interface ActivityTimelineProps {
 }
 
 const ACTIVITY_MAP: Record<string, { icon: string; title: string }> = {
+  prompt_submitted: { icon: '🎯', title: 'Prompt Submitted' },
   prompt_created: { icon: '🎯', title: 'Prompt Submitted' },
   copy1_submitted: { icon: '📝', title: 'First Copy Submitted' },
   copy2_submitted: { icon: '📝', title: 'Second Copy Submitted' },

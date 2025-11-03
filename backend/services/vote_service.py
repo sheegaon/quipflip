@@ -938,6 +938,11 @@ class VoteService:
         except Exception as e:
             logger.error(f"Failed to update quest progress for finalized phraseset: {e}", exc_info=True)
 
+        try:
+            await scoring_service.refresh_weekly_leaderboard()
+        except Exception:  # pragma: no cover - defensive logging only
+            logger.error("Failed to refresh weekly leaderboard after finalization", exc_info=True)
+
         logger.info(
             f"Finalized phraseset {phraseset.phraseset_id}: "
             f"original=${payouts['original']['payout']}, "
