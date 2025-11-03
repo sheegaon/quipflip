@@ -3,14 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { useResults } from '../contexts/ResultsContext';
 import { useGame } from '../contexts/GameContext';
 import apiClient, { extractErrorMessage } from '../api/client';
-import type { ApiInfo, HistoricalTrendPoint, PlayerStatistics } from '../api/types';
+import type { ApiInfo, HistoricalTrendPoint, PlayerStatistics, WeeklyLeaderboardResponse } from '../api/types';
 import { Header } from '../components/Header';
 import WinRateChart from '../components/statistics/WinRateChart';
 import EarningsChart from '../components/statistics/EarningsChart';
 import SpendingChart from '../components/statistics/SpendingChart';
 import FrequencyChart from '../components/statistics/FrequencyChart';
-import PerformanceRadar from '../components/statistics/PerformanceRadar';
 import HistoricalTrendsChart from '../components/statistics/HistoricalTrendsChart';
+import WeeklyLeaderboard from '../components/statistics/WeeklyLeaderboard';
 import { statisticsLogger } from '../utils/logger';
 import { hasCompletedSurvey } from '../utils/betaSurvey';
 import type { BetaSurveyStatusResponse } from '../api/types';
@@ -27,6 +27,9 @@ const Statistics: React.FC = () => {
   const [chartsReady, setChartsReady] = useState(false);
   const [surveyStatus, setSurveyStatus] = useState<BetaSurveyStatusResponse | null>(null);
   const [appInfo, setAppInfo] = useState<ApiInfo | null>(null);
+  const [leaderboard, setLeaderboard] = useState<WeeklyLeaderboardResponse | null>(null);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(true);
+  const [leaderboardError, setLeaderboardError] = useState<string | null>(null);
 
   const historicalTrends = useMemo<HistoricalTrendPoint[]>(() => {
     if (!data) return [];
@@ -114,8 +117,6 @@ const Statistics: React.FC = () => {
           promptRounds: statisticsData?.prompt_stats?.total_rounds,
           copyRounds: statisticsData?.copy_stats?.total_rounds,
         });
-        // Wait for the DOM to fully render and settle before enabling charts
-        // This prevents Recharts dimension errors by ensuring containers have proper sizes
         requestAnimationFrame(() => {
           setTimeout(() => setChartsReady(true), 100);
         });
@@ -130,7 +131,27 @@ const Statistics: React.FC = () => {
       }
     };
 
+    const fetchLeaderboard = async () => {
+      try {
+        setLeaderboardLoading(true);
+        setLeaderboardError(null);
+        const leaderboardData = await apiClient.getWeeklyLeaderboard(controller.signal);
+        setLeaderboard(leaderboardData);
+        statisticsLogger.debug('Weekly leaderboard loaded', {
+          entries: leaderboardData?.leaders?.length ?? 0,
+        });
+      } catch (err) {
+        if (err instanceof Error && err.name === 'CanceledError') return;
+        statisticsLogger.error('Failed to load weekly leaderboard', err);
+        setLeaderboard(null);
+        setLeaderboardError(extractErrorMessage(err, 'load-weekly-leaderboard'));
+      } finally {
+        setLeaderboardLoading(false);
+      }
+    };
+
     fetchData();
+    fetchLeaderboard();
 
     return () => controller.abort();
   }, [getStatistics]);
@@ -303,20 +324,18 @@ const Statistics: React.FC = () => {
             )}
           </div>
 
-          {/* Performance Radar */}
+          {/* Weekly Leaderboard */}
           <div className="tile-card p-6">
-            <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Role Performance</h2>
-            {chartsReady ? (
-              <PerformanceRadar
-                promptStats={data.prompt_stats}
-                copyStats={data.copy_stats}
-                voterStats={data.voter_stats}
-              />
-            ) : (
-              <div className="w-full h-80 flex items-center justify-center">
-                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-quip-orange border-r-transparent"></div>
-              </div>
-            )}
+            <h2 className="text-xl font-display font-bold text-quip-navy mb-2">Weekly Leaderboard</h2>
+            <p className="text-sm text-quip-teal mb-4">
+              Tracking the top net earners over the past seven days. Costs minus earnings let you see who is stretching every
+              dollar the furthest.
+            </p>
+            <WeeklyLeaderboard
+              leaders={leaderboard?.leaders ?? null}
+              loading={leaderboardLoading || !chartsReady}
+              error={leaderboardError}
+            />
           </div>
 
           {/* Play Frequency */}

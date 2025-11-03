@@ -47,6 +47,7 @@ import type {
   BetaSurveySubmissionResponse,
   BetaSurveyStatusResponse,
   BetaSurveyListResponse,
+  WeeklyLeaderboardResponse,
 } from './types';
 
 // Base URL - configure based on environment
@@ -521,6 +522,11 @@ export const apiClient = {
 
   async getStatistics(signal?: AbortSignal): Promise<PlayerStatistics> {
     const { data } = await api.get('/player/statistics', { signal });
+    return data;
+  },
+
+  async getWeeklyLeaderboard(signal?: AbortSignal): Promise<WeeklyLeaderboardResponse> {
+    const { data } = await api.get('/player/statistics/weekly-leaderboard', { signal });
     return data;
   },
 

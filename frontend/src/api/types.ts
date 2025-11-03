@@ -199,6 +199,21 @@ export interface BetaSurveySubmissionRecord {
   created_at: string;
 }
 
+export interface WeeklyLeaderboardEntry {
+  player_id: string;
+  username: string;
+  total_costs: number;
+  total_earnings: number;
+  net_earnings: number;
+  rank: number | null;
+  is_current_player: boolean;
+}
+
+export interface WeeklyLeaderboardResponse {
+  leaders: WeeklyLeaderboardEntry[];
+  generated_at: string;
+}
+
 export interface BetaSurveyListResponse {
   submissions: BetaSurveySubmissionRecord[];
 }
