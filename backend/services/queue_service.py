@@ -67,6 +67,45 @@ class QueueService:
         return removed
 
     @staticmethod
+    def remove_prompt_rounds_from_queue(prompt_round_ids: list[UUID]) -> int:
+        """
+        Remove multiple prompt rounds from queue in bulk.
+
+        Args:
+            prompt_round_ids: List of prompt round IDs to remove
+
+        Returns:
+            Number of prompts successfully removed
+        """
+        if not prompt_round_ids:
+            return 0
+
+        removed_count = 0
+        for prompt_round_id in prompt_round_ids:
+            item = {"prompt_round_id": str(prompt_round_id)}
+            if queue_client.remove(PROMPT_QUEUE, item):
+                removed_count += 1
+
+        if removed_count > 0:
+            logger.info(f"[Queue Cleanup] Removed {removed_count} prompts from queue")
+
+        return removed_count
+
+    @staticmethod
+    def clear_prompt_queue() -> int:
+        """
+        Clear all items from the prompt queue.
+
+        Returns:
+            Number of items cleared
+        """
+        count = queue_client.length(PROMPT_QUEUE)
+        if count > 0:
+            queue_client.clear(PROMPT_QUEUE)
+            logger.info(f"[Queue Clear] Cleared {count} items from prompt queue")
+        return count
+
+    @staticmethod
     def get_prompt_rounds_waiting() -> int:
         """Get count of prompt rounds waiting for copies."""
         return queue_client.length(PROMPT_QUEUE)

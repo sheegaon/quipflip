@@ -32,7 +32,7 @@ def create_test_player_data():
 
 def create_authenticated_client():
     """Create a new player and return an authenticated client."""
-    client = TestClient()
+    client = APIClient()
     player_data = create_test_player_data()
     response = client.post("/player", json=player_data)
 
@@ -45,11 +45,11 @@ def create_authenticated_client():
     client.close()
 
     # Return new client with access token and the player data
-    auth_client = TestClient(access_token=access_token)
+    auth_client = APIClient(access_token=access_token)
     return auth_client, data
 
 
-class TestClient:
+class APIClient:
     """Helper class for making API requests with authentication."""
 
     def __init__(self, access_token: Optional[str] = None, api_key: Optional[str] = None):
@@ -102,7 +102,7 @@ class TestHealthEndpoints:
 
     def test_health_check(self, verify_server_running):
         """Test /health endpoint returns ok status."""
-        client = TestClient()
+        client = APIClient()
         response = client.get("/health")
 
         assert response.status_code == 200
@@ -114,14 +114,14 @@ class TestHealthEndpoints:
 
     def test_root_endpoint(self, verify_server_running):
         """Test / endpoint returns API info."""
-        client = TestClient()
+        client = APIClient()
         response = client.get("/")
 
         assert response.status_code == 200
         data = response.json()
         assert "message" in data
         assert "version" in data
-        assert data["version"] == "1.1.0"
+        assert data["version"] == "1.2.0"
         assert "Quipflip" in data["message"]
         client.close()
 
@@ -131,7 +131,7 @@ class TestPlayerManagement:
 
     def test_create_player(self, verify_server_running):
         """Test POST /player creates new player with credentials."""
-        client = TestClient()
+        client = APIClient()
         player_data = create_test_player_data()
         response = client.post("/player", json=player_data)
 
@@ -140,7 +140,7 @@ class TestPlayerManagement:
         assert "player_id" in data
         # The API may return pseudonym instead of username
         assert "username" in data or "pseudonym" in data
-        assert data["balance"] == 1000
+        assert data["balance"] == 5000
         assert "access_token" in data
         assert "refresh_token" in data
         client.close()
@@ -167,7 +167,7 @@ class TestPlayerManagement:
 
     def test_balance_requires_auth(self, verify_server_running):
         """Test /player/balance requires authentication."""
-        client = TestClient()  # No auth token
+        client = APIClient()  # No auth token
         response = client.get("/player/balance")
 
         assert response.status_code == 401  # Unauthorized
@@ -250,7 +250,7 @@ class TestPromptRoundFlow:
 
         # Balance should be deducted
         balance_response = auth_client.get("/player/balance")
-        assert balance_response.json()["balance"] == 900
+        assert balance_response.json()["balance"] == 4900
 
         auth_client.close()
 
@@ -262,16 +262,16 @@ class TestPromptRoundFlow:
         prompt_response = auth_client.post("/rounds/prompt", json={})
         round_id = prompt_response.json()["round_id"]
 
-        # Submit phrase (changed from "word" to "phrase")
+        # Submit phrase (must be 2-5 words)
         submit_response = auth_client.post(
             f"/rounds/{round_id}/submit",
-            json={"phrase": "beautiful"}
+            json={"phrase": "beautiful day"}
         )
 
         assert submit_response.status_code == 200
         data = submit_response.json()
         assert data["success"] is True
-        assert data["phrase"] == "BEAUTIFUL"  # Changed from "word" to "phrase"
+        assert data["phrase"] == "BEAUTIFUL DAY"
 
         # Current round should be cleared
         current_response = auth_client.get("/player/current-round")
@@ -354,10 +354,10 @@ class TestCopyRoundFlow:
         prompt_response = p1_client.post("/rounds/prompt", json={})
         round1_id = prompt_response.json()["round_id"]
 
-        # Submit prompt phrase
+        # Submit prompt phrase (must be 2-5 words)
         p1_client.post(
             f"/rounds/{round1_id}/submit",
-            json={"phrase": "happy"}
+            json={"phrase": "happy times"}
         )
 
         # Create second player for copy round
@@ -376,10 +376,10 @@ class TestCopyRoundFlow:
             original_phrase = data["original_phrase"]
             copy_round_id = data["round_id"]
 
-            # Submit different phrase
+            # Submit different phrase (must be 2-5 words)
             submit_response = p2_client.post(
                 f"/rounds/{copy_round_id}/submit",
-                json={"phrase": "joyful"}
+                json={"phrase": "joyful moments"}
             )
             assert submit_response.status_code == 200
 
@@ -423,7 +423,7 @@ class TestCompleteGameFlow:
         prompt_round = p1.post("/rounds/prompt", json={}).json()
         p1.post(
             f"/rounds/{prompt_round['round_id']}/submit",
-            json={"phrase": "peaceful"}
+            json={"phrase": "peaceful morning"}
         )
 
         # Create first copy player
@@ -437,7 +437,7 @@ class TestCompleteGameFlow:
             c1_data = copy1_round.json()
             c1.post(
                 f"/rounds/{c1_data['round_id']}/submit",
-                json={"phrase": "calm"}
+                json={"phrase": "calm waters"}
             )
 
             # Create second copy player
@@ -451,7 +451,7 @@ class TestCompleteGameFlow:
                 c2_data = copy2_round.json()
                 c2.post(
                     f"/rounds/{c2_data['round_id']}/submit",
-                    json={"phrase": "serene"}
+                    json={"phrase": "serene landscape"}
                 )
 
                 # Create voter
@@ -491,7 +491,7 @@ class TestEdgeCases:
 
     def test_invalid_api_key(self, verify_server_running):
         """Test requests with invalid API key."""
-        client = TestClient("invalid-key-12345")
+        client = APIClient("invalid-key-12345")
         response = client.get("/player/balance")
 
         assert response.status_code == 401
@@ -499,7 +499,7 @@ class TestEdgeCases:
 
     def test_get_nonexistent_round(self, verify_server_running):
         """Test GET /rounds/{round_id} with invalid ID."""
-        client = TestClient()
+        client = APIClient()
         auth_client, player_data = create_authenticated_client()
 
         response = auth_client.get("/rounds/00000000-0000-0000-0000-000000000000")
@@ -533,7 +533,7 @@ class TestEdgeCases:
 
     def test_word_too_short(self, verify_server_running):
         """Test submitting single-letter word (too short)."""
-        client = TestClient()
+        client = APIClient()
         auth_client, player_data = create_authenticated_client()
 
         prompt_response = auth_client.post("/rounds/prompt", json={})
@@ -552,7 +552,7 @@ class TestEdgeCases:
 
     def test_word_too_long(self, verify_server_running):
         """Test submitting word that's too long (>100 chars)."""
-        client = TestClient()
+        client = APIClient()
         auth_client, player_data = create_authenticated_client()
 
         prompt_response = auth_client.post("/rounds/prompt", json={})
@@ -575,27 +575,27 @@ class TestDataConsistency:
 
     def test_balance_consistency_after_round(self, verify_server_running):
         """Test balance is correctly updated after round operations."""
-        client = TestClient()
+        client = APIClient()
         auth_client, player_data = create_authenticated_client()
 
 
         # Check initial balance
         balance1 = auth_client.get("/player/balance").json()["balance"]
-        assert balance1 == 1000
+        assert balance1 == 5000
 
         # Start prompt round
         auth_client.post("/rounds/prompt", json={})
 
         # Check balance deducted
         balance2 = auth_client.get("/player/balance").json()["balance"]
-        assert balance2 == 900
+        assert balance2 == 4900
 
         client.close()
         auth_client.close()
 
     def test_outstanding_prompts_tracking(self, verify_server_running):
         """Test outstanding_prompts counter is accurate."""
-        client = TestClient()
+        client = APIClient()
         auth_client, player_data = create_authenticated_client()
 
 
@@ -608,7 +608,7 @@ class TestDataConsistency:
         round_id = prompt_response.json()["round_id"]
         auth_client.post(
             f"/rounds/{round_id}/submit",
-            json={"phrase": "wonderful"}
+            json={"phrase": "wonderful day"}
         )
 
         # Check outstanding prompts increased
