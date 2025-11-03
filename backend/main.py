@@ -226,7 +226,7 @@ async def ai_stale_handler_cycle():
     except Exception as exc:
         logger.warning(f"Could not verify phrase validator health: {exc}")
 
-    startup_delay = 180
+    startup_delay = 240
     logger.info(f"Stale AI handler cycle starting in {startup_delay}s")
     await asyncio.sleep(startup_delay)
 
