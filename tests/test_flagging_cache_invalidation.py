@@ -74,7 +74,7 @@ async def test_prompts_waiting_count_after_flagging(db_session, player_factory):
     assert copy_round.prompt_round_id == prompt_round.round_id
 
     # Player B flags the prompt
-    flag = await round_service.flag_copy_round(
+    await round_service.flag_copy_round(
         copy_round.round_id,
         player_b,
         transaction_service_b,
@@ -157,7 +157,6 @@ async def test_dashboard_endpoint_shows_correct_count_after_flagging(
     # Player B gets dashboard data (simulating the GET /player/dashboard call)
     await round_service.ensure_prompt_queue_populated()
     prompts_waiting_before = await round_service.get_available_prompts_count(player_b.player_id)
-    phrasesets_waiting_before = await vote_service.count_available_phrasesets_for_player(player_b.player_id)
 
     can_copy_before, _ = await player_service.can_start_copy_round(player_b)
 
@@ -168,18 +167,15 @@ async def test_dashboard_endpoint_shows_correct_count_after_flagging(
     copy_round = await round_service.start_copy_round(player_b, transaction_service_b)
     await db_session.refresh(player_b)
 
-    flag = await round_service.flag_copy_round(
+    await round_service.flag_copy_round(
         copy_round.round_id,
         player_b,
         transaction_service_b,
     )
     await db_session.refresh(player_b)
 
-    # IMPORTANT: Clear the cache (simulating what should happen automatically)
-    # In production, flag_copy_round should invalidate the cache
-    # If this test fails without this line, it means cache invalidation isn't working
-
     # Now Player B gets fresh dashboard data
+    # Note: flag_copy_round should automatically invalidate the cache
     await round_service.ensure_prompt_queue_populated()
     prompts_waiting_after = await round_service.get_available_prompts_count(player_b.player_id)
 
@@ -188,9 +184,6 @@ async def test_dashboard_endpoint_shows_correct_count_after_flagging(
         f"Expected prompts_waiting to decrease after flagging. "
         f"Before: {prompts_waiting_before}, After: {prompts_waiting_after}"
     )
-
-    # If there was only 1 prompt and we flagged it, count should be 0
-    # (or less by 1 if there were multiple prompts)
 
 
 @pytest.mark.asyncio

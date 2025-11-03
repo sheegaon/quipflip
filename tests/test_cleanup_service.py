@@ -94,12 +94,12 @@ class TestRefreshTokenCleanup:
         assert valid_token.token_hash == "valid_token_hash"
 
     @pytest.mark.asyncio
-    async def test_cleanup_revoked_refresh_tokens(self, db_session, player_factory):
-        """Should remove revoked refresh tokens."""
+    async def test_cleanup_expired_includes_revoked_tokens(self, db_session, player_factory):
+        """Should remove expired tokens including revoked ones."""
         cleanup_service = CleanupService(db_session)
         player = await player_factory()
 
-        # Create revoked token
+        # Create revoked token (still valid expiry but revoked)
         revoked_token = RefreshToken(
             token_id=uuid4(),
             player_id=player.player_id,
@@ -120,7 +120,7 @@ class TestRefreshTokenCleanup:
         db_session.add(valid_token)
         await db_session.commit()
 
-        # Cleanup should remove revoked token
+        # Cleanup expired tokens (which includes revoked tokens)
         deleted_count = await cleanup_service.cleanup_expired_refresh_tokens()
 
         assert deleted_count == 1

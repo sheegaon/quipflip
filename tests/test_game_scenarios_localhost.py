@@ -34,7 +34,7 @@ class TestSinglePlayerJourney:
         """New player creates account and checks initial balance."""
         player, client = PlayerFactory.create_player()
 
-        assert player.balance == 1000
+        assert player.balance == 5000
         assert player.access_token is not None
 
         # Check balance endpoint
@@ -43,7 +43,7 @@ class TestSinglePlayerJourney:
 
         data = response.json()
         AssertionHelper.assert_balance_response(data)
-        assert data["balance"] == 1000
+        assert data["balance"] == 5000
         assert data["outstanding_prompts"] == 0
 
         client.close()
@@ -58,15 +58,15 @@ class TestSinglePlayerJourney:
 
         # Balance should be deducted
         balance = client.get("/player/balance").json()["balance"]
-        assert balance == 900
+        assert balance == 4900
 
-        # Submit word to the current round
-        word = WordGenerator.get_word()
+        # Submit phrase to the current round
+        phrase = WordGenerator.get_word()
         round_id = prompt_data["round_id"]
-        submit_data = GameFlowHelper.submit_word(client, round_id, word)
+        submit_data = GameFlowHelper.submit_word(client, round_id, phrase)
 
         assert submit_data["success"] is True
-        assert submit_data["phrase"] == word.upper()
+        assert submit_data["phrase"] == phrase.upper()
 
         # Check no active round
         current = client.get("/player/current-round").json()
@@ -84,12 +84,12 @@ class TestSinglePlayerJourney:
         player, client = PlayerFactory.create_player()
 
         rounds_completed = 0
-        words = WordGenerator.get_words(5, unique=True)
+        phrases = WordGenerator.get_words(5, unique=True)
 
         # Complete 5 prompt rounds
-        for word in words:
+        for phrase in phrases:
             try:
-                GameFlowHelper.complete_prompt_round(client, word)
+                GameFlowHelper.complete_prompt_round(client, phrase)
                 rounds_completed += 1
             except Exception as e:
                 print(f"Round failed: {e}")
@@ -99,7 +99,7 @@ class TestSinglePlayerJourney:
 
         # Check balance decreased
         final_balance = client.get("/player/balance").json()["balance"]
-        assert final_balance == 1000 - (rounds_completed * 100)
+        assert final_balance == 5000 - (rounds_completed * 100)
 
         client.close()
 
@@ -114,8 +114,8 @@ class TestTwoPlayerInteraction:
         (player1, client1), (player2, client2) = players_clients
 
         # Player 1 creates prompt
-        word1 = WordGenerator.get_word()
-        round_id, _ = GameFlowHelper.complete_prompt_round(client1, word1)
+        phrase1 = WordGenerator.get_word()
+        round_id, _ = GameFlowHelper.complete_prompt_round(client1, phrase1)
 
         time.sleep(0.5)  # Ensure prompt is in queue
 
@@ -124,20 +124,20 @@ class TestTwoPlayerInteraction:
             copy_data = GameFlowHelper.start_copy_round(client2)
             AssertionHelper.assert_round_response(copy_data, "copy")
 
-            # Submit different word
-            word2 = WordGenerator.get_word()
-            # Ensure it's different from player1's word
-            while word2.lower() == word1.lower():
-                word2 = WordGenerator.get_word()
+            # Submit different phrase
+            phrase2 = WordGenerator.get_word()
+            # Ensure it's different from player1's phrase
+            while phrase2.lower() == phrase1.lower():
+                phrase2 = WordGenerator.get_word()
 
-            GameFlowHelper.submit_word(client2, copy_data["round_id"], word2)
+            GameFlowHelper.submit_word(client2, copy_data["round_id"], phrase2)
 
             # Both players' balances should be affected
             balance1 = client1.get("/player/balance").json()["balance"]
             balance2 = client2.get("/player/balance").json()["balance"]
 
-            assert balance1 <= 900  # Paid for prompt
-            assert balance2 <= 910  # Paid for copy (might be $90 or $100)
+            assert balance1 <= 4900  # Paid for prompt
+            assert balance2 <= 4960  # Paid for copy (might be $40 or $100)
 
         except Exception as e:
             print(f"Copy round failed: {e}")
@@ -149,8 +149,8 @@ class TestTwoPlayerInteraction:
         player, client = PlayerFactory.create_player()
 
         # Create prompt
-        word = WordGenerator.get_word()
-        GameFlowHelper.complete_prompt_round(client, word)
+        phrase = WordGenerator.get_word()
+        GameFlowHelper.complete_prompt_round(client, phrase)
 
         time.sleep(0.5)
 
@@ -173,21 +173,21 @@ class TestThreePlayerPhraseset:
         players_clients = PlayerFactory.create_players(3)
         (p1, c1), (p2, c2), (p3, c3) = players_clients
 
-        words = WordGenerator.get_words(3, unique=True)
+        phrases = WordGenerator.get_words(3, unique=True)
 
         # Player 1: Prompt
         try:
-            GameFlowHelper.complete_prompt_round(c1, words[0])
+            GameFlowHelper.complete_prompt_round(c1, phrases[0])
             time.sleep(0.5)
 
             # Player 2: First copy
             copy1_data = GameFlowHelper.start_copy_round(c2)
-            GameFlowHelper.submit_word(c2, copy1_data["round_id"], words[1])
+            GameFlowHelper.submit_word(c2, copy1_data["round_id"], phrases[1])
             time.sleep(0.5)
 
             # Player 3: Second copy
             copy2_data = GameFlowHelper.start_copy_round(c3)
-            GameFlowHelper.submit_word(c3, copy2_data["round_id"], words[2])
+            GameFlowHelper.submit_word(c3, copy2_data["round_id"], phrases[2])
 
             # All players should have spent money
             balances = [
@@ -196,9 +196,9 @@ class TestThreePlayerPhraseset:
                 c3.get("/player/balance").json()["balance"]
             ]
 
-            assert all(b <= 910 for b in balances), "All players should have paid"
+            assert all(b <= 4960 for b in balances), "All players should have paid"
 
-            print(f"\nPhraseset created with words: {words}")
+            print(f"\nPhraseset created with phrases: {phrases}")
             print(f"Final balances: {balances}")
 
         except Exception as e:
@@ -227,15 +227,15 @@ class TestVotingScenarios:
             vote_result = GameFlowHelper.submit_vote(client, phraseset_id, chosen_phrase)
             AssertionHelper.assert_vote_result(vote_result)
 
-            # Check payout
+            # Check payout (correct vote pays 20 coins)
             if vote_result["correct"]:
-                assert vote_result["payout"] == 5
+                assert vote_result["payout"] == 20
             else:
                 assert vote_result["payout"] == 0
 
-            # Balance should reflect vote cost and payout
+            # Balance should reflect vote cost (10 coins) and payout
             final_balance = client.get("/player/balance").json()["balance"]
-            expected = 1000 - 1 + vote_result["payout"]
+            expected = 5000 - 10 + vote_result["payout"]
             assert final_balance == expected
 
         except Exception as e:
@@ -276,29 +276,29 @@ class TestEdgeCasesAndErrors:
     """Test error handling and edge cases."""
 
     def test_submit_invalid_word_formats(self, verify_server):
-        """Test various invalid word formats."""
+        """Test various invalid phrase formats."""
         player, client = PlayerFactory.create_player()
 
         # Start round
         prompt_data = GameFlowHelper.start_prompt_round(client)
         round_id = prompt_data["round_id"]
 
-        # Test various invalid words
-        invalid_words = [
+        # Test various invalid phrases
+        invalid_phrases = [
             WordGenerator.get_invalid_word("short"),
             WordGenerator.get_invalid_word("long"),
             WordGenerator.get_invalid_word("numbers"),
             WordGenerator.get_invalid_word("special"),
         ]
 
-        for word in invalid_words:
-            response = client.post(f"/rounds/{round_id}/submit", json={"phrase": word})
+        for phrase in invalid_phrases:
+            response = client.post(f"/rounds/{round_id}/submit", json={"phrase": phrase})
             # Some validation errors return 422 (Pydantic), others return 400 (business logic)
-            assert response.status_code in [400, 422], f"Should reject invalid word: {word}"
+            assert response.status_code in [400, 422], f"Should reject invalid phrase: {phrase}"
 
-        # Valid word should still work
-        valid_word = WordGenerator.get_word()
-        response = client.post(f"/rounds/{round_id}/submit", json={"phrase": valid_word})
+        # Valid phrase should still work
+        valid_phrase = WordGenerator.get_word()
+        response = client.post(f"/rounds/{round_id}/submit", json={"phrase": valid_phrase})
         assert response.status_code == 200
 
         client.close()
@@ -320,7 +320,7 @@ class TestEdgeCasesAndErrors:
 
         # Clean up without waiting
         try:
-            GameFlowHelper.submit_word(client, round_id, "quick")
+            GameFlowHelper.submit_word(client, round_id, "quick phrase")
         except:
             pass
 
@@ -369,7 +369,7 @@ class TestBalanceTracking:
         player, client = PlayerFactory.create_player()
 
         # Track expected balance
-        expected_balance = 1000
+        expected_balance = 5000
 
         # Operation 1: Start prompt round
         GameFlowHelper.start_prompt_round(client)
@@ -394,13 +394,13 @@ class TestBalanceTracking:
         player, client = PlayerFactory.create_player()
 
         operations = 0
-        expected_balance = 1000
+        expected_balance = 5000
 
         # Perform multiple prompt rounds
         for i in range(3):
             try:
-                word = WordGenerator.get_words(1)[0]
-                GameFlowHelper.complete_prompt_round(client, word)
+                phrase = WordGenerator.get_words(1)[0]
+                GameFlowHelper.complete_prompt_round(client, phrase)
                 operations += 1
                 expected_balance -= 100
 
@@ -429,8 +429,8 @@ class TestQueueDynamics:
         initial_prompts = initial_status["prompts_waiting"]
 
         # Submit prompt
-        word = WordGenerator.get_word()
-        GameFlowHelper.complete_prompt_round(client, word)
+        phrase = WordGenerator.get_word()
+        GameFlowHelper.complete_prompt_round(client, phrase)
 
         time.sleep(0.5)
 
@@ -450,7 +450,7 @@ class TestQueueDynamics:
         status = client.get("/rounds/available").json()
 
         if status["copy_discount_active"]:
-            assert status["copy_cost"] == 90
+            assert status["copy_cost"] == 40  # Discounted cost
             assert status["prompts_waiting"] > 10
         else:
             assert status["copy_cost"] == 100

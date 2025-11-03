@@ -9,8 +9,6 @@ from datetime import datetime, timedelta, UTC
 import uuid
 from sqlalchemy import select, update
 
-from sqlalchemy import select
-
 from backend.models.player import Player
 from backend.models.prompt import Prompt
 from backend.models.round import Round

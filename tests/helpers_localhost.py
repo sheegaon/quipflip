@@ -35,11 +35,11 @@ class Player:
         """Create Player from API response."""
         return cls(
             player_id=data["player_id"],
-            username=data["username"],
+            username=data.get("username") or data.get("pseudonym"),
             access_token=data["access_token"],
             refresh_token=data["refresh_token"],
             legacy_api_key=data.get("legacy_api_key"),
-            balance=data.get("balance", 1000),
+            balance=data.get("balance", 5000),
         )
 
 
@@ -99,12 +99,15 @@ class PlayerFactory:
             Tuple of (Player, APIClient)
         """
         username = f"test_user_{uuid4().hex[:8]}"
+        pseudonym = f"TestPlayer{uuid4().hex[:8]}"
         email = f"{username}@example.com"
-        password = ''.join(random.choices(string.ascii_letters + string.digits, k=12))
+        # Password must have upper, lower, digit, special char, and be 8+ chars
+        password = f"Test{uuid4().hex[:6]}!"
 
         with APIClient() as client:
             response = client.post("/player", json={
                 "username": username,
+                "pseudonym": pseudonym,
                 "email": email,
                 "password": password,
             })
@@ -215,7 +218,7 @@ class GameFlowHelper:
 
 
 class WordGenerator:
-    """Generate valid test words."""
+    """Generate valid test phrases (2-5 words)."""
 
     # Common valid words for testing
     WORDS = [
@@ -229,50 +232,89 @@ class WordGenerator:
         "quiet", "silent", "hushed", "still", "tranquil",
     ]
 
+    # Connecting words
+    CONNECTORS = ["and", "the", "of", "in", "on", "at", "to", "with", "for"]
+
+    # Nouns for phrases
+    NOUNS = ["day", "night", "morning", "evening", "moment", "time", "place", "world", "life", "dream",
+             "sky", "ocean", "river", "mountain", "valley", "forest", "garden", "meadow", "lake", "star",
+             "moon", "sun", "cloud", "wind", "rain", "snow", "flower", "tree", "bird", "song"]
+
     @staticmethod
     def get_word() -> str:
-        """Get a random valid word."""
-        return random.choice(WordGenerator.WORDS)
+        """Get a random valid phrase (2-5 words)."""
+        # Generate 2-3 word phrases with variety
+        phrase_type = random.choice(["adj_noun", "adj_connector_noun", "adj_adj_noun"])
+
+        if phrase_type == "adj_noun":
+            # Simple: "happy day"
+            adjective = random.choice(WordGenerator.WORDS)
+            noun = random.choice(WordGenerator.NOUNS)
+            return f"{adjective} {noun}"
+        elif phrase_type == "adj_connector_noun":
+            # Medium: "bright in morning"
+            adjective = random.choice(WordGenerator.WORDS)
+            connector = random.choice(WordGenerator.CONNECTORS)
+            noun = random.choice(WordGenerator.NOUNS)
+            return f"{adjective} {connector} {noun}"
+        else:  # adj_adj_noun
+            # Complex: "peaceful quiet morning"
+            adj1 = random.choice(WordGenerator.WORDS)
+            adj2 = random.choice(WordGenerator.WORDS)
+            while adj2 == adj1:  # Ensure different adjectives
+                adj2 = random.choice(WordGenerator.WORDS)
+            noun = random.choice(WordGenerator.NOUNS)
+            return f"{adj1} {adj2} {noun}"
 
     @staticmethod
     def get_words(count: int, unique: bool = True) -> List[str]:
         """
-        Get multiple words.
+        Get multiple phrases.
 
         Args:
-            count: Number of words to return
-            unique: If True, ensure all words are different
+            count: Number of phrases to return
+            unique: If True, ensure all phrases are different
 
         Returns:
-            List of words
+            List of phrases
         """
-        if unique and count > len(WordGenerator.WORDS):
-            raise ValueError(f"Cannot generate {count} unique words (max: {len(WordGenerator.WORDS)})")
+        phrases = []
+        seen = set()
 
-        if unique:
-            return random.sample(WordGenerator.WORDS, count)
-        else:
-            return [random.choice(WordGenerator.WORDS) for _ in range(count)]
+        for _ in range(count):
+            if unique:
+                # Keep generating until we get a unique phrase
+                max_attempts = 100
+                for _ in range(max_attempts):
+                    phrase = WordGenerator.get_word()
+                    if phrase not in seen:
+                        phrases.append(phrase)
+                        seen.add(phrase)
+                        break
+            else:
+                phrases.append(WordGenerator.get_word())
+
+        return phrases
 
     @staticmethod
     def get_invalid_word(reason: str = "short") -> str:
         """
-        Get an invalid word for testing error cases.
+        Get an invalid phrase for testing error cases.
 
         Args:
-            reason: Type of invalid word ('short', 'long', 'numbers', 'special')
+            reason: Type of invalid phrase ('short', 'long', 'numbers', 'special')
 
         Returns:
-            Invalid word string
+            Invalid phrase string
         """
         if reason == "short":
-            return "x"
+            return "x"  # Single letter, less than 2 words
         elif reason == "long":
-            return "verylongwordthatexceedsmaximumlength"
+            return "very long phrase that exceeds the maximum allowed length with many many words"
         elif reason == "numbers":
-            return "test123"
+            return "test123 number456"
         elif reason == "special":
-            return "test-word"
+            return "test-word invalid@chars"
         else:
             return "x"
 
