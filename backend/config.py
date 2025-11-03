@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     refresh_token_cookie_name: str = "quipflip_refresh_token"
 
     # Admin access
-    admin_emails: tuple[str, ...] = ("tfishman@gmail.com",)
+    admin_emails: set[str] = {"tfishman@gmail.com"}
 
     # Game Constants (all values in whole flipcoins)
     starting_balance: int = 5000
