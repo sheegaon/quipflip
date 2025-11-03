@@ -233,7 +233,7 @@ backend/services/ai/
 
 ### Workflow
 
-1. **Startup**: Background task starts after 180s delay (same as backup AI)
+1. **Startup**: Background task starts after 240s delay
 2. **Query Phase**: Find all prompts/phrasesets older than `ai_stale_threshold_days`
 3. **Copy Phase**:
    - For each stale prompt, generate copy using `AIService.generate_copy_phrase`
