@@ -31,7 +31,7 @@ class QueueService:
         if item:
             logger.info(f"[Queue Pop] Retrieved prompt from queue: {item['prompt_round_id']} (queue had {queue_length_before} items)")
             return UUID(item["prompt_round_id"])
-        logger.debug(f"[Queue Pop] No items in queue (length was {queue_length_before})")
+        logger.info(f"[Queue Pop] No items in queue (length was {queue_length_before})")
         return None
 
     @staticmethod
@@ -43,7 +43,7 @@ class QueueService:
         queue_length_before = queue_client.length(PROMPT_QUEUE)
         items = queue_client.pop_many(PROMPT_QUEUE, count)
         if not items:
-            logger.debug(
+            logger.info(
                 f"[Queue Pop] Batch request for {count} prompts returned none (queue length was {queue_length_before})"
             )
             return []
@@ -116,7 +116,7 @@ class QueueService:
         waiting = QueueService.get_prompt_rounds_waiting()
         active = waiting > settings.copy_discount_threshold
         if active:
-            logger.debug(f"Copy discount active: {waiting} quips waiting")
+            logger.info(f"Copy discount active: {waiting} quips waiting")
         return active
 
     @staticmethod

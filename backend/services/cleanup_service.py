@@ -93,7 +93,7 @@ class CleanupService:
         if deleted_count > 0:
             logger.warning(f"Cleaned up {deleted_count} orphaned refresh tokens")
         else:
-            logger.debug("No orphaned refresh tokens found")
+            logger.info("No orphaned refresh tokens found")
 
         return deleted_count
 
@@ -119,7 +119,7 @@ class CleanupService:
         if deleted_count > 0:
             logger.info(f"Cleaned up {deleted_count} expired/revoked refresh tokens")
         else:
-            logger.debug("No expired refresh tokens found")
+            logger.info("No expired refresh tokens found")
 
         return deleted_count
 
@@ -187,7 +187,7 @@ class CleanupService:
         orphaned_count, by_type = await self.count_orphaned_rounds()
 
         if orphaned_count == 0:
-            logger.debug("No orphaned rounds found")
+            logger.info("No orphaned rounds found")
             return 0
 
         logger.info(f"Found {orphaned_count} orphaned round(s): {by_type}")
@@ -214,7 +214,7 @@ class CleanupService:
         # Remove deleted prompt rounds from queue
         if orphaned_prompt_ids:
             removed_from_queue = QueueService.remove_prompt_rounds_from_queue(orphaned_prompt_ids)
-            logger.debug(f"Removed {removed_from_queue} orphaned prompt rounds from queue")
+            logger.info(f"Removed {removed_from_queue} orphaned prompt rounds from queue")
 
         return deleted_count
 
@@ -348,7 +348,7 @@ class CleanupService:
         if prompt_round_ids:
             removed_from_queue = QueueService.remove_prompt_rounds_from_queue(prompt_round_ids)
             deletion_counts['queue_cleanup'] = removed_from_queue
-            logger.debug(f"Removed {removed_from_queue} prompt rounds from queue after player deletion")
+            logger.info(f"Removed {removed_from_queue} prompt rounds from queue after player deletion")
 
         return deletion_counts
 
@@ -366,7 +366,7 @@ class CleanupService:
         test_players = await self.get_test_players()
 
         if not test_players:
-            logger.debug("No test players found")
+            logger.info("No test players found")
             return {}
 
         logger.info(f"Found {len(test_players)} test player(s)")
@@ -390,7 +390,7 @@ class CleanupService:
         if deletion_counts:
             logger.info("Deleted player %s and related data", player_id)
         else:
-            logger.debug("No records deleted for player %s", player_id)
+            logger.info("No records deleted for player %s", player_id)
         return deletion_counts
 
     # ===== Inactive Guest Player Cleanup =====
@@ -419,7 +419,7 @@ class CleanupService:
         all_old_guests = result.scalars().all()
 
         if not all_old_guests:
-            logger.debug("No old guest players found")
+            logger.info("No old guest players found")
             return 0
 
         # Filter to those with no rounds
@@ -434,7 +434,7 @@ class CleanupService:
                 inactive_guest_ids.append(guest.player_id)
 
         if not inactive_guest_ids:
-            logger.debug(f"Found {len(all_old_guests)} old guest(s), but all have played rounds")
+            logger.info(f"Found {len(all_old_guests)} old guest(s), but all have played rounds")
             return 0
 
         logger.info(f"Found {len(inactive_guest_ids)} inactive guest player(s) to clean up (>{days_old} days old, no rounds)")
@@ -481,7 +481,7 @@ class CleanupService:
         ]
 
         if not candidates:
-            logger.debug("No guest usernames to recycle")
+            logger.info("No guest usernames to recycle")
             return 0
 
         processed_candidates: list[tuple[Player, str]] = []
@@ -491,14 +491,14 @@ class CleanupService:
             base_username = guest.username or ""
 
             if not base_username.strip():
-                logger.debug("Skipping guest %s with empty username", guest.player_id)
+                logger.info("Skipping guest %s with empty username", guest.player_id)
                 continue
 
             first_username = f"{base_username} X"
             first_canonical = canonicalize_username(first_username)
 
             if not first_canonical:
-                logger.debug(
+                logger.info(
                     "Skipping guest %s due to empty canonical for candidate '%s'",
                     guest.player_id,
                     first_username,
@@ -509,7 +509,7 @@ class CleanupService:
             conflict_prefixes.add(first_canonical.rstrip("0123456789"))
 
         if not processed_candidates:
-            logger.debug("No guest usernames to recycle")
+            logger.info("No guest usernames to recycle")
             return 0
 
         conflict_conditions = [
@@ -538,7 +538,7 @@ class CleanupService:
                 canonical = canonicalize_username(new_username)
 
                 if not canonical:
-                    logger.debug(
+                    logger.info(
                         "Skipping candidate username '%s' for guest %s due to empty canonical",
                         new_username,
                         guest.player_id,
@@ -567,10 +567,10 @@ class CleanupService:
                 )
 
         if not updates:
-            logger.debug("No guest usernames to recycle")
+            logger.info("No guest usernames to recycle")
             return 0
 
-        logger.debug("Prepared guest username updates: %s", updates)
+        logger.info("Prepared guest username updates: %s", updates)
 
         player_ids = [update_entry["player_id"] for update_entry in updates]
 

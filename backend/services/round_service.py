@@ -414,7 +414,7 @@ class RoundService:
             prompt_round_id = candidate_prompt_round_ids.pop(0)
             prompt_round = prefetched_rounds.get(prompt_round_id)
             attempts += 1
-            logger.debug(
+            logger.info(
                 f"[Copy Round Start] Attempt {attempts}/{max_attempts} for player {player.player_id} using prompt {prompt_round_id}"
             )
 
@@ -870,6 +870,8 @@ class RoundService:
         Validates that all required denormalized data is present before creating
         the phraseset to prevent data corruption.
         """
+        logger.info(f"Attempting to create phraseset for prompt {prompt_round.round_id}")
+
         result = await self.db.execute(
             select(Round)
             .where(Round.prompt_round_id == prompt_round.round_id)
@@ -879,7 +881,12 @@ class RoundService:
         )
         copy_rounds = list(result.scalars().all())
 
-        if len(copy_rounds) < 2 or not prompt_round.submitted_phrase:
+        if len(copy_rounds) < 2:
+            logger.info(f"Cannot create phraseset for prompt {prompt_round.round_id}: only {len(copy_rounds)} copy rounds found")
+            return None
+
+        if not prompt_round.submitted_phrase:
+            logger.error(f"Cannot create phraseset for prompt {prompt_round.round_id}: prompt has no submitted_phrase")
             return None
 
         copy1, copy2 = copy_rounds[0], copy_rounds[1]
@@ -970,7 +977,7 @@ class RoundService:
         if round_object.round_type == "prompt":
             round_object.status = "expired"
             round_object.phraseset_status = "abandoned"
-            refund_amount = self.settings.prompt_cost - self.settings.abandoned_penalty
+            refund_amount = max(self.settings.prompt_cost - self.settings.abandoned_penalty, 0)
 
             # Create refund transaction
             await transaction_service.create_transaction(
@@ -984,7 +991,7 @@ class RoundService:
 
         elif round_object.round_type == "copy":
             round_object.status = "abandoned"
-            refund_amount = round_object.cost - self.settings.abandoned_penalty
+            refund_amount = max(round_object.cost - self.settings.abandoned_penalty, 0)
 
             # Create refund transaction
             await transaction_service.create_transaction(
@@ -1009,6 +1016,19 @@ class RoundService:
                 f"Copy round {round_id} abandoned, refunded ${refund_amount}, "
                 f"returned prompt {round_object.prompt_round_id} to queue"
             )
+        elif round_object.round_type == "vote":
+            round_object.status = "expired"
+            refund_amount = max(round_object.cost - self.settings.abandoned_penalty, 0)
+
+            # Create refund transaction for vote round expiration
+            await transaction_service.create_transaction(
+                round_object.player_id,
+                refund_amount,
+                "refund",
+                round_object.round_id,
+            )
+
+            logger.info(f"Vote round {round_id} expired, refunded ${refund_amount}")
         else:
             round_object.status = "expired"
             logger.info(f"Round {round_id} of type {round_object.round_type} expired")
@@ -1099,7 +1119,7 @@ class RoundService:
             True if queue has items after running, False otherwise.
         """
         current_queue_length = QueueService.get_prompt_rounds_waiting()
-        logger.debug(f"[Queue Check] Current queue length: {current_queue_length}")
+        logger.info(f"[Queue Check] Current queue length: {current_queue_length}")
 
         if current_queue_length > 0:
             return True
@@ -1119,7 +1139,7 @@ class RoundService:
         from backend.utils import lock_client
 
         # Use a shared lock so only one worker rebuilds the queue at a time.
-        logger.debug("[Queue Rehydration] Attempting to acquire rehydration lock")
+        logger.info("[Queue Rehydration] Attempting to acquire rehydration lock")
         with lock_client.lock("rehydrate_prompt_queue", timeout=5):
             # Another worker might have already filled the queue while we were waiting.
             current_queue_length = QueueService.get_prompt_rounds_waiting()
@@ -1127,7 +1147,7 @@ class RoundService:
                 logger.info(f"[Queue Rehydration] Queue already populated by another worker (length: {current_queue_length})")
                 return 0
 
-            logger.debug("[Queue Rehydration] Querying database for available prompts")
+            logger.info("[Queue Rehydration] Querying database for available prompts")
             result = await self.db.execute(
                 select(Round.round_id)
                 .join(Phraseset, Phraseset.prompt_round_id == Round.round_id, isouter=True)

@@ -194,7 +194,7 @@ export const VoteRound: React.FC = () => {
 
         {isExpired && (
           <div className="text-center text-quip-orange-deep font-semibold">
-            Time's up! You forfeited <CurrencyDisplay amount={voteCost} iconClassName="w-4 h-4" textClassName="font-semibold" />
+            Time's up! Refund of <CurrencyDisplay amount={voteCost - (roundAvailability?.abandoned_penalty || 5)} iconClassName="w-4 h-4" textClassName="font-semibold" /> applied ({roundAvailability?.abandoned_penalty || 5} FC penalty)
           </div>
         )}
 
