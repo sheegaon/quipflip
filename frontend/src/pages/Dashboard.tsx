@@ -237,9 +237,13 @@ export const Dashboard: React.FC = () => {
   }, [activeRoundRoute, navigate]);
 
   const handleRoundExpired = useCallback(() => {
-    dashboardLogger.debug('Round expired, setting flag and triggering refresh');
+    dashboardLogger.debug('Round expired, setting flag and scheduling refresh in 5 seconds');
     setIsRoundExpired(true);
-    void refreshDashboardAfterCountdown(`round:${activeRound?.round_type ?? 'unknown'}`);
+    // Delay refresh by 5 seconds to allow backend to process expiration
+    setTimeout(() => {
+      dashboardLogger.debug('Executing delayed refresh after round expiration');
+      void refreshDashboardAfterCountdown(`round:${activeRound?.round_type ?? 'unknown'}`);
+    }, 5000);
   }, [activeRound?.round_type, refreshDashboardAfterCountdown]);
 
   const handleAbandonRound = useCallback(async () => {
@@ -561,9 +565,11 @@ export const Dashboard: React.FC = () => {
               >
                 {startingRound === 'copy' ? 'Starting Round...' :
                  roundAvailability?.can_copy ? 'Start Copy Round' :
-                 roundAvailability?.prompts_waiting === 0 ? 'No Prompts Available' :
+                 activeRound?.round_type === 'copy' ? 'Active Round - Use Continue Above' :
+                 activeRound?.round_id ? 'Complete Current Round First' :
+                 roundAvailability?.prompts_waiting === 0 ? 'No Quips Available' :
                  player.balance < (roundAvailability?.copy_cost || 100) ? 'Insufficient Balance' :
-                 'Start Copy Round'}
+                 'Not Available'}
               </button>
             </div>
 
@@ -594,6 +600,8 @@ export const Dashboard: React.FC = () => {
               >
                 {startingRound === 'vote' ? 'Starting Round...' :
                  roundAvailability?.can_vote ? 'Start Vote Round' :
+                 activeRound?.round_type === 'vote' ? 'Active Round - Use Continue Above' :
+                 activeRound?.round_id ? 'Complete Current Round First' :
                  roundAvailability?.phrasesets_waiting === 0 ? 'No Quip Sets Available' :
                  player.balance < (roundAvailability?.vote_cost || 10) ? 'Insufficient Balance' :
                  'Not Available'}

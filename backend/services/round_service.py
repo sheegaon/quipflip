@@ -1009,6 +1009,19 @@ class RoundService:
                 f"Copy round {round_id} abandoned, refunded ${refund_amount}, "
                 f"returned prompt {round_object.prompt_round_id} to queue"
             )
+        elif round_object.round_type == "vote":
+            round_object.status = "expired"
+            refund_amount = round_object.cost - self.settings.abandoned_penalty
+
+            # Create refund transaction for vote round expiration
+            await transaction_service.create_transaction(
+                round_object.player_id,
+                refund_amount,
+                "refund",
+                round_object.round_id,
+            )
+
+            logger.info(f"Vote round {round_id} expired, refunded ${refund_amount}")
         else:
             round_object.status = "expired"
             logger.info(f"Round {round_id} of type {round_object.round_type} expired")
