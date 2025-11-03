@@ -588,7 +588,7 @@ should_finalize = any(count_met and time_met for count_met, time_met in windows.
 - ~~Add composite database index on (player_id, round_type, status) (#40)~~ ✅
 - ~~Break down `_build_contributions` into smaller methods (#28)~~ ✅
 
-- **vote_service.py:**
+**vote_service.py:**
 - ~~Fix N+1 query in contributor validation - batch load rounds (#50)~~ ✅
 - ~~Extract duplicate contributor validation logic (#51)~~ ✅
 - ~~Handle orphaned phrasesets properly (#53)~~ ✅
