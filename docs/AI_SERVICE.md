@@ -9,6 +9,7 @@ The AI service fills in for missing players by generating backup copy phrases an
 ```
 backend/services/ai/
 ├── ai_service.py       # High level coordinator for copy generation, voting, and backup cycles
+├── stale_ai_service.py # Stale content handler for 3+ day old prompts/phrasesets
 ├── gemini_api.py       # Lightweight wrapper around the Google Gemini SDK
 ├── metrics_service.py  # Telemetry helpers (AIMetricsService + MetricsTracker)
 ├── openai_api.py       # Lightweight wrapper around the OpenAI SDK
@@ -198,8 +199,90 @@ Run the suite with:
 pytest tests/test_ai_service.py -v
 ```
 
+## Stale Content Handler
+
+The stale AI handler (`StaleAIService`) provides a complementary safety net for content that has been waiting for 3+ days. Unlike the backup AI which handles recent stalled content, the stale handler ensures nothing is permanently abandoned.
+
+### Key Differences from Backup AI
+
+| Feature | Backup AI | Stale AI |
+|---------|-----------|----------|
+| **Email** | `ai_copy_backup@quipflip.internal` | `ai_stale_handler@quipflip.internal` (copies)<br>`ai_stale_voter@quipflip.internal` (votes) |
+| **Trigger Time** | `ai_backup_delay_minutes` (default: 60 min) | `ai_stale_threshold_days` (default: 3 days) |
+| **Human Activity Required** | Yes - requires human vote before voting | No - can act independently |
+| **Batch Size** | Limited to `ai_backup_batch_size` (default: 2) | Processes ALL stale content |
+| **Frequency** | Every `ai_backup_sleep_minutes` (default: 120 min) | Every `ai_stale_check_interval_hours` (default: 12 hours) |
+| **Purpose** | Handle temporary gaps in activity | Handle permanently abandoned content |
+| **Operation Types** | `"backup_copy"`, `"backup_vote"` | `"stale_copy"`, `"stale_vote"` |
+
+### Architecture
+
+```
+backend/services/ai/
+├── stale_ai_service.py    # StaleAIService - handles abandoned content
+└── ai_service.py           # AIService - reused for generation logic
+```
+
+### Key Methods
+
+* **`StaleAIService.run_stale_cycle()`** - Main entry point, processes all stale prompts and phrasesets
+* **`_find_stale_prompts()`** - Queries for prompts older than threshold without phrasesets (single query, no N+1)
+* **`_find_stale_phrasesets()`** - Queries for phrasesets older than threshold still accepting votes
+* **`_get_or_create_stale_handler()`** - Manages `ai_stale_handler@quipflip.internal` player for copies
+* **`_get_or_create_stale_voter()`** - Manages `ai_stale_voter@quipflip.internal` player for votes
+
+### Workflow
+
+1. **Startup**: Background task starts after 180s delay (same as backup AI)
+2. **Query Phase**: Find all prompts/phrasesets older than `ai_stale_threshold_days`
+3. **Copy Phase**:
+   - For each stale prompt, generate copy using `AIService.generate_copy_phrase`
+   - Race condition protection: check slot availability before AND after generation
+   - Record metrics with `operation_type="stale_copy"`
+   - On failure: re-enqueue prompt and record error metrics
+4. **Vote Phase**:
+   - For each stale phraseset, generate vote using `AIService.generate_vote_choice`
+   - Race condition protection: refresh phraseset status before voting
+   - Record metrics with `operation_type="stale_vote"`
+   - On failure: record error metrics (no re-enqueue for votes)
+5. **Sleep**: Wait `ai_stale_check_interval_hours` before next cycle
+
+### Error Recovery
+
+* **Failed Copy Generation**: Prompt is re-enqueued via `QueueService.add_prompt_round_to_queue()` for retry
+* **Race Conditions**: Double-check pattern prevents conflicts when slots fill during generation
+* **Closed Phrasesets**: Status check before voting prevents voting on finalized sets
+* **Metrics Failures**: Wrapped in try/except to prevent blocking the cycle
+
+### Configuration
+
+```python
+# In backend/config.py
+ai_stale_handler_enabled: bool = True  # Feature flag
+ai_stale_threshold_days: int = 3  # Minimum 3 days
+ai_stale_check_interval_hours: int = 12  # Check frequency
+```
+
+### Testing
+
+Comprehensive test coverage in `tests/test_stale_ai_service.py`:
+
+* Player creation and management (handler vs voter separation)
+* Query logic validation (age filtering, deduplication, N+1 prevention)
+* Race condition handling for both copies and votes
+* Metrics recording for success and failure cases
+* Full cycle integration tests
+
+Run tests with:
+
+```bash
+pytest tests/test_stale_ai_service.py -v
+```
+
 ## Troubleshooting tips
 
 * Verify that at least one API key is configured; missing keys raise `AIServiceError` during initialization.
 * When `MetricsTracker` records repeated failures, inspect `ai_metrics.error_message` for provider error details.
 * Queue contention can prevent the AI from claiming prompts. Check `QueueService.remove_prompt_round_from_queue` logs if copies are skipped.
+* For stale AI issues, check logs for "Stale AI cycle completed" messages and compare processed vs found counts.
+* Monitor `ai_metrics` table filtered by `operation_type IN ('stale_copy', 'stale_vote')` for stale AI performance.

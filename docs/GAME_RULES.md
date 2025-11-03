@@ -90,12 +90,26 @@ Guest accounts ("play without registration") face several restrictions designed 
 - Prompt submissions are additionally checked against the prompt text, and copy submissions must differ from both the original and any existing copy; both checks share the same validator logic.
 
 ## AI Assistance and Automation
-The [AI Service guide](AI_SERVICE.md) details how automated players stay aligned with live game rules. Key behaviours include:
+The [AI Service guide](AI_SERVICE.md) details how automated players stay aligned with live game rules. The system provides two complementary AI systems:
 
+### Backup AI (Recent Content)
 - Provider selection honors `ai_provider`, `openai_api_key`, and `gemini_api_key`, choosing `ai_openai_model` or `ai_gemini_model` and enforcing `ai_timeout_seconds` for each request.
 - `AIService.generate_copy_phrase` mirrors human copy creation by building prompts, generating text through the selected model, and submitting phrases only after the same validator approves them. Retries occur when similarity checks fail, and every attempt records metrics so moderators can audit outcomes.
 - `AIService.generate_vote_choice` evaluates a shuffled phraseset, selects a phrase using model-specific prompts, and submits the vote through `VoteService` so entry fees, lockouts, and payouts behave exactly like a human vote.
-- `AIService.run_backup_cycle` waits `ai_backup_delay_minutes` before acting on stalled rounds, processes up to `ai_backup_batch_size` prompts or phrasesets per pass, and typically sleeps for `ai_backup_sleep_minutes` between runs. During a cycle it creates or reuses the AI player, fills missing copies, submits system votes once a phraseset already has at least one human vote, and leaves detailed telemetry in `ai_metrics` for review.
+- `AIService.run_backup_cycle` waits `ai_backup_delay_minutes` before acting on stalled rounds, processes up to `ai_backup_batch_size` prompts or phrasesets per pass, and typically sleeps for `ai_backup_sleep_minutes` between runs. During a cycle it creates or reuses the AI player (`ai_copy_backup@quipflip.internal`), fills missing copies, submits system votes once a phraseset already has at least one human vote, and leaves detailed telemetry in `ai_metrics` for review.
+
+### Stale AI (Abandoned Content)
+The stale AI handler provides a safety net for content that has been waiting for an extended period:
+- **Activation Threshold**: Content must be at least `ai_stale_threshold_days` old (default: 3 days, minimum 3)
+- **Scope**: Handles both prompts waiting for copies AND phrasesets waiting for votes
+- **Independence**: Unlike the backup AI, the stale handler can act even when only AI players have participated, ensuring no content is permanently abandoned
+- **Players**: Uses two dedicated AI accounts - `ai_stale_handler@quipflip.internal` for copies and `ai_stale_voter@quipflip.internal` for votes
+- **Processing**: Processes ALL stale content in each cycle (no batch size limit)
+- **Frequency**: Runs every `ai_stale_check_interval_hours` (default: 12 hours)
+- **Metrics**: All operations are tracked separately with `operation_type` set to `"stale_copy"` or `"stale_vote"`
+- **Error Recovery**: Failed copy attempts re-enqueue the prompt for retry; both successes and failures are logged with comprehensive metrics
+
+The stale handler complements the backup AI by ensuring content doesn't remain abandoned while allowing ample time for human participation.
 
 ## Queue Dynamics and Discounts
 - Prompt rounds are enqueued for copy players once a prompt phrase is submitted and remain until two valid copies arrive or the prompt is flagged or abandoned. Copy abandonments requeue the prompt automatically, and cooldown tracking prevents the same player from receiving it again immediately.
@@ -107,4 +121,4 @@ The [AI Service guide](AI_SERVICE.md) details how automated players stay aligned
 - **Timing:** `prompt_round_seconds`, `copy_round_seconds`, `vote_round_seconds`, `grace_period_seconds`, `ai_timeout_seconds`, `ai_backup_delay_minutes`, `ai_backup_batch_size`, `ai_backup_sleep_minutes`.
 - **Voting thresholds:** `vote_max_votes`, `vote_minimum_threshold`, `vote_minimum_window_minutes`, `vote_closing_threshold`, `vote_closing_window_minutes`, `correct_vote_points`, `incorrect_vote_points`.
 - **Phrase validation:** `use_phrase_validator_api`, `phrase_validator_url`, `phrase_min_words`, `phrase_max_words`, `phrase_max_length`, `phrase_min_char_per_word`, `phrase_max_char_per_word`, `significant_word_min_length`, `similarity_threshold`, `word_similarity_threshold`.
-- **AI providers:** `ai_provider`, `ai_openai_model`, `ai_gemini_model`, `openai_api_key`, `gemini_api_key` (environment-driven).
+- **AI providers:** `ai_provider`, `ai_openai_model`, `ai_gemini_model`, `openai_api_key`, `gemini_api_key`, `ai_stale_handler_enabled`, `ai_stale_threshold_days`, `ai_stale_check_interval_hours` (environment-driven).

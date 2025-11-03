@@ -17,6 +17,7 @@ from backend.models.round import Round
 from backend.models.vote import Vote
 from backend.services.ai.ai_service import AIService
 from backend.services.player_service import PlayerService
+from backend.services.queue_service import QueueService
 from backend.services.round_service import RoundService
 from backend.services.transaction_service import TransactionService
 from backend.services.vote_service import VoteService
@@ -224,6 +225,18 @@ class StaleAIService:
                     stats["stale_prompts_processed"] += 1
                     stats["stale_copies_generated"] += 1
 
+                    # Record successful copy generation metrics
+                    await self.ai_service.metrics_service.record_operation(
+                        operation_type="stale_copy",
+                        provider=self.ai_service.provider,
+                        model=self.ai_service.ai_model,
+                        success=True,
+                        error_message=None,
+                        prompt_length=len(prompt_round.submitted_phrase) if prompt_round.submitted_phrase else 0,
+                        response_length=len(copy_phrase),
+                        validation_passed=True,
+                    )
+
                 except Exception as exc:
                     logger.error(
                         "Failed to process stale prompt %s: %s",
@@ -231,6 +244,26 @@ class StaleAIService:
                         exc,
                     )
                     stats["errors"] += 1
+
+                    # Record failed copy generation metrics
+                    try:
+                        await self.ai_service.metrics_service.record_operation(
+                            operation_type="stale_copy",
+                            provider=self.ai_service.provider,
+                            model=self.ai_service.ai_model,
+                            success=False,
+                            error_message=str(exc),
+                            validation_passed=False,
+                        )
+                    except Exception as metrics_exc:
+                        logger.warning(f"Failed to record metrics for failed copy: {metrics_exc}")
+
+                    # Re-enqueue the prompt so it can be retried later
+                    try:
+                        QueueService.add_prompt_round_to_queue(prompt_round.round_id)
+                        logger.debug(f"Re-enqueued prompt {prompt_round.round_id} after stale AI failure")
+                    except Exception as queue_exc:
+                        logger.error(f"Failed to re-enqueue prompt {prompt_round.round_id}: {queue_exc}")
 
             stale_phrasesets = await self._find_stale_phrasesets(stale_voter.player_id)
             stats["stale_phrasesets_found"] = len(stale_phrasesets)
@@ -240,6 +273,14 @@ class StaleAIService:
 
             for phraseset in stale_phrasesets:
                 try:
+                    # Check if phraseset is still open (race condition protection)
+                    await self.db.refresh(phraseset)
+                    if phraseset.status not in ["open", "closing"]:
+                        logger.debug(
+                            f"Skipping phraseset {phraseset.phraseset_id} - status changed to {phraseset.status}"
+                        )
+                        continue
+
                     chosen_phrase = await self.ai_service.generate_vote_choice(phraseset)
 
                     await vote_service.submit_system_vote(
@@ -252,6 +293,17 @@ class StaleAIService:
                     stats["stale_votes_generated"] += 1
                     stats["stale_phrasesets_processed"] += 1
 
+                    # Record successful vote generation metrics
+                    await self.ai_service.metrics_service.record_operation(
+                        operation_type="stale_vote",
+                        provider=self.ai_service.provider,
+                        model=self.ai_service.ai_model,
+                        success=True,
+                        error_message=None,
+                        prompt_length=len(phraseset.prompt_text) if phraseset.prompt_text else 0,
+                        response_length=len(chosen_phrase),
+                    )
+
                 except Exception as exc:
                     logger.error(
                         "Failed to process stale phraseset %s: %s",
@@ -259,6 +311,18 @@ class StaleAIService:
                         exc,
                     )
                     stats["errors"] += 1
+
+                    # Record failed vote generation metrics
+                    try:
+                        await self.ai_service.metrics_service.record_operation(
+                            operation_type="stale_vote",
+                            provider=self.ai_service.provider,
+                            model=self.ai_service.ai_model,
+                            success=False,
+                            error_message=str(exc),
+                        )
+                    except Exception as metrics_exc:
+                        logger.warning(f"Failed to record metrics for failed vote: {metrics_exc}")
 
             await self.db.commit()
 
