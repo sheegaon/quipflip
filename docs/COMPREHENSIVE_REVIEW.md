@@ -613,7 +613,7 @@ should_finalize = any(count_met and time_met for count_met, time_met in windows.
 - Add comprehensive logging throughout (#44)
 - Centralize status mapping logic (#31)
 
-- **vote_service.py:**
+**vote_service.py:**
 - Break down `submit_vote` into smaller methods (#58)
 - Optimize priority-based phraseset selection with SQL (#64)
 - Extract duplicate prize pool update logic (#63)
