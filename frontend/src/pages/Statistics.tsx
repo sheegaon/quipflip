@@ -31,40 +31,114 @@ const Statistics: React.FC = () => {
   const historicalTrends = useMemo<HistoricalTrendPoint[]>(() => {
     if (!data) return [];
 
-    if (data.historical_trends && data.historical_trends.length > 0) {
-      return data.historical_trends;
+    const DAYS_IN_WEEK = 7;
+    const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+    const rawPoints = data.historical_trends ?? [];
+    const parsedPoints = rawPoints
+      .map((point) => {
+        const parsed = Date.parse(point.period);
+        if (Number.isNaN(parsed)) {
+          return null;
+        }
+
+        const date = new Date(parsed);
+        date.setHours(0, 0, 0, 0);
+
+        return {
+          ...point,
+          timestamp: date.getTime(),
+          dayKey: date.toISOString().slice(0, 10),
+        };
+      })
+      .filter((point): point is HistoricalTrendPoint & { timestamp: number; dayKey: string } => point !== null);
+
+    if (parsedPoints.length === 0) {
+      const today = data.frequency?.last_active ? new Date(data.frequency.last_active) : new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const totalRounds = data.prompt_stats.total_rounds + data.copy_stats.total_rounds + data.voter_stats.total_rounds;
+      const totalEarnings = data.earnings.total_earnings;
+      const averageWinRate =
+        (data.prompt_stats.win_rate + data.copy_stats.win_rate + data.voter_stats.win_rate) / 3 || 0;
+
+      return Array.from({ length: DAYS_IN_WEEK }, (_, index) => {
+        const progression = (index + 1) / DAYS_IN_WEEK;
+        const periodDate = new Date(today.getTime() - (DAYS_IN_WEEK - 1 - index) * MS_PER_DAY);
+        const smoothFactor = Math.sin(progression * Math.PI) * 0.15;
+
+        const dailyWinRate = Math.min(
+          100,
+          Math.max(0, Math.round(averageWinRate * (0.9 + smoothFactor * 0.5 + progression * 0.1) * 10) / 10),
+        );
+        const dailyEarnings = Math.max(0, Math.round((totalEarnings / DAYS_IN_WEEK) * (0.8 + smoothFactor)));
+        const dailyRounds = Math.max(0, Math.round((totalRounds / DAYS_IN_WEEK) * (0.85 + smoothFactor)));
+
+        return {
+          period: periodDate.toISOString(),
+          win_rate: dailyWinRate,
+          earnings: dailyEarnings,
+          rounds_played: dailyRounds,
+        };
+      });
     }
 
-    const segments = 6;
-    const lastActiveDate = data.frequency?.last_active ? new Date(data.frequency.last_active) : new Date();
-    const memberSinceDate = data.frequency?.member_since
-      ? new Date(data.frequency.member_since)
-      : new Date(lastActiveDate.getTime() - (segments - 1) * 7 * 24 * 60 * 60 * 1000);
+    const latestTimestamp = parsedPoints.reduce((max, point) => Math.max(max, point.timestamp), 0);
+    const latestDate = new Date(latestTimestamp);
+    latestDate.setHours(0, 0, 0, 0);
 
-    const timelineMs = Math.max(1, lastActiveDate.getTime() - memberSinceDate.getTime());
-    const intervalMs = timelineMs / Math.max(1, segments - 1);
+    const aggregated = new Map<
+      string,
+      { earnings: number; rounds: number; winRateSum: number; winRateCount: number }
+    >();
 
-    const totalRounds = data.prompt_stats.total_rounds + data.copy_stats.total_rounds + data.voter_stats.total_rounds;
-    const totalEarnings = data.earnings.total_earnings;
-    const averageWinRate =
-      (data.prompt_stats.win_rate + data.copy_stats.win_rate + data.voter_stats.win_rate) / 3 || 0;
+    parsedPoints.forEach((point) => {
+      const existing = aggregated.get(point.dayKey) ?? { earnings: 0, rounds: 0, winRateSum: 0, winRateCount: 0 };
+      existing.earnings += point.earnings;
+      existing.rounds += point.rounds_played;
+      existing.winRateSum += point.win_rate;
+      existing.winRateCount += 1;
+      aggregated.set(point.dayKey, existing);
+    });
 
-    return Array.from({ length: segments }, (_, index) => {
-      const progression = (index + 1) / segments;
-      const periodDate = new Date(memberSinceDate.getTime() + intervalMs * index);
-      const smoothFactor = Math.sin(progression * Math.PI) * 0.08;
-      const trendWinRate = Math.min(100, Math.max(0, averageWinRate * (0.85 + smoothFactor + progression * 0.15)));
-      const cumulativeEarnings = Math.max(0, totalEarnings * progression * (0.85 + progression * 0.25));
-      const cumulativeRounds = Math.max(0, totalRounds * progression * (0.9 + smoothFactor));
+    return Array.from({ length: DAYS_IN_WEEK }, (_, index) => {
+      const periodDate = new Date(latestDate.getTime() - (DAYS_IN_WEEK - 1 - index) * MS_PER_DAY);
+      const dayKey = periodDate.toISOString().slice(0, 10);
+      const summary = aggregated.get(dayKey);
+
+      const winRate = summary && summary.winRateCount > 0
+        ? Math.round((summary.winRateSum / summary.winRateCount) * 10) / 10
+        : 0;
 
       return {
         period: periodDate.toISOString(),
-        win_rate: Math.round(trendWinRate * 10) / 10,
-        earnings: Math.round(cumulativeEarnings),
-        rounds_played: Math.round(cumulativeRounds),
+        win_rate: winRate,
+        earnings: summary ? Math.round(summary.earnings) : 0,
+        rounds_played: summary ? Math.round(summary.rounds) : 0,
       };
     });
   }, [data]);
+
+  const weeklyTrendSummary = useMemo(
+    () => {
+      if (historicalTrends.length === 0) {
+        return { latestWinRate: 0, weeklyEarnings: 0, weeklyRounds: 0 };
+      }
+
+      const latest = historicalTrends[historicalTrends.length - 1];
+      const weeklyEarnings = historicalTrends.reduce((sum, point) => sum + point.earnings, 0);
+      const weeklyRounds = historicalTrends.reduce((sum, point) => sum + point.rounds_played, 0);
+
+      return {
+        latestWinRate: latest.win_rate,
+        weeklyEarnings,
+        weeklyRounds,
+      };
+    },
+    [historicalTrends],
+  );
+
+  const { latestWinRate, weeklyEarnings, weeklyRounds } = weeklyTrendSummary;
 
   useEffect(() => {
     const playerId = player?.player_id;
@@ -335,7 +409,7 @@ const Statistics: React.FC = () => {
           <div className="tile-card p-6">
             <h2 className="text-xl font-display font-bold text-quip-navy mb-2">Historical Trends &amp; Performance Over Time</h2>
             <p className="text-sm text-quip-teal mb-4">
-              Track how your win rate, earnings, and activity have evolved across recent weeks and months.
+              Track how your win rate, earnings, and activity have evolved across the past week.
             </p>
             {chartsReady ? (
               <>
@@ -344,19 +418,19 @@ const Statistics: React.FC = () => {
                     <div className="bg-quip-orange bg-opacity-10 border border-quip-orange rounded-tile p-3">
                       <div className="text-quip-teal">Latest Win Rate</div>
                       <div className="text-2xl font-bold text-quip-orange">
-                        {historicalTrends[historicalTrends.length - 1].win_rate.toFixed(1)}%
+                        {latestWinRate.toFixed(1)}%
                       </div>
                     </div>
                     <div className="bg-quip-teal bg-opacity-10 border border-quip-teal rounded-tile p-3">
-                      <div className="text-quip-teal">Total Earnings Trend</div>
+                      <div className="text-quip-teal">Weekly Earnings</div>
                       <div className="text-2xl font-bold text-quip-teal">
-                        {historicalTrends[historicalTrends.length - 1].earnings.toLocaleString()}
+                        {Math.round(weeklyEarnings).toLocaleString()}
                       </div>
                     </div>
                     <div className="bg-quip-turquoise bg-opacity-10 border border-quip-turquoise rounded-tile p-3">
-                      <div className="text-quip-teal">Rounds Played</div>
+                      <div className="text-quip-teal">Weekly Rounds Played</div>
                       <div className="text-2xl font-bold text-quip-turquoise">
-                        {historicalTrends[historicalTrends.length - 1].rounds_played.toLocaleString()}
+                        {Math.round(weeklyRounds).toLocaleString()}
                       </div>
                     </div>
                   </div>

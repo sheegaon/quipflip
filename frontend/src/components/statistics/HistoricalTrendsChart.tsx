@@ -48,52 +48,33 @@ export default function HistoricalTrendsChart({ trends }: HistoricalTrendsChartP
         tooltipLabel: string;
         winRate: number;
         earningsPerDay: number;
-        activity: number;
+        roundsPerDay: number;
       }>;
     }
 
-    const MS_PER_DAY = 1000 * 60 * 60 * 24;
-
-    const rawData = trends
+    return trends
       .map((point, index) => {
-        const { label, tooltipLabel } = formatLabel(point.period, point.period || `Period ${index + 1}`);
+        const { label, tooltipLabel } = formatLabel(point.period, point.period || `Day ${index + 1}`);
         const parsed = Date.parse(point.period ?? '');
-        const hasValidDate = !Number.isNaN(parsed);
-        const timestamp = hasValidDate ? parsed : index;
+        const timestamp = Number.isNaN(parsed) ? index : parsed;
 
         return {
           label,
           tooltipLabel,
           winRate: point.win_rate,
-          cumulativeEarnings: point.earnings,
-          activity: point.rounds_played,
+          earningsPerDay: Math.round(point.earnings),
+          roundsPerDay: Math.round(point.rounds_played),
           timestamp,
-          hasValidDate,
         };
       })
-      .sort((a, b) => a.timestamp - b.timestamp);
-
-    return rawData.map((point, index) => {
-      let earningsPerDay = 0;
-
-      if (index > 0) {
-        const previous = rawData[index - 1];
-        const earningsDelta = point.cumulativeEarnings - previous.cumulativeEarnings;
-        const hasValidDates = point.hasValidDate && previous.hasValidDate;
-        const timeDeltaMs = hasValidDates ? point.timestamp - previous.timestamp : MS_PER_DAY;
-        const daysBetweenRaw = hasValidDates ? timeDeltaMs / MS_PER_DAY : 1;
-        const normalizedDays = Number.isFinite(daysBetweenRaw) && daysBetweenRaw > 0 ? daysBetweenRaw : 1;
-        earningsPerDay = earningsDelta / normalizedDays;
-      }
-
-      return {
-        label: point.label,
-        tooltipLabel: point.tooltipLabel,
-        winRate: point.winRate,
-        earningsPerDay: Number.isFinite(earningsPerDay) ? earningsPerDay : 0,
-        activity: point.activity,
-      };
-    });
+      .sort((a, b) => a.timestamp - b.timestamp)
+      .map(({ label, tooltipLabel, winRate, earningsPerDay, roundsPerDay }) => ({
+        label,
+        tooltipLabel,
+        winRate,
+        earningsPerDay,
+        roundsPerDay,
+      }));
   }, [trends]);
 
   if (chartData.length === 0) {
@@ -119,8 +100,8 @@ export default function HistoricalTrendsChart({ trends }: HistoricalTrendsChartP
           <YAxis
             yAxisId="right"
             orientation="right"
-            tickFormatter={(value) => `${value}`}
-            label={{ value: 'Earnings per Day / Activity', angle: 90, position: 'insideRight' }}
+            tickFormatter={(value) => `${Math.round(value)}`}
+            label={{ value: 'Earnings / Rounds per Day', angle: 90, position: 'insideRight' }}
           />
           <Tooltip
             labelFormatter={(_, items) => items?.[0]?.payload?.tooltipLabel ?? ''}
@@ -129,16 +110,10 @@ export default function HistoricalTrendsChart({ trends }: HistoricalTrendsChartP
                 return [`${value.toFixed(1)}%`, 'Win Rate'];
               }
               if (name === 'earningsPerDay') {
-                return [
-                  value.toLocaleString(undefined, {
-                    minimumFractionDigits: 0,
-                    maximumFractionDigits: 2,
-                  }),
-                  'Earnings per Day',
-                ];
+                return [`${Math.round(value).toLocaleString()}`, 'Earnings per Day'];
               }
-              if (name === 'activity') {
-                return [`${value.toLocaleString()}`, 'Rounds Played'];
+              if (name === 'roundsPerDay') {
+                return [`${Math.round(value).toLocaleString()}`, 'Rounds per Day'];
               }
               return [value, name];
             }}
@@ -167,12 +142,12 @@ export default function HistoricalTrendsChart({ trends }: HistoricalTrendsChartP
           <Line
             yAxisId="right"
             type="monotone"
-            dataKey="activity"
+            dataKey="roundsPerDay"
             stroke="#6366f1"
             strokeWidth={2}
             dot={{ r: 3 }}
             activeDot={{ r: 6 }}
-            name="Rounds Played"
+            name="Rounds per Day"
           />
         </ComposedChart>
       </ResponsiveContainer>
