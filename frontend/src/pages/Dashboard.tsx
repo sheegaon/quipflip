@@ -237,13 +237,25 @@ export const Dashboard: React.FC = () => {
   }, [activeRoundRoute, navigate]);
 
   const handleRoundExpired = useCallback(() => {
-    dashboardLogger.debug('Round expired, setting flag and scheduling refresh in 5 seconds');
+    console.log('⏰ [Dashboard] Timer expired callback triggered', {
+      activeRound: activeRound?.round_id,
+      roundType: activeRound?.round_type,
+      expiresAt: activeRound?.expires_at,
+      timestamp: new Date().toISOString()
+    });
+    dashboardLogger.debug('Round expired, setting flag and scheduling refresh in 6 seconds');
     setIsRoundExpired(true);
-    // Delay refresh by 5 seconds to allow backend to process expiration
+
+    // Delay refresh by 6 seconds to allow backend to process expiration
+    // (Backend has 5-second grace period, so we wait slightly longer)
+    console.log('⏰ [Dashboard] Scheduling refresh in 6 seconds (backend grace period + buffer)...');
     setTimeout(() => {
+      console.log('⏰ [Dashboard] 6-second delay complete, executing refresh now', {
+        timestamp: new Date().toISOString()
+      });
       dashboardLogger.debug('Executing delayed refresh after round expiration');
       void refreshDashboardAfterCountdown(`round:${activeRound?.round_type ?? 'unknown'}`);
-    }, 5000);
+    }, 6000);
   }, [activeRound?.round_type, refreshDashboardAfterCountdown]);
 
   const handleAbandonRound = useCallback(async () => {
