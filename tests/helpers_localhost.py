@@ -102,7 +102,7 @@ class PlayerFactory:
         pseudonym = f"TestPlayer{uuid4().hex[:8]}"
         email = f"{username}@example.com"
         # Password must have upper, lower, digit, special char, and be 8+ chars
-        password = f"Test{uuid4().hex[:6]}!"
+        password = f"Test{uuid4().hex[:5]}1!"
 
         with APIClient() as client:
             response = client.post("/player", json={
