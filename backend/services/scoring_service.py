@@ -283,7 +283,7 @@ class ScoringService:
     async def get_weekly_leaderboard_for_player(
         self,
         player_id: UUID,
-        username: str,
+        username: str | None,
     ) -> tuple[list[dict[str, Any]], datetime | None]:
         """Return top leaderboard entries plus the current player."""
 
@@ -296,7 +296,7 @@ class ScoringService:
         if player_entry is None:
             player_entry = {
                 "player_id": player_id,
-                "username": username,
+                "username": username or "Unknown Player",
                 "total_costs": 0,
                 "total_earnings": 0,
                 "net_cost": 0,
@@ -325,7 +325,7 @@ class ScoringService:
             .join(PhrasesetActivity, PhrasesetActivity.prompt_round_id == Round.round_id)
             .where(
                 Round.round_type == "prompt",
-                PhrasesetActivity.activity_type.in_(["prompt_submitted", "prompt_created"]),
+                PhrasesetActivity.activity_type == "prompt_submitted",
             )
             .group_by(Round.round_id)
         )

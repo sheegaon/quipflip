@@ -85,7 +85,7 @@ const WeeklyLeaderboard: React.FC<WeeklyLeaderboardProps> = ({ leaders, loading 
               </p>
             ) : (
               <p className="mt-2 text-xs text-quip-navy/50">
-                Costs {currencyFormatter.format(entry.total_costs)} · Earnings {currencyFormatter.format(entry.total_earnings)}
+                Costs {currencyFormatter.format(entry.total_costs)} vs. Earnings {currencyFormatter.format(entry.total_earnings)}
               </p>
             )}
           </div>
