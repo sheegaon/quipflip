@@ -4,11 +4,10 @@ import logging
 import uuid
 from datetime import UTC, datetime, timedelta
 from typing import List
-from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import aliased, selectinload
+from sqlalchemy.orm import selectinload
 
 from backend.config import get_settings
 from backend.models.phraseset import Phraseset
@@ -20,19 +19,15 @@ from backend.services.player_service import PlayerService
 from backend.services.queue_service import QueueService
 from backend.services.round_service import RoundService
 from backend.services.transaction_service import TransactionService
+from backend.services.username_service import UsernameService
 from backend.services.vote_service import VoteService
 
 
 logger = logging.getLogger(__name__)
 
 
-AI_STALE_HANDLER_EMAIL = "ai_stale_handler@quipflip.internal"
-AI_STALE_HANDLER_USERNAME = "StaleAIHandler"
-AI_STALE_HANDLER_PSEUDONYM = "Stale AI Handler"
-
-AI_STALE_VOTER_EMAIL = "ai_stale_voter@quipflip.internal"
-AI_STALE_VOTER_USERNAME = "StaleAIVoter"
-AI_STALE_VOTER_PSEUDONYM = "Stale AI Voter"
+# Use same pattern as AI backup service - create players dynamically with random usernames
+AI_PLAYER_EMAIL_DOMAIN = "@quipflip.internal"
 
 
 class StaleAIService:
@@ -43,98 +38,103 @@ class StaleAIService:
         self.settings = get_settings()
         self.ai_service = AIService(db)
 
-    async def _get_or_create_stale_handler(self) -> Player:
-        """Ensure the dedicated stale AI player exists."""
+    async def _get_or_create_stale_player(self, email: str) -> Player:
+        """
+        Get or create a stale AI player with the given email.
 
+        Uses the same pattern as AI backup service - creates players with
+        random usernames from the pool to blend in with human players.
+
+        Args:
+            email: Email address for the AI player (e.g., "ai_stale_handler_0@quipflip.internal")
+
+        Returns:
+            The AI player instance
+        """
+        # Check if player exists
         result = await self.db.execute(
-            select(Player).where(Player.email == AI_STALE_HANDLER_EMAIL)
+            select(Player).where(Player.email == email)
         )
         player = result.scalar_one_or_none()
+
         if player:
+            # Clear stuck active round if any
+            if player.active_round_id:
+                logger.warning(
+                    f"Stale AI player {email} has stuck active round: {player.active_round_id}. Clearing it."
+                )
+                player.active_round_id = None
+                await self.db.flush()
             return player
 
+        # Create new AI player with random username from pool
         player_service = PlayerService(self.db)
+        username_service = UsernameService(self.db)
+
         try:
+            normalized_username, canonical_username = await username_service.generate_unique_username()
+
             player = await player_service.create_player(
-                username=AI_STALE_HANDLER_USERNAME,
-                email=AI_STALE_HANDLER_EMAIL,
+                username=normalized_username,
+                email=email,
                 password_hash="not-used-for-ai-player",
-                pseudonym=AI_STALE_HANDLER_PSEUDONYM,
-                pseudonym_canonical=AI_STALE_HANDLER_PSEUDONYM.lower().replace(" ", ""),
+                pseudonym=normalized_username,  # Use same username as pseudonym
+                pseudonym_canonical=canonical_username,
             )
-            logger.info("Created stale AI handler player: %s", player.player_id)
+            logger.info(f"Created stale AI player {email} with username {normalized_username}")
             return player
         except Exception as exc:
-            logger.error("Failed to create stale AI handler player: %s", exc)
+            logger.error(f"Failed to create stale AI player {email}: {exc}")
             raise
 
-    async def _get_or_create_stale_voter(self) -> Player:
-        """Ensure the dedicated stale AI voter exists."""
+    async def _find_stale_prompts(self) -> List[Round]:
+        """
+        Locate prompt rounds that have been waiting for copies beyond the stale threshold.
 
-        result = await self.db.execute(
-            select(Player).where(Player.email == AI_STALE_VOTER_EMAIL)
-        )
-        player = result.scalar_one_or_none()
-        if player:
-            return player
-
-        player_service = PlayerService(self.db)
-        try:
-            player = await player_service.create_player(
-                username=AI_STALE_VOTER_USERNAME,
-                email=AI_STALE_VOTER_EMAIL,
-                password_hash="not-used-for-ai-player",
-                pseudonym=AI_STALE_VOTER_PSEUDONYM,
-                pseudonym_canonical=AI_STALE_VOTER_PSEUDONYM.lower().replace(" ", ""),
-            )
-            logger.info("Created stale AI voter player: %s", player.player_id)
-            return player
-        except Exception as exc:
-            logger.error("Failed to create stale AI voter player: %s", exc)
-            raise
-
-    async def _find_stale_prompts(self, stale_handler_id: UUID) -> List[Round]:
-        """Locate prompt rounds that have been waiting for copies beyond the stale threshold."""
-
+        Returns prompts that:
+        1. Are older than the stale threshold
+        2. Don't have a phraseset yet
+        3. Have at least one empty copy slot (copy1 or copy2)
+        """
         cutoff_time = datetime.now(UTC) - timedelta(days=self.settings.ai_stale_threshold_days)
-
-        copy_round_alias = aliased(Round)
-
-        stale_copy_exists = (
-            select(copy_round_alias.round_id)
-            .where(copy_round_alias.prompt_round_id == Round.round_id)
-            .where(copy_round_alias.round_type == "copy")
-            .where(copy_round_alias.player_id == stale_handler_id)
-        )
 
         result = await self.db.execute(
             select(Round)
             .where(Round.round_type == "prompt")
             .where(Round.status == "submitted")
             .where(Round.created_at <= cutoff_time)
-            .where(Round.player_id != stale_handler_id)
             .outerjoin(Phraseset, Phraseset.prompt_round_id == Round.round_id)
             .where(Phraseset.phraseset_id.is_(None))
-            .where(~stale_copy_exists.exists())
+            # Find prompts with at least one empty copy slot
+            .where(
+                (Round.copy1_player_id.is_(None)) | (Round.copy2_player_id.is_(None))
+            )
             .order_by(Round.created_at.asc())
         )
 
         return list(result.scalars().all())
 
-    async def _find_stale_phrasesets(self, stale_voter_id: UUID) -> List[Phraseset]:
-        """Locate phrasesets that have been waiting for votes beyond the stale threshold."""
+    async def _find_stale_phrasesets(self) -> List[Phraseset]:
+        """
+        Locate phrasesets that have been waiting for votes beyond the stale threshold.
 
+        Returns phrasesets that:
+        1. Are older than the stale threshold
+        2. Are still open or closing (not resolved)
+        3. Have fewer votes than the minimum threshold needed for resolution
+
+        This allows stale AI to provide multiple votes until the phraseset can be resolved.
+        """
         cutoff_time = datetime.now(UTC) - timedelta(days=self.settings.ai_stale_threshold_days)
 
-        already_voted_subquery = select(Vote.phraseset_id).where(
-            Vote.player_id == stale_voter_id
-        )
+        # Get the minimum votes needed (from settings or default to 3)
+        min_votes_needed = getattr(self.settings, 'min_votes_for_resolution', 3)
 
         result = await self.db.execute(
             select(Phraseset)
             .where(Phraseset.status.in_(["open", "closing"]))
             .where(Phraseset.created_at <= cutoff_time)
-            .where(~Phraseset.phraseset_id.in_(already_voted_subquery))
+            .where(Phraseset.vote_count < min_votes_needed)
             .options(
                 selectinload(Phraseset.prompt_round),
                 selectinload(Phraseset.copy_round_1),
@@ -146,7 +146,12 @@ class StaleAIService:
         return list(result.scalars().all())
 
     async def run_stale_cycle(self) -> None:
-        """Process stale prompts and phrasesets with AI-generated participation."""
+        """
+        Process stale prompts and phrasesets with AI-generated participation.
+
+        Uses multiple AI players (similar to backup service) to legitimately fill
+        multiple copy slots and provide multiple votes per phraseset.
+        """
 
         stats = {
             "stale_prompts_found": 0,
@@ -159,14 +164,13 @@ class StaleAIService:
         }
 
         try:
-            stale_handler = await self._get_or_create_stale_handler()
-            stale_voter = await self._get_or_create_stale_voter()
-
-            stale_prompts = await self._find_stale_prompts(stale_handler.player_id)
+            # Find stale content first (don't need player IDs for queries anymore)
+            stale_prompts = await self._find_stale_prompts()
             stats["stale_prompts_found"] = len(stale_prompts)
 
             round_service = RoundService(self.db)
 
+            # Process each stale prompt with a different AI player for each copy slot
             for prompt_round in stale_prompts:
                 try:
                     initial_slot = None
@@ -180,6 +184,12 @@ class StaleAIService:
                         if phraseset:
                             prompt_round.phraseset_status = "active"
                         continue
+
+                    # Select which AI handler to use (0 or 1) based on which slot is empty
+                    # This ensures different players can fill different slots
+                    handler_index = 0 if initial_slot == "copy1" else 1
+                    stale_handler_email = f"ai_stale_handler_{handler_index}{AI_PLAYER_EMAIL_DOMAIN}"
+                    stale_handler = await self._get_or_create_stale_player(stale_handler_email)
 
                     copy_phrase = await self.ai_service.generate_copy_phrase(
                         prompt_round.submitted_phrase,
@@ -265,12 +275,14 @@ class StaleAIService:
                     except Exception as queue_exc:
                         logger.error(f"Failed to re-enqueue prompt {prompt_round.round_id}: {queue_exc}")
 
-            stale_phrasesets = await self._find_stale_phrasesets(stale_voter.player_id)
+            # Find stale phrasesets that need votes
+            stale_phrasesets = await self._find_stale_phrasesets()
             stats["stale_phrasesets_found"] = len(stale_phrasesets)
 
             vote_service = VoteService(self.db)
             transaction_service = TransactionService(self.db)
 
+            # Process each stale phraseset with a different AI voter
             for phraseset in stale_phrasesets:
                 try:
                     # Check if phraseset is still open (race condition protection)
@@ -278,6 +290,24 @@ class StaleAIService:
                     if phraseset.status not in ["open", "closing"]:
                         logger.debug(
                             f"Skipping phraseset {phraseset.phraseset_id} - status changed to {phraseset.status}"
+                        )
+                        continue
+
+                    # Select a different AI voter based on current vote count
+                    # This ensures we use different players for each vote
+                    voter_index = phraseset.vote_count % 5  # Rotate through 5 voters
+                    stale_voter_email = f"ai_stale_voter_{voter_index}{AI_PLAYER_EMAIL_DOMAIN}"
+                    stale_voter = await self._get_or_create_stale_player(stale_voter_email)
+
+                    # Check if this specific voter has already voted (additional safety check)
+                    existing_vote = await self.db.execute(
+                        select(Vote)
+                        .where(Vote.phraseset_id == phraseset.phraseset_id)
+                        .where(Vote.player_id == stale_voter.player_id)
+                    )
+                    if existing_vote.scalar_one_or_none():
+                        logger.debug(
+                            f"Voter {stale_voter_email} already voted on phraseset {phraseset.phraseset_id}, skipping"
                         )
                         continue
 
