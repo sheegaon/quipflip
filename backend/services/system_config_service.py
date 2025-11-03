@@ -277,6 +277,23 @@ class SystemConfigService:
             "min": 5,
             "max": 120,
         },
+        "ai_stale_handler_enabled": {
+            "type": "bool",
+            "category": "ai",
+            "description": "Enable stale AI handler for 3+ day old content",
+        },
+        "ai_stale_threshold_days": {
+            "type": "int",
+            "category": "ai",
+            "description": "Days before content is considered stale (minimum 3)",
+            "min": 3,
+        },
+        "ai_stale_check_interval_hours": {
+            "type": "int",
+            "category": "ai",
+            "description": "Hours between stale AI handler cycles",
+            "min": 1,
+        },
     }
 
     def __init__(self, session: AsyncSession):

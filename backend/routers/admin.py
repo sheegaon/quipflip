@@ -142,6 +142,9 @@ class GameConfigResponse(BaseModel):
     ai_backup_delay_minutes: int
     ai_backup_batch_size: int
     ai_backup_sleep_minutes: int
+    ai_stale_handler_enabled: bool
+    ai_stale_threshold_days: int
+    ai_stale_check_interval_hours: int
 
 
 @router.get("/config", response_model=GameConfigResponse)
@@ -205,6 +208,9 @@ async def get_game_config(
         ai_backup_delay_minutes=config.get("ai_backup_delay_minutes", 15),
         ai_backup_batch_size=config.get("ai_backup_batch_size", 3),
         ai_backup_sleep_minutes=config.get("ai_backup_sleep_minutes", 60),
+        ai_stale_handler_enabled=config.get("ai_stale_handler_enabled", True),
+        ai_stale_threshold_days=config.get("ai_stale_threshold_days", 3),
+        ai_stale_check_interval_hours=config.get("ai_stale_check_interval_hours", 12),
     )
 
 

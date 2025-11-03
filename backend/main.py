@@ -202,6 +202,52 @@ async def ai_backup_cycle():
         await asyncio.sleep(settings.ai_backup_sleep_minutes * 60)
 
 
+async def ai_stale_handler_cycle():
+    """Background task that runs the stale AI handler on a schedule."""
+
+    from backend.database import AsyncSessionLocal
+    from backend.services.ai.stale_ai_service import StaleAIService
+
+    if not settings.ai_stale_handler_enabled:
+        logger.info("Stale AI handler is disabled, not starting cycle")
+        return
+
+    try:
+        if settings.use_phrase_validator_api:
+            from backend.services.phrase_validation_client import get_phrase_validation_client
+            client = get_phrase_validation_client()
+            if not await client.health_check():
+                logger.warning("Phrase validator API not healthy yet, stale AI may experience issues")
+        else:
+            from backend.services.phrase_validator import get_phrase_validator
+            validator = get_phrase_validator()
+            if not validator.dictionary:
+                logger.warning("Local phrase validator dictionary not loaded, stale AI may experience issues")
+    except Exception as exc:
+        logger.warning(f"Could not verify phrase validator health: {exc}")
+
+    startup_delay = 180
+    logger.info(f"Stale AI handler cycle starting in {startup_delay}s")
+    await asyncio.sleep(startup_delay)
+
+    logger.info("Stale AI handler cycle starting main loop")
+
+    while True:
+        try:
+            async with AsyncSessionLocal() as db:
+                await StaleAIService(db).run_stale_cycle()
+
+        except Exception as exc:
+            logger.error(f"Stale AI handler cycle error: {exc}")
+
+        sleep_seconds = settings.ai_stale_check_interval_hours * 3600
+        logger.info(
+            "Stale AI handler sleeping for %s hours",
+            settings.ai_stale_check_interval_hours,
+        )
+        await asyncio.sleep(sleep_seconds)
+
+
 async def cleanup_cycle():
     """
     Background task to run database cleanup tasks.
@@ -260,6 +306,7 @@ async def lifespan(app_instance: FastAPI):
 
     # Start background tasks
     ai_backup_task = None
+    stale_handler_task = None
     cleanup_task = None
 
     try:
@@ -270,6 +317,15 @@ async def lifespan(app_instance: FastAPI):
         )
     except Exception as e:
         logger.error(f"Failed to start AI backup cycle: {e}")
+
+    try:
+        stale_handler_task = asyncio.create_task(ai_stale_handler_cycle())
+        logger.info(
+            "Stale AI handler task started (runs every %s hours)",
+            settings.ai_stale_check_interval_hours,
+        )
+    except Exception as exc:
+        logger.error(f"Failed to start stale AI handler cycle: {exc}")
 
     try:
         cleanup_task = asyncio.create_task(cleanup_cycle())
@@ -287,6 +343,13 @@ async def lifespan(app_instance: FastAPI):
                 await ai_backup_task
             except asyncio.CancelledError:
                 logger.info("AI backup cycle task cancelled")
+
+        if stale_handler_task:
+            stale_handler_task.cancel()
+            try:
+                await stale_handler_task
+            except asyncio.CancelledError:
+                logger.info("Stale AI handler task cancelled")
 
         if cleanup_task:
             cleanup_task.cancel()
