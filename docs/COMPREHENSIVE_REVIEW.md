@@ -214,7 +214,7 @@ Based on review of [round_service.py](backend/services/round_service.py), [phras
 
 ### Algorithmic Improvements
 
-#### 33. ~~O(n²) Filter Complexity (Lines 46-66)~~ ✅
+#### 33. ~~O(n²) Filter Complexity (Lines 46-66)~~ ✅ **FIXED**
 - `get_player_phrasesets` now performs role/status filtering in a single
   list comprehension, keeping the operation O(n) while preserving readability.
 
