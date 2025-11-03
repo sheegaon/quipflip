@@ -8,7 +8,7 @@ from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import aliased, selectinload
 
 from backend.config import get_settings
 from backend.models.phraseset import Phraseset
@@ -28,6 +28,10 @@ logger = logging.getLogger(__name__)
 AI_STALE_HANDLER_EMAIL = "ai_stale_handler@quipflip.internal"
 AI_STALE_HANDLER_USERNAME = "StaleAIHandler"
 AI_STALE_HANDLER_PSEUDONYM = "Stale AI Handler"
+
+AI_STALE_VOTER_EMAIL = "ai_stale_voter@quipflip.internal"
+AI_STALE_VOTER_USERNAME = "StaleAIVoter"
+AI_STALE_VOTER_PSEUDONYM = "Stale AI Voter"
 
 
 class StaleAIService:
@@ -63,10 +67,44 @@ class StaleAIService:
             logger.error("Failed to create stale AI handler player: %s", exc)
             raise
 
+    async def _get_or_create_stale_voter(self) -> Player:
+        """Ensure the dedicated stale AI voter exists."""
+
+        result = await self.db.execute(
+            select(Player).where(Player.email == AI_STALE_VOTER_EMAIL)
+        )
+        player = result.scalar_one_or_none()
+        if player:
+            return player
+
+        player_service = PlayerService(self.db)
+        try:
+            player = await player_service.create_player(
+                username=AI_STALE_VOTER_USERNAME,
+                email=AI_STALE_VOTER_EMAIL,
+                password_hash="not-used-for-ai-player",
+                pseudonym=AI_STALE_VOTER_PSEUDONYM,
+                pseudonym_canonical=AI_STALE_VOTER_PSEUDONYM.lower().replace(" ", ""),
+            )
+            logger.info("Created stale AI voter player: %s", player.player_id)
+            return player
+        except Exception as exc:
+            logger.error("Failed to create stale AI voter player: %s", exc)
+            raise
+
     async def _find_stale_prompts(self, stale_handler_id: UUID) -> List[Round]:
         """Locate prompt rounds that have been waiting for copies beyond the stale threshold."""
 
         cutoff_time = datetime.now(UTC) - timedelta(days=self.settings.ai_stale_threshold_days)
+
+        copy_round_alias = aliased(Round)
+
+        stale_copy_exists = (
+            select(copy_round_alias.round_id)
+            .where(copy_round_alias.prompt_round_id == Round.round_id)
+            .where(copy_round_alias.round_type == "copy")
+            .where(copy_round_alias.player_id == stale_handler_id)
+        )
 
         result = await self.db.execute(
             select(Round)
@@ -76,31 +114,19 @@ class StaleAIService:
             .where(Round.player_id != stale_handler_id)
             .outerjoin(Phraseset, Phraseset.prompt_round_id == Round.round_id)
             .where(Phraseset.phraseset_id.is_(None))
+            .where(~stale_copy_exists.exists())
             .order_by(Round.created_at.asc())
         )
 
-        prompt_rounds = list(result.scalars().all())
+        return list(result.scalars().all())
 
-        stale_prompts: List[Round] = []
-        for prompt_round in prompt_rounds:
-            existing_copy_result = await self.db.execute(
-                select(Round.round_id)
-                .where(Round.prompt_round_id == prompt_round.round_id)
-                .where(Round.round_type == "copy")
-                .where(Round.player_id == stale_handler_id)
-            )
-            if existing_copy_result.scalar_one_or_none() is None:
-                stale_prompts.append(prompt_round)
-
-        return stale_prompts
-
-    async def _find_stale_phrasesets(self, stale_handler_id: UUID) -> List[Phraseset]:
+    async def _find_stale_phrasesets(self, stale_voter_id: UUID) -> List[Phraseset]:
         """Locate phrasesets that have been waiting for votes beyond the stale threshold."""
 
         cutoff_time = datetime.now(UTC) - timedelta(days=self.settings.ai_stale_threshold_days)
 
         already_voted_subquery = select(Vote.phraseset_id).where(
-            Vote.player_id == stale_handler_id
+            Vote.player_id == stale_voter_id
         )
 
         result = await self.db.execute(
@@ -133,6 +159,7 @@ class StaleAIService:
 
         try:
             stale_handler = await self._get_or_create_stale_handler()
+            stale_voter = await self._get_or_create_stale_voter()
 
             stale_prompts = await self._find_stale_prompts(stale_handler.player_id)
             stats["stale_prompts_found"] = len(stale_prompts)
@@ -141,6 +168,18 @@ class StaleAIService:
 
             for prompt_round in stale_prompts:
                 try:
+                    initial_slot = None
+                    if prompt_round.copy1_player_id is None:
+                        initial_slot = "copy1"
+                    elif prompt_round.copy2_player_id is None:
+                        initial_slot = "copy2"
+
+                    if initial_slot is None:
+                        phraseset = await round_service.create_phraseset_if_ready(prompt_round)
+                        if phraseset:
+                            prompt_round.phraseset_status = "active"
+                        continue
+
                     copy_phrase = await self.ai_service.generate_copy_phrase(
                         prompt_round.submitted_phrase,
                         prompt_round,
@@ -160,21 +199,27 @@ class StaleAIService:
                         system_contribution=0,
                     )
 
+                    current_slot = None
+                    if prompt_round.copy1_player_id is None:
+                        current_slot = "copy1"
+                    elif prompt_round.copy2_player_id is None:
+                        current_slot = "copy2"
+
+                    if current_slot is None:
+                        # Slot was taken by another participant after generation; skip saving the copy.
+                        continue
+
                     self.db.add(copy_round)
 
-                    if prompt_round.copy1_player_id is None:
+                    if current_slot == "copy1":
                         prompt_round.copy1_player_id = stale_handler.player_id
                         prompt_round.phraseset_status = "waiting_copy1"
-                    elif prompt_round.copy2_player_id is None:
+                    else:
                         prompt_round.copy2_player_id = stale_handler.player_id
                         if prompt_round.copy1_player_id is not None:
                             phraseset = await round_service.create_phraseset_if_ready(prompt_round)
                             if phraseset:
                                 prompt_round.phraseset_status = "active"
-                    else:
-                        phraseset = await round_service.create_phraseset_if_ready(prompt_round)
-                        if phraseset:
-                            prompt_round.phraseset_status = "active"
 
                     stats["stale_prompts_processed"] += 1
                     stats["stale_copies_generated"] += 1
@@ -187,7 +232,7 @@ class StaleAIService:
                     )
                     stats["errors"] += 1
 
-            stale_phrasesets = await self._find_stale_phrasesets(stale_handler.player_id)
+            stale_phrasesets = await self._find_stale_phrasesets(stale_voter.player_id)
             stats["stale_phrasesets_found"] = len(stale_phrasesets)
 
             vote_service = VoteService(self.db)
@@ -199,7 +244,7 @@ class StaleAIService:
 
                     await vote_service.submit_system_vote(
                         phraseset=phraseset,
-                        player=stale_handler,
+                        player=stale_voter,
                         chosen_phrase=chosen_phrase,
                         transaction_service=transaction_service,
                     )
