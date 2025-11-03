@@ -169,9 +169,6 @@ export const GameProvider: React.FC<{
         });
 
         // Update all dashboard state at once
-        const previousBalance = player?.balance;
-        const newBalance = data.player.balance;
-
         setPlayer(data.player);
         if (data.player.username && data.player.username !== username) {
           gameContextLogger.debug('👤 Username mismatch, updating session:', {
