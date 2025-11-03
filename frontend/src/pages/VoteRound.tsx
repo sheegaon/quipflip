@@ -12,8 +12,9 @@ import type { VoteResponse, VoteState } from '../api/types';
 import { voteRoundLogger } from '../utils/logger';
 
 export const VoteRound: React.FC = () => {
-  const { state } = useGame();
+  const { state, actions } = useGame();
   const { activeRound, roundAvailability } = state;
+  const { refreshDashboard } = actions;
   const { currentStep, completeTutorial } = useTutorial();
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
@@ -95,11 +96,21 @@ export const VoteRound: React.FC = () => {
         completeTutorial();
       }
 
-      // Navigate after showing results for 3 seconds - refresh will happen on dashboard
-      setTimeout(() => {
+      // Wait a moment for state to update, then refresh dashboard and navigate
+      setTimeout(async () => {
+        // Refresh dashboard to clear the active round state after showing results
+        try {
+          voteRoundLogger.debug('Refreshing dashboard after showing vote results');
+          await refreshDashboard();
+          voteRoundLogger.debug('Dashboard refreshed successfully after vote results shown');
+        } catch (refreshErr) {
+          voteRoundLogger.warn('Failed to refresh dashboard after vote results:', refreshErr);
+        }
+
+        // Navigate after showing results
         voteRoundLogger.debug('Navigating back to dashboard after vote submission');
         navigate('/dashboard');
-      }, 3000);
+      }, 1500);
     } catch (err) {
       const message = extractErrorMessage(err) || 'Unable to submit your vote. The round may have expired or someone else may have already voted.';
       voteRoundLogger.error('Failed to submit vote', err);
