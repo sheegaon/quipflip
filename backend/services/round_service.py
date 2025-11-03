@@ -366,14 +366,30 @@ class RoundService:
         player: Player,
         max_attempts: int,
     ) -> Round:
-        """Retrieve and lock the next eligible prompt round for the player."""
+        """
+        Retrieve and lock the next eligible prompt round for the player.
+
+        Uses an adaptive retry strategy:
+        - Stale/not-found entries don't count fully against max_attempts
+        - After 5 consecutive stale entries, triggers queue rehydration
+        - This prevents the queue from containing stale IDs that block valid prompts
+        """
 
         attempts = 0
+        stale_count = 0  # Track consecutive stale/not-found entries
         candidate_prompt_round_ids: list[UUID] = []
         prefetched_rounds: dict[UUID, Round] = {}
 
         while attempts < max_attempts:
             if not candidate_prompt_round_ids:
+                # Check if we've hit too many stale entries - trigger rehydration
+                if stale_count >= 5:
+                    logger.warning(
+                        f"[Copy Round Start] Found {stale_count} consecutive stale entries, rehydrating queue"
+                    )
+                    await self.ensure_prompt_queue_populated()
+                    stale_count = 0  # Reset counter after rehydration
+
                 candidate_prompt_round_ids = await self._pop_prompt_batch(
                     max_attempts - attempts
                 )
@@ -403,10 +419,18 @@ class RoundService:
             )
 
             if not prompt_round:
+                stale_count += 1
                 logger.warning(
-                    f"[Copy Round Start] Prompt round not found in DB: {prompt_round_id} (attempt {attempts})"
+                    f"[Copy Round Start] Prompt round not found in DB: {prompt_round_id} "
+                    f"(attempt {attempts}, stale_count: {stale_count})"
                 )
+                # Don't count stale entries as heavily - only count as 0.5 attempts
+                if stale_count % 2 == 1:  # Every other stale entry, don't count attempt
+                    attempts -= 1
                 continue
+
+            # Reset stale counter when we find a valid DB entry
+            stale_count = 0
 
             if prompt_round.phraseset_status in {"flagged_pending", "flagged_removed"}:
                 logger.info(
@@ -446,7 +470,7 @@ class RoundService:
 
         logger.error(
             f"[Copy Round Start] Could not find valid prompt for player {player.player_id} after {max_attempts} attempts. "
-            f"Queue length: {QueueService.get_prompt_rounds_waiting()}"
+            f"Queue length: {QueueService.get_prompt_rounds_waiting()}, stale_count: {stale_count}"
         )
         raise NoPromptsAvailableError(
             "Could not find a valid prompt after multiple attempts"

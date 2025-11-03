@@ -182,6 +182,8 @@ class CleanupService:
         Returns:
             Number of orphaned rounds deleted
         """
+        from backend.services.queue_service import QueueService
+
         orphaned_count, by_type = await self.count_orphaned_rounds()
 
         if orphaned_count == 0:
@@ -189,6 +191,14 @@ class CleanupService:
             return 0
 
         logger.info(f"Found {orphaned_count} orphaned round(s): {by_type}")
+
+        # Get IDs of orphaned prompt rounds before deleting them
+        prompt_result = await self.db.execute(text("""
+            SELECT round_id FROM rounds
+            WHERE player_id NOT IN (SELECT player_id FROM players)
+            AND round_type = 'prompt'
+        """))
+        orphaned_prompt_ids = [row[0] for row in prompt_result]
 
         # Delete orphaned rounds
         result = await self.db.execute(text("""
@@ -200,6 +210,11 @@ class CleanupService:
         deleted_count = result.rowcount or 0
         if deleted_count > 0:
             logger.info(f"Deleted {deleted_count} orphaned round(s)")
+
+        # Remove deleted prompt rounds from queue
+        if orphaned_prompt_ids:
+            removed_from_queue = QueueService.remove_prompt_rounds_from_queue(orphaned_prompt_ids)
+            logger.debug(f"Removed {removed_from_queue} orphaned prompt rounds from queue")
 
         return deleted_count
 
@@ -242,6 +257,7 @@ class CleanupService:
 
     async def _delete_players_by_ids(self, player_ids: list[UUID]) -> dict[str, int]:
         """Delete players and related data for the provided IDs."""
+        from backend.services.queue_service import QueueService
 
         if not player_ids:
             return {}
@@ -304,14 +320,22 @@ class CleanupService:
         )
         deletion_counts['quests'] = result.rowcount or 0
 
-        # 10. Delete rounds (references player_id)
+        # 10. Get IDs of prompt rounds to be deleted (for queue cleanup)
+        prompt_rounds_result = await self.db.execute(
+            select(Round.round_id)
+            .where(Round.player_id.in_(player_ids))
+            .where(Round.round_type == "prompt")
+        )
+        prompt_round_ids = [row[0] for row in prompt_rounds_result]
+
+        # 11. Delete rounds (references player_id)
         # Note: Prompts are shared across players and should not be deleted
         result = await self.db.execute(
             delete(Round).where(Round.player_id.in_(player_ids))
         )
         deletion_counts['rounds'] = result.rowcount or 0
 
-        # 11. Finally, delete players
+        # 12. Finally, delete players
         result = await self.db.execute(
             delete(Player).where(Player.player_id.in_(player_ids))
         )
@@ -319,6 +343,12 @@ class CleanupService:
 
         # Commit the transaction
         await self.db.commit()
+
+        # Remove deleted prompt rounds from queue (after commit to ensure consistency)
+        if prompt_round_ids:
+            removed_from_queue = QueueService.remove_prompt_rounds_from_queue(prompt_round_ids)
+            deletion_counts['queue_cleanup'] = removed_from_queue
+            logger.debug(f"Removed {removed_from_queue} prompt rounds from queue after player deletion")
 
         return deletion_counts
 

@@ -127,3 +127,13 @@ class QueueClient:
                         if queue.unfinished_tasks == 0:
                             queue.all_tasks_done.notify_all()
                     return True
+
+    def clear(self, queue_name: str) -> None:
+        """Clear all items from a queue."""
+        if self.backend == "redis":
+            self.redis.delete(queue_name)
+        else:
+            with self._memory_lock:
+                if queue_name in self._memory_queues:
+                    # Create a new empty queue to replace the old one
+                    self._memory_queues[queue_name] = Queue()
