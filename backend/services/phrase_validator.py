@@ -101,7 +101,7 @@ class LightweightSimilarityCalculator:
                 + string_weight * string_similarity
             ) / total_weight
 
-            logger.info(f"Similarity between '{phrase1}' and '{phrase2}': {combined_similarity:.4f}")
+            logger.debug(f"Similarity between '{phrase1}' and '{phrase2}': {combined_similarity:.4f}")
             return float(combined_similarity)
 
         except Exception as e:
