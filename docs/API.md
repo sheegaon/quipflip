@@ -731,7 +731,6 @@ Immediately abandon an active prompt, copy, or vote round. The player receives a
 **Errors:**
 - `round_not_found` - Round does not exist or belongs to another player
 - `Round is not active` - Attempted to abandon a round that has already completed or expired
-- `Only prompt, copy, or vote rounds can be abandoned` - Tried to abandon an unsupported round type
 - `abandon_failed` - Unexpected server error while processing the abandonment
 
 #### `POST /rounds/{round_id}/feedback`

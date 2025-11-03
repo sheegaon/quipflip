@@ -14,8 +14,6 @@ import type { BetaSurveyStatusResponse } from '../api/types';
 import { hasDismissedSurvey, markSurveyDismissed, hasCompletedSurvey } from '../utils/betaSurvey';
 
 const formatWaitingCount = (count: number): string => (count > 10 ? 'over 10' : count.toString());
-const ABANDONABLE_ROUND_TYPES = new Set(['prompt', 'copy', 'vote']);
-
 export const Dashboard: React.FC = () => {
   const { state, actions } = useGame();
   const { state: resultsState, actions: resultsActions } = useResults();
@@ -162,10 +160,7 @@ export const Dashboard: React.FC = () => {
   }, [activeRound]);
 
   const canAbandonRound = useMemo(() => {
-    if (!activeRound?.round_type) {
-      return false;
-    }
-    return ABANDONABLE_ROUND_TYPES.has(activeRound.round_type);
+    return Boolean(activeRound?.round_type);
   }, [activeRound?.round_type]);
 
   const refreshDashboardAfterCountdown = useCallback(

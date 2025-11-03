@@ -37,13 +37,14 @@ def drain_prompt_queue():
 @pytest.fixture
 async def player_with_balance(db_session):
     """Create a player with sufficient balance for testing."""
+    identifier = uuid.uuid4().hex[:8]
     player = Player(
         player_id=uuid.uuid4(),
-        username=f"test_player_{uuid.uuid4().hex[:8]}",
-        username_canonical=f"test_player_{uuid.uuid4().hex[:8]}",
-        pseudonym=f"Test Player {uuid.uuid4().hex[:8]}",
-        pseudonym_canonical=f"test player {uuid.uuid4().hex[:8]}",
-        email=f"test_{uuid.uuid4().hex[:8]}@test.com",
+        username=f"test_player_{identifier}",
+        username_canonical=f"test_player_{identifier}",
+        pseudonym=f"Test Player {identifier}",
+        pseudonym_canonical=f"test player {identifier}",
+        email=f"test_{identifier}@test.com",
         password_hash="test_hash",
         balance=10000,  # Plenty of balance
     )

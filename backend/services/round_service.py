@@ -724,9 +724,6 @@ class RoundService:
             if round_object.status != "active":
                 raise ValueError("Round is not active")
 
-            if round_object.round_type not in {"prompt", "copy", "vote"}:
-                raise ValueError("Only prompt, copy, or vote rounds can be abandoned")
-
             # Calculate refund and penalty (same for both round types)
             penalty_kept = self.settings.abandoned_penalty
             refund_amount = max(round_object.cost - penalty_kept, 0)
