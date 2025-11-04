@@ -160,3 +160,35 @@ async def enforce_guest_creation_rate_limit(
         return
 
     await _enforce_rate_limit("guest_creation", client_ip, GUEST_CREATION_RATE_LIMIT)
+
+
+async def get_admin_player(
+    player: Player = Depends(get_current_player),
+) -> Player:
+    """Verify that the current authenticated player is an admin.
+
+    This dependency checks if the player's email is in the admin_emails
+    configuration. Only users with admin emails can access admin endpoints.
+
+    Args:
+        player: Current authenticated player from get_current_player
+
+    Returns:
+        Player object if the user is an admin
+
+    Raises:
+        HTTPException: 403 if the user is not an admin
+    """
+    if not settings.is_admin_email(player.email):
+        logger.warning(
+            "Access denied to admin endpoint for non-admin user: %s (%s)",
+            player.username,
+            player.email
+        )
+        raise HTTPException(
+            status_code=403,
+            detail="admin_access_required"
+        )
+
+    logger.debug("Admin access granted to: %s (%s)", player.username, player.email)
+    return player

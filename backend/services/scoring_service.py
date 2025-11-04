@@ -31,7 +31,7 @@ settings = get_settings()
 
 PLACEHOLDER_PLAYER_NAMESPACE = UUID("6c057f58-7199-43ff-b4fc-17b77df5e6a2")
 WEEKLY_LEADERBOARD_LIMIT = 5
-WEEKLY_LEADERBOARD_CACHE_KEY = "leaderboard:weekly"
+WEEKLY_LEADERBOARD_CACHE_KEY = "leaderboard:weekly:v2"  # v2: changed net_cost to net_earnings, excludes AI players
 AI_PLAYER_EMAIL_DOMAIN = "@quipflip.internal"
 
 

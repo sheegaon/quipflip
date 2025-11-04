@@ -6,7 +6,7 @@ from datetime import datetime
 from uuid import UUID
 from backend.config import get_settings
 from backend.database import get_db
-from backend.dependencies import get_current_player
+from backend.dependencies import get_admin_player
 from backend.models.player import Player
 from backend.services.phrase_validator import get_phrase_validator
 from backend.services.system_config_service import SystemConfigService
@@ -149,7 +149,7 @@ class GameConfigResponse(BaseModel):
 
 @router.get("/config", response_model=GameConfigResponse)
 async def get_game_config(
-    player: Annotated[Player, Depends(get_current_player)],
+    player: Annotated[Player, Depends(get_admin_player)],
     session: Annotated[AsyncSession, Depends(get_db)]
 ) -> GameConfigResponse:
     """
@@ -217,7 +217,7 @@ async def get_game_config(
 @router.post("/validate-password", response_model=ValidatePasswordResponse)
 async def validate_admin_password(
     request: ValidatePasswordRequest,
-    player: Annotated[Player, Depends(get_current_player)]
+    player: Annotated[Player, Depends(get_admin_player)]
 ) -> ValidatePasswordResponse:
     """
     Validate admin password against the application secret key.
@@ -239,15 +239,12 @@ async def validate_admin_password(
 
 @router.get("/players/search", response_model=AdminPlayerSummary)
 async def search_player(
-    player: Annotated[Player, Depends(get_current_player)],
+    player: Annotated[Player, Depends(get_admin_player)],
     session: Annotated[AsyncSession, Depends(get_db)],
     email: Optional[EmailLike] = Query(None),
     username: Optional[str] = Query(None),
 ) -> AdminPlayerSummary:
     """Search for a player by email or username."""
-
-    if not player.is_admin:
-        raise HTTPException(status_code=403, detail="admin_only")
 
     if not email and not username:
         raise HTTPException(status_code=400, detail="missing_identifier")
@@ -278,7 +275,7 @@ async def search_player(
 @router.delete("/players", response_model=AdminDeletePlayerResponse)
 async def delete_player_admin(
     request: AdminDeletePlayerRequest,
-    player: Annotated[Player, Depends(get_current_player)],
+    player: Annotated[Player, Depends(get_admin_player)],
     session: Annotated[AsyncSession, Depends(get_db)]
 ) -> AdminDeletePlayerResponse:
     """Delete a player account and associated data via admin panel."""
@@ -316,7 +313,7 @@ async def delete_player_admin(
 
 @router.get("/flags", response_model=FlaggedPromptListResponse)
 async def list_flagged_prompts(
-    player: Annotated[Player, Depends(get_current_player)],
+    player: Annotated[Player, Depends(get_admin_player)],
     session: Annotated[AsyncSession, Depends(get_db)],
     status: Optional[str] = Query("pending"),
 ) -> FlaggedPromptListResponse:
@@ -338,7 +335,7 @@ async def list_flagged_prompts(
 async def resolve_flagged_prompt(
     flag_id: UUID,
     request: ResolveFlaggedPromptRequest,
-    player: Annotated[Player, Depends(get_current_player)],
+    player: Annotated[Player, Depends(get_admin_player)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> FlaggedPromptItem:
     """Resolve a flagged prompt by confirming or dismissing it."""
@@ -366,7 +363,7 @@ async def resolve_flagged_prompt(
 @router.post("/test-phrase-validation", response_model=TestPhraseValidationResponse)
 async def test_phrase_validation(
     request: TestPhraseValidationRequest,
-    player: Annotated[Player, Depends(get_current_player)]
+    player: Annotated[Player, Depends(get_admin_player)]
 ) -> TestPhraseValidationResponse:
     """
     Test phrase validation for admin testing purposes.
@@ -484,7 +481,7 @@ class UpdateConfigResponse(BaseModel):
 @router.patch("/config", response_model=UpdateConfigResponse)
 async def update_config(
     request: UpdateConfigRequest,
-    player: Annotated[Player, Depends(get_current_player)],
+    player: Annotated[Player, Depends(get_admin_player)],
     session: Annotated[AsyncSession, Depends(get_db)]
 ) -> UpdateConfigResponse:
     """
