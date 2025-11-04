@@ -7,6 +7,7 @@ import { Timer } from '../components/Timer';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { useTimer } from '../hooks/useTimer';
+import { usePhraseValidation } from '../hooks/usePhraseValidation';
 import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
 import type { CopyState, FlagCopyRoundResponse } from '../api/types';
 import { copyRoundLogger } from '../utils/logger';
@@ -26,15 +27,7 @@ export const CopyRound: React.FC = () => {
   const [flagError, setFlagError] = useState<string | null>(null);
   const [flagResult, setFlagResult] = useState<FlagCopyRoundResponse | null>(null);
 
-  const trimmedPhrase = phrase.trim();
-  const phraseWords = trimmedPhrase.split(/\s+/).filter(Boolean);
-  const lettersAndSpacesPattern = /^[A-Za-z ]+$/;
-  const wordPattern = /^[A-Za-z]+$/;
-  const isPhraseValid =
-    lettersAndSpacesPattern.test(trimmedPhrase) &&
-    phraseWords.length >= 2 &&
-    phraseWords.length <= 5 &&
-    phraseWords.every((word) => wordPattern.test(word));
+  const { isPhraseValid, trimmedPhrase } = usePhraseValidation(phrase);
 
   const roundData = activeRound?.round_type === 'copy' ? activeRound.state as CopyState : null;
   const { isExpired } = useTimer(roundData?.expires_at || null);

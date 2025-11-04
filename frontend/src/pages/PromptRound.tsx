@@ -8,6 +8,7 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { ThumbFeedbackButton } from '../components/ThumbFeedbackButton';
 import { useTimer } from '../hooks/useTimer';
+import { usePhraseValidation } from '../hooks/usePhraseValidation';
 import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
 import type { PromptState } from '../api/types';
 import { promptRoundLogger } from '../utils/logger';
@@ -25,15 +26,7 @@ export const PromptRound: React.FC = () => {
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const trimmedPhrase = phrase.trim();
-  const phraseWords = trimmedPhrase.split(/\s+/).filter(Boolean);
-  const lettersAndSpacesPattern = /^[A-Za-z ]+$/;
-  const wordPattern = /^[A-Za-z]+$/;
-  const isPhraseValid =
-    lettersAndSpacesPattern.test(trimmedPhrase) &&
-    phraseWords.length >= 2 &&
-    phraseWords.length <= 5 &&
-    phraseWords.every((word) => wordPattern.test(word));
+  const { isPhraseValid, trimmedPhrase } = usePhraseValidation(phrase);
 
   const roundData = activeRound?.round_type === 'prompt' ? activeRound.state as PromptState : null;
 
