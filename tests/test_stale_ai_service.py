@@ -48,40 +48,42 @@ class TestStaleAIPlayerCreation:
     @pytest.mark.asyncio
     async def test_create_stale_handler_player(self, db_session, stale_ai_service):
         """Should create stale handler player if it doesn't exist."""
-        player = await stale_ai_service._get_or_create_stale_handler()
+        player = await stale_ai_service._get_or_create_stale_player("ai_stale_handler_0@quipflip.internal")
 
         assert player is not None
-        assert player.email == "ai_stale_handler@quipflip.internal"
-        assert player.username == "StaleAIHandler"
-        assert player.pseudonym == "Stale AI Handler"
+        assert player.email == "ai_stale_handler_0@quipflip.internal"
+        # Username is randomly generated, so we just check it exists
+        assert player.username is not None
+        assert player.pseudonym is not None
 
     @pytest.mark.asyncio
     async def test_reuse_existing_stale_handler_player(self, db_session, stale_ai_service):
         """Should reuse existing stale handler player if it exists."""
         # Create player first time
-        player1 = await stale_ai_service._get_or_create_stale_handler()
+        player1 = await stale_ai_service._get_or_create_stale_player("ai_stale_handler_0@quipflip.internal")
         await db_session.commit()
 
         # Get player second time
-        player2 = await stale_ai_service._get_or_create_stale_handler()
+        player2 = await stale_ai_service._get_or_create_stale_player("ai_stale_handler_0@quipflip.internal")
 
         assert player1.player_id == player2.player_id
 
     @pytest.mark.asyncio
     async def test_create_stale_voter_player(self, db_session, stale_ai_service):
         """Should create stale voter player if it doesn't exist."""
-        player = await stale_ai_service._get_or_create_stale_voter()
+        player = await stale_ai_service._get_or_create_stale_player("ai_stale_voter_0@quipflip.internal")
 
         assert player is not None
-        assert player.email == "ai_stale_voter@quipflip.internal"
-        assert player.username == "StaleAIVoter"
-        assert player.pseudonym == "Stale AI Voter"
+        assert player.email == "ai_stale_voter_0@quipflip.internal"
+        # Username is randomly generated, so we just check it exists
+        assert player.username is not None
+        assert player.pseudonym is not None
 
     @pytest.mark.asyncio
     async def test_separate_handler_and_voter_players(self, db_session, stale_ai_service):
         """Handler and voter should be separate players."""
-        handler = await stale_ai_service._get_or_create_stale_handler()
-        voter = await stale_ai_service._get_or_create_stale_voter()
+        handler = await stale_ai_service._get_or_create_stale_player("ai_stale_handler_0@quipflip.internal")
+        voter = await stale_ai_service._get_or_create_stale_player("ai_stale_voter_0@quipflip.internal")
 
         assert handler.player_id != voter.player_id
         assert handler.email != voter.email
@@ -121,11 +123,8 @@ class TestFindStalePrompts:
         db_session.add(stale_prompt)
         await db_session.commit()
 
-        # Get stale handler
-        handler = await stale_ai_service._get_or_create_stale_handler()
-
         # Find stale prompts
-        stale_prompts = await stale_ai_service._find_stale_prompts(handler.player_id)
+        stale_prompts = await stale_ai_service._find_stale_prompts()
 
         assert len(stale_prompts) >= 1
         assert any(p.round_id == stale_prompt.round_id for p in stale_prompts)
@@ -159,11 +158,8 @@ class TestFindStalePrompts:
         db_session.add(recent_prompt)
         await db_session.commit()
 
-        # Get stale handler
-        handler = await stale_ai_service._get_or_create_stale_handler()
-
         # Find stale prompts
-        stale_prompts = await stale_ai_service._find_stale_prompts(handler.player_id)
+        stale_prompts = await stale_ai_service._find_stale_prompts()
 
         # Recent prompt should not be in the list
         assert not any(p.round_id == recent_prompt.round_id for p in stale_prompts)
@@ -211,11 +207,8 @@ class TestFindStalePrompts:
         db_session.add(phraseset)
         await db_session.commit()
 
-        # Get stale handler
-        handler = await stale_ai_service._get_or_create_stale_handler()
-
         # Find stale prompts
-        stale_prompts = await stale_ai_service._find_stale_prompts(handler.player_id)
+        stale_prompts = await stale_ai_service._find_stale_prompts()
 
         # Prompt with phraseset should not be in the list
         assert not any(p.round_id == prompt_with_phraseset.round_id for p in stale_prompts)
@@ -234,7 +227,7 @@ class TestFindStalePrompts:
         )
 
         # Get stale handler
-        handler = await stale_ai_service._get_or_create_stale_handler()
+        handler = await stale_ai_service._get_or_create_stale_player("ai_stale_handler_0@quipflip.internal")
 
         # Create stale prompt
         old_time = datetime.now(UTC) - timedelta(days=4)
@@ -250,6 +243,9 @@ class TestFindStalePrompts:
         )
         db_session.add(prompt_round)
         await db_session.flush()
+
+        # Assign copy1_player_id to mark it as having a copy
+        prompt_round.copy1_player_id = handler.player_id
 
         # Create copy by stale AI
         copy_round = Round(
@@ -268,9 +264,15 @@ class TestFindStalePrompts:
         await db_session.commit()
 
         # Find stale prompts
-        stale_prompts = await stale_ai_service._find_stale_prompts(handler.player_id)
+        stale_prompts = await stale_ai_service._find_stale_prompts()
 
-        # Prompt already copied by stale AI should not be in the list
+        # Prompt that has copy slot filled should not be in the list (unless both slots are empty)
+        # Since we only filled copy1, it could still show up if copy2 is empty
+        # Let's also fill copy2 to ensure it's excluded
+        prompt_round.copy2_player_id = handler.player_id
+        await db_session.commit()
+
+        stale_prompts = await stale_ai_service._find_stale_prompts()
         assert not any(p.round_id == prompt_round.round_id for p in stale_prompts)
 
 
@@ -297,11 +299,8 @@ class TestFindStalePhrasesets:
         db_session.add(stale_phraseset)
         await db_session.commit()
 
-        # Get stale voter
-        voter = await stale_ai_service._get_or_create_stale_voter()
-
         # Find stale phrasesets
-        stale_phrasesets = await stale_ai_service._find_stale_phrasesets(voter.player_id)
+        stale_phrasesets = await stale_ai_service._find_stale_phrasesets()
 
         assert len(stale_phrasesets) >= 1
         assert any(p.phraseset_id == stale_phraseset.phraseset_id for p in stale_phrasesets)
@@ -326,11 +325,8 @@ class TestFindStalePhrasesets:
         db_session.add(recent_phraseset)
         await db_session.commit()
 
-        # Get stale voter
-        voter = await stale_ai_service._get_or_create_stale_voter()
-
         # Find stale phrasesets
-        stale_phrasesets = await stale_ai_service._find_stale_phrasesets(voter.player_id)
+        stale_phrasesets = await stale_ai_service._find_stale_phrasesets()
 
         # Recent phraseset should not be in the list
         assert not any(p.phraseset_id == recent_phraseset.phraseset_id for p in stale_phrasesets)
@@ -355,20 +351,17 @@ class TestFindStalePhrasesets:
         db_session.add(closed_phraseset)
         await db_session.commit()
 
-        # Get stale voter
-        voter = await stale_ai_service._get_or_create_stale_voter()
-
         # Find stale phrasesets
-        stale_phrasesets = await stale_ai_service._find_stale_phrasesets(voter.player_id)
+        stale_phrasesets = await stale_ai_service._find_stale_phrasesets()
 
         # Closed phraseset should not be in the list
         assert not any(p.phraseset_id == closed_phraseset.phraseset_id for p in stale_phrasesets)
 
     @pytest.mark.asyncio
     async def test_exclude_phrasesets_already_voted_by_stale_ai(self, db_session, stale_ai_service):
-        """Should exclude phrasesets already voted on by stale AI."""
+        """Should exclude phrasesets that have enough votes."""
         # Get stale voter
-        voter = await stale_ai_service._get_or_create_stale_voter()
+        voter = await stale_ai_service._get_or_create_stale_player("ai_stale_voter_0@quipflip.internal")
 
         # Create stale phraseset
         old_time = datetime.now(UTC) - timedelta(days=4)
@@ -383,6 +376,7 @@ class TestFindStalePhrasesets:
             copy_phrase_2="COPY TWO",
             status="open",
             created_at=old_time,
+            vote_count=3,  # Set to threshold so it's excluded
         )
         db_session.add(phraseset)
         await db_session.flush()
@@ -401,9 +395,9 @@ class TestFindStalePhrasesets:
         await db_session.commit()
 
         # Find stale phrasesets
-        stale_phrasesets = await stale_ai_service._find_stale_phrasesets(voter.player_id)
+        stale_phrasesets = await stale_ai_service._find_stale_phrasesets()
 
-        # Phraseset already voted by stale AI should not be in the list
+        # Phraseset with enough votes should not be in the list
         assert not any(p.phraseset_id == phraseset.phraseset_id for p in stale_phrasesets)
 
 
@@ -532,9 +526,12 @@ class TestMetricsTracking:
 
                 # Verify metrics were recorded with stale_copy operation type
                 assert mock_metrics.called
-                call_args = mock_metrics.call_args
-                assert call_args.kwargs['success'] is True
-                assert call_args.kwargs['operation_type'] == "stale_copy"
+                # Check all calls to find the stale_copy one
+                copy_calls = [call for call in mock_metrics.call_args_list if call.kwargs.get('operation_type') == "stale_copy"]
+                assert len(copy_calls) > 0, "Expected at least one stale_copy metric call"
+                # Check the first stale_copy call
+                assert copy_calls[0].kwargs['success'] is True
+                assert copy_calls[0].kwargs['operation_type'] == "stale_copy"
 
     @pytest.mark.asyncio
     async def test_metrics_recorded_on_failure(self, db_session, stale_ai_service):
@@ -576,7 +573,10 @@ class TestMetricsTracking:
 
                 # Verify failure metrics were recorded
                 assert mock_metrics.called
-                call_args = mock_metrics.call_args
-                assert call_args.kwargs['success'] is False
-                assert call_args.kwargs['operation_type'] == "stale_copy"
-                assert "Generation failed" in call_args.kwargs['error_message']
+                # Check all calls to find the stale_copy failure
+                copy_calls = [call for call in mock_metrics.call_args_list if call.kwargs.get('operation_type') == "stale_copy"]
+                assert len(copy_calls) > 0, "Expected at least one stale_copy metric call"
+                # Check the first stale_copy call
+                assert copy_calls[0].kwargs['success'] is False
+                assert copy_calls[0].kwargs['operation_type'] == "stale_copy"
+                assert "Generation failed" in copy_calls[0].kwargs['error_message']
