@@ -388,9 +388,9 @@ class CleanupService:
 
         deletion_counts = await self._delete_players_by_ids([player_id])
         if deletion_counts:
-            logger.info("Deleted player %s and related data", player_id)
+            logger.info(f"Deleted player {player_id} and related data")
         else:
-            logger.info("No records deleted for player %s", player_id)
+            logger.info(f"No records deleted for player {player_id}")
         return deletion_counts
 
     # ===== Inactive Guest Player Cleanup =====
@@ -422,15 +422,15 @@ class CleanupService:
             logger.info("No old guest players found")
             return 0
 
-        # Filter to those with no rounds
+        # Filter to those with no submitted rounds
         inactive_guest_ids = []
         for guest in all_old_guests:
-            # Check if player has any non-abandoned rounds
+            # Check if player has any submitted rounds
             rounds_stmt = (
                 select(Round)
                 .where(
                     Round.player_id == guest.player_id,
-                    or_(Round.status.is_(None), Round.status != "abandoned"),
+                    Round.status == "submitted",
                 )
                 .limit(1)
             )
@@ -441,12 +441,12 @@ class CleanupService:
                 inactive_guest_ids.append(guest.player_id)
 
         if not inactive_guest_ids:
-            logger.info(f"Found {len(all_old_guests)} old guest(s), but all have non-abandoned rounds")
+            logger.info(f"Found {len(all_old_guests)} old guest(s), but all have submitted rounds")
             return 0
 
         logger.info(
             f"Found {len(inactive_guest_ids)} inactive guest player(s) to clean up "
-            f"(>{days_old} days old, no non-abandoned rounds)"
+            f"(>{days_old} days old, no submitted rounds)"
         )
 
         # Delete inactive guests and their related data
@@ -501,18 +501,14 @@ class CleanupService:
             base_username = guest.username or ""
 
             if not base_username.strip():
-                logger.info("Skipping guest %s with empty username", guest.player_id)
+                logger.info(f"Skipping guest {guest.player_id} with empty username")
                 continue
 
             first_username = f"{base_username} X"
             first_canonical = canonicalize_username(first_username)
 
             if not first_canonical:
-                logger.info(
-                    "Skipping guest %s due to empty canonical for candidate '%s'",
-                    guest.player_id,
-                    first_username,
-                )
+                logger.info(f"Skipping guest {guest.player_id} due to empty canonical for candidate '{first_username}'")
                 continue
 
             processed_candidates.append((guest, base_username))
@@ -549,10 +545,7 @@ class CleanupService:
 
                 if not canonical:
                     logger.info(
-                        "Skipping candidate username '%s' for guest %s due to empty canonical",
-                        new_username,
-                        guest.player_id,
-                    )
+                        f"Skipping candidate username '{new_username}' for guest {guest.player_id} due to empty canonical")
                     break
 
                 if canonical in reserved_canonicals:
@@ -572,9 +565,7 @@ class CleanupService:
 
             if guest.player_id not in updated_player_ids:
                 logger.warning(
-                    "Unable to recycle username for guest %s after exhausting suffix attempts",
-                    guest.player_id,
-                )
+                    f"Unable to recycle username for guest {guest.player_id} after exhausting suffix attempts")
 
         if not updates:
             logger.info("No guest usernames to recycle")
