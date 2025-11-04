@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import apiClient, { extractErrorMessage } from '../api/client';
@@ -16,6 +16,14 @@ export const Landing: React.FC = () => {
   const { actions } = useGame();
   const { startSession } = actions;
   const navigate = useNavigate();
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const handleCreatePlayer = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,15 +70,21 @@ export const Landing: React.FC = () => {
       });
 
       landingLogger.info('Player created successfully, starting session', { username: response.username });
-      startSession(response.username);
-      navigate('/dashboard');
+      if (isMountedRef.current) {
+        startSession(response.username);
+        navigate('/dashboard');
+      }
     } catch (err) {
       const message = extractErrorMessage(err) || 'Unable to create your account. Please try again or contact support if the problem persists.';
       landingLogger.error('Failed to create player account', err);
-      setError(message);
+      if (isMountedRef.current) {
+        setError(message);
+      }
     } finally {
-      setIsLoading(false);
-      landingLogger.debug('Create player flow completed');
+      if (isMountedRef.current) {
+        setIsLoading(false);
+        landingLogger.debug('Create player flow completed');
+      }
     }
   };
 
@@ -94,15 +108,21 @@ export const Landing: React.FC = () => {
       });
 
       landingLogger.info('Login successful, starting session', { username: response.username });
-      startSession(response.username);
-      navigate('/dashboard');
+      if (isMountedRef.current) {
+        startSession(response.username);
+        navigate('/dashboard');
+      }
     } catch (err) {
       const message = extractErrorMessage(err) || 'Login failed. Please check your email and password, or create a new account.';
       landingLogger.error('Login failed', err);
-      setError(message);
+      if (isMountedRef.current) {
+        setError(message);
+      }
     } finally {
-      setIsLoading(false);
-      landingLogger.debug('Existing player login flow completed');
+      if (isMountedRef.current) {
+        setIsLoading(false);
+        landingLogger.debug('Existing player login flow completed');
+      }
     }
   };
 
@@ -117,7 +137,9 @@ export const Landing: React.FC = () => {
       landingLogger.info('Guest created successfully, starting session', { username: response.username });
 
       // Show guest credentials to user
-      setGuestCredentials({ email: response.email, password: response.password });
+      if (isMountedRef.current) {
+        setGuestCredentials({ email: response.email, password: response.password });
+      }
 
       // Store guest credentials temporarily for tutorial display
       localStorage.setItem('quipflip_guest_credentials', JSON.stringify({
@@ -126,15 +148,21 @@ export const Landing: React.FC = () => {
         timestamp: Date.now()
       }));
 
-      startSession(response.username);
-      navigate('/dashboard');
+      if (isMountedRef.current) {
+        startSession(response.username);
+        navigate('/dashboard');
+      }
     } catch (err) {
       const message = extractErrorMessage(err) || 'Unable to create guest account. Please try again.';
       landingLogger.error('Failed to create guest account', err);
-      setError(message);
+      if (isMountedRef.current) {
+        setError(message);
+      }
     } finally {
-      setIsLoading(false);
-      landingLogger.debug('Guest account creation completed');
+      if (isMountedRef.current) {
+        setIsLoading(false);
+        landingLogger.debug('Guest account creation completed');
+      }
     }
   };
 

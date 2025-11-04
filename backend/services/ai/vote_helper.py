@@ -70,7 +70,7 @@ async def generate_vote_choice_openai(
             model=model,
             messages=[
                 {"role": "system",
-                 "content": "You are an expert at identifying original vs copied phrases in word games."},
+                 "content": "Identify whether phrases in word games are original or copied."},
                 {"role": "user", "content": prompt}
             ],
         )

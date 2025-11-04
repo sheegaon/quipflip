@@ -88,8 +88,8 @@ class Settings(BaseSettings):
     ai_gemini_model: str = "gemini-2.5-flash-lite"  # Gemini model for copy generation
     ai_timeout_seconds: int = 60  # Timeout for AI API calls
     ai_backup_delay_minutes: int = 60  # Delay before AI provides backup copies/votes
-    ai_backup_batch_size: int = 2  # Maximum number of copy or vote rounds to process per backup cycle
-    ai_backup_sleep_minutes: int = 120  # Sleep time between backup cycles (1 hour)
+    ai_backup_batch_size: int = 5  # Maximum number of copy or vote rounds to process per backup cycle
+    ai_backup_sleep_minutes: int = 60  # Sleep time between backup cycles
     ai_stale_handler_enabled: bool = True  # Feature flag for stale content handler
     ai_stale_threshold_days: int = 3  # Minimum age before content is treated as stale
     ai_stale_check_interval_hours: int = 12  # Interval between stale content sweeps
