@@ -11,22 +11,32 @@ Production: https://your-app.herokuapp.com
 
 All endpoints except `/health` and `/` require a valid JSON Web Token (JWT) access token.
 
-**Access Token Header:**
+**Cookie-Based Authentication (Preferred):**
+- The API uses HTTP-only cookies for secure token storage
+- Access tokens are stored in `quipflip_access_token` cookie (2-hour lifetime)
+- Refresh tokens are stored in `quipflip_refresh_token` cookie (30-day lifetime)
+- Cookies are automatically sent with requests when using `withCredentials: true`
+- Provides XSS protection since JavaScript cannot access HTTP-only cookies
+
+**Authorization Header (Backward Compatibility):**
 ```
 Authorization: Bearer <access_token>
 ```
+- Still supported for API clients that cannot use cookies
+- The backend checks cookies first, then falls back to the Authorization header
 
-**Refresh Token Storage:**
-- Refresh tokens are issued alongside access tokens.
-- The API sets a HTTP-only cookie named `quipflip_refresh_token`.
-- Clients can also send the refresh token explicitly in request bodies if needed.
+**Token Lifecycle:**
+- Login/registration endpoints automatically set both access and refresh token cookies
+- Access tokens expire after 2 hours
+- Call `POST /auth/refresh` to get new tokens (uses refresh token cookie automatically)
+- Logout clears both cookies from the browser
 
 **Getting Tokens:**
 - Use `POST /player/guest` to create a guest account instantly (no email/password required).
 - Use `POST /player` to register with an email and password (the backend generates a username and pseudonym automatically).
 - Use `POST /auth/login` with your email and password to obtain fresh tokens.
-- Access tokens default to a 120-minute lifetime (`ACCESS_TOKEN_EXP_MINUTES`); call `POST /auth/refresh` (or rely on the cookie) to obtain a new pair when they expire.
 - Use `POST /player/upgrade` to convert a guest account to a full account.
+- All authentication endpoints set HTTP-only cookies for both access and refresh tokens.
 
 ## Data Model Reference
 
@@ -547,7 +557,7 @@ Get the weekly leaderboard based on net cost (total costs minus total earnings) 
       "username": "Witty Walrus",
       "total_costs": 1400,
       "total_earnings": 2200,
-      "net_cost": -800,
+      "net_earnings": 800,
       "rank": 1,
       "is_current_player": false
     },
@@ -556,7 +566,7 @@ Get the weekly leaderboard based on net cost (total costs minus total earnings) 
       "username": "Sassy Sparrow",
       "total_costs": 900,
       "total_earnings": 850,
-      "net_cost": 50,
+      "net_earnings": -50,
       "rank": 2,
       "is_current_player": true
     }
@@ -566,8 +576,9 @@ Get the weekly leaderboard based on net cost (total costs minus total earnings) 
 ```
 
 **Notes:**
-- Results are sorted by lowest `net_cost` (negative values indicate net earnings). Ties break alphabetically by username.
+- Results are sorted by highest `net_earnings` (positive values indicate net profit). Ties break alphabetically by username.
 - Only the top five players are returned by default. If the current player is outside the top five, their row is appended with `rank: null` and `is_current_player: true`.
+- AI players (identified by email addresses ending in `@quipflip.internal`) are excluded from the leaderboard.
 - The scoring service caches leaderboard calculations in Redis for one hour (`leaderboard:weekly`) and refreshes the cache automatically whenever a phraseset finalizes.
 - The `generated_at` timestamp communicates when the snapshot was last recalculated so clients can defer refreshes when data is still fresh.
 
@@ -1460,15 +1471,18 @@ Visit `/redoc` for alternative ReDoc documentation.
 ### CORS
 CORS is enabled for all origins in development. For production:
 - Configure `CORS_ORIGINS` environment variable
-- Include credentials in requests if using cookies
-- Ensure the frontend sends `Authorization: Bearer <access_token>` with `withCredentials=true` so cookies and headers arrive together
+- **Important**: Set `withCredentials: true` in axios/fetch to send HTTP-only cookies
+- Example: `axios.create({ baseURL: API_URL, withCredentials: true })`
 
 ### State Management
 **Required state to track:**
-- Current access token (persisted client-side; refresh handled via HTTP-only cookie)
+- Username (stored in localStorage for session persistence check)
+- Authentication state (derived from successful API calls, not stored)
 - Current balance (update from `/player/balance`)
 - Active round state (poll `/player/current-round` or update after actions)
 - Pending results count (from `/player/pending-results`)
+
+**Note**: Tokens are now stored in HTTP-only cookies and managed by the browser automatically. The frontend no longer needs to handle token storage or refresh logic.
 
 **Recommended polling intervals:**
 - Balance/status: Every 30 seconds or after actions
@@ -1490,13 +1504,14 @@ CORS is enabled for all origins in development. For production:
 - Handle `expired` by refreshing available rounds
 
 ### Typical User Flow
-1. **First visit**: Call `POST /player` → store access and refresh tokens
-2. **Return visit**: Load tokens → call `GET /player/balance`
-3. **Token expires**: Call `POST /auth/refresh` → get new access token
+1. **First visit**: Call `POST /player` or `POST /player/guest` → cookies set automatically, store username in localStorage
+2. **Return visit**: Check localStorage for username → call `GET /player/balance` to verify session (cookies sent automatically)
+3. **Token expires**: Cookies handle refresh automatically, or call `POST /auth/refresh` if needed
 4. **Check daily bonus**: If `daily_bonus_available` → offer to claim
 5. **Start round**: Check `GET /rounds/available` → start desired round type
 6. **During round**: Display timer, submit word before expiry
 7. **Check results**: Poll `/player/pending-results` → view when ready
+8. **Logout**: Call `POST /auth/logout` → cookies cleared automatically
 
 ### TypeScript Types (Example)
 ```typescript

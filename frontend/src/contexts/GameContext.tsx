@@ -11,7 +11,6 @@ import type {
   RoundAvailability,
   PhrasesetDashboardSummary,
   UnclaimedResult,
-  AuthTokenResponse,
   FlagCopyRoundResponse,
   AbandonRoundResponse,
 } from '../api/types';
@@ -30,7 +29,7 @@ interface GameState {
 }
 
 interface GameActions {
-  startSession: (username: string, tokens: AuthTokenResponse) => void;
+  startSession: (username: string) => void;
   logout: () => Promise<void>;
   refreshDashboard: (signal?: AbortSignal) => Promise<void>;
   refreshBalance: (signal?: AbortSignal) => Promise<void>;
@@ -88,9 +87,18 @@ export const GameProvider: React.FC<{
       const storedUsername = apiClient.getStoredUsername();
       if (storedUsername) {
         setUsername(storedUsername);
+        // Try to verify authentication by calling an authenticated endpoint
+        // If cookies are valid, this will succeed and confirm we're logged in
+        try {
+          await apiClient.getBalance();
+          setIsAuthenticated(true);
+        } catch (err) {
+          // Cookies expired or invalid, clear session
+          apiClient.clearSession();
+          setIsAuthenticated(false);
+          setUsername(null);
+        }
       }
-      const token = await apiClient.ensureAccessToken();
-      setIsAuthenticated(Boolean(token));
     };
     initializeSession();
   }, []);
@@ -103,14 +111,14 @@ export const GameProvider: React.FC<{
   }, [isAuthenticated, username]);
 
   // Create stable actions object using useCallback for all methods
-  const startSession = useCallback((nextUsername: string, tokens: AuthTokenResponse) => {
+  const startSession = useCallback((nextUsername: string) => {
       gameContextLogger.debug('🎯 GameContext startSession called:', { username: nextUsername });
-      
-      apiClient.setSession(nextUsername, tokens);
+
+      apiClient.setSession(nextUsername);
       setUsername(nextUsername);
       setIsAuthenticated(true);
-      
-      // Remove the delayed dashboard load - let the initial dashboard load effect handle it
+
+      // Session started, authentication state will trigger dashboard load
       gameContextLogger.debug('✅ Session started, authentication state will trigger dashboard load');
   }, []);
 
@@ -141,20 +149,8 @@ export const GameProvider: React.FC<{
   }, [stopPoll]);
 
   const refreshDashboard = useCallback(async (signal?: AbortSignal) => {
-      // Check token directly instead of relying on state
-      const token = await apiClient.ensureAccessToken();
-      
-      if (!token) {
-        gameContextLogger.warn('❌ No valid token, skipping dashboard refresh');
-        setIsAuthenticated(false);
-        return;
-      }
-
-      // Ensure authentication state is correct
-      if (!isAuthenticated) {
-        setIsAuthenticated(true);
-      }
-
+      // Note: Don't check isAuthenticated here - it causes stale closure issues
+      // The polling effect and initial load effect already guard against unauthenticated calls
       try {
         const data = await apiClient.getDashboardData(signal);
         gameContextLogger.debug('✅ Dashboard data received successfully:', {
@@ -222,25 +218,12 @@ export const GameProvider: React.FC<{
           logout();
         }
       }
-  }, [isAuthenticated, username, logout]);
+  }, [username, logout]);
 
   const refreshBalance = useCallback(async (signal?: AbortSignal) => {
       gameContextLogger.debug('💰 GameContext refreshBalance called');
-      // Check token directly instead of relying on stale state
-      const token = await apiClient.ensureAccessToken();
-      gameContextLogger.debug('🔑 Token check for balance refresh:', { hasToken: !!token });
-      
-      if (!token) {
-        gameContextLogger.warn('❌ No valid token for balance refresh');
-        setIsAuthenticated(false);
-        return;
-      }
-
-      // Ensure authentication state is correct
-      if (!isAuthenticated) {
-        gameContextLogger.debug('🔄 Setting authenticated to true after token check');
-        setIsAuthenticated(true);
-      }
+      // Note: Don't check isAuthenticated here - it causes stale closure issues
+      // The polling effect already guards against unauthenticated calls
 
       try {
         gameContextLogger.debug('📞 Calling apiClient.getBalance...');
@@ -280,17 +263,7 @@ export const GameProvider: React.FC<{
   const claimBonus = useCallback(async () => {
       gameContextLogger.debug('🎯 GameContext claimBonus called');
       
-      // Check token directly instead of relying on stale state
-      const token = await apiClient.ensureAccessToken();
-      gameContextLogger.debug('🔑 Token check for claim bonus:', { hasToken: !!token });
-      
-      if (!token) {
-        gameContextLogger.warn('❌ No valid token, aborting claim bonus');
-        setIsAuthenticated(false);
-        return;
-      }
-
-      // Ensure authentication state is correct
+      // Check token directly instead of relying on stale state      // Ensure authentication state is correct
       if (!isAuthenticated) {
         gameContextLogger.debug('🔄 Setting authenticated to true after token check');
         setIsAuthenticated(true);
@@ -347,18 +320,7 @@ export const GameProvider: React.FC<{
   }, [navigate]);
 
   const startPromptRound = useCallback(async () => {
-      gameContextLogger.debug('🎯 GameContext startPromptRound called');
-      
-      const token = await apiClient.ensureAccessToken();
-      gameContextLogger.debug('🔑 Token check for start prompt round:', { hasToken: !!token });
-      
-      if (!token) {
-        gameContextLogger.warn('❌ No valid token, aborting start prompt round');
-        setIsAuthenticated(false);
-        return;
-      }
-
-      if (!isAuthenticated) {
+      gameContextLogger.debug('🎯 GameContext startPromptRound called');      if (!isAuthenticated) {
         gameContextLogger.debug('🔄 Setting authenticated to true after token check');
         setIsAuthenticated(true);
       }
@@ -412,18 +374,7 @@ export const GameProvider: React.FC<{
   }, [isAuthenticated, triggerPoll, onDashboardTrigger]);
 
   const startCopyRound = useCallback(async () => {
-      gameContextLogger.debug('🎯 GameContext startCopyRound called');
-
-      const token = await apiClient.ensureAccessToken();
-      gameContextLogger.debug('🔑 Token check for start copy round:', { hasToken: !!token });
-      
-      if (!token) {
-        gameContextLogger.warn('❌ No valid token, aborting start copy round');
-        setIsAuthenticated(false);
-        return;
-      }
-
-      if (!isAuthenticated) {
+      gameContextLogger.debug('🎯 GameContext startCopyRound called');      if (!isAuthenticated) {
         gameContextLogger.debug('🔄 Setting authenticated to true after token check');
         setIsAuthenticated(true);
       }
@@ -479,18 +430,7 @@ export const GameProvider: React.FC<{
   }, [isAuthenticated, triggerPoll, onDashboardTrigger]);
 
   const flagCopyRound = useCallback(async (roundId: string): Promise<FlagCopyRoundResponse> => {
-      gameContextLogger.debug('🚩 GameContext flagCopyRound called', { roundId });
-
-      const token = await apiClient.ensureAccessToken();
-      gameContextLogger.debug('🔑 Token check for flag copy round:', { hasToken: !!token });
-
-      if (!token) {
-        gameContextLogger.warn('❌ No valid token, aborting flag copy round');
-        setIsAuthenticated(false);
-        throw new Error('missing_token');
-      }
-
-      try {
+      gameContextLogger.debug('🚩 GameContext flagCopyRound called', { roundId });      try {
         gameContextLogger.debug('📞 Calling apiClient.flagCopyRound()...', { roundId });
         const response = await apiClient.flagCopyRound(roundId);
         gameContextLogger.info('✅ Copy round flagged successfully', { roundId, flagId: response.flag_id });
@@ -503,18 +443,7 @@ export const GameProvider: React.FC<{
   }, [refreshDashboard]);
 
   const abandonRound = useCallback(async (roundId: string): Promise<AbandonRoundResponse> => {
-      gameContextLogger.debug('🛑 GameContext abandonRound called', { roundId });
-
-      const token = await apiClient.ensureAccessToken();
-      gameContextLogger.debug('🔑 Token check for abandon round:', { hasToken: !!token });
-
-      if (!token) {
-        gameContextLogger.warn('❌ No valid token, aborting abandon round');
-        setIsAuthenticated(false);
-        throw new Error('missing_token');
-      }
-
-      try {
+      gameContextLogger.debug('🛑 GameContext abandonRound called', { roundId });      try {
         gameContextLogger.debug('📞 Calling apiClient.abandonRound()...', { roundId });
         const response = await apiClient.abandonRound(roundId);
         gameContextLogger.info('✅ Round abandoned successfully', {
@@ -531,18 +460,7 @@ export const GameProvider: React.FC<{
   }, [refreshDashboard]);
 
   const startVoteRound = useCallback(async () => {
-      gameContextLogger.debug('🎯 GameContext startVoteRound called');
-      
-      const token = await apiClient.ensureAccessToken();
-      gameContextLogger.debug('🔑 Token check for start vote round:', { hasToken: !!token });
-      
-      if (!token) {
-        gameContextLogger.warn('❌ No valid token, aborting start vote round');
-        setIsAuthenticated(false);
-        return;
-      }
-
-      if (!isAuthenticated) {
+      gameContextLogger.debug('🎯 GameContext startVoteRound called');      if (!isAuthenticated) {
         gameContextLogger.debug('🔄 Setting authenticated to true after token check');
         setIsAuthenticated(true);
       }
@@ -598,18 +516,7 @@ export const GameProvider: React.FC<{
   }, [isAuthenticated, triggerPoll, onDashboardTrigger]);
 
   const claimPhrasesetPrize = useCallback(async (phrasesetId: string) => {
-      gameContextLogger.debug('🎯 GameContext claimPhrasesetPrize called:', { phrasesetId });
-      
-      const token = await apiClient.ensureAccessToken();
-      gameContextLogger.debug('🔑 Token check for claim phraseset prize:', { hasToken: !!token });
-      
-      if (!token) {
-        gameContextLogger.warn('❌ No valid token, aborting claim phraseset prize');
-        setIsAuthenticated(false);
-        return;
-      }
-
-      if (!isAuthenticated) {
+      gameContextLogger.debug('🎯 GameContext claimPhrasesetPrize called:', { phrasesetId });      if (!isAuthenticated) {
         gameContextLogger.debug('🔄 Setting authenticated to true after token check');
         setIsAuthenticated(true);
       }

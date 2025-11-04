@@ -1,7 +1,7 @@
 """FastAPI dependencies."""
 import logging
 
-from fastapi import Depends, Header, HTTPException
+from fastapi import Depends, Header, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
@@ -63,17 +63,31 @@ async def _enforce_rate_limit(scope: str, identifier: str | None, limit: int) ->
 
 
 async def get_current_player(
+    request: Request,
     authorization: str | None = Header(default=None, alias="Authorization"),
     db: AsyncSession = Depends(get_db),
 ) -> Player:
-    """Resolve the current authenticated player via JWT access token."""
+    """Resolve the current authenticated player via JWT access token.
 
-    if not authorization:
+    Checks for access token in the following order:
+    1. HTTP-only cookie (preferred, secure)
+    2. Authorization header (backward compatibility, API clients)
+    """
+
+    # Try to get token from cookie first (preferred method)
+    token = request.cookies.get(settings.access_token_cookie_name)
+    token_source = "cookie"
+
+    # Fall back to Authorization header if no cookie
+    if not token and authorization:
+        scheme, _, token = authorization.partition(" ")
+        if scheme.lower() != "bearer" or not token:
+            raise HTTPException(status_code=401, detail="invalid_authorization_header")
+        token_source = "header"
+
+    # If still no token found
+    if not token:
         raise HTTPException(status_code=401, detail="missing_credentials")
-
-    scheme, _, token = authorization.partition(" ")
-    if scheme.lower() != "bearer" or not token:
-        raise HTTPException(status_code=401, detail="invalid_authorization_header")
 
     auth_service = AuthService(db)
     try:
@@ -94,7 +108,10 @@ async def get_current_player(
     # Apply stricter rate limits for guest accounts
     limit = GUEST_GENERAL_RATE_LIMIT if player.is_guest else GENERAL_RATE_LIMIT
     await _enforce_rate_limit("general", str(player.player_id), limit)
-    logger.debug("Authenticated player via JWT: %s (guest=%s)", player.player_id, player.is_guest)
+    logger.debug(
+        "Authenticated player via JWT %s: %s (guest=%s)",
+        token_source, player.player_id, player.is_guest
+    )
     return player
 
 

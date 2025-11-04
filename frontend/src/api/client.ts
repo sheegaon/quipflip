@@ -1,4 +1,4 @@
-import axios, { AxiosError, type AxiosRequestConfig } from 'axios';
+import axios, { AxiosError } from 'axios';
 import { getContextualErrorMessage, getActionErrorMessage } from '../utils/errorMessages';
 import type {
   Player,
@@ -82,14 +82,10 @@ const extractErrorMessage = (error: any, action?: string): string => {
   return contextualError.message;
 };
 
-const ACCESS_TOKEN_KEY = 'quipflip_access_token';
-const ACCESS_TOKEN_EXPIRES_KEY = 'quipflip_access_token_expires_at';
 const USERNAME_STORAGE_KEY = 'quipflip_username';
 
-let accessToken: string | null = localStorage.getItem(ACCESS_TOKEN_KEY);
-let accessTokenExpiresAt = Number(localStorage.getItem(ACCESS_TOKEN_EXPIRES_KEY) ?? '0');
-
-// Create axios instance with credential support for refresh token cookie
+// Create axios instance with credential support for cookies
+// withCredentials: true enables sending/receiving HTTP-only cookies
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -98,81 +94,12 @@ const api = axios.create({
   withCredentials: true,
 });
 
-const setAccessToken = (token: string | null, expiresInSeconds?: number) => {
-  accessToken = token;
-  if (token) {
-    const buffer = 5 * 1000;
-    const expiresAt = Date.now() + (expiresInSeconds ?? 0) * 1000 - buffer;
-    accessTokenExpiresAt = expiresAt;
-    localStorage.setItem(ACCESS_TOKEN_KEY, token);
-    if (expiresInSeconds) {
-      localStorage.setItem(ACCESS_TOKEN_EXPIRES_KEY, expiresAt.toString());
-    }
-  } else {
-    accessTokenExpiresAt = 0;
-    localStorage.removeItem(ACCESS_TOKEN_KEY);
-    localStorage.removeItem(ACCESS_TOKEN_EXPIRES_KEY);
-  }
-};
-
 const clearStoredCredentials = () => {
-  setAccessToken(null);
   localStorage.removeItem(USERNAME_STORAGE_KEY);
 };
 
-const shouldAttemptRefresh = () => {
-  // If we have an access token that hasn't expired yet, no need to refresh
-  if (accessToken && accessTokenExpiresAt && Date.now() < accessTokenExpiresAt) {
-    return false;
-  }
-
-  // Only attempt refresh if we have evidence of a previous login (stored username)
-  // This prevents unnecessary refresh attempts on first visit
-  const hasStoredUsername = localStorage.getItem(USERNAME_STORAGE_KEY);
-  if (!hasStoredUsername) return false;
-
-  return true;
-};
-
-let refreshPromise: Promise<string | null> | null = null;
-
-// Refresh the access token, deduplicating concurrent refresh attempts
-const performTokenRefresh = async (): Promise<string | null> => {
-  if (refreshPromise) {
-    return refreshPromise;
-  }
-
-  refreshPromise = api
-    .post<AuthTokenResponse>(
-      '/auth/refresh',
-      { refresh_token: null },
-      {
-        skipAuth: true,
-      },
-    )
-    .then((response) => {
-      const token = response.data.access_token;
-      setAccessToken(token, response.data.expires_in);
-      return token;
-    })
-    .catch((error) => {
-      clearStoredCredentials();
-      throw error;
-    })
-    .finally(() => {
-      refreshPromise = null;
-    });
-
-  return refreshPromise;
-};
-
-// Request interceptor to attach auth headers and log outgoing requests
+// Request interceptor for logging outgoing requests
 api.interceptors.request.use((config) => {
-  if (!config.skipAuth && accessToken) {
-    config.headers = config.headers ?? {};
-    config.headers.Authorization = `Bearer ${accessToken}`;
-  }
-
   const method = config.method?.toUpperCase() || 'UNKNOWN';
   const endpoint = config.url || '';
   logApi(method, endpoint, 'start');
@@ -180,7 +107,7 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Response interceptor for success/error logging, auth refresh, and normalization
+// Response interceptor for success/error logging and normalization
 api.interceptors.response.use(
   (response) => {
     const method = response.config.method?.toUpperCase() || 'UNKNOWN';
@@ -190,6 +117,11 @@ api.interceptors.response.use(
     return response;
   },
   async (error: AxiosError<ApiError>) => {
+    // Don't log canceled requests - they're intentional (e.g., component unmount)
+    if (error.code === 'ERR_CANCELED') {
+      return Promise.reject(error);
+    }
+
     if (error.config) {
       const method = error.config.method?.toUpperCase() || 'UNKNOWN';
       const endpoint = error.config.url || '';
@@ -197,37 +129,7 @@ api.interceptors.response.use(
       logApi(method, endpoint, 'error', errorMessage);
     }
 
-    if (error.code === 'ERR_CANCELED') {
-      return Promise.reject(error);
-    }
-
-    const originalRequest = error.config as (AxiosRequestConfig & { _retry?: boolean; skipAuth?: boolean }) | undefined;
-    if (
-      error.response?.status === 401 &&
-      originalRequest &&
-      !originalRequest._retry &&
-      !originalRequest.skipAuth &&
-      originalRequest.url !== '/auth/login' &&
-      originalRequest.url !== '/auth/refresh' &&
-      originalRequest.url !== '/auth/logout'
-    ) {
-      // Only attempt refresh if we have evidence of a previous login
-      const hasStoredUsername = localStorage.getItem(USERNAME_STORAGE_KEY);
-      if (hasStoredUsername) {
-        originalRequest._retry = true;
-        try {
-          const token = await performTokenRefresh();
-          if (token && originalRequest.headers) {
-            originalRequest.headers.Authorization = `Bearer ${token}`;
-          }
-          return api(originalRequest);
-        } catch (refreshError) {
-          clearStoredCredentials();
-          return Promise.reject(refreshError);
-        }
-      }
-    }
-
+    // Error normalization and user-friendly messages
     if (error.response) {
       const { status, data } = error.response;
 
@@ -261,12 +163,9 @@ api.interceptors.response.use(
 );
 
 export const apiClient = {
-  setSession(username: string | null, tokenResponse?: AuthTokenResponse) {
+  setSession(username: string | null) {
     if (username) {
       localStorage.setItem(USERNAME_STORAGE_KEY, username);
-    }
-    if (tokenResponse) {
-      setAccessToken(tokenResponse.access_token, tokenResponse.expires_in);
     }
   },
 
@@ -276,17 +175,6 @@ export const apiClient = {
 
   getStoredUsername(): string | null {
     return localStorage.getItem(USERNAME_STORAGE_KEY);
-  },
-
-  async ensureAccessToken(): Promise<string | null> {
-    if (!shouldAttemptRefresh()) {
-      return accessToken;
-    }
-    try {
-      return await performTokenRefresh();
-    } catch (err) {
-      return null;
-    }
   },
 
   // Health & Info
@@ -310,10 +198,7 @@ export const apiClient = {
   },
 
   async createGuest(signal?: AbortSignal): Promise<CreateGuestResponse> {
-    const { data } = await api.post<CreateGuestResponse>('/player/guest', {}, {
-      signal,
-      skipAuth: true,
-    });
+    const { data } = await api.post<CreateGuestResponse>('/player/guest', {}, { signal });
     return data;
   },
 
@@ -322,9 +207,6 @@ export const apiClient = {
     signal?: AbortSignal,
   ): Promise<UpgradeGuestResponse> {
     const { data } = await api.post<UpgradeGuestResponse>('/player/upgrade', payload, { signal });
-    if (data?.access_token) {
-      setAccessToken(data.access_token, data.expires_in);
-    }
     return data;
   },
 
@@ -332,42 +214,22 @@ export const apiClient = {
     payload: { email: string; password: string },
     signal?: AbortSignal,
   ): Promise<AuthTokenResponse> {
-    const { data} = await api.post<AuthTokenResponse>('/auth/login', payload, {
-      signal,
-      skipAuth: true,
-    });
+    const { data } = await api.post<AuthTokenResponse>('/auth/login', payload, { signal });
     return data;
   },
 
   async suggestUsername(signal?: AbortSignal): Promise<SuggestUsernameResponse> {
-    const { data } = await api.get<SuggestUsernameResponse>('/auth/suggest-username', {
-      signal,
-      skipAuth: true,
-    });
+    const { data } = await api.get<SuggestUsernameResponse>('/auth/suggest-username', { signal });
     return data;
   },
 
   async refreshToken(signal?: AbortSignal): Promise<AuthTokenResponse> {
-    const { data } = await api.post(
-      '/auth/refresh',
-      {},
-      {
-        signal,
-        skipAuth: true,
-      },
-    );
+    const { data } = await api.post('/auth/refresh', {}, { signal });
     return data;
   },
 
   async logout(signal?: AbortSignal): Promise<void> {
-    await api.post(
-      '/auth/logout',
-      {},
-      {
-        signal,
-        skipAuth: true,
-      },
-    );
+    await api.post('/auth/logout', {}, { signal });
     clearStoredCredentials();
   },
 
@@ -376,9 +238,6 @@ export const apiClient = {
     signal?: AbortSignal,
   ): Promise<ChangePasswordResponse> {
     const { data } = await api.post<ChangePasswordResponse>('/player/password', payload, { signal });
-    if (data?.access_token) {
-      setAccessToken(data.access_token, data.expires_in);
-    }
     return data;
   },
 

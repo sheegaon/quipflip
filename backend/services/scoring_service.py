@@ -32,6 +32,7 @@ settings = get_settings()
 PLACEHOLDER_PLAYER_NAMESPACE = UUID("6c057f58-7199-43ff-b4fc-17b77df5e6a2")
 WEEKLY_LEADERBOARD_LIMIT = 5
 WEEKLY_LEADERBOARD_CACHE_KEY = "leaderboard:weekly"
+AI_PLAYER_EMAIL_DOMAIN = "@quipflip.internal"
 
 
 _redis_client: "Redis | None" = None
@@ -299,7 +300,7 @@ class ScoringService:
                 "username": username or "Unknown Player",
                 "total_costs": 0,
                 "total_earnings": 0,
-                "net_cost": 0,
+                "net_earnings": 0,
                 "rank": None,
             }
 
@@ -394,9 +395,9 @@ class ScoringService:
             .subquery()
         )
 
-        net_cost_expression = (
-            func.coalesce(cost_subquery.c.total_costs, 0)
-            - func.coalesce(earnings_subquery.c.total_earnings, 0)
+        net_earnings_expression = (
+            func.coalesce(earnings_subquery.c.total_earnings, 0)
+            - func.coalesce(cost_subquery.c.total_costs, 0)
         )
 
         leaderboard_stmt = (
@@ -405,12 +406,15 @@ class ScoringService:
                 Player.username,
                 func.coalesce(cost_subquery.c.total_costs, 0).label("total_costs"),
                 func.coalesce(earnings_subquery.c.total_earnings, 0).label("total_earnings"),
-                net_cost_expression.label("net_cost"),
+                net_earnings_expression.label("net_earnings"),
             )
             .join(cost_subquery, cost_subquery.c.player_id == Player.player_id, isouter=True)
             .join(earnings_subquery, earnings_subquery.c.player_id == Player.player_id, isouter=True)
-            .where(or_(cost_subquery.c.player_id.isnot(None), earnings_subquery.c.player_id.isnot(None)))
-            .order_by(net_cost_expression.asc(), Player.username.asc())
+            .where(
+                or_(cost_subquery.c.player_id.isnot(None), earnings_subquery.c.player_id.isnot(None)),
+                ~Player.email.like(f"%{AI_PLAYER_EMAIL_DOMAIN}"),
+            )
+            .order_by(net_earnings_expression.desc(), Player.username.asc())
         )
 
         result = await self.db.execute(leaderboard_stmt)
@@ -423,7 +427,7 @@ class ScoringService:
                     "username": row.username,
                     "total_costs": int(row.total_costs or 0),
                     "total_earnings": int(row.total_earnings or 0),
-                    "net_cost": int(row.net_cost or 0),
+                    "net_earnings": int(row.net_earnings or 0),
                     "rank": rank,
                 }
             )

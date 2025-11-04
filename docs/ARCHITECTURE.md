@@ -35,8 +35,15 @@ The backend is designed around a clear service layer (`backend/services`) that e
 
 ### Authentication
 
-JWT authentication with short-lived access tokens and 30-day refresh tokens. See [API.md](API.md) for complete authentication documentation including:
-- Authorization header format (`Authorization: Bearer <token>`)
+JWT authentication using HTTP-only cookies for enhanced security:
+- **Access tokens** (2-hour lifetime): Stored in HTTP-only cookie, automatically sent with requests
+- **Refresh tokens** (30-day lifetime): Stored in HTTP-only cookie, used for automatic token rotation
+- **Cookie security**: HttpOnly, Secure (production), SameSite=Lax
+- **Backward compatibility**: Authorization header still supported for API clients
+
+See [API.md](API.md) for complete authentication documentation including:
+- Cookie-based authentication (preferred)
+- Authorization header format (`Authorization: Bearer <token>`) - fallback for API clients
 - Credential-based login (`POST /auth/login`)
 - Refresh token endpoint (`POST /auth/refresh`)
 

@@ -20,7 +20,8 @@ Quipflip revolves around three sequential round types—prompt creation, copywri
 - Final payouts divide the remaining `total_pool` in proportion to `correct_vote_points` for the original phrase versus `incorrect_vote_points` for each copy. If no votes were cast, contributors split the pot evenly.
 
 ### Weekly net earnings leaderboard
-- Leaderboard rankings are based on the trailing seven days of play and use each player's `net_cost` (total entry costs minus total earnings). Lower values indicate better performance; negative numbers mean the player earned more than they spent.
+- Leaderboard rankings are based on the trailing seven days of play and use each player's `net_earnings` (total earnings minus total entry costs). Higher values indicate better performance; positive numbers mean the player earned more than they spent.
+- AI players (identified by email addresses ending in `@quipflip.internal`) are excluded from the leaderboard.
 - The scoring service keeps a shared cache of the top five performers and refreshes it whenever a phraseset finalizes or if a request encounters a cold cache.
 - The API always appends the requesting player, even when they fall outside the top group, so the frontend can highlight their current standing without exposing full leaderboards.
 - Snapshot timestamps are included in responses so clients can display "last updated" metadata and avoid redundant refreshes.

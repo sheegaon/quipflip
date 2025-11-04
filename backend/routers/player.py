@@ -50,7 +50,12 @@ from backend.config import get_settings
 from backend.schemas.auth import RegisterRequest
 from backend.services.auth_service import AuthService, AuthError
 from backend.services.cleanup_service import CleanupService
-from backend.utils.cookies import set_refresh_cookie, clear_refresh_cookie
+from backend.utils.cookies import (
+    clear_auth_cookies,
+    clear_refresh_cookie,
+    set_access_token_cookie,
+    set_refresh_cookie,
+)
 from backend.utils.passwords import (
     verify_password,
     validate_password_strength,
@@ -106,6 +111,7 @@ async def create_player(
         raise
 
     access_token, refresh_token, expires_in = await auth_service.issue_tokens(player)
+    set_access_token_cookie(response, access_token)
     set_refresh_cookie(response, refresh_token, expires_days=settings.refresh_token_exp_days)
 
     return CreatePlayerResponse(
@@ -143,6 +149,7 @@ async def create_guest_player(
         raise
 
     access_token, refresh_token, expires_in = await auth_service.issue_tokens(player)
+    set_access_token_cookie(response, access_token)
     set_refresh_cookie(response, refresh_token, expires_days=settings.refresh_token_exp_days)
 
     return CreateGuestResponse(
@@ -195,6 +202,7 @@ async def upgrade_guest_account(
 
     # Issue fresh tokens after upgrade
     access_token, refresh_token, expires_in = await auth_service.issue_tokens(upgraded_player)
+    set_access_token_cookie(response, access_token)
     set_refresh_cookie(response, refresh_token, expires_days=settings.refresh_token_exp_days)
 
     return UpgradeGuestResponse(
@@ -623,7 +631,7 @@ async def get_weekly_leaderboard(
             username=entry["username"],
             total_costs=entry["total_costs"],
             total_earnings=entry["total_earnings"],
-            net_cost=entry["net_cost"],
+            net_earnings=entry["net_earnings"],
             rank=entry["rank"],
             is_current_player=entry["is_current_player"],
         )
@@ -698,6 +706,7 @@ async def change_password(
 
     auth_service = AuthService(db)
     access_token, refresh_token, expires_in = await auth_service.issue_tokens(player)
+    set_access_token_cookie(response, access_token)
     set_refresh_cookie(response, refresh_token, expires_days=settings.refresh_token_exp_days)
 
     return ChangePasswordResponse(
@@ -752,6 +761,6 @@ async def delete_account(
     cleanup_service = CleanupService(db)
     await cleanup_service.delete_player(player.player_id)
 
-    clear_refresh_cookie(response)
+    clear_auth_cookies(response)
     response.status_code = 204
     return None

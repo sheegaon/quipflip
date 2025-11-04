@@ -235,7 +235,7 @@ class WeeklyLeaderboardEntry(BaseModel):
     username: str
     total_costs: int
     total_earnings: int
-    net_cost: int
+    net_earnings: int
     rank: Optional[int]
     is_current_player: bool = False
 
