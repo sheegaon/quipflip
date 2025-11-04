@@ -83,12 +83,12 @@ class AuthService:
                 await self.db.commit()
                 await self.db.refresh(player)
 
-                logger.info("Created guest player %s with email %s", player.player_id, guest_email)
+                logger.info(f"Created guest player {player.player_id} with email {guest_email}")
 
                 # Initialize starter quests for new guest
                 quest_service = QuestService(self.db)
                 await quest_service.initialize_quests_for_player(player.player_id)
-                logger.info("Initialized starter quests for guest %s", player.player_id)
+                logger.info(f"Initialized starter quests for guest {player.player_id}")
 
                 return player, guest_password
             except ValueError as exc:
@@ -134,12 +134,14 @@ class AuthService:
                 pseudonym=pseudonym_display,
                 pseudonym_canonical=pseudonym_canonical,
             )
-            logger.info("Created player %s via credential signup with username %s and pseudonym %s", player.player_id, username_display, pseudonym_display)
+            logger.info(
+                f"Created player {player.player_id} via credential signup with username {username_display} and pseudonym {pseudonym_display}"
+            )
 
             # Initialize starter quests for new player
             quest_service = QuestService(self.db)
             await quest_service.initialize_quests_for_player(player.player_id)
-            logger.info("Initialized starter quests for player %s", player.player_id)
+            logger.info(f"Initialized starter quests for player {player.player_id}")
 
             return player
         except ValueError as exc:
@@ -191,11 +193,11 @@ class AuthService:
         try:
             await self.db.commit()
             await self.db.refresh(player)
-            logger.info("Upgraded guest %s to full account with email %s", player.player_id, email_normalized)
+            logger.info(f"Upgraded guest {player.player_id} to full account with email {email_normalized}")
             return player
         except Exception as exc:
             await self.db.rollback()
-            logger.error("Failed to upgrade guest %s: %s", player.player_id, exc)
+            logger.error(f"Failed to upgrade guest {player.player_id}: {exc}")
             raise AuthError("upgrade_failed") from exc
 
     # ------------------------------------------------------------------

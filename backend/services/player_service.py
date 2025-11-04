@@ -76,11 +76,7 @@ class PlayerService:
             await self.db.commit()
             await self.db.refresh(player)
             logger.info(
-                "Created player: %s username=%s pseudonym=%s balance=%s",
-                player.player_id,
-                player.username,
-                player.pseudonym,
-                player.balance,
+                f"Created player: {player.player_id} username={player.username} pseudonym={player.pseudonym} balance={player.balance}"
             )
             return player
         except IntegrityError as exc:
@@ -286,7 +282,7 @@ class PlayerService:
         await self.db.commit()
         await self.db.refresh(player)
 
-        logger.info("Cleared expired vote lockout for guest %s", player.player_id)
+        logger.info(f"Cleared expired vote lockout for guest {player.player_id}")
         return True
 
     async def can_start_copy_round(self, player: Player) -> tuple[bool, str]:

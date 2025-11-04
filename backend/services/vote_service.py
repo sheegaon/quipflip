@@ -74,11 +74,11 @@ class VoteService:
         )
         for phraseset_id, prompt_round_id, copy_round_1_id, copy_round_2_id in missing_relationships.all():
             logger.warning(
-                "Skipping phraseset %s with missing relationships: prompt_round=%s, copy_round_1=%s, copy_round_2=%s",
-                phraseset_id,
-                prompt_round_id is not None,
-                copy_round_1_id is not None,
-                copy_round_2_id is not None,
+                "Skipping phraseset "
+                f"{phraseset_id} with missing relationships: "
+                f"prompt_round={prompt_round_id is not None}, "
+                f"copy_round_1={copy_round_1_id is not None}, "
+                f"copy_round_2={copy_round_2_id is not None}"
             )
 
         contributor_exists = (
@@ -178,10 +178,8 @@ class VoteService:
 
         if inserted:
             logger.info(
-                "Player %s viewed results for phraseset %s (payout $%s was auto-distributed at finalization)",
-                player_id,
-                phraseset_id,
-                player_payout,
+                f"Player {player_id} viewed results for phraseset {phraseset_id} "
+                f"(payout ${player_payout} was auto-distributed at finalization)"
             )
 
         return result_view, inserted
@@ -301,9 +299,7 @@ class VoteService:
                     if "Cannot calculate payouts: missing" in str(e):
                         orphaned_count += 1
                         logger.warning(
-                            "Marking orphaned phraseset %s as closed due to missing relationships: %s",
-                            phraseset.phraseset_id,
-                            e,
+                            f"Marking orphaned phraseset {phraseset.phraseset_id} as closed due to missing relationships: {e}"
                         )
                         await self._handle_orphaned_phraseset(phraseset)
                         continue
@@ -491,9 +487,7 @@ class VoteService:
 
         if player.player_id in contributor_ids:
             logger.error(
-                "Player %s attempted system vote on their own phraseset %s",
-                player.player_id,
-                phraseset.phraseset_id,
+                f"Player {player.player_id} attempted system vote on their own phraseset {phraseset.phraseset_id}"
             )
             raise SelfVotingError("Cannot vote on phraseset you contributed to")
 
@@ -690,10 +684,9 @@ class VoteService:
                     lockout_duration = timedelta(hours=settings.guest_vote_lockout_hours)
                     player.vote_lockout_until = datetime.now(UTC) + lockout_duration
                     logger.warning(
-                        "Guest player %s locked out from voting for %s hour(s) due to %s consecutive incorrect votes",
-                        player.player_id,
-                        settings.guest_vote_lockout_hours,
-                        player.consecutive_incorrect_votes,
+                        "Guest player "
+                        f"{player.player_id} locked out from voting for {settings.guest_vote_lockout_hours} hour(s) "
+                        f"due to {player.consecutive_incorrect_votes} consecutive incorrect votes"
                     )
 
         # Update round

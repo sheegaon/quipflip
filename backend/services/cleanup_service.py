@@ -571,7 +571,7 @@ class CleanupService:
             logger.info("No guest usernames to recycle")
             return 0
 
-        logger.info("Prepared guest username updates: %s", updates)
+        logger.info(f"Prepared guest username updates: {updates}")
 
         player_ids = [update_entry["player_id"] for update_entry in updates]
 

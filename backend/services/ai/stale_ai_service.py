@@ -251,9 +251,7 @@ class StaleAIService:
 
                 except Exception as exc:
                     logger.error(
-                        "Failed to process stale prompt %s: %s",
-                        getattr(prompt_round, "round_id", "unknown"),
-                        exc,
+                        f"Failed to process stale prompt {getattr(prompt_round, 'round_id', 'unknown')}: {exc}"
                     )
                     stats["errors"] += 1
 
@@ -338,9 +336,7 @@ class StaleAIService:
 
                 except Exception as exc:
                     logger.error(
-                        "Failed to process stale phraseset %s: %s",
-                        getattr(phraseset, "phraseset_id", "unknown"),
-                        exc,
+                        f"Failed to process stale phraseset {getattr(phraseset, 'phraseset_id', 'unknown')}: {exc}"
                     )
                     stats["errors"] += 1
 
@@ -359,15 +355,13 @@ class StaleAIService:
             await self.db.commit()
 
             logger.info(
-                "Stale AI cycle completed: %s/%s prompts processed, %s/%s phrasesets processed, %s errors",
-                stats["stale_prompts_processed"],
-                stats["stale_prompts_found"],
-                stats["stale_phrasesets_processed"],
-                stats["stale_phrasesets_found"],
-                stats["errors"],
+                "Stale AI cycle completed: "
+                f"{stats['stale_prompts_processed']}/{stats['stale_prompts_found']} prompts processed, "
+                f"{stats['stale_phrasesets_processed']}/{stats['stale_phrasesets_found']} phrasesets processed, "
+                f"{stats['errors']} errors"
             )
 
         except Exception as exc:
-            logger.error("Stale AI cycle failed: %s", exc)
+            logger.error(f"Stale AI cycle failed: {exc}")
             await self.db.rollback()
             raise

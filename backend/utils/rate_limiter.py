@@ -34,8 +34,7 @@ class RateLimiter:
                 logger.info("Using Redis for rate limiting")
             except Exception as exc:  # pragma: no cover - fallback path
                 logger.warning(
-                    "Redis unavailable for rate limiting, using in-memory fallback: %s",
-                    exc,
+                    f"Redis unavailable for rate limiting, using in-memory fallback: {exc}",
                 )
                 self.redis = None
         else:

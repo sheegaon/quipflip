@@ -109,8 +109,7 @@ async def get_current_player(
     limit = GUEST_GENERAL_RATE_LIMIT if player.is_guest else GENERAL_RATE_LIMIT
     await _enforce_rate_limit("general", str(player.player_id), limit)
     logger.debug(
-        "Authenticated player via JWT %s: %s (guest=%s)",
-        token_source, player.player_id, player.is_guest
+        f"Authenticated player via JWT {token_source}: {player.player_id} (guest={player.is_guest})"
     )
     return player
 
@@ -181,14 +180,12 @@ async def get_admin_player(
     """
     if not settings.is_admin_email(player.email):
         logger.warning(
-            "Access denied to admin endpoint for non-admin user: %s (%s)",
-            player.username,
-            player.email
+            f"Access denied to admin endpoint for non-admin user: {player.username} ({player.email})"
         )
         raise HTTPException(
             status_code=403,
             detail="admin_access_required"
         )
 
-    logger.debug("Admin access granted to: %s (%s)", player.username, player.email)
+    logger.debug(f"Admin access granted to: {player.username} ({player.email})")
     return player
