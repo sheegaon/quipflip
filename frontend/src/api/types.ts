@@ -46,6 +46,14 @@ export interface AdminDeletePlayerResponse {
   deletion_counts: Record<string, number>;
 }
 
+export interface AdminResetPasswordResponse {
+  player_id: string;
+  username: string;
+  email: string;
+  generated_password: string;
+  message: string;
+}
+
 export interface AuthTokenResponse {
   access_token: string;
   refresh_token: string;

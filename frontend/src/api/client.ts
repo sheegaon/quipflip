@@ -37,6 +37,7 @@ import type {
   UpdateEmailResponse,
   AdminPlayerSummary,
   AdminDeletePlayerResponse,
+  AdminResetPasswordResponse,
   CreateGuestResponse,
   UpgradeGuestResponse,
   FlagCopyRoundResponse,
@@ -553,6 +554,14 @@ export const apiClient = {
       data: payload,
       signal,
     });
+    return data;
+  },
+
+  async adminResetPassword(
+    payload: { player_id?: string; email?: string; username?: string },
+    signal?: AbortSignal,
+  ): Promise<AdminResetPasswordResponse> {
+    const { data } = await api.post('/admin/players/reset-password', payload, { signal });
     return data;
   },
 

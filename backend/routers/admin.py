@@ -4,6 +4,8 @@ from pydantic import BaseModel, constr
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
 from uuid import UUID
+from backend.utils.passwords import generate_temporary_password
+import logging
 from backend.config import get_settings
 from backend.database import get_db
 from backend.dependencies import get_admin_player
@@ -14,6 +16,7 @@ from backend.services.player_service import PlayerService
 from backend.services.cleanup_service import CleanupService
 from backend.services.flagged_prompt_service import FlaggedPromptService
 from backend.services.transaction_service import TransactionService
+from backend.services.auth_service import AuthService
 from backend.schemas.auth import EmailLike
 from backend.schemas.flagged_prompt import (
     FlaggedPromptListResponse,
@@ -468,6 +471,22 @@ class UpdateConfigResponse(BaseModel):
     message: Optional[str] = None
 
 
+class AdminResetPasswordRequest(BaseModel):
+    """Request model for admin password reset."""
+    player_id: Optional[UUID] = None
+    email: Optional[EmailLike] = None
+    username: Optional[str] = None
+
+
+class AdminResetPasswordResponse(BaseModel):
+    """Response model for admin password reset."""
+    player_id: UUID
+    username: str
+    email: EmailLike
+    generated_password: str
+    message: str
+
+
 @router.patch("/config", response_model=UpdateConfigResponse)
 async def update_config(
     request: UpdateConfigRequest,
@@ -515,3 +534,76 @@ async def update_config(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to update configuration: {str(e)}")
+
+
+logger = logging.getLogger(__name__)
+
+
+@router.post("/players/reset-password", response_model=AdminResetPasswordResponse)
+async def reset_player_password(
+    request: AdminResetPasswordRequest,
+    player: Annotated[Player, Depends(get_admin_player)],
+    session: Annotated[AsyncSession, Depends(get_db)]
+) -> AdminResetPasswordResponse:
+    """
+    Admin endpoint to reset a user's password.
+
+    Generates an 8-character alphanumeric password and updates the target player's account.
+    All refresh tokens are revoked to force re-login with the new password.
+
+    Args:
+        request: Reset password request with player identifier
+        player: Current authenticated admin player
+        session: Database session
+
+    Returns:
+        AdminResetPasswordResponse with player info and generated password
+
+    Raises:
+        HTTPException: If no identifier provided or player not found
+    """
+    # Validate at least one identifier is provided
+    identifier = request.player_id or request.email or request.username
+    if not identifier:
+        raise HTTPException(status_code=400, detail="missing_identifier")
+
+    # Find target player
+    player_service = PlayerService(session)
+    target_player: Player | None = None
+
+    if request.player_id:
+        target_player = await player_service.get_player_by_id(request.player_id)
+    elif request.email:
+        target_player = await player_service.get_player_by_email(request.email)
+    elif request.username:
+        target_player = await player_service.get_player_by_username(request.username)
+
+    if not target_player:
+        raise HTTPException(status_code=404, detail="player_not_found")
+
+    # Generate temporary password
+    generated_password = generate_temporary_password(length=8)
+
+    # Update password
+    await player_service.update_password(target_player, generated_password)
+
+    # Revoke all refresh tokens to force re-login
+    auth_service = AuthService(session)
+    await auth_service.revoke_all_refresh_tokens(target_player.player_id)
+
+    # Log the action
+    logger.info(
+        "Admin %s (%s) reset password for player %s (%s)",
+        player.username,
+        player.player_id,
+        target_player.username,
+        target_player.player_id
+    )
+
+    return AdminResetPasswordResponse(
+        player_id=target_player.player_id,
+        username=target_player.username,
+        email=target_player.email,
+        generated_password=generated_password,
+        message=f"Password reset successfully for {target_player.username}"
+    )

@@ -102,6 +102,17 @@ const Admin: React.FC = () => {
   const [adminDeleteSuccess, setAdminDeleteSuccess] = useState<string | null>(null);
   const [adminDeleteConfirm, setAdminDeleteConfirm] = useState('');
 
+  // Password Reset state
+  type PasswordResetIdentifier = 'email' | 'username';
+  const [passwordResetIdentifier, setPasswordResetIdentifier] = useState<PasswordResetIdentifier>('email');
+  const [passwordResetValue, setPasswordResetValue] = useState('');
+  const [passwordResetLookup, setPasswordResetLookup] = useState<AdminPlayerSummary | null>(null);
+  const [passwordResetLoading, setPasswordResetLoading] = useState(false);
+  const [passwordResetActionLoading, setPasswordResetActionLoading] = useState(false);
+  const [passwordResetError, setPasswordResetError] = useState<string | null>(null);
+  const [passwordResetSuccess, setPasswordResetSuccess] = useState<string | null>(null);
+  const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
+
   useEffect(() => {
     const loadConfig = async () => {
       try {
@@ -197,6 +208,86 @@ const Admin: React.FC = () => {
       adminLogger.debug('Phrase validation test flow completed');
     }
   };
+
+  // Password Reset handlers
+  const handlePasswordResetSearch = async () => {
+    const trimmed = passwordResetValue.trim();
+    if (!trimmed) {
+      setPasswordResetError('Enter a value to search.');
+      setPasswordResetLookup(null);
+      return;
+    }
+
+    try {
+      setPasswordResetLoading(true);
+      setPasswordResetError(null);
+      setPasswordResetSuccess(null);
+      setPasswordResetLookup(null);
+      setGeneratedPassword(null);
+      const params = passwordResetIdentifier === 'email' ? { email: trimmed } : { username: trimmed };
+      const result = await apiClient.adminSearchPlayer(params);
+      setPasswordResetLookup(result);
+    } catch (err: any) {
+      if (err?.detail === 'player_not_found') {
+        setPasswordResetError('No account found with that identifier.');
+      } else {
+        setPasswordResetError(extractErrorMessage(err, 'admin-search-player') || 'Failed to find player');
+      }
+    } finally {
+      setPasswordResetLoading(false);
+    }
+  };
+
+  const handlePasswordResetClear = () => {
+    setPasswordResetValue('');
+    setPasswordResetLookup(null);
+    setPasswordResetError(null);
+    setPasswordResetSuccess(null);
+    setGeneratedPassword(null);
+  };
+
+  const handlePasswordResetGenerate = async () => {
+    if (!passwordResetLookup) {
+      setPasswordResetError('Search for a player before resetting password.');
+      return;
+    }
+
+    try {
+      setPasswordResetActionLoading(true);
+      setPasswordResetError(null);
+      setPasswordResetSuccess(null);
+      setGeneratedPassword(null);
+      const result = await apiClient.adminResetPassword({
+        player_id: passwordResetLookup.player_id,
+      });
+      setGeneratedPassword(result.generated_password);
+      setPasswordResetSuccess(`Password reset for ${result.username} (${result.email}).`);
+      // Clear search after successful reset
+      setPasswordResetLookup(null);
+      setPasswordResetValue('');
+    } catch (err) {
+      setPasswordResetError(extractErrorMessage(err, 'admin-reset-password') || 'Failed to reset password');
+    } finally {
+      setPasswordResetActionLoading(false);
+    }
+  };
+
+  const handleCopyPassword = () => {
+    if (generatedPassword) {
+      navigator.clipboard.writeText(generatedPassword);
+    }
+  };
+
+  useEffect(() => {
+    if (!passwordResetSuccess) {
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      setPasswordResetSuccess(null);
+      setGeneratedPassword(null);
+    }, 30000); // Clear after 30 seconds for security
+    return () => window.clearTimeout(timer);
+  }, [passwordResetSuccess]);
 
   const handleAdminDeleteSearch = async () => {
     const trimmed = adminDeleteValue.trim();
@@ -347,6 +438,107 @@ const Admin: React.FC = () => {
               </label>
             </div>
           </div>
+        </div>
+
+        <div className="tile-card p-6 mb-6 border-2 border-orange-200">
+          <h2 className="text-2xl font-display font-bold text-quip-orange mb-2">Password Reset</h2>
+          <p className="text-quip-teal mb-4">
+            Search for a player and generate a new password. The generated password will be displayed once and should be sent securely to the user.
+          </p>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-semibold text-quip-teal mb-2">Search by</label>
+              <select
+                value={passwordResetIdentifier}
+                onChange={(e) => setPasswordResetIdentifier(e.target.value as PasswordResetIdentifier)}
+                className="w-full border-2 border-quip-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-quip-orange"
+              >
+                <option value="email">Email</option>
+                <option value="username">Username</option>
+              </select>
+            </div>
+            <div className="lg:col-span-2">
+              <label className="block text-sm font-semibold text-quip-teal mb-2">Identifier</label>
+              <input
+                type="text"
+                value={passwordResetValue}
+                onChange={(e) => setPasswordResetValue(e.target.value)}
+                className="w-full border-2 border-quip-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-quip-orange"
+                placeholder={passwordResetIdentifier === 'email' ? 'player@example.com' : 'username'}
+              />
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-3 mb-4">
+            <button
+              onClick={handlePasswordResetSearch}
+              className="bg-quip-orange hover:bg-quip-orange-deep text-white font-bold py-2 px-4 rounded-tile transition-all hover:shadow-tile-sm"
+              disabled={passwordResetLoading}
+            >
+              {passwordResetLoading ? 'Searching...' : 'Find Player'}
+            </button>
+            <button
+              onClick={handlePasswordResetClear}
+              className="bg-gray-200 hover:bg-gray-300 text-quip-navy font-bold py-2 px-4 rounded-tile transition-all"
+              disabled={passwordResetLoading || passwordResetActionLoading}
+            >
+              Clear
+            </button>
+          </div>
+          {passwordResetError && <p className="text-red-600 mb-3">{passwordResetError}</p>}
+          {passwordResetSuccess && <p className="text-green-600 mb-3">{passwordResetSuccess}</p>}
+          {generatedPassword && (
+            <div className="bg-green-50 border-2 border-green-200 rounded-tile p-4 mb-4">
+              <h3 className="text-lg font-display font-bold text-green-700 mb-2">Generated Password</h3>
+              <div className="flex items-center gap-3 mb-2">
+                <code className="bg-white border-2 border-green-300 rounded px-4 py-2 font-mono text-lg font-bold text-quip-navy flex-1">
+                  {generatedPassword}
+                </code>
+                <button
+                  onClick={handleCopyPassword}
+                  className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-tile transition-all hover:shadow-tile-sm whitespace-nowrap"
+                >
+                  Copy
+                </button>
+              </div>
+              <p className="text-sm text-quip-teal">
+                This password will be cleared after 30 seconds for security. Make sure to send it to the user before then.
+              </p>
+            </div>
+          )}
+          {passwordResetLookup && (
+            <div className="bg-orange-50 border-2 border-orange-200 rounded-tile p-4">
+              <h3 className="text-lg font-display font-bold text-quip-orange mb-2">Player Overview</h3>
+              <dl className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-quip-navy mb-4">
+                <div>
+                  <dt className="font-semibold">Username</dt>
+                  <dd>{passwordResetLookup.username}</dd>
+                </div>
+                <div>
+                  <dt className="font-semibold">Email</dt>
+                  <dd>{passwordResetLookup.email}</dd>
+                </div>
+                <div>
+                  <dt className="font-semibold">Balance</dt>
+                  <dd>{passwordResetLookup.balance}</dd>
+                </div>
+                <div>
+                  <dt className="font-semibold">Outstanding Prompts</dt>
+                  <dd>{passwordResetLookup.outstanding_prompts}</dd>
+                </div>
+                <div className="md:col-span-2">
+                  <dt className="font-semibold">Created</dt>
+                  <dd>{formatDateTimeInUserZone(passwordResetLookup.created_at)}</dd>
+                </div>
+              </dl>
+              <button
+                onClick={handlePasswordResetGenerate}
+                className="bg-quip-orange hover:bg-quip-orange-deep disabled:bg-orange-300 disabled:cursor-not-allowed text-white font-bold py-2 px-4 rounded-tile transition-all hover:shadow-tile-sm"
+                disabled={passwordResetActionLoading}
+              >
+                {passwordResetActionLoading ? 'Generating...' : 'Generate New Password'}
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="tile-card p-6 mb-6 border-2 border-red-200">
