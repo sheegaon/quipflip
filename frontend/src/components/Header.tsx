@@ -69,6 +69,14 @@ export const Header: React.FC = () => {
     ? `${unviewedCount} result${unviewedCount === 1 ? '' : 's'} ready to view`
     : 'View your results';
 
+  // Check if today is the player's first day (hide treasure chest on first day)
+  const isFirstDay = (() => {
+    if (!player?.created_at) return false;
+    const createdDate = new Date(player.created_at).toISOString().split('T')[0];
+    const today = new Date().toISOString().split('T')[0];
+    return createdDate === today;
+  })();
+
   const handleResultsClick = async () => {
     // Mark all unviewed results as viewed when clicking
     const unviewedIds = unviewedResults.map(result => result.phraseset_id);
@@ -180,17 +188,19 @@ export const Header: React.FC = () => {
 
           {/* Right: Daily Bonus + Flipcoins + Logout */}
           <div className="flex items-center gap-0.5 md:gap-4">
-            {/* Treasure Chest - Always visible, navigates to quests page */}
-            <button
-              onClick={() => navigate('/quests')}
-              className="relative group"
-              title={(player.daily_bonus_available || hasClaimableQuests) ? "View available rewards" : "No rewards available"}
-            >
-              <TreasureChestIcon
-                className="w-7 h-7 md:w-10 md:h-10 transition-transform group-hover:scale-110"
-                isAvailable={player.daily_bonus_available || hasClaimableQuests}
-              />
-            </button>
+            {/* Treasure Chest - Hidden on first day, navigates to quests page */}
+            {!isFirstDay && (
+              <button
+                onClick={() => navigate('/quests')}
+                className="relative group"
+                title={(player.daily_bonus_available || hasClaimableQuests) ? "View available rewards" : "No rewards available"}
+              >
+                <TreasureChestIcon
+                  className="w-7 h-7 md:w-10 md:h-10 transition-transform group-hover:scale-110"
+                  isAvailable={player.daily_bonus_available || hasClaimableQuests}
+                />
+              </button>
+            )}
             {/* Flipcoin Balance */}
             <div className="flex items-center gap-0.5 tutorial-balance border border-white/10 rounded-xl px-1 md:px-3 py-1">
               <img src="/flipcoin.png" alt="Flipcoin" className="w-5 h-5 md:w-8 md:h-8" />

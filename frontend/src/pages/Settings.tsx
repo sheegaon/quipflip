@@ -25,9 +25,6 @@ const Settings: React.FC = () => {
   const [resettingTutorial, setResettingTutorial] = useState(false);
   const [tutorialResetSuccess, setTutorialResetSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showAdminPasswordPrompt, setShowAdminPasswordPrompt] = useState(false);
-  const [adminPassword, setAdminPassword] = useState('');
-  const [adminPasswordError, setAdminPasswordError] = useState<string | null>(null);
 
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
@@ -67,13 +64,6 @@ const Settings: React.FC = () => {
     }
   }, [player?.email]);
 
-  useEffect(() => {
-    if (!player?.is_admin && showAdminPasswordPrompt) {
-      setShowAdminPasswordPrompt(false);
-      setAdminPassword('');
-      setAdminPasswordError(null);
-    }
-  }, [player?.is_admin, showAdminPasswordPrompt]);
 
   if (!player) {
     return (
@@ -107,33 +97,9 @@ const Settings: React.FC = () => {
   };
 
   const handleAdminAccess = () => {
-    setShowAdminPasswordPrompt(true);
-    setAdminPassword('');
-    setAdminPasswordError(null);
-    settingsLogger.debug('Admin access prompt opened');
-  };
-
-  const handleAdminPasswordSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setAdminPasswordError(null);
-
-    // Validate the password against the backend secret_key
-    try {
-      const result = await apiClient.validateAdminPassword(adminPassword);
-
-      if (result.valid) {
-        // Password is correct, navigate to admin
-        settingsLogger.info('Admin password validated, navigating to admin');
-        navigate('/admin');
-      } else {
-        setAdminPasswordError('Incorrect admin password');
-        settingsLogger.warn('Invalid admin password provided');
-      }
-    } catch (err) {
-      const message = extractErrorMessage(err) || 'Failed to verify password';
-      settingsLogger.error('Failed to validate admin password', err);
-      setAdminPasswordError(message);
-    }
+    // Simply navigate to admin - the backend will check if the user has admin email
+    settingsLogger.debug('Navigating to admin panel');
+    navigate('/admin');
   };
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
@@ -560,51 +526,15 @@ const Settings: React.FC = () => {
           <div className="tile-card p-6 mb-6 border-2 border-quip-orange border-opacity-30">
             <h2 className="text-2xl font-display font-bold text-quip-navy mb-4">Admin Access</h2>
             <p className="text-quip-teal mb-4">
-              Access administrative settings and configuration. Requires the application admin password (secret key).
+              Access administrative settings and configuration. Only available to users with admin email addresses.
             </p>
 
-            {!showAdminPasswordPrompt ? (
-              <button
-                onClick={handleAdminAccess}
-                className="bg-quip-orange hover:bg-quip-orange-deep text-white font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm"
-              >
-                Access Admin Panel
-              </button>
-            ) : (
-              <form onSubmit={handleAdminPasswordSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-semibold text-quip-teal mb-2">Enter admin password (secret key)</label>
-                  <input
-                    type="password"
-                    value={adminPassword}
-                    onChange={(e) => setAdminPassword(e.target.value)}
-                    className="w-full md:w-96 border-2 border-quip-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-quip-orange"
-                    placeholder="Admin password"
-                    autoFocus
-                  />
-                  {adminPasswordError && <p className="text-red-600 text-sm mt-1">{adminPasswordError}</p>}
-                </div>
-                <div className="flex gap-3">
-                  <button
-                    type="submit"
-                    className="bg-quip-orange hover:bg-quip-orange-deep text-white font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm"
-                  >
-                    Continue
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowAdminPasswordPrompt(false);
-                      setAdminPassword('');
-                      setAdminPasswordError(null);
-                    }}
-                    className="bg-gray-300 hover:bg-gray-400 text-gray-700 font-bold py-3 px-6 rounded-tile transition-all"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            )}
+            <button
+              onClick={handleAdminAccess}
+              className="bg-quip-orange hover:bg-quip-orange-deep text-white font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm"
+            >
+              Access Admin Panel
+            </button>
           </div>
         )}
       </div>
