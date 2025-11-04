@@ -70,12 +70,18 @@ export const Header: React.FC = () => {
     : 'View your results';
 
   // Check if today is the player's first day (hide treasure chest on first day)
-  const isFirstDay = (() => {
+  const isFirstDay = React.useMemo(() => {
     if (!player?.created_at) return false;
-    const createdDate = new Date(player.created_at).toISOString().split('T')[0];
-    const today = new Date().toISOString().split('T')[0];
-    return createdDate === today;
-  })();
+
+    const createdDate = new Date(player.created_at);
+    const today = new Date();
+
+    return (
+      createdDate.getFullYear() === today.getFullYear() &&
+      createdDate.getMonth() === today.getMonth() &&
+      createdDate.getDate() === today.getDate()
+    );
+  }, [player?.created_at]);
 
   const handleResultsClick = async () => {
     // Mark all unviewed results as viewed when clicking
