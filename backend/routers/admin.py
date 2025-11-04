@@ -593,11 +593,7 @@ async def reset_player_password(
 
     # Log the action
     logger.info(
-        "Admin %s (%s) reset password for player %s (%s)",
-        player.username,
-        player.player_id,
-        target_player.username,
-        target_player.player_id
+        f"Admin {player.username} ({player.player_id}) reset password for player {target_player.username} ({target_player.player_id})"
     )
 
     return AdminResetPasswordResponse(

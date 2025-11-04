@@ -242,8 +242,7 @@ async def ai_stale_handler_cycle():
 
         sleep_seconds = settings.ai_stale_check_interval_hours * 3600
         logger.info(
-            "Stale AI handler sleeping for %s hours",
-            settings.ai_stale_check_interval_hours,
+            f"Stale AI handler sleeping for {settings.ai_stale_check_interval_hours} hours"
         )
         await asyncio.sleep(sleep_seconds)
 
@@ -312,8 +311,7 @@ async def lifespan(app_instance: FastAPI):
     try:
         ai_backup_task = asyncio.create_task(ai_backup_cycle())
         logger.info(
-            "AI backup cycle task started (runs every %s minutes)",
-            settings.ai_backup_sleep_minutes,
+            f"AI backup cycle task started (runs every {settings.ai_backup_sleep_minutes} minutes)"
         )
     except Exception as e:
         logger.error(f"Failed to start AI backup cycle: {e}")
@@ -321,8 +319,7 @@ async def lifespan(app_instance: FastAPI):
     try:
         stale_handler_task = asyncio.create_task(ai_stale_handler_cycle())
         logger.info(
-            "Stale AI handler task started (runs every %s hours)",
-            settings.ai_stale_check_interval_hours,
+            f"Stale AI handler task started (runs every {settings.ai_stale_check_interval_hours} hours)"
         )
     except Exception as exc:
         logger.error(f"Failed to start stale AI handler cycle: {exc}")

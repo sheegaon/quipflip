@@ -142,8 +142,7 @@ class RoundService:
 
         if not prompt:
             logger.info(
-                "Player %s has seen all available prompts; no unseen prompts remaining",
-                player.player_id,
+                f"Player {player.player_id} has seen all available prompts; no unseen prompts remaining"
             )
             raise NoPromptsAvailableError("no_unseen_prompts_available")
 
@@ -434,10 +433,9 @@ class RoundService:
 
             if prompt_round.phraseset_status in {"flagged_pending", "flagged_removed"}:
                 logger.info(
-                    "[Copy Round Start] Prompt %s is flagged (status=%s), skipping for copy queue (attempt %d)",
-                    prompt_round_id,
-                    prompt_round.phraseset_status,
-                    attempts,
+                    "[Copy Round Start] "
+                    f"Prompt {prompt_round_id} is flagged (status={prompt_round.phraseset_status}), "
+                    f"skipping for copy queue (attempt {attempts})"
                 )
                 continue
 
@@ -769,12 +767,8 @@ class RoundService:
         dashboard_cache.invalidate_player_data(player.player_id)
 
         logger.info(
-            "Round %s (%s) abandoned by player %s; refund=%s penalty=%s",
-            round_id,
-            round_object.round_type,
-            player.player_id,
-            refund_amount,
-            penalty_kept,
+            f"Round {round_id} ({round_object.round_type}) abandoned by player {player.player_id}; "
+            f"refund={refund_amount} penalty={penalty_kept}"
         )
 
         return round_object, refund_amount, penalty_kept
@@ -855,10 +849,7 @@ class RoundService:
             dashboard_cache.invalidate_player_data(prompt_round.player_id)
 
         logger.info(
-            "Copy round %s flagged by player %s; prompt %s marked pending review",
-            round_id,
-            player.player_id,
-            prompt_round.round_id,
+            f"Copy round {round_id} flagged by player {player.player_id}; prompt {prompt_round.round_id} marked pending review"
         )
 
         return flag
