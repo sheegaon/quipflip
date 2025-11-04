@@ -26,6 +26,16 @@ export const CopyRound: React.FC = () => {
   const [flagError, setFlagError] = useState<string | null>(null);
   const [flagResult, setFlagResult] = useState<FlagCopyRoundResponse | null>(null);
 
+  const trimmedPhrase = phrase.trim();
+  const phraseWords = trimmedPhrase.split(/\s+/).filter(Boolean);
+  const lettersAndSpacesPattern = /^[A-Za-z ]+$/;
+  const wordPattern = /^[A-Za-z]+$/;
+  const isPhraseValid =
+    lettersAndSpacesPattern.test(trimmedPhrase) &&
+    phraseWords.length >= 2 &&
+    phraseWords.length <= 5 &&
+    phraseWords.every((word) => wordPattern.test(word));
+
   const roundData = activeRound?.round_type === 'copy' ? activeRound.state as CopyState : null;
   const { isExpired } = useTimer(roundData?.expires_at || null);
 
@@ -77,7 +87,7 @@ export const CopyRound: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!phrase.trim() || !roundData) return;
+    if (!roundData || isSubmitting || !isPhraseValid) return;
 
     setIsSubmitting(true);
     setError(null);
@@ -87,7 +97,7 @@ export const CopyRound: React.FC = () => {
       copyRoundLogger.debug('Submitting copy round phrase', {
         roundId: roundData.round_id,
       });
-      await apiClient.submitPhrase(roundData.round_id, phrase.trim());
+      await apiClient.submitPhrase(roundData.round_id, trimmedPhrase);
 
       // Show success message first to prevent navigation race condition
       const message = getRandomMessage('copySubmitted');
@@ -279,7 +289,7 @@ export const CopyRound: React.FC = () => {
 
           <button
             type="submit"
-            disabled={isExpired || isSubmitting || isFlagging || !phrase.trim()}
+            disabled={isExpired || isSubmitting || isFlagging || !isPhraseValid}
             className="w-full bg-quip-turquoise hover:bg-quip-teal disabled:bg-gray-400 text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm text-lg"
           >
             {isExpired ? "Time's Up" : isSubmitting ? loadingMessages.submitting : 'Submit Phrase'}
