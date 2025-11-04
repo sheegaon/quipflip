@@ -82,10 +82,7 @@ export const Header: React.FC = () => {
     });
 
     if (showBackArrow) {
-      const destination = getBackNavigation();
-      if (destination) {
-        navigate(destination);
-      }
+      navigate(getBackNavigation());
     }
   }, [refreshDashboard, refreshBalance, showBackArrow, getBackNavigation, navigate]);
 
