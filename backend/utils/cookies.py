@@ -21,7 +21,8 @@ def set_refresh_cookie(response: Response, token: str, *, expires_days: int | No
 
     # Use SameSite=None for production (cross-origin) and Lax for development (same localhost)
     samesite_value = "none" if settings.environment == "production" else "lax"
-    secure_value = settings.environment == "production"
+    # Secure flag: only disable for local development, enable for all other environments
+    secure_value = settings.environment != "development"
 
     response.set_cookie(
         key=settings.refresh_token_cookie_name,
@@ -46,7 +47,8 @@ def set_access_token_cookie(response: Response, token: str) -> None:
 
     # Use SameSite=None for production (cross-origin) and Lax for development (same localhost)
     samesite_value = "none" if settings.environment == "production" else "lax"
-    secure_value = settings.environment == "production"
+    # Secure flag: only disable for local development, enable for all other environments
+    secure_value = settings.environment != "development"
 
     response.set_cookie(
         key=settings.access_token_cookie_name,
