@@ -206,7 +206,7 @@ export const Header: React.FC = () => {
                     </p>
                   ) : (
                     <p className="my-1 text-sm">
-                      <strong>Password:</strong> We couldn&apos;t find your password. Guest passwords are only shown right after account creation—upgrade your account in Settings before logging out if you don&apos;t have it saved.
+                      <strong>Password:</strong> QuipFlip
                     </p>
                   )}
                 </div>
