@@ -9,7 +9,7 @@ import { TreasureChestIcon } from './TreasureChestIcon';
 export const Header: React.FC = () => {
   const { state, actions } = useGame();
   const { player, username, phrasesetSummary } = state;
-  const { logout, refreshDashboard } = actions;
+  const { logout, refreshDashboard, refreshBalance } = actions;
   const { state: resultsState, actions: resultsActions } = useResults();
   const { pendingResults, viewedResultIds } = resultsState;
   const { markResultsViewed } = resultsActions;
@@ -23,7 +23,7 @@ export const Header: React.FC = () => {
   const showBackArrow = location.pathname === '/statistics' || location.pathname === '/tracking' || location.pathname === '/quests' || location.pathname === '/results' || location.pathname === '/settings' || isAdminRoute;
 
   // Determine where back arrow should navigate based on current page
-  const getBackNavigation = () => {
+  const getBackNavigation = React.useCallback(() => {
     if (location.pathname === '/settings') {
       return '/statistics';
     }
@@ -34,7 +34,7 @@ export const Header: React.FC = () => {
       return '/admin';
     }
     return '/dashboard';
-  };
+  }, [location.pathname]);
 
   if (!player) {
     return null;
@@ -68,6 +68,32 @@ export const Header: React.FC = () => {
   const resultsLabel = unviewedCount > 0
     ? `${unviewedCount} result${unviewedCount === 1 ? '' : 's'} ready to view`
     : 'View your results';
+
+  const goToStatistics = React.useCallback(() => {
+    navigate('/statistics');
+  }, [navigate]);
+
+  const handleLogoClick = React.useCallback(() => {
+    refreshDashboard().catch((err) => {
+      console.warn('Failed to refresh dashboard from header icon:', err);
+    });
+    refreshBalance().catch((err) => {
+      console.warn('Failed to refresh balance from header icon:', err);
+    });
+
+    if (showBackArrow) {
+      const destination = getBackNavigation();
+      if (destination) {
+        navigate(destination);
+      }
+    }
+  }, [refreshDashboard, refreshBalance, showBackArrow, getBackNavigation, navigate]);
+
+  const logoTitle = showBackArrow
+    ? location.pathname === '/settings'
+      ? 'Back to Statistics (refresh)'
+      : 'Back to Dashboard (refresh)'
+    : 'Refresh dashboard';
 
   // Check if today is the player's first day (hide treasure chest on first day)
   const isFirstDay = React.useMemo(() => {
@@ -108,10 +134,11 @@ export const Header: React.FC = () => {
           {/* Left: Logo + Back Arrow (on certain pages) */}
           <div className="flex items-center gap-0.5 md:gap-3">
             <button
-              onClick={showBackArrow ? () => navigate(getBackNavigation()) : undefined}
-              className={`flex items-center gap-0 md:gap-2 ${showBackArrow ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
-              disabled={!showBackArrow}
-              title={showBackArrow ? (location.pathname === '/settings' ? "Back to Statistics" : "Back to Dashboard") : undefined}
+              type="button"
+              onClick={handleLogoClick}
+              className={`flex items-center gap-0 md:gap-2 cursor-pointer transition-opacity ${showBackArrow ? 'hover:opacity-80' : 'hover:opacity-90'}`}
+              title={logoTitle}
+              aria-label={logoTitle}
             >
               {showBackArrow && (
                 <img
@@ -178,7 +205,7 @@ export const Header: React.FC = () => {
           {/* Center: Username (clickable to player page) */}
           <div className="flex-1 text-center">
             <button
-              onClick={() => navigate('/statistics')}
+              onClick={goToStatistics}
               className="inline-flex items-center gap-0.5 md:gap-1.5 text-xs md:text-2xl text-quip-turquoise font-semibold hover:text-quip-teal transition-colors group"
               title="View your statistics"
             >
@@ -208,13 +235,19 @@ export const Header: React.FC = () => {
               </button>
             )}
             {/* Flipcoin Balance */}
-            <div className="flex items-center gap-0.5 tutorial-balance border border-white/10 rounded-xl px-1 md:px-3 py-1">
+            <button
+              type="button"
+              onClick={goToStatistics}
+              className="flex items-center gap-0.5 tutorial-balance border border-white/10 rounded-xl px-1 md:px-3 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-quip-teal"
+              title="View your statistics"
+              aria-label="View your statistics"
+            >
               <img src="/flipcoin.png" alt="Flipcoin" className="w-5 h-5 md:w-8 md:h-8" />
               <BalanceFlipper
                 value={player.balance}
                 className="text-xl md:text-3xl font-display font-bold text-quip-turquoise"
               />
-            </div>
+            </button>
             {/* Logout Button */}
             <button onClick={logout} className="text-quip-teal hover:text-quip-turquoise" title="Logout">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 md:h-10 w-6 md:w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
