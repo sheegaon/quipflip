@@ -50,11 +50,4 @@ class FlaggedPrompt(Base):
     copy_round = relationship("Round", foreign_keys=[copy_round_id])
 
     def __repr__(self) -> str:
-        return (
-            "<FlaggedPrompt(flag_id={flag_id}, prompt_round_id={prompt_round_id}, "
-            "status={status})>"
-        ).format(
-            flag_id=self.flag_id,
-            prompt_round_id=self.prompt_round_id,
-            status=self.status,
-        )
+        return f"<FlaggedPrompt(flag_id={self.flag_id}, prompt_round_id={self.prompt_round_id}, status={self.status})>"

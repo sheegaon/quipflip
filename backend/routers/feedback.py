@@ -55,7 +55,7 @@ async def submit_beta_survey(
         )
     )
     if existing.scalar_one_or_none():
-        logger.info("Player %s attempted to resubmit beta survey", player.player_id)
+        logger.info(f"Player {player.player_id} attempted to resubmit beta survey")
         return SurveySubmissionResponse(status="already_submitted", message="already submitted")
 
     payload = {
@@ -75,7 +75,7 @@ async def submit_beta_survey(
     await db.flush()
     await db.commit()
 
-    logger.info("Stored beta survey response %s for player %s", response.response_id, player.player_id)
+    logger.info(f"Stored beta survey response {response.response_id} for player {player.player_id}")
     return SurveySubmissionResponse(status="submitted", message="thank you")
 
 

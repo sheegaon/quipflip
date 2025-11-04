@@ -423,10 +423,7 @@ class SystemConfigService:
                 )
                 migrated_minutes = max(1, int(round(legacy_value / 60)))
                 logger.info(
-                    "Migrated legacy %s=%s to ai_backup_sleep_minutes=%s",
-                    legacy_sleep_key,
-                    legacy_value,
-                    migrated_minutes,
+                    f"Migrated legacy {legacy_sleep_key}={legacy_value} to ai_backup_sleep_minutes={migrated_minutes}"
                 )
                 config_dict["ai_backup_sleep_minutes"] = migrated_minutes
 

@@ -151,5 +151,5 @@ async def claim_phraseset_prize(
             raise HTTPException(status_code=403, detail=message)
         raise HTTPException(status_code=400, detail=message)
     except Exception as exc:
-        logger.error("Error claiming prize: %s", exc)
+        logger.error(f"Error claiming prize: {exc}")
         raise HTTPException(status_code=500, detail="Failed to claim prize")

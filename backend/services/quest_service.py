@@ -188,9 +188,7 @@ class QuestService:
                     quests.append(quest)
                 except Exception:
                     logger.exception(
-                        "Failed to ensure quest %s for player %s",
-                        quest_type.value,
-                        player_id,
+                        f"Failed to ensure quest {quest_type.value} for player {player_id}"
                     )
 
             if auto_commit:
@@ -204,14 +202,11 @@ class QuestService:
                     await self.db.flush()
                 except Exception:
                     logger.exception(
-                        "Failed to flush quest initialization changes for player %s",
-                        player_id,
+                        f"Failed to flush quest initialization changes for player {player_id}"
                     )
 
         logger.info(
-            "Ensured starter quests exist for player %s (total=%d)",
-            player_id,
-            len(self.STARTER_QUEST_TYPES),
+            f"Ensured starter quests exist for player {player_id} (total={len(self.STARTER_QUEST_TYPES)})"
         )
         return quests
 
@@ -251,9 +246,7 @@ class QuestService:
                     )
                 except Exception:
                     logger.exception(
-                        "Failed to create quest %s for player %s",
-                        quest_type.value,
-                        player_id,
+                        f"Failed to create quest {quest_type.value} for player {player_id}"
                     )
 
             if auto_commit:
@@ -267,14 +260,11 @@ class QuestService:
                     await self.db.flush()
                 except Exception:
                     logger.exception(
-                        "Failed to flush missing quest creation for player %s",
-                        player_id,
+                        f"Failed to flush missing quest creation for player {player_id}"
                     )
 
         logger.info(
-            "Ensured %d missing starter quests exist for player %s",
-            len(missing_quest_types),
-            player_id,
+            f"Ensured {len(missing_quest_types)} missing starter quests exist for player {player_id}"
         )
         return quests
 
@@ -295,9 +285,7 @@ class QuestService:
             existing_quest = await self._get_existing_quest(player_id, quest_type)
             if existing_quest:
                 logger.info(
-                    "Quest %s already exists for player %s",
-                    quest_type.value,
-                    player_id,
+                    f"Quest {quest_type.value} already exists for player {player_id}"
                 )
                 return existing_quest
 
@@ -332,24 +320,17 @@ class QuestService:
             result = await self.db.execute(stmt)
         except IntegrityError as exc:
             logger.warning(
-                "Integrity error while creating quest %s for player %s: %s",
-                quest_type.value,
-                player_id,
-                exc,
+                f"Integrity error while creating quest {quest_type.value} for player {player_id}: {exc}"
             )
             return await self._get_existing_quest(player_id, quest_type)
 
         if getattr(result, "rowcount", None) == 1:
             logger.info(
-                "Created quest %s for player %s",
-                quest_type.value,
-                player_id,
+                f"Created quest {quest_type.value} for player {player_id}"
             )
         else:
             logger.info(
-                "Quest %s already existed for player %s (detected via upsert)",
-                quest_type.value,
-                player_id,
+                f"Quest {quest_type.value} already existed for player {player_id} (detected via upsert)"
             )
 
         quest = await self._get_existing_quest(player_id, quest_type)

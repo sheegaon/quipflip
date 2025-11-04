@@ -135,9 +135,7 @@ class Settings(BaseSettings):
                     seconds_value = int(legacy_seconds)
                     converted_minutes = max(1, int(round(seconds_value / 60)))
                     logger.info(
-                        "Converted legacy AI_BACKUP_SLEEP_SECONDS=%s to %s minutes",
-                        legacy_seconds,
-                        converted_minutes,
+                        f"Converted legacy AI_BACKUP_SLEEP_SECONDS={legacy_seconds} to {converted_minutes} minutes"
                     )
                     self.ai_backup_sleep_minutes = converted_minutes
                 except ValueError as exc:

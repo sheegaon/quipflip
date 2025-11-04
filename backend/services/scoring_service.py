@@ -53,7 +53,7 @@ def _get_redis_client() -> "Redis | None":
                 decode_responses=True,
             )
         except Exception as exc:  # pragma: no cover - defensive logging
-            logger.warning("Unable to initialize Redis client for leaderboard cache: %s", exc)
+            logger.warning(f"Unable to initialize Redis client for leaderboard cache: {exc}")
             _redis_client = None
             return None
 
@@ -70,7 +70,7 @@ async def _load_cached_weekly_leaderboard() -> tuple[list[dict[str, Any]], datet
     try:
         raw_value = await client.get(WEEKLY_LEADERBOARD_CACHE_KEY)
     except Exception as exc:  # pragma: no cover - defensive logging
-        logger.error("Failed to read weekly leaderboard cache: %s", exc)
+        logger.error(f"Failed to read weekly leaderboard cache: {exc}")
         return None
 
     if not raw_value:
@@ -89,8 +89,7 @@ async def _load_cached_weekly_leaderboard() -> tuple[list[dict[str, Any]], datet
                     normalized["player_id"] = UUID(str(normalized["player_id"]))
                 except Exception:
                     logger.error(
-                        "Skipping cached leaderboard entry with invalid player_id: %s",
-                        normalized.get("player_id"),
+                        f"Skipping cached leaderboard entry with invalid player_id: {normalized.get('player_id')}"
                     )
                     continue
             entries.append(normalized)
@@ -100,7 +99,7 @@ async def _load_cached_weekly_leaderboard() -> tuple[list[dict[str, Any]], datet
 
         return entries, generated_at
     except Exception as exc:  # pragma: no cover - cache corruption fallback
-        logger.error("Invalid data in weekly leaderboard cache: %s", exc)
+        logger.error(f"Invalid data in weekly leaderboard cache: {exc}")
         return None
 
 
@@ -128,7 +127,7 @@ async def _store_weekly_leaderboard_cache(entries: list[dict[str, Any]], generat
     try:
         await client.set(WEEKLY_LEADERBOARD_CACHE_KEY, json.dumps(payload), ex=3600)
     except Exception as exc:  # pragma: no cover - defensive logging
-        logger.error("Failed to write weekly leaderboard cache: %s", exc)
+        logger.error(f"Failed to write weekly leaderboard cache: {exc}")
 
 
 def _placeholder_player_id(phraseset_id: UUID, role: str) -> UUID:
@@ -234,11 +233,7 @@ class ScoringService:
         )
 
         logger.info(
-            "Calculated payouts for phraseset %s: original=%s, copy1=%s, copy2=%s",
-            phraseset.phraseset_id,
-            original_payout,
-            copy1_payout,
-            copy2_payout,
+            f"Calculated payouts for phraseset {phraseset.phraseset_id}: original={original_payout}, copy1={copy1_payout}, copy2={copy2_payout}"
         )
 
         return {
