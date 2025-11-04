@@ -98,38 +98,6 @@ const clearStoredCredentials = () => {
   localStorage.removeItem(USERNAME_STORAGE_KEY);
 };
 
-// Track if we're currently refreshing to prevent multiple simultaneous refresh attempts
-let isRefreshing = false;
-let failedQueue: Array<{
-  resolve: (value?: any) => void;
-  reject: (error?: any) => void;
-}> = [];
-
-const processQueue = (error: any = null) => {
-  failedQueue.forEach((promise) => {
-    if (error) {
-      promise.reject(error);
-    } else {
-      promise.resolve();
-    }
-  });
-  failedQueue = [];
-};
-
-const performTokenRefresh = async (): Promise<void> => {
-  try {
-    // Call refresh endpoint - cookies are sent automatically
-    const { data } = await api.post<AuthTokenResponse>('/auth/refresh', {});
-    logApi('POST', '/auth/refresh', 'success', 'Token refreshed');
-    // Cookies are automatically updated by the server response
-    return data;
-  } catch (error) {
-    logApi('POST', '/auth/refresh', 'error', 'Token refresh failed');
-    clearStoredCredentials();
-    throw error;
-  }
-};
-
 // Request interceptor for logging outgoing requests
 api.interceptors.request.use((config) => {
   const method = config.method?.toUpperCase() || 'UNKNOWN';
