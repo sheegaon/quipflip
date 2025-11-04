@@ -395,7 +395,7 @@ class CleanupService:
 
     # ===== Inactive Guest Player Cleanup =====
 
-    async def cleanup_inactive_guest_players(self, days_old: int = 7) -> int:
+    async def cleanup_inactive_guest_players(self, days_old: int = 1) -> int:
         """
         Remove guest accounts that:
         1. Have is_guest=True
@@ -425,8 +425,15 @@ class CleanupService:
         # Filter to those with no rounds
         inactive_guest_ids = []
         for guest in all_old_guests:
-            # Check if player has any rounds
-            rounds_stmt = select(Round).where(Round.player_id == guest.player_id).limit(1)
+            # Check if player has any non-abandoned rounds
+            rounds_stmt = (
+                select(Round)
+                .where(
+                    Round.player_id == guest.player_id,
+                    or_(Round.status.is_(None), Round.status != "abandoned"),
+                )
+                .limit(1)
+            )
             rounds_result = await self.db.execute(rounds_stmt)
             has_rounds = rounds_result.scalar_one_or_none() is not None
 
@@ -434,10 +441,13 @@ class CleanupService:
                 inactive_guest_ids.append(guest.player_id)
 
         if not inactive_guest_ids:
-            logger.info(f"Found {len(all_old_guests)} old guest(s), but all have played rounds")
+            logger.info(f"Found {len(all_old_guests)} old guest(s), but all have non-abandoned rounds")
             return 0
 
-        logger.info(f"Found {len(inactive_guest_ids)} inactive guest player(s) to clean up (>{days_old} days old, no rounds)")
+        logger.info(
+            f"Found {len(inactive_guest_ids)} inactive guest player(s) to clean up "
+            f"(>{days_old} days old, no non-abandoned rounds)"
+        )
 
         # Delete inactive guests and their related data
         deletion_counts = await self._delete_players_by_ids(inactive_guest_ids)
