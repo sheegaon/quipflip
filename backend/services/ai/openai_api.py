@@ -53,7 +53,7 @@ async def generate_copy(
         response = await client.chat.completions.create(
             model=model,
             messages=[
-                {"role": "system", "content": "You are playing a creative word game."},
+                {"role": "system", "content": "Play a creative word game."},
                 {"role": "user", "content": prompt}
             ])
 

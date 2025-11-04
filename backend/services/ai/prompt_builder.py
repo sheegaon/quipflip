@@ -21,6 +21,8 @@ def build_copy_prompt(original_phrase: str, existing_copy_phrase: str = None) ->
     """
     base_prompt = """Create a phrase meaning roughly the same thing as the original phrase.
 
+**Original phrase: "{original_phrase}"**
+
 Rules:
 - 1-15 characters per word
 - 2-5 words total, 4-100 characters total
@@ -30,18 +32,16 @@ Rules:
 
     if existing_copy_phrase:
         base_prompt += f"""
-- IMPORTANT: Another player already submitted this copy: "{existing_copy_phrase}" """
+- **IMPORTANT: Another player already submitted this copy: "{existing_copy_phrase}"**"""
         base_prompt += """
 - Do NOT use or lightly modify (e.g., pluralize) any words from either the original phrase or the existing copy phrase
   which are 4 or more letters long, except common words {common_words}"""
     else:
         base_prompt += """
 - Do NOT use or lightly modify (e.g., pluralize) any words from the original phrase which are 4 or more letters long, 
-  except common words {common_words}"""
+  except common words: [{common_words}]"""
 
     base_prompt += f"""
-
-Original phrase: "{original_phrase}"
 
 Generate ONE alternative phrase only:"""
 
@@ -72,16 +72,15 @@ def build_vote_prompt(prompt_text: str, phrases: list[str]) -> str:
 
     return f"""You are playing a word game where you need to identify the original phrase.
 
-Given a prompt and three phrases, one phrase is the ORIGINAL that was submitted by a player,
-and two phrases are COPIES created by other players trying to mimic the original.
+Given a prompt and three phrases, one phrase is the ORIGINAL that was submitted by a player, and two phrases are COPIES created by other players trying to mimic the original.
 
 Your task: Identify which phrase is most likely the ORIGINAL.
 
 Prompt: "{prompt_text}"
 
+Consider:{chosen_considerations}
+
 Phrases:
 {phrases_formatted}
-
-Consider:{chosen_considerations}
 
 Respond with ONLY the number (1, 2, or 3) of the phrase you believe is the original."""
