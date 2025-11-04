@@ -214,27 +214,26 @@ async def get_game_config(
     )
 
 
-@router.post("/validate-password", response_model=ValidatePasswordResponse)
+@router.post("/validate-password", response_model=ValidatePasswordResponse, deprecated=True)
 async def validate_admin_password(
     request: ValidatePasswordRequest,
     player: Annotated[Player, Depends(get_admin_player)]
 ) -> ValidatePasswordResponse:
     """
-    Validate admin password against the application secret key.
+    [DEPRECATED] This endpoint is deprecated and will be removed.
+    Admin authentication is now handled via email-based authorization.
+    If you're seeing this, the user has admin access (or the request would have failed).
 
     Args:
-        request: Password validation request
-        player: Current authenticated player (required to access this endpoint)
+        request: Password validation request (ignored)
+        player: Current authenticated player (must be admin)
 
     Returns:
-        ValidatePasswordResponse with valid=True if password matches secret_key
+        ValidatePasswordResponse with valid=True (always, since admin access is already validated)
     """
-    settings = get_settings()
-
-    # Compare the provided password with the secret_key
-    is_valid = request.password == settings.secret_key
-
-    return ValidatePasswordResponse(valid=is_valid)
+    # Since the user made it past get_admin_player, they are an admin
+    # Return True for backward compatibility
+    return ValidatePasswordResponse(valid=True)
 
 
 @router.get("/players/search", response_model=AdminPlayerSummary)
@@ -280,9 +279,6 @@ async def delete_player_admin(
 ) -> AdminDeletePlayerResponse:
     """Delete a player account and associated data via admin panel."""
 
-    if not player.is_admin:
-        raise HTTPException(status_code=403, detail="admin_only")
-
     identifier = request.player_id or request.email or request.username
     if not identifier:
         raise HTTPException(status_code=400, detail="missing_identifier")
@@ -319,9 +315,6 @@ async def list_flagged_prompts(
 ) -> FlaggedPromptListResponse:
     """Retrieve flagged prompt phrases for review."""
 
-    if not player.is_admin:
-        raise HTTPException(status_code=403, detail="admin_only")
-
     normalized_status = status if status not in {None, "all", ""} else None
     service = FlaggedPromptService(session)
     records = await service.list_flags(normalized_status)
@@ -339,9 +332,6 @@ async def resolve_flagged_prompt(
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> FlaggedPromptItem:
     """Resolve a flagged prompt by confirming or dismissing it."""
-
-    if not player.is_admin:
-        raise HTTPException(status_code=403, detail="admin_only")
 
     service = FlaggedPromptService(session)
     transaction_service = TransactionService(session)

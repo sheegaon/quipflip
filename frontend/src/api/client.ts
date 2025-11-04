@@ -98,6 +98,36 @@ const clearStoredCredentials = () => {
   localStorage.removeItem(USERNAME_STORAGE_KEY);
 };
 
+// Track if we're currently refreshing to prevent multiple simultaneous refresh attempts
+let isRefreshing = false;
+let failedQueue: Array<{
+  resolve: (value?: any) => void;
+  reject: (error?: any) => void;
+}> = [];
+
+const processQueue = (error: any = null) => {
+  failedQueue.forEach((promise) => {
+    if (error) {
+      promise.reject(error);
+    } else {
+      promise.resolve();
+    }
+  });
+  failedQueue = [];
+};
+
+const performTokenRefresh = async (): Promise<void> => {
+  try {
+    // Call refresh endpoint - cookies are sent/received automatically
+    await api.post('/auth/refresh', {});
+    logApi('POST', '/auth/refresh', 'success', 'Token refreshed via cookie');
+  } catch (error) {
+    logApi('POST', '/auth/refresh', 'error', 'Token refresh failed');
+    clearStoredCredentials();
+    throw error;
+  }
+};
+
 // Request interceptor for logging outgoing requests
 api.interceptors.request.use((config) => {
   const method = config.method?.toUpperCase() || 'UNKNOWN';
@@ -107,7 +137,7 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Response interceptor for success/error logging and normalization
+// Response interceptor for success/error logging, automatic token refresh, and normalization
 api.interceptors.response.use(
   (response) => {
     const method = response.config.method?.toUpperCase() || 'UNKNOWN';
@@ -122,11 +152,52 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
+    const originalRequest = error.config as any;
+
     if (error.config) {
       const method = error.config.method?.toUpperCase() || 'UNKNOWN';
       const endpoint = error.config.url || '';
       const errorMessage = error.response?.data?.detail || error.message;
       logApi(method, endpoint, 'error', errorMessage);
+    }
+
+    // Handle 401 errors with automatic token refresh
+    if (
+      error.response?.status === 401 &&
+      originalRequest &&
+      !originalRequest._retry &&
+      originalRequest.url !== '/auth/login' &&
+      originalRequest.url !== '/auth/refresh' &&
+      originalRequest.url !== '/auth/logout'
+    ) {
+      // Only attempt refresh if we have evidence of a previous login
+      const hasStoredUsername = localStorage.getItem(USERNAME_STORAGE_KEY);
+
+      if (hasStoredUsername) {
+        if (isRefreshing) {
+          // Queue the request while refresh is in progress
+          return new Promise((resolve, reject) => {
+            failedQueue.push({ resolve, reject });
+          })
+            .then(() => api(originalRequest))
+            .catch((err) => Promise.reject(err));
+        }
+
+        originalRequest._retry = true;
+        isRefreshing = true;
+
+        try {
+          await performTokenRefresh();
+          processQueue(null);
+          return api(originalRequest);
+        } catch (refreshError) {
+          processQueue(refreshError);
+          clearStoredCredentials();
+          return Promise.reject(refreshError);
+        } finally {
+          isRefreshing = false;
+        }
+      }
     }
 
     // Error normalization and user-friendly messages
@@ -456,11 +527,6 @@ export const apiClient = {
   },
 
   // Admin endpoints
-  async validateAdminPassword(password: string, signal?: AbortSignal): Promise<{ valid: boolean }> {
-    const { data } = await api.post('/admin/validate-password', { password }, { signal });
-    return data;
-  },
-
   async getAdminConfig(signal?: AbortSignal): Promise<any> {
     const { data } = await api.get('/admin/config', { signal });
     return data;
