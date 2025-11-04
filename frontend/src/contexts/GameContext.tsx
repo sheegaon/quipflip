@@ -149,8 +149,12 @@ export const GameProvider: React.FC<{
   }, [stopPoll]);
 
   const refreshDashboard = useCallback(async (signal?: AbortSignal) => {
-      // Note: Don't check isAuthenticated here - it causes stale closure issues
-      // The polling effect and initial load effect already guard against unauthenticated calls
+      const storedUsername = apiClient.getStoredUsername();
+      if (!storedUsername) {
+        gameContextLogger.debug('⏭️ Skipping dashboard refresh: no active session detected');
+        return;
+      }
+
       try {
         const data = await apiClient.getDashboardData(signal);
         gameContextLogger.debug('✅ Dashboard data received successfully:', {
@@ -221,9 +225,13 @@ export const GameProvider: React.FC<{
   }, [username, logout]);
 
   const refreshBalance = useCallback(async (signal?: AbortSignal) => {
+      const storedUsername = apiClient.getStoredUsername();
+      if (!storedUsername) {
+        gameContextLogger.debug('⏭️ Skipping balance refresh: no active session detected');
+        return;
+      }
+
       gameContextLogger.debug('💰 GameContext refreshBalance called');
-      // Note: Don't check isAuthenticated here - it causes stale closure issues
-      // The polling effect already guards against unauthenticated calls
 
       try {
         gameContextLogger.debug('📞 Calling apiClient.getBalance...');

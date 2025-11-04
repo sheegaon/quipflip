@@ -8,6 +8,7 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { ThumbFeedbackButton } from '../components/ThumbFeedbackButton';
 import { useTimer } from '../hooks/useTimer';
+import { usePhraseValidation } from '../hooks/usePhraseValidation';
 import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
 import type { PromptState } from '../api/types';
 import { promptRoundLogger } from '../utils/logger';
@@ -24,6 +25,8 @@ export const PromptRound: React.FC = () => {
   const [feedbackType, setFeedbackType] = useState<'like' | 'dislike' | null>(null);
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const { isPhraseValid, trimmedPhrase } = usePhraseValidation(phrase);
 
   const roundData = activeRound?.round_type === 'prompt' ? activeRound.state as PromptState : null;
 
@@ -127,7 +130,7 @@ export const PromptRound: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!phrase.trim() || !roundData || isSubmitting) {
+    if (!roundData || isSubmitting || !isPhraseValid) {
       return;
     }
 
@@ -143,7 +146,7 @@ export const PromptRound: React.FC = () => {
       promptRoundLogger.debug('Submitting prompt round phrase', {
         roundId: roundData.round_id,
       });
-      await apiClient.submitPhrase(roundData.round_id, phrase.trim());
+      await apiClient.submitPhrase(roundData.round_id, trimmedPhrase);
 
       // Show success message first to prevent navigation race condition
       const message = getRandomMessage('promptSubmitted');
@@ -280,7 +283,7 @@ export const PromptRound: React.FC = () => {
 
           <button
             type="submit"
-            disabled={isExpired || isSubmitting || !phrase.trim()}
+            disabled={isExpired || isSubmitting || !isPhraseValid}
             className="w-full bg-quip-navy hover:bg-quip-teal disabled:bg-gray-400 text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm text-lg"
           >
             {isExpired ? "Time's Up" : isSubmitting ? loadingMessages.submitting : 'Submit Phrase'}

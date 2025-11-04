@@ -24,6 +24,7 @@ export const Dashboard: React.FC = () => {
     phrasesetSummary,
     roundAvailability,
     error: contextError,
+    isAuthenticated,
   } = state;
   const { refreshDashboard, clearError, abandonRound } = actions;
   const { startTutorial, skipTutorial, advanceStep } = useTutorial();
@@ -37,6 +38,7 @@ export const Dashboard: React.FC = () => {
   const [showSurveyPrompt, setShowSurveyPrompt] = useState(false);
   const [isAbandoningRound, setIsAbandoningRound] = useState(false);
   const [abandonError, setAbandonError] = useState<string | null>(null);
+  const roundExpiryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Log component mount and key state changes
   useEffect(() => {
@@ -139,15 +141,23 @@ export const Dashboard: React.FC = () => {
 
   const refreshDashboardAfterCountdown = useCallback(
     async (source: string) => {
+      if (!isAuthenticated) {
+        dashboardLogger.debug('Skipping dashboard refresh after countdown (unauthenticated)', { source });
+        roundExpiryTimeoutRef.current = null;
+        return;
+      }
+
       dashboardLogger.debug('Countdown expired, refreshing dashboard', { source });
       try {
         await refreshDashboard();
         dashboardLogger.debug('Dashboard refreshed successfully after countdown', { source });
       } catch (err) {
         dashboardLogger.error('Failed to refresh dashboard after countdown expiration', { source, error: err });
+      } finally {
+        roundExpiryTimeoutRef.current = null;
       }
     },
-    [refreshDashboard]
+    [isAuthenticated, refreshDashboard]
   );
 
   // Refresh when page becomes visible (with debouncing)
@@ -211,16 +221,47 @@ export const Dashboard: React.FC = () => {
   }, [activeRoundRoute, navigate]);
 
   const handleRoundExpired = useCallback(() => {
+    if (!isAuthenticated) {
+      dashboardLogger.debug('Round expired but user is unauthenticated; skipping refresh scheduling');
+      return;
+    }
+
     dashboardLogger.debug('Round expired, setting flag and scheduling refresh in 6 seconds');
     setIsRoundExpired(true);
 
-    // Delay refresh by 6 seconds to allow backend to process expiration
-    // (Backend has 5-second grace period, so we wait slightly longer)
-    setTimeout(() => {
+    if (roundExpiryTimeoutRef.current) {
+      clearTimeout(roundExpiryTimeoutRef.current);
+    }
+
+    const roundTypeLabel = activeRound?.round_type ?? 'unknown';
+    roundExpiryTimeoutRef.current = window.setTimeout(() => {
       dashboardLogger.debug('Executing delayed refresh after round expiration');
-      void refreshDashboardAfterCountdown(`round:${activeRound?.round_type ?? 'unknown'}`);
+      void refreshDashboardAfterCountdown(`round:${roundTypeLabel}`);
     }, 6000);
-  }, [activeRound?.round_type, refreshDashboardAfterCountdown]);
+  }, [activeRound?.round_type, isAuthenticated, refreshDashboardAfterCountdown]);
+
+  useEffect(() => {
+    if (!isAuthenticated && roundExpiryTimeoutRef.current) {
+      clearTimeout(roundExpiryTimeoutRef.current);
+      roundExpiryTimeoutRef.current = null;
+    }
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (!activeRound && roundExpiryTimeoutRef.current) {
+      clearTimeout(roundExpiryTimeoutRef.current);
+      roundExpiryTimeoutRef.current = null;
+    }
+  }, [activeRound]);
+
+  useEffect(() => {
+    return () => {
+      if (roundExpiryTimeoutRef.current) {
+        clearTimeout(roundExpiryTimeoutRef.current);
+        roundExpiryTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   const handleAbandonRound = useCallback(async () => {
     if (!activeRound?.round_id || !canAbandonRound || isAbandoningRound) {
