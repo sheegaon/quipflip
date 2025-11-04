@@ -39,13 +39,21 @@ JWT authentication using HTTP-only cookies for enhanced security:
 - **Access tokens** (2-hour lifetime): Stored in HTTP-only cookie, automatically sent with requests
 - **Refresh tokens** (30-day lifetime): Stored in HTTP-only cookie, used for automatic token rotation
 - **Cookie security**: HttpOnly, Secure (production), SameSite=Lax
+- **iOS compatibility**: Vercel proxy (`/api/*`) ensures same-origin requests, fixing iOS cookie blocking
+- **Automatic refresh**: Frontend intercepts 401 errors and silently refreshes tokens
 - **Backward compatibility**: Authorization header still supported for API clients
+
+**Production Setup:**
+- Frontend: Vercel hosting at `quipflip.xyz`
+- Backend: Heroku at `quipflip-c196034288cd.herokuapp.com`
+- Proxy: Vercel rewrites `/api/*` → Heroku backend (same-origin from browser perspective)
 
 See [API.md](API.md) for complete authentication documentation including:
 - Cookie-based authentication (preferred)
 - Authorization header format (`Authorization: Bearer <token>`) - fallback for API clients
 - Credential-based login (`POST /auth/login`)
 - Refresh token endpoint (`POST /auth/refresh`)
+- Automatic token refresh on expiration
 
 ---
 

@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import bcrypt
+import secrets
+import string
 
 
 class PasswordValidationError(ValueError):
@@ -58,3 +60,17 @@ def needs_update(password_hash: str) -> bool:
     increase the cost factor. This function always returns False for now.
     """
     return False
+
+
+def generate_temporary_password(length: int = 8) -> str:
+    """Generate a temporary password for admin password resets.
+
+    Args:
+        length: Length of the password (default 8)
+
+    Returns:
+        A cryptographically secure random password containing only
+        uppercase letters, lowercase letters, and digits (no special characters).
+    """
+    alphabet = string.ascii_letters + string.digits
+    return ''.join(secrets.choice(alphabet) for _ in range(length))

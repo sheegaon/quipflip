@@ -4,8 +4,11 @@
 
 ```
 Development: http://localhost:8000
-Production: https://your-app.herokuapp.com
+Production (Frontend): https://quipflip.xyz
+Production (API): https://quipflip.xyz/api (proxied to Heroku backend)
 ```
+
+**Note:** In production, the frontend uses Vercel's rewrite feature to proxy `/api/*` requests to the Heroku backend. This ensures same-origin requests for maximum browser compatibility (especially iOS Safari/Chrome).
 
 ## Authentication
 
@@ -17,6 +20,7 @@ All endpoints except `/health` and `/` require a valid JSON Web Token (JWT) acce
 - Refresh tokens are stored in `quipflip_refresh_token` cookie (30-day lifetime)
 - Cookies are automatically sent with requests when using `withCredentials: true`
 - Provides XSS protection since JavaScript cannot access HTTP-only cookies
+- **iOS Compatible:** The Vercel proxy ensures cookies work on all iOS browsers (Safari, Chrome, etc.)
 
 **Authorization Header (Backward Compatibility):**
 ```
