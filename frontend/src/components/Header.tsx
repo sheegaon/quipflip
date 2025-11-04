@@ -34,7 +34,7 @@ export const Header: React.FC = () => {
       return '/admin';
     }
     return '/dashboard';
-  }, [location.pathname]);
+  }, [location.pathname, isAdminRoute]);
 
   if (!player) {
     return null;
