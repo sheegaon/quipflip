@@ -50,10 +50,8 @@ class QueueService:
 
         prompt_ids = [UUID(item["prompt_round_id"]) for item in items]
         logger.info(
-            "[Queue Pop] Retrieved %d prompts from queue (requested %d, queue had %d items)",
-            len(prompt_ids),
-            count,
-            queue_length_before,
+            f"[Queue Pop] Retrieved {len(prompt_ids)} prompts from queue (requested {count}, queue had "
+            f"{queue_length_before} items)"
         )
         return prompt_ids
 

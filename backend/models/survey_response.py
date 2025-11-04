@@ -36,9 +36,4 @@ class SurveyResponse(Base):
 
     def __repr__(self) -> str:
         return (
-            "<SurveyResponse(response_id={rid}, player_id={pid}, survey_id={sid})>".format(
-                rid=self.response_id,
-                pid=self.player_id,
-                sid=self.survey_id,
-            )
-        )
+            f"<SurveyResponse(response_id={self.response_id}, player_id={self.player_id}, survey_id={self.survey_id})>")
