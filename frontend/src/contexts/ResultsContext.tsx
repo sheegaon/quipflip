@@ -166,25 +166,6 @@ export const ResultsProvider: React.FC<{
     const key = buildPhrasesetListKey(params);
     const cached = resultsState.playerPhrasesets[key];
 
-    const token = await apiClient.ensureAccessToken();
-    if (!token) {
-      gameContextLogger.warn('❌ No valid token for player phrasesets refresh');
-      setResultsState(prev => ({
-        ...prev,
-        playerPhrasesets: {
-          ...prev.playerPhrasesets,
-          [key]: {
-            params,
-            data: cached?.data ?? null,
-            loading: false,
-            error: 'Authentication required. Please log in again.',
-            lastFetched: cached?.lastFetched ?? null,
-          }
-        }
-      }));
-      return null;
-    }
-
     if (cached?.data && !options.force) {
       gameContextLogger.debug('✅ Using cached player phrasesets data');
       return cached.data;
@@ -255,24 +236,6 @@ export const ResultsProvider: React.FC<{
     
     const cached = resultsState.phrasesetDetails[phrasesetId];
 
-    const token = await apiClient.ensureAccessToken();
-    if (!token) {
-      gameContextLogger.warn('❌ No valid token for phraseset details refresh');
-      setResultsState(prev => ({
-        ...prev,
-        phrasesetDetails: {
-          ...prev.phrasesetDetails,
-          [phrasesetId]: {
-            data: cached?.data ?? null,
-            loading: false,
-            error: 'Authentication required. Please log in again.',
-            lastFetched: cached?.lastFetched ?? null,
-          }
-        }
-      }));
-      return null;
-    }
-
     if (cached?.data && !options.force) {
       gameContextLogger.debug('✅ Using cached phraseset details data');
       return cached.data;
@@ -337,24 +300,6 @@ export const ResultsProvider: React.FC<{
     gameContextLogger.debug('📊 ResultsContext refreshPhrasesetResults called:', { phrasesetId, options });
     
     const cached = resultsState.phrasesetResults[phrasesetId];
-
-    const token = await apiClient.ensureAccessToken();
-    if (!token) {
-      gameContextLogger.warn('❌ No valid token for phraseset results refresh');
-      setResultsState(prev => ({
-        ...prev,
-        phrasesetResults: {
-          ...prev.phrasesetResults,
-          [phrasesetId]: {
-            data: cached?.data ?? null,
-            loading: false,
-            error: 'Authentication required. Please log in again.',
-            lastFetched: cached?.lastFetched ?? null,
-          }
-        }
-      }));
-      return null;
-    }
 
     if (cached?.data && !options.force) {
       gameContextLogger.debug('✅ Using cached phraseset results data');
@@ -445,16 +390,6 @@ export const ResultsProvider: React.FC<{
   const getStatistics = useCallback(async (signal?: AbortSignal) => {
     gameContextLogger.debug('📊 ResultsContext getStatistics called');
     
-    const token = await apiClient.ensureAccessToken();
-    if (!token) {
-      gameContextLogger.warn('❌ No valid token for statistics refresh');
-      setResultsState(prev => ({
-        ...prev,
-        statisticsError: 'Authentication required. Please log in again.'
-      }));
-      return null;
-    }
-
     setResultsState(prev => ({
       ...prev,
       statisticsLoading: true,

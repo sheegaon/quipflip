@@ -244,12 +244,13 @@
   - `username` (string)
   - `total_costs` (integer)
   - `total_earnings` (integer)
-  - `net_cost` (integer)
+  - `net_earnings` (integer) - earnings minus costs (higher is better)
   - `rank` (integer)
 - `payload.generated_at` (ISO 8601 string) - timestamp when snapshot was calculated
 - TTL: 3600 seconds (1 hour) per write
 - Refresh triggers: automatically recomputed when phrasesets finalize, and on-demand when cache miss occurs
 - Note: Personalization flags (`is_current_player`) are added at request time; the shared cache only stores objective rankings.
+- AI players (email ending in `@quipflip.internal`) are excluded from the leaderboard.
 
 ### AIMetric
 - `metric_id` (UUID, primary key)

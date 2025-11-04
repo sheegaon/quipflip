@@ -40,19 +40,19 @@ const WeeklyLeaderboard: React.FC<WeeklyLeaderboardProps> = ({ leaders, loading 
   }
 
   const maxMagnitude = leaders.reduce((max, entry) => {
-    const magnitude = Math.abs(entry.net_cost);
+    const magnitude = Math.abs(entry.net_earnings);
     return magnitude > max ? magnitude : max;
   }, 1);
 
   return (
     <div className="space-y-3" role="list">
       {leaders.map((entry) => {
-        const percent = Math.max(8, Math.round((Math.abs(entry.net_cost) / maxMagnitude) * 100));
+        const percent = Math.max(8, Math.round((Math.abs(entry.net_earnings) / maxMagnitude) * 100));
         const highlightClasses = entry.is_current_player
           ? 'border-2 border-quip-orange bg-quip-orange/10 shadow-md'
           : 'border border-quip-navy/10 bg-white';
-        const valueColor = entry.net_cost <= 0 ? 'text-quip-teal' : 'text-quip-orange';
-        const barColor = entry.net_cost <= 0 ? 'bg-quip-teal' : 'bg-quip-orange';
+        const valueColor = entry.net_earnings >= 0 ? 'text-quip-teal' : 'text-quip-orange';
+        const barColor = entry.net_earnings >= 0 ? 'bg-quip-teal' : 'bg-quip-orange';
         const rankLabel = entry.rank ? `#${entry.rank}` : '—';
 
         return (
@@ -60,7 +60,7 @@ const WeeklyLeaderboard: React.FC<WeeklyLeaderboardProps> = ({ leaders, loading 
             key={entry.player_id}
             className={`rounded-tile p-4 transition-colors duration-200 ${highlightClasses}`}
             role="listitem"
-            aria-label={`${entry.username} net cost ${currencyFormatter.format(entry.net_cost)}`}
+            aria-label={`${entry.username} net earnings ${currencyFormatter.format(entry.net_earnings)}`}
           >
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
@@ -68,9 +68,9 @@ const WeeklyLeaderboard: React.FC<WeeklyLeaderboardProps> = ({ leaders, loading 
                 <span className="font-display text-lg text-quip-navy">{entry.username}</span>
               </div>
               <div className="text-right">
-                <span className="block text-xs uppercase tracking-wide text-quip-navy/50">Net Cost</span>
+                <span className="block text-xs uppercase tracking-wide text-quip-navy/50">Net Earnings</span>
                 <div className={`font-mono text-lg font-semibold ${valueColor}`}>
-                  {currencyFormatter.format(entry.net_cost)}
+                  {currencyFormatter.format(entry.net_earnings)}
                 </div>
               </div>
             </div>

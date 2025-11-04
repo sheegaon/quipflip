@@ -27,10 +27,11 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"  # Use HS256 for symmetric signing
     access_token_exp_minutes: int = 120  # Access tokens valid for 2 hours
     refresh_token_exp_days: int = 30  # Longer-lived refresh tokens
+    access_token_cookie_name: str = "quipflip_access_token"
     refresh_token_cookie_name: str = "quipflip_refresh_token"
 
     # Admin access
-    admin_emails: set[str] = {"tfishman@gmail.com"}
+    admin_emails: set[str] = {"tfishman@gmail.com", "x9@x.com"}
 
     # Game Constants (all values in whole flipcoins)
     starting_balance: int = 5000

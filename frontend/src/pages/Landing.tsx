@@ -62,7 +62,7 @@ export const Landing: React.FC = () => {
       });
 
       landingLogger.info('Player created successfully, starting session', { username: response.username });
-      startSession(response.username, response);
+      startSession(response.username);
       navigate('/dashboard');
     } catch (err) {
       const message = extractErrorMessage(err) || 'Unable to create your account. Please try again or contact support if the problem persists.';
@@ -94,7 +94,7 @@ export const Landing: React.FC = () => {
       });
 
       landingLogger.info('Login successful, starting session', { username: response.username });
-      startSession(response.username, response);
+      startSession(response.username);
       navigate('/dashboard');
     } catch (err) {
       const message = extractErrorMessage(err) || 'Login failed. Please check your email and password, or create a new account.';
@@ -126,7 +126,7 @@ export const Landing: React.FC = () => {
         timestamp: Date.now()
       }));
 
-      startSession(response.username, response);
+      startSession(response.username);
       navigate('/dashboard');
     } catch (err) {
       const message = extractErrorMessage(err) || 'Unable to create guest account. Please try again.';

@@ -105,7 +105,13 @@ The frontend connects to the backend API using the `apiClient` in `src/api/clien
 
 ### Authentication
 
-Players authenticate using email and password. JWT access tokens are stored in `localStorage` and automatically included in all requests via Authorization header. Refresh tokens are stored in HTTP-only cookies for security. The frontend automatically refreshes expired access tokens using the refresh token when receiving 401 errors.
+Players authenticate using email and password. Both access and refresh tokens are stored in **HTTP-only cookies** for maximum security:
+- **Access tokens** (2-hour lifetime): Automatically sent with all API requests
+- **Refresh tokens** (30-day lifetime): Used for automatic token rotation
+- **Security benefits**: Tokens inaccessible to JavaScript, protected from XSS attacks
+- **Session persistence**: Users remain logged in across browser refreshes and sessions
+
+The backend automatically handles token validation and refresh using cookies - no manual token management needed in the frontend.
 
 Each player has a visible username and a hidden pseudonym (randomly auto-generated during registration). Other players see only the hidden pseudonym in game results.
 
@@ -189,8 +195,8 @@ See [FRONTEND_PLAN.md](../docs/FRONTEND_PLAN.md) for planned features:
 ### Backend not connecting
 - Ensure backend is running at the configured `VITE_API_URL`
 - Check browser console for CORS errors
-- Verify JWT access token is valid (check localStorage)
-- Ensure cookies are enabled for refresh token storage
+- Ensure cookies are enabled in your browser (required for authentication)
+- Check browser DevTools > Application > Cookies for `quipflip_access_token` and `quipflip_refresh_token`
 
 ### Timer not working
 - Ensure system clock is accurate
@@ -200,8 +206,8 @@ See [FRONTEND_PLAN.md](../docs/FRONTEND_PLAN.md) for planned features:
 ### Polling issues
 - Check browser console for API errors
 - Verify network connectivity
-- Ensure JWT tokens haven't expired (automatic refresh should handle this)
-- Check that refresh token cookie is present and valid
+- Check that authentication cookies are present and valid (DevTools > Application > Cookies)
+- Clear cookies and log in again if experiencing persistent 401 errors
 
 ## Development Tips
 

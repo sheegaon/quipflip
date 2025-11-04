@@ -8,7 +8,12 @@ from backend.config import get_settings
 from backend.database import get_db
 from backend.schemas.auth import AuthTokenResponse, LoginRequest, LogoutRequest, RefreshRequest, SuggestUsernameResponse
 from backend.services.auth_service import AuthService, AuthError
-from backend.utils.cookies import clear_refresh_cookie, set_refresh_cookie
+from backend.utils.cookies import (
+    clear_auth_cookies,
+    clear_refresh_cookie,
+    set_access_token_cookie,
+    set_refresh_cookie,
+)
 
 router = APIRouter()
 settings = get_settings()
@@ -33,6 +38,7 @@ async def login(
     await db.commit()
 
     access_token, refresh_token, expires_in = await auth_service.issue_tokens(player)
+    set_access_token_cookie(response, access_token)
     set_refresh_cookie(response, refresh_token, expires_days=settings.refresh_token_exp_days)
 
     return AuthTokenResponse(
@@ -79,6 +85,7 @@ async def refresh_tokens(
     except AuthError as exc:
         raise HTTPException(status_code=401, detail=str(exc)) from exc
 
+    set_access_token_cookie(response, access_token)
     set_refresh_cookie(response, new_refresh_token, expires_days=settings.refresh_token_exp_days)
 
     return AuthTokenResponse(
@@ -107,6 +114,6 @@ async def logout(
         auth_service = AuthService(db)
         await auth_service.revoke_refresh_token(token)
 
-    clear_refresh_cookie(response)
+    clear_auth_cookies(response)
     response.status_code = 204
     return None

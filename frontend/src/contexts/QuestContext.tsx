@@ -27,7 +27,7 @@ interface QuestContextType {
 
 const QuestContext = createContext<QuestContextType | undefined>(undefined);
 
-export const QuestProvider: React.FC<{ 
+export const QuestProvider: React.FC<{
   children: React.ReactNode;
   isAuthenticated: boolean;
   onDashboardTrigger: () => void;
@@ -43,17 +43,8 @@ export const QuestProvider: React.FC<{
   });
 
   const refreshQuests = useCallback(async () => {
-    const token = await apiClient.ensureAccessToken();
-    if (!token) {
-      gameContextLogger.warn('❌ No valid token for quest refresh');
-      setQuestState((prev) => ({
-        ...prev,
-        loading: false,
-        error: 'Authentication required. Please log in again.',
-      }));
-      return;
-    }
-
+    // Note: Don't check isAuthenticated here - it causes stale closure issues
+    // The auto-load effect already guards against unauthenticated calls
     setQuestState((prev) => ({
       ...prev,
       loading: true,
@@ -86,7 +77,7 @@ export const QuestProvider: React.FC<{
       }));
       throw err;
     }
-  }, []);
+  }, []); // Note: Empty deps - function is stable, guards are in the effect
 
   const clearQuestError = useCallback(() => {
     setQuestState((prev) => ({
@@ -96,16 +87,6 @@ export const QuestProvider: React.FC<{
   }, []);
 
   const claimQuest = useCallback(async (questId: string): Promise<ClaimQuestRewardResponse> => {
-    const token = await apiClient.ensureAccessToken();
-    if (!token) {
-      gameContextLogger.warn('❌ No valid token for quest claim');
-      setQuestState((prev) => ({
-        ...prev,
-        error: 'Authentication required. Please log in again.',
-      }));
-      throw new Error('Authentication required');
-    }
-
     setQuestState((prev) => ({
       ...prev,
       loading: true,

@@ -89,17 +89,15 @@ export const TutorialProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [status, loading, error]);
 
   const ensureToken = useCallback(async (): Promise<string | null> => {
-    try {
-      const token = await apiClient.ensureAccessToken();
-      if (!token) {
-        setStatus(null);
-      }
-      return token;
-    } catch (err) {
-      tutorialLogger.error('Failed to ensure access token for tutorial', err);
-      setError(getActionErrorMessage('tutorial-auth', err));
+    // Authentication is now handled via cookies
+    // Check if user is logged in by looking for stored username
+    const username = apiClient.getStoredUsername();
+    if (!username) {
+      tutorialLogger.debug('No stored username, skipping tutorial API calls');
       return null;
     }
+    // If we have a username, cookies should handle authentication
+    return 'authenticated';
   }, []);
 
   const refreshStatus = useCallback(
