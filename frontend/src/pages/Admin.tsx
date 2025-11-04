@@ -7,6 +7,7 @@ import { EditableConfigField } from '../components/EditableConfigField';
 import { adminLogger } from '../utils/logger';
 import type { AdminPlayerSummary } from '../api/types';
 import { formatDateTimeInUserZone } from '../utils/datetime';
+import { PHRASE_VALIDATION_BOUNDS, PHRASE_VALIDATION_LIMITS } from '../config/phraseValidation';
 
 interface GameConfig {
   // Game Constants
@@ -1043,10 +1044,10 @@ const Admin: React.FC = () => {
                   configKey="phrase_min_words"
                   unit="words"
                   description="Fewest words allowed in a phrase"
-                
+                 
                   type="number"
-                  min={1}
-                  max={5}
+                  min={PHRASE_VALIDATION_BOUNDS.minWords.min}
+                  max={PHRASE_VALIDATION_BOUNDS.minWords.max}
                   onSave={handleSaveConfig}
                   disabled={!editMode}
                 />
@@ -1056,10 +1057,10 @@ const Admin: React.FC = () => {
                   configKey="phrase_max_words"
                   unit="words"
                   description="Most words allowed in a phrase"
-                
+                 
                   type="number"
-                  min={3}
-                  max={10}
+                  min={PHRASE_VALIDATION_BOUNDS.maxWords.min}
+                  max={PHRASE_VALIDATION_BOUNDS.maxWords.max}
                   onSave={handleSaveConfig}
                   disabled={!editMode}
                 />
@@ -1088,10 +1089,10 @@ const Admin: React.FC = () => {
                   configKey="phrase_max_length"
                   unit="chars"
                   description="Total character limit"
-                
+                 
                   type="number"
-                  min={50}
-                  max={200}
+                  min={PHRASE_VALIDATION_BOUNDS.maxLength.min}
+                  max={PHRASE_VALIDATION_BOUNDS.maxLength.max}
                   onSave={handleSaveConfig}
                   disabled={!editMode}
                 />
@@ -1101,10 +1102,10 @@ const Admin: React.FC = () => {
                   configKey="phrase_min_char_per_word"
                   unit="chars"
                   description="Minimum characters per word"
-                
+                 
                   type="number"
-                  min={1}
-                  max={5}
+                  min={PHRASE_VALIDATION_BOUNDS.minCharsPerWord.min}
+                  max={PHRASE_VALIDATION_BOUNDS.minCharsPerWord.max}
                   onSave={handleSaveConfig}
                   disabled={!editMode}
                 />
@@ -1114,10 +1115,10 @@ const Admin: React.FC = () => {
                   configKey="phrase_max_char_per_word"
                   unit="chars"
                   description="Maximum characters per word"
-                
+                 
                   type="number"
-                  min={10}
-                  max={30}
+                  min={PHRASE_VALIDATION_BOUNDS.maxCharsPerWord.min}
+                  max={PHRASE_VALIDATION_BOUNDS.maxCharsPerWord.max}
                   onSave={handleSaveConfig}
                   disabled={!editMode}
                 />
@@ -1267,12 +1268,12 @@ const Admin: React.FC = () => {
                   <div className="bg-gray-50 border-2 border-gray-200 rounded-tile p-4">
                     <p className="text-sm text-quip-teal mb-1">Word Count</p>
                     <p className="text-2xl font-bold text-quip-navy">{validationResult.word_count}</p>
-                    <p className="text-xs text-quip-teal mt-1">Limit: {config.phrase_min_words}-{config.phrase_max_words}</p>
+                    <p className="text-xs text-quip-teal mt-1">Limit: {(config.phrase_min_words ?? PHRASE_VALIDATION_LIMITS.minWordsDefault)}-{(config.phrase_max_words ?? PHRASE_VALIDATION_LIMITS.maxWordsDefault)}</p>
                   </div>
                   <div className="bg-gray-50 border-2 border-gray-200 rounded-tile p-4">
                     <p className="text-sm text-quip-teal mb-1">Character Count</p>
                     <p className="text-2xl font-bold text-quip-navy">{validationResult.phrase_length}</p>
-                    <p className="text-xs text-quip-teal mt-1">Max: {config.phrase_max_length}</p>
+                    <p className="text-xs text-quip-teal mt-1">Max: {config.phrase_max_length ?? PHRASE_VALIDATION_LIMITS.maxLengthDefault}</p>
                   </div>
                 </div>
 
