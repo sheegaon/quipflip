@@ -58,7 +58,7 @@
   - `vote_submitted_at` (timestamp, nullable)
 
 - Indexes: `round_id`, `player_id`, `created_at`, `expires_at`, `copy1_player_id`, `copy2_player_id`, `prompt_round_id`, `phraseset_id`, composite `(status, created_at)`, `phraseset_status`
-- Relationships: `player`, `prompt`, `phraseset`, `copy1_player`, `copy2_player`, `prompt_round`
+- Relationships: `player`, `prompt`, `phraseset`, `copy1_player`, `copy2_player`, `prompt_round`, `hints`
 - Note: Using single table with nullable fields for cleaner queries and simpler schema
 
 ### Prompt (Library)
@@ -268,6 +268,49 @@
 - `created_at` (timestamp, indexed)
 - Indexes: `metric_id`, `operation_type`, `provider`, `success`, `created_at`, composite `(created_at, success)`, composite `(operation_type, provider)`, composite `(operation_type, created_at)`
 - Note: Tracks AI usage, costs, performance, and success rates for analytics and optimization
+
+### Hint
+- `hint_id` (UUID, primary key)
+- `prompt_round_id` (UUID, references rounds.round_id, cascade delete, indexed via composite)
+- `hint_phrases` (JSON) - array of AI-generated hint phrases (1-3 strings)
+- `created_at` (timestamp with timezone, default now(), indexed)
+- `generation_provider` (string, max 20 chars) - AI provider used ('openai' or 'gemini')
+- `generation_model` (string, max 100 chars, nullable) - specific model identifier
+- Indexes: composite `(prompt_round_id, created_at)`
+- Constraints: Unique `prompt_round_id` - one hint record per prompt round
+- Relationships: `prompt_round` (references Round, back_populates="hints")
+- Note: Stores AI-generated copy hints for copy rounds to assist players. Hints are cached to avoid regeneration costs and are free to request during active copy rounds.
+
+### FlaggedPrompt
+- `flag_id` (UUID, primary key)
+- `prompt_round_id` (UUID, references rounds.round_id, cascade delete, indexed)
+- `copy_round_id` (UUID, nullable, references rounds.round_id, set null on delete, indexed)
+- `reporter_player_id` (UUID, references players.player_id, cascade delete, indexed)
+- `prompt_player_id` (UUID, references players.player_id, cascade delete, indexed)
+- `status` (string, max 20 chars, default 'pending', indexed) - 'pending', 'confirmed', 'dismissed'
+- `created_at` (timestamp with timezone, default now())
+- `reviewed_at` (timestamp with timezone, nullable)
+- `reviewer_player_id` (UUID, nullable, references players.player_id, set null on delete, indexed)
+- `original_phrase` (string, max 100 chars) - the flagged phrase
+- `prompt_text` (string, max 500 chars, nullable) - prompt text for context
+- `previous_phraseset_status` (string, max 20 chars, nullable) - phraseset status before flagging
+- `queue_removed` (boolean, default false) - whether the prompt was removed from queue
+- `round_cost` (integer) - cost of the flagged round
+- `partial_refund_amount` (integer) - amount refunded to reporter
+- `penalty_kept` (integer) - penalty amount kept from reporter
+- Indexes: `prompt_round_id`, `copy_round_id`, `reporter_player_id`, `prompt_player_id`, `reviewer_player_id`, `status`
+- Relationships: `reporter`, `prompt_player`, `reviewer`, `prompt_round`, `copy_round`
+- Note: Tracks player-reported flags on prompt phrases during copy rounds for admin review
+
+### SystemConfig
+- `key` (string, max 100 chars, primary key) - configuration key name
+- `value` (text) - configuration value as string
+- `value_type` (string, max 20 chars) - data type: 'int', 'float', 'string', 'bool'
+- `description` (text, nullable) - human-readable description of the setting
+- `category` (string, max 50 chars, nullable) - configuration category: 'economics', 'timing', 'validation', 'ai'
+- `updated_at` (timestamp with timezone, default now()) - last update timestamp
+- `updated_by` (string, max 100 chars, nullable) - player_id of admin who updated
+- Note: Stores dynamic system configuration values that can be updated without code deployment. Values override environment variable defaults.
 
 ---
 
