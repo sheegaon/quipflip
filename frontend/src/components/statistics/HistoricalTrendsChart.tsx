@@ -18,8 +18,8 @@ import {
   statisticsResponsiveContainerProps,
 } from './chartSizing';
 
-const HISTORICAL_TRENDS_ASPECT = 4 / 3;
-const HISTORICAL_TRENDS_MAX_HEIGHT = 360;
+const HISTORICAL_TRENDS_ASPECT = 3 / 4;
+const HISTORICAL_TRENDS_MAX_HEIGHT = 600;
 
 const historicalChartContainerStyle = {
   ...statisticsChartContainerStyle,
