@@ -31,7 +31,7 @@ settings = get_settings()
 
 PLACEHOLDER_PLAYER_NAMESPACE = UUID("6c057f58-7199-43ff-b4fc-17b77df5e6a2")
 WEEKLY_LEADERBOARD_LIMIT = 5
-WEEKLY_LEADERBOARD_CACHE_KEY = "leaderboard:weekly:v2"  # v2: changed net_cost to net_earnings, excludes AI players
+WEEKLY_LEADERBOARD_CACHE_KEY = "leaderboard:weekly:v3"  # v3: align payouts with round completion window, excludes AI players
 AI_PLAYER_EMAIL_DOMAIN = "@quipflip.internal"
 
 
@@ -376,17 +376,62 @@ class ScoringService:
             .subquery()
         )
 
-        earnings_subquery = (
+        phraseset_contributors = union_all(
+            select(
+                Phraseset.phraseset_id.label("phraseset_id"),
+                Phraseset.prompt_round_id.label("round_id"),
+            ),
+            select(
+                Phraseset.phraseset_id.label("phraseset_id"),
+                Phraseset.copy_round_1_id.label("round_id"),
+            ),
+            select(
+                Phraseset.phraseset_id.label("phraseset_id"),
+                Phraseset.copy_round_2_id.label("round_id"),
+            ),
+        ).subquery()
+
+        prize_earnings_entries = (
             select(
                 Transaction.player_id.label("player_id"),
-                func.sum(Transaction.amount).label("total_earnings"),
+                Transaction.amount.label("amount"),
             )
+            .join(Phraseset, Phraseset.phraseset_id == Transaction.reference_id)
+            .join(
+                phraseset_contributors,
+                phraseset_contributors.c.phraseset_id == Phraseset.phraseset_id,
+            )
+            .join(Round, Round.round_id == phraseset_contributors.c.round_id)
+            .join(completion_union, completion_union.c.round_id == Round.round_id)
             .where(
-                Transaction.type.in_(["prize_payout", "vote_payout"]),
+                Transaction.type == "prize_payout",
                 Transaction.amount > 0,
-                Transaction.created_at >= window_start,
+                Transaction.player_id == Round.player_id,
+                completion_union.c.completed_at >= window_start,
             )
-            .group_by(Transaction.player_id)
+        )
+
+        vote_earnings_entries = (
+            select(
+                Transaction.player_id.label("player_id"),
+                Transaction.amount.label("amount"),
+            )
+            .join(Vote, Vote.vote_id == Transaction.reference_id)
+            .where(
+                Transaction.type == "vote_payout",
+                Transaction.amount > 0,
+                Vote.created_at >= window_start,
+            )
+        )
+
+        earnings_entries = union_all(prize_earnings_entries, vote_earnings_entries).subquery()
+
+        earnings_subquery = (
+            select(
+                earnings_entries.c.player_id,
+                func.sum(earnings_entries.c.amount).label("total_earnings"),
+            )
+            .group_by(earnings_entries.c.player_id)
             .subquery()
         )
 

@@ -186,14 +186,6 @@ export const PromptRound: React.FC = () => {
     }
   };
 
-  if (!roundData) {
-    return (
-      <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center">
-        <LoadingSpinner isLoading={true} message={loadingMessages.starting} />
-      </div>
-    );
-  }
-
   // Show success state
   if (successMessage) {
     return (
@@ -207,6 +199,14 @@ export const PromptRound: React.FC = () => {
           </h2>
           <p className="text-quip-teal">Returning to dashboard...</p>
         </div>
+      </div>
+    );
+  }
+
+  if (!roundData) {
+    return (
+      <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center">
+        <LoadingSpinner isLoading={true} message={loadingMessages.starting} />
       </div>
     );
   }
