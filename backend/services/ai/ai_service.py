@@ -8,6 +8,7 @@ with configurable fallback behavior and comprehensive metrics tracking.
 
 import logging
 import random
+from uuid import UUID
 
 from datetime import datetime, timedelta, UTC
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,6 +18,7 @@ from sqlalchemy.orm import selectinload
 from backend.config import get_settings
 from backend.models.player import Player
 from backend.models.round import Round
+from backend.models.hint import Hint
 from backend.models.phraseset import Phraseset
 from backend.models.phraseset_activity import PhrasesetActivity
 from backend.models.vote import Vote
@@ -28,7 +30,7 @@ from backend.services.username_service import (
     canonicalize_username,
     normalize_username,
 )
-from .prompt_builder import build_copy_prompt
+from .prompt_builder import build_copy_prompt, build_hint_prompt
 from backend.services.queue_service import QueueService
 
 
@@ -218,6 +220,21 @@ class AIService:
 
         return self.common_words
 
+    async def _get_existing_copy_phrase(self, prompt_round_id: UUID | None) -> str | None:
+        """Fetch an existing submitted copy phrase for the prompt round, if any."""
+        if not prompt_round_id:
+            return None
+
+        result = await self.db.execute(
+            select(Round.copy_phrase)
+            .where(Round.prompt_round_id == prompt_round_id)
+            .where(Round.round_type == "copy")
+            .where(Round.status == "submitted")
+            .order_by(Round.created_at.asc())
+            .limit(1)
+        )
+        return result.scalars().first()
+
     async def generate_copy_phrase(self, original_phrase: str, prompt_round: Round) -> str:
         """
         Generate a copy phrase using the configured AI provider with proper copy validation.
@@ -233,15 +250,7 @@ class AIService:
             AICopyError: If generation or validation fails
         """
         # Determine if another copy already exists for duplicate/similarity checks
-        other_copy_phrase = None
-        if prompt_round.round_id:
-            result = await self.db.execute(
-                select(Round.copy_phrase)
-                .where(Round.prompt_round_id == prompt_round.round_id)
-                .where(Round.round_type == "copy")
-                .where(Round.status == "submitted")
-            )
-            other_copy_phrase = result.scalars().first()
+        other_copy_phrase = await self._get_existing_copy_phrase(prompt_round.round_id)
 
         async with MetricsTracker(
                 self.metrics_service,
@@ -314,6 +323,169 @@ class AIService:
 
             logger.info(f"AI ({self.provider}) generated valid copy: '{phrase}' for original: '{original_phrase}'")
             return phrase
+
+    async def generate_copy_hints(self, prompt_round: Round, count: int = 3) -> list[str]:
+        """
+        Generate multiple hint phrases to assist a copy round player.
+
+        Args:
+            prompt_round: The prompt round containing the original phrase and context
+            count: Number of unique hints to generate (default: 3)
+
+        Returns:
+            List of validated hint phrases ready for display to the player
+
+        Raises:
+            AICopyError: If hints cannot be generated or validated
+        """
+        if count <= 0:
+            raise AICopyError("Hint count must be at least 1")
+        if not prompt_round or not prompt_round.round_id:
+            raise AICopyError("Prompt round is required to generate hints")
+        if not prompt_round.submitted_phrase:
+            raise AICopyError("Cannot generate hints before the original phrase is submitted")
+
+        target_count = count
+        original_phrase = prompt_round.submitted_phrase.strip()
+        prompt_text = (prompt_round.prompt_text or "").strip()
+        # Note: We don't validate hints against other_copy_phrase to ensure all players
+        # receive the same quality hints regardless of when they request them
+
+        common_words = await self.get_common_words()
+        if not isinstance(common_words, (list, tuple)):
+            logger.warning(
+                "Common words list unavailable (type=%s); proceeding without allowances",
+                type(common_words),
+            )
+            common_words = []
+        common_words_list = ", ".join(common_words)
+
+        if self.provider == "openai":
+            from backend.services.ai.openai_api import generate_copy
+        else:
+            from backend.services.ai.gemini_api import generate_copy
+
+        hints: list[str] = []
+        seen_hints = set()
+        # Allow ~4x attempts per hint (e.g., 12 attempts for 3 hints) with minimum buffer of 2
+        # This accounts for validation failures, duplicates, and empty responses
+        max_attempts = max(target_count * 4, target_count + 2)
+        attempts = 0
+
+        while len(hints) < target_count and attempts < max_attempts:
+            attempts += 1
+            prompt_template = build_hint_prompt(original_phrase, prompt_text, hints)
+            ai_prompt = prompt_template.format(common_words=common_words_list)
+
+            async with MetricsTracker(
+                    self.metrics_service,
+                    operation_type="hint_generation",
+                    provider=self.provider,
+                    model=self.ai_model,
+            ) as tracker:
+                try:
+                    raw_hint = await generate_copy(
+                        prompt=ai_prompt,
+                        model=self.ai_model,
+                        timeout=self.settings.ai_timeout_seconds,
+                    )
+                except Exception as exc:  # noqa: BLE001 - surface exact provider failure
+                    logger.error("Failed to generate AI hint for prompt_round %s: %s", prompt_round.round_id, exc)
+                    raise AICopyError(f"Failed to generate AI hint using {self.provider}: {exc}") from exc
+
+                candidate = raw_hint.strip()
+                candidate_line = candidate.splitlines()[0].strip() if candidate else ""
+                normalized_candidate = " ".join(candidate_line.split()).upper()
+
+                if not normalized_candidate:
+                    tracker.set_result(candidate_line, success=False, response_length=0, validation_passed=False)
+                    logger.info(
+                        "Discarded empty AI hint response for prompt_round %s (attempt %s)",
+                        prompt_round.round_id,
+                        attempts,
+                    )
+                    continue
+
+                is_valid, error_message = await self.phrase_validator.validate_copy(
+                    normalized_candidate,
+                    original_phrase,
+                    None,  # Don't validate against other copies for fair hint generation
+                    prompt_text,
+                )
+
+                if not is_valid:
+                    tracker.set_result(
+                        normalized_candidate,
+                        success=False,
+                        response_length=len(normalized_candidate),
+                        validation_passed=False,
+                    )
+                    logger.info(
+                        "Discarded AI hint '%s' for prompt_round %s due to validation error: %s",
+                        normalized_candidate,
+                        prompt_round.round_id,
+                        error_message,
+                    )
+                    continue
+
+                if normalized_candidate in seen_hints:
+                    tracker.set_result(
+                        normalized_candidate,
+                        success=False,
+                        response_length=len(normalized_candidate),
+                        validation_passed=True,
+                    )
+                    logger.info(
+                        "Discarded duplicate AI hint '%s' for prompt_round %s",
+                        normalized_candidate,
+                        prompt_round.round_id,
+                    )
+                    continue
+
+                hints.append(normalized_candidate)
+                seen_hints.add(normalized_candidate)
+                tracker.set_result(
+                    normalized_candidate,
+                    success=True,
+                    response_length=len(normalized_candidate),
+                    validation_passed=True,
+                )
+                logger.info(
+                    "AI (%s) generated copy hint '%s' for prompt_round %s (hint %s/%s)",
+                    self.provider,
+                    normalized_candidate,
+                    prompt_round.round_id,
+                    len(hints),
+                    target_count,
+                )
+
+        # Require at least one hint, but allow partial results for better UX
+        if len(hints) == 0:
+            logger.error(
+                "Failed to generate any hints for prompt_round %s after %s attempts",
+                prompt_round.round_id,
+                attempts,
+            )
+            raise AICopyError("Unable to generate any valid hints")
+
+        if len(hints) < target_count:
+            logger.warning(
+                "Generated partial hints for prompt_round %s (generated %s/%s)",
+                prompt_round.round_id,
+                len(hints),
+                target_count,
+            )
+
+        hint_record = Hint(
+            prompt_round_id=prompt_round.round_id,
+            hint_phrases=hints,
+            generation_provider=self.provider,
+            generation_model=self.ai_model,
+        )
+        self.db.add(hint_record)
+        await self.db.flush()
+
+        return hints
 
     async def generate_vote_choice(self, phraseset: Phraseset) -> str:
         """

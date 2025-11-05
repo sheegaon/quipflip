@@ -11,6 +11,7 @@ import type {
   StartCopyResponse,
   StartVoteResponse,
   SubmitPhraseResponse,
+  HintResponse,
   VoteResponse,
   PhrasesetResults,
   HealthResponse,
@@ -398,6 +399,11 @@ export const apiClient = {
 
   async submitPhrase(roundId: string, phrase: string, signal?: AbortSignal): Promise<SubmitPhraseResponse> {
     const { data } = await api.post(`/rounds/${roundId}/submit`, { phrase }, { signal });
+    return data;
+  },
+
+  async getCopyHints(roundId: string, signal?: AbortSignal): Promise<HintResponse> {
+    const { data } = await api.get(`/rounds/${roundId}/hints`, { signal });
     return data;
   },
 

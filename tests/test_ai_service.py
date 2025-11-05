@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from datetime import datetime, UTC, timedelta
 import uuid
 
+from sqlalchemy import select
+
 from backend.services.ai.ai_service import AIService, AICopyError, AIVoteError, AIServiceError
 from backend.services.ai.metrics_service import AIMetricsService
 from backend.services.phrase_validator import PhraseValidator
@@ -13,6 +15,7 @@ from backend.models.player import Player
 from backend.models.round import Round
 from backend.models.phraseset import Phraseset
 from backend.models.ai_metric import AIMetric
+from backend.models.hint import Hint
 from backend.models.vote import Vote
 from backend.config import get_settings
 
@@ -50,6 +53,8 @@ def mock_prompt_round():
     round_obj = MagicMock(spec=Round)
     round_obj.round_id = uuid.uuid4()
     round_obj.phrase = "happy birthday"
+    round_obj.submitted_phrase = "happy birthday"
+    round_obj.round_type = "prompt"
     round_obj.prompt_text = "What do you say to celebrate someone's birth?"
     return round_obj
 
@@ -339,6 +344,96 @@ class TestAIMetrics:
         metric = ai_metrics[0]
         assert metric.operation_type == "vote_generation"
         assert metric.vote_correct is True
+
+
+class TestAIHintGeneration:
+    """Test AI hint generation and persistence."""
+
+    @staticmethod
+    async def _create_prompt_round(db_session) -> Round:
+        prompt_round = Round(
+            round_id=uuid.uuid4(),
+            player_id=uuid.uuid4(),
+            round_type="prompt",
+            status="submitted",
+            prompt_text="Describe a celebratory greeting.",
+            submitted_phrase="ORIGINAL PHRASE",
+            cost=100,
+            expires_at=datetime.now(UTC) + timedelta(minutes=5),
+        )
+        db_session.add(prompt_round)
+        await db_session.commit()
+        await db_session.refresh(prompt_round)
+        return prompt_round
+
+    @pytest.mark.asyncio
+    @patch("backend.services.ai.openai_api.generate_copy")
+    async def test_generate_copy_hints_persists_record(
+            self,
+            mock_openai,
+            db_session,
+            mock_validator,
+    ):
+        """Should generate, validate, and persist three unique hints."""
+        prompt_round = await self._create_prompt_round(db_session)
+        mock_openai.side_effect = [
+            "Warm glow",
+            "Festive cheer",
+            "Joyful toast",
+        ]
+        mock_validator.validate_copy.side_effect = [(True, "")] * len(mock_openai.side_effect)
+
+        service = AIService(db_session)
+        hints = await service.generate_copy_hints(prompt_round)
+
+        assert hints == ["WARM GLOW", "FESTIVE CHEER", "JOYFUL TOAST"]
+
+        result = await db_session.execute(
+            select(Hint).where(Hint.prompt_round_id == prompt_round.round_id)
+        )
+        stored_hint = result.scalars().one()
+        assert stored_hint.hint_phrases == hints
+        assert stored_hint.generation_provider == service.provider
+
+        metrics = [m for m in db_session.new if isinstance(m, AIMetric)]
+        assert len(metrics) == 3
+        assert all(metric.operation_type == "hint_generation" for metric in metrics)
+        assert all(metric.success for metric in metrics)
+
+    @pytest.mark.asyncio
+    @patch("backend.services.ai.openai_api.generate_copy")
+    async def test_generate_copy_hints_skips_duplicates(
+            self,
+            mock_openai,
+            db_session,
+            mock_validator,
+    ):
+        """Should retry when duplicate hints are produced."""
+        prompt_round = await self._create_prompt_round(db_session)
+        mock_openai.side_effect = [
+            "Repeat me",
+            "Repeat me",
+            "Fresh angle",
+            "New spark",
+        ]
+        mock_validator.validate_copy.side_effect = [(True, "")] * len(mock_openai.side_effect)
+
+        service = AIService(db_session)
+        hints = await service.generate_copy_hints(prompt_round, count=3)
+
+        assert hints == ["REPEAT ME", "FRESH ANGLE", "NEW SPARK"]
+        assert mock_openai.await_count == 4
+
+        result = await db_session.execute(
+            select(Hint).where(Hint.prompt_round_id == prompt_round.round_id)
+        )
+        stored_hint = result.scalars().one()
+        assert stored_hint.hint_phrases == hints
+
+        metrics = [m for m in db_session.new if isinstance(m, AIMetric)]
+        assert len(metrics) == 4
+        assert sum(1 for metric in metrics if metric.success) == 3
+        assert any(not metric.success for metric in metrics)
 
 
 class TestAIMetricsService:
