@@ -63,15 +63,26 @@ def build_hint_prompt(original_phrase: str, prompt_text: str, existing_hints: li
     common_words_placeholder = "{common_words}"
 
     hints_section = ""
+    diversity_guidance = ""
     if existing_hints:
         formatted_hints = "\n".join(f"- {hint}" for hint in existing_hints)
+        word_counts = [len(hint.split()) for hint in existing_hints]
         hints_section = f"""
 
 Existing hints already shared (do NOT repeat or lightly modify these):
 {formatted_hints}
 
-Generate something that explores a noticeably different angle than the hints above.
-"""
+Your new hint MUST be substantially different from the above."""
+
+        # Provide specific diversity guidance
+        diversity_strategies = [
+            "Try using a different word count",
+            "Explore a different semantic angle (if previous hints were direct, try metaphorical; if formal, try casual)",
+            "Vary the sentence structure or emphasis",
+            "Use synonyms for key concepts rather than the same words",
+        ]
+        diversity_guidance = "\n- ".join(diversity_strategies)
+        diversity_guidance = f"\n\nDiversity strategies to consider:\n- {diversity_guidance}"
 
     base_prompt = f"""You are assisting a player in a word game where they must create a convincing copy of an original phrase.
 
@@ -87,9 +98,10 @@ Game rules:
 
 Creative goals:
 - Offer a phrase that feels like a natural alternative the original author could plausibly have written
-- Explore a different approach than previous hints (synonyms, metaphors, structure changes, shifts in tone or specificity)
-- Vary word count and emphasis to create distinct options
+- Make it feel authentic yet distinct from other options
+{diversity_guidance}
 {hints_section}
+
 Return exactly ONE new hint phrase. Do not add numbering, explanations, or quotation marks."""
 
     return base_prompt

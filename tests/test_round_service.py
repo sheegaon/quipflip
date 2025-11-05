@@ -901,7 +901,7 @@ class TestCopyHints:
     """Tests for AI-generated hint retrieval in RoundService."""
 
     @staticmethod
-    async def _create_prompt_and_copy_round(db_session) -> tuple[Round, Round]:
+    async def _create_prompt_and_copy_round(db_session) -> tuple[Round, Round, Player]:
         identifier = uuid.uuid4().hex[:6]
 
         player = Player(
@@ -946,18 +946,19 @@ class TestCopyHints:
         await db_session.commit()
         await db_session.refresh(copy_round)
 
-        return prompt_round, copy_round
+        return prompt_round, copy_round, player
 
     @pytest.mark.asyncio
     async def test_get_or_generate_hints_creates_and_caches(self, db_session):
         """Should generate hints once and reuse cached values."""
-        prompt_round, copy_round = await self._create_prompt_and_copy_round(db_session)
+        prompt_round, copy_round, player = await self._create_prompt_and_copy_round(db_session)
         round_service = RoundService(db_session)
+        transaction_service = TransactionService(db_session)
 
         hints_payload = ["HINT ONE", "HINT TWO", "HINT THREE"]
 
         with patch.object(AIService, "generate_copy_hints", new=AsyncMock(return_value=hints_payload)) as mock_generate:
-            hints = await round_service.get_or_generate_hints(copy_round.round_id)
+            hints = await round_service.get_or_generate_hints(copy_round.round_id, player, transaction_service)
             mock_generate.assert_awaited_once()
             assert hints == hints_payload
 
@@ -972,18 +973,19 @@ class TestCopyHints:
             "generate_copy_hints",
             new=AsyncMock(side_effect=AssertionError("should not be called")),
         ) as mock_generate:
-            cached_hints = await round_service.get_or_generate_hints(copy_round.round_id)
+            cached_hints = await round_service.get_or_generate_hints(copy_round.round_id, player, transaction_service)
             mock_generate.assert_not_called()
             assert cached_hints == hints_payload
 
     @pytest.mark.asyncio
     async def test_get_or_generate_hints_requires_active_copy(self, db_session):
         """Should reject requests for non-active copy rounds."""
-        _, copy_round = await self._create_prompt_and_copy_round(db_session)
+        _, copy_round, player = await self._create_prompt_and_copy_round(db_session)
         copy_round.status = "submitted"
         await db_session.commit()
 
         round_service = RoundService(db_session)
+        transaction_service = TransactionService(db_session)
 
         with pytest.raises(RoundExpiredError):
-            await round_service.get_or_generate_hints(copy_round.round_id)
+            await round_service.get_or_generate_hints(copy_round.round_id, player, transaction_service)

@@ -699,8 +699,16 @@ class RoundService:
         logger.info(f"Submitted phrase for copy round {round_id}: {phrase}")
         return round_object
 
-    async def get_or_generate_hints(self, round_id: UUID) -> list[str]:
-        """Fetch cached hints for a copy round or generate and persist new ones."""
+    async def get_or_generate_hints(
+        self,
+        round_id: UUID,
+        player: Player,
+        transaction_service: TransactionService
+    ) -> list[str]:
+        """Fetch cached hints for a copy round or generate and persist new ones.
+
+        Charges the player hint_cost coins only when generating new hints (not for cached results).
+        """
         round_object = await self.db.get(Round, round_id)
         if not round_object:
             raise RoundNotFoundError("Round not found")
@@ -733,7 +741,22 @@ class RoundService:
             )
             hint_record = result.scalars().first()
             if hint_record:
+                # Return cached hints for free
                 return list(hint_record.hint_phrases)
+
+            # Check player balance before generating new hints
+            if player.balance < self.settings.hint_cost:
+                raise InsufficientBalanceError(
+                    f"Insufficient balance: {player.balance} < {self.settings.hint_cost}"
+                )
+
+            # Charge player for hint generation
+            await transaction_service.create_transaction(
+                player=player,
+                amount=-self.settings.hint_cost,
+                transaction_type="hint_purchase",
+                description=f"AI hints for copy round {round_id}",
+            )
 
             ai_service = AIService(self.db)
             try:

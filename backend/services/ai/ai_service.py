@@ -231,6 +231,7 @@ class AIService:
             .where(Round.round_type == "copy")
             .where(Round.status == "submitted")
             .order_by(Round.created_at.asc())
+            .limit(1)
         )
         return result.scalars().first()
 
@@ -347,7 +348,8 @@ class AIService:
         target_count = count
         original_phrase = prompt_round.submitted_phrase.strip()
         prompt_text = (prompt_round.prompt_text or "").strip()
-        other_copy_phrase = await self._get_existing_copy_phrase(prompt_round.round_id)
+        # Note: We don't validate hints against other_copy_phrase to ensure all players
+        # receive the same quality hints regardless of when they request them
 
         common_words = await self.get_common_words()
         if not isinstance(common_words, (list, tuple)):
@@ -365,6 +367,8 @@ class AIService:
 
         hints: list[str] = []
         seen_hints = set()
+        # Allow ~4x attempts per hint (e.g., 12 attempts for 3 hints) with minimum buffer of 2
+        # This accounts for validation failures, duplicates, and empty responses
         max_attempts = max(target_count * 4, target_count + 2)
         attempts = 0
 
@@ -405,7 +409,7 @@ class AIService:
                 is_valid, error_message = await self.phrase_validator.validate_copy(
                     normalized_candidate,
                     original_phrase,
-                    other_copy_phrase,
+                    None,  # Don't validate against other copies for fair hint generation
                     prompt_text,
                 )
 
@@ -455,15 +459,21 @@ class AIService:
                     target_count,
                 )
 
-        if len(hints) < target_count:
+        # Require at least one hint, but allow partial results for better UX
+        if len(hints) == 0:
             logger.error(
-                "Failed to generate required number of hints for prompt_round %s (generated %s/%s)",
+                "Failed to generate any hints for prompt_round %s after %s attempts",
+                prompt_round.round_id,
+                attempts,
+            )
+            raise AICopyError("Unable to generate any valid hints")
+
+        if len(hints) < target_count:
+            logger.warning(
+                "Generated partial hints for prompt_round %s (generated %s/%s)",
                 prompt_round.round_id,
                 len(hints),
                 target_count,
-            )
-            raise AICopyError(
-                f"Unable to generate {target_count} unique hints (generated {len(hints)})"
             )
 
         hint_record = Hint(

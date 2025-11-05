@@ -331,7 +331,10 @@ async def get_copy_round_hints(
     player: Player = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ):
-    """Return AI-generated hints for an active copy round."""
+    """Return AI-generated hints for an active copy round.
+
+    Charges hint_cost coins for generating new hints. Cached hints are free.
+    """
     round_object = await db.get(Round, round_id)
 
     if not round_object or round_object.player_id != player.player_id:
@@ -344,9 +347,10 @@ async def get_copy_round_hints(
         raise HTTPException(status_code=400, detail="Hints are only available for active copy rounds")
 
     round_service = RoundService(db)
+    transaction_service = TransactionService(db)
 
     try:
-        hints = await round_service.get_or_generate_hints(round_id)
+        hints = await round_service.get_or_generate_hints(round_id, player, transaction_service)
         logger.info(
             "[API /rounds/%s/hints] Returned %s hints for player %s",
             round_id,
@@ -354,6 +358,8 @@ async def get_copy_round_hints(
             player.player_id,
         )
         return HintResponse(hints=hints)
+    except InsufficientBalanceError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     except RoundNotFoundError:
         raise HTTPException(status_code=404, detail="Round not found")
     except RoundExpiredError:

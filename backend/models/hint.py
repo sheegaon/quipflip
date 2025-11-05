@@ -15,10 +15,10 @@ class Hint(Base):
     __tablename__ = "hints"
 
     hint_id = get_uuid_column(primary_key=True, default=uuid.uuid4)
+    # Note: prompt_round_id is indexed via composite index in __table_args__
     prompt_round_id = get_uuid_column(
         ForeignKey("rounds.round_id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
     )
     hint_phrases = Column(JSON, nullable=False)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False, index=True)
