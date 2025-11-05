@@ -66,7 +66,6 @@ def build_hint_prompt(original_phrase: str, prompt_text: str, existing_hints: li
     diversity_guidance = ""
     if existing_hints:
         formatted_hints = "\n".join(f"- {hint}" for hint in existing_hints)
-        word_counts = [len(hint.split()) for hint in existing_hints]
         hints_section = f"""
 
 Existing hints already shared (do NOT repeat or lightly modify these):

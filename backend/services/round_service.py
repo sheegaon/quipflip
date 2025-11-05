@@ -27,6 +27,7 @@ from backend.utils.exceptions import (
     RoundNotFoundError,
     RoundExpiredError,
     NoPromptsAvailableError,
+    InsufficientBalanceError,
 )
 
 logger = logging.getLogger(__name__)
@@ -752,10 +753,11 @@ class RoundService:
 
             # Charge player for hint generation
             await transaction_service.create_transaction(
-                player=player,
+                player_id=player.player_id,
                 amount=-self.settings.hint_cost,
-                transaction_type="hint_purchase",
-                description=f"AI hints for copy round {round_id}",
+                trans_type="hint_purchase",
+                reference_id=round_id,
+                auto_commit=False,
             )
 
             ai_service = AIService(self.db)
