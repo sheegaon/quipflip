@@ -46,6 +46,7 @@ class Round(Base):
 
     # Self-referential for copy rounds
     prompt_round = relationship("Round", remote_side=[round_id], foreign_keys=[prompt_round_id])
+    hints = relationship("Hint", back_populates="prompt_round", cascade="all, delete-orphan")
 
     # Indexes
     __table_args__ = (

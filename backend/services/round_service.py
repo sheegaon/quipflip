@@ -12,12 +12,14 @@ import logging
 from backend.models.player import Player
 from backend.models.prompt import Prompt
 from backend.models.round import Round
+from backend.models.hint import Hint
 from backend.models.flagged_prompt import FlaggedPrompt
 from backend.models.phraseset import Phraseset
 from backend.models.player_abandoned_prompt import PlayerAbandonedPrompt
 from backend.services.transaction_service import TransactionService
 from backend.services.queue_service import QueueService
 from backend.services.activity_service import ActivityService
+from backend.services.ai.ai_service import AIService, AICopyError
 from backend.config import get_settings
 from backend.utils.exceptions import (
     InvalidPhraseError,
@@ -696,6 +698,52 @@ class RoundService:
 
         logger.info(f"Submitted phrase for copy round {round_id}: {phrase}")
         return round_object
+
+    async def get_or_generate_hints(self, round_id: UUID) -> list[str]:
+        """Fetch cached hints for a copy round or generate and persist new ones."""
+        round_object = await self.db.get(Round, round_id)
+        if not round_object:
+            raise RoundNotFoundError("Round not found")
+
+        if round_object.round_type != "copy":
+            raise RoundNotFoundError("Round not found")
+
+        if round_object.status != "active":
+            raise RoundExpiredError("Hints are only available for active copy rounds")
+
+        if not round_object.prompt_round_id:
+            raise RoundNotFoundError("Associated prompt round missing")
+
+        prompt_round = await self.db.get(Round, round_object.prompt_round_id)
+        if not prompt_round:
+            raise RoundNotFoundError("Associated prompt round missing")
+
+        if not prompt_round.submitted_phrase:
+            raise InvalidPhraseError("Original phrase not submitted yet; hints unavailable")
+
+        from backend.utils import lock_client
+
+        lock_name = f"copy_hints:{prompt_round.round_id}"
+        with lock_client.lock(lock_name, timeout=self.settings.round_lock_timeout_seconds):
+            result = await self.db.execute(
+                select(Hint)
+                .where(Hint.prompt_round_id == prompt_round.round_id)
+                .order_by(Hint.created_at.desc())
+                .limit(1)
+            )
+            hint_record = result.scalars().first()
+            if hint_record:
+                return list(hint_record.hint_phrases)
+
+            ai_service = AIService(self.db)
+            try:
+                hints = await ai_service.generate_copy_hints(prompt_round)
+                await self.db.commit()
+            except Exception:
+                await self.db.rollback()
+                raise
+
+            return hints
 
     async def abandon_round(
             self,

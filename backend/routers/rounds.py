@@ -16,11 +16,13 @@ from backend.schemas.round import (
     FlagCopyRoundResponse,
     AbandonRoundResponse,
 )
+from backend.schemas.hint import HintResponse
 from backend.services.player_service import PlayerService
 from backend.services.transaction_service import TransactionService
 from backend.services.round_service import RoundService
 from backend.services.vote_service import VoteService
 from backend.services.queue_service import QueueService
+from backend.services.ai.ai_service import AICopyError
 from backend.config import get_settings
 from backend.utils.exceptions import (
     InsufficientBalanceError,
@@ -321,6 +323,58 @@ async def get_rounds_available(
         vote_payout_correct=settings.vote_payout_correct,
         abandoned_penalty=settings.abandoned_penalty,
     )
+
+
+@router.get("/{round_id}/hints", response_model=HintResponse)
+async def get_copy_round_hints(
+    round_id: UUID = Path(...),
+    player: Player = Depends(get_current_player),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return AI-generated hints for an active copy round."""
+    round_object = await db.get(Round, round_id)
+
+    if not round_object or round_object.player_id != player.player_id:
+        raise HTTPException(status_code=404, detail="Round not found")
+
+    if round_object.round_type != "copy":
+        raise HTTPException(status_code=400, detail="Hints are only available for copy rounds")
+
+    if round_object.status != "active":
+        raise HTTPException(status_code=400, detail="Hints are only available for active copy rounds")
+
+    round_service = RoundService(db)
+
+    try:
+        hints = await round_service.get_or_generate_hints(round_id)
+        logger.info(
+            "[API /rounds/%s/hints] Returned %s hints for player %s",
+            round_id,
+            len(hints),
+            player.player_id,
+        )
+        return HintResponse(hints=hints)
+    except RoundNotFoundError:
+        raise HTTPException(status_code=404, detail="Round not found")
+    except RoundExpiredError:
+        raise HTTPException(status_code=400, detail="Round expired")
+    except InvalidPhraseError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except AICopyError as exc:
+        logger.error(
+            "Failed to generate hints for round %s (player %s): %s",
+            round_id,
+            player.player_id,
+            exc,
+        )
+        raise HTTPException(status_code=500, detail="Failed to generate hints") from exc
+    except Exception as exc:  # noqa: BLE001 - capture unexpected failures
+        logger.exception(
+            "Unexpected error retrieving hints for round %s (player %s)",
+            round_id,
+            player.player_id,
+        )
+        raise HTTPException(status_code=500, detail="Unexpected error retrieving hints") from exc
 
 
 @router.get("/{round_id}", response_model=RoundDetails)

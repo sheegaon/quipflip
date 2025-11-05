@@ -48,6 +48,53 @@ Generate ONE alternative phrase only:"""
     return base_prompt
 
 
+def build_hint_prompt(original_phrase: str, prompt_text: str, existing_hints: list[str] | None = None) -> str:
+    """
+    Build structured prompt for generating diverse copy hints.
+
+    Args:
+        original_phrase: The original phrase that players must imitate
+        prompt_text: The prompt text that produced the original phrase
+        existing_hints: Hints that have already been generated (to avoid duplicates)
+
+    Returns:
+        A formatted prompt string for AI hint generation
+    """
+    common_words_placeholder = "{common_words}"
+
+    hints_section = ""
+    if existing_hints:
+        formatted_hints = "\n".join(f"- {hint}" for hint in existing_hints)
+        hints_section = f"""
+
+Existing hints already shared (do NOT repeat or lightly modify these):
+{formatted_hints}
+
+Generate something that explores a noticeably different angle than the hints above.
+"""
+
+    base_prompt = f"""You are assisting a player in a word game where they must create a convincing copy of an original phrase.
+
+Original phrase: "{original_phrase}"
+Prompt context: "{prompt_text}"
+
+Game rules:
+- 1-15 characters per word
+- 2-5 words total, 4-100 characters total
+- Letters and spaces only (no numbers, punctuation, or symbols)
+- Each word must be dictionary-valid
+- Avoid reusing long words (4+ letters) from the original phrase unless they are in this allowed common list: [{common_words_placeholder}]
+
+Creative goals:
+- Offer a phrase that feels like a natural alternative the original author could plausibly have written
+- Explore a different approach than previous hints (synonyms, metaphors, structure changes, shifts in tone or specificity)
+- Vary word count and emphasis to create distinct options
+{hints_section}
+Return exactly ONE new hint phrase. Do not add numbering, explanations, or quotation marks."""
+
+    return base_prompt
+
+
 def build_vote_prompt(prompt_text: str, phrases: list[str]) -> str:
     """
     Build structured prompt for AI vote generation.

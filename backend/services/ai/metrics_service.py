@@ -99,7 +99,7 @@ class AIMetricsService:
         Record an AI operation for tracking.
 
         Args:
-            operation_type: "copy_generation" or "vote_generation"
+            operation_type: "copy_generation", "vote_generation", or "hint_generation"
             provider: "openai" or "gemini"
             model: Model name
             success: Whether operation succeeded
@@ -300,7 +300,7 @@ class MetricsTracker:
 
     Attributes:
         metrics_service: AIMetricsService instance
-        operation_type: Type of operation ("copy_generation" or "vote_generation")
+        operation_type: Type of operation ("copy_generation", "vote_generation", or "hint_generation")
         provider: AI provider name ("openai" or "gemini")
         model: Model name (e.g., "gpt-4")
         start_time: Timestamp when operation started

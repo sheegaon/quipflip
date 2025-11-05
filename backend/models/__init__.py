@@ -15,6 +15,7 @@ from backend.models.quest import Quest, QuestTemplate
 from backend.models.system_config import SystemConfig
 from backend.models.flagged_prompt import FlaggedPrompt
 from backend.models.survey_response import SurveyResponse
+from backend.models.hint import Hint
 
 __all__ = [
     "Player",
@@ -34,4 +35,5 @@ __all__ = [
     "SystemConfig",
     "FlaggedPrompt",
     "SurveyResponse",
+    "Hint",
 ]
