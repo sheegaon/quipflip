@@ -11,6 +11,11 @@ import {
   Line,
 } from 'recharts';
 import type { HistoricalTrendPoint } from '../../api/types';
+import {
+  statisticsChartContainerStyle,
+  statisticsChartPlaceholderStyle,
+  statisticsResponsiveContainerProps,
+} from './chartSizing';
 
 interface HistoricalTrendsChartProps {
   trends: HistoricalTrendPoint[];
@@ -79,15 +84,18 @@ export default function HistoricalTrendsChart({ trends }: HistoricalTrendsChartP
 
   if (chartData.length === 0) {
     return (
-      <div className="w-full h-80 flex items-center justify-center text-quip-teal text-center" style={{ minHeight: '200px' }}>
+      <div
+        className="w-full flex items-center justify-center text-quip-teal text-center"
+        style={statisticsChartPlaceholderStyle}
+      >
         Historical trend data will appear once you start playing more rounds.
       </div>
     );
   }
 
   return (
-    <div className="w-full h-80" style={{ minWidth: '300px', minHeight: '200px' }}>
-      <ResponsiveContainer width="100%" height="100%" minWidth={300} minHeight={200}>
+    <div className="w-full" style={statisticsChartContainerStyle}>
+      <ResponsiveContainer width="100%" {...statisticsResponsiveContainerProps}>
         <ComposedChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="label" />

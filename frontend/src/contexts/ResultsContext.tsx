@@ -77,6 +77,12 @@ interface ResultsContextType {
   actions: ResultsActions;
 }
 
+const isCanceledError = (error: unknown): boolean => {
+  if (!error || typeof error !== 'object') return false;
+  const maybeError = error as { name?: string; code?: string };
+  return maybeError.name === 'CanceledError' || maybeError.code === 'ERR_CANCELED';
+};
+
 const ResultsContext = createContext<ResultsContextType | undefined>(undefined);
 
 export const ResultsProvider: React.FC<{ 
@@ -422,6 +428,14 @@ export const ResultsProvider: React.FC<{
       
       return data;
     } catch (err) {
+      if (isCanceledError(err)) {
+        gameContextLogger.debug('🛑 Statistics request canceled');
+        setResultsState(prev => ({
+          ...prev,
+          statisticsLoading: false,
+        }));
+        throw err;
+      }
       gameContextLogger.error('❌ Statistics refresh failed:', err);
       const errorMessage = getActionErrorMessage('load-statistics', err);
       setResultsState(prev => ({

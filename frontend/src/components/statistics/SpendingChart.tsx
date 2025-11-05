@@ -1,5 +1,10 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, PieLabelRenderProps } from 'recharts';
 import type { EarningsBreakdown } from '../../api/types';
+import {
+  statisticsChartContainerStyle,
+  statisticsChartPlaceholderStyle,
+  statisticsResponsiveContainerProps,
+} from './chartSizing';
 
 interface SpendingChartProps {
   earnings: EarningsBreakdown;
@@ -20,7 +25,7 @@ export default function SpendingChart({ earnings }: SpendingChartProps) {
 
   if (data.length === 0) {
     return (
-      <div className="w-full h-80 flex items-center justify-center">
+      <div className="w-full flex items-center justify-center" style={statisticsChartPlaceholderStyle}>
         <p className="text-gray-500">No costs yet. You haven't spent any coins on rounds!</p>
       </div>
     );
@@ -61,8 +66,8 @@ export default function SpendingChart({ earnings }: SpendingChartProps) {
   };
 
   return (
-    <div className="w-full h-80">
-      <ResponsiveContainer width="100%" height="100%">
+    <div className="w-full" style={statisticsChartContainerStyle}>
+      <ResponsiveContainer width="100%" {...statisticsResponsiveContainerProps}>
         <PieChart>
           <Pie
             data={data}
