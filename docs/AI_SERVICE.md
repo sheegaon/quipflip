@@ -49,6 +49,15 @@ backend/services/phrase_validator.py (or phrase_validation_client.py)  # Validat
 * `vote_helper` contains provider-specific implementations for OpenAI and Gemini. They both rely on `prompt_builder.build_vote_prompt` to produce the voting instructions.
 * The tracker logs whether the AI selected the original phrase so that accuracy can be measured later.
 
+### Hint generation
+
+* `AIService.generate_copy_hints(prompt_round, count=3)` generates multiple AI-powered copy phrase suggestions to help players during active copy rounds.
+* Uses the same validation and prompt building logic as copy generation, ensuring hints are valid submissions.
+* `prompt_builder.build_hint_prompt` creates prompts that emphasize variety and diversity among generated hints.
+* Hints are tracked with `operation_type="hint_generation"` in metrics, capturing provider, model, latency, and validation outcomes.
+* Generated hints are cached in the `hints` table keyed by `prompt_round_id`, so subsequent requests return the same hints at no additional cost.
+* The hint cost is configurable via `Settings.hint_cost` (default: 10 Flipcoins).
+
 ### Backup cycle automation
 
 * `AIService.run_backup_cycle()` creates or retrieves a dedicated AI player, then:
@@ -81,6 +90,7 @@ The AI service reads its configuration from `backend.config.Settings` (environme
 | `AI_BACKUP_DELAY_MINUTES` | Age threshold before AI copies/votes run | `15` |
 | `AI_BACKUP_BATCH_SIZE` | Max prompts/phrasesets processed per cycle | `3` |
 | `AI_BACKUP_SLEEP_MINUTES` | Recommended sleep between scheduled cycles | `60` |
+| `HINT_COST` | Cost in Flipcoins to generate new AI hints | `10` |
 
 When `Settings.use_phrase_validator_api` is `True`, the service uses the remote validator via `phrase_validation_client`; otherwise it falls back to the local validator.
 

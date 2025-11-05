@@ -762,6 +762,34 @@ Submit phrase for prompt or copy round.
 - `expired` - Past grace period
 - `not_found` - Round not found or not owned by player
 
+#### `POST /rounds/{round_id}/flag`
+Flag an active copy round for administrative review. Used when a player believes the original phrase is inappropriate or invalid.
+
+**Request Body:** _None_
+
+**Response:**
+```json
+{
+  "flag_id": "uuid",
+  "refund_amount": 45,
+  "penalty_kept": 5,
+  "status": "pending",
+  "message": "Copy round flagged"
+}
+```
+
+**Errors:**
+- `404 round_not_found` - Round does not exist or belongs to another player
+- `400 round_not_active` - Round is not active
+- `400 Bad Request` - Other validation errors
+- `500 flag_failed` - Unexpected server error while processing the flag
+
+**Notes:**
+- Only available for active copy rounds
+- Player receives a partial refund minus a penalty
+- Flagged prompt is removed from the queue and sent for admin review
+- Admin can confirm (keep penalty) or dismiss (refund penalty) the flag
+
 #### `POST /rounds/{round_id}/abandon`
 Immediately abandon an active prompt, copy, or vote round. The player receives an instant refund minus the configured abandonment penalty. Prompt rounds mark the phraseset as abandoned, copy rounds re-queue the prompt for other players, and vote rounds simply clear the active state.
 
@@ -783,6 +811,38 @@ Immediately abandon an active prompt, copy, or vote round. The player receives a
 - `round_not_found` - Round does not exist or belongs to another player
 - `Round is not active` - Attempted to abandon a round that has already completed or expired
 - `abandon_failed` - Unexpected server error while processing the abandonment
+
+#### `GET /rounds/{round_id}/hints`
+Get AI-generated hints for an active copy round. Returns 1-3 hint phrases that can help players think of alternative copy phrases.
+
+**Request Body:** _None_
+
+**Response:**
+```json
+{
+  "hints": [
+    "RENOWNED",
+    "CELEBRATED",
+    "WELL-KNOWN"
+  ]
+}
+```
+
+**Errors:**
+- `404 Not Found` - Round not found or player does not own the round
+- `400 Bad Request` - Hints are only available for copy rounds
+- `400 Bad Request` - Hints are only available for active copy rounds
+- `400 Insufficient Balance` - Not enough coins to generate hints (if hint_cost > 0)
+- `400 Round expired` - Round has expired
+- `400 Invalid phrase` - Prompt round phrase is invalid
+- `500 Failed to generate hints` - AI service error
+
+**Notes:**
+- Hints are only available for active copy rounds
+- Generated hints are cached, so subsequent requests for the same round return the same hints at no additional cost
+- Hints are validated using the same rules as copy phrase submissions
+- The cost for generating new hints is determined by the `hint_cost` configuration setting
+- Cached hints are always free to retrieve
 
 #### `POST /rounds/{round_id}/feedback`
 Submit thumbs up/down feedback for a prompt round.
@@ -1297,6 +1357,7 @@ Get current game configuration values (from database overrides or environment de
   "copy_cost_normal": 50,
   "copy_cost_discount": 40,
   "vote_cost": 10,
+  "hint_cost": 10,
   "vote_payout_correct": 20,
   "abandoned_penalty": 5,
   "prize_pool_base": 200,
@@ -1370,6 +1431,96 @@ Update a game configuration value. Requires admin password validation.
 - Changes take effect immediately for new rounds/operations
 - Validation rules are enforced (e.g., minimum values, data types)
 - See [Game Rules](GAME_RULES.md) for detailed explanation of each setting
+
+#### `GET /admin/flags`
+List flagged prompt phrases for administrative review.
+
+**Query Parameters:**
+- `status` (optional) - Filter by status: 'pending', 'confirmed', 'dismissed', or 'all' (default: 'pending')
+
+**Response:**
+```json
+{
+  "flags": [
+    {
+      "flag_id": "uuid",
+      "prompt_round_id": "uuid",
+      "copy_round_id": "uuid",
+      "reporter_player_id": "uuid",
+      "reporter_username": "Copy Cat",
+      "prompt_player_id": "uuid",
+      "prompt_username": "Prompt Pirate",
+      "reviewer_player_id": null,
+      "reviewer_username": null,
+      "status": "pending",
+      "original_phrase": "INAPPROPRIATE",
+      "prompt_text": "my deepest desire is to be (a/an)",
+      "round_cost": 50,
+      "partial_refund_amount": 45,
+      "penalty_kept": 5,
+      "queue_removed": true,
+      "previous_phraseset_status": "waiting_copies",
+      "created_at": "2025-01-06T12:00:00Z",
+      "reviewed_at": null
+    }
+  ]
+}
+```
+
+**Notes:**
+- Requires admin authentication
+- Returns all flags matching the status filter
+- Default is to show only pending flags
+- See [FlaggedPrompt](DATA_MODELS.md#flaggedprompt) for field definitions
+
+#### `POST /admin/flags/{flag_id}/resolve`
+Resolve a flagged prompt by confirming or dismissing it.
+
+**Request:**
+```json
+{
+  "action": "confirm"
+}
+```
+
+**Response:**
+```json
+{
+  "flag_id": "uuid",
+  "prompt_round_id": "uuid",
+  "copy_round_id": "uuid",
+  "reporter_player_id": "uuid",
+  "reporter_username": "Copy Cat",
+  "prompt_player_id": "uuid",
+  "prompt_username": "Prompt Pirate",
+  "reviewer_player_id": "uuid",
+  "reviewer_username": "Admin User",
+  "status": "confirmed",
+  "original_phrase": "INAPPROPRIATE",
+  "prompt_text": "my deepest desire is to be (a/an)",
+  "round_cost": 50,
+  "partial_refund_amount": 45,
+  "penalty_kept": 5,
+  "queue_removed": true,
+  "previous_phraseset_status": "waiting_copies",
+  "created_at": "2025-01-06T12:00:00Z",
+  "reviewed_at": "2025-01-06T13:00:00Z"
+}
+```
+
+**Errors:**
+- `404 flag_not_found` - Flag does not exist
+- `400 flag_already_resolved` - Flag has already been reviewed
+- `400 invalid_action` - Action must be 'confirm' or 'dismiss'
+- `401 Unauthorized` - Not authenticated
+- `403 Forbidden` - Not authorized (admin access required)
+
+**Notes:**
+- Requires admin authentication
+- `action` can be 'confirm' (uphold the flag) or 'dismiss' (reject the flag)
+- When confirmed, penalty is kept and reporter gets partial refund
+- When dismissed, penalty is refunded to reporter
+- Operation updates the flag status and records the reviewer
 
 ---
 
@@ -1447,6 +1598,7 @@ Visit `/redoc` for alternative ReDoc documentation.
 - **Prompt cost**: 100f
 - **Copy cost**: 50f normal, 40f with discount
 - **Vote cost**: 10f
+- **Hint cost**: 10f (for AI-generated copy hints)
 - **Vote payout (correct)**: 20f
 - **Phraseset prize pool**: 200f base (plus copy/vote contributions)
 - **Copy discount threshold**: >10 prompts waiting
