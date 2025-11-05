@@ -12,10 +12,35 @@ import {
 } from 'recharts';
 import type { HistoricalTrendPoint } from '../../api/types';
 import {
+  STATISTICS_CHART_MIN_WIDTH,
   statisticsChartContainerStyle,
   statisticsChartPlaceholderStyle,
   statisticsResponsiveContainerProps,
 } from './chartSizing';
+
+const HISTORICAL_TRENDS_ASPECT = 4 / 3;
+const HISTORICAL_TRENDS_MAX_HEIGHT = 360;
+
+const historicalChartContainerStyle = {
+  ...statisticsChartContainerStyle,
+  maxHeight: HISTORICAL_TRENDS_MAX_HEIGHT,
+};
+
+const historicalChartPlaceholderStyle = {
+  ...statisticsChartPlaceholderStyle,
+  maxHeight: HISTORICAL_TRENDS_MAX_HEIGHT,
+  height: HISTORICAL_TRENDS_MAX_HEIGHT,
+};
+
+const historicalResponsiveContainerProps = {
+  ...statisticsResponsiveContainerProps,
+  aspect: HISTORICAL_TRENDS_ASPECT,
+  maxHeight: HISTORICAL_TRENDS_MAX_HEIGHT,
+  initialDimension: {
+    width: STATISTICS_CHART_MIN_WIDTH,
+    height: STATISTICS_CHART_MIN_WIDTH / HISTORICAL_TRENDS_ASPECT,
+  },
+};
 
 interface HistoricalTrendsChartProps {
   trends: HistoricalTrendPoint[];
@@ -86,7 +111,7 @@ export default function HistoricalTrendsChart({ trends }: HistoricalTrendsChartP
     return (
       <div
         className="w-full flex items-center justify-center text-quip-teal text-center"
-        style={statisticsChartPlaceholderStyle}
+        style={historicalChartPlaceholderStyle}
       >
         Historical trend data will appear once you start playing more rounds.
       </div>
@@ -94,8 +119,8 @@ export default function HistoricalTrendsChart({ trends }: HistoricalTrendsChartP
   }
 
   return (
-    <div className="w-full" style={statisticsChartContainerStyle}>
-      <ResponsiveContainer width="100%" {...statisticsResponsiveContainerProps}>
+    <div className="w-full" style={historicalChartContainerStyle}>
+      <ResponsiveContainer width="100%" {...historicalResponsiveContainerProps}>
         <ComposedChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="label" />
