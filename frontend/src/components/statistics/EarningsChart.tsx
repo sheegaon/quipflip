@@ -1,6 +1,11 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, PieLabelRenderProps } from 'recharts';
 import { useState, useEffect, useRef } from 'react';
 import type { EarningsBreakdown } from '../../api/types';
+import {
+  statisticsChartContainerStyle,
+  statisticsChartPlaceholderStyle,
+  statisticsResponsiveContainerProps,
+} from './chartSizing';
 
 interface EarningsChartProps {
   earnings: EarningsBreakdown;
@@ -53,7 +58,7 @@ export default function EarningsChart({ earnings }: EarningsChartProps) {
 
   if (data.length === 0) {
     return (
-      <div className="w-full h-80 flex items-center justify-center" style={{ minWidth: '300px', minHeight: '200px' }}>
+      <div className="w-full flex items-center justify-center" style={statisticsChartPlaceholderStyle}>
         <p className="text-gray-500">No earnings yet. Start playing to earn coins!</p>
       </div>
     );
@@ -94,9 +99,9 @@ export default function EarningsChart({ earnings }: EarningsChartProps) {
   };
 
   return (
-    <div ref={containerRef} className="w-full h-80" style={{ minWidth: '300px', minHeight: '200px' }}>
+    <div ref={containerRef} className="w-full" style={statisticsChartContainerStyle}>
       {isReady ? (
-        <ResponsiveContainer width="100%" height="100%" minWidth={300} minHeight={200}>
+        <ResponsiveContainer width="100%" {...statisticsResponsiveContainerProps}>
           <PieChart>
             <Pie
               data={data}

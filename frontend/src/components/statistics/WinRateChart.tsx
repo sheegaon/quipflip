@@ -1,6 +1,7 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useState, useEffect, useRef } from 'react';
 import type { RoleStatistics } from '../../api/types';
+import { statisticsChartContainerStyle, statisticsResponsiveContainerProps } from './chartSizing';
 
 interface WinRateChartProps {
   promptStats: RoleStatistics;
@@ -58,17 +59,17 @@ export default function WinRateChart({ promptStats, copyStats, voterStats }: Win
   ];
 
   return (
-    <div ref={containerRef} className="w-full h-80" style={{ minWidth: '300px', minHeight: '200px' }}>
+    <div ref={containerRef} className="w-full" style={statisticsChartContainerStyle}>
       {isReady ? (
-        <ResponsiveContainer width="100%" height="100%" minWidth={300} minHeight={200}>
+        <ResponsiveContainer width="100%" {...statisticsResponsiveContainerProps}>
           <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="role" />
             <YAxis label={{ value: 'Win Rate (%)', angle: -90, position: 'insideLeft' }} />
             <Tooltip
               formatter={(value: number, name: string) => {
-                if (name === 'winRate') return [`${value.toFixed(1)}%`, 'Win Rate'];
-                if (name === 'rounds') return [value, 'Total Rounds'];
+                if (name === 'winRate') return [`${Math.round(value)}%`, 'Win Rate'];
+                if (name === 'rounds') return [Math.round(value), 'Total Rounds'];
                 return [value, name];
               }}
             />

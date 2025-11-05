@@ -378,46 +378,6 @@ const Statistics: React.FC = () => {
 
         {/* Charts Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          {/* Win Rate Chart */}
-          <div className="tile-card p-6">
-            <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Win Rates by Role</h2>
-            {chartsReady ? (
-              <WinRateChart
-                promptStats={data.prompt_stats}
-                copyStats={data.copy_stats}
-                voterStats={data.voter_stats}
-              />
-            ) : (
-              <div className="w-full h-80 flex items-center justify-center">
-                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-quip-orange border-r-transparent"></div>
-              </div>
-            )}
-          </div>
-
-          {/* Earnings Chart */}
-          <div className="tile-card p-6">
-            <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Earnings Breakdown</h2>
-            {chartsReady ? (
-              <EarningsChart earnings={data.earnings} />
-            ) : (
-              <div className="w-full h-80 flex items-center justify-center">
-                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-quip-orange border-r-transparent"></div>
-              </div>
-            )}
-          </div>
-
-          {/* Spending Chart */}
-          <div className="tile-card p-6">
-            <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Spending Breakdown</h2>
-            {chartsReady ? (
-              <SpendingChart earnings={data.earnings} />
-            ) : (
-              <div className="w-full h-80 flex items-center justify-center">
-                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-quip-orange border-r-transparent"></div>
-              </div>
-            )}
-          </div>
-
           {/* Weekly Leaderboard */}
           <div className="tile-card p-6">
             <h2 className="text-xl font-display font-bold text-quip-navy mb-2">Weekly Leaderboard</h2>
@@ -429,18 +389,6 @@ const Statistics: React.FC = () => {
               loading={leaderboardLoading || !chartsReady}
               error={leaderboardError}
             />
-          </div>
-
-          {/* Play Frequency */}
-          <div className="tile-card p-6">
-            <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Activity Metrics</h2>
-            {chartsReady ? (
-              <FrequencyChart frequency={data.frequency} />
-            ) : (
-              <div className="w-full h-80 flex items-center justify-center">
-                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-quip-orange border-r-transparent"></div>
-              </div>
-            )}
           </div>
 
           {/* Historical Trends */}
@@ -481,6 +429,59 @@ const Statistics: React.FC = () => {
               </div>
             )}
           </div>
+
+          {/* Earnings Chart */}
+          <div className="tile-card p-6">
+            <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Earnings Breakdown</h2>
+            {chartsReady ? (
+              <EarningsChart earnings={data.earnings} />
+            ) : (
+              <div className="w-full h-80 flex items-center justify-center">
+                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-quip-orange border-r-transparent"></div>
+              </div>
+            )}
+          </div>
+
+          {/* Spending Chart */}
+          <div className="tile-card p-6">
+            <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Spending Breakdown</h2>
+            {chartsReady ? (
+              <SpendingChart earnings={data.earnings} />
+            ) : (
+              <div className="w-full h-80 flex items-center justify-center">
+                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-quip-orange border-r-transparent"></div>
+              </div>
+            )}
+          </div>
+
+          {/* Play Frequency */}
+          <div className="tile-card p-6">
+            <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Activity Metrics</h2>
+            {chartsReady ? (
+              <FrequencyChart frequency={data.frequency} />
+            ) : (
+              <div className="w-full h-80 flex items-center justify-center">
+                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-quip-orange border-r-transparent"></div>
+              </div>
+            )}
+          </div>
+
+          {/* Win Rate Chart */}
+          <div className="tile-card p-6">
+            <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Win Rates by Role</h2>
+            {chartsReady ? (
+              <WinRateChart
+                promptStats={data.prompt_stats}
+                copyStats={data.copy_stats}
+                voterStats={data.voter_stats}
+              />
+            ) : (
+              <div className="w-full h-80 flex items-center justify-center">
+                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-quip-orange border-r-transparent"></div>
+              </div>
+            )}
+          </div>
+
         </div>
 
         <div className="mt-10 text-center text-xs text-quip-navy/60" aria-live="polite">

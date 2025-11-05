@@ -11,6 +11,36 @@ import {
   Line,
 } from 'recharts';
 import type { HistoricalTrendPoint } from '../../api/types';
+import {
+  STATISTICS_CHART_MIN_WIDTH,
+  statisticsChartContainerStyle,
+  statisticsChartPlaceholderStyle,
+  statisticsResponsiveContainerProps,
+} from './chartSizing';
+
+const HISTORICAL_TRENDS_ASPECT = 3 / 4;
+const HISTORICAL_TRENDS_MAX_HEIGHT = 600;
+
+const historicalChartContainerStyle = {
+  ...statisticsChartContainerStyle,
+  maxHeight: HISTORICAL_TRENDS_MAX_HEIGHT,
+};
+
+const historicalChartPlaceholderStyle = {
+  ...statisticsChartPlaceholderStyle,
+  maxHeight: HISTORICAL_TRENDS_MAX_HEIGHT,
+  height: HISTORICAL_TRENDS_MAX_HEIGHT,
+};
+
+const historicalResponsiveContainerProps = {
+  ...statisticsResponsiveContainerProps,
+  aspect: HISTORICAL_TRENDS_ASPECT,
+  maxHeight: HISTORICAL_TRENDS_MAX_HEIGHT,
+  initialDimension: {
+    width: STATISTICS_CHART_MIN_WIDTH,
+    height: STATISTICS_CHART_MIN_WIDTH / HISTORICAL_TRENDS_ASPECT,
+  },
+};
 
 interface HistoricalTrendsChartProps {
   trends: HistoricalTrendPoint[];
@@ -79,15 +109,18 @@ export default function HistoricalTrendsChart({ trends }: HistoricalTrendsChartP
 
   if (chartData.length === 0) {
     return (
-      <div className="w-full h-80 flex items-center justify-center text-quip-teal text-center" style={{ minHeight: '200px' }}>
+      <div
+        className="w-full flex items-center justify-center text-quip-teal text-center"
+        style={historicalChartPlaceholderStyle}
+      >
         Historical trend data will appear once you start playing more rounds.
       </div>
     );
   }
 
   return (
-    <div className="w-full h-80" style={{ minWidth: '300px', minHeight: '200px' }}>
-      <ResponsiveContainer width="100%" height="100%" minWidth={300} minHeight={200}>
+    <div className="w-full" style={historicalChartContainerStyle}>
+      <ResponsiveContainer width="100%" {...historicalResponsiveContainerProps}>
         <ComposedChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="label" />

@@ -45,7 +45,7 @@ const WeeklyLeaderboard: React.FC<WeeklyLeaderboardProps> = ({ leaders, loading 
   }, 1);
 
   return (
-    <div className="space-y-3" role="list">
+    <div className="space-y-2.5" role="list">
       {leaders.map((entry) => {
         const percent = Math.max(8, Math.round((Math.abs(entry.net_earnings) / maxMagnitude) * 100));
         const highlightClasses = entry.is_current_player
@@ -53,12 +53,12 @@ const WeeklyLeaderboard: React.FC<WeeklyLeaderboardProps> = ({ leaders, loading 
           : 'border border-quip-navy/10 bg-white';
         const valueColor = entry.net_earnings >= 0 ? 'text-quip-teal' : 'text-quip-orange';
         const barColor = entry.net_earnings >= 0 ? 'bg-quip-teal' : 'bg-quip-orange';
-        const rankLabel = entry.rank ? `#${entry.rank}` : '—';
+        const rankLabel = entry.rank ? `#${entry.rank}` : '-';
 
         return (
           <div
             key={entry.player_id}
-            className={`rounded-tile p-4 transition-colors duration-200 ${highlightClasses}`}
+            className={`rounded-tile px-3 py-2.5 transition-colors duration-200 ${highlightClasses}`}
             role="listitem"
             aria-label={`${entry.username} net earnings ${currencyFormatter.format(entry.net_earnings)}`}
           >
@@ -75,16 +75,16 @@ const WeeklyLeaderboard: React.FC<WeeklyLeaderboardProps> = ({ leaders, loading 
               </div>
             </div>
 
-            <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-quip-navy/10">
+            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-quip-navy/10">
               <div className={`h-full ${barColor}`} style={{ width: `${percent}%` }} aria-hidden="true" />
             </div>
 
             {entry.is_current_player ? (
-              <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-quip-orange">
+              <p className="mt-1.5 text-xs font-semibold uppercase tracking-wide text-quip-orange">
                 You&apos;re here! Keep climbing the leaderboard.
               </p>
             ) : (
-              <p className="mt-2 text-xs text-quip-navy/50">
+              <p className="mt-1.5 text-xs text-quip-navy/50">
                 Costs {currencyFormatter.format(entry.total_costs)} vs. Earnings {currencyFormatter.format(entry.total_earnings)}
               </p>
             )}
