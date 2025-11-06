@@ -266,27 +266,74 @@ class RoundService:
         logger.info(f"Submitted phrase for prompt round {round_id}: {phrase}")
         return round_object
 
-    async def start_copy_round(self, player: Player, transaction_service: TransactionService) -> Optional[Round]:
+    async def start_copy_round(
+        self,
+        player: Player,
+        transaction_service: TransactionService,
+        prompt_round_id: Optional[UUID] = None
+    ) -> tuple[Optional[Round], bool]:
         """
         Start a copy round.
 
-        - Get next prompt from queue (FIFO)
-        - Check discount (>10 prompts waiting)
-        - Deduct cost immediately
+        - Get next prompt from queue (FIFO) OR use provided prompt_round_id for second copy
+        - Check discount (>10 prompts waiting) - not applicable for second copy
+        - Deduct cost immediately (2x for second copy)
         - Prevent same player from getting abandoned prompt (24h)
+
+        Args:
+            player: The player starting the copy round
+            transaction_service: Transaction service for payment
+            prompt_round_id: Optional prompt round ID for second copy requests
+
+        Returns:
+            Tuple of (Round object, is_second_copy flag)
         """
-        logger.info(f"[Copy Round Start] Player {player.player_id} attempting to start copy round")
+        logger.info(f"[Copy Round Start] Player {player.player_id} attempting to start copy round (second_copy={prompt_round_id is not None})")
 
-        queue_populated = await self.ensure_prompt_queue_populated()
-        logger.info(
-            f"[Copy Round Start] Queue populated: {queue_populated}, queue length: {QueueService.get_prompt_rounds_waiting()}"
-        )
+        is_second_copy = prompt_round_id is not None
 
-        prompt_round = await self._get_next_valid_prompt_round(
-            player, self.settings.copy_round_max_attempts
-        )
+        if is_second_copy:
+            # Second copy: use the provided prompt_round_id
+            prompt_round = await self.db.get(Round, prompt_round_id)
+            if not prompt_round or prompt_round.round_type != "prompt":
+                raise ValueError("Invalid prompt round ID for second copy")
 
-        copy_cost, is_discounted, system_contribution = self._calculate_copy_round_cost()
+            # Verify player has already done first copy
+            existing_copies = (
+                await self.db.execute(
+                    select(Round)
+                    .filter(
+                        Round.player_id == player.player_id,
+                        Round.round_type == "copy",
+                        Round.prompt_round_id == prompt_round_id,
+                        Round.status == "submitted",
+                    )
+                )
+            ).scalars().all()
+
+            if not existing_copies:
+                raise ValueError("Player must complete first copy before requesting second copy")
+            if len(existing_copies) >= 2:
+                raise ValueError("Player has already completed two copies for this prompt")
+
+            # Second copy costs 2x the normal cost (no discount)
+            copy_cost = self.settings.copy_cost_normal * 2
+            system_contribution = 0
+
+            logger.info(f"[Copy Round Start] Starting second copy for prompt {prompt_round_id}, cost={copy_cost}")
+        else:
+            # First copy: normal flow
+            queue_populated = await self.ensure_prompt_queue_populated()
+            logger.info(
+                f"[Copy Round Start] Queue populated: {queue_populated}, queue length: {QueueService.get_prompt_rounds_waiting()}"
+            )
+
+            prompt_round = await self._get_next_valid_prompt_round(
+                player, self.settings.copy_round_max_attempts
+            )
+
+            copy_cost, is_discounted, system_contribution = self._calculate_copy_round_cost()
+
         round_object = await self._create_copy_round(
             player,
             prompt_round,
@@ -301,9 +348,9 @@ class RoundService:
 
         logger.info(
             f"Started copy round {round_object.round_id} for player {player.player_id}, "
-            f"cost=${copy_cost}, discount={is_discounted}"
+            f"cost=${copy_cost}, is_second_copy={is_second_copy}"
         )
-        return round_object
+        return round_object, is_second_copy
 
     def _calculate_copy_round_cost(self) -> tuple[int, bool, int]:
         """Return copy round cost, discount flag, and system contribution."""
@@ -583,7 +630,7 @@ class RoundService:
             phrase: str,
             player: Player,
             transaction_service: TransactionService,
-    ) -> Optional[Round]:
+    ) -> tuple[Optional[Round], dict]:
         """Submit phrase for copy round."""
         round_object = await self._lock_round_for_update(round_id)
         if not round_object or round_object.player_id != player.player_id:
@@ -695,7 +742,33 @@ class RoundService:
         dashboard_cache.invalidate_player_data(player.player_id)
 
         logger.info(f"Submitted phrase for copy round {round_id}: {phrase}")
-        return round_object
+
+        # Check eligibility for second copy
+        second_copy_info = {
+            "eligible_for_second_copy": False,
+            "second_copy_cost": None,
+            "prompt_round_id": None,
+            "original_phrase": None,
+        }
+
+        if prompt_round and is_first_copy:
+            # Calculate second copy cost (2x the normal cost)
+            second_copy_cost = self.settings.copy_cost_normal * 2
+
+            # Check if player has enough balance for second copy
+            # Need to refresh player to get updated balance after this transaction
+            await self.db.refresh(player)
+
+            if player.balance >= second_copy_cost:
+                second_copy_info = {
+                    "eligible_for_second_copy": True,
+                    "second_copy_cost": second_copy_cost,
+                    "prompt_round_id": prompt_round.round_id,
+                    "original_phrase": round_object.original_phrase,
+                }
+                logger.info(f"Player {player.player_id} is eligible for second copy with balance {player.balance}")
+
+        return round_object, second_copy_info
 
     async def abandon_round(
             self,

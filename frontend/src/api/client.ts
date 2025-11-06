@@ -386,8 +386,9 @@ export const apiClient = {
     return data;
   },
 
-  async startCopyRound(signal?: AbortSignal): Promise<StartCopyResponse> {
-    const { data } = await api.post('/rounds/copy', {}, { signal });
+  async startCopyRound(promptRoundId?: string, signal?: AbortSignal): Promise<StartCopyResponse> {
+    const params = promptRoundId ? { prompt_round_id: promptRoundId } : {};
+    const { data } = await api.post('/rounds/copy', {}, { signal, params });
     return data;
   },
 
