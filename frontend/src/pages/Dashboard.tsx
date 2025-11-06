@@ -49,19 +49,28 @@ export const Dashboard: React.FC = () => {
   // Refresh dashboard when navigating back to it
   const previousPathRef = useRef<string | null>(null);
   useEffect(() => {
+    const controller = new AbortController();
     const currentPath = location.pathname;
     const previousPath = previousPathRef.current;
 
     // Refresh when navigating TO /dashboard FROM another page
     if (currentPath === '/dashboard' && previousPath !== null && previousPath !== '/dashboard' && isAuthenticated) {
       dashboardLogger.debug('Navigated back to dashboard, refreshing...', { from: previousPath });
-      refreshDashboard().catch((err) => {
+      refreshDashboard(controller.signal).catch((err) => {
+        if (controller.signal.aborted) {
+          dashboardLogger.debug('Dashboard refresh aborted on navigation back');
+          return;
+        }
         dashboardLogger.warn('Failed to refresh dashboard on navigation back:', err);
       });
     }
 
     // Update the previous path
     previousPathRef.current = currentPath;
+
+    return () => {
+      controller.abort();
+    };
   }, [location.pathname, isAuthenticated, refreshDashboard]);
 
   useEffect(() => {
