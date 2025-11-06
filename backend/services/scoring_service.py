@@ -407,15 +407,15 @@ class ScoringService:
                 select(
                     Phraseset.phraseset_id.label("phraseset_id"),
                     Phraseset.prompt_round_id.label("round_id"),
-                ),
+                ).select_from(Phraseset),
                 select(
                     Phraseset.phraseset_id.label("phraseset_id"),
                     Phraseset.copy_round_1_id.label("round_id"),
-                ),
+                ).select_from(Phraseset),
                 select(
                     Phraseset.phraseset_id.label("phraseset_id"),
                     Phraseset.copy_round_2_id.label("round_id"),
-                ),
+                ).select_from(Phraseset),
             ).subquery()
 
             earnings_query = (
