@@ -1,4 +1,4 @@
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, PieLabelRenderProps } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, PieLabelRenderProps } from 'recharts';
 import { useState, useEffect, useRef } from 'react';
 import type { EarningsBreakdown } from '../../api/types';
 import {
@@ -109,7 +109,7 @@ export default function EarningsChart({ earnings }: EarningsChartProps) {
               cy="50%"
               labelLine={false}
               label={renderCustomLabel}
-              outerRadius={100}
+              outerRadius="80%"
               fill="#8884d8"
               dataKey="value"
             >
@@ -117,9 +117,6 @@ export default function EarningsChart({ earnings }: EarningsChartProps) {
                 <Cell key={`cell-${index}`} fill={entry.color} />
               ))}
             </Pie>
-            <Tooltip
-              formatter={(value: number) => [`${value} coins`, 'Earned']}
-            />
             <Legend />
           </PieChart>
         </ResponsiveContainer>
