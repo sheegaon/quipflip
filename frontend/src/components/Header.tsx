@@ -174,7 +174,7 @@ export const Header: React.FC = () => {
         </div>
       )}
       <div className="bg-white shadow-tile-sm">
-        <div className="max-w-6xl mx-auto px-1 py-0 md:px-4 md:py-3">
+        <div className="max-w-6xl mx-auto px-1 py-0 md:px-4 md:py-1.5">
         <div className="flex justify-between items-center">
           {/* Left: Logo + Back Arrow (on certain pages) */}
           <div className="flex items-center gap-0.5 md:gap-3">
@@ -189,19 +189,23 @@ export const Header: React.FC = () => {
                 <img
                   src="/icon_back_arrow.svg"
                   alt=""
-                  className="w-5 h-5 md:w-9 md:h-9"
+                  className="w-5 h-5 md:w-7 md:h-7"
                   aria-hidden="true"
                 />
               )}
-              <img src="/large_icon.png" alt="Quipflip" className="md:h-14 h-6 w-auto" />
+              <img src="/large_icon.png" alt="Quipflip" className="md:h-10 h-6 w-auto" />
             </button>
           </div>
 
-          {/* Center: Username */}
+          {/* Center: Username (clickable to statistics) */}
           <div className="flex-1 text-center">
-            <span className="text-xs md:text-2xl text-quip-turquoise font-semibold">
+            <button
+              onClick={goToStatistics}
+              className="text-xs md:text-xl text-quip-turquoise font-semibold hover:text-quip-teal transition-colors"
+              title="View your statistics"
+            >
               {player.username || username}
-            </span>
+            </button>
           </div>
 
           {/* Right: Flipcoins + Logout */}
@@ -214,15 +218,15 @@ export const Header: React.FC = () => {
               title="View your statistics"
               aria-label="View your statistics"
             >
-              <img src="/flipcoin.png" alt="Flipcoin" className="w-5 h-5 md:w-8 md:h-8" />
+              <img src="/flipcoin.png" alt="Flipcoin" className="w-5 h-5 md:w-7 md:h-7" />
               <BalanceFlipper
                 value={player.balance}
-                className="text-xl md:text-3xl font-display font-bold text-quip-turquoise"
+                className="text-xl md:text-2xl font-display font-bold text-quip-turquoise"
               />
             </button>
             {/* Logout Button */}
             <button onClick={handleLogoutClick} className="text-quip-teal hover:text-quip-turquoise" title="Logout">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 md:h-10 w-6 md:w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 md:h-8 w-6 md:w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
               </svg>
             </button>

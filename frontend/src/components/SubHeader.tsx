@@ -46,7 +46,7 @@ export const SubHeader: React.FC = () => {
 
   return (
     <div className="bg-white shadow-tile-sm">
-      <div className="max-w-6xl mx-auto px-1 py-0 md:px-4 md:py-3">
+      <div className="max-w-6xl mx-auto px-1 py-0 md:px-4 md:py-1.5">
         <div className="flex justify-between items-center">
           {/* Left: In-progress and Results indicators */}
           <div className="flex items-center gap-0.5 md:gap-3">
@@ -117,7 +117,7 @@ export const SubHeader: React.FC = () => {
               <img
                 src="/icon_stats.svg"
                 alt=""
-                className="w-7 h-7 md:w-10 md:h-10 transition-transform group-hover:scale-110"
+                className="w-7 h-7 md:w-8 md:h-8 transition-transform group-hover:scale-110"
                 aria-hidden="true"
               />
             </button>
@@ -129,7 +129,7 @@ export const SubHeader: React.FC = () => {
                 title={(player.daily_bonus_available || hasClaimableQuests) ? "View available rewards" : "No rewards available"}
               >
                 <TreasureChestIcon
-                  className="w-7 h-7 md:w-10 md:h-10 transition-transform group-hover:scale-110"
+                  className="w-7 h-7 md:w-8 md:h-8 transition-transform group-hover:scale-110"
                   isAvailable={player.daily_bonus_available || hasClaimableQuests}
                 />
               </button>
