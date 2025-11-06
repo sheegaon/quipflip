@@ -7,7 +7,7 @@ import logging
 from typing import Any, Iterable
 from uuid import UUID, uuid5
 
-from sqlalchemy import and_, func, or_, select, union_all
+from sqlalchemy import and_, cast, func, or_, select, union_all, Integer, Float
 from sqlalchemy.ext.asyncio import AsyncSession
 
 try:  # pragma: no cover - optional dependency during import
@@ -33,6 +33,7 @@ PLACEHOLDER_PLAYER_NAMESPACE = UUID("6c057f58-7199-43ff-b4fc-17b77df5e6a2")
 WEEKLY_LEADERBOARD_LIMIT = 5
 WEEKLY_LEADERBOARD_CACHE_KEY = "leaderboard:weekly:v4"  # v4: split by role with win rates
 AI_PLAYER_EMAIL_DOMAIN = "@quipflip.internal"
+LEADERBOARD_ROLES = ["prompt", "copy", "voter"]
 
 
 _redis_client: "Redis | None" = None
@@ -83,7 +84,7 @@ async def _load_cached_weekly_leaderboard() -> tuple[dict[str, list[dict[str, An
 
         role_leaderboards: dict[str, list[dict[str, Any]]] = {}
 
-        for role in ["prompt", "copy", "voter"]:
+        for role in LEADERBOARD_ROLES:
             entries: list[dict[str, Any]] = []
             for entry in payload.get(f"{role}_leaderboard", []):
                 normalized = dict(entry)
@@ -296,7 +297,7 @@ class ScoringService:
 
         result = {}
 
-        for role in ["prompt", "copy", "voter"]:
+        for role in LEADERBOARD_ROLES:
             entries = role_leaderboards.get(role, [])
             lookup = {entry["player_id"]: entry for entry in entries}
             top_entries = entries[:WEEKLY_LEADERBOARD_LIMIT]
@@ -540,7 +541,7 @@ class ScoringService:
                 round_performance.c.player_id,
                 func.count(
                     func.nullif(
-                        func.cast(round_performance.c.earnings > round_performance.c.cost, type_=int), 0
+                        cast(round_performance.c.earnings > round_performance.c.cost, Integer), 0
                     )
                 ).label("winning_rounds"),
             )
@@ -553,10 +554,10 @@ class ScoringService:
             - func.coalesce(rounds_subquery.c.total_costs, 0)
         )
 
-        win_rate_expression = func.cast(
+        win_rate_expression = cast(
             func.coalesce(wins_subquery.c.winning_rounds, 0) * 100.0
             / func.nullif(rounds_subquery.c.total_rounds, 0),
-            type_=func.Float,
+            Float,
         )
 
         leaderboard_stmt = (
@@ -600,16 +601,13 @@ class ScoringService:
         return entries
 
     async def _compute_role_based_weekly_leaderboards(self) -> dict[str, list[dict]]:
-        """Calculate weekly leaderboards for all three roles."""
-        prompt_leaderboard = await self._compute_role_leaderboard("prompt")
-        copy_leaderboard = await self._compute_role_leaderboard("copy")
-        voter_leaderboard = await self._compute_role_leaderboard("voter")
+        """Calculate weekly leaderboards for all three roles concurrently."""
+        import asyncio
 
-        return {
-            "prompt": prompt_leaderboard,
-            "copy": copy_leaderboard,
-            "voter": voter_leaderboard,
-        }
+        tasks = [self._compute_role_leaderboard(role) for role in LEADERBOARD_ROLES]
+        results = await asyncio.gather(*tasks)
+
+        return dict(zip(LEADERBOARD_ROLES, results))
 
     @staticmethod
     def _empty_payout(phraseset: Phraseset) -> dict:

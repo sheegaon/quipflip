@@ -28,6 +28,7 @@ from backend.schemas.player import (
     UpgradeGuestResponse,
     WeeklyLeaderboardEntry,
     WeeklyLeaderboardResponse,
+    RoleLeaderboard,
 )
 from backend.schemas.phraseset import (
     PhrasesetListResponse,
@@ -625,61 +626,16 @@ async def get_weekly_leaderboard(
         player.username,
     )
 
-    # Build leaderboard for each role
-    prompt_leaders = [
-        WeeklyLeaderboardEntry(
-            player_id=entry["player_id"],
-            username=entry["username"],
-            role="prompt",
-            total_costs=entry["total_costs"],
-            total_earnings=entry["total_earnings"],
-            net_earnings=entry["net_earnings"],
-            win_rate=entry["win_rate"],
-            total_rounds=entry["total_rounds"],
-            rank=entry["rank"],
-            is_current_player=entry["is_current_player"],
-        )
-        for entry in role_data.get("prompt", [])
-    ]
-
-    copy_leaders = [
-        WeeklyLeaderboardEntry(
-            player_id=entry["player_id"],
-            username=entry["username"],
-            role="copy",
-            total_costs=entry["total_costs"],
-            total_earnings=entry["total_earnings"],
-            net_earnings=entry["net_earnings"],
-            win_rate=entry["win_rate"],
-            total_rounds=entry["total_rounds"],
-            rank=entry["rank"],
-            is_current_player=entry["is_current_player"],
-        )
-        for entry in role_data.get("copy", [])
-    ]
-
-    voter_leaders = [
-        WeeklyLeaderboardEntry(
-            player_id=entry["player_id"],
-            username=entry["username"],
-            role="voter",
-            total_costs=entry["total_costs"],
-            total_earnings=entry["total_earnings"],
-            net_earnings=entry["net_earnings"],
-            win_rate=entry["win_rate"],
-            total_rounds=entry["total_rounds"],
-            rank=entry["rank"],
-            is_current_player=entry["is_current_player"],
-        )
-        for entry in role_data.get("voter", [])
-    ]
-
-    from backend.schemas.player import RoleLeaderboard
+    # Build leaderboard for each role using dictionary comprehension
+    leader_lists = {
+        role: [WeeklyLeaderboardEntry(**entry) for entry in role_data.get(role, [])]
+        for role in ["prompt", "copy", "voter"]
+    }
 
     return WeeklyLeaderboardResponse(
-        prompt_leaderboard=RoleLeaderboard(role="prompt", leaders=prompt_leaders),
-        copy_leaderboard=RoleLeaderboard(role="copy", leaders=copy_leaders),
-        voter_leaderboard=RoleLeaderboard(role="voter", leaders=voter_leaders),
+        prompt_leaderboard=RoleLeaderboard(role="prompt", leaders=leader_lists["prompt"]),
+        copy_leaderboard=RoleLeaderboard(role="copy", leaders=leader_lists["copy"]),
+        voter_leaderboard=RoleLeaderboard(role="voter", leaders=leader_lists["voter"]),
         generated_at=generated_at or datetime.now(UTC),
     )
 

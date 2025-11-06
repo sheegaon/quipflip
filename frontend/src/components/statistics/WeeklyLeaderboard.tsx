@@ -23,6 +23,8 @@ const roleLabels: Record<Role, string> = {
   voter: 'Voter',
 };
 
+const MIN_BAR_PERCENTAGE = 8;
+
 const LeaderboardList: React.FC<{ leaders: WeeklyLeaderboardEntry[] }> = ({ leaders }) => {
   if (leaders.length === 0) {
     return (
@@ -39,7 +41,7 @@ const LeaderboardList: React.FC<{ leaders: WeeklyLeaderboardEntry[] }> = ({ lead
   return (
     <div className="space-y-2.5" role="list">
       {leaders.map((entry) => {
-        const percent = Math.max(8, Math.round((entry.win_rate / maxWinRate) * 100));
+        const percent = Math.max(MIN_BAR_PERCENTAGE, Math.round((entry.win_rate / maxWinRate) * 100));
         const highlightClasses = entry.is_current_player
           ? 'border-2 border-quip-orange bg-quip-orange/10 shadow-md'
           : 'border border-quip-navy/10 bg-white';
@@ -123,12 +125,14 @@ const WeeklyLeaderboard: React.FC<WeeklyLeaderboardProps> = ({
   return (
     <div className="space-y-4">
       {/* Tab Navigation */}
-      <div className="flex border-b border-quip-navy/10">
+      <div className="flex border-b border-quip-navy/10" role="tablist">
         {(['prompt', 'copy', 'voter'] as Role[]).map((role) => {
           const isActive = activeTab === role;
           return (
             <button
               key={role}
+              role="tab"
+              aria-selected={isActive}
               onClick={() => setActiveTab(role)}
               className={`px-4 py-2 font-semibold text-sm transition-colors duration-200 border-b-2 ${
                 isActive
