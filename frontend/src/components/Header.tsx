@@ -10,9 +10,8 @@ export const Header: React.FC = () => {
   const { state, actions } = useGame();
   const { player, username, phrasesetSummary } = state;
   const { logout, refreshDashboard, refreshBalance } = actions;
-  const { state: resultsState, actions: resultsActions } = useResults();
+  const { state: resultsState } = useResults();
   const { pendingResults, viewedResultIds } = resultsState;
-  const { markResultsViewed } = resultsActions;
   const { state: questState } = useQuests();
   const { hasClaimableQuests } = questState;
   const navigate = useNavigate();
@@ -76,13 +75,13 @@ export const Header: React.FC = () => {
     navigate('/statistics');
   }, [navigate]);
 
-  const handleLogoClick = React.useCallback(() => {
-    refreshDashboard().catch((err) => {
-      console.warn('Failed to refresh dashboard from header icon:', err);
-    });
-    refreshBalance().catch((err) => {
-      console.warn('Failed to refresh balance from header icon:', err);
-    });
+  const handleLogoClick = React.useCallback(async () => {
+    // Refresh dashboard and balance before navigating
+    try {
+      await Promise.all([refreshDashboard(), refreshBalance()]);
+    } catch (err) {
+      console.warn('Failed to refresh from header icon:', err);
+    }
 
     if (showBackArrow) {
       navigate(getBackNavigation());
@@ -110,12 +109,6 @@ export const Header: React.FC = () => {
   }, [player?.created_at]);
 
   const handleResultsClick = async () => {
-    // Mark all unviewed results as viewed when clicking
-    const unviewedIds = unviewedResults.map(result => result.phraseset_id);
-    if (unviewedIds.length > 0) {
-      markResultsViewed(unviewedIds);
-    }
-    
     // Refresh dashboard to get latest data before navigating
     try {
       await refreshDashboard();
@@ -123,7 +116,8 @@ export const Header: React.FC = () => {
       // Continue navigation even if refresh fails
       console.warn('Failed to refresh dashboard in header:', err);
     }
-    
+
+    // Navigate to results page (results will be marked as viewed on page load)
     navigate('/results');
   };
 
