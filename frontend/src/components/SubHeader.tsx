@@ -56,9 +56,9 @@ export const SubHeader: React.FC = () => {
     const today = new Date();
 
     return (
-      createdDate.getFullYear() === today.getFullYear() &&
-      createdDate.getMonth() === today.getMonth() &&
-      createdDate.getDate() === today.getDate()
+      createdDate.getUTCFullYear() === today.getUTCFullYear() &&
+      createdDate.getUTCMonth() === today.getUTCMonth() &&
+      createdDate.getUTCDate() === today.getUTCDate()
     );
   }, [player?.created_at]);
 
