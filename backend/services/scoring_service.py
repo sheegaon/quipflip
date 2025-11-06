@@ -513,7 +513,7 @@ class ScoringService:
                 .join(
                     Vote,
                     and_(
-                        Vote.round_id == Round.round_id,
+                        Vote.phraseset_id == Round.phraseset_id,
                         Vote.player_id == Round.player_id,
                     ),
                     isouter=True,
