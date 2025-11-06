@@ -167,6 +167,9 @@ async def get_phraseset_history(
 
     Returns all events from prompt submission through finalization,
     including usernames and timestamps for each event.
+
+    Access restricted to finalized phrasesets only to prevent viewing
+    active phraseset details before voting completes.
     """
     phraseset_service = PhrasesetService(db)
     try:
@@ -176,6 +179,8 @@ async def get_phraseset_history(
         message = str(exc)
         if message == "Phraseset not found":
             raise HTTPException(status_code=404, detail=message)
+        if message == "Phraseset not finalized":
+            raise HTTPException(status_code=403, detail=message)
         raise HTTPException(status_code=400, detail=message)
     except Exception as exc:
         logger.error(f"Error getting phraseset history: {exc}")

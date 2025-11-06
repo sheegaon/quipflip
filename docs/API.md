@@ -1153,6 +1153,8 @@ Explicitly mark a phraseset payout as claimed (idempotent).
 #### `GET /phrasesets/{phraseset_id}/history`
 Get the complete event timeline for a phraseset, showing all submissions, votes, and finalization.
 
+**Access Control:** This endpoint is restricted to finalized phrasesets only. Attempting to view the history of an active phraseset will return a 403 error. This prevents players from viewing phrases and contributor identities before voting completes, which would compromise game integrity.
+
 **Purpose:** This endpoint provides a comprehensive review of a phraseset's lifecycle, making it ideal for building a detailed review UX that shows:
 - Who submitted the original phrase and when
 - When each copy was submitted and by whom
@@ -1271,7 +1273,14 @@ Get the complete event timeline for a phraseset, showing all submissions, votes,
 
 **Errors:**
 - `404 Not Found` - Phraseset not found
+- `403 Forbidden` - Phraseset not finalized (still active/voting)
 - `400 Bad Request` - Invalid phraseset ID format
+
+**Security Note:** This endpoint only returns data for finalized phrasesets. This prevents:
+- Viewing the original phrase before voting (unfair advantage)
+- Seeing copy phrases and contributors during active voting
+- Real-time tracking of vote patterns before finalization
+- Any form of coordination or cheating using live phraseset data
 
 #### `GET /phrasesets/completed`
 Get a paginated list of all finalized phrasesets with summary metadata.

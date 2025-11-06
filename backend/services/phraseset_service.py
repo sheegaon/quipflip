@@ -392,10 +392,17 @@ class PhrasesetService:
 
         Returns all events from prompt submission through finalization,
         including usernames and timestamps for each event.
+
+        Access is restricted to finalized phrasesets only to prevent
+        viewing active phraseset details before voting completes.
         """
         phraseset = await self.db.get(Phraseset, phraseset_id)
         if not phraseset:
             raise ValueError("Phraseset not found")
+
+        # Restrict access to finalized phrasesets only
+        if phraseset.status != "finalized":
+            raise ValueError("Phraseset not finalized")
 
         # Load contributor rounds
         prompt_round, copy1_round, copy2_round = await self._load_contributor_rounds(phraseset)
