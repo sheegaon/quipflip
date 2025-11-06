@@ -61,6 +61,7 @@ class PhraseSetResults(BaseSchema):
     vote_cost: int
     vote_payout_correct: int
     system_contribution: int
+    second_copy_contribution: int
 
 
 class PhrasesetSummary(BaseSchema):
