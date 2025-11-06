@@ -47,9 +47,9 @@ export const SubHeader: React.FC = () => {
   return (
     <div className="bg-white shadow-tile-sm">
       <div className="max-w-6xl mx-auto px-1 py-0 md:px-4 md:py-1.5">
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between md:justify-around items-center">
           {/* Left: In-progress and Results indicators */}
-          <div className="flex items-center gap-0.5 md:gap-3">
+          <div className="flex items-center gap-0.5 md:gap-6">
             {showInProgressIndicator && (
               <button
                 type="button"
@@ -106,7 +106,7 @@ export const SubHeader: React.FC = () => {
           <div className="flex-1 text-center"></div>
 
           {/* Right: Statistics icon and Treasure Chest */}
-          <div className="flex items-center gap-0.5 md:gap-4">
+          <div className="flex items-center gap-0.5 md:gap-6">
             {/* Statistics Icon Button */}
             <button
               onClick={goToStatistics}
