@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { useResults } from '../contexts/ResultsContext';
 import { useTutorial } from '../contexts/TutorialContext';
@@ -16,7 +16,7 @@ import { hasDismissedSurvey, markSurveyDismissed, hasCompletedSurvey } from '../
 const formatWaitingCount = (count: number): string => (count > 10 ? 'over 10' : count.toString());
 export const Dashboard: React.FC = () => {
   const { state, actions } = useGame();
-  const { state: resultsState, actions: resultsActions } = useResults();
+  const { state: resultsState } = useResults();
   const {
     player,
     activeRound,
@@ -29,8 +29,8 @@ export const Dashboard: React.FC = () => {
   const { refreshDashboard, clearError, abandonRound } = actions;
   const { startTutorial, skipTutorial, advanceStep } = useTutorial();
   const { viewedResultIds } = resultsState;
-  const { markResultsViewed } = resultsActions;
   const navigate = useNavigate();
+  const location = useLocation();
   const [isRoundExpired, setIsRoundExpired] = useState(false);
   const [startingRound, setStartingRound] = useState<string | null>(null);
   const [roundStartError, setRoundStartError] = useState<string | null>(null);
@@ -44,6 +44,43 @@ export const Dashboard: React.FC = () => {
   useEffect(() => {
     dashboardLogger.debug('Component mounted');
   }, []);
+
+  // Refresh dashboard when navigating back to it
+  const previousPathRef = useRef<string | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    const currentPath = location.pathname;
+    const previousPath = previousPathRef.current;
+
+    // Refresh when navigating TO /dashboard FROM another page
+    // Skip refresh when coming from /results since Results page already refreshes the dashboard
+    const shouldRefresh =
+      currentPath === '/dashboard' &&
+      previousPath !== null &&
+      previousPath !== '/dashboard' &&
+      previousPath !== '/results' &&
+      isAuthenticated;
+
+    if (shouldRefresh) {
+      dashboardLogger.debug('Navigated back to dashboard, refreshing...', { from: previousPath });
+      refreshDashboard(controller.signal).catch((err) => {
+        if (controller.signal.aborted) {
+          dashboardLogger.debug('Dashboard refresh aborted on navigation back');
+          return;
+        }
+        dashboardLogger.warn('Failed to refresh dashboard on navigation back:', err);
+      });
+    } else if (currentPath === '/dashboard' && previousPath === '/results') {
+      dashboardLogger.debug('Navigated back from results page, skipping refresh (results page already refreshed)');
+    }
+
+    // Update the previous path
+    previousPathRef.current = currentPath;
+
+    return () => {
+      controller.abort();
+    };
+  }, [location.pathname, isAuthenticated, refreshDashboard]);
 
   useEffect(() => {
     if (activeRound) {
@@ -60,7 +97,7 @@ export const Dashboard: React.FC = () => {
   useEffect(() => {
     const playerId = player?.player_id;
 
-    if (!playerId) {
+    if (!playerId || !isAuthenticated) {
       setSurveyStatus(null);
       setShowSurveyPrompt(false);
       hasFetchedSurveyRef.current = false;
@@ -93,7 +130,11 @@ export const Dashboard: React.FC = () => {
         if (controller.signal.aborted) {
           return;
         }
-        dashboardLogger.warn('[Beta Survey] Failed to fetch survey status', error);
+        // Only log non-auth errors - 401 is expected when not authenticated
+        const errorObj = error as any;
+        if (errorObj?.status !== 401) {
+          dashboardLogger.warn('[Beta Survey] Failed to fetch survey status', error);
+        }
       }
     };
 
@@ -102,7 +143,7 @@ export const Dashboard: React.FC = () => {
     return () => {
       controller.abort();
     };
-  }, [player?.player_id]);
+  }, [player?.player_id, isAuthenticated]);
 
   const handleStartTutorial = async () => {
     dashboardLogger.debug('Starting tutorial from dashboard');
@@ -386,9 +427,7 @@ export const Dashboard: React.FC = () => {
   };
 
   const handleViewResults = () => {
-    // Mark all current pending results as viewed
-    const allCurrentIds = pendingResults.map(r => r.phraseset_id);
-    markResultsViewed(allCurrentIds);
+    // Navigate to results page (results will be marked as viewed on page load)
     navigate('/results');
   };
 
@@ -573,7 +612,7 @@ export const Dashboard: React.FC = () => {
               </p>
               {roundAvailability && roundAvailability.prompts_waiting > 0 && (
                 <p className="text-xs text-quip-turquoise mb-3 font-semibold">
-                  {formatWaitingCount(roundAvailability.prompts_waiting)} prompt
+                  {formatWaitingCount(roundAvailability.prompts_waiting)} quip
                   {roundAvailability.prompts_waiting > 1 ? 's' : ''} waiting
                 </p>
               )}

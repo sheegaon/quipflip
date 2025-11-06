@@ -149,8 +149,8 @@ api.interceptors.response.use(
     return response;
   },
   async (error: AxiosError<ApiError>) => {
-    // Don't log canceled requests - they're intentional (e.g., component unmount)
-    if (error.code === 'ERR_CANCELED') {
+    // Don't log or process canceled requests - they're intentional (e.g., component unmount, StrictMode double mount)
+    if (error.code === 'ERR_CANCELED' || error.name === 'CanceledError') {
       return Promise.reject(error);
     }
 
@@ -160,7 +160,13 @@ api.interceptors.response.use(
       const method = error.config.method?.toUpperCase() || 'UNKNOWN';
       const endpoint = error.config.url || '';
       const errorMessage = error.response?.data?.detail || error.message;
-      logApi(method, endpoint, 'error', errorMessage);
+
+      // Don't log 401 errors for beta-survey status endpoint - expected when not authenticated
+      const is401OnSurveyStatus = error.response?.status === 401 && endpoint === '/feedback/beta-survey/status';
+
+      if (!is401OnSurveyStatus) {
+        logApi(method, endpoint, 'error', errorMessage);
+      }
     }
 
     // Handle 401 errors with automatic token refresh
@@ -387,8 +393,9 @@ export const apiClient = {
     return data;
   },
 
-  async startCopyRound(signal?: AbortSignal): Promise<StartCopyResponse> {
-    const { data } = await api.post('/rounds/copy', {}, { signal });
+  async startCopyRound(promptRoundId?: string, signal?: AbortSignal): Promise<StartCopyResponse> {
+    const params = promptRoundId ? { prompt_round_id: promptRoundId } : {};
+    const { data } = await api.post('/rounds/copy', {}, { signal, params });
     return data;
   },
 

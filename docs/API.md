@@ -1183,7 +1183,8 @@ Get phraseset results (collects prize on first view).
   "prize_pool_base": 200,
   "vote_cost": 10,
   "vote_payout_correct": 20,
-  "system_contribution": 0
+  "system_contribution": 0,
+  "second_copy_contribution": 0
 }
 ```
 
@@ -1208,6 +1209,208 @@ Explicitly mark a phraseset payout as claimed (idempotent).
 **Errors:**
 - `Phraseset not found` - Invalid phraseset ID
 - `Not a contributor to this phraseset` - Player did not submit the prompt or copies
+
+#### `GET /phrasesets/{phraseset_id}/history`
+Get the complete event timeline for a phraseset, showing all submissions, votes, and finalization.
+
+**Access Control:** This endpoint has two layers of access restriction:
+1. **Finalized phrasesets only** - Active phrasesets cannot be viewed
+2. **Participants only** - You must be a contributor (prompt/copy submitter) or voter
+
+Attempting to view a non-finalized phraseset or a phraseset you didn't participate in will return a 403 error. This prevents players from viewing phrases and contributor identities before voting completes, and ensures privacy for participants.
+
+**Purpose:** This endpoint provides a comprehensive review of a phraseset's lifecycle, making it ideal for building a detailed review UX that shows:
+- Who submitted the original phrase and when
+- When each copy was submitted and by whom
+- The chronological sequence of votes with voter identities
+- Whether each vote was correct or incorrect
+- When the phraseset was finalized
+
+**Response:**
+```json
+{
+  "phraseset_id": "uuid",
+  "prompt_text": "my deepest desire is to be (a/an)",
+  "original_phrase": "FAMOUS",
+  "copy_phrase_1": "POPULAR",
+  "copy_phrase_2": "WEALTHY",
+  "status": "finalized",
+  "created_at": "2025-01-06T10:00:00Z",
+  "finalized_at": "2025-01-06T12:30:00Z",
+  "total_votes": 8,
+  "events": [
+    {
+      "event_type": "prompt_submitted",
+      "timestamp": "2025-01-06T10:00:00Z",
+      "player_id": "uuid",
+      "username": "Prompt Pirate",
+      "pseudonym": "Prompt Pirate",
+      "phrase": "FAMOUS",
+      "correct": null,
+      "metadata": {
+        "round_id": "uuid",
+        "prompt_text": "my deepest desire is to be (a/an)"
+      }
+    },
+    {
+      "event_type": "copy_submitted",
+      "timestamp": "2025-01-06T10:15:00Z",
+      "player_id": "uuid",
+      "username": "Copy Cat",
+      "pseudonym": "Copy Cat",
+      "phrase": "POPULAR",
+      "correct": null,
+      "metadata": {
+        "round_id": "uuid",
+        "copy_number": 1
+      }
+    },
+    {
+      "event_type": "copy_submitted",
+      "timestamp": "2025-01-06T10:18:00Z",
+      "player_id": "uuid",
+      "username": "Shadow Scribe",
+      "pseudonym": "Shadow Scribe",
+      "phrase": "WEALTHY",
+      "correct": null,
+      "metadata": {
+        "round_id": "uuid",
+        "copy_number": 2
+      }
+    },
+    {
+      "event_type": "vote_submitted",
+      "timestamp": "2025-01-06T11:00:00Z",
+      "player_id": "uuid",
+      "username": "Voter One",
+      "pseudonym": "Voter One",
+      "phrase": "FAMOUS",
+      "correct": true,
+      "metadata": {
+        "vote_id": "uuid",
+        "payout": 20
+      }
+    },
+    {
+      "event_type": "vote_submitted",
+      "timestamp": "2025-01-06T11:05:00Z",
+      "player_id": "uuid",
+      "username": "Voter Two",
+      "pseudonym": "Voter Two",
+      "phrase": "POPULAR",
+      "correct": false,
+      "metadata": {
+        "vote_id": "uuid",
+        "payout": 0
+      }
+    },
+    {
+      "event_type": "finalized",
+      "timestamp": "2025-01-06T12:30:00Z",
+      "player_id": null,
+      "username": null,
+      "pseudonym": null,
+      "phrase": null,
+      "correct": null,
+      "metadata": {
+        "total_votes": 8,
+        "total_pool": 300
+      }
+    }
+  ]
+}
+```
+
+**Event Types:**
+- `prompt_submitted` - Original phrase submission
+- `copy_submitted` - Copy phrase submission (includes `copy_number` in metadata: 1 or 2)
+- `vote_submitted` - Vote cast (includes `correct` field and vote payout in metadata)
+- `finalized` - Phraseset completed and prizes distributed
+
+**Notes:**
+- Events are returned in chronological order
+- All events include UTC timestamps
+- Both `username` (for debugging) and `pseudonym` (for display) are included
+- Vote events include the `correct` boolean indicating if the voter chose the original phrase
+- The `metadata` field contains event-specific additional information
+- Only finalized phrasesets will have a `finalized` event
+
+**Errors:**
+- `404 Not Found` - Phraseset not found
+- `403 Forbidden` - Either the phraseset is not finalized (still active/voting) OR you are not a participant
+- `400 Bad Request` - Invalid phraseset ID format
+
+**Security Notes:**
+- **Finalization requirement:** Only finalized phrasesets can be viewed, preventing:
+  - Viewing the original phrase before voting (unfair advantage)
+  - Seeing copy phrases and contributors during active voting
+  - Real-time tracking of vote patterns before finalization
+- **Participant requirement:** Only contributors and voters can view history, ensuring privacy
+- **Handles incomplete phrasesets:** If a phraseset was abandoned before all rounds completed, only the completed events will be shown
+
+#### `GET /phrasesets/completed`
+Get a paginated list of all finalized phrasesets with summary metadata.
+
+**Purpose:** This endpoint allows browsing through completed rounds to select which ones to review in detail. Use it to build a list/grid UI showing all finished games.
+
+**Query Parameters:**
+- `limit` (optional, default: 50) - Number of results per page (max 100)
+- `offset` (optional, default: 0) - Number of results to skip for pagination
+
+**Response:**
+```json
+{
+  "phrasesets": [
+    {
+      "phraseset_id": "uuid",
+      "prompt_text": "my deepest desire is to be (a/an)",
+      "original_phrase": "FAMOUS",
+      "created_at": "2025-01-06T10:00:00Z",
+      "finalized_at": "2025-01-06T12:30:00Z",
+      "vote_count": 8,
+      "total_pool": 300
+    },
+    {
+      "phraseset_id": "uuid",
+      "prompt_text": "the secret to happiness is (a/an)",
+      "original_phrase": "CONTENTMENT",
+      "created_at": "2025-01-05T14:20:00Z",
+      "finalized_at": "2025-01-05T16:45:00Z",
+      "vote_count": 12,
+      "total_pool": 350
+    }
+  ],
+  "total": 42
+}
+```
+
+**Notes:**
+- Results are ordered by finalization time, most recent first
+- Only includes phrasesets with status = "finalized"
+- Use `limit` and `offset` for pagination (e.g., `limit=20&offset=20` for page 2)
+- `total` indicates the total number of finalized phrasesets across all pages
+- Timestamps are in UTC ISO 8601 format
+- `created_at` is when the original prompt was submitted
+- `finalized_at` is when voting completed and prizes were distributed
+- `total_pool` is the final prize pool amount distributed to contributors
+
+**Example Pagination:**
+```bash
+# First page (20 results)
+GET /phrasesets/completed?limit=20&offset=0
+
+# Second page (next 20 results)
+GET /phrasesets/completed?limit=20&offset=20
+
+# Third page
+GET /phrasesets/completed?limit=20&offset=40
+```
+
+**Use Cases:**
+- Building a "Browse Completed Rounds" page
+- Creating a review history UI
+- Showing recent activity to players
+- Allowing players to revisit and analyze past rounds
 
 ---
 

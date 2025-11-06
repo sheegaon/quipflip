@@ -150,7 +150,7 @@ const TutorialWelcome: React.FC<TutorialWelcomeProps> = ({ onStart, onSkip }) =>
               <strong>Vote:</strong> Identify the original phrase from clever copies
             </li>
             <li>
-              <strong>Earn Coins:</strong> The more creative you are, the more you earn!
+              <strong>Earn Coins:</strong> The more clever your quips, the more you earn!
             </li>
           </ul>
 

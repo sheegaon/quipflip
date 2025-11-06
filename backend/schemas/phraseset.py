@@ -61,17 +61,19 @@ class PhraseSetResults(BaseSchema):
     vote_cost: int
     vote_payout_correct: int
     system_contribution: int
+    second_copy_contribution: int
 
 
 class PhrasesetSummary(BaseSchema):
     """Summary information for a player's phraseset contribution."""
     phraseset_id: Optional[UUID]
     prompt_round_id: UUID
+    copy_round_id: Optional[UUID] = None
     prompt_text: str
-    your_role: Literal["prompt", "copy"]
+    your_role: Literal["prompt", "copy", "vote"]
     your_phrase: Optional[str]
     original_phrase: Optional[str] = None
-    status: Literal["waiting_copies", "waiting_copy1", "active", "voting", "closing", "finalized", "abandoned"]
+    status: Literal["open", "waiting_copies", "waiting_copy1", "active", "voting", "closing", "finalized", "abandoned"]
     created_at: datetime
     updated_at: Optional[datetime]
     vote_count: Optional[int]
@@ -108,6 +110,7 @@ class PhrasesetDashboardSummary(BaseSchema):
 
 class PhrasesetContributor(BaseSchema):
     """Contributor information."""
+    round_id: UUID
     player_id: UUID
     username: str  # Will be hidden from UI, only for debug
     pseudonym: str  # Public display name shown to other players
@@ -184,3 +187,46 @@ class UnclaimedResultsResponse(BaseSchema):
     """Collection of unclaimed results and totals."""
     unclaimed: list[UnclaimedResult]
     total_unclaimed_amount: int
+
+
+class PhrasesetHistoryEvent(BaseSchema):
+    """Single event in phraseset history timeline."""
+    event_type: Literal["prompt_submitted", "copy_submitted", "vote_submitted", "finalized"]
+    timestamp: datetime
+    player_id: Optional[UUID]
+    username: Optional[str]  # For debug
+    pseudonym: Optional[str]  # For display
+    phrase: Optional[str] = None  # The phrase submitted/voted for
+    correct: Optional[bool] = None  # For votes only
+    metadata: Optional[dict] = None  # Additional event-specific data
+
+
+class PhrasesetHistory(BaseSchema):
+    """Complete history timeline for a phraseset."""
+    phraseset_id: UUID
+    prompt_text: str
+    original_phrase: str
+    copy_phrase_1: str
+    copy_phrase_2: str
+    status: str
+    created_at: datetime
+    finalized_at: Optional[datetime]
+    total_votes: int
+    events: list[PhrasesetHistoryEvent]
+
+
+class CompletedPhrasesetItem(BaseSchema):
+    """Summary of a completed phraseset."""
+    phraseset_id: UUID
+    prompt_text: str
+    original_phrase: str
+    created_at: datetime
+    finalized_at: datetime
+    vote_count: int
+    total_pool: int
+
+
+class CompletedPhrasesetsResponse(BaseSchema):
+    """List of completed phrasesets."""
+    phrasesets: list[CompletedPhrasesetItem]
+    total: int

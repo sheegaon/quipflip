@@ -28,6 +28,20 @@ export const Results: React.FC = () => {
     refreshDashboardRef.current = refreshDashboard;
   }, [refreshDashboard]);
 
+  // Mark all results as viewed when page is first visited
+  const hasMarkedAllViewedRef = useRef(false);
+  useEffect(() => {
+    if (pendingResults.length > 0 && !hasMarkedAllViewedRef.current) {
+      hasMarkedAllViewedRef.current = true;
+      const allIds = pendingResults.map(r => r.phraseset_id);
+      markResultsViewed(allIds);
+      resultsLogger.debug('Results page visited - marking all results as viewed', {
+        count: allIds.length,
+        ids: allIds
+      });
+    }
+  }, [pendingResults, markResultsViewed]);
+
   useEffect(() => {
     resultsLogger.debug('Results page mounted', {
       pendingResults: pendingResults.length,
@@ -38,12 +52,9 @@ export const Results: React.FC = () => {
     if (pendingResults.length > 0 && !selectedPhrasesetId) {
       const initialId = pendingResults[0].phraseset_id;
       setSelectedPhrasesetId(initialId);
-      if (initialId) {
-        markResultsViewed([initialId]);
-        resultsLogger.debug('Defaulting to first pending result', { initialId });
-      }
+      resultsLogger.debug('Defaulting to first pending result', { initialId });
     }
-  }, [pendingResults, selectedPhrasesetId, markResultsViewed]);
+  }, [pendingResults, selectedPhrasesetId]);
 
   const currentEntry = selectedPhrasesetId ? phrasesetResults[selectedPhrasesetId] : undefined;
   const results: PhrasesetResults | null = currentEntry?.data ?? null;
@@ -102,6 +113,7 @@ export const Results: React.FC = () => {
       prize_pool_base,
       vote_cost,
       vote_payout_correct,
+      second_copy_contribution,
     } = results;
 
     const voteTypeEmoji: Record<'correct' | 'incorrect', string> = {
@@ -144,6 +156,11 @@ export const Results: React.FC = () => {
 
     const poolTerms: string[] = [];
     poolTerms.push(`${prize_pool_base.toLocaleString()} FC base`);
+
+    // Add second copy contribution if present
+    if (second_copy_contribution > 0) {
+      poolTerms.push(`+ ${second_copy_contribution.toLocaleString()} FC (2nd copy from same player)`);
+    }
 
     const formatContributionTerm = (
       count: number,

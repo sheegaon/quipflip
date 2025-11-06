@@ -67,7 +67,7 @@ The Quipflip frontend MVP is **COMPLETE** ✅. This document outlines remaining 
    - Replaces redundant "Back to Dashboard" buttons with consistent header affordance.
 
 2. **Statistics Icon Next to Username**
-   - Username button includes stats glyph (`/icon_stats.svg`) to signal clickability.
+   - Username button includes stats glyph (`/icon_leaderboard.svg`) to signal clickability.
 
 3. **Tracking Terminology Alignment**
    - UI labels now reference "Tracking" to match navigation and phraseset dashboard copy.

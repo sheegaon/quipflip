@@ -444,7 +444,7 @@ class TestCopyRoundCreation:
         drain_prompt_queue()
         QueueService.add_prompt_round_to_queue(prompt_round.round_id)
 
-        copy_round = await round_service.start_copy_round(
+        copy_round, _ = await round_service.start_copy_round(
             player_with_balance,
             transaction_service,
         )
@@ -530,7 +530,7 @@ class TestAbandonRound:
         drain_prompt_queue()
         QueueService.add_prompt_round_to_queue(prompt_round.round_id)
 
-        copy_round = await round_service.start_copy_round(
+        copy_round, _ = await round_service.start_copy_round(
             player_with_balance,
             transaction_service,
         )

@@ -66,7 +66,7 @@ async def test_copy_available_when_prompts_in_database(db_session, player_factor
     assert can_copy, f"Player should be able to start copy round, error: {error}"
 
     # Actually start the copy round to verify end-to-end
-    copy_round = await round_service.start_copy_round(player2, transaction_service)
+    copy_round, _ = await round_service.start_copy_round(player2, transaction_service)
     assert copy_round is not None
     assert copy_round.round_type == "copy"
     assert copy_round.original_phrase == "BIG DOGS"
@@ -159,7 +159,7 @@ async def test_copy_not_available_after_already_copied(db_session, player_factor
     available_before = await round_service.get_available_prompts_count(player2.player_id)
     assert available_before >= 1
 
-    copy_round = await round_service.start_copy_round(player2, transaction_service)
+    copy_round, _ = await round_service.start_copy_round(player2, transaction_service)
     await round_service.submit_copy_phrase(
         copy_round.round_id, "big hawk", player2, transaction_service
     )

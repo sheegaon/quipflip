@@ -92,10 +92,12 @@
 - `vote_contributions` (integer, default 0) - total Flipcoins contributed by vote entry fees
 - `vote_payouts_paid` (integer, default 0) - total paid out to correct voters
 - `system_contribution` (integer, default 0) - 0 or 10 for discounted copies
+- `second_copy_contribution` (integer, default 0) - 0 or 50 when both copies from same player
 - Indexes: `phraseset_id`, `prompt_round_id`, `fifth_vote_at`, composite `(status, vote_count)`
 - Relationships: `prompt_round`, `copy_round_1`, `copy_round_2`, `votes`, `vote_rounds`, `result_views`, `activities`
 - Note: Phrase positions randomized per-voter, NOT stored in database
 - Note: System contribution is already included in base prize pool
+- Note: Second copy contribution is added to pool when both copies come from same player (2nd copy costs 100 FC, base includes 50 FC, so 50 FC is added)
 
 ### Vote
 - `vote_id` (UUID, primary key)
