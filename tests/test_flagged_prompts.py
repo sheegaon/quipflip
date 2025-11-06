@@ -46,7 +46,7 @@ async def _start_prompt_and_copy_round(db_session, transaction_service, round_se
     prompt_round = await round_service.start_prompt_round(prompt_player, transaction_service)
     await round_service.submit_prompt_phrase(prompt_round.round_id, "SUNSET SHORE", prompt_player, transaction_service)
 
-    copy_round = await round_service.start_copy_round(copy_player, transaction_service)
+    copy_round, _ = await round_service.start_copy_round(copy_player, transaction_service)
     await db_session.refresh(copy_player)
 
     return prompt_round, copy_round

@@ -307,6 +307,21 @@ class PlayerService:
 
         return True, ""
 
+    async def can_start_second_copy_round(self, player: Player) -> tuple[bool, str]:
+        """Check if player can start a second copy round (2x cost, no queue check)."""
+        if player.locked_until and player.locked_until > datetime.now(UTC):
+            return False, "player_locked"
+
+        if player.active_round_id is not None:
+            return False, "already_in_round"
+
+        # Second copy costs 2x the normal cost
+        second_copy_cost = settings.copy_cost_normal * 2
+        if player.balance < second_copy_cost:
+            return False, "insufficient_balance"
+
+        return True, ""
+
     async def can_start_vote_round(
         self,
         player: Player,
