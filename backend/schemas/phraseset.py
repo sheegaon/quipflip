@@ -67,6 +67,7 @@ class PhrasesetSummary(BaseSchema):
     """Summary information for a player's phraseset contribution."""
     phraseset_id: Optional[UUID]
     prompt_round_id: UUID
+    copy_round_id: Optional[UUID] = None
     prompt_text: str
     your_role: Literal["prompt", "copy", "vote"]
     your_phrase: Optional[str]
@@ -108,6 +109,7 @@ class PhrasesetDashboardSummary(BaseSchema):
 
 class PhrasesetContributor(BaseSchema):
     """Contributor information."""
+    round_id: UUID
     player_id: UUID
     username: str  # Will be hidden from UI, only for debug
     pseudonym: str  # Public display name shown to other players
