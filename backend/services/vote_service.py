@@ -961,18 +961,35 @@ class VoteService:
         if phraseset.status != "finalized":
             raise ValueError("Phraseset not yet finalized")
 
-        # Check if player was a contributor
-        prompt_round = await self.db.get(Round, phraseset.prompt_round_id)
-        copy1_round = await self.db.get(Round, phraseset.copy_round_1_id)
-        copy2_round = await self.db.get(Round, phraseset.copy_round_2_id)
+        # Load all contributor rounds in a single query
+        round_ids = [
+            phraseset.prompt_round_id,
+            phraseset.copy_round_1_id,
+            phraseset.copy_round_2_id,
+        ]
+        result = await self.db.execute(
+            select(Round).where(Round.round_id.in_(round_ids))
+        )
+        rounds = {round_.round_id: round_ for round_ in result.scalars().all()}
+
+        prompt_round = rounds.get(phraseset.prompt_round_id)
+        copy1_round = rounds.get(phraseset.copy_round_1_id)
+        copy2_round = rounds.get(phraseset.copy_round_2_id)
 
         # Validate that all required rounds exist
-        if not prompt_round:
-            raise ValueError("Prompt round not found for this phraseset")
-        if not copy1_round:
-            raise ValueError("Copy round 1 not found for this phraseset")
-        if not copy2_round:
-            raise ValueError("Copy round 2 not found for this phraseset")
+        if not prompt_round or not copy1_round or not copy2_round:
+            missing = []
+            if not prompt_round:
+                missing.append(f"prompt({phraseset.prompt_round_id})")
+            if not copy1_round:
+                missing.append(f"copy1({phraseset.copy_round_1_id})")
+            if not copy2_round:
+                missing.append(f"copy2({phraseset.copy_round_2_id})")
+            logger.error(
+                f"Phraseset {phraseset.phraseset_id} has missing contributor rounds: {', '.join(missing)}. "
+                f"Found {len(rounds)} of 3 expected rounds. This is a data integrity issue."
+            )
+            raise ValueError(f"Phraseset has missing contributor rounds: {', '.join(missing)}")
 
         contributor_map = {
             prompt_round.player_id: ("prompt", phraseset.original_phrase),
