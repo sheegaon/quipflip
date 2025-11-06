@@ -203,7 +203,7 @@ The Quipflip frontend MVP is **COMPLETE** ✅. This document outlines remaining 
 ## Implementation Priority Queue
 
 ### Next 2 Weeks (High Priority)
-1. **Weekly Leaderboard UX Polish** - Surface `generated_at`, add a manual refresh affordance, and clarify the net earnings label (`frontend/src/pages/Statistics.tsx`, `frontend/src/components/statistics/WeeklyLeaderboard.tsx`).
+1. **Weekly Leaderboard UX Polish** - Surface `generated_at`, add a manual refresh affordance, and improve role-based tab navigation (`frontend/src/pages/Statistics.tsx`, `frontend/src/components/statistics/WeeklyLeaderboard.tsx`). Note: Leaderboard now displays win rates by role (prompt, copy, voter) in a tabbed interface.
 2. **Enhanced Results Visualization** - Implement vote distribution charting on the results view once chart components are finalized.
 3. **Quest Celebration Effects** - Layer lightweight confetti/animation when rewards are claimed (`frontend/src/pages/Quests.tsx`).
 

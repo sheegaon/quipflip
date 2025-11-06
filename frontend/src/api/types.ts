@@ -210,15 +210,25 @@ export interface BetaSurveySubmissionRecord {
 export interface WeeklyLeaderboardEntry {
   player_id: string;
   username: string;
+  role: 'prompt' | 'copy' | 'voter';
   total_costs: number;
   total_earnings: number;
   net_earnings: number;
+  win_rate: number;
+  total_rounds: number;
   rank: number | null;
   is_current_player: boolean;
 }
 
-export interface WeeklyLeaderboardResponse {
+export interface RoleLeaderboard {
+  role: 'prompt' | 'copy' | 'voter';
   leaders: WeeklyLeaderboardEntry[];
+}
+
+export interface WeeklyLeaderboardResponse {
+  prompt_leaderboard: RoleLeaderboard;
+  copy_leaderboard: RoleLeaderboard;
+  voter_leaderboard: RoleLeaderboard;
   generated_at: string;
 }
 

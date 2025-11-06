@@ -28,6 +28,7 @@ from backend.schemas.player import (
     UpgradeGuestResponse,
     WeeklyLeaderboardEntry,
     WeeklyLeaderboardResponse,
+    RoleLeaderboard,
 )
 from backend.schemas.phraseset import (
     PhrasesetListResponse,
@@ -617,29 +618,24 @@ async def get_weekly_leaderboard(
     player: Player = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ):
-    """Return weekly leaderboard highlighting the current player."""
+    """Return weekly leaderboards for all three roles highlighting the current player."""
 
     scoring_service = ScoringService(db)
-    entries, generated_at = await scoring_service.get_weekly_leaderboard_for_player(
+    role_data, generated_at = await scoring_service.get_weekly_leaderboard_for_player(
         player.player_id,
         player.username,
     )
 
-    leaders = [
-        WeeklyLeaderboardEntry(
-            player_id=entry["player_id"],
-            username=entry["username"],
-            total_costs=entry["total_costs"],
-            total_earnings=entry["total_earnings"],
-            net_earnings=entry["net_earnings"],
-            rank=entry["rank"],
-            is_current_player=entry["is_current_player"],
-        )
-        for entry in entries
-    ]
+    # Build leaderboard for each role using dictionary comprehension
+    leader_lists = {
+        role: [WeeklyLeaderboardEntry(**entry) for entry in role_data.get(role, [])]
+        for role in ["prompt", "copy", "voter"]
+    }
 
     return WeeklyLeaderboardResponse(
-        leaders=leaders,
+        prompt_leaderboard=RoleLeaderboard(role="prompt", leaders=leader_lists["prompt"]),
+        copy_leaderboard=RoleLeaderboard(role="copy", leaders=leader_lists["copy"]),
+        voter_leaderboard=RoleLeaderboard(role="voter", leaders=leader_lists["voter"]),
         generated_at=generated_at or datetime.now(UTC),
     )
 
