@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { useTutorial } from '../contexts/TutorialContext';
 import apiClient, { extractErrorMessage } from '../api/client';
@@ -8,7 +8,7 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { useTimer } from '../hooks/useTimer';
 import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
-import type { VoteResponse, VoteState } from '../api/types';
+import type { VoteResponse, VoteState, PhrasesetDetails } from '../api/types';
 import { voteRoundLogger } from '../utils/logger';
 
 export const VoteRound: React.FC = () => {
@@ -21,6 +21,8 @@ export const VoteRound: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [voteResult, setVoteResult] = useState<VoteResponse | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [phrasesetDetails, setPhrasesetDetails] = useState<PhrasesetDetails | null>(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
 
   const roundData = activeRound?.round_type === 'vote' ? activeRound.state as VoteState : null;
   const { isExpired } = useTimer(roundData?.expires_at || null);
@@ -96,21 +98,25 @@ export const VoteRound: React.FC = () => {
         completeTutorial();
       }
 
-      // Wait a moment for state to update, then refresh dashboard and navigate
-      setTimeout(async () => {
-        // Refresh dashboard to clear the active round state after showing results
-        try {
-          voteRoundLogger.debug('Refreshing dashboard after showing vote results');
-          await refreshDashboard();
-          voteRoundLogger.debug('Dashboard refreshed successfully after vote results shown');
-        } catch (refreshErr) {
-          voteRoundLogger.warn('Failed to refresh dashboard after vote results:', refreshErr);
-        }
+      // Refresh dashboard to clear the active round state
+      try {
+        voteRoundLogger.debug('Refreshing dashboard after vote submission');
+        await refreshDashboard();
+        voteRoundLogger.debug('Dashboard refreshed successfully after vote');
+      } catch (refreshErr) {
+        voteRoundLogger.warn('Failed to refresh dashboard after vote:', refreshErr);
+      }
 
-        // Navigate after showing results
-        voteRoundLogger.debug('Navigating back to dashboard after vote submission');
-        navigate('/dashboard');
-      }, 1500);
+      // Fetch phraseset details to show vote information
+      try {
+        setLoadingDetails(true);
+        const details = await apiClient.getPhrasesetDetails(roundData.phraseset_id);
+        setPhrasesetDetails(details);
+      } catch (detailsErr) {
+        voteRoundLogger.warn('Failed to fetch phraseset details:', detailsErr);
+      } finally {
+        setLoadingDetails(false);
+      }
     } catch (err) {
       const message = extractErrorMessage(err) || 'Unable to submit your vote. The round may have expired or someone else may have already voted.';
       voteRoundLogger.error('Failed to submit vote', err);
@@ -118,6 +124,11 @@ export const VoteRound: React.FC = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleDismiss = () => {
+    voteRoundLogger.debug('Dismissing vote results, navigating to dashboard');
+    navigate('/dashboard');
   };
 
   if (!roundData) {
@@ -131,24 +142,110 @@ export const VoteRound: React.FC = () => {
   // Show vote result
   if (voteResult) {
     const successMsg = voteResult.correct
-      ? successMessage!
+      ? (successMessage || 'Correct!')
       : 'Better luck next time!';
+
+    const voteCount = phrasesetDetails?.vote_count || 0;
+    const votes = phrasesetDetails?.votes || [];
+    const isFirstVoter = voteCount === 1;
+
     return (
       <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center p-4">
-        <div className="max-w-2xl w-full tile-card p-8 text-center flip-enter">
-          <div className="flex justify-center mb-4">
-            <img src="/icon_vote.svg" alt="" className="w-24 h-24" />
+        <div className="max-w-3xl w-full tile-card p-8 flip-enter">
+          {/* Header with icon and result */}
+          <div className="text-center mb-6">
+            <div className="flex justify-center mb-4">
+              <img src="/icon_vote.svg" alt="" className="w-24 h-24" />
+            </div>
+            <h2 className={`text-3xl font-display font-bold mb-4 success-message ${voteResult.correct ? 'text-quip-turquoise' : 'text-quip-orange'}`}>
+              {voteResult.correct ? successMsg : 'Incorrect'}
+            </h2>
+            <div className="bg-quip-turquoise bg-opacity-10 border-2 border-quip-turquoise rounded-tile p-4 mb-4">
+              <p className="text-lg text-quip-navy mb-2">
+                The original phrase was: <strong className="text-quip-turquoise">{voteResult.original_phrase}</strong>
+              </p>
+              <p className="text-lg text-quip-teal">
+                You chose: <strong className={voteResult.correct ? 'text-quip-turquoise' : 'text-quip-orange'}>{voteResult.your_choice}</strong>
+              </p>
+            </div>
+
+            {/* Payout info */}
+            {voteResult.payout > 0 && (
+              <div className="inline-flex items-center gap-2 bg-quip-turquoise bg-opacity-20 px-4 py-2 rounded-tile mb-4">
+                <span className="text-quip-navy font-semibold">You earned:</span>
+                <CurrencyDisplay amount={voteResult.payout} iconClassName="w-5 h-5" textClassName="text-lg font-bold text-quip-turquoise" />
+              </div>
+            )}
           </div>
-          <h2 className={`text-3xl font-display font-bold mb-4 success-message ${voteResult.correct ? 'text-quip-turquoise' : 'text-quip-orange'}`}>
-            {voteResult.correct ? successMsg : 'Incorrect'}
-          </h2>
-          <p className="text-lg text-quip-navy mb-2">
-            The original phrase was: <strong className="text-quip-turquoise">{voteResult.original_phrase}</strong>
-          </p>
-          <p className="text-lg text-quip-teal mb-4">
-            You chose: <strong>{voteResult.your_choice}</strong>
-          </p>
-          <p className="text-sm text-quip-teal mt-6">Returning to dashboard...</p>
+
+          {/* Vote information section */}
+          {loadingDetails ? (
+            <div className="text-center py-6">
+              <LoadingSpinner isLoading={true} message="Loading vote details..." />
+            </div>
+          ) : phrasesetDetails ? (
+            <div className="space-y-4 mb-6">
+              {/* First voter encouragement */}
+              {isFirstVoter && (
+                <div className="bg-quip-orange bg-opacity-10 border-2 border-quip-orange rounded-tile p-4 text-center">
+                  <p className="text-quip-navy font-display font-semibold mb-2">
+                    🎉 You're the first to vote on this one!
+                  </p>
+                  <p className="text-quip-teal text-sm mb-3">
+                    Come back later to see how others voted. You can check in on this round anytime from Round Tracking.
+                  </p>
+                  <Link
+                    to="/tracking"
+                    className="inline-block bg-quip-orange hover:bg-quip-orange-deep text-white font-semibold py-2 px-4 rounded-tile transition-colors"
+                  >
+                    Go to Round Tracking →
+                  </Link>
+                </div>
+              )}
+
+              {/* Vote details for multiple voters */}
+              {!isFirstVoter && votes.length > 0 && (
+                <div className="bg-quip-navy bg-opacity-5 border-2 border-quip-navy rounded-tile p-4">
+                  <h3 className="font-display font-bold text-lg text-quip-navy mb-3 text-center">
+                    Voting Results ({voteCount} vote{voteCount !== 1 ? 's' : ''} so far)
+                  </h3>
+                  <div className="space-y-2">
+                    {votes.map((vote) => (
+                      <div
+                        key={vote.vote_id}
+                        className={`flex items-center justify-between p-3 rounded-tile ${vote.correct ? 'bg-quip-turquoise bg-opacity-10 border border-quip-turquoise' : 'bg-quip-orange bg-opacity-10 border border-quip-orange'}`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="font-semibold text-quip-navy">
+                            {vote.voter_pseudonym}
+                          </span>
+                          <span className="text-sm text-quip-teal">
+                            voted for: <strong>{vote.voted_phrase}</strong>
+                          </span>
+                        </div>
+                        <span className={`text-sm font-semibold ${vote.correct ? 'text-quip-turquoise' : 'text-quip-orange'}`}>
+                          {vote.correct ? '✓ Correct' : '✗ Incorrect'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-quip-teal text-center mt-3">
+                    Track this round and see updates in <Link to="/tracking" className="text-quip-turquoise hover:underline font-semibold">Round Tracking</Link>
+                  </p>
+                </div>
+              )}
+            </div>
+          ) : null}
+
+          {/* Dismiss button */}
+          <div className="flex justify-center">
+            <button
+              onClick={handleDismiss}
+              className="bg-quip-turquoise hover:bg-quip-teal text-white font-bold py-3 px-8 rounded-tile transition-all hover:shadow-tile-sm"
+            >
+              Back to Dashboard
+            </button>
+          </div>
         </div>
       </div>
     );
