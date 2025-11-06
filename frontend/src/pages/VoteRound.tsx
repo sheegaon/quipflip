@@ -173,7 +173,6 @@ export const VoteRound: React.FC = () => {
                     // Determine styling based on whether it's original and/or player's choice
                     let borderColor = 'border-quip-teal';
                     let bgColor = 'bg-white';
-                    let labelColor = 'text-quip-teal';
 
                     if (isOriginal) {
                       borderColor = 'border-quip-turquoise';
