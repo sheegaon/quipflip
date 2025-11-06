@@ -6,6 +6,7 @@ import apiClient, { extractErrorMessage } from '../api/client';
 import { Timer } from '../components/Timer';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
+import { PhraseRecapCard } from '../components/PhraseRecapCard';
 import { useTimer } from '../hooks/useTimer';
 import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
 import type { VoteResponse, VoteState, PhrasesetDetails } from '../api/types';
@@ -165,57 +166,20 @@ export const VoteRound: React.FC = () => {
                     phrasesetDetails.original_phrase,
                     phrasesetDetails.copy_phrase_1,
                     phrasesetDetails.copy_phrase_2
-                  ].filter(Boolean).map((phrase) => {
+                  ].filter((phrase): phrase is string => phrase !== null).map((phrase) => {
                     const isOriginal = phrase === voteResult.original_phrase;
                     const isYourChoice = phrase === voteResult.your_choice;
                     const contributor = phrasesetDetails.contributors.find(c => c.phrase === phrase);
 
-                    // Determine styling based on whether it's original and/or player's choice
-                    let borderColor = 'border-quip-teal';
-                    let bgColor = 'bg-white';
-
-                    if (isOriginal) {
-                      borderColor = 'border-quip-turquoise';
-                      bgColor = 'bg-quip-turquoise bg-opacity-5';
-                    }
-
                     return (
-                      <div
+                      <PhraseRecapCard
                         key={phrase}
-                        className={`relative ${bgColor} border-2 ${borderColor} rounded-tile p-4 transition-all`}
-                      >
-                        {/* Phrase text */}
-                        <p className="text-lg font-semibold text-quip-navy mb-2">
-                          "{phrase}"
-                        </p>
-
-                        {/* Author and badges */}
-                        <div className="flex items-center justify-between flex-wrap gap-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm text-quip-teal">
-                              Written by:
-                            </span>
-                            <span className={`text-sm font-semibold ${contributor?.is_you ? 'text-quip-orange' : 'text-quip-navy'}`}>
-                              {contributor?.pseudonym || 'Unknown'}
-                              {contributor?.is_you && ' (you)'}
-                            </span>
-                          </div>
-
-                          {/* Badges */}
-                          <div className="flex items-center gap-2">
-                            {isOriginal && (
-                              <span className="inline-flex items-center gap-1 px-3 py-1 bg-quip-turquoise text-white text-sm font-bold rounded-tile">
-                                ⭐ Original
-                              </span>
-                            )}
-                            {isYourChoice && (
-                              <span className={`inline-flex items-center gap-1 px-3 py-1 ${voteResult.correct ? 'bg-quip-turquoise' : 'bg-quip-orange'} text-white text-sm font-bold rounded-tile`}>
-                                {voteResult.correct ? '✓' : '✗'} Your Choice
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
+                        phrase={phrase}
+                        isOriginal={isOriginal}
+                        isYourChoice={isYourChoice}
+                        isCorrectChoice={voteResult.correct}
+                        contributor={contributor}
+                      />
                     );
                   })}
                 </div>
