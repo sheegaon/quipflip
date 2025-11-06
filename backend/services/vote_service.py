@@ -980,19 +980,36 @@ class VoteService:
             copy2_round.player_id: ("copy", phraseset.copy_phrase_2),
         }
 
-        if player_id not in contributor_map:
-            raise ValueError("Not a contributor to this phraseset")
-
-        role, phrase = contributor_map[player_id]
+        # Check if player is a contributor
+        if player_id in contributor_map:
+            role, phrase = contributor_map[player_id]
+        else:
+            # Check if player is a voter
+            vote_result = await self.db.execute(
+                select(Vote)
+                .where(Vote.phraseset_id == phraseset_id)
+                .where(Vote.player_id == player_id)
+            )
+            vote = vote_result.scalar_one_or_none()
+            if not vote:
+                raise ValueError("Not a contributor or voter for this phraseset")
+            role = "vote"
+            phrase = vote.voted_phrase
 
         scoring_service = ScoringService(self.db)
         payouts = await scoring_service.calculate_payouts(phraseset)
 
-        player_payout = 0
-        for payout_info in payouts.values():
-            if payout_info["player_id"] == player_id:
-                player_payout = payout_info["payout"]
-                break
+        # Get player payout
+        if role == "vote":
+            # For voters, payout is already stored in the vote record and has been paid
+            player_payout = vote.payout
+        else:
+            # For contributors, calculate from payouts
+            player_payout = 0
+            for payout_info in payouts.values():
+                if payout_info["player_id"] == player_id:
+                    player_payout = payout_info["payout"]
+                    break
 
         # Get or create result view
         result = await self.db.execute(
@@ -1061,11 +1078,16 @@ class VoteService:
         correct_multiplier = settings.correct_vote_points
         incorrect_multiplier = settings.incorrect_vote_points
 
-        points = 0
-        if phrase == phraseset.original_phrase:
-            points = vote_counts[phrase] * correct_multiplier
+        # Calculate player points
+        if role == "vote":
+            # Voters don't earn points from the prize pool - they were paid when they voted
+            points = 0
         else:
-            points = vote_counts[phrase] * incorrect_multiplier
+            # Contributors earn points based on correct/incorrect votes for their phrase
+            if phrase == phraseset.original_phrase:
+                points = vote_counts[phrase] * correct_multiplier
+            else:
+                points = vote_counts[phrase] * incorrect_multiplier
 
         # Build response
         votes_display = []
