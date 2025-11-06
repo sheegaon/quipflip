@@ -142,7 +142,7 @@ export const VoteRound: React.FC = () => {
   // Show vote result
   if (voteResult) {
     const successMsg = voteResult.correct
-      ? successMessage!
+      ? (successMessage || 'Correct!')
       : 'Better luck next time!';
 
     const voteCount = phrasesetDetails?.vote_count || 0;
