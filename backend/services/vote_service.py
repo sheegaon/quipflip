@@ -1162,6 +1162,7 @@ class VoteService:
             "vote_cost": settings.vote_cost,
             "vote_payout_correct": settings.vote_payout_correct,
             "system_contribution": phraseset.system_contribution,
+            "second_copy_contribution": phraseset.second_copy_contribution,
         }
 
         if role == "copy":

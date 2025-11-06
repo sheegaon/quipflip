@@ -984,6 +984,17 @@ class RoundService:
         system_contribution = copy1.system_contribution + copy2.system_contribution
         initial_pool = self.settings.prize_pool_base
 
+        # Check if both copies are from the same player (second copy feature)
+        # If yes, add 1x copy_cost_normal to the pool since base only accounts for 2 different players
+        second_copy_contribution = 0
+        if copy1.player_id == copy2.player_id:
+            second_copy_contribution = self.settings.copy_cost_normal
+            initial_pool += second_copy_contribution
+            logger.info(
+                f"Both copies from same player {copy1.player_id}, "
+                f"adding {second_copy_contribution} FC to pool (new total: {initial_pool})"
+            )
+
         phraseset = Phraseset(
             phraseset_id=uuid.uuid4(),
             prompt_round_id=prompt_round.round_id,
@@ -1000,6 +1011,7 @@ class RoundService:
             vote_contributions=0,
             vote_payouts_paid=0,
             system_contribution=system_contribution,
+            second_copy_contribution=second_copy_contribution,
         )
 
         self.db.add(phraseset)

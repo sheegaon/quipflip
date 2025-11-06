@@ -324,6 +324,7 @@ export interface PhrasesetResults {
   vote_cost: number;
   vote_payout_correct: number;
   system_contribution: number;
+  second_copy_contribution: number;
 }
 
 export type PhrasesetStatus =

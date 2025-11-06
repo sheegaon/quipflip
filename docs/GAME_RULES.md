@@ -15,7 +15,9 @@ Quipflip revolves around three sequential round types—prompt creation, copywri
 - Abandoning or timing out of a prompt or copy round refunds the original fee minus `abandoned_penalty`; copy round abandonments also return the prompt to the queue and log a cooldown marker.
 
 ### Prize pools and payouts
-- When two copies are submitted, `RoundService.create_phraseset_if_ready` seeds a phraseset's `total_pool` with `prize_pool_base`. Any `system_contribution` recorded when discounts apply is stored alongside the phraseset for reporting but is not folded into the distributable pool.
+- When two copies are submitted, `RoundService.create_phraseset_if_ready` seeds a phraseset's `total_pool` with `prize_pool_base`. The base prize pool (200 FC) accounts for the typical case: 1 prompt (100 FC) + 2 copies from 2 different players (50 FC each).
+- If both copies are from the same player (second copy feature), the pool is increased by 50 FC (1× `copy_cost_normal`) since the second copy costs 100 FC but the base already includes 50 FC from that player. This additional amount is tracked in `second_copy_contribution`.
+- Any `system_contribution` recorded when discounts apply is stored alongside the phraseset for reporting but is not folded into the distributable pool.
 - Every vote adds `vote_cost` to the pool; correct voters immediately receive `vote_payout_correct`, and that payout is subtracted from the pool's running total.
 - Final payouts divide the remaining `total_pool` in proportion to `correct_vote_points` for the original phrase versus `incorrect_vote_points` for each copy. If no votes were cast, contributors split the pot evenly.
 
@@ -32,9 +34,10 @@ Quipflip revolves around three sequential round types—prompt creation, copywri
 - Submissions are validated against the configured phrase rules before the prompt is queued for copy rounds.
 
 ### Copy rounds
-- Copy rounds pull prompts FIFO from the queue, skipping flagged entries, the player’s own prompts, prompts already copied by that player, and prompts the player abandoned within the configured cooldown window (tracked via `PlayerAbandonedPrompt`).
+- Copy rounds pull prompts FIFO from the queue, skipping flagged entries, the player's own prompts, prompts already copied by that player, and prompts the player abandoned within the configured cooldown window (tracked via `PlayerAbandonedPrompt`).
 - The queue service activates the discount price when more than `copy_discount_threshold` prompts are waiting; the difference between `copy_cost_normal` and the discounted price is tracked as a `system_contribution`.
 - Copy submissions must satisfy the phrase validator, avoid matching the original or the other copy, and trigger phraseset creation once two valid copies exist.
+- **Second copy feature**: After submitting their first copy, eligible players can submit a second copy for the same prompt at 2× the normal cost (100 FC). The additional 50 FC (beyond what's already in the base pool) is added to the prize pool and tracked as `second_copy_contribution`. Discounts do not apply to second copies.
 
 ### Vote rounds
 - Vote availability excludes phrasesets a player helped create and any set they have already voted on. Remaining sets are prioritized: phrasesets at or beyond `vote_closing_threshold` (using `fifth_vote_at`) first, then those between `vote_minimum_threshold` and `vote_closing_threshold`, and finally sets under `vote_minimum_threshold` picked at random.
@@ -51,13 +54,13 @@ Quipflip revolves around three sequential round types—prompt creation, copywri
 - Finalization records activity, updates prompt round status, and issues `prize_payout` transactions based on the proportional scoring logic described earlier. Contributors’ `ResultView` rows are created or updated later when they open the results screen.
 
 ### Scoring workflow
-1. When a phraseset is built, its `total_pool` starts at `prize_pool_base`; any `system_contribution` from discounted copy entries is tracked separately and not added to this balance.
+1. When a phraseset is built, its `total_pool` starts at `prize_pool_base` (200 FC). If both copies are from the same player, 50 FC is added to the pool (tracked in `second_copy_contribution`) since the second copy costs 100 FC but only 50 FC was already accounted for in the base. Any `system_contribution` from discounted copy entries is tracked separately and not added to the distributable balance.
 2. Each vote charges `vote_cost` and increases `vote_contributions`. Correct voters are immediately credited `vote_payout_correct`, which is subtracted from `total_pool` so only the remaining balance is shared among contributors.
 3. The scoring service counts how many voters chose the original versus each copy. The original earns `correct_vote_points` per correct vote, while each copy earns `incorrect_vote_points` for every voter they fooled. These points determine the share of the remaining pool that each participant receives.
 4. If everyone had zero points (no votes or only invalid submissions), the pool is split evenly across prompt, copy1, and copy2 contributors.
 
 ### Worked example
-Imagine a phraseset where the pool currently holds `prize_pool_base + (5 * vote_cost) - (3 * vote_payout_correct)` because five players voted and three of them already collected the correct-vote stipend (any `system_contribution` from copy discounts is tracked separately). If three voters picked the original phrase, one chose copy 1, and one chose copy 2:
+Imagine a phraseset where the pool currently holds `prize_pool_base + (5 * vote_cost) - (3 * vote_payout_correct)` because five players voted and three of them already collected the correct-vote stipend (any `system_contribution` from copy discounts and any `second_copy_contribution` from a player submitting both copies are tracked separately but already included in the starting pool). If three voters picked the original phrase, one chose copy 1, and one chose copy 2:
 
 - The original earns `3 * correct_vote_points`.
 - Copy 1 earns `1 * incorrect_vote_points`.
