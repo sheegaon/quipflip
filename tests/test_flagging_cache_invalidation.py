@@ -67,7 +67,7 @@ async def test_prompts_waiting_count_after_flagging(db_session, player_factory):
     assert prompts_waiting_before == 1, f"Expected 1 prompt waiting, got {prompts_waiting_before}"
 
     # Player B starts a copy round with this prompt
-    copy_round = await round_service.start_copy_round(player_b, transaction_service_b)
+    copy_round, _ = await round_service.start_copy_round(player_b, transaction_service_b)
     await db_session.refresh(player_b)
 
     # Verify it's the prompt we expect
@@ -164,7 +164,7 @@ async def test_dashboard_endpoint_shows_correct_count_after_flagging(
     assert can_copy_before is True, "Player B should be able to start a copy round"
 
     # Player B starts and flags the copy round
-    copy_round = await round_service.start_copy_round(player_b, transaction_service_b)
+    copy_round, _ = await round_service.start_copy_round(player_b, transaction_service_b)
     await db_session.refresh(player_b)
 
     await round_service.flag_copy_round(
@@ -233,7 +233,7 @@ async def test_abandoned_prompt_not_counted_in_available(db_session, player_fact
     assert count_before == 1, f"Expected 1 available prompt, got {count_before}"
 
     # Player B starts and immediately abandons the copy round
-    copy_round = await round_service.start_copy_round(player_b, transaction_service_b)
+    copy_round, _ = await round_service.start_copy_round(player_b, transaction_service_b)
     await db_session.refresh(player_b)
 
     # Abandon the round (this creates a 24h cooldown)

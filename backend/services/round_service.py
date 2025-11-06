@@ -298,10 +298,15 @@ class RoundService:
             if not prompt_round or prompt_round.round_type != "prompt":
                 raise ValueError("Invalid prompt round ID for second copy")
 
+            # Verify the second copy slot is still available
+            if prompt_round.copy2_player_id is not None:
+                raise ValueError("Second copy slot for this prompt is already filled")
+
             # Verify player has already done first copy
-            existing_copies = (
+            existing_copies_count = (
                 await self.db.execute(
-                    select(Round)
+                    select(func.count())
+                    .select_from(Round)
                     .filter(
                         Round.player_id == player.player_id,
                         Round.round_type == "copy",
@@ -309,11 +314,11 @@ class RoundService:
                         Round.status == "submitted",
                     )
                 )
-            ).scalars().all()
+            ).scalar()
 
-            if not existing_copies:
+            if existing_copies_count == 0:
                 raise ValueError("Player must complete first copy before requesting second copy")
-            if len(existing_copies) >= 2:
+            if existing_copies_count >= 2:
                 raise ValueError("Player has already completed two copies for this prompt")
 
             # Second copy costs 2x the normal cost (no discount)
