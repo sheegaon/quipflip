@@ -145,7 +145,7 @@ class PhrasesetService:
         phraseset_id: UUID,
         player_id: UUID,
     ) -> dict:
-        """Return full detail view for a phraseset the player contributed to."""
+        """Return full detail view for a phraseset the player contributed to or voted on."""
         phraseset = await self.db.get(Phraseset, phraseset_id)
         if not phraseset:
             raise ValueError("Phraseset not found")
@@ -157,8 +157,20 @@ class PhrasesetService:
             copy2_round.player_id,
         }
 
-        if player_id not in contributor_ids:
-            raise ValueError("Not a contributor to this phraseset")
+        # Check if player is a contributor or voter
+        is_contributor = player_id in contributor_ids
+        is_voter = False
+        if not is_contributor:
+            # Check if player has voted on this phraseset
+            voter_check = await self.db.execute(
+                select(Vote)
+                .where(Vote.phraseset_id == phraseset_id)
+                .where(Vote.player_id == player_id)
+            )
+            is_voter = voter_check.scalar_one_or_none() is not None
+
+        if not is_contributor and not is_voter:
+            raise ValueError("Not a contributor or voter for this phraseset")
 
         player_records = await self._load_players(contributor_ids)
 
@@ -187,12 +199,22 @@ class PhrasesetService:
             },
         ]
 
+        # Votes and voters (load early to check if player is a voter)
+        vote_rows = await self.db.execute(
+            select(Vote)
+            .where(Vote.phraseset_id == phraseset.phraseset_id)
+            .order_by(Vote.created_at.asc())
+        )
+        votes = list(vote_rows.scalars().all())
+        player_vote = next((v for v in votes if v.player_id == player_id), None)
+
         your_role, your_phrase = self._identify_player_role(
             player_id,
             phraseset,
             prompt_round,
             copy1_round,
             copy2_round,
+            player_vote,
         )
 
         result_view = await self._load_result_view(phraseset, player_id)
@@ -204,14 +226,9 @@ class PhrasesetService:
             your_payout = self._extract_player_payout(payouts, player_id)
             if result_view and result_view.payout_amount:
                 your_payout = result_view.payout_amount
-
-        # Votes and voters
-        vote_rows = await self.db.execute(
-            select(Vote)
-            .where(Vote.phraseset_id == phraseset.phraseset_id)
-            .order_by(Vote.created_at.asc())
-        )
-        votes = list(vote_rows.scalars().all())
+        elif is_voter and player_vote:
+            # For voters, use the payout from the vote record
+            your_payout = player_vote.payout
         vote_player_ids = {vote.player_id for vote in votes}
         vote_player_records = await self._load_players(vote_player_ids, existing=player_records)
 
@@ -380,14 +397,17 @@ class PhrasesetService:
         votes = await self._load_votes_for_player(player_id)
         await self._populate_missing_prompt_rounds(copy_rounds, prompt_round_map)
 
-        # Build initial phraseset map from prompt rounds, or use empty dict
-        phrasesets, phraseset_map = [], {}
+        # Build phraseset map keyed by prompt_round_id for prompt/copy contributions
+        phrasesets, phraseset_by_prompt_round_id = [], {}
         if prompt_round_map:
-            phrasesets, phraseset_map = await self._load_phrasesets_for_prompts(prompt_round_map)
+            phrasesets, phraseset_by_prompt_round_id = await self._load_phrasesets_for_prompts(prompt_round_map)
+
+        # Build phraseset map keyed by phraseset_id for all phrasesets
+        phraseset_by_id = {ps.phraseset_id: ps for ps in phrasesets}
 
         # Load missing phrasesets referenced by votes
         vote_phraseset_ids = {vote.phraseset_id for vote in votes}
-        missing_phraseset_ids = vote_phraseset_ids - set(phraseset_map.keys())
+        missing_phraseset_ids = vote_phraseset_ids - set(phraseset_by_id.keys())
         if missing_phraseset_ids:
             missing_result = await self.db.execute(
                 select(Phraseset).where(Phraseset.phraseset_id.in_(list(missing_phraseset_ids)))
@@ -395,7 +415,7 @@ class PhrasesetService:
             missing_phrasesets = list(missing_result.scalars().all())
             phrasesets.extend(missing_phrasesets)
             for phraseset in missing_phrasesets:
-                phraseset_map[phraseset.phraseset_id] = phraseset
+                phraseset_by_id[phraseset.phraseset_id] = phraseset
 
         result_view_map = await self._load_result_views_for_player(player_id, phrasesets)
         payouts_by_phraseset = await self._load_payouts_for_phrasesets(phrasesets)
@@ -404,7 +424,7 @@ class PhrasesetService:
         contributions.extend(
             self._build_prompt_contribution_entries(
                 prompt_rounds,
-                phraseset_map,
+                phraseset_by_prompt_round_id,
                 result_view_map,
                 payouts_by_phraseset,
             )
@@ -413,7 +433,7 @@ class PhrasesetService:
             self._build_copy_contribution_entries(
                 copy_rounds,
                 prompt_round_map,
-                phraseset_map,
+                phraseset_by_prompt_round_id,
                 result_view_map,
                 payouts_by_phraseset,
             )
@@ -421,7 +441,7 @@ class PhrasesetService:
         contributions.extend(
             self._build_vote_contribution_entries(
                 votes,
-                phraseset_map,
+                phraseset_by_id,
                 result_view_map,
                 payouts_by_phraseset,
             )
@@ -675,16 +695,12 @@ class PhrasesetService:
 
             result_view = result_view_map.get(vote.phraseset_id)
             result_viewed = result_view.result_viewed if result_view else False
-            your_payout = None
-            if phraseset.status == "finalized":
-                payouts = payouts_by_phraseset.get(phraseset.phraseset_id)
-                if payouts:
-                    your_payout = self._extract_player_payout(
-                        payouts,
-                        vote.player_id,
-                    )
-                if result_view and result_view.payout_amount:
-                    your_payout = result_view.payout_amount
+
+            # Vote payouts are stored directly on the vote record, not in the prize pool
+            # Use the stored payout from result_view if available, otherwise use vote.payout
+            your_payout = vote.payout
+            if result_view and result_view.payout_amount is not None:
+                your_payout = result_view.payout_amount
 
             contributions.append(
                 {
@@ -823,6 +839,7 @@ class PhrasesetService:
         prompt_round: Round,
         copy1_round: Round,
         copy2_round: Round,
+        player_vote: Optional[Vote] = None,
     ) -> tuple[str, Optional[str]]:
         """Determine player's role and phrase in the phraseset."""
         if player_id == prompt_round.player_id:
@@ -831,6 +848,8 @@ class PhrasesetService:
             return "copy", phraseset.copy_phrase_1
         if player_id == copy2_round.player_id:
             return "copy", phraseset.copy_phrase_2
+        if player_vote:
+            return "vote", player_vote.voted_phrase
         return "copy", None
 
     def _derive_status(self, prompt_round: Optional[Round], phraseset: Optional[Phraseset]) -> str:
