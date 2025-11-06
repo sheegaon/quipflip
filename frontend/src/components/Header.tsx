@@ -76,13 +76,14 @@ export const Header: React.FC = () => {
     navigate('/statistics');
   }, [navigate]);
 
-  const handleLogoClick = React.useCallback(() => {
-    refreshDashboard().catch((err) => {
-      console.warn('Failed to refresh dashboard from header icon:', err);
-    });
-    refreshBalance().catch((err) => {
-      console.warn('Failed to refresh balance from header icon:', err);
-    });
+  const handleLogoClick = React.useCallback(async () => {
+    // Refresh dashboard and balance before navigating
+    try {
+      await refreshDashboard();
+      await refreshBalance();
+    } catch (err) {
+      console.warn('Failed to refresh from header icon:', err);
+    }
 
     if (showBackArrow) {
       navigate(getBackNavigation());

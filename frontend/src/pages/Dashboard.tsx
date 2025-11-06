@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { useResults } from '../contexts/ResultsContext';
 import { useTutorial } from '../contexts/TutorialContext';
@@ -31,6 +31,7 @@ export const Dashboard: React.FC = () => {
   const { viewedResultIds } = resultsState;
   const { markResultsViewed } = resultsActions;
   const navigate = useNavigate();
+  const location = useLocation();
   const [isRoundExpired, setIsRoundExpired] = useState(false);
   const [startingRound, setStartingRound] = useState<string | null>(null);
   const [roundStartError, setRoundStartError] = useState<string | null>(null);
@@ -44,6 +45,24 @@ export const Dashboard: React.FC = () => {
   useEffect(() => {
     dashboardLogger.debug('Component mounted');
   }, []);
+
+  // Refresh dashboard when navigating back to it
+  const previousPathRef = useRef<string | null>(null);
+  useEffect(() => {
+    const currentPath = location.pathname;
+    const previousPath = previousPathRef.current;
+
+    // Refresh when navigating TO /dashboard FROM another page
+    if (currentPath === '/dashboard' && previousPath !== null && previousPath !== '/dashboard' && isAuthenticated) {
+      dashboardLogger.debug('Navigated back to dashboard, refreshing...', { from: previousPath });
+      refreshDashboard().catch((err) => {
+        dashboardLogger.warn('Failed to refresh dashboard on navigation back:', err);
+      });
+    }
+
+    // Update the previous path
+    previousPathRef.current = currentPath;
+  }, [location.pathname, isAuthenticated, refreshDashboard]);
 
   useEffect(() => {
     if (activeRound) {
