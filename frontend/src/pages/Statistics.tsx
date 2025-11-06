@@ -14,6 +14,7 @@ import WeeklyLeaderboard from '../components/statistics/WeeklyLeaderboard';
 import { statisticsLogger } from '../utils/logger';
 import { hasCompletedSurvey } from '../utils/betaSurvey';
 import type { BetaSurveyStatusResponse } from '../api/types';
+import { APP_VERSION } from '../version';
 
 const Statistics: React.FC = () => {
   const navigate = useNavigate();
@@ -489,7 +490,7 @@ const Statistics: React.FC = () => {
         </div>
 
         <div className="mt-10 text-center text-xs text-quip-navy/60" aria-live="polite">
-          {appInfo?.version ? `Quipflip version ${appInfo.version}` : 'Quipflip version unavailable'}
+          Quipflip version {appInfo?.version || APP_VERSION}
         </div>
 
       </div>
