@@ -152,13 +152,85 @@ export const VoteRound: React.FC = () => {
             <h2 className={`text-3xl font-display font-bold mb-4 success-message ${voteResult.correct ? 'text-quip-turquoise' : 'text-quip-orange'}`}>
               {voteResult.correct ? successMsg : 'Incorrect'}
             </h2>
-            <div className="bg-quip-turquoise bg-opacity-10 border-2 border-quip-turquoise rounded-tile p-4 mb-4">
-              <p className="text-lg text-quip-navy mb-2">
-                The original phrase was: <strong className="text-quip-turquoise">{voteResult.original_phrase}</strong>
-              </p>
-              <p className="text-lg text-quip-teal">
-                You chose: <strong className={voteResult.correct ? 'text-quip-turquoise' : 'text-quip-orange'}>{voteResult.your_choice}</strong>
-              </p>
+            {/* Enhanced Recap Card - Show all phrases with attributions */}
+            <div className="bg-quip-navy bg-opacity-5 border-2 border-quip-navy rounded-tile p-6 mb-4">
+              <h3 className="font-display font-bold text-xl text-quip-navy mb-4 text-center">
+                The Reveal
+              </h3>
+
+              {phrasesetDetails ? (
+                <div className="space-y-3">
+                  {/* Map through all three phrases and show their authors */}
+                  {[
+                    phrasesetDetails.original_phrase,
+                    phrasesetDetails.copy_phrase_1,
+                    phrasesetDetails.copy_phrase_2
+                  ].filter(Boolean).map((phrase) => {
+                    const isOriginal = phrase === voteResult.original_phrase;
+                    const isYourChoice = phrase === voteResult.your_choice;
+                    const contributor = phrasesetDetails.contributors.find(c => c.phrase === phrase);
+
+                    // Determine styling based on whether it's original and/or player's choice
+                    let borderColor = 'border-quip-teal';
+                    let bgColor = 'bg-white';
+                    let labelColor = 'text-quip-teal';
+
+                    if (isOriginal) {
+                      borderColor = 'border-quip-turquoise';
+                      bgColor = 'bg-quip-turquoise bg-opacity-5';
+                    }
+
+                    return (
+                      <div
+                        key={phrase}
+                        className={`relative ${bgColor} border-2 ${borderColor} rounded-tile p-4 transition-all`}
+                      >
+                        {/* Phrase text */}
+                        <p className="text-lg font-semibold text-quip-navy mb-2">
+                          "{phrase}"
+                        </p>
+
+                        {/* Author and badges */}
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-quip-teal">
+                              Written by:
+                            </span>
+                            <span className={`text-sm font-semibold ${contributor?.is_you ? 'text-quip-orange' : 'text-quip-navy'}`}>
+                              {contributor?.pseudonym || 'Unknown'}
+                              {contributor?.is_you && ' (you)'}
+                            </span>
+                          </div>
+
+                          {/* Badges */}
+                          <div className="flex items-center gap-2">
+                            {isOriginal && (
+                              <span className="inline-flex items-center gap-1 px-3 py-1 bg-quip-turquoise text-white text-sm font-bold rounded-tile">
+                                ⭐ Original
+                              </span>
+                            )}
+                            {isYourChoice && (
+                              <span className={`inline-flex items-center gap-1 px-3 py-1 ${voteResult.correct ? 'bg-quip-turquoise' : 'bg-quip-orange'} text-white text-sm font-bold rounded-tile`}>
+                                {voteResult.correct ? '✓' : '✗'} Your Choice
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                // Fallback if phrasesetDetails isn't loaded yet
+                <div className="space-y-2">
+                  <p className="text-lg text-quip-navy mb-2">
+                    The original phrase was: <strong className="text-quip-turquoise">{voteResult.original_phrase}</strong>
+                  </p>
+                  <p className="text-lg text-quip-teal">
+                    You chose: <strong className={voteResult.correct ? 'text-quip-turquoise' : 'text-quip-orange'}>{voteResult.your_choice}</strong>
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Payout info */}
