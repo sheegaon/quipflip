@@ -168,18 +168,21 @@ async def get_phraseset_history(
     Returns all events from prompt submission through finalization,
     including usernames and timestamps for each event.
 
-    Access restricted to finalized phrasesets only to prevent viewing
-    active phraseset details before voting completes.
+    Access restricted to:
+    - Finalized phrasesets only (prevents viewing active rounds)
+    - Participants only (contributors or voters)
     """
     phraseset_service = PhrasesetService(db)
     try:
-        history = await phraseset_service.get_phraseset_history(phraseset_id)
+        history = await phraseset_service.get_phraseset_history(phraseset_id, player.player_id)
         return PhrasesetHistory(**history)
     except ValueError as exc:
         message = str(exc)
         if message == "Phraseset not found":
             raise HTTPException(status_code=404, detail=message)
         if message == "Phraseset not finalized":
+            raise HTTPException(status_code=403, detail=message)
+        if message == "Not a participant in this phraseset":
             raise HTTPException(status_code=403, detail=message)
         raise HTTPException(status_code=400, detail=message)
     except Exception as exc:

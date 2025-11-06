@@ -1153,7 +1153,11 @@ Explicitly mark a phraseset payout as claimed (idempotent).
 #### `GET /phrasesets/{phraseset_id}/history`
 Get the complete event timeline for a phraseset, showing all submissions, votes, and finalization.
 
-**Access Control:** This endpoint is restricted to finalized phrasesets only. Attempting to view the history of an active phraseset will return a 403 error. This prevents players from viewing phrases and contributor identities before voting completes, which would compromise game integrity.
+**Access Control:** This endpoint has two layers of access restriction:
+1. **Finalized phrasesets only** - Active phrasesets cannot be viewed
+2. **Participants only** - You must be a contributor (prompt/copy submitter) or voter
+
+Attempting to view a non-finalized phraseset or a phraseset you didn't participate in will return a 403 error. This prevents players from viewing phrases and contributor identities before voting completes, and ensures privacy for participants.
 
 **Purpose:** This endpoint provides a comprehensive review of a phraseset's lifecycle, making it ideal for building a detailed review UX that shows:
 - Who submitted the original phrase and when
@@ -1273,14 +1277,16 @@ Get the complete event timeline for a phraseset, showing all submissions, votes,
 
 **Errors:**
 - `404 Not Found` - Phraseset not found
-- `403 Forbidden` - Phraseset not finalized (still active/voting)
+- `403 Forbidden` - Either the phraseset is not finalized (still active/voting) OR you are not a participant
 - `400 Bad Request` - Invalid phraseset ID format
 
-**Security Note:** This endpoint only returns data for finalized phrasesets. This prevents:
-- Viewing the original phrase before voting (unfair advantage)
-- Seeing copy phrases and contributors during active voting
-- Real-time tracking of vote patterns before finalization
-- Any form of coordination or cheating using live phraseset data
+**Security Notes:**
+- **Finalization requirement:** Only finalized phrasesets can be viewed, preventing:
+  - Viewing the original phrase before voting (unfair advantage)
+  - Seeing copy phrases and contributors during active voting
+  - Real-time tracking of vote patterns before finalization
+- **Participant requirement:** Only contributors and voters can view history, ensuring privacy
+- **Handles incomplete phrasesets:** If a phraseset was abandoned before all rounds completed, only the completed events will be shown
 
 #### `GET /phrasesets/completed`
 Get a paginated list of all finalized phrasesets with summary metadata.
