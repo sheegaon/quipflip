@@ -18,7 +18,7 @@ interface PhraseRecapCardProps {
  * @param isOriginal - Whether this phrase is the original
  * @param isYourChoice - Whether the player chose this phrase
  * @param isCorrectChoice - Whether the player's choice was correct (affects badge color)
- * @param contributor - The contributor information (pseudonym and whether it's the player)
+ * @param contributor - The contributor information (username and whether it's the player)
  */
 export const PhraseRecapCard: React.FC<PhraseRecapCardProps> = ({
   phrase,
@@ -47,7 +47,7 @@ export const PhraseRecapCard: React.FC<PhraseRecapCardProps> = ({
             Written by:
           </span>
           <span className={`text-sm font-semibold ${contributor?.is_you ? 'text-quip-orange' : 'text-quip-navy'}`}>
-            {contributor?.pseudonym || 'Unknown'}
+            {contributor?.username || 'Unknown'}
             {contributor?.is_you && ' (you)'}
           </span>
         </div>
