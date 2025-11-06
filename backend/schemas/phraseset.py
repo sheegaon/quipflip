@@ -61,17 +61,19 @@ class PhraseSetResults(BaseSchema):
     vote_cost: int
     vote_payout_correct: int
     system_contribution: int
+    second_copy_contribution: int
 
 
 class PhrasesetSummary(BaseSchema):
     """Summary information for a player's phraseset contribution."""
     phraseset_id: Optional[UUID]
     prompt_round_id: UUID
+    copy_round_id: Optional[UUID] = None
     prompt_text: str
-    your_role: Literal["prompt", "copy"]
+    your_role: Literal["prompt", "copy", "vote"]
     your_phrase: Optional[str]
     original_phrase: Optional[str] = None
-    status: Literal["waiting_copies", "waiting_copy1", "active", "voting", "closing", "finalized", "abandoned"]
+    status: Literal["open", "waiting_copies", "waiting_copy1", "active", "voting", "closing", "finalized", "abandoned"]
     created_at: datetime
     updated_at: Optional[datetime]
     vote_count: Optional[int]
@@ -108,6 +110,7 @@ class PhrasesetDashboardSummary(BaseSchema):
 
 class PhrasesetContributor(BaseSchema):
     """Contributor information."""
+    round_id: UUID
     player_id: UUID
     username: str  # Will be hidden from UI, only for debug
     pseudonym: str  # Public display name shown to other players

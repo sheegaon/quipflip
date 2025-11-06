@@ -26,6 +26,13 @@ export const CopyRound: React.FC = () => {
   const [isFlagging, setIsFlagging] = useState(false);
   const [flagError, setFlagError] = useState<string | null>(null);
   const [flagResult, setFlagResult] = useState<FlagCopyRoundResponse | null>(null);
+  const [secondCopyEligibility, setSecondCopyEligibility] = useState<{
+    eligible: boolean;
+    cost: number;
+    promptRoundId: string;
+    originalPhrase: string;
+  } | null>(null);
+  const [isStartingSecondCopy, setIsStartingSecondCopy] = useState(false);
 
   const { isPhraseValid, trimmedPhrase } = usePhraseValidation(phrase);
 
@@ -90,7 +97,7 @@ export const CopyRound: React.FC = () => {
       copyRoundLogger.debug('Submitting copy round phrase', {
         roundId: roundData.round_id,
       });
-      await apiClient.submitPhrase(roundData.round_id, trimmedPhrase);
+      const response = await apiClient.submitPhrase(roundData.round_id, trimmedPhrase);
 
       // Show success message first to prevent navigation race condition
       const message = getRandomMessage('copySubmitted');
@@ -99,6 +106,20 @@ export const CopyRound: React.FC = () => {
         roundId: roundData.round_id,
         message,
       });
+
+      // Check if eligible for second copy
+      if (response.eligible_for_second_copy && response.second_copy_cost && response.prompt_round_id && response.original_phrase) {
+        setSecondCopyEligibility({
+          eligible: true,
+          cost: response.second_copy_cost,
+          promptRoundId: response.prompt_round_id,
+          originalPhrase: response.original_phrase,
+        });
+        copyRoundLogger.info('Player eligible for second copy', {
+          cost: response.second_copy_cost,
+          promptRoundId: response.prompt_round_id,
+        });
+      }
 
       // Advance tutorial if in copy_round step
       if (currentStep === 'copy_round') {
@@ -116,11 +137,14 @@ export const CopyRound: React.FC = () => {
         // Continue with navigation even if refresh fails
       }
 
-      // Navigate after delay - dashboard should now show no active round
-      setTimeout(() => {
-        copyRoundLogger.debug('Navigating back to dashboard after copy submission');
-        navigate('/dashboard');
-      }, 1500);
+      // Only auto-navigate if NOT eligible for second copy
+      if (!response.eligible_for_second_copy) {
+        // Navigate after delay - dashboard should now show no active round
+        setTimeout(() => {
+          copyRoundLogger.debug('Navigating back to dashboard after copy submission');
+          navigate('/dashboard');
+        }, 1500);
+      }
     } catch (err) {
       const message = extractErrorMessage(err) || 'Unable to submit your phrase. The round may have expired or there may be a connection issue.';
       copyRoundLogger.error('Failed to submit copy round phrase', err);
@@ -173,11 +197,44 @@ export const CopyRound: React.FC = () => {
     }
   };
 
+  const handleStartSecondCopy = async () => {
+    if (!secondCopyEligibility) return;
+
+    setIsStartingSecondCopy(true);
+    setError(null);
+
+    try {
+      copyRoundLogger.info('Starting second copy round', {
+        promptRoundId: secondCopyEligibility.promptRoundId,
+        cost: secondCopyEligibility.cost,
+      });
+
+      await apiClient.startCopyRound(secondCopyEligibility.promptRoundId);
+      await refreshDashboard();
+
+      copyRoundLogger.debug('Second copy round started, staying on page');
+      // Reset states to allow for the new round
+      setSuccessMessage(null);
+      setSecondCopyEligibility(null);
+    } catch (err) {
+      const message = extractErrorMessage(err) || 'Unable to start second copy round. Please try again.';
+      copyRoundLogger.error('Failed to start second copy round', err);
+      setError(message);
+    } finally {
+      setIsStartingSecondCopy(false);
+    }
+  };
+
+  const handleDeclineSecondCopy = () => {
+    copyRoundLogger.info('Player declined second copy option');
+    navigate('/dashboard');
+  };
+
   // Show success state
   if (successMessage) {
     return (
       <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center p-4">
-        <div className="tile-card max-w-md w-full p-8 text-center flip-enter">
+        <div className="tile-card max-w-2xl w-full p-8 text-center flip-enter">
           <div className="flex justify-center mb-4">
             <img src="/icon_copy.svg" alt="" className="w-24 h-24" />
           </div>
@@ -196,6 +253,56 @@ export const CopyRound: React.FC = () => {
                 . Our team will review this phrase shortly.
               </p>
               <p>Returning to dashboard...</p>
+            </div>
+          ) : secondCopyEligibility ? (
+            <div className="space-y-4">
+              <div className="bg-quip-turquoise bg-opacity-10 border-2 border-quip-turquoise rounded-tile p-6 mb-4">
+                <p className="text-lg text-quip-navy mb-3">
+                  <strong>Want to submit another copy for the same phrase?</strong>
+                </p>
+                <p className="text-quip-teal mb-4">
+                  You can submit a second copy for <strong>"{secondCopyEligibility.originalPhrase}"</strong> for{' '}
+                  <CurrencyDisplay
+                    amount={secondCopyEligibility.cost}
+                    iconClassName="w-4 h-4"
+                    textClassName="font-semibold text-quip-turquoise"
+                  />
+                  . This gives you two chances to match the prompt!
+                </p>
+              </div>
+
+              {error && (
+                <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+                  {error}
+                </div>
+              )}
+
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <button
+                  onClick={handleStartSecondCopy}
+                  disabled={isStartingSecondCopy}
+                  className="bg-quip-turquoise hover:bg-quip-teal disabled:bg-gray-400 text-white font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm flex items-center justify-center gap-1"
+                >
+                  {isStartingSecondCopy ? 'Starting...' : (
+                    <>
+                      Submit Second Copy (
+                      <CurrencyDisplay
+                        amount={secondCopyEligibility.cost}
+                        iconClassName="w-4 h-4"
+                        textClassName="font-bold text-white"
+                      />
+                      )
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={handleDeclineSecondCopy}
+                  disabled={isStartingSecondCopy}
+                  className="bg-white hover:bg-gray-50 border-2 border-quip-navy text-quip-navy font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm disabled:opacity-50"
+                >
+                  Return to Dashboard
+                </button>
+              </div>
             </div>
           ) : (
             <p className="text-quip-teal">Returning to dashboard...</p>

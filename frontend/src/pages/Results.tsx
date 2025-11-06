@@ -113,6 +113,7 @@ export const Results: React.FC = () => {
       prize_pool_base,
       vote_cost,
       vote_payout_correct,
+      second_copy_contribution,
     } = results;
 
     const voteTypeEmoji: Record<'correct' | 'incorrect', string> = {
@@ -155,6 +156,11 @@ export const Results: React.FC = () => {
 
     const poolTerms: string[] = [];
     poolTerms.push(`${prize_pool_base.toLocaleString()} FC base`);
+
+    // Add second copy contribution if present
+    if (second_copy_contribution > 0) {
+      poolTerms.push(`+ ${second_copy_contribution.toLocaleString()} FC (2nd copy from same player)`);
+    }
 
     const formatContributionTerm = (
       count: number,

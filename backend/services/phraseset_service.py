@@ -183,6 +183,7 @@ class PhrasesetService:
         # Build contributor list
         contributors = [
             {
+                "round_id": prompt_round.round_id,
                 "player_id": prompt_round.player_id,
                 "username": player_records.get(prompt_round.player_id, {}).get("username", str(prompt_round.player_id)),
                 "pseudonym": player_records.get(prompt_round.player_id, {}).get("pseudonym", "Unknown"),
@@ -190,6 +191,7 @@ class PhrasesetService:
                 "phrase": phraseset.original_phrase,
             },
             {
+                "round_id": copy1_round.round_id,
                 "player_id": copy1_round.player_id,
                 "username": player_records.get(copy1_round.player_id, {}).get("username", str(copy1_round.player_id)),
                 "pseudonym": player_records.get(copy1_round.player_id, {}).get("pseudonym", "Unknown"),
@@ -197,6 +199,7 @@ class PhrasesetService:
                 "phrase": phraseset.copy_phrase_1,
             },
             {
+                "round_id": copy2_round.round_id,
                 "player_id": copy2_round.player_id,
                 "username": player_records.get(copy2_round.player_id, {}).get("username", str(copy2_round.player_id)),
                 "pseudonym": player_records.get(copy2_round.player_id, {}).get("pseudonym", "Unknown"),
@@ -643,6 +646,7 @@ class PhrasesetService:
                 {
                     "phraseset_id": phraseset.phraseset_id if phraseset else None,
                     "prompt_round_id": copy_round.prompt_round_id,
+                    "copy_round_id": copy_round.round_id,
                     "prompt_text": phraseset.prompt_text
                     if phraseset
                     else (prompt_round.prompt_text if prompt_round else ""),
@@ -735,6 +739,11 @@ class PhrasesetService:
 
     async def _load_contributor_rounds(self, phraseset: Phraseset) -> tuple[Round, Round, Round]:
         """Load prompt and copy rounds for a phraseset using a single query."""
+        from backend.utils.phraseset_utils import validate_phraseset_contributor_rounds
+
+        # Validate all contributor round IDs are present
+        validate_phraseset_contributor_rounds(phraseset)
+
         round_ids = [
             phraseset.prompt_round_id,
             phraseset.copy_round_1_id,

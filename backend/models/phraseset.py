@@ -36,6 +36,7 @@ class Phraseset(Base):
     vote_contributions = Column(Integer, default=0, nullable=False)  # Total vote_cost added from votes
     vote_payouts_paid = Column(Integer, default=0, nullable=False)  # Total vote_payout_correct paid out
     system_contribution = Column(Integer, default=0, nullable=False)  # Copy discount contributions (0, 10, or 20)
+    second_copy_contribution = Column(Integer, default=0, nullable=False)  # Additional contribution when 2 copies from same player (0 or 50)
 
     # Relationships
     prompt_round = relationship("Round", foreign_keys=[prompt_round_id])

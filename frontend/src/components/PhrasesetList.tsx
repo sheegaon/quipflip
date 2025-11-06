@@ -1,6 +1,7 @@
 import React from 'react';
 import type { PhrasesetSummary } from '../api/types';
 import { StatusBadge } from './StatusBadge';
+import { getUniqueIdForSummary } from '../utils/phrasesetHelpers';
 
 interface PhrasesetListProps {
   phrasesets: PhrasesetSummary[];
@@ -37,7 +38,7 @@ export const PhrasesetList: React.FC<PhrasesetListProps> = ({
   return (
     <div className="space-y-3">
       {phrasesets.map((phraseset) => {
-        const id = phraseset.phraseset_id ?? phraseset.prompt_round_id;
+        const id = getUniqueIdForSummary(phraseset);
         const isSelected = selectedId ? selectedId === id : false;
 
         return (
