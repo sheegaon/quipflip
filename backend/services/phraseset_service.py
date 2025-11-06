@@ -387,6 +387,218 @@ class PhrasesetService:
             copy2_round.player_id,
         }
 
+    async def get_phraseset_history(self, phraseset_id: UUID, player_id: UUID) -> dict:
+        """Return the complete event timeline for a phraseset.
+
+        Returns all events from prompt submission through finalization,
+        including usernames and timestamps for each event.
+
+        Access is restricted to:
+        1. Finalized phrasesets only (prevents viewing active phraseset details)
+        2. Participants only (contributors or voters)
+        """
+        phraseset = await self.db.get(Phraseset, phraseset_id)
+        if not phraseset:
+            raise ValueError("Phraseset not found")
+
+        # Restrict access to finalized phrasesets only
+        if phraseset.status != "finalized":
+            raise ValueError("Phraseset not finalized")
+
+        # Load all votes first to check voter participation
+        vote_rows = await self.db.execute(
+            select(Vote)
+            .where(Vote.phraseset_id == phraseset.phraseset_id)
+            .order_by(Vote.created_at.asc())
+        )
+        votes = list(vote_rows.scalars().all())
+
+        # Check if player is a voter
+        is_voter = any(vote.player_id == player_id for vote in votes)
+
+        # Load contributor rounds (may be incomplete for abandoned phrasesets)
+        round_ids = [
+            phraseset.prompt_round_id,
+            phraseset.copy_round_1_id,
+            phraseset.copy_round_2_id,
+        ]
+        result = await self.db.execute(
+            select(Round).where(Round.round_id.in_([rid for rid in round_ids if rid]))
+        )
+        rounds = {round_.round_id: round_ for round_ in result.scalars().all()}
+
+        prompt_round = rounds.get(phraseset.prompt_round_id)
+        copy1_round = rounds.get(phraseset.copy_round_1_id) if phraseset.copy_round_1_id else None
+        copy2_round = rounds.get(phraseset.copy_round_2_id) if phraseset.copy_round_2_id else None
+
+        # Collect contributor IDs (only for rounds that exist)
+        contributor_ids = set()
+        if prompt_round:
+            contributor_ids.add(prompt_round.player_id)
+        if copy1_round:
+            contributor_ids.add(copy1_round.player_id)
+        if copy2_round:
+            contributor_ids.add(copy2_round.player_id)
+
+        # Check if player is a contributor
+        is_contributor = player_id in contributor_ids
+
+        # Verify player is either a contributor or voter
+        if not is_contributor and not is_voter:
+            raise ValueError("Not a participant in this phraseset")
+
+        # Collect all player IDs for loading usernames
+        player_ids = contributor_ids.copy()
+        player_ids.update(vote.player_id for vote in votes)
+
+        # Load player information
+        player_records = await self._load_players(player_ids)
+
+        # Helper function to create submission events
+        def create_submission_event(
+            event_type: str,
+            round_obj: Round,
+            phrase: str,
+            extra_metadata: dict = None
+        ) -> dict:
+            metadata = {"round_id": round_obj.round_id}
+            if extra_metadata:
+                metadata.update(extra_metadata)
+
+            return {
+                "event_type": event_type,
+                "timestamp": self._ensure_utc(round_obj.created_at),
+                "player_id": round_obj.player_id,
+                "username": player_records.get(round_obj.player_id, {}).get("username"),
+                "pseudonym": player_records.get(round_obj.player_id, {}).get("pseudonym"),
+                "phrase": phrase,
+                "correct": None,
+                "metadata": metadata,
+            }
+
+        # Build events timeline
+        events = []
+
+        # Add prompt submission event (if round exists)
+        if prompt_round:
+            events.append(create_submission_event(
+                "prompt_submitted",
+                prompt_round,
+                phraseset.original_phrase,
+                {"prompt_text": phraseset.prompt_text}
+            ))
+
+        # Add copy submission events (only for rounds that exist)
+        if copy1_round:
+            events.append(create_submission_event(
+                "copy_submitted",
+                copy1_round,
+                phraseset.copy_phrase_1,
+                {"copy_number": 1}
+            ))
+
+        if copy2_round:
+            events.append(create_submission_event(
+                "copy_submitted",
+                copy2_round,
+                phraseset.copy_phrase_2,
+                {"copy_number": 2}
+            ))
+
+        # Add vote events
+        for vote in votes:
+            events.append({
+                "event_type": "vote_submitted",
+                "timestamp": self._ensure_utc(vote.created_at),
+                "player_id": vote.player_id,
+                "username": player_records.get(vote.player_id, {}).get("username"),
+                "pseudonym": player_records.get(vote.player_id, {}).get("pseudonym"),
+                "phrase": vote.voted_phrase,
+                "correct": vote.correct,
+                "metadata": {
+                    "vote_id": vote.vote_id,
+                    "payout": vote.payout,
+                },
+            })
+
+        # Add finalization event if finalized
+        if phraseset.status == "finalized" and phraseset.finalized_at:
+            events.append({
+                "event_type": "finalized",
+                "timestamp": self._ensure_utc(phraseset.finalized_at),
+                "player_id": None,
+                "username": None,
+                "pseudonym": None,
+                "phrase": None,
+                "correct": None,
+                "metadata": {
+                    "total_votes": phraseset.vote_count,
+                    "total_pool": phraseset.total_pool,
+                },
+            })
+
+        # Sort events by timestamp
+        events.sort(key=lambda e: e["timestamp"])
+
+        return {
+            "phraseset_id": phraseset.phraseset_id,
+            "prompt_text": phraseset.prompt_text,
+            "original_phrase": phraseset.original_phrase,
+            "copy_phrase_1": phraseset.copy_phrase_1,
+            "copy_phrase_2": phraseset.copy_phrase_2,
+            "status": phraseset.status,
+            "created_at": self._ensure_utc(phraseset.created_at),
+            "finalized_at": self._ensure_utc(phraseset.finalized_at),
+            "total_votes": phraseset.vote_count,
+            "events": events,
+        }
+
+    async def get_completed_phrasesets(
+        self,
+        limit: int = 50,
+        offset: int = 0
+    ) -> dict:
+        """Return a paginated list of all completed (finalized) phrasesets.
+
+        Returns metadata including start time, finalization time, and vote count.
+        """
+        from sqlalchemy import func
+
+        # Get total count efficiently
+        count_result = await self.db.execute(
+            select(func.count(Phraseset.phraseset_id))
+            .where(Phraseset.status == "finalized")
+        )
+        total = count_result.scalar() or 0
+
+        # Get paginated results ordered by finalization time (most recent first)
+        result = await self.db.execute(
+            select(Phraseset)
+            .where(Phraseset.status == "finalized")
+            .order_by(Phraseset.finalized_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        phrasesets = list(result.scalars().all())
+
+        # Build response
+        items = []
+        for phraseset in phrasesets:
+            items.append({
+                "phraseset_id": phraseset.phraseset_id,
+                "prompt_text": phraseset.prompt_text,
+                "original_phrase": phraseset.original_phrase,
+                "created_at": self._ensure_utc(phraseset.created_at),
+                "finalized_at": self._ensure_utc(phraseset.finalized_at),
+                "vote_count": phraseset.vote_count,
+                "total_pool": phraseset.total_pool,
+            })
+
+        return {
+            "phrasesets": items,
+            "total": total,
+        }
+
     # ---------------------------------------------------------------------
     # Helper methods
     # ---------------------------------------------------------------------
