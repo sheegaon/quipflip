@@ -97,7 +97,7 @@ export const Dashboard: React.FC = () => {
   useEffect(() => {
     const playerId = player?.player_id;
 
-    if (!playerId) {
+    if (!playerId || !isAuthenticated) {
       setSurveyStatus(null);
       setShowSurveyPrompt(false);
       hasFetchedSurveyRef.current = false;
@@ -130,7 +130,11 @@ export const Dashboard: React.FC = () => {
         if (controller.signal.aborted) {
           return;
         }
-        dashboardLogger.warn('[Beta Survey] Failed to fetch survey status', error);
+        // Only log non-auth errors - 401 is expected when not authenticated
+        const errorObj = error as any;
+        if (errorObj?.status !== 401) {
+          dashboardLogger.warn('[Beta Survey] Failed to fetch survey status', error);
+        }
       }
     };
 
@@ -139,7 +143,7 @@ export const Dashboard: React.FC = () => {
     return () => {
       controller.abort();
     };
-  }, [player?.player_id]);
+  }, [player?.player_id, isAuthenticated]);
 
   const handleStartTutorial = async () => {
     dashboardLogger.debug('Starting tutorial from dashboard');
@@ -608,7 +612,7 @@ export const Dashboard: React.FC = () => {
               </p>
               {roundAvailability && roundAvailability.prompts_waiting > 0 && (
                 <p className="text-xs text-quip-turquoise mb-3 font-semibold">
-                  {formatWaitingCount(roundAvailability.prompts_waiting)} prompt
+                  {formatWaitingCount(roundAvailability.prompts_waiting)} quip
                   {roundAvailability.prompts_waiting > 1 ? 's' : ''} waiting
                 </p>
               )}

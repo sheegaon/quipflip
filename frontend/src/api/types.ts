@@ -99,6 +99,8 @@ export interface CopyState {
   cost: number;
   original_phrase: string;
   discount_active: boolean;
+  is_second_copy?: boolean;
+  prompt_round_id?: string;
 }
 
 export interface VoteState {
@@ -266,6 +268,7 @@ export interface StartCopyResponse {
   expires_at: string;
   cost: number;
   discount_active: boolean;
+  is_second_copy: boolean;
 }
 
 export interface StartVoteResponse {
@@ -279,6 +282,11 @@ export interface StartVoteResponse {
 export interface SubmitPhraseResponse {
   success: boolean;
   phrase: string;
+  // Second copy eligibility (for copy rounds only)
+  eligible_for_second_copy?: boolean;
+  second_copy_cost?: number;
+  prompt_round_id?: string;
+  original_phrase?: string;
 }
 
 export interface VoteResponse {
@@ -316,6 +324,7 @@ export interface PhrasesetResults {
   vote_cost: number;
   vote_payout_correct: number;
   system_contribution: number;
+  second_copy_contribution: number;
 }
 
 export type PhrasesetStatus =
@@ -330,6 +339,7 @@ export type PhrasesetStatus =
 export interface PhrasesetSummary {
   phraseset_id: string | null;
   prompt_round_id: string;
+  copy_round_id?: string | null;
   prompt_text: string;
   your_role: 'prompt' | 'copy';
   your_phrase: string | null;
@@ -368,6 +378,7 @@ export interface PhrasesetDashboardSummary {
 }
 
 export interface PhrasesetContributor {
+  round_id: string;
   player_id: string;
   username: string;
   pseudonym: string;

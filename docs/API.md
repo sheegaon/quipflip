@@ -1123,7 +1123,8 @@ Get phraseset results (collects prize on first view).
   "prize_pool_base": 200,
   "vote_cost": 10,
   "vote_payout_correct": 20,
-  "system_contribution": 0
+  "system_contribution": 0,
+  "second_copy_contribution": 0
 }
 ```
 

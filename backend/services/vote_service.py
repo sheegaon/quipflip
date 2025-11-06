@@ -961,6 +961,10 @@ class VoteService:
         if phraseset.status != "finalized":
             raise ValueError("Phraseset not yet finalized")
 
+        # Validate all contributor round IDs are present
+        from backend.utils.phraseset_utils import validate_phraseset_contributor_rounds
+        validate_phraseset_contributor_rounds(phraseset)
+
         # Load all contributor rounds in a single query
         round_ids = [
             phraseset.prompt_round_id,
@@ -1146,6 +1150,7 @@ class VoteService:
             "vote_cost": settings.vote_cost,
             "vote_payout_correct": settings.vote_payout_correct,
             "system_contribution": phraseset.system_contribution,
+            "second_copy_contribution": phraseset.second_copy_contribution,
         }
 
         if role == "copy":

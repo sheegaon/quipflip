@@ -72,6 +72,7 @@ export default function WinRateChart({ promptStats, copyStats, voterStats }: Win
                 if (name === 'rounds') return [Math.round(value), 'Total Rounds'];
                 return [value, name];
               }}
+              wrapperStyle={{ zIndex: 1000 }}
             />
             <Legend />
             <Bar dataKey="winRate" fill="#f97316" name="Win Rate (%)" />

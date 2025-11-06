@@ -209,7 +209,7 @@ async def test_cannot_copy_own_prompt(db_session, player_factory):
 
     # Try to start copy round with same player - should not give them their own prompt
     try:
-        copy_round = await round_service.start_copy_round(player, transaction_service)
+        copy_round, _ = await round_service.start_copy_round(player, transaction_service)
     except ValueError:
         # Acceptable outcome: system refused to start a copy round with only own prompt available
         await db_session.refresh(player)
