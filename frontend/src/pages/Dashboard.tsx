@@ -16,7 +16,7 @@ import { hasDismissedSurvey, markSurveyDismissed, hasCompletedSurvey } from '../
 const formatWaitingCount = (count: number): string => (count > 10 ? 'over 10' : count.toString());
 export const Dashboard: React.FC = () => {
   const { state, actions } = useGame();
-  const { state: resultsState, actions: resultsActions } = useResults();
+  const { state: resultsState } = useResults();
   const {
     player,
     activeRound,
@@ -29,7 +29,6 @@ export const Dashboard: React.FC = () => {
   const { refreshDashboard, clearError, abandonRound } = actions;
   const { startTutorial, skipTutorial, advanceStep } = useTutorial();
   const { viewedResultIds } = resultsState;
-  const { markResultsViewed } = resultsActions;
   const navigate = useNavigate();
   const location = useLocation();
   const [isRoundExpired, setIsRoundExpired] = useState(false);
@@ -424,9 +423,7 @@ export const Dashboard: React.FC = () => {
   };
 
   const handleViewResults = () => {
-    // Mark all current pending results as viewed
-    const allCurrentIds = pendingResults.map(r => r.phraseset_id);
-    markResultsViewed(allCurrentIds);
+    // Navigate to results page (results will be marked as viewed on page load)
     navigate('/results');
   };
 
