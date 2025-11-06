@@ -1,11 +1,12 @@
 """Cleanup service for database maintenance tasks."""
 import logging
+import random
 import re
 from uuid import UUID
 from datetime import UTC, datetime, timedelta
 from typing import Optional
 
-from sqlalchemy import case, delete, or_, select, text, update
+from sqlalchemy import case, delete, func, or_, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.models import (
@@ -58,6 +59,27 @@ class CleanupService:
         if not username:
             return False
         return username.endswith(" X") or bool(re.search(r" X\d+$", username))
+
+    async def _generate_anonymous_username(self) -> tuple[str, str]:
+        """Generate a unique anonymous username like 'Deleted User #12345'.
+
+        Returns:
+            Tuple of (username, username_canonical)
+        """
+        while True:
+            # Generate random 5-digit number
+            random_num = random.randint(10000, 99999)
+            username = f"Deleted User #{random_num}"
+            username_canonical = canonicalize_username(username)
+
+            # Check if this username is already taken
+            result = await self.db.execute(
+                select(Player).where(Player.username_canonical == username_canonical)
+            )
+            existing = result.scalar_one_or_none()
+
+            if not existing:
+                return username, username_canonical
 
     # ===== Refresh Token Cleanup =====
 
@@ -256,7 +278,12 @@ class CleanupService:
         return list(unique_players.values())
 
     async def _delete_players_by_ids(self, player_ids: list[UUID]) -> dict[str, int]:
-        """Delete players and related data for the provided IDs."""
+        """Anonymize players and delete related non-essential data for the provided IDs.
+
+        Players are anonymized (not deleted) to preserve game history and prevent
+        data integrity violations. Submitted rounds are preserved as they are
+        referenced by phrasesets.
+        """
         from backend.services.queue_service import QueueService
 
         if not player_ids:
@@ -320,26 +347,67 @@ class CleanupService:
         )
         deletion_counts['quests'] = result.rowcount or 0
 
-        # 10. Get IDs of prompt rounds to be deleted (for queue cleanup)
+        # 10. Get IDs of prompt rounds to be deleted from queue (for abandoned prompts only)
+        # Note: We do NOT delete submitted rounds as they are part of phrasesets and game history
         prompt_rounds_result = await self.db.execute(
             select(Round.round_id)
             .where(Round.player_id.in_(player_ids))
             .where(Round.round_type == "prompt")
+            .where(Round.status != "submitted")  # Only queue cleanup for non-submitted
         )
         prompt_round_ids = [row[0] for row in prompt_rounds_result]
 
-        # 11. Delete rounds (references player_id)
-        # Note: Prompts are shared across players and should not be deleted
+        # 11. Delete ONLY abandoned/incomplete rounds (not submitted rounds)
+        # Submitted rounds must be preserved because:
+        # - They are referenced by phrasesets
+        # - They are part of game history
+        # - Deleting them causes data integrity violations
         result = await self.db.execute(
-            delete(Round).where(Round.player_id.in_(player_ids))
+            delete(Round).where(
+                Round.player_id.in_(player_ids),
+                Round.status != "submitted"  # Preserve submitted rounds
+            )
         )
         deletion_counts['rounds'] = result.rowcount or 0
 
-        # 12. Finally, delete players
-        result = await self.db.execute(
-            delete(Player).where(Player.player_id.in_(player_ids))
+        # Count submitted rounds that were NOT deleted (for logging)
+        submitted_rounds_result = await self.db.execute(
+            select(func.count(Round.round_id))
+            .where(Round.player_id.in_(player_ids))
+            .where(Round.status == "submitted")
         )
-        deletion_counts['players'] = result.rowcount or 0
+        preserved_rounds = submitted_rounds_result.scalar() or 0
+        if preserved_rounds > 0:
+            deletion_counts['rounds_preserved'] = preserved_rounds
+            logger.info(f"Preserved {preserved_rounds} submitted rounds (needed for phrasesets)")
+
+        # 12. Anonymize players instead of deleting them
+        # This preserves game history and prevents data integrity violations
+        anonymized_count = 0
+        for player_id in player_ids:
+            # Generate unique anonymous username
+            anon_username, anon_canonical = await self._generate_anonymous_username()
+
+            # Anonymize the player
+            result = await self.db.execute(
+                update(Player)
+                .where(Player.player_id == player_id)
+                .values(
+                    username=anon_username,
+                    username_canonical=anon_canonical,
+                    pseudonym=anon_username,  # Also anonymize pseudonym
+                    pseudonym_canonical=anon_canonical,
+                    email=f"deleted_{player_id}@deleted.local",  # Unique email to avoid conflicts
+                    password_hash="",  # Clear password (prevents login)
+                    is_guest=True,  # Mark as guest (additional login prevention)
+                    locked_until=datetime(2099, 12, 31, tzinfo=UTC),  # Lock account permanently
+                )
+            )
+            if result.rowcount:
+                anonymized_count += 1
+
+        deletion_counts['players_anonymized'] = anonymized_count
+        logger.info(f"Anonymized {anonymized_count} player(s) (preserved for game history)")
 
         # Commit the transaction
         await self.db.commit()
@@ -354,13 +422,16 @@ class CleanupService:
 
     async def cleanup_test_players(self, dry_run: bool = False) -> dict[str, int]:
         """
-        Remove all test player data from the database.
+        Anonymize test players and remove their non-essential data from the database.
+
+        Test players are anonymized (not deleted) to preserve game history and
+        prevent data integrity violations.
 
         Args:
-            dry_run: If True, return counts without deleting
+            dry_run: If True, return counts without making changes
 
         Returns:
-            Dictionary with counts of deleted entities
+            Dictionary with counts of deleted/anonymized entities
         """
         # Find test players
         test_players = await self.get_test_players()
@@ -374,23 +445,25 @@ class CleanupService:
         if dry_run:
             return {"would_delete_players": len(test_players)}
 
-        # Extract player IDs for cascade deletion
+        # Extract player IDs for anonymization and cleanup
         player_ids = [player.player_id for player in test_players]
         deletion_counts = await self._delete_players_by_ids(player_ids)
 
-        total_deleted = sum(deletion_counts.values())
-        logger.info(f"Deleted test players and {total_deleted} associated records")
+        total_processed = sum(deletion_counts.values())
+        logger.info(f"Anonymized test players and processed {total_processed} associated records")
 
         return deletion_counts
 
     async def delete_player(self, player_id: UUID) -> dict[str, int]:
-        """Delete a single player and associated data."""
+        """Anonymize a single player and delete associated non-essential data.
 
+        The player is anonymized (not deleted) to preserve game history.
+        """
         deletion_counts = await self._delete_players_by_ids([player_id])
         if deletion_counts:
-            logger.info(f"Deleted player {player_id} and related data")
+            logger.info(f"Anonymized player {player_id} and deleted related data")
         else:
-            logger.info(f"No records deleted for player {player_id}")
+            logger.info(f"No records processed for player {player_id}")
         return deletion_counts
 
     # ===== Inactive Guest Player Cleanup =====
