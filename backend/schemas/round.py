@@ -23,6 +23,7 @@ class StartCopyRoundResponse(BaseSchema):
     expires_at: datetime
     cost: int
     discount_active: bool
+    is_second_copy: bool = False
 
 
 class StartVoteRoundResponse(BaseSchema):
@@ -53,6 +54,11 @@ class SubmitPhraseResponse(BaseModel):
     """Submit phrase response."""
     success: bool
     phrase: str
+    # Second copy eligibility (for copy rounds only)
+    eligible_for_second_copy: bool = False
+    second_copy_cost: int | None = None
+    prompt_round_id: UUID | None = None
+    original_phrase: str | None = None
 
 
 class RoundAvailability(BaseModel):

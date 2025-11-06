@@ -99,6 +99,8 @@ export interface CopyState {
   cost: number;
   original_phrase: string;
   discount_active: boolean;
+  is_second_copy?: boolean;
+  prompt_round_id?: string;
 }
 
 export interface VoteState {
@@ -266,6 +268,7 @@ export interface StartCopyResponse {
   expires_at: string;
   cost: number;
   discount_active: boolean;
+  is_second_copy: boolean;
 }
 
 export interface StartVoteResponse {
@@ -279,6 +282,11 @@ export interface StartVoteResponse {
 export interface SubmitPhraseResponse {
   success: boolean;
   phrase: string;
+  // Second copy eligibility (for copy rounds only)
+  eligible_for_second_copy?: boolean;
+  second_copy_cost?: number;
+  prompt_round_id?: string;
+  original_phrase?: string;
 }
 
 export interface VoteResponse {

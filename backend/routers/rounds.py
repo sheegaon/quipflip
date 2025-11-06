@@ -87,18 +87,20 @@ async def start_prompt_round(
 
 @router.post("/copy", response_model=StartCopyRoundResponse)
 async def start_copy_round(
+    prompt_round_id: UUID | None = None,
     player: Player = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ):
-    """Start a copy round."""
-    logger.info(f"[API /rounds/copy] Request from player {player.player_id}")
+    """Start a copy round. If prompt_round_id is provided, start a second copy for that prompt."""
+    logger.info(f"[API /rounds/copy] Request from player {player.player_id}, second_copy={prompt_round_id is not None}")
 
     player_service = PlayerService(db)
     transaction_service = TransactionService(db)
     round_service = RoundService(db)
 
-    # Ensure prompt queue is populated from database before checking availability
-    await round_service.ensure_prompt_queue_populated()
+    # Ensure prompt queue is populated from database before checking availability (for first copy)
+    if not prompt_round_id:
+        await round_service.ensure_prompt_queue_populated()
 
     # Check if can start
     can_start, error = await player_service.can_start_copy_round(player)
@@ -107,7 +109,9 @@ async def start_copy_round(
         raise HTTPException(status_code=400, detail=error)
 
     try:
-        round_object = await round_service.start_copy_round(player, transaction_service)
+        round_object, is_second_copy = await round_service.start_copy_round(
+            player, transaction_service, prompt_round_id
+        )
 
         logger.info(f"[API /rounds/copy] Successfully started copy round {round_object.round_id} for player {player.player_id}")
         return StartCopyRoundResponse(
@@ -116,7 +120,8 @@ async def start_copy_round(
             prompt_round_id=round_object.prompt_round_id,
             expires_at=ensure_utc(round_object.expires_at),
             cost=round_object.cost,
-            discount_active=QueueService.is_copy_discount_active(),
+            discount_active=QueueService.is_copy_discount_active() if not is_second_copy else False,
+            is_second_copy=is_second_copy,
         )
     except NoPromptsAvailableError as e:
         logger.error(f"[API /rounds/copy] No prompts available for player {player.player_id}: {str(e)}")
@@ -180,12 +185,13 @@ async def submit_phrase(
         raise HTTPException(status_code=404, detail="Round not found")
 
     try:
+        second_copy_info = {}
         if round_object.round_type == "prompt":
             round_object = await round_service.submit_prompt_phrase(
                 round_id, request.phrase, player, transaction_service
             )
         elif round_object.round_type == "copy":
-            round_object = await round_service.submit_copy_phrase(
+            round_object, second_copy_info = await round_service.submit_copy_phrase(
                 round_id, request.phrase, player, transaction_service
             )
         else:
@@ -194,6 +200,10 @@ async def submit_phrase(
         return SubmitPhraseResponse(
             success=True,
             phrase=request.phrase.upper(),
+            eligible_for_second_copy=second_copy_info.get("eligible_for_second_copy", False),
+            second_copy_cost=second_copy_info.get("second_copy_cost"),
+            prompt_round_id=second_copy_info.get("prompt_round_id"),
+            original_phrase=second_copy_info.get("original_phrase"),
         )
     except InvalidPhraseError as e:
         raise HTTPException(status_code=400, detail={"error": "invalid_phrase", "message": str(e)})
