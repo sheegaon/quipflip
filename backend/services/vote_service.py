@@ -961,18 +961,35 @@ class VoteService:
         if phraseset.status != "finalized":
             raise ValueError("Phraseset not yet finalized")
 
-        # Check if player was a contributor
-        prompt_round = await self.db.get(Round, phraseset.prompt_round_id)
-        copy1_round = await self.db.get(Round, phraseset.copy_round_1_id)
-        copy2_round = await self.db.get(Round, phraseset.copy_round_2_id)
+        # Load all contributor rounds in a single query
+        round_ids = [
+            phraseset.prompt_round_id,
+            phraseset.copy_round_1_id,
+            phraseset.copy_round_2_id,
+        ]
+        result = await self.db.execute(
+            select(Round).where(Round.round_id.in_(round_ids))
+        )
+        rounds = {round_.round_id: round_ for round_ in result.scalars().all()}
+
+        prompt_round = rounds.get(phraseset.prompt_round_id)
+        copy1_round = rounds.get(phraseset.copy_round_1_id)
+        copy2_round = rounds.get(phraseset.copy_round_2_id)
 
         # Validate that all required rounds exist
-        if not prompt_round:
-            raise ValueError("Prompt round not found for this phraseset")
-        if not copy1_round:
-            raise ValueError("Copy round 1 not found for this phraseset")
-        if not copy2_round:
-            raise ValueError("Copy round 2 not found for this phraseset")
+        if not prompt_round or not copy1_round or not copy2_round:
+            missing = []
+            if not prompt_round:
+                missing.append(f"prompt({phraseset.prompt_round_id})")
+            if not copy1_round:
+                missing.append(f"copy1({phraseset.copy_round_1_id})")
+            if not copy2_round:
+                missing.append(f"copy2({phraseset.copy_round_2_id})")
+            logger.error(
+                f"Phraseset {phraseset.phraseset_id} has missing contributor rounds: {', '.join(missing)}. "
+                f"Found {len(rounds)} of 3 expected rounds. This is a data integrity issue."
+            )
+            raise ValueError(f"Phraseset has missing contributor rounds: {', '.join(missing)}")
 
         contributor_map = {
             prompt_round.player_id: ("prompt", phraseset.original_phrase),
@@ -980,19 +997,36 @@ class VoteService:
             copy2_round.player_id: ("copy", phraseset.copy_phrase_2),
         }
 
-        if player_id not in contributor_map:
-            raise ValueError("Not a contributor to this phraseset")
-
-        role, phrase = contributor_map[player_id]
+        # Check if player is a contributor
+        if player_id in contributor_map:
+            role, phrase = contributor_map[player_id]
+        else:
+            # Check if player is a voter
+            vote_result = await self.db.execute(
+                select(Vote)
+                .where(Vote.phraseset_id == phraseset_id)
+                .where(Vote.player_id == player_id)
+            )
+            vote = vote_result.scalar_one_or_none()
+            if not vote:
+                raise ValueError("Not a contributor or voter for this phraseset")
+            role = "vote"
+            phrase = vote.voted_phrase
 
         scoring_service = ScoringService(self.db)
         payouts = await scoring_service.calculate_payouts(phraseset)
 
-        player_payout = 0
-        for payout_info in payouts.values():
-            if payout_info["player_id"] == player_id:
-                player_payout = payout_info["payout"]
-                break
+        # Get player payout
+        if role == "vote":
+            # For voters, payout is already stored in the vote record and has been paid
+            player_payout = vote.payout
+        else:
+            # For contributors, calculate from payouts
+            player_payout = 0
+            for payout_info in payouts.values():
+                if payout_info["player_id"] == player_id:
+                    player_payout = payout_info["payout"]
+                    break
 
         # Get or create result view
         result = await self.db.execute(
@@ -1061,11 +1095,16 @@ class VoteService:
         correct_multiplier = settings.correct_vote_points
         incorrect_multiplier = settings.incorrect_vote_points
 
-        points = 0
-        if phrase == phraseset.original_phrase:
-            points = vote_counts[phrase] * correct_multiplier
+        # Calculate player points
+        if role == "vote":
+            # Voters don't earn points from the prize pool - they were paid when they voted
+            points = 0
         else:
-            points = vote_counts[phrase] * incorrect_multiplier
+            # Contributors earn points based on correct/incorrect votes for their phrase
+            if phrase == phraseset.original_phrase:
+                points = vote_counts[phrase] * correct_multiplier
+            else:
+                points = vote_counts[phrase] * incorrect_multiplier
 
         # Build response
         votes_display = []
