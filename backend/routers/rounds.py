@@ -102,11 +102,23 @@ async def start_copy_round(
     if not prompt_round_id:
         await round_service.ensure_prompt_queue_populated()
 
-    # Check if can start
-    can_start, error = await player_service.can_start_copy_round(player)
-    if not can_start:
-        logger.warning(f"[API /rounds/copy] Player {player.player_id} cannot start copy round: {error}")
-        raise HTTPException(status_code=400, detail=error)
+    # Check if can start (skip queue check for second copy since it uses explicit prompt_round_id)
+    if prompt_round_id:
+        # Second copy: only check basic eligibility (balance for 2x cost, no active round, not locked)
+        if player.locked_until and player.locked_until > datetime.now(UTC):
+            raise HTTPException(status_code=400, detail="player_locked")
+        if player.active_round_id is not None:
+            raise HTTPException(status_code=400, detail="already_in_round")
+        # Balance check uses 2x normal cost for second copy
+        second_copy_cost = get_settings().copy_cost_normal * 2
+        if player.balance < second_copy_cost:
+            raise HTTPException(status_code=400, detail="insufficient_balance")
+    else:
+        # First copy: full eligibility check including queue availability
+        can_start, error = await player_service.can_start_copy_round(player)
+        if not can_start:
+            logger.warning(f"[API /rounds/copy] Player {player.player_id} cannot start copy round: {error}")
+            raise HTTPException(status_code=400, detail=error)
 
     try:
         round_object, is_second_copy = await round_service.start_copy_round(

@@ -258,7 +258,7 @@ export const CopyRound: React.FC = () => {
             <div className="space-y-4">
               <div className="bg-quip-turquoise bg-opacity-10 border-2 border-quip-turquoise rounded-tile p-6 mb-4">
                 <p className="text-lg text-quip-navy mb-3">
-                  <strong>🎯 Want to submit another copy for the same phrase?</strong>
+                  <strong>Want to submit another copy for the same phrase?</strong>
                 </p>
                 <p className="text-quip-teal mb-4">
                   You can submit a second copy for <strong>"{secondCopyEligibility.originalPhrase}"</strong> for{' '}
@@ -281,9 +281,19 @@ export const CopyRound: React.FC = () => {
                 <button
                   onClick={handleStartSecondCopy}
                   disabled={isStartingSecondCopy}
-                  className="bg-quip-turquoise hover:bg-quip-teal disabled:bg-gray-400 text-white font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm"
+                  className="bg-quip-turquoise hover:bg-quip-teal disabled:bg-gray-400 text-white font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm flex items-center justify-center gap-1"
                 >
-                  {isStartingSecondCopy ? 'Starting...' : `Submit Second Copy (${secondCopyEligibility.cost} FC)`}
+                  {isStartingSecondCopy ? 'Starting...' : (
+                    <>
+                      Submit Second Copy (
+                      <CurrencyDisplay
+                        amount={secondCopyEligibility.cost}
+                        iconClassName="w-4 h-4"
+                        textClassName="font-bold text-white"
+                      />
+                      )
+                    </>
+                  )}
                 </button>
                 <button
                   onClick={handleDeclineSecondCopy}

@@ -320,6 +320,14 @@ class RoundService:
             copy_cost = self.settings.copy_cost_normal * 2
             system_contribution = 0
 
+            # Remove prompt from queue since this player is taking the second copy slot
+            # (prevents other players from being matched with this prompt)
+            removed = QueueService.remove_prompt_round_from_queue(prompt_round_id)
+            if removed:
+                logger.info(f"[Copy Round Start] Removed prompt {prompt_round_id} from queue for second copy")
+            else:
+                logger.warning(f"[Copy Round Start] Prompt {prompt_round_id} was not in queue when starting second copy")
+
             logger.info(f"[Copy Round Start] Starting second copy for prompt {prompt_round_id}, cost={copy_cost}")
         else:
             # First copy: normal flow
