@@ -54,7 +54,15 @@ export const Dashboard: React.FC = () => {
     const previousPath = previousPathRef.current;
 
     // Refresh when navigating TO /dashboard FROM another page
-    if (currentPath === '/dashboard' && previousPath !== null && previousPath !== '/dashboard' && isAuthenticated) {
+    // Skip refresh when coming from /results since Results page already refreshes the dashboard
+    const shouldRefresh =
+      currentPath === '/dashboard' &&
+      previousPath !== null &&
+      previousPath !== '/dashboard' &&
+      previousPath !== '/results' &&
+      isAuthenticated;
+
+    if (shouldRefresh) {
       dashboardLogger.debug('Navigated back to dashboard, refreshing...', { from: previousPath });
       refreshDashboard(controller.signal).catch((err) => {
         if (controller.signal.aborted) {
@@ -63,6 +71,8 @@ export const Dashboard: React.FC = () => {
         }
         dashboardLogger.warn('Failed to refresh dashboard on navigation back:', err);
       });
+    } else if (currentPath === '/dashboard' && previousPath === '/results') {
+      dashboardLogger.debug('Navigated back from results page, skipping refresh (results page already refreshed)');
     }
 
     // Update the previous path
