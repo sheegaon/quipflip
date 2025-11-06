@@ -6,6 +6,7 @@ import apiClient, { extractErrorMessage } from '../api/client';
 import { Timer } from '../components/Timer';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
+import { PhraseRecapCard } from '../components/PhraseRecapCard';
 import { useTimer } from '../hooks/useTimer';
 import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
 import type { VoteResponse, VoteState, PhrasesetDetails } from '../api/types';
@@ -152,13 +153,47 @@ export const VoteRound: React.FC = () => {
             <h2 className={`text-3xl font-display font-bold mb-4 success-message ${voteResult.correct ? 'text-quip-turquoise' : 'text-quip-orange'}`}>
               {voteResult.correct ? successMsg : 'Incorrect'}
             </h2>
-            <div className="bg-quip-turquoise bg-opacity-10 border-2 border-quip-turquoise rounded-tile p-4 mb-4">
-              <p className="text-lg text-quip-navy mb-2">
-                The original phrase was: <strong className="text-quip-turquoise">{voteResult.original_phrase}</strong>
-              </p>
-              <p className="text-lg text-quip-teal">
-                You chose: <strong className={voteResult.correct ? 'text-quip-turquoise' : 'text-quip-orange'}>{voteResult.your_choice}</strong>
-              </p>
+            {/* Enhanced Recap Card - Show all phrases with attributions */}
+            <div className="bg-quip-navy bg-opacity-5 border-2 border-quip-navy rounded-tile p-6 mb-4">
+              <h3 className="font-display font-bold text-xl text-quip-navy mb-4 text-center">
+                The Reveal
+              </h3>
+
+              {phrasesetDetails ? (
+                <div className="space-y-3">
+                  {/* Map through all three phrases and show their authors */}
+                  {[
+                    phrasesetDetails.original_phrase,
+                    phrasesetDetails.copy_phrase_1,
+                    phrasesetDetails.copy_phrase_2
+                  ].filter((phrase): phrase is string => phrase !== null).map((phrase) => {
+                    const isOriginal = phrase === voteResult.original_phrase;
+                    const isYourChoice = phrase === voteResult.your_choice;
+                    const contributor = phrasesetDetails.contributors.find(c => c.phrase === phrase);
+
+                    return (
+                      <PhraseRecapCard
+                        key={phrase}
+                        phrase={phrase}
+                        isOriginal={isOriginal}
+                        isYourChoice={isYourChoice}
+                        isCorrectChoice={voteResult.correct}
+                        contributor={contributor}
+                      />
+                    );
+                  })}
+                </div>
+              ) : (
+                // Fallback if phrasesetDetails isn't loaded yet
+                <div className="space-y-2">
+                  <p className="text-lg text-quip-navy mb-2">
+                    The original phrase was: <strong className="text-quip-turquoise">{voteResult.original_phrase}</strong>
+                  </p>
+                  <p className="text-lg text-quip-teal">
+                    You chose: <strong className={voteResult.correct ? 'text-quip-turquoise' : 'text-quip-orange'}>{voteResult.your_choice}</strong>
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Payout info */}
