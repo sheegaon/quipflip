@@ -79,8 +79,7 @@ export const Header: React.FC = () => {
   const handleLogoClick = React.useCallback(async () => {
     // Refresh dashboard and balance before navigating
     try {
-      await refreshDashboard();
-      await refreshBalance();
+      await Promise.all([refreshDashboard(), refreshBalance()]);
     } catch (err) {
       console.warn('Failed to refresh from header icon:', err);
     }
