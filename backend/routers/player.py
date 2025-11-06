@@ -411,6 +411,9 @@ async def _get_pending_results_internal(
             continue
         if not entry.get("phraseset_id"):
             continue
+        # Skip vote contributions - results page only shows prompt/copy rounds
+        if entry["your_role"] == "vote":
+            continue
         pending.append(
             PendingResult(
                 phraseset_id=entry["phraseset_id"],
