@@ -715,7 +715,7 @@ class RoundService:
             raise RoundNotFoundError("Round not found")
 
         if round_object.round_type != "copy":
-            raise RoundNotFoundError("Round not found")
+            raise ValueError("Hints are only available for copy rounds")
 
         if round_object.status != "active":
             raise RoundExpiredError("Hints are only available for active copy rounds")
@@ -751,24 +751,23 @@ class RoundService:
                     f"Insufficient balance: {player.balance} < {self.settings.hint_cost}"
                 )
 
-            # Charge player for hint generation
-            await transaction_service.create_transaction(
-                player_id=player.player_id,
-                amount=-self.settings.hint_cost,
-                trans_type="hint_purchase",
-                reference_id=round_id,
-                auto_commit=False,
-            )
+        # Generate hints outside the lock to avoid holding database locks during AI call
+        ai_service = AIService(self.db)
+        try:
+            hints = await ai_service.generate_copy_hints(prompt_round)
+        except Exception:
+            raise
 
-            ai_service = AIService(self.db)
-            try:
-                hints = await ai_service.generate_copy_hints(prompt_round)
-                await self.db.commit()
-            except Exception:
-                await self.db.rollback()
-                raise
+        # Charge player after successful hint generation
+        await transaction_service.create_transaction(
+            player_id=player.player_id,
+            amount=-self.settings.hint_cost,
+            trans_type="hint_purchase",
+            reference_id=round_id,
+            auto_commit=True,
+        )
 
-            return hints
+        return hints
 
     async def abandon_round(
             self,

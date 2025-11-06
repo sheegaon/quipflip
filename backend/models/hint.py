@@ -21,7 +21,7 @@ class Hint(Base):
         nullable=False,
     )
     hint_phrases = Column(JSON, nullable=False)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     generation_provider = Column(String(20), nullable=False)
     generation_model = Column(String(100), nullable=True)
 
