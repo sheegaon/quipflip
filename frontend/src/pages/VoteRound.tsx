@@ -131,15 +131,7 @@ export const VoteRound: React.FC = () => {
     navigate('/dashboard');
   };
 
-  if (!roundData) {
-    return (
-      <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center">
-        <LoadingSpinner isLoading={true} message={loadingMessages.starting} />
-      </div>
-    );
-  }
-
-  // Show vote result
+  // Show vote result (check this first, before checking roundData)
   if (voteResult) {
     const successMsg = voteResult.correct
       ? (successMessage || 'Correct!')
@@ -247,6 +239,15 @@ export const VoteRound: React.FC = () => {
             </button>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  // If no roundData and no vote result, show loading
+  if (!roundData) {
+    return (
+      <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center">
+        <LoadingSpinner isLoading={true} message={loadingMessages.starting} />
       </div>
     );
   }

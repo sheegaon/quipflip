@@ -1,5 +1,6 @@
 """Service layer for phraseset tracking and summaries."""
 from __future__ import annotations
+import logging
 from datetime import datetime, UTC
 from typing import Iterable, Optional, Tuple
 from uuid import UUID, uuid4
@@ -7,6 +8,8 @@ from uuid import UUID, uuid4
 from sqlalchemy import select
 from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy.ext.asyncio import AsyncSession
+
+logger = logging.getLogger(__name__)
 
 from backend.models.player import Player
 from backend.models.phraseset import Phraseset
@@ -117,6 +120,9 @@ class PhrasesetService:
             if entry.get("result_viewed"):
                 continue
             if entry.get("your_payout") is None:
+                continue
+            # Skip vote contributions - they don't appear in unclaimed results
+            if entry["your_role"] == "vote":
                 continue
 
             unclaimed.append(
@@ -711,7 +717,9 @@ class PhrasesetService:
                     "your_phrase": vote.voted_phrase,
                     "status": phraseset.status,
                     "created_at": self._ensure_utc(vote.created_at),
-                    "updated_at": self._ensure_utc(phraseset.updated_at),
+                    "updated_at": self._determine_updated_at(
+                        None, phraseset, fallback=vote.created_at
+                    ),
                     "vote_count": phraseset.vote_count,
                     "third_vote_at": self._ensure_utc(phraseset.third_vote_at) if phraseset.third_vote_at else None,
                     "fifth_vote_at": self._ensure_utc(phraseset.fifth_vote_at) if phraseset.fifth_vote_at else None,
@@ -742,6 +750,17 @@ class PhrasesetService:
         copy2_round = rounds.get(phraseset.copy_round_2_id)
 
         if not prompt_round or not copy1_round or not copy2_round:
+            missing = []
+            if not prompt_round:
+                missing.append(f"prompt({phraseset.prompt_round_id})")
+            if not copy1_round:
+                missing.append(f"copy1({phraseset.copy_round_1_id})")
+            if not copy2_round:
+                missing.append(f"copy2({phraseset.copy_round_2_id})")
+            logger.error(
+                f"Phraseset {phraseset.phraseset_id} has missing rounds: {', '.join(missing)}. "
+                f"Found {len(rounds)} of 3 expected rounds."
+            )
             raise ValueError("Phraseset contributors missing")
         return prompt_round, copy1_round, copy2_round
 
