@@ -1,20 +1,13 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
-import { useResults } from '../contexts/ResultsContext';
-import { useQuests } from '../contexts/QuestContext';
 import { BalanceFlipper } from './BalanceFlipper';
-import { TreasureChestIcon } from './TreasureChestIcon';
 import { SubHeader } from './SubHeader';
 
 export const Header: React.FC = () => {
   const { state, actions } = useGame();
-  const { player, username, phrasesetSummary } = state;
+  const { player, username } = state;
   const { logout, refreshDashboard, refreshBalance } = actions;
-  const { state: resultsState } = useResults();
-  const { pendingResults, viewedResultIds } = resultsState;
-  const { state: questState } = useQuests();
-  const { hasClaimableQuests } = questState;
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -43,35 +36,6 @@ export const Header: React.FC = () => {
     return null;
   }
 
-  const inProgressPrompts = phrasesetSummary?.in_progress.prompts ?? 0;
-  const inProgressCopies = phrasesetSummary?.in_progress.copies ?? 0;
-  const showInProgressIndicator = inProgressPrompts + inProgressCopies > 0;
-  const inProgressLabelParts: string[] = [];
-  if (inProgressPrompts > 0) {
-    inProgressLabelParts.push(`${inProgressPrompts} prompt${inProgressPrompts === 1 ? '' : 's'}`);
-  }
-  if (inProgressCopies > 0) {
-    inProgressLabelParts.push(`${inProgressCopies} ${inProgressCopies === 1 ? 'copy' : 'copies'}`);
-  }
-  const inProgressLabel = inProgressLabelParts.length
-    ? `In-progress rounds: ${inProgressLabelParts.join(' and ')}`
-    : 'View your in-progress rounds';
-
-  // Calculate unviewed results by filtering out viewed ones
-  const unviewedResults = pendingResults.filter(result =>
-    !result.result_viewed && !viewedResultIds.has(result.phraseset_id)
-  );
-  const unviewedCount = unviewedResults.length;
-
-  // Show trophy after user has ever had finalized results
-  const finalizedPrompts = phrasesetSummary?.finalized.prompts ?? 0;
-  const finalizedCopies = phrasesetSummary?.finalized.copies ?? 0;
-  const showResultsIndicator = (finalizedPrompts + finalizedCopies) > 0;
-
-  const resultsLabel = unviewedCount > 0
-    ? `${unviewedCount} result${unviewedCount === 1 ? '' : 's'} ready to view`
-    : 'View your results';
-
   const goToStatistics = React.useCallback(() => {
     navigate('/statistics');
   }, [navigate]);
@@ -94,33 +58,6 @@ export const Header: React.FC = () => {
       ? 'Back to Statistics (refresh)'
       : 'Back to Dashboard (refresh)'
     : 'Refresh dashboard';
-
-  // Check if today is the player's first day (hide treasure chest on first day)
-  const isFirstDay = React.useMemo(() => {
-    if (!player?.created_at) return false;
-
-    const createdDate = new Date(player.created_at);
-    const today = new Date();
-
-    return (
-      createdDate.getFullYear() === today.getFullYear() &&
-      createdDate.getMonth() === today.getMonth() &&
-      createdDate.getDate() === today.getDate()
-    );
-  }, [player?.created_at]);
-
-  const handleResultsClick = async () => {
-    // Refresh dashboard to get latest data before navigating
-    try {
-      await refreshDashboard();
-    } catch (err) {
-      // Continue navigation even if refresh fails
-      console.warn('Failed to refresh dashboard in header:', err);
-    }
-
-    // Navigate to results page (results will be marked as viewed on page load)
-    navigate('/results');
-  };
 
   const handleLogoutClick = React.useCallback(() => {
     if (!player?.is_guest) {
