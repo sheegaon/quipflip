@@ -338,6 +338,7 @@ export type PhrasesetStatus =
 export interface PhrasesetSummary {
   phraseset_id: string | null;
   prompt_round_id: string;
+  copy_round_id?: string | null;
   prompt_text: string;
   your_role: 'prompt' | 'copy';
   your_phrase: string | null;
@@ -376,6 +377,7 @@ export interface PhrasesetDashboardSummary {
 }
 
 export interface PhrasesetContributor {
+  round_id: string;
   player_id: string;
   username: string;
   pseudonym: string;

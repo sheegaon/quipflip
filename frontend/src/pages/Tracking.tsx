@@ -12,6 +12,7 @@ import { PhrasesetDetails } from '../components/PhrasesetDetails';
 import { Header } from '../components/Header';
 import { useResults } from '../contexts/ResultsContext';
 import { trackingLogger } from '../utils/logger';
+import { getUniqueIdForSummary } from '../utils/phrasesetHelpers';
 
 type RoleFilter = 'all' | 'prompt' | 'copy' | 'vote';
 type StatusFilter = 'all' | 'in_progress' | 'voting' | 'finalized' | 'abandoned';
@@ -117,13 +118,13 @@ export const Tracking: React.FC = () => {
     }
 
     const alreadySelected = phrasesets.find((summary) => {
-      const id = summary.phraseset_id ?? summary.prompt_round_id;
+      const id = getUniqueIdForSummary(summary);
       return id === selectedId;
     });
 
     if (!alreadySelected) {
       const first = phrasesets[0];
-      const newId = first.phraseset_id ?? first.prompt_round_id ?? null;
+      const newId = getUniqueIdForSummary(first);
       setSelectedId(newId);
     }
   }, [phrasesets, selectedId]);
@@ -132,7 +133,7 @@ export const Tracking: React.FC = () => {
     if (!selectedId) return null;
     return (
       phrasesets.find((summary) => {
-        const id = summary.phraseset_id ?? summary.prompt_round_id;
+        const id = getUniqueIdForSummary(summary);
         return id === selectedId;
       }) ?? null
     );
@@ -226,13 +227,13 @@ export const Tracking: React.FC = () => {
   }, [detailsLoading]); // Remove setLoading and clearLoading from dependencies
 
   const handleSelect = (summary: PhrasesetSummary) => {
-    const id = summary.phraseset_id ?? summary.prompt_round_id;
+    const id = getUniqueIdForSummary(summary);
     trackingLogger.debug('Phraseset selected from list', {
       summaryId: id,
       status: summary.status,
       role: summary.your_role,
     });
-    setSelectedId(id ?? null);
+    setSelectedId(id);
   };
 
   const handleRoleFilterChange = (nextRole: RoleFilter) => {

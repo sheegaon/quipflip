@@ -186,7 +186,7 @@ export const PhrasesetDetails: React.FC<PhrasesetDetailsProps> = ({
       <section className="grid gap-3 sm:grid-cols-3">
         {phraseset.contributors.map((contributor) => (
           <div
-            key={contributor.player_id}
+            key={contributor.round_id}
             className={`rounded-lg border p-3 ${
               contributor.is_you ? 'border-blue-400 bg-blue-50' : 'border-gray-200 bg-gray-50'
             }`}
