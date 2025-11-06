@@ -31,7 +31,7 @@ settings = get_settings()
 
 PLACEHOLDER_PLAYER_NAMESPACE = UUID("6c057f58-7199-43ff-b4fc-17b77df5e6a2")
 WEEKLY_LEADERBOARD_LIMIT = 5
-WEEKLY_LEADERBOARD_CACHE_KEY = "leaderboard:weekly:v3"  # v3: align payouts with round completion window, excludes AI players
+WEEKLY_LEADERBOARD_CACHE_KEY = "leaderboard:weekly:v4"  # v4: split by role with win rates
 AI_PLAYER_EMAIL_DOMAIN = "@quipflip.internal"
 
 
@@ -60,8 +60,8 @@ def _get_redis_client() -> "Redis | None":
     return _redis_client
 
 
-async def _load_cached_weekly_leaderboard() -> tuple[list[dict[str, Any]], datetime] | None:
-    """Fetch cached weekly leaderboard data from Redis, if available."""
+async def _load_cached_weekly_leaderboard() -> tuple[dict[str, list[dict[str, Any]]], datetime] | None:
+    """Fetch cached role-based weekly leaderboard data from Redis, if available."""
 
     client = _get_redis_client()
     if client is None:
@@ -81,48 +81,55 @@ async def _load_cached_weekly_leaderboard() -> tuple[list[dict[str, Any]], datet
         generated_at_raw = payload.get("generated_at")
         generated_at = datetime.fromisoformat(generated_at_raw) if generated_at_raw else None
 
-        entries: list[dict[str, Any]] = []
-        for entry in payload.get("entries", []):
-            normalized = dict(entry)
-            if "player_id" in normalized:
-                try:
-                    normalized["player_id"] = UUID(str(normalized["player_id"]))
-                except Exception:
-                    logger.error(
-                        f"Skipping cached leaderboard entry with invalid player_id: {normalized.get('player_id')}"
-                    )
-                    continue
-            entries.append(normalized)
+        role_leaderboards: dict[str, list[dict[str, Any]]] = {}
+
+        for role in ["prompt", "copy", "voter"]:
+            entries: list[dict[str, Any]] = []
+            for entry in payload.get(f"{role}_leaderboard", []):
+                normalized = dict(entry)
+                if "player_id" in normalized:
+                    try:
+                        normalized["player_id"] = UUID(str(normalized["player_id"]))
+                    except Exception:
+                        logger.error(
+                            f"Skipping cached leaderboard entry with invalid player_id: {normalized.get('player_id')}"
+                        )
+                        continue
+                entries.append(normalized)
+            role_leaderboards[role] = entries
 
         if generated_at is None:
             return None
 
-        return entries, generated_at
+        return role_leaderboards, generated_at
     except Exception as exc:  # pragma: no cover - cache corruption fallback
         logger.error(f"Invalid data in weekly leaderboard cache: {exc}")
         return None
 
 
-async def _store_weekly_leaderboard_cache(entries: list[dict[str, Any]], generated_at: datetime) -> None:
-    """Persist leaderboard results to Redis for reuse across workers."""
+async def _store_weekly_leaderboard_cache(
+    role_leaderboards: dict[str, list[dict[str, Any]]], generated_at: datetime
+) -> None:
+    """Persist role-based leaderboard results to Redis for reuse across workers."""
 
     client = _get_redis_client()
     if client is None:
         return
 
-    cache_entries: list[dict[str, Any]] = []
-    for entry in entries:
-        cache_entries.append(
-            {
-                **entry,
-                "player_id": str(entry["player_id"]),
-            }
-        )
-
-    payload = {
-        "entries": cache_entries,
+    payload: dict[str, Any] = {
         "generated_at": generated_at.isoformat(),
     }
+
+    for role, entries in role_leaderboards.items():
+        cache_entries: list[dict[str, Any]] = []
+        for entry in entries:
+            cache_entries.append(
+                {
+                    **entry,
+                    "player_id": str(entry["player_id"]),
+                }
+            )
+        payload[f"{role}_leaderboard"] = cache_entries
 
     try:
         await client.set(WEEKLY_LEADERBOARD_CACHE_KEY, json.dumps(payload), ex=3600)
@@ -257,204 +264,319 @@ class ScoringService:
             },
         }
 
-    async def get_weekly_leaderboard_snapshot(self) -> tuple[list[dict[str, Any]], datetime | None]:
-        """Return cached weekly leaderboard, computing it when missing."""
+    async def get_weekly_leaderboard_snapshot(
+        self,
+    ) -> tuple[dict[str, list[dict[str, Any]]], datetime | None]:
+        """Return cached role-based weekly leaderboards, computing them when missing."""
 
         cached = await _load_cached_weekly_leaderboard()
         if cached:
             return cached
 
-        entries = await self._compute_weekly_leaderboard()
+        role_leaderboards = await self._compute_role_based_weekly_leaderboards()
         generated_at = datetime.now(UTC)
-        await _store_weekly_leaderboard_cache(entries, generated_at)
-        return entries, generated_at
+        await _store_weekly_leaderboard_cache(role_leaderboards, generated_at)
+        return role_leaderboards, generated_at
 
     async def refresh_weekly_leaderboard(self) -> None:
         """Recalculate weekly leaderboard and persist the shared cache."""
 
-        entries = await self._compute_weekly_leaderboard()
+        role_leaderboards = await self._compute_role_based_weekly_leaderboards()
         generated_at = datetime.now(UTC)
-        await _store_weekly_leaderboard_cache(entries, generated_at)
+        await _store_weekly_leaderboard_cache(role_leaderboards, generated_at)
 
     async def get_weekly_leaderboard_for_player(
         self,
         player_id: UUID,
         username: str | None,
-    ) -> tuple[list[dict[str, Any]], datetime | None]:
-        """Return top leaderboard entries plus the current player."""
+    ) -> tuple[dict[str, list[dict[str, Any]]], datetime | None]:
+        """Return top leaderboard entries plus the current player for each role."""
 
-        entries, generated_at = await self.get_weekly_leaderboard_snapshot()
+        role_leaderboards, generated_at = await self.get_weekly_leaderboard_snapshot()
 
-        lookup = {entry["player_id"]: entry for entry in entries}
-        top_entries = entries[:WEEKLY_LEADERBOARD_LIMIT]
+        result = {}
 
-        player_entry = lookup.get(player_id)
-        if player_entry is None:
-            player_entry = {
-                "player_id": player_id,
-                "username": username or "Unknown Player",
-                "total_costs": 0,
-                "total_earnings": 0,
-                "net_earnings": 0,
-                "rank": None,
-            }
+        for role in ["prompt", "copy", "voter"]:
+            entries = role_leaderboards.get(role, [])
+            lookup = {entry["player_id"]: entry for entry in entries}
+            top_entries = entries[:WEEKLY_LEADERBOARD_LIMIT]
 
-        combined = [dict(entry) for entry in top_entries]
-        if all(entry["player_id"] != player_entry["player_id"] for entry in combined):
-            combined.append(dict(player_entry))
+            player_entry = lookup.get(player_id)
+            if player_entry is None:
+                player_entry = {
+                    "player_id": player_id,
+                    "username": username or "Unknown Player",
+                    "role": role,
+                    "total_costs": 0,
+                    "total_earnings": 0,
+                    "net_earnings": 0,
+                    "win_rate": 0.0,
+                    "total_rounds": 0,
+                    "rank": None,
+                }
 
-        for entry in combined:
-            entry["is_current_player"] = entry["player_id"] == player_id
+            combined = [dict(entry) for entry in top_entries]
+            if all(entry["player_id"] != player_entry["player_id"] for entry in combined):
+                combined.append(dict(player_entry))
 
-        return combined, generated_at
+            for entry in combined:
+                entry["is_current_player"] = entry["player_id"] == player_id
 
-    async def _compute_weekly_leaderboard(self) -> list[dict]:
-        """Calculate weekly net earnings for all active players."""
+            result[role] = combined
+
+        return result, generated_at
+
+    async def _compute_role_leaderboard(self, role: str) -> list[dict]:
+        """Calculate weekly leaderboard for a specific role."""
 
         window_start = datetime.now(UTC) - timedelta(days=7)
 
-        prompt_completion = (
-            select(
-                Round.round_id.label("round_id"),
-                func.max(PhrasesetActivity.created_at).label("completed_at"),
+        # Determine completion criteria based on role
+        if role == "prompt":
+            completion_query = (
+                select(
+                    Round.round_id.label("round_id"),
+                    func.max(PhrasesetActivity.created_at).label("completed_at"),
+                )
+                .join(PhrasesetActivity, PhrasesetActivity.prompt_round_id == Round.round_id)
+                .where(
+                    Round.round_type == "prompt",
+                    PhrasesetActivity.activity_type == "prompt_submitted",
+                )
+                .group_by(Round.round_id)
             )
-            .join(PhrasesetActivity, PhrasesetActivity.prompt_round_id == Round.round_id)
-            .where(
-                Round.round_type == "prompt",
-                PhrasesetActivity.activity_type == "prompt_submitted",
+        elif role == "copy":
+            completion_query = (
+                select(
+                    Round.round_id.label("round_id"),
+                    func.max(PhrasesetActivity.created_at).label("completed_at"),
+                )
+                .join(
+                    PhrasesetActivity,
+                    and_(
+                        PhrasesetActivity.prompt_round_id == Round.prompt_round_id,
+                        PhrasesetActivity.player_id == Round.player_id,
+                        PhrasesetActivity.activity_type.in_(["copy1_submitted", "copy2_submitted"]),
+                    ),
+                )
+                .where(Round.round_type == "copy")
+                .group_by(Round.round_id)
             )
-            .group_by(Round.round_id)
-        )
+        else:  # voter
+            completion_query = (
+                select(
+                    Round.round_id.label("round_id"),
+                    func.max(PhrasesetActivity.created_at).label("completed_at"),
+                )
+                .join(
+                    PhrasesetActivity,
+                    and_(
+                        PhrasesetActivity.phraseset_id == Round.phraseset_id,
+                        PhrasesetActivity.player_id == Round.player_id,
+                        PhrasesetActivity.activity_type == "vote_submitted",
+                    ),
+                )
+                .where(Round.round_type == "vote")
+                .group_by(Round.round_id)
+            )
 
-        copy_completion = (
-            select(
-                Round.round_id.label("round_id"),
-                func.max(PhrasesetActivity.created_at).label("completed_at"),
-            )
-            .join(
-                PhrasesetActivity,
-                and_(
-                    PhrasesetActivity.prompt_round_id == Round.prompt_round_id,
-                    PhrasesetActivity.player_id == Round.player_id,
-                    PhrasesetActivity.activity_type.in_(["copy1_submitted", "copy2_submitted"]),
-                ),
-            )
-            .where(Round.round_type == "copy")
-            .group_by(Round.round_id)
-        )
+        completion_subquery = completion_query.subquery()
 
-        vote_completion = (
-            select(
-                Round.round_id.label("round_id"),
-                func.max(PhrasesetActivity.created_at).label("completed_at"),
-            )
-            .join(
-                PhrasesetActivity,
-                and_(
-                    PhrasesetActivity.phraseset_id == Round.phraseset_id,
-                    PhrasesetActivity.player_id == Round.player_id,
-                    PhrasesetActivity.activity_type == "vote_submitted",
-                ),
-            )
-            .where(Round.round_type == "vote")
-            .group_by(Round.round_id)
-        )
-
-        completion_union = union_all(prompt_completion, copy_completion, vote_completion).subquery()
-
-        cost_subquery = (
+        # Get costs and round counts for this role
+        rounds_subquery = (
             select(
                 Round.player_id.label("player_id"),
                 func.sum(Round.cost).label("total_costs"),
+                func.count(Round.round_id).label("total_rounds"),
             )
-            .join(completion_union, completion_union.c.round_id == Round.round_id)
+            .join(completion_subquery, completion_subquery.c.round_id == Round.round_id)
             .where(
                 Round.status == "submitted",
-                completion_union.c.completed_at >= window_start,
+                Round.round_type == role,
+                completion_subquery.c.completed_at >= window_start,
             )
             .group_by(Round.player_id)
             .subquery()
         )
 
-        phraseset_contributors = union_all(
-            select(
-                Phraseset.phraseset_id.label("phraseset_id"),
-                Phraseset.prompt_round_id.label("round_id"),
-            ),
-            select(
-                Phraseset.phraseset_id.label("phraseset_id"),
-                Phraseset.copy_round_1_id.label("round_id"),
-            ),
-            select(
-                Phraseset.phraseset_id.label("phraseset_id"),
-                Phraseset.copy_round_2_id.label("round_id"),
-            ),
-        ).subquery()
+        # Get earnings for this role
+        if role in ["prompt", "copy"]:
+            # Prize payouts for prompt/copy roles
+            phraseset_contributors = union_all(
+                select(
+                    Phraseset.phraseset_id.label("phraseset_id"),
+                    Phraseset.prompt_round_id.label("round_id"),
+                ),
+                select(
+                    Phraseset.phraseset_id.label("phraseset_id"),
+                    Phraseset.copy_round_1_id.label("round_id"),
+                ),
+                select(
+                    Phraseset.phraseset_id.label("phraseset_id"),
+                    Phraseset.copy_round_2_id.label("round_id"),
+                ),
+            ).subquery()
 
-        prize_earnings_entries = (
-            select(
-                Transaction.player_id.label("player_id"),
-                Transaction.amount.label("amount"),
+            earnings_query = (
+                select(
+                    Transaction.player_id.label("player_id"),
+                    Transaction.amount.label("amount"),
+                )
+                .join(Phraseset, Phraseset.phraseset_id == Transaction.reference_id)
+                .join(
+                    phraseset_contributors,
+                    phraseset_contributors.c.phraseset_id == Phraseset.phraseset_id,
+                )
+                .join(Round, Round.round_id == phraseset_contributors.c.round_id)
+                .join(completion_subquery, completion_subquery.c.round_id == Round.round_id)
+                .where(
+                    Transaction.type == "prize_payout",
+                    Transaction.amount > 0,
+                    Transaction.player_id == Round.player_id,
+                    Round.round_type == role,
+                    completion_subquery.c.completed_at >= window_start,
+                )
             )
-            .join(Phraseset, Phraseset.phraseset_id == Transaction.reference_id)
-            .join(
-                phraseset_contributors,
-                phraseset_contributors.c.phraseset_id == Phraseset.phraseset_id,
+        else:  # voter
+            # Vote payouts for voter role
+            earnings_query = (
+                select(
+                    Transaction.player_id.label("player_id"),
+                    Transaction.amount.label("amount"),
+                )
+                .join(Vote, Vote.vote_id == Transaction.reference_id)
+                .where(
+                    Transaction.type == "vote_payout",
+                    Transaction.amount > 0,
+                    Vote.created_at >= window_start,
+                )
             )
-            .join(Round, Round.round_id == phraseset_contributors.c.round_id)
-            .join(completion_union, completion_union.c.round_id == Round.round_id)
-            .where(
-                Transaction.type == "prize_payout",
-                Transaction.amount > 0,
-                Transaction.player_id == Round.player_id,
-                completion_union.c.completed_at >= window_start,
-            )
-        )
-
-        vote_earnings_entries = (
-            select(
-                Transaction.player_id.label("player_id"),
-                Transaction.amount.label("amount"),
-            )
-            .join(Vote, Vote.vote_id == Transaction.reference_id)
-            .where(
-                Transaction.type == "vote_payout",
-                Transaction.amount > 0,
-                Vote.created_at >= window_start,
-            )
-        )
-
-        earnings_entries = union_all(prize_earnings_entries, vote_earnings_entries).subquery()
 
         earnings_subquery = (
             select(
-                earnings_entries.c.player_id,
-                func.sum(earnings_entries.c.amount).label("total_earnings"),
+                earnings_query.c.player_id,
+                func.sum(earnings_query.c.amount).label("total_earnings"),
             )
-            .group_by(earnings_entries.c.player_id)
+            .group_by(earnings_query.c.player_id)
+            .subquery()
+        )
+
+        # Calculate rounds with positive net earnings for win rate
+        if role in ["prompt", "copy"]:
+            # For prompt/copy: group by round and check if (earnings - cost) > 0
+            round_performance = (
+                select(
+                    Round.player_id.label("player_id"),
+                    Round.round_id.label("round_id"),
+                    Round.cost.label("cost"),
+                    func.coalesce(func.sum(Transaction.amount), 0).label("earnings"),
+                )
+                .join(completion_subquery, completion_subquery.c.round_id == Round.round_id)
+                .join(
+                    phraseset_contributors,
+                    phraseset_contributors.c.round_id == Round.round_id,
+                    isouter=True,
+                )
+                .join(
+                    Phraseset,
+                    Phraseset.phraseset_id == phraseset_contributors.c.phraseset_id,
+                    isouter=True,
+                )
+                .join(
+                    Transaction,
+                    and_(
+                        Transaction.reference_id == Phraseset.phraseset_id,
+                        Transaction.player_id == Round.player_id,
+                        Transaction.type == "prize_payout",
+                    ),
+                    isouter=True,
+                )
+                .where(
+                    Round.status == "submitted",
+                    Round.round_type == role,
+                    completion_subquery.c.completed_at >= window_start,
+                )
+                .group_by(Round.player_id, Round.round_id, Round.cost)
+                .subquery()
+            )
+        else:  # voter
+            # For voter: group by round and check if earnings > cost
+            round_performance = (
+                select(
+                    Round.player_id.label("player_id"),
+                    Round.round_id.label("round_id"),
+                    Round.cost.label("cost"),
+                    func.coalesce(func.sum(Transaction.amount), 0).label("earnings"),
+                )
+                .join(completion_subquery, completion_subquery.c.round_id == Round.round_id)
+                .join(
+                    Vote,
+                    and_(
+                        Vote.round_id == Round.round_id,
+                        Vote.player_id == Round.player_id,
+                    ),
+                    isouter=True,
+                )
+                .join(
+                    Transaction,
+                    and_(
+                        Transaction.reference_id == Vote.vote_id,
+                        Transaction.player_id == Round.player_id,
+                        Transaction.type == "vote_payout",
+                    ),
+                    isouter=True,
+                )
+                .where(
+                    Round.status == "submitted",
+                    Round.round_type == "vote",
+                    completion_subquery.c.completed_at >= window_start,
+                )
+                .group_by(Round.player_id, Round.round_id, Round.cost)
+                .subquery()
+            )
+
+        wins_subquery = (
+            select(
+                round_performance.c.player_id,
+                func.count(
+                    func.nullif(
+                        func.cast(round_performance.c.earnings > round_performance.c.cost, type_=int), 0
+                    )
+                ).label("winning_rounds"),
+            )
+            .group_by(round_performance.c.player_id)
             .subquery()
         )
 
         net_earnings_expression = (
             func.coalesce(earnings_subquery.c.total_earnings, 0)
-            - func.coalesce(cost_subquery.c.total_costs, 0)
+            - func.coalesce(rounds_subquery.c.total_costs, 0)
+        )
+
+        win_rate_expression = func.cast(
+            func.coalesce(wins_subquery.c.winning_rounds, 0) * 100.0
+            / func.nullif(rounds_subquery.c.total_rounds, 0),
+            type_=func.Float,
         )
 
         leaderboard_stmt = (
             select(
                 Player.player_id,
                 Player.username,
-                func.coalesce(cost_subquery.c.total_costs, 0).label("total_costs"),
+                func.coalesce(rounds_subquery.c.total_costs, 0).label("total_costs"),
                 func.coalesce(earnings_subquery.c.total_earnings, 0).label("total_earnings"),
                 net_earnings_expression.label("net_earnings"),
+                func.coalesce(rounds_subquery.c.total_rounds, 0).label("total_rounds"),
+                func.coalesce(win_rate_expression, 0.0).label("win_rate"),
             )
-            .join(cost_subquery, cost_subquery.c.player_id == Player.player_id, isouter=True)
+            .join(rounds_subquery, rounds_subquery.c.player_id == Player.player_id, isouter=True)
             .join(earnings_subquery, earnings_subquery.c.player_id == Player.player_id, isouter=True)
+            .join(wins_subquery, wins_subquery.c.player_id == Player.player_id, isouter=True)
             .where(
-                or_(cost_subquery.c.player_id.isnot(None), earnings_subquery.c.player_id.isnot(None)),
+                or_(rounds_subquery.c.player_id.isnot(None), earnings_subquery.c.player_id.isnot(None)),
                 ~Player.email.like(f"%{AI_PLAYER_EMAIL_DOMAIN}"),
             )
-            .order_by(net_earnings_expression.desc(), Player.username.asc())
+            .order_by(win_rate_expression.desc(), Player.username.asc())
         )
 
         result = await self.db.execute(leaderboard_stmt)
@@ -465,14 +587,29 @@ class ScoringService:
                 {
                     "player_id": row.player_id,
                     "username": row.username,
+                    "role": role,
                     "total_costs": int(row.total_costs or 0),
                     "total_earnings": int(row.total_earnings or 0),
                     "net_earnings": int(row.net_earnings or 0),
+                    "total_rounds": int(row.total_rounds or 0),
+                    "win_rate": float(row.win_rate or 0.0),
                     "rank": rank,
                 }
             )
 
         return entries
+
+    async def _compute_role_based_weekly_leaderboards(self) -> dict[str, list[dict]]:
+        """Calculate weekly leaderboards for all three roles."""
+        prompt_leaderboard = await self._compute_role_leaderboard("prompt")
+        copy_leaderboard = await self._compute_role_leaderboard("copy")
+        voter_leaderboard = await self._compute_role_leaderboard("voter")
+
+        return {
+            "prompt": prompt_leaderboard,
+            "copy": copy_leaderboard,
+            "voter": voter_leaderboard,
+        }
 
     @staticmethod
     def _empty_payout(phraseset: Phraseset) -> dict:

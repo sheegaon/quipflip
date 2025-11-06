@@ -617,29 +617,69 @@ async def get_weekly_leaderboard(
     player: Player = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ):
-    """Return weekly leaderboard highlighting the current player."""
+    """Return weekly leaderboards for all three roles highlighting the current player."""
 
     scoring_service = ScoringService(db)
-    entries, generated_at = await scoring_service.get_weekly_leaderboard_for_player(
+    role_data, generated_at = await scoring_service.get_weekly_leaderboard_for_player(
         player.player_id,
         player.username,
     )
 
-    leaders = [
+    # Build leaderboard for each role
+    prompt_leaders = [
         WeeklyLeaderboardEntry(
             player_id=entry["player_id"],
             username=entry["username"],
+            role="prompt",
             total_costs=entry["total_costs"],
             total_earnings=entry["total_earnings"],
             net_earnings=entry["net_earnings"],
+            win_rate=entry["win_rate"],
+            total_rounds=entry["total_rounds"],
             rank=entry["rank"],
             is_current_player=entry["is_current_player"],
         )
-        for entry in entries
+        for entry in role_data.get("prompt", [])
     ]
 
+    copy_leaders = [
+        WeeklyLeaderboardEntry(
+            player_id=entry["player_id"],
+            username=entry["username"],
+            role="copy",
+            total_costs=entry["total_costs"],
+            total_earnings=entry["total_earnings"],
+            net_earnings=entry["net_earnings"],
+            win_rate=entry["win_rate"],
+            total_rounds=entry["total_rounds"],
+            rank=entry["rank"],
+            is_current_player=entry["is_current_player"],
+        )
+        for entry in role_data.get("copy", [])
+    ]
+
+    voter_leaders = [
+        WeeklyLeaderboardEntry(
+            player_id=entry["player_id"],
+            username=entry["username"],
+            role="voter",
+            total_costs=entry["total_costs"],
+            total_earnings=entry["total_earnings"],
+            net_earnings=entry["net_earnings"],
+            win_rate=entry["win_rate"],
+            total_rounds=entry["total_rounds"],
+            rank=entry["rank"],
+            is_current_player=entry["is_current_player"],
+        )
+        for entry in role_data.get("voter", [])
+    ]
+
+    from backend.schemas.player import RoleLeaderboard
+
     return WeeklyLeaderboardResponse(
-        leaders=leaders,
+        prompt_leaderboard=RoleLeaderboard(role="prompt", leaders=prompt_leaders),
+        copy_leaderboard=RoleLeaderboard(role="copy", leaders=copy_leaders),
+        voter_leaderboard=RoleLeaderboard(role="voter", leaders=voter_leaders),
         generated_at=generated_at or datetime.now(UTC),
     )
 

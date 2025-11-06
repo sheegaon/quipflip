@@ -232,7 +232,9 @@ const Statistics: React.FC = () => {
         const leaderboardData = await apiClient.getWeeklyLeaderboard(controller.signal);
         setLeaderboard(leaderboardData);
         statisticsLogger.debug('Weekly leaderboard loaded', {
-          entries: leaderboardData?.leaders?.length ?? 0,
+          promptEntries: leaderboardData?.prompt_leaderboard?.leaders?.length ?? 0,
+          copyEntries: leaderboardData?.copy_leaderboard?.leaders?.length ?? 0,
+          voterEntries: leaderboardData?.voter_leaderboard?.leaders?.length ?? 0,
         });
       } catch (err) {
         if (err instanceof Error && err.name === 'CanceledError') return;
@@ -382,10 +384,12 @@ const Statistics: React.FC = () => {
           <div className="tile-card p-6">
             <h2 className="text-xl font-display font-bold text-quip-navy mb-2">Weekly Leaderboard</h2>
             <p className="text-sm text-quip-teal mb-4">
-              Ranking the most profitable players over the past seven days by total earnings minus spending.
+              Ranking players by win rate over the past seven days across all three roles.
             </p>
             <WeeklyLeaderboard
-              leaders={leaderboard?.leaders ?? null}
+              promptLeaderboard={leaderboard?.prompt_leaderboard ?? null}
+              copyLeaderboard={leaderboard?.copy_leaderboard ?? null}
+              voterLeaderboard={leaderboard?.voter_leaderboard ?? null}
               loading={leaderboardLoading || !chartsReady}
               error={leaderboardError}
             />
