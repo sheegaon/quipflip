@@ -184,3 +184,46 @@ class UnclaimedResultsResponse(BaseSchema):
     """Collection of unclaimed results and totals."""
     unclaimed: list[UnclaimedResult]
     total_unclaimed_amount: int
+
+
+class PhrasesetHistoryEvent(BaseSchema):
+    """Single event in phraseset history timeline."""
+    event_type: Literal["prompt_submitted", "copy_submitted", "vote_submitted", "finalized"]
+    timestamp: datetime
+    player_id: Optional[UUID]
+    username: Optional[str]  # For debug
+    pseudonym: Optional[str]  # For display
+    phrase: Optional[str] = None  # The phrase submitted/voted for
+    correct: Optional[bool] = None  # For votes only
+    metadata: Optional[dict] = None  # Additional event-specific data
+
+
+class PhrasesetHistory(BaseSchema):
+    """Complete history timeline for a phraseset."""
+    phraseset_id: UUID
+    prompt_text: str
+    original_phrase: str
+    copy_phrase_1: str
+    copy_phrase_2: str
+    status: str
+    created_at: datetime
+    finalized_at: Optional[datetime]
+    total_votes: int
+    events: list[PhrasesetHistoryEvent]
+
+
+class CompletedPhrasesetItem(BaseSchema):
+    """Summary of a completed phraseset."""
+    phraseset_id: UUID
+    prompt_text: str
+    original_phrase: str
+    created_at: datetime
+    finalized_at: datetime
+    vote_count: int
+    total_pool: int
+
+
+class CompletedPhrasesetsResponse(BaseSchema):
+    """List of completed phrasesets."""
+    phrasesets: list[CompletedPhrasesetItem]
+    total: int

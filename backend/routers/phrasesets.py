@@ -12,6 +12,8 @@ from backend.schemas.phraseset import (
     PhraseSetResults,
     PhrasesetDetails,
     ClaimPrizeResponse,
+    PhrasesetHistory,
+    CompletedPhrasesetsResponse,
 )
 from backend.services.transaction_service import TransactionService
 from backend.services.vote_service import VoteService
@@ -153,3 +155,48 @@ async def claim_phraseset_prize(
     except Exception as exc:
         logger.error(f"Error claiming prize: {exc}")
         raise HTTPException(status_code=500, detail="Failed to claim prize")
+
+
+@router.get("/{phraseset_id}/history", response_model=PhrasesetHistory)
+async def get_phraseset_history(
+    phraseset_id: UUID = Path(...),
+    player: Player = Depends(get_current_player),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get the complete event timeline for a phraseset.
+
+    Returns all events from prompt submission through finalization,
+    including usernames and timestamps for each event.
+    """
+    phraseset_service = PhrasesetService(db)
+    try:
+        history = await phraseset_service.get_phraseset_history(phraseset_id)
+        return PhrasesetHistory(**history)
+    except ValueError as exc:
+        message = str(exc)
+        if message == "Phraseset not found":
+            raise HTTPException(status_code=404, detail=message)
+        raise HTTPException(status_code=400, detail=message)
+    except Exception as exc:
+        logger.error(f"Error getting phraseset history: {exc}")
+        raise HTTPException(status_code=500, detail="Failed to get phraseset history")
+
+
+@router.get("/completed", response_model=CompletedPhrasesetsResponse)
+async def get_completed_phrasesets(
+    limit: int = 50,
+    offset: int = 0,
+    player: Player = Depends(get_current_player),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get a paginated list of all completed phrasesets.
+
+    Returns metadata including start time, finalization time, and vote count.
+    """
+    phraseset_service = PhrasesetService(db)
+    try:
+        result = await phraseset_service.get_completed_phrasesets(limit=limit, offset=offset)
+        return CompletedPhrasesetsResponse(**result)
+    except Exception as exc:
+        logger.error(f"Error getting completed phrasesets: {exc}")
+        raise HTTPException(status_code=500, detail="Failed to get completed phrasesets")
