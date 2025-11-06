@@ -735,6 +735,22 @@ class PhrasesetService:
 
     async def _load_contributor_rounds(self, phraseset: Phraseset) -> tuple[Round, Round, Round]:
         """Load prompt and copy rounds for a phraseset using a single query."""
+        # First check if any round IDs are NULL
+        missing_ids = []
+        if phraseset.prompt_round_id is None:
+            missing_ids.append("prompt(NULL)")
+        if phraseset.copy_round_1_id is None:
+            missing_ids.append("copy1(NULL)")
+        if phraseset.copy_round_2_id is None:
+            missing_ids.append("copy2(NULL)")
+
+        if missing_ids:
+            logger.error(
+                f"Phraseset {phraseset.phraseset_id} has NULL round IDs: {', '.join(missing_ids)}. "
+                f"Status: {phraseset.status}"
+            )
+            raise ValueError("Phraseset contributors missing")
+
         round_ids = [
             phraseset.prompt_round_id,
             phraseset.copy_round_1_id,

@@ -68,10 +68,10 @@ class PhrasesetSummary(BaseSchema):
     phraseset_id: Optional[UUID]
     prompt_round_id: UUID
     prompt_text: str
-    your_role: Literal["prompt", "copy"]
+    your_role: Literal["prompt", "copy", "vote"]
     your_phrase: Optional[str]
     original_phrase: Optional[str] = None
-    status: Literal["waiting_copies", "waiting_copy1", "active", "voting", "closing", "finalized", "abandoned"]
+    status: Literal["open", "waiting_copies", "waiting_copy1", "active", "voting", "closing", "finalized", "abandoned"]
     created_at: datetime
     updated_at: Optional[datetime]
     vote_count: Optional[int]
