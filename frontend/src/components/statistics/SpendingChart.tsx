@@ -75,7 +75,7 @@ export default function SpendingChart({ earnings }: SpendingChartProps) {
             cy="50%"
             labelLine={false}
             label={renderCustomLabel}
-            outerRadius="80%"
+            outerRadius="90%"
             fill="#8884d8"
             dataKey="value"
           >
