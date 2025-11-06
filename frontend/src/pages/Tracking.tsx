@@ -13,13 +13,14 @@ import { Header } from '../components/Header';
 import { useResults } from '../contexts/ResultsContext';
 import { trackingLogger } from '../utils/logger';
 
-type RoleFilter = 'all' | 'prompt' | 'copy';
+type RoleFilter = 'all' | 'prompt' | 'copy' | 'vote';
 type StatusFilter = 'all' | 'in_progress' | 'voting' | 'finalized' | 'abandoned';
 
 const roleOptions: { value: RoleFilter; label: string }[] = [
   { value: 'all', label: 'All Roles' },
   { value: 'prompt', label: 'Prompts' },
   { value: 'copy', label: 'Copies' },
+  { value: 'vote', label: 'Votes' },
 ];
 
 const statusOptions: { value: StatusFilter; label: string }[] = [

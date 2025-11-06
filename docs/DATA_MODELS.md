@@ -238,19 +238,27 @@
 - Note: Activity log for tracking phraseset lifecycle events and player interactions
 
 ### WeeklyLeaderboardCache
-- `storage` (Redis key) - `leaderboard:weekly`
-- `payload.entries` (array) - cached leaderboard rows with global rank
+- `storage` (Redis key) - `leaderboard:weekly:v4`
+- `payload.prompt_leaderboard` (array) - cached leaderboard rows for prompt role
   - `player_id` (UUID string)
   - `username` (string)
+  - `role` (string) - "prompt"
   - `total_costs` (integer)
   - `total_earnings` (integer)
-  - `net_earnings` (integer) - earnings minus costs (higher is better)
+  - `net_earnings` (integer) - earnings minus costs
+  - `win_rate` (float) - percentage of rounds with positive earnings (0-100)
+  - `total_rounds` (integer) - number of rounds played in this role
   - `rank` (integer)
+- `payload.copy_leaderboard` (array) - cached leaderboard rows for copy role
+  - Same structure as `prompt_leaderboard` with `role: "copy"`
+- `payload.voter_leaderboard` (array) - cached leaderboard rows for voter role
+  - Same structure as `prompt_leaderboard` with `role: "voter"`
 - `payload.generated_at` (ISO 8601 string) - timestamp when snapshot was calculated
 - TTL: 3600 seconds (1 hour) per write
 - Refresh triggers: automatically recomputed when phrasesets finalize, and on-demand when cache miss occurs
-- Note: Personalization flags (`is_current_player`) are added at request time; the shared cache only stores objective rankings.
-- AI players (email ending in `@quipflip.internal`) are excluded from the leaderboard.
+- Note: Each role has a separate leaderboard ranked by win rate (descending) with ties broken alphabetically by username. Personalization flags (`is_current_player`) are added at request time; the shared cache only stores objective rankings.
+- AI players (email ending in `@quipflip.internal`) are excluded from all leaderboards.
+- Computation: All three role leaderboards are computed concurrently using `asyncio.gather` for performance.
 
 ### AIMetric
 - `metric_id` (UUID, primary key)
