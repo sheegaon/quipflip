@@ -573,7 +573,7 @@ export const Dashboard: React.FC = () => {
               </p>
               {roundAvailability && roundAvailability.prompts_waiting > 0 && (
                 <p className="text-xs text-quip-turquoise mb-3 font-semibold">
-                  {formatWaitingCount(roundAvailability.prompts_waiting)} prompt
+                  {formatWaitingCount(roundAvailability.prompts_waiting)} quip
                   {roundAvailability.prompts_waiting > 1 ? 's' : ''} waiting
                 </p>
               )}
