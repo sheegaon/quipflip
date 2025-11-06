@@ -110,7 +110,7 @@ export const SubHeader: React.FC = () => {
             aria-label="View your statistics"
           >
             <img
-              src="/icon_stats.svg"
+              src="/icon_leaderboard.svg"
               alt=""
               className="w-7 h-7 md:w-8 md:h-8 transition-transform group-hover:scale-110"
               aria-hidden="true"
