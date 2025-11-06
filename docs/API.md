@@ -550,41 +550,75 @@ Get comprehensive player statistics including win rates, earnings breakdown, and
 Statistics aggregate data from [Player](DATA_MODELS.md#player), [Round](DATA_MODELS.md#round-unified-for-prompt-copy-and-vote), [Phraseset](DATA_MODELS.md#phraseset), and [Transaction](DATA_MODELS.md#transaction-ledger) tables.
 
 #### `GET /player/statistics/weekly-leaderboard`
-Get the weekly leaderboard based on net cost (total costs minus total earnings) for the trailing seven days.
+Get the weekly leaderboard split by role (prompt, copy, voter), with players ranked by win rate for the trailing seven days.
 
 **Response:**
 ```json
 {
-  "leaders": [
-    {
-      "player_id": "5d62d8cf-287d-4d07-9dde-4dbf7b815f9a",
-      "username": "Witty Walrus",
-      "total_costs": 1400,
-      "total_earnings": 2200,
-      "net_earnings": 800,
-      "rank": 1,
-      "is_current_player": false
-    },
-    {
-      "player_id": "d47fce78-6ea0-4dc9-a1d5-9b82e25bd6e6",
-      "username": "Sassy Sparrow",
-      "total_costs": 900,
-      "total_earnings": 850,
-      "net_earnings": -50,
-      "rank": 2,
-      "is_current_player": true
-    }
-  ],
+  "prompt_leaderboard": {
+    "role": "prompt",
+    "leaders": [
+      {
+        "player_id": "5d62d8cf-287d-4d07-9dde-4dbf7b815f9a",
+        "username": "Witty Walrus",
+        "role": "prompt",
+        "total_costs": 400,
+        "total_earnings": 800,
+        "net_earnings": 400,
+        "win_rate": 75.5,
+        "total_rounds": 12,
+        "rank": 1,
+        "is_current_player": false
+      }
+    ]
+  },
+  "copy_leaderboard": {
+    "role": "copy",
+    "leaders": [
+      {
+        "player_id": "d47fce78-6ea0-4dc9-a1d5-9b82e25bd6e6",
+        "username": "Sassy Sparrow",
+        "role": "copy",
+        "total_costs": 300,
+        "total_earnings": 450,
+        "net_earnings": 150,
+        "win_rate": 66.7,
+        "total_rounds": 9,
+        "rank": 1,
+        "is_current_player": true
+      }
+    ]
+  },
+  "voter_leaderboard": {
+    "role": "voter",
+    "leaders": [
+      {
+        "player_id": "a12bce89-7fb1-5ed0-b2e6-0c93f36ce7f7",
+        "username": "Clever Crow",
+        "role": "voter",
+        "total_costs": 200,
+        "total_earnings": 380,
+        "net_earnings": 180,
+        "win_rate": 82.0,
+        "total_rounds": 15,
+        "rank": 1,
+        "is_current_player": false
+      }
+    ]
+  },
   "generated_at": "2025-01-12T17:05:42.188529+00:00"
 }
 ```
 
 **Notes:**
-- Results are sorted by highest `net_earnings` (positive values indicate net profit). Ties break alphabetically by username.
-- Only the top five players are returned by default. If the current player is outside the top five, their row is appended with `rank: null` and `is_current_player: true`.
-- AI players (identified by email addresses ending in `@quipflip.internal`) are excluded from the leaderboard.
-- The scoring service caches leaderboard calculations in Redis for one hour (`leaderboard:weekly`) and refreshes the cache automatically whenever a phraseset finalizes.
+- Results are split into three separate leaderboards, one for each role (prompt, copy, voter).
+- Each leaderboard is sorted by highest `win_rate` (percentage of rounds where earnings exceeded costs). Ties break alphabetically by username.
+- `win_rate` is a percentage (0-100) representing the proportion of rounds where the player earned more than they spent in that role.
+- Only the top five players per role are returned by default. If the current player is outside the top five in a given role, their row is appended with `rank: null` and `is_current_player: true`.
+- AI players (identified by email addresses ending in `@quipflip.internal`) are excluded from all leaderboards.
+- The scoring service caches leaderboard calculations in Redis for one hour (`leaderboard:weekly:v4`) and refreshes the cache automatically whenever a phraseset finalizes.
 - The `generated_at` timestamp communicates when the snapshot was last recalculated so clients can defer refreshes when data is still fresh.
+- Leaderboards are computed concurrently for performance optimization.
 
 #### `GET /player/tutorial/status`
 Get the tutorial status for the current player.

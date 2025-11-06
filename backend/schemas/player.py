@@ -233,15 +233,27 @@ class WeeklyLeaderboardEntry(BaseModel):
 
     player_id: UUID
     username: str
+    role: Literal["prompt", "copy", "voter"]
     total_costs: int
     total_earnings: int
     net_earnings: int
+    win_rate: float
+    total_rounds: int
     rank: Optional[int]
     is_current_player: bool = False
 
 
-class WeeklyLeaderboardResponse(BaseModel):
-    """Weekly leaderboard payload."""
+class RoleLeaderboard(BaseModel):
+    """Leaderboard for a specific role."""
 
+    role: Literal["prompt", "copy", "voter"]
     leaders: list[WeeklyLeaderboardEntry]
+
+
+class WeeklyLeaderboardResponse(BaseModel):
+    """Weekly leaderboard payload with separate leaderboards per role."""
+
+    prompt_leaderboard: RoleLeaderboard
+    copy_leaderboard: RoleLeaderboard
+    voter_leaderboard: RoleLeaderboard
     generated_at: datetime
