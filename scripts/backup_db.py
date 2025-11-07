@@ -35,6 +35,7 @@ from backend.models import (
     Quest, QuestTemplate, SystemConfig, FlaggedPrompt, SurveyResponse
 )
 from backend.config import get_settings
+from backend.database import Base
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -76,26 +77,15 @@ async def fetch_all_data_from_remote(source_url: str) -> Dict[str, List[Dict[str
 
     try:
         async with AsyncSessionLocal() as session:
-            # Get all table names from metadata
-            tables_to_backup = [
-                ('players', Player),
-                ('phrasesets', Phraseset),
-                ('prompts', Prompt),
-                ('rounds', Round),
-                ('votes', Vote),
-                ('transactions', Transaction),
-                ('daily_bonuses', DailyBonus),
-                ('result_views', ResultView),
-                ('player_abandoned_prompts', PlayerAbandonedPrompt),
-                ('prompt_feedback', PromptFeedback),
-                ('phraseset_activity', PhrasesetActivity),
-                ('refresh_tokens', RefreshToken),
-                ('quests', Quest),
-                ('quest_templates', QuestTemplate),
-                ('system_configs', SystemConfig),
-                ('flagged_prompts', FlaggedPrompt),
-                ('survey_responses', SurveyResponse),
-            ]
+            # Dynamically discover models from the declarative base
+            tables_to_backup = []
+            for mapper in Base.registry.mappers:
+                # Ensure it's a mapped table and not the alembic version table
+                if hasattr(mapper.class_, '__tablename__') and mapper.local_table.name != 'alembic_version':
+                    tables_to_backup.append((mapper.local_table.name, mapper.class_))
+
+            # Sort by table name for deterministic order, which is good practice.
+            tables_to_backup.sort(key=lambda x: x[0])
 
             for table_name, model in tables_to_backup:
                 logger.info(f"Fetching data from table: {table_name}")
