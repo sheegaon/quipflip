@@ -68,7 +68,7 @@ export default function WinRateChart({ promptStats, copyStats, voterStats }: Win
             <YAxis label={{ value: 'Win Rate (%)', angle: -90, position: 'insideLeft' }} />
             <Tooltip
               formatter={(value: number, name: string) => {
-                if (name === 'winRate') return [`${Math.round(value)}%`, 'Win Rate'];
+                if (name === 'Win Rate (%)') return [`${Math.round(value)}%`, 'Win Rate'];
                 if (name === 'rounds') return [Math.round(value), 'Total Rounds'];
                 return [value, name];
               }}
