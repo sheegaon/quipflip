@@ -1,0 +1,267 @@
+#!/usr/bin/env python3
+"""
+Database backup script.
+
+This script reads all data from the remote database (specified by DATABASE_URL env var)
+and creates a local SQLite backup at temp.db with all the data.
+
+Usage:
+    python scripts/backup_db.py
+
+Environment Variables:
+    DATABASE_URL - Connection string for the source database
+"""
+
+import asyncio
+import logging
+import os
+import sys
+from pathlib import Path
+from typing import Any, Dict, List
+
+# Add project root to path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
+from sqlalchemy import create_engine, MetaData, Table, inspect
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.orm import Session
+import subprocess
+
+# Import all models to ensure they're registered with SQLAlchemy
+from backend.models import (
+    Player, Prompt, Round, Phraseset, Vote,
+    Transaction, DailyBonus, ResultView, PlayerAbandonedPrompt,
+    PromptFeedback, PhrasesetActivity, RefreshToken,
+    Quest, QuestTemplate, SystemConfig, FlaggedPrompt, SurveyResponse
+)
+from backend.models.base import Base
+from backend.config import get_settings
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+# Target backup database path
+BACKUP_DB_PATH = "temp.db"
+BACKUP_DB_URL = f"sqlite:///{BACKUP_DB_PATH}"
+BACKUP_DB_ASYNC_URL = f"sqlite+aiosqlite:///{BACKUP_DB_PATH}"
+
+
+async def fetch_all_data_from_remote(source_url: str) -> Dict[str, List[Dict[str, Any]]]:
+    """
+    Fetch all data from the remote database.
+
+    Args:
+        source_url: Database connection URL
+
+    Returns:
+        Dictionary mapping table names to lists of row dictionaries
+    """
+    logger.info(f"Connecting to source database...")
+
+    # Create async engine for source database
+    source_engine = create_async_engine(
+        source_url,
+        echo=False,
+        pool_pre_ping=True,
+    )
+
+    # Create session
+    AsyncSessionLocal = async_sessionmaker(
+        source_engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+    )
+
+    all_data = {}
+
+    try:
+        async with AsyncSessionLocal() as session:
+            # Get all table names from metadata
+            tables_to_backup = [
+                ('players', Player),
+                ('phrasesets', Phraseset),
+                ('prompts', Prompt),
+                ('rounds', Round),
+                ('votes', Vote),
+                ('transactions', Transaction),
+                ('daily_bonuses', DailyBonus),
+                ('result_views', ResultView),
+                ('player_abandoned_prompts', PlayerAbandonedPrompt),
+                ('prompt_feedback', PromptFeedback),
+                ('phraseset_activity', PhrasesetActivity),
+                ('refresh_tokens', RefreshToken),
+                ('quests', Quest),
+                ('quest_templates', QuestTemplate),
+                ('system_configs', SystemConfig),
+                ('flagged_prompts', FlaggedPrompt),
+                ('survey_responses', SurveyResponse),
+            ]
+
+            for table_name, model in tables_to_backup:
+                logger.info(f"Fetching data from table: {table_name}")
+                try:
+                    # Use SQLAlchemy to fetch all records
+                    from sqlalchemy import select
+                    result = await session.execute(select(model))
+                    rows = result.scalars().all()
+
+                    # Convert to dictionaries
+                    row_dicts = []
+                    for row in rows:
+                        row_dict = {}
+                        for column in model.__table__.columns:
+                            value = getattr(row, column.name)
+                            row_dict[column.name] = value
+                        row_dicts.append(row_dict)
+
+                    all_data[table_name] = row_dicts
+                    logger.info(f"  Fetched {len(row_dicts)} rows from {table_name}")
+
+                except Exception as e:
+                    logger.warning(f"  Error fetching from {table_name}: {e}")
+                    all_data[table_name] = []
+
+    finally:
+        await source_engine.dispose()
+
+    return all_data
+
+
+def create_backup_database():
+    """
+    Create a new SQLite database at temp.db using Alembic migrations.
+    """
+    logger.info(f"Creating backup database at {BACKUP_DB_PATH}")
+
+    # Remove existing backup if it exists
+    if os.path.exists(BACKUP_DB_PATH):
+        logger.info(f"Removing existing backup database")
+        os.remove(BACKUP_DB_PATH)
+
+    # Set environment variable to point to the backup database
+    original_db_url = os.environ.get('DATABASE_URL')
+    os.environ['DATABASE_URL'] = BACKUP_DB_ASYNC_URL
+
+    try:
+        # Run alembic upgrade to create all tables
+        logger.info("Running Alembic migrations to create schema...")
+        result = subprocess.run(
+            ['alembic', 'upgrade', 'head'],
+            cwd=str(project_root),
+            capture_output=True,
+            text=True
+        )
+
+        if result.returncode != 0:
+            logger.error(f"Alembic migration failed:")
+            logger.error(f"STDOUT: {result.stdout}")
+            logger.error(f"STDERR: {result.stderr}")
+            raise RuntimeError("Failed to create database schema with Alembic")
+
+        logger.info("Schema created successfully")
+        logger.info(result.stdout)
+
+    finally:
+        # Restore original DATABASE_URL
+        if original_db_url:
+            os.environ['DATABASE_URL'] = original_db_url
+        else:
+            os.environ.pop('DATABASE_URL', None)
+
+
+def insert_data_into_backup(all_data: Dict[str, List[Dict[str, Any]]]):
+    """
+    Insert all fetched data into the backup database.
+
+    Args:
+        all_data: Dictionary mapping table names to lists of row dictionaries
+    """
+    logger.info(f"Inserting data into backup database...")
+
+    # Create synchronous engine for inserting data
+    engine = create_engine(BACKUP_DB_URL, echo=False)
+
+    # Create metadata and reflect tables
+    metadata = MetaData()
+    metadata.reflect(bind=engine)
+
+    with engine.begin() as conn:
+        for table_name, rows in all_data.items():
+            if not rows:
+                logger.info(f"  No data to insert for {table_name}")
+                continue
+
+            logger.info(f"  Inserting {len(rows)} rows into {table_name}")
+
+            try:
+                # Get table object
+                table = metadata.tables.get(table_name)
+                if table is None:
+                    logger.warning(f"  Table {table_name} not found in backup database, skipping")
+                    continue
+
+                # Insert all rows
+                if rows:
+                    conn.execute(table.insert(), rows)
+
+            except Exception as e:
+                logger.error(f"  Error inserting into {table_name}: {e}")
+                raise
+
+    logger.info("Data insertion completed")
+
+
+async def main():
+    """Main backup function."""
+    logger.info("=" * 60)
+    logger.info("Starting database backup process")
+    logger.info("=" * 60)
+
+    # Get source database URL
+    settings = get_settings()
+    source_url = settings.database_url
+
+    if not source_url or source_url.startswith('sqlite'):
+        logger.error("DATABASE_URL environment variable must be set to a remote database URL")
+        logger.error("Currently set to: " + (source_url or "None"))
+        return 1
+
+    logger.info(f"Source database: {source_url.split('@')[-1] if '@' in source_url else 'SQLite'}")
+    logger.info(f"Backup database: {BACKUP_DB_PATH}")
+
+    try:
+        # Step 1: Fetch all data from remote database
+        logger.info("\nStep 1: Fetching data from source database...")
+        all_data = await fetch_all_data_from_remote(source_url)
+
+        total_rows = sum(len(rows) for rows in all_data.values())
+        logger.info(f"Total rows fetched: {total_rows}")
+
+        # Step 2: Create backup database with Alembic
+        logger.info("\nStep 2: Creating backup database schema...")
+        create_backup_database()
+
+        # Step 3: Insert data into backup database
+        logger.info("\nStep 3: Inserting data into backup database...")
+        insert_data_into_backup(all_data)
+
+        logger.info("\n" + "=" * 60)
+        logger.info("Backup completed successfully!")
+        logger.info(f"Backup saved to: {os.path.abspath(BACKUP_DB_PATH)}")
+        logger.info("=" * 60)
+
+        return 0
+
+    except Exception as e:
+        logger.error(f"\nBackup failed: {e}", exc_info=True)
+        return 1
+
+
+if __name__ == "__main__":
+    exit_code = asyncio.run(main())
+    sys.exit(exit_code)
