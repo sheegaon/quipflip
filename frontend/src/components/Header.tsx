@@ -16,7 +16,8 @@ export const Header: React.FC = () => {
 
   // Show back arrow on certain pages
   const isAdminRoute = location.pathname === '/admin' || location.pathname.startsWith('/admin/');
-  const showBackArrow = location.pathname === '/statistics' || location.pathname === '/tracking' || location.pathname === '/quests' || location.pathname === '/results' || location.pathname === '/settings' || location.pathname === '/completed' || isAdminRoute;
+  const backArrowPaths = ['/statistics', '/tracking', '/quests', '/results', '/settings', '/completed'];
+  const showBackArrow = backArrowPaths.includes(location.pathname) || isAdminRoute;
 
   // Determine where back arrow should navigate based on current page
   const getBackNavigation = React.useCallback(() => {
