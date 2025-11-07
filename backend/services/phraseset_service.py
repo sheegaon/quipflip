@@ -555,12 +555,13 @@ class PhrasesetService:
 
     async def get_completed_phrasesets(
         self,
-        limit: int = 50,
+        limit: int = 10,
         offset: int = 0
     ) -> dict:
         """Return a paginated list of all completed (finalized) phrasesets.
 
         Returns metadata including start time, finalization time, and vote count.
+        Ordered by finalization time (most recent first).
         """
         from sqlalchemy import func
 
@@ -581,13 +582,12 @@ class PhrasesetService:
         )
         phrasesets = list(result.scalars().all())
 
-        # Build response
+        # Build response (excluding original_phrase per requirements)
         items = []
         for phraseset in phrasesets:
             items.append({
                 "phraseset_id": phraseset.phraseset_id,
                 "prompt_text": phraseset.prompt_text,
-                "original_phrase": phraseset.original_phrase,
                 "created_at": self._ensure_utc(phraseset.created_at),
                 "finalized_at": self._ensure_utc(phraseset.finalized_at),
                 "vote_count": phraseset.vote_count,
