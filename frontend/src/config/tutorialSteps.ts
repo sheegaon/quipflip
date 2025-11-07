@@ -79,7 +79,7 @@ Voters will try to identify the original, so the better you match the style, the
     action: 'wait',
     nextStep: 'vote_round',
     showSkip: true,
-    showBack: false,
+    showBack: true,
   },
 
   copy_round_paused: null,
@@ -99,7 +99,7 @@ Your goal is to identify which phrase was the original. Choose carefully - corre
     action: 'wait',
     nextStep: 'completed_rounds_guide',
     showSkip: true,
-    showBack: false,
+    showBack: true,
   },
 
   completed_rounds_guide: {
