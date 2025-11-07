@@ -16,11 +16,17 @@ const COLORS = {
   votes: '#FF9A3D',
 };
 
+const LABELS = {
+  PROMPT_SPENDING: 'Prompt Spending',
+  COPY_SPENDING: 'Copy Spending',
+  VOTE_SPENDING: 'Vote Spending',
+} as const;
+
 export default function SpendingChart({ earnings }: SpendingChartProps) {
   const data = [
-    { name: 'Prompt Spending', value: earnings.prompt_spending, color: COLORS.prompts },
-    { name: 'Copy Spending', value: earnings.copy_spending, color: COLORS.copies },
-    { name: 'Vote Spending', value: earnings.vote_spending, color: COLORS.votes },
+    { name: LABELS.PROMPT_SPENDING, value: earnings.prompt_spending, color: COLORS.prompts },
+    { name: LABELS.COPY_SPENDING, value: earnings.copy_spending, color: COLORS.copies },
+    { name: LABELS.VOTE_SPENDING, value: earnings.vote_spending, color: COLORS.votes },
   ].filter((item) => item.value > 0); // Only show non-zero costs
 
   if (data.length === 0) {

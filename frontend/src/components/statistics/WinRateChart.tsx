@@ -9,6 +9,12 @@ interface WinRateChartProps {
   voterStats: RoleStatistics;
 }
 
+const LABELS = {
+  WIN_RATE_FULL: 'Win Rate (%)',
+  WIN_RATE_SHORT: 'Win Rate',
+  TOTAL_ROUNDS: 'Total Rounds',
+} as const;
+
 export default function WinRateChart({ promptStats, copyStats, voterStats }: WinRateChartProps) {
   const [isReady, setIsReady] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -65,17 +71,17 @@ export default function WinRateChart({ promptStats, copyStats, voterStats }: Win
           <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="role" />
-            <YAxis label={{ value: 'Win Rate (%)', angle: -90, position: 'insideLeft' }} />
+            <YAxis label={{ value: LABELS.WIN_RATE_FULL, angle: -90, position: 'insideLeft' }} />
             <Tooltip
               formatter={(value: number, name: string) => {
-                if (name === 'Win Rate (%)') return [`${Math.round(value)}%`, 'Win Rate'];
-                if (name === 'rounds') return [Math.round(value), 'Total Rounds'];
+                if (name === LABELS.WIN_RATE_FULL) return [`${Math.round(value)}%`, LABELS.WIN_RATE_SHORT];
+                if (name === 'rounds') return [Math.round(value), LABELS.TOTAL_ROUNDS];
                 return [value, name];
               }}
               wrapperStyle={{ zIndex: 1000 }}
             />
             <Legend />
-            <Bar dataKey="winRate" fill="#f97316" name="Win Rate (%)" />
+            <Bar dataKey="winRate" fill="#f97316" name={LABELS.WIN_RATE_FULL} />
           </BarChart>
         </ResponsiveContainer>
       ) : (
