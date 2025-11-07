@@ -157,17 +157,17 @@ export const Header: React.FC = () => {
               <div className="flex flex-col gap-3 md:flex-row md:justify-end">
                 <button
                   type="button"
-                  onClick={handleDismissGuestLogout}
+                  onClick={handleConfirmGuestLogout}
                   className="w-full md:w-auto rounded-tile border border-quip-teal px-4 py-2 text-quip-teal transition-colors hover:bg-quip-teal hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-quip-teal"
                 >
-                  Stay Logged In
+                  Log Out Now
                 </button>
                 <button
                   type="button"
-                  onClick={handleConfirmGuestLogout}
+                  onClick={handleDismissGuestLogout}
                   className="w-full md:w-auto rounded-tile bg-gradient-to-r from-quip-orange to-quip-turquoise px-4 py-2 font-semibold text-white shadow-md transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-quip-turquoise"
                 >
-                  Log Out Now
+                  Stay Logged In
                 </button>
               </div>
             </div>
