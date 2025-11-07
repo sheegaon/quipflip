@@ -19,14 +19,13 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List
 
+from sqlalchemy import create_engine, MetaData
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+import subprocess
+
 # Add project root to path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
-
-from sqlalchemy import create_engine, MetaData, Table, inspect
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from sqlalchemy.orm import Session
-import subprocess
 
 # Import all models to ensure they're registered with SQLAlchemy
 from backend.models import (
@@ -35,18 +34,14 @@ from backend.models import (
     PromptFeedback, PhrasesetActivity, RefreshToken,
     Quest, QuestTemplate, SystemConfig, FlaggedPrompt, SurveyResponse
 )
-from backend.models.base import Base
 from backend.config import get_settings
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 # Target backup database path
-BACKUP_DB_PATH = "temp.db"
+BACKUP_DB_PATH = "quipflip.db"
 BACKUP_DB_URL = f"sqlite:///{BACKUP_DB_PATH}"
 BACKUP_DB_ASYNC_URL = f"sqlite+aiosqlite:///{BACKUP_DB_PATH}"
 
