@@ -126,6 +126,8 @@ def create_backup_database():
     # Use Alembic's Python API to create the schema programmatically
     alembic_cfg = Config(str(project_root / "alembic.ini"))
     alembic_cfg.set_main_option("sqlalchemy.url", BACKUP_DB_ASYNC_URL)
+    # Set absolute path to migrations directory to avoid path resolution issues
+    alembic_cfg.set_main_option("script_location", str(project_root / "backend" / "migrations"))
 
     # Temporarily set DATABASE_URL so env.py uses the backup database
     # This is necessary because backend/migrations/env.py calls get_settings()
