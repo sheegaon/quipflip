@@ -257,9 +257,9 @@ def main():
         logger.info(f"Total rows fetched: {total_rows}")
 
         # Step 2: Create backup database with Alembic
-        # logger.info("\nStep 2: Creating backup database schema...")
+        logger.info("\nStep 2: Creating backup database schema...")
         # Call directly - no async context, so Alembic can use asyncio.run() freely
-        # create_backup_database()
+        create_backup_database()
 
         # Step 3: Insert data into backup database
         logger.info("\nStep 3: Inserting data into backup database...")
