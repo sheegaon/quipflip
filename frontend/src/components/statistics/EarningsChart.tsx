@@ -18,6 +18,13 @@ const COLORS = {
   bonuses: '#FBBF24',
 };
 
+const LABELS = {
+  PROMPT_EARNINGS: 'Prompt Earnings',
+  COPY_EARNINGS: 'Copy Earnings',
+  VOTE_EARNINGS: 'Vote Earnings',
+  DAILY_BONUSES: 'Daily Bonuses',
+} as const;
+
 export default function EarningsChart({ earnings }: EarningsChartProps) {
   const [isReady, setIsReady] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -50,10 +57,10 @@ export default function EarningsChart({ earnings }: EarningsChartProps) {
   }, []);
 
   const data = [
-    { name: 'Prompt Earnings', value: earnings.prompt_earnings, color: COLORS.prompts },
-    { name: 'Copy Earnings', value: earnings.copy_earnings, color: COLORS.copies },
-    { name: 'Vote Earnings', value: earnings.vote_earnings, color: COLORS.votes },
-    { name: 'Daily Bonuses', value: earnings.daily_bonuses, color: COLORS.bonuses },
+    { name: LABELS.PROMPT_EARNINGS, value: earnings.prompt_earnings, color: COLORS.prompts },
+    { name: LABELS.COPY_EARNINGS, value: earnings.copy_earnings, color: COLORS.copies },
+    { name: LABELS.VOTE_EARNINGS, value: earnings.vote_earnings, color: COLORS.votes },
+    { name: LABELS.DAILY_BONUSES, value: earnings.daily_bonuses, color: COLORS.bonuses },
   ].filter((item) => item.value > 0); // Only show non-zero earnings
 
   if (data.length === 0) {
