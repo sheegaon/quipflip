@@ -16,6 +16,7 @@ import asyncio
 import json
 import logging
 import os
+import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -24,8 +25,6 @@ from uuid import UUID
 
 from sqlalchemy import create_engine, MetaData
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from alembic.config import Config
-from alembic import command
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
@@ -141,7 +140,7 @@ async def fetch_all_data_from_remote(source_url: str) -> Dict[str, List[Dict[str
 
 def create_backup_database():
     """
-    Create a new SQLite database at temp.db using Alembic migrations.
+    Create a new SQLite database using Alembic migrations via command line.
     """
     logger.info(f"Creating backup database at {BACKUP_DB_PATH}")
 
@@ -150,28 +149,29 @@ def create_backup_database():
         logger.info(f"Removing existing backup database")
         os.remove(BACKUP_DB_PATH)
 
-    # Use Alembic's Python API to create the schema programmatically
-    alembic_cfg = Config(str(project_root / "alembic.ini"))
-    alembic_cfg.set_main_option("sqlalchemy.url", BACKUP_DB_ASYNC_URL)
-    # Set absolute path to migrations directory to avoid path resolution issues
-    alembic_cfg.set_main_option("script_location", str(project_root / "backend" / "migrations"))
-
-    # Temporarily set DATABASE_URL so env.py uses the backup database
-    # This is necessary because backend/migrations/env.py calls get_settings()
-    # which reads DATABASE_URL from the environment, overriding our config
+    # Set DATABASE_URL so alembic uses the backup database
     original_db_url = os.environ.get('DATABASE_URL')
     os.environ['DATABASE_URL'] = BACKUP_DB_ASYNC_URL
 
     try:
-        # Run alembic upgrade to create all tables
+        # Run alembic upgrade head as command line tool
         logger.info("Running Alembic migrations to create schema...")
-        command.upgrade(alembic_cfg, "head")
+        result = subprocess.run(
+            ['alembic', 'upgrade', 'head'],
+            cwd=str(project_root),
+            capture_output=True,
+            text=True,
+            check=False
+        )
+
+        if result.returncode != 0:
+            logger.error(f"Alembic migration failed:")
+            logger.error(f"STDOUT: {result.stdout}")
+            logger.error(f"STDERR: {result.stderr}")
+            raise RuntimeError("Failed to create database schema with Alembic")
 
         logger.info("Schema created successfully")
 
-    except Exception:
-        logger.error("Alembic migration failed:", exc_info=True)
-        raise RuntimeError("Failed to create database schema with Alembic")
     finally:
         # Restore original DATABASE_URL
         if original_db_url:
