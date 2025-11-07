@@ -139,7 +139,7 @@ class TutorialStatus(BaseModel):
 class UpdateTutorialProgressRequest(BaseModel):
     """Request to update tutorial progress."""
     progress: Literal["not_started", "welcome", "dashboard", "prompt_round", "prompt_round_paused", "copy_round",
-                      "copy_round_paused", "vote_round", "completed"]
+                      "copy_round_paused", "vote_round", "completed_rounds_guide", "completed"]
 
 
 class UpdateTutorialProgressResponse(BaseModel):
