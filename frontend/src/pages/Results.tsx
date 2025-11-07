@@ -3,6 +3,7 @@ import { useGame } from '../contexts/GameContext';
 import { useResults } from '../contexts/ResultsContext';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Header } from '../components/Header';
+import { Pagination } from '../components/Pagination';
 import { loadingMessages } from '../utils/brandedMessages';
 import type { PhrasesetResults } from '../api/types';
 import { resultsLogger } from '../utils/logger';
@@ -16,6 +17,7 @@ export const Results: React.FC = () => {
   const [selectedPhrasesetId, setSelectedPhrasesetId] = useState<string | null>(null);
   const [expandedVotes, setExpandedVotes] = useState<Record<string, boolean>>({});
   const [showBreakdown, setShowBreakdown] = useState<boolean>(false);
+  const [voteResultsPage, setVoteResultsPage] = useState<number>(1);
 
   const refreshPhrasesetResultsRef = useRef(refreshPhrasesetResults);
   const refreshDashboardRef = useRef(refreshDashboard);
@@ -77,6 +79,7 @@ export const Results: React.FC = () => {
 
   const handleSelectPhraseset = (phrasesetId: string) => {
     setSelectedPhrasesetId(phrasesetId);
+    setVoteResultsPage(1); // Reset to first page when switching phrasesets
     markResultsViewed([phrasesetId]);
     resultsLogger.debug('Phraseset selected', { phrasesetId });
   };
@@ -318,64 +321,83 @@ export const Results: React.FC = () => {
                 <div className="mb-6">
                   <h3 className="font-display font-bold text-lg text-quip-navy mb-3">Vote Results</h3>
                   <div className="space-y-2">
-                    {results.votes
-                      .sort((a, b) => b.vote_count - a.vote_count)
-                      .map((vote, index) => (
-                        <div
-                          key={vote.phrase}
-                          className={`p-4 rounded-tile border-2 ${
-                            vote.is_original
-                              ? 'bg-quip-orange bg-opacity-10 border-quip-orange'
-                              : 'bg-quip-cream border-quip-teal border-opacity-30'
-                          }`}
-                        >
-                          <div className="flex justify-between items-start gap-4">
-                            <div className="flex items-start gap-3">
-                              <span className="text-2xl font-display font-bold text-quip-teal text-opacity-50">
-                                #{index + 1}
-                              </span>
-                              <div>
-                                <p className="text-xl font-bold text-quip-navy">
-                                  {vote.phrase}
-                                  {vote.is_original && (
-                                    <span className="ml-2 text-sm bg-quip-orange text-white px-2 py-1 rounded-lg font-medium">
-                                      ORIGINAL
+                    {(() => {
+                      const sortedVotes = results.votes.sort((a, b) => b.vote_count - a.vote_count);
+                      const itemsPerPage = 10;
+                      const totalPages = Math.ceil(sortedVotes.length / itemsPerPage);
+                      const startIndex = (voteResultsPage - 1) * itemsPerPage;
+                      const endIndex = startIndex + itemsPerPage;
+                      const paginatedVotes = sortedVotes.slice(startIndex, endIndex);
+
+                      return (
+                        <>
+                          {paginatedVotes.map((vote, pageIndex) => {
+                            const actualIndex = startIndex + pageIndex;
+                            return (
+                              <div
+                                key={vote.phrase}
+                                className={`p-4 rounded-tile border-2 ${
+                                  vote.is_original
+                                    ? 'bg-quip-orange bg-opacity-10 border-quip-orange'
+                                    : 'bg-quip-cream border-quip-teal border-opacity-30'
+                                }`}
+                              >
+                                <div className="flex justify-between items-start gap-4">
+                                  <div className="flex items-start gap-3">
+                                    <span className="text-2xl font-display font-bold text-quip-teal text-opacity-50">
+                                      #{actualIndex + 1}
                                     </span>
-                                  )}
-                                </p>
-                                <button
-                                  type="button"
-                                  onClick={() => toggleVotersList(vote.phrase)}
-                                  className="mt-2 inline-flex items-center text-sm font-medium text-quip-turquoise hover:text-quip-navy focus:outline-none"
-                                >
-                                  {expandedVotes[vote.phrase] ? 'Hide voters' : 'Show voters'} ({vote.voters.length})
-                                </button>
+                                    <div>
+                                      <p className="text-xl font-bold text-quip-navy">
+                                        {vote.phrase}
+                                        {vote.is_original && (
+                                          <span className="ml-2 text-sm bg-quip-orange text-white px-2 py-1 rounded-lg font-medium">
+                                            ORIGINAL
+                                          </span>
+                                        )}
+                                      </p>
+                                      <button
+                                        type="button"
+                                        onClick={() => toggleVotersList(vote.phrase)}
+                                        className="mt-2 inline-flex items-center text-sm font-medium text-quip-turquoise hover:text-quip-navy focus:outline-none"
+                                      >
+                                        {expandedVotes[vote.phrase] ? 'Hide voters' : 'Show voters'} ({vote.voters.length})
+                                      </button>
+                                    </div>
+                                  </div>
+                                  <div className="text-right">
+                                    <p className="text-2xl font-display font-bold text-quip-turquoise">
+                                      {vote.vote_count}
+                                    </p>
+                                    <p className="text-xs text-quip-teal">votes</p>
+                                  </div>
+                                </div>
+                                {expandedVotes[vote.phrase] && (
+                                  <div className="mt-4 bg-white bg-opacity-80 rounded-tile border border-quip-teal border-opacity-20 p-3">
+                                    {vote.voters.length === 0 ? (
+                                      <p className="text-sm text-quip-teal italic">No votes for this phrase yet.</p>
+                                    ) : (
+                                      <ul className="space-y-1">
+                                        {vote.voters.map((voter, index) => (
+                                          <li key={`${vote.phrase}-${voter}-${index}`} className="text-sm text-quip-navy">
+                                            {voter}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    )}
+                                  </div>
+                                )}
                               </div>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-2xl font-display font-bold text-quip-turquoise">
-                                {vote.vote_count}
-                              </p>
-                              <p className="text-xs text-quip-teal">votes</p>
-                            </div>
-                          </div>
-                          {expandedVotes[vote.phrase] && (
-                            <div className="mt-4 bg-white bg-opacity-80 rounded-tile border border-quip-teal border-opacity-20 p-3">
-                              {vote.voters.length === 0 ? (
-                                <p className="text-sm text-quip-teal italic">No votes for this phrase yet.</p>
-                              ) : (
-                                <ul className="space-y-1">
-                                  {vote.voters.map((voter, index) => (
-                                    <li key={`${vote.phrase}-${voter}-${index}`} className="text-sm text-quip-navy">
-                                      {voter}
-                                    </li>
-                                  ))}
-                                </ul>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                            );
+                          })}
+                          <Pagination
+                            currentPage={voteResultsPage}
+                            totalPages={totalPages}
+                            onPageChange={setVoteResultsPage}
+                          />
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
 
