@@ -441,6 +441,7 @@ class RoundService:
         stale_count = 0  # Track consecutive stale/not-found entries
         candidate_prompt_round_ids: list[UUID] = []
         prefetched_rounds: dict[UUID, Round] = {}
+        tried_prompt_ids: set[UUID] = set()  # Track prompts we've already tried in this request
 
         while attempts < max_attempts:
             if not candidate_prompt_round_ids:
@@ -455,18 +456,36 @@ class RoundService:
                 candidate_prompt_round_ids = await self._pop_prompt_batch(
                     max_attempts - attempts
                 )
+                # Filter out prompts we've already tried in this request to prevent cycling.
+                # Filtered prompts will be requeued at the end (success or failure).
+                candidate_prompt_round_ids = [
+                    pid for pid in candidate_prompt_round_ids
+                    if pid not in tried_prompt_ids
+                ]
+
                 if not candidate_prompt_round_ids:
                     logger.warning(
-                        f"[Copy Round Start] No prompt batch available (attempt {attempts + 1}), rehydrating queue"
+                        f"[Copy Round Start] No new prompts available (attempt {attempts + 1}, tried {len(tried_prompt_ids)} unique prompts), rehydrating queue"
                     )
                     await self.ensure_prompt_queue_populated()
                     candidate_prompt_round_ids = await self._pop_prompt_batch(
                         max_attempts - attempts
                     )
+                    # Filter again after rehydration
+                    candidate_prompt_round_ids = [
+                        pid for pid in candidate_prompt_round_ids
+                        if pid not in tried_prompt_ids
+                    ]
+
                     if not candidate_prompt_round_ids:
                         logger.error(
-                            f"[Copy Round Start] No prompts available after rehydration. Queue length: {QueueService.get_prompt_rounds_waiting()}"
+                            f"[Copy Round Start] No new prompts available after rehydration. "
+                            f"Queue length: {QueueService.get_prompt_rounds_waiting()}, "
+                            f"already tried {len(tried_prompt_ids)} unique prompts"
                         )
+                        # Requeue everything we tried before raising
+                        for tried_prompt_id in tried_prompt_ids:
+                            QueueService.add_prompt_round_to_queue(tried_prompt_id)
                         raise NoPromptsAvailableError("No prompts available")
 
                 await self._prefetch_prompt_rounds(
@@ -500,38 +519,49 @@ class RoundService:
                     f"Prompt {prompt_round_id} is flagged (status={prompt_round.phraseset_status}), "
                     f"skipping for copy queue (attempt {attempts})"
                 )
+                # Don't requeue flagged prompts and don't mark as tried
                 continue
+
+            # Mark this prompt as tried (after flagged check)
+            tried_prompt_ids.add(prompt_round_id)
 
             should_skip, should_requeue = await self._should_skip_prompt_round(
                 player, prompt_round
             )
             if should_skip:
-                if should_requeue:
-                    QueueService.add_prompt_round_to_queue(prompt_round_id)
+                # Don't requeue immediately - we'll requeue all tried prompts at the end
+                # This prevents infinite cycling through the same unavailable prompts
                 continue
 
             locked_prompt_round = await self._lock_prompt_round_for_update(
                 prompt_round_id
             )
             if not locked_prompt_round:
-                QueueService.add_prompt_round_to_queue(prompt_round_id)
+                # Couldn't lock this prompt, but don't requeue yet - wait until end
                 continue
 
             logger.info(
                 f"[Copy Round Start] Found valid prompt {prompt_round_id} for player {player.player_id} on attempt {attempts}"
             )
 
+            # Success! Requeue remaining candidates and all tried prompts (except the one we're using)
+            tried_prompt_ids.discard(prompt_round_id)  # Don't requeue the one we're using
             for remaining_prompt_round_id in candidate_prompt_round_ids:
                 QueueService.add_prompt_round_to_queue(remaining_prompt_round_id)
+            for tried_prompt_id in tried_prompt_ids:
+                QueueService.add_prompt_round_to_queue(tried_prompt_id)
 
             return locked_prompt_round
 
+        # Failed to find a valid prompt - requeue everything we tried
         for remaining_prompt_round_id in candidate_prompt_round_ids:
             QueueService.add_prompt_round_to_queue(remaining_prompt_round_id)
+        for tried_prompt_id in tried_prompt_ids:
+            QueueService.add_prompt_round_to_queue(tried_prompt_id)
 
         logger.error(
             f"[Copy Round Start] Could not find valid prompt for player {player.player_id} after {max_attempts} attempts. "
-            f"Queue length: {QueueService.get_prompt_rounds_waiting()}, stale_count: {stale_count}"
+            f"Queue length: {QueueService.get_prompt_rounds_waiting()}, tried {len(tried_prompt_ids)} unique prompts, stale_count: {stale_count}"
         )
         raise NoPromptsAvailableError(
             "Could not find a valid prompt after multiple attempts"

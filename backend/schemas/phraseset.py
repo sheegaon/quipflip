@@ -219,7 +219,6 @@ class CompletedPhrasesetItem(BaseSchema):
     """Summary of a completed phraseset."""
     phraseset_id: UUID
     prompt_text: str
-    original_phrase: str
     created_at: datetime
     finalized_at: datetime
     vote_count: int
@@ -229,4 +228,3 @@ class CompletedPhrasesetItem(BaseSchema):
 class CompletedPhrasesetsResponse(BaseSchema):
     """List of completed phrasesets."""
     phrasesets: list[CompletedPhrasesetItem]
-    total: int
