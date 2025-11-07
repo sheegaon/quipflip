@@ -1291,10 +1291,10 @@ Attempting to view a non-finalized phraseset or a phraseset you didn't participa
 #### `GET /phrasesets/completed`
 Get a paginated list of all finalized phrasesets with summary metadata.
 
-**Purpose:** This endpoint allows browsing through completed rounds to select which ones to review in detail. Use it to build a list/grid UI showing all finished games.
+**Purpose:** This endpoint allows browsing through completed rounds to select which ones to review in detail. Use it to build a list/grid UI showing all finished games. The original phrase is intentionally excluded to preserve the mystery for players who weren't involved in the round.
 
 **Query Parameters:**
-- `limit` (optional, default: 50) - Number of results per page (max 100)
+- `limit` (optional, default: 10) - Number of results per page (max 100)
 - `offset` (optional, default: 0) - Number of results to skip for pagination
 
 **Response:**
@@ -1304,7 +1304,6 @@ Get a paginated list of all finalized phrasesets with summary metadata.
     {
       "phraseset_id": "uuid",
       "prompt_text": "my deepest desire is to be (a/an)",
-      "original_phrase": "FAMOUS",
       "created_at": "2025-01-06T10:00:00Z",
       "finalized_at": "2025-01-06T12:30:00Z",
       "vote_count": 8,
@@ -1313,7 +1312,6 @@ Get a paginated list of all finalized phrasesets with summary metadata.
     {
       "phraseset_id": "uuid",
       "prompt_text": "the secret to happiness is (a/an)",
-      "original_phrase": "CONTENTMENT",
       "created_at": "2025-01-05T14:20:00Z",
       "finalized_at": "2025-01-05T16:45:00Z",
       "vote_count": 12,
@@ -1327,23 +1325,31 @@ Get a paginated list of all finalized phrasesets with summary metadata.
 **Notes:**
 - Results are ordered by finalization time, most recent first
 - Only includes phrasesets with status = "finalized"
-- Use `limit` and `offset` for pagination (e.g., `limit=20&offset=20` for page 2)
+- Default page size is 10 items (optimized for UI display)
+- Use `limit` and `offset` for pagination (e.g., `limit=10&offset=10` for page 2)
 - `total` indicates the total number of finalized phrasesets across all pages
 - Timestamps are in UTC ISO 8601 format
 - `created_at` is when the original prompt was submitted
 - `finalized_at` is when voting completed and prizes were distributed
 - `total_pool` is the final prize pool amount distributed to contributors
+- `original_phrase` is NOT included in this response (preserves mystery for non-participants)
 
 **Example Pagination:**
 ```bash
-# First page (20 results)
-GET /phrasesets/completed?limit=20&offset=0
+# First page (10 results, default)
+GET /phrasesets/completed
 
-# Second page (next 20 results)
-GET /phrasesets/completed?limit=20&offset=20
+# Explicit first page
+GET /phrasesets/completed?limit=10&offset=0
+
+# Second page (next 10 results)
+GET /phrasesets/completed?limit=10&offset=10
 
 # Third page
-GET /phrasesets/completed?limit=20&offset=40
+GET /phrasesets/completed?limit=10&offset=20
+
+# Custom page size
+GET /phrasesets/completed?limit=20&offset=0
 ```
 
 **Use Cases:**
