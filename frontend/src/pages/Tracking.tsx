@@ -9,10 +9,13 @@ import { useGame } from '../contexts/GameContext';
 import { buildPhrasesetListKey } from '../utils/gameKeys';
 import { PhrasesetList } from '../components/PhrasesetList';
 import { PhrasesetDetails } from '../components/PhrasesetDetails';
+import { Pagination } from '../components/Pagination';
 import { Header } from '../components/Header';
 import { useResults } from '../contexts/ResultsContext';
 import { trackingLogger } from '../utils/logger';
 import { getUniqueIdForSummary } from '../utils/phrasesetHelpers';
+
+const ITEMS_PER_PAGE = 10;
 
 type RoleFilter = 'all' | 'prompt' | 'copy' | 'vote';
 type StatusFilter = 'all' | 'in_progress' | 'voting' | 'finalized' | 'abandoned';
@@ -52,6 +55,7 @@ export const Tracking: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('in_progress');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [infoExpanded, setInfoExpanded] = useState(false);
+  const [currentPage, setCurrentPage] = useState<number>(1);
 
   const refreshPlayerPhrasesetsRef = useRef(refreshPlayerPhrasesets);
   const refreshPhrasesetDetailsRef = useRef(refreshPhrasesetDetails);
@@ -239,14 +243,24 @@ export const Tracking: React.FC = () => {
   const handleRoleFilterChange = (nextRole: RoleFilter) => {
     trackingLogger.debug('Role filter changed', { nextRole });
     setRoleFilter(nextRole);
+    setCurrentPage(1); // Reset to first page when filter changes
   };
 
   const handleStatusFilterChange = (nextStatus: StatusFilter) => {
     trackingLogger.debug('Status filter changed', { nextStatus });
     setStatusFilter(nextStatus);
+    setCurrentPage(1); // Reset to first page when filter changes
   };
 
   const totalTracked = useMemo(() => phrasesets.length, [phrasesets.length]);
+
+  // Pagination calculations
+  const totalPages = Math.ceil(phrasesets.length / ITEMS_PER_PAGE);
+  const paginatedPhrasesets = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return phrasesets.slice(startIndex, endIndex);
+  }, [phrasesets, currentPage]);
 
   const combinedError = listError ?? detailsError;
 
@@ -361,11 +375,22 @@ export const Tracking: React.FC = () => {
                   <InlineLoadingSpinner message={listLoadingState.message} />
                 </div>
               ) : (
-                <PhrasesetList
-                  phrasesets={phrasesets}
-                  selectedId={selectedId}
-                  onSelect={handleSelect}
-                />
+                <>
+                  <PhrasesetList
+                    phrasesets={paginatedPhrasesets}
+                    selectedId={selectedId}
+                    onSelect={handleSelect}
+                  />
+                  {phrasesets.length > 0 && (
+                    <div className="border-t border-gray-200">
+                      <Pagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        onPageChange={setCurrentPage}
+                      />
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
