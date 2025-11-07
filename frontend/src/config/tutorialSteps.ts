@@ -98,7 +98,7 @@ Your goal is to identify which phrase was the original. Choose carefully - corre
     position: 'top',
     action: 'wait',
     nextStep: 'completed_rounds_guide',
-    showSkip: false,
+    showSkip: true,
     showBack: false,
   },
 
