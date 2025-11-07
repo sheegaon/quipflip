@@ -63,13 +63,12 @@ def serialize_value(value: Any) -> Any:
     if value is None:
         return None
     if isinstance(value, UUID):
+        # SQLite doesn't support UUID type, convert to string
         return str(value)
     if isinstance(value, (dict, list)):
         # JSON/JSONB columns: serialize to JSON string for SQLite
         return json.dumps(value)
-    if isinstance(value, datetime):
-        # Ensure datetime is in ISO format string
-        return value.isoformat()
+    # datetime objects are left as-is - SQLAlchemy handles them
     return value
 
 
