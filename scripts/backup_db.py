@@ -21,12 +21,12 @@ from typing import Any, Dict, List
 
 from sqlalchemy import create_engine, MetaData
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-import subprocess
+from alembic.config import Config
+from alembic import command
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
-
 # Import all models to ensure they're registered with SQLAlchemy
 from backend.models import (
     Player, Prompt, Round, Phraseset, Vote,
@@ -123,35 +123,20 @@ def create_backup_database():
         logger.info(f"Removing existing backup database")
         os.remove(BACKUP_DB_PATH)
 
-    # Set environment variable to point to the backup database
-    original_db_url = os.environ.get('DATABASE_URL')
-    os.environ['DATABASE_URL'] = BACKUP_DB_ASYNC_URL
+    # Use Alembic's Python API to create the schema programmatically
+    alembic_cfg = Config(str(project_root / "alembic.ini"))
+    alembic_cfg.set_main_option("sqlalchemy.url", BACKUP_DB_ASYNC_URL)
 
     try:
         # Run alembic upgrade to create all tables
         logger.info("Running Alembic migrations to create schema...")
-        result = subprocess.run(
-            ['alembic', 'upgrade', 'head'],
-            cwd=str(project_root),
-            capture_output=True,
-            text=True
-        )
-
-        if result.returncode != 0:
-            logger.error(f"Alembic migration failed:")
-            logger.error(f"STDOUT: {result.stdout}")
-            logger.error(f"STDERR: {result.stderr}")
-            raise RuntimeError("Failed to create database schema with Alembic")
+        command.upgrade(alembic_cfg, "head")
 
         logger.info("Schema created successfully")
-        logger.info(result.stdout)
 
-    finally:
-        # Restore original DATABASE_URL
-        if original_db_url:
-            os.environ['DATABASE_URL'] = original_db_url
-        else:
-            os.environ.pop('DATABASE_URL', None)
+    except Exception:
+        logger.error("Alembic migration failed:", exc_info=True)
+        raise RuntimeError("Failed to create database schema with Alembic")
 
 
 def insert_data_into_backup(all_data: Dict[str, List[Dict[str, Any]]]):
@@ -170,6 +155,10 @@ def insert_data_into_backup(all_data: Dict[str, List[Dict[str, Any]]]):
     metadata = MetaData()
     metadata.reflect(bind=engine)
 
+    # Chunk size to avoid SQLite's parameter limit (999)
+    # Use conservative batch size based on typical column count
+    BATCH_SIZE = 50
+
     with engine.begin() as conn:
         for table_name, rows in all_data.items():
             if not rows:
@@ -185,9 +174,12 @@ def insert_data_into_backup(all_data: Dict[str, List[Dict[str, Any]]]):
                     logger.warning(f"  Table {table_name} not found in backup database, skipping")
                     continue
 
-                # Insert all rows
-                if rows:
-                    conn.execute(table.insert(), rows)
+                # Insert rows in batches to avoid SQLite parameter limit
+                for i in range(0, len(rows), BATCH_SIZE):
+                    batch = rows[i:i + BATCH_SIZE]
+                    conn.execute(table.insert(), batch)
+                    if len(rows) > BATCH_SIZE:
+                        logger.info(f"    Inserted batch {i//BATCH_SIZE + 1}/{(len(rows) + BATCH_SIZE - 1)//BATCH_SIZE}")
 
             except Exception as e:
                 logger.error(f"  Error inserting into {table_name}: {e}")
