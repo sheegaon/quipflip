@@ -79,7 +79,7 @@ Voters will try to identify the original, so the better you match the style, the
     action: 'wait',
     nextStep: 'vote_round',
     showSkip: true,
-    showBack: false,
+    showBack: true,
   },
 
   copy_round_paused: null,
@@ -97,8 +97,24 @@ Your goal is to identify which phrase was the original. Choose carefully - corre
     target: '.tutorial-vote-round',
     position: 'top',
     action: 'wait',
-    // Removed nextStep to show "End Tutorial" button
-    showSkip: false, // Hide skip button on final tutorial step
+    nextStep: 'completed_rounds_guide',
+    showSkip: true,
+    showBack: true,
+  },
+
+  completed_rounds_guide: {
+    id: 'completed_rounds_guide',
+    title: 'Explore Past Rounds',
+    message: `**Not sure you fully understand the game yet?**
+
+You can click the {{icon:completed}} in the header anytime to view completed rounds and observe how actual past games played out.
+
+This is a great way to learn strategies and see examples of creative quips, convincing copies, and tricky votes!`,
+    target: '.tutorial-completed-icon',
+    position: 'bottom',
+    action: 'wait',
+    // No nextStep - this is the final tutorial screen, shows "End Tutorial" button
+    showSkip: false,
     showBack: false,
   },
 
@@ -115,7 +131,7 @@ export const getNextStep = (currentStep: TutorialProgress): TutorialProgress | n
 };
 
 export const getPreviousStep = (currentStep: TutorialProgress): TutorialProgress | null => {
-  const steps: TutorialProgress[] = ['welcome', 'dashboard', 'prompt_round', 'prompt_round_paused', 'copy_round', 'vote_round'];
+  const steps: TutorialProgress[] = ['welcome', 'dashboard', 'prompt_round', 'prompt_round_paused', 'copy_round', 'vote_round', 'completed_rounds_guide'];
   const currentIndex = steps.indexOf(currentStep);
   if (currentIndex > 0) {
     return steps[currentIndex - 1];
