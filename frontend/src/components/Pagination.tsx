@@ -27,16 +27,20 @@ export const Pagination: React.FC<PaginationProps> = ({
     }
   };
 
+  const getButtonClassName = (disabled: boolean) => {
+    return `p-2 rounded-full transition-all ${
+      disabled
+        ? 'opacity-30 cursor-not-allowed'
+        : 'hover:bg-quip-turquoise hover:bg-opacity-10'
+    }`;
+  };
+
   return (
     <div className="flex items-center justify-center gap-4 py-4">
       <button
         onClick={handlePrevious}
         disabled={currentPage === 1}
-        className={`p-2 rounded-full transition-all ${
-          currentPage === 1
-            ? 'opacity-30 cursor-not-allowed'
-            : 'hover:bg-quip-turquoise hover:bg-opacity-10'
-        }`}
+        className={getButtonClassName(currentPage === 1)}
         aria-label="Previous page"
       >
         <img
@@ -53,11 +57,7 @@ export const Pagination: React.FC<PaginationProps> = ({
       <button
         onClick={handleNext}
         disabled={currentPage === totalPages}
-        className={`p-2 rounded-full transition-all ${
-          currentPage === totalPages
-            ? 'opacity-30 cursor-not-allowed'
-            : 'hover:bg-quip-turquoise hover:bg-opacity-10'
-        }`}
+        className={getButtonClassName(currentPage === totalPages)}
         aria-label="Next page"
       >
         <img
