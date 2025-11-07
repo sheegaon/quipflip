@@ -377,6 +377,19 @@ export interface PhrasesetDashboardSummary {
   total_unclaimed_amount: number;
 }
 
+export interface CompletedPhrasesetItem {
+  phraseset_id: string;
+  prompt_text: string;
+  created_at: string;
+  finalized_at: string;
+  vote_count: number;
+  total_pool: number;
+}
+
+export interface CompletedPhrasesetsResponse {
+  phrasesets: CompletedPhrasesetItem[];
+}
+
 export interface PhrasesetContributor {
   round_id: string;
   player_id: string;

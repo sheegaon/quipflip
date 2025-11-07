@@ -46,6 +46,14 @@ interface HistoricalTrendsChartProps {
   trends: HistoricalTrendPoint[];
 }
 
+const LABELS = {
+  WIN_RATE_AXIS: 'Win Rate (%)',
+  WIN_RATE: 'Win Rate',
+  EARNINGS_PER_DAY: 'Earnings per Day',
+  ROUNDS_PER_DAY: 'Rounds per Day',
+  SECONDARY_AXIS: 'Earnings / Rounds per Day',
+} as const;
+
 function formatLabel(dateString: string | undefined, fallback: string): { label: string; tooltipLabel: string } {
   if (!dateString) {
     return { label: fallback, tooltipLabel: fallback };
@@ -128,25 +136,25 @@ export default function HistoricalTrendsChart({ trends }: HistoricalTrendsChartP
             yAxisId="left"
             domain={[0, 100]}
             tickFormatter={(value) => `${value}%`}
-            label={{ value: 'Win Rate (%)', angle: -90, position: 'insideLeft' }}
+            label={{ value: LABELS.WIN_RATE_AXIS, angle: -90, position: 'insideLeft' }}
           />
           <YAxis
             yAxisId="right"
             orientation="right"
             tickFormatter={(value) => `${Math.round(value)}`}
-            label={{ value: 'Earnings / Rounds per Day', angle: 90, position: 'insideRight' }}
+            label={{ value: LABELS.SECONDARY_AXIS, angle: 90, position: 'insideRight' }}
           />
           <Tooltip
             labelFormatter={(_, items) => items?.[0]?.payload?.tooltipLabel ?? ''}
             formatter={(value: number, name: string) => {
-              if (name === 'winRate') {
-                return [`${value.toFixed(1)}%`, 'Win Rate'];
+              if (name === LABELS.WIN_RATE) {
+                return [`${value.toFixed(1)}%`, LABELS.WIN_RATE];
               }
-              if (name === 'earningsPerDay') {
-                return [`${Math.round(value).toLocaleString()}`, 'Earnings per Day'];
+              if (name === LABELS.EARNINGS_PER_DAY) {
+                return [`${Math.round(value).toLocaleString()}`, LABELS.EARNINGS_PER_DAY];
               }
-              if (name === 'roundsPerDay') {
-                return [`${Math.round(value).toLocaleString()}`, 'Rounds per Day'];
+              if (name === LABELS.ROUNDS_PER_DAY) {
+                return [`${Math.round(value).toLocaleString()}`, LABELS.ROUNDS_PER_DAY];
               }
               return [value, name];
             }}
@@ -158,7 +166,7 @@ export default function HistoricalTrendsChart({ trends }: HistoricalTrendsChartP
             dataKey="earningsPerDay"
             fill="#14b8a6"
             stroke="#0f766e"
-            name="Earnings per Day"
+            name={LABELS.EARNINGS_PER_DAY}
             fillOpacity={0.25}
             activeDot={{ r: 6 }}
           />
@@ -170,7 +178,7 @@ export default function HistoricalTrendsChart({ trends }: HistoricalTrendsChartP
             strokeWidth={2}
             dot={{ r: 3 }}
             activeDot={{ r: 6 }}
-            name="Win Rate"
+            name={LABELS.WIN_RATE}
           />
           <Line
             yAxisId="right"
@@ -180,7 +188,7 @@ export default function HistoricalTrendsChart({ trends }: HistoricalTrendsChartP
             strokeWidth={2}
             dot={{ r: 3 }}
             activeDot={{ r: 6 }}
-            name="Rounds per Day"
+            name={LABELS.ROUNDS_PER_DAY}
           />
         </ComposedChart>
       </ResponsiveContainer>

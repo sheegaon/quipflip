@@ -555,39 +555,96 @@ class PhrasesetService:
 
     async def get_completed_phrasesets(
         self,
-        limit: int = 50,
+        limit: int = 10,
         offset: int = 0
     ) -> dict:
-        """Return a paginated list of all completed (finalized) phrasesets.
+        """Return a list of completed (finalized) phrasesets.
 
-        Returns metadata including start time, finalization time, and vote count.
+        Returns up to 500 phrasesets. When more than 500 exist, prioritizes
+        phrasesets with the least AI player involvement.
+
+        AI players are identified by email ending with '@quipflip.internal'.
         """
-        from sqlalchemy import func
+        from sqlalchemy import func, or_
+        from backend.models.round import Round
+        from backend.models.player import Player
+        from backend.models.vote import Vote
 
-        # Get total count efficiently
+        AI_DOMAIN = "@quipflip.internal"
+        MAX_RESULTS = 500
+
+        # Get total count to determine if we need special handling
         count_result = await self.db.execute(
             select(func.count(Phraseset.phraseset_id))
             .where(Phraseset.status == "finalized")
         )
         total = count_result.scalar() or 0
 
-        # Get paginated results ordered by finalization time (most recent first)
-        result = await self.db.execute(
-            select(Phraseset)
-            .where(Phraseset.status == "finalized")
-            .order_by(Phraseset.finalized_at.desc())
-            .limit(limit)
-            .offset(offset)
-        )
-        phrasesets = list(result.scalars().all())
+        if total <= MAX_RESULTS:
+            # Simple case: fetch all and order by finalization time
+            result = await self.db.execute(
+                select(Phraseset)
+                .where(Phraseset.status == "finalized")
+                .order_by(Phraseset.finalized_at.desc())
+                .limit(MAX_RESULTS)
+            )
+            phrasesets = list(result.scalars().all())
+        else:
+            # Complex case: prioritize phrasesets with least AI involvement
+            # Calculate AI involvement score for each phraseset
 
-        # Build response
+            # Subquery to count AI contributors (prompt, copy1, copy2)
+            ai_contributors = (
+                select(Phraseset.phraseset_id, func.count().label('ai_count'))
+                .select_from(Phraseset)
+                .outerjoin(
+                    Round,
+                    or_(
+                        Phraseset.prompt_round_id == Round.round_id,
+                        Phraseset.copy_round_1_id == Round.round_id,
+                        Phraseset.copy_round_2_id == Round.round_id
+                    )
+                )
+                .outerjoin(Player, Round.player_id == Player.player_id)
+                .where(
+                    Phraseset.status == "finalized",
+                    Player.email.like(f"%{AI_DOMAIN}")
+                )
+                .group_by(Phraseset.phraseset_id)
+                .subquery()
+            )
+
+            # Subquery to count AI voters
+            ai_voters = (
+                select(Vote.phraseset_id, func.count().label('ai_voter_count'))
+                .select_from(Vote)
+                .join(Player, Vote.player_id == Player.player_id)
+                .where(Player.email.like(f"%{AI_DOMAIN}"))
+                .group_by(Vote.phraseset_id)
+                .subquery()
+            )
+
+            # Main query: order by AI involvement (least first), then by finalization time
+            result = await self.db.execute(
+                select(Phraseset)
+                .outerjoin(ai_contributors, Phraseset.phraseset_id == ai_contributors.c.phraseset_id)
+                .outerjoin(ai_voters, Phraseset.phraseset_id == ai_voters.c.phraseset_id)
+                .where(Phraseset.status == "finalized")
+                .order_by(
+                    func.coalesce(ai_contributors.c.ai_count, 0).asc(),
+                    func.coalesce(ai_voters.c.ai_voter_count, 0).asc(),
+                    Phraseset.finalized_at.desc()
+                )
+                .limit(MAX_RESULTS)
+            )
+            phrasesets = list(result.scalars().all())
+
+        # Build response (excluding original_phrase per requirements)
         items = []
         for phraseset in phrasesets:
             items.append({
                 "phraseset_id": phraseset.phraseset_id,
                 "prompt_text": phraseset.prompt_text,
-                "original_phrase": phraseset.original_phrase,
                 "created_at": self._ensure_utc(phraseset.created_at),
                 "finalized_at": self._ensure_utc(phraseset.finalized_at),
                 "vote_count": phraseset.vote_count,
@@ -596,7 +653,6 @@ class PhrasesetService:
 
         return {
             "phrasesets": items,
-            "total": total,
         }
 
     # ---------------------------------------------------------------------
