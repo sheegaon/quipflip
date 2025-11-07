@@ -20,9 +20,9 @@ const parseMarkdown = (text: string): React.ReactNode[] => {
   const elements: React.ReactNode[] = [];
 
   lines.forEach((line, lineIndex) => {
-    // Parse bold (**text**) and italic (*text*) using a combined regex
-    // Match **text** or *text* but not *** (which would be bold + italic start)
-    const parts = line.split(/(\*\*[^*]+?\*\*|\*[^*]+?\*)/g);
+    // Parse bold (**text**), italic (*text*), and icons ({{icon:name}}) using a combined regex
+    // Match **text** or *text* or {{icon:name}}
+    const parts = line.split(/(\*\*[^*]+?\*\*|\*[^*]+?\*|\{\{icon:[^}]+\}\})/g);
     const parsedLine = parts.map((part, partIndex) => {
       if (part.startsWith('**') && part.endsWith('**')) {
         // Bold text
@@ -30,6 +30,18 @@ const parseMarkdown = (text: string): React.ReactNode[] => {
       } else if (part.startsWith('*') && part.endsWith('*') && !part.startsWith('**')) {
         // Italic text (single asterisk)
         return <em key={`${lineIndex}-${partIndex}`}>{part.slice(1, -1)}</em>;
+      } else if (part.startsWith('{{icon:') && part.endsWith('}}')) {
+        // Icon syntax: {{icon:iconname}}
+        const iconName = part.slice(7, -2);
+        return (
+          <img
+            key={`${lineIndex}-${partIndex}`}
+            src={`/icon_${iconName}.svg`}
+            alt=""
+            className="inline-block w-5 h-5 mx-1 align-text-bottom"
+            aria-hidden="true"
+          />
+        );
       }
       return part;
     });
