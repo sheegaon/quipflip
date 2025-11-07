@@ -49,6 +49,7 @@ import type {
   BetaSurveyStatusResponse,
   BetaSurveyListResponse,
   WeeklyLeaderboardResponse,
+  CompletedPhrasesetsResponse,
 } from './types';
 
 // Base URL - configure based on environment
@@ -436,6 +437,17 @@ export const apiClient = {
 
   async claimPhrasesetPrize(phrasesetId: string, signal?: AbortSignal): Promise<ClaimPrizeResponse> {
     const { data } = await api.post(`/phrasesets/${phrasesetId}/claim`, {}, { signal });
+    return data;
+  },
+
+  async getCompletedPhrasesets(
+    params: { limit?: number; offset?: number } = {},
+    signal?: AbortSignal,
+  ): Promise<CompletedPhrasesetsResponse> {
+    const { data } = await api.get('/phrasesets/completed', {
+      params,
+      signal,
+    });
     return data;
   },
 

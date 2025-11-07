@@ -192,7 +192,7 @@ async def get_phraseset_history(
 
 @router.get("/completed", response_model=CompletedPhrasesetsResponse)
 async def get_completed_phrasesets(
-    limit: int = 50,
+    limit: int = 10,
     offset: int = 0,
     player: Player = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
@@ -200,6 +200,7 @@ async def get_completed_phrasesets(
     """Get a paginated list of all completed phrasesets.
 
     Returns metadata including start time, finalization time, and vote count.
+    Returns 10 items per page by default, ordered by finalization time (most recent first).
     """
     phraseset_service = PhrasesetService(db)
     try:
