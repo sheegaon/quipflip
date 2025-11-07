@@ -3,9 +3,12 @@ import { useGame } from '../contexts/GameContext';
 import { useResults } from '../contexts/ResultsContext';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Header } from '../components/Header';
+import { Pagination } from '../components/Pagination';
 import { loadingMessages } from '../utils/brandedMessages';
 import type { PhrasesetResults } from '../api/types';
 import { resultsLogger } from '../utils/logger';
+
+const ITEMS_PER_PAGE = 10;
 
 export const Results: React.FC = () => {
   const { actions: gameActions } = useGame();
@@ -16,6 +19,8 @@ export const Results: React.FC = () => {
   const [selectedPhrasesetId, setSelectedPhrasesetId] = useState<string | null>(null);
   const [expandedVotes, setExpandedVotes] = useState<Record<string, boolean>>({});
   const [showBreakdown, setShowBreakdown] = useState<boolean>(false);
+  const [voteResultsPage, setVoteResultsPage] = useState<number>(1);
+  const [latestResultsPage, setLatestResultsPage] = useState<number>(1);
 
   const refreshPhrasesetResultsRef = useRef(refreshPhrasesetResults);
   const refreshDashboardRef = useRef(refreshDashboard);
@@ -77,6 +82,7 @@ export const Results: React.FC = () => {
 
   const handleSelectPhraseset = (phrasesetId: string) => {
     setSelectedPhrasesetId(phrasesetId);
+    setVoteResultsPage(1); // Reset to first page when switching phrasesets
     markResultsViewed([phrasesetId]);
     resultsLogger.debug('Phraseset selected', { phrasesetId });
   };
@@ -205,6 +211,42 @@ export const Results: React.FC = () => {
     };
   }, [results]);
 
+  // Memoized vote results pagination
+  const voteResultsPagination = useMemo(() => {
+    if (!results) {
+      return {
+        paginatedVotes: [],
+        totalPages: 0,
+        startIndex: 0,
+      };
+    }
+
+    const sortedVotes = [...results.votes].sort((a, b) => b.vote_count - a.vote_count);
+    const totalPages = Math.ceil(sortedVotes.length / ITEMS_PER_PAGE);
+    const startIndex = (voteResultsPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    const paginatedVotes = sortedVotes.slice(startIndex, endIndex);
+
+    return {
+      paginatedVotes,
+      totalPages,
+      startIndex,
+    };
+  }, [results, voteResultsPage]);
+
+  // Memoized latest results pagination
+  const latestResultsPagination = useMemo(() => {
+    const totalPages = Math.ceil(pendingResults.length / ITEMS_PER_PAGE);
+    const startIndex = (latestResultsPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    const paginatedResults = pendingResults.slice(startIndex, endIndex);
+
+    return {
+      paginatedResults,
+      totalPages,
+    };
+  }, [pendingResults, latestResultsPage]);
+
   if (pendingResults.length === 0) {
     return (
       <div className="min-h-screen bg-quip-cream bg-pattern">
@@ -318,9 +360,9 @@ export const Results: React.FC = () => {
                 <div className="mb-6">
                   <h3 className="font-display font-bold text-lg text-quip-navy mb-3">Vote Results</h3>
                   <div className="space-y-2">
-                    {results.votes
-                      .sort((a, b) => b.vote_count - a.vote_count)
-                      .map((vote, index) => (
+                    {voteResultsPagination.paginatedVotes.map((vote, pageIndex) => {
+                      const actualIndex = voteResultsPagination.startIndex + pageIndex;
+                      return (
                         <div
                           key={vote.phrase}
                           className={`p-4 rounded-tile border-2 ${
@@ -332,7 +374,7 @@ export const Results: React.FC = () => {
                           <div className="flex justify-between items-start gap-4">
                             <div className="flex items-start gap-3">
                               <span className="text-2xl font-display font-bold text-quip-teal text-opacity-50">
-                                #{index + 1}
+                                #{actualIndex + 1}
                               </span>
                               <div>
                                 <p className="text-xl font-bold text-quip-navy">
@@ -375,7 +417,13 @@ export const Results: React.FC = () => {
                             </div>
                           )}
                         </div>
-                      ))}
+                      );
+                    })}
+                    <Pagination
+                      currentPage={voteResultsPage}
+                      totalPages={voteResultsPagination.totalPages}
+                      onPageChange={setVoteResultsPage}
+                    />
                   </div>
                 </div>
 
@@ -388,7 +436,7 @@ export const Results: React.FC = () => {
             <div className="tile-card p-4">
               <h2 className="font-display font-bold text-lg mb-4 text-quip-navy">Latest Results</h2>
               <div className="space-y-2">
-                {pendingResults.map((result) => (
+                {latestResultsPagination.paginatedResults.map((result) => (
                   <button
                     key={result.phraseset_id}
                     onClick={() => handleSelectPhraseset(result.phraseset_id)}
@@ -407,6 +455,13 @@ export const Results: React.FC = () => {
                   </button>
                 ))}
               </div>
+              {pendingResults.length > 0 && (
+                <Pagination
+                  currentPage={latestResultsPage}
+                  totalPages={latestResultsPagination.totalPages}
+                  onPageChange={setLatestResultsPage}
+                />
+              )}
             </div>
           </div>
         </div>
