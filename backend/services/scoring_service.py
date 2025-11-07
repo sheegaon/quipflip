@@ -479,14 +479,9 @@ class ScoringService:
                     isouter=True,
                 )
                 .join(
-                    Phraseset,
-                    Phraseset.phraseset_id == phraseset_contributors.c.phraseset_id,
-                    isouter=True,
-                )
-                .join(
                     Transaction,
                     and_(
-                        Transaction.reference_id == Phraseset.phraseset_id,
+                        Transaction.reference_id == phraseset_contributors.c.phraseset_id,
                         Transaction.player_id == Round.player_id,
                         Transaction.type == "prize_payout",
                     ),
