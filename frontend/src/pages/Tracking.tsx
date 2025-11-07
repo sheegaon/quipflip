@@ -15,6 +15,8 @@ import { useResults } from '../contexts/ResultsContext';
 import { trackingLogger } from '../utils/logger';
 import { getUniqueIdForSummary } from '../utils/phrasesetHelpers';
 
+const ITEMS_PER_PAGE = 10;
+
 type RoleFilter = 'all' | 'prompt' | 'copy' | 'vote';
 type StatusFilter = 'all' | 'in_progress' | 'voting' | 'finalized' | 'abandoned';
 
@@ -253,11 +255,10 @@ export const Tracking: React.FC = () => {
   const totalTracked = useMemo(() => phrasesets.length, [phrasesets.length]);
 
   // Pagination calculations
-  const itemsPerPage = 10;
-  const totalPages = Math.ceil(phrasesets.length / itemsPerPage);
+  const totalPages = Math.ceil(phrasesets.length / ITEMS_PER_PAGE);
   const paginatedPhrasesets = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
     return phrasesets.slice(startIndex, endIndex);
   }, [phrasesets, currentPage]);
 

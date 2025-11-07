@@ -8,6 +8,8 @@ import { loadingMessages } from '../utils/brandedMessages';
 import type { PhrasesetResults } from '../api/types';
 import { resultsLogger } from '../utils/logger';
 
+const ITEMS_PER_PAGE = 10;
+
 export const Results: React.FC = () => {
   const { actions: gameActions } = useGame();
   const { state: resultsState, actions: resultsActions } = useResults();
@@ -209,6 +211,42 @@ export const Results: React.FC = () => {
     };
   }, [results]);
 
+  // Memoized vote results pagination
+  const voteResultsPagination = useMemo(() => {
+    if (!results) {
+      return {
+        paginatedVotes: [],
+        totalPages: 0,
+        startIndex: 0,
+      };
+    }
+
+    const sortedVotes = [...results.votes].sort((a, b) => b.vote_count - a.vote_count);
+    const totalPages = Math.ceil(sortedVotes.length / ITEMS_PER_PAGE);
+    const startIndex = (voteResultsPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    const paginatedVotes = sortedVotes.slice(startIndex, endIndex);
+
+    return {
+      paginatedVotes,
+      totalPages,
+      startIndex,
+    };
+  }, [results, voteResultsPage]);
+
+  // Memoized latest results pagination
+  const latestResultsPagination = useMemo(() => {
+    const totalPages = Math.ceil(pendingResults.length / ITEMS_PER_PAGE);
+    const startIndex = (latestResultsPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    const paginatedResults = pendingResults.slice(startIndex, endIndex);
+
+    return {
+      paginatedResults,
+      totalPages,
+    };
+  }, [pendingResults, latestResultsPage]);
+
   if (pendingResults.length === 0) {
     return (
       <div className="min-h-screen bg-quip-cream bg-pattern">
@@ -322,83 +360,70 @@ export const Results: React.FC = () => {
                 <div className="mb-6">
                   <h3 className="font-display font-bold text-lg text-quip-navy mb-3">Vote Results</h3>
                   <div className="space-y-2">
-                    {(() => {
-                      const sortedVotes = [...results.votes].sort((a, b) => b.vote_count - a.vote_count);
-                      const itemsPerPage = 10;
-                      const totalPages = Math.ceil(sortedVotes.length / itemsPerPage);
-                      const startIndex = (voteResultsPage - 1) * itemsPerPage;
-                      const endIndex = startIndex + itemsPerPage;
-                      const paginatedVotes = sortedVotes.slice(startIndex, endIndex);
-
+                    {voteResultsPagination.paginatedVotes.map((vote, pageIndex) => {
+                      const actualIndex = voteResultsPagination.startIndex + pageIndex;
                       return (
-                        <>
-                          {paginatedVotes.map((vote, pageIndex) => {
-                            const actualIndex = startIndex + pageIndex;
-                            return (
-                              <div
-                                key={vote.phrase}
-                                className={`p-4 rounded-tile border-2 ${
-                                  vote.is_original
-                                    ? 'bg-quip-orange bg-opacity-10 border-quip-orange'
-                                    : 'bg-quip-cream border-quip-teal border-opacity-30'
-                                }`}
-                              >
-                                <div className="flex justify-between items-start gap-4">
-                                  <div className="flex items-start gap-3">
-                                    <span className="text-2xl font-display font-bold text-quip-teal text-opacity-50">
-                                      #{actualIndex + 1}
+                        <div
+                          key={vote.phrase}
+                          className={`p-4 rounded-tile border-2 ${
+                            vote.is_original
+                              ? 'bg-quip-orange bg-opacity-10 border-quip-orange'
+                              : 'bg-quip-cream border-quip-teal border-opacity-30'
+                          }`}
+                        >
+                          <div className="flex justify-between items-start gap-4">
+                            <div className="flex items-start gap-3">
+                              <span className="text-2xl font-display font-bold text-quip-teal text-opacity-50">
+                                #{actualIndex + 1}
+                              </span>
+                              <div>
+                                <p className="text-xl font-bold text-quip-navy">
+                                  {vote.phrase}
+                                  {vote.is_original && (
+                                    <span className="ml-2 text-sm bg-quip-orange text-white px-2 py-1 rounded-lg font-medium">
+                                      ORIGINAL
                                     </span>
-                                    <div>
-                                      <p className="text-xl font-bold text-quip-navy">
-                                        {vote.phrase}
-                                        {vote.is_original && (
-                                          <span className="ml-2 text-sm bg-quip-orange text-white px-2 py-1 rounded-lg font-medium">
-                                            ORIGINAL
-                                          </span>
-                                        )}
-                                      </p>
-                                      <button
-                                        type="button"
-                                        onClick={() => toggleVotersList(vote.phrase)}
-                                        className="mt-2 inline-flex items-center text-sm font-medium text-quip-turquoise hover:text-quip-navy focus:outline-none"
-                                      >
-                                        {expandedVotes[vote.phrase] ? 'Hide voters' : 'Show voters'} ({vote.voters.length})
-                                      </button>
-                                    </div>
-                                  </div>
-                                  <div className="text-right">
-                                    <p className="text-2xl font-display font-bold text-quip-turquoise">
-                                      {vote.vote_count}
-                                    </p>
-                                    <p className="text-xs text-quip-teal">votes</p>
-                                  </div>
-                                </div>
-                                {expandedVotes[vote.phrase] && (
-                                  <div className="mt-4 bg-white bg-opacity-80 rounded-tile border border-quip-teal border-opacity-20 p-3">
-                                    {vote.voters.length === 0 ? (
-                                      <p className="text-sm text-quip-teal italic">No votes for this phrase yet.</p>
-                                    ) : (
-                                      <ul className="space-y-1">
-                                        {vote.voters.map((voter, index) => (
-                                          <li key={`${vote.phrase}-${voter}-${index}`} className="text-sm text-quip-navy">
-                                            {voter}
-                                          </li>
-                                        ))}
-                                      </ul>
-                                    )}
-                                  </div>
-                                )}
+                                  )}
+                                </p>
+                                <button
+                                  type="button"
+                                  onClick={() => toggleVotersList(vote.phrase)}
+                                  className="mt-2 inline-flex items-center text-sm font-medium text-quip-turquoise hover:text-quip-navy focus:outline-none"
+                                >
+                                  {expandedVotes[vote.phrase] ? 'Hide voters' : 'Show voters'} ({vote.voters.length})
+                                </button>
                               </div>
-                            );
-                          })}
-                          <Pagination
-                            currentPage={voteResultsPage}
-                            totalPages={totalPages}
-                            onPageChange={setVoteResultsPage}
-                          />
-                        </>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-2xl font-display font-bold text-quip-turquoise">
+                                {vote.vote_count}
+                              </p>
+                              <p className="text-xs text-quip-teal">votes</p>
+                            </div>
+                          </div>
+                          {expandedVotes[vote.phrase] && (
+                            <div className="mt-4 bg-white bg-opacity-80 rounded-tile border border-quip-teal border-opacity-20 p-3">
+                              {vote.voters.length === 0 ? (
+                                <p className="text-sm text-quip-teal italic">No votes for this phrase yet.</p>
+                              ) : (
+                                <ul className="space-y-1">
+                                  {vote.voters.map((voter, index) => (
+                                    <li key={`${vote.phrase}-${voter}-${index}`} className="text-sm text-quip-navy">
+                                      {voter}
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       );
-                    })()}
+                    })}
+                    <Pagination
+                      currentPage={voteResultsPage}
+                      totalPages={voteResultsPagination.totalPages}
+                      onPageChange={setVoteResultsPage}
+                    />
                   </div>
                 </div>
 
@@ -410,45 +435,33 @@ export const Results: React.FC = () => {
           <div className="lg:col-span-1">
             <div className="tile-card p-4">
               <h2 className="font-display font-bold text-lg mb-4 text-quip-navy">Latest Results</h2>
-              {(() => {
-                const itemsPerPage = 10;
-                const totalPages = Math.ceil(pendingResults.length / itemsPerPage);
-                const startIndex = (latestResultsPage - 1) * itemsPerPage;
-                const endIndex = startIndex + itemsPerPage;
-                const paginatedResults = pendingResults.slice(startIndex, endIndex);
-
-                return (
-                  <>
-                    <div className="space-y-2">
-                      {paginatedResults.map((result) => (
-                        <button
-                          key={result.phraseset_id}
-                          onClick={() => handleSelectPhraseset(result.phraseset_id)}
-                          className={`w-full text-left p-3 rounded-tile transition-all ${
-                            selectedPhrasesetId === result.phraseset_id
-                              ? 'bg-quip-turquoise bg-opacity-10 border-2 border-quip-turquoise'
-                              : 'bg-quip-cream hover:bg-quip-turquoise hover:bg-opacity-5 border-2 border-transparent'
-                          }`}
-                        >
-                          <p className="text-sm font-semibold text-quip-navy truncate">
-                            {result.prompt_text}
-                          </p>
-                          <p className="text-xs text-quip-teal mt-1">
-                            Role: {result.role} • {result.result_viewed ? 'Viewed' : '✨ New!'}
-                          </p>
-                        </button>
-                      ))}
-                    </div>
-                    {pendingResults.length > 0 && (
-                      <Pagination
-                        currentPage={latestResultsPage}
-                        totalPages={totalPages}
-                        onPageChange={setLatestResultsPage}
-                      />
-                    )}
-                  </>
-                );
-              })()}
+              <div className="space-y-2">
+                {latestResultsPagination.paginatedResults.map((result) => (
+                  <button
+                    key={result.phraseset_id}
+                    onClick={() => handleSelectPhraseset(result.phraseset_id)}
+                    className={`w-full text-left p-3 rounded-tile transition-all ${
+                      selectedPhrasesetId === result.phraseset_id
+                        ? 'bg-quip-turquoise bg-opacity-10 border-2 border-quip-turquoise'
+                        : 'bg-quip-cream hover:bg-quip-turquoise hover:bg-opacity-5 border-2 border-transparent'
+                    }`}
+                  >
+                    <p className="text-sm font-semibold text-quip-navy truncate">
+                      {result.prompt_text}
+                    </p>
+                    <p className="text-xs text-quip-teal mt-1">
+                      Role: {result.role} • {result.result_viewed ? 'Viewed' : '✨ New!'}
+                    </p>
+                  </button>
+                ))}
+              </div>
+              {pendingResults.length > 0 && (
+                <Pagination
+                  currentPage={latestResultsPage}
+                  totalPages={latestResultsPagination.totalPages}
+                  onPageChange={setLatestResultsPage}
+                />
+              )}
             </div>
           </div>
         </div>
