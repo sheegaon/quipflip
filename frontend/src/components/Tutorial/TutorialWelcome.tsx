@@ -135,6 +135,12 @@ const TutorialWelcome: React.FC<TutorialWelcomeProps> = ({ onStart, onSkip }) =>
         <div className="tutorial-welcome-content">
           <h1 className="tutorial-welcome-title">Welcome to Quipflip!</h1>
 
+          {player?.username && (
+            <p className="tutorial-welcome-username">
+              You've been assigned the username <strong>{player.username}</strong> — this is how other players in the game will see you.
+            </p>
+          )}
+
           <p className="tutorial-welcome-description">
             Quipflip is a creative word game where you can:
           </p>
