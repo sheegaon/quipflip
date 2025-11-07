@@ -113,9 +113,9 @@ This is a great way to learn strategies and see examples of creative quips, conv
     target: '.tutorial-completed-icon',
     position: 'bottom',
     action: 'wait',
-    // No nextStep - this is the final tutorial screen
+    // No nextStep - this is the final tutorial screen, shows "End Tutorial" button
     showSkip: false,
-    showBack: true,
+    showBack: false,
   },
 };
 
