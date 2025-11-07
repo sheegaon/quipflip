@@ -92,19 +92,31 @@ Voters will try to identify the original, so the better you match the style, the
 
 You'll see a prompt and three phrases. One is the original, two are copies.
 
-Your goal is to identify which phrase was the original. Choose carefully - correct votes earn coins!
-
-**Not sure you fully understand yet?** Click the **eye icon** in the header to view completed rounds and observe actual past games.`,
+Your goal is to identify which phrase was the original. Choose carefully - correct votes earn coins!`,
       // **Make your vote now to complete the tutorial.**
-    target: '.tutorial-completed-icon',
-    position: 'bottom',
+    target: '.tutorial-vote-round',
+    position: 'top',
     action: 'wait',
-    // Removed nextStep to show "End Tutorial" button
-    showSkip: false, // Hide skip button on final tutorial step
+    nextStep: 'completed',
+    showSkip: false,
     showBack: false,
   },
 
-  completed: null,
+  completed: {
+    id: 'completed',
+    title: 'Explore Past Rounds',
+    message: `**Not sure you fully understand the game yet?**
+
+You can click the **eye icon** in the header anytime to view completed rounds and observe how actual past games played out.
+
+This is a great way to learn strategies and see examples of creative quips, convincing copies, and tricky votes!`,
+    target: '.tutorial-completed-icon',
+    position: 'bottom',
+    action: 'wait',
+    // No nextStep - this is the final tutorial screen
+    showSkip: false,
+    showBack: true,
+  },
 };
 
 export const getTutorialStep = (progress: TutorialProgress): TutorialStep | null => {
@@ -117,7 +129,7 @@ export const getNextStep = (currentStep: TutorialProgress): TutorialProgress | n
 };
 
 export const getPreviousStep = (currentStep: TutorialProgress): TutorialProgress | null => {
-  const steps: TutorialProgress[] = ['welcome', 'dashboard', 'prompt_round', 'prompt_round_paused', 'copy_round', 'vote_round'];
+  const steps: TutorialProgress[] = ['welcome', 'dashboard', 'prompt_round', 'prompt_round_paused', 'copy_round', 'vote_round', 'completed'];
   const currentIndex = steps.indexOf(currentStep);
   if (currentIndex > 0) {
     return steps[currentIndex - 1];
