@@ -16,6 +16,7 @@ import asyncio
 import logging
 import os
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -230,13 +231,16 @@ async def main():
 
         # Step 2: Create backup database with Alembic
         logger.info("\nStep 2: Creating backup database schema...")
-        # Call directly - Alembic's env.py uses asyncio.run() which handles its own event loop
-        create_backup_database()
+        # Run in thread pool to avoid event loop conflicts (Alembic uses asyncio.run internally)
+        loop = asyncio.get_event_loop()
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            await loop.run_in_executor(executor, create_backup_database)
 
         # Step 3: Insert data into backup database
         logger.info("\nStep 3: Inserting data into backup database...")
-        # Call directly - this is synchronous SQLAlchemy and won't conflict with event loop
-        insert_data_into_backup(all_data)
+        # Run in thread pool to avoid blocking the event loop with synchronous database operations
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            await loop.run_in_executor(executor, insert_data_into_backup, all_data)
 
         logger.info("\n" + "=" * 60)
         logger.info("Backup completed successfully!")
