@@ -235,20 +235,32 @@ export const Completed: React.FC = () => {
                 <div className="text-sm text-quip-teal">
                   Page {page + 1} of {totalPages}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-4 items-center">
                   <button
                     onClick={() => setPage(page - 1)}
                     disabled={page === 0}
-                    className="px-4 py-2 rounded-tile bg-quip-turquoise text-white font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-quip-teal transition-colors"
+                    className="disabled:opacity-30 disabled:cursor-not-allowed hover:opacity-70 transition-opacity"
+                    aria-label="Previous page"
                   >
-                    Previous
+                    <img
+                      src="/icon_arrow_left.svg"
+                      alt=""
+                      className="w-4 h-6"
+                      aria-hidden="true"
+                    />
                   </button>
                   <button
                     onClick={() => setPage(page + 1)}
                     disabled={page >= totalPages - 1}
-                    className="px-4 py-2 rounded-tile bg-quip-turquoise text-white font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-quip-teal transition-colors"
+                    className="disabled:opacity-30 disabled:cursor-not-allowed hover:opacity-70 transition-opacity"
+                    aria-label="Next page"
                   >
-                    Next
+                    <img
+                      src="/icon_arrow_right.svg"
+                      alt=""
+                      className="w-4 h-6"
+                      aria-hidden="true"
+                    />
                   </button>
                 </div>
               </div>
