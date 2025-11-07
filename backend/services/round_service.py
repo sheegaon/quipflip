@@ -453,18 +453,36 @@ class RoundService:
                 candidate_prompt_round_ids = await self._pop_prompt_batch(
                     max_attempts - attempts
                 )
+                # Filter out prompts we've already tried in this request to prevent cycling.
+                # Filtered prompts will be requeued at the end (success or failure).
+                candidate_prompt_round_ids = [
+                    pid for pid in candidate_prompt_round_ids
+                    if pid not in tried_prompt_ids
+                ]
+
                 if not candidate_prompt_round_ids:
                     logger.warning(
-                        f"[Copy Round Start] No prompt batch available (attempt {attempts + 1}), rehydrating queue"
+                        f"[Copy Round Start] No new prompts available (attempt {attempts + 1}, tried {len(tried_prompt_ids)} unique prompts), rehydrating queue"
                     )
                     await self.ensure_prompt_queue_populated()
                     candidate_prompt_round_ids = await self._pop_prompt_batch(
                         max_attempts - attempts
                     )
+                    # Filter again after rehydration
+                    candidate_prompt_round_ids = [
+                        pid for pid in candidate_prompt_round_ids
+                        if pid not in tried_prompt_ids
+                    ]
+
                     if not candidate_prompt_round_ids:
                         logger.error(
-                            f"[Copy Round Start] No prompts available after rehydration. Queue length: {QueueService.get_prompt_rounds_waiting()}"
+                            f"[Copy Round Start] No new prompts available after rehydration. "
+                            f"Queue length: {QueueService.get_prompt_rounds_waiting()}, "
+                            f"already tried {len(tried_prompt_ids)} unique prompts"
                         )
+                        # Requeue everything we tried before raising
+                        for tried_prompt_id in tried_prompt_ids:
+                            QueueService.add_prompt_round_to_queue(tried_prompt_id)
                         raise NoPromptsAvailableError("No prompts available")
 
                 await self._prefetch_prompt_rounds(
