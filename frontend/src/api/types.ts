@@ -388,7 +388,6 @@ export interface CompletedPhrasesetItem {
 
 export interface CompletedPhrasesetsResponse {
   phrasesets: CompletedPhrasesetItem[];
-  total: number;
 }
 
 export interface PhrasesetContributor {

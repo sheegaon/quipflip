@@ -9,7 +9,6 @@ type SortDirection = 'asc' | 'desc';
 
 export const Completed: React.FC = () => {
   const [phrasesets, setPhrasesets] = useState<CompletedPhrasesetItem[]>([]);
-  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(0);
@@ -26,11 +25,10 @@ export const Completed: React.FC = () => {
         setLoading(true);
         setError(null);
         const response = await apiClient.getCompletedPhrasesets(
-          { limit: 100, offset: 0 }, // Fetch more to enable client-side pagination and sorting
+          { limit: 500, offset: 0 }, // Fetch up to 500 for client-side pagination and sorting
           controller.signal
         );
         setPhrasesets(response.phrasesets);
-        setTotal(response.total);
       } catch (err: any) {
         if (err.name !== 'CanceledError' && err.code !== 'ERR_CANCELED') {
           setError(err.detail || err.message || 'Failed to load completed phrasesets');
@@ -112,6 +110,11 @@ export const Completed: React.FC = () => {
     return sortDirection === 'asc' ? <span className="text-quip-turquoise">↑</span> : <span className="text-quip-turquoise">↓</span>;
   };
 
+  const getAriaSort = (field: SortField): 'ascending' | 'descending' | 'none' => {
+    if (sortField !== field) return 'none';
+    return sortDirection === 'asc' ? 'ascending' : 'descending';
+  };
+
   return (
     <div className="min-h-screen bg-quip-cream bg-pattern">
       <Header />
@@ -139,7 +142,7 @@ export const Completed: React.FC = () => {
             {/* Stats summary */}
             <div className="p-4 bg-quip-navy bg-opacity-5 border-b-2 border-quip-navy border-opacity-10">
               <p className="text-sm text-quip-teal">
-                <span className="font-semibold text-quip-navy">{total}</span> completed rounds total
+                Showing <span className="font-semibold text-quip-navy">{phrasesets.length}</span> completed rounds
               </p>
             </div>
 
@@ -154,6 +157,7 @@ export const Completed: React.FC = () => {
                     <th
                       className="px-4 py-3 text-left text-xs font-semibold text-quip-teal uppercase tracking-wider cursor-pointer hover:bg-quip-turquoise hover:bg-opacity-20"
                       onClick={() => handleSort('vote_count')}
+                      aria-sort={getAriaSort('vote_count')}
                     >
                       <div className="flex items-center gap-1">
                         Voters {getSortIcon('vote_count')}
@@ -162,6 +166,7 @@ export const Completed: React.FC = () => {
                     <th
                       className="px-4 py-3 text-left text-xs font-semibold text-quip-teal uppercase tracking-wider cursor-pointer hover:bg-quip-turquoise hover:bg-opacity-20"
                       onClick={() => handleSort('total_pool')}
+                      aria-sort={getAriaSort('total_pool')}
                     >
                       <div className="flex items-center gap-1">
                         Prize Pool {getSortIcon('total_pool')}
@@ -170,6 +175,7 @@ export const Completed: React.FC = () => {
                     <th
                       className="px-4 py-3 text-left text-xs font-semibold text-quip-teal uppercase tracking-wider cursor-pointer hover:bg-quip-turquoise hover:bg-opacity-20"
                       onClick={() => handleSort('created_at')}
+                      aria-sort={getAriaSort('created_at')}
                     >
                       <div className="flex items-center gap-1">
                         Created {getSortIcon('created_at')}
@@ -178,6 +184,7 @@ export const Completed: React.FC = () => {
                     <th
                       className="px-4 py-3 text-left text-xs font-semibold text-quip-teal uppercase tracking-wider cursor-pointer hover:bg-quip-turquoise hover:bg-opacity-20"
                       onClick={() => handleSort('finalized_at')}
+                      aria-sort={getAriaSort('finalized_at')}
                     >
                       <div className="flex items-center gap-1">
                         Finalized {getSortIcon('finalized_at')}

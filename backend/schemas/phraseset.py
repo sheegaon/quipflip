@@ -228,4 +228,3 @@ class CompletedPhrasesetItem(BaseSchema):
 class CompletedPhrasesetsResponse(BaseSchema):
     """List of completed phrasesets."""
     phrasesets: list[CompletedPhrasesetItem]
-    total: int
