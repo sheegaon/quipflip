@@ -97,13 +97,13 @@ Your goal is to identify which phrase was the original. Choose carefully - corre
     target: '.tutorial-vote-round',
     position: 'top',
     action: 'wait',
-    nextStep: 'completed',
+    nextStep: 'completed_rounds_guide',
     showSkip: false,
     showBack: false,
   },
 
-  completed: {
-    id: 'completed',
+  completed_rounds_guide: {
+    id: 'completed_rounds_guide',
     title: 'Explore Past Rounds',
     message: `**Not sure you fully understand the game yet?**
 
@@ -117,6 +117,8 @@ This is a great way to learn strategies and see examples of creative quips, conv
     showSkip: false,
     showBack: false,
   },
+
+  completed: null,
 };
 
 export const getTutorialStep = (progress: TutorialProgress): TutorialStep | null => {
@@ -129,7 +131,7 @@ export const getNextStep = (currentStep: TutorialProgress): TutorialProgress | n
 };
 
 export const getPreviousStep = (currentStep: TutorialProgress): TutorialProgress | null => {
-  const steps: TutorialProgress[] = ['welcome', 'dashboard', 'prompt_round', 'prompt_round_paused', 'copy_round', 'vote_round', 'completed'];
+  const steps: TutorialProgress[] = ['welcome', 'dashboard', 'prompt_round', 'prompt_round_paused', 'copy_round', 'vote_round', 'completed_rounds_guide'];
   const currentIndex = steps.indexOf(currentStep);
   if (currentIndex > 0) {
     return steps[currentIndex - 1];

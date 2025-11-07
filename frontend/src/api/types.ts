@@ -578,6 +578,7 @@ export type TutorialProgress =
   | 'copy_round'
   | 'copy_round_paused'
   | 'vote_round'
+  | 'completed_rounds_guide'
   | 'completed';
 
 export interface TutorialStatus {
