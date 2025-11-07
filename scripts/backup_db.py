@@ -13,9 +13,11 @@ Environment Variables:
 """
 
 import asyncio
+import json
 import logging
 import os
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List
 from uuid import UUID
@@ -58,8 +60,16 @@ def serialize_value(value: Any) -> Any:
     Returns:
         SQLite-compatible value
     """
+    if value is None:
+        return None
     if isinstance(value, UUID):
         return str(value)
+    if isinstance(value, (dict, list)):
+        # JSON/JSONB columns: serialize to JSON string for SQLite
+        return json.dumps(value)
+    if isinstance(value, datetime):
+        # Ensure datetime is in ISO format string
+        return value.isoformat()
     return value
 
 
