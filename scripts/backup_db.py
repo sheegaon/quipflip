@@ -230,11 +230,13 @@ async def main():
 
         # Step 2: Create backup database with Alembic
         logger.info("\nStep 2: Creating backup database schema...")
-        create_backup_database()
+        # Run in separate thread to avoid event loop conflicts with async migrations
+        await asyncio.to_thread(create_backup_database)
 
         # Step 3: Insert data into backup database
         logger.info("\nStep 3: Inserting data into backup database...")
-        insert_data_into_backup(all_data)
+        # Run in separate thread to avoid blocking the event loop
+        await asyncio.to_thread(insert_data_into_backup, all_data)
 
         logger.info("\n" + "=" * 60)
         logger.info("Backup completed successfully!")
