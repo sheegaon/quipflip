@@ -1289,13 +1289,15 @@ Attempting to view a non-finalized phraseset or a phraseset you didn't participa
 - **Handles incomplete phrasesets:** If a phraseset was abandoned before all rounds completed, only the completed events will be shown
 
 #### `GET /phrasesets/completed`
-Get a paginated list of all finalized phrasesets with summary metadata.
+Get a list of finalized phrasesets with summary metadata.
 
 **Purpose:** This endpoint allows browsing through completed rounds to select which ones to review in detail. Use it to build a list/grid UI showing all finished games. The original phrase is intentionally excluded to preserve the mystery for players who weren't involved in the round.
 
 **Query Parameters:**
-- `limit` (optional, default: 10) - Number of results per page (max 100)
-- `offset` (optional, default: 0) - Number of results to skip for pagination
+- `limit` (optional, default: 10) - Ignored, kept for API compatibility
+- `offset` (optional, default: 0) - Ignored, kept for API compatibility
+
+**Important:** This endpoint returns up to 500 phrasesets. All pagination and sorting should be handled client-side.
 
 **Response:**
 ```json
@@ -1317,44 +1319,49 @@ Get a paginated list of all finalized phrasesets with summary metadata.
       "vote_count": 12,
       "total_pool": 350
     }
-  ],
-  "total": 42
+  ]
 }
 ```
 
 **Notes:**
-- Results are ordered by finalization time, most recent first
+- Returns up to 500 phrasesets maximum
+- When ≤ 500 total: Results ordered by finalization time (most recent first)
+- When > 500 total: Prioritizes phrasesets with least AI player involvement, then by finalization time
+  - AI players identified by email ending with `@quipflip.internal`
+  - Sorts by: AI contributor count ASC, AI voter count ASC, finalized_at DESC
+  - This ensures human-created rounds are prioritized over AI-generated rounds
 - Only includes phrasesets with status = "finalized"
-- Default page size is 10 items (optimized for UI display)
-- Use `limit` and `offset` for pagination (e.g., `limit=10&offset=10` for page 2)
-- `total` indicates the total number of finalized phrasesets across all pages
 - Timestamps are in UTC ISO 8601 format
 - `created_at` is when the original prompt was submitted
 - `finalized_at` is when voting completed and prizes were distributed
 - `total_pool` is the final prize pool amount distributed to contributors
 - `original_phrase` is NOT included in this response (preserves mystery for non-participants)
+- **No total count provided** - client receives up to 500 items for client-side handling
 
-**Example Pagination:**
+**Example Usage:**
 ```bash
-# First page (10 results, default)
+# Fetch all available completed phrasesets (up to 500)
 GET /phrasesets/completed
 
-# Explicit first page
-GET /phrasesets/completed?limit=10&offset=0
+# Same result (limit/offset ignored)
+GET /phrasesets/completed?limit=500&offset=0
+```
 
-# Second page (next 10 results)
-GET /phrasesets/completed?limit=10&offset=10
+**Client-Side Implementation:**
+```typescript
+// Fetch all available rounds once
+const response = await fetch('/phrasesets/completed');
+const { phrasesets } = await response.json();
 
-# Third page
-GET /phrasesets/completed?limit=10&offset=20
-
-# Custom page size
-GET /phrasesets/completed?limit=20&offset=0
+// Implement sorting and pagination in the UI
+const sorted = phrasesets.sort((a, b) => /* custom sort */);
+const page1 = sorted.slice(0, 10);   // First 10 items
+const page2 = sorted.slice(10, 20);  // Next 10 items
 ```
 
 **Use Cases:**
-- Building a "Browse Completed Rounds" page
-- Creating a review history UI
+- Building a "Browse Completed Rounds" page with client-side sorting/filtering
+- Creating a review history UI with custom sort options
 - Showing recent activity to players
 - Allowing players to revisit and analyze past rounds
 
