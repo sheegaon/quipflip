@@ -280,3 +280,4 @@ export const Completed: React.FC = () => {
   );
 };
 
+export default Completed;
