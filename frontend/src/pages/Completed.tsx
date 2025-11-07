@@ -232,37 +232,35 @@ export const Completed: React.FC = () => {
             {/* Pagination */}
             {totalPages > 1 && (
               <div className="p-4 bg-quip-navy bg-opacity-5 border-t-2 border-quip-navy border-opacity-10 flex items-center justify-between">
+                <button
+                  onClick={() => setPage(page - 1)}
+                  disabled={page === 0}
+                  className="disabled:opacity-30 disabled:cursor-not-allowed hover:opacity-70 transition-opacity"
+                  aria-label="Previous page"
+                >
+                  <img
+                    src="/icon_arrow_left.svg"
+                    alt=""
+                    className="w-4 h-6"
+                    aria-hidden="true"
+                  />
+                </button>
                 <div className="text-sm text-quip-teal">
                   Page {page + 1} of {totalPages}
                 </div>
-                <div className="flex gap-4 items-center">
-                  <button
-                    onClick={() => setPage(page - 1)}
-                    disabled={page === 0}
-                    className="disabled:opacity-30 disabled:cursor-not-allowed hover:opacity-70 transition-opacity"
-                    aria-label="Previous page"
-                  >
-                    <img
-                      src="/icon_arrow_left.svg"
-                      alt=""
-                      className="w-4 h-6"
-                      aria-hidden="true"
-                    />
-                  </button>
-                  <button
-                    onClick={() => setPage(page + 1)}
-                    disabled={page >= totalPages - 1}
-                    className="disabled:opacity-30 disabled:cursor-not-allowed hover:opacity-70 transition-opacity"
-                    aria-label="Next page"
-                  >
-                    <img
-                      src="/icon_arrow_right.svg"
-                      alt=""
-                      className="w-4 h-6"
-                      aria-hidden="true"
-                    />
-                  </button>
-                </div>
+                <button
+                  onClick={() => setPage(page + 1)}
+                  disabled={page >= totalPages - 1}
+                  className="disabled:opacity-30 disabled:cursor-not-allowed hover:opacity-70 transition-opacity"
+                  aria-label="Next page"
+                >
+                  <img
+                    src="/icon_arrow_right.svg"
+                    alt=""
+                    className="w-4 h-6"
+                    aria-hidden="true"
+                  />
+                </button>
               </div>
             )}
           </div>
