@@ -18,6 +18,7 @@ export const Results: React.FC = () => {
   const [expandedVotes, setExpandedVotes] = useState<Record<string, boolean>>({});
   const [showBreakdown, setShowBreakdown] = useState<boolean>(false);
   const [voteResultsPage, setVoteResultsPage] = useState<number>(1);
+  const [latestResultsPage, setLatestResultsPage] = useState<number>(1);
 
   const refreshPhrasesetResultsRef = useRef(refreshPhrasesetResults);
   const refreshDashboardRef = useRef(refreshDashboard);
@@ -409,26 +410,45 @@ export const Results: React.FC = () => {
           <div className="lg:col-span-1">
             <div className="tile-card p-4">
               <h2 className="font-display font-bold text-lg mb-4 text-quip-navy">Latest Results</h2>
-              <div className="space-y-2">
-                {pendingResults.map((result) => (
-                  <button
-                    key={result.phraseset_id}
-                    onClick={() => handleSelectPhraseset(result.phraseset_id)}
-                    className={`w-full text-left p-3 rounded-tile transition-all ${
-                      selectedPhrasesetId === result.phraseset_id
-                        ? 'bg-quip-turquoise bg-opacity-10 border-2 border-quip-turquoise'
-                        : 'bg-quip-cream hover:bg-quip-turquoise hover:bg-opacity-5 border-2 border-transparent'
-                    }`}
-                  >
-                    <p className="text-sm font-semibold text-quip-navy truncate">
-                      {result.prompt_text}
-                    </p>
-                    <p className="text-xs text-quip-teal mt-1">
-                      Role: {result.role} • {result.result_viewed ? 'Viewed' : '✨ New!'}
-                    </p>
-                  </button>
-                ))}
-              </div>
+              {(() => {
+                const itemsPerPage = 10;
+                const totalPages = Math.ceil(pendingResults.length / itemsPerPage);
+                const startIndex = (latestResultsPage - 1) * itemsPerPage;
+                const endIndex = startIndex + itemsPerPage;
+                const paginatedResults = pendingResults.slice(startIndex, endIndex);
+
+                return (
+                  <>
+                    <div className="space-y-2">
+                      {paginatedResults.map((result) => (
+                        <button
+                          key={result.phraseset_id}
+                          onClick={() => handleSelectPhraseset(result.phraseset_id)}
+                          className={`w-full text-left p-3 rounded-tile transition-all ${
+                            selectedPhrasesetId === result.phraseset_id
+                              ? 'bg-quip-turquoise bg-opacity-10 border-2 border-quip-turquoise'
+                              : 'bg-quip-cream hover:bg-quip-turquoise hover:bg-opacity-5 border-2 border-transparent'
+                          }`}
+                        >
+                          <p className="text-sm font-semibold text-quip-navy truncate">
+                            {result.prompt_text}
+                          </p>
+                          <p className="text-xs text-quip-teal mt-1">
+                            Role: {result.role} • {result.result_viewed ? 'Viewed' : '✨ New!'}
+                          </p>
+                        </button>
+                      ))}
+                    </div>
+                    {pendingResults.length > 0 && (
+                      <Pagination
+                        currentPage={latestResultsPage}
+                        totalPages={totalPages}
+                        onPageChange={setLatestResultsPage}
+                      />
+                    )}
+                  </>
+                );
+              })()}
             </div>
           </div>
         </div>
