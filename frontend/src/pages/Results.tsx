@@ -323,7 +323,7 @@ export const Results: React.FC = () => {
                   <h3 className="font-display font-bold text-lg text-quip-navy mb-3">Vote Results</h3>
                   <div className="space-y-2">
                     {(() => {
-                      const sortedVotes = results.votes.sort((a, b) => b.vote_count - a.vote_count);
+                      const sortedVotes = [...results.votes].sort((a, b) => b.vote_count - a.vote_count);
                       const itemsPerPage = 10;
                       const totalPages = Math.ceil(sortedVotes.length / itemsPerPage);
                       const startIndex = (voteResultsPage - 1) * itemsPerPage;
