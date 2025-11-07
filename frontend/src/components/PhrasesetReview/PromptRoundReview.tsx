@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
-import { getRandomMessage } from '../../utils/brandedMessages';
+import { Timer } from '../Timer';
+import { ThumbFeedbackButton } from '../ThumbFeedbackButton';
+import { ReviewBackButton } from './ReviewBackButton';
 import { EyeIcon } from '../icons/EyeIcon';
+import { getRandomMessage } from '../../utils/brandedMessages';
+import { createFrozenTimerDate } from '../../utils/reviewHelpers';
 
 interface PromptRoundReviewProps {
   promptText: string;
@@ -20,6 +24,8 @@ export const PromptRoundReview: React.FC<PromptRoundReviewProps> = ({
   const [isRevealed, setIsRevealed] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+
+  const frozenTimerDate = createFrozenTimerDate();
 
   const handleReveal = () => {
     setIsRevealed(true);
@@ -62,24 +68,20 @@ export const PromptRoundReview: React.FC<PromptRoundReviewProps> = ({
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-2 mb-2">
             <img src="/icon_prompt.svg" alt="Prompt round icon" className="w-8 h-8" />
-            <h1 className="text-3xl font-display font-bold text-quip-navy">Prompt Round Review</h1>
+            <h1 className="text-3xl font-display font-bold text-quip-navy">Prompt Round</h1>
           </div>
-          <p className="text-quip-teal">Review the phrase submitted for this prompt</p>
+          <p className="text-quip-teal">Submit a phrase for the prompt</p>
         </div>
 
-        {/* Timer - frozen at 3:00 */}
+        {/* Timer - frozen */}
         <div className="flex justify-center mb-6">
-          <div className="bg-quip-cream rounded-tile px-6 py-3 shadow-tile-sm">
-            <div className="text-center">
-              <span className="text-3xl font-display font-bold text-quip-navy">3:00</span>
-            </div>
-          </div>
+          <Timer expiresAt={frozenTimerDate} />
         </div>
 
         {/* Instructions */}
         <div className="bg-quip-orange bg-opacity-10 border-2 border-quip-orange rounded-tile p-4 mb-6">
           <p className="text-sm text-quip-navy">
-            <strong>👁 Review Mode:</strong> This is a review of a completed round. Click the masked text to reveal the submitted phrase.
+            <strong>💡 Tip:</strong> Type a short phrase that completes the sentence.
           </p>
         </div>
 
@@ -90,21 +92,19 @@ export const PromptRoundReview: React.FC<PromptRoundReviewProps> = ({
           </p>
 
           {/* Disabled Feedback Icons */}
-          <div className="absolute top-1 md:top-2 right-1 md:right-3 flex gap-1 md:gap-1.5 opacity-30">
-            <button
-              disabled
-              className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-full bg-white/90 shadow-tile-sm cursor-not-allowed"
-              title="Feedback disabled in review mode"
-            >
-              <span className="text-lg">👍</span>
-            </button>
-            <button
-              disabled
-              className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-full bg-white/90 shadow-tile-sm cursor-not-allowed"
-              title="Feedback disabled in review mode"
-            >
-              <span className="text-lg">👎</span>
-            </button>
+          <div className="absolute top-1 md:top-2 right-1 md:right-3 flex gap-1 md:gap-1.5">
+            <ThumbFeedbackButton
+              type="like"
+              isActive={false}
+              onClick={() => {}}
+              disabled={true}
+            />
+            <ThumbFeedbackButton
+              type="dislike"
+              isActive={false}
+              onClick={() => {}}
+              disabled={true}
+            />
           </div>
         </div>
 
@@ -133,9 +133,7 @@ export const PromptRoundReview: React.FC<PromptRoundReviewProps> = ({
               )}
             </div>
             <p className="text-sm text-quip-teal mt-1">
-              {isRevealed
-                ? 'Phrase revealed - this text box cannot be edited in review mode'
-                : 'Click the box above to reveal the submitted phrase'}
+              2-5 words (4-100 characters), A-Z and spaces only
             </p>
           </div>
 
@@ -144,23 +142,16 @@ export const PromptRoundReview: React.FC<PromptRoundReviewProps> = ({
             disabled={!isRevealed || isSubmitting}
             className="w-full bg-quip-navy hover:bg-quip-teal disabled:bg-gray-400 text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm text-lg"
           >
-            {isSubmitting ? 'Continuing...' : 'Continue to Copy Round Review'}
+            {isSubmitting ? 'Continuing...' : 'Submit Phrase'}
           </button>
         </form>
 
         {/* Back Button with Eye Icon */}
-        <button
-          onClick={onBack}
-          disabled={isSubmitting}
-          className="w-full mt-4 flex items-center justify-center gap-2 text-quip-teal hover:text-quip-turquoise disabled:opacity-50 disabled:cursor-not-allowed py-2 font-medium transition-colors"
-        >
-          <EyeIcon />
-          <span>Back to Completed Rounds</span>
-        </button>
+        <ReviewBackButton onClick={onBack} disabled={isSubmitting} />
 
         {/* Player Info */}
         <div className="mt-6 p-4 bg-quip-navy bg-opacity-5 rounded-tile">
-          <p className="text-sm text-quip-teal text-center">
+          <p className="text-sm text-quip-teal">
             <strong className="text-quip-navy">Round played by:</strong> {playerUsername}
           </p>
         </div>

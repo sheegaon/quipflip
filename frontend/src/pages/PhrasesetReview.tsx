@@ -105,8 +105,6 @@ export const PhrasesetReview: React.FC = () => {
   return (
     <CopyRoundReview
       originalPhrase={phrasesetData.original_phrase || ''}
-      copyPhrase1={phrasesetData.copy_phrase_1 || ''}
-      copyPhrase2={phrasesetData.copy_phrase_2 || ''}
       onBack={handleBackToCompleted}
     />
   );
