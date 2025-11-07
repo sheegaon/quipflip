@@ -1,4 +1,5 @@
 import React from 'react';
+import { EyeIcon } from '../icons/EyeIcon';
 
 interface CopyRoundReviewProps {
   originalPhrase: string;
@@ -18,7 +19,7 @@ export const CopyRoundReview: React.FC<CopyRoundReviewProps> = ({
       <div className="max-w-2xl w-full tile-card p-8 slide-up-enter">
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-2 mb-2">
-            <img src="/icon_copy.svg" alt="" className="w-8 h-8" />
+            <img src="/icon_copy.svg" alt="Copy round icon" className="w-8 h-8" />
             <h1 className="text-3xl font-display font-bold text-quip-navy">Copy Round Review</h1>
           </div>
           <p className="text-quip-teal">Review the original phrase from the phraseset</p>
@@ -74,26 +75,7 @@ export const CopyRoundReview: React.FC<CopyRoundReviewProps> = ({
           onClick={onBack}
           className="w-full flex items-center justify-center gap-2 text-quip-teal hover:text-quip-turquoise py-3 font-medium transition-colors bg-white rounded-tile border-2 border-quip-teal hover:border-quip-turquoise"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-5 w-5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-            />
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-            />
-          </svg>
+          <EyeIcon />
           <span>Back to Completed Rounds</span>
         </button>
 

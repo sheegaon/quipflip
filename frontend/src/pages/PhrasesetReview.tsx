@@ -111,5 +111,3 @@ export const PhrasesetReview: React.FC = () => {
     />
   );
 };
-
-export default PhrasesetReview;

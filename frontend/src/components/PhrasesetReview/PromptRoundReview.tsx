@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { getRandomMessage } from '../../utils/brandedMessages';
+import { EyeIcon } from '../icons/EyeIcon';
 
 interface PromptRoundReviewProps {
   promptText: string;
@@ -44,7 +45,7 @@ export const PromptRoundReview: React.FC<PromptRoundReviewProps> = ({
       <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center p-4">
         <div className="tile-card max-w-md w-full p-8 text-center flip-enter">
           <div className="flex justify-center mb-4">
-            <img src="/icon_prompt.svg" alt="" className="w-24 h-24" />
+            <img src="/icon_prompt.svg" alt="Prompt round icon" className="w-24 h-24" />
           </div>
           <h2 className="text-2xl font-display font-bold text-quip-turquoise mb-2 success-message">
             {getRandomMessage('promptSubmitted')}
@@ -60,7 +61,7 @@ export const PromptRoundReview: React.FC<PromptRoundReviewProps> = ({
       <div className="max-w-2xl w-full tile-card p-8 slide-up-enter">
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-2 mb-2">
-            <img src="/icon_prompt.svg" alt="" className="w-8 h-8" />
+            <img src="/icon_prompt.svg" alt="Prompt round icon" className="w-8 h-8" />
             <h1 className="text-3xl font-display font-bold text-quip-navy">Prompt Round Review</h1>
           </div>
           <p className="text-quip-teal">Review the phrase submitted for this prompt</p>
@@ -121,25 +122,7 @@ export const PromptRoundReview: React.FC<PromptRoundReviewProps> = ({
             >
               {!isRevealed ? (
                 <div className="flex items-center justify-center gap-2 py-1">
-                  <svg
-                    className="w-6 h-6 text-quip-teal"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                    />
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                    />
-                  </svg>
+                  <EyeIcon className="w-6 h-6 text-quip-teal" />
                   <span className="text-quip-teal font-semibold">Click to reveal phrase</span>
                 </div>
               ) : (
@@ -161,7 +144,7 @@ export const PromptRoundReview: React.FC<PromptRoundReviewProps> = ({
             disabled={!isRevealed || isSubmitting}
             className="w-full bg-quip-navy hover:bg-quip-teal disabled:bg-gray-400 text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm text-lg"
           >
-            {isSubmitting ? 'Continuing...' : 'Submit Phrase'}
+            {isSubmitting ? 'Continuing...' : 'Continue to Copy Round Review'}
           </button>
         </form>
 
@@ -171,26 +154,7 @@ export const PromptRoundReview: React.FC<PromptRoundReviewProps> = ({
           disabled={isSubmitting}
           className="w-full mt-4 flex items-center justify-center gap-2 text-quip-teal hover:text-quip-turquoise disabled:opacity-50 disabled:cursor-not-allowed py-2 font-medium transition-colors"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-5 w-5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-            />
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-            />
-          </svg>
+          <EyeIcon />
           <span>Back to Completed Rounds</span>
         </button>
 
