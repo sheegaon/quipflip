@@ -92,10 +92,12 @@ Voters will try to identify the original, so the better you match the style, the
 
 You'll see a prompt and three phrases. One is the original, two are copies.
 
-Your goal is to identify which phrase was the original. Choose carefully - correct votes earn coins!`,
+Your goal is to identify which phrase was the original. Choose carefully - correct votes earn coins!
+
+**Not sure you fully understand yet?** Click the **eye icon** in the header to view completed rounds and observe actual past games.`,
       // **Make your vote now to complete the tutorial.**
-    target: '.tutorial-vote-round',
-    position: 'top',
+    target: '.tutorial-completed-icon',
+    position: 'bottom',
     action: 'wait',
     // Removed nextStep to show "End Tutorial" button
     showSkip: false, // Hide skip button on final tutorial step
