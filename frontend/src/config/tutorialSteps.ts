@@ -107,7 +107,7 @@ Your goal is to identify which phrase was the original. Choose carefully - corre
     title: 'Explore Past Rounds',
     message: `**Not sure you fully understand the game yet?**
 
-You can click the **eye icon** in the header anytime to view completed rounds and observe how actual past games played out.
+You can click the {{icon:completed}} in the header anytime to view completed rounds and observe how actual past games played out.
 
 This is a great way to learn strategies and see examples of creative quips, convincing copies, and tricky votes!`,
     target: '.tutorial-completed-icon',
