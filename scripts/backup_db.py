@@ -127,6 +127,12 @@ def create_backup_database():
     alembic_cfg = Config(str(project_root / "alembic.ini"))
     alembic_cfg.set_main_option("sqlalchemy.url", BACKUP_DB_ASYNC_URL)
 
+    # Temporarily set DATABASE_URL so env.py uses the backup database
+    # This is necessary because backend/migrations/env.py calls get_settings()
+    # which reads DATABASE_URL from the environment, overriding our config
+    original_db_url = os.environ.get('DATABASE_URL')
+    os.environ['DATABASE_URL'] = BACKUP_DB_ASYNC_URL
+
     try:
         # Run alembic upgrade to create all tables
         logger.info("Running Alembic migrations to create schema...")
@@ -137,6 +143,12 @@ def create_backup_database():
     except Exception:
         logger.error("Alembic migration failed:", exc_info=True)
         raise RuntimeError("Failed to create database schema with Alembic")
+    finally:
+        # Restore original DATABASE_URL
+        if original_db_url:
+            os.environ['DATABASE_URL'] = original_db_url
+        else:
+            os.environ.pop('DATABASE_URL', None)
 
 
 def insert_data_into_backup(all_data: Dict[str, List[Dict[str, Any]]]):
