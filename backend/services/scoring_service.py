@@ -516,7 +516,6 @@ class ScoringService:
                         Vote.phraseset_id == Round.phraseset_id,
                         Vote.player_id == Round.player_id,
                     ),
-                    isouter=True,
                 )
                 .join(
                     Transaction,
