@@ -137,7 +137,7 @@ const TutorialWelcome: React.FC<TutorialWelcomeProps> = ({ onStart, onSkip }) =>
 
           {player?.username && (
             <p className="tutorial-welcome-username">
-              You've been assigned the username <strong>{player.username}</strong> — this is how other players in the game will see you.
+              You've been assigned the username <strong>{player?.username}</strong> — this is how other players in the game will see you.
             </p>
           )}
 
