@@ -16,7 +16,6 @@ import asyncio
 import logging
 import os
 import sys
-from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -203,7 +202,7 @@ def insert_data_into_backup(all_data: Dict[str, List[Dict[str, Any]]]):
     logger.info("Data insertion completed")
 
 
-async def main():
+def main():
     """Main backup function."""
     logger.info("=" * 60)
     logger.info("Starting database backup process")
@@ -224,23 +223,20 @@ async def main():
     try:
         # Step 1: Fetch all data from remote database
         logger.info("\nStep 1: Fetching data from source database...")
-        all_data = await fetch_all_data_from_remote(source_url)
+        # Run async fetch in its own event loop
+        all_data = asyncio.run(fetch_all_data_from_remote(source_url))
 
         total_rows = sum(len(rows) for rows in all_data.values())
         logger.info(f"Total rows fetched: {total_rows}")
 
         # Step 2: Create backup database with Alembic
         logger.info("\nStep 2: Creating backup database schema...")
-        # Run in thread pool to avoid event loop conflicts (Alembic uses asyncio.run internally)
-        loop = asyncio.get_event_loop()
-        with ThreadPoolExecutor(max_workers=1) as executor:
-            await loop.run_in_executor(executor, create_backup_database)
+        # Call directly - no async context, so Alembic can use asyncio.run() freely
+        create_backup_database()
 
         # Step 3: Insert data into backup database
         logger.info("\nStep 3: Inserting data into backup database...")
-        # Run in thread pool to avoid blocking the event loop with synchronous database operations
-        with ThreadPoolExecutor(max_workers=1) as executor:
-            await loop.run_in_executor(executor, insert_data_into_backup, all_data)
+        insert_data_into_backup(all_data)
 
         logger.info("\n" + "=" * 60)
         logger.info("Backup completed successfully!")
@@ -255,5 +251,5 @@ async def main():
 
 
 if __name__ == "__main__":
-    exit_code = asyncio.run(main())
+    exit_code = main()
     sys.exit(exit_code)
