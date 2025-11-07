@@ -96,13 +96,8 @@ async def fetch_all_data_from_remote(source_url: str) -> Dict[str, List[Dict[str
                     rows = result.scalars().all()
 
                     # Convert to dictionaries
-                    row_dicts = []
-                    for row in rows:
-                        row_dict = {}
-                        for column in model.__table__.columns:
-                            value = getattr(row, column.name)
-                            row_dict[column.name] = value
-                        row_dicts.append(row_dict)
+                    row_dicts = [
+                        {column.name: getattr(row, column.name) for column in model.__table__.columns} for row in rows]
 
                     all_data[table_name] = row_dicts
                     logger.info(f"  Fetched {len(row_dicts)} rows from {table_name}")
