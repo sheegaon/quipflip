@@ -18,6 +18,7 @@ import os
 import sys
 from pathlib import Path
 from typing import Any, Dict, List
+from uuid import UUID
 
 from sqlalchemy import create_engine, MetaData
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
@@ -45,6 +46,21 @@ logger = logging.getLogger(__name__)
 BACKUP_DB_PATH = "quipflip.db"
 BACKUP_DB_URL = f"sqlite:///{BACKUP_DB_PATH}"
 BACKUP_DB_ASYNC_URL = f"sqlite+aiosqlite:///{BACKUP_DB_PATH}"
+
+
+def serialize_value(value: Any) -> Any:
+    """
+    Convert database values to SQLite-compatible types.
+
+    Args:
+        value: Value from database row
+
+    Returns:
+        SQLite-compatible value
+    """
+    if isinstance(value, UUID):
+        return str(value)
+    return value
 
 
 async def fetch_all_data_from_remote(source_url: str) -> Dict[str, List[Dict[str, Any]]]:
@@ -95,9 +111,11 @@ async def fetch_all_data_from_remote(source_url: str) -> Dict[str, List[Dict[str
                     result = await session.execute(select(model))
                     rows = result.scalars().all()
 
-                    # Convert to dictionaries
+                    # Convert to dictionaries with SQLite-compatible types
                     row_dicts = [
-                        {column.name: getattr(row, column.name) for column in model.__table__.columns} for row in rows]
+                        {column.name: serialize_value(getattr(row, column.name)) for column in model.__table__.columns}
+                        for row in rows
+                    ]
 
                     all_data[table_name] = row_dicts
                     logger.info(f"  Fetched {len(row_dicts)} rows from {table_name}")
