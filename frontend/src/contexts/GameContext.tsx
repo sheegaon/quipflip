@@ -200,8 +200,20 @@ export const GameProvider: React.FC<{
           gameContextLogger.debug('⭕ No current round from API, clearing active round');
           setActiveRound(null);
         }
-        
-        setPendingResults(data.pending_results);
+
+        // De-duplicate pending results by phraseset_id
+        const deduplicatedResults = data.pending_results.filter((result, index, self) =>
+          index === self.findIndex((r) => r.phraseset_id === result.phraseset_id)
+        );
+
+        if (deduplicatedResults.length !== data.pending_results.length) {
+          gameContextLogger.debug('🔄 Removed duplicate pending results:', {
+            original: data.pending_results.length,
+            deduplicated: deduplicatedResults.length
+          });
+        }
+
+        setPendingResults(deduplicatedResults);
         setPhrasesetSummary(data.phraseset_summary);
         setUnclaimedResults(data.unclaimed_results);
         setRoundAvailability(data.round_availability);
