@@ -1,13 +1,16 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Header } from '../components/Header';
 import { apiClient } from '../api/client';
 import type { CompletedPhrasesetItem } from '../api/types';
 import { InlineLoadingSpinner } from '../components/LoadingSpinner';
+import { EyeIcon } from '../components/icons/EyeIcon';
 
 type SortField = 'vote_count' | 'total_pool' | 'created_at' | 'finalized_at';
 type SortDirection = 'asc' | 'desc';
 
 export const Completed: React.FC = () => {
+  const navigate = useNavigate();
   const [phrasesets, setPhrasesets] = useState<CompletedPhrasesetItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -115,6 +118,10 @@ export const Completed: React.FC = () => {
     return sortDirection === 'asc' ? 'ascending' : 'descending';
   };
 
+  const handleRowClick = (phrasesetId: string) => {
+    navigate(`/phraseset/${phrasesetId}/review`);
+  };
+
   return (
     <div className="min-h-screen bg-quip-cream bg-pattern">
       <Header />
@@ -203,11 +210,14 @@ export const Completed: React.FC = () => {
                     paginatedPhrasesets.map((phraseset) => (
                       <tr
                         key={phraseset.phraseset_id}
-                        className="hover:bg-quip-teal-light transition-colors"
+                        onClick={() => handleRowClick(phraseset.phraseset_id)}
+                        className="hover:bg-quip-teal-light transition-colors cursor-pointer"
+                        title="Click to review this phraseset"
                       >
                         <td className="px-4 py-3 text-sm text-quip-navy">
-                          <div className="max-w-md">
-                            {phraseset.prompt_text}
+                          <div className="max-w-md flex items-center gap-2">
+                            <EyeIcon className="h-4 w-4 text-quip-turquoise flex-shrink-0" />
+                            <span>{phraseset.prompt_text}</span>
                           </div>
                         </td>
                         <td className="px-4 py-3 text-sm text-quip-navy font-semibold">

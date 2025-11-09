@@ -33,6 +33,7 @@ const CopyRound = lazy(() => import('./pages/CopyRound'));
 const VoteRound = lazy(() => import('./pages/VoteRound'));
 const Results = lazy(() => import('./pages/Results'));
 const Completed = lazy(() => import('./pages/Completed'));
+const PhrasesetReview = lazy(() => import('./pages/PhrasesetReview'));
 const Tracking = lazy(() => import('./pages/Tracking'));
 const Quests = lazy(() => import('./pages/Quests'));
 const Statistics = lazy(() => import('./pages/Statistics'));
@@ -112,6 +113,10 @@ const AppRoutes: React.FC = () => {
         <Route
           path="/completed"
           element={renderProtectedRoute(<Completed />)}
+        />
+        <Route
+          path="/phraseset/:phrasesetId/review"
+          element={renderProtectedRoute(<PhrasesetReview />)}
         />
         <Route
           path="/tracking"
