@@ -168,6 +168,8 @@ export interface PendingResult {
   completed_at: string;
   role: string;
   result_viewed: boolean;
+  prompt_round_id?: string;
+  copy_round_id?: string;
 }
 
 export interface PendingResultsResponse {

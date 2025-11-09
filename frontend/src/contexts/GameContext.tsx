@@ -201,9 +201,20 @@ export const GameProvider: React.FC<{
           setActiveRound(null);
         }
 
-        // De-duplicate pending results by phraseset_id
+        // De-duplicate pending results using a composite unique key
+        // For each result, create a unique key based on phraseset_id + round_id
+        const getResultKey = (result: PendingResult) => {
+          if (result.role === 'prompt' && result.prompt_round_id) {
+            return `${result.phraseset_id}-prompt-${result.prompt_round_id}`;
+          } else if (result.role === 'copy' && result.copy_round_id) {
+            return `${result.phraseset_id}-copy-${result.copy_round_id}`;
+          }
+          // Fallback for results without round IDs (shouldn't happen with new schema)
+          return `${result.phraseset_id}-${result.role}`;
+        };
+
         const deduplicatedResults = data.pending_results.filter((result, index, self) =>
-          index === self.findIndex((r) => r.phraseset_id === result.phraseset_id)
+          index === self.findIndex((r) => getResultKey(r) === getResultKey(result))
         );
 
         if (deduplicatedResults.length !== data.pending_results.length) {

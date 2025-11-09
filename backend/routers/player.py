@@ -421,6 +421,8 @@ async def _get_pending_results_internal(
                 completed_at=ensure_utc(finalized_at),
                 role=entry["your_role"],
                 result_viewed=entry.get("result_viewed", False),
+                prompt_round_id=entry.get("prompt_round_id"),
+                copy_round_id=entry.get("copy_round_id"),
             )
         )
 
