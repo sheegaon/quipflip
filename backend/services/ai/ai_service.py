@@ -280,23 +280,15 @@ class AIService:
         common_words = [word for word in common_words if len(word) > 3]
         ai_prompt = ai_prompt.format(common_words=", ".join(common_words))
 
-        # Create cache record first (for metrics tracking)
-        cache = AIPhraseCache(
-            cache_id=uuid_module.uuid4(),
-            prompt_round_id=prompt_round.round_id,
-            original_phrase=original_phrase,
-            prompt_text=prompt_round.prompt_text,
-            validated_phrases=[],  # Will be filled after validation
-            generation_provider=self.provider,
-            generation_model=self.ai_model,
-        )
+        # Don't create cache until validation succeeds - avoids FK constraint errors
+        cache_id = uuid_module.uuid4()
 
         async with MetricsTracker(
                 self.metrics_service,
                 operation_type="copy_generation",
                 provider=self.provider,
                 model=self.ai_model,
-                cache_id=str(cache.cache_id),
+                cache_id=None,  # Will be set after cache is successfully created
         ) as tracker:
             try:
                 # Generate using configured provider
@@ -343,10 +335,21 @@ class AIService:
                     f"{original_phrase=} {other_copy_phrase=}: {errors=}"
                 )
 
-            # Store validated phrases in cache (limit to 5)
-            cache.validated_phrases = validated_phrases[:5]
+            # Create and store cache now that validation succeeded
+            cache = AIPhraseCache(
+                cache_id=cache_id,
+                prompt_round_id=prompt_round.round_id,
+                original_phrase=original_phrase,
+                prompt_text=prompt_round.prompt_text,
+                validated_phrases=validated_phrases[:5],  # Limit to 5
+                generation_provider=self.provider,
+                generation_model=self.ai_model,
+            )
             self.db.add(cache)
             await self.db.flush()
+
+            # Update tracker with cache_id now that cache exists in DB
+            tracker.cache_id = str(cache.cache_id)
 
             # Track successful generation
             tracker.set_result(
