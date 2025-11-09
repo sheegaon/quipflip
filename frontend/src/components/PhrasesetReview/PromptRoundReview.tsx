@@ -137,7 +137,7 @@ export const PromptRoundReview: React.FC<PromptRoundReviewProps> = ({
             disabled={!isRevealed || isSubmitting}
             className="w-full bg-quip-navy hover:bg-quip-teal disabled:bg-gray-400 text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm text-lg"
           >
-            {isSubmitting ? 'Continuing...' : 'Submit Phrase'}
+            {isSubmitting ? 'Continuing...' : 'Continue to Copy Round'}
           </button>
         </form>
 
