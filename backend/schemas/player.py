@@ -49,6 +49,8 @@ class PendingResult(BaseSchema):
     completed_at: datetime
     role: str  # "prompt" or "copy"
     result_viewed: bool  # Note: This field is actually tracking result_viewed status in the backend
+    prompt_round_id: Optional[UUID] = None  # Unique ID for prompt rounds
+    copy_round_id: Optional[UUID] = None  # Unique ID for copy rounds
 
 
 class PendingResultsResponse(BaseModel):
