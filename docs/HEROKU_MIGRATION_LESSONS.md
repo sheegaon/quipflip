@@ -17,6 +17,10 @@ aborted during deploy.
 - **Test for gaps proactively.** The migration chain sanity test now accepts
   non-hex revision identifiers, so it will flag missing files like
   `guest_lockout_001` before they reach production.
+- **Match UUID column types across database dialects.** When creating foreign
+  keys to UUID columns, ensure the column types match the target database
+  dialect. PostgreSQL uses native UUID types, while SQLite uses String(36).
+  Use dialect detection to select the correct type.
 
 ## Practical Takeaways
 - Add a no-op migration that mirrors any production-only revision identifier
@@ -25,3 +29,14 @@ aborted during deploy.
   verify that the repository still forms a single head.
 - Review historical deployment logs to uncover similar manually stamped
   revisions and backfill them before they block future releases.
+- When creating migrations with UUID foreign keys, use the dialect detection
+  pattern from the initial schema migration:
+  ```python
+  bind = op.get_bind()
+  dialect_name = bind.dialect.name
+  if dialect_name == 'postgresql':
+      uuid = sa.UUID()
+  else:
+      uuid = sa.String(length=36)
+  ```
+  Then use the `uuid` variable for all UUID columns to ensure compatibility.

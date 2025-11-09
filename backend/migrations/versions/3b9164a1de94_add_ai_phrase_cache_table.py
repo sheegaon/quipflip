@@ -19,11 +19,19 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    # Get the current dialect to choose correct UUID type
+    bind = op.get_bind()
+    dialect_name = bind.dialect.name
+    if dialect_name == 'postgresql':
+        uuid = sa.UUID()
+    else:
+        uuid = sa.String(length=36)
+
     # Create ai_phrase_cache table
     op.create_table(
         'ai_phrase_cache',
-        sa.Column('cache_id', sa.String(36), nullable=False),
-        sa.Column('prompt_round_id', sa.String(36), nullable=False),
+        sa.Column('cache_id', uuid, nullable=False),
+        sa.Column('prompt_round_id', uuid, nullable=False),
         sa.Column('original_phrase', sa.String(length=100), nullable=False),
         sa.Column('prompt_text', sa.String(length=500), nullable=True),
         sa.Column('validated_phrases', sa.JSON(), nullable=False),
@@ -41,7 +49,7 @@ def upgrade() -> None:
 
     # Add cache_id column to ai_metrics table using batch mode for SQLite compatibility
     with op.batch_alter_table('ai_metrics', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('cache_id', sa.String(36), nullable=True))
+        batch_op.add_column(sa.Column('cache_id', uuid, nullable=True))
         batch_op.create_foreign_key(
             'fk_ai_metrics_cache_id',
             'ai_phrase_cache',
