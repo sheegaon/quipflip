@@ -112,7 +112,7 @@ export const CopyRoundReview: React.FC<CopyRoundReviewProps> = ({
             disabled={!isRevealed || isSubmitting}
             className="w-full bg-quip-turquoise hover:bg-quip-teal disabled:bg-gray-400 text-white font-bold py-3 px-4 rounded-tile transition-all text-lg disabled:cursor-not-allowed"
           >
-            {isSubmitting ? 'Submitting...' : copyNumber === 1 ? 'Continue to Second Copy' : 'Continue to Vote Round'}
+            {isSubmitting ? 'Continuing...' : copyNumber === 1 ? 'Continue to Second Copy' : 'Continue to Vote Round'}
           </button>
         </div>
 
