@@ -1,10 +1,8 @@
 import React, { useState } from 'react';
-import { Timer } from '../Timer';
+import { FrozenTimer } from './FrozenTimer';
 import { ThumbFeedbackButton } from '../ThumbFeedbackButton';
 import { ReviewBackButton } from './ReviewBackButton';
-import { EyeIcon } from '../icons/EyeIcon';
 import { getRandomMessage } from '../../utils/brandedMessages';
-import { createFrozenTimerDate } from '../../utils/reviewHelpers';
 
 interface PromptRoundReviewProps {
   promptText: string;
@@ -24,8 +22,6 @@ export const PromptRoundReview: React.FC<PromptRoundReviewProps> = ({
   const [isRevealed, setIsRevealed] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-
-  const frozenTimerDate = createFrozenTimerDate();
 
   const handleReveal = () => {
     setIsRevealed(true);
@@ -75,7 +71,7 @@ export const PromptRoundReview: React.FC<PromptRoundReviewProps> = ({
 
         {/* Timer - frozen */}
         <div className="flex justify-center mb-6">
-          <Timer expiresAt={frozenTimerDate} />
+          <FrozenTimer displayTime="3:00" />
         </div>
 
         {/* Instructions */}
@@ -121,8 +117,7 @@ export const PromptRoundReview: React.FC<PromptRoundReviewProps> = ({
               title={!isRevealed ? 'Click to reveal the submitted phrase' : undefined}
             >
               {!isRevealed ? (
-                <div className="flex items-center justify-center gap-2 py-1">
-                  <EyeIcon className="w-6 h-6 text-quip-teal" />
+                <div className="flex items-center justify-center py-1">
                   <span className="text-quip-teal font-semibold">Click to reveal phrase</span>
                 </div>
               ) : (

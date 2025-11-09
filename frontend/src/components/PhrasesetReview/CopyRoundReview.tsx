@@ -1,7 +1,6 @@
 import React from 'react';
-import { Timer } from '../Timer';
+import { FrozenTimer } from './FrozenTimer';
 import { ReviewBackButton } from './ReviewBackButton';
-import { createFrozenTimerDate } from '../../utils/reviewHelpers';
 
 interface CopyRoundReviewProps {
   originalPhrase: string;
@@ -12,8 +11,6 @@ export const CopyRoundReview: React.FC<CopyRoundReviewProps> = ({
   originalPhrase,
   onBack,
 }) => {
-  const frozenTimerDate = createFrozenTimerDate();
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-quip-turquoise to-quip-teal flex items-center justify-center p-4 bg-pattern">
       <div className="max-w-2xl w-full tile-card p-8 slide-up-enter">
@@ -27,7 +24,7 @@ export const CopyRoundReview: React.FC<CopyRoundReviewProps> = ({
 
         {/* Timer - frozen */}
         <div className="flex justify-center mb-6">
-          <Timer expiresAt={frozenTimerDate} />
+          <FrozenTimer displayTime="3:00" />
         </div>
 
         {/* Instructions */}
