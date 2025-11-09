@@ -40,6 +40,7 @@ class Settings(BaseSettings):
     copy_cost_normal: int = 50
     copy_cost_discount: int = 40
     vote_cost: int = 10
+    hint_cost: int = 10  # Cost to request AI-generated copy hints
     vote_payout_correct: int = 20
     correct_vote_points: int = 1
     incorrect_vote_points: int = 2

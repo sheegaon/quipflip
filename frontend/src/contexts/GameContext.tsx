@@ -24,6 +24,7 @@ interface GameState {
   phrasesetSummary: PhrasesetDashboardSummary | null;
   unclaimedResults: UnclaimedResult[];
   roundAvailability: RoundAvailability | null;
+  copyRoundHints: string[] | null;
   loading: boolean;
   error: string | null;
 }
@@ -42,6 +43,7 @@ interface GameActions {
   claimPhrasesetPrize: (phrasesetId: string) => Promise<void>;
   flagCopyRound: (roundId: string) => Promise<FlagCopyRoundResponse>;
   abandonRound: (roundId: string) => Promise<AbandonRoundResponse>;
+  fetchCopyHints: (roundId: string) => Promise<string[]>;
 }
 
 interface GameContextType {
@@ -71,8 +73,11 @@ export const GameProvider: React.FC<{
   const [phrasesetSummary, setPhrasesetSummary] = useState<PhrasesetDashboardSummary | null>(null);
   const [unclaimedResults, setUnclaimedResults] = useState<UnclaimedResult[]>([]);
   const [roundAvailability, setRoundAvailability] = useState<RoundAvailability | null>(null);
+  const [copyRoundHints, setCopyRoundHints] = useState<string[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const copyHintsRoundRef = useRef<string | null>(null);
 
   // Notify other contexts when pending results change
   useEffect(() => {
@@ -110,6 +115,21 @@ export const GameProvider: React.FC<{
     }
   }, [isAuthenticated, username]);
 
+  useEffect(() => {
+    if (!activeRound || activeRound.round_type !== 'copy') {
+      copyHintsRoundRef.current = null;
+      if (copyRoundHints !== null) {
+        setCopyRoundHints(null);
+      }
+      return;
+    }
+
+    if (copyHintsRoundRef.current && copyHintsRoundRef.current !== activeRound.round_id && copyRoundHints !== null) {
+      copyHintsRoundRef.current = null;
+      setCopyRoundHints(null);
+    }
+  }, [activeRound?.round_id, activeRound?.round_type]);
+
   // Create stable actions object using useCallback for all methods
   const startSession = useCallback((nextUsername: string) => {
       gameContextLogger.debug('🎯 GameContext startSession called:', { username: nextUsername });
@@ -143,6 +163,8 @@ export const GameProvider: React.FC<{
         setPhrasesetSummary(null);
         setUnclaimedResults([]);
         setRoundAvailability(null);
+        setCopyRoundHints(null);
+        copyHintsRoundRef.current = null;
         setLoading(false);
         setError(null);
       }
@@ -383,6 +405,8 @@ export const GameProvider: React.FC<{
         };
         
         setActiveRound(newActiveRound);
+        setCopyRoundHints(null);
+        copyHintsRoundRef.current = null;
         gameContextLogger.debug('🔄 Triggering dashboard refresh after starting prompt round');
         triggerPoll('dashboard');
         
@@ -439,6 +463,8 @@ export const GameProvider: React.FC<{
         };
         
         setActiveRound(newActiveRound);
+        setCopyRoundHints(null);
+        copyHintsRoundRef.current = null;
         gameContextLogger.debug('🔄 Triggering dashboard refresh after starting copy round');
         triggerPoll('dashboard');
         
@@ -459,6 +485,33 @@ export const GameProvider: React.FC<{
         setLoading(false);
       }
   }, [isAuthenticated, triggerPoll, onDashboardTrigger]);
+
+  const fetchCopyHints = useCallback(async (roundId: string): Promise<string[]> => {
+      if (!roundId) {
+        return [];
+      }
+
+      if (copyHintsRoundRef.current === roundId && copyRoundHints) {
+        gameContextLogger.debug('?? Returning cached copy hints', { roundId });
+        return copyRoundHints;
+      }
+
+      gameContextLogger.debug('?? Fetching AI copy hints for round', { roundId });
+
+      try {
+        const response = await apiClient.getCopyHints(roundId);
+        copyHintsRoundRef.current = roundId;
+        setCopyRoundHints(response.hints);
+        setError(null);
+        gameContextLogger.debug('? Copy hints fetched successfully', { count: response.hints?.length ?? 0 });
+        return response.hints;
+      } catch (err) {
+        gameContextLogger.error('? Fetch copy hints failed:', err);
+        const errorMessage = getActionErrorMessage('fetch-copy-hints', err);
+        setError(errorMessage);
+        throw err;
+      }
+  }, [copyRoundHints, setError]);
 
   const flagCopyRound = useCallback(async (roundId: string): Promise<FlagCopyRoundResponse> => {
       gameContextLogger.debug('🚩 GameContext flagCopyRound called', { roundId });      try {
@@ -525,6 +578,8 @@ export const GameProvider: React.FC<{
         };
         
         setActiveRound(newActiveRound);
+        setCopyRoundHints(null);
+        copyHintsRoundRef.current = null;
         gameContextLogger.debug('🔄 Triggering dashboard refresh after starting vote round');
         triggerPoll('dashboard');
         
@@ -632,6 +687,7 @@ export const GameProvider: React.FC<{
     phrasesetSummary,
     unclaimedResults,
     roundAvailability,
+    copyRoundHints,
     loading,
     error,
   };
@@ -646,6 +702,7 @@ export const GameProvider: React.FC<{
     navigateAfterDelay,
     startPromptRound,
     startCopyRound,
+    fetchCopyHints,
     flagCopyRound,
     abandonRound,
     startVoteRound,
@@ -665,6 +722,7 @@ export const useGame = (): GameContextType => {
   const context = useContext(GameContext);
   if (!context) {
     throw new Error('useGame must be used within a GameProvider');
-  }
+    }
   return context;
 };
+

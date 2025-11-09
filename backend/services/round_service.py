@@ -12,6 +12,7 @@ import logging
 from backend.models.player import Player
 from backend.models.prompt import Prompt
 from backend.models.round import Round
+from backend.models.hint import Hint
 from backend.models.flagged_prompt import FlaggedPrompt
 from backend.models.phraseset import Phraseset
 from backend.models.player_abandoned_prompt import PlayerAbandonedPrompt
@@ -25,6 +26,7 @@ from backend.utils.exceptions import (
     RoundNotFoundError,
     RoundExpiredError,
     NoPromptsAvailableError,
+    InsufficientBalanceError,
 )
 
 logger = logging.getLogger(__name__)
@@ -812,6 +814,75 @@ class RoundService:
                 logger.info(f"Player {player.player_id} is eligible for second copy with balance {player.balance}")
 
         return round_object, second_copy_info
+
+    async def get_or_generate_hints(
+        self,
+        round_id: UUID,
+        player: Player,
+        transaction_service: TransactionService
+    ) -> list[str]:
+        """Fetch cached hints for a copy round or generate and persist new ones.
+
+        Charges the player hint_cost coins only when generating new hints (not for cached results).
+        """
+        round_object = await self.db.get(Round, round_id)
+        if not round_object:
+            raise RoundNotFoundError("Round not found")
+
+        if round_object.round_type != "copy":
+            raise ValueError("Hints are only available for copy rounds")
+
+        if round_object.status != "active":
+            raise RoundExpiredError("Hints are only available for active copy rounds")
+
+        if not round_object.prompt_round_id:
+            raise RoundNotFoundError("Associated prompt round missing")
+
+        prompt_round = await self.db.get(Round, round_object.prompt_round_id)
+        if not prompt_round:
+            raise RoundNotFoundError("Associated prompt round missing")
+
+        if not prompt_round.submitted_phrase:
+            raise InvalidPhraseError("Original phrase not submitted yet; hints unavailable")
+
+        from backend.models.ai_phrase_cache import AIPhraseCache
+
+        # Check if phrase cache exists (which provides hints)
+        result = await self.db.execute(
+            select(AIPhraseCache)
+            .where(AIPhraseCache.prompt_round_id == prompt_round.round_id)
+        )
+        phrase_cache = result.scalar_one_or_none()
+
+        if phrase_cache and phrase_cache.validated_phrases:
+            # Return cached hints for free (reuse phrases from cache)
+            hints = phrase_cache.validated_phrases[:3]  # Return up to 3 hints
+            return hints
+
+        # Check player balance before generating new hints/cache
+        if player.balance < self.settings.hint_cost:
+            raise InsufficientBalanceError(
+                f"Insufficient balance: {player.balance} < {self.settings.hint_cost}"
+            )
+
+        # Generate phrase cache (which includes hints) outside lock to avoid holding during AI call
+        from backend.services.ai.ai_service import AIService
+        ai_service = AIService(self.db)
+        try:
+            hints = await ai_service.get_hints_from_cache(prompt_round, count=3)
+        except Exception:
+            raise
+
+        # Charge player after successful hint generation
+        await transaction_service.create_transaction(
+            player_id=player.player_id,
+            amount=-self.settings.hint_cost,
+            trans_type="hint_purchase",
+            reference_id=round_id,
+            auto_commit=True,
+        )
+
+        return hints
 
     async def abandon_round(
             self,

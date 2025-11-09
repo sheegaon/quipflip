@@ -94,12 +94,13 @@ class AIMetricsService:
             response_length: Optional[int] = None,
             validation_passed: Optional[bool] = None,
             vote_correct: Optional[bool] = None,
+            cache_id: Optional[str] = None,
     ) -> AIMetric:
         """
         Record an AI operation for tracking.
 
         Args:
-            operation_type: "copy_generation" or "vote_generation"
+            operation_type: "copy_generation", "vote_generation", or "hint_generation"
             provider: "openai" or "gemini"
             model: Model name
             success: Whether operation succeeded
@@ -109,6 +110,7 @@ class AIMetricsService:
             response_length: Length of response in characters
             validation_passed: For copy generation, whether validation passed
             vote_correct: For vote generation, whether vote was correct
+            cache_id: UUID of the phrase cache entry (if applicable)
 
         Returns:
             Created AIMetric instance
@@ -131,6 +133,7 @@ class AIMetricsService:
             response_length=response_length,
             validation_passed=validation_passed,
             vote_correct=vote_correct,
+            cache_id=cache_id,
         )
 
         self.db.add(metric)
@@ -300,7 +303,7 @@ class MetricsTracker:
 
     Attributes:
         metrics_service: AIMetricsService instance
-        operation_type: Type of operation ("copy_generation" or "vote_generation")
+        operation_type: Type of operation ("copy_generation", "vote_generation", or "hint_generation")
         provider: AI provider name ("openai" or "gemini")
         model: Model name (e.g., "gpt-4")
         start_time: Timestamp when operation started
@@ -323,11 +326,13 @@ class MetricsTracker:
             operation_type: str,
             provider: str,
             model: str,
+            cache_id: Optional[str] = None,
     ):
         self.metrics_service = metrics_service
         self.operation_type = operation_type
         self.provider = provider
         self.model = model
+        self.cache_id = cache_id
         self.start_time = None
         self.success = False
         self.error_message = None
@@ -361,6 +366,7 @@ class MetricsTracker:
             response_length=self.response_length,
             validation_passed=self.validation_passed,
             vote_correct=self.vote_correct,
+            cache_id=self.cache_id,
         )
 
         # Don't suppress exceptions

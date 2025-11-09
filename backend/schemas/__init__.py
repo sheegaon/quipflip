@@ -16,6 +16,7 @@ from backend.schemas.round import (
     RoundDetails,
     AbandonRoundResponse,
 )
+from backend.schemas.hint import HintResponse
 from backend.schemas.phraseset import (
     VoteRequest,
     VoteResponse,
@@ -52,6 +53,7 @@ __all__ = [
     "RoundAvailability",
     "RoundDetails",
     "AbandonRoundResponse",
+    "HintResponse",
     "VoteRequest",
     "VoteResponse",
     "PhraseVoteCount",

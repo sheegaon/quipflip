@@ -296,6 +296,10 @@ export interface SubmitPhraseResponse {
   original_phrase?: string;
 }
 
+export interface HintResponse {
+  hints: string[];
+}
+
 export interface VoteResponse {
   correct: boolean;
   payout: number;

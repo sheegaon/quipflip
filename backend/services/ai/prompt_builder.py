@@ -19,7 +19,7 @@ def build_copy_prompt(original_phrase: str, existing_copy_phrase: str = None) ->
     Returns:
         A formatted prompt string for AI copy generation
     """
-    base_prompt = """Create a phrase meaning roughly the same thing as the original phrase.
+    base_prompt = f"""Create 5 phrases meaning roughly the same thing as the original phrase.
 
 **Original phrase: "{original_phrase}"**
 
@@ -43,7 +43,7 @@ Rules:
 
     base_prompt += f"""
 
-Generate ONE alternative phrase only:"""
+Generate FIVE alternative phrases, separated by semicolons (;):"""
 
     return base_prompt
 

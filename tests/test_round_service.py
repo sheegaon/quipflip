@@ -7,14 +7,17 @@ Tests round creation, lifecycle, expiration, and phraseset creation.
 import pytest
 from datetime import datetime, timedelta, UTC
 import uuid
+from unittest.mock import AsyncMock, patch
 from sqlalchemy import select, update
 
 from backend.models.player import Player
 from backend.models.prompt import Prompt
 from backend.models.round import Round
+from backend.models.hint import Hint
 from backend.models.phraseset import Phraseset
 from backend.models.player_abandoned_prompt import PlayerAbandonedPrompt
 from backend.services.round_service import RoundService
+from backend.services.ai.ai_service import AIService
 from backend.services.transaction_service import TransactionService
 from backend.services.queue_service import QueueService
 from backend.services.vote_service import VoteService
@@ -22,6 +25,7 @@ from backend.utils.exceptions import (
     RoundExpiredError,
     InvalidPhraseError,
     NoPromptsAvailableError,
+    RoundNotFoundError,
 )
 from backend.config import get_settings
 
@@ -891,3 +895,97 @@ class TestQueueIntegration:
         assert prompt_round.copy1_player_id is None
         assert prompt_round.copy2_player_id is None
         assert prompt_round.status == "submitted"
+
+
+class TestCopyHints:
+    """Tests for AI-generated hint retrieval in RoundService."""
+
+    @staticmethod
+    async def _create_prompt_and_copy_round(db_session) -> tuple[Round, Round, Player]:
+        identifier = uuid.uuid4().hex[:6]
+
+        player = Player(
+            player_id=uuid.uuid4(),
+            username=f"copy_player_{identifier}",
+            username_canonical=f"copy_player_{identifier}",
+            pseudonym="Copy Player",
+            pseudonym_canonical="copy player",
+            email=f"copy_{identifier}@test.com",
+            password_hash="hash",
+            balance=500,
+        )
+        db_session.add(player)
+        await db_session.commit()
+
+        prompt_round = Round(
+            round_id=uuid.uuid4(),
+            player_id=player.player_id,
+            round_type="prompt",
+            status="submitted",
+            prompt_text="Test prompt for hints",
+            submitted_phrase="ORIGINAL PHRASE",
+            cost=settings.prompt_cost,
+            expires_at=datetime.now(UTC) + timedelta(minutes=5),
+        )
+        db_session.add(prompt_round)
+        await db_session.commit()
+        await db_session.refresh(prompt_round)
+
+        copy_round = Round(
+            round_id=uuid.uuid4(),
+            player_id=player.player_id,
+            round_type="copy",
+            status="active",
+            prompt_round_id=prompt_round.round_id,
+            prompt_text=prompt_round.prompt_text,
+            original_phrase=prompt_round.submitted_phrase,
+            cost=settings.copy_cost_normal,
+            expires_at=datetime.now(UTC) + timedelta(minutes=5),
+        )
+        db_session.add(copy_round)
+        await db_session.commit()
+        await db_session.refresh(copy_round)
+
+        return prompt_round, copy_round, player
+
+    @pytest.mark.asyncio
+    async def test_get_or_generate_hints_creates_and_caches(self, db_session):
+        """Should generate hints once and reuse cached values."""
+        prompt_round, copy_round, player = await self._create_prompt_and_copy_round(db_session)
+        round_service = RoundService(db_session)
+        transaction_service = TransactionService(db_session)
+
+        hints_payload = ["HINT ONE", "HINT TWO", "HINT THREE"]
+
+        with patch.object(AIService, "generate_copy_hints", new=AsyncMock(return_value=hints_payload)) as mock_generate:
+            hints = await round_service.get_or_generate_hints(copy_round.round_id, player, transaction_service)
+            mock_generate.assert_awaited_once()
+            assert hints == hints_payload
+
+        result = await db_session.execute(
+            select(Hint).where(Hint.prompt_round_id == prompt_round.round_id)
+        )
+        stored_hint = result.scalars().one()
+        assert stored_hint.hint_phrases == hints_payload
+
+        with patch.object(
+            AIService,
+            "generate_copy_hints",
+            new=AsyncMock(side_effect=AssertionError("should not be called")),
+        ) as mock_generate:
+            cached_hints = await round_service.get_or_generate_hints(copy_round.round_id, player, transaction_service)
+            mock_generate.assert_not_called()
+            assert cached_hints == hints_payload
+
+    @pytest.mark.asyncio
+    async def test_get_or_generate_hints_requires_active_copy(self, db_session):
+        """Should reject requests for non-active copy rounds."""
+        _, copy_round, player = await self._create_prompt_and_copy_round(db_session)
+        copy_round.status = "submitted"
+        await db_session.commit()
+
+        round_service = RoundService(db_session)
+        transaction_service = TransactionService(db_session)
+
+        with pytest.raises(RoundExpiredError):
+            await round_service.get_or_generate_hints(copy_round.round_id, player, transaction_service)
