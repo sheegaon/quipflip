@@ -247,6 +247,13 @@ const Settings: React.FC = () => {
       return;
     }
 
+    // Validate that username only contains alphanumeric characters and spaces
+    const usernamePattern = /^[a-zA-Z0-9\s]+$/;
+    if (!usernamePattern.test(usernameForm.newUsername.trim())) {
+      setUsernameError('Username can only contain letters, numbers, and spaces.');
+      return;
+    }
+
     if (!usernameForm.password) {
       setUsernameError('Please confirm with your password.');
       return;

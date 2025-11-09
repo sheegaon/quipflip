@@ -48,7 +48,12 @@ from backend.services.scoring_service import ScoringService
 from backend.services.tutorial_service import TutorialService
 from backend.services.vote_service import VoteService
 from backend.services.queue_service import QueueService
-from backend.utils.exceptions import DailyBonusNotAvailableError
+from backend.services.username_service import canonicalize_username
+from backend.utils.exceptions import (
+    DailyBonusNotAvailableError,
+    UsernameTakenError,
+    InvalidUsernameError,
+)
 from backend.config import get_settings
 from backend.schemas.auth import RegisterRequest
 from backend.services.auth_service import AuthService, AuthError
@@ -763,7 +768,6 @@ async def change_username(
     player_service = PlayerService(db)
 
     # Check if username is already the same (case-insensitive via canonical comparison)
-    from backend.services.username_service import canonicalize_username
     new_canonical = canonicalize_username(request.new_username)
     if player.username_canonical == new_canonical:
         return ChangeUsernameResponse(
@@ -773,13 +777,10 @@ async def change_username(
 
     try:
         updated = await player_service.update_username(player, request.new_username)
-    except ValueError as exc:
-        message = str(exc)
-        if message == "username_taken":
-            raise HTTPException(status_code=409, detail="username_taken") from exc
-        if message == "invalid_username":
-            raise HTTPException(status_code=422, detail="invalid_username") from exc
-        raise
+    except UsernameTakenError as exc:
+        raise HTTPException(status_code=409, detail="username_taken") from exc
+    except InvalidUsernameError as exc:
+        raise HTTPException(status_code=422, detail="invalid_username") from exc
 
     return ChangeUsernameResponse(
         username=updated.username,

@@ -79,3 +79,13 @@ class DailyBonusNotAvailableError(QuipflipException):
 class SelfVotingError(QuipflipException):
     """Cannot vote on own phraseset."""
     pass
+
+
+class UsernameTakenError(QuipflipException):
+    """Username is already in use by another player."""
+    pass
+
+
+class InvalidUsernameError(QuipflipException):
+    """Username contains invalid characters or does not meet requirements."""
+    pass
