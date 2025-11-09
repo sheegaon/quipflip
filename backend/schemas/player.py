@@ -201,6 +201,20 @@ class UpdateEmailResponse(BaseModel):
     email: EmailLike
 
 
+class ChangeUsernameRequest(BaseModel):
+    """Request payload for username change."""
+
+    new_username: constr(min_length=3, max_length=80)
+    password: constr(min_length=1, max_length=128)
+
+
+class ChangeUsernameResponse(BaseModel):
+    """Response payload containing updated username."""
+
+    username: str
+    message: str
+
+
 class DeleteAccountRequest(BaseModel):
     """Request payload for self-serve account deletion."""
 

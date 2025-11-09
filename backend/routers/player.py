@@ -22,6 +22,8 @@ from backend.schemas.player import (
     ChangePasswordResponse,
     UpdateEmailRequest,
     UpdateEmailResponse,
+    ChangeUsernameRequest,
+    ChangeUsernameResponse,
     DeleteAccountRequest,
     CreateGuestResponse,
     UpgradeGuestRequest,
@@ -46,7 +48,12 @@ from backend.services.scoring_service import ScoringService
 from backend.services.tutorial_service import TutorialService
 from backend.services.vote_service import VoteService
 from backend.services.queue_service import QueueService
-from backend.utils.exceptions import DailyBonusNotAvailableError
+from backend.services.username_service import canonicalize_username
+from backend.utils.exceptions import (
+    DailyBonusNotAvailableError,
+    UsernameTakenError,
+    InvalidUsernameError,
+)
 from backend.config import get_settings
 from backend.schemas.auth import RegisterRequest
 from backend.services.auth_service import AuthService, AuthError
@@ -745,6 +752,40 @@ async def update_email(
         raise
 
     return UpdateEmailResponse(email=updated.email)
+
+
+@router.patch("/username", response_model=ChangeUsernameResponse)
+async def change_username(
+    request: ChangeUsernameRequest,
+    player: Player = Depends(get_current_player),
+    db: AsyncSession = Depends(get_db),
+):
+    """Allow the current player to change their username."""
+
+    if not verify_password(request.password, player.password_hash):
+        raise HTTPException(status_code=401, detail="invalid_password")
+
+    player_service = PlayerService(db)
+
+    # Check if username is already the same (case-insensitive via canonical comparison)
+    new_canonical = canonicalize_username(request.new_username)
+    if player.username_canonical == new_canonical:
+        return ChangeUsernameResponse(
+            username=player.username,
+            message="Username unchanged."
+        )
+
+    try:
+        updated = await player_service.update_username(player, request.new_username)
+    except UsernameTakenError as exc:
+        raise HTTPException(status_code=409, detail="username_taken") from exc
+    except InvalidUsernameError as exc:
+        raise HTTPException(status_code=422, detail="invalid_username") from exc
+
+    return ChangeUsernameResponse(
+        username=updated.username,
+        message="Username updated successfully."
+    )
 
 
 @router.delete("/account", status_code=204)
