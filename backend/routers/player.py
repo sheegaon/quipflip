@@ -22,6 +22,8 @@ from backend.schemas.player import (
     ChangePasswordResponse,
     UpdateEmailRequest,
     UpdateEmailResponse,
+    ChangeUsernameRequest,
+    ChangeUsernameResponse,
     DeleteAccountRequest,
     CreateGuestResponse,
     UpgradeGuestRequest,
@@ -745,6 +747,44 @@ async def update_email(
         raise
 
     return UpdateEmailResponse(email=updated.email)
+
+
+@router.patch("/username", response_model=ChangeUsernameResponse)
+async def change_username(
+    request: ChangeUsernameRequest,
+    player: Player = Depends(get_current_player),
+    db: AsyncSession = Depends(get_db),
+):
+    """Allow the current player to change their username."""
+
+    if not verify_password(request.password, player.password_hash):
+        raise HTTPException(status_code=401, detail="invalid_password")
+
+    player_service = PlayerService(db)
+
+    # Check if username is already the same (case-insensitive via canonical comparison)
+    from backend.services.username_service import canonicalize_username
+    new_canonical = canonicalize_username(request.new_username)
+    if player.username_canonical == new_canonical:
+        return ChangeUsernameResponse(
+            username=player.username,
+            message="Username unchanged."
+        )
+
+    try:
+        updated = await player_service.update_username(player, request.new_username)
+    except ValueError as exc:
+        message = str(exc)
+        if message == "username_taken":
+            raise HTTPException(status_code=409, detail="username_taken") from exc
+        if message == "invalid_username":
+            raise HTTPException(status_code=422, detail="invalid_username") from exc
+        raise
+
+    return ChangeUsernameResponse(
+        username=updated.username,
+        message="Username updated successfully."
+    )
 
 
 @router.delete("/account", status_code=204)

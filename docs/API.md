@@ -702,6 +702,30 @@ Update the player's email address (requires current password confirmation).
 }
 ```
 
+#### `PATCH /player/username`
+Update the player's username (requires current password confirmation). The username must be 3-80 characters and contain only alphanumeric characters and spaces. The backend ensures the canonical username (lowercase, alphanumeric only) is not already in use.
+
+**Request Body:**
+```json
+{
+  "new_username": "NewDisplayName",
+  "password": "current_password"
+}
+```
+
+**Response:**
+```json
+{
+  "username": "NewDisplayName",
+  "message": "Username updated successfully."
+}
+```
+
+**Errors:**
+- `401 Unauthorized` - `invalid_password`: Incorrect password
+- `409 Conflict` - `username_taken`: Username already in use (case-insensitive)
+- `422 Unprocessable Entity` - `invalid_username`: Username contains invalid characters or is too short
+
 #### `DELETE /player/account`
 Permanently delete the authenticated player's account, associated quests, rounds, and tokens. Responds with `204 No Content` on success and clears the refresh-token cookie.
 

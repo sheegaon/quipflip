@@ -237,6 +237,36 @@ class PlayerService:
         await self.db.commit()
         await self.db.refresh(player)
 
+    async def update_username(self, player: Player, new_username: str) -> Player:
+        """Update a player's username."""
+
+        # Validate input
+        if not is_username_input_valid(new_username):
+            raise ValueError("invalid_username")
+
+        # Normalize and canonicalize
+        normalized_username = normalize_username(new_username)
+        canonical_username = canonicalize_username(normalized_username)
+
+        if not canonical_username:
+            raise ValueError("invalid_username")
+
+        # Update both display and canonical versions
+        player.username = normalized_username
+        player.username_canonical = canonical_username
+
+        try:
+            await self.db.commit()
+        except IntegrityError as exc:
+            await self.db.rollback()
+            error_message = str(exc).lower()
+            if "uq_players_username" in error_message or "uq_players_username_canonical" in error_message:
+                raise ValueError("username_taken") from exc
+            raise
+
+        await self.db.refresh(player)
+        return player
+
     async def can_start_prompt_round(self, player: Player) -> tuple[bool, str]:
         """
         Check if player can start prompt round.
