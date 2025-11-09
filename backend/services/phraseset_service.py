@@ -311,6 +311,137 @@ class PhrasesetService:
             "finalized_at": self._ensure_utc(phraseset.finalized_at),
         }
 
+    async def get_public_phraseset_details(
+        self,
+        phraseset_id: UUID,
+    ) -> dict:
+        """Return full detail view for a COMPLETED phraseset (public access for review)."""
+        phraseset = await self.db.get(Phraseset, phraseset_id)
+        if not phraseset:
+            raise ValueError("Phraseset not found")
+
+        # Only allow access to finalized phrasesets
+        if phraseset.status != "finalized":
+            raise ValueError("Phraseset not finalized")
+
+        prompt_round, copy1_round, copy2_round = await self._load_contributor_rounds(phraseset)
+        contributor_ids = {
+            prompt_round.player_id,
+            copy1_round.player_id,
+            copy2_round.player_id,
+        }
+
+        player_records = await self._load_players(contributor_ids)
+
+        # Build contributor list (without "is_you" flag for public access)
+        contributors = [
+            {
+                "round_id": prompt_round.round_id,
+                "player_id": prompt_round.player_id,
+                "username": player_records.get(prompt_round.player_id, {}).get("username", str(prompt_round.player_id)),
+                "pseudonym": player_records.get(prompt_round.player_id, {}).get("pseudonym", "Unknown"),
+                "is_you": False,  # Always False for public access
+                "phrase": phraseset.original_phrase,
+            },
+            {
+                "round_id": copy1_round.round_id,
+                "player_id": copy1_round.player_id,
+                "username": player_records.get(copy1_round.player_id, {}).get("username", str(copy1_round.player_id)),
+                "pseudonym": player_records.get(copy1_round.player_id, {}).get("pseudonym", "Unknown"),
+                "is_you": False,
+                "phrase": phraseset.copy_phrase_1,
+            },
+            {
+                "round_id": copy2_round.round_id,
+                "player_id": copy2_round.player_id,
+                "username": player_records.get(copy2_round.player_id, {}).get("username", str(copy2_round.player_id)),
+                "pseudonym": player_records.get(copy2_round.player_id, {}).get("pseudonym", "Unknown"),
+                "is_you": False,
+                "phrase": phraseset.copy_phrase_2,
+            },
+        ]
+
+        # Votes and voters (public information for completed rounds)
+        vote_rows = await self.db.execute(
+            select(Vote)
+            .where(Vote.phraseset_id == phraseset.phraseset_id)
+            .order_by(Vote.created_at.asc())
+        )
+        votes = list(vote_rows.scalars().all())
+
+        vote_player_ids = {vote.player_id for vote in votes}
+        vote_player_records = await self._load_players(vote_player_ids, existing=player_records)
+
+        votes_payload = [
+            {
+                "vote_id": vote.vote_id,
+                "voter_id": vote.player_id,
+                "voter_username": vote_player_records.get(vote.player_id, {}).get("username", str(vote.player_id)),
+                "voter_pseudonym": vote_player_records.get(vote.player_id, {}).get("pseudonym", "Unknown"),
+                "voted_phrase": vote.voted_phrase,
+                "correct": vote.correct,
+                "voted_at": self._ensure_utc(vote.created_at),
+            }
+            for vote in votes
+        ]
+
+        # Activity timeline
+        activities = await self.activity_service.get_phraseset_activity(phraseset.phraseset_id)
+        activity_player_ids = {act.player_id for act in activities if act.player_id}
+        activity_players = await self._load_players(activity_player_ids, existing=vote_player_records)
+        activity_payload = [
+            {
+                "activity_id": activity.activity_id,
+                "activity_type": activity.activity_type,
+                "created_at": self._ensure_utc(activity.created_at),
+                "player_id": activity.player_id,
+                "player_username": activity_players.get(activity.player_id, {}).get("username", str(activity.player_id)) if activity.player_id else None,
+                "metadata": activity.payload or {},
+            }
+            for activity in activities
+        ]
+
+        # Results (public for completed rounds)
+        payouts_cache: dict[UUID, dict] = {}
+        payouts = await self._get_payouts_cached(phraseset, payouts_cache)
+        results_payload = {
+            "vote_counts": self._count_votes(phraseset, votes),
+            "payouts": {
+                role: {
+                    "player_id": info["player_id"],
+                    "payout": info["payout"],
+                    "points": info["points"],
+                }
+                for role, info in payouts.items()
+            },
+            "total_pool": phraseset.total_pool,
+        }
+
+        return {
+            "phraseset_id": phraseset.phraseset_id,
+            "prompt_round_id": phraseset.prompt_round_id,
+            "prompt_text": phraseset.prompt_text,
+            "status": "finalized",  # Always finalized for public access
+            "original_phrase": phraseset.original_phrase,
+            "copy_phrase_1": phraseset.copy_phrase_1,
+            "copy_phrase_2": phraseset.copy_phrase_2,
+            "contributors": contributors,
+            "vote_count": phraseset.vote_count,
+            "third_vote_at": self._ensure_utc(phraseset.third_vote_at),
+            "fifth_vote_at": self._ensure_utc(phraseset.fifth_vote_at),
+            "closes_at": self._ensure_utc(phraseset.closes_at),
+            "votes": votes_payload,
+            "total_pool": phraseset.total_pool,
+            "results": results_payload,
+            "your_role": None,  # No personal context for public access
+            "your_phrase": None,
+            "your_payout": None,
+            "result_viewed": False,
+            "activity": activity_payload,
+            "created_at": self._ensure_utc(phraseset.created_at),
+            "finalized_at": self._ensure_utc(phraseset.finalized_at),
+        }
+
     async def claim_prize(
         self,
         phraseset_id: UUID,

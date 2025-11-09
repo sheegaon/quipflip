@@ -49,6 +49,8 @@ class PendingResult(BaseSchema):
     completed_at: datetime
     role: str  # "prompt" or "copy"
     result_viewed: bool  # Note: This field is actually tracking result_viewed status in the backend
+    prompt_round_id: Optional[UUID] = None  # Unique ID for prompt rounds
+    copy_round_id: Optional[UUID] = None  # Unique ID for copy rounds
 
 
 class PendingResultsResponse(BaseModel):
@@ -139,7 +141,7 @@ class TutorialStatus(BaseModel):
 class UpdateTutorialProgressRequest(BaseModel):
     """Request to update tutorial progress."""
     progress: Literal["not_started", "welcome", "dashboard", "prompt_round", "prompt_round_paused", "copy_round",
-                      "copy_round_paused", "vote_round", "completed"]
+                      "copy_round_paused", "vote_round", "completed_rounds_guide", "completed"]
 
 
 class UpdateTutorialProgressResponse(BaseModel):

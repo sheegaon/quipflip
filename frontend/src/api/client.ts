@@ -441,6 +441,11 @@ export const apiClient = {
     return data;
   },
 
+  async getPublicPhrasesetDetails(phrasesetId: string, signal?: AbortSignal): Promise<PhrasesetDetails> {
+    const { data } = await api.get(`/phrasesets/${phrasesetId}/public-details`, { signal });
+    return data;
+  },
+
   async claimPhrasesetPrize(phrasesetId: string, signal?: AbortSignal): Promise<ClaimPrizeResponse> {
     const { data } = await api.post(`/phrasesets/${phrasesetId}/claim`, {}, { signal });
     return data;

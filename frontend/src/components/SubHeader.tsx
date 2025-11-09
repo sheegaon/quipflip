@@ -105,7 +105,7 @@ export const SubHeader: React.FC = () => {
           {/* Completed rounds icon */}
           <button
             onClick={() => navigate('/completed')}
-            className="group"
+            className="group tutorial-completed-icon"
             title="View completed rounds"
             aria-label="View completed rounds"
           >

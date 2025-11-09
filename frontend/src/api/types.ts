@@ -168,6 +168,8 @@ export interface PendingResult {
   completed_at: string;
   role: string;
   result_viewed: boolean;
+  prompt_round_id?: string;
+  copy_round_id?: string;
 }
 
 export interface PendingResultsResponse {
@@ -582,6 +584,7 @@ export type TutorialProgress =
   | 'copy_round'
   | 'copy_round_paused'
   | 'vote_round'
+  | 'completed_rounds_guide'
   | 'completed';
 
 export interface TutorialStatus {

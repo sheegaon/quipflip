@@ -1084,7 +1084,9 @@ Submit vote for phraseset.
 - `Phraseset does not match active round`
 
 #### `GET /phrasesets/{phraseset_id}/details`
-Get full contributor view for a phraseset the player participated in.
+Get full contributor view for a phraseset the player participated in (contributor or voter).
+
+**Access Control:** Restricted to contributors (prompt/copy submitters) and voters only.
 
 **Response:**
 ```json
@@ -1150,10 +1152,96 @@ Get full contributor view for a phraseset the player participated in.
 ```
 
 **Errors:**
-- `Phraseset not found` - Invalid phraseset ID
-- `Not a contributor to this phraseset` - Player did not submit the prompt or copies
+- `404 Phraseset not found` - Invalid phraseset ID
+- `403 Not a contributor or voter for this phraseset` - Player did not participate in this phraseset
 
-`results` is only populated when the phraseset status resolves to `finalized`.
+**Notes:**
+- `results` is only populated when the phraseset status resolves to `finalized`
+- Includes personal context fields: `your_role`, `your_phrase`, `your_payout`, `result_viewed`
+- `is_you` flag indicates which contributor is the current player
+
+#### `GET /phrasesets/{phraseset_id}/public-details`
+Get full details for any COMPLETED phraseset (public access for browsing/reviewing).
+
+**Access Control:** Public - anyone can view, but only for finalized phrasesets.
+
+**Purpose:** This endpoint allows players to review any completed round from the completed phrasesets list, even if they didn't participate. Used by the phraseset review feature.
+
+**Response:**
+```json
+{
+  "phraseset_id": "uuid",
+  "prompt_round_id": "uuid",
+  "prompt_text": "my deepest desire is to be (a/an)",
+  "status": "finalized",
+  "original_phrase": "FAMOUS",
+  "copy_phrase_1": "POPULAR",
+  "copy_phrase_2": "WEALTHY",
+  "contributors": [
+    {"player_id": "uuid", "username": "Prompt Pirate", "pseudonym": "Prompt Pirate", "is_you": false, "phrase": "FAMOUS"},
+    {"player_id": "uuid", "username": "Copy Cat", "pseudonym": "Copy Cat", "is_you": false, "phrase": "POPULAR"},
+    {"player_id": "uuid", "username": "Shadow Scribe", "pseudonym": "Shadow Scribe", "is_you": false, "phrase": "WEALTHY"}
+  ],
+  "vote_count": 10,
+  "third_vote_at": "2025-01-06T12:10:00Z",
+  "fifth_vote_at": "2025-01-06T12:11:05Z",
+  "closes_at": "2025-01-06T12:12:05Z",
+  "votes": [
+    {
+      "vote_id": "uuid",
+      "voter_id": "uuid",
+      "voter_username": "Voter 1",
+      "voter_pseudonym": "Voter 1",
+      "voted_phrase": "FAMOUS",
+      "correct": true,
+      "voted_at": "2025-01-06T12:10:30Z"
+    }
+  ],
+  "total_pool": 300,
+  "results": {
+    "vote_counts": {
+      "FAMOUS": 6,
+      "POPULAR": 2,
+      "WEALTHY": 2
+    },
+    "payouts": {
+      "prompt": {"player_id": "uuid", "payout": 150, "points": 6},
+      "copy1": {"player_id": "uuid", "payout": 100, "points": 2},
+      "copy2": {"player_id": "uuid", "payout": 50, "points": 2}
+    },
+    "total_pool": 300
+  },
+  "your_role": null,
+  "your_phrase": null,
+  "your_payout": null,
+  "result_viewed": false,
+  "activity": [
+    {
+      "activity_id": "uuid",
+      "activity_type": "vote_recorded",
+      "created_at": "2025-01-06T12:10:30Z",
+      "player_id": "uuid",
+      "player_username": "Voter 1",
+      "metadata": {"phrase": "FAMOUS"}
+    }
+  ],
+  "created_at": "2025-01-06T12:00:00Z",
+  "finalized_at": "2025-01-06T12:12:05Z"
+}
+```
+
+**Errors:**
+- `404 Phraseset not found` - Invalid phraseset ID
+- `403 Phraseset not finalized` - Can only view finalized phrasesets publicly
+
+**Notes:**
+- Only works for finalized phrasesets (status = "finalized")
+- Does NOT require the player to be a contributor or voter
+- Personal context fields are always null: `your_role`, `your_phrase`, `your_payout`
+- `is_you` is always false in the contributors array (no personal context)
+- `result_viewed` is always false (not tracking views for public access)
+- `results` is always populated (since only finalized phrasesets are accessible)
+- Use this endpoint when displaying phrasesets from the `/phrasesets/completed` list
 
 #### `GET /phrasesets/{phraseset_id}/results`
 Get phraseset results (collects prize on first view).
