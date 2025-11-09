@@ -24,6 +24,7 @@ export const VoteRound: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [phrasesetDetails, setPhrasesetDetails] = useState<PhrasesetDetails | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
 
   const roundData = activeRound?.round_type === 'vote' ? activeRound.state as VoteState : null;
   const { isExpired } = useTimer(roundData?.expires_at || null);
@@ -134,10 +135,6 @@ export const VoteRound: React.FC = () => {
 
   // Show vote result (check this first, before checking roundData)
   if (voteResult) {
-    const successMsg = voteResult.correct
-      ? (successMessage || 'Correct!')
-      : 'Better luck next time!';
-
     const voteCount = phrasesetDetails?.vote_count || 0;
     const votes = phrasesetDetails?.votes || [];
     const isFirstVoter = voteCount === 1;
@@ -146,125 +143,181 @@ export const VoteRound: React.FC = () => {
       <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center p-4">
         <div className="max-w-3xl w-full tile-card p-8 flip-enter">
           {/* Header with icon and result */}
-          <div className="text-center mb-6">
+          <div className="text-center mb-8">
             <div className="flex justify-center mb-4">
-              <img src="/icon_vote.svg" alt="" className="w-24 h-24" />
+              <img
+                src="/icon_vote.svg"
+                alt=""
+                className={`w-32 h-32 ${voteResult.correct ? '' : 'opacity-60'}`}
+              />
             </div>
-            <h2 className={`text-3xl font-display font-bold mb-4 success-message ${voteResult.correct ? 'text-quip-turquoise' : 'text-quip-orange'}`}>
-              {voteResult.correct ? successMsg : 'Incorrect'}
+
+            {/* Large Check/X-mark indicator */}
+            <div className="flex justify-center mb-4">
+              <div className={`inline-flex items-center justify-center w-24 h-24 rounded-full border-4 ${voteResult.correct ? 'bg-quip-turquoise border-quip-turquoise text-white' : 'bg-quip-orange border-quip-orange text-white'} shadow-tile`}>
+                <span className="text-7xl font-bold leading-none" style={{ marginTop: '-4px' }}>
+                  {voteResult.correct ? '✓' : '✗'}
+                </span>
+              </div>
+            </div>
+
+            {/* Main result message */}
+            <h2 className={`text-5xl font-display font-bold mb-6 success-message ${voteResult.correct ? 'text-quip-turquoise' : 'text-quip-orange'}`}>
+              {voteResult.correct ? (successMessage || 'Correct!') : 'Incorrect'}
             </h2>
-            {/* Enhanced Recap Card - Show all phrases with attributions */}
-            <div className="bg-quip-navy bg-opacity-5 border-2 border-quip-navy rounded-tile p-6 mb-4">
-              <h3 className="font-display font-bold text-xl text-quip-navy mb-4 text-center">
-                The Reveal
-              </h3>
 
-              {phrasesetDetails ? (
-                <div className="space-y-3">
-                  {/* Map through all three phrases and show their authors */}
-                  {[
-                    phrasesetDetails.original_phrase,
-                    phrasesetDetails.copy_phrase_1,
-                    phrasesetDetails.copy_phrase_2
-                  ].filter((phrase): phrase is string => phrase !== null).map((phrase) => {
-                    const isOriginal = phrase === voteResult.original_phrase;
-                    const isYourChoice = phrase === voteResult.your_choice;
-                    const contributor = phrasesetDetails.contributors.find(c => c.phrase === phrase);
-
-                    return (
-                      <PhraseRecapCard
-                        key={phrase}
-                        phrase={phrase}
-                        isOriginal={isOriginal}
-                        isYourChoice={isYourChoice}
-                        isCorrectChoice={voteResult.correct}
-                        contributor={contributor}
-                      />
-                    );
-                  })}
-                </div>
+            {/* Payout/Cost info - PROMINENT */}
+            <div className={`inline-flex items-center gap-2 px-6 py-4 rounded-tile mb-8 ${voteResult.payout > 0 ? 'bg-quip-turquoise bg-opacity-20 border-2 border-quip-turquoise' : 'bg-quip-orange bg-opacity-10 border-2 border-quip-orange'}`}>
+              {voteResult.payout > 0 ? (
+                <>
+                  <span className="text-quip-navy font-display font-bold text-xl">You earned:</span>
+                  <CurrencyDisplay amount={voteResult.payout} iconClassName="w-7 h-7" textClassName="text-2xl font-bold text-quip-turquoise" />
+                </>
               ) : (
-                // Fallback if phrasesetDetails isn't loaded yet
-                <div className="space-y-2">
-                  <p className="text-lg text-quip-navy mb-2">
-                    The original phrase was: <strong className="text-quip-turquoise">{voteResult.original_phrase}</strong>
-                  </p>
-                  <p className="text-lg text-quip-teal">
-                    You chose: <strong className={voteResult.correct ? 'text-quip-turquoise' : 'text-quip-orange'}>{voteResult.your_choice}</strong>
-                  </p>
-                </div>
+                <>
+                  <span className="text-quip-navy font-display font-bold text-xl">No flipcoins earned</span>
+                </>
               )}
             </div>
 
-            {/* Payout info */}
-            {voteResult.payout > 0 && (
-              <div className="inline-flex items-center gap-2 bg-quip-turquoise bg-opacity-20 px-4 py-2 rounded-tile mb-4">
-                <span className="text-quip-navy font-semibold">You earned:</span>
-                <CurrencyDisplay amount={voteResult.payout} iconClassName="w-5 h-5" textClassName="text-lg font-bold text-quip-turquoise" />
+            {/* Simple feedback message */}
+            <p className="text-lg text-quip-teal mb-6">
+              {voteResult.correct
+                ? "Great job spotting the original phrase!"
+                : "Don't worry, you'll get the next one!"}
+            </p>
+          </div>
+
+          {/* Collapsible Details Section */}
+          <div className="mb-6">
+            <button
+              onClick={() => setShowDetails(!showDetails)}
+              className="w-full flex items-center justify-between p-4 bg-quip-navy bg-opacity-5 hover:bg-opacity-10 border-2 border-quip-navy rounded-tile transition-all mb-2"
+            >
+              <span className="font-display font-bold text-lg text-quip-navy">
+                View Details
+              </span>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className={`h-6 w-6 text-quip-navy transition-transform ${showDetails ? 'rotate-180' : ''}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {/* Expandable content */}
+            {showDetails && (
+              <div className="space-y-4 slide-up-enter">
+                {/* The Reveal - Show all phrases with attributions */}
+                <div className="bg-quip-navy bg-opacity-5 border-2 border-quip-navy rounded-tile p-6">
+                  <h3 className="font-display font-bold text-xl text-quip-navy mb-4 text-center">
+                    The Reveal
+                  </h3>
+
+                  {loadingDetails ? (
+                    <div className="text-center py-6">
+                      <LoadingSpinner isLoading={true} message="Loading details..." />
+                    </div>
+                  ) : phrasesetDetails ? (
+                    <div className="space-y-3">
+                      {/* Map through all three phrases and show their authors */}
+                      {[
+                        phrasesetDetails.original_phrase,
+                        phrasesetDetails.copy_phrase_1,
+                        phrasesetDetails.copy_phrase_2
+                      ].filter((phrase): phrase is string => phrase !== null).map((phrase) => {
+                        const isOriginal = phrase === voteResult.original_phrase;
+                        const isYourChoice = phrase === voteResult.your_choice;
+                        const contributor = phrasesetDetails.contributors.find(c => c.phrase === phrase);
+
+                        return (
+                          <PhraseRecapCard
+                            key={phrase}
+                            phrase={phrase}
+                            isOriginal={isOriginal}
+                            isYourChoice={isYourChoice}
+                            isCorrectChoice={voteResult.correct}
+                            contributor={contributor}
+                          />
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    // Fallback if phrasesetDetails isn't loaded yet
+                    <div className="space-y-2">
+                      <p className="text-lg text-quip-navy mb-2">
+                        The original phrase was: <strong className="text-quip-turquoise">{voteResult.original_phrase}</strong>
+                      </p>
+                      <p className="text-lg text-quip-teal">
+                        You chose: <strong className={voteResult.correct ? 'text-quip-turquoise' : 'text-quip-orange'}>{voteResult.your_choice}</strong>
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Vote information section */}
+                {phrasesetDetails && (
+                  <>
+                    {/* First voter encouragement */}
+                    {isFirstVoter && (
+                      <div className="bg-quip-orange bg-opacity-10 border-2 border-quip-orange rounded-tile p-4 text-center">
+                        <p className="text-quip-navy font-display font-semibold mb-2">
+                          You're the first to vote on this one!
+                        </p>
+                        <p className="text-quip-teal text-sm mb-3">
+                          Come back later to see how others voted. You can check in on this round anytime from Round Tracking.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Vote details for multiple voters */}
+                    {!isFirstVoter && votes.length > 0 && (
+                      <div className="bg-quip-navy bg-opacity-5 border-2 border-quip-navy rounded-tile p-4">
+                        <h3 className="font-display font-bold text-lg text-quip-navy mb-3 text-center">
+                          Voting Results ({voteCount} vote{voteCount !== 1 ? 's' : ''} so far)
+                        </h3>
+                        <div className="space-y-2">
+                          {votes.map((vote) => (
+                            <div
+                              key={vote.vote_id}
+                              className={`flex items-center justify-between p-3 rounded-tile ${vote.correct ? 'bg-quip-turquoise bg-opacity-10 border border-quip-turquoise' : 'bg-quip-orange bg-opacity-10 border border-quip-orange'}`}
+                            >
+                              <div className="flex items-center gap-3">
+                                <span className="font-semibold text-quip-navy">
+                                  {vote.voter_pseudonym}
+                                </span>
+                                <span className="text-sm text-quip-teal">
+                                  voted for: <strong>{vote.voted_phrase}</strong>
+                                </span>
+                              </div>
+                              <span className={`text-sm font-semibold ${vote.correct ? 'text-quip-turquoise' : 'text-quip-orange'}`}>
+                                {vote.correct ? '✓ Correct' : '✗ Incorrect'}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Round Tracking Button - Only visible in dropdown */}
+                    <div className="text-center pt-2">
+                      <Link
+                        to="/tracking"
+                        className="inline-block bg-quip-orange hover:bg-quip-orange-deep text-white font-semibold py-3 px-6 rounded-tile transition-colors"
+                      >
+                        Go to Round Tracking →
+                      </Link>
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>
 
-          {/* Vote information section */}
-          {loadingDetails ? (
-            <div className="text-center py-6">
-              <LoadingSpinner isLoading={true} message="Loading vote details..." />
-            </div>
-          ) : phrasesetDetails ? (
-            <div className="space-y-4 mb-6">
-              {/* First voter encouragement */}
-              {isFirstVoter && (
-                <div className="bg-quip-orange bg-opacity-10 border-2 border-quip-orange rounded-tile p-4 text-center">
-                  <p className="text-quip-navy font-display font-semibold mb-2">
-                    🎉 You're the first to vote on this one!
-                  </p>
-                  <p className="text-quip-teal text-sm mb-3">
-                    Come back later to see how others voted. You can check in on this round anytime from Round Tracking.
-                  </p>
-                  <Link
-                    to="/tracking"
-                    className="inline-block bg-quip-orange hover:bg-quip-orange-deep text-white font-semibold py-2 px-4 rounded-tile transition-colors"
-                  >
-                    Go to Round Tracking →
-                  </Link>
-                </div>
-              )}
-
-              {/* Vote details for multiple voters */}
-              {!isFirstVoter && votes.length > 0 && (
-                <div className="bg-quip-navy bg-opacity-5 border-2 border-quip-navy rounded-tile p-4">
-                  <h3 className="font-display font-bold text-lg text-quip-navy mb-3 text-center">
-                    Voting Results ({voteCount} vote{voteCount !== 1 ? 's' : ''} so far)
-                  </h3>
-                  <div className="space-y-2">
-                    {votes.map((vote) => (
-                      <div
-                        key={vote.vote_id}
-                        className={`flex items-center justify-between p-3 rounded-tile ${vote.correct ? 'bg-quip-turquoise bg-opacity-10 border border-quip-turquoise' : 'bg-quip-orange bg-opacity-10 border border-quip-orange'}`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className="font-semibold text-quip-navy">
-                            {vote.voter_pseudonym}
-                          </span>
-                          <span className="text-sm text-quip-teal">
-                            voted for: <strong>{vote.voted_phrase}</strong>
-                          </span>
-                        </div>
-                        <span className={`text-sm font-semibold ${vote.correct ? 'text-quip-turquoise' : 'text-quip-orange'}`}>
-                          {vote.correct ? '✓ Correct' : '✗ Incorrect'}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                  <p className="text-xs text-quip-teal text-center mt-3">
-                    Track this round and see updates in <Link to="/tracking" className="text-quip-turquoise hover:underline font-semibold">Round Tracking</Link>
-                  </p>
-                </div>
-              )}
-            </div>
-          ) : null}
-
-          {/* Dismiss button */}
+          {/* Back to Dashboard button - ALWAYS VISIBLE */}
           <div className="flex justify-center">
             <button
               onClick={handleDismiss}

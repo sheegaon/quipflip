@@ -7,6 +7,7 @@ interface CopyRoundReviewProps {
   originalPhrase: string;
   copyPhrase: string;
   playerUsername: string;
+  copyNumber: 1 | 2;
   onSubmit: () => void;
   onBack: () => void;
 }
@@ -15,6 +16,7 @@ export const CopyRoundReview: React.FC<CopyRoundReviewProps> = ({
   originalPhrase,
   copyPhrase,
   playerUsername,
+  copyNumber,
   onSubmit,
   onBack,
 }) => {
@@ -110,7 +112,7 @@ export const CopyRoundReview: React.FC<CopyRoundReviewProps> = ({
             disabled={!isRevealed || isSubmitting}
             className="w-full bg-quip-turquoise hover:bg-quip-teal disabled:bg-gray-400 text-white font-bold py-3 px-4 rounded-tile transition-all text-lg disabled:cursor-not-allowed"
           >
-            {isSubmitting ? 'Submitting...' : 'Continue to Next Review'}
+            {isSubmitting ? 'Submitting...' : copyNumber === 1 ? 'Continue to Second Copy' : 'Continue to Vote Round'}
           </button>
         </div>
 

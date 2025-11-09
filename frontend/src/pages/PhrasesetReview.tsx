@@ -117,9 +117,11 @@ export const PhrasesetReview: React.FC = () => {
   if (reviewStage === 'copy1') {
     return (
       <CopyRoundReview
+        key="copy1"
         originalPhrase={phrasesetData.original_phrase || ''}
         copyPhrase={phrasesetData.copy_phrase_1 || ''}
         playerUsername={copy1Contributor?.username || 'Unknown'}
+        copyNumber={1}
         onSubmit={handleCopy1Submit}
         onBack={handleBackToCompleted}
       />
@@ -129,9 +131,11 @@ export const PhrasesetReview: React.FC = () => {
   if (reviewStage === 'copy2') {
     return (
       <CopyRoundReview
+        key="copy2"
         originalPhrase={phrasesetData.original_phrase || ''}
         copyPhrase={phrasesetData.copy_phrase_2 || ''}
         playerUsername={copy2Contributor?.username || 'Unknown'}
+        copyNumber={2}
         onSubmit={handleCopy2Submit}
         onBack={handleBackToCompleted}
       />

@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { FrozenTimer } from './FrozenTimer';
 import { ThumbFeedbackButton } from '../ThumbFeedbackButton';
 import { ReviewBackButton } from './ReviewBackButton';
-import { getRandomMessage } from '../../utils/brandedMessages';
 
 interface PromptRoundReviewProps {
   promptText: string;
@@ -21,7 +20,6 @@ export const PromptRoundReview: React.FC<PromptRoundReviewProps> = ({
 }) => {
   const [isRevealed, setIsRevealed] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
 
   const handleReveal = () => {
     setIsRevealed(true);
@@ -33,30 +31,8 @@ export const PromptRoundReview: React.FC<PromptRoundReviewProps> = ({
     if (!isRevealed) return;
 
     setIsSubmitting(true);
-    setShowSuccess(true);
-
-    // Show success message briefly, then move to next stage
-    setTimeout(() => {
-      onSubmit();
-    }, 1500);
+    onSubmit();
   };
-
-  // Show success state
-  if (showSuccess) {
-    return (
-      <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center p-4">
-        <div className="tile-card max-w-md w-full p-8 text-center flip-enter">
-          <div className="flex justify-center mb-4">
-            <img src="/icon_prompt.svg" alt="Prompt round icon" className="w-24 h-24" />
-          </div>
-          <h2 className="text-2xl font-display font-bold text-quip-turquoise mb-2 success-message">
-            {getRandomMessage('promptSubmitted')}
-          </h2>
-          <p className="text-quip-teal">Moving to copy round...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-quip-navy to-quip-teal flex items-center justify-center p-4 bg-pattern">
