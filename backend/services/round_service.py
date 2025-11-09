@@ -19,7 +19,6 @@ from backend.models.player_abandoned_prompt import PlayerAbandonedPrompt
 from backend.services.transaction_service import TransactionService
 from backend.services.queue_service import QueueService
 from backend.services.activity_service import ActivityService
-from backend.services.ai.ai_service import AIService, AICopyError
 from backend.config import get_settings
 from backend.utils.exceptions import (
     InvalidPhraseError,
@@ -846,31 +845,31 @@ class RoundService:
         if not prompt_round.submitted_phrase:
             raise InvalidPhraseError("Original phrase not submitted yet; hints unavailable")
 
-        from backend.utils import lock_client
+        from backend.models.ai_phrase_cache import AIPhraseCache
 
-        lock_name = f"copy_hints:{prompt_round.round_id}"
-        with lock_client.lock(lock_name, timeout=self.settings.round_lock_timeout_seconds):
-            result = await self.db.execute(
-                select(Hint)
-                .where(Hint.prompt_round_id == prompt_round.round_id)
-                .order_by(Hint.created_at.desc())
-                .limit(1)
+        # Check if phrase cache exists (which provides hints)
+        result = await self.db.execute(
+            select(AIPhraseCache)
+            .where(AIPhraseCache.prompt_round_id == prompt_round.round_id)
+        )
+        phrase_cache = result.scalar_one_or_none()
+
+        if phrase_cache and phrase_cache.validated_phrases:
+            # Return cached hints for free (reuse phrases from cache)
+            hints = phrase_cache.validated_phrases[:3]  # Return up to 3 hints
+            return hints
+
+        # Check player balance before generating new hints/cache
+        if player.balance < self.settings.hint_cost:
+            raise InsufficientBalanceError(
+                f"Insufficient balance: {player.balance} < {self.settings.hint_cost}"
             )
-            hint_record = result.scalars().first()
-            if hint_record:
-                # Return cached hints for free
-                return list(hint_record.hint_phrases)
 
-            # Check player balance before generating new hints
-            if player.balance < self.settings.hint_cost:
-                raise InsufficientBalanceError(
-                    f"Insufficient balance: {player.balance} < {self.settings.hint_cost}"
-                )
-
-        # Generate hints outside the lock to avoid holding database locks during AI call
+        # Generate phrase cache (which includes hints) outside lock to avoid holding during AI call
+        from backend.services.ai.ai_service import AIService
         ai_service = AIService(self.db)
         try:
-            hints = await ai_service.generate_copy_hints(prompt_round)
+            hints = await ai_service.get_hints_from_cache(prompt_round, count=3)
         except Exception:
             raise
 

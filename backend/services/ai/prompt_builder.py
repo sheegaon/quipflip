@@ -19,7 +19,7 @@ def build_copy_prompt(original_phrase: str, existing_copy_phrase: str = None) ->
     Returns:
         A formatted prompt string for AI copy generation
     """
-    base_prompt = """Create a phrase meaning roughly the same thing as the original phrase.
+    base_prompt = f"""Create 5 phrases meaning roughly the same thing as the original phrase.
 
 **Original phrase: "{original_phrase}"**
 
@@ -43,65 +43,7 @@ Rules:
 
     base_prompt += f"""
 
-Generate ONE alternative phrase only:"""
-
-    return base_prompt
-
-
-def build_hint_prompt(original_phrase: str, prompt_text: str, existing_hints: list[str] | None = None) -> str:
-    """
-    Build structured prompt for generating diverse copy hints.
-
-    Args:
-        original_phrase: The original phrase that players must imitate
-        prompt_text: The prompt text that produced the original phrase
-        existing_hints: Hints that have already been generated (to avoid duplicates)
-
-    Returns:
-        A formatted prompt string for AI hint generation
-    """
-    common_words_placeholder = "{common_words}"
-
-    hints_section = ""
-    diversity_guidance = ""
-    if existing_hints:
-        formatted_hints = "\n".join(f"- {hint}" for hint in existing_hints)
-        hints_section = f"""
-
-Existing hints already shared (do NOT repeat or lightly modify these):
-{formatted_hints}
-
-Your new hint MUST be substantially different from the above."""
-
-        # Provide specific diversity guidance
-        diversity_strategies = [
-            "Try using a different word count",
-            "Explore a different semantic angle (if previous hints were direct, try metaphorical; if formal, try casual)",
-            "Vary the sentence structure or emphasis",
-            "Use synonyms for key concepts rather than the same words",
-        ]
-        diversity_guidance = "\n- ".join(diversity_strategies)
-        diversity_guidance = f"\n\nDiversity strategies to consider:\n- {diversity_guidance}"
-
-    base_prompt = f"""You are assisting a player in a word game where they must create a convincing copy of an original phrase.
-
-Original phrase: "{original_phrase}"
-Prompt context: "{prompt_text}"
-
-Game rules:
-- 1-15 characters per word
-- 2-5 words total, 4-100 characters total
-- Letters and spaces only (no numbers, punctuation, or symbols)
-- Each word must be dictionary-valid
-- Avoid reusing long words (4+ letters) from the original phrase unless they are in this allowed common list: [{common_words_placeholder}]
-
-Creative goals:
-- Offer a phrase that feels like a natural alternative the original author could plausibly have written
-- Make it feel authentic yet distinct from other options
-{diversity_guidance}
-{hints_section}
-
-Return exactly ONE new hint phrase. Do not add numbering, explanations, or quotation marks."""
+Generate FIVE alternative phrases, separated by semicolons (;):"""
 
     return base_prompt
 

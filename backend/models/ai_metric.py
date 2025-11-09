@@ -1,6 +1,7 @@
 """AI metrics model for tracking AI usage, costs, and performance."""
 
-from sqlalchemy import Column, String, Integer, Float, DateTime, Boolean, Index
+from sqlalchemy import Column, String, Integer, Float, DateTime, Boolean, Index, ForeignKey
+from sqlalchemy.orm import relationship
 import uuid
 from datetime import datetime, UTC
 from backend.database import Base
@@ -19,7 +20,7 @@ class AIMetric(Base):
     metric_id = get_uuid_column(primary_key=True, default=uuid.uuid4)
 
     # Operation details
-    operation_type = Column(String(50), nullable=False, index=True)  # "copy_generation" or "vote_generation"
+    operation_type = Column(String(50), nullable=False, index=True)  # "copy_generation", "vote_generation", or "hint_generation"
     provider = Column(String(50), nullable=False, index=True)  # "openai" or "gemini"
     model = Column(String(100), nullable=False)  # e.g., "gpt-5-nano", "gemini-2.5-flash-lite"
 
@@ -41,8 +42,18 @@ class AIMetric(Base):
     # For vote generation
     vote_correct = Column(Boolean, nullable=True)  # Whether AI vote was correct (for analysis)
 
+    # Link to phrase cache (if applicable)
+    cache_id = get_uuid_column(
+        ForeignKey("ai_phrase_cache.cache_id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
     # Timestamps
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False, index=True)
+
+    # Relationships
+    phrase_cache = relationship("AIPhraseCache", foreign_keys=[cache_id], backref="metrics")
 
     # Indexes for common queries
     __table_args__ = (

@@ -420,7 +420,7 @@ export const CopyRound: React.FC = () => {
                 {showHints && (
                   <div className="mt-3 space-y-3">
                     <p className="text-xs uppercase tracking-wide text-quip-teal/80">
-                      Inspiration only - make it your own!
+                      Mix and modify - make it your own!
                     </p>
                     <ul className="space-y-2">
                       {copyRoundHints.map((hint, index) => (
@@ -448,7 +448,7 @@ export const CopyRound: React.FC = () => {
                 </button>
                 {hintError && <p className="mt-2 text-sm text-red-600">{hintError}</p>}
                 <p className="mt-2 text-xs text-quip-teal">
-                  You will get three ideas that passed quick AI checks. Use them as inspiration and tweak them to match your style.
+                  You will get three ideas that passed quick AI checks. Use them as inspiration and tweak them to match your style. Hints may take up to one minute to generate.
                 </p>
               </>
             )}
