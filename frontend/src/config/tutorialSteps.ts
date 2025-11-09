@@ -38,7 +38,7 @@ Let's take a quick tour to show you how to play and earn some flipcoins!`,
 
 Let's start with a **Prompt Round** where you'll create a creative fill-in-the-blank challenge.`,
     target: '.tutorial-dashboard',
-    position: 'right',
+    position: 'top',
     nextStep: 'prompt_round',
     showSkip: true,
     showBack: true,

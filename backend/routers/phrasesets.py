@@ -209,3 +209,23 @@ async def get_completed_phrasesets(
     except Exception as exc:
         logger.error(f"Error getting completed phrasesets: {exc}")
         raise HTTPException(status_code=500, detail="Failed to get completed phrasesets")
+
+
+@router.get("/{phraseset_id}/public-details", response_model=PhrasesetDetails)
+async def get_public_phraseset_details(
+    phraseset_id: UUID = Path(...),
+    player: Player = Depends(get_current_player),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return full details for a COMPLETED phraseset (public access for review)."""
+    phraseset_service = PhrasesetService(db)
+    try:
+        details = await phraseset_service.get_public_phraseset_details(phraseset_id)
+        return PhrasesetDetails(**details)
+    except ValueError as exc:
+        message = str(exc)
+        if message == "Phraseset not found":
+            raise HTTPException(status_code=404, detail=message)
+        if message == "Phraseset not finalized":
+            raise HTTPException(status_code=403, detail=message)
+        raise HTTPException(status_code=400, detail=message)

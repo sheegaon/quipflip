@@ -156,7 +156,7 @@ class PhrasesetDetails(BaseSchema):
     votes: list[PhrasesetVote]
     total_pool: int
     results: Optional[dict]
-    your_role: Literal["prompt", "copy", "vote"]
+    your_role: Optional[Literal["prompt", "copy", "vote"]]  # None for public access
     your_phrase: Optional[str]
     your_payout: Optional[int]
     result_viewed: bool
