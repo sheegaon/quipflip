@@ -152,6 +152,15 @@ export const VoteRound: React.FC = () => {
               />
             </div>
 
+            {/* Large Check/X-mark indicator */}
+            <div className="flex justify-center mb-4">
+              <div className={`inline-flex items-center justify-center w-24 h-24 rounded-full border-4 ${voteResult.correct ? 'bg-quip-turquoise border-quip-turquoise text-white' : 'bg-quip-orange border-quip-orange text-white'} shadow-tile`}>
+                <span className="text-7xl font-bold leading-none" style={{ marginTop: '-4px' }}>
+                  {voteResult.correct ? '✓' : '✗'}
+                </span>
+              </div>
+            </div>
+
             {/* Main result message */}
             <h2 className={`text-5xl font-display font-bold mb-6 success-message ${voteResult.correct ? 'text-quip-turquoise' : 'text-quip-orange'}`}>
               {voteResult.correct ? (successMessage || 'Correct!') : 'Incorrect'}
