@@ -4,9 +4,10 @@ import { apiClient } from '../api/client';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { PromptRoundReview } from '../components/PhrasesetReview/PromptRoundReview';
 import { CopyRoundReview } from '../components/PhrasesetReview/CopyRoundReview';
+import { VoteRoundReview } from '../components/PhrasesetReview/VoteRoundReview';
 import type { PhrasesetDetails } from '../api/types';
 
-type ReviewStage = 'prompt' | 'copy';
+type ReviewStage = 'prompt' | 'copy1' | 'copy2' | 'vote';
 
 export const PhrasesetReview: React.FC = () => {
   const { phrasesetId } = useParams<{ phrasesetId: string }>();
@@ -49,8 +50,15 @@ export const PhrasesetReview: React.FC = () => {
   }, [phrasesetId]);
 
   const handlePromptSubmit = () => {
-    // Move to copy round review
-    setReviewStage('copy');
+    setReviewStage('copy1');
+  };
+
+  const handleCopy1Submit = () => {
+    setReviewStage('copy2');
+  };
+
+  const handleCopy2Submit = () => {
+    setReviewStage('vote');
   };
 
   const handleBackToCompleted = () => {
@@ -90,6 +98,10 @@ export const PhrasesetReview: React.FC = () => {
   // Find the player who played the prompt round
   const promptContributor = phrasesetData.contributors.find(c => c.round_id === phrasesetData.prompt_round_id);
 
+  // Find contributors for copy rounds by matching their phrases
+  const copy1Contributor = phrasesetData.contributors.find(c => c.phrase === phrasesetData.copy_phrase_1);
+  const copy2Contributor = phrasesetData.contributors.find(c => c.phrase === phrasesetData.copy_phrase_2);
+
   if (reviewStage === 'prompt') {
     return (
       <PromptRoundReview
@@ -102,10 +114,38 @@ export const PhrasesetReview: React.FC = () => {
     );
   }
 
-  // Copy round stage
+  if (reviewStage === 'copy1') {
+    return (
+      <CopyRoundReview
+        originalPhrase={phrasesetData.original_phrase || ''}
+        copyPhrase={phrasesetData.copy_phrase_1 || ''}
+        playerUsername={copy1Contributor?.username || 'Unknown'}
+        onSubmit={handleCopy1Submit}
+        onBack={handleBackToCompleted}
+      />
+    );
+  }
+
+  if (reviewStage === 'copy2') {
+    return (
+      <CopyRoundReview
+        originalPhrase={phrasesetData.original_phrase || ''}
+        copyPhrase={phrasesetData.copy_phrase_2 || ''}
+        playerUsername={copy2Contributor?.username || 'Unknown'}
+        onSubmit={handleCopy2Submit}
+        onBack={handleBackToCompleted}
+      />
+    );
+  }
+
+  // Vote round stage
   return (
-    <CopyRoundReview
+    <VoteRoundReview
+      promptText={phrasesetData.prompt_text}
       originalPhrase={phrasesetData.original_phrase || ''}
+      copyPhrase1={phrasesetData.copy_phrase_1 || ''}
+      copyPhrase2={phrasesetData.copy_phrase_2 || ''}
+      votes={phrasesetData.votes}
       onBack={handleBackToCompleted}
     />
   );
