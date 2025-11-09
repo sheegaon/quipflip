@@ -10,6 +10,17 @@ import { resultsLogger } from '../utils/logger';
 
 const ITEMS_PER_PAGE = 10;
 
+// Helper function to generate unique key for each result
+const getResultKey = (result: { phraseset_id: string; role: string; prompt_round_id?: string; copy_round_id?: string }) => {
+  if (result.role === 'prompt' && result.prompt_round_id) {
+    return `${result.phraseset_id}-prompt-${result.prompt_round_id}`;
+  } else if (result.role === 'copy' && result.copy_round_id) {
+    return `${result.phraseset_id}-copy-${result.copy_round_id}`;
+  }
+  // Fallback for results without round IDs
+  return `${result.phraseset_id}-${result.role}`;
+};
+
 export const Results: React.FC = () => {
   const { actions: gameActions } = useGame();
   const { state: resultsState, actions: resultsActions } = useResults();
@@ -438,7 +449,7 @@ export const Results: React.FC = () => {
               <div className="space-y-2">
                 {latestResultsPagination.paginatedResults.map((result) => (
                   <button
-                    key={result.phraseset_id}
+                    key={getResultKey(result)}
                     onClick={() => handleSelectPhraseset(result.phraseset_id)}
                     className={`w-full text-left p-3 rounded-tile transition-all ${
                       selectedPhrasesetId === result.phraseset_id
