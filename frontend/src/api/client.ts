@@ -36,6 +36,7 @@ import type {
   DashboardData,
   ChangePasswordResponse,
   UpdateEmailResponse,
+  ChangeUsernameResponse,
   AdminPlayerSummary,
   AdminDeletePlayerResponse,
   AdminResetPasswordResponse,
@@ -326,6 +327,14 @@ export const apiClient = {
     signal?: AbortSignal,
   ): Promise<UpdateEmailResponse> {
     const { data } = await api.patch<UpdateEmailResponse>('/player/email', payload, { signal });
+    return data;
+  },
+
+  async changeUsername(
+    payload: { new_username: string; password: string },
+    signal?: AbortSignal,
+  ): Promise<ChangeUsernameResponse> {
+    const { data } = await api.patch<ChangeUsernameResponse>('/player/username', payload, { signal });
     return data;
   },
 

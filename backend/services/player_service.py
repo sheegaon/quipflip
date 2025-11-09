@@ -12,7 +12,11 @@ from backend.models.daily_bonus import DailyBonus
 from backend.models.phraseset import Phraseset
 from backend.models.round import Round
 from backend.config import get_settings
-from backend.utils.exceptions import DailyBonusNotAvailableError
+from backend.utils.exceptions import (
+    DailyBonusNotAvailableError,
+    UsernameTakenError,
+    InvalidUsernameError,
+)
 from backend.utils.passwords import hash_password
 from backend.services.username_service import (
     UsernameService,
@@ -236,6 +240,42 @@ class PlayerService:
         player.password_hash = hash_password(new_password)
         await self.db.commit()
         await self.db.refresh(player)
+
+    async def update_username(self, player: Player, new_username: str) -> Player:
+        """Update a player's username."""
+
+        # Validate input
+        if not is_username_input_valid(new_username):
+            raise InvalidUsernameError("Username contains invalid characters or does not meet requirements")
+
+        # Normalize and canonicalize
+        normalized_username = normalize_username(new_username)
+        canonical_username = canonicalize_username(normalized_username)
+
+        # Update both display and canonical versions
+        player.username = normalized_username
+        player.username_canonical = canonical_username
+
+        try:
+            await self.db.commit()
+        except IntegrityError as exc:
+            await self.db.rollback()
+            # Check constraint name from the exception if available
+            constraint_name = None
+            if hasattr(exc.orig, 'diag') and hasattr(exc.orig.diag, 'constraint_name'):
+                constraint_name = exc.orig.diag.constraint_name
+
+            # Fall back to string matching if constraint name not available
+            if constraint_name in ('uq_players_username_canonical', 'uq_players_username'):
+                raise UsernameTakenError("Username is already in use by another player") from exc
+
+            error_message = str(exc).lower()
+            if "uq_players_username" in error_message or "uq_players_username_canonical" in error_message:
+                raise UsernameTakenError("Username is already in use by another player") from exc
+            raise
+
+        await self.db.refresh(player)
+        return player
 
     async def can_start_prompt_round(self, player: Player) -> tuple[bool, str]:
         """

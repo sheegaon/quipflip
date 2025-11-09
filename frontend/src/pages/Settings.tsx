@@ -43,6 +43,14 @@ const Settings: React.FC = () => {
   const [emailSuccess, setEmailSuccess] = useState<string | null>(null);
   const [emailLoading, setEmailLoading] = useState(false);
 
+  const [usernameForm, setUsernameForm] = useState({
+    newUsername: player?.username ?? '',
+    password: '',
+  });
+  const [usernameError, setUsernameError] = useState<string | null>(null);
+  const [usernameSuccess, setUsernameSuccess] = useState<string | null>(null);
+  const [usernameLoading, setUsernameLoading] = useState(false);
+
   const [upgradeForm, setUpgradeForm] = useState({
     email: '',
     password: '',
@@ -63,6 +71,12 @@ const Settings: React.FC = () => {
       setEmailForm((prev) => ({ ...prev, newEmail: player.email }));
     }
   }, [player?.email]);
+
+  useEffect(() => {
+    if (player?.username) {
+      setUsernameForm((prev) => ({ ...prev, newUsername: player.username }));
+    }
+  }, [player?.username]);
 
 
   if (!player) {
@@ -220,6 +234,51 @@ const Settings: React.FC = () => {
       }
     } finally {
       setEmailLoading(false);
+    }
+  };
+
+  const handleUsernameSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setUsernameError(null);
+    setUsernameSuccess(null);
+
+    if (!usernameForm.newUsername || usernameForm.newUsername.trim().length < 3) {
+      setUsernameError('Username must be at least 3 characters long.');
+      return;
+    }
+
+    // Validate that username only contains alphanumeric characters and spaces
+    const usernamePattern = /^[a-zA-Z0-9\s]+$/;
+    if (!usernamePattern.test(usernameForm.newUsername.trim())) {
+      setUsernameError('Username can only contain letters, numbers, and spaces.');
+      return;
+    }
+
+    if (!usernameForm.password) {
+      setUsernameError('Please confirm with your password.');
+      return;
+    }
+
+    try {
+      setUsernameLoading(true);
+      const response = await apiClient.changeUsername({
+        new_username: usernameForm.newUsername,
+        password: usernameForm.password,
+      });
+
+      setUsernameSuccess(response.message);
+      setUsernameForm({ newUsername: response.username, password: '' });
+      await refreshBalance();
+    } catch (err: any) {
+      if (err?.detail === 'username_taken') {
+        setUsernameError('That username is already in use.');
+      } else if (err?.detail === 'invalid_username') {
+        setUsernameError('Please enter a valid username (only letters, numbers, and spaces).');
+      } else {
+        setUsernameError(extractErrorMessage(err, 'change-username') || 'Failed to update username');
+      }
+    } finally {
+      setUsernameLoading(false);
     }
   };
 
@@ -489,6 +548,47 @@ const Settings: React.FC = () => {
                 className="bg-quip-turquoise hover:bg-quip-teal disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm"
               >
                 {emailLoading ? 'Updating...' : 'Update Email'}
+              </button>
+            </div>
+          </form>
+        </div>
+
+        {/* Change Username */}
+        <div className="tile-card p-6 mb-6">
+          <h2 className="text-2xl font-display font-bold text-quip-navy mb-4">Change Username</h2>
+          <p className="text-quip-teal mb-4">Update your display name and confirm with your current password.</p>
+          {usernameError && <p className="text-red-600 mb-3">{usernameError}</p>}
+          {usernameSuccess && <p className="text-green-600 mb-3">{usernameSuccess}</p>}
+          <form onSubmit={handleUsernameSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex flex-col">
+              <label className="text-sm font-semibold text-quip-teal mb-2">New Username</label>
+              <input
+                type="text"
+                value={usernameForm.newUsername}
+                onChange={(e) => setUsernameForm((prev) => ({ ...prev, newUsername: e.target.value }))}
+                className="border-2 border-quip-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-quip-orange"
+                placeholder="Enter new username"
+                minLength={3}
+                maxLength={80}
+              />
+            </div>
+            <div className="flex flex-col">
+              <label className="text-sm font-semibold text-quip-teal mb-2">Password</label>
+              <input
+                type="password"
+                value={usernameForm.password}
+                onChange={(e) => setUsernameForm((prev) => ({ ...prev, password: e.target.value }))}
+                className="border-2 border-quip-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-quip-orange"
+                placeholder="Enter password"
+              />
+            </div>
+            <div className="md:col-span-2 flex justify-end">
+              <button
+                type="submit"
+                disabled={usernameLoading}
+                className="bg-quip-turquoise hover:bg-quip-teal disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm"
+              >
+                {usernameLoading ? 'Updating...' : 'Update Username'}
               </button>
             </div>
           </form>

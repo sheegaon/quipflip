@@ -30,6 +30,11 @@ export interface UpdateEmailResponse {
   email: string;
 }
 
+export interface ChangeUsernameResponse {
+  username: string;
+  message: string;
+}
+
 export interface AdminPlayerSummary {
   player_id: string;
   username: string;
