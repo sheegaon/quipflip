@@ -9,6 +9,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+from backend.migrations.util import get_uuid_type
 
 
 # revision identifiers, used by Alembic.
@@ -19,13 +20,8 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Get the current dialect to choose correct UUID type
-    bind = op.get_bind()
-    dialect_name = bind.dialect.name
-    if dialect_name == 'postgresql':
-        uuid = sa.UUID()
-    else:
-        uuid = sa.String(length=36)
+    # Get the appropriate UUID type for the current database dialect
+    uuid = get_uuid_type()
 
     # Create ai_phrase_cache table
     op.create_table(

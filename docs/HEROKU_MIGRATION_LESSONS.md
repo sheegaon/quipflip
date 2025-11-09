@@ -29,14 +29,22 @@ aborted during deploy.
   verify that the repository still forms a single head.
 - Review historical deployment logs to uncover similar manually stamped
   revisions and backfill them before they block future releases.
-- When creating migrations with UUID foreign keys, use the dialect detection
-  pattern from the initial schema migration:
+- When creating migrations with UUID foreign keys, use the `get_uuid_type()`
+  helper function from `backend.migrations.util`:
   ```python
-  bind = op.get_bind()
-  dialect_name = bind.dialect.name
-  if dialect_name == 'postgresql':
-      uuid = sa.UUID()
-  else:
-      uuid = sa.String(length=36)
+  from backend.migrations.util import get_uuid_type
+
+  def upgrade() -> None:
+      uuid = get_uuid_type()
+      op.create_table(
+          'my_table',
+          sa.Column('id', uuid, nullable=False),
+          sa.Column('foreign_id', uuid, nullable=True),
+          ...
+      )
   ```
-  Then use the `uuid` variable for all UUID columns to ensure compatibility.
+  This helper automatically selects the correct type based on the database
+  dialect (PostgreSQL: native UUID, SQLite: String(36)), ensuring
+  compatibility across both local development and production environments.
+  Using this shared helper function improves maintainability and consistency
+  across all migrations.
