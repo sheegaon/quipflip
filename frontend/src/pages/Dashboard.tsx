@@ -16,7 +16,7 @@ import { hasDismissedSurvey, markSurveyDismissed, hasCompletedSurvey } from '../
 const formatWaitingCount = (count: number): string => (count > 10 ? 'over 10' : count.toString());
 export const Dashboard: React.FC = () => {
   const { state, actions } = useGame();
-  const { state: resultsState } = useResults();
+  const { state: resultsState, actions: resultsActions } = useResults();
   const {
     player,
     activeRound,
@@ -29,6 +29,7 @@ export const Dashboard: React.FC = () => {
   const { refreshDashboard, clearError, abandonRound } = actions;
   const { startTutorial, skipTutorial, advanceStep } = useTutorial();
   const { viewedResultIds } = resultsState;
+  const { markResultsViewed } = resultsActions;
   const navigate = useNavigate();
   const location = useLocation();
   const [isRoundExpired, setIsRoundExpired] = useState(false);
@@ -38,6 +39,7 @@ export const Dashboard: React.FC = () => {
   const [showSurveyPrompt, setShowSurveyPrompt] = useState(false);
   const [isAbandoningRound, setIsAbandoningRound] = useState(false);
   const [abandonError, setAbandonError] = useState<string | null>(null);
+  const [hasClickedViewResults, setHasClickedViewResults] = useState(false);
   const roundExpiryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Log component mount and key state changes
@@ -221,6 +223,20 @@ export const Dashboard: React.FC = () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [refreshDashboard]);
+
+  // Reset hasClickedViewResults when new results arrive
+  const previousResultsCountRef = useRef(0);
+  useEffect(() => {
+    const currentCount = pendingResults.length;
+    const previousCount = previousResultsCountRef.current;
+
+    // If we have new results (count increased), reset the flag
+    if (currentCount > previousCount) {
+      setHasClickedViewResults(false);
+    }
+
+    previousResultsCountRef.current = currentCount;
+  }, [pendingResults.length]);
 
   useEffect(() => {
     if (!activeRound?.round_id) {
@@ -426,11 +442,6 @@ export const Dashboard: React.FC = () => {
     }
   };
 
-  const handleViewResults = () => {
-    // Navigate to results page (results will be marked as viewed on page load)
-    navigate('/results');
-  };
-
   // Hide certain dashboard elements during tutorial to reduce overwhelm
   const unviewedPromptCount = phrasesetSummary?.finalized.unclaimed_prompts ?? 0;
   const unviewedCopyCount = phrasesetSummary?.finalized.unclaimed_copies ?? 0;
@@ -442,8 +453,23 @@ export const Dashboard: React.FC = () => {
     !result.result_viewed && !viewedResultIds.has(result.phraseset_id)
   );
 
+  const handleViewResults = useCallback(() => {
+    // Mark all pending results as viewed immediately so the notification disappears
+    const phrasesetIds = unviewedPendingResults.map((result: PendingResult) => result.phraseset_id);
+    if (phrasesetIds.length > 0) {
+      markResultsViewed(phrasesetIds);
+    }
+
+    // Hide the notification card
+    setHasClickedViewResults(true);
+
+    // Navigate to results page
+    navigate('/results');
+  }, [unviewedPendingResults, markResultsViewed, navigate]);
+
   // Show notification if there are unviewed pending results OR unclaimed finalized results
-  const shouldShowResultsNotification = unviewedPendingResults.length > 0 || totalUnviewedCount > 0;
+  // BUT hide it if the user has clicked "View Results" this session
+  const shouldShowResultsNotification = !hasClickedViewResults && (unviewedPendingResults.length > 0 || totalUnviewedCount > 0);
 
   if (!player) {
     return (

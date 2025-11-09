@@ -29,7 +29,8 @@ export const PhrasesetReview: React.FC = () => {
       try {
         setLoading(true);
         setError(null);
-        const data = await apiClient.getPhrasesetDetails(phrasesetId, controller.signal);
+        // Use public endpoint for completed phrasesets
+        const data = await apiClient.getPublicPhrasesetDetails(phrasesetId, controller.signal);
         setPhrasesetData(data);
       } catch (err: any) {
         if (err.name !== 'CanceledError' && err.code !== 'ERR_CANCELED') {
