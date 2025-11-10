@@ -24,6 +24,7 @@ export const CopyRoundReview: React.FC<CopyRoundReviewProps> = ({
 }) => {
   const [isRevealed, setIsRevealed] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // null = not fetched yet, empty array = fetched but no hints, array with items = hints available
   const [copyRoundHints, setCopyRoundHints] = useState<string[] | null>(null);
   const [isFetchingHints, setIsFetchingHints] = useState(false);
   const [hintError, setHintError] = useState<string | null>(null);
@@ -49,8 +50,12 @@ export const CopyRoundReview: React.FC<CopyRoundReviewProps> = ({
     try {
       // Call API directly (not through GameContext) to avoid polluting shared state
       const response = await apiClient.getCopyHints(roundId);
-      setCopyRoundHints(response.hints);
-      setShowHints(true);
+      // Set hints (could be empty array if no hints available)
+      setCopyRoundHints(response.hints || []);
+      // Only auto-show hints if there are any
+      if (response.hints && response.hints.length > 0) {
+        setShowHints(true);
+      }
     } catch (err: any) {
       // The hints API only works for active rounds, not completed rounds
       const errorMessage = extractErrorMessage(err);
@@ -98,6 +103,7 @@ export const CopyRoundReview: React.FC<CopyRoundReviewProps> = ({
         {roundId && (
           <div className="mb-4 rounded-tile border border-quip-turquoise/30 bg-white/80 p-4 shadow-tile-xs">
             {copyRoundHints && copyRoundHints.length > 0 ? (
+              // Case 1: Hints fetched and available
               <>
                 <button
                   type="button"
@@ -115,7 +121,7 @@ export const CopyRoundReview: React.FC<CopyRoundReviewProps> = ({
                     <ul className="space-y-2">
                       {copyRoundHints.map((hint, index) => (
                         <li
-                          key={`${hint}-${index}`}
+                          key={index}
                           className="flex items-start gap-2 rounded-tile border border-quip-turquoise/30 bg-white px-3 py-2 text-quip-navy shadow-inner"
                         >
                           <span className="font-semibold text-quip-turquoise">Hint {index + 1}:</span>
@@ -126,7 +132,15 @@ export const CopyRoundReview: React.FC<CopyRoundReviewProps> = ({
                   </div>
                 )}
               </>
+            ) : copyRoundHints !== null && copyRoundHints.length === 0 ? (
+              // Case 2: Hints fetched but none available
+              <div className="text-center py-2">
+                <p className="text-sm text-quip-teal">
+                  No AI hints are available for this round.
+                </p>
+              </div>
             ) : (
+              // Case 3: Not yet fetched
               <>
                 <button
                   type="button"
