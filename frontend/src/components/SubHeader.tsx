@@ -132,6 +132,21 @@ export const SubHeader: React.FC = () => {
             />
           </button>
 
+          {/* Online Users icon */}
+          <button
+            onClick={() => navigate('/online-users')}
+            className="group"
+            title="View who's online"
+            aria-label="View who's online"
+          >
+            <img
+              src="/icon_online_users.svg"
+              alt=""
+              className="w-7 h-7 md:w-8 md:h-8 transition-transform group-hover:scale-110"
+              aria-hidden="true"
+            />
+          </button>
+
           {/* Treasure chest - Hidden on first day */}
           {!isFirstDay && (
             <button
