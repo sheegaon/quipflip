@@ -37,13 +37,26 @@ const OnlineUsers: React.FC = () => {
 
         // Use backend URL from environment or construct it
         const backendUrl = import.meta.env.VITE_API_URL || `http://${host}:${port}`;
-        const wsUrl = backendUrl
+        let wsUrl = backendUrl
           .replace('http://', 'ws://')
           .replace('https://', 'wss://') + '/users/online/ws';
 
+        // Get access token from cookies and add as query parameter for better dev mode compatibility
+        const getCookie = (name: string): string | null => {
+          const value = `; ${document.cookie}`;
+          const parts = value.split(`; ${name}=`);
+          if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
+          return null;
+        };
+
+        const accessToken = getCookie('quipflip_access_token');
+        if (accessToken) {
+          wsUrl += `?token=${encodeURIComponent(accessToken)}`;
+        }
+
         // Create WebSocket connection
         // Note: Browser automatically sends cookies with WebSocket handshake for same-origin connections
-        // Backend validates authentication via HTTP-only cookies
+        // Backend validates authentication via HTTP-only cookies OR query token
         const ws = new WebSocket(wsUrl);
 
         ws.onopen = () => {
