@@ -838,7 +838,7 @@ class ScoringService:
         # Handle gross earnings leaderboard
         gross_entries = role_leaderboards.get("gross_earnings", [])
         gross_lookup = {entry["player_id"]: entry for entry in gross_entries}
-        top_gross_entries = gross_entries[:ALLTIME_LEADERBOARD_LIMIT_ALLTIME]
+        top_gross_entries = gross_entries[:GROSS_EARNINGS_LEADERBOARD_LIMIT_ALLTIME]
 
         player_gross_entry = gross_lookup.get(player_id)
         if player_gross_entry is None:
@@ -889,33 +889,19 @@ class ScoringService:
             List of leaderboard entries sorted by gross earnings
         """
         # Build conditions for filtering transactions
-        where_conditions = [
+        transaction_conditions = [
             Transaction.type.in_(["prize_payout", "vote_payout"]),
             Transaction.amount > 0,
-            ~Player.email.like(f"%{AI_PLAYER_EMAIL_DOMAIN}"),
         ]
         if start_date:
-            where_conditions.append(Transaction.created_at >= start_date)
-
-        # Calculate total gross earnings per player
-        gross_earnings_stmt = (
-            select(
-                Player.player_id,
-                Player.username,
-                func.sum(Transaction.amount).label("gross_earnings"),
-            )
-            .join(Transaction, Transaction.player_id == Player.player_id)
-            .where(*where_conditions)
-            .group_by(Player.player_id, Player.username)
-        )
+            transaction_conditions.append(Transaction.created_at >= start_date)
 
         # Calculate total rounds completed per player across all roles
         completion_conditions = [
             Round.status == "submitted",
         ]
         if start_date:
-            # We need to join with completion subqueries for each role to get accurate date filtering
-            # For simplicity with date filtering, we'll use transaction created_at as a proxy
+            # Filter rounds by creation date as a proxy for completion
             completion_conditions.append(Round.created_at >= start_date)
 
         rounds_stmt = (
@@ -929,27 +915,23 @@ class ScoringService:
         )
 
         # Build and execute final leaderboard query
+        # Using INNER JOIN since we only want players with transactions
         leaderboard_stmt = (
             select(
                 Player.player_id,
                 Player.username,
-                func.coalesce(func.sum(Transaction.amount), 0).label("gross_earnings"),
+                func.sum(Transaction.amount).label("gross_earnings"),
                 func.coalesce(rounds_stmt.c.total_rounds, 0).label("total_rounds"),
             )
-            .join(Transaction, Transaction.player_id == Player.player_id, isouter=True)
+            .join(Transaction, Transaction.player_id == Player.player_id)
             .join(rounds_stmt, rounds_stmt.c.player_id == Player.player_id, isouter=True)
             .where(
-                Transaction.type.in_(["prize_payout", "vote_payout"]),
-                Transaction.amount > 0,
+                *transaction_conditions,
                 ~Player.email.like(f"%{AI_PLAYER_EMAIL_DOMAIN}"),
             )
             .group_by(Player.player_id, Player.username, rounds_stmt.c.total_rounds)
             .order_by(func.sum(Transaction.amount).desc(), Player.username.asc())
         )
-
-        if start_date:
-            # Add date filter in WHERE clause
-            leaderboard_stmt = leaderboard_stmt.where(Transaction.created_at >= start_date)
 
         result = await self.db.execute(leaderboard_stmt)
 
