@@ -53,8 +53,36 @@ class SmartPollingManager {
     window.addEventListener('online', this.handleOnline);
     window.addEventListener('offline', this.handleOffline);
 
+    // Track bfcache (Back-Forward Cache) for mobile browsers
+    window.addEventListener('pageshow', this.handlePageShow);
+    window.addEventListener('pagehide', this.handlePageHide);
+
     // Cleanup on beforeunload
     window.addEventListener('beforeunload', this.cleanup);
+  }
+
+  private removeEventListeners() {
+    // Remove user activity listeners
+    const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+    activityEvents.forEach(event => {
+      document.removeEventListener(event, this.handleUserActivity);
+    });
+
+    // Remove focus/visibility listeners
+    document.removeEventListener('visibilitychange', this.handleVisibilityChange);
+    window.removeEventListener('focus', this.handleWindowFocus);
+    window.removeEventListener('blur', this.handleWindowBlur);
+
+    // Remove network status listeners
+    window.removeEventListener('online', this.handleOnline);
+    window.removeEventListener('offline', this.handleOffline);
+
+    // Remove bfcache listeners
+    window.removeEventListener('pageshow', this.handlePageShow);
+    window.removeEventListener('pagehide', this.handlePageHide);
+
+    // Remove cleanup listener
+    window.removeEventListener('beforeunload', this.cleanup);
   }
 
   private handleUserActivity = () => {
@@ -115,6 +143,43 @@ class SmartPollingManager {
     });
   };
 
+  private handlePageShow = (event: PageTransitionEvent) => {
+    // Detect restoration from bfcache (mobile Chrome, Safari)
+    if (event.persisted) {
+      this.isUserActive = true;
+      this.focusTime = Date.now();
+
+      // Resume all polls that were active
+      this.polls.forEach((poll, key) => {
+        if (poll.state.isPolling) {
+          // Reset error counts on bfcache restore to prevent retry budget exhaustion
+          poll.state.errorCount = 0;
+          // Trigger immediate poll on restoration
+          this.executePoll(key);
+        }
+      });
+
+      // Dispatch custom event to notify other parts of the app
+      window.dispatchEvent(new CustomEvent('bfcache-restore'));
+    }
+  };
+
+  private handlePageHide = (event: PageTransitionEvent) => {
+    // Detect entering bfcache
+    if (event.persisted) {
+      // Pause all polls when entering bfcache
+      this.polls.forEach((poll) => {
+        if (poll.timeoutId) {
+          clearTimeout(poll.timeoutId);
+          poll.timeoutId = undefined;
+        }
+        if (poll.abortController) {
+          poll.abortController.abort();
+        }
+      });
+    }
+  };
+
   private getEffectiveInterval(key: string): number {
     const poll = this.polls.get(key);
     if (!poll) return 60000;
@@ -156,18 +221,23 @@ class SmartPollingManager {
 
     try {
       await poll.callback();
-      
+
       // Success - reset error count and interval
       poll.state.errorCount = 0;
       poll.state.currentInterval = poll.config.interval;
       poll.state.lastSuccessTime = Date.now();
-      
+
       // Schedule next poll
       this.schedulePoll(key);
     } catch (error) {
-      // Error handling
-      poll.state.errorCount++;
-      poll.state.lastErrorTime = Date.now();
+      // Don't count abort errors (from bfcache transitions) against retry budget
+      const isAbortError = error instanceof Error && error.name === 'AbortError';
+
+      if (!isAbortError) {
+        // Error handling - only increment for real errors
+        poll.state.errorCount++;
+        poll.state.lastErrorTime = Date.now();
+      }
 
       if (poll.config.retryOnError && poll.state.errorCount <= (poll.config.maxRetries || 3)) {
         // Retry with backoff
@@ -175,8 +245,8 @@ class SmartPollingManager {
       } else if (!poll.config.retryOnError) {
         // Continue polling even after errors, but with increased interval
         this.schedulePoll(key);
-      } else {
-        // Stop polling after max retries
+      } else if (!isAbortError) {
+        // Stop polling after max retries (but not for abort errors)
         this.stopPoll(key);
       }
     }
@@ -293,6 +363,7 @@ class SmartPollingManager {
       this.stopPoll(key);
     });
     this.polls.clear();
+    this.removeEventListeners();
   };
 }
 
