@@ -314,7 +314,7 @@ const Statistics: React.FC = () => {
                 title="View Leaderboard"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path d="M3 12a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1H4a1 1 0 01-1-1v-4zM8 8a1 1 0 011-1h2a1 1 0 011 1v8a1 1 0 01-1 1H9a1 1 0 01-1-1V8zM14 10a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+                  <path d="M2 8a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H3a1 1 0 01-1-1V8zM8 3a1 1 0 011-1h2a1 1 0 011 1v14a1 1 0 01-1 1H9a1 1 0 01-1-1V3zM14 6a1 1 0 011-1h2a1 1 0 011 1v11a1 1 0 01-1 1h-2a1 1 0 01-1-1V6z" />
                 </svg>
                 <span>Leaderboard</span>
               </button>
