@@ -496,7 +496,7 @@ async def root():
     """Root endpoint."""
     return {
         "message": "Quipflip API - Phase 3 Beta",
-        "version": "1.2.0",
+        "version": "1.3.0",
         "environment": settings.environment,
         "docs": "/docs",
     }

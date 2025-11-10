@@ -16,6 +16,7 @@ import type {
   PhrasesetResults,
   HealthResponse,
   ApiInfo,
+  GameStatus,
   ApiError,
   AuthTokenResponse,
   SuggestUsernameResponse,
@@ -266,6 +267,11 @@ export const apiClient = {
 
   async getApiInfo(signal?: AbortSignal): Promise<ApiInfo> {
     const { data } = await api.get<ApiInfo>('/', { signal, skipAuth: true });
+    return data;
+  },
+
+  async getGameStatus(signal?: AbortSignal): Promise<GameStatus> {
+    const { data } = await api.get<GameStatus>('/status', { signal, skipAuth: true });
     return data;
   },
 

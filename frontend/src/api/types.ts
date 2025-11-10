@@ -509,6 +509,15 @@ export interface ApiInfo {
   docs: string;
 }
 
+export interface GameStatus {
+  version: string;
+  environment: string;
+  phrase_validation: {
+    mode: 'local' | 'remote';
+    healthy: boolean | null;
+  };
+}
+
 export interface SubmitPromptFeedbackRequest {
   feedback_type: 'like' | 'dislike';
 }
