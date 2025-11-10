@@ -152,6 +152,8 @@ class SmartPollingManager {
       // Resume all polls that were active
       this.polls.forEach((poll, key) => {
         if (poll.state.isPolling) {
+          // Reset error counts on bfcache restore to prevent retry budget exhaustion
+          poll.state.errorCount = 0;
           // Trigger immediate poll on restoration
           this.executePoll(key);
         }
@@ -166,13 +168,12 @@ class SmartPollingManager {
     // Detect entering bfcache
     if (event.persisted) {
       // Pause all polls when entering bfcache
-      this.polls.forEach((_, key) => {
-        const poll = this.polls.get(key);
-        if (poll?.timeoutId) {
+      this.polls.forEach((poll) => {
+        if (poll.timeoutId) {
           clearTimeout(poll.timeoutId);
           poll.timeoutId = undefined;
         }
-        if (poll?.abortController) {
+        if (poll.abortController) {
           poll.abortController.abort();
         }
       });
@@ -220,18 +221,23 @@ class SmartPollingManager {
 
     try {
       await poll.callback();
-      
+
       // Success - reset error count and interval
       poll.state.errorCount = 0;
       poll.state.currentInterval = poll.config.interval;
       poll.state.lastSuccessTime = Date.now();
-      
+
       // Schedule next poll
       this.schedulePoll(key);
     } catch (error) {
-      // Error handling
-      poll.state.errorCount++;
-      poll.state.lastErrorTime = Date.now();
+      // Don't count abort errors (from bfcache transitions) against retry budget
+      const isAbortError = error instanceof Error && error.name === 'AbortError';
+
+      if (!isAbortError) {
+        // Error handling - only increment for real errors
+        poll.state.errorCount++;
+        poll.state.lastErrorTime = Date.now();
+      }
 
       if (poll.config.retryOnError && poll.state.errorCount <= (poll.config.maxRetries || 3)) {
         // Retry with backoff
@@ -239,8 +245,8 @@ class SmartPollingManager {
       } else if (!poll.config.retryOnError) {
         // Continue polling even after errors, but with increased interval
         this.schedulePoll(key);
-      } else {
-        // Stop polling after max retries
+      } else if (!isAbortError) {
+        // Stop polling after max retries (but not for abort errors)
         this.stopPoll(key);
       }
     }
