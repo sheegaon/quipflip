@@ -667,6 +667,7 @@ export interface ClaimQuestRewardResponse {
 export interface OnlineUser {
   username: string;
   last_action: string;
+  last_action_category: string;
   last_activity: string;
   time_ago: string;
 }
