@@ -88,7 +88,7 @@ export const PhrasesetReview: React.FC = () => {
             onClick={handleBackToCompleted}
             className="bg-quip-navy hover:bg-quip-teal text-white font-bold py-3 px-6 rounded-tile transition-all"
           >
-            Back to Completed Rounds
+            Completed Rounds
           </button>
         </div>
       </div>
