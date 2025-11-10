@@ -378,6 +378,22 @@ const Statistics: React.FC = () => {
         {/* Charts Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
 
+          {/* Win Rate Chart */}
+          <div className="tile-card p-6">
+            <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Win Rates by Role</h2>
+            {chartsReady ? (
+              <WinRateChart
+                promptStats={data.prompt_stats}
+                copyStats={data.copy_stats}
+                voterStats={data.voter_stats}
+              />
+            ) : (
+              <div className="w-full h-80 flex items-center justify-center">
+                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-quip-orange border-r-transparent"></div>
+              </div>
+            )}
+          </div>
+
           {/* Historical Trends */}
           <div className="tile-card p-6">
             <h2 className="text-xl font-display font-bold text-quip-navy mb-2">Historical Trends &amp; Performance Over Time</h2>
@@ -446,22 +462,6 @@ const Statistics: React.FC = () => {
             <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Activity Metrics</h2>
             {chartsReady ? (
               <FrequencyChart frequency={data.frequency} />
-            ) : (
-              <div className="w-full h-80 flex items-center justify-center">
-                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-quip-orange border-r-transparent"></div>
-              </div>
-            )}
-          </div>
-
-          {/* Win Rate Chart */}
-          <div className="tile-card p-6">
-            <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Win Rates by Role</h2>
-            {chartsReady ? (
-              <WinRateChart
-                promptStats={data.prompt_stats}
-                copyStats={data.copy_stats}
-                voterStats={data.voter_stats}
-              />
             ) : (
               <div className="w-full h-80 flex items-center justify-center">
                 <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-quip-orange border-r-transparent"></div>
