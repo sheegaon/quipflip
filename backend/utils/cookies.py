@@ -7,22 +7,21 @@ from backend.config import get_settings
 def set_refresh_cookie(response: Response, token: str, *, expires_days: int | None = None) -> None:
     """Set the refresh token cookie with secure defaults.
 
-    In production, the frontend uses Vercel proxy (/api/*) to forward requests to the backend.
-    From the browser's perspective, all requests are same-origin (quipflip.xyz), so we use
-    SameSite=Lax for maximum iOS/Safari compatibility.
+    In production, the frontend connects directly to the Heroku backend (cross-site),
+    so we use SameSite=None with Secure flag to allow cross-site cookies.
 
     In development, frontend (localhost:5173) and backend (localhost:8000) are on different
-    ports but browsers treat localhost as same-origin, so SameSite=Lax works fine.
+    ports. SameSite=Lax works for localhost development.
     """
 
     settings = get_settings()
     days = expires_days or settings.refresh_token_exp_days
     max_age = days * 24 * 60 * 60
 
-    # Use SameSite=Lax for both dev and production (same-origin via Vercel proxy)
-    # This fixes iOS Safari/Chrome cookie blocking issues
-    samesite_value = "lax"
-    # Secure flag: only disable for local development, enable for all other environments
+    # Production: SameSite=None for cross-site cookies (frontend -> Heroku backend)
+    # Development: SameSite=Lax for same-site localhost
+    samesite_value = "none" if settings.environment == "production" else "lax"
+    # Secure flag: required for SameSite=None, enabled in all non-dev environments
     secure_value = settings.environment != "development"
 
     response.set_cookie(
@@ -46,10 +45,10 @@ def set_access_token_cookie(response: Response, token: str) -> None:
     settings = get_settings()
     max_age = settings.access_token_exp_minutes * 60
 
-    # Use SameSite=Lax for both dev and production (same-origin via Vercel proxy)
-    # This fixes iOS Safari/Chrome cookie blocking issues
-    samesite_value = "lax"
-    # Secure flag: only disable for local development, enable for all other environments
+    # Production: SameSite=None for cross-site cookies (frontend -> Heroku backend)
+    # Development: SameSite=Lax for same-site localhost
+    samesite_value = "none" if settings.environment == "production" else "lax"
+    # Secure flag: required for SameSite=None, enabled in all non-dev environments
     secure_value = settings.environment != "development"
 
     response.set_cookie(
