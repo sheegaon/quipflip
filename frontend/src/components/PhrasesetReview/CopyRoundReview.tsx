@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { FrozenTimer } from './FrozenTimer';
 import { ReviewBackButton } from './ReviewBackButton';
-import { useGame } from '../../contexts/GameContext';
-import { extractErrorMessage } from '../../api/client';
+import apiClient, { extractErrorMessage } from '../../api/client';
 
 interface CopyRoundReviewProps {
   originalPhrase: string;
@@ -23,8 +22,6 @@ export const CopyRoundReview: React.FC<CopyRoundReviewProps> = ({
   onSubmit,
   onBack,
 }) => {
-  const { actions } = useGame();
-  const { fetchCopyHints } = actions;
   const [isRevealed, setIsRevealed] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [copyRoundHints, setCopyRoundHints] = useState<string[] | null>(null);
@@ -50,11 +47,18 @@ export const CopyRoundReview: React.FC<CopyRoundReviewProps> = ({
     setHintError(null);
 
     try {
-      const hints = await fetchCopyHints(roundId);
-      setCopyRoundHints(hints);
+      // Call API directly (not through GameContext) to avoid polluting shared state
+      const response = await apiClient.getCopyHints(roundId);
+      setCopyRoundHints(response.hints);
       setShowHints(true);
-    } catch (err) {
-      setHintError(extractErrorMessage(err) || 'Unable to fetch AI hints. Please try again soon.');
+    } catch (err: any) {
+      // The hints API only works for active rounds, not completed rounds
+      const errorMessage = extractErrorMessage(err);
+      if (errorMessage.includes('active') || errorMessage.includes('not found')) {
+        setHintError('AI hints are only available during active rounds, not for completed round reviews.');
+      } else {
+        setHintError(errorMessage || 'Unable to fetch AI hints.');
+      }
     } finally {
       setIsFetchingHints(false);
     }
