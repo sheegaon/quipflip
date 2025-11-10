@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
-import { useResults } from '../contexts/ResultsContext';
 import { useTutorial } from '../contexts/TutorialContext';
 import apiClient, { extractErrorMessage } from '../api/client';
 import { Timer } from '../components/Timer';
@@ -9,27 +8,21 @@ import { Header } from '../components/Header';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import TutorialWelcome from '../components/Tutorial/TutorialWelcome';
 import { dashboardLogger } from '../utils/logger';
-import type { PendingResult } from '../api/types';
 import type { BetaSurveyStatusResponse } from '../api/types';
 import { hasDismissedSurvey, markSurveyDismissed, hasCompletedSurvey } from '../utils/betaSurvey';
 
 const formatWaitingCount = (count: number): string => (count > 10 ? 'over 10' : count.toString());
 export const Dashboard: React.FC = () => {
   const { state, actions } = useGame();
-  const { state: resultsState, actions: resultsActions } = useResults();
   const {
     player,
     activeRound,
-    pendingResults,
-    phrasesetSummary,
     roundAvailability,
     error: contextError,
     isAuthenticated,
   } = state;
   const { refreshDashboard, clearError, abandonRound } = actions;
   const { startTutorial, skipTutorial, advanceStep } = useTutorial();
-  const { viewedResultIds } = resultsState;
-  const { markResultsViewed } = resultsActions;
   const navigate = useNavigate();
   const location = useLocation();
   const [isRoundExpired, setIsRoundExpired] = useState(false);
@@ -39,7 +32,6 @@ export const Dashboard: React.FC = () => {
   const [showSurveyPrompt, setShowSurveyPrompt] = useState(false);
   const [isAbandoningRound, setIsAbandoningRound] = useState(false);
   const [abandonError, setAbandonError] = useState<string | null>(null);
-  const [hasClickedViewResults, setHasClickedViewResults] = useState(false);
   const roundExpiryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Log component mount and key state changes
@@ -224,19 +216,6 @@ export const Dashboard: React.FC = () => {
     };
   }, [refreshDashboard]);
 
-  // Reset hasClickedViewResults when new results arrive
-  const previousResultsCountRef = useRef(0);
-  useEffect(() => {
-    const currentCount = pendingResults.length;
-    const previousCount = previousResultsCountRef.current;
-
-    // If we have new results (count increased), reset the flag
-    if (currentCount > previousCount) {
-      setHasClickedViewResults(false);
-    }
-
-    previousResultsCountRef.current = currentCount;
-  }, [pendingResults.length]);
 
   useEffect(() => {
     if (!activeRound?.round_id) {
@@ -442,34 +421,6 @@ export const Dashboard: React.FC = () => {
     }
   };
 
-  // Hide certain dashboard elements during tutorial to reduce overwhelm
-  const unviewedPromptCount = phrasesetSummary?.finalized.unclaimed_prompts ?? 0;
-  const unviewedCopyCount = phrasesetSummary?.finalized.unclaimed_copies ?? 0;
-  const totalUnviewedCount = unviewedPromptCount + unviewedCopyCount;
-  const totalUnviewedAmount = phrasesetSummary?.total_unclaimed_amount ?? 0;
-
-  // Filter pending results to only show unviewed ones
-  const unviewedPendingResults = pendingResults.filter((result: PendingResult) =>
-    !result.result_viewed && !viewedResultIds.has(result.phraseset_id)
-  );
-
-  const handleViewResults = useCallback(() => {
-    // Mark all pending results as viewed immediately so the notification disappears
-    const phrasesetIds = unviewedPendingResults.map((result: PendingResult) => result.phraseset_id);
-    if (phrasesetIds.length > 0) {
-      markResultsViewed(phrasesetIds);
-    }
-
-    // Hide the notification card
-    setHasClickedViewResults(true);
-
-    // Navigate to results page
-    navigate('/results');
-  }, [unviewedPendingResults, markResultsViewed, navigate]);
-
-  // Show notification if there are unviewed pending results OR unclaimed finalized results
-  // BUT hide it if the user has clicked "View Results" this session
-  const shouldShowResultsNotification = !hasClickedViewResults && (unviewedPendingResults.length > 0 || totalUnviewedCount > 0);
 
   if (!player) {
     return (
@@ -522,38 +473,6 @@ export const Dashboard: React.FC = () => {
                 className="w-full sm:w-auto bg-quip-orange hover:bg-quip-orange-deep text-white font-bold py-2 px-6 rounded-tile transition-all hover:shadow-tile-sm"
               >
                 Continue Round
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Consolidated Results Notification */}
-        {shouldShowResultsNotification && (
-          <div className="tile-card bg-quip-turquoise bg-opacity-10 border-2 border-quip-turquoise p-4 mb-6 slide-up-enter">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex-1">
-                <p className="font-display font-semibold text-quip-turquoise">
-                  {totalUnviewedCount > 0 ? 'Quip-tastic! New Results Ready!' : 'Results Ready!'}
-                </p>
-                <div className="text-sm text-quip-teal space-y-1">
-                  {unviewedPendingResults.length > 0 && (
-                    <p>
-                      {unviewedPendingResults.length} quipset{unviewedPendingResults.length > 1 ? 's' : ''} finalized
-                      {totalUnviewedCount === 0 && ' - view your results'}
-                    </p>
-                  )}
-                  {totalUnviewedCount > 0 && (
-                    <p>
-                      {unviewedPromptCount} prompt{unviewedPromptCount === 1 ? '' : 's'} • {unviewedCopyCount} cop{unviewedCopyCount === 1 ? 'y' : 'ies'} • <CurrencyDisplay amount={totalUnviewedAmount} iconClassName="w-3 h-3" textClassName="text-sm" /> earned
-                    </p>
-                  )}
-                </div>
-              </div>
-              <button
-                onClick={handleViewResults}
-                className="w-full sm:w-auto bg-quip-turquoise hover:bg-quip-teal text-white font-bold py-2 px-6 rounded-tile transition-all hover:shadow-tile-sm"
-              >
-                View Results
               </button>
             </div>
           </div>
