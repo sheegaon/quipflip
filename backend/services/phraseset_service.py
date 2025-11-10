@@ -1330,8 +1330,7 @@ class PhrasesetService:
         # Handle string datetime values (from ActivityService)
         if isinstance(dt, str):
             try:
-                # Parse ISO format string
-                from datetime import datetime
+                # Parse ISO format string - use the already imported datetime class
                 parsed_dt = datetime.fromisoformat(dt.replace('Z', '+00:00'))
                 if parsed_dt.tzinfo is None:
                     return parsed_dt.replace(tzinfo=UTC)

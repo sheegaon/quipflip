@@ -23,8 +23,14 @@ const OnlineUsers: React.FC = () => {
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    // Connect to WebSocket
+    let wsAttempted = false;
+    let pollingInterval: ReturnType<typeof setInterval> | null = null;
+
+    // Try WebSocket first, fall back to polling if it fails
     const connectWebSocket = () => {
+      if (wsAttempted) return; // Prevent multiple attempts
+      wsAttempted = true;
+
       try {
         const host = window.location.hostname;
         const port = import.meta.env.VITE_API_PORT || '8000';
@@ -49,8 +55,6 @@ const OnlineUsers: React.FC = () => {
         }
 
         // Create WebSocket connection
-        // Note: Browser automatically sends cookies with WebSocket handshake for same-origin connections
-        // Backend validates authentication via HTTP-only cookies OR query token
         const ws = new WebSocket(wsUrl);
 
         ws.onopen = () => {
@@ -78,8 +82,9 @@ const OnlineUsers: React.FC = () => {
         };
 
         ws.onerror = () => {
-          setError('Connection error. Retrying...');
           setConnected(false);
+          // Fall back to polling if WebSocket fails
+          startPolling();
         };
 
         ws.onclose = (event) => {
@@ -89,36 +94,73 @@ const OnlineUsers: React.FC = () => {
           if (event.code === 1008) {
             setError('Authentication failed. Please log in again.');
             setLoading(false);
-            // Don't attempt to reconnect on auth failure
-            // User needs to refresh/re-authenticate
             return;
           }
 
-          // Clear any pending reconnect timer to prevent race conditions
-          if (reconnectTimerRef.current) {
-            clearTimeout(reconnectTimerRef.current);
-            reconnectTimerRef.current = null;
+          // Fall back to polling if WebSocket closes unexpectedly
+          if (!pollingInterval) {
+            startPolling();
           }
-
-          // For other close reasons, attempt to reconnect after 3 seconds
-          reconnectTimerRef.current = setTimeout(() => {
-            if (wsRef.current === ws) {
-              connectWebSocket();
-            }
-          }, 3000);
         };
 
         wsRef.current = ws;
       } catch (err) {
-        setError('Failed to connect to server');
-        setLoading(false);
+        setConnected(false);
+        startPolling();
       }
     };
 
+    // Fallback polling mechanism for when WebSocket fails
+    const startPolling = () => {
+      if (pollingInterval) return; // Already polling
+
+      setError('Using polling mode (WebSocket unavailable)');
+      setLoading(false);
+
+      // Fetch initial data
+      fetchOnlineUsers();
+
+      // Set up polling every 10 seconds (more conservative than WebSocket)
+      pollingInterval = setInterval(fetchOnlineUsers, 10000);
+    };
+
+    const fetchOnlineUsers = async () => {
+      try {
+        const response = await fetch('/api/users/online', {
+          credentials: 'include', // Include cookies for authentication
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data: { users: OnlineUser[]; total_count: number } = await response.json();
+        setOnlineUsers(data.users);
+        setTotalCount(data.total_count);
+        
+        // Clear any connection errors if polling is working
+        if (error && error.includes('WebSocket unavailable')) {
+          setError(null);
+        }
+      } catch (err) {
+        console.error('Failed to fetch online users:', err);
+        if (!error) {
+          setError('Failed to load online users');
+        }
+      }
+    };
+
+    // Start with WebSocket attempt
     connectWebSocket();
 
     // Cleanup on unmount
     return () => {
+      // Clear polling interval
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+        pollingInterval = null;
+      }
+
       // Clear any pending reconnect timer
       if (reconnectTimerRef.current) {
         clearTimeout(reconnectTimerRef.current);
