@@ -65,6 +65,15 @@
   /* Trophy pulse animation for new results */
   .trophy-pulse {
     animation: trophyPulse 2s ease-in-out infinite;
+    will-change: transform, filter;
+  }
+
+  /* Respect user's motion preferences for accessibility */
+  @media (prefers-reduced-motion: reduce) {
+    .trophy-pulse {
+      animation: none;
+      will-change: auto;
+    }
   }
 }
 
