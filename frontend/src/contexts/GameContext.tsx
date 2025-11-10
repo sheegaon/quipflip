@@ -678,6 +678,30 @@ export const GameProvider: React.FC<{
     return () => controller.abort();
   }, [isAuthenticated, refreshDashboard]);
 
+  // Handle bfcache restoration (mobile browsers)
+  useEffect(() => {
+    const handleBfcacheRestore = () => {
+      gameContextLogger.debug('🔄 Bfcache restore detected, resetting initial load guard');
+      hasInitialLoadRef.current = false;
+
+      // Trigger immediate dashboard refresh
+      if (isAuthenticated) {
+        gameContextLogger.debug('🚀 Performing dashboard refresh after bfcache restore');
+        const controller = new AbortController();
+        refreshDashboard(controller.signal).catch((err) => {
+          if (controller.signal.aborted) return;
+          gameContextLogger.error('❌ Failed to refresh dashboard after bfcache restore:', err);
+        });
+      }
+    };
+
+    window.addEventListener('bfcache-restore', handleBfcacheRestore);
+
+    return () => {
+      window.removeEventListener('bfcache-restore', handleBfcacheRestore);
+    };
+  }, [isAuthenticated, refreshDashboard]);
+
   const state: GameState = {
     isAuthenticated,
     username,

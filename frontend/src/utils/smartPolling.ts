@@ -32,6 +32,7 @@ class SmartPollingManager {
   private isUserActive = true;
   private isOnline = navigator.onLine;
   private focusTime = Date.now();
+  private isInBfcache = false;
 
   constructor() {
     this.setupEventListeners();
@@ -53,8 +54,36 @@ class SmartPollingManager {
     window.addEventListener('online', this.handleOnline);
     window.addEventListener('offline', this.handleOffline);
 
+    // Track bfcache (Back-Forward Cache) for mobile browsers
+    window.addEventListener('pageshow', this.handlePageShow);
+    window.addEventListener('pagehide', this.handlePageHide);
+
     // Cleanup on beforeunload
     window.addEventListener('beforeunload', this.cleanup);
+  }
+
+  private removeEventListeners() {
+    // Remove user activity listeners
+    const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+    activityEvents.forEach(event => {
+      document.removeEventListener(event, this.handleUserActivity);
+    });
+
+    // Remove focus/visibility listeners
+    document.removeEventListener('visibilitychange', this.handleVisibilityChange);
+    window.removeEventListener('focus', this.handleWindowFocus);
+    window.removeEventListener('blur', this.handleWindowBlur);
+
+    // Remove network status listeners
+    window.removeEventListener('online', this.handleOnline);
+    window.removeEventListener('offline', this.handleOffline);
+
+    // Remove bfcache listeners
+    window.removeEventListener('pageshow', this.handlePageShow);
+    window.removeEventListener('pagehide', this.handlePageHide);
+
+    // Remove cleanup listener
+    window.removeEventListener('beforeunload', this.cleanup);
   }
 
   private handleUserActivity = () => {
@@ -113,6 +142,45 @@ class SmartPollingManager {
         poll.abortController.abort();
       }
     });
+  };
+
+  private handlePageShow = (event: PageTransitionEvent) => {
+    // Detect restoration from bfcache (mobile Chrome, Safari)
+    if (event.persisted) {
+      this.isInBfcache = false;
+      this.isUserActive = true;
+      this.focusTime = Date.now();
+
+      // Resume all polls that were active
+      this.polls.forEach((poll, key) => {
+        if (poll.state.isPolling) {
+          // Trigger immediate poll on restoration
+          this.executePoll(key);
+        }
+      });
+
+      // Dispatch custom event to notify other parts of the app
+      window.dispatchEvent(new CustomEvent('bfcache-restore'));
+    }
+  };
+
+  private handlePageHide = (event: PageTransitionEvent) => {
+    // Detect entering bfcache
+    if (event.persisted) {
+      this.isInBfcache = true;
+
+      // Pause all polls when entering bfcache
+      this.polls.forEach((_, key) => {
+        const poll = this.polls.get(key);
+        if (poll?.timeoutId) {
+          clearTimeout(poll.timeoutId);
+          poll.timeoutId = undefined;
+        }
+        if (poll?.abortController) {
+          poll.abortController.abort();
+        }
+      });
+    }
   };
 
   private getEffectiveInterval(key: string): number {
@@ -293,6 +361,7 @@ class SmartPollingManager {
       this.stopPoll(key);
     });
     this.polls.clear();
+    this.removeEventListeners();
   };
 }
 
