@@ -44,7 +44,7 @@ from backend.services.transaction_service import TransactionService
 from backend.services.round_service import RoundService
 from backend.services.phraseset_service import PhrasesetService
 from backend.services.statistics_service import StatisticsService
-from backend.services.scoring_service import ScoringService
+from backend.services.scoring_service import ScoringService, LEADERBOARD_ROLES
 from backend.services.tutorial_service import TutorialService
 from backend.services.vote_service import VoteService
 from backend.services.queue_service import QueueService
@@ -641,7 +641,34 @@ async def get_weekly_leaderboard(
     # Build leaderboard for each role using dictionary comprehension
     leader_lists = {
         role: [WeeklyLeaderboardEntry(**entry) for entry in role_data.get(role, [])]
-        for role in ["prompt", "copy", "voter"]
+        for role in LEADERBOARD_ROLES
+    }
+
+    return WeeklyLeaderboardResponse(
+        prompt_leaderboard=RoleLeaderboard(role="prompt", leaders=leader_lists["prompt"]),
+        copy_leaderboard=RoleLeaderboard(role="copy", leaders=leader_lists["copy"]),
+        voter_leaderboard=RoleLeaderboard(role="voter", leaders=leader_lists["voter"]),
+        generated_at=generated_at or datetime.now(UTC),
+    )
+
+
+@router.get("/statistics/alltime-leaderboard", response_model=WeeklyLeaderboardResponse)
+async def get_alltime_leaderboard(
+    player: Player = Depends(get_current_player),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return all-time leaderboards for all three roles highlighting the current player."""
+
+    scoring_service = ScoringService(db)
+    role_data, generated_at = await scoring_service.get_alltime_leaderboard_for_player(
+        player.player_id,
+        player.username,
+    )
+
+    # Build leaderboard for each role using dictionary comprehension
+    leader_lists = {
+        role: [WeeklyLeaderboardEntry(**entry) for entry in role_data.get(role, [])]
+        for role in LEADERBOARD_ROLES
     }
 
     return WeeklyLeaderboardResponse(

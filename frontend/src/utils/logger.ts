@@ -88,6 +88,7 @@ export const questsLogger = createLogger('Quests');
 export const resultsLogger = createLogger('Results');
 export const trackingLogger = createLogger('Tracking');
 export const statisticsLogger = createLogger('Statistics');
+export const leaderboardLogger = createLogger('Leaderboard');
 export const settingsLogger = createLogger('Settings');
 export const adminLogger = createLogger('Admin');
 export const loadingSpinnerLogger = createLogger('LoadingSpinner');

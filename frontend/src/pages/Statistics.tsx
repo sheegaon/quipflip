@@ -3,14 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { useResults } from '../contexts/ResultsContext';
 import { useGame } from '../contexts/GameContext';
 import apiClient, { extractErrorMessage } from '../api/client';
-import type { ApiInfo, HistoricalTrendPoint, PlayerStatistics, WeeklyLeaderboardResponse } from '../api/types';
+import type { ApiInfo, HistoricalTrendPoint, PlayerStatistics } from '../api/types';
 import { Header } from '../components/Header';
 import WinRateChart from '../components/statistics/WinRateChart';
 import EarningsChart from '../components/statistics/EarningsChart';
 import SpendingChart from '../components/statistics/SpendingChart';
 import FrequencyChart from '../components/statistics/FrequencyChart';
 import HistoricalTrendsChart from '../components/statistics/HistoricalTrendsChart';
-import WeeklyLeaderboard from '../components/statistics/WeeklyLeaderboard';
 import { statisticsLogger } from '../utils/logger';
 import { hasCompletedSurvey } from '../utils/betaSurvey';
 import type { BetaSurveyStatusResponse } from '../api/types';
@@ -28,9 +27,6 @@ const Statistics: React.FC = () => {
   const [chartsReady, setChartsReady] = useState(false);
   const [surveyStatus, setSurveyStatus] = useState<BetaSurveyStatusResponse | null>(null);
   const [appInfo, setAppInfo] = useState<ApiInfo | null>(null);
-  const [leaderboard, setLeaderboard] = useState<WeeklyLeaderboardResponse | null>(null);
-  const [leaderboardLoading, setLeaderboardLoading] = useState(true);
-  const [leaderboardError, setLeaderboardError] = useState<string | null>(null);
 
   const historicalTrends = useMemo<HistoricalTrendPoint[]>(() => {
     if (!data) return [];
@@ -226,29 +222,7 @@ const Statistics: React.FC = () => {
       }
     };
 
-    const fetchLeaderboard = async () => {
-      try {
-        setLeaderboardLoading(true);
-        setLeaderboardError(null);
-        const leaderboardData = await apiClient.getWeeklyLeaderboard(controller.signal);
-        setLeaderboard(leaderboardData);
-        statisticsLogger.debug('Weekly leaderboard loaded', {
-          promptEntries: leaderboardData?.prompt_leaderboard?.leaders?.length ?? 0,
-          copyEntries: leaderboardData?.copy_leaderboard?.leaders?.length ?? 0,
-          voterEntries: leaderboardData?.voter_leaderboard?.leaders?.length ?? 0,
-        });
-      } catch (err) {
-        if (err instanceof Error && err.name === 'CanceledError') return;
-        statisticsLogger.error('Failed to load weekly leaderboard', err);
-        setLeaderboard(null);
-        setLeaderboardError(extractErrorMessage(err, 'load-weekly-leaderboard'));
-      } finally {
-        setLeaderboardLoading(false);
-      }
-    };
-
     fetchData();
-    fetchLeaderboard();
 
     return () => controller.abort();
   }, [getStatistics]);
@@ -335,6 +309,16 @@ const Statistics: React.FC = () => {
             </div>
             <div className="flex flex-col sm:flex-row items-end gap-4">
               <button
+                onClick={() => navigate('/leaderboard')}
+                className="flex items-center gap-2 bg-quip-navy hover:bg-quip-teal text-white font-bold py-2 px-4 rounded-tile transition-all hover:shadow-tile-sm"
+                title="View Leaderboard"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M2 6a1 1 0 011-1h2a1 1 0 011 1v11a1 1 0 01-1 1H3a1 1 0 01-1-1V6zM8 3a1 1 0 011-1h2a1 1 0 011 1v14a1 1 0 01-1 1H9a1 1 0 01-1-1V3zM14 8a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1h-2a1 1 0 01-1-1V8z" />
+                </svg>
+                <span>Leaderboard</span>
+              </button>
+              <button
                 onClick={() => navigate('/settings')}
                 className="flex items-center gap-2 bg-quip-navy hover:bg-quip-teal text-white font-bold py-2 px-4 rounded-tile transition-all hover:shadow-tile-sm"
                 title="Account Settings"
@@ -381,19 +365,21 @@ const Statistics: React.FC = () => {
 
         {/* Charts Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          {/* Weekly Leaderboard */}
+
+          {/* Win Rate Chart */}
           <div className="tile-card p-6">
-            <h2 className="text-xl font-display font-bold text-quip-navy mb-2">Weekly Leaderboard</h2>
-            <p className="text-sm text-quip-teal mb-4">
-              Ranking players by win rate over the past seven days across all three roles.
-            </p>
-            <WeeklyLeaderboard
-              promptLeaderboard={leaderboard?.prompt_leaderboard ?? null}
-              copyLeaderboard={leaderboard?.copy_leaderboard ?? null}
-              voterLeaderboard={leaderboard?.voter_leaderboard ?? null}
-              loading={leaderboardLoading || !chartsReady}
-              error={leaderboardError}
-            />
+            <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Win Rates by Role</h2>
+            {chartsReady ? (
+              <WinRateChart
+                promptStats={data.prompt_stats}
+                copyStats={data.copy_stats}
+                voterStats={data.voter_stats}
+              />
+            ) : (
+              <div className="w-full h-80 flex items-center justify-center">
+                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-quip-orange border-r-transparent"></div>
+              </div>
+            )}
           </div>
 
           {/* Historical Trends */}
@@ -464,22 +450,6 @@ const Statistics: React.FC = () => {
             <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Activity Metrics</h2>
             {chartsReady ? (
               <FrequencyChart frequency={data.frequency} />
-            ) : (
-              <div className="w-full h-80 flex items-center justify-center">
-                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-quip-orange border-r-transparent"></div>
-              </div>
-            )}
-          </div>
-
-          {/* Win Rate Chart */}
-          <div className="tile-card p-6">
-            <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Win Rates by Role</h2>
-            {chartsReady ? (
-              <WinRateChart
-                promptStats={data.prompt_stats}
-                copyStats={data.copy_stats}
-                voterStats={data.voter_stats}
-              />
             ) : (
               <div className="w-full h-80 flex items-center justify-center">
                 <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-quip-orange border-r-transparent"></div>

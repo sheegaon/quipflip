@@ -500,6 +500,11 @@ export const apiClient = {
     return data;
   },
 
+  async getAllTimeLeaderboard(signal?: AbortSignal): Promise<WeeklyLeaderboardResponse> {
+    const { data } = await api.get('/player/statistics/alltime-leaderboard', { signal });
+    return data;
+  },
+
   async getTutorialStatus(signal?: AbortSignal): Promise<TutorialStatus> {
     const { data } = await api.get('/player/tutorial/status', { signal });
     return data;
