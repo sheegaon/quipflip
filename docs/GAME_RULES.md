@@ -110,7 +110,7 @@ The [AI Service guide](AI_SERVICE.md) details how automated players stay aligned
 
 ### Stale AI (Abandoned Content)
 The stale AI handler provides a safety net for content that has been waiting for an extended period:
-- **Activation Threshold**: Content must be at least `ai_stale_threshold_days` old (default: 3 days, minimum 3)
+- **Activation Threshold**: Content must be at least `ai_stale_threshold_days` old (default: 2 days, minimum 1)
 - **Scope**: Handles both prompts waiting for copies AND phrasesets waiting for votes
 - **Independence**: Unlike the backup AI, the stale handler can act even when only AI players have participated, ensuring no content is permanently abandoned
 - **Players**: Uses two dedicated AI accounts - `ai_stale_handler@quipflip.internal` for copies and `ai_stale_voter@quipflip.internal` for votes

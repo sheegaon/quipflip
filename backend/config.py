@@ -161,8 +161,8 @@ class Settings(BaseSettings):
             raise ValueError("refresh_token_exp_days must be between 1 and 365 days")
 
         # Validate stale AI configuration
-        if self.ai_stale_threshold_days < 3:
-            raise ValueError("ai_stale_threshold_days must be at least 3 days")
+        if self.ai_stale_threshold_days < 1:
+            raise ValueError("ai_stale_threshold_days must be at least 1 day")
 
         if self.ai_stale_check_interval_hours < 1:
             raise ValueError("ai_stale_check_interval_hours must be at least 1 hour")

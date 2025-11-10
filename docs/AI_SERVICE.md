@@ -293,8 +293,8 @@ backend/services/ai/
 ```python
 # In backend/config.py
 ai_stale_handler_enabled: bool = True  # Feature flag
-ai_stale_threshold_days: int = 3  # Minimum 3 days
-ai_stale_check_interval_hours: int = 12  # Check frequency
+ai_stale_threshold_days: int = 2  # Minimum 1 day
+ai_stale_check_interval_hours: int = 6  # Check frequency
 ```
 
 ### Testing
