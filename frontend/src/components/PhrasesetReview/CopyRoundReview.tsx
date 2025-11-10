@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { FrozenTimer } from './FrozenTimer';
 import { ReviewBackButton } from './ReviewBackButton';
-import apiClient, { extractErrorMessage } from '../../api/client';
 
 interface CopyRoundReviewProps {
   originalPhrase: string;
