@@ -3,10 +3,10 @@ import asyncio
 from datetime import datetime, UTC
 from typing import Optional
 from fastapi import Request
-from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 import logging
+from uuid import UUID
 
 from backend.database import AsyncSessionLocal
 from backend.models.user_activity import UserActivity
@@ -90,20 +90,38 @@ async def get_user_from_request(request: Request) -> Optional[tuple[str, str]]:
     return None
 
 
+def _normalize_player_id(player_id: str | UUID) -> UUID | None:
+    """Ensure player_id is a UUID instance for ORM compatibility."""
+    if player_id is None:
+        return None
+    if isinstance(player_id, UUID):
+        return player_id
+    try:
+        return UUID(str(player_id))
+    except (ValueError, TypeError):
+        logger.warning("Unable to normalize player_id '%s' to UUID", player_id)
+        return None
+
+
 async def update_user_activity_db(
-    player_id: str,
+    player_id: str | UUID,
     username: str,
     action: str,
     path: str
 ):
     """Update user activity in the database asynchronously."""
     try:
+        normalized_player_id = _normalize_player_id(player_id)
+        if normalized_player_id is None:
+            logger.debug("Skipping user activity update due to invalid player_id: %s", player_id)
+            return
+
         # Capture timestamp once for consistency
         now = datetime.now(UTC)
 
         # Create shared data dictionary
         activity_data = {
-            'player_id': player_id,
+            'player_id': normalized_player_id,
             'username': username,
             'last_action': action,
             'last_action_path': path,
