@@ -5,7 +5,7 @@ from uuid import uuid4
 
 from backend.models.player import Player
 from backend.models.round import Round
-from backend.services.activity_service import ActivityService
+from backend.services.phraseset_activity_service import ActivityService
 
 
 @pytest.mark.asyncio

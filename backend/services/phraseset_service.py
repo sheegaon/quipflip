@@ -16,7 +16,7 @@ from backend.models.phraseset import Phraseset
 from backend.models.result_view import ResultView
 from backend.models.round import Round
 from backend.models.vote import Vote
-from backend.services.activity_service import ActivityService
+from backend.services.phraseset_activity_service import ActivityService
 from backend.services.scoring_service import ScoringService
 from backend.services.helpers import upsert_result_view
 

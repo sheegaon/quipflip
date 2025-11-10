@@ -56,7 +56,7 @@ def get_friendly_action_name(method: str, path: str) -> str:
         return "Other Action"
 
 
-async def activity_tracking_middleware(request: Request, call_next):
+async def online_user_tracking_middleware(request: Request, call_next):
     """
     Middleware to track user activity for online users feature.
     

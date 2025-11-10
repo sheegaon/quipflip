@@ -64,7 +64,26 @@ export const GameProvider: React.FC<{
   // Smart polling hook
   const { startPoll, stopPoll, triggerPoll } = useSmartPolling();
   
-  // State
+const AUTH_COOKIE_NAMES = ['quipflip_access_token', 'quipflip_refresh_token'];
+
+const hasAuthCookies = () => {
+  if (typeof document === 'undefined') {
+    return false;
+  }
+
+  const cookies = document.cookie || '';
+  if (!cookies) {
+    return false;
+  }
+
+  return AUTH_COOKIE_NAMES.some((name) =>
+    cookies
+      .split(';')
+      .some((cookie) => cookie.trim().startsWith(`${name}=`)),
+  );
+};
+
+// State
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [username, setUsername] = useState<string | null>(null);
   const [player, setPlayer] = useState<Player | null>(null);
@@ -88,24 +107,44 @@ export const GameProvider: React.FC<{
 
   // Initialize session on mount
   useEffect(() => {
+    const controller = new AbortController();
+    let isMounted = true;
+
     const initializeSession = async () => {
       const storedUsername = apiClient.getStoredUsername();
-      if (storedUsername) {
-        setUsername(storedUsername);
-        // Try to verify authentication by calling an authenticated endpoint
-        // If cookies are valid, this will succeed and confirm we're logged in
-        try {
-          await apiClient.getBalance();
+      if (!storedUsername) {
+        return;
+      }
+
+      if (!hasAuthCookies()) {
+        gameContextLogger.debug('🔐 No auth cookies present, clearing stored username');
+        apiClient.clearSession();
+        return;
+      }
+
+      setUsername(storedUsername);
+      try {
+        await apiClient.getBalance(controller.signal);
+        if (isMounted) {
           setIsAuthenticated(true);
-        } catch (err) {
-          // Cookies expired or invalid, clear session
-          apiClient.clearSession();
+        }
+      } catch (err) {
+        if (controller.signal.aborted) {
+          return;
+        }
+        apiClient.clearSession();
+        if (isMounted) {
           setIsAuthenticated(false);
           setUsername(null);
         }
       }
     };
     initializeSession();
+
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
   }, []);
 
   // Monitor authentication state changes

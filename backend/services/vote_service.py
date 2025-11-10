@@ -27,7 +27,7 @@ from backend.models.result_view import ResultView
 from backend.services.transaction_service import TransactionService
 from backend.services.scoring_service import ScoringService
 from backend.services.helpers import upsert_result_view
-from backend.services.activity_service import ActivityService
+from backend.services.phraseset_activity_service import ActivityService
 from backend.config import get_settings
 
 logger = logging.getLogger(__name__)

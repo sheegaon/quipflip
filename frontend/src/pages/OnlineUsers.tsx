@@ -30,7 +30,7 @@ const OnlineUsers: React.FC = () => {
         const backendUrl = import.meta.env.VITE_API_URL || `http://${host}:${port}`;
         const wsUrl = backendUrl
           .replace('http://', 'ws://')
-          .replace('https://', 'wss://') + '/online-users/online/ws';
+          .replace('https://', 'wss://') + '/users/online/ws';
 
         // Create WebSocket connection
         // Note: Browser automatically sends cookies with WebSocket handshake for same-origin connections

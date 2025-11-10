@@ -433,11 +433,13 @@ export interface PhrasesetVoteDetail {
 
 export interface PhrasesetActivityEntry {
   activity_id: string;
+  phraseset_id?: string;
+  prompt_round_id?: string;
   activity_type: string;
-  created_at: string;
-  player_id?: string | null;
-  player_username?: string | null;
+  player_id?: string;
+  player_username?: string;
   metadata: Record<string, any>;
+  created_at: string;
 }
 
 export interface PhrasesetDetails {
