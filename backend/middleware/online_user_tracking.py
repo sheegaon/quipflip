@@ -9,6 +9,7 @@ review events and lifecycle information.
 """
 import logging
 from datetime import datetime, UTC
+from uuid import UUID
 from fastapi import Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,9 +17,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.database import AsyncSessionLocal
 from backend.models.user_activity import UserActivity
 from backend.services.auth_service import AuthService
+from backend.config import get_settings
 
 logger = logging.getLogger(__name__)
-
 
 # Action type mapping based on URL paths - must match frontend getActionColor() mapping
 ACTION_MAP = {
@@ -76,7 +77,6 @@ async def online_user_tracking_middleware(request: Request, call_next):
     # Only track activity for successful requests to avoid noise
     if response.status_code < 400:
         # Extract token from cookies
-        from backend.config import get_settings
         settings = get_settings()
         token = request.cookies.get(settings.access_token_cookie_name)
         
@@ -89,47 +89,41 @@ async def online_user_tracking_middleware(request: Request, call_next):
                     try:
                         payload = auth_service.decode_access_token(token)
                         player_id_str = payload.get("sub")
+                        username = payload.get("username")
                         
-                        if player_id_str:
-                            from uuid import UUID
+                        if player_id_str and username:
                             player_id = UUID(player_id_str)
                             
-                            # Get player to get username
-                            from backend.services.player_service import PlayerService
-                            player_service = PlayerService(db)
-                            player = await player_service.get_player_by_id(player_id)
+                            # Update or create activity record
+                            result = await db.execute(
+                                select(UserActivity).where(UserActivity.player_id == player_id)
+                            )
+                            activity = result.scalar_one_or_none()
                             
-                            if player:
-                                # Update or create activity record
-                                result = await db.execute(
-                                    select(UserActivity).where(UserActivity.player_id == player_id)
+                            current_time = datetime.now(UTC)
+                            action_path = str(request.url.path)
+                            
+                            # Use friendly action name instead of raw HTTP method + path
+                            friendly_action = get_friendly_action_name(request.method, action_path)
+                            
+                            if activity:
+                                # Update existing activity
+                                activity.username = username
+                                activity.last_action = friendly_action
+                                activity.last_action_path = action_path
+                                activity.last_activity = current_time
+                            else:
+                                # Create new activity record
+                                activity = UserActivity(
+                                    player_id=player_id,
+                                    username=username,
+                                    last_action=friendly_action,
+                                    last_action_path=action_path,
+                                    last_activity=current_time
                                 )
-                                activity = result.scalar_one_or_none()
-                                
-                                current_time = datetime.now(UTC)
-                                action_path = str(request.url.path)
-                                
-                                # Use friendly action name instead of raw HTTP method + path
-                                friendly_action = get_friendly_action_name(request.method, action_path)
-                                
-                                if activity:
-                                    # Update existing activity
-                                    activity.username = player.username
-                                    activity.last_action = friendly_action
-                                    activity.last_action_path = action_path
-                                    activity.last_activity = current_time
-                                else:
-                                    # Create new activity record
-                                    activity = UserActivity(
-                                        player_id=player_id,
-                                        username=player.username,
-                                        last_action=friendly_action,
-                                        last_action_path=action_path,
-                                        last_activity=current_time
-                                    )
-                                    db.add(activity)
-                                
-                                await db.commit()
+                                db.add(activity)
+                            
+                            await db.commit()
                                 
                     except Exception as e:
                         # Don't log token decode failures as they're common (expired tokens, etc.)
