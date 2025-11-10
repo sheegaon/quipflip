@@ -17,6 +17,7 @@ const OnlineUsers: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     // Connect to WebSocket
@@ -77,8 +78,14 @@ const OnlineUsers: React.FC = () => {
             return;
           }
 
+          // Clear any pending reconnect timer to prevent race conditions
+          if (reconnectTimerRef.current) {
+            clearTimeout(reconnectTimerRef.current);
+            reconnectTimerRef.current = null;
+          }
+
           // For other close reasons, attempt to reconnect after 3 seconds
-          setTimeout(() => {
+          reconnectTimerRef.current = setTimeout(() => {
             if (wsRef.current === ws) {
               connectWebSocket();
             }
@@ -96,6 +103,13 @@ const OnlineUsers: React.FC = () => {
 
     // Cleanup on unmount
     return () => {
+      // Clear any pending reconnect timer
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
+
+      // Close WebSocket connection
       if (wsRef.current) {
         wsRef.current.close();
         wsRef.current = null;

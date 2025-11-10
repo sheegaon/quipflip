@@ -179,9 +179,9 @@ async def websocket_endpoint(websocket: WebSocket):
     logger.info(f"WebSocket authenticated for player: {player.username}")
 
     try:
-        # Get database session for this WebSocket connection
-        async with AsyncSessionLocal() as db:
-            while True:
+        while True:
+            # Create a new short-lived database session for each update
+            async with AsyncSessionLocal() as db:
                 # Send updates every 5 seconds
                 online_users = await get_online_users(db)
 
@@ -194,8 +194,8 @@ async def websocket_endpoint(websocket: WebSocket):
 
                 await websocket.send_json(message)
 
-                # Wait 5 seconds before next update
-                await asyncio.sleep(5)
+            # Wait 5 seconds before next update (outside session context)
+            await asyncio.sleep(5)
 
     except WebSocketDisconnect:
         manager.disconnect(websocket)
