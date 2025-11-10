@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import { FrozenTimer } from './FrozenTimer';
 import { ReviewBackButton } from './ReviewBackButton';
+import { useGame } from '../../contexts/GameContext';
+import { extractErrorMessage } from '../../api/client';
 
 interface CopyRoundReviewProps {
   originalPhrase: string;
   copyPhrase: string;
   playerUsername: string;
   copyNumber: 1 | 2;
+  roundId?: string;
   onSubmit: () => void;
   onBack: () => void;
 }
@@ -16,11 +19,18 @@ export const CopyRoundReview: React.FC<CopyRoundReviewProps> = ({
   copyPhrase,
   playerUsername,
   copyNumber,
+  roundId,
   onSubmit,
   onBack,
 }) => {
+  const { actions } = useGame();
+  const { fetchCopyHints } = actions;
   const [isRevealed, setIsRevealed] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [copyRoundHints, setCopyRoundHints] = useState<string[] | null>(null);
+  const [isFetchingHints, setIsFetchingHints] = useState(false);
+  const [hintError, setHintError] = useState<string | null>(null);
+  const [showHints, setShowHints] = useState(false);
 
   const handleReveal = () => {
     setIsRevealed(true);
@@ -29,6 +39,25 @@ export const CopyRoundReview: React.FC<CopyRoundReviewProps> = ({
   const handleSubmit = async () => {
     setIsSubmitting(true);
     onSubmit();
+  };
+
+  const handleFetchHints = async () => {
+    if (!roundId || isFetchingHints) {
+      return;
+    }
+
+    setIsFetchingHints(true);
+    setHintError(null);
+
+    try {
+      const hints = await fetchCopyHints(roundId);
+      setCopyRoundHints(hints);
+      setShowHints(true);
+    } catch (err) {
+      setHintError(extractErrorMessage(err) || 'Unable to fetch AI hints. Please try again soon.');
+    } finally {
+      setIsFetchingHints(false);
+    }
   };
   return (
     <div className="min-h-screen bg-gradient-to-br from-quip-turquoise to-quip-teal flex items-center justify-center p-4 bg-pattern">
@@ -60,6 +89,57 @@ export const CopyRoundReview: React.FC<CopyRoundReviewProps> = ({
             {originalPhrase}
           </p>
         </div>
+
+        {/* AI Hints */}
+        {roundId && (
+          <div className="mb-4 rounded-tile border border-quip-turquoise/30 bg-white/80 p-4 shadow-tile-xs">
+            {copyRoundHints && copyRoundHints.length > 0 ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setShowHints((prev) => !prev)}
+                  className="flex w-full items-center justify-between rounded-tile border border-quip-turquoise/40 bg-quip-turquoise/10 px-3 py-2 font-semibold text-quip-teal transition hover:bg-quip-turquoise/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-quip-turquoise"
+                >
+                  <span>{showHints ? 'Hide AI Hints' : 'Show AI Hints'}</span>
+                  <span className="text-sm text-quip-navy">{copyRoundHints.length} suggestions</span>
+                </button>
+                {showHints && (
+                  <div className="mt-3 space-y-3">
+                    <p className="text-xs uppercase tracking-wide text-quip-teal/80">
+                      Mix and modify - make it your own!
+                    </p>
+                    <ul className="space-y-2">
+                      {copyRoundHints.map((hint, index) => (
+                        <li
+                          key={`${hint}-${index}`}
+                          className="flex items-start gap-2 rounded-tile border border-quip-turquoise/30 bg-white px-3 py-2 text-quip-navy shadow-inner"
+                        >
+                          <span className="font-semibold text-quip-turquoise">Hint {index + 1}:</span>
+                          <span>{hint}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={handleFetchHints}
+                  disabled={isFetchingHints || isSubmitting}
+                  className="w-full rounded-tile border border-quip-turquoise bg-white px-4 py-2 font-semibold text-quip-turquoise transition hover:bg-quip-turquoise hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isFetchingHints ? 'Contacting AI...' : 'Get AI Hints'}
+                </button>
+                {hintError && <p className="mt-2 text-sm text-red-600">{hintError}</p>}
+                <p className="mt-2 text-xs text-quip-teal">
+                  You will get three ideas that passed quick AI checks. Use them as inspiration and tweak them to match your style. Hints may take up to one minute to generate.
+                </p>
+              </>
+            )}
+          </div>
+        )}
 
         {/* Copy Phrase Input - Click to reveal */}
         <div className="space-y-4 mb-4">

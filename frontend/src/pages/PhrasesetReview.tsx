@@ -122,6 +122,7 @@ export const PhrasesetReview: React.FC = () => {
         copyPhrase={phrasesetData.copy_phrase_1 || ''}
         playerUsername={copy1Contributor?.username || 'Unknown'}
         copyNumber={1}
+        roundId={copy1Contributor?.round_id}
         onSubmit={handleCopy1Submit}
         onBack={handleBackToCompleted}
       />
@@ -136,6 +137,7 @@ export const PhrasesetReview: React.FC = () => {
         copyPhrase={phrasesetData.copy_phrase_2 || ''}
         playerUsername={copy2Contributor?.username || 'Unknown'}
         copyNumber={2}
+        roundId={copy2Contributor?.round_id}
         onSubmit={handleCopy2Submit}
         onBack={handleBackToCompleted}
       />
