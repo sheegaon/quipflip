@@ -96,8 +96,8 @@ Get API information.
 **Response:**
 ```json
 {
-  "message": "Quipflip API - Phase 2 MVP",
-  "version": "1.1.0",
+  "message": "Quipflip API - Phase 3 Beta",
+  "version": "1.3.0",
   "environment": "development",
   "docs": "/docs"
 }
@@ -114,6 +114,30 @@ Health check endpoint (no authentication required).
   "redis": "memory"  // or "connected"
 }
 ```
+
+#### `GET /status`
+Get game status information including version, environment, and phrase validation status (no authentication required).
+
+This endpoint provides system status information for display on the frontend, particularly on the statistics page.
+
+**Response:**
+```json
+{
+  "version": "1.3.0",
+  "environment": "production",
+  "phrase_validation": {
+    "mode": "remote",  // or "local"
+    "healthy": true    // or false, or null if unknown
+  }
+}
+```
+
+**Response Fields:**
+- `version` (string): The current API version
+- `environment` (string): The current environment (e.g., "development", "production")
+- `phrase_validation` (object): Information about the phrase validation system
+  - `mode` (string): The validation mode being used - "local" for dictionary-based validation, "remote" for API-based validation
+  - `healthy` (boolean | null): Health status of the validation system. `true` if working properly, `false` if there are issues, `null` if status is unknown
 
 ---
 

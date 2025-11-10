@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useResults } from '../contexts/ResultsContext';
 import { useGame } from '../contexts/GameContext';
 import apiClient, { extractErrorMessage } from '../api/client';
-import type { ApiInfo, HistoricalTrendPoint, PlayerStatistics } from '../api/types';
+import type { GameStatus, HistoricalTrendPoint, PlayerStatistics } from '../api/types';
 import { Header } from '../components/Header';
 import WinRateChart from '../components/statistics/WinRateChart';
 import EarningsChart from '../components/statistics/EarningsChart';
@@ -26,7 +26,7 @@ const Statistics: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [chartsReady, setChartsReady] = useState(false);
   const [surveyStatus, setSurveyStatus] = useState<BetaSurveyStatusResponse | null>(null);
-  const [appInfo, setAppInfo] = useState<ApiInfo | null>(null);
+  const [gameStatus, setGameStatus] = useState<GameStatus | null>(null);
 
   const historicalTrends = useMemo<HistoricalTrendPoint[]>(() => {
     if (!data) return [];
@@ -230,18 +230,18 @@ const Statistics: React.FC = () => {
   useEffect(() => {
     const controller = new AbortController();
 
-    const fetchAppInfo = async () => {
+    const fetchGameStatus = async () => {
       try {
-        const info = await apiClient.getApiInfo(controller.signal);
-        setAppInfo(info);
+        const status = await apiClient.getGameStatus(controller.signal);
+        setGameStatus(status);
       } catch (err) {
         if (err instanceof Error && err.name === 'CanceledError') return;
-        statisticsLogger.warn('Failed to load API info for statistics view', err);
-        setAppInfo(null);
+        statisticsLogger.warn('Failed to load game status for statistics view', err);
+        setGameStatus(null);
       }
     };
 
-    fetchAppInfo();
+    fetchGameStatus();
 
     return () => {
       controller.abort();
@@ -460,7 +460,7 @@ const Statistics: React.FC = () => {
         </div>
 
         <div className="mt-10 text-center text-xs text-quip-navy/60" aria-live="polite">
-          Quipflip version {appInfo?.version || APP_VERSION}
+          Quipflip version {gameStatus?.version || APP_VERSION}
         </div>
 
       </div>
