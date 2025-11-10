@@ -1,4 +1,11 @@
-"""Service for recording and querying phraseset activity."""
+"""Service for recording and querying phraseset activity lifecycle events.
+
+Provides business logic for logging and retrieving historical events in the phraseset
+review process (creation, review, approval, rejection, etc.).
+
+This is distinct from online user tracking (UserActivity), which shows real-time
+user status for the "Who's Online" feature.
+"""
 from __future__ import annotations
 
 from datetime import datetime, UTC
@@ -14,7 +21,11 @@ from backend.models.player import Player
 
 
 class ActivityService:
-    """Business logic for phraseset activity tracking."""
+    """Business logic for phraseset activity lifecycle event tracking.
+
+    Handles recording and querying historical phraseset review events.
+    NOT related to online user tracking (UserActivity model).
+    """
 
     def __init__(self, db: AsyncSession):
         self.db = db

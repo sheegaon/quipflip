@@ -1,3 +1,12 @@
+/**
+ * "Who's Online" page component.
+ *
+ * Shows which users are currently active based on API calls made in the last 30 minutes.
+ * Uses WebSocket connection for real-time updates (refreshes every 5 seconds).
+ *
+ * This is distinct from phraseset activity tracking, which shows historical phraseset
+ * review events on the Phrasesets page.
+ */
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '../components/Header';

@@ -1,4 +1,11 @@
-"""Online users API router with WebSocket support."""
+"""Online users API router with WebSocket support for "Who's Online" feature.
+
+Provides REST and WebSocket endpoints to query and stream real-time updates about
+which users are currently active based on their recent API calls (last 30 minutes).
+
+This is distinct from phraseset_activity tracking, which logs historical phraseset
+review events.
+"""
 from datetime import datetime, UTC, timedelta
 from typing import List, Optional
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect, status

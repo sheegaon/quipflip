@@ -1,4 +1,12 @@
-"""Activity tracking middleware for online users feature."""
+"""Online user tracking middleware for "Who's Online" feature.
+
+This middleware tracks user activity by recording the last API call made by each
+authenticated user. It updates the user_activity table which powers the real-time
+online users page accessible from the subheader.
+
+This is distinct from phraseset_activity tracking, which logs historical phraseset
+review events and lifecycle information.
+"""
 import logging
 from datetime import datetime, UTC
 from fastapi import Request
