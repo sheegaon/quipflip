@@ -1,7 +1,7 @@
 """Add user_activity table for online users tracking
 
 Revision ID: add_user_activity_001
-Revises: guest_lockout_001
+Revises: 1c2b3a4d5e67
 Create Date: 2025-11-10 00:00:00
 
 """
@@ -9,20 +9,23 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+from backend.migrations.util import get_uuid_type
 
 
 # revision identifiers, used by Alembic.
 revision: str = 'add_user_activity_001'
-down_revision: Union[str, None] = 'guest_lockout_001'
+down_revision: Union[str, None] = '1c2b3a4d5e67'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
     """Create user_activity table for tracking online users."""
+    uuid = get_uuid_type()
+
     op.create_table(
         'user_activity',
-        sa.Column('player_id', sa.Uuid(), nullable=False),
+        sa.Column('player_id', uuid, nullable=False),
         sa.Column('username', sa.String(length=255), nullable=False),
         sa.Column('last_action', sa.String(length=100), nullable=False),
         sa.Column('last_action_path', sa.Text(), nullable=False),
