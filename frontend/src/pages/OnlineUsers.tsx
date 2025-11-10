@@ -56,20 +56,28 @@ const OnlineUsers: React.FC = () => {
               setTotalCount(data.total_count);
             }
           } catch (err) {
-            console.error('Error parsing WebSocket message:', err);
+            // Silently ignore malformed messages
           }
         };
 
-        ws.onerror = (error) => {
-          console.error('WebSocket error:', error);
+        ws.onerror = () => {
           setError('Connection error. Retrying...');
           setConnected(false);
         };
 
-        ws.onclose = () => {
+        ws.onclose = (event) => {
           setConnected(false);
 
-          // Attempt to reconnect after 3 seconds
+          // Check for authentication failure (code 1008 = policy violation)
+          if (event.code === 1008) {
+            setError('Authentication failed. Please log in again.');
+            setLoading(false);
+            // Don't attempt to reconnect on auth failure
+            // User needs to refresh/re-authenticate
+            return;
+          }
+
+          // For other close reasons, attempt to reconnect after 3 seconds
           setTimeout(() => {
             if (wsRef.current === ws) {
               connectWebSocket();
@@ -79,7 +87,6 @@ const OnlineUsers: React.FC = () => {
 
         wsRef.current = ws;
       } catch (err) {
-        console.error('Error creating WebSocket:', err);
         setError('Failed to connect to server');
         setLoading(false);
       }
