@@ -662,3 +662,16 @@ export interface ClaimQuestRewardResponse {
   reward_amount: number;
   new_balance: number;
 }
+
+// Online Users feature types
+export interface OnlineUser {
+  username: string;
+  last_action: string;
+  last_activity: string;
+  time_ago: string;
+}
+
+export interface OnlineUsersResponse {
+  users: OnlineUser[];
+  total_count: number;
+}
