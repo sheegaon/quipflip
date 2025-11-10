@@ -21,48 +21,48 @@ from backend.config import get_settings
 
 logger = logging.getLogger(__name__)
 
-# Action type mapping based on URL paths - must match frontend getActionColor() mapping
+# Action type mapping based on URL paths with categories for consistent frontend styling
 ACTION_MAP = {
-    "/rounds/prompt": "Prompt Round",
-    "/rounds/copy": "Copy Round", 
-    "/rounds/vote": "Vote Round",
-    "/player/leaderboard": "Leaderboard",
-    "/player/statistics": "Statistics",
-    "/rounds/results": "Round Review",
-    "/player/dashboard": "Dashboard",
-    "/rounds/completed": "Completed Rounds",
-    "/quests": "Quests",
-    "/phrasesets": "Phraseset Review",
-    "/player/balance": "Balance Check",
-    "/player/tutorial": "Tutorial",
+    "/rounds/prompt": {"name": "Prompt Round", "category": "round_prompt"},
+    "/rounds/copy": {"name": "Copy Round", "category": "round_copy"}, 
+    "/rounds/vote": {"name": "Vote Round", "category": "round_vote"},
+    "/player/leaderboard": {"name": "Leaderboard", "category": "stats"},
+    "/player/statistics": {"name": "Statistics", "category": "stats"},
+    "/rounds/results": {"name": "Round Review", "category": "review"},
+    "/player/dashboard": {"name": "Dashboard", "category": "navigation"},
+    "/rounds/completed": {"name": "Completed Rounds", "category": "review"},
+    "/quests": {"name": "Quests", "category": "quests"},
+    "/phrasesets": {"name": "Phraseset Review", "category": "review"},
+    "/player/balance": {"name": "Balance Check", "category": "navigation"},
+    "/player/tutorial": {"name": "Tutorial", "category": "navigation"},
     # Add missing mappings that frontend expects
-    "/rounds/": "Round Review",  # Generic rounds path
-    "/phrasesets/": "Phraseset Review",  # Generic phrasesets path
+    "/rounds/": {"name": "Round Review", "category": "review"},  # Generic rounds path
+    "/phrasesets/": {"name": "Phraseset Review", "category": "review"},  # Generic phrasesets path
 }
 
 
-def get_friendly_action_name(method: str, path: str) -> str:
-    """Convert HTTP method and path to a user-friendly action name."""
+def get_friendly_action_info(method: str, path: str) -> dict:
+    """Convert HTTP method and path to a user-friendly action name and category."""
     # Check for exact path matches first
     if path in ACTION_MAP:
         return ACTION_MAP[path]
     
     # Check for path prefixes
-    for pattern, action in ACTION_MAP.items():
+    for pattern, action_info in ACTION_MAP.items():
         if path.startswith(pattern):
-            return action
+            return action_info
     
     # Default fallback based on path patterns
     if path.startswith("/player"):
-        return "Player Action"
+        return {"name": "Player Action", "category": "navigation"}
     elif path.startswith("/rounds"):
-        return "Round Action"
+        return {"name": "Round Action", "category": "round_other"}
     elif path.startswith("/quests"):
-        return "Quests"
+        return {"name": "Quests", "category": "quests"}
     elif path.startswith("/auth"):
-        return "Authentication"
+        return {"name": "Authentication", "category": "auth"}
     else:
-        return "Other Action"
+        return {"name": "Other Action", "category": "other"}
 
 
 async def online_user_tracking_middleware(request: Request, call_next):
@@ -103,13 +103,14 @@ async def online_user_tracking_middleware(request: Request, call_next):
                             current_time = datetime.now(UTC)
                             action_path = str(request.url.path)
                             
-                            # Use friendly action name instead of raw HTTP method + path
-                            friendly_action = get_friendly_action_name(request.method, action_path)
+                            # Use friendly action info instead of raw HTTP method + path
+                            friendly_action_info = get_friendly_action_info(request.method, action_path)
                             
                             if activity:
                                 # Update existing activity
                                 activity.username = username
-                                activity.last_action = friendly_action
+                                activity.last_action = friendly_action_info["name"]
+                                activity.last_action_category = friendly_action_info["category"]
                                 activity.last_action_path = action_path
                                 activity.last_activity = current_time
                             else:
@@ -117,7 +118,8 @@ async def online_user_tracking_middleware(request: Request, call_next):
                                 activity = UserActivity(
                                     player_id=player_id,
                                     username=username,
-                                    last_action=friendly_action,
+                                    last_action=friendly_action_info["name"],
+                                    last_action_category=friendly_action_info["category"],
                                     last_action_path=action_path,
                                     last_activity=current_time
                                 )

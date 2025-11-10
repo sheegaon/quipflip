@@ -26,6 +26,7 @@ class UserActivity(Base):
     player_id: Mapped[UUID] = mapped_column(primary_key=True)
     username: Mapped[str] = mapped_column(String(255), nullable=False)
     last_action: Mapped[str] = mapped_column(String(100), nullable=False)
+    last_action_category: Mapped[str] = mapped_column(String(50), nullable=False, default="other")
     last_action_path: Mapped[str] = mapped_column(Text, nullable=False)
     last_activity: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

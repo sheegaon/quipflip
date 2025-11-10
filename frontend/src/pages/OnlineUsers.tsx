@@ -14,6 +14,7 @@ import { Header } from '../components/Header';
 interface OnlineUser {
   username: string;
   last_action: string;
+  last_action_category: string;
   last_activity: string;
   time_ago: string;
 }
@@ -139,21 +140,21 @@ const OnlineUsers: React.FC = () => {
     };
   }, []);
 
-  // Get action color based on action type
-  const getActionColor = (action: string): string => {
-    const colorMap: Record<string, string> = {
-      'Prompt Round': 'bg-quip-orange',
-      'Copy Round': 'bg-quip-coral',
-      'Vote Round': 'bg-quip-teal',
-      'Leaderboard': 'bg-blue-500',
-      'Statistics': 'bg-purple-500',
-      'Round Review': 'bg-green-500',
-      'Dashboard': 'bg-yellow-500',
-      'Completed Rounds': 'bg-gray-500',
-      'Quests': 'bg-pink-500',
-      'Phraseset Review': 'bg-indigo-500',
+  // Get action color based on action category (centralized from backend)
+  const getActionColor = (category: string): string => {
+    const categoryColorMap: Record<string, string> = {
+      'round_prompt': 'bg-quip-orange',
+      'round_copy': 'bg-quip-coral', 
+      'round_vote': 'bg-quip-teal',
+      'round_other': 'bg-quip-navy',
+      'stats': 'bg-blue-500',
+      'review': 'bg-green-500',
+      'navigation': 'bg-yellow-500',
+      'quests': 'bg-pink-500',
+      'auth': 'bg-purple-500',
+      'other': 'bg-gray-400',
     };
-    return colorMap[action] || 'bg-gray-400';
+    return categoryColorMap[category] || 'bg-gray-400';
   };
 
   if (loading) {
@@ -226,7 +227,7 @@ const OnlineUsers: React.FC = () => {
                     <div className="flex-1">
                       <p className="font-bold text-quip-navy">{user.username}</p>
                       <div className="flex items-center gap-2 mt-1">
-                        <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold text-white ${getActionColor(user.last_action)}`}>
+                        <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold text-white ${getActionColor(user.last_action_category)}`}>
                           {user.last_action}
                         </span>
                         <span className="text-sm text-quip-teal">{user.time_ago}</span>

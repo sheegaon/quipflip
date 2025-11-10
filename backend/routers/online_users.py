@@ -207,6 +207,7 @@ async def get_online_users(db: AsyncSession) -> List[OnlineUser]:
             OnlineUser(
                 username=activity.username,
                 last_action=activity.last_action,
+                last_action_category=activity.last_action_category,
                 last_activity=activity.last_activity,
                 time_ago=time_ago,
             )

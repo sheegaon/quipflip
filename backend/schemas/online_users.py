@@ -18,6 +18,7 @@ class OnlineUser(BaseModel):
 
     username: str
     last_action: str
+    last_action_category: str
     last_activity: datetime
     time_ago: str
 
