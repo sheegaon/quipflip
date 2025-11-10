@@ -52,14 +52,27 @@ def get_action_type(path: str) -> str:
         return "Other"
 
 
-async def get_user_from_token(authorization: Optional[str]) -> Optional[tuple[str, str]]:
-    """Extract player_id and username from JWT token."""
-    if not authorization:
+async def get_user_from_request(request: Request) -> Optional[tuple[str, str]]:
+    """Extract player_id and username from JWT token in cookies or Authorization header.
+
+    Checks in the same order as get_current_player:
+    1. HTTP-only cookie (preferred method for web clients)
+    2. Authorization header (backward compatibility, API clients)
+    """
+    # Try to get token from cookie first (preferred method)
+    token = request.cookies.get(settings.access_token_cookie_name)
+
+    # Fall back to Authorization header if no cookie
+    if not token:
+        authorization = request.headers.get("authorization")
+        if authorization:
+            # Remove "Bearer " prefix if present
+            token = authorization.replace("Bearer ", "").strip()
+
+    if not token:
         return None
 
     try:
-        # Remove "Bearer " prefix if present
-        token = authorization.replace("Bearer ", "").strip()
         payload = decode_jwt(token, settings.secret_key, algorithms=[settings.jwt_algorithm])
 
         if not payload:
@@ -151,9 +164,8 @@ async def activity_tracking_middleware(request: Request, call_next):
     if response.status_code >= 400:
         return response
 
-    # Extract user info from authorization header
-    authorization = request.headers.get("authorization")
-    user_info = await get_user_from_token(authorization)
+    # Extract user info from cookies or authorization header
+    user_info = await get_user_from_request(request)
 
     if user_info:
         player_id, username = user_info
