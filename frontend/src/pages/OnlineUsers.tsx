@@ -9,12 +9,6 @@ interface OnlineUser {
   time_ago: string;
 }
 
-interface OnlineUsersData {
-  users: OnlineUser[];
-  total_count: number;
-  timestamp?: string;
-}
-
 const OnlineUsers: React.FC = () => {
   const navigate = useNavigate();
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
@@ -28,8 +22,6 @@ const OnlineUsers: React.FC = () => {
     // Connect to WebSocket
     const connectWebSocket = () => {
       try {
-        // Determine WebSocket protocol based on current location
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const host = window.location.hostname;
         const port = import.meta.env.VITE_API_PORT || '8000';
 
