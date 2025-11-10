@@ -44,7 +44,7 @@ export const Pagination: React.FC<PaginationProps> = ({
         aria-label="Previous page"
       >
         <img
-          src="/icon_back_arrow.svg"
+          src="/icon_arrow_left.svg"
           alt="Previous"
           className="w-4 h-6"
         />
@@ -61,7 +61,7 @@ export const Pagination: React.FC<PaginationProps> = ({
         aria-label="Next page"
       >
         <img
-          src="/icon_back_arrow.svg"
+          src="/icon_arrow_left.svg"
           alt="Next"
           className="w-4 h-6 transform rotate-180"
         />
