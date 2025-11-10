@@ -66,6 +66,31 @@ def _get_redis_client() -> "Redis | None":
     return _redis_client
 
 
+def _normalize_cached_entries(entries: list[dict[str, Any]], entry_type: str) -> list[dict[str, Any]]:
+    """Normalize cached leaderboard entries by converting player_id strings to UUIDs.
+
+    Args:
+        entries: List of cached leaderboard entries with string player_ids
+        entry_type: Description of entry type for error logging (e.g., "role", "gross earnings")
+
+    Returns:
+        List of normalized entries with UUID player_ids
+    """
+    normalized_entries: list[dict[str, Any]] = []
+    for entry in entries:
+        normalized = dict(entry)
+        if "player_id" in normalized:
+            try:
+                normalized["player_id"] = UUID(str(normalized["player_id"]))
+            except Exception:
+                logger.error(
+                    f"Skipping cached {entry_type} entry with invalid player_id: {normalized.get('player_id')}"
+                )
+                continue
+        normalized_entries.append(normalized)
+    return normalized_entries
+
+
 async def _load_cached_leaderboard(cache_key: str, cache_type: str) -> tuple[dict[str, list[dict[str, Any]]], datetime] | None:
     """Fetch cached role-based leaderboard data from Redis, if available.
 
@@ -95,34 +120,12 @@ async def _load_cached_leaderboard(cache_key: str, cache_type: str) -> tuple[dic
 
         # Load role-based leaderboards
         for role in LEADERBOARD_ROLES:
-            entries: list[dict[str, Any]] = []
-            for entry in payload.get(f"{role}_leaderboard", []):
-                normalized = dict(entry)
-                if "player_id" in normalized:
-                    try:
-                        normalized["player_id"] = UUID(str(normalized["player_id"]))
-                    except Exception:
-                        logger.error(
-                            f"Skipping cached leaderboard entry with invalid player_id: {normalized.get('player_id')}"
-                        )
-                        continue
-                entries.append(normalized)
-            role_leaderboards[role] = entries
+            raw_entries = payload.get(f"{role}_leaderboard", [])
+            role_leaderboards[role] = _normalize_cached_entries(raw_entries, f"{role} leaderboard")
 
         # Load gross earnings leaderboard
-        gross_entries: list[dict[str, Any]] = []
-        for entry in payload.get("gross_earnings_leaderboard", []):
-            normalized = dict(entry)
-            if "player_id" in normalized:
-                try:
-                    normalized["player_id"] = UUID(str(normalized["player_id"]))
-                except Exception:
-                    logger.error(
-                        f"Skipping cached gross earnings entry with invalid player_id: {normalized.get('player_id')}"
-                    )
-                    continue
-            gross_entries.append(normalized)
-        role_leaderboards["gross_earnings"] = gross_entries
+        gross_raw_entries = payload.get("gross_earnings_leaderboard", [])
+        role_leaderboards["gross_earnings"] = _normalize_cached_entries(gross_raw_entries, "gross earnings")
 
         if generated_at is None:
             return None
@@ -360,6 +363,46 @@ class ScoringService:
         generated_at = datetime.now(UTC)
         await _store_weekly_leaderboard_cache(role_leaderboards, generated_at)
 
+    def _add_current_player_to_leaderboard(
+        self,
+        entries: list[dict[str, Any]],
+        top_limit: int,
+        player_id: UUID,
+        username: str | None,
+        default_entry: dict[str, Any],
+    ) -> list[dict[str, Any]]:
+        """Add current player to leaderboard if not already in top entries.
+
+        Args:
+            entries: All leaderboard entries
+            top_limit: Maximum number of top entries to include
+            player_id: ID of current player
+            username: Username of current player
+            default_entry: Default entry structure if player not found
+
+        Returns:
+            List of leaderboard entries with current player included
+        """
+        lookup = {entry["player_id"]: entry for entry in entries}
+        top_entries = entries[:top_limit]
+
+        player_entry = lookup.get(player_id)
+        if player_entry is None:
+            player_entry = {
+                **default_entry,
+                "player_id": player_id,
+                "username": username or "Unknown Player",
+            }
+
+        combined = [dict(entry) for entry in top_entries]
+        if all(entry["player_id"] != player_entry["player_id"] for entry in combined):
+            combined.append(dict(player_entry))
+
+        for entry in combined:
+            entry["is_current_player"] = entry["player_id"] == player_id
+
+        return combined
+
     async def get_weekly_leaderboard_for_player(
         self,
         player_id: UUID,
@@ -374,14 +417,12 @@ class ScoringService:
         # Handle role-based leaderboards
         for role in LEADERBOARD_ROLES:
             entries = role_leaderboards.get(role, [])
-            lookup = {entry["player_id"]: entry for entry in entries}
-            top_entries = entries[:WEEKLY_LEADERBOARD_LIMIT]
-
-            player_entry = lookup.get(player_id)
-            if player_entry is None:
-                player_entry = {
-                    "player_id": player_id,
-                    "username": username or "Unknown Player",
+            result[role] = self._add_current_player_to_leaderboard(
+                entries,
+                WEEKLY_LEADERBOARD_LIMIT,
+                player_id,
+                username,
+                {
                     "role": role,
                     "total_costs": 0,
                     "total_earnings": 0,
@@ -389,40 +430,22 @@ class ScoringService:
                     "win_rate": 0.0,
                     "total_rounds": 0,
                     "rank": None,
-                }
-
-            combined = [dict(entry) for entry in top_entries]
-            if all(entry["player_id"] != player_entry["player_id"] for entry in combined):
-                combined.append(dict(player_entry))
-
-            for entry in combined:
-                entry["is_current_player"] = entry["player_id"] == player_id
-
-            result[role] = combined
+                },
+            )
 
         # Handle gross earnings leaderboard
         gross_entries = role_leaderboards.get("gross_earnings", [])
-        gross_lookup = {entry["player_id"]: entry for entry in gross_entries}
-        top_gross_entries = gross_entries[:GROSS_EARNINGS_LEADERBOARD_LIMIT_WEEKLY]
-
-        player_gross_entry = gross_lookup.get(player_id)
-        if player_gross_entry is None:
-            player_gross_entry = {
-                "player_id": player_id,
-                "username": username or "Unknown Player",
+        result["gross_earnings"] = self._add_current_player_to_leaderboard(
+            gross_entries,
+            GROSS_EARNINGS_LEADERBOARD_LIMIT_WEEKLY,
+            player_id,
+            username,
+            {
                 "gross_earnings": 0,
                 "total_rounds": 0,
                 "rank": None,
-            }
-
-        combined_gross = [dict(entry) for entry in top_gross_entries]
-        if all(entry["player_id"] != player_gross_entry["player_id"] for entry in combined_gross):
-            combined_gross.append(dict(player_gross_entry))
-
-        for entry in combined_gross:
-            entry["is_current_player"] = entry["player_id"] == player_id
-
-        result["gross_earnings"] = combined_gross
+            },
+        )
 
         return result, generated_at
 
@@ -809,14 +832,12 @@ class ScoringService:
         # Handle role-based leaderboards
         for role in LEADERBOARD_ROLES:
             entries = role_leaderboards.get(role, [])
-            lookup = {entry["player_id"]: entry for entry in entries}
-            top_entries = entries[:ALLTIME_LEADERBOARD_LIMIT]
-
-            player_entry = lookup.get(player_id)
-            if player_entry is None:
-                player_entry = {
-                    "player_id": player_id,
-                    "username": username or "Unknown Player",
+            result[role] = self._add_current_player_to_leaderboard(
+                entries,
+                ALLTIME_LEADERBOARD_LIMIT,
+                player_id,
+                username,
+                {
                     "role": role,
                     "total_costs": 0,
                     "total_earnings": 0,
@@ -824,40 +845,22 @@ class ScoringService:
                     "win_rate": 0.0,
                     "total_rounds": 0,
                     "rank": None,
-                }
-
-            combined = [dict(entry) for entry in top_entries]
-            if all(entry["player_id"] != player_entry["player_id"] for entry in combined):
-                combined.append(dict(player_entry))
-
-            for entry in combined:
-                entry["is_current_player"] = entry["player_id"] == player_id
-
-            result[role] = combined
+                },
+            )
 
         # Handle gross earnings leaderboard
         gross_entries = role_leaderboards.get("gross_earnings", [])
-        gross_lookup = {entry["player_id"]: entry for entry in gross_entries}
-        top_gross_entries = gross_entries[:GROSS_EARNINGS_LEADERBOARD_LIMIT_ALLTIME]
-
-        player_gross_entry = gross_lookup.get(player_id)
-        if player_gross_entry is None:
-            player_gross_entry = {
-                "player_id": player_id,
-                "username": username or "Unknown Player",
+        result["gross_earnings"] = self._add_current_player_to_leaderboard(
+            gross_entries,
+            GROSS_EARNINGS_LEADERBOARD_LIMIT_ALLTIME,
+            player_id,
+            username,
+            {
                 "gross_earnings": 0,
                 "total_rounds": 0,
                 "rank": None,
-            }
-
-        combined_gross = [dict(entry) for entry in top_gross_entries]
-        if all(entry["player_id"] != player_gross_entry["player_id"] for entry in combined_gross):
-            combined_gross.append(dict(player_gross_entry))
-
-        for entry in combined_gross:
-            entry["is_current_player"] = entry["player_id"] == player_id
-
-        result["gross_earnings"] = combined_gross
+            },
+        )
 
         return result, generated_at
 
