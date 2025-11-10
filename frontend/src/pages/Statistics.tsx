@@ -309,6 +309,16 @@ const Statistics: React.FC = () => {
             </div>
             <div className="flex flex-col sm:flex-row items-end gap-4">
               <button
+                onClick={() => navigate('/leaderboard')}
+                className="flex items-center gap-2 bg-quip-navy hover:bg-quip-teal text-white font-bold py-2 px-4 rounded-tile transition-all hover:shadow-tile-sm"
+                title="View Leaderboard"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
+                </svg>
+                <span>Leaderboard</span>
+              </button>
+              <button
                 onClick={() => navigate('/settings')}
                 className="flex items-center gap-2 bg-quip-navy hover:bg-quip-teal text-white font-bold py-2 px-4 rounded-tile transition-all hover:shadow-tile-sm"
                 title="Account Settings"
@@ -352,28 +362,6 @@ const Statistics: React.FC = () => {
             </div>
           </div>
         )}
-
-        {/* Leaderboard Link Card */}
-        <div className="tile-card p-6 mb-6 bg-gradient-to-br from-orange-50 to-cyan-50 border-2 border-quip-teal">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <div className="flex-1">
-              <h2 className="text-2xl font-display font-bold text-quip-navy mb-2">
-                View Leaderboard
-              </h2>
-              <p className="text-quip-navy mb-3">
-                See how you rank against other players in weekly and all-time leaderboards across all three roles.
-              </p>
-            </div>
-            <div>
-              <button
-                onClick={() => navigate('/leaderboard')}
-                className="bg-gradient-to-r from-quip-orange to-quip-turquoise hover:from-quip-orange-deep hover:to-quip-teal text-white font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm whitespace-nowrap"
-              >
-                Go to Leaderboard
-              </button>
-            </div>
-          </div>
-        </div>
 
         {/* Charts Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
