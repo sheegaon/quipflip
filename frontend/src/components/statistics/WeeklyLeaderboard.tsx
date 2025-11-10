@@ -28,34 +28,50 @@ const roleLabels: Record<TabType, string> = {
 
 const MIN_BAR_PERCENTAGE = 8;
 
-const LeaderboardList: React.FC<{ leaders: WeeklyLeaderboardEntry[] }> = ({ leaders }) => {
+interface LeaderboardEntryDisplayConfig {
+  metricLabel: string;
+  metricFormatter: (entry: WeeklyLeaderboardEntry | GrossEarningsLeaderboardEntry) => string;
+  metricAccessor: (entry: WeeklyLeaderboardEntry | GrossEarningsLeaderboardEntry) => number;
+  detailFormatter: (entry: WeeklyLeaderboardEntry | GrossEarningsLeaderboardEntry) => string;
+  emptyMessage: string;
+}
+
+interface GenericLeaderboardListProps {
+  leaders: (WeeklyLeaderboardEntry | GrossEarningsLeaderboardEntry)[];
+  config: LeaderboardEntryDisplayConfig;
+}
+
+const GenericLeaderboardList: React.FC<GenericLeaderboardListProps> = ({ leaders, config }) => {
   if (leaders.length === 0) {
     return (
       <div className="rounded-tile border border-quip-navy/10 bg-white p-6 text-center text-sm text-quip-navy/70">
-        No completed rounds yet this week—play a round to appear on the leaderboard!
+        {config.emptyMessage}
       </div>
     );
   }
 
-  const maxWinRate = leaders.reduce((max, entry) => {
-    return entry.win_rate > max ? entry.win_rate : max;
+  const maxValue = leaders.reduce((max, entry) => {
+    const value = config.metricAccessor(entry);
+    return value > max ? value : max;
   }, 1);
 
   return (
     <div className="space-y-2.5" role="list">
       {leaders.map((entry) => {
-        const percent = Math.max(MIN_BAR_PERCENTAGE, Math.round((entry.win_rate / maxWinRate) * 100));
+        const metricValue = config.metricAccessor(entry);
+        const percent = Math.max(MIN_BAR_PERCENTAGE, Math.round((metricValue / maxValue) * 100));
         const highlightClasses = entry.is_current_player
           ? 'border-2 border-quip-orange bg-quip-orange/10 shadow-md'
           : 'border border-quip-navy/10 bg-white';
         const rankLabel = entry.rank ? `#${entry.rank}` : '-';
+        const formattedMetric = config.metricFormatter(entry);
 
         return (
           <div
             key={entry.player_id}
             className={`rounded-tile px-3 py-2.5 transition-colors duration-200 ${highlightClasses}`}
             role="listitem"
-            aria-label={`${entry.username} win rate ${entry.win_rate.toFixed(1)}%`}
+            aria-label={`${entry.username} ${config.metricLabel.toLowerCase()} ${formattedMetric}`}
           >
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
@@ -63,10 +79,8 @@ const LeaderboardList: React.FC<{ leaders: WeeklyLeaderboardEntry[] }> = ({ lead
                 <span className="font-display text-lg text-quip-navy">{entry.username}</span>
               </div>
               <div className="text-right">
-                <span className="block text-xs uppercase tracking-wide text-quip-navy/50">Win Rate</span>
-                <div className="font-mono text-lg font-semibold text-quip-teal">
-                  {entry.win_rate.toFixed(1)}%
-                </div>
+                <span className="block text-xs uppercase tracking-wide text-quip-navy/50">{config.metricLabel}</span>
+                <div className="font-mono text-lg font-semibold text-quip-teal">{formattedMetric}</div>
               </div>
             </div>
 
@@ -79,9 +93,7 @@ const LeaderboardList: React.FC<{ leaders: WeeklyLeaderboardEntry[] }> = ({ lead
                 You&apos;re here! Keep climbing the leaderboard.
               </p>
             ) : (
-              <p className="mt-1.5 text-xs text-quip-navy/50">
-                {entry.total_rounds} rounds · Net {currencyFormatter.format(entry.net_earnings)}
-              </p>
+              <p className="mt-1.5 text-xs text-quip-navy/50">{config.detailFormatter(entry)}</p>
             )}
           </div>
         );
@@ -90,65 +102,36 @@ const LeaderboardList: React.FC<{ leaders: WeeklyLeaderboardEntry[] }> = ({ lead
   );
 };
 
-const GrossEarningsLeaderboardList: React.FC<{ leaders: GrossEarningsLeaderboardEntry[] }> = ({ leaders }) => {
-  if (leaders.length === 0) {
-    return (
-      <div className="rounded-tile border border-quip-navy/10 bg-white p-6 text-center text-sm text-quip-navy/70">
-        No earnings yet—play some rounds to appear on the leaderboard!
-      </div>
-    );
-  }
-
-  const maxEarnings = leaders.reduce((max, entry) => {
-    return entry.gross_earnings > max ? entry.gross_earnings : max;
-  }, 1);
-
+const LeaderboardList: React.FC<{ leaders: WeeklyLeaderboardEntry[] }> = ({ leaders }) => {
   return (
-    <div className="space-y-2.5" role="list">
-      {leaders.map((entry) => {
-        const percent = Math.max(MIN_BAR_PERCENTAGE, Math.round((entry.gross_earnings / maxEarnings) * 100));
-        const highlightClasses = entry.is_current_player
-          ? 'border-2 border-quip-orange bg-quip-orange/10 shadow-md'
-          : 'border border-quip-navy/10 bg-white';
-        const rankLabel = entry.rank ? `#${entry.rank}` : '-';
+    <GenericLeaderboardList
+      leaders={leaders}
+      config={{
+        metricLabel: 'Win Rate',
+        metricFormatter: (entry) => `${(entry as WeeklyLeaderboardEntry).win_rate.toFixed(1)}%`,
+        metricAccessor: (entry) => (entry as WeeklyLeaderboardEntry).win_rate,
+        detailFormatter: (entry) => {
+          const e = entry as WeeklyLeaderboardEntry;
+          return `${e.total_rounds} rounds · Net ${currencyFormatter.format(e.net_earnings)}`;
+        },
+        emptyMessage: 'No completed rounds yet this week—play a round to appear on the leaderboard!',
+      }}
+    />
+  );
+};
 
-        return (
-          <div
-            key={entry.player_id}
-            className={`rounded-tile px-3 py-2.5 transition-colors duration-200 ${highlightClasses}`}
-            role="listitem"
-            aria-label={`${entry.username} gross earnings ${currencyFormatter.format(entry.gross_earnings)}`}
-          >
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-semibold uppercase tracking-wide text-quip-navy/60">{rankLabel}</span>
-                <span className="font-display text-lg text-quip-navy">{entry.username}</span>
-              </div>
-              <div className="text-right">
-                <span className="block text-xs uppercase tracking-wide text-quip-navy/50">Gross Earnings</span>
-                <div className="font-mono text-lg font-semibold text-quip-teal">
-                  {currencyFormatter.format(entry.gross_earnings)}
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-quip-navy/10">
-              <div className="h-full bg-quip-teal" style={{ width: `${percent}%` }} aria-hidden="true" />
-            </div>
-
-            {entry.is_current_player ? (
-              <p className="mt-1.5 text-xs font-semibold uppercase tracking-wide text-quip-orange">
-                You&apos;re here! Keep climbing the leaderboard.
-              </p>
-            ) : (
-              <p className="mt-1.5 text-xs text-quip-navy/50">
-                {entry.total_rounds} rounds
-              </p>
-            )}
-          </div>
-        );
-      })}
-    </div>
+const GrossEarningsLeaderboardList: React.FC<{ leaders: GrossEarningsLeaderboardEntry[] }> = ({ leaders }) => {
+  return (
+    <GenericLeaderboardList
+      leaders={leaders}
+      config={{
+        metricLabel: 'Gross Earnings',
+        metricFormatter: (entry) => currencyFormatter.format((entry as GrossEarningsLeaderboardEntry).gross_earnings),
+        metricAccessor: (entry) => (entry as GrossEarningsLeaderboardEntry).gross_earnings,
+        detailFormatter: (entry) => `${entry.total_rounds} rounds`,
+        emptyMessage: 'No earnings yet—play some rounds to appear on the leaderboard!',
+      }}
+    />
   );
 };
 

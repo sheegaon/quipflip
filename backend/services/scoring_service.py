@@ -770,8 +770,8 @@ class ScoringService:
         tasks.append(self._compute_gross_earnings_leaderboard(window_start))
         results = await asyncio.gather(*tasks)
 
-        leaderboards = dict(zip(LEADERBOARD_ROLES, results[:3]))
-        leaderboards["gross_earnings"] = results[3]
+        leaderboards = dict(zip(LEADERBOARD_ROLES, results[:-1]))
+        leaderboards["gross_earnings"] = results[-1]
         return leaderboards
 
     async def get_alltime_leaderboard_snapshot(
@@ -867,8 +867,8 @@ class ScoringService:
         tasks.append(self._compute_gross_earnings_leaderboard(start_date=None))
         results = await asyncio.gather(*tasks)
 
-        leaderboards = dict(zip(LEADERBOARD_ROLES, results[:3]))
-        leaderboards["gross_earnings"] = results[3]
+        leaderboards = dict(zip(LEADERBOARD_ROLES, results[:-1]))
+        leaderboards["gross_earnings"] = results[-1]
         return leaderboards
 
     async def _compute_gross_earnings_leaderboard(self, start_date: datetime | None = None) -> list[dict]:
