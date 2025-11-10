@@ -6,14 +6,19 @@ This guide covers the production deployment setup for QuipFlip, including enviro
 
 - **Frontend**: Hosted on Vercel at `quipflip.xyz`
 - **Backend**: Hosted on Heroku at `quipflip-c196034288cd.herokuapp.com`
-- **Hybrid Approach**:
-  - **REST API**: Proxied through Vercel (`/api/*` → Heroku) for same-origin requests, iOS compatibility
-  - **WebSocket**: Direct connection to Heroku (`wss://quipflip-c196034288cd.herokuapp.com`)
-- **Cookies**: SameSite=None with Secure flag (required for cross-site WebSocket authentication)
+- **REST API**: Proxied through Vercel (`/api/*` → Heroku) for same-origin
+  - HttpOnly cookies work seamlessly
+  - Maximum iOS Safari compatibility
+- **WebSocket**: Token exchange pattern (Vercel doesn't support WebSocket proxying)
+  - Step 1: Fetch short-lived token via REST (through Vercel proxy)
+  - Step 2: Use token for direct WebSocket connection to Heroku
+  - Token expires in 60 seconds for security
+- **Cookies**: SameSite=Lax with Secure flag (same-origin for REST)
 - **Benefits**:
-  - REST API maintains iOS Safari cookie compatibility via same-origin proxy
-  - WebSocket gets real-time connection directly to backend
-  - Single cookie configuration works for both
+  - REST API maintains iOS Safari compatibility
+  - WebSocket gets real-time connection without proxy limitations
+  - HttpOnly cookies protect long-lived tokens
+  - Short-lived WebSocket tokens limit exposure risk
 
 ## Backend Configuration (Heroku)
 
@@ -55,10 +60,10 @@ USE_PHRASE_VALIDATOR_API=true
 The backend automatically configures cookies based on the `ENVIRONMENT` variable:
 
 - **Production** (`ENVIRONMENT=production`):
-  - `SameSite=None` (required for cross-site WebSocket connections)
-  - `Secure=True` (required for SameSite=None)
+  - `SameSite=Lax` (all traffic same-origin via Vercel proxy)
+  - `Secure=True` (HTTPS required)
   - `HttpOnly=True` (prevents JavaScript access)
-  - **Note**: REST API uses Vercel proxy (same-origin), but WebSocket needs cross-site cookies
+  - **Note**: HttpOnly cookies automatically sent by browser for same-origin requests
 
 - **Development** (`ENVIRONMENT=development`):
   - `SameSite=Lax` (localhost same-site)
@@ -84,12 +89,12 @@ CORS is configured with:
 Set these in the Vercel dashboard under Project Settings → Environment Variables:
 
 ```bash
-# REST API URL (proxied through Vercel for same-origin requests)
+# API URL (proxied through Vercel for same-origin)
+# All traffic (REST + WebSocket) uses this prefix
 VITE_API_URL=/api
-
-# WebSocket URL (direct connection to Heroku backend)
-VITE_WEBSOCKET_URL=wss://quipflip-c196034288cd.herokuapp.com
 ```
+
+**Note**: No separate WebSocket URL needed - WebSocket connections use the same `/api` prefix and Vercel proxy automatically handles both HTTP and WebSocket protocols.
 
 ### Vercel Configuration
 
@@ -115,43 +120,55 @@ Ensure `vercel.json` includes the rewrite rule for the API proxy:
 
 ### Important Notes
 
-1. **Hybrid Connection Strategy**:
-   - **REST API**: Uses `/api` which Vercel proxies to Heroku (same-origin from browser perspective)
-   - **WebSocket**: Connects directly to `wss://quipflip-c196034288cd.herokuapp.com` (cross-site)
-   - Benefits: iOS Safari compatibility for REST + real-time WebSocket support
+1. **REST API (Same-Origin via Vercel Proxy)**:
+   - Uses `/api` which Vercel proxies to Heroku
+   - HttpOnly cookies automatically sent by browser
+   - Maximum iOS Safari compatibility
+   - All cookies are `SameSite=Lax` (same-origin)
 
-2. **Cookie Handling**:
-   - REST API: Cookies sent automatically as same-origin (via Vercel proxy)
-   - WebSocket: Cookies sent as cross-site with SameSite=None (requires Secure flag)
-   - WebSocket also includes token as query parameter for compatibility
+2. **WebSocket (Token Exchange Pattern)**:
+   - Vercel doesn't support WebSocket proxying
+   - Frontend fetches short-lived token via `/api/auth/ws-token` (REST)
+   - Uses token for direct WebSocket connection to Heroku
+   - Token expires in 60 seconds (limits security risk)
+   - Production URL: `wss://quipflip-c196034288cd.herokuapp.com/users/online/ws?token=...`
 
-3. **WebSocket URL Construction**:
-   - Production: Uses `VITE_WEBSOCKET_URL` directly
-   - Development: Constructs from `VITE_API_URL` or defaults to `localhost:8000`
-   - Token automatically appended from cookies
+3. **Security Model**:
+   - Long-lived tokens (2h access, 30d refresh) protected by HttpOnly cookies
+   - WebSocket tokens are short-lived (60s) and exposed to JavaScript
+   - Minimal exposure window limits risk
+   - No cross-site cookies needed (REST is same-origin, WebSocket uses token)
 
 ## WebSocket Setup
 
 ### Online Users Feature
 
-The Online Users page demonstrates real-time WebSocket functionality:
+The Online Users page demonstrates real-time WebSocket functionality with token exchange:
 
-1. **Client Connection**:
-   - URL: `wss://quipflip-c196034288cd.herokuapp.com/users/online/ws?token=<access_token>`
-   - Token is read from `quipflip_access_token` cookie
-   - Token is also sent in cookies for fallback
+1. **Token Exchange Flow**:
+   - Frontend calls `GET /api/auth/ws-token` (REST via Vercel proxy)
+   - HttpOnly cookie automatically validated
+   - Backend returns short-lived token (60 seconds)
+   - Frontend uses token for WebSocket connection
 
-2. **Authentication**:
-   - Server validates token from query parameter or cookie
+2. **WebSocket Connection**:
+   - URL: `wss://quipflip-c196034288cd.herokuapp.com/users/online/ws?token=<short_token>`
+   - Direct connection to Heroku (bypasses Vercel)
+   - Token passed as query parameter
+   - Server validates token from query parameter
+
+3. **Authentication**:
+   - Server validates short-lived token
    - Rejects with WebSocket code 1008 (policy violation) if auth fails
    - Client detects 1008 and shows "Authentication failed" message
+   - Token expiration after 60 seconds closes WebSocket gracefully
 
-3. **Broadcasting**:
+4. **Broadcasting**:
    - Server sends `online_users_update` messages every 5 seconds
    - Message includes user list, count, and timestamp
    - Broadcast only runs when at least one client is connected
 
-4. **Fallback Mechanism**:
+5. **Fallback Mechanism**:
    - If WebSocket fails, client falls back to HTTP polling
    - Polls `GET /api/users/online` every 10 seconds
    - Seamless transition between WebSocket and polling

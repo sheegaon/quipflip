@@ -7,21 +7,22 @@ from backend.config import get_settings
 def set_refresh_cookie(response: Response, token: str, *, expires_days: int | None = None) -> None:
     """Set the refresh token cookie with secure defaults.
 
-    In production, the frontend connects directly to the Heroku backend (cross-site),
-    so we use SameSite=None with Secure flag to allow cross-site cookies.
+    In production, REST API uses Vercel proxy (same-origin with SameSite=Lax), but WebSocket
+    requires SameSite=None since Vercel doesn't support WebSocket proxying. We use SameSite=Lax
+    for REST compatibility, and WebSocket authentication uses a token exchange pattern.
 
     In development, frontend (localhost:5173) and backend (localhost:8000) are on different
-    ports. SameSite=Lax works for localhost development.
+    ports but browsers treat localhost as same-origin, so SameSite=Lax works fine.
     """
 
     settings = get_settings()
     days = expires_days or settings.refresh_token_exp_days
     max_age = days * 24 * 60 * 60
 
-    # Production: SameSite=None for cross-site cookies (frontend -> Heroku backend)
-    # Development: SameSite=Lax for same-site localhost
-    samesite_value = "none" if settings.environment == "production" else "lax"
-    # Secure flag: required for SameSite=None, enabled in all non-dev environments
+    # Use SameSite=Lax for both dev and production (REST API via Vercel proxy)
+    # WebSocket uses token exchange pattern (/auth/ws-token) instead of cookies
+    samesite_value = "lax"
+    # Secure flag: only disable for local development, enable for all other environments
     secure_value = settings.environment != "development"
 
     response.set_cookie(
@@ -41,14 +42,15 @@ def set_access_token_cookie(response: Response, token: str) -> None:
 
     Access tokens have a shorter lifetime than refresh tokens (hours vs days).
     Uses the same security settings as refresh tokens for consistency.
+    WebSocket authentication uses token exchange pattern (/auth/ws-token).
     """
     settings = get_settings()
     max_age = settings.access_token_exp_minutes * 60
 
-    # Production: SameSite=None for cross-site cookies (frontend -> Heroku backend)
-    # Development: SameSite=Lax for same-site localhost
-    samesite_value = "none" if settings.environment == "production" else "lax"
-    # Secure flag: required for SameSite=None, enabled in all non-dev environments
+    # Use SameSite=Lax for both dev and production (REST API via Vercel proxy)
+    # WebSocket uses token exchange pattern (/auth/ws-token) instead of cookies
+    samesite_value = "lax"
+    # Secure flag: only disable for local development, enable for all other environments
     secure_value = settings.environment != "development"
 
     response.set_cookie(
