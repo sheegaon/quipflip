@@ -64,26 +64,7 @@ export const GameProvider: React.FC<{
   // Smart polling hook
   const { startPoll, stopPoll, triggerPoll } = useSmartPolling();
   
-const AUTH_COOKIE_NAMES = ['quipflip_access_token', 'quipflip_refresh_token'];
-
-const hasAuthCookies = () => {
-  if (typeof document === 'undefined') {
-    return false;
-  }
-
-  const cookies = document.cookie || '';
-  if (!cookies) {
-    return false;
-  }
-
-  return AUTH_COOKIE_NAMES.some((name) =>
-    cookies
-      .split(';')
-      .some((cookie) => cookie.trim().startsWith(`${name}=`)),
-  );
-};
-
-// State
+  // State
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [username, setUsername] = useState<string | null>(null);
   const [player, setPlayer] = useState<Player | null>(null);
@@ -113,12 +94,6 @@ const hasAuthCookies = () => {
     const initializeSession = async () => {
       const storedUsername = apiClient.getStoredUsername();
       if (!storedUsername) {
-        return;
-      }
-
-      if (!hasAuthCookies()) {
-        gameContextLogger.debug('🔐 No auth cookies present, clearing stored username');
-        apiClient.clearSession();
         return;
       }
 

@@ -79,21 +79,34 @@ class ConnectionManager:
 
     def __init__(self):
         self.active_connections: List[WebSocket] = []
+        self._background_task: Optional[asyncio.Task] = None
+        self._running = False
 
     async def connect(self, websocket: WebSocket):
         """Accept and store a new WebSocket connection."""
         await websocket.accept()
         self.active_connections.append(websocket)
         logger.info(f"New WebSocket connection. Total connections: {len(self.active_connections)}")
+        
+        # Start background task if this is the first connection
+        if len(self.active_connections) == 1 and not self._running:
+            self._start_background_task()
 
     def disconnect(self, websocket: WebSocket):
         """Remove a WebSocket connection."""
         if websocket in self.active_connections:
             self.active_connections.remove(websocket)
         logger.info(f"WebSocket disconnected. Total connections: {len(self.active_connections)}")
+        
+        # Stop background task if no connections remain
+        if len(self.active_connections) == 0 and self._running:
+            self._stop_background_task()
 
     async def broadcast(self, message: dict):
         """Broadcast a message to all connected clients."""
+        if not self.active_connections:
+            return
+            
         disconnected = []
         for connection in self.active_connections:
             try:
@@ -105,6 +118,56 @@ class ConnectionManager:
         # Clean up disconnected clients
         for connection in disconnected:
             self.disconnect(connection)
+
+    def _start_background_task(self):
+        """Start the background task for broadcasting online users updates."""
+        if self._running:
+            return
+            
+        self._running = True
+        self._background_task = asyncio.create_task(self._broadcast_loop())
+        logger.info("Started online users broadcast task")
+
+    def _stop_background_task(self):
+        """Stop the background task for broadcasting online users updates."""
+        if not self._running:
+            return
+            
+        self._running = False
+        if self._background_task and not self._background_task.done():
+            self._background_task.cancel()
+        logger.info("Stopped online users broadcast task")
+
+    async def _broadcast_loop(self):
+        """Background task that fetches online users and broadcasts to all clients."""
+        try:
+            while self._running:
+                # Only fetch data if we have connected clients
+                if self.active_connections:
+                    try:
+                        async with AsyncSessionLocal() as db:
+                            online_users = await get_online_users(db)
+                            
+                            message = {
+                                "type": "online_users_update",
+                                "users": [user.model_dump(mode="json") for user in online_users],
+                                "total_count": len(online_users),
+                                "timestamp": datetime.now(UTC).isoformat(),
+                            }
+                            
+                            await self.broadcast(message)
+                    except Exception as e:
+                        logger.error(f"Error in online users broadcast loop: {e}")
+                
+                # Wait 5 seconds before next update
+                await asyncio.sleep(5)
+                
+        except asyncio.CancelledError:
+            logger.info("Online users broadcast task cancelled")
+        except Exception as e:
+            logger.error(f"Unexpected error in online users broadcast task: {e}")
+        finally:
+            self._running = False
 
 
 # Global connection manager
@@ -186,27 +249,20 @@ async def websocket_endpoint(websocket: WebSocket):
     logger.info(f"WebSocket authenticated for player: {player.username}")
 
     try:
+        # Keep connection alive and listen for client disconnects
+        # The actual data broadcasting is handled by the background task
         while True:
-            # Create a new short-lived database session for each update
-            async with AsyncSessionLocal() as db:
-                # Send updates every 5 seconds
-                online_users = await get_online_users(db)
-
-                message = {
-                    "type": "online_users_update",
-                    "users": [user.model_dump(mode="json") for user in online_users],
-                    "total_count": len(online_users),
-                    "timestamp": datetime.now(UTC).isoformat(),
-                }
-
-                await websocket.send_json(message)
-
-            # Wait 5 seconds before next update (outside session context)
-            await asyncio.sleep(5)
-
+            # Just wait for client messages or disconnects
+            # We don't expect any messages from clients, but this keeps the connection alive
+            try:
+                await websocket.receive_text()
+            except WebSocketDisconnect:
+                break
+                
     except WebSocketDisconnect:
-        manager.disconnect(websocket)
-        logger.info(f"WebSocket disconnected for player: {player.username}")
+        pass
     except Exception as e:
         logger.error(f"WebSocket error for player {player.username}: {e}")
+    finally:
         manager.disconnect(websocket)
+        logger.info(f"WebSocket disconnected for player: {player.username}")
