@@ -61,6 +61,20 @@
   .slide-up-enter {
     animation: slideUp 0.3s ease-out;
   }
+
+  /* Trophy pulse animation for new results */
+  .trophy-pulse {
+    animation: trophyPulse 2s ease-in-out infinite;
+    will-change: transform, filter;
+  }
+
+  /* Respect user's motion preferences for accessibility */
+  @media (prefers-reduced-motion: reduce) {
+    .trophy-pulse {
+      animation: none;
+      will-change: auto;
+    }
+  }
 }
 
 @layer utilities {
@@ -128,5 +142,16 @@
   100% {
     transform: translateY(0);
     opacity: 1;
+  }
+}
+
+@keyframes trophyPulse {
+  0%, 100% {
+    transform: scale(1);
+    filter: brightness(1) hue-rotate(0deg);
+  }
+  50% {
+    transform: scale(1.08);
+    filter: brightness(1.15) hue-rotate(5deg);
   }
 }

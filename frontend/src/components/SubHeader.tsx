@@ -97,7 +97,7 @@ export const SubHeader: React.FC = () => {
               <img
                 src="/icon_results.svg"
                 alt="Results ready to view"
-                className="h-5 w-5 md:h-7 md:w-7"
+                className={`h-5 w-5 md:h-7 md:w-7 ${unviewedCount > 0 ? 'trophy-pulse' : ''}`}
               />
             </button>
           )}
