@@ -188,13 +188,13 @@ export const Header: React.FC = () => {
             >
               {showBackArrow && (
                 <img
-                  src="/icon_back_arrow.svg"
+                  src="/icon_arrow_left.svg"
                   alt=""
                   className="w-5 h-5 md:w-7 md:h-7"
                   aria-hidden="true"
                 />
               )}
-              <img src="/large_icon.png" alt="Quipflip" className="md:h-10 h-6 w-auto" />
+              <img src="/large_icon_old.png" alt="Quipflip" className="md:h-10 h-6 w-auto" />
             </button>
           </div>
 
