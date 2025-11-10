@@ -44,7 +44,7 @@ from backend.services.transaction_service import TransactionService
 from backend.services.round_service import RoundService
 from backend.services.phraseset_service import PhrasesetService
 from backend.services.statistics_service import StatisticsService
-from backend.services.scoring_service import ScoringService
+from backend.services.scoring_service import ScoringService, LEADERBOARD_ROLES
 from backend.services.tutorial_service import TutorialService
 from backend.services.vote_service import VoteService
 from backend.services.queue_service import QueueService
@@ -641,7 +641,7 @@ async def get_weekly_leaderboard(
     # Build leaderboard for each role using dictionary comprehension
     leader_lists = {
         role: [WeeklyLeaderboardEntry(**entry) for entry in role_data.get(role, [])]
-        for role in ["prompt", "copy", "voter"]
+        for role in LEADERBOARD_ROLES
     }
 
     return WeeklyLeaderboardResponse(
@@ -668,7 +668,7 @@ async def get_alltime_leaderboard(
     # Build leaderboard for each role using dictionary comprehension
     leader_lists = {
         role: [WeeklyLeaderboardEntry(**entry) for entry in role_data.get(role, [])]
-        for role in ["prompt", "copy", "voter"]
+        for role in LEADERBOARD_ROLES
     }
 
     return WeeklyLeaderboardResponse(
