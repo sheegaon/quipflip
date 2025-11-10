@@ -69,12 +69,10 @@ test.describe('Advanced Quipflip Features', () => {
     // Check for player info displays
     const hasUsername = await page.locator('text=/username/i').count() > 0;
     const hasEmail = await page.locator('text=/email/i').count() > 0;
-    const hasPseudonym = await page.locator('text=/pseudonym/i').count() > 0;
 
     console.log('\nPlayer Information:');
     console.log(`  ${hasUsername ? '✓' : '✗'} Username field`);
     console.log(`  ${hasEmail ? '✓' : '✗'} Email field`);
-    console.log(`  ${hasPseudonym ? '✓' : '✗'} Pseudonym field`);
 
     // Look for Reset Tutorial button
     const resetTutorialBtn = page.locator('button', { hasText: /reset tutorial/i });

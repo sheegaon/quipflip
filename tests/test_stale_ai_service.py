@@ -54,7 +54,6 @@ class TestStaleAIPlayerCreation:
         assert player.email == "ai_stale_handler_0@quipflip.internal"
         # Username is randomly generated, so we just check it exists
         assert player.username is not None
-        assert player.pseudonym is not None
 
     @pytest.mark.asyncio
     async def test_reuse_existing_stale_handler_player(self, db_session, stale_ai_service):
@@ -77,7 +76,6 @@ class TestStaleAIPlayerCreation:
         assert player.email == "ai_stale_voter_0@quipflip.internal"
         # Username is randomly generated, so we just check it exists
         assert player.username is not None
-        assert player.pseudonym is not None
 
     @pytest.mark.asyncio
     async def test_separate_handler_and_voter_players(self, db_session, stale_ai_service):
@@ -104,8 +102,6 @@ class TestFindStalePrompts:
             username="test_user",
             email="test@example.com",
             password_hash="dummy",
-            pseudonym="TestUser",
-            pseudonym_canonical="testuser",
         )
 
         # Create a stale prompt (4 days old)
@@ -139,8 +135,6 @@ class TestFindStalePrompts:
             username="test_user2",
             email="test2@example.com",
             password_hash="dummy",
-            pseudonym="TestUser2",
-            pseudonym_canonical="testuser2",
         )
 
         # Create a recent prompt (1 day old)
@@ -173,8 +167,6 @@ class TestFindStalePrompts:
             username="test_user3",
             email="test3@example.com",
             password_hash="dummy",
-            pseudonym="TestUser3",
-            pseudonym_canonical="testuser3",
         )
 
         # Create stale prompt
@@ -222,8 +214,6 @@ class TestFindStalePrompts:
             username="test_user4",
             email="test4@example.com",
             password_hash="dummy",
-            pseudonym="TestUser4",
-            pseudonym_canonical="testuser4",
         )
 
         # Get stale handler
@@ -413,8 +403,6 @@ class TestStaleAICycleIntegration:
             username="cycle_test_user",
             email="cycle_test@example.com",
             password_hash="dummy",
-            pseudonym="CycleTestUser",
-            pseudonym_canonical="cycletestuser",
         )
 
         # Create stale prompt
@@ -452,8 +440,6 @@ class TestStaleAICycleIntegration:
             username="error_test_user",
             email="error_test@example.com",
             password_hash="dummy",
-            pseudonym="ErrorTestUser",
-            pseudonym_canonical="errortestuser",
         )
 
         # Create stale prompt
@@ -495,8 +481,6 @@ class TestMetricsTracking:
             username="metrics_test_user",
             email="metrics_test@example.com",
             password_hash="dummy",
-            pseudonym="MetricsTestUser",
-            pseudonym_canonical="metricstestuser",
         )
 
         # Create stale prompt
@@ -542,8 +526,6 @@ class TestMetricsTracking:
             username="fail_metrics_user",
             email="fail_metrics@example.com",
             password_hash="dummy",
-            pseudonym="FailMetricsUser",
-            pseudonym_canonical="failmetricsuser",
         )
 
         # Create stale prompt

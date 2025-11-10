@@ -109,7 +109,7 @@ export const VoteRoundReview: React.FC<VoteRoundReviewProps> = ({
                             }`}
                           >
                             <span className="font-semibold text-quip-navy">
-                              {vote.voter_pseudonym}
+                              {vote.voter_username}
                             </span>
                             <span className={`text-xs font-semibold ${vote.correct ? 'text-quip-turquoise' : 'text-quip-orange'}`}>
                               {vote.correct ? '✓ Correct' : '✗ Incorrect'}

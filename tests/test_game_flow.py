@@ -144,8 +144,6 @@ async def test_daily_bonus_logic(db_session, player_factory):
         player_id=uuid.uuid4(),
         username="test_daily_bonus",
         username_canonical="test_daily_bonus",
-        pseudonym="TestDailyBonus",
-        pseudonym_canonical="testdailybonus",
         email="test_daily_bonus@example.com",
         password_hash=hash_password("TestPassword123!"),
         balance=1000,

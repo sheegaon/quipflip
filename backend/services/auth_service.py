@@ -62,10 +62,9 @@ class AuthService:
 
         password_hash = hash_password(guest_password)
 
-        # Generate unique username and pseudonym for this player
+        # Generate unique username for this player
         username_service = UsernameService(self.db)
         username_display, username_canonical = await username_service.generate_unique_username()
-        pseudonym_display, pseudonym_canonical = await username_service.generate_unique_username()
 
         # Try to create the guest account, retry with new email if collision
         max_retries = 10
@@ -75,8 +74,6 @@ class AuthService:
                     username=username_display,
                     email=guest_email,
                     password_hash=password_hash,
-                    pseudonym=pseudonym_display,
-                    pseudonym_canonical=pseudonym_canonical,
                 )
                 # Mark as guest after creation
                 player.is_guest = True
@@ -121,21 +118,18 @@ class AuthService:
 
         password_hash = hash_password(password)
 
-        # Generate unique username and pseudonym for this player
+        # Generate unique username for this player
         username_service = UsernameService(self.db)
         username_display, username_canonical = await username_service.generate_unique_username()
-        pseudonym_display, pseudonym_canonical = await username_service.generate_unique_username()
 
         try:
             player = await self.player_service.create_player(
                 username=username_display,
                 email=email_normalized,
                 password_hash=password_hash,
-                pseudonym=pseudonym_display,
-                pseudonym_canonical=pseudonym_canonical,
             )
             logger.info(
-                f"Created player {player.player_id} via credential signup with username {username_display} and pseudonym {pseudonym_display}"
+                f"Created player {player.player_id} via credential signup with username {username_display}"
             )
 
             # Initialize starter quests for new player

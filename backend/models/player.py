@@ -22,8 +22,6 @@ class Player(Base):
     player_id = get_uuid_column(primary_key=True, default=uuid.uuid4)
     username = Column(String(80), unique=True, nullable=False)
     username_canonical = Column(String(80), nullable=False)
-    pseudonym = Column(String(80), nullable=False, index=True)
-    pseudonym_canonical = Column(String(80), nullable=False)
     email = Column(String(255), unique=True, nullable=False)
     password_hash = Column(String(255), nullable=False)
     balance = Column(Integer, default=1000, nullable=False)

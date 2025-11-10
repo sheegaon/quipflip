@@ -35,7 +35,7 @@ class Player:
         """Create Player from API response."""
         return cls(
             player_id=data["player_id"],
-            username=data.get("username") or data.get("pseudonym"),
+            username=data["username"],
             access_token=data["access_token"],
             refresh_token=data["refresh_token"],
             legacy_api_key=data.get("legacy_api_key"),
@@ -99,15 +99,12 @@ class PlayerFactory:
             Tuple of (Player, APIClient)
         """
         username = f"test_user_{uuid4().hex[:8]}"
-        pseudonym = f"TestPlayer{uuid4().hex[:8]}"
         email = f"{username}@example.com"
         # Password must have upper, lower, digit, special char, and be 8+ chars
         password = f"Test{uuid4().hex[:5]}1!"
 
         with APIClient() as client:
             response = client.post("/player", json={
-                "username": username,
-                "pseudonym": pseudonym,
                 "email": email,
                 "password": password,
             })

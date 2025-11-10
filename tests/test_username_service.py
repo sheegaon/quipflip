@@ -131,8 +131,6 @@ class TestUsernameServiceGeneration:
                 player_id=uuid.uuid4(),
                 username=display,
                 username_canonical=canonical,
-                pseudonym=f"Pseudo{canonical}",
-                pseudonym_canonical=f"pseudo{canonical}",
                 email=f"{canonical}@test.com",
                 password_hash="hash",
             )
@@ -157,8 +155,6 @@ class TestUsernameServiceGeneration:
             player_id=uuid.uuid4(),
             username=display1,
             username_canonical=canonical1,
-            pseudonym=f"Pseudo1",
-            pseudonym_canonical="pseudo1",
             email="test1@test.com",
             password_hash="hash",
         )
@@ -171,8 +167,6 @@ class TestUsernameServiceGeneration:
             player_id=uuid.uuid4(),
             username=display2,
             username_canonical=canonical2,
-            pseudonym=f"Pseudo2",
-            pseudonym_canonical="pseudo2",
             email="test2@test.com",
             password_hash="hash",
         )
@@ -200,8 +194,6 @@ class TestUsernameServiceLookup:
             player_id=uuid.uuid4(),
             username="TestUser",
             username_canonical="testuser",
-            pseudonym="TestPseudo",
-            pseudonym_canonical="testpseudo",
             email="test@test.com",
             password_hash="hash",
         )
@@ -227,8 +219,6 @@ class TestUsernameServiceLookup:
             player_id=uuid.uuid4(),
             username=username,
             username_canonical=canonical,
-            pseudonym="TestPseudo",
-            pseudonym_canonical="testpseudo",
             email=f"test_case_{test_id}@test.com",
             password_hash="hash",
         )
@@ -261,8 +251,6 @@ class TestUsernameServiceLookup:
             player_id=uuid.uuid4(),
             username=username,
             username_canonical=canonical,
-            pseudonym="TestPseudo",
-            pseudonym_canonical="testpseudo",
             email=f"test_space_{test_id}@test.com",
             password_hash="hash",
         )
@@ -311,8 +299,6 @@ class TestUsernameServiceLookup:
             player_id=uuid.uuid4(),
             username="test123",
             username_canonical="test123",
-            pseudonym="TestPseudo",
-            pseudonym_canonical="testpseudo",
             email=f"test_special_{test_id}@test.com",
             password_hash="hash",
         )

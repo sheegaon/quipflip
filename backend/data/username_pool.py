@@ -1,4 +1,4 @@
-"""Curated username pool for pseudonymous players."""
+"""Curated username pool for players."""
 
 from __future__ import annotations
 

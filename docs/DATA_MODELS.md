@@ -6,8 +6,6 @@
 - `player_id` (UUID, primary key)
 - `username` (string, unique) - **automatically generated** random display name (player cannot choose or change)
 - `username_canonical` (string, unique) - lowercase form for lookups
-- `pseudonym` (string, indexed) - display name for leaderboards/public views
-- `pseudonym_canonical` (string) - lowercase form for lookups
 - `email` (string, unique) - player email for authentication
 - `password_hash` (string) - bcrypt hashed password
 - `balance` (integer, database default 1000) - current Flipcoin balance. New accounts are seeded from `settings.starting_balance` (5000f by default) when created via the service layer.
@@ -19,7 +17,7 @@
 - `tutorial_progress` (string, default 'not_started') - current tutorial step (`not_started`, `welcome`, `dashboard`, `prompt_round`, `prompt_round_paused`, `copy_round`, `copy_round_paused`, `vote_round`, `completed`)
 - `tutorial_started_at` (timestamp, nullable) - when tutorial was started
 - `tutorial_completed_at` (timestamp, nullable) - when tutorial was completed
-- Indexes: `player_id`, `active_round_id`, `pseudonym`
+- Indexes: `player_id`, `active_round_id`
 - Constraints: Unique `username_canonical`
 - Relationships: `active_round`, `rounds`, `transactions`, `votes`, `daily_bonuses`, `result_views`, `abandoned_prompts`, `phraseset_activities`, `refresh_tokens`, `quests`, `survey_responses`
 
