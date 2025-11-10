@@ -29,8 +29,10 @@ from backend.schemas.player import (
     UpgradeGuestRequest,
     UpgradeGuestResponse,
     WeeklyLeaderboardEntry,
-    WeeklyLeaderboardResponse,
+    LeaderboardResponse,
     RoleLeaderboard,
+    GrossEarningsLeaderboardEntry,
+    GrossEarningsLeaderboard,
 )
 from backend.schemas.phraseset import (
     PhrasesetListResponse,
@@ -625,12 +627,12 @@ async def get_player_statistics(
     return stats
 
 
-@router.get("/statistics/weekly-leaderboard", response_model=WeeklyLeaderboardResponse)
+@router.get("/statistics/weekly-leaderboard", response_model=LeaderboardResponse)
 async def get_weekly_leaderboard(
     player: Player = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ):
-    """Return weekly leaderboards for all three roles highlighting the current player."""
+    """Return weekly leaderboards for all three roles plus gross earnings highlighting the current player."""
 
     scoring_service = ScoringService(db)
     role_data, generated_at = await scoring_service.get_weekly_leaderboard_for_player(
@@ -644,20 +646,27 @@ async def get_weekly_leaderboard(
         for role in LEADERBOARD_ROLES
     }
 
-    return WeeklyLeaderboardResponse(
+    # Build gross earnings leaderboard
+    gross_earnings_leaders = [
+        GrossEarningsLeaderboardEntry(**entry)
+        for entry in role_data.get("gross_earnings", [])
+    ]
+
+    return LeaderboardResponse(
         prompt_leaderboard=RoleLeaderboard(role="prompt", leaders=leader_lists["prompt"]),
         copy_leaderboard=RoleLeaderboard(role="copy", leaders=leader_lists["copy"]),
         voter_leaderboard=RoleLeaderboard(role="voter", leaders=leader_lists["voter"]),
+        gross_earnings_leaderboard=GrossEarningsLeaderboard(leaders=gross_earnings_leaders),
         generated_at=generated_at or datetime.now(UTC),
     )
 
 
-@router.get("/statistics/alltime-leaderboard", response_model=WeeklyLeaderboardResponse)
+@router.get("/statistics/alltime-leaderboard", response_model=LeaderboardResponse)
 async def get_alltime_leaderboard(
     player: Player = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ):
-    """Return all-time leaderboards for all three roles highlighting the current player."""
+    """Return all-time leaderboards for all three roles plus gross earnings highlighting the current player."""
 
     scoring_service = ScoringService(db)
     role_data, generated_at = await scoring_service.get_alltime_leaderboard_for_player(
@@ -671,10 +680,17 @@ async def get_alltime_leaderboard(
         for role in LEADERBOARD_ROLES
     }
 
-    return WeeklyLeaderboardResponse(
+    # Build gross earnings leaderboard
+    gross_earnings_leaders = [
+        GrossEarningsLeaderboardEntry(**entry)
+        for entry in role_data.get("gross_earnings", [])
+    ]
+
+    return LeaderboardResponse(
         prompt_leaderboard=RoleLeaderboard(role="prompt", leaders=leader_lists["prompt"]),
         copy_leaderboard=RoleLeaderboard(role="copy", leaders=leader_lists["copy"]),
         voter_leaderboard=RoleLeaderboard(role="voter", leaders=leader_lists["voter"]),
+        gross_earnings_leaderboard=GrossEarningsLeaderboard(leaders=gross_earnings_leaders),
         generated_at=generated_at or datetime.now(UTC),
     )
 
