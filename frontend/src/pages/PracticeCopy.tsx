@@ -1,31 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CopyRoundReview } from '../components/PhrasesetReview/CopyRoundReview';
-import apiClient from '../api/client';
-import type { PracticePhraseset } from '../api/types';
+import { usePracticePhraseset } from '../hooks/usePracticePhraseset';
 
 const PracticeCopy: React.FC = () => {
   const navigate = useNavigate();
-  const [phraseset, setPhraseset] = useState<PracticePhraseset | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchPracticeData = async () => {
-      try {
-        setLoading(true);
-        const data = await apiClient.getRandomPracticePhraseset();
-        setPhraseset(data);
-      } catch (err) {
-        console.error('Failed to fetch practice phraseset:', err);
-        setError('Unable to load practice round. Please try again.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchPracticeData();
-  }, []);
+  const { phraseset, loading, error } = usePracticePhraseset();
 
   const handleContinue = () => {
     navigate('/dashboard');
