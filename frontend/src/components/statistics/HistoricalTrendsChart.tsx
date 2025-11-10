@@ -19,7 +19,7 @@ import {
 } from './chartSizing';
 
 const HISTORICAL_TRENDS_ASPECT = 3 / 4;
-const HISTORICAL_TRENDS_MAX_HEIGHT = 500;
+const HISTORICAL_TRENDS_MAX_HEIGHT = 450;
 
 const historicalChartContainerStyle = {
   ...statisticsChartContainerStyle,

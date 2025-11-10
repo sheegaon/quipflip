@@ -3,7 +3,7 @@ import type { CSSProperties } from 'react';
 export const STATISTICS_CHART_ASPECT_RATIO = 3 / 2;
 export const STATISTICS_CHART_MIN_WIDTH = 300;
 export const STATISTICS_CHART_MIN_HEIGHT = 200;
-export const STATISTICS_CHART_MAX_HEIGHT = 400;
+export const STATISTICS_CHART_MAX_HEIGHT = 450;
 
 export const statisticsChartContainerStyle: CSSProperties = {
   minWidth: STATISTICS_CHART_MIN_WIDTH,
