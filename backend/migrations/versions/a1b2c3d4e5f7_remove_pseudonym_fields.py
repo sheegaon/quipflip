@@ -32,13 +32,13 @@ def downgrade() -> None:
     op.add_column('players', sa.Column('pseudonym', sa.String(length=80), nullable=False, server_default=''))
     op.add_column('players', sa.Column('pseudonym_canonical', sa.String(length=80), nullable=False, server_default=''))
 
-    # Recreate the index
-    op.create_index('ix_players_pseudonym', 'players', ['pseudonym'], unique=False)
-
-    # Populate pseudonyms from usernames for any existing players
+    # Populate pseudonyms from usernames for any existing players BEFORE creating index
     op.execute("""
         UPDATE players
         SET pseudonym = username,
             pseudonym_canonical = username_canonical
         WHERE pseudonym = '' OR pseudonym_canonical = ''
     """)
+
+    # Create the index AFTER data is populated (more efficient for large tables)
+    op.create_index('ix_players_pseudonym', 'players', ['pseudonym'], unique=False)
