@@ -114,12 +114,8 @@ async def online_user_tracking_middleware(request: Request, call_next):
     Middleware to track user activity for online users feature.
     
     This middleware runs after request processing and tracks the last activity
-    of authenticated users to determine who is currently online using background tasks.
+    of authenticated users to determine who is currently online.
     """
-    # Add background tasks to request if not already present
-    if not hasattr(request, 'state') or not hasattr(request.state, 'background_tasks'):
-        request.state.background_tasks = BackgroundTasks()
-    
     response = await call_next(request)
     
     # Only track activity for successful requests to avoid noise
@@ -147,15 +143,15 @@ async def online_user_tracking_middleware(request: Request, call_next):
                         # Use friendly action info instead of raw HTTP method + path
                         friendly_action_info = get_friendly_action_info(request.method, action_path)
                         
-                        # Queue background task to update database
-                        request.state.background_tasks.add_task(
-                            update_user_activity_task,
+                        # Update activity in background task - fire and forget approach
+                        import asyncio
+                        asyncio.create_task(update_user_activity_task(
                             player_id,
                             username,
                             friendly_action_info["name"],
                             friendly_action_info["category"],
                             action_path
-                        )
+                        ))
                         
             except (InvalidTokenError, ExpiredSignatureError, DecodeError):
                 # Token is invalid or expired - this is expected and shouldn't be logged
