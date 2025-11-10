@@ -10,6 +10,7 @@ import httpx
 import pytest
 import time
 from typing import Dict, Optional
+from backend.version import APP_VERSION
 
 # Base URL for localhost backend
 BASE_URL = "http://localhost:8000"
@@ -121,7 +122,7 @@ class TestHealthEndpoints:
         data = response.json()
         assert "message" in data
         assert "version" in data
-        assert data["version"] == "1.2.0"
+        assert data["version"] == APP_VERSION
         assert "Quipflip" in data["message"]
         client.close()
 

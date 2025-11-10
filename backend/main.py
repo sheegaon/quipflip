@@ -10,6 +10,7 @@ from pathlib import Path
 from contextlib import asynccontextmanager
 
 from backend.config import get_settings
+from backend.version import APP_VERSION
 from backend.services.prompt_seeder import sync_prompts_with_database
 from backend.routers import health, player, rounds, phrasesets, prompt_feedback, auth, quests, admin, feedback
 from backend.middleware.deduplication import deduplication_middleware
@@ -372,7 +373,7 @@ async def lifespan(app_instance: FastAPI):
 app = FastAPI(
     title="Quipflip API",
     description="Phase 2 - Phrase association game backend",
-    version="1.3.0",
+    version=APP_VERSION,
     lifespan=lifespan,
 )
 
@@ -496,7 +497,7 @@ async def root():
     """Root endpoint."""
     return {
         "message": "Quipflip API - Phase 3 Beta",
-        "version": "1.3.0",
+        "version": APP_VERSION,
         "environment": settings.environment,
         "docs": "/docs",
     }

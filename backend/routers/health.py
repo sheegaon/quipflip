@@ -4,14 +4,12 @@ from sqlalchemy import text
 from backend.database import engine
 from backend.utils import queue_client
 from backend.config import get_settings
+from backend.version import APP_VERSION
 import logging
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-
-# Application version - should match FastAPI app version in main.py
-APP_VERSION = "1.3.0"
 
 
 @router.get("/health")
@@ -58,8 +56,14 @@ async def game_status():
             from backend.services.phrase_validation_client import get_phrase_validation_client
             client = get_phrase_validation_client()
             validation_healthy = await client.health_check()
+        except ImportError as e:
+            logger.error(f"Failed to import phrase validation client module: {e}")
+            validation_healthy = False
+        except (ConnectionError, TimeoutError) as e:
+            logger.warning(f"Network error checking phrase validation API health: {e}")
+            validation_healthy = False
         except Exception as e:
-            logger.warning(f"Failed to check phrase validation API health: {e}")
+            logger.warning(f"Unexpected error checking phrase validation API health: {e}")
             validation_healthy = False
     else:
         # Check local phrase validator
@@ -67,8 +71,14 @@ async def game_status():
             from backend.services.phrase_validator import get_phrase_validator
             validator = get_phrase_validator()
             validation_healthy = validator.dictionary is not None and len(validator.dictionary) > 0
+        except ImportError as e:
+            logger.error(f"Failed to import phrase validator module: {e}")
+            validation_healthy = False
+        except (FileNotFoundError, OSError) as e:
+            logger.error(f"Dictionary file not found or inaccessible: {e}")
+            validation_healthy = False
         except Exception as e:
-            logger.warning(f"Failed to check local phrase validator: {e}")
+            logger.warning(f"Unexpected error checking local phrase validator: {e}")
             validation_healthy = False
 
     return {
