@@ -525,6 +525,56 @@ class TestInactiveGuestCleanup:
         await db_session.refresh(active_guest)
         assert active_guest.username == "ActiveGuestWithActivity"
 
+    @pytest.mark.asyncio
+    async def test_cleanup_preserves_new_guests_with_null_login(self, db_session):
+        """Should not delete newly-created guests with NULL last_login_date."""
+        cleanup_service = CleanupService(db_session)
+
+        # Create newly-created guest with NULL last_login_date (should NOT be deleted)
+        new_guest = Player(
+            player_id=uuid4(),
+            username="NewGuest",
+            username_canonical="newguest",
+            email="newguest@example.com",
+            password_hash=hash_password("guest123"),
+            is_guest=True,
+            created_at=datetime.now(UTC) - timedelta(hours=1),  # Created 1 hour ago
+            last_login_date=None,  # Never logged in
+        )
+        db_session.add(new_guest)
+
+        # Create old guest with NULL last_login_date AND old created_at (should be deleted)
+        old_guest_null_login = Player(
+            player_id=uuid4(),
+            username="OldGuestNullLogin",
+            username_canonical="oldguestnulllogin",
+            email="oldguestnulllogin@example.com",
+            password_hash=hash_password("guest123"),
+            is_guest=True,
+            created_at=datetime.now(UTC) - timedelta(days=10),  # Created 10 days ago
+            last_login_date=None,  # Never logged in
+        )
+        db_session.add(old_guest_null_login)
+        await db_session.commit()
+
+        # Store old_guest_id for verification
+        old_guest_id = old_guest_null_login.player_id
+
+        # Cleanup should only remove the old guest with NULL login
+        deleted_count = await cleanup_service.cleanup_inactive_guest_players(days_old=7)
+
+        assert deleted_count == 1
+
+        # Verify old guest with NULL login was deleted
+        result = await db_session.execute(
+            select(Player).where(Player.player_id == old_guest_id)
+        )
+        assert result.scalar_one_or_none() is None
+
+        # Verify new guest still exists (not old enough to be deleted)
+        await db_session.refresh(new_guest)
+        assert new_guest.username == "NewGuest"
+
 
 class TestRecycleGuestUsernames:
     """Test guest username recycling."""
