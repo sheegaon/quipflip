@@ -9,7 +9,6 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
 
 
 # revision identifiers, used by Alembic.
@@ -23,7 +22,7 @@ def upgrade() -> None:
     """Create user_activity table for tracking online users."""
     op.create_table(
         'user_activity',
-        sa.Column('player_id', postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column('player_id', sa.Uuid(), nullable=False),
         sa.Column('username', sa.String(length=255), nullable=False),
         sa.Column('last_action', sa.String(length=100), nullable=False),
         sa.Column('last_action_path', sa.Text(), nullable=False),

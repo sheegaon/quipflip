@@ -1,22 +1,70 @@
 """Online users API router with WebSocket support."""
 from datetime import datetime, UTC, timedelta
-from typing import List
-from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
+from typing import List, Optional
+from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 import asyncio
 import logging
-import json
 
-from backend.database import get_db
+from backend.database import get_db, AsyncSessionLocal
 from backend.dependencies import get_current_player
 from backend.models.user_activity import UserActivity
 from backend.models.player import Player
 from backend.schemas.online_users import OnlineUser, OnlineUsersResponse
+from backend.services.auth_service import AuthService
+from backend.services.player_service import PlayerService
+from backend.config import get_settings
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+settings = get_settings()
+
+
+async def authenticate_websocket(websocket: WebSocket) -> Optional[Player]:
+    """Authenticate a WebSocket connection using token from query params or cookies.
+
+    Returns the authenticated Player or None if authentication fails.
+    """
+    # Try to get token from query parameters first (for client flexibility)
+    token = websocket.query_params.get("token")
+
+    # Fall back to cookie if no query param token
+    if not token:
+        token = websocket.cookies.get(settings.access_token_cookie_name)
+
+    if not token:
+        logger.warning("WebSocket connection attempted without token")
+        return None
+
+    # Validate token
+    try:
+        async with AsyncSessionLocal() as db:
+            auth_service = AuthService(db)
+            payload = auth_service.decode_access_token(token)
+
+            player_id_str = payload.get("sub")
+            if not player_id_str:
+                logger.warning("WebSocket token missing player_id")
+                return None
+
+            from uuid import UUID
+            player_id = UUID(player_id_str)
+
+            player_service = PlayerService(db)
+            player = await player_service.get_player_by_id(player_id)
+
+            if not player:
+                logger.warning(f"WebSocket token references non-existent player: {player_id}")
+                return None
+
+            return player
+
+    except Exception as e:
+        logger.warning(f"WebSocket authentication failed: {e}")
+        return None
 
 
 class ConnectionManager:
@@ -67,10 +115,13 @@ async def get_online_users(db: AsyncSession) -> List[OnlineUser]:
     )
     activities = result.scalars().all()
 
+    # Capture current time once for consistent calculations
+    now = datetime.now(UTC)
+
     online_users = []
     for activity in activities:
         # Calculate time ago
-        time_diff = datetime.now(UTC) - activity.last_activity
+        time_diff = now - activity.last_activity
         seconds = int(time_diff.total_seconds())
 
         if seconds < 60:
@@ -110,8 +161,22 @@ async def get_online_users_endpoint(
 
 @router.websocket("/online/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    """WebSocket endpoint for real-time online users updates."""
+    """WebSocket endpoint for real-time online users updates.
+
+    Requires authentication via token in query params (?token=...) or cookies.
+    """
+    # Authenticate before accepting connection
+    player = await authenticate_websocket(websocket)
+
+    if not player:
+        # Reject unauthenticated connection
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Authentication required")
+        logger.info("WebSocket connection rejected: authentication failed")
+        return
+
+    # Accept authenticated connection
     await manager.connect(websocket)
+    logger.info(f"WebSocket authenticated for player: {player.username}")
 
     try:
         # Get database session for this WebSocket connection
@@ -134,10 +199,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
     except WebSocketDisconnect:
         manager.disconnect(websocket)
+        logger.info(f"WebSocket disconnected for player: {player.username}")
     except Exception as e:
-        logger.error(f"WebSocket error: {e}")
+        logger.error(f"WebSocket error for player {player.username}: {e}")
         manager.disconnect(websocket)
-
-
-# Import AsyncSessionLocal for WebSocket connection
-from backend.database import AsyncSessionLocal

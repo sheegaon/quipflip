@@ -11,8 +11,10 @@ import logging
 from backend.database import AsyncSessionLocal
 from backend.models.user_activity import UserActivity
 from backend.utils.simple_jwt import decode_jwt
+from backend.config import get_settings
 
 logger = logging.getLogger(__name__)
+settings = get_settings()
 
 
 # Action type mapping based on URL paths
@@ -56,9 +58,6 @@ async def get_user_from_token(authorization: Optional[str]) -> Optional[tuple[st
         return None
 
     try:
-        from backend.config import get_settings
-        settings = get_settings()
-
         # Remove "Bearer " prefix if present
         token = authorization.replace("Bearer ", "").strip()
         payload = decode_jwt(token, settings.secret_key, algorithms=[settings.jwt_algorithm])
@@ -86,47 +85,39 @@ async def update_user_activity_db(
 ):
     """Update user activity in the database asynchronously."""
     try:
-        async with AsyncSessionLocal() as db:
-            # Use upsert to insert or update
-            # Check if we're using SQLite or PostgreSQL
-            from backend.config import get_settings
-            settings = get_settings()
+        # Capture timestamp once for consistency
+        now = datetime.now(UTC)
 
+        # Create shared data dictionary
+        activity_data = {
+            'player_id': player_id,
+            'username': username,
+            'last_action': action,
+            'last_action_path': path,
+            'last_activity': now
+        }
+
+        # Update data for on_conflict (excluding player_id since it's the key)
+        update_data = {
+            'username': username,
+            'last_action': action,
+            'last_action_path': path,
+            'last_activity': now
+        }
+
+        async with AsyncSessionLocal() as db:
+            # Use database-appropriate upsert
             if "sqlite" in settings.database_url.lower():
-                # SQLite upsert
-                stmt = sqlite_insert(UserActivity).values(
-                    player_id=player_id,
-                    username=username,
-                    last_action=action,
-                    last_action_path=path,
-                    last_activity=datetime.now(UTC)
-                )
+                stmt = sqlite_insert(UserActivity).values(**activity_data)
                 stmt = stmt.on_conflict_do_update(
                     index_elements=['player_id'],
-                    set_={
-                        'username': username,
-                        'last_action': action,
-                        'last_action_path': path,
-                        'last_activity': datetime.now(UTC)
-                    }
+                    set_=update_data
                 )
             else:
-                # PostgreSQL upsert
-                stmt = pg_insert(UserActivity).values(
-                    player_id=player_id,
-                    username=username,
-                    last_action=action,
-                    last_action_path=path,
-                    last_activity=datetime.now(UTC)
-                )
+                stmt = pg_insert(UserActivity).values(**activity_data)
                 stmt = stmt.on_conflict_do_update(
                     index_elements=['player_id'],
-                    set_={
-                        'username': username,
-                        'last_action': action,
-                        'last_action_path': path,
-                        'last_activity': datetime.now(UTC)
-                    }
+                    set_=update_data
                 )
 
             await db.execute(stmt)
@@ -142,18 +133,18 @@ async def activity_tracking_middleware(request: Request, call_next):
     response = await call_next(request)
 
     # Skip tracking for certain paths
-    skip_paths = [
+    skip_path_prefixes = [
         "/docs",
         "/openapi.json",
         "/favicon.ico",
         "/health",
-        "/",
         "/auth/login",
         "/auth/register",
         "/auth/guest",
     ]
 
-    if any(request.url.path.startswith(path) for path in skip_paths):
+    # Skip root path (exact match only) or paths that start with skip prefixes
+    if request.url.path == "/" or any(request.url.path.startswith(path) for path in skip_path_prefixes):
         return response
 
     # Only track successful requests

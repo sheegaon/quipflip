@@ -31,11 +31,12 @@ const OnlineUsers: React.FC = () => {
           .replace('http://', 'ws://')
           .replace('https://', 'wss://') + '/online-users/online/ws';
 
-        console.log('Connecting to WebSocket:', wsUrl);
+        // Create WebSocket connection
+        // Note: Browser automatically sends cookies with WebSocket handshake for same-origin connections
+        // Backend validates authentication via HTTP-only cookies
         const ws = new WebSocket(wsUrl);
 
         ws.onopen = () => {
-          console.log('WebSocket connected');
           setConnected(true);
           setError(null);
           setLoading(false);
@@ -66,7 +67,6 @@ const OnlineUsers: React.FC = () => {
         };
 
         ws.onclose = () => {
-          console.log('WebSocket disconnected');
           setConnected(false);
 
           // Attempt to reconnect after 3 seconds
@@ -168,9 +168,9 @@ const OnlineUsers: React.FC = () => {
             </div>
           ) : (
             <div className="space-y-3">
-              {onlineUsers.map((user, index) => (
+              {onlineUsers.map((user) => (
                 <div
-                  key={`${user.username}-${index}`}
+                  key={user.username}
                   className="flex items-center justify-between p-4 bg-quip-cream rounded-lg border border-quip-orange/20 hover:border-quip-orange/40 transition-colors"
                 >
                   <div className="flex items-center gap-4 flex-1">
