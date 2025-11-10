@@ -38,15 +38,16 @@ The backend is designed around a clear service layer (`backend/services`) that e
 JWT authentication using HTTP-only cookies for enhanced security:
 - **Access tokens** (2-hour lifetime): Stored in HTTP-only cookie, automatically sent with requests
 - **Refresh tokens** (30-day lifetime): Stored in HTTP-only cookie, used for automatic token rotation
-- **Cookie security**: HttpOnly, Secure (production), SameSite=Lax
-- **iOS compatibility**: Vercel proxy (`/api/*`) ensures same-origin requests, fixing iOS cookie blocking
+- **Cookie security**: HttpOnly, Secure (production), SameSite=None (cross-site support)
+- **Cross-site cookies**: Frontend connects directly to Heroku backend, cookies use SameSite=None with Secure flag
 - **Automatic refresh**: Frontend intercepts 401 errors and silently refreshes tokens
 - **Backward compatibility**: Authorization header still supported for API clients
 
 **Production Setup:**
 - Frontend: Vercel hosting at `quipflip.xyz`
 - Backend: Heroku at `quipflip-c196034288cd.herokuapp.com`
-- Proxy: Vercel rewrites `/api/*` → Heroku backend (same-origin from browser perspective)
+- Connection: Direct cross-site connection (frontend → Heroku) with SameSite=None cookies
+- WebSocket: Real-time features (e.g., online users) use direct wss:// connection to Heroku
 
 See [API.md](API.md) for complete authentication documentation including:
 - Cookie-based authentication (preferred)
