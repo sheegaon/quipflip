@@ -32,7 +32,6 @@ class SmartPollingManager {
   private isUserActive = true;
   private isOnline = navigator.onLine;
   private focusTime = Date.now();
-  private isInBfcache = false;
 
   constructor() {
     this.setupEventListeners();
@@ -147,7 +146,6 @@ class SmartPollingManager {
   private handlePageShow = (event: PageTransitionEvent) => {
     // Detect restoration from bfcache (mobile Chrome, Safari)
     if (event.persisted) {
-      this.isInBfcache = false;
       this.isUserActive = true;
       this.focusTime = Date.now();
 
@@ -167,8 +165,6 @@ class SmartPollingManager {
   private handlePageHide = (event: PageTransitionEvent) => {
     // Detect entering bfcache
     if (event.persisted) {
-      this.isInBfcache = true;
-
       // Pause all polls when entering bfcache
       this.polls.forEach((_, key) => {
         const poll = this.polls.get(key);
