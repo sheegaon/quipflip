@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient, { extractErrorMessage } from '../api/client';
-import type { WeeklyLeaderboardResponse } from '../api/types';
+import type { LeaderboardResponse } from '../api/types';
 import { Header } from '../components/Header';
 import WeeklyLeaderboard from '../components/statistics/WeeklyLeaderboard';
 import { leaderboardLogger } from '../utils/logger';
@@ -11,8 +11,8 @@ type LeaderboardPeriod = 'weekly' | 'alltime';
 const Leaderboard: React.FC = () => {
   const navigate = useNavigate();
   const [activePeriod, setActivePeriod] = useState<LeaderboardPeriod>('weekly');
-  const [weeklyData, setWeeklyData] = useState<WeeklyLeaderboardResponse | null>(null);
-  const [alltimeData, setAlltimeData] = useState<WeeklyLeaderboardResponse | null>(null);
+  const [weeklyData, setWeeklyData] = useState<LeaderboardResponse | null>(null);
+  const [alltimeData, setAlltimeData] = useState<LeaderboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -151,6 +151,7 @@ const Leaderboard: React.FC = () => {
               promptLeaderboard={currentData.prompt_leaderboard}
               copyLeaderboard={currentData.copy_leaderboard}
               voterLeaderboard={currentData.voter_leaderboard}
+              grossEarningsLeaderboard={currentData.gross_earnings_leaderboard}
               loading={false}
               error={null}
             />

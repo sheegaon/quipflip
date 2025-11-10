@@ -32,11 +32,13 @@ settings = get_settings()
 
 PLACEHOLDER_PLAYER_NAMESPACE = UUID("6c057f58-7199-43ff-b4fc-17b77df5e6a2")
 WEEKLY_LEADERBOARD_LIMIT = 5
-WEEKLY_LEADERBOARD_CACHE_KEY = "leaderboard:weekly:v4"  # v4: split by role with win rates
+WEEKLY_LEADERBOARD_CACHE_KEY = "leaderboard:weekly:v5"  # v5: added gross earnings category
 ALLTIME_LEADERBOARD_LIMIT = 10
-ALLTIME_LEADERBOARD_CACHE_KEY = "leaderboard:alltime:v1"
+ALLTIME_LEADERBOARD_CACHE_KEY = "leaderboard:alltime:v2"  # v2: added gross earnings category
 AI_PLAYER_EMAIL_DOMAIN = "@quipflip.internal"
 LEADERBOARD_ROLES = ["prompt", "copy", "voter"]
+GROSS_EARNINGS_LEADERBOARD_LIMIT_WEEKLY = 10
+GROSS_EARNINGS_LEADERBOARD_LIMIT_ALLTIME = 20
 
 
 _redis_client: "Redis | None" = None
@@ -62,6 +64,31 @@ def _get_redis_client() -> "Redis | None":
             return None
 
     return _redis_client
+
+
+def _normalize_cached_entries(entries: list[dict[str, Any]], entry_type: str) -> list[dict[str, Any]]:
+    """Normalize cached leaderboard entries by converting player_id strings to UUIDs.
+
+    Args:
+        entries: List of cached leaderboard entries with string player_ids
+        entry_type: Description of entry type for error logging (e.g., "role", "gross earnings")
+
+    Returns:
+        List of normalized entries with UUID player_ids
+    """
+    normalized_entries: list[dict[str, Any]] = []
+    for entry in entries:
+        normalized = dict(entry)
+        if "player_id" in normalized:
+            try:
+                normalized["player_id"] = UUID(str(normalized["player_id"]))
+            except Exception:
+                logger.error(
+                    f"Skipping cached {entry_type} entry with invalid player_id: {normalized.get('player_id')}"
+                )
+                continue
+        normalized_entries.append(normalized)
+    return normalized_entries
 
 
 async def _load_cached_leaderboard(cache_key: str, cache_type: str) -> tuple[dict[str, list[dict[str, Any]]], datetime] | None:
@@ -91,20 +118,14 @@ async def _load_cached_leaderboard(cache_key: str, cache_type: str) -> tuple[dic
 
         role_leaderboards: dict[str, list[dict[str, Any]]] = {}
 
+        # Load role-based leaderboards
         for role in LEADERBOARD_ROLES:
-            entries: list[dict[str, Any]] = []
-            for entry in payload.get(f"{role}_leaderboard", []):
-                normalized = dict(entry)
-                if "player_id" in normalized:
-                    try:
-                        normalized["player_id"] = UUID(str(normalized["player_id"]))
-                    except Exception:
-                        logger.error(
-                            f"Skipping cached leaderboard entry with invalid player_id: {normalized.get('player_id')}"
-                        )
-                        continue
-                entries.append(normalized)
-            role_leaderboards[role] = entries
+            raw_entries = payload.get(f"{role}_leaderboard", [])
+            role_leaderboards[role] = _normalize_cached_entries(raw_entries, f"{role} leaderboard")
+
+        # Load gross earnings leaderboard
+        gross_raw_entries = payload.get("gross_earnings_leaderboard", [])
+        role_leaderboards["gross_earnings"] = _normalize_cached_entries(gross_raw_entries, "gross earnings")
 
         if generated_at is None:
             return None
@@ -125,7 +146,7 @@ async def _store_leaderboard_cache(
     """Persist role-based leaderboard results to Redis for reuse across workers.
 
     Args:
-        role_leaderboards: Dictionary of role names to leaderboard entries
+        role_leaderboards: Dictionary of role names to leaderboard entries (includes 'gross_earnings')
         generated_at: Timestamp when the leaderboard was generated
         cache_key: The Redis cache key to store to
         cache_type: Type description for logging (e.g., "weekly", "all-time")
@@ -139,16 +160,24 @@ async def _store_leaderboard_cache(
         "generated_at": generated_at.isoformat(),
     }
 
-    for role, entries in role_leaderboards.items():
-        cache_entries: list[dict[str, Any]] = []
-        for entry in entries:
-            cache_entries.append(
-                {
-                    **entry,
-                    "player_id": str(entry["player_id"]),
-                }
-            )
-        payload[f"{role}_leaderboard"] = cache_entries
+    # Map leaderboard types to their cache payload keys
+    leaderboard_mappings = {
+        **{role: f"{role}_leaderboard" for role in LEADERBOARD_ROLES},
+        "gross_earnings": "gross_earnings_leaderboard",
+    }
+
+    # Store all leaderboards using the mapping
+    for leaderboard_type, payload_key in leaderboard_mappings.items():
+        if leaderboard_type in role_leaderboards:
+            cache_entries: list[dict[str, Any]] = []
+            for entry in role_leaderboards[leaderboard_type]:
+                cache_entries.append(
+                    {
+                        **entry,
+                        "player_id": str(entry["player_id"]),
+                    }
+                )
+            payload[payload_key] = cache_entries
 
     try:
         await client.set(cache_key, json.dumps(payload), ex=expiration_seconds)
@@ -328,27 +357,66 @@ class ScoringService:
         generated_at = datetime.now(UTC)
         await _store_weekly_leaderboard_cache(role_leaderboards, generated_at)
 
+    def _add_current_player_to_leaderboard(
+        self,
+        entries: list[dict[str, Any]],
+        top_limit: int,
+        player_id: UUID,
+        username: str | None,
+        default_entry: dict[str, Any],
+    ) -> list[dict[str, Any]]:
+        """Add current player to leaderboard if not already in top entries.
+
+        Args:
+            entries: All leaderboard entries
+            top_limit: Maximum number of top entries to include
+            player_id: ID of current player
+            username: Username of current player
+            default_entry: Default entry structure if player not found
+
+        Returns:
+            List of leaderboard entries with current player included
+        """
+        lookup = {entry["player_id"]: entry for entry in entries}
+        top_entries = entries[:top_limit]
+
+        player_entry = lookup.get(player_id)
+        if player_entry is None:
+            player_entry = {
+                **default_entry,
+                "player_id": player_id,
+                "username": username or "Unknown Player",
+            }
+
+        combined = [dict(entry) for entry in top_entries]
+        if all(entry["player_id"] != player_entry["player_id"] for entry in combined):
+            combined.append(dict(player_entry))
+
+        for entry in combined:
+            entry["is_current_player"] = entry["player_id"] == player_id
+
+        return combined
+
     async def get_weekly_leaderboard_for_player(
         self,
         player_id: UUID,
         username: str | None,
     ) -> tuple[dict[str, list[dict[str, Any]]], datetime | None]:
-        """Return top leaderboard entries plus the current player for each role."""
+        """Return top leaderboard entries plus the current player for each role and gross earnings."""
 
         role_leaderboards, generated_at = await self.get_weekly_leaderboard_snapshot()
 
         result = {}
 
+        # Handle role-based leaderboards
         for role in LEADERBOARD_ROLES:
             entries = role_leaderboards.get(role, [])
-            lookup = {entry["player_id"]: entry for entry in entries}
-            top_entries = entries[:WEEKLY_LEADERBOARD_LIMIT]
-
-            player_entry = lookup.get(player_id)
-            if player_entry is None:
-                player_entry = {
-                    "player_id": player_id,
-                    "username": username or "Unknown Player",
+            result[role] = self._add_current_player_to_leaderboard(
+                entries,
+                WEEKLY_LEADERBOARD_LIMIT,
+                player_id,
+                username,
+                {
                     "role": role,
                     "total_costs": 0,
                     "total_earnings": 0,
@@ -356,16 +424,22 @@ class ScoringService:
                     "win_rate": 0.0,
                     "total_rounds": 0,
                     "rank": None,
-                }
+                },
+            )
 
-            combined = [dict(entry) for entry in top_entries]
-            if all(entry["player_id"] != player_entry["player_id"] for entry in combined):
-                combined.append(dict(player_entry))
-
-            for entry in combined:
-                entry["is_current_player"] = entry["player_id"] == player_id
-
-            result[role] = combined
+        # Handle gross earnings leaderboard
+        gross_entries = role_leaderboards.get("gross_earnings", [])
+        result["gross_earnings"] = self._add_current_player_to_leaderboard(
+            gross_entries,
+            GROSS_EARNINGS_LEADERBOARD_LIMIT_WEEKLY,
+            player_id,
+            username,
+            {
+                "gross_earnings": 0,
+                "total_rounds": 0,
+                "rank": None,
+            },
+        )
 
         return result, generated_at
 
@@ -707,12 +781,15 @@ class ScoringService:
         return entries
 
     async def _compute_role_based_weekly_leaderboards(self) -> dict[str, list[dict]]:
-        """Calculate weekly leaderboards for all three roles concurrently."""
+        """Calculate weekly leaderboards for all three roles plus gross earnings concurrently."""
         window_start = datetime.now(UTC) - timedelta(days=7)
         tasks = [self._compute_role_leaderboard(role, window_start) for role in LEADERBOARD_ROLES]
+        tasks.append(self._compute_gross_earnings_leaderboard(window_start))
         results = await asyncio.gather(*tasks)
 
-        return dict(zip(LEADERBOARD_ROLES, results))
+        leaderboards = dict(zip(LEADERBOARD_ROLES, results[:-1]))
+        leaderboards["gross_earnings"] = results[-1]
+        return leaderboards
 
     async def get_alltime_leaderboard_snapshot(
         self,
@@ -740,22 +817,21 @@ class ScoringService:
         player_id: UUID,
         username: str | None,
     ) -> tuple[dict[str, list[dict[str, Any]]], datetime | None]:
-        """Return top all-time leaderboard entries plus the current player for each role."""
+        """Return top all-time leaderboard entries plus the current player for each role and gross earnings."""
 
         role_leaderboards, generated_at = await self.get_alltime_leaderboard_snapshot()
 
         result = {}
 
+        # Handle role-based leaderboards
         for role in LEADERBOARD_ROLES:
             entries = role_leaderboards.get(role, [])
-            lookup = {entry["player_id"]: entry for entry in entries}
-            top_entries = entries[:ALLTIME_LEADERBOARD_LIMIT]
-
-            player_entry = lookup.get(player_id)
-            if player_entry is None:
-                player_entry = {
-                    "player_id": player_id,
-                    "username": username or "Unknown Player",
+            result[role] = self._add_current_player_to_leaderboard(
+                entries,
+                ALLTIME_LEADERBOARD_LIMIT,
+                player_id,
+                username,
+                {
                     "role": role,
                     "total_costs": 0,
                     "total_earnings": 0,
@@ -763,25 +839,113 @@ class ScoringService:
                     "win_rate": 0.0,
                     "total_rounds": 0,
                     "rank": None,
-                }
+                },
+            )
 
-            combined = [dict(entry) for entry in top_entries]
-            if all(entry["player_id"] != player_entry["player_id"] for entry in combined):
-                combined.append(dict(player_entry))
-
-            for entry in combined:
-                entry["is_current_player"] = entry["player_id"] == player_id
-
-            result[role] = combined
+        # Handle gross earnings leaderboard
+        gross_entries = role_leaderboards.get("gross_earnings", [])
+        result["gross_earnings"] = self._add_current_player_to_leaderboard(
+            gross_entries,
+            GROSS_EARNINGS_LEADERBOARD_LIMIT_ALLTIME,
+            player_id,
+            username,
+            {
+                "gross_earnings": 0,
+                "total_rounds": 0,
+                "rank": None,
+            },
+        )
 
         return result, generated_at
 
     async def _compute_role_based_alltime_leaderboards(self) -> dict[str, list[dict]]:
-        """Calculate all-time leaderboards for all three roles concurrently."""
+        """Calculate all-time leaderboards for all three roles plus gross earnings concurrently."""
         tasks = [self._compute_role_leaderboard(role, start_date=None) for role in LEADERBOARD_ROLES]
+        tasks.append(self._compute_gross_earnings_leaderboard(start_date=None))
         results = await asyncio.gather(*tasks)
 
-        return dict(zip(LEADERBOARD_ROLES, results))
+        leaderboards = dict(zip(LEADERBOARD_ROLES, results[:-1]))
+        leaderboards["gross_earnings"] = results[-1]
+        return leaderboards
+
+    async def _compute_gross_earnings_leaderboard(self, start_date: datetime | None = None) -> list[dict]:
+        """Calculate leaderboard ranking all players by gross earnings across all roles.
+
+        Gross earnings include:
+        - prize_payout (from prompt and copy roles)
+        - vote_payout (from voter role)
+
+        Excludes:
+        - daily_bonus
+        - quest_reward_* transactions
+
+        Args:
+            start_date: Optional start date for filtering (None for all-time)
+
+        Returns:
+            List of leaderboard entries sorted by gross earnings
+        """
+        # Build conditions for filtering transactions
+        transaction_conditions = [
+            Transaction.type.in_(["prize_payout", "vote_payout"]),
+            Transaction.amount > 0,
+        ]
+        if start_date:
+            transaction_conditions.append(Transaction.created_at >= start_date)
+
+        # Calculate total rounds completed per player across all roles
+        completion_conditions = [
+            Round.status == "submitted",
+        ]
+        if start_date:
+            # Filter rounds by creation date as a proxy for completion
+            completion_conditions.append(Round.created_at >= start_date)
+
+        rounds_stmt = (
+            select(
+                Round.player_id.label("player_id"),
+                func.count(Round.round_id).label("total_rounds"),
+            )
+            .where(*completion_conditions)
+            .group_by(Round.player_id)
+            .subquery()
+        )
+
+        # Build and execute final leaderboard query
+        # Using INNER JOIN since we only want players with transactions
+        leaderboard_stmt = (
+            select(
+                Player.player_id,
+                Player.username,
+                func.sum(Transaction.amount).label("gross_earnings"),
+                func.coalesce(rounds_stmt.c.total_rounds, 0).label("total_rounds"),
+            )
+            .join(Transaction, Transaction.player_id == Player.player_id)
+            .join(rounds_stmt, rounds_stmt.c.player_id == Player.player_id, isouter=True)
+            .where(
+                *transaction_conditions,
+                ~Player.email.like(f"%{AI_PLAYER_EMAIL_DOMAIN}"),
+            )
+            .group_by(Player.player_id, Player.username, rounds_stmt.c.total_rounds)
+            .order_by(func.sum(Transaction.amount).desc(), Player.username.asc())
+        )
+
+        result = await self.db.execute(leaderboard_stmt)
+
+        # Format results
+        entries: list[dict[str, Any]] = []
+        for rank, row in enumerate(result.all(), start=1):
+            entries.append(
+                {
+                    "player_id": row.player_id,
+                    "username": row.username,
+                    "gross_earnings": int(row.gross_earnings or 0),
+                    "total_rounds": int(row.total_rounds or 0),
+                    "rank": rank,
+                }
+            )
+
+        return entries
 
     @staticmethod
     def _empty_payout(phraseset: Phraseset) -> dict:

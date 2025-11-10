@@ -228,15 +228,29 @@ export interface WeeklyLeaderboardEntry {
   is_current_player: boolean;
 }
 
+export interface GrossEarningsLeaderboardEntry {
+  player_id: string;
+  username: string;
+  gross_earnings: number;
+  total_rounds: number;
+  rank: number | null;
+  is_current_player: boolean;
+}
+
 export interface RoleLeaderboard {
   role: 'prompt' | 'copy' | 'voter';
   leaders: WeeklyLeaderboardEntry[];
 }
 
-export interface WeeklyLeaderboardResponse {
+export interface GrossEarningsLeaderboard {
+  leaders: GrossEarningsLeaderboardEntry[];
+}
+
+export interface LeaderboardResponse {
   prompt_leaderboard: RoleLeaderboard;
   copy_leaderboard: RoleLeaderboard;
   voter_leaderboard: RoleLeaderboard;
+  gross_earnings_leaderboard: GrossEarningsLeaderboard;
   generated_at: string;
 }
 
