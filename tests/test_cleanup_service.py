@@ -3,6 +3,7 @@
 import pytest
 from datetime import datetime, UTC, timedelta
 from uuid import uuid4
+from sqlalchemy import select
 
 from backend.services.cleanup_service import CleanupService
 from backend.models import (
@@ -384,10 +385,10 @@ class TestInactiveGuestCleanup:
 
     @pytest.mark.asyncio
     async def test_cleanup_inactive_guest_players(self, db_session):
-        """Should remove old guest accounts with no rounds."""
+        """Should remove old guest accounts with no activity (no rounds, no phraseset activities)."""
         cleanup_service = CleanupService(db_session)
 
-        # Create old inactive guest (> 7 days, no rounds)
+        # Create old inactive guest (hasn't logged in for > 7 days, no activity)
         old_guest = Player(
             player_id=uuid4(),
             username="OldGuest",
@@ -396,10 +397,11 @@ class TestInactiveGuestCleanup:
             password_hash=hash_password("guest123"),
             is_guest=True,
             created_at=datetime.now(UTC) - timedelta(days=10),
+            last_login_date=datetime.now(UTC) - timedelta(days=10),
         )
         db_session.add(old_guest)
 
-        # Create recent guest (< 7 days)
+        # Create recent guest (logged in < 7 days ago)
         recent_guest = Player(
             player_id=uuid4(),
             username="RecentGuest",
@@ -407,15 +409,25 @@ class TestInactiveGuestCleanup:
             email="recentguest@example.com",
             password_hash=hash_password("guest123"),
             is_guest=True,
-            created_at=datetime.now(UTC) - timedelta(days=3),
+            created_at=datetime.now(UTC) - timedelta(days=10),
+            last_login_date=datetime.now(UTC) - timedelta(days=3),
         )
         db_session.add(recent_guest)
         await db_session.commit()
+
+        # Store old_guest_id for verification
+        old_guest_id = old_guest.player_id
 
         # Cleanup should remove old inactive guest
         deleted_count = await cleanup_service.cleanup_inactive_guest_players(days_old=7)
 
         assert deleted_count == 1
+
+        # Verify old guest was actually deleted from database
+        result = await db_session.execute(
+            select(Player).where(Player.player_id == old_guest_id)
+        )
+        assert result.scalar_one_or_none() is None
 
         # Verify recent guest still exists
         await db_session.refresh(recent_guest)
@@ -426,7 +438,7 @@ class TestInactiveGuestCleanup:
         """Should not remove old guests who have played rounds."""
         cleanup_service = CleanupService(db_session)
 
-        # Create old guest with rounds
+        # Create old guest with rounds (hasn't logged in for > 7 days)
         active_guest = Player(
             player_id=uuid4(),
             username="ActiveGuest",
@@ -435,6 +447,7 @@ class TestInactiveGuestCleanup:
             password_hash=hash_password("guest123"),
             is_guest=True,
             created_at=datetime.now(UTC) - timedelta(days=10),
+            last_login_date=datetime.now(UTC) - timedelta(days=10),  # Old login
         )
         db_session.add(active_guest)
         await db_session.flush()
@@ -453,7 +466,7 @@ class TestInactiveGuestCleanup:
         db_session.add(guest_round)
         await db_session.commit()
 
-        # Cleanup should not remove active guest
+        # Cleanup should not remove active guest (has submitted rounds)
         deleted_count = await cleanup_service.cleanup_inactive_guest_players(days_old=7)
 
         assert deleted_count == 0
@@ -461,6 +474,106 @@ class TestInactiveGuestCleanup:
         # Verify guest still exists
         await db_session.refresh(active_guest)
         assert active_guest.username == "ActiveGuest"
+
+    @pytest.mark.asyncio
+    async def test_cleanup_preserves_guests_with_phraseset_activity(self, db_session):
+        """Should not remove old guests who have phraseset activity."""
+        cleanup_service = CleanupService(db_session)
+
+        # Create old guest with phraseset activity (hasn't logged in for > 7 days)
+        active_guest = Player(
+            player_id=uuid4(),
+            username="ActiveGuestWithActivity",
+            username_canonical="activeguestwithactivity",
+            email="activeguestwithactivity@example.com",
+            password_hash=hash_password("guest123"),
+            is_guest=True,
+            created_at=datetime.now(UTC) - timedelta(days=10),
+            last_login_date=datetime.now(UTC) - timedelta(days=10),  # Old login
+        )
+        db_session.add(active_guest)
+        await db_session.flush()
+
+        # Create a phraseset
+        phraseset = Phraseset(
+            phraseset_id=uuid4(),
+            prompt_round_id=uuid4(),
+            phrase_round_1_id=uuid4(),
+            phrase_round_2_id=uuid4(),
+            created_at=datetime.now(UTC),
+        )
+        db_session.add(phraseset)
+        await db_session.flush()
+
+        # Add phraseset activity for this guest
+        activity = PhrasesetActivity(
+            activity_id=uuid4(),
+            player_id=active_guest.player_id,
+            phraseset_id=phraseset.phraseset_id,
+            activity_type="vote",
+            created_at=datetime.now(UTC) - timedelta(days=5),
+        )
+        db_session.add(activity)
+        await db_session.commit()
+
+        # Cleanup should not remove active guest (has phraseset activity)
+        deleted_count = await cleanup_service.cleanup_inactive_guest_players(days_old=7)
+
+        assert deleted_count == 0
+
+        # Verify guest still exists
+        await db_session.refresh(active_guest)
+        assert active_guest.username == "ActiveGuestWithActivity"
+
+    @pytest.mark.asyncio
+    async def test_cleanup_preserves_new_guests_with_null_login(self, db_session):
+        """Should not delete newly-created guests with NULL last_login_date."""
+        cleanup_service = CleanupService(db_session)
+
+        # Create newly-created guest with NULL last_login_date (should NOT be deleted)
+        new_guest = Player(
+            player_id=uuid4(),
+            username="NewGuest",
+            username_canonical="newguest",
+            email="newguest@example.com",
+            password_hash=hash_password("guest123"),
+            is_guest=True,
+            created_at=datetime.now(UTC) - timedelta(hours=1),  # Created 1 hour ago
+            last_login_date=None,  # Never logged in
+        )
+        db_session.add(new_guest)
+
+        # Create old guest with NULL last_login_date AND old created_at (should be deleted)
+        old_guest_null_login = Player(
+            player_id=uuid4(),
+            username="OldGuestNullLogin",
+            username_canonical="oldguestnulllogin",
+            email="oldguestnulllogin@example.com",
+            password_hash=hash_password("guest123"),
+            is_guest=True,
+            created_at=datetime.now(UTC) - timedelta(days=10),  # Created 10 days ago
+            last_login_date=None,  # Never logged in
+        )
+        db_session.add(old_guest_null_login)
+        await db_session.commit()
+
+        # Store old_guest_id for verification
+        old_guest_id = old_guest_null_login.player_id
+
+        # Cleanup should only remove the old guest with NULL login
+        deleted_count = await cleanup_service.cleanup_inactive_guest_players(days_old=7)
+
+        assert deleted_count == 1
+
+        # Verify old guest with NULL login was deleted
+        result = await db_session.execute(
+            select(Player).where(Player.player_id == old_guest_id)
+        )
+        assert result.scalar_one_or_none() is None
+
+        # Verify new guest still exists (not old enough to be deleted)
+        await db_session.refresh(new_guest)
+        assert new_guest.username == "NewGuest"
 
 
 class TestRecycleGuestUsernames:
