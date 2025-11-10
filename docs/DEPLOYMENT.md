@@ -6,9 +6,14 @@ This guide covers the production deployment setup for QuipFlip, including enviro
 
 - **Frontend**: Hosted on Vercel at `quipflip.xyz`
 - **Backend**: Hosted on Heroku at `quipflip-c196034288cd.herokuapp.com`
-- **Connection**: Direct cross-site connection from frontend to backend
-- **Cookies**: SameSite=None with Secure flag for cross-site authentication
-- **WebSocket**: Real-time features connect directly to `wss://quipflip-c196034288cd.herokuapp.com`
+- **Hybrid Approach**:
+  - **REST API**: Proxied through Vercel (`/api/*` → Heroku) for same-origin requests, iOS compatibility
+  - **WebSocket**: Direct connection to Heroku (`wss://quipflip-c196034288cd.herokuapp.com`)
+- **Cookies**: SameSite=None with Secure flag (required for cross-site WebSocket authentication)
+- **Benefits**:
+  - REST API maintains iOS Safari cookie compatibility via same-origin proxy
+  - WebSocket gets real-time connection directly to backend
+  - Single cookie configuration works for both
 
 ## Backend Configuration (Heroku)
 
@@ -50,9 +55,10 @@ USE_PHRASE_VALIDATOR_API=true
 The backend automatically configures cookies based on the `ENVIRONMENT` variable:
 
 - **Production** (`ENVIRONMENT=production`):
-  - `SameSite=None` (allows cross-site cookies)
+  - `SameSite=None` (required for cross-site WebSocket connections)
   - `Secure=True` (required for SameSite=None)
   - `HttpOnly=True` (prevents JavaScript access)
+  - **Note**: REST API uses Vercel proxy (same-origin), but WebSocket needs cross-site cookies
 
 - **Development** (`ENVIRONMENT=development`):
   - `SameSite=Lax` (localhost same-site)
@@ -78,8 +84,26 @@ CORS is configured with:
 Set these in the Vercel dashboard under Project Settings → Environment Variables:
 
 ```bash
-# Backend API URL (connects directly to Heroku)
-VITE_API_URL=https://quipflip-c196034288cd.herokuapp.com
+# REST API URL (proxied through Vercel for same-origin requests)
+VITE_API_URL=/api
+
+# WebSocket URL (direct connection to Heroku backend)
+VITE_WEBSOCKET_URL=wss://quipflip-c196034288cd.herokuapp.com
+```
+
+### Vercel Configuration
+
+Ensure `vercel.json` includes the rewrite rule for the API proxy:
+
+```json
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://quipflip-c196034288cd.herokuapp.com/:path*"
+    }
+  ]
+}
 ```
 
 ### Build Settings
@@ -91,18 +115,20 @@ VITE_API_URL=https://quipflip-c196034288cd.herokuapp.com
 
 ### Important Notes
 
-1. **WebSocket Connections**: The frontend automatically converts the backend URL to WebSocket format:
-   - `https://quipflip-c196034288cd.herokuapp.com` → `wss://quipflip-c196034288cd.herokuapp.com`
-   - WebSocket endpoints like `/users/online/ws` work seamlessly
+1. **Hybrid Connection Strategy**:
+   - **REST API**: Uses `/api` which Vercel proxies to Heroku (same-origin from browser perspective)
+   - **WebSocket**: Connects directly to `wss://quipflip-c196034288cd.herokuapp.com` (cross-site)
+   - Benefits: iOS Safari compatibility for REST + real-time WebSocket support
 
 2. **Cookie Handling**:
-   - Cookies are automatically sent with all requests via `credentials: 'include'`
-   - WebSocket connections include the access token from cookies as a query parameter for compatibility
+   - REST API: Cookies sent automatically as same-origin (via Vercel proxy)
+   - WebSocket: Cookies sent as cross-site with SameSite=None (requires Secure flag)
+   - WebSocket also includes token as query parameter for compatibility
 
-3. **Cross-Site Requests**:
-   - All API requests go directly to Heroku (no proxy)
-   - Cookies work via SameSite=None configuration
-   - HTTPS is required for SameSite=None cookies
+3. **WebSocket URL Construction**:
+   - Production: Uses `VITE_WEBSOCKET_URL` directly
+   - Development: Constructs from `VITE_API_URL` or defaults to `localhost:8000`
+   - Token automatically appended from cookies
 
 ## WebSocket Setup
 
@@ -152,9 +178,11 @@ The Online Users page demonstrates real-time WebSocket functionality:
 
 ### Frontend (Vercel)
 
-- [ ] Set `VITE_API_URL=https://quipflip-c196034288cd.herokuapp.com`
+- [ ] Set `VITE_API_URL=/api` (proxied through Vercel)
+- [ ] Set `VITE_WEBSOCKET_URL=wss://quipflip-c196034288cd.herokuapp.com`
+- [ ] Verify `vercel.json` has API proxy rewrite rule
 - [ ] Deploy and verify build succeeds
-- [ ] Test API calls reach Heroku backend
+- [ ] Test REST API calls go through Vercel proxy
 - [ ] Test WebSocket connection to `/users/online/ws`
 - [ ] Verify cookies are set and sent with requests
 - [ ] Test in multiple browsers (Chrome, Safari, Firefox)

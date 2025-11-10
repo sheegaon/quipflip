@@ -32,14 +32,21 @@ const OnlineUsers: React.FC = () => {
       wsAttempted = true;
 
       try {
-        const host = window.location.hostname;
-        const port = import.meta.env.VITE_API_PORT || '8000';
+        // Use WebSocket URL from environment or construct from backend URL for dev
+        let wsUrl: string;
 
-        // Use backend URL from environment or construct it
-        const backendUrl = import.meta.env.VITE_API_URL || `http://${host}:${port}`;
-        let wsUrl = backendUrl
-          .replace('http://', 'ws://')
-          .replace('https://', 'wss://') + '/users/online/ws';
+        if (import.meta.env.VITE_WEBSOCKET_URL) {
+          // Production: use dedicated WebSocket URL (direct to Heroku)
+          wsUrl = import.meta.env.VITE_WEBSOCKET_URL + '/users/online/ws';
+        } else {
+          // Development: construct from API URL or localhost
+          const host = window.location.hostname;
+          const port = import.meta.env.VITE_API_PORT || '8000';
+          const backendUrl = import.meta.env.VITE_API_URL || `http://${host}:${port}`;
+          wsUrl = backendUrl
+            .replace('http://', 'ws://')
+            .replace('https://', 'wss://') + '/users/online/ws';
+        }
 
         // Get access token from cookies and add as query parameter for better dev mode compatibility
         const getCookie = (name: string): string | null => {
