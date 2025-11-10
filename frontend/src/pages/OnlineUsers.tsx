@@ -10,14 +10,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '../components/Header';
-
-interface OnlineUser {
-  username: string;
-  last_action: string;
-  last_action_category: string;
-  last_activity: string;
-  time_ago: string;
-}
+import type { OnlineUser } from '../api/types';
 
 const OnlineUsers: React.FC = () => {
   const navigate = useNavigate();

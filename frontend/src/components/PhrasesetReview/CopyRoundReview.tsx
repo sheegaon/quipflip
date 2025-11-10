@@ -9,6 +9,7 @@ interface CopyRoundReviewProps {
   playerUsername: string;
   copyNumber: 1 | 2;
   roundId?: string;
+  existingHints?: string[] | null; // Pass hints from parent if they exist
   onSubmit: () => void;
   onBack: () => void;
 }
@@ -19,19 +20,13 @@ export const CopyRoundReview: React.FC<CopyRoundReviewProps> = ({
   playerUsername,
   copyNumber,
   roundId,
+  existingHints = null,
   onSubmit,
   onBack,
 }) => {
   const [isRevealed, setIsRevealed] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  // Local hint state - separate from GameContext to avoid state pollution in review mode
-  // TODO: Consider refactoring to use a pure data-fetching approach without GameContext state
-  const [copyRoundHints, setCopyRoundHints] = useState<string[] | null>(null);
-  const [isFetchingHints, setIsFetchingHints] = useState(false);
-  const [hintError, setHintError] = useState<string | null>(null);
   const [showHints, setShowHints] = useState(false);
-  const [hintsAttempted, setHintsAttempted] = useState(false);
 
   const handleReveal = () => {
     setIsRevealed(true);
@@ -41,52 +36,6 @@ export const CopyRoundReview: React.FC<CopyRoundReviewProps> = ({
     setIsSubmitting(true);
     onSubmit();
   };
-
-  const handleFetchHints = async () => {
-    if (!roundId || isFetchingHints) {
-      return;
-    }
-
-    setIsFetchingHints(true);
-    setHintError(null);
-    setHintsAttempted(true);
-
-    try {
-      // Call API directly (not through GameContext) to avoid polluting shared state
-      const response = await apiClient.getCopyHints(roundId);
-      setCopyRoundHints(response.hints || []); // Ensure we always set an array
-      if (response.hints && response.hints.length > 0) {
-        setShowHints(true);
-      }
-    } catch (err: any) {
-      // The hints API only works for active rounds, not completed rounds
-      const errorMessage = extractErrorMessage(err);
-      if (errorMessage.includes('active') || errorMessage.includes('not found')) {
-        setHintError('AI hints are only available during active rounds, not for completed round reviews.');
-      } else {
-        setHintError(errorMessage || 'Unable to fetch AI hints.');
-      }
-      setCopyRoundHints([]); // Set empty array to indicate attempted but failed
-    } finally {
-      setIsFetchingHints(false);
-    }
-  };
-
-  // Determine hint display state
-  const getHintDisplayState = () => {
-    if (!hintsAttempted && copyRoundHints === null) {
-      return 'not-fetched';
-    }
-    if (copyRoundHints && copyRoundHints.length > 0) {
-      return 'has-hints';
-    }
-    if (copyRoundHints !== null && copyRoundHints.length === 0) {
-      return 'no-hints';
-    }
-    return 'not-fetched';
-  };
-
-  const hintDisplayState = getHintDisplayState();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-quip-turquoise to-quip-teal flex items-center justify-center p-4 bg-pattern">
@@ -119,10 +68,10 @@ export const CopyRoundReview: React.FC<CopyRoundReviewProps> = ({
           </p>
         </div>
 
-        {/* AI Hints */}
+        {/* AI Hints - Show existing hints or indicate they weren't generated */}
         {roundId && (
           <div className="mb-4 rounded-tile border border-quip-turquoise/30 bg-white/80 p-4 shadow-tile-xs">
-            {hintDisplayState === 'has-hints' ? (
+            {existingHints && existingHints.length > 0 ? (
               <>
                 <button
                   type="button"
@@ -130,7 +79,7 @@ export const CopyRoundReview: React.FC<CopyRoundReviewProps> = ({
                   className="flex w-full items-center justify-between rounded-tile border border-quip-turquoise/40 bg-quip-turquoise/10 px-3 py-2 font-semibold text-quip-teal transition hover:bg-quip-turquoise/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-quip-turquoise"
                 >
                   <span>{showHints ? 'Hide AI Hints' : 'Show AI Hints'}</span>
-                  <span className="text-sm text-quip-navy">{copyRoundHints!.length} suggestions</span>
+                  <span className="text-sm text-quip-navy">{existingHints.length} suggestions</span>
                 </button>
                 {showHints && (
                   <div className="mt-3 space-y-3">
@@ -138,7 +87,7 @@ export const CopyRoundReview: React.FC<CopyRoundReviewProps> = ({
                       Mix and modify - make it your own!
                     </p>
                     <ul className="space-y-2">
-                      {copyRoundHints!.map((hint, index) => (
+                      {existingHints.map((hint, index) => (
                         <li
                           key={`${hint}-${index}`}
                           className="flex items-start gap-2 rounded-tile border border-quip-turquoise/30 bg-white px-3 py-2 text-quip-navy shadow-inner"
@@ -151,30 +100,15 @@ export const CopyRoundReview: React.FC<CopyRoundReviewProps> = ({
                   </div>
                 )}
               </>
-            ) : hintDisplayState === 'no-hints' ? (
+            ) : (
               <div className="text-center">
-                <div className="rounded-tile border border-quip-orange/40 bg-quip-orange/10 px-4 py-3 text-quip-navy">
-                  <p className="font-semibold">No AI hints available</p>
+                <div className="rounded-tile border border-gray-300 bg-gray-50 px-4 py-3 text-quip-navy">
+                  <p className="font-semibold">Hints were not generated for this prompt</p>
                   <p className="mt-1 text-sm text-quip-teal">
-                    The AI couldn't generate suitable suggestions for this phrase.
+                    AI hints were not requested during the original copy round.
                   </p>
                 </div>
               </div>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  onClick={handleFetchHints}
-                  disabled={isFetchingHints || isSubmitting}
-                  className="w-full rounded-tile border border-quip-turquoise bg-white px-4 py-2 font-semibold text-quip-turquoise transition hover:bg-quip-turquoise hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {isFetchingHints ? 'Contacting AI...' : 'Get AI Hints'}
-                </button>
-                {hintError && <p className="mt-2 text-sm text-red-600">{hintError}</p>}
-                <p className="mt-2 text-xs text-quip-teal">
-                  You will get three ideas that passed quick AI checks. Use them as inspiration and tweak them to match your style. Hints may take up to one minute to generate.
-                </p>
-              </>
             )}
           </div>
         )}

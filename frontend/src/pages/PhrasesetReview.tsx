@@ -128,6 +128,7 @@ export const PhrasesetReview: React.FC = () => {
         playerUsername={copy1Contributor?.username || 'Unknown'}
         copyNumber={1}
         roundId={copy1Contributor?.round_id}
+        existingHints={null} // Hints not stored in phraseset data for reviews
         onSubmit={handleCopy1Submit}
         onBack={handleBackToCompleted}
       />
@@ -143,6 +144,7 @@ export const PhrasesetReview: React.FC = () => {
         playerUsername={copy2Contributor?.username || 'Unknown'}
         copyNumber={2}
         roundId={copy2Contributor?.round_id}
+        existingHints={null} // Hints not stored in phraseset data for reviews
         onSubmit={handleCopy2Submit}
         onBack={handleBackToCompleted}
       />
