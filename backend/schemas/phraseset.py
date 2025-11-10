@@ -227,3 +227,15 @@ class CompletedPhrasesetItem(BaseSchema):
 class CompletedPhrasesetsResponse(BaseSchema):
     """List of completed phrasesets."""
     phrasesets: list[CompletedPhrasesetItem]
+
+
+class PracticePhraseset(BaseSchema):
+    """Practice mode phraseset data."""
+    phraseset_id: UUID
+    prompt_text: str
+    original_phrase: str
+    copy1_phrase: str
+    copy2_phrase: str
+    prompt_player: str
+    copy1_player: str
+    copy2_player: str

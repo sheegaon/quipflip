@@ -779,6 +779,84 @@ class PhrasesetService:
             "phrasesets": items,
         }
 
+    async def get_random_practice_phraseset(self, player_id: UUID) -> dict:
+        """Get a random finalized phraseset for practice mode.
+
+        Returns a phraseset that the player was NOT involved in (prompt, copy, or vote).
+        """
+        from sqlalchemy import func, or_
+        from sqlalchemy.orm import aliased
+
+        # Get all phraseset IDs where player was involved
+        # Check prompt rounds
+        prompt_result = await self.db.execute(
+            select(Phraseset.phraseset_id)
+            .join(Round, Phraseset.prompt_round_id == Round.round_id)
+            .where(Round.player_id == player_id)
+        )
+        prompt_phrasesets = {row[0] for row in prompt_result.all()}
+
+        # Check copy rounds
+        copy_result = await self.db.execute(
+            select(Phraseset.phraseset_id)
+            .where(
+                or_(
+                    Phraseset.copy_round_1_id.in_(
+                        select(Round.round_id).where(Round.player_id == player_id)
+                    ),
+                    Phraseset.copy_round_2_id.in_(
+                        select(Round.round_id).where(Round.player_id == player_id)
+                    )
+                )
+            )
+        )
+        copy_phrasesets = {row[0] for row in copy_result.all()}
+
+        # Check votes
+        vote_result = await self.db.execute(
+            select(Vote.phraseset_id)
+            .where(Vote.player_id == player_id)
+        )
+        vote_phrasesets = {row[0] for row in vote_result.all()}
+
+        # Combine all phrasesets to exclude
+        excluded_phrasesets = prompt_phrasesets | copy_phrasesets | vote_phrasesets
+
+        # Get a random phraseset that is finalized and not in the excluded list
+        query = (
+            select(Phraseset)
+            .where(Phraseset.status == "finalized")
+        )
+
+        if excluded_phrasesets:
+            query = query.where(~Phraseset.phraseset_id.in_(list(excluded_phrasesets)))
+
+        query = query.order_by(func.random()).limit(1)
+
+        result = await self.db.execute(query)
+        phraseset = result.scalar_one_or_none()
+
+        if not phraseset:
+            raise ValueError("No phrasesets available for practice")
+
+        # Load contributor rounds to get usernames
+        prompt_round, copy1_round, copy2_round = await self._load_contributor_rounds(phraseset)
+
+        # Load player records to get usernames
+        player_ids = [prompt_round.player_id, copy1_round.player_id, copy2_round.player_id]
+        player_records = await self._load_players(player_ids)
+
+        return {
+            "phraseset_id": phraseset.phraseset_id,
+            "prompt_text": phraseset.prompt_text,
+            "original_phrase": phraseset.original_phrase,
+            "copy1_phrase": phraseset.copy_phrase_1,
+            "copy2_phrase": phraseset.copy_phrase_2,
+            "prompt_player": player_records.get(prompt_round.player_id, {}).get("username", "Unknown"),
+            "copy1_player": player_records.get(copy1_round.player_id, {}).get("username", "Unknown"),
+            "copy2_player": player_records.get(copy2_round.player_id, {}).get("username", "Unknown"),
+        }
+
     # ---------------------------------------------------------------------
     # Helper methods
     # ---------------------------------------------------------------------

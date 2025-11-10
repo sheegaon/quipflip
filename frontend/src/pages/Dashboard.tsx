@@ -6,6 +6,7 @@ import apiClient, { extractErrorMessage } from '../api/client';
 import { Timer } from '../components/Timer';
 import { Header } from '../components/Header';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
+import { ModeToggle } from '../components/ModeToggle';
 import TutorialWelcome from '../components/Tutorial/TutorialWelcome';
 import { dashboardLogger } from '../utils/logger';
 import type { BetaSurveyStatusResponse } from '../api/types';
@@ -14,6 +15,7 @@ import { hasDismissedSurvey, markSurveyDismissed, hasCompletedSurvey } from '../
 const formatWaitingCount = (count: number): string => (count > 10 ? 'over 10' : count.toString());
 export const Dashboard: React.FC = () => {
   const { state, actions } = useGame();
+  const [mode, setMode] = useState<'live' | 'practice'>('live');
   const {
     player,
     activeRound,
@@ -336,20 +338,26 @@ export const Dashboard: React.FC = () => {
       return;
     }
 
-    dashboardLogger.info('Starting prompt round...');
+    dashboardLogger.info(`Starting prompt round in ${mode} mode...`);
     dashboardLogger.debug('Player state before start:', {
       balance: player?.balance,
       outstandingPrompts: player?.outstanding_prompts,
-      canPrompt: roundAvailability?.can_prompt
+      canPrompt: roundAvailability?.can_prompt,
+      mode
     });
 
     setStartingRound('prompt');
     setRoundStartError(null);
     try {
-      dashboardLogger.debug('Calling actions.startPromptRound()...');
-      await actions.startPromptRound();
-      dashboardLogger.info('✅ Prompt round started successfully, navigating to /prompt');
-      navigate('/prompt');
+      if (mode === 'practice') {
+        dashboardLogger.debug('Practice mode: navigating directly to practice prompt review');
+        navigate('/practice/prompt');
+      } else {
+        dashboardLogger.debug('Calling actions.startPromptRound()...');
+        await actions.startPromptRound();
+        dashboardLogger.info('✅ Prompt round started successfully, navigating to /prompt');
+        navigate('/prompt');
+      }
     } catch (err) {
       dashboardLogger.error('❌ Failed to start prompt round:', err);
       const errorMsg = extractErrorMessage(err) || 'Unable to start prompt round. Please try again.';
@@ -366,21 +374,27 @@ export const Dashboard: React.FC = () => {
       return;
     }
 
-    dashboardLogger.info('Starting copy round...');
+    dashboardLogger.info(`Starting copy round in ${mode} mode...`);
     dashboardLogger.debug('Player state before start:', {
       balance: player?.balance,
       canCopy: roundAvailability?.can_copy,
       promptsWaiting: roundAvailability?.prompts_waiting,
-      copyCost: roundAvailability?.copy_cost
+      copyCost: roundAvailability?.copy_cost,
+      mode
     });
 
     setStartingRound('copy');
     setRoundStartError(null);
     try {
-      dashboardLogger.debug('Calling actions.startCopyRound()...');
-      await actions.startCopyRound();
-      dashboardLogger.info('✅ Copy round started successfully, navigating to /copy');
-      navigate('/copy');
+      if (mode === 'practice') {
+        dashboardLogger.debug('Practice mode: navigating directly to practice copy review');
+        navigate('/practice/copy');
+      } else {
+        dashboardLogger.debug('Calling actions.startCopyRound()...');
+        await actions.startCopyRound();
+        dashboardLogger.info('✅ Copy round started successfully, navigating to /copy');
+        navigate('/copy');
+      }
     } catch (err) {
       dashboardLogger.error('❌ Failed to start copy round:', err);
       const errorMsg = extractErrorMessage(err) || 'Unable to start copy round. Please try again.';
@@ -397,20 +411,26 @@ export const Dashboard: React.FC = () => {
       return;
     }
 
-    dashboardLogger.info('Starting vote round...');
+    dashboardLogger.info(`Starting vote round in ${mode} mode...`);
     dashboardLogger.debug('Player state before start:', {
       balance: player?.balance,
       canVote: roundAvailability?.can_vote,
-      phrasesetsWaiting: roundAvailability?.phrasesets_waiting
+      phrasesetsWaiting: roundAvailability?.phrasesets_waiting,
+      mode
     });
 
     setStartingRound('vote');
     setRoundStartError(null);
     try {
-      dashboardLogger.debug('Calling actions.startVoteRound()...');
-      await actions.startVoteRound();
-      dashboardLogger.info('✅ Vote round started successfully, navigating to /vote');
-      navigate('/vote');
+      if (mode === 'practice') {
+        dashboardLogger.debug('Practice mode: navigating directly to practice vote review');
+        navigate('/practice/vote');
+      } else {
+        dashboardLogger.debug('Calling actions.startVoteRound()...');
+        await actions.startVoteRound();
+        dashboardLogger.info('✅ Vote round started successfully, navigating to /vote');
+        navigate('/vote');
+      }
     } catch (err) {
       dashboardLogger.error('❌ Failed to start vote round:', err);
       const errorMsg = extractErrorMessage(err) || 'Unable to start vote round. Please try again.';
@@ -511,7 +531,7 @@ export const Dashboard: React.FC = () => {
                   <h3 className="font-display font-semibold text-lg text-quip-navy">Prompt Round</h3>
                 </div>
                 <span className="text-quip-orange-deep font-bold flex items-center gap-1">
-                  <CurrencyDisplay amount={roundAvailability?.prompt_cost || 100} iconClassName="w-4 h-4" textClassName="font-bold" />
+                  <CurrencyDisplay amount={mode === 'practice' ? 0 : (roundAvailability?.prompt_cost || 100)} iconClassName="w-4 h-4" textClassName="font-bold" />
                 </span>
               </div>
               <p className="text-sm text-quip-teal mb-3">
@@ -519,10 +539,11 @@ export const Dashboard: React.FC = () => {
               </p>
               <button
                 onClick={handleStartPrompt}
-                disabled={!roundAvailability?.can_prompt || startingRound === 'prompt'}
+                disabled={mode === 'live' && (!roundAvailability?.can_prompt || startingRound === 'prompt')}
                 className="w-full bg-quip-navy hover:bg-quip-teal disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm"
               >
                 {startingRound === 'prompt' ? 'Starting Round...' :
+                 mode === 'practice' ? 'Practice Prompt Round' :
                  roundAvailability?.can_prompt ? 'Start Prompt Round' :
                  activeRound?.round_type === 'prompt' ? 'Active Round - Use Continue Above' :
                  activeRound?.round_id ? 'Complete Current Round First' :
@@ -540,7 +561,7 @@ export const Dashboard: React.FC = () => {
                   <h3 className="font-display font-semibold text-lg text-quip-turquoise">Copy Round</h3>
                 </div>
                 <span className="flex items-center gap-2 text-quip-orange-deep font-bold">
-                  {roundAvailability?.copy_discount_active && roundAvailability?.prompts_waiting > 0 && (
+                  {mode === 'live' && roundAvailability?.copy_discount_active && roundAvailability?.prompts_waiting > 0 && (
                     <img
                       src="/badge_copy-discount.svg"
                       alt="Copy discount active"
@@ -548,7 +569,7 @@ export const Dashboard: React.FC = () => {
                     />
                   )}
                   <span className="flex items-center gap-1">
-                    <CurrencyDisplay amount={roundAvailability?.copy_cost || 100} iconClassName="w-4 h-4" textClassName="font-bold" />
+                    <CurrencyDisplay amount={mode === 'practice' ? 0 : (roundAvailability?.copy_cost || 100)} iconClassName="w-4 h-4" textClassName="font-bold" />
                   </span>
                 </span>
               </div>
@@ -563,10 +584,11 @@ export const Dashboard: React.FC = () => {
               )}
               <button
                 onClick={handleStartCopy}
-                disabled={!roundAvailability?.can_copy || startingRound === 'copy'}
+                disabled={mode === 'live' && (!roundAvailability?.can_copy || startingRound === 'copy')}
                 className="w-full bg-quip-turquoise hover:bg-quip-teal disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm"
               >
                 {startingRound === 'copy' ? 'Starting Round...' :
+                 mode === 'practice' ? 'Practice Copy Round' :
                  roundAvailability?.can_copy ? 'Start Copy Round' :
                  activeRound?.round_type === 'copy' ? 'Active Round - Use Continue Above' :
                  activeRound?.round_id ? 'Complete Current Round First' :
@@ -584,7 +606,7 @@ export const Dashboard: React.FC = () => {
                   <h3 className="font-display font-semibold text-lg text-quip-orange-deep">Vote Round</h3>
                 </div>
                 <span className="text-quip-orange-deep font-bold flex items-center gap-1">
-                  <CurrencyDisplay amount={roundAvailability?.vote_cost || 10} iconClassName="w-4 h-4" textClassName="font-bold" />
+                  <CurrencyDisplay amount={mode === 'practice' ? 0 : (roundAvailability?.vote_cost || 10)} iconClassName="w-4 h-4" textClassName="font-bold" />
                 </span>
               </div>
               <p className="text-sm text-quip-teal mb-1">
@@ -598,10 +620,11 @@ export const Dashboard: React.FC = () => {
               )}
               <button
                 onClick={handleStartVote}
-                disabled={!roundAvailability?.can_vote || startingRound === 'vote'}
+                disabled={mode === 'live' && (!roundAvailability?.can_vote || startingRound === 'vote')}
                 className="w-full bg-quip-orange hover:bg-quip-orange-deep disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm"
               >
                 {startingRound === 'vote' ? 'Starting Round...' :
+                 mode === 'practice' ? 'Practice Vote Round' :
                  roundAvailability?.can_vote ? 'Start Vote Round' :
                  activeRound?.round_type === 'vote' ? 'Active Round - Use Continue Above' :
                  activeRound?.round_id ? 'Complete Current Round First' :
@@ -613,6 +636,9 @@ export const Dashboard: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Mode Toggle */}
+      <ModeToggle mode={mode} onChange={setMode} />
 
       {/* Beta Survey Modal */}
       {showSurveyPrompt && (

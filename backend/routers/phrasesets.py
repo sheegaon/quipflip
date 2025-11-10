@@ -14,6 +14,7 @@ from backend.schemas.phraseset import (
     ClaimPrizeResponse,
     PhrasesetHistory,
     CompletedPhrasesetsResponse,
+    PracticePhraseset,
 )
 from backend.services.transaction_service import TransactionService
 from backend.services.vote_service import VoteService
@@ -229,3 +230,26 @@ async def get_public_phraseset_details(
         if message == "Phraseset not finalized":
             raise HTTPException(status_code=403, detail=message)
         raise HTTPException(status_code=400, detail=message)
+
+
+@router.get("/practice/random", response_model=PracticePhraseset)
+async def get_random_practice_phraseset(
+    player: Player = Depends(get_current_player),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get a random completed phraseset for practice mode.
+
+    Returns a phraseset that the user was NOT involved in, for practicing rounds.
+    """
+    phraseset_service = PhrasesetService(db)
+    try:
+        practice_data = await phraseset_service.get_random_practice_phraseset(player.player_id)
+        return PracticePhraseset(**practice_data)
+    except ValueError as exc:
+        message = str(exc)
+        if message == "No phrasesets available for practice":
+            raise HTTPException(status_code=404, detail=message)
+        raise HTTPException(status_code=400, detail=message)
+    except Exception as exc:
+        logger.error(f"Error getting random practice phraseset: {exc}")
+        raise HTTPException(status_code=500, detail="Failed to get practice phraseset")
