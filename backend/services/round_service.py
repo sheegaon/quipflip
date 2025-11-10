@@ -18,7 +18,7 @@ from backend.models.phraseset import Phraseset
 from backend.models.player_abandoned_prompt import PlayerAbandonedPrompt
 from backend.services.transaction_service import TransactionService
 from backend.services.queue_service import QueueService
-from backend.services.activity_service import ActivityService
+from backend.services.phraseset_activity_service import ActivityService
 from backend.config import get_settings
 from backend.utils.exceptions import (
     InvalidPhraseError,

@@ -16,7 +16,7 @@ from backend.models.phraseset import Phraseset
 from backend.models.result_view import ResultView
 from backend.models.round import Round
 from backend.models.vote import Vote
-from backend.services.activity_service import ActivityService
+from backend.services.phraseset_activity_service import ActivityService
 from backend.services.scoring_service import ScoringService
 from backend.services.helpers import upsert_result_view
 
@@ -252,16 +252,16 @@ class PhrasesetService:
 
         # Activity timeline
         activities = await self.activity_service.get_phraseset_activity(phraseset.phraseset_id)
-        activity_player_ids = {act.player_id for act in activities if act.player_id}
+        activity_player_ids = {act.get("player_id") for act in activities if act.get("player_id")}
         activity_players = await self._load_players(activity_player_ids, existing=vote_player_records)
         activity_payload = [
             {
-                "activity_id": activity.activity_id,
-                "activity_type": activity.activity_type,
-                "created_at": self._ensure_utc(activity.created_at),
-                "player_id": activity.player_id,
-                "player_username": activity_players.get(activity.player_id, {}).get("username", str(activity.player_id)) if activity.player_id else None,
-                "metadata": activity.payload or {},
+                "activity_id": activity["activity_id"],
+                "activity_type": activity["activity_type"],
+                "created_at": self._ensure_utc(activity["created_at"]),
+                "player_id": activity.get("player_id"),
+                "player_username": activity_players.get(activity.get("player_id"), {}).get("username", str(activity.get("player_id"))) if activity.get("player_id") else None,
+                "metadata": activity.get("metadata", {}),
             }
             for activity in activities
         ]
@@ -285,6 +285,8 @@ class PhrasesetService:
         return {
             "phraseset_id": phraseset.phraseset_id,
             "prompt_round_id": phraseset.prompt_round_id,
+            "copy_round_1_id": phraseset.copy_round_1_id,
+            "copy_round_2_id": phraseset.copy_round_2_id,
             "prompt_text": phraseset.prompt_text,
             "status": self._derive_status(prompt_round, phraseset),
             "original_phrase": phraseset.original_phrase,
@@ -379,16 +381,16 @@ class PhrasesetService:
 
         # Activity timeline
         activities = await self.activity_service.get_phraseset_activity(phraseset.phraseset_id)
-        activity_player_ids = {act.player_id for act in activities if act.player_id}
+        activity_player_ids = {act.get("player_id") for act in activities if act.get("player_id")}
         activity_players = await self._load_players(activity_player_ids, existing=vote_player_records)
         activity_payload = [
             {
-                "activity_id": activity.activity_id,
-                "activity_type": activity.activity_type,
-                "created_at": self._ensure_utc(activity.created_at),
-                "player_id": activity.player_id,
-                "player_username": activity_players.get(activity.player_id, {}).get("username", str(activity.player_id)) if activity.player_id else None,
-                "metadata": activity.payload or {},
+                "activity_id": activity["activity_id"],
+                "activity_type": activity["activity_type"],
+                "created_at": self._ensure_utc(activity["created_at"]),
+                "player_id": activity.get("player_id"),
+                "player_username": activity_players.get(activity.get("player_id"), {}).get("username", str(activity.get("player_id"))) if activity.get("player_id") else None,
+                "metadata": activity.get("metadata", {}),
             }
             for activity in activities
         ]
@@ -412,6 +414,8 @@ class PhrasesetService:
         return {
             "phraseset_id": phraseset.phraseset_id,
             "prompt_round_id": phraseset.prompt_round_id,
+            "copy_round_1_id": phraseset.copy_round_1_id,
+            "copy_round_2_id": phraseset.copy_round_2_id,
             "prompt_text": phraseset.prompt_text,
             "status": "finalized",  # Always finalized for public access
             "original_phrase": phraseset.original_phrase,
@@ -1318,10 +1322,27 @@ class PhrasesetService:
                 counts[vote.voted_phrase] += 1
         return counts
 
-    def _ensure_utc(self, dt: Optional[datetime]) -> Optional[datetime]:
+    def _ensure_utc(self, dt) -> Optional[datetime]:
         """Ensure datetimes are timezone-aware in UTC."""
         if not dt:
             return None
-        if dt.tzinfo is None:
-            return dt.replace(tzinfo=UTC)
-        return dt
+        
+        # Handle string datetime values (from ActivityService)
+        if isinstance(dt, str):
+            try:
+                # Parse ISO format string
+                from datetime import datetime
+                parsed_dt = datetime.fromisoformat(dt.replace('Z', '+00:00'))
+                if parsed_dt.tzinfo is None:
+                    return parsed_dt.replace(tzinfo=UTC)
+                return parsed_dt
+            except (ValueError, AttributeError):
+                return None
+        
+        # Handle datetime objects
+        if isinstance(dt, datetime):
+            if dt.tzinfo is None:
+                return dt.replace(tzinfo=UTC)
+            return dt
+            
+        return None

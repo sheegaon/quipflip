@@ -1772,7 +1772,7 @@ Get current game configuration values (from database overrides or environment de
   "ai_backup_batch_size": 3,
   "ai_backup_sleep_minutes": 60,
   "ai_stale_handler_enabled": true,
-  "ai_stale_threshold_days": 3,
+  "ai_stale_threshold_days": 2,
   "ai_stale_check_interval_hours": 12
 }
 ```
@@ -1782,7 +1782,7 @@ Get current game configuration values (from database overrides or environment de
 - Values may come from database overrides or environment defaults
 - New fields added for stale AI handler:
   - `ai_stale_handler_enabled` - Enable/disable stale content handler (default: true)
-  - `ai_stale_threshold_days` - Days before content is considered stale (minimum 3, default: 3)
+  - `ai_stale_threshold_days` - Days before content is considered stale (minimum 1, default: 2)
   - `ai_stale_check_interval_hours` - Hours between stale handler cycles (minimum 1, default: 12)
 
 #### `PATCH /admin/config`
@@ -1810,7 +1810,7 @@ Update a game configuration value. Requires admin password validation.
 - `400 Bad Request` - Invalid configuration key or value
 - `401 Unauthorized` - Not authenticated
 - `403 Forbidden` - Not authorized (admin access required)
-- `422 Validation Error` - Value fails validation (e.g., ai_stale_threshold_days < 3)
+- `422 Validation Error` - Value fails validation (e.g., ai_stale_threshold_days < 1)
 
 **Notes:**
 - All configuration changes are persisted to the database

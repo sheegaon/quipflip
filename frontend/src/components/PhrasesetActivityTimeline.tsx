@@ -1,3 +1,12 @@
+/**
+ * Phraseset activity timeline component.
+ *
+ * Displays a chronological timeline of lifecycle events for a phraseset
+ * (prompt submission, copy submissions, votes, finalization, etc.).
+ *
+ * This is distinct from the "Who's Online" feature (OnlineUsers page), which shows
+ * real-time user activity.
+ */
 import React from 'react';
 import type { PhrasesetActivityEntry } from '../api/types';
 import { formatDateTimeInUserZone } from '../utils/datetime';

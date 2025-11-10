@@ -210,10 +210,10 @@ async def get_game_config(
         ai_timeout_seconds=config.get("ai_timeout_seconds", 30),
         ai_backup_delay_minutes=config.get("ai_backup_delay_minutes", 15),
         ai_backup_batch_size=config.get("ai_backup_batch_size", 3),
-        ai_backup_sleep_minutes=config.get("ai_backup_sleep_minutes", 60),
+        ai_backup_sleep_minutes=config.get("ai_backup_sleep_minutes", 30),
         ai_stale_handler_enabled=config.get("ai_stale_handler_enabled", True),
-        ai_stale_threshold_days=config.get("ai_stale_threshold_days", 3),
-        ai_stale_check_interval_hours=config.get("ai_stale_check_interval_hours", 12),
+        ai_stale_threshold_days=config.get("ai_stale_threshold_days", 2),
+        ai_stale_check_interval_hours=config.get("ai_stale_check_interval_hours", 6),
     )
 
 

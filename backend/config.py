@@ -88,12 +88,12 @@ class Settings(BaseSettings):
     ai_openai_model: str = "gpt-5-nano"  # OpenAI model for copy generation
     ai_gemini_model: str = "gemini-2.5-flash-lite"  # Gemini model for copy generation
     ai_timeout_seconds: int = 60  # Timeout for AI API calls
-    ai_backup_delay_minutes: int = 60  # Delay before AI provides backup copies/votes
-    ai_backup_batch_size: int = 5  # Maximum number of copy or vote rounds to process per backup cycle
-    ai_backup_sleep_minutes: int = 60  # Sleep time between backup cycles
+    ai_backup_delay_minutes: int = 30  # Delay before AI provides backup copies/votes
+    ai_backup_batch_size: int = 10  # Maximum number of copy or vote rounds to process per backup cycle
+    ai_backup_sleep_minutes: int = 30  # Sleep time between backup cycles
     ai_stale_handler_enabled: bool = True  # Feature flag for stale content handler
-    ai_stale_threshold_days: int = 3  # Minimum age before content is treated as stale
-    ai_stale_check_interval_hours: int = 12  # Interval between stale content sweeps
+    ai_stale_threshold_days: int = 2  # Minimum age before content is treated as stale
+    ai_stale_check_interval_hours: int = 6 # Interval between stale content sweeps
 
     # Round service tuning
     round_lock_timeout_seconds: int = 10  # Shared timeout for distributed locks in round flows
@@ -161,8 +161,8 @@ class Settings(BaseSettings):
             raise ValueError("refresh_token_exp_days must be between 1 and 365 days")
 
         # Validate stale AI configuration
-        if self.ai_stale_threshold_days < 3:
-            raise ValueError("ai_stale_threshold_days must be at least 3 days")
+        if self.ai_stale_threshold_days < 1:
+            raise ValueError("ai_stale_threshold_days must be at least 1 day")
 
         if self.ai_stale_check_interval_hours < 1:
             raise ValueError("ai_stale_check_interval_hours must be at least 1 hour")

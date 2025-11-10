@@ -433,16 +433,20 @@ export interface PhrasesetVoteDetail {
 
 export interface PhrasesetActivityEntry {
   activity_id: string;
+  phraseset_id?: string;
+  prompt_round_id?: string;
   activity_type: string;
-  created_at: string;
-  player_id?: string | null;
-  player_username?: string | null;
+  player_id?: string;
+  player_username?: string;
   metadata: Record<string, any>;
+  created_at: string;
 }
 
 export interface PhrasesetDetails {
   phraseset_id: string;
   prompt_round_id: string;
+  copy_round_1_id: string | null;
+  copy_round_2_id: string | null;
   prompt_text: string;
   status: PhrasesetStatus;
   original_phrase: string | null;
@@ -659,4 +663,18 @@ export interface ClaimQuestRewardResponse {
   quest_type: string;
   reward_amount: number;
   new_balance: number;
+}
+
+// Online Users feature types
+export interface OnlineUser {
+  username: string;
+  last_action: string;
+  last_action_category: string;
+  last_activity: string;
+  time_ago: string;
+}
+
+export interface OnlineUsersResponse {
+  users: OnlineUser[];
+  total_count: number;
 }

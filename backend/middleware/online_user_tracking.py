@@ -1,0 +1,166 @@
+"""Online user tracking middleware for "Who's Online" feature.
+
+This middleware tracks user activity by recording the last API call made by each
+authenticated user. It updates the user_activity table which powers the real-time
+online users page accessible from the subheader.
+
+This is distinct from phraseset_activity tracking, which logs historical phraseset
+review events and lifecycle information.
+"""
+import logging
+from datetime import datetime, UTC
+from uuid import UUID
+from fastapi import Request, BackgroundTasks
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from jwt import InvalidTokenError, ExpiredSignatureError, DecodeError
+
+from backend.database import AsyncSessionLocal
+from backend.models.user_activity import UserActivity
+from backend.services.auth_service import AuthService
+from backend.config import get_settings
+
+logger = logging.getLogger(__name__)
+
+# Action type mapping based on URL paths with categories for consistent frontend styling
+ACTION_MAP = {
+    "/rounds/prompt": {"name": "Prompt Round", "category": "round_prompt"},
+    "/rounds/copy": {"name": "Copy Round", "category": "round_copy"}, 
+    "/rounds/vote": {"name": "Vote Round", "category": "round_vote"},
+    "/player/leaderboard": {"name": "Leaderboard", "category": "stats"},
+    "/player/statistics": {"name": "Statistics", "category": "stats"},
+    "/rounds/results": {"name": "Round Review", "category": "review"},
+    "/player/dashboard": {"name": "Dashboard", "category": "navigation"},
+    "/rounds/completed": {"name": "Completed Rounds", "category": "review"},
+    "/quests": {"name": "Quests", "category": "quests"},
+    "/phrasesets": {"name": "Phraseset Review", "category": "review"},
+    "/player/balance": {"name": "Balance Check", "category": "navigation"},
+    "/player/tutorial": {"name": "Tutorial", "category": "navigation"},
+    # Add missing mappings that frontend expects
+    "/rounds/": {"name": "Round Review", "category": "review"},  # Generic rounds path
+    "/phrasesets/": {"name": "Phraseset Review", "category": "review"},  # Generic phrasesets path
+}
+
+
+def get_friendly_action_info(method: str, path: str) -> dict:
+    """Convert HTTP method and path to a user-friendly action name and category."""
+    # Check for exact path matches first
+    if path in ACTION_MAP:
+        return ACTION_MAP[path]
+    
+    # Check for path prefixes
+    for pattern, action_info in ACTION_MAP.items():
+        if path.startswith(pattern):
+            return action_info
+    
+    # Default fallback based on path patterns
+    if path.startswith("/player"):
+        return {"name": "Player Action", "category": "navigation"}
+    elif path.startswith("/rounds"):
+        return {"name": "Round Action", "category": "round_other"}
+    elif path.startswith("/quests"):
+        return {"name": "Quests", "category": "quests"}
+    elif path.startswith("/auth"):
+        return {"name": "Authentication", "category": "auth"}
+    else:
+        return {"name": "Other Action", "category": "other"}
+
+
+async def update_user_activity_task(
+    player_id: UUID,
+    username: str,
+    action_name: str,
+    action_category: str,
+    action_path: str
+):
+    """Background task to update user activity without blocking response."""
+    try:
+        async with AsyncSessionLocal() as db:
+            # Update or create activity record
+            result = await db.execute(
+                select(UserActivity).where(UserActivity.player_id == player_id)
+            )
+            activity = result.scalar_one_or_none()
+            
+            current_time = datetime.now(UTC)
+            
+            if activity:
+                # Update existing activity
+                activity.username = username
+                activity.last_action = action_name
+                activity.last_action_category = action_category
+                activity.last_action_path = action_path
+                activity.last_activity = current_time
+            else:
+                # Create new activity record
+                activity = UserActivity(
+                    player_id=player_id,
+                    username=username,
+                    last_action=action_name,
+                    last_action_category=action_category,
+                    last_action_path=action_path,
+                    last_activity=current_time
+                )
+                db.add(activity)
+            
+            await db.commit()
+                        
+    except Exception as e:
+        logger.error(f"Error updating user activity in background task: {e}")
+
+
+async def online_user_tracking_middleware(request: Request, call_next):
+    """
+    Middleware to track user activity for online users feature.
+    
+    This middleware runs after request processing and tracks the last activity
+    of authenticated users to determine who is currently online using background tasks.
+    """
+    # Add background tasks to request if not already present
+    if not hasattr(request, 'state') or not hasattr(request.state, 'background_tasks'):
+        request.state.background_tasks = BackgroundTasks()
+    
+    response = await call_next(request)
+    
+    # Only track activity for successful requests to avoid noise
+    if response.status_code < 400:
+        # Extract token from cookies
+        settings = get_settings()
+        token = request.cookies.get(settings.access_token_cookie_name)
+        
+        if token:
+            try:
+                # Create a temporary auth service instance for token decoding only
+                # This is lightweight and doesn't require a full database session
+                async with AsyncSessionLocal() as temp_db:
+                    auth_service = AuthService(temp_db)
+                    
+                    # Decode token to get player info
+                    payload = auth_service.decode_access_token(token)
+                    player_id_str = payload.get("sub")
+                    username = payload.get("username")
+                    
+                    if player_id_str and username:
+                        player_id = UUID(player_id_str)
+                        action_path = str(request.url.path)
+                        
+                        # Use friendly action info instead of raw HTTP method + path
+                        friendly_action_info = get_friendly_action_info(request.method, action_path)
+                        
+                        # Queue background task to update database
+                        request.state.background_tasks.add_task(
+                            update_user_activity_task,
+                            player_id,
+                            username,
+                            friendly_action_info["name"],
+                            friendly_action_info["category"],
+                            action_path
+                        )
+                        
+            except (InvalidTokenError, ExpiredSignatureError, DecodeError):
+                # Token is invalid or expired - this is expected and shouldn't be logged
+                pass
+            except Exception as e:
+                logger.error(f"Unexpected error in activity tracking middleware: {e}")
+    
+    return response

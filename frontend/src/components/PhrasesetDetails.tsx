@@ -6,7 +6,7 @@ import type {
 } from '../api/types';
 import { StatusBadge } from './StatusBadge';
 import { ProgressBar } from './ProgressBar';
-import { ActivityTimeline } from './ActivityTimeline';
+import { ActivityTimeline } from './PhrasesetActivityTimeline';
 import { formatDateTimeInUserZone } from '../utils/datetime';
 
 interface PhrasesetDetailsProps {

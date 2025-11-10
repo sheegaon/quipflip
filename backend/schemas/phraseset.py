@@ -141,6 +141,8 @@ class PhrasesetDetails(BaseSchema):
     """Full details for a phraseset."""
     phraseset_id: UUID
     prompt_round_id: UUID
+    copy_round_1_id: Optional[UUID] = None
+    copy_round_2_id: Optional[UUID] = None
     prompt_text: str
     status: Literal["waiting_copies", "waiting_copy1", "active", "voting", "closing", "finalized", "abandoned"]
     original_phrase: Optional[str]

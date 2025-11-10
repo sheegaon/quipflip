@@ -7,6 +7,8 @@ interface CopyRoundReviewProps {
   copyPhrase: string;
   playerUsername: string;
   copyNumber: 1 | 2;
+  roundId?: string;
+  existingHints?: string[] | null; // Pass hints from parent if they exist
   onSubmit: () => void;
   onBack: () => void;
 }
@@ -16,11 +18,14 @@ export const CopyRoundReview: React.FC<CopyRoundReviewProps> = ({
   copyPhrase,
   playerUsername,
   copyNumber,
+  roundId,
+  existingHints = null,
   onSubmit,
   onBack,
 }) => {
   const [isRevealed, setIsRevealed] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showHints, setShowHints] = useState(false);
 
   const handleReveal = () => {
     setIsRevealed(true);
@@ -30,6 +35,7 @@ export const CopyRoundReview: React.FC<CopyRoundReviewProps> = ({
     setIsSubmitting(true);
     onSubmit();
   };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-quip-turquoise to-quip-teal flex items-center justify-center p-4 bg-pattern">
       <div className="max-w-2xl w-full tile-card p-8 slide-up-enter">
@@ -60,6 +66,51 @@ export const CopyRoundReview: React.FC<CopyRoundReviewProps> = ({
             {originalPhrase}
           </p>
         </div>
+
+        {/* AI Hints - Show existing hints or indicate they weren't generated */}
+        {roundId && (
+          <div className="mb-4 rounded-tile border border-quip-turquoise/30 bg-white/80 p-4 shadow-tile-xs">
+            {existingHints && existingHints.length > 0 ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setShowHints((prev) => !prev)}
+                  className="flex w-full items-center justify-between rounded-tile border border-quip-turquoise/40 bg-quip-turquoise/10 px-3 py-2 font-semibold text-quip-teal transition hover:bg-quip-turquoise/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-quip-turquoise"
+                >
+                  <span>{showHints ? 'Hide AI Hints' : 'Show AI Hints'}</span>
+                  <span className="text-sm text-quip-navy">{existingHints.length} suggestions</span>
+                </button>
+                {showHints && (
+                  <div className="mt-3 space-y-3">
+                    <p className="text-xs uppercase tracking-wide text-quip-teal/80">
+                      Mix and modify - make it your own!
+                    </p>
+                    <ul className="space-y-2">
+                      {existingHints.map((hint, index) => (
+                        <li
+                          key={`${hint}-${index}`}
+                          className="flex items-start gap-2 rounded-tile border border-quip-turquoise/30 bg-white px-3 py-2 text-quip-navy shadow-inner"
+                        >
+                          <span className="font-semibold text-quip-turquoise">Hint {index + 1}:</span>
+                          <span>{hint}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-center">
+                <div className="rounded-tile border border-gray-300 bg-gray-50 px-4 py-3 text-quip-navy">
+                  <p className="font-semibold">Hints were not generated for this prompt</p>
+                  <p className="mt-1 text-sm text-quip-teal">
+                    AI hints were not requested during the original copy round.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Copy Phrase Input - Click to reveal */}
         <div className="space-y-4 mb-4">

@@ -1,4 +1,11 @@
-"""Phraseset activity model for tracking lifecycle events."""
+"""Phraseset activity model for tracking lifecycle events.
+
+Logs historical events in the phraseset review process (creation, review, approval,
+rejection, etc.) for analytics and audit purposes.
+
+This is distinct from UserActivity model, which tracks real-time online user status
+for the "Who's Online" feature.
+"""
 from sqlalchemy import Column, String, DateTime, ForeignKey, JSON, Index
 from sqlalchemy.orm import relationship
 from datetime import datetime, UTC
@@ -9,7 +16,11 @@ from backend.models.base import get_uuid_column
 
 
 class PhrasesetActivity(Base):
-    """Activity log entry for a phraseset."""
+    """Activity log entry for a phraseset's lifecycle events.
+
+    Tracks historical events like creation, review, approval, rejection, etc.
+    Used for displaying phraseset history timelines and analytics.
+    """
     __tablename__ = "phraseset_activity"
 
     activity_id = get_uuid_column(primary_key=True, default=uuid.uuid4)

@@ -88,24 +88,38 @@ export const GameProvider: React.FC<{
 
   // Initialize session on mount
   useEffect(() => {
+    const controller = new AbortController();
+    let isMounted = true;
+
     const initializeSession = async () => {
       const storedUsername = apiClient.getStoredUsername();
-      if (storedUsername) {
-        setUsername(storedUsername);
-        // Try to verify authentication by calling an authenticated endpoint
-        // If cookies are valid, this will succeed and confirm we're logged in
-        try {
-          await apiClient.getBalance();
+      if (!storedUsername) {
+        return;
+      }
+
+      setUsername(storedUsername);
+      try {
+        await apiClient.getBalance(controller.signal);
+        if (isMounted) {
           setIsAuthenticated(true);
-        } catch (err) {
-          // Cookies expired or invalid, clear session
-          apiClient.clearSession();
+        }
+      } catch (err) {
+        if (controller.signal.aborted) {
+          return;
+        }
+        apiClient.clearSession();
+        if (isMounted) {
           setIsAuthenticated(false);
           setUsername(null);
         }
       }
     };
     initializeSession();
+
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
   }, []);
 
   // Monitor authentication state changes
