@@ -24,10 +24,14 @@ export const CopyRoundReview: React.FC<CopyRoundReviewProps> = ({
 }) => {
   const [isRevealed, setIsRevealed] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Local hint state - separate from GameContext to avoid state pollution in review mode
+  // TODO: Consider refactoring to use a pure data-fetching approach without GameContext state
   const [copyRoundHints, setCopyRoundHints] = useState<string[] | null>(null);
   const [isFetchingHints, setIsFetchingHints] = useState(false);
   const [hintError, setHintError] = useState<string | null>(null);
   const [showHints, setShowHints] = useState(false);
+  const [hintsAttempted, setHintsAttempted] = useState(false);
 
   const handleReveal = () => {
     setIsRevealed(true);
@@ -45,12 +49,15 @@ export const CopyRoundReview: React.FC<CopyRoundReviewProps> = ({
 
     setIsFetchingHints(true);
     setHintError(null);
+    setHintsAttempted(true);
 
     try {
       // Call API directly (not through GameContext) to avoid polluting shared state
       const response = await apiClient.getCopyHints(roundId);
-      setCopyRoundHints(response.hints);
-      setShowHints(true);
+      setCopyRoundHints(response.hints || []); // Ensure we always set an array
+      if (response.hints && response.hints.length > 0) {
+        setShowHints(true);
+      }
     } catch (err: any) {
       // The hints API only works for active rounds, not completed rounds
       const errorMessage = extractErrorMessage(err);
@@ -59,10 +66,28 @@ export const CopyRoundReview: React.FC<CopyRoundReviewProps> = ({
       } else {
         setHintError(errorMessage || 'Unable to fetch AI hints.');
       }
+      setCopyRoundHints([]); // Set empty array to indicate attempted but failed
     } finally {
       setIsFetchingHints(false);
     }
   };
+
+  // Determine hint display state
+  const getHintDisplayState = () => {
+    if (!hintsAttempted && copyRoundHints === null) {
+      return 'not-fetched';
+    }
+    if (copyRoundHints && copyRoundHints.length > 0) {
+      return 'has-hints';
+    }
+    if (copyRoundHints !== null && copyRoundHints.length === 0) {
+      return 'no-hints';
+    }
+    return 'not-fetched';
+  };
+
+  const hintDisplayState = getHintDisplayState();
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-quip-turquoise to-quip-teal flex items-center justify-center p-4 bg-pattern">
       <div className="max-w-2xl w-full tile-card p-8 slide-up-enter">
@@ -97,7 +122,7 @@ export const CopyRoundReview: React.FC<CopyRoundReviewProps> = ({
         {/* AI Hints */}
         {roundId && (
           <div className="mb-4 rounded-tile border border-quip-turquoise/30 bg-white/80 p-4 shadow-tile-xs">
-            {copyRoundHints && copyRoundHints.length > 0 ? (
+            {hintDisplayState === 'has-hints' ? (
               <>
                 <button
                   type="button"
@@ -105,7 +130,7 @@ export const CopyRoundReview: React.FC<CopyRoundReviewProps> = ({
                   className="flex w-full items-center justify-between rounded-tile border border-quip-turquoise/40 bg-quip-turquoise/10 px-3 py-2 font-semibold text-quip-teal transition hover:bg-quip-turquoise/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-quip-turquoise"
                 >
                   <span>{showHints ? 'Hide AI Hints' : 'Show AI Hints'}</span>
-                  <span className="text-sm text-quip-navy">{copyRoundHints.length} suggestions</span>
+                  <span className="text-sm text-quip-navy">{copyRoundHints!.length} suggestions</span>
                 </button>
                 {showHints && (
                   <div className="mt-3 space-y-3">
@@ -113,7 +138,7 @@ export const CopyRoundReview: React.FC<CopyRoundReviewProps> = ({
                       Mix and modify - make it your own!
                     </p>
                     <ul className="space-y-2">
-                      {copyRoundHints.map((hint, index) => (
+                      {copyRoundHints!.map((hint, index) => (
                         <li
                           key={`${hint}-${index}`}
                           className="flex items-start gap-2 rounded-tile border border-quip-turquoise/30 bg-white px-3 py-2 text-quip-navy shadow-inner"
@@ -126,6 +151,15 @@ export const CopyRoundReview: React.FC<CopyRoundReviewProps> = ({
                   </div>
                 )}
               </>
+            ) : hintDisplayState === 'no-hints' ? (
+              <div className="text-center">
+                <div className="rounded-tile border border-quip-orange/40 bg-quip-orange/10 px-4 py-3 text-quip-navy">
+                  <p className="font-semibold">No AI hints available</p>
+                  <p className="mt-1 text-sm text-quip-teal">
+                    The AI couldn't generate suitable suggestions for this phrase.
+                  </p>
+                </div>
+              </div>
             ) : (
               <>
                 <button

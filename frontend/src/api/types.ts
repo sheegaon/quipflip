@@ -445,6 +445,8 @@ export interface PhrasesetActivityEntry {
 export interface PhrasesetDetails {
   phraseset_id: string;
   prompt_round_id: string;
+  copy_round_1_id: string | null;
+  copy_round_2_id: string | null;
   prompt_text: string;
   status: PhrasesetStatus;
   original_phrase: string | null;

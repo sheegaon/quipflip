@@ -98,9 +98,14 @@ export const PhrasesetReview: React.FC = () => {
   // Find the player who played the prompt round
   const promptContributor = phrasesetData.contributors.find(c => c.round_id === phrasesetData.prompt_round_id);
 
-  // Find contributors for copy rounds by matching their phrases
-  const copy1Contributor = phrasesetData.contributors.find(c => c.phrase === phrasesetData.copy_phrase_1);
-  const copy2Contributor = phrasesetData.contributors.find(c => c.phrase === phrasesetData.copy_phrase_2);
+  // Find contributors for copy rounds using direct round IDs (now provided by backend)
+  const copy1Contributor = phrasesetData.copy_round_1_id 
+    ? phrasesetData.contributors.find(c => c.round_id === phrasesetData.copy_round_1_id)
+    : null;
+  
+  const copy2Contributor = phrasesetData.copy_round_2_id
+    ? phrasesetData.contributors.find(c => c.round_id === phrasesetData.copy_round_2_id)  
+    : null;
 
   if (reviewStage === 'prompt') {
     return (

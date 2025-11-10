@@ -285,6 +285,8 @@ class PhrasesetService:
         return {
             "phraseset_id": phraseset.phraseset_id,
             "prompt_round_id": phraseset.prompt_round_id,
+            "copy_round_1_id": phraseset.copy_round_1_id,
+            "copy_round_2_id": phraseset.copy_round_2_id,
             "prompt_text": phraseset.prompt_text,
             "status": self._derive_status(prompt_round, phraseset),
             "original_phrase": phraseset.original_phrase,
@@ -412,6 +414,8 @@ class PhrasesetService:
         return {
             "phraseset_id": phraseset.phraseset_id,
             "prompt_round_id": phraseset.prompt_round_id,
+            "copy_round_1_id": phraseset.copy_round_1_id,
+            "copy_round_2_id": phraseset.copy_round_2_id,
             "prompt_text": phraseset.prompt_text,
             "status": "finalized",  # Always finalized for public access
             "original_phrase": phraseset.original_phrase,

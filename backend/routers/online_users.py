@@ -13,6 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 import asyncio
 import logging
+from uuid import UUID
 
 from backend.database import get_db, AsyncSessionLocal
 from backend.dependencies import get_current_player
@@ -57,7 +58,6 @@ async def authenticate_websocket(websocket: WebSocket) -> Optional[Player]:
                 logger.warning("WebSocket token missing player_id")
                 return None
 
-            from uuid import UUID
             player_id = UUID(player_id_str)
 
             player_service = PlayerService(db)
