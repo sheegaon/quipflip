@@ -544,51 +544,7 @@ class CleanupService:
             f"(haven't logged in for >{days_old} days, no activity)"
         )
 
-        # For guests with NO activity, actually delete them from the database
-        # (not just anonymize like _delete_players_by_ids does)
-
-        # First, delete all related data
-        # 1. Votes
-        await self.db.execute(
-            delete(Vote).where(Vote.player_id.in_(inactive_guest_ids))
-        )
-
-        # 2. Transactions
-        await self.db.execute(
-            delete(Transaction).where(Transaction.player_id.in_(inactive_guest_ids))
-        )
-
-        # 3. Daily bonuses
-        await self.db.execute(
-            delete(DailyBonus).where(DailyBonus.player_id.in_(inactive_guest_ids))
-        )
-
-        # 4. Result views
-        await self.db.execute(
-            delete(ResultView).where(ResultView.player_id.in_(inactive_guest_ids))
-        )
-
-        # 5. Abandoned prompts
-        await self.db.execute(
-            delete(PlayerAbandonedPrompt).where(PlayerAbandonedPrompt.player_id.in_(inactive_guest_ids))
-        )
-
-        # 6. Prompt feedback
-        await self.db.execute(
-            delete(PromptFeedback).where(PromptFeedback.player_id.in_(inactive_guest_ids))
-        )
-
-        # 7. Refresh tokens
-        await self.db.execute(
-            delete(RefreshToken).where(RefreshToken.player_id.in_(inactive_guest_ids))
-        )
-
-        # 8. Quests
-        await self.db.execute(
-            delete(Quest).where(Quest.player_id.in_(inactive_guest_ids))
-        )
-
-        # 9. Get IDs of any incomplete rounds to remove from queue
+        # Get IDs of any prompt rounds to remove from queue (before deletion)
         from backend.services.queue_service import QueueService
 
         prompt_rounds_result = await self.db.execute(
@@ -598,12 +554,8 @@ class CleanupService:
         )
         prompt_round_ids = [row[0] for row in prompt_rounds_result]
 
-        # 10. Delete all rounds (since they have no submitted rounds, safe to delete all)
-        await self.db.execute(
-            delete(Round).where(Round.player_id.in_(inactive_guest_ids))
-        )
-
-        # 11. Finally, delete the players themselves
+        # Delete the players - related data will be deleted automatically via CASCADE
+        # All related tables have ondelete="CASCADE" configured on their foreign keys
         result = await self.db.execute(
             delete(Player).where(Player.player_id.in_(inactive_guest_ids))
         )
@@ -612,7 +564,7 @@ class CleanupService:
         # Commit the transaction
         await self.db.commit()
 
-        # Remove deleted prompt rounds from queue
+        # Remove deleted prompt rounds from queue (after commit)
         if prompt_round_ids:
             removed_from_queue = QueueService.remove_prompt_rounds_from_queue(prompt_round_ids)
             logger.info(f"Removed {removed_from_queue} prompt rounds from queue after guest deletion")
