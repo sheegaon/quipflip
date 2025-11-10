@@ -40,8 +40,8 @@ export const SubHeader: React.FC = () => {
     navigate('/results');
   };
 
-  const goToStatistics = React.useCallback(() => {
-    navigate('/statistics');
+  const goToLeaderboard = React.useCallback(() => {
+    navigate('/leaderboard');
   }, [navigate]);
 
   return (
@@ -117,12 +117,12 @@ export const SubHeader: React.FC = () => {
             />
           </button>
 
-          {/* Statistics icon */}
+          {/* Leaderboard icon */}
           <button
-            onClick={goToStatistics}
+            onClick={goToLeaderboard}
             className="group"
-            title="View your statistics"
-            aria-label="View your statistics"
+            title="View the leaderboard"
+            aria-label="View the leaderboard"
           >
             <img
               src="/icon_leaderboard.svg"

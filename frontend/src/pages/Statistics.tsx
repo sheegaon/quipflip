@@ -3,14 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { useResults } from '../contexts/ResultsContext';
 import { useGame } from '../contexts/GameContext';
 import apiClient, { extractErrorMessage } from '../api/client';
-import type { ApiInfo, HistoricalTrendPoint, PlayerStatistics, WeeklyLeaderboardResponse } from '../api/types';
+import type { ApiInfo, HistoricalTrendPoint, PlayerStatistics } from '../api/types';
 import { Header } from '../components/Header';
 import WinRateChart from '../components/statistics/WinRateChart';
 import EarningsChart from '../components/statistics/EarningsChart';
 import SpendingChart from '../components/statistics/SpendingChart';
 import FrequencyChart from '../components/statistics/FrequencyChart';
 import HistoricalTrendsChart from '../components/statistics/HistoricalTrendsChart';
-import WeeklyLeaderboard from '../components/statistics/WeeklyLeaderboard';
 import { statisticsLogger } from '../utils/logger';
 import { hasCompletedSurvey } from '../utils/betaSurvey';
 import type { BetaSurveyStatusResponse } from '../api/types';
@@ -28,9 +27,6 @@ const Statistics: React.FC = () => {
   const [chartsReady, setChartsReady] = useState(false);
   const [surveyStatus, setSurveyStatus] = useState<BetaSurveyStatusResponse | null>(null);
   const [appInfo, setAppInfo] = useState<ApiInfo | null>(null);
-  const [leaderboard, setLeaderboard] = useState<WeeklyLeaderboardResponse | null>(null);
-  const [leaderboardLoading, setLeaderboardLoading] = useState(true);
-  const [leaderboardError, setLeaderboardError] = useState<string | null>(null);
 
   const historicalTrends = useMemo<HistoricalTrendPoint[]>(() => {
     if (!data) return [];
@@ -226,29 +222,7 @@ const Statistics: React.FC = () => {
       }
     };
 
-    const fetchLeaderboard = async () => {
-      try {
-        setLeaderboardLoading(true);
-        setLeaderboardError(null);
-        const leaderboardData = await apiClient.getWeeklyLeaderboard(controller.signal);
-        setLeaderboard(leaderboardData);
-        statisticsLogger.debug('Weekly leaderboard loaded', {
-          promptEntries: leaderboardData?.prompt_leaderboard?.leaders?.length ?? 0,
-          copyEntries: leaderboardData?.copy_leaderboard?.leaders?.length ?? 0,
-          voterEntries: leaderboardData?.voter_leaderboard?.leaders?.length ?? 0,
-        });
-      } catch (err) {
-        if (err instanceof Error && err.name === 'CanceledError') return;
-        statisticsLogger.error('Failed to load weekly leaderboard', err);
-        setLeaderboard(null);
-        setLeaderboardError(extractErrorMessage(err, 'load-weekly-leaderboard'));
-      } finally {
-        setLeaderboardLoading(false);
-      }
-    };
-
     fetchData();
-    fetchLeaderboard();
 
     return () => controller.abort();
   }, [getStatistics]);
@@ -379,22 +353,30 @@ const Statistics: React.FC = () => {
           </div>
         )}
 
+        {/* Leaderboard Link Card */}
+        <div className="tile-card p-6 mb-6 bg-gradient-to-br from-orange-50 to-cyan-50 border-2 border-quip-teal">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="flex-1">
+              <h2 className="text-2xl font-display font-bold text-quip-navy mb-2">
+                View Leaderboard
+              </h2>
+              <p className="text-quip-navy mb-3">
+                See how you rank against other players in weekly and all-time leaderboards across all three roles.
+              </p>
+            </div>
+            <div>
+              <button
+                onClick={() => navigate('/leaderboard')}
+                className="bg-gradient-to-r from-quip-orange to-quip-turquoise hover:from-quip-orange-deep hover:to-quip-teal text-white font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm whitespace-nowrap"
+              >
+                Go to Leaderboard
+              </button>
+            </div>
+          </div>
+        </div>
+
         {/* Charts Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          {/* Weekly Leaderboard */}
-          <div className="tile-card p-6">
-            <h2 className="text-xl font-display font-bold text-quip-navy mb-2">Weekly Leaderboard</h2>
-            <p className="text-sm text-quip-teal mb-4">
-              Ranking players by win rate over the past seven days across all three roles.
-            </p>
-            <WeeklyLeaderboard
-              promptLeaderboard={leaderboard?.prompt_leaderboard ?? null}
-              copyLeaderboard={leaderboard?.copy_leaderboard ?? null}
-              voterLeaderboard={leaderboard?.voter_leaderboard ?? null}
-              loading={leaderboardLoading || !chartsReady}
-              error={leaderboardError}
-            />
-          </div>
 
           {/* Historical Trends */}
           <div className="tile-card p-6">

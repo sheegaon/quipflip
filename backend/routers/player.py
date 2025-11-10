@@ -652,6 +652,33 @@ async def get_weekly_leaderboard(
     )
 
 
+@router.get("/statistics/alltime-leaderboard", response_model=WeeklyLeaderboardResponse)
+async def get_alltime_leaderboard(
+    player: Player = Depends(get_current_player),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return all-time leaderboards for all three roles highlighting the current player."""
+
+    scoring_service = ScoringService(db)
+    role_data, generated_at = await scoring_service.get_alltime_leaderboard_for_player(
+        player.player_id,
+        player.username,
+    )
+
+    # Build leaderboard for each role using dictionary comprehension
+    leader_lists = {
+        role: [WeeklyLeaderboardEntry(**entry) for entry in role_data.get(role, [])]
+        for role in ["prompt", "copy", "voter"]
+    }
+
+    return WeeklyLeaderboardResponse(
+        prompt_leaderboard=RoleLeaderboard(role="prompt", leaders=leader_lists["prompt"]),
+        copy_leaderboard=RoleLeaderboard(role="copy", leaders=leader_lists["copy"]),
+        voter_leaderboard=RoleLeaderboard(role="voter", leaders=leader_lists["voter"]),
+        generated_at=generated_at or datetime.now(UTC),
+    )
+
+
 @router.get("/tutorial/status", response_model=TutorialStatus)
 async def get_tutorial_status(
     player: Player = Depends(get_current_player),

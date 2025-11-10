@@ -37,6 +37,7 @@ const PhrasesetReview = lazy(() => import('./pages/PhrasesetReview'));
 const Tracking = lazy(() => import('./pages/Tracking'));
 const Quests = lazy(() => import('./pages/Quests'));
 const Statistics = lazy(() => import('./pages/Statistics'));
+const Leaderboard = lazy(() => import('./pages/Leaderboard'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Admin = lazy(() => import('./pages/Admin'));
 const AdminFlagged = lazy(() => import('./pages/AdminFlagged'));
@@ -129,6 +130,10 @@ const AppRoutes: React.FC = () => {
         <Route
           path="/statistics"
           element={renderProtectedRoute(<Statistics />)}
+        />
+        <Route
+          path="/leaderboard"
+          element={renderProtectedRoute(<Leaderboard />)}
         />
         <Route
           path="/settings"

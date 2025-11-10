@@ -32,6 +32,8 @@ settings = get_settings()
 PLACEHOLDER_PLAYER_NAMESPACE = UUID("6c057f58-7199-43ff-b4fc-17b77df5e6a2")
 WEEKLY_LEADERBOARD_LIMIT = 5
 WEEKLY_LEADERBOARD_CACHE_KEY = "leaderboard:weekly:v4"  # v4: split by role with win rates
+ALLTIME_LEADERBOARD_LIMIT = 10
+ALLTIME_LEADERBOARD_CACHE_KEY = "leaderboard:alltime:v1"
 AI_PLAYER_EMAIL_DOMAIN = "@quipflip.internal"
 LEADERBOARD_ROLES = ["prompt", "copy", "voter"]
 
@@ -136,6 +138,83 @@ async def _store_weekly_leaderboard_cache(
         await client.set(WEEKLY_LEADERBOARD_CACHE_KEY, json.dumps(payload), ex=3600)
     except Exception as exc:  # pragma: no cover - defensive logging
         logger.error(f"Failed to write weekly leaderboard cache: {exc}")
+
+
+async def _load_cached_alltime_leaderboard() -> tuple[dict[str, list[dict[str, Any]]], datetime] | None:
+    """Fetch cached role-based all-time leaderboard data from Redis, if available."""
+
+    client = _get_redis_client()
+    if client is None:
+        return None
+
+    try:
+        raw_value = await client.get(ALLTIME_LEADERBOARD_CACHE_KEY)
+    except Exception as exc:  # pragma: no cover - defensive logging
+        logger.error(f"Failed to read all-time leaderboard cache: {exc}")
+        return None
+
+    if not raw_value:
+        return None
+
+    try:
+        payload = json.loads(raw_value)
+        generated_at_raw = payload.get("generated_at")
+        generated_at = datetime.fromisoformat(generated_at_raw) if generated_at_raw else None
+
+        role_leaderboards: dict[str, list[dict[str, Any]]] = {}
+
+        for role in LEADERBOARD_ROLES:
+            entries: list[dict[str, Any]] = []
+            for entry in payload.get(f"{role}_leaderboard", []):
+                normalized = dict(entry)
+                if "player_id" in normalized:
+                    try:
+                        normalized["player_id"] = UUID(str(normalized["player_id"]))
+                    except Exception:
+                        logger.error(
+                            f"Skipping cached leaderboard entry with invalid player_id: {normalized.get('player_id')}"
+                        )
+                        continue
+                entries.append(normalized)
+            role_leaderboards[role] = entries
+
+        if generated_at is None:
+            return None
+
+        return role_leaderboards, generated_at
+    except Exception as exc:  # pragma: no cover - cache corruption fallback
+        logger.error(f"Invalid data in all-time leaderboard cache: {exc}")
+        return None
+
+
+async def _store_alltime_leaderboard_cache(
+    role_leaderboards: dict[str, list[dict[str, Any]]], generated_at: datetime
+) -> None:
+    """Persist role-based all-time leaderboard results to Redis for reuse across workers."""
+
+    client = _get_redis_client()
+    if client is None:
+        return
+
+    payload: dict[str, Any] = {
+        "generated_at": generated_at.isoformat(),
+    }
+
+    for role, entries in role_leaderboards.items():
+        cache_entries: list[dict[str, Any]] = []
+        for entry in entries:
+            cache_entries.append(
+                {
+                    **entry,
+                    "player_id": str(entry["player_id"]),
+                }
+            )
+        payload[f"{role}_leaderboard"] = cache_entries
+
+    try:
+        await client.set(ALLTIME_LEADERBOARD_CACHE_KEY, json.dumps(payload), ex=7200)  # 2 hours cache
+    except Exception as exc:  # pragma: no cover - defensive logging
+        logger.error(f"Failed to write all-time leaderboard cache: {exc}")
 
 
 def _placeholder_player_id(phraseset_id: UUID, role: str) -> UUID:
@@ -599,6 +678,337 @@ class ScoringService:
         import asyncio
 
         tasks = [self._compute_role_leaderboard(role) for role in LEADERBOARD_ROLES]
+        results = await asyncio.gather(*tasks)
+
+        return dict(zip(LEADERBOARD_ROLES, results))
+
+    async def get_alltime_leaderboard_snapshot(
+        self,
+    ) -> tuple[dict[str, list[dict[str, Any]]], datetime | None]:
+        """Return cached role-based all-time leaderboards, computing them when missing."""
+
+        cached = await _load_cached_alltime_leaderboard()
+        if cached:
+            return cached
+
+        role_leaderboards = await self._compute_role_based_alltime_leaderboards()
+        generated_at = datetime.now(UTC)
+        await _store_alltime_leaderboard_cache(role_leaderboards, generated_at)
+        return role_leaderboards, generated_at
+
+    async def refresh_alltime_leaderboard(self) -> None:
+        """Recalculate all-time leaderboard and persist the shared cache."""
+
+        role_leaderboards = await self._compute_role_based_alltime_leaderboards()
+        generated_at = datetime.now(UTC)
+        await _store_alltime_leaderboard_cache(role_leaderboards, generated_at)
+
+    async def get_alltime_leaderboard_for_player(
+        self,
+        player_id: UUID,
+        username: str | None,
+    ) -> tuple[dict[str, list[dict[str, Any]]], datetime | None]:
+        """Return top all-time leaderboard entries plus the current player for each role."""
+
+        role_leaderboards, generated_at = await self.get_alltime_leaderboard_snapshot()
+
+        result = {}
+
+        for role in LEADERBOARD_ROLES:
+            entries = role_leaderboards.get(role, [])
+            lookup = {entry["player_id"]: entry for entry in entries}
+            top_entries = entries[:ALLTIME_LEADERBOARD_LIMIT]
+
+            player_entry = lookup.get(player_id)
+            if player_entry is None:
+                player_entry = {
+                    "player_id": player_id,
+                    "username": username or "Unknown Player",
+                    "role": role,
+                    "total_costs": 0,
+                    "total_earnings": 0,
+                    "net_earnings": 0,
+                    "win_rate": 0.0,
+                    "total_rounds": 0,
+                    "rank": None,
+                }
+
+            combined = [dict(entry) for entry in top_entries]
+            if all(entry["player_id"] != player_entry["player_id"] for entry in combined):
+                combined.append(dict(player_entry))
+
+            for entry in combined:
+                entry["is_current_player"] = entry["player_id"] == player_id
+
+            result[role] = combined
+
+        return result, generated_at
+
+    async def _compute_role_leaderboard_alltime(self, role: str) -> list[dict]:
+        """Calculate all-time leaderboard for a specific role."""
+
+        # Determine completion criteria based on role (same as weekly but without time window)
+        if role == "prompt":
+            completion_query = (
+                select(
+                    Round.round_id.label("round_id"),
+                    func.max(PhrasesetActivity.created_at).label("completed_at"),
+                )
+                .join(PhrasesetActivity, PhrasesetActivity.prompt_round_id == Round.round_id)
+                .where(
+                    Round.round_type == "prompt",
+                    PhrasesetActivity.activity_type == "prompt_submitted",
+                )
+                .group_by(Round.round_id)
+            )
+        elif role == "copy":
+            completion_query = (
+                select(
+                    Round.round_id.label("round_id"),
+                    func.max(PhrasesetActivity.created_at).label("completed_at"),
+                )
+                .join(
+                    PhrasesetActivity,
+                    and_(
+                        PhrasesetActivity.prompt_round_id == Round.prompt_round_id,
+                        PhrasesetActivity.player_id == Round.player_id,
+                        PhrasesetActivity.activity_type.in_(["copy1_submitted", "copy2_submitted"]),
+                    ),
+                )
+                .where(Round.round_type == "copy")
+                .group_by(Round.round_id)
+            )
+        else:  # voter
+            completion_query = (
+                select(
+                    Round.round_id.label("round_id"),
+                    func.max(PhrasesetActivity.created_at).label("completed_at"),
+                )
+                .join(
+                    PhrasesetActivity,
+                    and_(
+                        PhrasesetActivity.phraseset_id == Round.phraseset_id,
+                        PhrasesetActivity.player_id == Round.player_id,
+                        PhrasesetActivity.activity_type == "vote_submitted",
+                    ),
+                )
+                .where(Round.round_type == "vote")
+                .group_by(Round.round_id)
+            )
+
+        completion_subquery = completion_query.subquery()
+
+        # Get costs and round counts for this role (no time window)
+        rounds_subquery = (
+            select(
+                Round.player_id.label("player_id"),
+                func.sum(Round.cost).label("total_costs"),
+                func.count(Round.round_id).label("total_rounds"),
+            )
+            .join(completion_subquery, completion_subquery.c.round_id == Round.round_id)
+            .where(
+                Round.status == "submitted",
+                Round.round_type == role,
+            )
+            .group_by(Round.player_id)
+            .subquery()
+        )
+
+        # Get earnings for this role
+        if role in ["prompt", "copy"]:
+            # Prize payouts for prompt/copy roles
+            phraseset_contributors = union_all(
+                select(
+                    Phraseset.phraseset_id.label("phraseset_id"),
+                    Phraseset.prompt_round_id.label("round_id"),
+                ).select_from(Phraseset),
+                select(
+                    Phraseset.phraseset_id.label("phraseset_id"),
+                    Phraseset.copy_round_1_id.label("round_id"),
+                ).select_from(Phraseset),
+                select(
+                    Phraseset.phraseset_id.label("phraseset_id"),
+                    Phraseset.copy_round_2_id.label("round_id"),
+                ).select_from(Phraseset),
+            ).subquery()
+
+            earnings_query = (
+                select(
+                    Transaction.player_id.label("player_id"),
+                    Transaction.amount.label("amount"),
+                )
+                .join(Phraseset, Phraseset.phraseset_id == Transaction.reference_id)
+                .join(
+                    phraseset_contributors,
+                    phraseset_contributors.c.phraseset_id == Phraseset.phraseset_id,
+                )
+                .join(Round, Round.round_id == phraseset_contributors.c.round_id)
+                .join(completion_subquery, completion_subquery.c.round_id == Round.round_id)
+                .where(
+                    Transaction.type == "prize_payout",
+                    Transaction.amount > 0,
+                    Transaction.player_id == Round.player_id,
+                    Round.round_type == role,
+                )
+            )
+        else:  # voter
+            # Vote payouts for voter role
+            earnings_query = (
+                select(
+                    Transaction.player_id.label("player_id"),
+                    Transaction.amount.label("amount"),
+                )
+                .join(Vote, Vote.vote_id == Transaction.reference_id)
+                .where(
+                    Transaction.type == "vote_payout",
+                    Transaction.amount > 0,
+                )
+            )
+
+        earnings_subquery = (
+            select(
+                earnings_query.c.player_id,
+                func.sum(earnings_query.c.amount).label("total_earnings"),
+            )
+            .group_by(earnings_query.c.player_id)
+            .subquery()
+        )
+
+        # Calculate rounds with positive net earnings for win rate
+        if role in ["prompt", "copy"]:
+            # For prompt/copy: group by round and check if (earnings - cost) > 0
+            round_performance = (
+                select(
+                    Round.player_id.label("player_id"),
+                    Round.round_id.label("round_id"),
+                    Round.cost.label("cost"),
+                    func.coalesce(func.sum(Transaction.amount), 0).label("earnings"),
+                )
+                .join(completion_subquery, completion_subquery.c.round_id == Round.round_id)
+                .join(
+                    phraseset_contributors,
+                    phraseset_contributors.c.round_id == Round.round_id,
+                    isouter=True,
+                )
+                .join(
+                    Transaction,
+                    and_(
+                        Transaction.reference_id == phraseset_contributors.c.phraseset_id,
+                        Transaction.player_id == Round.player_id,
+                        Transaction.type == "prize_payout",
+                    ),
+                    isouter=True,
+                )
+                .where(
+                    Round.status == "submitted",
+                    Round.round_type == role,
+                )
+                .group_by(Round.player_id, Round.round_id, Round.cost)
+                .subquery()
+            )
+        else:  # voter
+            # For voter: group by round and check if earnings > cost
+            round_performance = (
+                select(
+                    Round.player_id.label("player_id"),
+                    Round.round_id.label("round_id"),
+                    Round.cost.label("cost"),
+                    func.coalesce(func.sum(Transaction.amount), 0).label("earnings"),
+                )
+                .join(completion_subquery, completion_subquery.c.round_id == Round.round_id)
+                .join(
+                    Vote,
+                    and_(
+                        Vote.phraseset_id == Round.phraseset_id,
+                        Vote.player_id == Round.player_id,
+                    ),
+                )
+                .join(
+                    Transaction,
+                    and_(
+                        Transaction.reference_id == Vote.vote_id,
+                        Transaction.player_id == Round.player_id,
+                        Transaction.type == "vote_payout",
+                    ),
+                    isouter=True,
+                )
+                .where(
+                    Round.status == "submitted",
+                    Round.round_type == "vote",
+                )
+                .group_by(Round.player_id, Round.round_id, Round.cost)
+                .subquery()
+            )
+
+        wins_subquery = (
+            select(
+                round_performance.c.player_id,
+                func.count(
+                    func.nullif(
+                        cast(round_performance.c.earnings > round_performance.c.cost, Integer), 0
+                    )
+                ).label("winning_rounds"),
+            )
+            .group_by(round_performance.c.player_id)
+            .subquery()
+        )
+
+        net_earnings_expression = (
+            func.coalesce(earnings_subquery.c.total_earnings, 0)
+            - func.coalesce(rounds_subquery.c.total_costs, 0)
+        )
+
+        win_rate_expression = cast(
+            func.coalesce(wins_subquery.c.winning_rounds, 0) * 100.0
+            / func.nullif(rounds_subquery.c.total_rounds, 0),
+            Float,
+        )
+
+        leaderboard_stmt = (
+            select(
+                Player.player_id,
+                Player.username,
+                func.coalesce(rounds_subquery.c.total_costs, 0).label("total_costs"),
+                func.coalesce(earnings_subquery.c.total_earnings, 0).label("total_earnings"),
+                net_earnings_expression.label("net_earnings"),
+                func.coalesce(rounds_subquery.c.total_rounds, 0).label("total_rounds"),
+                func.coalesce(win_rate_expression, 0.0).label("win_rate"),
+            )
+            .join(rounds_subquery, rounds_subquery.c.player_id == Player.player_id, isouter=True)
+            .join(earnings_subquery, earnings_subquery.c.player_id == Player.player_id, isouter=True)
+            .join(wins_subquery, wins_subquery.c.player_id == Player.player_id, isouter=True)
+            .where(
+                or_(rounds_subquery.c.player_id.isnot(None), earnings_subquery.c.player_id.isnot(None)),
+                ~Player.email.like(f"%{AI_PLAYER_EMAIL_DOMAIN}"),
+            )
+            .order_by(win_rate_expression.desc(), Player.username.asc())
+        )
+
+        result = await self.db.execute(leaderboard_stmt)
+
+        entries: list[dict[str, Any]] = []
+        for rank, row in enumerate(result.all(), start=1):
+            entries.append(
+                {
+                    "player_id": row.player_id,
+                    "username": row.username,
+                    "role": role,
+                    "total_costs": int(row.total_costs or 0),
+                    "total_earnings": int(row.total_earnings or 0),
+                    "net_earnings": int(row.net_earnings or 0),
+                    "total_rounds": int(row.total_rounds or 0),
+                    "win_rate": float(row.win_rate or 0.0),
+                    "rank": rank,
+                }
+            )
+
+        return entries
+
+    async def _compute_role_based_alltime_leaderboards(self) -> dict[str, list[dict]]:
+        """Calculate all-time leaderboards for all three roles concurrently."""
+        import asyncio
+
+        tasks = [self._compute_role_leaderboard_alltime(role) for role in LEADERBOARD_ROLES]
         results = await asyncio.gather(*tasks)
 
         return dict(zip(LEADERBOARD_ROLES, results))
