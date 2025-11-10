@@ -1,6 +1,6 @@
 """Add user_activity table for online users tracking
 
-Revision ID: add_user_activity_001
+Revision ID: b2c3d4e5f8a9
 Revises: a1b2c3d4e5f7
 Create Date: 2025-11-10 00:00:00
 
@@ -13,7 +13,7 @@ from backend.migrations.util import get_uuid_type
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'add_user_activity_001'
+revision: str = 'b2c3d4e5f8a9'
 down_revision: Union[str, None] = 'a1b2c3d4e5f7'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
