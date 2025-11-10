@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { FrozenTimer } from './FrozenTimer';
 import { ReviewBackButton } from './ReviewBackButton';
-import { getRandomMessage } from '../../utils/brandedMessages';
 
 interface CopyRoundReviewProps {
   originalPhrase: string;
@@ -22,7 +21,6 @@ export const CopyRoundReview: React.FC<CopyRoundReviewProps> = ({
 }) => {
   const [isRevealed, setIsRevealed] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
 
   const handleReveal = () => {
     setIsRevealed(true);
@@ -30,14 +28,7 @@ export const CopyRoundReview: React.FC<CopyRoundReviewProps> = ({
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
-    setShowSuccess(true);
-
-    // Show success message before transitioning
-    setTimeout(() => {
-      setShowSuccess(false);
-      setIsSubmitting(false);
-      onSubmit();
-    }, 1500);
+    onSubmit();
   };
   return (
     <div className="min-h-screen bg-gradient-to-br from-quip-turquoise to-quip-teal flex items-center justify-center p-4 bg-pattern">
@@ -69,15 +60,6 @@ export const CopyRoundReview: React.FC<CopyRoundReviewProps> = ({
             {originalPhrase}
           </p>
         </div>
-
-        {/* Success Message */}
-        {showSuccess && (
-          <div className="mb-6 p-6 bg-quip-turquoise bg-opacity-20 border-2 border-quip-turquoise rounded-tile text-center success-message">
-            <p className="text-2xl font-display font-bold text-quip-turquoise mb-2">
-              {getRandomMessage('copySubmitted')}
-            </p>
-          </div>
-        )}
 
         {/* Copy Phrase Input - Click to reveal */}
         <div className="space-y-4 mb-4">
