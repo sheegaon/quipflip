@@ -4,7 +4,7 @@ from uuid import UUID
 from sqlalchemy import DateTime, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from backend.models.base import Base
+from backend.database import Base
 
 
 class UserActivity(Base):
