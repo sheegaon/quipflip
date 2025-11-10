@@ -172,6 +172,9 @@ async def activity_tracking_middleware(request: Request, call_next):
         "/auth/login",
         "/auth/register",
         "/auth/guest",
+        "/auth/refresh",
+        "/auth/logout",
+        "/auth/suggest-username",
     ]
 
     # Skip root path (exact match only) or paths that start with skip prefixes
@@ -182,16 +185,25 @@ async def activity_tracking_middleware(request: Request, call_next):
     if response.status_code >= 400:
         return response
 
-    # Extract user info from cookies or authorization header
-    user_info = await get_user_from_request(request)
+    # Wrap tracking in try-except to prevent any issues from breaking the request
+    try:
+        # Extract user info from cookies or authorization header
+        user_info = await get_user_from_request(request)
 
-    if user_info:
-        player_id, username = user_info
-        action = get_action_type(request.url.path)
+        if user_info:
+            player_id, username = user_info
+            action = get_action_type(request.url.path)
 
-        # Update activity asynchronously without blocking the response
-        asyncio.create_task(
-            update_user_activity_db(player_id, username, action, request.url.path)
-        )
+            # Update activity asynchronously without blocking the response
+            # Use create_task with exception handling to ensure errors don't propagate
+            task = asyncio.create_task(
+                update_user_activity_db(player_id, username, action, request.url.path)
+            )
+            # Prevent task exceptions from propagating
+            task.add_done_callback(lambda t: t.exception() if not t.cancelled() else None)
+
+    except Exception as e:
+        # Log but don't fail the request if activity tracking has issues
+        logger.error(f"Activity tracking middleware error: {e}")
 
     return response
