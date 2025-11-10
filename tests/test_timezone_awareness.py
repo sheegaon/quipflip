@@ -52,8 +52,6 @@ class TestDatabaseTimezoneAwareness:
             player_id=uuid.uuid4(),
             username=f"test_{uuid.uuid4().hex[:8]}",
             username_canonical=f"test_{uuid.uuid4().hex[:8]}",
-            pseudonym=f"Test_{uuid.uuid4().hex[:8]}",
-            pseudonym_canonical=f"test_{uuid.uuid4().hex[:8]}",
             email=f"test_{uuid.uuid4().hex[:8]}@test.com",
             password_hash="hash",
         )
@@ -77,8 +75,6 @@ class TestDatabaseTimezoneAwareness:
             player_id=uuid.uuid4(),
             username=f"test_{uuid.uuid4().hex[:8]}",
             username_canonical=f"test_{uuid.uuid4().hex[:8]}",
-            pseudonym=f"Test_{uuid.uuid4().hex[:8]}",
-            pseudonym_canonical=f"test_{uuid.uuid4().hex[:8]}",
             email=f"test_{uuid.uuid4().hex[:8]}@test.com",
             password_hash="hash",
         )
@@ -115,8 +111,6 @@ class TestDatabaseTimezoneAwareness:
             player_id=uuid.uuid4(),
             username=f"test_{uuid.uuid4().hex[:8]}",
             username_canonical=f"test_{uuid.uuid4().hex[:8]}",
-            pseudonym=f"Test_{uuid.uuid4().hex[:8]}",
-            pseudonym_canonical=f"test_{uuid.uuid4().hex[:8]}",
             email=f"test_{uuid.uuid4().hex[:8]}@test.com",
             password_hash="hash",
         )
@@ -169,8 +163,6 @@ class TestDatabaseTimezoneAwareness:
             player_id=uuid.uuid4(),
             username=f"test_{uuid.uuid4().hex[:8]}",
             username_canonical=f"test_{uuid.uuid4().hex[:8]}",
-            pseudonym=f"Test_{uuid.uuid4().hex[:8]}",
-            pseudonym_canonical=f"test_{uuid.uuid4().hex[:8]}",
             email=f"test_{uuid.uuid4().hex[:8]}@test.com",
             password_hash="hash",
         )
@@ -203,8 +195,6 @@ class TestDatabaseTimezoneAwareness:
             player_id=uuid.uuid4(),
             username=f"test_{uuid.uuid4().hex[:8]}",
             username_canonical=f"test_{uuid.uuid4().hex[:8]}",
-            pseudonym=f"Test_{uuid.uuid4().hex[:8]}",
-            pseudonym_canonical=f"test_{uuid.uuid4().hex[:8]}",
             email=f"test_{uuid.uuid4().hex[:8]}@test.com",
             password_hash="hash",
             balance=5000,
@@ -237,8 +227,6 @@ class TestServiceTimezoneAwareness:
             player_id=uuid.uuid4(),
             username=f"test_{uuid.uuid4().hex[:8]}",
             username_canonical=f"test_{uuid.uuid4().hex[:8]}",
-            pseudonym=f"Test_{uuid.uuid4().hex[:8]}",
-            pseudonym_canonical=f"test_{uuid.uuid4().hex[:8]}",
             email=f"test_{uuid.uuid4().hex[:8]}@test.com",
             password_hash="hash",
             balance=5000,
@@ -331,8 +319,6 @@ class TestFrontendTimezoneDisplay:
             player_id=uuid.uuid4(),
             username=f"test_{uuid.uuid4().hex[:8]}",
             username_canonical=f"test_{uuid.uuid4().hex[:8]}",
-            pseudonym=f"Test_{uuid.uuid4().hex[:8]}",
-            pseudonym_canonical=f"test_{uuid.uuid4().hex[:8]}",
             email=f"test_{uuid.uuid4().hex[:8]}@test.com",
             password_hash="hash",
         )

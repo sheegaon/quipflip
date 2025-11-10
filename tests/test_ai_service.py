@@ -579,8 +579,6 @@ class TestAIPlayerManagement:
             player_id=uuid.uuid4(),
             username="AI Copy Runner",
             username_canonical="aicopyrunner",
-            pseudonym="AI Assistant",
-            pseudonym_canonical="ai assistant",
             email="ai_copy_backup@quipflip.internal",
             password_hash="not-used",
             balance=1000,

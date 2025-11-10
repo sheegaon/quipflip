@@ -20,8 +20,6 @@ async def test_quest_progress_updates_are_persisted(db_session):
         player_id=uuid.uuid4(),
         username=canonical,
         username_canonical=canonical,
-        pseudonym=f"Player_{test_id}",
-        pseudonym_canonical=canonical,
         email=f"player_{test_id}@example.com",
         password_hash="hash",
         balance=0,

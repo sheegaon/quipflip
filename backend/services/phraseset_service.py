@@ -186,7 +186,6 @@ class PhrasesetService:
                 "round_id": prompt_round.round_id,
                 "player_id": prompt_round.player_id,
                 "username": player_records.get(prompt_round.player_id, {}).get("username", str(prompt_round.player_id)),
-                "pseudonym": player_records.get(prompt_round.player_id, {}).get("pseudonym", "Unknown"),
                 "is_you": prompt_round.player_id == player_id,
                 "phrase": phraseset.original_phrase,
             },
@@ -194,7 +193,6 @@ class PhrasesetService:
                 "round_id": copy1_round.round_id,
                 "player_id": copy1_round.player_id,
                 "username": player_records.get(copy1_round.player_id, {}).get("username", str(copy1_round.player_id)),
-                "pseudonym": player_records.get(copy1_round.player_id, {}).get("pseudonym", "Unknown"),
                 "is_you": copy1_round.player_id == player_id,
                 "phrase": phraseset.copy_phrase_1,
             },
@@ -202,7 +200,6 @@ class PhrasesetService:
                 "round_id": copy2_round.round_id,
                 "player_id": copy2_round.player_id,
                 "username": player_records.get(copy2_round.player_id, {}).get("username", str(copy2_round.player_id)),
-                "pseudonym": player_records.get(copy2_round.player_id, {}).get("pseudonym", "Unknown"),
                 "is_you": copy2_round.player_id == player_id,
                 "phrase": phraseset.copy_phrase_2,
             },
@@ -246,7 +243,6 @@ class PhrasesetService:
                 "vote_id": vote.vote_id,
                 "voter_id": vote.player_id,
                 "voter_username": vote_player_records.get(vote.player_id, {}).get("username", str(vote.player_id)),
-                "voter_pseudonym": vote_player_records.get(vote.player_id, {}).get("pseudonym", "Unknown"),
                 "voted_phrase": vote.voted_phrase,
                 "correct": vote.correct,
                 "voted_at": self._ensure_utc(vote.created_at),
@@ -339,7 +335,6 @@ class PhrasesetService:
                 "round_id": prompt_round.round_id,
                 "player_id": prompt_round.player_id,
                 "username": player_records.get(prompt_round.player_id, {}).get("username", str(prompt_round.player_id)),
-                "pseudonym": player_records.get(prompt_round.player_id, {}).get("pseudonym", "Unknown"),
                 "is_you": False,  # Always False for public access
                 "phrase": phraseset.original_phrase,
             },
@@ -347,7 +342,6 @@ class PhrasesetService:
                 "round_id": copy1_round.round_id,
                 "player_id": copy1_round.player_id,
                 "username": player_records.get(copy1_round.player_id, {}).get("username", str(copy1_round.player_id)),
-                "pseudonym": player_records.get(copy1_round.player_id, {}).get("pseudonym", "Unknown"),
                 "is_you": False,
                 "phrase": phraseset.copy_phrase_1,
             },
@@ -355,7 +349,6 @@ class PhrasesetService:
                 "round_id": copy2_round.round_id,
                 "player_id": copy2_round.player_id,
                 "username": player_records.get(copy2_round.player_id, {}).get("username", str(copy2_round.player_id)),
-                "pseudonym": player_records.get(copy2_round.player_id, {}).get("pseudonym", "Unknown"),
                 "is_you": False,
                 "phrase": phraseset.copy_phrase_2,
             },
@@ -377,7 +370,6 @@ class PhrasesetService:
                 "vote_id": vote.vote_id,
                 "voter_id": vote.player_id,
                 "voter_username": vote_player_records.get(vote.player_id, {}).get("username", str(vote.player_id)),
-                "voter_pseudonym": vote_player_records.get(vote.player_id, {}).get("pseudonym", "Unknown"),
                 "voted_phrase": vote.voted_phrase,
                 "correct": vote.correct,
                 "voted_at": self._ensure_utc(vote.created_at),
@@ -601,7 +593,6 @@ class PhrasesetService:
                 "timestamp": self._ensure_utc(round_obj.created_at),
                 "player_id": round_obj.player_id,
                 "username": player_records.get(round_obj.player_id, {}).get("username"),
-                "pseudonym": player_records.get(round_obj.player_id, {}).get("pseudonym"),
                 "phrase": phrase,
                 "correct": None,
                 "metadata": metadata,
@@ -643,7 +634,6 @@ class PhrasesetService:
                 "timestamp": self._ensure_utc(vote.created_at),
                 "player_id": vote.player_id,
                 "username": player_records.get(vote.player_id, {}).get("username"),
-                "pseudonym": player_records.get(vote.player_id, {}).get("pseudonym"),
                 "phrase": vote.voted_phrase,
                 "correct": vote.correct,
                 "metadata": {
@@ -659,7 +649,6 @@ class PhrasesetService:
                 "timestamp": self._ensure_utc(phraseset.finalized_at),
                 "player_id": None,
                 "username": None,
-                "pseudonym": None,
                 "phrase": None,
                 "correct": None,
                 "metadata": {
@@ -1229,17 +1218,17 @@ class PhrasesetService:
         player_ids: Iterable[UUID],
         existing: Optional[dict] = None,
     ) -> dict[UUID, dict]:
-        """Fetch usernames and pseudonyms for player IDs, merging into existing mapping."""
+        """Fetch usernames for player IDs, merging into existing mapping."""
         mapping = dict(existing or {})
         ids = {pid for pid in player_ids if pid and pid not in mapping}
         if not ids:
             return mapping
 
         result = await self.db.execute(
-            select(Player.player_id, Player.username, Player.pseudonym).where(Player.player_id.in_(ids))
+            select(Player.player_id, Player.username).where(Player.player_id.in_(ids))
         )
-        for player_id, username, pseudonym in result.all():
-            mapping[player_id] = {"username": username, "pseudonym": pseudonym}
+        for player_id, username in result.all():
+            mapping[player_id] = {"username": username}
         return mapping
 
     async def _get_payouts_cached(

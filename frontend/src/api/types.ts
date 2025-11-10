@@ -4,7 +4,6 @@ export interface Player {
   player_id: string;
   username: string;
   email: string;
-  pseudonym: string;
   balance: number;
   starting_balance: number;
   daily_bonus_available: boolean;
@@ -405,7 +404,6 @@ export interface PhrasesetContributor {
   round_id: string;
   player_id: string;
   username: string;
-  pseudonym: string;
   is_you: boolean;
   phrase?: string | null;
 }
@@ -414,7 +412,6 @@ export interface PhrasesetVoteDetail {
   vote_id: string;
   voter_id: string;
   voter_username: string;
-  voter_pseudonym: string;
   voted_phrase: string;
   correct: boolean;
   voted_at: string;

@@ -395,8 +395,6 @@ class CleanupService:
                 .values(
                     username=anon_username,
                     username_canonical=anon_canonical,
-                    pseudonym=anon_username,  # Also anonymize pseudonym
-                    pseudonym_canonical=anon_canonical,
                     email=f"deleted_{player_id}@deleted.local",  # Unique email to avoid conflicts
                     password_hash="",  # Clear password (prevents login)
                     is_guest=True,  # Mark as guest (additional login prevention)

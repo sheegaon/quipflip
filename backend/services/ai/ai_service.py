@@ -165,8 +165,6 @@ class AIService:
                     username=normalized_username,
                     email=target_email,
                     password_hash="not-used-for-ai-player",
-                    pseudonym="Clever Lexical Runner",
-                    pseudonym_canonical="cleverlexicalrunner",
                 )
                 logger.info("Created AI backup player account")
             else:

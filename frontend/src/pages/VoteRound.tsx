@@ -287,7 +287,7 @@ export const VoteRound: React.FC = () => {
                             >
                               <div className="flex items-center gap-3">
                                 <span className="font-semibold text-quip-navy">
-                                  {vote.voter_pseudonym}
+                                  {vote.voter_username}
                                 </span>
                                 <span className="text-sm text-quip-teal">
                                   voted for: <strong>{vote.voted_phrase}</strong>

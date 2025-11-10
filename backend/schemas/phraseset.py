@@ -112,8 +112,7 @@ class PhrasesetContributor(BaseSchema):
     """Contributor information."""
     round_id: UUID
     player_id: UUID
-    username: str  # Will be hidden from UI, only for debug
-    pseudonym: str  # Public display name shown to other players
+    username: str  # Public display name shown to other players
     is_you: bool
     phrase: Optional[str] = None
 
@@ -122,8 +121,7 @@ class PhrasesetVote(BaseSchema):
     """Vote entry for phraseset details."""
     vote_id: UUID
     voter_id: UUID
-    voter_username: str  # Will be hidden from UI, only for debug
-    voter_pseudonym: str  # Public display name shown to other players
+    voter_username: str  # Public display name shown to other players
     voted_phrase: str
     correct: bool
     voted_at: datetime
@@ -194,8 +192,7 @@ class PhrasesetHistoryEvent(BaseSchema):
     event_type: Literal["prompt_submitted", "copy_submitted", "vote_submitted", "finalized"]
     timestamp: datetime
     player_id: Optional[UUID]
-    username: Optional[str]  # For debug
-    pseudonym: Optional[str]  # For display
+    username: Optional[str]  # For display
     phrase: Optional[str] = None  # The phrase submitted/voted for
     correct: Optional[bool] = None  # For votes only
     metadata: Optional[dict] = None  # Additional event-specific data

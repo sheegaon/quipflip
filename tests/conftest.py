@@ -113,7 +113,6 @@ async def player_factory(db_session):
         username: str | None = None,
         email: str | None = None,
         password: str = "TestPassword123!",
-        pseudonym: str | None = None,
     ):
         # Use UUID to ensure unique usernames/emails across all tests
         unique_id = str(uuid.uuid4())[:8]
@@ -122,16 +121,12 @@ async def player_factory(db_session):
             username = f"player{unique_id}"
         if email is None:
             email = f"player{unique_id}@example.com"
-        if pseudonym is None:
-            pseudonym = f"TestPlayer{unique_id}"
 
         password_hash = hash_password(password)
         return await player_service.create_player(
             username=username,
             email=email,
             password_hash=password_hash,
-            pseudonym=pseudonym,
-            pseudonym_canonical=pseudonym.lower(),
         )
 
     return _create_player

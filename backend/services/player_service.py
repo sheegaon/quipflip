@@ -53,8 +53,6 @@ class PlayerService:
         username: str,
         email: str,
         password_hash: str,
-        pseudonym: str,
-        pseudonym_canonical: str,
     ) -> Player:
         """Create new player using explicit credentials."""
 
@@ -67,8 +65,6 @@ class PlayerService:
             player_id=uuid.uuid4(),
             username=normalized_username,
             username_canonical=canonical_username,
-            pseudonym=pseudonym,
-            pseudonym_canonical=pseudonym_canonical,
             email=email.strip().lower(),
             password_hash=password_hash,
             balance=settings.starting_balance,
@@ -80,7 +76,7 @@ class PlayerService:
             await self.db.commit()
             await self.db.refresh(player)
             logger.info(
-                f"Created player: {player.player_id} username={player.username} pseudonym={player.pseudonym} balance={player.balance}"
+                f"Created player: {player.player_id} username={player.username} balance={player.balance}"
             )
             return player
         except IntegrityError as exc:

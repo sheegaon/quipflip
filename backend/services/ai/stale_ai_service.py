@@ -78,8 +78,6 @@ class StaleAIService:
                 username=normalized_username,
                 email=email,
                 password_hash="not-used-for-ai-player",
-                pseudonym=normalized_username,  # Use same username as pseudonym
-                pseudonym_canonical=canonical_username,
             )
             logger.info(f"Created stale AI player {email} with username {normalized_username}")
             return player

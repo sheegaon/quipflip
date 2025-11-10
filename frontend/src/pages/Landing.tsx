@@ -63,7 +63,7 @@ export const Landing: React.FC = () => {
       setError(null);
       landingLogger.info('Creating player account');
 
-      // Backend auto-generates the username/pseudonym, so send only credentials
+      // Backend auto-generates the username, so send only credentials
       const response = await apiClient.createPlayer({
         email: registerEmail.trim(),
         password: registerPassword,

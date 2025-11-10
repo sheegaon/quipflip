@@ -138,8 +138,7 @@ class TestPlayerManagement:
         assert response.status_code == 201
         data = response.json()
         assert "player_id" in data
-        # The API may return pseudonym instead of username
-        assert "username" in data or "pseudonym" in data
+        assert "username" in data
         assert data["balance"] == 5000
         assert "access_token" in data
         assert "refresh_token" in data
