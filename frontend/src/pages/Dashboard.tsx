@@ -17,7 +17,6 @@ export const Dashboard: React.FC = () => {
   const {
     player,
     activeRound,
-    phrasesetSummary,
     roundAvailability,
     error: contextError,
     isAuthenticated,
