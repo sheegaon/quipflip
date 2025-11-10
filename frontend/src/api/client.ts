@@ -51,7 +51,7 @@ import type {
   BetaSurveySubmissionResponse,
   BetaSurveyStatusResponse,
   BetaSurveyListResponse,
-  WeeklyLeaderboardResponse,
+  LeaderboardResponse,
   CompletedPhrasesetsResponse,
 } from './types';
 
@@ -501,12 +501,12 @@ export const apiClient = {
     return data;
   },
 
-  async getWeeklyLeaderboard(signal?: AbortSignal): Promise<WeeklyLeaderboardResponse> {
+  async getWeeklyLeaderboard(signal?: AbortSignal): Promise<LeaderboardResponse> {
     const { data } = await api.get('/player/statistics/weekly-leaderboard', { signal });
     return data;
   },
 
-  async getAllTimeLeaderboard(signal?: AbortSignal): Promise<WeeklyLeaderboardResponse> {
+  async getAllTimeLeaderboard(signal?: AbortSignal): Promise<LeaderboardResponse> {
     const { data } = await api.get('/player/statistics/alltime-leaderboard', { signal });
     return data;
   },

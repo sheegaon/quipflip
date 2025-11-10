@@ -29,7 +29,7 @@ from backend.schemas.player import (
     UpgradeGuestRequest,
     UpgradeGuestResponse,
     WeeklyLeaderboardEntry,
-    WeeklyLeaderboardResponse,
+    LeaderboardResponse,
     RoleLeaderboard,
     GrossEarningsLeaderboardEntry,
     GrossEarningsLeaderboard,
@@ -627,7 +627,7 @@ async def get_player_statistics(
     return stats
 
 
-@router.get("/statistics/weekly-leaderboard", response_model=WeeklyLeaderboardResponse)
+@router.get("/statistics/weekly-leaderboard", response_model=LeaderboardResponse)
 async def get_weekly_leaderboard(
     player: Player = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
@@ -652,7 +652,7 @@ async def get_weekly_leaderboard(
         for entry in role_data.get("gross_earnings", [])
     ]
 
-    return WeeklyLeaderboardResponse(
+    return LeaderboardResponse(
         prompt_leaderboard=RoleLeaderboard(role="prompt", leaders=leader_lists["prompt"]),
         copy_leaderboard=RoleLeaderboard(role="copy", leaders=leader_lists["copy"]),
         voter_leaderboard=RoleLeaderboard(role="voter", leaders=leader_lists["voter"]),
@@ -661,7 +661,7 @@ async def get_weekly_leaderboard(
     )
 
 
-@router.get("/statistics/alltime-leaderboard", response_model=WeeklyLeaderboardResponse)
+@router.get("/statistics/alltime-leaderboard", response_model=LeaderboardResponse)
 async def get_alltime_leaderboard(
     player: Player = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
@@ -686,7 +686,7 @@ async def get_alltime_leaderboard(
         for entry in role_data.get("gross_earnings", [])
     ]
 
-    return WeeklyLeaderboardResponse(
+    return LeaderboardResponse(
         prompt_leaderboard=RoleLeaderboard(role="prompt", leaders=leader_lists["prompt"]),
         copy_leaderboard=RoleLeaderboard(role="copy", leaders=leader_lists["copy"]),
         voter_leaderboard=RoleLeaderboard(role="voter", leaders=leader_lists["voter"]),

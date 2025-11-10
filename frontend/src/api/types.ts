@@ -246,7 +246,7 @@ export interface GrossEarningsLeaderboard {
   leaders: GrossEarningsLeaderboardEntry[];
 }
 
-export interface WeeklyLeaderboardResponse {
+export interface LeaderboardResponse {
   prompt_leaderboard: RoleLeaderboard;
   copy_leaderboard: RoleLeaderboard;
   voter_leaderboard: RoleLeaderboard;

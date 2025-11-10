@@ -283,8 +283,8 @@ class GrossEarningsLeaderboard(BaseModel):
     leaders: list[GrossEarningsLeaderboardEntry]
 
 
-class WeeklyLeaderboardResponse(BaseModel):
-    """Weekly leaderboard payload with separate leaderboards per role plus gross earnings."""
+class LeaderboardResponse(BaseModel):
+    """Leaderboard payload with separate leaderboards per role plus gross earnings."""
 
     prompt_leaderboard: RoleLeaderboard
     copy_leaderboard: RoleLeaderboard

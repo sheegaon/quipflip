@@ -160,30 +160,24 @@ async def _store_leaderboard_cache(
         "generated_at": generated_at.isoformat(),
     }
 
-    # Store role-based leaderboards
-    for role in LEADERBOARD_ROLES:
-        if role in role_leaderboards:
+    # Map leaderboard types to their cache payload keys
+    leaderboard_mappings = {
+        **{role: f"{role}_leaderboard" for role in LEADERBOARD_ROLES},
+        "gross_earnings": "gross_earnings_leaderboard",
+    }
+
+    # Store all leaderboards using the mapping
+    for leaderboard_type, payload_key in leaderboard_mappings.items():
+        if leaderboard_type in role_leaderboards:
             cache_entries: list[dict[str, Any]] = []
-            for entry in role_leaderboards[role]:
+            for entry in role_leaderboards[leaderboard_type]:
                 cache_entries.append(
                     {
                         **entry,
                         "player_id": str(entry["player_id"]),
                     }
                 )
-            payload[f"{role}_leaderboard"] = cache_entries
-
-    # Store gross earnings leaderboard
-    if "gross_earnings" in role_leaderboards:
-        cache_entries = []
-        for entry in role_leaderboards["gross_earnings"]:
-            cache_entries.append(
-                {
-                    **entry,
-                    "player_id": str(entry["player_id"]),
-                }
-            )
-        payload["gross_earnings_leaderboard"] = cache_entries
+            payload[payload_key] = cache_entries
 
     try:
         await client.set(cache_key, json.dumps(payload), ex=expiration_seconds)
