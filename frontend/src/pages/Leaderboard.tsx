@@ -151,6 +151,7 @@ const Leaderboard: React.FC = () => {
               promptLeaderboard={currentData.prompt_leaderboard}
               copyLeaderboard={currentData.copy_leaderboard}
               voterLeaderboard={currentData.voter_leaderboard}
+              grossEarningsLeaderboard={currentData.gross_earnings_leaderboard}
               loading={false}
               error={null}
             />

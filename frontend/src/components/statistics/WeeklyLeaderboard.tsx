@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import type { RoleLeaderboard, WeeklyLeaderboardEntry } from '../../api/types';
+import type { RoleLeaderboard, WeeklyLeaderboardEntry, GrossEarningsLeaderboard, GrossEarningsLeaderboardEntry } from '../../api/types';
 
 interface WeeklyLeaderboardProps {
   promptLeaderboard: RoleLeaderboard | null;
   copyLeaderboard: RoleLeaderboard | null;
   voterLeaderboard: RoleLeaderboard | null;
+  grossEarningsLeaderboard: GrossEarningsLeaderboard | null;
   loading?: boolean;
   error?: string | null;
 }
@@ -16,11 +17,13 @@ const currencyFormatter = new Intl.NumberFormat('en-US', {
 });
 
 type Role = 'prompt' | 'copy' | 'voter';
+type TabType = Role | 'gross_earnings';
 
-const roleLabels: Record<Role, string> = {
+const roleLabels: Record<TabType, string> = {
   prompt: 'Prompt',
   copy: 'Copy',
   voter: 'Voter',
+  gross_earnings: 'Gross Earnings',
 };
 
 const MIN_BAR_PERCENTAGE = 8;
@@ -87,14 +90,77 @@ const LeaderboardList: React.FC<{ leaders: WeeklyLeaderboardEntry[] }> = ({ lead
   );
 };
 
+const GrossEarningsLeaderboardList: React.FC<{ leaders: GrossEarningsLeaderboardEntry[] }> = ({ leaders }) => {
+  if (leaders.length === 0) {
+    return (
+      <div className="rounded-tile border border-quip-navy/10 bg-white p-6 text-center text-sm text-quip-navy/70">
+        No earnings yet—play some rounds to appear on the leaderboard!
+      </div>
+    );
+  }
+
+  const maxEarnings = leaders.reduce((max, entry) => {
+    return entry.gross_earnings > max ? entry.gross_earnings : max;
+  }, 1);
+
+  return (
+    <div className="space-y-2.5" role="list">
+      {leaders.map((entry) => {
+        const percent = Math.max(MIN_BAR_PERCENTAGE, Math.round((entry.gross_earnings / maxEarnings) * 100));
+        const highlightClasses = entry.is_current_player
+          ? 'border-2 border-quip-orange bg-quip-orange/10 shadow-md'
+          : 'border border-quip-navy/10 bg-white';
+        const rankLabel = entry.rank ? `#${entry.rank}` : '-';
+
+        return (
+          <div
+            key={entry.player_id}
+            className={`rounded-tile px-3 py-2.5 transition-colors duration-200 ${highlightClasses}`}
+            role="listitem"
+            aria-label={`${entry.username} gross earnings ${currencyFormatter.format(entry.gross_earnings)}`}
+          >
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-semibold uppercase tracking-wide text-quip-navy/60">{rankLabel}</span>
+                <span className="font-display text-lg text-quip-navy">{entry.username}</span>
+              </div>
+              <div className="text-right">
+                <span className="block text-xs uppercase tracking-wide text-quip-navy/50">Gross Earnings</span>
+                <div className="font-mono text-lg font-semibold text-quip-teal">
+                  {currencyFormatter.format(entry.gross_earnings)}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-quip-navy/10">
+              <div className="h-full bg-quip-teal" style={{ width: `${percent}%` }} aria-hidden="true" />
+            </div>
+
+            {entry.is_current_player ? (
+              <p className="mt-1.5 text-xs font-semibold uppercase tracking-wide text-quip-orange">
+                You&apos;re here! Keep climbing the leaderboard.
+              </p>
+            ) : (
+              <p className="mt-1.5 text-xs text-quip-navy/50">
+                {entry.total_rounds} rounds
+              </p>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
 const WeeklyLeaderboard: React.FC<WeeklyLeaderboardProps> = ({
   promptLeaderboard,
   copyLeaderboard,
   voterLeaderboard,
+  grossEarningsLeaderboard,
   loading = false,
   error = null,
 }) => {
-  const [activeTab, setActiveTab] = useState<Role>('prompt');
+  const [activeTab, setActiveTab] = useState<TabType>('prompt');
 
   if (loading) {
     return (
@@ -114,40 +180,47 @@ const WeeklyLeaderboard: React.FC<WeeklyLeaderboardProps> = ({
     );
   }
 
-  const leaderboards: Record<Role, RoleLeaderboard | null> = {
+  const roleLeaderboards: Record<Role, RoleLeaderboard | null> = {
     prompt: promptLeaderboard,
     copy: copyLeaderboard,
     voter: voterLeaderboard,
   };
 
-  const currentLeaderboard = leaderboards[activeTab];
+  const currentLeaderboard = activeTab === 'gross_earnings'
+    ? null
+    : roleLeaderboards[activeTab as Role];
 
   return (
     <div className="space-y-4">
       {/* Tab Navigation */}
       <div className="flex border-b border-quip-navy/10" role="tablist">
-        {(['prompt', 'copy', 'voter'] as Role[]).map((role) => {
-          const isActive = activeTab === role;
+        {(['prompt', 'copy', 'voter', 'gross_earnings'] as TabType[]).map((tab) => {
+          const isActive = activeTab === tab;
           return (
             <button
-              key={role}
+              key={tab}
               role="tab"
               aria-selected={isActive}
-              onClick={() => setActiveTab(role)}
+              onClick={() => setActiveTab(tab)}
               className={`px-4 py-2 font-semibold text-sm transition-colors duration-200 border-b-2 ${
                 isActive
                   ? 'border-quip-orange text-quip-orange'
                   : 'border-transparent text-quip-navy/60 hover:text-quip-navy hover:border-quip-navy/30'
               }`}
             >
-              {roleLabels[role]}
+              {roleLabels[tab]}
             </button>
           );
         })}
       </div>
 
       {/* Leaderboard Content */}
-      {currentLeaderboard && <LeaderboardList leaders={currentLeaderboard.leaders} />}
+      {activeTab === 'gross_earnings' && grossEarningsLeaderboard && (
+        <GrossEarningsLeaderboardList leaders={grossEarningsLeaderboard.leaders} />
+      )}
+      {activeTab !== 'gross_earnings' && currentLeaderboard && (
+        <LeaderboardList leaders={currentLeaderboard.leaders} />
+      )}
     </div>
   );
 };

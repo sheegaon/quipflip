@@ -259,6 +259,17 @@ class WeeklyLeaderboardEntry(BaseModel):
     is_current_player: bool = False
 
 
+class GrossEarningsLeaderboardEntry(BaseModel):
+    """Gross earnings leaderboard row."""
+
+    player_id: UUID
+    username: str
+    gross_earnings: int
+    total_rounds: int
+    rank: Optional[int]
+    is_current_player: bool = False
+
+
 class RoleLeaderboard(BaseModel):
     """Leaderboard for a specific role."""
 
@@ -266,10 +277,17 @@ class RoleLeaderboard(BaseModel):
     leaders: list[WeeklyLeaderboardEntry]
 
 
+class GrossEarningsLeaderboard(BaseModel):
+    """Gross earnings leaderboard across all roles."""
+
+    leaders: list[GrossEarningsLeaderboardEntry]
+
+
 class WeeklyLeaderboardResponse(BaseModel):
-    """Weekly leaderboard payload with separate leaderboards per role."""
+    """Weekly leaderboard payload with separate leaderboards per role plus gross earnings."""
 
     prompt_leaderboard: RoleLeaderboard
     copy_leaderboard: RoleLeaderboard
     voter_leaderboard: RoleLeaderboard
+    gross_earnings_leaderboard: GrossEarningsLeaderboard
     generated_at: datetime
