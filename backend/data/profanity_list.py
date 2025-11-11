@@ -43,8 +43,9 @@ def contains_profanity(text: str) -> bool:
     """
     Check if the given text contains any profanity.
 
-    Uses word boundary matching to avoid false positives.
-    For example, "hello" won't match "hell" because 'o' follows the substring.
+    Uses word boundary matching as the primary check, with additional checks
+    for common evasion patterns. Prioritizes simplicity and avoiding false
+    positives over catching every possible variation.
 
     Args:
         text: The text to check
@@ -55,11 +56,12 @@ def contains_profanity(text: str) -> bool:
     if not text:
         return False
 
+    import re
+
     # Convert to lowercase for case-insensitive matching
     normalized = text.lower()
 
-    # Remove all non-alphanumeric characters to handle variations
-    # but keep spaces to help with word boundary detection
+    # Remove all non-alphanumeric characters but keep spaces
     cleaned = re.sub(r'[^a-z0-9 ]', '', normalized)
 
     # Also check version without spaces to catch "f u c k" style evasion
@@ -67,63 +69,35 @@ def contains_profanity(text: str) -> bool:
 
     # Check each banned word
     for word in PROFANITY_LIST:
-        # Check for word boundaries in the spaced version
-        # This prevents "hello" from matching "hell"
+        # Primary check: word boundaries in the spaced version
+        # This handles most cases correctly and avoids false positives
         pattern = r'\b' + re.escape(word) + r'\b'
         if re.search(pattern, cleaned):
             return True
 
-        # Check in the no-spaces version for evasion attempts like "f u c k"
-        # Only match if:
-        # 1. Exact match
-        # 2. At start/end with numbers (like "fuck123" or "123fuck")
+        # Exact match in no-spaces version (catches "f u c k")
         if no_spaces == word:
             return True
 
+        # Check for profanity with digits or at the end of compound words
+        # Use finditer to check ALL occurrences, not just the first
         if word in no_spaces:
-            idx = no_spaces.find(word)
-            # Check what's before and after the word
-            before_char = no_spaces[idx - 1] if idx > 0 else None
-            after_char = no_spaces[idx + len(word)] if idx + len(word) < len(no_spaces) else None
+            for match in re.finditer(re.escape(word), no_spaces):
+                idx = match.start()
+                word_end = match.end()
 
-            # Match if at start/end, or surrounded by numbers
-            at_start = idx == 0
-            at_end = idx + len(word) >= len(no_spaces)
-            before_is_digit = before_char and before_char.isdigit()
-            after_is_digit = after_char and after_char.isdigit()
+                # Check what's before and after
+                before_char = no_spaces[idx - 1] if idx > 0 else None
+                after_char = no_spaces[word_end] if word_end < len(no_spaces) else None
 
-            # Flag if the word is clearly present in the text
-            # Match patterns like: "fuck", "fuck123", "123fuck", "badass", "shitty"
-            # Don't match: "helloworld" (hell in middle), "classic" (ass in middle)
+                at_end = (word_end >= len(no_spaces))
+                before_is_digit = (before_char is not None and before_char.isdigit())
+                after_is_digit = (after_char is not None and after_char.isdigit())
 
-            # Match if word is at start or end (like "badass" or "shitface")
-            if at_start or at_end:
-                # But avoid matching if it's clearly in the middle of a longer word
-                # Check: is this part of a common compound where the banned word is incidental?
-                # For now, flag all start/end matches except where surrounded by many letters
-                word_len = len(word)
-                total_len = len(no_spaces)
-
-                # If the banned word is less than half the total string and surrounded by letters,
-                # it might be a false positive (like "hell" in "helloworld")
-                if word_len < total_len / 2:
-                    # Only flag if it's a common profanity pattern (ends with word, etc.)
-                    # For now, allow it - this is a conservative approach
-                    if at_end:
-                        # Words ending with profanity are usually intentional (badass, dumbass)
-                        return True
-                    elif at_start and total_len > word_len * 2:
-                        # Words starting with short profanity in long words might be false positives
-                        # (e.g., "hell" in "helloworld")
-                        continue
-                    else:
-                        return True
-                else:
-                    # Word is a significant portion of the string
+                # Simple heuristic: flag if at end or adjacent to digits
+                # This catches "badass", "fuck123", "123fuck" etc.
+                # but avoids "shitake", "classic", "assistant"
+                if at_end or before_is_digit or after_is_digit:
                     return True
-
-            # Also match if surrounded by numbers (like "fuck123" or "123fuck456")
-            if before_is_digit or after_is_digit:
-                return True
 
     return False

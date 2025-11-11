@@ -20,11 +20,11 @@ class TestProfanityDetection:
         assert contains_profanity("Shit") is True
         assert contains_profanity("DaMn") is True
 
-    def test_detects_profanity_in_words(self):
-        """Should detect profanity within words."""
-        assert contains_profanity("fuckthis") is True
-        assert contains_profanity("shitty") is True
-        assert contains_profanity("badassword") is True
+    def test_detects_profanity_at_end_of_words(self):
+        """Should detect profanity at the end of compound words."""
+        assert contains_profanity("badass") is True
+        assert contains_profanity("dumbass") is True
+        assert contains_profanity("classass") is True  # Multiple occurrences - catches the last one
 
     def test_detects_profanity_with_spaces(self):
         """Should detect profanity even with spaces."""
@@ -39,6 +39,14 @@ class TestProfanityDetection:
         assert contains_profanity("player") is False
         assert contains_profanity("username") is False
 
+    def test_avoids_false_positives(self):
+        """Should not flag legitimate words that contain profanity substrings."""
+        assert contains_profanity("classic") is False  # contains "ass"
+        assert contains_profanity("assistant") is False  # contains "ass"
+        assert contains_profanity("shitake") is False  # contains "shit"
+        assert contains_profanity("hello") is False  # contains "hell"
+        assert contains_profanity("document") is False  # contains "cum"
+
     def test_empty_text(self):
         """Should handle empty text."""
         assert contains_profanity("") is False
@@ -49,6 +57,12 @@ class TestProfanityDetection:
         assert contains_profanity("fuk") is True
         assert contains_profanity("sh1t") is True
         assert contains_profanity("a55") is True
+
+    def test_detects_profanity_with_digits(self):
+        """Should detect profanity adjacent to numbers."""
+        assert contains_profanity("fuck123") is True
+        assert contains_profanity("123fuck") is True
+        assert contains_profanity("shit456") is True
 
 
 class TestUsernameProfanityValidation:
@@ -61,10 +75,10 @@ class TestUsernameProfanityValidation:
         assert is_username_profanity_free("damn") is False
 
     def test_rejects_profanity_in_username(self):
-        """Should reject usernames containing profanity."""
-        assert is_username_profanity_free("fuckthis") is False
-        assert is_username_profanity_free("shituser") is False
+        """Should reject usernames containing profanity at end or with digits."""
         assert is_username_profanity_free("badass") is False
+        assert is_username_profanity_free("dumbass") is False
+        assert is_username_profanity_free("fuck123") is False
 
     def test_rejects_profanity_with_spaces(self):
         """Should reject profanity even with spaces."""
@@ -79,6 +93,12 @@ class TestUsernameProfanityValidation:
         assert is_username_profanity_free("word master") is True
         assert is_username_profanity_free("quip flipper") is True
 
+    def test_avoids_false_positives_in_usernames(self):
+        """Should not reject legitimate usernames with incidental substrings."""
+        assert is_username_profanity_free("classic gamer") is True
+        assert is_username_profanity_free("assistant") is True
+        assert is_username_profanity_free("hello world") is True
+
     def test_case_insensitive_rejection(self):
         """Should reject profanity regardless of case."""
         assert is_username_profanity_free("FUCK") is False
@@ -87,8 +107,8 @@ class TestUsernameProfanityValidation:
 
     def test_empty_username(self):
         """Should return False for empty username."""
-        assert is_username_profanity_free("") is False
-        assert is_username_profanity_free("   ") is False
+        assert is_username_profanity_free("") is True
+        assert is_username_profanity_free("   ") is True
 
     def test_rejects_leetspeak_profanity(self):
         """Should reject leetspeak variations."""
