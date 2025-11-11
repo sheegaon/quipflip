@@ -5,8 +5,10 @@ import { BalanceFlipper } from './BalanceFlipper';
 import { SubHeader } from './SubHeader';
 import { HomeIcon } from './icons/HomeIcon';
 import { TreasureChestIcon } from './TreasureChestIcon';
-import { SurveyIcon } from './icons/SurveyIcon';
-import { CogIcon } from './icons/CogIcon';
+import { StatisticsIcon } from './icons/StatisticsIcon';
+import { BrandedSurveyIcon } from './icons/BrandedSurveyIcon';
+import { BrandedSettingsIcon } from './icons/BrandedSettingsIcon';
+import { AdminIcon } from './icons/AdminIcon';
 
 export const Header: React.FC = () => {
   const { state, actions } = useGame();
@@ -252,7 +254,7 @@ export const Header: React.FC = () => {
                     onClick={() => handleNavigate('/statistics')}
                     className="w-full flex items-center gap-3 px-4 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
                   >
-                    <img src="/icon_completed.svg" alt="" className="h-5 w-5" />
+                    <StatisticsIcon className="h-5 w-5" />
                     <span className="font-semibold">Statistics</span>
                   </button>
                   <button
@@ -301,14 +303,14 @@ export const Header: React.FC = () => {
                     onClick={() => handleNavigate('/survey')}
                     className="w-full flex items-center gap-3 px-4 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
                   >
-                    <SurveyIcon className="h-5 w-5" />
+                    <BrandedSurveyIcon className="h-5 w-5" />
                     <span className="font-semibold">Survey</span>
                   </button>
                   <button
                     onClick={() => handleNavigate('/settings')}
                     className="w-full flex items-center gap-3 px-4 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
                   >
-                    <CogIcon className="h-5 w-5" />
+                    <BrandedSettingsIcon className="h-5 w-5" />
                     <span className="font-semibold">Settings</span>
                   </button>
                   {player?.is_admin && (
@@ -316,7 +318,7 @@ export const Header: React.FC = () => {
                       onClick={() => handleNavigate('/admin')}
                       className="w-full flex items-center gap-3 px-4 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
                     >
-                      <CogIcon className="h-5 w-5" />
+                      <AdminIcon className="h-5 w-5" />
                       <span className="font-semibold">Admin</span>
                     </button>
                   )}
