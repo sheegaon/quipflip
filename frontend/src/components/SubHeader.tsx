@@ -109,15 +109,17 @@ export const SubHeader: React.FC = () => {
             <ReviewIcon className="w-7 h-7 md:w-8 md:h-8 transition-transform group-hover:scale-110" />
           </button>
 
-          {/* Leaderboard icon */}
-          <button
-            onClick={goToLeaderboard}
-            className="group"
-            title="View the leaderboard"
-            aria-label="View the leaderboard"
-          >
-            <LeaderboardIcon className="w-7 h-7 md:w-8 md:h-8 transition-transform group-hover:scale-110" />
-          </button>
+          {/* Leaderboard icon - Hidden on first day */}
+          {!isFirstDay && (
+            <button
+              onClick={goToLeaderboard}
+              className="group"
+              title="View the leaderboard"
+              aria-label="View the leaderboard"
+            >
+              <LeaderboardIcon className="w-7 h-7 md:w-8 md:h-8 transition-transform group-hover:scale-110" />
+            </button>
+          )}
 
           {/* Online Users icon */}
           <button
