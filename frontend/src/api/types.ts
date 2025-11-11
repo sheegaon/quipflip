@@ -704,7 +704,6 @@ export interface AdminConfig {
   copy_cost_normal: number;
   copy_cost_discount: number;
   vote_cost: number;
-  hint_cost: number;
   vote_payout_correct: number;
   abandoned_penalty: number;
   prize_pool_base: number;
