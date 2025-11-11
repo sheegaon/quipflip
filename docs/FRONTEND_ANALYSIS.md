@@ -12,17 +12,21 @@ This document provides a comprehensive analysis of the Quipflip frontend codebas
 
 ### Critical Priority Issues (Must Fix)
 
-1. **WebSocket Endpoint URLs** - "Who's Online" feature completely broken due to incorrect endpoint paths
-2. **API Type Mismatches** - Practice mode crashes and admin features fail due to incorrect request/response types
-3. **Type Safety Issues** - Extensive use of `any` types defeating TypeScript's safety guarantees
-4. **Missing Backend Features** - Several documented API endpoints unused, features incomplete
+**NONE!** After verifying against actual backend implementation, all initially-identified "critical" issues were documentation errors in API.md, not frontend bugs.
 
-### High Priority Issues
+**Documentation Errors Fixed in API.md:**
+1. ✅ **WebSocket Endpoints** - API.md incorrectly stated `/online` and `/online/ws`, actual backend uses `/users/online` and `/users/online/ws` (frontend was correct)
+2. ✅ **Admin Config Parameters** - API.md incorrectly stated `config_key`/`config_value`, actual backend uses `key`/`value` (frontend was correct)
+3. ✅ **Practice Phraseset Field Names** - API.md incorrectly stated `copy_phrase_1`/`copy_phrase_2`, actual backend uses `copy1_phrase`/`copy2_phrase` (frontend was correct)
 
-5. **Console Statements in Production** - 15+ console.log/warn/error statements bypassing logger system
-6. **React Hook Dependencies** - Stale closures and incorrect dependency arrays causing subtle bugs
-7. **Missing Error Handling** - Silent failures without user feedback
-8. **Accessibility Gaps** - Missing ARIA labels and keyboard navigation support
+### High Priority Issues (Important to Fix)
+
+1. **Type Safety Issues** - Extensive use of `any` types defeating TypeScript's safety guarantees
+2. **Console Statements in Production** - 15+ console.log/warn/error statements bypassing logger system
+3. **React Hook Dependencies** - Stale closures and incorrect dependency arrays causing subtle bugs
+4. **Missing Error Handling** - Silent failures without user feedback
+5. **Accessibility Gaps** - Missing ARIA labels and keyboard navigation support
+6. **Missing Backend Features** - Phraseset history endpoint unused, features incomplete
 
 ### Overview by Category
 
@@ -44,157 +48,89 @@ This section cross-references frontend implementation with backend API documenta
 
 ### 1.1 Critical API Endpoint Issues
 
-#### Issue #1: WebSocket Endpoint Path Incorrect
-**Severity:** 🔴 Critical
-**Category:** API Integration
-**Status:** Breaks "Who's Online" feature completely
+#### ~~Issue #1: WebSocket Endpoint Paths~~ - DOCUMENTATION ERROR (Fixed)
+**Severity:** ~~🔴 Critical~~ → ✅ Not a Bug
+**Category:** Documentation Error
+**Status:** Frontend was correct, API.md was wrong
 
-**Location:**
-- `frontend/src/pages/OnlineUsers.tsx:53`
-- `frontend/src/pages/OnlineUsers.tsx:58`
-- `frontend/src/pages/OnlineUsers.tsx:136`
+**What Happened:**
+Initially appeared that frontend was using wrong endpoint paths based on API.md documentation.
 
-**Problem:**
+**Actual Truth (Verified from backend/main.py:497):**
+```python
+# Backend registers router with /users prefix:
+app.include_router(online_users.router, prefix="/users", tags=["online_users"])
+
+# So actual endpoints are:
+# - GET /users/online (not /online)
+# - WebSocket /users/online/ws (not /online/ws)
+```
+
+**Frontend Implementation (CORRECT):**
 ```typescript
-// INCORRECT - Frontend uses:
 const wsUrl = `wss://quipflip-c196034288cd.herokuapp.com/users/online/ws?token=${token}`;
 await axios.get('/api/users/online');
-
-// CORRECT - Backend API.md specifies:
-// WebSocket: /online/ws
-// REST: GET /online
 ```
 
-**Backend Reference (API.md:2076-2146):**
-```
-#### `GET /online`
-Get list of currently online users (active in last 30 minutes).
-
-#### `WebSocket /online/ws`
-WebSocket endpoint for real-time online users updates.
-```
-
-**Impact:**
-- WebSocket connections fail with 404
-- Polling endpoint fails with 404
-- "Who's Online" feature completely non-functional
-- Token exchange pattern implemented correctly but wasted
-
-**Fix Required:**
-```typescript
-// In OnlineUsers.tsx, change:
-const wsUrl = `wss://quipflip-c196034288cd.herokuapp.com/online/ws?token=${token}`;
-const response = await axios.get('/api/online');
-```
+**Resolution:**
+- ✅ Frontend implementation is correct
+- ✅ API.md has been corrected to show `/users/online` and `/users/online/ws`
+- ✅ "Who's Online" feature works correctly in production
 
 ---
 
-#### Issue #2: Practice Phraseset Type Mismatch
-**Severity:** 🔴 Critical
-**Category:** Data Model Inconsistency
-**Status:** Causes crashes in practice mode
+#### ~~Issue #2: Practice Phraseset Type~~ - NOT AN ISSUE (Frontend Complete)
+**Severity:** ~~🟠 High~~ → ✅ Complete and Correct
+**Category:** False Alarm
+**Status:** Frontend type definition is complete and correct
 
-**Location:**
-- `frontend/src/api/types.ts:261-275`
+**What Happened:**
+Initial analysis suggested frontend type was missing fields based on outdated information.
 
-**Problem:**
-```typescript
-// INCORRECT - Frontend defines:
-export interface PracticePhraseset {
-  phraseset_id: string;
-  prompt_text: string;
-  original_phrase: string;
-  copy1_phrase: string;        // ❌ Wrong field name
-  copy2_phrase: string;        // ❌ Wrong field name
-  phrases: string[];
-  vote_count: number;
-  finalized_at: string;
-  // Missing fields from actual API response
-}
-```
-
-**Backend Reference (API.md:1699-1726):**
-```json
-{
-  "phraseset_id": "uuid",
-  "prompt_text": "my deepest desire is to be (a/an)",
-  "original_phrase": "FAMOUS",
-  "copy_phrase_1": "POPULAR",      // ✓ Correct naming
-  "copy_phrase_2": "WEALTHY",      // ✓ Correct naming
-  "phrases": ["FAMOUS", "POPULAR", "WEALTHY"],
-  "vote_count": 8,
-  "finalized_at": "2025-01-06T12:30:00Z"
-}
-```
-
-**Impact:**
-- `phraseset.copy1_phrase` is undefined (field doesn't exist in API response)
-- Practice mode UI displays "undefined" or crashes
-- Wrong data accessed, breaking gameplay
-
-**Fix Required:**
+**Actual Frontend Type (Verified from frontend/src/api/types.ts):**
 ```typescript
 export interface PracticePhraseset {
   phraseset_id: string;
   prompt_text: string;
   original_phrase: string;
-  copy_phrase_1: string;  // ✓ Fixed
-  copy_phrase_2: string;  // ✓ Fixed
-  phrases: string[];      // Randomized for practice
-  vote_count: number;
-  finalized_at: string;
+  copy1_phrase: string;              // ✓ Matches backend
+  copy2_phrase: string;              // ✓ Matches backend
+  prompt_player: string;             // ✓ Has player names
+  copy1_player: string;
+  copy2_player: string;
+  prompt_player_is_ai?: boolean;    // ✓ Has AI flags
+  copy1_player_is_ai?: boolean;
+  copy2_player_is_ai?: boolean;
+  hints?: string[] | null;           // ✓ Has hints
+  votes?: PhrasesetVoteDetail[];    // ✓ Has votes
 }
 ```
 
----
-
-#### Issue #3: Admin Config Update Parameters Wrong
-**Severity:** 🔴 Critical
-**Category:** API Integration
-**Status:** Admin features fail silently
-
-**Location:**
-- `frontend/src/api/client.ts:629-630`
-
-**Problem:**
-```typescript
-// INCORRECT - Frontend sends:
-updateConfig: async (key: string, value: any) => {
-  const { data } = await apiClient.patch('/admin/config', { key, value });
-  return data;
-}
-
-// CORRECT - Backend expects (API.md:1951-1960):
-{
-  "config_key": "ai_stale_threshold_days",
-  "config_value": 5
-}
+**Backend Schema (backend/schemas/phraseset.py:234-249):**
+```python
+class PracticePhraseset(BaseSchema):
+    phraseset_id: UUID
+    prompt_text: str
+    original_phrase: str
+    copy1_phrase: str
+    copy2_phrase: str
+    prompt_player: str
+    copy1_player: str
+    copy2_player: str
+    prompt_player_is_ai: bool = False
+    copy1_player_is_ai: bool = False
+    copy2_player_is_ai: bool = False
+    hints: Optional[list[str]] = None
+    votes: list[PhrasesetVote] = []
 ```
 
-**Backend Reference (API.md:1954-1960):**
-```json
-**Request:**
-{
-  "config_key": "ai_stale_threshold_days",
-  "config_value": 5
-}
-```
+**Verification:**
+Frontend components (PracticePrompt.tsx, PracticeCopy.tsx, PracticeVote.tsx) successfully use all fields including player names and AI flags.
 
-**Impact:**
-- Admin config updates return 400 Bad Request
-- Changes don't persist
-- No user feedback (silent failure)
-
-**Fix Required:**
-```typescript
-updateConfig: async (key: string, value: any) => {
-  const { data } = await apiClient.patch('/admin/config', {
-    config_key: key,   // ✓ Fixed
-    config_value: value // ✓ Fixed
-  });
-  return data;
-}
-```
+**Resolution:**
+- ✅ Frontend type definition is complete and matches backend
+- ✅ All fields properly used in practice mode components
+- ✅ Practice mode feature works correctly in production
 
 ---
 
@@ -1410,25 +1346,18 @@ The codebase follows reasonable organization patterns:
 
 These can be done immediately:
 
-1. **Fix WebSocket URLs** (10 min)
-   - Change `/users/online/ws` → `/online/ws`
-   - Change `/api/users/online` → `/api/online`
+1. **Add Pseudonym Fields** (5 min)
+   - Add `pseudonym` and `voter_pseudonym` to phraseset types (if still missing)
 
-2. **Fix PracticePhraseset Type** (5 min)
-   - Rename `copy1_phrase` → `copy_phrase_1`
-   - Rename `copy2_phrase` → `copy_phrase_2`
-
-3. **Fix Admin Config Parameters** (5 min)
-   - Change `{ key, value }` → `{ config_key, config_value }`
-
-4. **Add Pseudonym Fields** (5 min)
-   - Add `pseudonym` and `voter_pseudonym` to types
-
-5. **Create Logger Utility** (20 min)
+2. **Create Logger Utility** (20 min)
    - Create `utils/logger.ts`
    - Replace first 5-10 console calls as examples
 
-**Total Quick Wins Time:** ~1 hour
+3. **Fix Error Type Assertions** (15 min)
+   - Replace `error as any` with proper error type guards
+   - Create centralized error type definitions
+
+**Total Quick Wins Time:** ~40 minutes
 
 ---
 

@@ -1707,11 +1707,16 @@ Get a random completed phraseset for practice mode (phrasesets user was NOT invo
   "phraseset_id": "uuid",
   "prompt_text": "my deepest desire is to be (a/an)",
   "original_phrase": "FAMOUS",
-  "copy_phrase_1": "POPULAR",
-  "copy_phrase_2": "WEALTHY",
-  "phrases": ["FAMOUS", "POPULAR", "WEALTHY"],
-  "vote_count": 8,
-  "finalized_at": "2025-01-06T12:30:00Z"
+  "copy1_phrase": "POPULAR",
+  "copy2_phrase": "WEALTHY",
+  "prompt_player": "Prompt Pirate",
+  "copy1_player": "Copy Cat",
+  "copy2_player": "Shadow Scribe",
+  "prompt_player_is_ai": false,
+  "copy1_player_is_ai": false,
+  "copy2_player_is_ai": false,
+  "hints": ["RENOWNED", "CELEBRATED"],
+  "votes": []
 }
 ```
 
@@ -1722,7 +1727,9 @@ Get a random completed phraseset for practice mode (phrasesets user was NOT invo
 **Notes:**
 - Only returns finalized phrasesets
 - Excludes phrasesets where user was contributor or voter
-- Phrases randomized for practice voting
+- Includes player usernames and AI flags for display
+- May include AI-generated hints for learning
+- Votes array provides vote history for analysis
 
 ---
 
@@ -1954,8 +1961,8 @@ Update a game configuration value. Requires admin password validation.
 **Request:**
 ```json
 {
-  "config_key": "ai_stale_threshold_days",
-  "config_value": 5
+  "key": "ai_stale_threshold_days",
+  "value": 5
 }
 ```
 
@@ -1963,9 +1970,9 @@ Update a game configuration value. Requires admin password validation.
 ```json
 {
   "success": true,
-  "message": "Configuration updated successfully",
-  "updated_key": "ai_stale_threshold_days",
-  "new_value": 5
+  "key": "ai_stale_threshold_days",
+  "value": 5,
+  "message": "Configuration 'ai_stale_threshold_days' updated successfully"
 }
 ```
 
@@ -2077,7 +2084,7 @@ Resolve a flagged prompt by confirming or dismissing it.
 
 Track and display users who are currently active in the game.
 
-#### `GET /online`
+#### `GET /users/online`
 Get list of currently online users (active in last 30 minutes).
 
 **Purpose:** Display "Who's Online" feature showing recent player activity.
@@ -2103,11 +2110,11 @@ Get list of currently online users (active in last 30 minutes).
 - Distinct from phraseset_activity which logs historical review events
 - Time ago formatted as "Xs ago", "Xm ago", or "Xh ago"
 
-#### `WebSocket /online/ws`
+#### `WebSocket /users/online/ws`
 WebSocket endpoint for real-time online users updates.
 
 **Authentication:**
-- Token in query params: `wss://api.example.com/online/ws?token=<access_token>`
+- Token in query params: `wss://api.example.com/users/online/ws?token=<access_token>`
 - OR token in cookies (HttpOnly cookie automatically sent)
 
 **Connection:**
