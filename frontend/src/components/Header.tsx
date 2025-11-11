@@ -203,7 +203,7 @@ export const Header: React.FC = () => {
           </div>
         </div>
       )}
-      <div className="bg-white shadow-tile-sm">
+      <div className="bg-white shadow-tile-sm relative z-50">
         <div className="max-w-6xl mx-auto px-1 py-0 md:px-4 md:py-1.5">
         <div className="flex justify-between items-center">
           {/* Left: Logo + Back Arrow (on certain pages) */}
@@ -238,7 +238,7 @@ export const Header: React.FC = () => {
             {showDropdown && (
               <div
                 ref={dropdownRef}
-                className="absolute top-full left-0 mt-2 w-48 bg-white rounded-tile shadow-tile-lg border-2 border-quip-navy border-opacity-10 z-[70] slide-up-enter"
+                className="absolute top-full left-0 mt-2 w-48 bg-white rounded-tile shadow-tile-lg border-2 border-quip-navy border-opacity-10 z-[100] slide-up-enter"
               >
                 <div className="py-2">
                   <button
