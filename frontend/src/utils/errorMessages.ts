@@ -1,5 +1,4 @@
 // Centralized error message localization for better UX
-import { isApiError, hasMessage } from '../types/errors';
 
 export interface ErrorContext {
   action?: string;
@@ -303,14 +302,13 @@ export const getContextualErrorMessage = (
   }
 
   // Server errors
-  const hasServerErrorStatus =
+  if (
     typeof error === 'object' &&
     error !== null &&
     'status' in error &&
     typeof (error as Record<string, unknown>).status === 'number' &&
-    (error as Record<string, unknown>).status >= 500;
-
-  if (hasServerErrorStatus) {
+    ((error as Record<string, unknown>).status as number) >= 500
+  ) {
     return {
       message: errorMessages.network.serverUnavailable,
       suggestion: "Our team has been notified - try again in a few minutes",

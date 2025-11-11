@@ -1,4 +1,4 @@
-import axios, { AxiosError } from 'axios';
+import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { getContextualErrorMessage, getActionErrorMessage } from '../utils/errorMessages';
 import { offlineQueue, shouldQueueAction } from '../utils/offlineQueue';
 import type {
@@ -233,7 +233,7 @@ api.interceptors.response.use(
       } else if (Array.isArray(data)) {
         errorPayload = { detail: data };
       } else if (typeof data === 'object') {
-        errorPayload = { ...data as Record<string, unknown> };
+        errorPayload = { ...(data as unknown as Record<string, unknown>) };
       } else {
         errorPayload = { detail: String(data) };
       }
