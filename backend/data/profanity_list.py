@@ -11,7 +11,8 @@ PROFANITY_LIST = [
     "dick", "cock", "pussy", "cunt", "bastard", "slut", "whore",
     "piss", "fag", "faggot", "dyke", "retard", "nigger", "nigga",
     "twat", "bollocks", "bugger", "wanker", "arsehole", "scum",
-    "tosser", "prick", "minger", "numpty",
+    "tosser", "prick", "minger", "numpty", "badass", "douche",
+    "jackass",
 
     # Variations and leetspeak
     "fck", "fuk", "sh1t", "a55", "b1tch", "d1ck", "c0ck",
