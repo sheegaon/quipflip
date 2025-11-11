@@ -1070,14 +1070,7 @@ class PhrasesetService:
         ]
         if not finalized:
             return {}
-        
-        # For finalized phrasesets, we don't need to recalculate payouts every time
-        # since they're deterministic and already cached in result_view table.
-        # Only calculate payouts when absolutely necessary (e.g., missing result_view records)
-        
-        # Return empty dict - payout amounts will be retrieved from result_view records
-        # in the individual contribution building methods, which is much more efficient
-        return {}
+        return await self.scoring_service.calculate_payouts_bulk(finalized)
 
     def _build_prompt_contribution_entries(
         self,
