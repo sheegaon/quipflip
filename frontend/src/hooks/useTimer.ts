@@ -27,22 +27,11 @@ export const useTimer = (expiresAt: string | null): TimerState => {
     // Initial calculation
     const initial = calculateTimeRemaining();
     setTimeRemaining(initial);
-    console.log('⏱️ [useTimer] Initial time remaining:', initial, 'seconds for', expiresAt);
 
     // Update every second
     const interval = setInterval(() => {
       const remaining = calculateTimeRemaining();
       setTimeRemaining(remaining);
-
-      // Log when hitting critical points
-      if (remaining <= 5 && remaining > 0) {
-        console.log('⏱️ [useTimer] Time remaining:', remaining, 'seconds');
-      } else if (remaining === 0) {
-        console.log('⏱️ [useTimer] Timer reached ZERO!', {
-          expiresAt,
-          now: new Date().toISOString()
-        });
-      }
     }, 1000);
 
     return () => clearInterval(interval);

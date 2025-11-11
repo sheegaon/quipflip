@@ -21,7 +21,7 @@ class PhraseValidationClient:
     def __init__(self):
         self.settings = get_settings()
         self.base_url = self.settings.phrase_validator_url.rstrip('/')
-        self.timeout = ClientTimeout(total=30)  # 30 second timeout
+        self.timeout = ClientTimeout(total=120)  # 120 second timeout for hint generation
         self._session: Optional[aiohttp.ClientSession] = None
 
     async def __aenter__(self):
