@@ -55,6 +55,8 @@ import type {
   LeaderboardResponse,
   CompletedPhrasesetsResponse,
   PracticePhraseset,
+  AdminConfig,
+  UpdateAdminConfigResponse,
 } from './types';
 
 // Base URL - configure based on environment
@@ -66,7 +68,7 @@ const logApi = (
   method: string,
   endpoint: string,
   status: 'start' | 'success' | 'error',
-  details?: any,
+  details?: unknown,
 ) => {
   if (!isDev) return;
   const emoji = status === 'start' ? '📤' : status === 'success' ? '✅' : '❌';
@@ -79,7 +81,7 @@ const logApi = (
 };
 
 // Helper function to extract meaningful error messages using enhanced localization
-const extractErrorMessage = (error: any, action?: string): string => {
+const extractErrorMessage = (error: unknown, action?: string): string => {
   // Use the new contextual error message system
   if (action) {
     return getActionErrorMessage(action, error);
@@ -112,11 +114,11 @@ const clearStoredCredentials = () => {
 // Track if we're currently refreshing to prevent multiple simultaneous refresh attempts
 let isRefreshing = false;
 let failedQueue: Array<{
-  resolve: (value?: any) => void;
-  reject: (error?: any) => void;
+  resolve: (value?: unknown) => void;
+  reject: (error?: unknown) => void;
 }> = [];
 
-const processQueue = (error: any = null) => {
+const processQueue = (error: unknown = null) => {
   failedQueue.forEach((promise) => {
     if (error) {
       promise.reject(error);
@@ -163,7 +165,11 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    const originalRequest = error.config as any;
+    // Extend config type to include our custom _retry flag
+    interface RetryableConfig extends InternalAxiosRequestConfig {
+      _retry?: boolean;
+    }
+    const originalRequest = error.config as RetryableConfig | undefined;
 
     if (error.config) {
       const method = error.config.method?.toUpperCase() || 'UNKNOWN';
@@ -221,13 +227,13 @@ api.interceptors.response.use(
     if (error.response) {
       const { status, data } = error.response;
 
-      let errorPayload: any;
+      let errorPayload: Record<string, unknown>;
       if (data == null) {
         errorPayload = {};
       } else if (Array.isArray(data)) {
         errorPayload = { detail: data };
       } else if (typeof data === 'object') {
-        errorPayload = { ...data };
+        errorPayload = { ...data as Record<string, unknown> };
       } else {
         errorPayload = { detail: String(data) };
       }
@@ -622,13 +628,13 @@ export const apiClient = {
   },
 
   // Admin endpoints
-  async getAdminConfig(signal?: AbortSignal): Promise<any> {
-    const { data } = await api.get('/admin/config', { signal });
+  async getAdminConfig(signal?: AbortSignal): Promise<AdminConfig> {
+    const { data } = await api.get<AdminConfig>('/admin/config', { signal });
     return data;
   },
 
-  async updateAdminConfig(key: string, value: any, signal?: AbortSignal): Promise<{ success: boolean; key: string; value: any; message?: string }> {
-    const { data } = await api.patch('/admin/config', { key, value }, { signal });
+  async updateAdminConfig(key: string, value: number | string, signal?: AbortSignal): Promise<UpdateAdminConfigResponse> {
+    const { data } = await api.patch<UpdateAdminConfigResponse>('/admin/config', { key, value }, { signal });
     return data;
   },
 
