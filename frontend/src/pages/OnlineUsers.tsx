@@ -8,12 +8,10 @@
  * review events on the Phrasesets page.
  */
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Header } from '../components/Header';
 import type { OnlineUser } from '../api/types';
 
 const OnlineUsers: React.FC = () => {
-  const navigate = useNavigate();
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -296,16 +294,6 @@ const OnlineUsers: React.FC = () => {
             <strong>Note:</strong> Users are shown as online if they've made an API call in the last 30 minutes.
             This page updates automatically every 5 seconds.
           </p>
-        </div>
-
-        {/* Back button */}
-        <div className="mt-6 text-center">
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="bg-quip-navy hover:bg-quip-teal text-white font-bold py-2 px-6 rounded-tile transition-all hover:shadow-tile-sm"
-          >
-            Back to Dashboard
-          </button>
         </div>
       </div>
     </div>
