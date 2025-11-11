@@ -1063,7 +1063,7 @@ class PhrasesetService:
     async def _load_payouts_for_phrasesets(
         self, phrasesets: list[Phraseset]
     ) -> dict[UUID, dict]:
-        """Get payouts for finalized phrasesets using cached result_view data when available."""
+        """Calculate payouts for finalized phrasesets."""
 
         finalized = [
             phraseset for phraseset in phrasesets if phraseset.status == "finalized"
