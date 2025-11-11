@@ -37,7 +37,7 @@ Authorization: Bearer <access_token>
 
 **Getting Tokens:**
 - Use `POST /player/guest` to create a guest account instantly (no email/password required).
-- Use `POST /player` to register with an email and password (the backend generates a username and pseudonym automatically).
+- Use `POST /player` to register with an email and password (the backend generates a username automatically).
 - Use `POST /auth/login` with your email and password to obtain fresh tokens.
 - Use `POST /player/upgrade` to convert a guest account to a full account.
 - All authentication endpoints set HTTP-only cookies for both access and refresh tokens.
@@ -186,7 +186,7 @@ curl -X POST http://localhost:8000/player \
       }'
 ```
 
-**Note:** The backend assigns both the public username and hidden pseudonym; clients should not send custom values.
+**Note:** The backend assigns the username; clients should not send custom values.
 
 See [Player](DATA_MODELS.md#player) for persisted fields.
 
@@ -1282,9 +1282,9 @@ Get full contributor view for a phraseset the player participated in (contributo
   "copy_phrase_1": "POPULAR",
   "copy_phrase_2": "WEALTHY",
   "contributors": [
-    {"player_id": "uuid", "username": "Prompt Pirate", "pseudonym": "Prompt Pirate", "is_you": true, "phrase": "FAMOUS"},
-    {"player_id": "uuid", "username": "Copy Cat", "pseudonym": "Copy Cat", "is_you": false, "phrase": "POPULAR"},
-    {"player_id": "uuid", "username": "Shadow Scribe", "pseudonym": "Shadow Scribe", "is_you": false, "phrase": "WEALTHY"}
+    {"player_id": "uuid", "username": "Prompt Pirate", "is_you": true, "phrase": "FAMOUS"},
+    {"player_id": "uuid", "username": "Copy Cat", "is_you": false, "phrase": "POPULAR"},
+    {"player_id": "uuid", "username": "Shadow Scribe", "is_you": false, "phrase": "WEALTHY"}
   ],
   "vote_count": 10,
   "third_vote_at": "2025-01-06T12:10:00Z",
@@ -1295,7 +1295,6 @@ Get full contributor view for a phraseset the player participated in (contributo
       "vote_id": "uuid",
       "voter_id": "uuid",
       "voter_username": "Voter 1",
-      "voter_pseudonym": "Voter 1",
       "voted_phrase": "FAMOUS",
       "correct": true,
       "voted_at": "2025-01-06T12:10:30Z"
@@ -1361,9 +1360,9 @@ Get full details for any COMPLETED phraseset (public access for browsing/reviewi
   "copy_phrase_1": "POPULAR",
   "copy_phrase_2": "WEALTHY",
   "contributors": [
-    {"player_id": "uuid", "username": "Prompt Pirate", "pseudonym": "Prompt Pirate", "is_you": false, "phrase": "FAMOUS"},
-    {"player_id": "uuid", "username": "Copy Cat", "pseudonym": "Copy Cat", "is_you": false, "phrase": "POPULAR"},
-    {"player_id": "uuid", "username": "Shadow Scribe", "pseudonym": "Shadow Scribe", "is_you": false, "phrase": "WEALTHY"}
+    {"player_id": "uuid", "username": "Prompt Pirate", "is_you": false, "phrase": "FAMOUS"},
+    {"player_id": "uuid", "username": "Copy Cat", "is_you": false, "phrase": "POPULAR"},
+    {"player_id": "uuid", "username": "Shadow Scribe", "is_you": false, "phrase": "WEALTHY"}
   ],
   "vote_count": 10,
   "third_vote_at": "2025-01-06T12:10:00Z",
@@ -1374,7 +1373,6 @@ Get full details for any COMPLETED phraseset (public access for browsing/reviewi
       "vote_id": "uuid",
       "voter_id": "uuid",
       "voter_username": "Voter 1",
-      "voter_pseudonym": "Voter 1",
       "voted_phrase": "FAMOUS",
       "correct": true,
       "voted_at": "2025-01-06T12:10:30Z"
@@ -1515,7 +1513,6 @@ Attempting to view a non-finalized phraseset or a phraseset you didn't participa
       "timestamp": "2025-01-06T10:00:00Z",
       "player_id": "uuid",
       "username": "Prompt Pirate",
-      "pseudonym": "Prompt Pirate",
       "phrase": "FAMOUS",
       "correct": null,
       "metadata": {
@@ -1528,7 +1525,6 @@ Attempting to view a non-finalized phraseset or a phraseset you didn't participa
       "timestamp": "2025-01-06T10:15:00Z",
       "player_id": "uuid",
       "username": "Copy Cat",
-      "pseudonym": "Copy Cat",
       "phrase": "POPULAR",
       "correct": null,
       "metadata": {
@@ -1541,7 +1537,6 @@ Attempting to view a non-finalized phraseset or a phraseset you didn't participa
       "timestamp": "2025-01-06T10:18:00Z",
       "player_id": "uuid",
       "username": "Shadow Scribe",
-      "pseudonym": "Shadow Scribe",
       "phrase": "WEALTHY",
       "correct": null,
       "metadata": {
@@ -1554,7 +1549,6 @@ Attempting to view a non-finalized phraseset or a phraseset you didn't participa
       "timestamp": "2025-01-06T11:00:00Z",
       "player_id": "uuid",
       "username": "Voter One",
-      "pseudonym": "Voter One",
       "phrase": "FAMOUS",
       "correct": true,
       "metadata": {
@@ -1567,7 +1561,6 @@ Attempting to view a non-finalized phraseset or a phraseset you didn't participa
       "timestamp": "2025-01-06T11:05:00Z",
       "player_id": "uuid",
       "username": "Voter Two",
-      "pseudonym": "Voter Two",
       "phrase": "POPULAR",
       "correct": false,
       "metadata": {
@@ -1580,7 +1573,6 @@ Attempting to view a non-finalized phraseset or a phraseset you didn't participa
       "timestamp": "2025-01-06T12:30:00Z",
       "player_id": null,
       "username": null,
-      "pseudonym": null,
       "phrase": null,
       "correct": null,
       "metadata": {
@@ -1601,7 +1593,7 @@ Attempting to view a non-finalized phraseset or a phraseset you didn't participa
 **Notes:**
 - Events are returned in chronological order
 - All events include UTC timestamps
-- Both `username` (for debugging) and `pseudonym` (for display) are included
+- `username` is included for player identification
 - Vote events include the `correct` boolean indicating if the voter chose the original phrase
 - The `metadata` field contains event-specific additional information
 - Only finalized phrasesets will have a `finalized` event

@@ -57,12 +57,10 @@ Then other players will try to write similar quips based on yours, but *without 
       // **Click "Next" to start your first Prompt Round.** The tutorial will resume when you finish.
     target: '.tutorial-prompt-round',
     position: 'bottom',
-    nextStep: 'copy_round', // Changed from 'prompt_round_paused' to 'copy_round'
+    nextStep: 'copy_round',
     showSkip: true,
     showBack: true,
   },
-
-  prompt_round_paused: null,
 
   copy_round: {
     id: 'copy_round',
@@ -81,8 +79,6 @@ Voters will try to identify the original, so the better you match the style, the
     showSkip: true,
     showBack: true,
   },
-
-  copy_round_paused: null,
 
   vote_round: {
     id: 'vote_round',
@@ -131,7 +127,7 @@ export const getNextStep = (currentStep: TutorialProgress): TutorialProgress | n
 };
 
 export const getPreviousStep = (currentStep: TutorialProgress): TutorialProgress | null => {
-  const steps: TutorialProgress[] = ['welcome', 'dashboard', 'prompt_round', 'prompt_round_paused', 'copy_round', 'vote_round', 'completed_rounds_guide'];
+  const steps: TutorialProgress[] = ['welcome', 'dashboard', 'prompt_round', 'copy_round', 'vote_round', 'completed_rounds_guide'];
   const currentIndex = steps.indexOf(currentStep);
   if (currentIndex > 0) {
     return steps[currentIndex - 1];
