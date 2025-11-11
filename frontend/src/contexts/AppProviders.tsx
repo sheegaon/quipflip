@@ -4,6 +4,8 @@ import { QuestProvider } from './QuestContext';
 import { TutorialProvider, useTutorial } from './TutorialContext';
 import { ResultsProvider, useResults } from './ResultsContext';
 import { gameContextLogger } from '../utils/logger';
+import { ErrorBoundary } from '../components/ErrorBoundary';
+import { PageErrorFallback } from '../components/ErrorFallback';
 
 // Inner component that has access to GameContext
 const ContextBridge: React.FC<{
@@ -91,18 +93,32 @@ export const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   return (
-    <TutorialProvider>
-      <GameProvider
-        onDashboardTrigger={handleDashboardTrigger}
-      >
-        <InnerProviders
-          onDashboardTrigger={handleDashboardTrigger}
-          dashboardRefreshToken={dashboardRefreshToken}
+    <ErrorBoundary
+      fallback={PageErrorFallback}
+      onError={(error, errorInfo, errorId) => {
+        gameContextLogger.error('Context provider error caught:', errorId, error);
+      }}
+    >
+      <TutorialProvider>
+        <ErrorBoundary
+          fallback={PageErrorFallback}
+          onError={(error, errorInfo, errorId) => {
+            gameContextLogger.error('GameProvider error caught:', errorId, error);
+          }}
         >
-          {children}
-        </InnerProviders>
-      </GameProvider>
-    </TutorialProvider>
+          <GameProvider
+            onDashboardTrigger={handleDashboardTrigger}
+          >
+            <InnerProviders
+              onDashboardTrigger={handleDashboardTrigger}
+              dashboardRefreshToken={dashboardRefreshToken}
+            >
+              {children}
+            </InnerProviders>
+          </GameProvider>
+        </ErrorBoundary>
+      </TutorialProvider>
+    </ErrorBoundary>
   );
 };
 

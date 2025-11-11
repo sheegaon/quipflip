@@ -7,6 +7,8 @@ import { AppProviders } from './contexts/AppProviders';
 import { ErrorNotification } from './components/ErrorNotification';
 import TutorialOverlay from './components/Tutorial/TutorialOverlay';
 import { trackPageView } from './utils/googleAnalytics';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { AppErrorFallback } from './components/ErrorFallback';
 
 // Suppress some logging messages
 if (typeof window !== 'undefined') {
@@ -26,6 +28,9 @@ if (typeof window !== 'undefined') {
   };
 }
 
+import { PageErrorFallback } from './components/ErrorFallback';
+
+// Lazy load pages with error boundaries
 const Landing = lazy(() => import('./pages/Landing'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const PromptRound = lazy(() => import('./pages/PromptRound'));
@@ -65,8 +70,15 @@ const suspenseFallback = (
   </div>
 );
 
+// Wrap page component with ErrorBoundary
+const withPageErrorBoundary = (element: React.ReactNode) => (
+  <ErrorBoundary fallback={PageErrorFallback}>
+    {element}
+  </ErrorBoundary>
+);
+
 const renderWithSuspense = (element: React.ReactNode) => (
-  <Suspense fallback={suspenseFallback}>{element}</Suspense>
+  <Suspense fallback={suspenseFallback}>{withPageErrorBoundary(element)}</Suspense>
 );
 
 const renderProtectedRoute = (element: React.ReactNode) =>
@@ -185,18 +197,27 @@ const AppRoutes: React.FC = () => {
 // Main App
 function App() {
   return (
-    <Router
-      future={{
-        v7_startTransition: true,
-        v7_relativeSplatPath: true,
+    <ErrorBoundary
+      fallback={AppErrorFallback}
+      isAppLevel={true}
+      onError={(error, errorInfo, errorId) => {
+        // Log to analytics if needed
+        console.error('App-level error caught:', errorId);
       }}
     >
-      <AppProviders>
-        <AppRoutes />
-        <Analytics />
-        <SpeedInsights />
-      </AppProviders>
-    </Router>
+      <Router
+        future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true,
+        }}
+      >
+        <AppProviders>
+          <AppRoutes />
+          <Analytics />
+          <SpeedInsights />
+        </AppProviders>
+      </Router>
+    </ErrorBoundary>
   );
 }
 
