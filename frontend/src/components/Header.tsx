@@ -26,6 +26,7 @@ export const Header: React.FC = () => {
   const [guestCredentials, setGuestCredentials] = React.useState<{ email: string | null; password: string | null } | null>(null);
   const [showDropdown, setShowDropdown] = React.useState(false);
   const dropdownRef = React.useRef<HTMLDivElement>(null);
+  const logoButtonRef = React.useRef<HTMLButtonElement>(null);
 
   // Show back arrow on certain pages
   const isAdminRoute = location.pathname === '/admin' || location.pathname.startsWith('/admin/');
@@ -118,7 +119,14 @@ export const Header: React.FC = () => {
   // Close dropdown when clicking outside
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      // Don't close if clicking on the logo button or inside the dropdown
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(target) &&
+        logoButtonRef.current &&
+        !logoButtonRef.current.contains(target)
+      ) {
         setShowDropdown(false);
       }
     };
@@ -232,6 +240,7 @@ export const Header: React.FC = () => {
               </button>
             )}
             <button
+              ref={logoButtonRef}
               type="button"
               onClick={handleLogoClick}
               className="cursor-pointer transition-opacity hover:opacity-90"
