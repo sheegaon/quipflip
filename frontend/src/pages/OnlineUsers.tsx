@@ -51,7 +51,7 @@ const OnlineUsers: React.FC = () => {
 
         if (apiUrl.startsWith('/')) {
           // Production: use direct Heroku connection (cannot proxy WebSocket through Vercel)
-          wsUrl = `${backendWsUrl}/online/ws`;
+          wsUrl = `${backendWsUrl}/users/online/ws`;
 
         } else {
           // Development: connect directly to local backend
