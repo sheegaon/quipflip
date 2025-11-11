@@ -34,8 +34,8 @@ def is_username_input_valid(username: str) -> bool:
 
 def is_username_profanity_free(username: str) -> bool:
     """Validate that the username does not contain profanity."""
-    if not username:
-        return False
+    if not username.strip():
+        return True
     return not contains_profanity(username)
 
 
