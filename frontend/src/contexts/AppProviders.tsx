@@ -3,7 +3,23 @@ import { GameProvider, useGame } from './GameContext';
 import { QuestProvider } from './QuestContext';
 import { TutorialProvider, useTutorial } from './TutorialContext';
 import { ResultsProvider, useResults } from './ResultsContext';
+import { NetworkProvider } from './NetworkContext';
 import { gameContextLogger } from '../utils/logger';
+import { ErrorBoundary } from '../components/ErrorBoundary';
+import { PageErrorFallback } from '../components/ErrorFallback';
+
+// Helper component to reduce ErrorBoundary boilerplate
+const ContextErrorBoundary: React.FC<{ children: React.ReactNode; contextName: string }> = ({ children, contextName }) => (
+  <ErrorBoundary
+    fallback={PageErrorFallback}
+    onError={(error, _errorInfo, errorId) => {
+      gameContextLogger.error(`${contextName} error caught:`, errorId);
+      console.error(error);
+    }}
+  >
+    {children}
+  </ErrorBoundary>
+);
 
 // Inner component that has access to GameContext
 const ContextBridge: React.FC<{
@@ -91,18 +107,24 @@ export const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   return (
-    <TutorialProvider>
-      <GameProvider
-        onDashboardTrigger={handleDashboardTrigger}
-      >
-        <InnerProviders
-          onDashboardTrigger={handleDashboardTrigger}
-          dashboardRefreshToken={dashboardRefreshToken}
-        >
-          {children}
-        </InnerProviders>
-      </GameProvider>
-    </TutorialProvider>
+    <ContextErrorBoundary contextName="ContextProviders">
+      <NetworkProvider>
+        <TutorialProvider>
+          <ContextErrorBoundary contextName="GameProvider">
+            <GameProvider
+              onDashboardTrigger={handleDashboardTrigger}
+            >
+              <InnerProviders
+                onDashboardTrigger={handleDashboardTrigger}
+                dashboardRefreshToken={dashboardRefreshToken}
+              >
+                {children}
+              </InnerProviders>
+            </GameProvider>
+          </ContextErrorBoundary>
+        </TutorialProvider>
+      </NetworkProvider>
+    </ContextErrorBoundary>
   );
 };
 
