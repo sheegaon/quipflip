@@ -47,8 +47,8 @@ const PracticeVote: React.FC = () => {
     <VoteRoundReview
       promptText={phraseset.prompt_text}
       originalPhrase={phraseset.original_phrase}
-      copyPhrase1={phraseset.copy1_phrase}
-      copyPhrase2={phraseset.copy2_phrase}
+      copyPhrase1={phraseset.copy_phrase_1}
+      copyPhrase2={phraseset.copy_phrase_2}
       votes={phraseset.votes || []}
       onBack={handleBack}
       promptPlayer={phraseset.prompt_player}
