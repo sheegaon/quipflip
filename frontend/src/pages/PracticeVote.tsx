@@ -54,6 +54,9 @@ const PracticeVote: React.FC = () => {
       promptPlayer={phraseset.prompt_player}
       copy1Player={phraseset.copy1_player}
       copy2Player={phraseset.copy2_player}
+      promptPlayerIsAi={phraseset.prompt_player_is_ai}
+      copy1PlayerIsAi={phraseset.copy1_player_is_ai}
+      copy2PlayerIsAi={phraseset.copy2_player_is_ai}
     />
   );
 };

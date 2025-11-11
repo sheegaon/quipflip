@@ -57,6 +57,7 @@ const PracticeCopy2: React.FC = () => {
       originalPhrase={phraseset.original_phrase}
       copyPhrase={phraseset.copy2_phrase}
       playerUsername={phraseset.copy2_player}
+      isAiPlayer={phraseset.copy2_player_is_ai}
       copyNumber={2}
       roundId={phraseset.phraseset_id}
       existingHints={phraseset.hints}

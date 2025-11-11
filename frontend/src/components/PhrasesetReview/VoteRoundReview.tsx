@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FrozenTimer } from './FrozenTimer';
 import { ReviewBackButton } from './ReviewBackButton';
+import { BotIcon } from '../icons/BotIcon';
 import type { PhrasesetVoteDetail } from '../../api/types';
 
 interface VoteRoundReviewProps {
@@ -13,6 +14,9 @@ interface VoteRoundReviewProps {
   promptPlayer?: string;
   copy1Player?: string;
   copy2Player?: string;
+  promptPlayerIsAi?: boolean;
+  copy1PlayerIsAi?: boolean;
+  copy2PlayerIsAi?: boolean;
 }
 
 export const VoteRoundReview: React.FC<VoteRoundReviewProps> = ({
@@ -25,11 +29,15 @@ export const VoteRoundReview: React.FC<VoteRoundReviewProps> = ({
   promptPlayer,
   copy1Player,
   copy2Player,
+  promptPlayerIsAi = false,
+  copy1PlayerIsAi = false,
+  copy2PlayerIsAi = false,
 }) => {
   const [isRevealed, setIsRevealed] = useState(false);
 
   const phrases = [originalPhrase, copyPhrase1, copyPhrase2];
   const phraseAuthors = [promptPlayer, copy1Player, copy2Player];
+  const phraseAuthorsIsAi = [promptPlayerIsAi, copy1PlayerIsAi, copy2PlayerIsAi];
 
   const handleReveal = () => {
     setIsRevealed(true);
@@ -73,6 +81,7 @@ export const VoteRoundReview: React.FC<VoteRoundReviewProps> = ({
             const phraseVotes = getVotesForPhrase(phrase);
             const isOriginal = phrase === originalPhrase;
             const author = phraseAuthors[idx];
+            const authorIsAi = phraseAuthorsIsAi[idx];
 
             return (
               <div
@@ -92,7 +101,10 @@ export const VoteRoundReview: React.FC<VoteRoundReviewProps> = ({
                     {phrase}
                   </p>
                   {isRevealed && author && (
-                    <p className="text-sm text-quip-teal mt-1">by {author}</p>
+                    <p className="text-sm text-quip-teal mt-1 flex items-center justify-center gap-1">
+                      <span>by {author}</span>
+                      {authorIsAi && <BotIcon className="h-3.5 w-3.5" />}
+                    </p>
                   )}
                 </div>
 
@@ -119,8 +131,9 @@ export const VoteRoundReview: React.FC<VoteRoundReviewProps> = ({
                               vote.correct ? 'bg-quip-turquoise bg-opacity-10' : 'bg-quip-orange bg-opacity-10'
                             }`}
                           >
-                            <span className="font-semibold text-quip-navy">
+                            <span className="font-semibold text-quip-navy flex items-center gap-1">
                               {vote.voter_username}
+                              {vote.is_ai && <BotIcon className="h-3.5 w-3.5" />}
                             </span>
                             <span className={`text-xs font-semibold ${vote.correct ? 'text-quip-turquoise' : 'text-quip-orange'}`}>
                               {vote.correct ? '✓ Correct' : '✗ Incorrect'}

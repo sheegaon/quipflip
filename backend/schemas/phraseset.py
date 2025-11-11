@@ -114,6 +114,7 @@ class PhrasesetContributor(BaseSchema):
     player_id: UUID
     username: str  # Public display name shown to other players
     is_you: bool
+    is_ai: bool = False  # True if this is an AI player
     phrase: Optional[str] = None
 
 
@@ -122,6 +123,7 @@ class PhrasesetVote(BaseSchema):
     vote_id: UUID
     voter_id: UUID
     voter_username: str  # Public display name shown to other players
+    is_ai: bool = False  # True if this is an AI player
     voted_phrase: str
     correct: bool
     voted_at: datetime
@@ -239,5 +241,8 @@ class PracticePhraseset(BaseSchema):
     prompt_player: str
     copy1_player: str
     copy2_player: str
+    prompt_player_is_ai: bool = False
+    copy1_player_is_ai: bool = False
+    copy2_player_is_ai: bool = False
     hints: Optional[list[str]] = None
     votes: list[PhrasesetVote] = []

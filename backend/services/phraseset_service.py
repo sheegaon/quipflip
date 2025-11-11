@@ -187,6 +187,7 @@ class PhrasesetService:
                 "player_id": prompt_round.player_id,
                 "username": player_records.get(prompt_round.player_id, {}).get("username", str(prompt_round.player_id)),
                 "is_you": prompt_round.player_id == player_id,
+                "is_ai": player_records.get(prompt_round.player_id, {}).get("is_ai", False),
                 "phrase": phraseset.original_phrase,
             },
             {
@@ -194,6 +195,7 @@ class PhrasesetService:
                 "player_id": copy1_round.player_id,
                 "username": player_records.get(copy1_round.player_id, {}).get("username", str(copy1_round.player_id)),
                 "is_you": copy1_round.player_id == player_id,
+                "is_ai": player_records.get(copy1_round.player_id, {}).get("is_ai", False),
                 "phrase": phraseset.copy_phrase_1,
             },
             {
@@ -201,6 +203,7 @@ class PhrasesetService:
                 "player_id": copy2_round.player_id,
                 "username": player_records.get(copy2_round.player_id, {}).get("username", str(copy2_round.player_id)),
                 "is_you": copy2_round.player_id == player_id,
+                "is_ai": player_records.get(copy2_round.player_id, {}).get("is_ai", False),
                 "phrase": phraseset.copy_phrase_2,
             },
         ]
@@ -243,6 +246,7 @@ class PhrasesetService:
                 "vote_id": vote.vote_id,
                 "voter_id": vote.player_id,
                 "voter_username": vote_player_records.get(vote.player_id, {}).get("username", str(vote.player_id)),
+                "is_ai": vote_player_records.get(vote.player_id, {}).get("is_ai", False),
                 "voted_phrase": vote.voted_phrase,
                 "correct": vote.correct,
                 "voted_at": self._ensure_utc(vote.created_at),
@@ -338,6 +342,7 @@ class PhrasesetService:
                 "player_id": prompt_round.player_id,
                 "username": player_records.get(prompt_round.player_id, {}).get("username", str(prompt_round.player_id)),
                 "is_you": False,  # Always False for public access
+                "is_ai": player_records.get(prompt_round.player_id, {}).get("is_ai", False),
                 "phrase": phraseset.original_phrase,
             },
             {
@@ -345,6 +350,7 @@ class PhrasesetService:
                 "player_id": copy1_round.player_id,
                 "username": player_records.get(copy1_round.player_id, {}).get("username", str(copy1_round.player_id)),
                 "is_you": False,
+                "is_ai": player_records.get(copy1_round.player_id, {}).get("is_ai", False),
                 "phrase": phraseset.copy_phrase_1,
             },
             {
@@ -352,6 +358,7 @@ class PhrasesetService:
                 "player_id": copy2_round.player_id,
                 "username": player_records.get(copy2_round.player_id, {}).get("username", str(copy2_round.player_id)),
                 "is_you": False,
+                "is_ai": player_records.get(copy2_round.player_id, {}).get("is_ai", False),
                 "phrase": phraseset.copy_phrase_2,
             },
         ]
@@ -372,6 +379,7 @@ class PhrasesetService:
                 "vote_id": vote.vote_id,
                 "voter_id": vote.player_id,
                 "voter_username": vote_player_records.get(vote.player_id, {}).get("username", str(vote.player_id)),
+                "is_ai": vote_player_records.get(vote.player_id, {}).get("is_ai", False),
                 "voted_phrase": vote.voted_phrase,
                 "correct": vote.correct,
                 "voted_at": self._ensure_utc(vote.created_at),
@@ -873,6 +881,7 @@ class PhrasesetService:
                 "vote_id": str(vote.vote_id),
                 "voter_id": str(vote.player_id),
                 "voter_username": voter_records.get(vote.player_id, {}).get("username", "Unknown"),
+                "is_ai": voter_records.get(vote.player_id, {}).get("is_ai", False),
                 "voted_phrase": vote.voted_phrase,
                 "correct": vote.voted_phrase == phraseset.original_phrase,
                 "voted_at": self._ensure_utc(vote.created_at).isoformat(),
@@ -887,6 +896,9 @@ class PhrasesetService:
             "prompt_player": player_records.get(prompt_round.player_id, {}).get("username", "Unknown"),
             "copy1_player": player_records.get(copy1_round.player_id, {}).get("username", "Unknown"),
             "copy2_player": player_records.get(copy2_round.player_id, {}).get("username", "Unknown"),
+            "prompt_player_is_ai": player_records.get(prompt_round.player_id, {}).get("is_ai", False),
+            "copy1_player_is_ai": player_records.get(copy1_round.player_id, {}).get("is_ai", False),
+            "copy2_player_is_ai": player_records.get(copy2_round.player_id, {}).get("is_ai", False),
             "hints": hints,
             "votes": vote_details,
         }
@@ -1334,17 +1346,20 @@ class PhrasesetService:
         player_ids: Iterable[UUID],
         existing: Optional[dict] = None,
     ) -> dict[UUID, dict]:
-        """Fetch usernames for player IDs, merging into existing mapping."""
+        """Fetch usernames and email for player IDs, merging into existing mapping."""
         mapping = dict(existing or {})
         ids = {pid for pid in player_ids if pid and pid not in mapping}
         if not ids:
             return mapping
 
         result = await self.db.execute(
-            select(Player.player_id, Player.username).where(Player.player_id.in_(ids))
+            select(Player.player_id, Player.username, Player.email).where(Player.player_id.in_(ids))
         )
-        for player_id, username in result.all():
-            mapping[player_id] = {"username": username}
+        for player_id, username, email in result.all():
+            mapping[player_id] = {
+                "username": username,
+                "is_ai": email.endswith("@quipflip.internal") if email else False
+            }
         return mapping
 
     async def _get_payouts_cached(
