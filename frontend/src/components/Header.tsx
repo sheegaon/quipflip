@@ -4,11 +4,7 @@ import { useGame } from '../contexts/GameContext';
 import { BalanceFlipper } from './BalanceFlipper';
 import { SubHeader } from './SubHeader';
 import { HomeIcon } from './icons/HomeIcon';
-import { PodiumIcon } from './icons/PodiumIcon';
-import { TrophyIcon } from './icons/TrophyIcon';
-import { ClipboardIcon } from './icons/ClipboardIcon';
-import { EyeIcon } from './icons/EyeIcon';
-import { TreasureIcon } from './icons/TreasureIcon';
+import { TreasureChestIcon } from './TreasureChestIcon';
 import { SurveyIcon } from './icons/SurveyIcon';
 import { CogIcon } from './icons/CogIcon';
 
@@ -242,12 +238,12 @@ export const Header: React.FC = () => {
             {showDropdown && (
               <div
                 ref={dropdownRef}
-                className="absolute top-full left-0 mt-2 w-48 bg-white rounded-tile shadow-tile-lg border-2 border-quip-navy border-opacity-10 z-50 slide-up-enter"
+                className="absolute top-full left-0 mt-2 w-48 bg-white rounded-tile shadow-tile-lg border-2 border-quip-navy border-opacity-10 z-[70] slide-up-enter"
               >
                 <div className="py-2">
                   <button
                     onClick={() => handleNavigate('/dashboard')}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left text-quip-teal hover:bg-quip-cream transition-colors"
                   >
                     <HomeIcon className="h-5 w-5" />
                     <span className="font-semibold">Dashboard</span>
@@ -263,35 +259,35 @@ export const Header: React.FC = () => {
                     onClick={() => handleNavigate('/leaderboard')}
                     className="w-full flex items-center gap-3 px-4 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
                   >
-                    <PodiumIcon className="h-5 w-5" />
+                    <img src="/icon_leaderboard.svg" alt="" className="h-5 w-5" />
                     <span className="font-semibold">Leaderboard</span>
                   </button>
                   <button
                     onClick={() => handleNavigate('/results')}
                     className="w-full flex items-center gap-3 px-4 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
                   >
-                    <TrophyIcon className="h-5 w-5" />
+                    <img src="/icon_results.svg" alt="" className="h-5 w-5" />
                     <span className="font-semibold">Results</span>
                   </button>
                   <button
                     onClick={() => handleNavigate('/tracking')}
                     className="w-full flex items-center gap-3 px-4 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
                   >
-                    <ClipboardIcon className="h-5 w-5" />
+                    <img src="/icon_prompt.svg" alt="" className="h-5 w-5" />
                     <span className="font-semibold">Tracking</span>
                   </button>
                   <button
                     onClick={() => handleNavigate('/completed')}
                     className="w-full flex items-center gap-3 px-4 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
                   >
-                    <EyeIcon className="h-5 w-5" />
+                    <img src="/icon_completed.svg" alt="" className="h-5 w-5" />
                     <span className="font-semibold">Review</span>
                   </button>
                   <button
                     onClick={() => handleNavigate('/quests')}
                     className="w-full flex items-center gap-3 px-4 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
                   >
-                    <TreasureIcon className="h-5 w-5" />
+                    <TreasureChestIcon className="h-5 w-5" isAvailable={true} />
                     <span className="font-semibold">Quests</span>
                   </button>
                   <button
