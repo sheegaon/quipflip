@@ -267,6 +267,7 @@ export interface PracticePhraseset {
   prompt_player: string;
   copy1_player: string;
   copy2_player: string;
+  hints?: string[] | null;
 }
 
 export interface RoundAvailability {

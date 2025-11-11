@@ -1,17 +1,19 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CopyRoundReview } from '../components/PhrasesetReview/CopyRoundReview';
-import { usePracticePhraseset } from '../hooks/usePracticePhraseset';
+import { usePracticePhrasesetSession } from '../hooks/usePracticePhrasesetSession';
 
 const PracticeCopy: React.FC = () => {
   const navigate = useNavigate();
-  const { phraseset, loading, error } = usePracticePhraseset();
+  const { phraseset, loading, error, clearSession } = usePracticePhrasesetSession();
 
   const handleContinue = () => {
-    navigate('/dashboard');
+    // Don't clear session - continue to copy2 with same phraseset
+    navigate('/practice/copy2');
   };
 
   const handleBack = () => {
+    clearSession();
     navigate('/dashboard');
   };
 
@@ -46,8 +48,11 @@ const PracticeCopy: React.FC = () => {
       copyPhrase={phraseset.copy1_phrase}
       playerUsername={phraseset.copy1_player}
       copyNumber={1}
+      roundId={phraseset.phraseset_id}
+      existingHints={phraseset.hints}
       onSubmit={handleContinue}
       onBack={handleBack}
+      isPractice={true}
     />
   );
 };

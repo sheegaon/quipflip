@@ -33,6 +33,7 @@ const CopyRound = lazy(() => import('./pages/CopyRound'));
 const VoteRound = lazy(() => import('./pages/VoteRound'));
 const PracticePrompt = lazy(() => import('./pages/PracticePrompt'));
 const PracticeCopy = lazy(() => import('./pages/PracticeCopy'));
+const PracticeCopy2 = lazy(() => import('./pages/PracticeCopy2'));
 const PracticeVote = lazy(() => import('./pages/PracticeVote'));
 const Results = lazy(() => import('./pages/Results'));
 const Completed = lazy(() => import('./pages/Completed'));
@@ -118,6 +119,10 @@ const AppRoutes: React.FC = () => {
         <Route
           path="/practice/copy"
           element={renderProtectedRoute(<PracticeCopy />)}
+        />
+        <Route
+          path="/practice/copy2"
+          element={renderProtectedRoute(<PracticeCopy2 />)}
         />
         <Route
           path="/practice/vote"
