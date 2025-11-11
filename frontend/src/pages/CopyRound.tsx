@@ -22,6 +22,7 @@ export const CopyRound: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
   const [showFlagConfirm, setShowFlagConfirm] = useState(false);
   const [isFlagging, setIsFlagging] = useState(false);
   const [flagError, setFlagError] = useState<string | null>(null);
@@ -133,12 +134,14 @@ export const CopyRound: React.FC = () => {
       });
       const response = await apiClient.submitPhrase(roundData.round_id, trimmedPhrase);
 
-      // Show success message first to prevent navigation race condition
-      const message = getRandomMessage('copySubmitted');
-      setSuccessMessage(message);
+      // Show success messages first to prevent navigation race condition
+      const heading = getRandomMessage('copySubmitted');
+      const feedback = getRandomMessage('copySubmittedFeedback');
+      setSuccessMessage(heading);
+      setFeedbackMessage(feedback);
       copyRoundLogger.info('Copy round phrase submitted successfully', {
         roundId: roundData.round_id,
-        message,
+        message: heading,
       });
 
       // Check if eligible for second copy
@@ -289,6 +292,8 @@ export const CopyRound: React.FC = () => {
               <p>Returning to dashboard...</p>
             </div>
           ) : secondCopyEligibility ? (
+            <>
+              <p className="text-lg text-quip-teal mb-4">{feedbackMessage}</p>
             <div className="space-y-4">
               <div className="bg-quip-turquoise bg-opacity-10 border-2 border-quip-turquoise rounded-tile p-6 mb-4">
                 <p className="text-lg text-quip-navy mb-3">
@@ -338,8 +343,12 @@ export const CopyRound: React.FC = () => {
                 </button>
               </div>
             </div>
+            </>
           ) : (
-            <p className="text-quip-teal">Returning to dashboard...</p>
+            <>
+              <p className="text-lg text-quip-teal mb-4">{feedbackMessage}</p>
+              <p className="text-sm text-quip-teal">Returning to dashboard...</p>
+            </>
           )}
         </div>
       </div>

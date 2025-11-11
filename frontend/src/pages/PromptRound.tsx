@@ -25,6 +25,7 @@ export const PromptRound: React.FC = () => {
   const [feedbackType, setFeedbackType] = useState<'like' | 'dislike' | null>(null);
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
 
   const { isPhraseValid, trimmedPhrase } = usePhraseValidation(phrase);
 
@@ -148,12 +149,14 @@ export const PromptRound: React.FC = () => {
       });
       await apiClient.submitPhrase(roundData.round_id, trimmedPhrase);
 
-      // Show success message first to prevent navigation race condition
-      const message = getRandomMessage('promptSubmitted');
-      setSuccessMessage(message);
+      // Show success messages first to prevent navigation race condition
+      const heading = getRandomMessage('promptSubmitted');
+      const feedback = getRandomMessage('promptSubmittedFeedback');
+      setSuccessMessage(heading);
+      setFeedbackMessage(feedback);
       promptRoundLogger.info('Prompt round phrase submitted successfully', {
         roundId: roundData.round_id,
-        message,
+        message: heading,
       });
 
       // Advance tutorial if in prompt_round step
@@ -197,7 +200,8 @@ export const PromptRound: React.FC = () => {
           <h2 className="text-2xl font-display font-bold text-quip-turquoise mb-2 success-message">
             {successMessage}
           </h2>
-          <p className="text-quip-teal">Returning to dashboard...</p>
+          <p className="text-lg text-quip-teal mb-4">{feedbackMessage}</p>
+          <p className="text-sm text-quip-teal">Returning to dashboard...</p>
         </div>
       </div>
     );
