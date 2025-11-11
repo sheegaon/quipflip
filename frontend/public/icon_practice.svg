@@ -1,10 +1,10 @@
 <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
   <!-- Practice/training icon - Turquoise color for practice mode -->
-  <circle cx="16" cy="16" r="15" fill="#10B4A4" opacity="0.1"/>
+  <circle cx="16" cy="16" r="15" fill="#0A5852" opacity="0.15"/>
   <!-- Dumbbell/training icon -->
-  <rect x="8" y="14" width="3" height="4" rx="1" fill="#10B4A4"/>
-  <rect x="21" y="14" width="3" height="4" rx="1" fill="#10B4A4"/>
-  <rect x="11" y="15" width="10" height="2" fill="#10B4A4"/>
+  <rect x="8" y="14" width="3" height="4" rx="1" fill="#0A5852"/>
+  <rect x="21" y="14" width="3" height="4" rx="1" fill="#0A5852"/>
+  <rect x="11" y="15" width="10" height="2" fill="#0A5852"/>
   <!-- Star for achievement -->
-  <path d="M16 8L17.5 11.5L21 12L18.5 15L19 18.5L16 16.5L13 18.5L13.5 15L11 12L14.5 11.5L16 8Z" fill="#0A5852"/>
+  <path d="M16 8L17.5 11.5L21 12L18.5 15L19 18.5L16 16.5L13 18.5L13.5 15L11 12L14.5 11.5L16 8Z" fill="#063D39"/>
 </svg>
