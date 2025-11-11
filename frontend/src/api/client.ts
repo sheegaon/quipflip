@@ -101,6 +101,9 @@ const api = axios.create({
   withCredentials: true,
 });
 
+// Export axios instance for direct use (e.g., replaying queued requests)
+export const axiosInstance = api;
+
 const clearStoredCredentials = () => {
   localStorage.removeItem(USERNAME_STORAGE_KEY);
 };
