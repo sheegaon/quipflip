@@ -23,12 +23,18 @@ export const NavigationHistoryProvider: React.FC<{ children: React.ReactNode }> 
       return;
     }
 
-    // Add the current path to history, but avoid duplicates if the user is on the same page
     setHistory(prev => {
-      // Don't add if it's the same as the last entry
+      // Don't add if it's the same as the last entry (e.g., page refresh)
       if (prev.length > 0 && prev[prev.length - 1] === currentPath) {
         return prev;
       }
+
+      // Handle browser/manual back navigation by checking if the new path is the second-to-last
+      if (prev.length > 1 && prev[prev.length - 2] === currentPath) {
+        return prev.slice(0, -1); // It's a back navigation, so pop the stack
+      }
+
+      // Otherwise, it's a forward navigation
       return [...prev, currentPath];
     });
   }, [location.pathname]);
