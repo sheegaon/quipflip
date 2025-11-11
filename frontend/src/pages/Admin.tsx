@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { Header } from '../components/Header';
 import apiClient, { extractErrorMessage } from '../api/client';
+import { TrackingIcon } from '../components/icons/TrackingIcon';
 import { EditableConfigField } from '../components/EditableConfigField';
 import { adminLogger } from '../utils/logger';
 import type { AdminPlayerSummary } from '../api/types';
@@ -759,7 +760,7 @@ const Admin: React.FC = () => {
 
             <div className="tile-card p-6">
               <h2 className="text-xl font-display font-bold text-quip-navy mb-4 flex items-center gap-2">
-                <img src="/icon_prompt.svg" alt="" className="w-6 h-6" />
+                <TrackingIcon className="w-6 h-6" />
                 Round Costs
               </h2>
               <div className="space-y-2">

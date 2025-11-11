@@ -3,6 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { useHeaderIndicators } from '../hooks/useHeaderIndicators';
 import { TreasureChestIcon } from './TreasureChestIcon';
+import { TrackingIcon } from './icons/TrackingIcon';
+import { ResultsIcon } from './icons/ResultsIcon';
+import { ReviewIcon } from './icons/ReviewIcon';
+import { LeaderboardIcon } from './icons/LeaderboardIcon';
+import { LobbyIcon } from './icons/LobbyIcon';
 
 export const SubHeader: React.FC = () => {
   const { actions } = useGame();
@@ -45,7 +50,7 @@ export const SubHeader: React.FC = () => {
   }, [navigate]);
 
   return (
-    <div className="bg-white shadow-tile-sm">
+    <div className="bg-white shadow-tile-sm relative z-40">
       <div className="max-w-6xl mx-auto px-1 py-0 md:px-4 md:py-1.5">
         <div className="flex justify-evenly items-center">
           {/* In-progress indicator */}
@@ -60,11 +65,7 @@ export const SubHeader: React.FC = () => {
               {inProgressPrompts > 0 && (
                 <span className="flex items-center md:gap-1 gap-0.5">
                   <span>{inProgressPrompts}</span>
-                  <img
-                    src="/icon_prompt.svg"
-                    alt="Prompt rounds in progress"
-                    className="h-5 w-5 md:h-7 md:w-7"
-                  />
+                  <TrackingIcon className="h-5 w-5 md:h-7 md:w-7" />
                 </span>
               )}
               {inProgressCopies > 0 && (
@@ -94,11 +95,7 @@ export const SubHeader: React.FC = () => {
               aria-label={resultsLabel}
             >
               <span>{unviewedCount}</span>
-              <img
-                src="/icon_results.svg"
-                alt="Results ready to view"
-                className={`h-5 w-5 md:h-7 md:w-7 ${unviewedCount > 0 ? 'trophy-pulse' : ''}`}
-              />
+              <ResultsIcon className={`h-5 w-5 md:h-7 md:w-7 ${unviewedCount > 0 ? 'trophy-pulse' : ''}`} />
             </button>
           )}
 
@@ -109,12 +106,7 @@ export const SubHeader: React.FC = () => {
             title="View completed rounds"
             aria-label="View completed rounds"
           >
-            <img
-              src="/icon_completed.svg"
-              alt=""
-              className="w-7 h-7 md:w-8 md:h-8 transition-transform group-hover:scale-110"
-              aria-hidden="true"
-            />
+            <ReviewIcon className="w-7 h-7 md:w-8 md:h-8 transition-transform group-hover:scale-110" />
           </button>
 
           {/* Leaderboard icon */}
@@ -124,12 +116,7 @@ export const SubHeader: React.FC = () => {
             title="View the leaderboard"
             aria-label="View the leaderboard"
           >
-            <img
-              src="/icon_leaderboard.svg"
-              alt=""
-              className="w-7 h-7 md:w-8 md:h-8 transition-transform group-hover:scale-110"
-              aria-hidden="true"
-            />
+            <LeaderboardIcon className="w-7 h-7 md:w-8 md:h-8 transition-transform group-hover:scale-110" />
           </button>
 
           {/* Online Users icon */}
@@ -139,12 +126,7 @@ export const SubHeader: React.FC = () => {
             title="View who's online"
             aria-label="View who's online"
           >
-            <img
-              src="/icon_online_users.svg"
-              alt=""
-              className="w-7 h-7 md:w-8 md:h-8 transition-transform group-hover:scale-110"
-              aria-hidden="true"
-            />
+            <LobbyIcon className="w-7 h-7 md:w-8 md:h-8 transition-transform group-hover:scale-110" />
           </button>
 
           {/* Treasure chest - Hidden on first day */}

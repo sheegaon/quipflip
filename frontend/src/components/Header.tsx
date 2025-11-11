@@ -3,6 +3,17 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { BalanceFlipper } from './BalanceFlipper';
 import { SubHeader } from './SubHeader';
+import { HomeIcon } from './icons/HomeIcon';
+import { TreasureChestIcon } from './TreasureChestIcon';
+import { StatisticsIcon } from './icons/StatisticsIcon';
+import { LeaderboardIcon } from './icons/LeaderboardIcon';
+import { ResultsIcon } from './icons/ResultsIcon';
+import { TrackingIcon } from './icons/TrackingIcon';
+import { ReviewIcon } from './icons/ReviewIcon';
+import { LobbyIcon } from './icons/LobbyIcon';
+import { BrandedSurveyIcon } from './icons/BrandedSurveyIcon';
+import { BrandedSettingsIcon } from './icons/BrandedSettingsIcon';
+import { AdminIcon } from './icons/AdminIcon';
 
 export const Header: React.FC = () => {
   const { state, actions } = useGame();
@@ -13,6 +24,9 @@ export const Header: React.FC = () => {
 
   const [showGuestLogoutWarning, setShowGuestLogoutWarning] = React.useState(false);
   const [guestCredentials, setGuestCredentials] = React.useState<{ email: string | null; password: string | null } | null>(null);
+  const [showDropdown, setShowDropdown] = React.useState(false);
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
+  const logoButtonRef = React.useRef<HTMLButtonElement>(null);
 
   // Show back arrow on certain pages
   const isAdminRoute = location.pathname === '/admin' || location.pathname.startsWith('/admin/');
@@ -41,7 +55,11 @@ export const Header: React.FC = () => {
     navigate('/statistics');
   }, [navigate]);
 
-  const handleLogoClick = React.useCallback(async () => {
+  const handleLogoClick = React.useCallback(() => {
+    setShowDropdown(prevShowDropdown => !prevShowDropdown);
+  }, []);
+
+  const handleBackArrowClick = React.useCallback(async () => {
     // Refresh dashboard and balance before navigating
     try {
       await Promise.all([refreshDashboard(), refreshBalance()]);
@@ -49,16 +67,13 @@ export const Header: React.FC = () => {
       console.warn('Failed to refresh from header icon:', err);
     }
 
-    if (showBackArrow) {
-      navigate(getBackNavigation());
-    }
-  }, [refreshDashboard, refreshBalance, showBackArrow, getBackNavigation, navigate]);
+    navigate(getBackNavigation());
+  }, [refreshDashboard, refreshBalance, getBackNavigation, navigate]);
 
-  const logoTitle = showBackArrow
-    ? location.pathname === '/settings'
-      ? 'Back to Statistics (refresh)'
-      : 'Back to Dashboard (refresh)'
-    : 'Refresh dashboard';
+  const logoTitle = 'Open menu';
+  const backArrowTitle = location.pathname === '/settings'
+    ? 'Back to Statistics (refresh)'
+    : 'Back to Dashboard (refresh)';
 
   const handleLogoutClick = React.useCallback(() => {
     if (!player?.is_guest) {
@@ -100,6 +115,35 @@ export const Header: React.FC = () => {
     setGuestCredentials(null);
     logout();
   }, [logout]);
+
+  // Close dropdown when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      // Don't close if clicking on the logo button or inside the dropdown
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(target) &&
+        logoButtonRef.current &&
+        !logoButtonRef.current.contains(target)
+      ) {
+        setShowDropdown(false);
+      }
+    };
+
+    if (showDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showDropdown]);
+
+  const handleNavigate = React.useCallback((path: string) => {
+    setShowDropdown(false);
+    navigate(path);
+  }, [navigate]);
 
   return (
     <>
@@ -174,28 +218,140 @@ export const Header: React.FC = () => {
           </div>
         </div>
       )}
-      <div className="bg-white shadow-tile-sm">
+      <div className="bg-white shadow-tile-sm relative z-50">
         <div className="max-w-6xl mx-auto px-1 py-0 md:px-4 md:py-1.5">
         <div className="flex justify-between items-center">
           {/* Left: Logo + Back Arrow (on certain pages) */}
-          <div className="flex items-center gap-0.5 md:gap-3">
-            <button
-              type="button"
-              onClick={handleLogoClick}
-              className={`flex items-center gap-1 md:gap-2 cursor-pointer transition-opacity ${showBackArrow ? 'hover:opacity-80' : 'hover:opacity-90'}`}
-              title={logoTitle}
-              aria-label={logoTitle}
-            >
-              {showBackArrow && (
+          <div className="flex items-center gap-0.5 md:gap-3 relative">
+            {showBackArrow && (
+              <button
+                type="button"
+                onClick={handleBackArrowClick}
+                className="cursor-pointer transition-opacity hover:opacity-80"
+                title={backArrowTitle}
+                aria-label={backArrowTitle}
+              >
                 <img
                   src="/icon_arrow_left.svg"
                   alt=""
                   className="w-7 h-7 md:w-9 md:h-9"
                   aria-hidden="true"
                 />
-              )}
+              </button>
+            )}
+            <button
+              ref={logoButtonRef}
+              type="button"
+              onClick={handleLogoClick}
+              className="cursor-pointer transition-opacity hover:opacity-90"
+              title={logoTitle}
+              aria-label={logoTitle}
+            >
               <img src="/large_icon.png" alt="Quipflip" className="md:h-11 h-9 w-auto" />
             </button>
+
+            {/* Dropdown Menu */}
+            {showDropdown && (
+              <div
+                ref={dropdownRef}
+                className="absolute top-full left-0 mt-2 w-48 bg-white rounded-tile shadow-tile-lg border-2 border-quip-navy border-opacity-10 z-[100] slide-up-enter"
+              >
+                <div className="py-2">
+                  <button
+                    onClick={() => handleNavigate('/dashboard')}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left text-quip-teal hover:bg-quip-cream transition-colors"
+                  >
+                    <HomeIcon className="h-5 w-5" />
+                    <span className="font-semibold">Dashboard</span>
+                  </button>
+                  <button
+                    onClick={() => handleNavigate('/statistics')}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
+                  >
+                    <StatisticsIcon className="h-5 w-5" />
+                    <span className="font-semibold">Statistics</span>
+                  </button>
+                  <button
+                    onClick={() => handleNavigate('/leaderboard')}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
+                  >
+                    <LeaderboardIcon className="h-5 w-5" />
+                    <span className="font-semibold">Leaderboard</span>
+                  </button>
+                  <button
+                    onClick={() => handleNavigate('/results')}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
+                  >
+                    <ResultsIcon className="h-5 w-5" />
+                    <span className="font-semibold">Results</span>
+                  </button>
+                  <button
+                    onClick={() => handleNavigate('/tracking')}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
+                  >
+                    <TrackingIcon className="h-5 w-5" />
+                    <span className="font-semibold">Tracking</span>
+                  </button>
+                  <button
+                    onClick={() => handleNavigate('/completed')}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
+                  >
+                    <ReviewIcon className="h-5 w-5" />
+                    <span className="font-semibold">Review</span>
+                  </button>
+                  <button
+                    onClick={() => handleNavigate('/quests')}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
+                  >
+                    <TreasureChestIcon className="h-5 w-5" isAvailable={true} />
+                    <span className="font-semibold">Quests</span>
+                  </button>
+                  <button
+                    onClick={() => handleNavigate('/online-users')}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
+                  >
+                    <LobbyIcon className="h-5 w-5" />
+                    <span className="font-semibold">Lobby</span>
+                  </button>
+                  <button
+                    onClick={() => handleNavigate('/survey')}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
+                  >
+                    <BrandedSurveyIcon className="h-5 w-5" />
+                    <span className="font-semibold">Survey</span>
+                  </button>
+                  <button
+                    onClick={() => handleNavigate('/settings')}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
+                  >
+                    <BrandedSettingsIcon className="h-5 w-5" />
+                    <span className="font-semibold">Settings</span>
+                  </button>
+                  {player?.is_admin && (
+                    <button
+                      onClick={() => handleNavigate('/admin')}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
+                    >
+                      <AdminIcon className="h-5 w-5" />
+                      <span className="font-semibold">Admin</span>
+                    </button>
+                  )}
+                  <div className="border-t border-quip-navy border-opacity-10 my-2"></div>
+                  <button
+                    onClick={() => {
+                      setShowDropdown(false);
+                      handleLogoutClick();
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left text-quip-teal hover:bg-quip-cream transition-colors"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    <span className="font-semibold">Logout</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Center: Username (clickable to statistics) */}

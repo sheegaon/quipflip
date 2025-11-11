@@ -4,7 +4,7 @@ import { Header } from '../components/Header';
 import { apiClient } from '../api/client';
 import type { CompletedPhrasesetItem } from '../api/types';
 import { InlineLoadingSpinner } from '../components/LoadingSpinner';
-import { EyeIcon } from '../components/icons/EyeIcon';
+import { ReviewIcon } from '../components/icons/ReviewIcon';
 
 type SortField = 'vote_count' | 'total_pool' | 'created_at' | 'finalized_at';
 type SortDirection = 'asc' | 'desc';
@@ -216,7 +216,7 @@ export const Completed: React.FC = () => {
                       >
                         <td className="px-4 py-3 text-sm text-quip-navy">
                           <div className="max-w-md flex items-center gap-2">
-                            <EyeIcon className="h-4 w-4 text-quip-turquoise flex-shrink-0" />
+                            <ReviewIcon className="h-4 w-4 flex-shrink-0" />
                             <span>{phraseset.prompt_text}</span>
                           </div>
                         </td>

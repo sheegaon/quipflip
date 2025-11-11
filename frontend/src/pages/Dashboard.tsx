@@ -9,6 +9,7 @@ import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { ModeToggle } from '../components/ModeToggle';
 import TutorialWelcome from '../components/Tutorial/TutorialWelcome';
 import { dashboardLogger } from '../utils/logger';
+import { TrackingIcon } from '../components/icons/TrackingIcon';
 import type { BetaSurveyStatusResponse } from '../api/types';
 import { hasDismissedSurvey, markSurveyDismissed, hasCompletedSurvey } from '../utils/betaSurvey';
 
@@ -544,7 +545,7 @@ export const Dashboard: React.FC = () => {
             <div className="tutorial-prompt-round border-2 border-quip-navy rounded-tile p-4 bg-quip-navy bg-opacity-5 hover:bg-opacity-10 transition-all">
               <div className="flex justify-between items-center mb-2">
                 <div className="flex items-center gap-2">
-                  <img src="/icon_prompt.svg" alt="" className="w-8 h-8" />
+                  <TrackingIcon className="w-8 h-8" />
                   <h3 className="font-display font-semibold text-lg text-quip-navy">Prompt Round</h3>
                 </div>
                 <span className="text-quip-orange-deep font-bold flex items-center gap-1">
