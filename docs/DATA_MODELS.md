@@ -17,6 +17,11 @@
 - `tutorial_progress` (string, default 'not_started') - current tutorial step (`not_started`, `welcome`, `dashboard`, `prompt_round`, `prompt_round_paused`, `copy_round`, `copy_round_paused`, `vote_round`, `completed`)
 - `tutorial_started_at` (timestamp, nullable) - when tutorial was started
 - `tutorial_completed_at` (timestamp, nullable) - when tutorial was completed
+- `is_admin` (boolean, default false) - admin privileges flag for administrative access
+- `locked_until` (timestamp with timezone, nullable) - account lock expiration time (for temporary bans/suspensions)
+- `flag_dismissal_streak` (integer, default 0) - consecutive dismissed flags (tracks admin moderation reputation)
+- `consecutive_incorrect_votes` (integer, default 0) - tracks incorrect votes for guest accounts
+- `vote_lockout_until` (timestamp with timezone, nullable) - guest vote lockout expiration when too many incorrect votes
 - Indexes: `player_id`, `active_round_id`
 - Constraints: Unique `username_canonical`
 - Relationships: `active_round`, `rounds`, `transactions`, `votes`, `daily_bonuses`, `result_views`, `abandoned_prompts`, `phraseset_activities`, `refresh_tokens`, `quests`, `survey_responses`
@@ -26,7 +31,8 @@
 - Guest accounts: Created via `POST /player/guest` with auto-generated credentials (email: `guest####@quipflip.xyz`, password: `QuipGuest`)
 - Full accounts: Created via `POST /player` with email and password; username is randomly generated and cannot be changed
 - Upgrade: Guest accounts can be upgraded to full accounts via `POST /player/upgrade`
-**Admin Access**: Currently any user with SECRET_KEY knowledge; future plans include role-based access control
+**Admin Access**: Controlled by `is_admin` field (boolean flag) combined with email-based authorization in admin endpoints
+**Moderation**: Account locking (`locked_until`) and vote lockout (`vote_lockout_until`) for guest accounts with excessive incorrect votes
 
 ### Round (Unified for Prompt, Copy, and Vote)
 - `round_id` (UUID, primary key)
@@ -337,6 +343,17 @@
 - `updated_at` (timestamp with timezone, default now()) - last update timestamp
 - `updated_by` (string, max 100 chars, nullable) - player_id of admin who updated
 - Note: Stores dynamic system configuration values that can be updated without code deployment. Values override environment variable defaults.
+
+### UserActivity
+- `player_id` (UUID, primary key, references players.player_id)
+- `username` (string, max 255 chars) - denormalized for quick lookups
+- `last_action` (string, max 100 chars) - human-readable description of last action
+- `last_action_category` (string, max 50 chars, default 'other') - action category ('round', 'phraseset', 'quest', 'auth', 'other')
+- `last_action_path` (text) - API endpoint path of last action
+- `last_activity` (timestamp with timezone) - UTC timestamp of last activity
+- Indexes: `player_id`, `last_activity`
+- Relationships: Implicitly references `player` (not a formal foreign key relationship to avoid cascading issues)
+- Note: Tracks real-time user online status for "Who's Online" feature. Distinct from phraseset_activity which logs historical review events. Records updated on each authenticated API call. Users shown as "online" if `last_activity` is within last 30 minutes.
 
 ---
 

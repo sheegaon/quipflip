@@ -311,9 +311,17 @@ Get player balance and status.
   "last_login_date": "2025-01-06T18:45:00Z",
   "created_at": "2025-01-01T12:00:00Z",
   "outstanding_prompts": 0,
-  "is_guest": false
+  "is_guest": false,
+  "is_admin": false,
+  "locked_until": null,
+  "flag_dismissal_streak": 0
 }
 ```
+
+**Response Fields:**
+- `is_admin` (boolean): Whether player has admin privileges
+- `locked_until` (timestamp or null): Account lock expiration time (for temporary bans)
+- `flag_dismissal_streak` (integer): Consecutive flag dismissals by this player (moderation tracking)
 
 #### `POST /player/claim-daily-bonus`
 Claim daily login bonus (100f).
@@ -630,19 +638,50 @@ Get the weekly leaderboard split by role (prompt, copy, voter), with players ran
       }
     ]
   },
+  "gross_earnings_leaderboard": {
+    "leaders": [
+      {
+        "player_id": "uuid",
+        "username": "Top Earner",
+        "total_earnings": 5000,
+        "rank": 1,
+        "is_current_player": false
+      }
+    ]
+  },
   "generated_at": "2025-01-12T17:05:42.188529+00:00"
 }
 ```
 
 **Notes:**
-- Results are split into three separate leaderboards, one for each role (prompt, copy, voter).
-- Each leaderboard is sorted by highest `win_rate` (percentage of rounds where earnings exceeded costs). Ties break alphabetically by username.
+- Results are split into four separate leaderboards: three role-specific leaderboards (prompt, copy, voter) and one gross earnings leaderboard.
+- Role leaderboards are sorted by highest `win_rate` (percentage of rounds where earnings exceeded costs). Ties break alphabetically by username.
+- Gross earnings leaderboard ranks players by total earnings across all roles.
 - `win_rate` is a percentage (0-100) representing the proportion of rounds where the player earned more than they spent in that role.
 - Only the top five players per role are returned by default. If the current player is outside the top five in a given role, their row is appended with `rank: null` and `is_current_player: true`.
 - AI players (identified by email addresses ending in `@quipflip.internal`) are excluded from all leaderboards.
 - The scoring service caches leaderboard calculations in Redis for one hour (`leaderboard:weekly:v4`) and refreshes the cache automatically whenever a phraseset finalizes.
 - The `generated_at` timestamp communicates when the snapshot was last recalculated so clients can defer refreshes when data is still fresh.
 - Leaderboards are computed concurrently for performance optimization.
+
+#### `GET /player/statistics/alltime-leaderboard`
+Get the all-time leaderboard split by role (prompt, copy, voter), with players ranked by win rate for all time.
+
+**Response:**
+```json
+{
+  "prompt_leaderboard": {...},
+  "copy_leaderboard": {...},
+  "voter_leaderboard": {...},
+  "gross_earnings_leaderboard": {...},
+  "generated_at": "2025-01-12T17:05:42.188529+00:00"
+}
+```
+
+**Notes:**
+- Same structure as weekly leaderboard but calculates stats over all time instead of last 7 days
+- Same ranking rules, caching strategy, and AI player exclusion apply
+- Gross earnings leaderboard included in all-time stats
 
 #### `GET /player/tutorial/status`
 Get the tutorial status for the current player.
@@ -778,11 +817,19 @@ Start a prompt round (-100f).
 - `max_outstanding_quips` - Player has 10 open/closing phrasesets
 
 #### `POST /rounds/copy`
-Start a copy round (-50f or -40f).
+Start a copy round (-50f or -40f for regular copy, -100f or -80f for second copy).
 
-**Request Body:** _None_
+**Request Body (Optional):**
+```json
+{
+  "prompt_round_id": "uuid"
+}
+```
 
-**Response:**
+**Parameters:**
+- `prompt_round_id` (optional): If provided, starts a second copy round for that specific prompt (costs 2x normal copy cost). If omitted, starts a regular copy round with a random prompt.
+
+**Response (Regular Copy):**
 ```json
 {
   "round_id": "uuid",
@@ -790,7 +837,21 @@ Start a copy round (-50f or -40f).
   "prompt_round_id": "uuid",
   "expires_at": "2025-01-06T12:36:00",
   "cost": 40,
-  "discount_active": true
+  "discount_active": true,
+  "is_second_copy": false
+}
+```
+
+**Response (Second Copy):**
+```json
+{
+  "round_id": "uuid",
+  "original_phrase": "FAMOUS",
+  "prompt_round_id": "uuid",
+  "expires_at": "2025-01-06T12:36:00",
+  "cost": 100,
+  "discount_active": false,
+  "is_second_copy": true
 }
 ```
 
@@ -798,6 +859,12 @@ Start a copy round (-50f or -40f).
 - `no_prompts_available` - No prompts in queue
 - `already_in_round` - Player already in active round
 - `insufficient_balance` - Balance < cost
+
+**Notes:**
+- Regular copy rounds cost 50f (or 40f with discount)
+- Second copy rounds cost 2x the regular copy cost (100f or 80f)
+- Providing `prompt_round_id` allows targeting a specific prompt for a second copy
+- Second copy discount follows the same threshold rules as regular copies
 
 #### `POST /rounds/vote`
 Start a vote round (-10f).
@@ -830,7 +897,7 @@ Submit phrase for prompt or copy round.
 }
 ```
 
-**Response:**
+**Response (Prompt Round):**
 ```json
 {
   "success": true,
@@ -838,11 +905,49 @@ Submit phrase for prompt or copy round.
 }
 ```
 
+**Response (Copy Round - First Copy):**
+```json
+{
+  "success": true,
+  "phrase": "POPULAR",
+  "eligible_for_second_copy": true,
+  "second_copy_cost": 100,
+  "prompt_round_id": "uuid",
+  "original_phrase": "FAMOUS"
+}
+```
+
+**Response (Copy Round - Second Copy):**
+```json
+{
+  "success": true,
+  "phrase": "WEALTHY",
+  "eligible_for_second_copy": false,
+  "second_copy_cost": null,
+  "prompt_round_id": null,
+  "original_phrase": null
+}
+```
+
+**Response Fields:**
+- `success` (boolean): Whether submission was successful
+- `phrase` (string): The submitted phrase (normalized to uppercase)
+- `eligible_for_second_copy` (boolean, copy rounds only): Whether this prompt is eligible for a second copy attempt
+- `second_copy_cost` (integer or null, copy rounds only): Cost for a second copy round (2x regular cost), null if not eligible
+- `prompt_round_id` (UUID or null, copy rounds only): The prompt round ID for second copy targeting, null if not eligible
+- `original_phrase` (string or null, copy rounds only): The original phrase for reference, null if not eligible
+
 **Errors:**
 - `invalid_phrase` - Word not in dictionary or invalid format
 - `duplicate_phrase` - Copy word matches original or is too similar
 - `expired` - Past grace period
 - `not_found` - Round not found or not owned by player
+
+**Notes:**
+- For copy rounds, the response includes second copy eligibility information
+- Second copy is only offered after submitting the first copy
+- Second copy cost is 2x the regular copy cost (100f or 80f with discount)
+- Prompt rounds do not include second copy fields in the response
 
 #### `POST /rounds/{round_id}/flag`
 Flag an active copy round for administrative review. Used when a player believes the original phrase is inappropriate or invalid.
@@ -1490,10 +1595,10 @@ Get a list of finalized phrasesets with summary metadata.
 **Purpose:** This endpoint allows browsing through completed rounds to select which ones to review in detail. Use it to build a list/grid UI showing all finished games. The original phrase is intentionally excluded to preserve the mystery for players who weren't involved in the round.
 
 **Query Parameters:**
-- `limit` (optional, default: 10) - Ignored, kept for API compatibility
-- `offset` (optional, default: 0) - Ignored, kept for API compatibility
+- `limit` (optional) - **IGNORED** - Kept for API compatibility only
+- `offset` (optional) - **IGNORED** - Kept for API compatibility only
 
-**Important:** This endpoint returns up to 500 phrasesets. All pagination and sorting should be handled client-side.
+**Important:** This endpoint returns up to 500 phrasesets regardless of limit/offset values. All pagination and sorting should be handled client-side. The query parameters are accepted but have no effect on the response.
 
 **Response:**
 ```json
@@ -1560,6 +1665,34 @@ const page2 = sorted.slice(10, 20);  // Next 10 items
 - Creating a review history UI with custom sort options
 - Showing recent activity to players
 - Allowing players to revisit and analyze past rounds
+
+#### `GET /phrasesets/practice/random`
+Get a random completed phraseset for practice mode (phrasesets user was NOT involved in).
+
+**Purpose:** Allows players to practice rounds without affecting their stats or earning rewards.
+
+**Response:**
+```json
+{
+  "phraseset_id": "uuid",
+  "prompt_text": "my deepest desire is to be (a/an)",
+  "original_phrase": "FAMOUS",
+  "copy_phrase_1": "POPULAR",
+  "copy_phrase_2": "WEALTHY",
+  "phrases": ["FAMOUS", "POPULAR", "WEALTHY"],
+  "vote_count": 8,
+  "finalized_at": "2025-01-06T12:30:00Z"
+}
+```
+
+**Error Responses:**
+- `404 No phrasesets available for practice` - No suitable phrasesets found
+- `500 Failed to get practice phraseset` - Server error
+
+**Notes:**
+- Only returns finalized phrasesets
+- Excludes phrasesets where user was contributor or voter
+- Phrases randomized for practice voting
 
 ---
 
@@ -1907,6 +2040,77 @@ Resolve a flagged prompt by confirming or dismissing it.
 - When confirmed, penalty is kept and reporter gets partial refund
 - When dismissed, penalty is refunded to reporter
 - Operation updates the flag status and records the reviewer
+
+---
+
+### Online Users Endpoints
+
+Track and display users who are currently active in the game.
+
+#### `GET /online`
+Get list of currently online users (active in last 30 minutes).
+
+**Purpose:** Display "Who's Online" feature showing recent player activity.
+
+**Response:**
+```json
+{
+  "users": [
+    {
+      "username": "Prompt Pirate",
+      "last_action": "Started vote round",
+      "last_action_category": "round",
+      "last_activity": "2025-01-06T12:00:00Z",
+      "time_ago": "2m ago"
+    }
+  ],
+  "total_count": 15
+}
+```
+
+**Notes:**
+- Shows users active in last 30 minutes based on UserActivity tracking
+- Distinct from phraseset_activity which logs historical review events
+- Time ago formatted as "Xs ago", "Xm ago", or "Xh ago"
+
+#### `WebSocket /online/ws`
+WebSocket endpoint for real-time online users updates.
+
+**Authentication:**
+- Token in query params: `wss://api.example.com/online/ws?token=<access_token>`
+- OR token in cookies (HttpOnly cookie automatically sent)
+
+**Connection:**
+```javascript
+const ws = new WebSocket(`wss://api.example.com/online/ws?token=${accessToken}`);
+```
+
+**Messages Received:**
+```json
+{
+  "type": "online_users_update",
+  "users": [...],
+  "total_count": 15,
+  "timestamp": "2025-01-06T12:00:00Z"
+}
+```
+
+**Update Frequency:** Every 5 seconds while clients are connected
+
+**Connection Management:**
+- Rejects unauthenticated connections with WebSocket code 1008
+- Background broadcast task starts when first client connects
+- Background task stops when all clients disconnect
+- Automatically cleans up disconnected clients
+
+**Error Handling:**
+- `1008 POLICY_VIOLATION` - Authentication required/failed
+- Connection closed on authentication failure
+
+**Notes:**
+- Distinct from phraseset_activity tracking
+- Uses UserActivity model for player presence
+- Efficient broadcast: only sends updates when clients connected
 
 ---
 
