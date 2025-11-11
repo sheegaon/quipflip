@@ -19,8 +19,10 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({ mode, onChange }) => {
 
   // Calculate transform value based on mode and screen size
   const getTransform = () => {
-    if (mode === 'live') return 'translateX(0)';
-    return isMobile ? 'translateX(2rem)' : 'translateX(2.375rem)';
+    if (mode === 'live') {
+      return isMobile ? 'translateX(0rem)' : 'translateX(0)';
+    }
+    return isMobile ? 'translateX(2.5rem)' : 'translateX(2.375rem)';
   };
 
   return (
@@ -29,17 +31,17 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({ mode, onChange }) => {
         {/* Live Mode Label */}
         <button
           onClick={() => onChange('live')}
-          className={`flex items-center gap-2 transition-opacity duration-200 ${
-            mode === 'live' ? 'opacity-100' : 'opacity-50 hover:opacity-75'
+          className={`flex items-center gap-1 transition-opacity duration-200 ${
+            mode === 'live' ? 'opacity-100' : 'opacity-60 hover:opacity-75'
           }`}
           aria-label="Switch to live mode"
         >
+          <span className="font-bold text-quip-orange-deep">Live</span>
           <img
             src="/icon_live.svg"
             alt=""
-            className="w-6 h-6"
+            className="w-11 h-11"
           />
-          <span className="font-semibold text-quip-orange-deep">Live</span>
         </button>
 
         {/* Toggle Switch */}
@@ -48,7 +50,12 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({ mode, onChange }) => {
           aria-checked={mode === 'practice'}
           aria-label={`Switch to ${mode === 'live' ? 'practice' : 'live'} mode`}
           onClick={() => onChange(mode === 'live' ? 'practice' : 'live')}
-          className="relative w-20 h-10 bg-white rounded-full shadow-tile-sm border-2 border-quip-navy border-opacity-10 focus:outline-none focus:ring-2 focus:ring-quip-teal focus:ring-offset-2"
+          className="relative w-20 sm:w-20 h-10 bg-white rounded-full shadow-tile-sm border-2 border-quip-navy border-opacity-10 focus:outline-none focus:ring-2 focus:ring-quip-teal focus:ring-offset-2"
+          style={{
+            width: isMobile ? '7rem' : '5rem',
+            marginLeft: isMobile ? '0.75rem' : '0',
+            marginRight: isMobile ? '-0.75rem' : '0'
+          }}
         >
           {/* Slider Track Background */}
           <div className="absolute inset-0 rounded-full overflow-hidden pointer-events-none">
@@ -74,17 +81,17 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({ mode, onChange }) => {
         {/* Practice Mode Label */}
         <button
           onClick={() => onChange('practice')}
-          className={`flex items-center gap-2 transition-opacity duration-200 ${
-            mode === 'practice' ? 'opacity-100' : 'opacity-50 hover:opacity-75'
+          className={`flex items-center gap-1 transition-opacity duration-200 ${
+            mode === 'practice' ? 'opacity-100' : 'opacity-60 hover:opacity-75'
           }`}
           aria-label="Switch to practice mode"
         >
           <img
             src="/icon_practice.svg"
             alt=""
-            className="w-6 h-6"
+            className="w-11 h-11"
           />
-          <span className="font-semibold text-quip-turquoise">Practice</span>
+          <span className="font-bold text-quip-turquoise">Practice</span>
         </button>
       </div>
     </div>
