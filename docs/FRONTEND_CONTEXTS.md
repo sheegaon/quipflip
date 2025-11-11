@@ -41,6 +41,7 @@ interface GameState {
   phrasesetSummary: PhrasesetDashboardSummary | null;
   unclaimedResults: UnclaimedResult[];
   roundAvailability: RoundAvailability | null;
+  copyRoundHints: string[] | null;
   loading: boolean;
   error: string | null;
 }
@@ -48,14 +49,17 @@ interface GameState {
 
 ### Key Actions
 
-- `startSession(username, tokens)`: Initialize user session
+- `startSession(username)`: Initialize user session
 - `logout()`: Clear session and reset state
 - `refreshDashboard(signal?)`: Update dashboard data
 - `refreshBalance(signal?)`: Update player balance
 - `claimBonus()`: Claim daily bonus
+- `clearError()`: Clear error state
+- `navigateAfterDelay(path, delay?)`: Navigate to path after optional delay
 - `startPromptRound()`: Start a new prompt round
 - `startCopyRound()`: Start a new copy round
 - `startVoteRound()`: Start a new vote round
+- `fetchCopyHints(roundId)`: Fetch AI-generated hints for a copy round
 - `claimPhrasesetPrize(phrasesetId)`: Claim completed round prize
 - `flagCopyRound(roundId)`: Report a problematic copy round for moderation
 - `abandonRound(roundId)`: Abandon the active prompt or copy round and trigger a partial refund
@@ -93,6 +97,7 @@ interface QuestState {
   loading: boolean;
   error: string | null;
   lastUpdated: number | null;
+  hasClaimableQuests: boolean;
 }
 ```
 
@@ -121,50 +126,56 @@ const { claimQuest, refreshQuests } = actions;
 
 ## TutorialContext
 
-**Purpose**: Manages user onboarding, tutorial progression, and help system.
+**Purpose**: Manages user onboarding and tutorial progression with backend-synced state.
 
 ### State Structure
 
 ```typescript
 interface TutorialState {
-  currentStep: string | null;
-  completedSteps: Set<string>;
-  availableSteps: TutorialStep[];
+  status: TutorialStatus | null;
+  tutorialStatus: TutorialLifecycleStatus;
   isActive: boolean;
-  showHints: boolean;
-  tutorialMode: 'guided' | 'discovery' | 'disabled';
+  currentStep: TutorialProgress | null;
+  loading: boolean;
+  error: string | null;
 }
 ```
 
+Where `TutorialLifecycleStatus` is: `'loading' | 'inactive' | 'active' | 'completed' | 'error'`
+
 ### Tutorial Steps
 
-1. **welcome**: Introduction to Quipflip
-2. **dashboard**: Understanding the dashboard
-3. **create-prompt**: Creating engaging prompts
-4. **write-copy**: Writing compelling copy
-5. **vote-rounds**: Voting mechanics and rewards
-6. **view-results**: Checking performance and earnings
-7. **quests**: Quest system and bonus rewards (optional)
+The tutorial follows a linear progression through these steps:
+
+1. **not_started**: Initial state before tutorial begins
+2. **welcome**: Introduction to Quipflip
+3. **dashboard**: Understanding the dashboard
+4. **prompt_round**: Creating engaging prompts
+5. **prompt_round_paused**: Prompt round paused state
+6. **copy_round**: Writing compelling copy
+7. **copy_round_paused**: Copy round paused state
+8. **vote_round**: Voting mechanics and rewards
+9. **completed_rounds_guide**: Checking performance and earnings
+10. **completed**: Tutorial finished
+
+Note: These values match the `TutorialProgress` type and `Player.tutorial_progress` field values.
 
 ### Key Actions
 
-- `startTutorial(mode?)`: Begin tutorial in guided or discovery mode
-- `completeStep(stepId)`: Mark a tutorial step as completed
-- `skipStep(stepId)`: Skip a tutorial step
-- `goToStep(stepId)`: Jump to a specific tutorial step
-- `nextStep()` / `previousStep()`: Navigate tutorial steps
-- `endTutorial()`: Exit tutorial mode
-- `resetTutorial()`: Reset all tutorial progress
-- `toggleHints()`: Toggle hint visibility
-- `setTutorialMode(mode)`: Change tutorial mode
+- `startTutorial()`: Begin tutorial (sets progress to 'welcome')
+- `advanceStep(stepId?)`: Advance to next step or specific step
+- `skipTutorial()`: Skip entire tutorial (marks as completed)
+- `completeTutorial()`: Mark tutorial as completed
+- `resetTutorial()`: Reset tutorial progress to beginning
+- `refreshStatus(options?)`: Refresh tutorial status from backend
 
 ### Features
 
-- **Persistent State**: Tutorial progress saved to localStorage
-- **Multiple Modes**: Supports guided tutorials and discovery learning
-- **Step Navigation**: Flexible navigation between tutorial steps
-- **Auto-progression**: Automatic advancement in guided mode
-- **Hint System**: Contextual hints and tips
+- **Backend-Synced Progress**: Tutorial progress is stored on the backend and synced across devices
+- **Forward-Only Progression**: Users can only advance through steps, not go backwards
+- **Lifecycle States**: Clear status tracking (loading, inactive, active, completed, error)
+- **Authentication-Aware**: Automatically handles unauthenticated users gracefully
+- **Auto-Loading**: Automatically loads tutorial status on mount
 
 ### Usage
 
@@ -172,8 +183,8 @@ interface TutorialState {
 import { useTutorial } from '../contexts/TutorialContext';
 
 const { state, actions } = useTutorial();
-const { currentStep, isActive, showHints } = state;
-const { startTutorial, completeStep } = actions;
+const { currentStep, isActive, tutorialStatus } = state;
+const { startTutorial, advanceStep, skipTutorial } = actions;
 ```
 
 ## ResultsContext
