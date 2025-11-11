@@ -1,0 +1,35 @@
+import React from 'react';
+
+interface ReviewIconProps {
+  className?: string;
+}
+
+export const ReviewIcon: React.FC<ReviewIconProps> = ({ className = 'h-5 w-5' }) => {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 32 32"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      {/* Background circle */}
+      <circle cx="16" cy="16" r="15" fill="#0B2137" opacity="0.1" />
+
+      {/* Eye outer shape */}
+      <path
+        d="M16 11C10 11 6 16 6 16C6 16 10 21 16 21C22 21 26 16 26 16C26 16 22 11 16 11Z"
+        fill="#0B2137"
+      />
+
+      {/* Iris */}
+      <circle cx="16" cy="16" r="3.5" fill="#26A69A" />
+
+      {/* Pupil */}
+      <circle cx="16" cy="16" r="1.5" fill="#0B2137" />
+
+      {/* Light reflection accent */}
+      <circle cx="17" cy="15" r="0.8" fill="#FFF6EE" />
+    </svg>
+  );
+};

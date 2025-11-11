@@ -6,6 +6,11 @@ import { SubHeader } from './SubHeader';
 import { HomeIcon } from './icons/HomeIcon';
 import { TreasureChestIcon } from './TreasureChestIcon';
 import { StatisticsIcon } from './icons/StatisticsIcon';
+import { LeaderboardIcon } from './icons/LeaderboardIcon';
+import { ResultsIcon } from './icons/ResultsIcon';
+import { TrackingIcon } from './icons/TrackingIcon';
+import { ReviewIcon } from './icons/ReviewIcon';
+import { LobbyIcon } from './icons/LobbyIcon';
 import { BrandedSurveyIcon } from './icons/BrandedSurveyIcon';
 import { BrandedSettingsIcon } from './icons/BrandedSettingsIcon';
 import { AdminIcon } from './icons/AdminIcon';
@@ -261,28 +266,28 @@ export const Header: React.FC = () => {
                     onClick={() => handleNavigate('/leaderboard')}
                     className="w-full flex items-center gap-3 px-4 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
                   >
-                    <img src="/icon_leaderboard.svg" alt="" className="h-5 w-5" />
+                    <LeaderboardIcon className="h-5 w-5" />
                     <span className="font-semibold">Leaderboard</span>
                   </button>
                   <button
                     onClick={() => handleNavigate('/results')}
                     className="w-full flex items-center gap-3 px-4 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
                   >
-                    <img src="/icon_results.svg" alt="" className="h-5 w-5" />
+                    <ResultsIcon className="h-5 w-5" />
                     <span className="font-semibold">Results</span>
                   </button>
                   <button
                     onClick={() => handleNavigate('/tracking')}
                     className="w-full flex items-center gap-3 px-4 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
                   >
-                    <img src="/icon_prompt.svg" alt="" className="h-5 w-5" />
+                    <TrackingIcon className="h-5 w-5" />
                     <span className="font-semibold">Tracking</span>
                   </button>
                   <button
                     onClick={() => handleNavigate('/completed')}
                     className="w-full flex items-center gap-3 px-4 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
                   >
-                    <img src="/icon_completed.svg" alt="" className="h-5 w-5" />
+                    <ReviewIcon className="h-5 w-5" />
                     <span className="font-semibold">Review</span>
                   </button>
                   <button
@@ -296,7 +301,7 @@ export const Header: React.FC = () => {
                     onClick={() => handleNavigate('/online-users')}
                     className="w-full flex items-center gap-3 px-4 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
                   >
-                    <img src="/icon_online_users.svg" alt="" className="h-5 w-5" />
+                    <LobbyIcon className="h-5 w-5" />
                     <span className="font-semibold">Lobby</span>
                   </button>
                   <button
