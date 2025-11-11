@@ -64,6 +64,48 @@ See [API.md](API.md) for complete authentication documentation including:
 - Refresh token endpoint (`POST /auth/refresh`)
 - Automatic token refresh on expiration
 
+### WebSocket Architecture
+
+**Online Users Feature** (`/online/ws` endpoint):
+
+The WebSocket implementation provides real-time updates for the "Who's Online" feature, showing players which users are currently active.
+
+**Key Components:**
+- **Connection Manager**: Centralized manager tracks all active WebSocket connections
+- **Background Broadcast Task**: Automatically broadcasts online users updates every 5 seconds
+- **User Activity Tracking**: `UserActivity` model tracks last action and timestamp for each player
+
+**Connection Lifecycle:**
+1. Client requests WebSocket connection with token (query param or cookie)
+2. Server authenticates token before accepting connection
+3. Unauthenticated connections rejected with WebSocket code 1008
+4. First connection starts background broadcast task
+5. Last disconnection stops background broadcast task
+
+**Efficiency Optimizations:**
+- Background task only runs when clients are connected
+- Single broadcast sent to all connected clients (no per-client queries)
+- Automatic cleanup of disconnected clients
+- Database query executed once per 5-second interval, results broadcast to all
+
+**Authentication Options:**
+- Query parameter: `wss://backend.com/online/ws?token=<access_token>`
+- Cookie: HttpOnly cookie automatically sent with WebSocket handshake (browser-dependent)
+- Token exchange: `/auth/ws-token` endpoint provides short-lived token (60s) for WebSocket connections
+
+**Data Flow:**
+1. Player makes API call → UserActivity record updated with timestamp and action
+2. Background task queries UserActivity for records from last 30 minutes
+3. Results formatted with relative timestamps ("2m ago", "5s ago")
+4. Broadcast JSON message to all connected WebSocket clients
+5. Repeat every 5 seconds
+
+**Distinction from PhrasesetActivity:**
+- `UserActivity`: Real-time presence tracking (last 30 minutes), used for "Who's Online"
+- `PhrasesetActivity`: Historical event log for phraseset lifecycle tracking and review
+
+See [online_users.py router](../backend/routers/online_users.py) for implementation details.
+
 ---
 
 ## Results & UI
