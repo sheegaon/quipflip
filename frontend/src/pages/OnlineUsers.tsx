@@ -46,11 +46,13 @@ const OnlineUsers: React.FC = () => {
 
         // Step 2: Construct WebSocket URL for direct connection to Heroku
         const apiUrl = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:8000`;
+        const backendWsUrl = import.meta.env.VITE_BACKEND_WS_URL || 'wss://quipflip-c196034288cd.herokuapp.com';
         let wsUrl: string;
 
         if (apiUrl.startsWith('/')) {
           // Production: use direct Heroku connection (cannot proxy WebSocket through Vercel)
-          wsUrl = 'wss://quipflip-c196034288cd.herokuapp.com/users/online/ws';
+          wsUrl = `${backendWsUrl}/online/ws`;
+
         } else {
           // Development: connect directly to local backend
           wsUrl = apiUrl
