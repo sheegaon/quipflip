@@ -99,6 +99,7 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
   withCredentials: true,
+  timeout: 150000, // 150 seconds (2.5 minutes) timeout for hint generation
 });
 
 // Export axios instance for direct use (e.g., replaying queued requests)
