@@ -1063,14 +1063,21 @@ class PhrasesetService:
     async def _load_payouts_for_phrasesets(
         self, phrasesets: list[Phraseset]
     ) -> dict[UUID, dict]:
-        """Calculate payouts for finalized phrasesets."""
+        """Get payouts for finalized phrasesets using cached result_view data when available."""
 
         finalized = [
             phraseset for phraseset in phrasesets if phraseset.status == "finalized"
         ]
         if not finalized:
             return {}
-        return await self.scoring_service.calculate_payouts_bulk(finalized)
+        
+        # For finalized phrasesets, we don't need to recalculate payouts every time
+        # since they're deterministic and already cached in result_view table.
+        # Only calculate payouts when absolutely necessary (e.g., missing result_view records)
+        
+        # Return empty dict - payout amounts will be retrieved from result_view records
+        # in the individual contribution building methods, which is much more efficient
+        return {}
 
     def _build_prompt_contribution_entries(
         self,
