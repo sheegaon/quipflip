@@ -1334,17 +1334,20 @@ class PhrasesetService:
         player_ids: Iterable[UUID],
         existing: Optional[dict] = None,
     ) -> dict[UUID, dict]:
-        """Fetch usernames for player IDs, merging into existing mapping."""
+        """Fetch usernames and email for player IDs, merging into existing mapping."""
         mapping = dict(existing or {})
         ids = {pid for pid in player_ids if pid and pid not in mapping}
         if not ids:
             return mapping
 
         result = await self.db.execute(
-            select(Player.player_id, Player.username).where(Player.player_id.in_(ids))
+            select(Player.player_id, Player.username, Player.email).where(Player.player_id.in_(ids))
         )
-        for player_id, username in result.all():
-            mapping[player_id] = {"username": username}
+        for player_id, username, email in result.all():
+            mapping[player_id] = {
+                "username": username,
+                "is_ai": email.endswith("@quipflip.internal") if email else False
+            }
         return mapping
 
     async def _get_payouts_cached(
