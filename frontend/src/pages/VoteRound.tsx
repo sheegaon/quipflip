@@ -163,7 +163,7 @@ export const VoteRound: React.FC = () => {
 
             {/* Main result message */}
             <h2 className={`text-5xl font-display font-bold mb-6 success-message ${voteResult.correct ? 'text-quip-turquoise' : 'text-quip-orange'}`}>
-              {voteResult.correct ? (successMessage || 'Correct!') : 'Incorrect'}
+              {voteResult.correct ? (successMessage || 'Correct!') : 'Not quite this time'}
             </h2>
 
             {/* Payout/Cost info - PROMINENT */}
@@ -183,8 +183,8 @@ export const VoteRound: React.FC = () => {
             {/* Simple feedback message */}
             <p className="text-lg text-quip-teal mb-6">
               {voteResult.correct
-                ? "Great job spotting the original phrase!"
-                : "Don't worry, you'll get the next one!"}
+                ? "Excellent work! You successfully identified the original phrase!"
+                : "No worries! The original can be tricky to spot. Keep practicing and you'll master it!"}
             </p>
           </div>
 
