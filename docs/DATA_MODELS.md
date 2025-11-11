@@ -19,7 +19,7 @@
 - `tutorial_completed_at` (timestamp, nullable) - when tutorial was completed
 - `is_admin` (boolean, default false) - admin privileges flag for administrative access
 - `locked_until` (timestamp with timezone, nullable) - account lock expiration time (for temporary bans/suspensions)
-- `flag_dismissal_streak` (integer, default 0) - consecutive dismissed flags (tracks admin moderation reputation)
+- `flag_dismissal_streak` (integer, default 0) - tracks consecutive flags submitted by this player that were dismissed by an admin. Higher number indicates poor flagging history. Player is locked for 24 hours when streak reaches 5, then streak resets to 0. Streak resets to 0 when a flag is confirmed.
 - `consecutive_incorrect_votes` (integer, default 0) - tracks incorrect votes for guest accounts
 - `vote_lockout_until` (timestamp with timezone, nullable) - guest vote lockout expiration when too many incorrect votes
 - Indexes: `player_id`, `active_round_id`
@@ -345,7 +345,7 @@
 - Note: Stores dynamic system configuration values that can be updated without code deployment. Values override environment variable defaults.
 
 ### UserActivity
-- `player_id` (UUID, primary key, references players.player_id)
+- `player_id` (UUID, primary key)
 - `username` (string, max 255 chars) - denormalized for quick lookups
 - `last_action` (string, max 100 chars) - human-readable description of last action
 - `last_action_category` (string, max 50 chars, default 'other') - action category ('round', 'phraseset', 'quest', 'auth', 'other')
