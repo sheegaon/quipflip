@@ -1,6 +1,6 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { ErrorFallback, type ErrorFallbackProps } from './ErrorFallback';
-import { logErrorToService } from '../utils/errorReporting';
+import { logErrorToService, type ErrorReportContext } from '../utils/errorReporting';
 
 interface ErrorBoundaryState {
   hasError: boolean;
@@ -93,14 +93,19 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     const { resetKeys } = this.props;
     const { hasError } = this.state;
 
-    // Reset error boundary if resetKeys changed
-    if (
-      hasError &&
-      resetKeys &&
-      prevProps.resetKeys &&
-      !this.arraysEqual(resetKeys, prevProps.resetKeys)
-    ) {
-      this.resetErrorBoundary();
+    if (hasError) {
+      const prevResetKeys = prevProps.resetKeys;
+      // Handle cases where keys are added, removed, or changed
+      if (
+        // Keys were added (undefined -> defined)
+        (resetKeys && !prevResetKeys) ||
+        // Keys were removed (defined -> undefined)
+        (!resetKeys && prevResetKeys) ||
+        // Keys changed (both arrays but contents differ)
+        (resetKeys && prevResetKeys && !this.arraysEqual(resetKeys, prevResetKeys))
+      ) {
+        this.resetErrorBoundary();
+      }
     }
   }
 
@@ -115,7 +120,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   /**
    * Get error context for logging
    */
-  private getErrorContext(): any {
+  private getErrorContext(): ErrorReportContext {
     try {
       // Try to get game state from localStorage
       const gameState = localStorage.getItem('gameState');

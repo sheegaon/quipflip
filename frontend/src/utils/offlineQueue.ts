@@ -178,9 +178,9 @@ export const offlineQueue = new OfflineQueue();
 /**
  * Helper to check if an action should be queued when offline
  */
-export const shouldQueueAction = (method: string, url: string): boolean => {
+export const shouldQueueAction = (_method: string, url: string): boolean => {
   // Don't queue GET requests (they can just fail and retry)
-  if (method.toUpperCase() === 'GET') {
+  if (_method.toUpperCase() === 'GET') {
     return false;
   }
 
@@ -190,13 +190,13 @@ export const shouldQueueAction = (method: string, url: string): boolean => {
   }
 
   // Queue most POST, PUT, PATCH, DELETE requests
-  return ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method.toUpperCase());
+  return ['POST', 'PUT', 'PATCH', 'DELETE'].includes(_method.toUpperCase());
 };
 
 /**
  * Helper to determine if an action supports optimistic UI
  */
-export const supportsOptimisticUI = (method: string, url: string): boolean => {
+export const supportsOptimisticUI = (_method: string, url: string): boolean => {
   // Optimistic UI is good for mutations that are likely to succeed
   const optimisticEndpoints = [
     '/rounds/prompt',

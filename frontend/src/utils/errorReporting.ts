@@ -1,5 +1,12 @@
 import type { ErrorInfo } from 'react';
 
+export interface ErrorReportContext {
+  gameState?: Record<string, unknown> | null;
+  roundState?: Record<string, unknown> | null;
+  userActions?: string[];
+  [key: string]: unknown;
+}
+
 export interface ErrorReport {
   errorId: string;
   timestamp: string;
@@ -11,11 +18,7 @@ export interface ErrorReport {
     stack?: string;
     componentStack?: string;
   };
-  context: {
-    gameState?: any;
-    roundState?: any;
-    userActions?: string[];
-  };
+  context: ErrorReportContext;
 }
 
 /**
@@ -73,7 +76,7 @@ export const logErrorToConsole = (
 export const logErrorToService = (
   error: Error,
   errorInfo?: ErrorInfo,
-  context?: ErrorReport['context']
+  context?: ErrorReportContext
 ): string => {
   const errorId = generateErrorId();
 

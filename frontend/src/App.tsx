@@ -202,7 +202,7 @@ function App() {
     <ErrorBoundary
       fallback={AppErrorFallback}
       isAppLevel={true}
-      onError={(error, errorInfo, errorId) => {
+      onError={(_error, _errorInfo, errorId) => {
         // Log to analytics if needed
         console.error('App-level error caught:', errorId);
       }}

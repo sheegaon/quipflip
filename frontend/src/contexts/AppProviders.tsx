@@ -8,6 +8,19 @@ import { gameContextLogger } from '../utils/logger';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { PageErrorFallback } from '../components/ErrorFallback';
 
+// Helper component to reduce ErrorBoundary boilerplate
+const ContextErrorBoundary: React.FC<{ children: React.ReactNode; contextName: string }> = ({ children, contextName }) => (
+  <ErrorBoundary
+    fallback={PageErrorFallback}
+    onError={(error, _errorInfo, errorId) => {
+      gameContextLogger.error(`${contextName} error caught:`, errorId);
+      console.error(error);
+    }}
+  >
+    {children}
+  </ErrorBoundary>
+);
+
 // Inner component that has access to GameContext
 const ContextBridge: React.FC<{
   children: React.ReactNode;
@@ -94,20 +107,10 @@ export const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   return (
-    <ErrorBoundary
-      fallback={PageErrorFallback}
-      onError={(error, errorInfo, errorId) => {
-        gameContextLogger.error('Context provider error caught:', errorId, error);
-      }}
-    >
+    <ContextErrorBoundary contextName="ContextProviders">
       <NetworkProvider>
         <TutorialProvider>
-          <ErrorBoundary
-            fallback={PageErrorFallback}
-            onError={(error, errorInfo, errorId) => {
-              gameContextLogger.error('GameProvider error caught:', errorId, error);
-            }}
-          >
+          <ContextErrorBoundary contextName="GameProvider">
             <GameProvider
               onDashboardTrigger={handleDashboardTrigger}
             >
@@ -118,10 +121,10 @@ export const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children
                 {children}
               </InnerProviders>
             </GameProvider>
-          </ErrorBoundary>
+          </ContextErrorBoundary>
         </TutorialProvider>
       </NetworkProvider>
-    </ErrorBoundary>
+    </ContextErrorBoundary>
   );
 };
 
