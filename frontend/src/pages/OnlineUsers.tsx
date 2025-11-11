@@ -27,39 +27,39 @@ const OnlineUsers: React.FC = () => {
     let pollingInterval: ReturnType<typeof setInterval> | null = null;
 
     // Try WebSocket first, fall back to polling if it fails
-    const connectWebSocket = () => {
+    const connectWebSocket = async () => {
       if (wsAttempted) return; // Prevent multiple attempts
       wsAttempted = true;
 
       try {
-        // Use WebSocket URL from environment or construct from backend URL for dev
+        // Step 1: Fetch short-lived WebSocket token via REST API (through Vercel proxy)
+        // This endpoint validates HttpOnly cookies and returns a token we can use for WebSocket
+        const tokenResponse = await fetch('/api/auth/ws-token', {
+          credentials: 'include', // Include HttpOnly cookies
+        });
+
+        if (!tokenResponse.ok) {
+          throw new Error('Failed to get WebSocket token');
+        }
+
+        const { token } = await tokenResponse.json();
+
+        // Step 2: Construct WebSocket URL for direct connection to Heroku
+        const apiUrl = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:8000`;
         let wsUrl: string;
 
-        if (import.meta.env.VITE_WEBSOCKET_URL) {
-          // Production: use dedicated WebSocket URL (direct to Heroku)
-          wsUrl = import.meta.env.VITE_WEBSOCKET_URL + '/users/online/ws';
+        if (apiUrl.startsWith('/')) {
+          // Production: use direct Heroku connection (cannot proxy WebSocket through Vercel)
+          wsUrl = 'wss://quipflip-c196034288cd.herokuapp.com/users/online/ws';
         } else {
-          // Development: construct from API URL or localhost
-          const host = window.location.hostname;
-          const port = import.meta.env.VITE_API_PORT || '8000';
-          const backendUrl = import.meta.env.VITE_API_URL || `http://${host}:${port}`;
-          wsUrl = backendUrl
+          // Development: connect directly to local backend
+          wsUrl = apiUrl
             .replace('http://', 'ws://')
             .replace('https://', 'wss://') + '/users/online/ws';
         }
 
-        // Get access token from cookies and add as query parameter for better dev mode compatibility
-        const getCookie = (name: string): string | null => {
-          const value = `; ${document.cookie}`;
-          const parts = value.split(`; ${name}=`);
-          if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
-          return null;
-        };
-
-        const accessToken = getCookie('quipflip_access_token');
-        if (accessToken) {
-          wsUrl += `?token=${encodeURIComponent(accessToken)}`;
-        }
+        // Step 3: Add short-lived token as query parameter
+        wsUrl += `?token=${encodeURIComponent(token)}`;
 
         // Create WebSocket connection
         const ws = new WebSocket(wsUrl);

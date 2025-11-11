@@ -6,6 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.config import get_settings
 from backend.database import get_db
+from backend.dependencies import get_current_player
+from backend.models.player import Player
 from backend.schemas.auth import AuthTokenResponse, LoginRequest, LogoutRequest, RefreshRequest, SuggestUsernameResponse
 from backend.services.auth_service import AuthService, AuthError
 from backend.utils.cookies import (
@@ -117,3 +119,35 @@ async def logout(
     clear_auth_cookies(response)
     response.status_code = 204
     return None
+
+
+@router.get("/ws-token")
+async def get_websocket_token(
+    player: Player = Depends(get_current_player),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Generate a short-lived token for WebSocket authentication.
+
+    This endpoint is called via REST API (through Vercel proxy) using HttpOnly cookies.
+    Returns a short-lived token (60 seconds) that can be used for WebSocket connections
+    to the Heroku backend, which cannot be proxied through Vercel.
+
+    Token exchange pattern:
+    1. Frontend calls this endpoint with HttpOnly cookie (via Vercel /api proxy)
+    2. Backend validates cookie and returns short-lived token
+    3. Frontend uses token for direct WebSocket connection to Heroku
+    4. Short lifetime limits security risk if token is exposed
+    """
+    auth_service = AuthService(db)
+
+    # Generate a short-lived access token (60 seconds) for WebSocket auth
+    ws_token, expires_in = auth_service.create_short_lived_token(
+        player=player,
+        expires_seconds=60  # Short-lived: 60 seconds
+    )
+
+    return {
+        "token": ws_token,
+        "expires_in": expires_in,
+        "token_type": "bearer"
+    }

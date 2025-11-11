@@ -231,6 +231,25 @@ class AuthService:
         expires_in = self.settings.access_token_exp_minutes * 60
         return token, expires_in
 
+    def create_short_lived_token(self, player: Player, expires_seconds: int) -> tuple[str, int]:
+        """Create a short-lived access token with custom expiration (for WebSocket auth).
+
+        Args:
+            player: The player to create the token for
+            expires_seconds: Token lifetime in seconds
+
+        Returns:
+            Tuple of (token, expires_in_seconds)
+        """
+        expire = datetime.now(UTC) + timedelta(seconds=expires_seconds)
+        payload = {
+            "sub": str(player.player_id),
+            "username": player.username,
+            "exp": int(expire.timestamp()),
+        }
+        token = encode_jwt(payload, self.settings.secret_key, algorithm=self.settings.jwt_algorithm)
+        return token, expires_seconds
+
     async def _store_refresh_token(self, player: Player, raw_token: str, expires_at: datetime) -> RefreshToken:
         token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
         refresh_token = RefreshToken(

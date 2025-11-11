@@ -38,16 +38,24 @@ The backend is designed around a clear service layer (`backend/services`) that e
 JWT authentication using HTTP-only cookies for enhanced security:
 - **Access tokens** (2-hour lifetime): Stored in HTTP-only cookie, automatically sent with requests
 - **Refresh tokens** (30-day lifetime): Stored in HTTP-only cookie, used for automatic token rotation
-- **Cookie security**: HttpOnly, Secure (production), SameSite=None (cross-site support for WebSockets)
-- **Hybrid approach**: REST API via Vercel proxy (same-origin), WebSockets direct to Heroku (cross-site)
+- **Cookie security**: HttpOnly, Secure (production), SameSite=Lax
+- **REST API**: Proxied through Vercel for same-origin (HttpOnly cookies work)
+- **WebSocket**: Token exchange pattern (Vercel doesn't support WebSocket proxying)
+- **iOS compatibility**: Same-origin REST requests work reliably on iOS Safari
 - **Automatic refresh**: Frontend intercepts 401 errors and silently refreshes tokens
 - **Backward compatibility**: Authorization header still supported for API clients
 
 **Production Setup:**
 - Frontend: Vercel hosting at `quipflip.xyz`
 - Backend: Heroku at `quipflip-c196034288cd.herokuapp.com`
-- REST API: Vercel proxy (`/api/*` → Heroku) for same-origin requests, iOS compatibility
-- WebSocket: Direct connection (`wss://quipflip-c196034288cd.herokuapp.com`) with SameSite=None cookies
+- REST API: Vercel proxy (`/api/*` → Heroku) for same-origin
+- WebSocket: Token exchange via `/auth/ws-token` + direct connection to Heroku
+
+**WebSocket Token Exchange Pattern:**
+1. Frontend calls `/api/auth/ws-token` (REST via Vercel proxy with HttpOnly cookie)
+2. Backend validates cookie and returns short-lived token (60 seconds)
+3. Frontend uses token for direct WebSocket connection to Heroku
+4. Short lifetime limits security risk if token is exposed
 
 See [API.md](API.md) for complete authentication documentation including:
 - Cookie-based authentication (preferred)
