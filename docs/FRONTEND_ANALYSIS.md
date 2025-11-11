@@ -19,7 +19,6 @@ This document provides a comprehensive analysis of the Quipflip frontend codebas
 3. **React Hook Dependencies** - Stale closures and incorrect dependency arrays causing subtle bugs
 4. **Missing Error Handling** - Silent failures without user feedback
 5. **Accessibility Gaps** - Missing ARIA labels and keyboard navigation support
-6. **Missing Backend Features** - Phraseset history endpoint unused, features incomplete
 
 ### Overview by Category
 
@@ -39,54 +38,7 @@ This document provides a comprehensive analysis of the Quipflip frontend codebas
 
 This section cross-references frontend implementation with backend API documentation (API.md, DATA_MODELS.md) to identify mismatches, missing features, and integration issues.
 
-### 1.1 API Design Clarifications Needed
-
-#### Issue #1: Potential API Duplication - History vs Details Activity
-**Severity:** 🟡 Medium
-**Category:** API Design Question
-**Status:** Backend has both endpoints, unclear if duplication is intentional
-
-**The Situation:**
-The Tracking page successfully displays phraseset timelines using `/phrasesets/{id}/details` which includes an `activity` array. However, there's also a separate `/phrasesets/{id}/history` endpoint that appears to serve a similar purpose.
-
-**Current Implementation:**
-- **Tracking page uses:** `GET /phrasesets/{id}/details` → includes `activity` field
-- **Frontend doesn't use:** `GET /phrasesets/{id}/history` endpoint
-- **Both work in production**
-
-**Endpoint Comparison:**
-
-| Feature | `/details` activity | `/history` events |
-|---------|-------------------|-------------------|
-| Prompt submission | ✓ (in activity) | ✓ (as event) |
-| Copy submissions | ✓ (in activity) | ✓ (as event) |
-| Vote submissions | ✓ (in activity) | ✓ (as event) |
-| Finalization | ✓ (in activity) | ✓ (as event) |
-| Other phraseset data | ✓ (contributors, votes, results, etc.) | ❌ (timeline only) |
-| Access control | Contributors/voters only | Finalized + participants only |
-
-**Questions for Backend:**
-1. **Is this duplication intentional?**
-   - Should `/history` be deprecated in favor of `/details` activity field?
-   - Or does `/history` serve a different purpose we're missing?
-
-2. **Are they semantically different?**
-   - Does `activity` come from `phraseset_activity` table?
-   - Does `history` get constructed differently?
-
-3. **Should frontend switch to `/history`?**
-   - Is there a reason to prefer the dedicated history endpoint?
-   - Or is the current approach (using `/details`) optimal?
-
-**Recommendation:**
-Since the Tracking page works correctly with `/details`, this is NOT a bug. However, clarification on API design intent would help:
-- If endpoints serve different purposes, document the distinction
-- If `/history` is redundant, consider deprecating it
-- If `/details` activity is incomplete compared to `/history`, frontend should switch
-
----
-
-### 1.2 Medium Priority Issues
+### 1.1 Medium Priority Issues
 
 #### Issue #3: Admin Config Type Returns `any`
 **Severity:** 🟡 Medium
@@ -1046,11 +998,10 @@ The codebase follows reasonable organization patterns:
 ### Phase 4: Feature Gaps (Week 4)
 **Goal:** Implement missing backend features
 
-16. ✅ Add phraseset history endpoint integration
-17. ✅ Verify/fix second copy feature UI
-18. ✅ Add hints button to copy rounds
-19. ✅ Verify flag resolution in admin panel
-20. ✅ Add proper tutorial progress handling
+16. ✅ Verify/fix second copy feature UI
+17. ✅ Add hints button to copy rounds
+18. ✅ Verify flag resolution in admin panel
+19. ✅ Add proper tutorial progress handling
 
 **Estimated Effort:** 3-5 days
 
@@ -1196,7 +1147,6 @@ With focused effort, the codebase can reach production-ready quality within 4-6 
 | `POST /phrasesets/{id}/vote` | ✅ Used | Submit vote |
 | `GET /phrasesets/{id}/details` | ✅ Used | View phraseset |
 | `GET /phrasesets/{id}/public-details` | ⚠️ Unknown | Browse completed |
-| `GET /phrasesets/{id}/history` | ❌ Missing | Not implemented |
 | `GET /phrasesets/completed` | ✅ Used | Completed list |
 | `GET /phrasesets/practice/random` | ⚠️ Unknown | Practice mode |
 | `GET /quests` | ✅ Used | Quest list |
@@ -1230,8 +1180,6 @@ With focused effort, the codebase can reach production-ready quality within 4-6 
 - `AdminConfig` - Returns `any` instead of typed object
 
 ### Missing Types (Should Exist)
-- `PhrasesetHistoryEvent`
-- `PhrasesetHistory`
 - `ApiError` (centralized)
 - `ApiErrorCode` (enum)
 - Tutorial progress type (properly aligned with backend)

@@ -5,6 +5,7 @@ import { apiClient } from '../api/client';
 import type { CompletedPhrasesetItem } from '../api/types';
 import { InlineLoadingSpinner } from '../components/LoadingSpinner';
 import { ReviewIcon } from '../components/icons/ReviewIcon';
+import { getErrorMessage, isError } from '../types/errors';
 
 type SortField = 'vote_count' | 'total_pool' | 'created_at' | 'finalized_at';
 type SortDirection = 'asc' | 'desc';
@@ -32,9 +33,13 @@ export const Completed: React.FC = () => {
           controller.signal
         );
         setPhrasesets(response.phrasesets);
-      } catch (err: any) {
-        if (err.name !== 'CanceledError' && err.code !== 'ERR_CANCELED') {
-          setError(err.detail || err.message || 'Failed to load completed phrasesets');
+      } catch (err: unknown) {
+        // Check if error is a cancellation (AbortController)
+        const isCanceled =
+          isError(err) && (err.name === 'CanceledError' || err.name === 'AbortError');
+
+        if (!isCanceled) {
+          setError(getErrorMessage(err, 'Failed to load completed phrasesets'));
         }
       } finally {
         setLoading(false);

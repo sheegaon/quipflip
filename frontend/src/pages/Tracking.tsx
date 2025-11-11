@@ -14,6 +14,7 @@ import { Header } from '../components/Header';
 import { useResults } from '../contexts/ResultsContext';
 import { trackingLogger } from '../utils/logger';
 import { getUniqueIdForSummary } from '../utils/phrasesetHelpers';
+import { getErrorMessage } from '../types/errors';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -110,8 +111,8 @@ export const Tracking: React.FC = () => {
           count: data?.phrasesets?.length ?? 0,
         });
       })
-      .catch((err: any) => {
-        trackingLogger.error('Failed to refresh phrasesets', err);
+      .catch((err: unknown) => {
+        trackingLogger.error('Failed to refresh phrasesets', getErrorMessage(err));
       });
   }, [params, paramsKey]);
 
@@ -178,8 +179,8 @@ export const Tracking: React.FC = () => {
           forced: true,
         });
       })
-      .catch((err: any) => {
-        trackingLogger.error('Failed to refresh phraseset details', err);
+      .catch((err: unknown) => {
+        trackingLogger.error('Failed to refresh phraseset details', getErrorMessage(err));
       });
   }, [selectedSummary?.phraseset_id, stopPoll]);
 

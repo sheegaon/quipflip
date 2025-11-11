@@ -1,4 +1,6 @@
 // Centralized error message localization for better UX
+import { isApiError, hasMessage } from '../types/errors';
+
 export interface ErrorContext {
   action?: string;
   component?: string;
