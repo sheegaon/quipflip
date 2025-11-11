@@ -1,23 +1,25 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PromptRoundReview } from '../components/PhrasesetReview/PromptRoundReview';
-import { usePracticePhraseset } from '../hooks/usePracticePhraseset';
+import { CopyRoundReview } from '../components/PhrasesetReview/CopyRoundReview';
+import { usePracticePhrasesetSession } from '../hooks/usePracticePhrasesetSession';
 
-const PracticePrompt: React.FC = () => {
+const PracticeCopy2: React.FC = () => {
   const navigate = useNavigate();
-  const { phraseset, loading, error } = usePracticePhraseset();
+  const { phraseset, loading, error, clearSession } = usePracticePhrasesetSession();
 
   const handleContinue = () => {
+    clearSession();
     navigate('/dashboard');
   };
 
   const handleBack = () => {
+    clearSession();
     navigate('/dashboard');
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-quip-navy to-quip-teal flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-quip-turquoise to-quip-teal flex items-center justify-center p-4">
         <div className="text-xl text-white">Loading practice round...</div>
       </div>
     );
@@ -25,13 +27,13 @@ const PracticePrompt: React.FC = () => {
 
   if (error || !phraseset) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-quip-navy to-quip-teal flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-quip-turquoise to-quip-teal flex items-center justify-center p-4">
         <div className="tile-card p-8 text-center">
           <h2 className="text-2xl font-bold text-red-600 mb-4">Error</h2>
           <p className="text-quip-navy mb-6">{error || 'Failed to load practice round'}</p>
           <button
             onClick={() => navigate('/dashboard')}
-            className="bg-quip-navy hover:bg-quip-teal text-white font-bold py-2 px-6 rounded-tile"
+            className="bg-quip-turquoise hover:bg-quip-teal text-white font-bold py-2 px-6 rounded-tile"
           >
             Return to Dashboard
           </button>
@@ -41,10 +43,13 @@ const PracticePrompt: React.FC = () => {
   }
 
   return (
-    <PromptRoundReview
-      promptText={phraseset.prompt_text}
+    <CopyRoundReview
       originalPhrase={phraseset.original_phrase}
-      playerUsername={phraseset.prompt_player}
+      copyPhrase={phraseset.copy2_phrase}
+      playerUsername={phraseset.copy2_player}
+      copyNumber={2}
+      roundId={phraseset.phraseset_id}
+      existingHints={phraseset.hints}
       onSubmit={handleContinue}
       onBack={handleBack}
       isPractice={true}
@@ -52,4 +57,4 @@ const PracticePrompt: React.FC = () => {
   );
 };
 
-export default PracticePrompt;
+export default PracticeCopy2;

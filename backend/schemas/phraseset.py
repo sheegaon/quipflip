@@ -239,3 +239,4 @@ class PracticePhraseset(BaseSchema):
     prompt_player: str
     copy1_player: str
     copy2_player: str
+    hints: Optional[list[str]] = None

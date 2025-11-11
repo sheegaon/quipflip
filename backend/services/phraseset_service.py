@@ -846,6 +846,14 @@ class PhrasesetService:
         player_ids = [prompt_round.player_id, copy1_round.player_id, copy2_round.player_id]
         player_records = await self._load_players(player_ids)
 
+        # Load hints for the prompt round (if they exist)
+        from backend.models.hint import Hint
+        hint_result = await self.db.execute(
+            select(Hint).where(Hint.prompt_round_id == phraseset.prompt_round_id)
+        )
+        hint_record = hint_result.scalar_one_or_none()
+        hints = hint_record.hint_phrases if hint_record else None
+
         return {
             "phraseset_id": phraseset.phraseset_id,
             "prompt_text": phraseset.prompt_text,
@@ -855,6 +863,7 @@ class PhrasesetService:
             "prompt_player": player_records.get(prompt_round.player_id, {}).get("username", "Unknown"),
             "copy1_player": player_records.get(copy1_round.player_id, {}).get("username", "Unknown"),
             "copy2_player": player_records.get(copy2_round.player_id, {}).get("username", "Unknown"),
+            "hints": hints,
         }
 
     # ---------------------------------------------------------------------

@@ -11,6 +11,7 @@ interface CopyRoundReviewProps {
   existingHints?: string[] | null; // Pass hints from parent if they exist
   onSubmit: () => void;
   onBack: () => void;
+  isPractice?: boolean;
 }
 
 export const CopyRoundReview: React.FC<CopyRoundReviewProps> = ({
@@ -22,6 +23,7 @@ export const CopyRoundReview: React.FC<CopyRoundReviewProps> = ({
   existingHints = null,
   onSubmit,
   onBack,
+  isPractice = false,
 }) => {
   const [isRevealed, setIsRevealed] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -145,7 +147,13 @@ export const CopyRoundReview: React.FC<CopyRoundReviewProps> = ({
             disabled={!isRevealed || isSubmitting}
             className="w-full bg-quip-turquoise hover:bg-quip-teal disabled:bg-gray-400 text-white font-bold py-3 px-4 rounded-tile transition-all text-lg disabled:cursor-not-allowed"
           >
-            {isSubmitting ? 'Continuing...' : copyNumber === 1 ? 'Continue to Second Copy' : 'Continue to Vote Round'}
+            {isSubmitting
+              ? 'Submitting...'
+              : isPractice && copyNumber === 2
+                ? 'Submit'
+                : copyNumber === 1
+                  ? 'Continue to Second Copy'
+                  : 'Continue to Vote Round'}
           </button>
         </div>
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { EyeIcon } from '../icons/EyeIcon';
+import { HomeIcon } from '../icons/HomeIcon';
 
 interface ReviewBackButtonProps {
   onClick: () => void;
@@ -12,10 +12,10 @@ export const ReviewBackButton: React.FC<ReviewBackButtonProps> = ({ onClick, dis
       onClick={onClick}
       disabled={disabled}
       className="w-full mt-4 flex items-center justify-center gap-2 text-quip-teal hover:text-quip-turquoise disabled:opacity-50 disabled:cursor-not-allowed py-2 font-medium transition-colors"
-      title="Completed Rounds"
+      title="Dashboard"
     >
-      <EyeIcon />
-      <span>Completed Rounds</span>
+      <HomeIcon />
+      <span>Dashboard</span>
     </button>
   );
 };

@@ -15,7 +15,12 @@ import { hasDismissedSurvey, markSurveyDismissed, hasCompletedSurvey } from '../
 const formatWaitingCount = (count: number): string => (count > 10 ? 'over 10' : count.toString());
 export const Dashboard: React.FC = () => {
   const { state, actions } = useGame();
-  const [mode, setMode] = useState<'live' | 'practice'>('live');
+
+  // Load mode from localStorage, defaulting to 'live'
+  const [mode, setMode] = useState<'live' | 'practice'>(() => {
+    const savedMode = localStorage.getItem('quipflip_game_mode');
+    return (savedMode === 'practice' || savedMode === 'live') ? savedMode : 'live';
+  });
   const {
     player,
     activeRound,
@@ -40,6 +45,12 @@ export const Dashboard: React.FC = () => {
   useEffect(() => {
     dashboardLogger.debug('Component mounted');
   }, []);
+
+  // Persist mode to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('quipflip_game_mode', mode);
+    dashboardLogger.debug('Game mode changed:', { mode });
+  }, [mode]);
 
   // Refresh dashboard when navigating back to it
   const previousPathRef = useRef<string | null>(null);

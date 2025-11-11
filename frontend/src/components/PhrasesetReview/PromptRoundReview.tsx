@@ -9,6 +9,7 @@ interface PromptRoundReviewProps {
   playerUsername: string;
   onSubmit: () => void;
   onBack: () => void;
+  isPractice?: boolean;
 }
 
 export const PromptRoundReview: React.FC<PromptRoundReviewProps> = ({
@@ -17,6 +18,7 @@ export const PromptRoundReview: React.FC<PromptRoundReviewProps> = ({
   playerUsername,
   onSubmit,
   onBack,
+  isPractice = false,
 }) => {
   const [isRevealed, setIsRevealed] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -113,7 +115,7 @@ export const PromptRoundReview: React.FC<PromptRoundReviewProps> = ({
             disabled={!isRevealed || isSubmitting}
             className="w-full bg-quip-navy hover:bg-quip-teal disabled:bg-gray-400 text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm text-lg"
           >
-            {isSubmitting ? 'Continuing...' : 'Continue to Copy Round'}
+            {isSubmitting ? 'Submitting...' : isPractice ? 'Submit' : 'Continue to Copy Round'}
           </button>
         </form>
 
