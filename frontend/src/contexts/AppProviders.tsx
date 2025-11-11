@@ -3,6 +3,7 @@ import { GameProvider, useGame } from './GameContext';
 import { QuestProvider } from './QuestContext';
 import { TutorialProvider, useTutorial } from './TutorialContext';
 import { ResultsProvider, useResults } from './ResultsContext';
+import { NetworkProvider } from './NetworkContext';
 import { gameContextLogger } from '../utils/logger';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { PageErrorFallback } from '../components/ErrorFallback';
@@ -99,25 +100,27 @@ export const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children
         gameContextLogger.error('Context provider error caught:', errorId, error);
       }}
     >
-      <TutorialProvider>
-        <ErrorBoundary
-          fallback={PageErrorFallback}
-          onError={(error, errorInfo, errorId) => {
-            gameContextLogger.error('GameProvider error caught:', errorId, error);
-          }}
-        >
-          <GameProvider
-            onDashboardTrigger={handleDashboardTrigger}
+      <NetworkProvider>
+        <TutorialProvider>
+          <ErrorBoundary
+            fallback={PageErrorFallback}
+            onError={(error, errorInfo, errorId) => {
+              gameContextLogger.error('GameProvider error caught:', errorId, error);
+            }}
           >
-            <InnerProviders
+            <GameProvider
               onDashboardTrigger={handleDashboardTrigger}
-              dashboardRefreshToken={dashboardRefreshToken}
             >
-              {children}
-            </InnerProviders>
-          </GameProvider>
-        </ErrorBoundary>
-      </TutorialProvider>
+              <InnerProviders
+                onDashboardTrigger={handleDashboardTrigger}
+                dashboardRefreshToken={dashboardRefreshToken}
+              >
+                {children}
+              </InnerProviders>
+            </GameProvider>
+          </ErrorBoundary>
+        </TutorialProvider>
+      </NetworkProvider>
     </ErrorBoundary>
   );
 };

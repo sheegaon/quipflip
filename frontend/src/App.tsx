@@ -9,6 +9,7 @@ import TutorialOverlay from './components/Tutorial/TutorialOverlay';
 import { trackPageView } from './utils/googleAnalytics';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { AppErrorFallback } from './components/ErrorFallback';
+import { OfflineBanner } from './components/OfflineBanner';
 
 // Suppress some logging messages
 if (typeof window !== 'undefined') {
@@ -95,6 +96,7 @@ const AppRoutes: React.FC = () => {
 
   return (
     <>
+      <OfflineBanner />
       <ErrorNotification />
       <TutorialOverlay />
       <Routes>
