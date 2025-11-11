@@ -48,8 +48,8 @@ export const Header: React.FC = () => {
   }, [navigate]);
 
   const handleLogoClick = React.useCallback(() => {
-    setShowDropdown(!showDropdown);
-  }, [showDropdown]);
+    setShowDropdown(prevShowDropdown => !prevShowDropdown);
+  }, []);
 
   const handleBackArrowClick = React.useCallback(async () => {
     // Refresh dashboard and balance before navigating
