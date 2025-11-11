@@ -483,7 +483,7 @@ export const Dashboard: React.FC = () => {
       <Header />
       <TutorialWelcome onStart={handleStartTutorial} onSkip={handleSkipTutorial} />
 
-      <div className="max-w-4xl mx-auto md:px-4 px-3 md:pt-8 pt-3 md:pb-32 pb-32">
+      <div className="max-w-4xl mx-auto md:px-4 px-3 md:pt-8 pt-3 md:pb-5 pb-5">
         {/* Active Round Notification */}
         {activeRound?.round_id && !isRoundExpired && (
           <div className="tile-card bg-quip-orange bg-opacity-10 border-2 border-quip-orange p-4 mb-6 slide-up-enter relative">
