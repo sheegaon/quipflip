@@ -53,6 +53,7 @@ import type {
   BetaSurveyListResponse,
   LeaderboardResponse,
   CompletedPhrasesetsResponse,
+  PracticePhraseset,
 } from './types';
 
 // Base URL - configure based on environment
@@ -474,6 +475,11 @@ export const apiClient = {
       params,
       signal,
     });
+    return data;
+  },
+
+  async getRandomPracticePhraseset(signal?: AbortSignal): Promise<PracticePhraseset> {
+    const { data } = await api.get('/phrasesets/practice/random', { signal });
     return data;
   },
 

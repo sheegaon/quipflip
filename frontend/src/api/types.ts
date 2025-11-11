@@ -258,6 +258,17 @@ export interface BetaSurveyListResponse {
   submissions: BetaSurveySubmissionRecord[];
 }
 
+export interface PracticePhraseset {
+  phraseset_id: string;
+  prompt_text: string;
+  original_phrase: string;
+  copy1_phrase: string;
+  copy2_phrase: string;
+  prompt_player: string;
+  copy1_player: string;
+  copy2_player: string;
+}
+
 export interface RoundAvailability {
   can_prompt: boolean;
   can_copy: boolean;
