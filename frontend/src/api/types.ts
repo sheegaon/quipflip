@@ -267,6 +267,9 @@ export interface PracticePhraseset {
   prompt_player: string;
   copy1_player: string;
   copy2_player: string;
+  prompt_player_is_ai?: boolean;
+  copy1_player_is_ai?: boolean;
+  copy2_player_is_ai?: boolean;
   hints?: string[] | null;
   votes?: PhrasesetVoteDetail[];
 }
@@ -432,6 +435,7 @@ export interface PhrasesetContributor {
   player_id: string;
   username: string;
   is_you: boolean;
+  is_ai?: boolean;
   phrase?: string | null;
 }
 
@@ -439,6 +443,7 @@ export interface PhrasesetVoteDetail {
   vote_id: string;
   voter_id: string;
   voter_username: string;
+  is_ai?: boolean;
   voted_phrase: string;
   correct: boolean;
   voted_at: string;
