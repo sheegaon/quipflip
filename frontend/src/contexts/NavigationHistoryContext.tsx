@@ -34,30 +34,14 @@ export const NavigationHistoryProvider: React.FC<{ children: React.ReactNode }> 
   }, [location.pathname]);
 
   const goBack = useCallback(() => {
-    if (history.length === 0) {
-      // No history, go to dashboard
+    // The robust useEffect ensures the history is a reliable stack.
+    // history is [..., previousPage, currentPage]. We navigate to previousPage.
+    if (history.length > 1) {
+      navigate(history[history.length - 2]);
+    } else {
+      // If there's no real history, fall back to the dashboard.
       navigate('/dashboard');
-      return;
     }
-
-    // Remove the current page from history and go to the previous page
-    setHistory(prev => {
-      const newHistory = [...prev];
-      newHistory.pop(); // Remove current page
-
-      if (newHistory.length === 0) {
-        // No more history, go to dashboard
-        navigate('/dashboard');
-        return [];
-      }
-
-      // Get the last page in history
-      const previousPage = newHistory[newHistory.length - 1];
-      newHistory.pop(); // Remove it from history since we're navigating to it
-
-      navigate(previousPage);
-      return newHistory;
-    });
   }, [history, navigate]);
 
   const clearHistory = useCallback(() => {
