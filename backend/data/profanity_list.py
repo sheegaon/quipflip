@@ -1,6 +1,7 @@
 """Profanity word list for username validation."""
 
 from __future__ import annotations
+import re
 
 # List of banned words that cannot appear in usernames
 # Words are stored in lowercase for case-insensitive matching
@@ -9,25 +10,33 @@ PROFANITY_LIST = [
     "fuck", "shit", "ass", "bitch", "damn", "hell", "crap",
     "dick", "cock", "pussy", "cunt", "bastard", "slut", "whore",
     "piss", "fag", "faggot", "dyke", "retard", "nigger", "nigga",
+    "twat", "bollocks", "bugger", "wanker", "arsehole", "scum",
+    "tosser", "prick", "minger", "numpty",
 
     # Variations and leetspeak
     "fck", "fuk", "sh1t", "a55", "b1tch", "d1ck", "c0ck",
     "pu55y", "c0nt", "cnt", "b4stard", "p1ss", "f4g", "f4ggot",
+    "r3tard", "n1gger", "n1gga", "tw4t",
 
     # Offensive slurs
     "chink", "spic", "kike", "wetback", "gook", "beaner",
     "towelhead", "raghead", "nazi", "hitler",
+    "jihad", "infidel",
 
     # Sexual content
     "porn", "xxx", "sex", "anal", "penis", "vagina", "tits",
     "boobs", "cum", "jizz", "orgasm", "masturbate", "rape",
+    "slutty", "horny", "bdsm", "fetish",
 
     # Drugs
     "cocaine", "heroin", "meth", "weed", "marijuana", "drugs",
+    "lsd", "acid", "ecstasy", "pcp", "crack",
+    "opiate", "opioid", "fentanyl", "shrooms", "mdma",
 
     # Other offensive terms
-    "kill", "murder", "suicide", "terrorist", "bomb", "weapon",
+    "kill", "murder", "suicide", "terrorist", "bomb", "weapon", "assault",
 ]
+
 
 def contains_profanity(text: str) -> bool:
     """
@@ -50,7 +59,6 @@ def contains_profanity(text: str) -> bool:
 
     # Remove all non-alphanumeric characters to handle variations
     # but keep spaces to help with word boundary detection
-    import re
     cleaned = re.sub(r'[^a-z0-9 ]', '', normalized)
 
     # Also check version without spaces to catch "f u c k" style evasion
