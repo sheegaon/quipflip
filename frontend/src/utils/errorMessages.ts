@@ -1,4 +1,6 @@
 // Centralized error message localization for better UX
+import { isApiError, hasMessage } from '../types/errors';
+
 export interface ErrorContext {
   action?: string;
   component?: string;
@@ -73,7 +75,7 @@ export const errorMessages = {
 
 // Context-aware error message generator
 export const getContextualErrorMessage = (
-  error: any,
+  error: unknown,
   context: ErrorContext = {}
 ): {
   message: string;
@@ -88,19 +90,46 @@ export const getContextualErrorMessage = (
   // 3. {detail: 'string message'} - simple string detail
   let specificMessage: string | null = null;
 
-  if (error?.detail && typeof error.detail === 'object') {
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'detail' in error &&
+    typeof (error as Record<string, unknown>).detail === 'object' &&
+    (error as Record<string, unknown>).detail !== null &&
+    'message' in ((error as Record<string, unknown>).detail as object)
+  ) {
     // Format 1: detail is an object with error and message
-    specificMessage = error.detail.message;
-  } else if (error?.error && typeof error.error === 'string' && error?.message) {
+    specificMessage = ((error as Record<string, unknown>).detail as Record<string, unknown>).message as string;
+  } else if (
+    typeof error === 'object' &&
+    error !== null &&
+    'error' in error &&
+    typeof (error as Record<string, unknown>).error === 'string' &&
+    'message' in error
+  ) {
     // Format 2: top-level error and message fields
-    specificMessage = error.message;
+    specificMessage = (error as Record<string, unknown>).message as string;
   }
 
-  const errorDetail = typeof error === 'string' ? error : error?.detail || error?.error || error?.message || '';
+  let errorDetail: unknown;
+  if (typeof error === 'string') {
+    errorDetail = error;
+  } else if (typeof error === 'object' && error !== null) {
+    const errorObj = error as Record<string, unknown>;
+    errorDetail = errorObj.detail || errorObj.error || errorObj.message || '';
+  } else {
+    errorDetail = '';
+  }
   const normalizedError = String(errorDetail).toLowerCase();
 
   // Network errors
-  if (normalizedError.includes('network') || normalizedError.includes('fetch') || error?.code === 'ERR_NETWORK') {
+  const hasNetworkErrorCode =
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as Record<string, unknown>).code === 'ERR_NETWORK';
+
+  if (normalizedError.includes('network') || normalizedError.includes('fetch') || hasNetworkErrorCode) {
     return {
       message: errorMessages.network.connectionLost,
       suggestion: "Check your internet connection",
@@ -138,9 +167,15 @@ export const getContextualErrorMessage = (
   }
 
   // Check for password validation errors (422 status) before generic password errors
-  if (error?.status === 422 && normalizedError.includes('password must')) {
+  const hasStatus422 =
+    typeof error === 'object' &&
+    error !== null &&
+    'status' in error &&
+    (error as Record<string, unknown>).status === 422;
+
+  if (hasStatus422 && normalizedError.includes('password must')) {
     return {
-      message: errorDetail, // Use the specific validation message
+      message: String(errorDetail), // Use the specific validation message
       suggestion: "Please check password requirements",
       retryable: true,
       category: 'account'
@@ -268,7 +303,14 @@ export const getContextualErrorMessage = (
   }
 
   // Server errors
-  if (error?.status >= 500) {
+  const hasServerErrorStatus =
+    typeof error === 'object' &&
+    error !== null &&
+    'status' in error &&
+    typeof (error as Record<string, unknown>).status === 'number' &&
+    (error as Record<string, unknown>).status >= 500;
+
+  if (hasServerErrorStatus) {
     return {
       message: errorMessages.network.serverUnavailable,
       suggestion: "Our team has been notified - try again in a few minutes",
@@ -298,7 +340,7 @@ export const getContextualErrorMessage = (
 };
 
 // Action-specific error messages
-export const getActionErrorMessage = (action: string, error: any): string => {
+export const getActionErrorMessage = (action: string, error: unknown): string => {
   const contextualError = getContextualErrorMessage(error, { action });
   
   const actionMessages: Record<string, string> = {

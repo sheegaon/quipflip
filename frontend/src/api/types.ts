@@ -694,3 +694,44 @@ export interface OnlineUsersResponse {
   users: OnlineUser[];
   total_count: number;
 }
+
+// Admin Configuration
+export interface AdminConfig {
+  starting_balance: number;
+  daily_bonus_amount: number;
+  prompt_cost: number;
+  copy_cost_normal: number;
+  copy_cost_discount: number;
+  vote_cost: number;
+  hint_cost: number;
+  vote_payout_correct: number;
+  abandoned_penalty: number;
+  prize_pool_base: number;
+  max_outstanding_quips: number;
+  copy_discount_threshold: number;
+  prompt_round_seconds: number;
+  copy_round_seconds: number;
+  vote_round_seconds: number;
+  grace_period_seconds: number;
+  vote_max_votes: number;
+  vote_closing_threshold: number;
+  vote_closing_window_minutes: number;
+  vote_minimum_threshold: number;
+  vote_minimum_window_minutes: number;
+  phrase_min_words: number;
+  phrase_max_words: number;
+  phrase_max_length: number;
+  phrase_min_char_per_word: number;
+  phrase_max_char_per_word: number;
+  significant_word_min_length: number;
+  ai_provider: string;
+  ai_openai_model: string;
+  ai_gemini_model: string;
+}
+
+export interface UpdateAdminConfigResponse {
+  success: boolean;
+  key: string;
+  value: number | string;
+  message?: string;
+}
