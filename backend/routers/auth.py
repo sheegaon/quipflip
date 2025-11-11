@@ -141,15 +141,13 @@ async def get_websocket_token(
     auth_service = AuthService(db)
 
     # Generate a short-lived access token (60 seconds) for WebSocket auth
-    from datetime import timedelta
-    ws_token = auth_service.create_access_token(
-        player_id=player.player_id,
-        username=player.username,
-        expires_delta=timedelta(seconds=60)  # Short-lived: 60 seconds
+    ws_token, expires_in = auth_service.create_short_lived_token(
+        player=player,
+        expires_seconds=60  # Short-lived: 60 seconds
     )
 
     return {
         "token": ws_token,
-        "expires_in": 60,
+        "expires_in": expires_in,
         "token_type": "bearer"
     }
