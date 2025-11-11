@@ -44,8 +44,10 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({ mode, onChange }) => {
 
           {/* Circular Button */}
           <div
-            className={`absolute top-1 left-1 w-8 h-8 rounded-full shadow-md transition-all duration-300 ${
-              mode === 'live' ? 'translate-x-0 bg-quip-orange' : 'translate-x-10 bg-quip-turquoise'
+            className={`absolute top-1 left-0.75 sm:left-1 w-7 h-7 rounded-full shadow-md transition-all duration-300 ${
+              mode === 'live'
+                ? 'translate-x-0 bg-quip-orange'
+                : 'translate-x-[2rem] sm:translate-x-[2.375rem] bg-quip-turquoise'
             }`}
           />
         </button>
