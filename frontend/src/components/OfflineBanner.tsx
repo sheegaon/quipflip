@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNetwork } from '../contexts/NetworkContext';
+import { networkLogger } from '../utils/logger';
 
 /**
  * OfflineBanner Component
@@ -34,7 +35,7 @@ export const OfflineBanner: React.FC = () => {
     try {
       await retryFailedRequests();
     } catch (error) {
-      console.error('Failed to retry requests:', error);
+      networkLogger.error('Failed to retry requests:', error);
     } finally {
       setIsRetrying(false);
     }

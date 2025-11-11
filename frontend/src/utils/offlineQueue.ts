@@ -1,3 +1,5 @@
+import { networkLogger } from './logger';
+
 export interface OfflineAction {
   id: string;
   type: 'api_call';
@@ -33,7 +35,7 @@ export class OfflineQueue {
   addAction(action: Omit<OfflineAction, 'id' | 'timestamp' | 'retryCount'>): string {
     // Check queue size limit
     if (this.queue.length >= MAX_QUEUE_SIZE) {
-      console.warn('Offline queue is full. Removing oldest action.');
+      networkLogger.warn('Offline queue is full. Removing oldest action.');
       this.queue.shift();
     }
 
@@ -132,7 +134,7 @@ export class OfflineQueue {
       try {
         listener([...this.queue]);
       } catch (error) {
-        console.error('Error in offline queue listener:', error);
+        networkLogger.error('Error in offline queue listener:', error);
       }
     });
   }
@@ -144,7 +146,7 @@ export class OfflineQueue {
     try {
       localStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(this.queue));
     } catch (error) {
-      console.error('Failed to persist offline queue:', error);
+      networkLogger.error('Failed to persist offline queue:', error);
     }
   }
 
@@ -156,10 +158,10 @@ export class OfflineQueue {
       const stored = localStorage.getItem(QUEUE_STORAGE_KEY);
       if (stored) {
         this.queue = JSON.parse(stored);
-        console.log(`Loaded ${this.queue.length} actions from offline queue`);
+        networkLogger.info(`Loaded ${this.queue.length} actions from offline queue`);
       }
     } catch (error) {
-      console.error('Failed to load offline queue:', error);
+      networkLogger.error('Failed to load offline queue:', error);
       this.queue = [];
     }
   }

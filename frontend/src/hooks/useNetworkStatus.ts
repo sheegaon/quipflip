@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { networkLogger } from '../utils/logger';
 
 export interface NetworkStatus {
   isOnline: boolean;
@@ -70,7 +71,7 @@ export const useNetworkStatus = (): NetworkStatus => {
       try {
         localStorage.setItem(OFFLINE_STATE_KEY, 'true');
       } catch (e) {
-        console.error('Failed to update offline state:', e);
+        networkLogger.error('Failed to update offline state:', e);
       }
 
       // Clear the wasOffline flag after a delay
@@ -79,7 +80,7 @@ export const useNetworkStatus = (): NetworkStatus => {
         try {
           localStorage.removeItem(OFFLINE_STATE_KEY);
         } catch (e) {
-          console.error('Failed to clear offline state:', e);
+          networkLogger.error('Failed to clear offline state:', e);
         }
       }, 5000); // Show "back online" message for 5 seconds
     }
@@ -95,7 +96,7 @@ export const useNetworkStatus = (): NetworkStatus => {
     try {
       localStorage.setItem(OFFLINE_STATE_KEY, 'true');
     } catch (e) {
-      console.error('Failed to set offline state:', e);
+      networkLogger.error('Failed to set offline state:', e);
     }
     updateConnectionInfo();
   }, [updateConnectionInfo]);
