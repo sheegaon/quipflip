@@ -23,6 +23,7 @@ from backend.services.username_service import (
     canonicalize_username,
     normalize_username,
     is_username_input_valid,
+    is_username_profanity_free,
 )
 
 logger = logging.getLogger(__name__)
@@ -243,6 +244,10 @@ class PlayerService:
         # Validate input
         if not is_username_input_valid(new_username):
             raise InvalidUsernameError("Username contains invalid characters or does not meet requirements")
+
+        # Check for profanity
+        if not is_username_profanity_free(new_username):
+            raise InvalidUsernameError("Username contains inappropriate language")
 
         # Normalize and canonicalize
         normalized_username = normalize_username(new_username)

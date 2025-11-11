@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.data.username_pool import USERNAME_POOL
+from backend.data.profanity_list import contains_profanity
 from backend.models.player import Player
 
 
@@ -29,6 +30,13 @@ def is_username_input_valid(username: str) -> bool:
     if not stripped:
         return False
     return all(ch.isalnum() or ch.isspace() for ch in stripped)
+
+
+def is_username_profanity_free(username: str) -> bool:
+    """Validate that the username does not contain profanity."""
+    if not username:
+        return False
+    return not contains_profanity(username)
 
 
 class UsernameService:
