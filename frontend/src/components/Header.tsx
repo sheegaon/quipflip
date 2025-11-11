@@ -314,7 +314,7 @@ export const Header: React.FC = () => {
                     <span className="font-semibold">Lobby</span>
                   </button>
                   <button
-                    onClick={() => handleNavigate('/survey')}
+                    onClick={() => handleNavigate('/survey/beta')}
                     className="w-full flex items-center gap-3 px-4 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
                   >
                     <BrandedSurveyIcon className="h-5 w-5" />
