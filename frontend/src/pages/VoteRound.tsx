@@ -21,7 +21,8 @@ export const VoteRound: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [voteResult, setVoteResult] = useState<VoteResponse | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [headingMessage, setHeadingMessage] = useState<string | null>(null);
+  const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
   const [phrasesetDetails, setPhrasesetDetails] = useState<PhrasesetDetails | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
@@ -44,8 +45,8 @@ export const VoteRound: React.FC = () => {
   // Redirect if no active vote round - but NOT during the submission process
   useEffect(() => {
     if (!activeRound || activeRound.round_type !== 'vote') {
-      // Don't start a new round if we're showing success message or vote result
-      if (successMessage || voteResult) {
+      // Don't start a new round if we're showing heading message or vote result
+      if (headingMessage || voteResult) {
         return;
       }
 
@@ -60,7 +61,7 @@ export const VoteRound: React.FC = () => {
 
       return () => clearTimeout(timeoutId);
     }
-  }, [activeRound, navigate, successMessage, voteResult, currentStep, completeTutorial]);
+  }, [activeRound, navigate, headingMessage, voteResult, currentStep, completeTutorial]);
 
   useEffect(() => {
     if (!roundData) {
@@ -88,8 +89,10 @@ export const VoteRound: React.FC = () => {
       });
       const result = await apiClient.submitVote(roundData.phraseset_id, phrase);
 
-      const message = result.correct ? getRandomMessage('voteSubmitted') : null;
-      setSuccessMessage(message);
+      const heading = result.correct ? getRandomMessage('voteCorrectHeading') : getRandomMessage('voteIncorrectHeading');
+      setHeadingMessage(heading);
+      const feedback = result.correct ? getRandomMessage('voteCorrect') : getRandomMessage('voteIncorrect');
+      setFeedbackMessage(feedback);
       setVoteResult(result);
       voteRoundLogger.info('Vote submitted', {
         roundId: roundData.round_id,
@@ -163,7 +166,7 @@ export const VoteRound: React.FC = () => {
 
             {/* Main result message */}
             <h2 className={`text-5xl font-display font-bold mb-6 success-message ${voteResult.correct ? 'text-quip-turquoise' : 'text-quip-orange'}`}>
-              {voteResult.correct ? (successMessage || 'Correct!') : 'Not quite this time'}
+              {headingMessage}
             </h2>
 
             {/* Payout/Cost info - PROMINENT */}
@@ -182,9 +185,7 @@ export const VoteRound: React.FC = () => {
 
             {/* Simple feedback message */}
             <p className="text-lg text-quip-teal mb-6">
-              {voteResult.correct
-                ? "Excellent work! You successfully identified the original phrase!"
-                : "No worries! The original can be tricky to spot. Keep practicing and you'll master it!"}
+              {feedbackMessage}
             </p>
           </div>
 
