@@ -7,7 +7,7 @@ interface ModeToggleProps {
 
 export const ModeToggle: React.FC<ModeToggleProps> = ({ mode, onChange }) => {
   return (
-    <div className="fixed bottom-16 left-1/2 transform -translate-x-1/2 z-40">
+    <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 z-50">
       <div className="flex items-center gap-4">
         {/* Live Mode Label */}
         <button

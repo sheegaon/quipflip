@@ -19,7 +19,10 @@ export const Dashboard: React.FC = () => {
   // Load mode from localStorage, defaulting to 'live'
   const [mode, setMode] = useState<'live' | 'practice'>(() => {
     const savedMode = localStorage.getItem('quipflip_game_mode');
-    return (savedMode === 'practice' || savedMode === 'live') ? savedMode : 'live';
+    dashboardLogger.debug('Loading mode from localStorage:', { savedMode });
+    const initialMode = (savedMode === 'practice' || savedMode === 'live') ? savedMode : 'live';
+    dashboardLogger.debug('Initial mode set to:', { initialMode });
+    return initialMode;
   });
   const {
     player,
@@ -49,7 +52,10 @@ export const Dashboard: React.FC = () => {
   // Persist mode to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem('quipflip_game_mode', mode);
-    dashboardLogger.debug('Game mode changed:', { mode });
+    dashboardLogger.debug('Game mode changed and saved to localStorage:', { mode });
+    // Verify it was saved correctly
+    const verification = localStorage.getItem('quipflip_game_mode');
+    dashboardLogger.debug('Verification - value in localStorage:', { verification });
   }, [mode]);
 
   // Refresh dashboard when navigating back to it
