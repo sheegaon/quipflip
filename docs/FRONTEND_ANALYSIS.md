@@ -136,71 +136,48 @@ Frontend components (PracticePrompt.tsx, PracticeCopy.tsx, PracticeVote.tsx) suc
 
 ### 1.2 High Priority Type Definition Gaps
 
-#### Issue #4: Missing Phraseset History Endpoint
-**Severity:** 🟠 High
-**Category:** Missing Feature Implementation
-**Status:** Documented endpoint completely unused
+#### Issue #4: Potential API Duplication - History vs Details Activity
+**Severity:** 🟡 Medium
+**Category:** API Design Question
+**Status:** Backend has both endpoints, unclear if duplication is intentional
 
-**Backend Reference (API.md:1484-1621):**
-```
-#### `GET /phrasesets/{phraseset_id}/history`
-Get the complete event timeline for a phraseset, showing all submissions,
-votes, and finalization.
-```
+**The Situation:**
+The Tracking page successfully displays phraseset timelines using `/phrasesets/{id}/details` which includes an `activity` array. However, there's also a separate `/phrasesets/{id}/history` endpoint that appears to serve a similar purpose.
 
-**Response includes:**
-- Chronological event timeline
-- Submission timestamps for prompt and both copies
-- All votes with voter identities and correctness
-- Finalization event
+**Current Implementation:**
+- **Tracking page uses:** `GET /phrasesets/{id}/details` → includes `activity` field
+- **Frontend doesn't use:** `GET /phrasesets/{id}/history` endpoint
+- **Both work in production**
 
-**Current State:**
-- Endpoint documented in API.md
-- No TypeScript type defined for history response
-- No API client method to call this endpoint
-- No UI component displays phraseset history timeline
-- PromptRoundReview component could benefit from this data
+**Endpoint Comparison:**
 
-**Impact:**
-- Rich historical data available but not shown to users
-- Users can't see detailed timeline of how rounds progressed
-- Missed opportunity for engaging UX
+| Feature | `/details` activity | `/history` events |
+|---------|-------------------|-------------------|
+| Prompt submission | ✓ (in activity) | ✓ (as event) |
+| Copy submissions | ✓ (in activity) | ✓ (as event) |
+| Vote submissions | ✓ (in activity) | ✓ (as event) |
+| Finalization | ✓ (in activity) | ✓ (as event) |
+| Other phraseset data | ✓ (contributors, votes, results, etc.) | ❌ (timeline only) |
+| Access control | Contributors/voters only | Finalized + participants only |
 
-**Recommended Implementation:**
-```typescript
-// Add to api/types.ts
-export interface PhrasesetHistoryEvent {
-  event_type: 'prompt_submitted' | 'copy_submitted' | 'vote_submitted' | 'finalized';
-  timestamp: string;
-  player_id: string | null;
-  username: string | null;
-  pseudonym: string | null;
-  phrase: string | null;
-  correct: boolean | null;
-  metadata: Record<string, any>;
-}
+**Questions for Backend:**
+1. **Is this duplication intentional?**
+   - Should `/history` be deprecated in favor of `/details` activity field?
+   - Or does `/history` serve a different purpose we're missing?
 
-export interface PhrasesetHistory {
-  phraseset_id: string;
-  prompt_text: string;
-  original_phrase: string;
-  copy_phrase_1: string;
-  copy_phrase_2: string;
-  status: string;
-  created_at: string;
-  finalized_at: string | null;
-  total_votes: number;
-  events: PhrasesetHistoryEvent[];
-}
+2. **Are they semantically different?**
+   - Does `activity` come from `phraseset_activity` table?
+   - Does `history` get constructed differently?
 
-// Add to api/client.ts
-getPhrasesetHistory: async (phrasesetId: string) => {
-  const { data } = await apiClient.get<PhrasesetHistory>(
-    `/phrasesets/${phrasesetId}/history`
-  );
-  return data;
-}
-```
+3. **Should frontend switch to `/history`?**
+   - Is there a reason to prefer the dedicated history endpoint?
+   - Or is the current approach (using `/details`) optimal?
+
+**Recommendation:**
+Since the Tracking page works correctly with `/details`, this is NOT a bug. However, clarification on API design intent would help:
+- If endpoints serve different purposes, document the distinction
+- If `/history` is redundant, consider deprecating it
+- If `/details` activity is incomplete compared to `/history`, frontend should switch
 
 ---
 
