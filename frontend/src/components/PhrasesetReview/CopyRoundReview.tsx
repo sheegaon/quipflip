@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { FrozenTimer } from './FrozenTimer';
 import { ReviewBackButton } from './ReviewBackButton';
+import { BotIcon } from '../icons/BotIcon';
 
 interface CopyRoundReviewProps {
   originalPhrase: string;
   copyPhrase: string;
   playerUsername: string;
+  isAiPlayer?: boolean;
   copyNumber: 1 | 2;
   roundId?: string;
   existingHints?: string[] | null; // Pass hints from parent if they exist
@@ -18,6 +20,7 @@ export const CopyRoundReview: React.FC<CopyRoundReviewProps> = ({
   originalPhrase,
   copyPhrase,
   playerUsername,
+  isAiPlayer = false,
   copyNumber,
   roundId,
   existingHints = null,
@@ -162,8 +165,12 @@ export const CopyRoundReview: React.FC<CopyRoundReviewProps> = ({
 
         {/* Player info */}
         <div className="mt-6 p-4 bg-quip-turquoise bg-opacity-5 rounded-tile text-center">
-          <p className="text-sm text-quip-teal">
-            <strong className="text-quip-navy">Round played by:</strong> {playerUsername}
+          <p className="text-sm text-quip-teal flex items-center justify-center gap-1.5">
+            <strong className="text-quip-navy">Round played by:</strong>
+            <span className="flex items-center gap-1">
+              {playerUsername}
+              {isAiPlayer && <BotIcon className="h-4 w-4 text-quip-turquoise" />}
+            </span>
           </p>
         </div>
       </div>

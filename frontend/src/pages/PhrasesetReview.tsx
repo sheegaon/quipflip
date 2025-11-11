@@ -113,6 +113,7 @@ export const PhrasesetReview: React.FC = () => {
         promptText={phrasesetData.prompt_text}
         originalPhrase={phrasesetData.original_phrase || ''}
         playerUsername={promptContributor?.username || 'Unknown'}
+        isAiPlayer={promptContributor?.is_ai || false}
         onSubmit={handlePromptSubmit}
         onBack={handleBackToCompleted}
       />
@@ -126,6 +127,7 @@ export const PhrasesetReview: React.FC = () => {
         originalPhrase={phrasesetData.original_phrase || ''}
         copyPhrase={phrasesetData.copy_phrase_1 || ''}
         playerUsername={copy1Contributor?.username || 'Unknown'}
+        isAiPlayer={copy1Contributor?.is_ai || false}
         copyNumber={1}
         roundId={copy1Contributor?.round_id}
         existingHints={null} // Hints not stored in phraseset data for reviews
@@ -142,6 +144,7 @@ export const PhrasesetReview: React.FC = () => {
         originalPhrase={phrasesetData.original_phrase || ''}
         copyPhrase={phrasesetData.copy_phrase_2 || ''}
         playerUsername={copy2Contributor?.username || 'Unknown'}
+        isAiPlayer={copy2Contributor?.is_ai || false}
         copyNumber={2}
         roundId={copy2Contributor?.round_id}
         existingHints={null} // Hints not stored in phraseset data for reviews
@@ -163,6 +166,9 @@ export const PhrasesetReview: React.FC = () => {
       promptPlayer={promptContributor?.username}
       copy1Player={copy1Contributor?.username}
       copy2Player={copy2Contributor?.username}
+      promptPlayerIsAi={promptContributor?.is_ai || false}
+      copy1PlayerIsAi={copy1Contributor?.is_ai || false}
+      copy2PlayerIsAi={copy2Contributor?.is_ai || false}
     />
   );
 };

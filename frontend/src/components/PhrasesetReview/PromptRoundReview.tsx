@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { FrozenTimer } from './FrozenTimer';
 import { ThumbFeedbackButton } from '../ThumbFeedbackButton';
 import { ReviewBackButton } from './ReviewBackButton';
+import { BotIcon } from '../icons/BotIcon';
 
 interface PromptRoundReviewProps {
   promptText: string;
   originalPhrase: string;
   playerUsername: string;
+  isAiPlayer?: boolean;
   onSubmit: () => void;
   onBack: () => void;
   isPractice?: boolean;
@@ -16,6 +18,7 @@ export const PromptRoundReview: React.FC<PromptRoundReviewProps> = ({
   promptText,
   originalPhrase,
   playerUsername,
+  isAiPlayer = false,
   onSubmit,
   onBack,
   isPractice = false,
@@ -124,8 +127,12 @@ export const PromptRoundReview: React.FC<PromptRoundReviewProps> = ({
 
         {/* Player Info */}
         <div className="mt-6 p-4 bg-quip-navy bg-opacity-5 rounded-tile">
-          <p className="text-sm text-quip-teal">
-            <strong className="text-quip-navy">Round played by:</strong> {playerUsername}
+          <p className="text-sm text-quip-teal flex items-center justify-center gap-1.5">
+            <strong className="text-quip-navy">Round played by:</strong>
+            <span className="flex items-center gap-1">
+              {playerUsername}
+              {isAiPlayer && <BotIcon className="h-4 w-4 text-quip-turquoise" />}
+            </span>
           </p>
         </div>
       </div>

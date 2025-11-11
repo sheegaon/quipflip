@@ -8,6 +8,7 @@ import { StatusBadge } from './StatusBadge';
 import { ProgressBar } from './ProgressBar';
 import { ActivityTimeline } from './PhrasesetActivityTimeline';
 import { formatDateTimeInUserZone } from '../utils/datetime';
+import { BotIcon } from './icons/BotIcon';
 
 interface PhrasesetDetailsProps {
   phraseset: PhrasesetDetailsType | null;
@@ -194,7 +195,10 @@ export const PhrasesetDetails: React.FC<PhrasesetDetailsProps> = ({
             <p className="text-xs uppercase text-gray-500 mb-1">
               {contributor.is_you ? 'You' : 'Contributor'}
             </p>
-            <p className="text-sm font-semibold text-gray-800">{contributor.username}</p>
+            <p className="text-sm font-semibold text-gray-800 flex items-center gap-1">
+              {contributor.username}
+              {contributor.is_ai && <BotIcon className="h-4 w-4 text-quip-turquoise" />}
+            </p>
             {contributor.phrase && (
               <p className="text-xs text-gray-600 mt-2">
                 Phrase: <span className="font-semibold text-gray-700">{contributor.phrase}</span>
@@ -222,7 +226,12 @@ export const PhrasesetDetails: React.FC<PhrasesetDetailsProps> = ({
               <tbody className="divide-y divide-gray-200 bg-white">
                 {phraseset.votes.map((vote) => (
                   <tr key={vote.vote_id}>
-                    <td className="px-4 py-2 text-gray-700">{vote.voter_username}</td>
+                    <td className="px-4 py-2 text-gray-700">
+                      <span className="flex items-center gap-1">
+                        {vote.voter_username}
+                        {vote.is_ai && <BotIcon className="h-3.5 w-3.5 text-quip-turquoise" />}
+                      </span>
+                    </td>
                     <td className="px-4 py-2 text-gray-800 font-medium">{vote.voted_phrase}</td>
                     <td className="px-4 py-2">
                       <span
