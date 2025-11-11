@@ -20,11 +20,18 @@ const PracticeVote: React.FC = () => {
   }
 
   if (error || !phraseset) {
+    const isNoPhrasesets = error?.includes('No phrasesets available');
     return (
       <div className="min-h-screen bg-gradient-to-br from-quip-orange to-quip-orange-deep flex items-center justify-center p-4">
-        <div className="tile-card p-8 text-center">
-          <h2 className="text-2xl font-bold text-red-600 mb-4">Error</h2>
-          <p className="text-quip-navy mb-6">{error || 'Failed to load practice round'}</p>
+        <div className="tile-card p-8 text-center max-w-md">
+          <h2 className="text-2xl font-bold text-quip-navy mb-4">
+            {isNoPhrasesets ? 'No Practice Rounds Available' : 'Error'}
+          </h2>
+          <p className="text-quip-teal mb-6">
+            {isNoPhrasesets
+              ? 'There are no available practice rounds at the moment. Try playing some live rounds first, then come back to practice!'
+              : error || 'Failed to load practice round'}
+          </p>
           <button
             onClick={() => navigate('/dashboard')}
             className="bg-quip-orange hover:bg-quip-orange-deep text-white font-bold py-2 px-6 rounded-tile"
@@ -42,8 +49,11 @@ const PracticeVote: React.FC = () => {
       originalPhrase={phraseset.original_phrase}
       copyPhrase1={phraseset.copy1_phrase}
       copyPhrase2={phraseset.copy2_phrase}
-      votes={[]} // Practice mode doesn't show votes
+      votes={phraseset.votes || []}
       onBack={handleBack}
+      promptPlayer={phraseset.prompt_player}
+      copy1Player={phraseset.copy1_player}
+      copy2Player={phraseset.copy2_player}
     />
   );
 };

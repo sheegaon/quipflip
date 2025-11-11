@@ -10,6 +10,9 @@ interface VoteRoundReviewProps {
   copyPhrase2: string;
   votes: PhrasesetVoteDetail[];
   onBack: () => void;
+  promptPlayer?: string;
+  copy1Player?: string;
+  copy2Player?: string;
 }
 
 export const VoteRoundReview: React.FC<VoteRoundReviewProps> = ({
@@ -19,10 +22,14 @@ export const VoteRoundReview: React.FC<VoteRoundReviewProps> = ({
   copyPhrase2,
   votes,
   onBack,
+  promptPlayer,
+  copy1Player,
+  copy2Player,
 }) => {
   const [isRevealed, setIsRevealed] = useState(false);
 
   const phrases = [originalPhrase, copyPhrase1, copyPhrase2];
+  const phraseAuthors = [promptPlayer, copy1Player, copy2Player];
 
   const handleReveal = () => {
     setIsRevealed(true);
@@ -65,6 +72,7 @@ export const VoteRoundReview: React.FC<VoteRoundReviewProps> = ({
           {phrases.map((phrase, idx) => {
             const phraseVotes = getVotesForPhrase(phrase);
             const isOriginal = phrase === originalPhrase;
+            const author = phraseAuthors[idx];
 
             return (
               <div
@@ -83,6 +91,9 @@ export const VoteRoundReview: React.FC<VoteRoundReviewProps> = ({
                   <p className={`font-bold text-xl ${!isRevealed ? 'text-white' : 'text-quip-navy'}`}>
                     {phrase}
                   </p>
+                  {isRevealed && author && (
+                    <p className="text-sm text-quip-teal mt-1">by {author}</p>
+                  )}
                 </div>
 
                 {/* Show vote details when revealed */}

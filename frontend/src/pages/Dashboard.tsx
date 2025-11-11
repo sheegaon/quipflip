@@ -19,7 +19,10 @@ export const Dashboard: React.FC = () => {
   // Load mode from localStorage, defaulting to 'live'
   const [mode, setMode] = useState<'live' | 'practice'>(() => {
     const savedMode = localStorage.getItem('quipflip_game_mode');
-    return (savedMode === 'practice' || savedMode === 'live') ? savedMode : 'live';
+    dashboardLogger.debug('Loading mode from localStorage:', { savedMode });
+    const initialMode = (savedMode === 'practice' || savedMode === 'live') ? savedMode : 'live';
+    dashboardLogger.debug('Initial mode set to:', { initialMode });
+    return initialMode;
   });
   const {
     player,
@@ -49,7 +52,10 @@ export const Dashboard: React.FC = () => {
   // Persist mode to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem('quipflip_game_mode', mode);
-    dashboardLogger.debug('Game mode changed:', { mode });
+    dashboardLogger.debug('Game mode changed and saved to localStorage:', { mode });
+    // Verify it was saved correctly
+    const verification = localStorage.getItem('quipflip_game_mode');
+    dashboardLogger.debug('Verification - value in localStorage:', { verification });
   }, [mode]);
 
   // Refresh dashboard when navigating back to it
@@ -587,7 +593,7 @@ export const Dashboard: React.FC = () => {
               <p className="text-sm text-quip-teal mb-1">
                 Submit a similar phrase without seeing the prompt
               </p>
-              {roundAvailability && roundAvailability.prompts_waiting > 0 && (
+              {mode === 'live' && roundAvailability && roundAvailability.prompts_waiting > 0 && (
                 <p className="text-xs text-quip-turquoise mb-3 font-semibold">
                   {formatWaitingCount(roundAvailability.prompts_waiting)} quip
                   {roundAvailability.prompts_waiting > 1 ? 's' : ''} waiting
@@ -623,7 +629,7 @@ export const Dashboard: React.FC = () => {
               <p className="text-sm text-quip-teal mb-1">
                 Identify the original phrase from three options
               </p>
-              {roundAvailability && roundAvailability.phrasesets_waiting > 0 && (
+              {mode === 'live' && roundAvailability && roundAvailability.phrasesets_waiting > 0 && (
                 <p className="text-xs text-quip-orange-deep mb-3 font-semibold">
                   {formatWaitingCount(roundAvailability.phrasesets_waiting)} quip set
                   {roundAvailability.phrasesets_waiting > 1 ? 's' : ''} waiting

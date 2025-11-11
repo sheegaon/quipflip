@@ -160,6 +160,9 @@ export const PhrasesetReview: React.FC = () => {
       copyPhrase2={phrasesetData.copy_phrase_2 || ''}
       votes={phrasesetData.votes}
       onBack={handleBackToCompleted}
+      promptPlayer={promptContributor?.username}
+      copy1Player={copy1Contributor?.username}
+      copy2Player={copy2Contributor?.username}
     />
   );
 };
