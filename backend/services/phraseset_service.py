@@ -31,6 +31,8 @@ class PhrasesetService:
         # Request-scoped cache to avoid re-querying _build_contributions multiple times
         # within a single request (e.g., dashboard endpoint calls it 3x)
         self._contributions_cache: dict[UUID, list[dict]] = {}
+        # Request-scoped cache so we only calculate payouts for a phraseset once
+        self._payouts_cache: dict[UUID, dict] = {}
 
     def _invalidate_contributions_cache(self, player_id: UUID) -> None:
         """Invalidate cached contributions for a player after data changes."""
@@ -1063,14 +1065,28 @@ class PhrasesetService:
     async def _load_payouts_for_phrasesets(
         self, phrasesets: list[Phraseset]
     ) -> dict[UUID, dict]:
-        """Calculate payouts for finalized phrasesets."""
+        """Calculate payouts for finalized phrasesets with simple memoization."""
 
         finalized = [
             phraseset for phraseset in phrasesets if phraseset.status == "finalized"
         ]
         if not finalized:
             return {}
-        return await self.scoring_service.calculate_payouts_bulk(finalized)
+
+        uncached = [
+            phraseset
+            for phraseset in finalized
+            if phraseset.phraseset_id not in self._payouts_cache
+        ]
+        if uncached:
+            payouts = await self.scoring_service.calculate_payouts_bulk(uncached)
+            self._payouts_cache.update(payouts)
+
+        return {
+            phraseset.phraseset_id: self._payouts_cache[phraseset.phraseset_id]
+            for phraseset in finalized
+            if phraseset.phraseset_id in self._payouts_cache
+        }
 
     def _build_prompt_contribution_entries(
         self,
