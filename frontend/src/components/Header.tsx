@@ -182,7 +182,7 @@ export const Header: React.FC = () => {
             <button
               type="button"
               onClick={handleLogoClick}
-              className={`flex items-center gap-0 md:gap-2 cursor-pointer transition-opacity ${showBackArrow ? 'hover:opacity-80' : 'hover:opacity-90'}`}
+              className={`flex items-center gap-1 md:gap-2 cursor-pointer transition-opacity ${showBackArrow ? 'hover:opacity-80' : 'hover:opacity-90'}`}
               title={logoTitle}
               aria-label={logoTitle}
             >
@@ -190,11 +190,11 @@ export const Header: React.FC = () => {
                 <img
                   src="/icon_arrow_left.svg"
                   alt=""
-                  className="w-5 h-5 md:w-7 md:h-7"
+                  className="w-7 h-7 md:w-9 md:h-9"
                   aria-hidden="true"
                 />
               )}
-              <img src="/large_icon_old.png" alt="Quipflip" className="md:h-10 h-6 w-auto" />
+              <img src="/large_icon.png" alt="Quipflip" className="md:h-11 h-9 w-auto" />
             </button>
           </div>
 
@@ -202,7 +202,7 @@ export const Header: React.FC = () => {
           <div className="flex-1 text-center">
             <button
               onClick={goToStatistics}
-              className="text-xs md:text-xl text-quip-turquoise font-semibold hover:text-quip-teal transition-colors"
+              className="text-lg md:text-2xl text-quip-turquoise font-semibold hover:text-quip-teal transition-colors"
               title="View your statistics"
             >
               {player.username || username}
