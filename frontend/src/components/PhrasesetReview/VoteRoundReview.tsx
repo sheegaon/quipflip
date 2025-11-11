@@ -103,7 +103,7 @@ export const VoteRoundReview: React.FC<VoteRoundReviewProps> = ({
                   {isRevealed && author && (
                     <p className="text-sm text-quip-teal mt-1 flex items-center justify-center gap-1">
                       <span>by {author}</span>
-                      {authorIsAi && <BotIcon className="h-3.5 w-3.5 text-quip-turquoise" />}
+                      {authorIsAi && <BotIcon className="h-3.5 w-3.5" />}
                     </p>
                   )}
                 </div>
@@ -133,7 +133,7 @@ export const VoteRoundReview: React.FC<VoteRoundReviewProps> = ({
                           >
                             <span className="font-semibold text-quip-navy flex items-center gap-1">
                               {vote.voter_username}
-                              {vote.is_ai && <BotIcon className="h-3.5 w-3.5 text-quip-turquoise" />}
+                              {vote.is_ai && <BotIcon className="h-3.5 w-3.5" />}
                             </span>
                             <span className={`text-xs font-semibold ${vote.correct ? 'text-quip-turquoise' : 'text-quip-orange'}`}>
                               {vote.correct ? '✓ Correct' : '✗ Incorrect'}

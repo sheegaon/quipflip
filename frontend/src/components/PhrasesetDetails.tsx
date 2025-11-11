@@ -197,7 +197,7 @@ export const PhrasesetDetails: React.FC<PhrasesetDetailsProps> = ({
             </p>
             <p className="text-sm font-semibold text-gray-800 flex items-center gap-1">
               {contributor.username}
-              {contributor.is_ai && <BotIcon className="h-4 w-4 text-quip-turquoise" />}
+              {contributor.is_ai && <BotIcon className="h-4 w-4" />}
             </p>
             {contributor.phrase && (
               <p className="text-xs text-gray-600 mt-2">
@@ -229,7 +229,7 @@ export const PhrasesetDetails: React.FC<PhrasesetDetailsProps> = ({
                     <td className="px-4 py-2 text-gray-700">
                       <span className="flex items-center gap-1">
                         {vote.voter_username}
-                        {vote.is_ai && <BotIcon className="h-3.5 w-3.5 text-quip-turquoise" />}
+                        {vote.is_ai && <BotIcon className="h-3.5 w-3.5" />}
                       </span>
                     </td>
                     <td className="px-4 py-2 text-gray-800 font-medium">{vote.voted_phrase}</td>

@@ -169,7 +169,7 @@ export const CopyRoundReview: React.FC<CopyRoundReviewProps> = ({
             <strong className="text-quip-navy">Round played by:</strong>
             <span className="flex items-center gap-1">
               {playerUsername}
-              {isAiPlayer && <BotIcon className="h-4 w-4 text-quip-turquoise" />}
+              {isAiPlayer && <BotIcon className="h-4 w-4" />}
             </span>
           </p>
         </div>
