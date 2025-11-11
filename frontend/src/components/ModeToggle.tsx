@@ -15,6 +15,7 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({ mode, onChange }) => {
           className={`flex items-center gap-2 transition-all ${
             mode === 'live' ? 'opacity-100' : 'opacity-50 hover:opacity-75'
           }`}
+          aria-label="Switch to live mode"
         >
           <img
             src="/icon_live.svg"
@@ -25,12 +26,15 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({ mode, onChange }) => {
         </button>
 
         {/* Toggle Switch */}
-        <div
-          className="relative w-20 h-10 bg-white rounded-full shadow-tile-sm border-2 border-quip-navy border-opacity-10 cursor-pointer transition-all"
+        <button
+          role="switch"
+          aria-checked={mode === 'practice'}
+          aria-label={`Switch to ${mode === 'live' ? 'practice' : 'live'} mode`}
           onClick={() => onChange(mode === 'live' ? 'practice' : 'live')}
+          className="relative w-20 h-10 bg-white rounded-full shadow-tile-sm border-2 border-quip-navy border-opacity-10 transition-all focus:outline-none focus:ring-2 focus:ring-quip-teal focus:ring-offset-2"
         >
           {/* Slider Track Background */}
-          <div className="absolute inset-0 rounded-full overflow-hidden">
+          <div className="absolute inset-0 rounded-full overflow-hidden pointer-events-none">
             <div
               className={`absolute inset-y-0 w-1/2 transition-all duration-300 ${
                 mode === 'live' ? 'bg-quip-orange bg-opacity-20 left-0' : 'bg-quip-turquoise bg-opacity-20 right-0'
@@ -40,11 +44,11 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({ mode, onChange }) => {
 
           {/* Circular Button */}
           <div
-            className={`absolute top-1 w-8 h-8 rounded-full shadow-md transition-all duration-300 ${
-              mode === 'live' ? 'left-1 bg-quip-orange' : 'left-11 bg-quip-turquoise'
+            className={`absolute top-1 left-1 w-8 h-8 rounded-full shadow-md transition-all duration-300 ${
+              mode === 'live' ? 'translate-x-0 bg-quip-orange' : 'translate-x-10 bg-quip-turquoise'
             }`}
           />
-        </div>
+        </button>
 
         {/* Practice Mode Label */}
         <button
@@ -52,6 +56,7 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({ mode, onChange }) => {
           className={`flex items-center gap-2 transition-all ${
             mode === 'practice' ? 'opacity-100' : 'opacity-50 hover:opacity-75'
           }`}
+          aria-label="Switch to practice mode"
         >
           <img
             src="/icon_practice.svg"
