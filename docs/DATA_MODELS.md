@@ -14,7 +14,7 @@
 - `active_round_id` (UUID, nullable, references rounds.round_id) - enforces one-round-at-a-time
 - `is_guest` (boolean, default false) - whether this is a guest account with auto-generated credentials
 - `tutorial_completed` (boolean, default false) - whether player has finished tutorial
-- `tutorial_progress` (string, default 'not_started') - current tutorial step (`not_started`, `welcome`, `dashboard`, `prompt_round`, `prompt_round_paused`, `copy_round`, `copy_round_paused`, `vote_round`, `completed`)
+- `tutorial_progress` (string, default 'not_started') - current tutorial step (`not_started`, `welcome`, `dashboard`, `prompt_round`, `copy_round`, `vote_round`, `completed_rounds_guide`, `completed`)
 - `tutorial_started_at` (timestamp, nullable) - when tutorial was started
 - `tutorial_completed_at` (timestamp, nullable) - when tutorial was completed
 - `is_admin` (boolean, default false) - admin privileges flag for administrative access

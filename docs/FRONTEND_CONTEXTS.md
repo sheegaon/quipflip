@@ -151,12 +151,10 @@ The tutorial follows a linear progression through these steps:
 2. **welcome**: Introduction to Quipflip
 3. **dashboard**: Understanding the dashboard
 4. **prompt_round**: Creating engaging prompts
-5. **prompt_round_paused**: Prompt round paused state
-6. **copy_round**: Writing compelling copy
-7. **copy_round_paused**: Copy round paused state
-8. **vote_round**: Voting mechanics and rewards
-9. **completed_rounds_guide**: Checking performance and earnings
-10. **completed**: Tutorial finished
+5. **copy_round**: Writing compelling copy
+6. **vote_round**: Voting mechanics and rewards
+7. **completed_rounds_guide**: Checking performance and earnings
+8. **completed**: Tutorial finished
 
 Note: These values match the `TutorialProgress` type and `Player.tutorial_progress` field values.
 

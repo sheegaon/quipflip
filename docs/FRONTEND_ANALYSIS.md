@@ -86,95 +86,7 @@ Since the Tracking page works correctly with `/details`, this is NOT a bug. Howe
 
 ---
 
-### 1.2 Type Definition Gaps
-
-#### Issue #2: Missing Pseudonym Fields in Types
-**Severity:** 🟠 High
-**Category:** Data Model Inconsistency
-**Status:** Data loss, privacy concerns
-
-**Location:**
-- `frontend/src/api/types.ts:189-197` (PhrasesetVoteDetail)
-- `frontend/src/api/types.ts:199-205` (PhrasesetContributor)
-
-**Problem:**
-```typescript
-// INCOMPLETE - Frontend type:
-export interface PhrasesetVoteDetail {
-  vote_id: string;
-  voter_id: string;
-  voter_username: string;        // ✓ Has username
-  // ❌ MISSING: voter_pseudonym
-  voted_phrase: string;
-  correct: boolean;
-  voted_at: string;
-}
-
-export interface PhrasesetContributor {
-  player_id: string;
-  username: string;              // ✓ Has username
-  // ❌ MISSING: pseudonym
-  is_you: boolean;
-  phrase: string;
-}
-```
-
-**Backend Reference (API.md:1293-1302, 1283-1288):**
-```json
-"votes": [
-  {
-    "vote_id": "uuid",
-    "voter_id": "uuid",
-    "voter_username": "Voter 1",
-    "voter_pseudonym": "Voter 1",     // ✓ Backend provides this
-    "voted_phrase": "FAMOUS",
-    "correct": true,
-    "voted_at": "2025-01-06T12:10:30Z"
-  }
-],
-"contributors": [
-  {
-    "player_id": "uuid",
-    "username": "Prompt Pirate",
-    "pseudonym": "Prompt Pirate",     // ✓ Backend provides this
-    "is_you": true,
-    "phrase": "FAMOUS"
-  }
-]
-```
-
-**Impact:**
-- Pseudonym system exists for privacy/anonymity
-- Frontend receives pseudonym data but doesn't store it
-- Components may display real usernames where pseudonyms intended
-- User privacy expectations violated
-
-**Fix Required:**
-```typescript
-export interface PhrasesetVoteDetail {
-  vote_id: string;
-  voter_id: string;
-  voter_username: string;
-  voter_pseudonym: string;  // ✓ Add this
-  voted_phrase: string;
-  correct: boolean;
-  voted_at: string;
-}
-
-export interface PhrasesetContributor {
-  player_id: string;
-  username: string;
-  pseudonym: string;        // ✓ Add this
-  is_you: boolean;
-  phrase: string;
-}
-```
-
-**Follow-up:** Review all components displaying usernames and ensure pseudonyms are used where appropriate.
-
----
-
-### 1.3 Medium Priority Issues
+### 1.2 Medium Priority Issues
 
 #### Issue #3: Admin Config Type Returns `any`
 **Severity:** 🟡 Medium
@@ -253,61 +165,6 @@ getConfig: async () => {
   const { data } = await apiClient.get<AdminConfig>('/admin/config');
   return data;
 }
-```
-
----
-
-#### Issue #4: Tutorial Progress Values Mismatch
-**Severity:** 🟡 Medium
-**Category:** Data Model Inconsistency
-**Status:** Frontend defines states backend doesn't recognize
-
-**Location:**
-- `frontend/src/types/tutorial.ts` (if exists)
-- Various tutorial-related components
-
-**Problem:**
-Frontend likely defines tutorial states not in backend schema:
-```typescript
-// Frontend may have:
-type TutorialProgress =
-  | 'not_started'
-  | 'welcome'
-  | 'dashboard'
-  | 'prompt_round'
-  | 'prompt_round_paused'  // ❌ Not in backend
-  | 'copy_round'
-  | 'copy_round_paused'    // ❌ Not in backend
-  | 'vote_round'
-  | 'completed';
-```
-
-**Backend Reference (DATA_MODELS.md:17):**
-```
-- `tutorial_progress` (string, default 'not_started') - current tutorial step
-  (`not_started`, `welcome`, `dashboard`, `prompt_round`, `copy_round`,
-   `vote_round`, `completed`)
-```
-
-**Impact:**
-- Frontend may send `'prompt_round_paused'` to backend
-- Backend rejects or treats as invalid
-- Tutorial state sync issues
-
-**Verification Needed:**
-Search codebase for `prompt_round_paused` and `copy_round_paused` usage.
-
-**Fix if Confirmed:**
-```typescript
-// Align with backend exactly
-type TutorialProgress =
-  | 'not_started'
-  | 'welcome'
-  | 'dashboard'
-  | 'prompt_round'
-  | 'copy_round'
-  | 'vote_round'
-  | 'completed';
 ```
 
 ---
@@ -1154,8 +1011,7 @@ The codebase follows reasonable organization patterns:
 1. ✅ Fix WebSocket endpoint URLs (`OnlineUsers.tsx`)
 2. ✅ Fix PracticePhraseset type definition
 3. ✅ Fix admin config update parameters
-4. ✅ Add missing pseudonym fields to types
-5. ✅ Fix admin config getConfig return type
+4. ✅ Fix admin config getConfig return type
 
 **Estimated Effort:** 4-8 hours
 
@@ -1230,18 +1086,15 @@ The codebase follows reasonable organization patterns:
 
 These can be done immediately:
 
-1. **Add Pseudonym Fields** (5 min)
-   - Add `pseudonym` and `voter_pseudonym` to phraseset types (if still missing)
-
-2. **Create Logger Utility** (20 min)
+1. **Create Logger Utility** (20 min)
    - Create `utils/logger.ts`
    - Replace first 5-10 console calls as examples
 
-3. **Fix Error Type Assertions** (15 min)
+2. **Fix Error Type Assertions** (15 min)
    - Replace `error as any` with proper error type guards
    - Create centralized error type definitions
 
-**Total Quick Wins Time:** ~40 minutes
+**Total Quick Wins Time:** ~35 minutes
 
 ---
 
@@ -1374,9 +1227,6 @@ With focused effort, the codebase can reach production-ready quality within 4-6 
 - `DailyBonus`
 
 ### Incomplete Types (Missing Fields)
-- `PhrasesetVoteDetail` - Missing `voter_pseudonym`
-- `PhrasesetContributor` - Missing `pseudonym`
-- `PracticePhraseset` - 8 field mismatches
 - `AdminConfig` - Returns `any` instead of typed object
 
 ### Missing Types (Should Exist)
