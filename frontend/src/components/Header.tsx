@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
+import { useNavigationHistory } from '../contexts/NavigationHistoryContext';
 import { BalanceFlipper } from './BalanceFlipper';
 import { SubHeader } from './SubHeader';
 import { HomeIcon } from './icons/HomeIcon';
@@ -22,6 +23,7 @@ export const Header: React.FC = () => {
   const { logout, refreshDashboard, refreshBalance } = actions;
   const navigate = useNavigate();
   const location = useLocation();
+  const { goBack } = useNavigationHistory();
 
   const [showGuestLogoutWarning, setShowGuestLogoutWarning] = React.useState(false);
   const [guestCredentials, setGuestCredentials] = React.useState<{ email: string | null; password: string | null } | null>(null);
@@ -29,24 +31,8 @@ export const Header: React.FC = () => {
   const dropdownRef = React.useRef<HTMLDivElement>(null);
   const logoButtonRef = React.useRef<HTMLButtonElement>(null);
 
-  // Show back arrow on certain pages
-  const isAdminRoute = location.pathname === '/admin' || location.pathname.startsWith('/admin/');
-  const backArrowPaths = ['/statistics', '/leaderboard', '/tracking', '/quests', '/results', '/settings', '/completed', '/online-users'];
-  const showBackArrow = backArrowPaths.includes(location.pathname) || isAdminRoute;
-
-  // Determine where back arrow should navigate based on current page
-  const getBackNavigation = React.useCallback(() => {
-    if (location.pathname === '/settings') {
-      return '/statistics';
-    }
-    if (location.pathname === '/admin') {
-      return '/settings';
-    }
-    if (location.pathname.startsWith('/admin/')) {
-      return '/admin';
-    }
-    return '/dashboard';
-  }, [location.pathname, isAdminRoute]);
+  // Show back arrow on all pages except dashboard
+  const showBackArrow = location.pathname !== '/dashboard';
 
   if (!player) {
     return null;
@@ -68,13 +54,11 @@ export const Header: React.FC = () => {
       componentLogger.warn('Failed to refresh from header icon:', err);
     }
 
-    navigate(getBackNavigation());
-  }, [refreshDashboard, refreshBalance, getBackNavigation, navigate]);
+    goBack();
+  }, [refreshDashboard, refreshBalance, goBack]);
 
   const logoTitle = 'Open menu';
-  const backArrowTitle = location.pathname === '/settings'
-    ? 'Back to Statistics (refresh)'
-    : 'Back to Dashboard (refresh)';
+  const backArrowTitle = 'Go back (refresh)';
 
   const handleLogoutClick = React.useCallback(() => {
     if (!player?.is_guest) {

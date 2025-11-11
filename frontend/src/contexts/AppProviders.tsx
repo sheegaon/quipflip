@@ -4,6 +4,7 @@ import { QuestProvider } from './QuestContext';
 import { TutorialProvider, useTutorial } from './TutorialContext';
 import { ResultsProvider, useResults } from './ResultsContext';
 import { NetworkProvider } from './NetworkContext';
+import { NavigationHistoryProvider } from './NavigationHistoryContext';
 import { gameContextLogger } from '../utils/logger';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { PageErrorFallback } from '../components/ErrorFallback';
@@ -137,13 +138,15 @@ const InnerProviders: React.FC<{
   const { state: gameState } = useGame();
 
   return (
-    <ResultsProvider isAuthenticated={gameState.isAuthenticated}>
-      <ContextBridge
-        onDashboardTrigger={onDashboardTrigger}
-        dashboardRefreshToken={dashboardRefreshToken}
-      >
-        {children}
-      </ContextBridge>
-    </ResultsProvider>
+    <NavigationHistoryProvider>
+      <ResultsProvider isAuthenticated={gameState.isAuthenticated}>
+        <ContextBridge
+          onDashboardTrigger={onDashboardTrigger}
+          dashboardRefreshToken={dashboardRefreshToken}
+        >
+          {children}
+        </ContextBridge>
+      </ResultsProvider>
+    </NavigationHistoryProvider>
   );
 };
