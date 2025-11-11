@@ -268,6 +268,7 @@ export interface PracticePhraseset {
   copy1_player: string;
   copy2_player: string;
   hints?: string[] | null;
+  votes?: PhrasesetVoteDetail[];
 }
 
 export interface RoundAvailability {

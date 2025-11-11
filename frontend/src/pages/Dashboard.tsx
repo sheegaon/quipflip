@@ -593,7 +593,7 @@ export const Dashboard: React.FC = () => {
               <p className="text-sm text-quip-teal mb-1">
                 Submit a similar phrase without seeing the prompt
               </p>
-              {roundAvailability && roundAvailability.prompts_waiting > 0 && (
+              {mode === 'live' && roundAvailability && roundAvailability.prompts_waiting > 0 && (
                 <p className="text-xs text-quip-turquoise mb-3 font-semibold">
                   {formatWaitingCount(roundAvailability.prompts_waiting)} quip
                   {roundAvailability.prompts_waiting > 1 ? 's' : ''} waiting
@@ -629,7 +629,7 @@ export const Dashboard: React.FC = () => {
               <p className="text-sm text-quip-teal mb-1">
                 Identify the original phrase from three options
               </p>
-              {roundAvailability && roundAvailability.phrasesets_waiting > 0 && (
+              {mode === 'live' && roundAvailability && roundAvailability.phrasesets_waiting > 0 && (
                 <p className="text-xs text-quip-orange-deep mb-3 font-semibold">
                   {formatWaitingCount(roundAvailability.phrasesets_waiting)} quip set
                   {roundAvailability.phrasesets_waiting > 1 ? 's' : ''} waiting

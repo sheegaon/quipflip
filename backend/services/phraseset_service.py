@@ -854,6 +854,30 @@ class PhrasesetService:
         hint_record = hint_result.scalar_one_or_none()
         hints = hint_record.hint_phrases if hint_record else None
 
+        # Load votes for the phraseset
+        vote_result = await self.db.execute(
+            select(Vote)
+            .where(Vote.phraseset_id == phraseset.phraseset_id)
+            .order_by(Vote.created_at)
+        )
+        votes = vote_result.scalars().all()
+
+        # Load voter usernames
+        voter_ids = [vote.player_id for vote in votes]
+        voter_records = await self._load_players(voter_ids) if voter_ids else {}
+
+        # Build vote details
+        vote_details = []
+        for vote in votes:
+            vote_details.append({
+                "vote_id": str(vote.vote_id),
+                "voter_id": str(vote.player_id),
+                "voter_username": voter_records.get(vote.player_id, {}).get("username", "Unknown"),
+                "voted_phrase": vote.voted_phrase,
+                "correct": vote.voted_phrase == phraseset.original_phrase,
+                "voted_at": self._ensure_utc(vote.created_at).isoformat(),
+            })
+
         return {
             "phraseset_id": phraseset.phraseset_id,
             "prompt_text": phraseset.prompt_text,
@@ -864,6 +888,7 @@ class PhrasesetService:
             "copy1_player": player_records.get(copy1_round.player_id, {}).get("username", "Unknown"),
             "copy2_player": player_records.get(copy2_round.player_id, {}).get("username", "Unknown"),
             "hints": hints,
+            "votes": vote_details,
         }
 
     # ---------------------------------------------------------------------

@@ -240,3 +240,4 @@ class PracticePhraseset(BaseSchema):
     copy1_player: str
     copy2_player: str
     hints: Optional[list[str]] = None
+    votes: list[PhrasesetVote] = []

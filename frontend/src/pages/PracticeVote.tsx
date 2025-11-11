@@ -49,7 +49,7 @@ const PracticeVote: React.FC = () => {
       originalPhrase={phraseset.original_phrase}
       copyPhrase1={phraseset.copy1_phrase}
       copyPhrase2={phraseset.copy2_phrase}
-      votes={[]} // Practice mode doesn't show votes
+      votes={phraseset.votes || []}
       onBack={handleBack}
     />
   );
