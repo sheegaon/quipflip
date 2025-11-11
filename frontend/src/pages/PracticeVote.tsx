@@ -51,6 +51,9 @@ const PracticeVote: React.FC = () => {
       copyPhrase2={phraseset.copy2_phrase}
       votes={phraseset.votes || []}
       onBack={handleBack}
+      promptPlayer={phraseset.prompt_player}
+      copy1Player={phraseset.copy1_player}
+      copy2Player={phraseset.copy2_player}
     />
   );
 };
