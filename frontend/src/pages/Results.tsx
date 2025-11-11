@@ -7,6 +7,7 @@ import { Pagination } from '../components/Pagination';
 import { loadingMessages } from '../utils/brandedMessages';
 import type { PhrasesetResults } from '../api/types';
 import { resultsLogger } from '../utils/logger';
+import { ResultsIcon } from '../components/icons/ResultsIcon';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -264,7 +265,9 @@ export const Results: React.FC = () => {
         <Header />
         <div className="max-w-4xl mx-auto px-4 py-8">
           <div className="tile-card p-8 text-center">
-            <div className="text-6xl mb-4">📊</div>
+            <div className="flex justify-center mb-4">
+              <ResultsIcon className="h-20 w-20 text-6xl"/>
+            </div>
             <h1 className="text-2xl font-display font-bold text-quip-navy mb-4">No Results Available</h1>
             <p className="text-quip-teal mb-6">
               You don't have any finalized quipsets yet. Complete some rounds and check back!
@@ -276,7 +279,7 @@ export const Results: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-quip-cream bg-pattern">
+      <div className="min-h-screen bg-quip-cream bg-pattern">
       <Header />
       <div className="max-w-6xl mx-auto px-4 py-8">
         <div className="mb-6">

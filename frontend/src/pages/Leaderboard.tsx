@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import apiClient, { extractErrorMessage } from '../api/client';
 import type { LeaderboardResponse } from '../api/types';
 import { Header } from '../components/Header';
@@ -9,7 +8,6 @@ import { leaderboardLogger } from '../utils/logger';
 type LeaderboardPeriod = 'weekly' | 'alltime';
 
 const Leaderboard: React.FC = () => {
-  const navigate = useNavigate();
   const [activePeriod, setActivePeriod] = useState<LeaderboardPeriod>('weekly');
   const [weeklyData, setWeeklyData] = useState<LeaderboardResponse | null>(null);
   const [alltimeData, setAlltimeData] = useState<LeaderboardResponse | null>(null);
@@ -87,24 +85,12 @@ const Leaderboard: React.FC = () => {
     <div className="min-h-screen bg-quip-cream bg-pattern">
       <Header />
       <div className="container mx-auto px-4 py-8">
-        {/* Header with link to statistics */}
+        {/* Header */}
         <div className="tile-card p-6 mb-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex-1">
               <h1 className="text-3xl font-display font-bold text-quip-navy">Leaderboard</h1>
               <p className="text-quip-teal mt-1">See how you rank among all players</p>
-            </div>
-            <div>
-              <button
-                onClick={() => navigate('/statistics')}
-                className="flex items-center gap-2 bg-quip-navy hover:bg-quip-teal text-white font-bold py-2 px-4 rounded-tile transition-all hover:shadow-tile-sm"
-                title="View your statistics"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
-                </svg>
-                <span>My Statistics</span>
-              </button>
             </div>
           </div>
         </div>

@@ -14,6 +14,7 @@ import { LobbyIcon } from './icons/LobbyIcon';
 import { BrandedSurveyIcon } from './icons/BrandedSurveyIcon';
 import { BrandedSettingsIcon } from './icons/BrandedSettingsIcon';
 import { AdminIcon } from './icons/AdminIcon';
+import { componentLogger } from '../utils/logger';
 
 export const Header: React.FC = () => {
   const { state, actions } = useGame();
@@ -64,7 +65,7 @@ export const Header: React.FC = () => {
     try {
       await Promise.all([refreshDashboard(), refreshBalance()]);
     } catch (err) {
-      console.warn('Failed to refresh from header icon:', err);
+      componentLogger.warn('Failed to refresh from header icon:', err);
     }
 
     navigate(getBackNavigation());
@@ -97,7 +98,7 @@ export const Header: React.FC = () => {
           }
         }
       } catch (err) {
-        console.warn('Failed to read guest credentials from storage', err);
+        componentLogger.warn('Failed to read guest credentials from storage', err);
       }
     }
 
@@ -314,7 +315,7 @@ export const Header: React.FC = () => {
                     <span className="font-semibold">Lobby</span>
                   </button>
                   <button
-                    onClick={() => handleNavigate('/survey')}
+                    onClick={() => handleNavigate('/survey/beta')}
                     className="w-full flex items-center gap-3 px-4 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
                   >
                     <BrandedSurveyIcon className="h-5 w-5" />

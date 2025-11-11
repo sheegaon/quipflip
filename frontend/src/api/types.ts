@@ -262,8 +262,8 @@ export interface PracticePhraseset {
   phraseset_id: string;
   prompt_text: string;
   original_phrase: string;
-  copy1_phrase: string;
-  copy2_phrase: string;
+  copy_phrase_1: string;
+  copy_phrase_2: string;
   prompt_player: string;
   copy1_player: string;
   copy2_player: string;
@@ -627,9 +627,7 @@ export type TutorialProgress =
   | 'welcome'
   | 'dashboard'
   | 'prompt_round'
-  | 'prompt_round_paused'
   | 'copy_round'
-  | 'copy_round_paused'
   | 'vote_round'
   | 'completed_rounds_guide'
   | 'completed';
@@ -695,4 +693,60 @@ export interface OnlineUser {
 export interface OnlineUsersResponse {
   users: OnlineUser[];
   total_count: number;
+}
+
+// Admin Configuration
+export interface AdminConfig {
+  // Game Constants
+  starting_balance: number;
+  daily_bonus_amount: number;
+  prompt_cost: number;
+  copy_cost_normal: number;
+  copy_cost_discount: number;
+  vote_cost: number;
+  vote_payout_correct: number;
+  abandoned_penalty: number;
+  prize_pool_base: number;
+  max_outstanding_quips: number;
+  copy_discount_threshold: number;
+
+  // Timing
+  prompt_round_seconds: number;
+  copy_round_seconds: number;
+  vote_round_seconds: number;
+  grace_period_seconds: number;
+
+  // Vote finalization thresholds
+  vote_max_votes: number;
+  vote_closing_threshold: number;
+  vote_closing_window_minutes: number;
+  vote_minimum_threshold: number;
+  vote_minimum_window_minutes: number;
+
+  // Phrase Validation
+  phrase_min_words: number;
+  phrase_max_words: number;
+  phrase_max_length: number;
+  phrase_min_char_per_word: number;
+  phrase_max_char_per_word: number;
+  significant_word_min_length: number;
+
+  // AI Service
+  ai_provider: string;
+  ai_openai_model: string;
+  ai_gemini_model: string;
+  ai_timeout_seconds: number;
+  ai_backup_delay_minutes: number;
+  ai_backup_batch_size: number;
+  ai_backup_sleep_minutes: number;
+  ai_stale_handler_enabled: boolean;
+  ai_stale_threshold_days: number;
+  ai_stale_check_interval_hours: number;
+}
+
+export interface UpdateAdminConfigResponse {
+  success: boolean;
+  key: string;
+  value: number | string;
+  message?: string;
 }

@@ -37,7 +37,7 @@ Authorization: Bearer <access_token>
 
 **Getting Tokens:**
 - Use `POST /player/guest` to create a guest account instantly (no email/password required).
-- Use `POST /player` to register with an email and password (the backend generates a username and pseudonym automatically).
+- Use `POST /player` to register with an email and password (the backend generates a username automatically).
 - Use `POST /auth/login` with your email and password to obtain fresh tokens.
 - Use `POST /player/upgrade` to convert a guest account to a full account.
 - All authentication endpoints set HTTP-only cookies for both access and refresh tokens.
@@ -186,7 +186,7 @@ curl -X POST http://localhost:8000/player \
       }'
 ```
 
-**Note:** The backend assigns both the public username and hidden pseudonym; clients should not send custom values.
+**Note:** The backend assigns the username; clients should not send custom values.
 
 See [Player](DATA_MODELS.md#player) for persisted fields.
 
@@ -1282,9 +1282,9 @@ Get full contributor view for a phraseset the player participated in (contributo
   "copy_phrase_1": "POPULAR",
   "copy_phrase_2": "WEALTHY",
   "contributors": [
-    {"player_id": "uuid", "username": "Prompt Pirate", "pseudonym": "Prompt Pirate", "is_you": true, "phrase": "FAMOUS"},
-    {"player_id": "uuid", "username": "Copy Cat", "pseudonym": "Copy Cat", "is_you": false, "phrase": "POPULAR"},
-    {"player_id": "uuid", "username": "Shadow Scribe", "pseudonym": "Shadow Scribe", "is_you": false, "phrase": "WEALTHY"}
+    {"player_id": "uuid", "username": "Prompt Pirate", "is_you": true, "phrase": "FAMOUS"},
+    {"player_id": "uuid", "username": "Copy Cat", "is_you": false, "phrase": "POPULAR"},
+    {"player_id": "uuid", "username": "Shadow Scribe", "is_you": false, "phrase": "WEALTHY"}
   ],
   "vote_count": 10,
   "third_vote_at": "2025-01-06T12:10:00Z",
@@ -1295,7 +1295,6 @@ Get full contributor view for a phraseset the player participated in (contributo
       "vote_id": "uuid",
       "voter_id": "uuid",
       "voter_username": "Voter 1",
-      "voter_pseudonym": "Voter 1",
       "voted_phrase": "FAMOUS",
       "correct": true,
       "voted_at": "2025-01-06T12:10:30Z"
@@ -1361,9 +1360,9 @@ Get full details for any COMPLETED phraseset (public access for browsing/reviewi
   "copy_phrase_1": "POPULAR",
   "copy_phrase_2": "WEALTHY",
   "contributors": [
-    {"player_id": "uuid", "username": "Prompt Pirate", "pseudonym": "Prompt Pirate", "is_you": false, "phrase": "FAMOUS"},
-    {"player_id": "uuid", "username": "Copy Cat", "pseudonym": "Copy Cat", "is_you": false, "phrase": "POPULAR"},
-    {"player_id": "uuid", "username": "Shadow Scribe", "pseudonym": "Shadow Scribe", "is_you": false, "phrase": "WEALTHY"}
+    {"player_id": "uuid", "username": "Prompt Pirate", "is_you": false, "phrase": "FAMOUS"},
+    {"player_id": "uuid", "username": "Copy Cat", "is_you": false, "phrase": "POPULAR"},
+    {"player_id": "uuid", "username": "Shadow Scribe", "is_you": false, "phrase": "WEALTHY"}
   ],
   "vote_count": 10,
   "third_vote_at": "2025-01-06T12:10:00Z",
@@ -1374,7 +1373,6 @@ Get full details for any COMPLETED phraseset (public access for browsing/reviewi
       "vote_id": "uuid",
       "voter_id": "uuid",
       "voter_username": "Voter 1",
-      "voter_pseudonym": "Voter 1",
       "voted_phrase": "FAMOUS",
       "correct": true,
       "voted_at": "2025-01-06T12:10:30Z"
@@ -1481,144 +1479,6 @@ Explicitly mark a phraseset payout as claimed (idempotent).
 - `Phraseset not found` - Invalid phraseset ID
 - `Not a contributor to this phraseset` - Player did not submit the prompt or copies
 
-#### `GET /phrasesets/{phraseset_id}/history`
-Get the complete event timeline for a phraseset, showing all submissions, votes, and finalization.
-
-**Access Control:** This endpoint has two layers of access restriction:
-1. **Finalized phrasesets only** - Active phrasesets cannot be viewed
-2. **Participants only** - You must be a contributor (prompt/copy submitter) or voter
-
-Attempting to view a non-finalized phraseset or a phraseset you didn't participate in will return a 403 error. This prevents players from viewing phrases and contributor identities before voting completes, and ensures privacy for participants.
-
-**Purpose:** This endpoint provides a comprehensive review of a phraseset's lifecycle, making it ideal for building a detailed review UX that shows:
-- Who submitted the original phrase and when
-- When each copy was submitted and by whom
-- The chronological sequence of votes with voter identities
-- Whether each vote was correct or incorrect
-- When the phraseset was finalized
-
-**Response:**
-```json
-{
-  "phraseset_id": "uuid",
-  "prompt_text": "my deepest desire is to be (a/an)",
-  "original_phrase": "FAMOUS",
-  "copy_phrase_1": "POPULAR",
-  "copy_phrase_2": "WEALTHY",
-  "status": "finalized",
-  "created_at": "2025-01-06T10:00:00Z",
-  "finalized_at": "2025-01-06T12:30:00Z",
-  "total_votes": 8,
-  "events": [
-    {
-      "event_type": "prompt_submitted",
-      "timestamp": "2025-01-06T10:00:00Z",
-      "player_id": "uuid",
-      "username": "Prompt Pirate",
-      "pseudonym": "Prompt Pirate",
-      "phrase": "FAMOUS",
-      "correct": null,
-      "metadata": {
-        "round_id": "uuid",
-        "prompt_text": "my deepest desire is to be (a/an)"
-      }
-    },
-    {
-      "event_type": "copy_submitted",
-      "timestamp": "2025-01-06T10:15:00Z",
-      "player_id": "uuid",
-      "username": "Copy Cat",
-      "pseudonym": "Copy Cat",
-      "phrase": "POPULAR",
-      "correct": null,
-      "metadata": {
-        "round_id": "uuid",
-        "copy_number": 1
-      }
-    },
-    {
-      "event_type": "copy_submitted",
-      "timestamp": "2025-01-06T10:18:00Z",
-      "player_id": "uuid",
-      "username": "Shadow Scribe",
-      "pseudonym": "Shadow Scribe",
-      "phrase": "WEALTHY",
-      "correct": null,
-      "metadata": {
-        "round_id": "uuid",
-        "copy_number": 2
-      }
-    },
-    {
-      "event_type": "vote_submitted",
-      "timestamp": "2025-01-06T11:00:00Z",
-      "player_id": "uuid",
-      "username": "Voter One",
-      "pseudonym": "Voter One",
-      "phrase": "FAMOUS",
-      "correct": true,
-      "metadata": {
-        "vote_id": "uuid",
-        "payout": 20
-      }
-    },
-    {
-      "event_type": "vote_submitted",
-      "timestamp": "2025-01-06T11:05:00Z",
-      "player_id": "uuid",
-      "username": "Voter Two",
-      "pseudonym": "Voter Two",
-      "phrase": "POPULAR",
-      "correct": false,
-      "metadata": {
-        "vote_id": "uuid",
-        "payout": 0
-      }
-    },
-    {
-      "event_type": "finalized",
-      "timestamp": "2025-01-06T12:30:00Z",
-      "player_id": null,
-      "username": null,
-      "pseudonym": null,
-      "phrase": null,
-      "correct": null,
-      "metadata": {
-        "total_votes": 8,
-        "total_pool": 300
-      }
-    }
-  ]
-}
-```
-
-**Event Types:**
-- `prompt_submitted` - Original phrase submission
-- `copy_submitted` - Copy phrase submission (includes `copy_number` in metadata: 1 or 2)
-- `vote_submitted` - Vote cast (includes `correct` field and vote payout in metadata)
-- `finalized` - Phraseset completed and prizes distributed
-
-**Notes:**
-- Events are returned in chronological order
-- All events include UTC timestamps
-- Both `username` (for debugging) and `pseudonym` (for display) are included
-- Vote events include the `correct` boolean indicating if the voter chose the original phrase
-- The `metadata` field contains event-specific additional information
-- Only finalized phrasesets will have a `finalized` event
-
-**Errors:**
-- `404 Not Found` - Phraseset not found
-- `403 Forbidden` - Either the phraseset is not finalized (still active/voting) OR you are not a participant
-- `400 Bad Request` - Invalid phraseset ID format
-
-**Security Notes:**
-- **Finalization requirement:** Only finalized phrasesets can be viewed, preventing:
-  - Viewing the original phrase before voting (unfair advantage)
-  - Seeing copy phrases and contributors during active voting
-  - Real-time tracking of vote patterns before finalization
-- **Participant requirement:** Only contributors and voters can view history, ensuring privacy
-- **Handles incomplete phrasesets:** If a phraseset was abandoned before all rounds completed, only the completed events will be shown
-
 #### `GET /phrasesets/completed`
 Get a list of finalized phrasesets with summary metadata.
 
@@ -1709,9 +1569,14 @@ Get a random completed phraseset for practice mode (phrasesets user was NOT invo
   "original_phrase": "FAMOUS",
   "copy_phrase_1": "POPULAR",
   "copy_phrase_2": "WEALTHY",
-  "phrases": ["FAMOUS", "POPULAR", "WEALTHY"],
-  "vote_count": 8,
-  "finalized_at": "2025-01-06T12:30:00Z"
+  "prompt_player": "Prompt Pirate",
+  "copy1_player": "Copy Cat",
+  "copy2_player": "Shadow Scribe",
+  "prompt_player_is_ai": false,
+  "copy1_player_is_ai": false,
+  "copy2_player_is_ai": false,
+  "hints": ["RENOWNED", "CELEBRATED"],
+  "votes": []
 }
 ```
 
@@ -1722,7 +1587,9 @@ Get a random completed phraseset for practice mode (phrasesets user was NOT invo
 **Notes:**
 - Only returns finalized phrasesets
 - Excludes phrasesets where user was contributor or voter
-- Phrases randomized for practice voting
+- Includes player usernames and AI flags for display
+- May include AI-generated hints for learning
+- Votes array provides vote history for analysis
 
 ---
 
@@ -1954,8 +1821,8 @@ Update a game configuration value. Requires admin password validation.
 **Request:**
 ```json
 {
-  "config_key": "ai_stale_threshold_days",
-  "config_value": 5
+  "key": "ai_stale_threshold_days",
+  "value": 5
 }
 ```
 
@@ -1963,9 +1830,9 @@ Update a game configuration value. Requires admin password validation.
 ```json
 {
   "success": true,
-  "message": "Configuration updated successfully",
-  "updated_key": "ai_stale_threshold_days",
-  "new_value": 5
+  "key": "ai_stale_threshold_days",
+  "value": 5,
+  "message": "Configuration 'ai_stale_threshold_days' updated successfully"
 }
 ```
 
@@ -2077,7 +1944,7 @@ Resolve a flagged prompt by confirming or dismissing it.
 
 Track and display users who are currently active in the game.
 
-#### `GET /online`
+#### `GET /users/online`
 Get list of currently online users (active in last 30 minutes).
 
 **Purpose:** Display "Who's Online" feature showing recent player activity.
@@ -2103,11 +1970,11 @@ Get list of currently online users (active in last 30 minutes).
 - Distinct from phraseset_activity which logs historical review events
 - Time ago formatted as "Xs ago", "Xm ago", or "Xh ago"
 
-#### `WebSocket /online/ws`
+#### `WebSocket /users/online/ws`
 WebSocket endpoint for real-time online users updates.
 
 **Authentication:**
-- Token in query params: `wss://api.example.com/online/ws?token=<access_token>`
+- Token in query params: `wss://api.example.com/users/online/ws?token=<access_token>`
 - OR token in cookies (HttpOnly cookie automatically sent)
 
 **Connection:**

@@ -8,12 +8,10 @@
  * review events on the Phrasesets page.
  */
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Header } from '../components/Header';
 import type { OnlineUser } from '../api/types';
 
 const OnlineUsers: React.FC = () => {
-  const navigate = useNavigate();
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -46,11 +44,13 @@ const OnlineUsers: React.FC = () => {
 
         // Step 2: Construct WebSocket URL for direct connection to Heroku
         const apiUrl = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:8000`;
+        const backendWsUrl = import.meta.env.VITE_BACKEND_WS_URL || 'wss://quipflip-c196034288cd.herokuapp.com';
         let wsUrl: string;
 
         if (apiUrl.startsWith('/')) {
           // Production: use direct Heroku connection (cannot proxy WebSocket through Vercel)
-          wsUrl = 'wss://quipflip-c196034288cd.herokuapp.com/users/online/ws';
+          wsUrl = `${backendWsUrl}/users/online/ws`;
+
         } else {
           // Development: connect directly to local backend
           wsUrl = apiUrl
@@ -294,16 +294,6 @@ const OnlineUsers: React.FC = () => {
             <strong>Note:</strong> Users are shown as online if they've made an API call in the last 30 minutes.
             This page updates automatically every 5 seconds.
           </p>
-        </div>
-
-        {/* Back button */}
-        <div className="mt-6 text-center">
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="bg-quip-navy hover:bg-quip-teal text-white font-bold py-2 px-6 rounded-tile transition-all hover:shadow-tile-sm"
-          >
-            Back to Dashboard
-          </button>
         </div>
       </div>
     </div>

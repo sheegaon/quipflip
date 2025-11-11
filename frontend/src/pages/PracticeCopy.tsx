@@ -55,7 +55,7 @@ const PracticeCopy: React.FC = () => {
   return (
     <CopyRoundReview
       originalPhrase={phraseset.original_phrase}
-      copyPhrase={phraseset.copy1_phrase}
+      copyPhrase={phraseset.copy_phrase_1}
       playerUsername={phraseset.copy1_player}
       isAiPlayer={phraseset.copy1_player_is_ai}
       copyNumber={1}

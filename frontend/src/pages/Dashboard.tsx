@@ -12,6 +12,7 @@ import { dashboardLogger } from '../utils/logger';
 import { TrackingIcon } from '../components/icons/TrackingIcon';
 import type { BetaSurveyStatusResponse } from '../api/types';
 import { hasDismissedSurvey, markSurveyDismissed, hasCompletedSurvey } from '../utils/betaSurvey';
+import { getErrorMessage } from '../types/errors';
 
 const formatWaitingCount = (count: number): string => (count > 10 ? 'over 10' : count.toString());
 export const Dashboard: React.FC = () => {
@@ -140,14 +141,23 @@ export const Dashboard: React.FC = () => {
         if (shouldShow) {
           dashboardLogger.info('[Beta Survey] ✨ SHOWING SURVEY PROMPT ✨');
         }
-      } catch (error) {
+      } catch (error: unknown) {
         if (controller.signal.aborted) {
           return;
         }
         // Only log non-auth errors - 401 is expected when not authenticated
-        const errorObj = error as any;
-        if (errorObj?.status !== 401) {
-          dashboardLogger.warn('[Beta Survey] Failed to fetch survey status', error);
+        // Check if error is an axios error with response status
+        const isAuthError =
+          error &&
+          typeof error === 'object' &&
+          'response' in error &&
+          error.response &&
+          typeof error.response === 'object' &&
+          'status' in error.response &&
+          error.response.status === 401;
+
+        if (!isAuthError) {
+          dashboardLogger.warn('[Beta Survey] Failed to fetch survey status', getErrorMessage(error));
         }
       }
     };
@@ -473,7 +483,7 @@ export const Dashboard: React.FC = () => {
       <Header />
       <TutorialWelcome onStart={handleStartTutorial} onSkip={handleSkipTutorial} />
 
-      <div className="max-w-4xl mx-auto md:px-4 px-3 md:pt-8 pt-3 md:pb-32 pb-32">
+      <div className="max-w-4xl mx-auto md:px-4 px-3 md:pt-8 pt-3 md:pb-5 pb-5">
         {/* Active Round Notification */}
         {activeRound?.round_id && !isRoundExpired && (
           <div className="tile-card bg-quip-orange bg-opacity-10 border-2 border-quip-orange p-4 mb-6 slide-up-enter relative">

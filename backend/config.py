@@ -87,7 +87,7 @@ class Settings(BaseSettings):
     ai_provider: str = "openai"  # Options: "openai" or "gemini"
     ai_openai_model: str = "gpt-5-nano"  # OpenAI model for copy generation
     ai_gemini_model: str = "gemini-2.5-flash-lite"  # Gemini model for copy generation
-    ai_timeout_seconds: int = 60  # Timeout for AI API calls
+    ai_timeout_seconds: int = 90  # Timeout for AI API calls (increased for hint generation)
     ai_backup_delay_minutes: int = 30  # Delay before AI provides backup copies/votes
     ai_backup_batch_size: int = 10  # Maximum number of copy or vote rounds to process per backup cycle
     ai_backup_sleep_minutes: int = 30  # Sleep time between backup cycles
