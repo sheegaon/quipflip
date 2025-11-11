@@ -147,12 +147,18 @@ Where `TutorialLifecycleStatus` is: `'loading' | 'inactive' | 'active' | 'comple
 
 The tutorial follows a linear progression through these steps:
 
-1. **welcome**: Introduction to Quipflip
-2. **create_prompt**: Creating engaging prompts
-3. **write_copy**: Writing compelling copy
-4. **vote**: Voting mechanics and rewards
-5. **check_results**: Checking performance and earnings
-6. **completed**: Tutorial finished
+1. **not_started**: Initial state before tutorial begins
+2. **welcome**: Introduction to Quipflip
+3. **dashboard**: Understanding the dashboard
+4. **prompt_round**: Creating engaging prompts
+5. **prompt_round_paused**: Prompt round paused state
+6. **copy_round**: Writing compelling copy
+7. **copy_round_paused**: Copy round paused state
+8. **vote_round**: Voting mechanics and rewards
+9. **completed_rounds_guide**: Checking performance and earnings
+10. **completed**: Tutorial finished
+
+Note: These values match the `TutorialProgress` type and `Player.tutorial_progress` field values.
 
 ### Key Actions
 

@@ -296,6 +296,36 @@ curl -X POST http://localhost:8000/auth/logout \
 
 Responds with `204 No Content`.
 
+#### `GET /auth/ws-token`
+Generate a short-lived token for WebSocket authentication.
+
+**Purpose:** Provides a short-lived access token (60 seconds) for WebSocket connections when HttpOnly cookies cannot be used.
+
+**Authentication:** Requires valid access token cookie or Authorization header.
+
+**Response:**
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "expires_in": 60,
+  "token_type": "bearer"
+}
+```
+
+**Use Case:**
+This endpoint is called via REST API (through Vercel proxy) using HttpOnly cookies. Returns a short-lived token (60 seconds) that can be used for WebSocket connections to the Heroku backend, which cannot be proxied through Vercel.
+
+**Token Exchange Pattern:**
+1. Frontend calls this endpoint with HttpOnly cookie (via Vercel `/api` proxy)
+2. Backend validates cookie and returns short-lived token
+3. Frontend uses token for direct WebSocket connection to Heroku
+4. Short lifetime limits security risk if token is exposed
+
+**Notes:**
+- Token is valid for only 60 seconds
+- Token can be used for WebSocket authentication via query parameter: `wss://backend.com/online/ws?token=<token>`
+- Designed for cross-domain WebSocket authentication where cookies are not reliable
+
 #### `GET /player/balance`
 Get player balance and status.
 
@@ -933,7 +963,7 @@ Submit phrase for prompt or copy round.
 - `success` (boolean): Whether submission was successful
 - `phrase` (string): The submitted phrase (normalized to uppercase)
 - `eligible_for_second_copy` (boolean, copy rounds only): Whether this prompt is eligible for a second copy attempt
-- `second_copy_cost` (integer or null, copy rounds only): Cost for a second copy round (2x regular cost), null if not eligible
+- `second_copy_cost` (integer or null, copy rounds only): Cost for a second copy round. Always 2x the **normal** (non-discounted) copy cost (100f with default settings). Copy round discounts do NOT apply to second copies. Value is null if not eligible.
 - `prompt_round_id` (UUID or null, copy rounds only): The prompt round ID for second copy targeting, null if not eligible
 - `original_phrase` (string or null, copy rounds only): The original phrase for reference, null if not eligible
 
