@@ -472,7 +472,7 @@ export const Dashboard: React.FC = () => {
       <Header />
       <TutorialWelcome onStart={handleStartTutorial} onSkip={handleSkipTutorial} />
 
-      <div className="max-w-4xl mx-auto px-4 pt-8 pb-32">
+      <div className="max-w-4xl mx-auto md:px-4 px-3 md:pt-8 pt-3 md:pb-32 pb-32">
         {/* Active Round Notification */}
         {activeRound?.round_id && !isRoundExpired && (
           <div className="tile-card bg-quip-orange bg-opacity-10 border-2 border-quip-orange p-4 mb-6 slide-up-enter relative">
@@ -516,7 +516,7 @@ export const Dashboard: React.FC = () => {
         )}
 
         {/* Round Selection */}
-        <div className="tutorial-dashboard tile-card p-6 shuffle-enter">
+        <div className="tutorial-dashboard tile-card md:p-6 p-3 shuffle-enter">
           <h2 className="text-xl font-display font-bold mb-4 text-quip-navy">Start a Round</h2>
 
           {/* Error Messages */}

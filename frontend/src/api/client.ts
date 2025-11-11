@@ -1,5 +1,6 @@
 import axios, { AxiosError } from 'axios';
 import { getContextualErrorMessage, getActionErrorMessage } from '../utils/errorMessages';
+import { offlineQueue, shouldQueueAction } from '../utils/offlineQueue';
 import type {
   Player,
   CreatePlayerResponse,
@@ -99,6 +100,9 @@ const api = axios.create({
   },
   withCredentials: true,
 });
+
+// Export axios instance for direct use (e.g., replaying queued requests)
+export const axiosInstance = api;
 
 const clearStoredCredentials = () => {
   localStorage.removeItem(USERNAME_STORAGE_KEY);
@@ -238,7 +242,40 @@ api.interceptors.response.use(
     }
 
     if (error.code === 'ERR_NETWORK') {
-      return Promise.reject({ message: 'The backend server may be busy. Please check your connection and try again.' });
+      // Check if we're offline and should queue this request
+      const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+
+      if (isOffline && originalRequest && shouldQueueAction(originalRequest.method || 'GET', originalRequest.url || '')) {
+        // Queue the request for later when we're back online
+        const actionId = offlineQueue.addAction({
+          type: 'api_call',
+          method: originalRequest.method || 'GET',
+          url: originalRequest.url || '',
+          data: originalRequest.data,
+          headers: originalRequest.headers,
+          maxRetries: 3,
+        });
+
+        logApi(
+          originalRequest.method?.toUpperCase() || 'UNKNOWN',
+          originalRequest.url || '',
+          'error',
+          `Queued for offline sync (ID: ${actionId})`
+        );
+
+        // Return a specific offline error
+        return Promise.reject({
+          message: 'You are offline. This action will be synced when connection is restored.',
+          isOfflineError: true,
+          actionId,
+        });
+      }
+
+      // Not offline or shouldn't queue - return network error
+      return Promise.reject({
+        message: 'The backend server may be busy. Please check your connection and try again.',
+        isNetworkError: true,
+      });
     }
 
     return Promise.reject(error);

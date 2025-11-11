@@ -182,7 +182,7 @@ export const Header: React.FC = () => {
             <button
               type="button"
               onClick={handleLogoClick}
-              className={`flex items-center gap-0 md:gap-2 cursor-pointer transition-opacity ${showBackArrow ? 'hover:opacity-80' : 'hover:opacity-90'}`}
+              className={`flex items-center gap-1 md:gap-2 cursor-pointer transition-opacity ${showBackArrow ? 'hover:opacity-80' : 'hover:opacity-90'}`}
               title={logoTitle}
               aria-label={logoTitle}
             >
@@ -190,11 +190,11 @@ export const Header: React.FC = () => {
                 <img
                   src="/icon_arrow_left.svg"
                   alt=""
-                  className="w-5 h-5 md:w-7 md:h-7"
+                  className="w-7 h-7 md:w-9 md:h-9"
                   aria-hidden="true"
                 />
               )}
-              <img src="/large_icon_old.png" alt="Quipflip" className="md:h-10 h-6 w-auto" />
+              <img src="/large_icon.png" alt="Quipflip" className="md:h-11 h-9 w-auto" />
             </button>
           </div>
 
@@ -202,7 +202,7 @@ export const Header: React.FC = () => {
           <div className="flex-1 text-center">
             <button
               onClick={goToStatistics}
-              className="text-xs md:text-xl text-quip-turquoise font-semibold hover:text-quip-teal transition-colors"
+              className="text-lg md:text-2xl text-quip-turquoise font-semibold hover:text-quip-teal transition-colors"
               title="View your statistics"
             >
               {player.username || username}
@@ -227,7 +227,7 @@ export const Header: React.FC = () => {
             </button>
             {/* Logout Button */}
             <button onClick={handleLogoutClick} className="text-quip-teal hover:text-quip-turquoise" title="Logout">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 md:h-8 w-6 md:w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7 md:h-9 md:w-9" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
               </svg>
             </button>
