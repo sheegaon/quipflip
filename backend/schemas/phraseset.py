@@ -236,8 +236,8 @@ class PracticePhraseset(BaseSchema):
     phraseset_id: UUID
     prompt_text: str
     original_phrase: str
-    copy1_phrase: str
-    copy2_phrase: str
+    copy_phrase_1: str
+    copy_phrase_2: str
     prompt_player: str
     copy1_player: str
     copy2_player: str

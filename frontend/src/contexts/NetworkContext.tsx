@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { useNetworkStatus, getConnectionQuality } from '../hooks/useNetworkStatus';
 import { offlineQueue, type OfflineAction } from '../utils/offlineQueue';
 import { axiosInstance } from '../api/client';
+import { networkLogger } from '../utils/logger';
 
 export interface NetworkContextType {
   isOnline: boolean;
@@ -45,17 +46,17 @@ export const NetworkProvider: React.FC<{ children: React.ReactNode }> = ({ child
    */
   const retryFailedRequests = useCallback(async () => {
     if (!networkStatus.isOnline) {
-      console.warn('Cannot retry requests while offline');
+      networkLogger.warn('Cannot retry requests while offline');
       return;
     }
 
     const queue = offlineQueue.getQueue();
-    console.log(`Retrying ${queue.length} queued requests...`);
+    networkLogger.info(`Retrying ${queue.length} queued requests...`);
 
     for (const action of queue) {
       // Check if action has exceeded max retries
       if (offlineQueue.hasExceededMaxRetries(action.id)) {
-        console.warn(`Action ${action.id} has exceeded max retries, removing from queue`);
+        networkLogger.warn(`Action ${action.id} has exceeded max retries, removing from queue`);
         offlineQueue.removeAction(action.id);
         continue;
       }
@@ -72,19 +73,19 @@ export const NetworkProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
         // Success! Remove from queue
         offlineQueue.removeAction(action.id);
-        console.log(`Successfully synced action ${action.id}`);
+        networkLogger.info(`Successfully synced action ${action.id}`);
       } catch (error: any) {
         // Check if it's a permanent error (4xx) vs transient (network, 5xx)
         const isPermanentError = error.response && error.response.status >= 400 && error.response.status < 500;
 
         if (isPermanentError && error.response.status !== 429) {
           // Permanent error (not rate limit) - remove from queue
-          console.warn(`Action ${action.id} failed with permanent error ${error.response.status}, removing from queue`);
+          networkLogger.warn(`Action ${action.id} failed with permanent error ${error.response.status}, removing from queue`);
           offlineQueue.removeAction(action.id);
         } else {
           // Transient error - increment retry count
           offlineQueue.incrementRetryCount(action.id);
-          console.warn(`Failed to sync action ${action.id}, will retry later`);
+          networkLogger.warn(`Failed to sync action ${action.id}, will retry later`);
         }
       }
     }
@@ -95,7 +96,7 @@ export const NetworkProvider: React.FC<{ children: React.ReactNode }> = ({ child
    */
   const clearOfflineQueue = useCallback(() => {
     offlineQueue.clearQueue();
-    console.log('Offline queue cleared');
+    networkLogger.info('Offline queue cleared');
   }, []);
 
   /**
@@ -103,7 +104,7 @@ export const NetworkProvider: React.FC<{ children: React.ReactNode }> = ({ child
    */
   useEffect(() => {
     if (networkStatus.isOnline && networkStatus.wasOffline && queueSize > 0) {
-      console.log('Back online! Auto-retrying queued requests...');
+      networkLogger.info('Back online! Auto-retrying queued requests...');
       retryFailedRequests();
     }
   }, [networkStatus.isOnline, networkStatus.wasOffline, queueSize, retryFailedRequests]);

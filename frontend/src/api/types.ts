@@ -262,8 +262,8 @@ export interface PracticePhraseset {
   phraseset_id: string;
   prompt_text: string;
   original_phrase: string;
-  copy1_phrase: string;
-  copy2_phrase: string;
+  copy_phrase_1: string;
+  copy_phrase_2: string;
   prompt_player: string;
   copy1_player: string;
   copy2_player: string;

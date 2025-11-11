@@ -94,5 +94,7 @@ export const adminLogger = createLogger('Admin');
 export const loadingSpinnerLogger = createLogger('LoadingSpinner');
 export const apiLogger = createLogger('API');
 export const tutorialLogger = createLogger('Tutorial');
+export const networkLogger = createLogger('Network');
+export const componentLogger = createLogger('Component');
 
 export default createLogger;
