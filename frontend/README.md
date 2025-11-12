@@ -2,30 +2,6 @@
 
 React + TypeScript frontend for the Quipflip phrase association game.
 
-## Features
-
-### Phase 1 MVP (Complete)
-
-- ✅ Player authentication with JWT tokens (access + refresh tokens, HTTP-only cookies)
-- ✅ Guest account creation (instant play without signup)
-- ✅ Guest account upgrade to full account
-- ✅ Registration and login with email/password (username generated server-side)
-- ✅ Dashboard with balance display
-- ✅ Daily bonus claiming
-- ✅ Three round types (Prompt, Copy, Vote)
-- ✅ Real-time countdown timers
-- ✅ Results viewing with vote breakdown
-- ✅ Phraseset tracking (view all phrasesets by role and status)
-- ✅ Prompt feedback (like/dislike prompts)
-- ✅ Unclaimed results with claim functionality
-- ✅ Responsive design with Tailwind CSS and custom branding
-- ✅ Error handling and notifications
-- ✅ Automatic state polling and updates
-- ✅ Robust request cancellation (no memory leaks)
-- ✅ Automatic token refresh on 401 errors
-- ✅ Vercel Analytics integration
-- ✅ React Router v7 future flags enabled (clean console)
-
 ## Tech Stack
 
 - **React 18** - UI framework
@@ -178,18 +154,6 @@ Uses Tailwind CSS utility classes for:
 - Gradient backgrounds
 - Loading states
 
-## Future Enhancements (Phase 2+)
-
-See [FRONTEND_PLAN.md](../docs/FRONTEND_PLAN.md) for planned features:
-- Transaction history
-- Enhanced statistics
-- Settings/account page
-- Analytics dashboard review
-- Progressive Web App (PWA)
-- Push notifications
-- Dark mode
-- Accessibility improvements
-
 ## Troubleshooting
 
 ### Backend not connecting
@@ -226,5 +190,3 @@ For production deployment:
 4. Ensure HTTPS for JWT token security
 5. Configure backend CORS for your frontend domain with credentials support
 6. Ensure cookie SameSite and Secure settings are properly configured for production
-
-See [FRONTEND_PLAN.md](../docs/FRONTEND_PLAN.md) for detailed deployment guidance.

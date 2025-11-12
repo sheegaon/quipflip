@@ -1,6 +1,11 @@
-<svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="20" cy="20" r="19" fill="#EAF7F4" />
-  <path d="M18 12C21.866 12 25 15.134 25 19C25 22.866 21.866 26 18 26C14.134 26 11 22.866 11 19C11 15.134 14.134 12 18 12Z" stroke="#0B2137" stroke-width="2" stroke-linecap="round" />
-  <path d="M24 24L28.2426 28.2426C28.6332 28.6332 28.6332 29.2664 28.2426 29.6569C27.8521 30.0474 27.2189 30.0474 26.8284 29.6569L22.5858 25.4142" stroke="#0B2137" stroke-width="2" stroke-linecap="round" />
-  <circle cx="18" cy="19" r="2" fill="#FF9A3D" />
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+     viewBox="0 0 24 24" role="img" aria-label="Empty">
+  <!-- tray base -->
+  <rect x="3" y="14" width="18" height="6" rx="2" fill="#0E6F6A"/>
+  <!-- tray cutout -->
+  <rect x="6" y="15" width="12" height="3" rx="1.5" fill="#FFF7EA" opacity=".85"/>
+  <!-- card (placeholder content) -->
+  <rect x="6" y="4" width="12" height="8" rx="2" fill="#10B5A4" opacity=".35"/>
+  <!-- sparkle -->
+  <path d="M18.5 6.5l.7 1.3 1.3.7-1.3.7-.7 1.3-.7-1.3-1.3-.7 1.3-.7z" fill="#FFC857"/>
 </svg>
