@@ -8,7 +8,7 @@ review events and lifecycle information.
 """
 from datetime import datetime, UTC
 from uuid import UUID
-from sqlalchemy import DateTime, String, Text
+from sqlalchemy import DateTime, String, Text, Index
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.database import Base
@@ -32,4 +32,8 @@ class UserActivity(Base):
         DateTime(timezone=True),
         nullable=False,
         default=lambda: datetime.now(UTC)
+    )
+
+    __table_args__ = (
+        Index('ix_user_activity_last_activity', 'last_activity', postgresql_using='brin'),
     )

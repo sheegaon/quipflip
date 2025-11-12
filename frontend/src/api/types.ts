@@ -688,6 +688,8 @@ export interface OnlineUser {
   last_action_category: string;
   last_activity: string;
   time_ago: string;
+  balance: number;
+  created_at: string;
 }
 
 export interface OnlineUsersResponse {

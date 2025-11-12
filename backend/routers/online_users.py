@@ -179,17 +179,18 @@ async def get_online_users(db: AsyncSession) -> List[OnlineUser]:
     cutoff_time = datetime.now(UTC) - timedelta(minutes=30)
 
     result = await db.execute(
-        select(UserActivity)
+        select(UserActivity, Player.balance, Player.created_at)
+        .join(Player, UserActivity.player_id == Player.player_id)
         .where(UserActivity.last_activity >= cutoff_time)
         .order_by(UserActivity.last_activity.desc())
     )
-    activities = result.scalars().all()
+    rows = result.all()
 
     # Capture current time once for consistent calculations
     now = datetime.now(UTC)
 
     online_users = []
-    for activity in activities:
+    for activity, balance, created_at in rows:
         # Calculate time ago
         time_diff = now - activity.last_activity
         seconds = int(time_diff.total_seconds())
@@ -210,6 +211,8 @@ async def get_online_users(db: AsyncSession) -> List[OnlineUser]:
                 last_action_category=activity.last_action_category,
                 last_activity=activity.last_activity,
                 time_ago=time_ago,
+                balance=balance,
+                created_at=created_at,
             )
         )
 

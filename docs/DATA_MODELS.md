@@ -352,8 +352,9 @@
 - `last_action_path` (text) - API endpoint path of last action
 - `last_activity` (timestamp with timezone) - UTC timestamp of last activity
 - Indexes: `player_id`, `last_activity`
+  - `last_activity`: **BRIN index on PostgreSQL** (Block Range Index, optimal for monotonically increasing timestamps, space-efficient) / **B-tree index on SQLite** (for local development)
 - Relationships: Implicitly references `player` (not a formal foreign key relationship to avoid cascading issues)
-- Note: Tracks real-time user online status for "Who's Online" feature. Distinct from phraseset_activity which logs historical review events. Records updated on each authenticated API call. Users shown as "online" if `last_activity` is within last 30 minutes.
+- Note: Tracks real-time user online status for "Who's Online" feature. Distinct from phraseset_activity which logs historical review events. Records updated on each authenticated API call. Users shown as "online" if `last_activity` is within last 30 minutes. The index on `last_activity` provides efficient querying for the 30-minute activity window and enables fast sorting for the online users list.
 
 ---
 
