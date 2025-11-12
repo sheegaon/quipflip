@@ -113,7 +113,7 @@ const TutorialWelcome: React.FC<TutorialWelcomeProps> = ({ onStart, onSkip }) =>
               </p>
             </div>
             <p className="tutorial-welcome-description">
-              Keep these safe—once you dismiss this screen, the tutorial will begin.
+              Keep these safe—once you dismiss this screen, you can still view these from the Settings and Statistics pages.
             </p>
           </div>
           <div className="tutorial-welcome-actions">
