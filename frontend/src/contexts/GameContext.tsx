@@ -6,6 +6,7 @@ import { getActionErrorMessage } from '../utils/errorMessages';
 import { gameContextLogger } from '../utils/logger';
 import { detectUserSession, associateVisitorWithPlayer } from '../services/sessionDetection';
 import { SessionState } from '../types/session';
+import { GUEST_CREDENTIALS_KEY } from '../utils/storageKeys';
 import type {
   Player,
   ActiveRound,
@@ -134,7 +135,7 @@ export const GameProvider: React.FC<{
             gameContextLogger.info('✅ Guest account created:', { username: guestResponse.username });
 
             // Store guest credentials temporarily for display
-            localStorage.setItem('quipflip_guest_credentials', JSON.stringify({
+            localStorage.setItem(GUEST_CREDENTIALS_KEY, JSON.stringify({
               email: guestResponse.email,
               password: guestResponse.password,
               timestamp: Date.now()

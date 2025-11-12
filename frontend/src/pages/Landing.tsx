@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import apiClient, { extractErrorMessage } from '../api/client';
 import { landingLogger } from '../utils/logger';
+import { GUEST_CREDENTIALS_KEY } from '../utils/storageKeys';
 
 export const Landing: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -162,8 +163,8 @@ export const Landing: React.FC = () => {
         setGuestCredentials({ email: response.email, password: response.password });
       }
 
-      // Store guest credentials temporarily for tutorial display
-      localStorage.setItem('quipflip_guest_credentials', JSON.stringify({
+      // Store guest credentials temporarily for overlay display
+      localStorage.setItem(GUEST_CREDENTIALS_KEY, JSON.stringify({
         email: response.email,
         password: response.password,
         timestamp: Date.now()

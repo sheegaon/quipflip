@@ -95,6 +95,17 @@ const AppRoutes: React.FC = () => {
     trackPageView(`${location.pathname}${location.search}`);
   }, [location.pathname, location.search]);
 
+  // Show loading screen while initializing session
+  const isInitializing = state.sessionState === 'checking';
+
+  if (isInitializing) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-quip-navy/5">
+        <span className="text-lg font-semibold text-quip-navy">Loading...</span>
+      </div>
+    );
+  }
+
   return (
     <>
       <OfflineBanner />

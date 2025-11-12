@@ -1,6 +1,7 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { getContextualErrorMessage, getActionErrorMessage } from '../utils/errorMessages';
 import { offlineQueue, shouldQueueAction } from '../utils/offlineQueue';
+import { USERNAME_STORAGE_KEY } from '../utils/storageKeys';
 import type {
   Player,
   CreatePlayerResponse,
@@ -90,8 +91,6 @@ const extractErrorMessage = (error: unknown, action?: string): string => {
   const contextualError = getContextualErrorMessage(error);
   return contextualError.message;
 };
-
-const USERNAME_STORAGE_KEY = 'quipflip_username';
 
 // Create axios instance with credential support for cookies
 // withCredentials: true enables sending/receiving HTTP-only cookies

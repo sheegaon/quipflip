@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
+import { GUEST_CREDENTIALS_KEY, GUEST_CREDENTIALS_SHOWN_KEY } from '../utils/storageKeys';
 import './Tutorial/TutorialWelcome.css';
 
 interface GuestCredentials {
@@ -8,9 +9,6 @@ interface GuestCredentials {
   password: string;
   timestamp: number;
 }
-
-const CREDENTIALS_STORAGE_KEY = 'quipflip_guest_credentials';
-const CREDENTIALS_SHOWN_KEY = 'quipflip_guest_credentials_shown';
 
 const GuestCredentialsOverlay: React.FC = () => {
   const { state, actions } = useGame();
@@ -31,13 +29,13 @@ const GuestCredentialsOverlay: React.FC = () => {
     }
 
     // Check if we've already shown credentials for this session
-    const hasShown = sessionStorage.getItem(CREDENTIALS_SHOWN_KEY);
+    const hasShown = sessionStorage.getItem(GUEST_CREDENTIALS_SHOWN_KEY);
     if (hasShown) {
       return;
     }
 
     // Try to load credentials from localStorage
-    const stored = localStorage.getItem(CREDENTIALS_STORAGE_KEY);
+    const stored = localStorage.getItem(GUEST_CREDENTIALS_KEY);
     if (stored) {
       try {
         const parsed = JSON.parse(stored) as GuestCredentials;
@@ -48,21 +46,21 @@ const GuestCredentialsOverlay: React.FC = () => {
           return;
         } else {
           // Clean up old credentials
-          localStorage.removeItem(CREDENTIALS_STORAGE_KEY);
+          localStorage.removeItem(GUEST_CREDENTIALS_KEY);
         }
       } catch (e) {
         console.error('Failed to parse guest credentials', e);
-        localStorage.removeItem(CREDENTIALS_STORAGE_KEY);
+        localStorage.removeItem(GUEST_CREDENTIALS_KEY);
       }
     }
-  }, [player?.is_guest]);
+  }, [player]);
 
   const handleDismiss = () => {
     // Mark as shown for this session
-    sessionStorage.setItem(CREDENTIALS_SHOWN_KEY, 'true');
+    sessionStorage.setItem(GUEST_CREDENTIALS_SHOWN_KEY, 'true');
 
     // Clean up credentials from localStorage
-    localStorage.removeItem(CREDENTIALS_STORAGE_KEY);
+    localStorage.removeItem(GUEST_CREDENTIALS_KEY);
 
     setIsVisible(false);
     setGuestCredentials(null);
@@ -73,10 +71,10 @@ const GuestCredentialsOverlay: React.FC = () => {
       setIsLoggingOut(true);
 
       // Mark as shown to prevent re-display
-      sessionStorage.setItem(CREDENTIALS_SHOWN_KEY, 'true');
+      sessionStorage.setItem(GUEST_CREDENTIALS_SHOWN_KEY, 'true');
 
       // Clean up credentials
-      localStorage.removeItem(CREDENTIALS_STORAGE_KEY);
+      localStorage.removeItem(GUEST_CREDENTIALS_KEY);
 
       // Logout and navigate to landing
       await logout();
