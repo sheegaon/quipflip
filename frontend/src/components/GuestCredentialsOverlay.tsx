@@ -93,7 +93,12 @@ const GuestCredentialsOverlay: React.FC = () => {
     <div className="tutorial-welcome-overlay">
       <div className="tutorial-welcome-modal">
         <div className="tutorial-welcome-content">
-          <h1 className="tutorial-welcome-title">Your Guest Account</h1>
+          <div className="flex justify-center mb-6">
+            <img src="/quipflip_logo.png" alt="Quipflip Logo" className="h-16" />
+          </div>
+          <p className="tutorial-welcome-description mb-4">
+            Welcome to quipflip!
+          </p>
           <p className="tutorial-welcome-description">
             If you already have a Quipflip account, log out and log back in using your credentials.
           </p>
