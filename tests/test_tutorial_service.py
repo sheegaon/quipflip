@@ -101,3 +101,19 @@ async def test_tutorial_progress_steps(db_session, player_factory):
         else:
             assert status.tutorial_completed is False
             assert status.tutorial_completed_at is None
+
+
+@pytest.mark.asyncio
+async def test_rounds_guide_step(db_session, player_factory):
+    """Test that rounds_guide step works within VARCHAR(20) limit."""
+    player = await player_factory()
+
+    service = TutorialService(db_session)
+
+    # Renamed from 'completed_rounds_guide' (22 chars) to 'rounds_guide' (12 chars)
+    status = await service.update_tutorial_progress(player.player_id, "rounds_guide")
+
+    assert status.tutorial_progress == "rounds_guide"
+    assert status.tutorial_started_at is not None
+    assert status.tutorial_completed is False
+    assert status.tutorial_completed_at is None
