@@ -1,9 +1,9 @@
 {
   "meta": {
     "name": "Quipflip Brand Tokens",
-    "version": "2.1.0",
+    "version": "1.1.0",
     "updated": "2025-11-12",
-    "notes": "Colors synced 1:1 with tailwind.config.js; added quest-category colors and aliases."
+    "notes": "Colors synced 1:1 with tailwind.config.js."
   },
 
   "aliases": {
@@ -15,14 +15,7 @@
       "quip-orange-deep": "#E26A00",
       "quip-cream": "#FFF6EE",
       "quip-warm-ivory": "#FFF9F2",
-      "quip-navy": "#0B2137",
-      "quest-streak": "#FF9A3D",
-      "quest-quality": "#FF6B6B",
-      "quest-quality-dark": "#D64545",
-      "quest-quality-light": "#FF8A8A",
-      "quest-milestone": "#FFC857",
-      "quest-milestone-dark": "#C88200",
-      "quest-milestone-light": "#FFB347"
+      "quip-navy": "#0B2137"
     }
   },
 
@@ -131,11 +124,6 @@
       "warning": { "bg": "{palette.gold.50}",   "text": "{palette.ink.900}" },
       "error":   { "bg": "{palette.orange.50}", "text": "{palette.orange.700}" }
     },
-    "quest": {
-      "streak":    { "fill": "{aliases.tailwind.quest-streak}" },
-      "quality":   { "fill": "{palette.quality.base}", "light": "{palette.quality.light}", "dark": "{palette.quality.dark}" },
-      "milestone": { "fill": "{palette.gold.500}", "light": "{aliases.tailwind.quest-milestone-light}", "dark": "{aliases.tailwind.quest-milestone-dark}" }
-    }
   },
 
   "usage": {
