@@ -96,7 +96,7 @@ const GuestCredentialsOverlay: React.FC = () => {
           <div className="flex justify-center mb-2 md:mb-6">
             <img src="/quipflip_logo.png" alt="Quipflip Logo" className="h-16" />
           </div>
-          <h2 className="guest-welcome-description md:mb-4 mb-1">
+          <h2 className="sr-only">
             Welcome to Quipflip!
           </h2>
           <div className="guest-credentials bg-gradient-to-r from-quip-orange to-quip-turquoise text-white md:p-6 px-3 py-6 rounded-tile mb-6 shadow-lg">

@@ -20,6 +20,7 @@ import { AdminIcon } from './icons/AdminIcon';
 import { hasCompletedSurvey } from '../utils/betaSurvey';
 import { apiClient } from '../api/client';
 import { componentLogger } from '../utils/logger';
+import GuestLogoutWarning from './GuestLogoutWarning';
 
 export const Header: React.FC = () => {
   const { state, actions } = useGame();
@@ -163,81 +164,13 @@ export const Header: React.FC = () => {
 
   return (
     <>
-      {showGuestLogoutWarning && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 px-4 py-6">
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="guest-logout-title"
-            className="w-full max-w-xl bg-white rounded-tile shadow-tile-lg overflow-hidden"
-          >
-            <div className="p-6 space-y-6">
-              <div className="space-y-2">
-                <h2 id="guest-logout-title" className="text-2xl font-bold text-quip-navy">
-                  Save Your Guest Login
-                </h2>
-                <p className="text-sm text-quip-navy opacity-80">
-                  You&apos;ll need these details to sign back in after logging out. Keep a copy before you continue.
-                </p>
-              </div>
-
-              <div className="guest-credentials bg-gradient-to-r from-quip-orange to-quip-turquoise text-white p-6 rounded-tile shadow-lg space-y-4">
-                <div>
-                  <p className="font-semibold text-lg">Guest Credentials</p>
-                  <p className="text-sm opacity-90">
-                    Enter this username/email and password in the Returning Player form on the login page.
-                  </p>
-                </div>
-                <div className="bg-white/15 p-4 rounded-lg backdrop-blur-sm space-y-2">
-                  <p className="my-1 font-mono text-sm">
-                    <strong>Username:</strong>{'  '}
-                    {player.username || username}
-                  </p>
-                  <p className="my-1 font-mono text-sm">
-                    <strong>Email:</strong>{' '}
-                    {guestCredentials?.email ?? 'Not available'}
-                  </p>
-                  {guestCredentials?.password ? (
-                    <p className="my-1 font-mono text-sm">
-                      <strong>Password:</strong> {guestCredentials.password}
-                    </p>
-                  ) : (
-                    <p className="my-1 text-sm">
-                      <strong>Password:</strong> QuipFlip
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-2 text-sm text-quip-navy">
-                <p className="font-semibold">To log back in later:</p>
-                <ol className="list-decimal pl-5 space-y-1">
-                  <li>Visit the Quipflip login page and choose the &quot;Returning Player&quot; option.</li>
-                  <li>Enter the username or email and password shown above.</li>
-                  <li>Continue playing—your progress and coins stay with your guest account.</li>
-                </ol>
-              </div>
-
-              <div className="flex flex-col gap-3 md:flex-row md:justify-end">
-                <button
-                  type="button"
-                  onClick={handleConfirmGuestLogout}
-                  className="w-full md:w-auto rounded-tile border border-quip-teal px-4 py-2 text-quip-teal transition-colors hover:bg-quip-teal hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-quip-teal"
-                >
-                  Log Out Now
-                </button>
-                <button
-                  type="button"
-                  onClick={handleDismissGuestLogout}
-                  className="w-full md:w-auto rounded-tile bg-gradient-to-r from-quip-orange to-quip-turquoise px-4 py-2 font-semibold text-white shadow-md transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-quip-turquoise"
-                >
-                  Stay Logged In
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <GuestLogoutWarning
+        isVisible={showGuestLogoutWarning}
+        username={player.username || username}
+        guestCredentials={guestCredentials}
+        onConfirmLogout={handleConfirmGuestLogout}
+        onDismiss={handleDismissGuestLogout}
+      />
       <div className="bg-white shadow-tile-sm relative z-50">
         <div className="max-w-6xl mx-auto px-1 py-0 md:px-4 md:py-1.5">
         <div className="flex justify-between items-center">
