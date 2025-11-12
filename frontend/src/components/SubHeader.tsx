@@ -101,7 +101,10 @@ export const SubHeader: React.FC = () => {
               aria-label={resultsLabel}
             >
               <span>{unviewedCount}</span>
-              <ResultsIcon className={`h-5 w-5 md:h-7 md:w-7 ${unviewedCount > 0 ? 'trophy-pulse' : ''}`} />
+              <ResultsIcon
+                className={`h-5 w-5 md:h-7 md:w-7 ${unviewedCount > 0 ? 'trophy-pulse' : ''}`}
+                variant={unviewedCount > 0 ? 'orange' : 'teal'}
+              />
             </button>
           )}
 

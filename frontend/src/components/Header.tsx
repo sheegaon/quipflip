@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { useNavigationHistory } from '../contexts/NavigationHistoryContext';
 import { useTutorial } from '../contexts/TutorialContext';
+import { useHeaderIndicators } from '../hooks/useHeaderIndicators';
 import { BalanceFlipper } from './BalanceFlipper';
 import { SubHeader } from './SubHeader';
 import { HomeIcon } from './icons/HomeIcon';
@@ -30,6 +31,7 @@ export const Header: React.FC = () => {
   const location = useLocation();
   const { goBack } = useNavigationHistory();
   const { status: tutorialStatus } = useTutorial();
+  const { unviewedCount } = useHeaderIndicators();
 
   const [showGuestLogoutWarning, setShowGuestLogoutWarning] = React.useState(false);
   const [guestCredentials, setGuestCredentials] = React.useState<{ email: string | null; password: string | null } | null>(null);
@@ -235,7 +237,10 @@ export const Header: React.FC = () => {
                     onClick={() => handleNavigate('/results')}
                     className="w-full flex items-center gap-3 px-4 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
                   >
-                    <ResultsIcon className="h-5 w-5" />
+                    <ResultsIcon
+                      className="h-5 w-5"
+                      variant={unviewedCount > 0 ? 'orange' : 'teal'}
+                    />
                     <span className="font-semibold">Results</span>
                   </button>
                   <button
