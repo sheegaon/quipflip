@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { GUEST_CREDENTIALS_KEY, GUEST_CREDENTIALS_SHOWN_KEY } from '../utils/storageKeys';
-import './Tutorial/TutorialWelcome.css';
+import './GuestCredentialsOverlay.css';
 
 interface GuestCredentials {
   email: string;
@@ -90,28 +90,25 @@ const GuestCredentialsOverlay: React.FC = () => {
   }
 
   return (
-    <div className="tutorial-welcome-overlay">
-      <div className="tutorial-welcome-modal">
-        <div className="tutorial-welcome-content">
-          <div className="flex justify-center mb-6">
+    <div className="guest-welcome-overlay">
+      <div className="guest-welcome-modal">
+        <div className="guest-welcome-content">
+          <div className="flex justify-center mb-2 md:mb-6">
             <img src="/quipflip_logo.png" alt="Quipflip Logo" className="h-16" />
           </div>
-          <p className="tutorial-welcome-description mb-4">
-            Welcome to quipflip!
-          </p>
-          <p className="tutorial-welcome-description">
-            If you already have a Quipflip account, log out and log back in using your credentials.
-          </p>
-          <div className="tutorial-guest-credentials bg-gradient-to-r from-quip-orange to-quip-turquoise text-white p-6 rounded-tile mb-6 shadow-lg">
-            <p className="font-bold mb-3 text-lg">Your Guest Account Credentials</p>
-            <div className="bg-white bg-opacity-20 p-4 rounded-lg mb-3 backdrop-blur-sm">
-              <p className="my-1 font-mono text-sm">
+          <h2 className="guest-welcome-description md:mb-4 mb-1">
+            Welcome to Quipflip!
+          </h2>
+          <div className="guest-credentials bg-gradient-to-r from-quip-orange to-quip-turquoise text-white p-6 rounded-tile mb-6 shadow-lg">
+            <p className="font-bold md:mb-3 mb-2 text-lg">Guest Account Credentials</p>
+            <div className="bg-white bg-opacity-20 md:p-4 p-2 rounded-lg mb-3 backdrop-blur-sm">
+              <p className="my-0 md:my-1 font-mono text-sm">
                 <strong>Username:</strong> {player.username}
               </p>
-              <p className="my-1 font-mono text-sm">
+              <p className="my-0 md:my-1 font-mono text-sm">
                 <strong>Email:</strong> {guestCredentials.email}
               </p>
-              <p className="my-1 font-mono text-sm">
+              <p className="my-0 md:my-1 font-mono text-sm">
                 <strong>Password:</strong> {guestCredentials.password}
               </p>
             </div>
@@ -119,22 +116,19 @@ const GuestCredentialsOverlay: React.FC = () => {
               Save these credentials to log in later! You can upgrade to a full account anytime in Settings.
             </p>
           </div>
-          <p className="tutorial-welcome-description">
-            You can view these again from the Settings or Statistics pages.
-          </p>
         </div>
-        <div className="tutorial-welcome-actions">
+        <div className="guest-welcome-actions">
           <button
             onClick={handleExistingUser}
             disabled={isLoggingOut}
-            className="tutorial-welcome-btn tutorial-welcome-btn-secondary"
+            className="guest-welcome-btn bg-quip-cream text-quip-navy hover:bg-quip-orange/20 hover:shadow-tile-sm transition-all"
           >
             {isLoggingOut ? 'Logging out...' : 'Existing User'}
           </button>
           <button
             onClick={handleDismiss}
             disabled={isLoggingOut}
-            className="tutorial-welcome-btn tutorial-welcome-btn-primary"
+            className="guest-welcome-btn bg-quip-navy text-white hover:bg-quip-navy/90 hover:shadow-tile-sm transition-all"
           >
             Dismiss
           </button>
