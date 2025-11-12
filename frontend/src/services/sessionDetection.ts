@@ -52,8 +52,17 @@ export async function detectUserSession(
       player: balanceResponse,
     };
   } catch (error: any) {
+    // Handle request cancellation silently
+    if (error?.name === 'CanceledError' || error?.code === 'ERR_CANCELED') {
+      logger.debug('Session detection request canceled');
+      throw error; // Re-throw to let caller handle
+    }
+
+    // Check for 401 status - can be in error.response.status or error.status (after axios normalization)
+    const statusCode = error?.response?.status || error?.status;
+
     // If we get a network error or other non-auth error, still check visitor status
-    if (error?.response?.status !== 401) {
+    if (statusCode !== 401) {
       logger.warn('Session detection failed with non-auth error:', error);
 
       // Check if this is a returning visitor based on pre-existing visitor ID
@@ -71,6 +80,9 @@ export async function detectUserSession(
         visitorId,
       };
     }
+
+    // Got expected 401 - user not authenticated, this is normal
+    logger.debug('User not authenticated (401), checking visitor status');
 
     // Step 2: Got 401, check if we have stored credentials that suggest we should try refresh
     const storedUsername = apiClient.getStoredUsername();

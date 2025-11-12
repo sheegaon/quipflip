@@ -159,26 +159,33 @@ api.interceptors.response.use(
     return response;
   },
   async (error: AxiosError<ApiError>) => {
-    // Don't log or process canceled requests - they're intentional (e.g., component unmount, StrictMode double mount)
-    if (error.code === 'ERR_CANCELED' || error.name === 'CanceledError') {
-      return Promise.reject(error);
-    }
-
     // Extend config type to include our custom _retry flag
     interface RetryableConfig extends InternalAxiosRequestConfig {
       _retry?: boolean;
     }
     const originalRequest = error.config as RetryableConfig | undefined;
 
+    // Don't log or process canceled requests - they're intentional (e.g., component unmount, StrictMode double mount)
+    const isCanceled =
+      error.code === 'ERR_CANCELED' ||
+      error.name === 'CanceledError' ||
+      error.message === 'canceled' ||
+      error.message?.includes('cancel');
+
+    if (isCanceled) {
+      return Promise.reject(error);
+    }
+
     if (error.config) {
       const method = error.config.method?.toUpperCase() || 'UNKNOWN';
       const endpoint = error.config.url || '';
       const errorMessage = error.response?.data?.detail || error.message;
 
-      // Don't log 401 errors for beta-survey status endpoint - expected when not authenticated
+      // Don't log 401 errors for endpoints where it's expected (session detection, beta-survey)
       const is401OnSurveyStatus = error.response?.status === 401 && endpoint === '/feedback/beta-survey/status';
+      const is401OnBalance = error.response?.status === 401 && endpoint === '/player/balance';
 
-      if (!is401OnSurveyStatus) {
+      if (!is401OnSurveyStatus && !is401OnBalance) {
         logApi(method, endpoint, 'error', errorMessage);
       }
     }

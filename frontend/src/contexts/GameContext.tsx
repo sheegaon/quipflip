@@ -94,6 +94,9 @@ export const GameProvider: React.FC<{
   }, [pendingResults, onPendingResultsChange]);
 
   // Initialize session on mount using session detection
+  // NOTE: In development, React StrictMode will call this effect twice,
+  // leading to duplicate session detection calls. This is intentional React behavior.
+  // We use AbortController to cancel the first call when the component remounts.
   useEffect(() => {
     const controller = new AbortController();
     let isMounted = true;
