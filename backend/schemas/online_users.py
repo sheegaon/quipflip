@@ -21,6 +21,8 @@ class OnlineUser(BaseModel):
     last_action_category: str
     last_activity: datetime
     time_ago: str
+    balance: int
+    created_at: datetime
 
 
 class OnlineUsersResponse(BaseModel):

@@ -9,6 +9,7 @@
  */
 import { useState, useEffect, useRef } from 'react';
 import { Header } from '../components/Header';
+import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import type { OnlineUser } from '../api/types';
 
 const OnlineUsers: React.FC = () => {
@@ -186,7 +187,7 @@ const OnlineUsers: React.FC = () => {
   const getActionColor = (category: string): string => {
     const categoryColorMap: Record<string, string> = {
       'round_prompt': 'bg-quip-orange',
-      'round_copy': 'bg-quip-coral', 
+      'round_copy': 'bg-quip-coral',
       'round_vote': 'bg-quip-teal',
       'round_other': 'bg-quip-navy',
       'stats': 'bg-blue-500',
@@ -197,6 +198,16 @@ const OnlineUsers: React.FC = () => {
       'other': 'bg-gray-400',
     };
     return categoryColorMap[category] || 'bg-gray-400';
+  };
+
+  // Calculate account age in days (rounded up)
+  const getAccountAgeDays = (createdAt: string): number => {
+    const now = new Date();
+    const created = new Date(createdAt);
+    const diffMs = now.getTime() - created.getTime();
+    const diffDays = diffMs / (1000 * 60 * 60 * 24);
+    // Round up, but ensure brand new accounts show at least 1
+    return Math.max(1, Math.ceil(diffDays));
   };
 
   if (loading) {
@@ -273,6 +284,13 @@ const OnlineUsers: React.FC = () => {
                           {user.last_action}
                         </span>
                         <span className="text-sm text-quip-teal">{user.time_ago}</span>
+                      </div>
+                      <div className="flex items-center gap-3 mt-2">
+                        <div className="flex items-center gap-1">
+                          <CurrencyDisplay amount={user.balance} iconClassName="w-3 h-3" textClassName="text-sm text-quip-navy" />
+                        </div>
+                        <span className="text-sm text-gray-500">•</span>
+                        <span className="text-sm text-gray-600">{getAccountAgeDays(user.created_at)} {getAccountAgeDays(user.created_at) === 1 ? 'day' : 'days'} old</span>
                       </div>
                     </div>
                   </div>
