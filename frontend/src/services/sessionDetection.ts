@@ -4,8 +4,11 @@
  */
 
 import { apiClient } from '../api/client';
-import { getOrCreateVisitorId, isReturningVisitor } from '../utils/visitorId';
+import { getOrCreateVisitorId, getVisitorId } from '../utils/visitorId';
 import { SessionState, SessionDetectionResult } from '../types/session';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger('SessionDetection');
 
 /**
  * Detect user session state on app load
@@ -24,7 +27,11 @@ import { SessionState, SessionDetectionResult } from '../types/session';
 export async function detectUserSession(
   signal?: AbortSignal
 ): Promise<SessionDetectionResult> {
-  // Always ensure visitor ID exists (creates if not present)
+  // Check if visitor ID exists BEFORE creating one to distinguish new vs returning visitors
+  const existingVisitorId = getVisitorId();
+  const isReturningVisitor = existingVisitorId !== null;
+
+  // Now ensure visitor ID exists (creates if not present)
   const visitorId = getOrCreateVisitorId();
 
   try {
@@ -32,20 +39,25 @@ export async function detectUserSession(
     const balanceResponse = await apiClient.getBalance(signal);
 
     // Success! User is authenticated
+    // Ensure username is persisted to localStorage for future session checks
+    if (balanceResponse.username) {
+      apiClient.setSession(balanceResponse.username);
+    }
+
     return {
       state: SessionState.RETURNING_USER,
       isAuthenticated: true,
-      username: apiClient.getStoredUsername() || undefined,
+      username: balanceResponse.username || apiClient.getStoredUsername() || undefined,
       visitorId,
       player: balanceResponse,
     };
   } catch (error: any) {
     // If we get a network error or other non-auth error, still check visitor status
     if (error?.response?.status !== 401) {
-      console.warn('Session detection failed with non-auth error:', error);
+      logger.warn('Session detection failed with non-auth error:', error);
 
-      // Check if we have a returning visitor
-      if (isReturningVisitor()) {
+      // Check if this is a returning visitor based on pre-existing visitor ID
+      if (isReturningVisitor) {
         return {
           state: SessionState.RETURNING_VISITOR,
           isAuthenticated: false,
@@ -71,23 +83,28 @@ export async function detectUserSession(
         // Step 4: Retry balance check
         const retryBalanceResponse = await apiClient.getBalance(signal);
 
-        // Refresh succeeded!
+        // Refresh succeeded! Use username from response if available, fallback to stored
+        const username = retryBalanceResponse.username || storedUsername;
+        if (username) {
+          apiClient.setSession(username);
+        }
+
         return {
           state: SessionState.RETURNING_USER,
           isAuthenticated: true,
-          username: storedUsername,
+          username,
           visitorId,
           player: retryBalanceResponse,
         };
       } catch (refreshError) {
         // Refresh failed, clear stale credentials
-        console.info('Token refresh failed, clearing stale session');
+        logger.info('Token refresh failed, clearing stale session');
         apiClient.clearSession();
       }
     }
 
     // Step 5: Not authenticated - determine if returning visitor or new
-    if (isReturningVisitor()) {
+    if (isReturningVisitor) {
       return {
         state: SessionState.RETURNING_VISITOR,
         isAuthenticated: false,
@@ -138,7 +155,7 @@ export function associateVisitorWithPlayer(visitorId: string, username: string):
     associatedAt: new Date().toISOString(),
   }));
 
-  console.info(`Associated visitor ${visitorId} with player ${username}`);
+  logger.info(`Associated visitor ${visitorId} with player ${username}`);
 }
 
 /**
@@ -152,7 +169,8 @@ export function getVisitorAssociation(username: string): { visitorId: string; as
 
   try {
     return JSON.parse(data);
-  } catch {
+  } catch (error) {
+    logger.error(`Failed to parse visitor association for ${username}:`, error);
     return null;
   }
 }

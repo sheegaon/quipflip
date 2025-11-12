@@ -9,8 +9,16 @@ const COOKIE_MAX_AGE = 365 * 24 * 60 * 60; // 1 year in seconds
 
 /**
  * Generate a UUID v4
+ * Uses crypto.randomUUID() for cryptographic security in modern browsers
+ * Falls back to Math.random() implementation for legacy support
  */
 function generateUUID(): string {
+  // Use the standard crypto.randomUUID() if available (modern browsers, HTTPS)
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+
+  // Fallback for older browsers or non-secure contexts
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0;
     const v = c === 'x' ? r : (r & 0x3) | 0x8;
