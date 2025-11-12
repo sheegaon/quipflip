@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
-import { useTutorial } from '../contexts/TutorialContext';
 import apiClient, { extractErrorMessage } from '../api/client';
 import { Timer } from '../components/Timer';
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -16,7 +15,6 @@ export const VoteRound: React.FC = () => {
   const { state, actions } = useGame();
   const { activeRound, roundAvailability } = state;
   const { refreshDashboard } = actions;
-  const { currentStep, completeTutorial } = useTutorial();
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -53,15 +51,12 @@ export const VoteRound: React.FC = () => {
       // Add a small delay to prevent race conditions during navigation
       const timeoutId = setTimeout(() => {
         // Redirect to dashboard instead of starting new rounds
-        if (currentStep === 'vote_round') {
-          completeTutorial();
-        }
         navigate('/dashboard');
       }, 100);
 
       return () => clearTimeout(timeoutId);
     }
-  }, [activeRound, navigate, headingMessage, voteResult, currentStep, completeTutorial]);
+  }, [activeRound, navigate, headingMessage, voteResult]);
 
   useEffect(() => {
     if (!roundData) {
@@ -98,10 +93,6 @@ export const VoteRound: React.FC = () => {
         roundId: roundData.round_id,
         correct: result.correct,
       });
-
-      if (currentStep === 'vote_round') {
-        completeTutorial();
-      }
 
       // Refresh dashboard to clear the active round state
       try {

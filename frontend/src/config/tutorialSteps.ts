@@ -38,9 +38,8 @@ Let's take a quick tour to show you how to play and earn some flipcoins!`,
 
 Let's start with a **Prompt Round** where you'll create a creative fill-in-the-blank challenge.`,
     target: '.tutorial-dashboard',
-    position: 'top',
     nextStep: 'prompt_round',
-    showSkip: true,
+    showSkip: false,
     showBack: true,
   },
 
@@ -58,7 +57,7 @@ Then other players will try to write similar quips based on yours, but *without 
     target: '.tutorial-prompt-round',
     position: 'bottom',
     nextStep: 'copy_round',
-    showSkip: true,
+    showSkip: false,
     showBack: true,
   },
 
@@ -74,9 +73,8 @@ Voters will try to identify the original, so the better you match the style, the
       // **Click "Next" to start a Copy Round.** The tutorial will resume when you finish.
     target: '.tutorial-copy-round',
     position: 'bottom',
-    action: 'wait',
     nextStep: 'vote_round',
-    showSkip: true,
+    showSkip: false,
     showBack: true,
   },
 
@@ -92,9 +90,8 @@ Your goal is to identify which phrase was the original. Choose carefully - corre
       // **Make your vote now to complete the tutorial.**
     target: '.tutorial-vote-round',
     position: 'top',
-    action: 'wait',
     nextStep: 'completed_rounds_guide',
-    showSkip: true,
+    showSkip: false,
     showBack: true,
   },
 
@@ -103,12 +100,11 @@ Your goal is to identify which phrase was the original. Choose carefully - corre
     title: 'Explore Past Rounds',
     message: `**Not sure you fully understand the game yet?**
 
-You can click the {{icon:completed}} in the header anytime to view completed rounds and observe how actual past games played out.
+View completed rounds and observe how actual past games played out. Click the {{icon:completed}} in the header, or try practice mode by toggling the slider at the bottom of the dashboard.
 
 This is a great way to learn strategies and see examples of creative quips, convincing copies, and tricky votes!`,
     target: '.tutorial-completed-icon',
     position: 'bottom',
-    action: 'wait',
     // No nextStep - this is the final tutorial screen, shows "End Tutorial" button
     showSkip: false,
     showBack: false,

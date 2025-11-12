@@ -6,6 +6,7 @@ import { getActionErrorMessage } from '../utils/errorMessages';
 import { gameContextLogger } from '../utils/logger';
 import { detectUserSession, associateVisitorWithPlayer } from '../services/sessionDetection';
 import { SessionState } from '../types/session';
+import { GUEST_CREDENTIALS_KEY } from '../utils/storageKeys';
 import type {
   Player,
   ActiveRound,
@@ -93,6 +94,9 @@ export const GameProvider: React.FC<{
   }, [pendingResults, onPendingResultsChange]);
 
   // Initialize session on mount using session detection
+  // NOTE: In development, React StrictMode will call this effect twice,
+  // leading to duplicate session detection calls. This is intentional React behavior.
+  // We use AbortController to cancel the first call when the component remounts.
   useEffect(() => {
     const controller = new AbortController();
     let isMounted = true;
@@ -123,8 +127,51 @@ export const GameProvider: React.FC<{
             setPlayer(result.player);
           }
         } else {
-          setUsername(null);
-          setPlayer(null);
+          // User is not authenticated - auto-create guest account
+          gameContextLogger.debug('🎭 User not authenticated, creating guest account');
+
+          try {
+            const guestResponse = await apiClient.createGuest();
+
+            if (!isMounted) return;
+
+            gameContextLogger.info('✅ Guest account created:', { username: guestResponse.username });
+
+            // Store guest credentials temporarily for display
+            localStorage.setItem(GUEST_CREDENTIALS_KEY, JSON.stringify({
+              email: guestResponse.email,
+              password: guestResponse.password,
+              timestamp: Date.now()
+            }));
+
+            // Set session with guest account
+            apiClient.setSession(guestResponse.username);
+            setUsername(guestResponse.username);
+            setIsAuthenticated(true);
+            setSessionState(SessionState.RETURNING_USER);
+
+            // Associate visitor with guest account
+            if (result.visitorId) {
+              associateVisitorWithPlayer(result.visitorId, guestResponse.username);
+            }
+
+            // Fetch player data
+            const playerData = await apiClient.getBalance(controller.signal);
+            if (isMounted) {
+              setPlayer(playerData);
+            }
+          } catch (guestErr) {
+            if (controller.signal.aborted) return;
+
+            gameContextLogger.error('❌ Failed to create guest account:', guestErr);
+
+            // Fallback to unauthenticated state
+            if (isMounted) {
+              setUsername(null);
+              setPlayer(null);
+              setIsAuthenticated(false);
+            }
+          }
         }
       } catch (err) {
         if (controller.signal.aborted) {

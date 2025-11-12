@@ -47,7 +47,7 @@ class AIPhraseCache(Base):
     generation_model = Column(String(100), nullable=False)  # e.g., "gpt-5-nano"
 
     # Timestamps
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
 
     # Usage tracking
     used_for_backup_copy = Column(Boolean, default=False, nullable=False)

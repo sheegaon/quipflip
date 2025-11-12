@@ -15,6 +15,7 @@ from backend.models.player import Player
 from backend.models.round import Round
 from backend.models.phraseset import Phraseset
 from backend.models.ai_metric import AIMetric
+from backend.models.ai_phrase_cache import AIPhraseCache
 from backend.models.hint import Hint
 from backend.models.vote import Vote
 from backend.config import get_settings
@@ -144,17 +145,19 @@ class TestAICopyGeneration:
             self, mock_openai, db_session, mock_prompt_round
     ):
         """Should generate copy using OpenAI."""
-        mock_openai.return_value = "joyful celebration"
+        # Return 5 semicolon-delimited phrases as the AI service expects
+        mock_openai.return_value = "joyful celebration; festive greeting; happy wishes; merry occasion; cheerful day"
 
         service = AIService(db_session)
-        # Mock the phrase validator's validate_copy method to return success
+        # Mock the phrase validator's validate_copy method to return success for all phrases
         with patch.object(service.phrase_validator, 'validate_copy', return_value=(True, "")):
             result = await service.generate_copy_phrase(
                 original_phrase="happy birthday",
                 prompt_round=mock_prompt_round,
             )
 
-        assert result == "joyful celebration"
+        # Result should be one of the generated phrases
+        assert result in ["joyful celebration", "festive greeting", "happy wishes", "merry occasion", "cheerful day"]
         mock_openai.assert_called_once()
 
     @pytest.mark.asyncio
@@ -164,7 +167,8 @@ class TestAICopyGeneration:
             self, mock_gemini, db_session, mock_prompt_round, mock_validator
     ):
         """Should generate copy using Gemini."""
-        mock_gemini.return_value = "merry festivity"
+        # Return 5 semicolon-delimited phrases as the AI service expects
+        mock_gemini.return_value = "merry festivity; joyful party; happy times; festive cheer; celebration day"
         # Mock validate_copy as an async function
         mock_validator.validate_copy = AsyncMock(return_value=(True, ""))
 
@@ -182,7 +186,8 @@ class TestAICopyGeneration:
                 prompt_round=mock_prompt_round,
             )
 
-            assert result == "merry festivity"
+            # Result should be one of the generated phrases
+            assert result in ["merry festivity", "joyful party", "happy times", "festive cheer", "celebration day"]
             mock_gemini.assert_called_once()
 
     @pytest.mark.asyncio
@@ -273,7 +278,8 @@ class TestAIMetrics:
             self, mock_openai, db_session, mock_prompt_round
     ):
         """Should record metrics on successful operation."""
-        mock_openai.return_value = "joyful celebration"
+        # Return 5 semicolon-delimited phrases as the AI service expects
+        mock_openai.return_value = "joyful celebration; festive greeting; happy wishes; merry occasion; cheerful day"
 
         service = AIService(db_session)
         # Mock the phrase validator's validate_copy method to return success
@@ -283,9 +289,11 @@ class TestAIMetrics:
                 prompt_round=mock_prompt_round,
             )
 
-        # Check that metric was created (but not committed yet)
-        metrics = db_session.new
-        ai_metrics = [m for m in metrics if isinstance(m, AIMetric)]
+        # Metrics are flushed during generation, so query them from the database
+        result = await db_session.execute(
+            select(AIMetric).where(AIMetric.operation_type == "copy_generation")
+        )
+        ai_metrics = result.scalars().all()
         assert len(ai_metrics) == 1
 
         metric = ai_metrics[0]
@@ -368,72 +376,90 @@ class TestAIHintGeneration:
 
     @pytest.mark.asyncio
     @patch("backend.services.ai.openai_api.generate_copy")
-    async def test_generate_copy_hints_persists_record(
+    async def test_generate_copy_hints_returns_cached_phrases(
             self,
             mock_openai,
             db_session,
             mock_validator,
     ):
-        """Should generate, validate, and persist three unique hints."""
+        """Should return hints from the phrase cache."""
         prompt_round = await self._create_prompt_round(db_session)
-        mock_openai.side_effect = [
-            "Warm glow",
-            "Festive cheer",
-            "Joyful toast",
-        ]
-        mock_validator.validate_copy.side_effect = [(True, "")] * len(mock_openai.side_effect)
+        # Mock returns 5 semicolon-delimited phrases, and we'll call it once
+        mock_openai.return_value = "Warm glow; Festive cheer; Joyful toast; Happy vibes; Merry times"
+
+        # Mock validator to validate all phrases successfully
+        mock_validator.validate_copy = AsyncMock(return_value=(True, ""))
 
         service = AIService(db_session)
-        hints = await service.generate_copy_hints(prompt_round)
+        hints = await service.get_hints_from_cache(prompt_round, count=3)
 
-        assert hints == ["WARM GLOW", "FESTIVE CHEER", "JOYFUL TOAST"]
+        # Should get 3 hints from the cache (not uppercased - that happens in the UI)
+        assert len(hints) == 3
+        # All hints should be from the generated phrases (in original case)
+        possible_hints = {"Warm glow", "Festive cheer", "Joyful toast", "Happy vibes", "Merry times"}
+        for hint in hints:
+            assert hint in possible_hints
 
+        # Verify the phrase cache was created and marked as used for hints
         result = await db_session.execute(
-            select(Hint).where(Hint.prompt_round_id == prompt_round.round_id)
+            select(AIPhraseCache).where(AIPhraseCache.prompt_round_id == prompt_round.round_id)
         )
-        stored_hint = result.scalars().one()
-        assert stored_hint.hint_phrases == hints
-        assert stored_hint.generation_provider == service.provider
+        cache = result.scalar_one()
+        assert cache.used_for_hints is True
+        assert cache.generation_provider == service.provider
 
-        metrics = [m for m in db_session.new if isinstance(m, AIMetric)]
-        assert len(metrics) == 3
-        assert all(metric.operation_type == "hint_generation" for metric in metrics)
-        assert all(metric.success for metric in metrics)
+        # Should have 1 metric for the cache generation
+        result = await db_session.execute(
+            select(AIMetric).where(AIMetric.operation_type == "copy_generation")
+        )
+        metrics = result.scalars().all()
+        assert len(metrics) == 1
+        assert metrics[0].success is True
 
     @pytest.mark.asyncio
     @patch("backend.services.ai.openai_api.generate_copy")
-    async def test_generate_copy_hints_skips_duplicates(
+    async def test_get_hints_reuses_cache(
             self,
             mock_openai,
             db_session,
             mock_validator,
     ):
-        """Should retry when duplicate hints are produced."""
+        """Should reuse existing phrase cache when called multiple times."""
         prompt_round = await self._create_prompt_round(db_session)
-        mock_openai.side_effect = [
-            "Repeat me",
-            "Repeat me",
-            "Fresh angle",
-            "New spark",
-        ]
-        mock_validator.validate_copy.side_effect = [(True, "")] * len(mock_openai.side_effect)
+        # Return 5 unique phrases - the cache will store them all and hints will use 3
+        mock_openai.return_value = "Unique one; Unique two; Unique three; Unique four; Unique five"
+
+        # Mock validator to validate all phrases successfully
+        mock_validator.validate_copy = AsyncMock(return_value=(True, ""))
 
         service = AIService(db_session)
-        hints = await service.generate_copy_hints(prompt_round, count=3)
 
-        assert hints == ["REPEAT ME", "FRESH ANGLE", "NEW SPARK"]
-        assert mock_openai.await_count == 4
+        # First call creates the cache
+        hints1 = await service.get_hints_from_cache(prompt_round, count=3)
+        assert len(hints1) == 3
+        assert len(set(hints1)) == 3
+        assert mock_openai.await_count == 1
 
+        # Second call reuses the cache (doesn't call generate_copy again)
+        hints2 = await service.get_hints_from_cache(prompt_round, count=3)
+        assert len(hints2) == 3
+        assert hints1 == hints2  # Same hints returned
+        assert mock_openai.await_count == 1  # Still only 1 call
+
+        # Verify only one cache entry exists
         result = await db_session.execute(
-            select(Hint).where(Hint.prompt_round_id == prompt_round.round_id)
+            select(AIPhraseCache).where(AIPhraseCache.prompt_round_id == prompt_round.round_id)
         )
-        stored_hint = result.scalars().one()
-        assert stored_hint.hint_phrases == hints
+        caches = result.scalars().all()
+        assert len(caches) == 1
 
-        metrics = [m for m in db_session.new if isinstance(m, AIMetric)]
-        assert len(metrics) == 4
-        assert sum(1 for metric in metrics if metric.success) == 3
-        assert any(not metric.success for metric in metrics)
+        # Should have 1 metric for the cache generation (not 2)
+        result = await db_session.execute(
+            select(AIMetric).where(AIMetric.operation_type == "copy_generation")
+        )
+        metrics = result.scalars().all()
+        assert len(metrics) == 1
+        assert metrics[0].success is True
 
 
 class TestAIMetricsService:

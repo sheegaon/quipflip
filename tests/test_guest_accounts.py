@@ -250,7 +250,7 @@ class TestGuestCleanup:
             await db_session.execute(
                 update(Player)
                 .where(Player.player_id == UUID(guest_id))
-                .values(created_at=old_date)
+                .values(created_at=old_date, last_login_date=old_date)
             )
             await db_session.commit()
 

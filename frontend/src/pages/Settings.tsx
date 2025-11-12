@@ -408,12 +408,13 @@ const Settings: React.FC = () => {
               <li>Save your progress permanently</li>
               <li>Access your account from any device</li>
               <li>Never lose your Flipcoins and stats</li>
+              <li>Get higher rate limits for smoother gameplay</li>
             </ul>
             {upgradeError && <p className="text-red-600 mb-3">{upgradeError}</p>}
             {upgradeSuccess && <p className="text-green-600 mb-3">{upgradeSuccess}</p>}
             <form onSubmit={handleUpgradeSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="flex flex-col">
-                <label className="text-sm font-semibold text-quip-teal mb-2">Email Address</label>
+                <label className="text-sm font-semibold text-quip-teal mb-2">Email Address (no validation required)</label>
                 <input
                   type="email"
                   value={upgradeForm.email}

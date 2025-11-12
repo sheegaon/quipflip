@@ -10,6 +10,7 @@ import { trackPageView } from './utils/googleAnalytics';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { AppErrorFallback } from './components/ErrorFallback';
 import { OfflineBanner } from './components/OfflineBanner';
+import GuestCredentialsOverlay from './components/GuestCredentialsOverlay';
 
 // Suppress some logging messages
 if (typeof window !== 'undefined') {
@@ -94,10 +95,22 @@ const AppRoutes: React.FC = () => {
     trackPageView(`${location.pathname}${location.search}`);
   }, [location.pathname, location.search]);
 
+  // Show loading screen while initializing session
+  const isInitializing = state.sessionState === 'checking';
+
+  if (isInitializing) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-quip-navy/5">
+        <span className="text-lg font-semibold text-quip-navy">Loading...</span>
+      </div>
+    );
+  }
+
   return (
     <>
       <OfflineBanner />
       <ErrorNotification />
+      <GuestCredentialsOverlay />
       <TutorialOverlay />
       <Routes>
         <Route

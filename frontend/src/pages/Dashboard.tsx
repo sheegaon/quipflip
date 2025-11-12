@@ -108,23 +108,19 @@ export const Dashboard: React.FC = () => {
     }
   }, [activeRound]);
 
-  // Beta survey status with proper cleanup to prevent duplicate calls
-  const hasFetchedSurveyRef = useRef(false);
+  // Beta survey status with proper cleanup
+  // NOTE: In development, React StrictMode will cause this effect to run twice,
+  // leading to duplicate API calls. This is intentional React behavior to help catch bugs.
+  // In production, this won't happen. We use AbortController to cancel pending requests
+  // when the component unmounts/remounts.
   useEffect(() => {
     const playerId = player?.player_id;
 
     if (!playerId || !isAuthenticated) {
       setSurveyStatus(null);
       setShowSurveyPrompt(false);
-      hasFetchedSurveyRef.current = false;
       return;
     }
-
-    // Prevent duplicate calls in React StrictMode
-    if (hasFetchedSurveyRef.current) {
-      return;
-    }
-    hasFetchedSurveyRef.current = true;
 
     const controller = new AbortController();
 

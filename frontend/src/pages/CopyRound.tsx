@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
-import { useTutorial } from '../contexts/TutorialContext';
 import apiClient, { extractErrorMessage } from '../api/client';
 import { Timer } from '../components/Timer';
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -16,7 +15,6 @@ export const CopyRound: React.FC = () => {
   const { state, actions } = useGame();
   const { activeRound, roundAvailability, copyRoundHints } = state;
   const { flagCopyRound, refreshDashboard, fetchCopyHints } = actions;
-  const { currentStep, advanceStep } = useTutorial();
   const navigate = useNavigate();
   const [phrase, setPhrase] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -106,19 +104,13 @@ export const CopyRound: React.FC = () => {
 
       // Add a small delay to prevent race conditions during navigation
       const timeoutId = setTimeout(() => {
-        // Special case for tutorial
-        if (currentStep === 'copy_round') {
-          advanceStep('vote_round');
-          navigate('/dashboard');
-        } else {
-          // Redirect to dashboard instead of starting new rounds
-          navigate('/dashboard');
-        }
+        // Redirect to dashboard instead of starting new rounds
+        navigate('/dashboard');
       }, 100);
 
       return () => clearTimeout(timeoutId);
     }
-  }, [activeRound, currentStep, advanceStep, navigate, successMessage]);
+  }, [activeRound, navigate, successMessage]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -156,11 +148,6 @@ export const CopyRound: React.FC = () => {
           cost: response.second_copy_cost,
           promptRoundId: response.prompt_round_id,
         });
-      }
-
-      // Advance tutorial if in copy_round step
-      if (currentStep === 'copy_round') {
-        advanceStep('vote_round');
       }
 
       // Immediately refresh dashboard to clear the active round state

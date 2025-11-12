@@ -83,7 +83,7 @@ class TestUsernameProfanityValidation:
     def test_rejects_profanity_with_spaces(self):
         """Should reject profanity even with spaces."""
         assert is_username_profanity_free("fu ck") is False
-        assert is_username_profanity_free("shi tty") is False
+        assert is_username_profanity_free("da mn") is False
         assert is_username_profanity_free("bad ass") is False
 
     def test_accepts_clean_usernames(self):
