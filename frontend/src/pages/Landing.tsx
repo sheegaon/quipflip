@@ -189,7 +189,7 @@ export const Landing: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-quip-orange to-quip-turquoise flex items-center justify-center p-4 bg-pattern">
+    <div className="min-h-screen bg-gradient-to-br from-quip-orange to-quip-orange-deep flex items-center justify-center p-4 bg-pattern">
       <div className="max-w-md w-full tile-card p-8 animate-slide-up">
         {/* Logo */}
         <div className="flex justify-center mb-4">

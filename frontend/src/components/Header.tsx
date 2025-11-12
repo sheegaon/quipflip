@@ -173,7 +173,7 @@ export const Header: React.FC = () => {
         onConfirmLogout={handleConfirmGuestLogout}
         onDismiss={handleDismissGuestLogout}
       />
-      <div className="bg-white shadow-tile-sm relative z-50">
+      <div className="bg-quip-warm-ivory shadow-tile-sm relative z-50">
         <div className="max-w-6xl mx-auto px-1 py-0 md:px-4 md:py-1.5">
         <div className="flex justify-between items-center">
           {/* Left: Logo + Back Arrow (on certain pages) */}

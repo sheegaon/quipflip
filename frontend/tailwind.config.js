@@ -14,6 +14,7 @@ export default {
         'quip-orange': '#FF9A3D',
         'quip-orange-deep': '#E26A00',
         'quip-cream': '#FFF6EE',
+        'quip-warm-ivory': '#FFF9F2',
         'quip-navy': '#0B2137',
         // Quest category palette
         'quest-streak': '#FF9A3D',

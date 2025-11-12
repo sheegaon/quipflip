@@ -1,23 +1,82 @@
 {
-  "colors": {
-    "sand": "#FFF6EE",
-    "teal": "#10B5A4",
-    "tealDark": "#0E6F6A",
-    "midnight": "#0B2137",
-    "ivory": "#FFF6EE",
-    "ink": "#0E0F14",
-    "sky": "#EAF7F4",
-    "rose": "#FF6B6B",
-    "gold": "#FFC857"
+  "meta": {
+    "name": "Quipflip Brand Tokens",
+    "version": "2.0.0",
+    "updated": "2025-11-12",
+    "notes": "Consolidated color palette; added semantic icon tokens and per-icon mappings for newly added TSX icons."
   },
-  "typography": {
-    "display": "Manrope, Inter, ui-sans-serif, system-ui",
-    "text": "Inter, ui-sans-serif, system-ui"
+
+  "palette": {
+    "teal":   { "50": "#E8FAF7", "100": "#C9F2EC", "200": "#9FE7DE", "300": "#6ED9CD", "400": "#3CC9BB", "500": "#10B5A4", "600": "#0FA092", "700": "#0E6F6A", "800": "#0C5956", "900": "#0A4746" },
+    "gold":   { "50": "#FFF5D8", "100": "#FFEAAA", "200": "#FFE080", "300": "#FFD663", "400": "#FFCD4A", "500": "#FFC857", "600": "#E6B34E", "700": "#CC9F46", "800": "#A88039", "900": "#84632D" },
+    "orange": { "50": "#FFF0E6", "100": "#FFD9BF", "200": "#FFC299", "300": "#FFAC73", "400": "#FF9A3D", "500": "#FF6F00", "600": "#E26A00", "700": "#BA5600", "800": "#8F4300", "900": "#6B3300" },
+    "mint":   { "500": "#26A69A" },
+    "ivory":  { "50": "#FFF7EA", "100": "#FFF0D6" },
+    "ink":    { "700": "#294258", "800": "#163046", "900": "#0B2137" }
   },
-  "radii": {
-    "tile": 44,
-    "chip": 20,
-    "button": 16,
-    "card": 24
+
+  "surface": {
+    "background": { "light": "{palette.ivory.50}", "dark": "{palette.ink.900}" },
+    "tile":       { "light": "{palette.teal.50}",  "dark": "{palette.ink.800}" },
+    "elevations": {
+      "e1": "0 1px 2px rgba(0,0,0,0.08)",
+      "e2": "0 2px 6px rgba(0,0,0,0.10)",
+      "e3": "0 6px 18px rgba(0,0,0,0.12)"
+    },
+    "radius": { "card": 12, "chip": 8, "tile": 16 }
+  },
+
+  "text": {
+    "primary":  { "light": "{palette.ink.900}",  "dark": "#FFFFFF" },
+    "secondary":{ "light": "{palette.ink.700}",  "dark": "#E9EEF3" },
+    "onTeal":   { "light": "#FFFFFF",            "dark": "#FFFFFF" },
+    "onGold":   { "light": "{palette.ink.900}",  "dark": "{palette.ink.900}" }
+  },
+
+  "state": {
+    "success":  { "fill": "{palette.teal.500}",   "stroke": "{palette.teal.700}" },
+    "warning":  { "fill": "{palette.gold.500}",   "stroke": "{palette.gold.700}" },
+    "error":    { "fill": "{palette.orange.500}", "stroke": "{palette.orange.700}" },
+    "info":     { "fill": "{palette.teal.400}",   "stroke": "{palette.teal.700}" }
+  },
+
+  "icon": {
+    "size": { "xs": 12, "sm": 16, "md": 20, "lg": 24 },
+    "strokeWidth": { "thin": 1, "regular": 1.5, "bold": 2 },
+    "color": {
+      "primary":    "{palette.teal.500}",
+      "primaryAlt": "{palette.mint.500}",
+      "accent":     "{palette.gold.500}",
+      "notice":     "{palette.orange.500}",
+      "noticeDark": "{palette.orange.600}",
+      "onLight":    "{palette.ink.900}",
+      "onDark":     "#FFFFFF"
+    }
+  },
+
+  "semantics": {
+    "button": {
+      "primary":         { "bg": "{palette.teal.500}", "text": "#FFFFFF", "hoverBg": "{palette.teal.600}" },
+      "secondary":       { "bg": "{palette.ivory.50}", "text": "{palette.teal.700}", "hoverBg": "{palette.teal.50}" },
+      "destructive":     { "bg": "{palette.orange.500}", "text": "#FFFFFF", "hoverBg": "{palette.orange.600}" }
+    },
+    "chip": {
+      "info":    { "bg": "{palette.teal.50}",   "text": "{palette.teal.700}" },
+      "warning": { "bg": "{palette.gold.50}",   "text": "{palette.ink.900}" },
+      "error":   { "bg": "{palette.orange.50}", "text": "{palette.orange.700}" }
+    }
+  },
+
+  "usage": {
+    "lightMode": {
+      "icon.default.stroke": "{icon.color.onLight}",
+      "icon.default.fill":   "transparent",
+      "icon.brand.fill":     "{icon.color.primary}"
+    },
+    "darkMode": {
+      "icon.default.stroke": "{icon.color.onDark}",
+      "icon.default.fill":   "transparent",
+      "icon.brand.fill":     "{icon.color.primary}"
+    }
   }
 }

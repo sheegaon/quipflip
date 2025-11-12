@@ -57,14 +57,14 @@ Frontend runs at **http://localhost:5173**
 
 **For Developers:**
 - **[API.md](docs/API.md)** - Complete REST API reference with TypeScript types
-- **[FRONTEND_PLAN.md](docs/FRONTEND_PLAN.md)** - Frontend implementation guide (NEW)
 - **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** - System architecture and backend logic
 - **[DATA_MODELS.md](docs/DATA_MODELS.md)** - Database schema reference
-- **[MVP_SUMMARY.md](docs/MVP_SUMMARY.md)** - Project status and completion checklist
+- **[AI_SERVICE.md](docs/AI_SERVICE.md)** - AI player service details
+- **[CLEANUP_SCRIPTS.md](docs/CLEANUP_SCRIPTS.md)** - Background cleanup job implementations
 
 **For Game Design:**
 - **[README.md](README.md)** - This file (complete game rules)
-- **[PLAN.md](docs/DEVELOPMENT_PLAN)** - Implementation phases and roadmap
+- **[GAME_RULES.md](docs/GAME_RULES.md)** - Detailed game mechanics and examples
 
 ## 🛠️ Tech Stack
 
