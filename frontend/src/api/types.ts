@@ -629,7 +629,7 @@ export type TutorialProgress =
   | 'prompt_round'
   | 'copy_round'
   | 'vote_round'
-  | 'completed_rounds_guide'
+  | 'rounds_guide'
   | 'completed';
 
 export interface TutorialStatus {

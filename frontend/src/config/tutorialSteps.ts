@@ -90,13 +90,13 @@ Your goal is to identify which phrase was the original. Choose carefully - corre
       // **Make your vote now to complete the tutorial.**
     target: '.tutorial-vote-round',
     position: 'top',
-    nextStep: 'completed_rounds_guide',
+    nextStep: 'rounds_guide',
     showSkip: false,
     showBack: true,
   },
 
-  completed_rounds_guide: {
-    id: 'completed_rounds_guide',
+  rounds_guide: {
+    id: 'rounds_guide',
     title: 'Explore Past Rounds',
     message: `**Not sure you fully understand the game yet?**
 
@@ -123,7 +123,7 @@ export const getNextStep = (currentStep: TutorialProgress): TutorialProgress | n
 };
 
 export const getPreviousStep = (currentStep: TutorialProgress): TutorialProgress | null => {
-  const steps: TutorialProgress[] = ['welcome', 'dashboard', 'prompt_round', 'copy_round', 'vote_round', 'completed_rounds_guide'];
+  const steps: TutorialProgress[] = ['welcome', 'dashboard', 'prompt_round', 'copy_round', 'vote_round', 'rounds_guide'];
   const currentIndex = steps.indexOf(currentStep);
   if (currentIndex > 0) {
     return steps[currentIndex - 1];
