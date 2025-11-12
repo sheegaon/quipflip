@@ -217,13 +217,16 @@ const TutorialOverlay: React.FC<TutorialOverlayProps> = ({ onComplete }) => {
               </button>
             )}
 
-            <button
-              onClick={handleNext}
-              disabled={isNavigating}
-              className="tutorial-btn tutorial-btn-primary"
-            >
-              {isNavigating ? 'Loading...' : (step.nextStep ? 'Next' : 'End Tutorial')}
-            </button>
+            {/* Only show Next/End button if action is not 'wait' */}
+            {step.action !== 'wait' && (
+              <button
+                onClick={handleNext}
+                disabled={isNavigating}
+                className="tutorial-btn tutorial-btn-primary"
+              >
+                {isNavigating ? 'Loading...' : (step.nextStep ? 'Next' : 'End Tutorial')}
+              </button>
+            )}
           </div>
         </div>
       </div>
