@@ -56,7 +56,7 @@ class TestPhraseValidationClientInit:
     def test_init_sets_timeout(self, client):
         """Test that timeout is configured."""
         assert isinstance(client.timeout, ClientTimeout)
-        assert client.timeout.total == 30
+        assert client.timeout.total == 120
 
     def test_init_session_is_none(self, client):
         """Test that session is not created on init."""

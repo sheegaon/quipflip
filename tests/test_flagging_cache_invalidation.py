@@ -134,7 +134,6 @@ async def test_dashboard_endpoint_shows_correct_count_after_flagging(
     transaction_service_a = TransactionService(db_session)
     transaction_service_b = TransactionService(db_session)
     player_service = PlayerService(db_session)
-    vote_service = VoteService(db_session)
 
     # Clear cache
     dashboard_cache.clear()
@@ -249,7 +248,6 @@ async def test_abandoned_prompt_not_counted_in_available(db_session, player_fact
 
     # Verify the cooldown entry was created
     from sqlalchemy import select
-    from backend.models.player_abandoned_prompt import PlayerAbandonedPrompt
 
     result = await db_session.execute(
         select(PlayerAbandonedPrompt).where(
