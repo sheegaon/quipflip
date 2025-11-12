@@ -126,9 +126,10 @@ export const GameProvider: React.FC<{
           if (result.player) {
             setPlayer(result.player);
           }
-        } else {
-          // User is not authenticated - auto-create guest account
-          gameContextLogger.debug('🎭 User not authenticated, creating guest account');
+        } else if (result.state === SessionState.NEW) {
+          // Only auto-create guest account for truly NEW visitors
+          // Returning visitors with expired cookies should see the landing page
+          gameContextLogger.debug('🎭 New visitor detected, creating guest account');
 
           try {
             const guestResponse = await apiClient.createGuest();
@@ -172,6 +173,9 @@ export const GameProvider: React.FC<{
               setIsAuthenticated(false);
             }
           }
+} else if (result.state === SessionState.RETURNING_VISITOR) {
+          // Returning visitor with no valid session - don't auto-create guest
+          gameContextLogger.debug('👋 Returning visitor without valid session, showing landing page');
         }
       } catch (err) {
         if (controller.signal.aborted) {
