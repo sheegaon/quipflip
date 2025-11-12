@@ -350,6 +350,14 @@ export const apiClient = {
     return data;
   },
 
+  async loginWithUsername(
+    payload: { username: string; password: string },
+    signal?: AbortSignal,
+  ): Promise<AuthTokenResponse> {
+    const { data } = await api.post<AuthTokenResponse>('/auth/login/username', payload, { signal });
+    return data;
+  },
+
   async suggestUsername(signal?: AbortSignal): Promise<SuggestUsernameResponse> {
     const { data } = await api.get<SuggestUsernameResponse>('/auth/suggest-username', { signal });
     return data;

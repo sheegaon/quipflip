@@ -214,6 +214,28 @@ class AuthService:
 
         return player
 
+    async def authenticate_player_by_username(self, username: str, password: str) -> Player:
+        """Authenticate a player using username and password."""
+        username_stripped = username.strip()
+        if not username_stripped:
+            raise AuthError("Username/password combination is invalid")
+
+        # Convert to canonical form for lookup
+        username_canonical = canonicalize_username(username_stripped)
+        if not username_canonical:
+            raise AuthError("Username/password combination is invalid")
+
+        result = await self.db.execute(
+            select(Player).where(Player.username_canonical == username_canonical)
+        )
+        player = result.scalar_one_or_none()
+        if not player or not verify_password(password, player.password_hash):
+            raise AuthError("Username/password combination is invalid")
+
+        self.player_service.apply_admin_status(player)
+
+        return player
+
     # ------------------------------------------------------------------
     # Token helpers
     # ------------------------------------------------------------------

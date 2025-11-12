@@ -90,22 +90,43 @@ export const Landing: React.FC = () => {
 
   const handleExistingPlayer = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!loginEmail.trim() || !loginPassword.trim()) {
-      setError('Please enter your email and password.');
+    const trimmedInput = loginEmail.trim();
+    if (!trimmedInput || !loginPassword.trim()) {
+      setError('Please enter your email or username and password.');
       landingLogger.warn('Login attempted with missing credentials');
       return;
     }
 
+    // Detect if input is email or username by presence of "@"
+    const isEmail = trimmedInput.includes('@');
+
     try {
       setIsLoading(true);
       setError(null);
-      landingLogger.info('Attempting login for existing player', { loginEmail });
+      landingLogger.info('Attempting login for existing player', { loginEmail: trimmedInput, isEmail });
 
-      // Send email and password to backend (now with correct field names)
-      const response = await apiClient.login({
-        email: loginEmail.trim(),
-        password: loginPassword,
-      });
+      let response;
+      if (isEmail) {
+        // Use email login endpoint
+        response = await apiClient.login({
+          email: trimmedInput,
+          password: loginPassword,
+        });
+      } else {
+        // Validate username: only alphanumeric and spaces allowed
+        const isValidUsername = /^[a-zA-Z0-9\s]+$/.test(trimmedInput);
+        if (!isValidUsername) {
+          setError('Username can only contain letters, numbers, and spaces.');
+          landingLogger.warn('Login attempted with invalid username characters');
+          return;
+        }
+
+        // Use username login endpoint
+        response = await apiClient.loginWithUsername({
+          username: trimmedInput,
+          password: loginPassword,
+        });
+      }
 
       landingLogger.info('Login successful, starting session', { username: response.username });
       if (isMountedRef.current) {
@@ -113,7 +134,7 @@ export const Landing: React.FC = () => {
         navigate('/dashboard');
       }
     } catch (err) {
-      const message = extractErrorMessage(err) || 'Login failed. Please check your email and password, or create a new account.';
+      const message = extractErrorMessage(err) || 'Login failed. Please check your email/username and password, or create a new account.';
       landingLogger.error('Login failed', err);
       if (isMountedRef.current) {
         setError(message);
@@ -259,13 +280,13 @@ export const Landing: React.FC = () => {
             <h2 className="text-xl font-semibold mb-4 text-quip-navy">Returning Player</h2>
             <form onSubmit={handleExistingPlayer} className="space-y-3">
               <input
-                type="email"
+                type="text"
                 value={loginEmail}
                 onChange={(e) => setLoginEmail(e.target.value)}
-                placeholder="Your email"
+                placeholder="Email or Username"
                 className="w-full px-4 py-2 border border-gray-300 rounded-tile focus:outline-none focus:ring-2 focus:ring-quip-turquoise"
                 disabled={isLoading}
-                autoComplete="email"
+                autoComplete="username"
               />
               <input
                 type="password"
