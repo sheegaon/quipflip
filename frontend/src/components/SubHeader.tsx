@@ -36,7 +36,7 @@ export const SubHeader: React.FC = () => {
   }
 
   // Determine if tutorial should be shown (same condition as in Header menu)
-  const showTutorialIcon = !tutorialStatus?.tutorial_completed;
+  const showTutorialIcon = tutorialStatus?.tutorial_completed === false;
 
   const handleResultsClick = async () => {
     // Refresh dashboard to get latest data before navigating
