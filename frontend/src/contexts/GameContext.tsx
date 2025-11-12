@@ -173,7 +173,7 @@ export const GameProvider: React.FC<{
               setIsAuthenticated(false);
             }
           }
-        } else {
+} else if (result.state === SessionState.RETURNING_VISITOR) {
           // Returning visitor with no valid session - don't auto-create guest
           gameContextLogger.debug('👋 Returning visitor without valid session, showing landing page');
         }
