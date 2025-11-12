@@ -4,6 +4,8 @@ import apiClient from '../api/client';
 import { useSmartPolling, PollConfigs } from '../utils/smartPolling';
 import { getActionErrorMessage } from '../utils/errorMessages';
 import { gameContextLogger } from '../utils/logger';
+import { detectUserSession, associateVisitorWithPlayer } from '../services/sessionDetection';
+import { SessionState } from '../types/session';
 import type {
   Player,
   ActiveRound,
@@ -27,6 +29,8 @@ interface GameState {
   copyRoundHints: string[] | null;
   loading: boolean;
   error: string | null;
+  sessionState: SessionState;
+  visitorId: string | null;
 }
 
 interface GameActions {
@@ -76,6 +80,8 @@ export const GameProvider: React.FC<{
   const [copyRoundHints, setCopyRoundHints] = useState<string[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sessionState, setSessionState] = useState<SessionState>(SessionState.CHECKING);
+  const [visitorId, setVisitorId] = useState<string | null>(null);
 
   const copyHintsRoundRef = useRef<string | null>(null);
 
@@ -86,34 +92,57 @@ export const GameProvider: React.FC<{
     }
   }, [pendingResults, onPendingResultsChange]);
 
-  // Initialize session on mount
+  // Initialize session on mount using session detection
   useEffect(() => {
     const controller = new AbortController();
     let isMounted = true;
 
     const initializeSession = async () => {
-      const storedUsername = apiClient.getStoredUsername();
-      if (!storedUsername) {
-        return;
-      }
+      gameContextLogger.debug('🔍 Starting session detection on app load');
 
-      setUsername(storedUsername);
       try {
-        await apiClient.getBalance(controller.signal);
-        if (isMounted) {
-          setIsAuthenticated(true);
+        const result = await detectUserSession(controller.signal);
+
+        if (!isMounted) return;
+
+        gameContextLogger.debug('✅ Session detection complete:', {
+          state: result.state,
+          isAuthenticated: result.isAuthenticated,
+          username: result.username,
+          visitorId: result.visitorId,
+        });
+
+        // Update state based on detection result
+        setSessionState(result.state);
+        setVisitorId(result.visitorId);
+        setIsAuthenticated(result.isAuthenticated);
+
+        if (result.isAuthenticated && result.username) {
+          setUsername(result.username);
+          if (result.player) {
+            setPlayer(result.player);
+          }
+        } else {
+          setUsername(null);
+          setPlayer(null);
         }
       } catch (err) {
         if (controller.signal.aborted) {
           return;
         }
-        apiClient.clearSession();
+
+        gameContextLogger.error('❌ Session detection failed:', err);
+
+        // Fallback to safe state
         if (isMounted) {
+          setSessionState(SessionState.NEW);
           setIsAuthenticated(false);
           setUsername(null);
+          setPlayer(null);
         }
       }
     };
+
     initializeSession();
 
     return () => {
@@ -151,14 +180,20 @@ export const GameProvider: React.FC<{
       apiClient.setSession(nextUsername);
       setUsername(nextUsername);
       setIsAuthenticated(true);
+      setSessionState(SessionState.RETURNING_USER);
+
+      // Associate visitor ID with newly created/logged in account
+      if (visitorId) {
+        associateVisitorWithPlayer(visitorId, nextUsername);
+      }
 
       // Session started, authentication state will trigger dashboard load
       gameContextLogger.debug('✅ Session started, authentication state will trigger dashboard load');
-  }, []);
+  }, [visitorId]);
 
   const logout = useCallback(async () => {
       gameContextLogger.debug('🚪 GameContext logout called');
-      
+
       try {
         await apiClient.logout();
       } catch (err) {
@@ -167,7 +202,7 @@ export const GameProvider: React.FC<{
         // Stop all polling
         stopPoll('dashboard');
         stopPoll('balance');
-        
+
         apiClient.clearSession();
         setIsAuthenticated(false);
         setUsername(null);
@@ -181,8 +216,11 @@ export const GameProvider: React.FC<{
         copyHintsRoundRef.current = null;
         setLoading(false);
         setError(null);
+
+        // After logout, user is a returning visitor (visitor ID persists)
+        setSessionState(visitorId ? SessionState.RETURNING_VISITOR : SessionState.NEW);
       }
-  }, [stopPoll]);
+  }, [stopPoll, visitorId]);
 
   const refreshDashboard = useCallback(async (signal?: AbortSignal) => {
       const storedUsername = apiClient.getStoredUsername();
@@ -730,6 +768,8 @@ export const GameProvider: React.FC<{
     copyRoundHints,
     loading,
     error,
+    sessionState,
+    visitorId,
   };
 
   const actions: GameActions = {
