@@ -935,20 +935,33 @@ class TestCopyHints:
 
         hints_payload = ["HINT ONE", "HINT TWO", "HINT THREE"]
 
-        with patch.object(AIService, "generate_copy_hints", new=AsyncMock(return_value=hints_payload)) as mock_generate:
+        # Mock the generate_and_cache_phrases method to create and persist cache
+        from backend.models.ai_phrase_cache import AIPhraseCache
+
+        async def mock_generate_and_cache(self, prompt_round):
+            """Mock that actually creates the cache in DB."""
+            mock_cache = AIPhraseCache(
+                cache_id=uuid.uuid4(),
+                prompt_round_id=prompt_round.round_id,
+                original_phrase=prompt_round.submitted_phrase,
+                prompt_text=prompt_round.prompt_text,
+                validated_phrases=hints_payload,
+                generation_provider="test",
+                generation_model="test-model",
+                used_for_hints=False,
+            )
+            db_session.add(mock_cache)
+            await db_session.flush()
+            return mock_cache
+
+        with patch.object(AIService, "generate_and_cache_phrases", new=mock_generate_and_cache) as mock_generate:
             hints = await round_service.get_or_generate_hints(copy_round.round_id, player, transaction_service)
-            mock_generate.assert_awaited_once()
             assert hints == hints_payload
 
-        result = await db_session.execute(
-            select(Hint).where(Hint.prompt_round_id == prompt_round.round_id)
-        )
-        stored_hint = result.scalars().one()
-        assert stored_hint.hint_phrases == hints_payload
-
+        # Second call should use cached value from DB without calling generate_and_cache_phrases
         with patch.object(
             AIService,
-            "generate_copy_hints",
+            "generate_and_cache_phrases",
             new=AsyncMock(side_effect=AssertionError("should not be called")),
         ) as mock_generate:
             cached_hints = await round_service.get_or_generate_hints(copy_round.round_id, player, transaction_service)
