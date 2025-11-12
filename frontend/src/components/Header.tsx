@@ -181,7 +181,7 @@ export const Header: React.FC = () => {
                 </p>
               </div>
 
-              <div className="tutorial-guest-credentials bg-gradient-to-r from-quip-orange to-quip-turquoise text-white p-6 rounded-tile shadow-lg space-y-4">
+              <div className="guest-credentials bg-gradient-to-r from-quip-orange to-quip-turquoise text-white p-6 rounded-tile shadow-lg space-y-4">
                 <div>
                   <p className="font-semibold text-lg">Guest Credentials</p>
                   <p className="text-sm opacity-90">
