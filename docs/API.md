@@ -1947,7 +1947,7 @@ Track and display users who are currently active in the game.
 #### `GET /users/online`
 Get list of currently online users (active in last 30 minutes).
 
-**Purpose:** Display "Who's Online" feature showing recent player activity.
+**Purpose:** Display "Who's Online" feature showing recent player activity including user balance and account age.
 
 **Response:**
 ```json
@@ -1958,17 +1958,37 @@ Get list of currently online users (active in last 30 minutes).
       "last_action": "Started vote round",
       "last_action_category": "round",
       "last_activity": "2025-01-06T12:00:00Z",
-      "time_ago": "2m ago"
+      "time_ago": "2m ago",
+      "balance": 4250,
+      "created_at": "2025-01-01T12:00:00Z"
     }
   ],
   "total_count": 15
 }
 ```
 
+**Response Fields:**
+- `username` (string): Player's display name
+- `last_action` (string): Human-readable description of their last action
+- `last_action_category` (string): Category of the action ('round', 'phraseset', 'quest', 'auth', 'other')
+- `last_activity` (timestamp): ISO 8601 UTC timestamp of last activity
+- `time_ago` (string): Relative time display (e.g., "2m ago", "1h ago")
+- `balance` (integer): Current Flipcoin balance
+- `created_at` (timestamp): ISO 8601 UTC timestamp when account was created
+
+**Performance Notes:**
+- Query is optimized with a **BRIN index on `user_activity.last_activity`** (PostgreSQL) / **B-tree index** (SQLite)
+- Efficiently filters users within the 30-minute activity window using indexed range queries
+- Joins to Player table to fetch balance and account creation date
+- Supports fast sorting by most recent activity
+- Scales well as the user_activity table grows
+
 **Notes:**
 - Shows users active in last 30 minutes based on UserActivity tracking
 - Distinct from phraseset_activity which logs historical review events
 - Time ago formatted as "Xs ago", "Xm ago", or "Xh ago"
+- Balance reflects current player's Flipcoin amount
+- Account age (created_at) useful for identifying veteran vs. new players
 
 #### `WebSocket /users/online/ws`
 WebSocket endpoint for real-time online users updates.

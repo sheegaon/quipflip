@@ -12,6 +12,25 @@ import { Header } from '../components/Header';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import type { OnlineUser } from '../api/types';
 
+// Calculate account age in days (rounded up)
+const getAccountAgeDays = (createdAt: string): number => {
+  const now = new Date();
+  const created = new Date(createdAt);
+  const diffMs = now.getTime() - created.getTime();
+  const diffDays = diffMs / (1000 * 60 * 60 * 24);
+  // Round up, but ensure brand new accounts show at least 1
+  return Math.max(1, Math.ceil(diffDays));
+};
+
+// Get user initials from username (up to 2 letters)
+const getUserInitials = (username: string): string => {
+  const parts = username.trim().split(/\s+/);
+  if (parts.length >= 2) {
+    return (parts[0].charAt(0) + parts[1].charAt(0)).toUpperCase();
+  }
+  return username.charAt(0).toUpperCase();
+};
+
 const OnlineUsers: React.FC = () => {
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -200,16 +219,6 @@ const OnlineUsers: React.FC = () => {
     return categoryColorMap[category] || 'bg-gray-400';
   };
 
-  // Calculate account age in days (rounded up)
-  const getAccountAgeDays = (createdAt: string): number => {
-    const now = new Date();
-    const created = new Date(createdAt);
-    const diffMs = now.getTime() - created.getTime();
-    const diffDays = diffMs / (1000 * 60 * 60 * 24);
-    // Round up, but ensure brand new accounts show at least 1
-    return Math.max(1, Math.ceil(diffDays));
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-quip-cream bg-pattern">
@@ -265,43 +274,46 @@ const OnlineUsers: React.FC = () => {
             </div>
           ) : (
             <div className="space-y-3">
-              {onlineUsers.map((user) => (
-                <div
-                  key={user.username}
-                  className="flex items-center justify-between p-4 bg-quip-cream rounded-lg border border-quip-orange/20 hover:border-quip-orange/40 transition-colors"
-                >
-                  <div className="flex items-center gap-4 flex-1">
-                    {/* User avatar placeholder */}
-                    <div className="w-10 h-10 rounded-full bg-quip-navy flex items-center justify-center text-white font-bold">
-                      {user.username.charAt(0).toUpperCase()}
-                    </div>
-
-                    {/* User info */}
-                    <div className="flex-1">
-                      <p className="font-bold text-quip-navy">{user.username}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold text-white ${getActionColor(user.last_action_category)}`}>
-                          {user.last_action}
-                        </span>
-                        <span className="text-sm text-quip-teal">{user.time_ago}</span>
+              {onlineUsers.map((user) => {
+                const accountAgeDays = getAccountAgeDays(user.created_at);
+                return (
+                  <div
+                    key={user.username}
+                    className="flex items-center justify-between p-4 bg-quip-cream rounded-lg border border-quip-orange/20 hover:border-quip-orange/40 transition-colors"
+                  >
+                    <div className="flex items-center gap-4 flex-1">
+                      {/* User avatar placeholder */}
+                      <div className="w-10 h-10 rounded-full bg-quip-navy flex items-center justify-center text-white font-bold text-sm">
+                        {getUserInitials(user.username)}
                       </div>
-                      <div className="flex items-center gap-3 mt-2">
-                        <div className="flex items-center gap-1">
-                          <CurrencyDisplay amount={user.balance} iconClassName="w-3 h-3" textClassName="text-sm text-quip-navy" />
+
+                      {/* User info */}
+                      <div className="flex-1">
+                        <p className="font-bold text-quip-navy">{user.username}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold text-white ${getActionColor(user.last_action_category)}`}>
+                            {user.last_action}
+                          </span>
+                          <span className="text-sm text-quip-teal">{user.time_ago}</span>
                         </div>
-                        <span className="text-sm text-gray-500">•</span>
-                        <span className="text-sm text-gray-600">{getAccountAgeDays(user.created_at)} {getAccountAgeDays(user.created_at) === 1 ? 'day' : 'days'} old</span>
+                        <div className="flex items-center gap-3 mt-2">
+                          <div className="flex items-center gap-1">
+                            <CurrencyDisplay amount={user.balance} iconClassName="w-3 h-3" textClassName="text-sm text-quip-navy" />
+                          </div>
+                          <span className="text-sm text-gray-500">•</span>
+                          <span className="text-sm text-gray-600">{accountAgeDays} {accountAgeDays === 1 ? 'day' : 'days'} old</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Online indicator */}
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                    <span className="text-xs text-gray-500 hidden sm:inline">Online</span>
+                    {/* Online indicator */}
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                      <span className="text-xs text-gray-500 hidden sm:inline">Online</span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
