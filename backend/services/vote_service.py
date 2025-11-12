@@ -539,6 +539,7 @@ class VoteService:
 
         # Give payout if correct (deferred commit)
         # Split payout: 70% of net to wallet, 30% to vault
+        # Note: skip_lock=False (default) to acquire player lock for balance safety
         if correct:
             await transaction_service.create_split_payout(
                 player_id=player.player_id,
@@ -547,7 +548,7 @@ class VoteService:
                 trans_type="vote_payout",
                 reference_id=vote.vote_id,
                 auto_commit=False,  # Defer commit to end of this method
-                skip_lock=True,  # Already in transaction
+                skip_lock=False,  # Acquire lock for thread-safe balance updates
             )
 
         # Update phraseset vote count and prize pool
@@ -665,6 +666,7 @@ class VoteService:
 
         # Give payout if correct (deferred commit)
         # Split payout: 70% of net to wallet, 30% to vault
+        # Note: skip_lock=False (default) to acquire player lock for balance safety
         if correct:
             await transaction_service.create_split_payout(
                 player_id=player.player_id,
@@ -673,7 +675,7 @@ class VoteService:
                 trans_type="vote_payout",
                 reference_id=vote.vote_id,
                 auto_commit=False,  # Defer commit to end of this method
-                skip_lock=True,  # Already in transaction
+                skip_lock=False,  # Acquire lock for thread-safe balance updates
             )
 
         # Track consecutive incorrect votes for guests
@@ -915,6 +917,7 @@ class VoteService:
                     continue
 
                 # Use split payout to handle wallet/vault distribution
+                # Note: skip_lock=False (default) to acquire player lock for balance safety
                 await transaction_service.create_split_payout(
                     player_id=payout_info["player_id"],
                     gross_amount=payout_info["payout"],
@@ -922,7 +925,7 @@ class VoteService:
                     trans_type="prize_payout",
                     reference_id=phraseset.phraseset_id,
                     auto_commit=False,  # Defer commit to caller
-                    skip_lock=True,  # Already in transaction
+                    skip_lock=False,  # Acquire lock for thread-safe balance updates
                 )
 
         # Update phraseset status

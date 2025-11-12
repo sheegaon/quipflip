@@ -69,6 +69,8 @@ class PlayerService:
             email=email.strip().lower(),
             password_hash=password_hash,
             balance=settings.starting_balance,
+            wallet=settings.starting_balance,
+            vault=0,
             last_login_date=datetime.now(UTC),  # Track creation login time with precision
             is_admin=self._should_be_admin(email),
         )
