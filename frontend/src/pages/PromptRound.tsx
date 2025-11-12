@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
-import { useTutorial } from '../contexts/TutorialContext';
 import apiClient, { extractErrorMessage } from '../api/client';
 import { Timer } from '../components/Timer';
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -18,7 +17,6 @@ export const PromptRound: React.FC = () => {
   const { state, actions } = useGame();
   const { activeRound, roundAvailability } = state;
   const { refreshDashboard } = actions;
-  const { currentStep, advanceStep } = useTutorial();
   const navigate = useNavigate();
   const [phrase, setPhrase] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -90,18 +88,12 @@ export const PromptRound: React.FC = () => {
 
       // Add a small delay to prevent race conditions during navigation
       const timeoutId = setTimeout(() => {
-        // Special case for tutorial
-        if (currentStep === 'prompt_round') {
-          advanceStep('copy_round');
-          navigate('/dashboard');
-        } else {
-          navigate('/dashboard');
-        }
+        navigate('/dashboard');
       }, 100);
 
       return () => clearTimeout(timeoutId);
     }
-  }, [activeRound, currentStep, advanceStep, navigate, successMessage]);
+  }, [activeRound, navigate, successMessage]);
 
   const handleFeedback = async (type: 'like' | 'dislike') => {
     if (!roundData || isSubmittingFeedback) return;
@@ -159,11 +151,6 @@ export const PromptRound: React.FC = () => {
         roundId: roundData.round_id,
         message: heading,
       });
-
-      // Advance tutorial if in prompt_round step
-      if (currentStep === 'prompt_round') {
-        advanceStep('copy_round');
-      }
 
       // Immediately refresh dashboard to clear the active round state
       // This is the proper way to handle normal completion vs timer expiry
