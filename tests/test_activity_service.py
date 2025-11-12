@@ -46,5 +46,5 @@ async def test_record_and_attach_activity(db_session, player_factory):
 
     timeline = await service.get_phraseset_activity(phraseset_id)
     assert len(timeline) == 1
-    assert timeline[0].phraseset_id == phraseset_id
-    assert timeline[0].prompt_round_id == prompt_round.round_id
+    assert timeline[0]["phraseset_id"] == str(phraseset_id)
+    assert timeline[0]["prompt_round_id"] == str(prompt_round.round_id)

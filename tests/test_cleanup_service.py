@@ -374,10 +374,10 @@ class TestTestPlayerCleanup:
         # Cleanup test players
         result = await cleanup_service.cleanup_test_players(dry_run=False)
 
-        # Should delete at least our test player plus any pre-existing
-        assert result["players"] >= initial_count + 1
-        assert result["rounds"] >= 1
-        assert result["transactions"] >= 1
+        # Should anonymize at least our test player plus any pre-existing
+        assert result.get("players_anonymized", 0) >= initial_count + 1
+        # Note: Only non-submitted rounds are deleted
+        assert result.get("transactions", 0) >= 1
 
 
 class TestInactiveGuestCleanup:
@@ -498,8 +498,12 @@ class TestInactiveGuestCleanup:
         phraseset = Phraseset(
             phraseset_id=uuid4(),
             prompt_round_id=uuid4(),
-            phrase_round_1_id=uuid4(),
-            phrase_round_2_id=uuid4(),
+            copy_round_1_id=uuid4(),
+            copy_round_2_id=uuid4(),
+            prompt_text="Test prompt",
+            original_phrase="TEST",
+            copy_phrase_1="COPY1",
+            copy_phrase_2="COPY2",
             created_at=datetime.now(UTC),
         )
         db_session.add(phraseset)
@@ -723,10 +727,10 @@ class TestDeletePlayer:
         # Delete player
         result = await cleanup_service.delete_player(player_id)
 
-        assert result["players"] == 1
-        assert result["rounds"] >= 1
-        assert result["transactions"] >= 1
-        assert result["daily_bonuses"] >= 1
+        assert result.get("players_anonymized", 0) == 1
+        # Note: Only non-submitted rounds are deleted (submitted rounds are preserved)
+        assert result.get("transactions", 0) >= 1
+        assert result.get("daily_bonuses", 0) >= 1
 
     @pytest.mark.asyncio
     async def test_delete_nonexistent_player(self, db_session):
@@ -736,8 +740,8 @@ class TestDeletePlayer:
         # Try to delete non-existent player
         result = await cleanup_service.delete_player(uuid4())
 
-        # Should return empty counts
-        assert result["players"] == 0
+        # Should return empty dict or zero counts
+        assert result.get("players_anonymized", 0) == 0
 
 
 class TestRunAllCleanupTasks:

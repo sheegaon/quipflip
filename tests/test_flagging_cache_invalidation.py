@@ -1,11 +1,8 @@
 """Test cache invalidation when flagging prompts to ensure dashboard shows accurate counts."""
 import pytest
-from uuid import UUID
 from backend.services.round_service import RoundService
 from backend.services.transaction_service import TransactionService
 from backend.services.player_service import PlayerService
-from backend.services.vote_service import VoteService
-from backend.services.queue_service import QueueService
 from backend.utils.cache import dashboard_cache
 from backend.config import get_settings
 
@@ -46,8 +43,6 @@ async def test_prompts_waiting_count_after_flagging(db_session, player_factory):
     round_service = RoundService(db_session)
     transaction_service_a = TransactionService(db_session)
     transaction_service_b = TransactionService(db_session)
-    player_service = PlayerService(db_session)
-    vote_service = VoteService(db_session)
 
     # Clear cache to start fresh
     dashboard_cache.clear()
