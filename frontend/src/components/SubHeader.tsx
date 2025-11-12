@@ -2,17 +2,20 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { useHeaderIndicators } from '../hooks/useHeaderIndicators';
+import { useTutorial } from '../contexts/TutorialContext';
 import { TreasureChestIcon } from './TreasureChestIcon';
 import { TrackingIcon } from './icons/TrackingIcon';
 import { ResultsIcon } from './icons/ResultsIcon';
 import { ReviewIcon } from './icons/ReviewIcon';
 import { LeaderboardIcon } from './icons/LeaderboardIcon';
 import { LobbyIcon } from './icons/LobbyIcon';
+import { BrandedTutorialIcon } from './icons/BrandedTutorialIcon';
 
 export const SubHeader: React.FC = () => {
   const { actions } = useGame();
   const { refreshDashboard } = actions;
   const navigate = useNavigate();
+  const { status: tutorialStatus } = useTutorial();
 
   // Use custom hook to get all indicator values
   const {
@@ -31,6 +34,9 @@ export const SubHeader: React.FC = () => {
   if (!player) {
     return null;
   }
+
+  // Determine if tutorial should be shown (same condition as in Header menu)
+  const showTutorialIcon = tutorialStatus?.tutorial_completed === false;
 
   const handleResultsClick = async () => {
     // Refresh dashboard to get latest data before navigating
@@ -130,6 +136,18 @@ export const SubHeader: React.FC = () => {
           >
             <LobbyIcon className="w-7 h-7 md:w-8 md:h-8 transition-transform group-hover:scale-110" />
           </button>
+
+          {/* Tutorial icon - Only shown if tutorial not completed */}
+          {showTutorialIcon && (
+            <button
+              onClick={() => navigate('/dashboard?startTutorial=true')}
+              className="group"
+              title="Start or resume tutorial"
+              aria-label="Start or resume tutorial"
+            >
+              <BrandedTutorialIcon className="w-7 h-7 md:w-8 md:h-8 transition-transform group-hover:scale-110" />
+            </button>
+          )}
 
           {/* Treasure chest - Hidden on first day */}
           {!isFirstDay && (
