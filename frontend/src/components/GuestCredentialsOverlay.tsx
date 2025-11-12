@@ -53,7 +53,7 @@ const GuestCredentialsOverlay: React.FC = () => {
         localStorage.removeItem(GUEST_CREDENTIALS_KEY);
       }
     }
-  }, [player]);
+  }, [player?.is_guest]);
 
   const handleDismiss = () => {
     // Mark as shown for this session
