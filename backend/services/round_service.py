@@ -800,18 +800,18 @@ class RoundService:
             # Calculate second copy cost (2x the normal cost)
             second_copy_cost = self.settings.copy_cost_normal * 2
 
-            # Check if player has enough balance for second copy
-            # Need to refresh player to get updated balance after this transaction
+            # Check if player has enough wallet for second copy
+            # Need to refresh player to get updated wallet after this transaction
             await self.db.refresh(player)
 
-            if player.balance >= second_copy_cost:
+            if player.wallet >= second_copy_cost:
                 second_copy_info = {
                     "eligible_for_second_copy": True,
                     "second_copy_cost": second_copy_cost,
                     "prompt_round_id": prompt_round.round_id,
                     "original_phrase": round_object.original_phrase,
                 }
-                logger.info(f"Player {player.player_id} is eligible for second copy with balance {player.balance}")
+                logger.info(f"Player {player.player_id} is eligible for second copy with wallet {player.wallet}")
 
         return round_object, second_copy_info
 
@@ -859,10 +859,10 @@ class RoundService:
             hints = phrase_cache.validated_phrases[:3]  # Return up to 3 hints
             return hints
 
-        # Check player balance before generating new hints/cache
-        if player.balance < self.settings.hint_cost:
+        # Check player wallet before generating new hints/cache
+        if player.wallet < self.settings.hint_cost:
             raise InsufficientBalanceError(
-                f"Insufficient balance: {player.balance} < {self.settings.hint_cost}"
+                f"Insufficient wallet balance: {player.wallet} < {self.settings.hint_cost}"
             )
 
         # Generate phrase cache (which includes hints) outside lock to avoid holding during AI call
