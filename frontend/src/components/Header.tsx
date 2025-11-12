@@ -185,10 +185,14 @@ export const Header: React.FC = () => {
                 <div>
                   <p className="font-semibold text-lg">Guest Credentials</p>
                   <p className="text-sm opacity-90">
-                    Enter this email and password in the Returning Player form on the login page.
+                    Enter this username/email and password in the Returning Player form on the login page.
                   </p>
                 </div>
                 <div className="bg-white/15 p-4 rounded-lg backdrop-blur-sm space-y-2">
+                  <p className="my-1 font-mono text-sm">
+                    <strong>Username:</strong>{'  '}
+                    {player.username || username}
+                  </p>
                   <p className="my-1 font-mono text-sm">
                     <strong>Email:</strong>{' '}
                     {guestCredentials?.email ?? 'Not available'}
@@ -209,7 +213,7 @@ export const Header: React.FC = () => {
                 <p className="font-semibold">To log back in later:</p>
                 <ol className="list-decimal pl-5 space-y-1">
                   <li>Visit the Quipflip login page and choose the &quot;Returning Player&quot; option.</li>
-                  <li>Enter the guest email and password shown above.</li>
+                  <li>Enter the username or email and password shown above.</li>
                   <li>Continue playing—your progress and coins stay with your guest account.</li>
                 </ol>
               </div>

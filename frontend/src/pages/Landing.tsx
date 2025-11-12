@@ -258,7 +258,7 @@ export const Landing: React.FC = () => {
                 type="password"
                 value={registerPassword}
                 onChange={(e) => setRegisterPassword(e.target.value)}
-                placeholder="Create a password (min 8 characters)"
+                placeholder="Password (min 8 characters)"
                 className="w-full px-4 py-2 border border-gray-300 rounded-tile focus:outline-none focus:ring-2 focus:ring-quip-turquoise"
                 disabled={isLoading}
                 autoComplete="new-password"

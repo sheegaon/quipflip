@@ -98,9 +98,15 @@ const TutorialWelcome: React.FC<TutorialWelcomeProps> = ({ onStart, onSkip }) =>
         <div className="tutorial-welcome-modal">
           <div className="tutorial-welcome-content">
             <h1 className="tutorial-welcome-title">Your Guest Account</h1>
+            <p className="tutorial-welcome-description">
+              If you already have a Quipflip account, log out and log back in using your credentials.
+            </p>
             <div className="tutorial-guest-credentials bg-gradient-to-r from-quip-orange to-quip-turquoise text-white p-6 rounded-tile mb-6 shadow-lg">
               <p className="font-bold mb-3 text-lg">Your Guest Account Credentials</p>
               <div className="bg-white bg-opacity-20 p-4 rounded-lg mb-3 backdrop-blur-sm">
+                <p className="my-1 font-mono text-sm">
+                  <strong>Username:</strong>  {player.username}
+                </p>
                 <p className="my-1 font-mono text-sm">
                   <strong>Email:</strong> {guestCredentials.email}
                 </p>
@@ -113,7 +119,7 @@ const TutorialWelcome: React.FC<TutorialWelcomeProps> = ({ onStart, onSkip }) =>
               </p>
             </div>
             <p className="tutorial-welcome-description">
-              Keep these safe—once you dismiss this screen, you can still view these from the Settings and Statistics pages.
+              You can view these again from the Settings or Statistics pages.
             </p>
           </div>
           <div className="tutorial-welcome-actions">
