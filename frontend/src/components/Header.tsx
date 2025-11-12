@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { useNavigationHistory } from '../contexts/NavigationHistoryContext';
+import { useTutorial } from '../contexts/TutorialContext';
 import { BalanceFlipper } from './BalanceFlipper';
 import { SubHeader } from './SubHeader';
 import { HomeIcon } from './icons/HomeIcon';
@@ -13,8 +14,11 @@ import { TrackingIcon } from './icons/TrackingIcon';
 import { ReviewIcon } from './icons/ReviewIcon';
 import { LobbyIcon } from './icons/LobbyIcon';
 import { BrandedSurveyIcon } from './icons/BrandedSurveyIcon';
+import { BrandedTutorialIcon } from './icons/BrandedTutorialIcon';
 import { BrandedSettingsIcon } from './icons/BrandedSettingsIcon';
 import { AdminIcon } from './icons/AdminIcon';
+import { hasCompletedSurvey } from '../utils/betaSurvey';
+import { apiClient } from '../api/client';
 import { componentLogger } from '../utils/logger';
 
 export const Header: React.FC = () => {
@@ -24,19 +28,46 @@ export const Header: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { goBack } = useNavigationHistory();
+  const { status: tutorialStatus } = useTutorial();
 
   const [showGuestLogoutWarning, setShowGuestLogoutWarning] = React.useState(false);
   const [guestCredentials, setGuestCredentials] = React.useState<{ email: string | null; password: string | null } | null>(null);
   const [showDropdown, setShowDropdown] = React.useState(false);
+  const [surveyCompleted, setSurveyCompleted] = React.useState(false);
   const dropdownRef = React.useRef<HTMLDivElement>(null);
   const logoButtonRef = React.useRef<HTMLButtonElement>(null);
 
   // Show back arrow on all pages except dashboard
   const showBackArrow = location.pathname !== '/dashboard';
 
+  // Check survey completion status
+  React.useEffect(() => {
+    const checkSurveyStatus = async () => {
+      if (!player?.player_id) return;
+
+      try {
+        const completedLocal = hasCompletedSurvey(player.player_id);
+        if (completedLocal) {
+          setSurveyCompleted(true);
+          return;
+        }
+
+        const status = await apiClient.getBetaSurveyStatus();
+        setSurveyCompleted(status.has_submitted);
+      } catch (err) {
+        componentLogger.warn('Failed to check survey status:', err);
+      }
+    };
+
+    checkSurveyStatus();
+  }, [player?.player_id]);
+
   if (!player) {
     return null;
   }
+
+  // Determine if tutorial should be shown in menu
+  const showTutorialInMenu = !tutorialStatus?.tutorial_completed;
 
   const goToStatistics = React.useCallback(() => {
     navigate('/statistics');
@@ -298,13 +329,24 @@ export const Header: React.FC = () => {
                     <LobbyIcon className="h-5 w-5" />
                     <span className="font-semibold">Lobby</span>
                   </button>
-                  <button
-                    onClick={() => handleNavigate('/survey/beta')}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
-                  >
-                    <BrandedSurveyIcon className="h-5 w-5" />
-                    <span className="font-semibold">Survey</span>
-                  </button>
+                  {showTutorialInMenu && (
+                    <button
+                      onClick={() => handleNavigate('/dashboard?startTutorial=true')}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
+                    >
+                      <BrandedTutorialIcon className="h-5 w-5" />
+                      <span className="font-semibold">Tutorial</span>
+                    </button>
+                  )}
+                  {!surveyCompleted && (
+                    <button
+                      onClick={() => handleNavigate('/survey/beta')}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
+                    >
+                      <BrandedSurveyIcon className="h-5 w-5" />
+                      <span className="font-semibold">Survey</span>
+                    </button>
+                  )}
                   <button
                     onClick={() => handleNavigate('/settings')}
                     className="w-full flex items-center gap-3 px-4 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"

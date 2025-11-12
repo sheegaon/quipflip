@@ -44,6 +44,7 @@ export const Dashboard: React.FC = () => {
   const [showSurveyPrompt, setShowSurveyPrompt] = useState(false);
   const [isAbandoningRound, setIsAbandoningRound] = useState(false);
   const [abandonError, setAbandonError] = useState<string | null>(null);
+  const [showTutorialWelcome, setShowTutorialWelcome] = useState(false);
   const roundExpiryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Log component mount and key state changes
@@ -171,13 +172,28 @@ export const Dashboard: React.FC = () => {
 
   const handleStartTutorial = async () => {
     dashboardLogger.debug('Starting tutorial from dashboard');
+    setShowTutorialWelcome(false);
     await startTutorial();
     await advanceStep('dashboard');
   };
 
   const handleSkipTutorial = async () => {
+    setShowTutorialWelcome(false);
     await skipTutorial();
   };
+
+  // Check for startTutorial query parameter
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    if (searchParams.get('startTutorial') === 'true') {
+      dashboardLogger.debug('Showing tutorial welcome from query parameter');
+      setShowTutorialWelcome(true);
+      // Clear the query parameter
+      searchParams.delete('startTutorial');
+      const newSearch = searchParams.toString();
+      navigate(`/dashboard${newSearch ? `?${newSearch}` : ''}`, { replace: true });
+    }
+  }, [location.search, navigate]);
 
   const handleSurveyStart = useCallback(() => {
     setShowSurveyPrompt(false);
@@ -481,7 +497,7 @@ export const Dashboard: React.FC = () => {
   return (
     <div className="min-h-screen bg-quip-cream bg-pattern">
       <Header />
-      <TutorialWelcome onStart={handleStartTutorial} onSkip={handleSkipTutorial} />
+      {showTutorialWelcome && <TutorialWelcome onStart={handleStartTutorial} onSkip={handleSkipTutorial} />}
 
       <div className="max-w-4xl mx-auto md:px-4 px-3 md:pt-8 pt-3 md:pb-5 pb-5">
         {/* Active Round Notification */}
