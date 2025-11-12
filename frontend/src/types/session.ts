@@ -6,6 +6,12 @@
 import type { Player } from '../api/types';
 
 /**
+ * Time window for determining first-time users (5 minutes in milliseconds)
+ * If account creation and last login are within this window, user is considered first-time
+ */
+const FIRST_TIME_USER_WINDOW_MS = 5 * 60 * 1000;
+
+/**
  * User session state types
  */
 export const SessionState = {
@@ -46,7 +52,5 @@ export function isFirstTimeUser(createdAt?: string, lastLoginDate?: string): boo
   const created = new Date(createdAt).getTime();
   const lastLogin = new Date(lastLoginDate).getTime();
 
-  // If created and last login are within 5 minutes, consider it first time
-  const fiveMinutes = 5 * 60 * 1000;
-  return Math.abs(lastLogin - created) < fiveMinutes;
+  return Math.abs(lastLogin - created) < FIRST_TIME_USER_WINDOW_MS;
 }

@@ -28,9 +28,10 @@ function generateUUID(): string {
 
 /**
  * Set a first-party cookie
+ * Uses Secure attribute to ensure cookie is only sent over HTTPS
  */
 function setCookie(name: string, value: string, maxAge: number): void {
-  document.cookie = `${name}=${value}; max-age=${maxAge}; path=/; SameSite=Lax`;
+  document.cookie = `${name}=${value}; max-age=${maxAge}; path=/; SameSite=Lax; Secure`;
 }
 
 /**
