@@ -268,8 +268,8 @@ async def cleanup_cycle():
 
     logger.info("Cleanup cycle starting main loop")
 
-    # Run cleanup every 6 hours (21600 seconds)
-    cleanup_interval = 6 * 60 * 60
+    # Run cleanup every hour (3600 seconds)
+    cleanup_interval = 1 * 60 * 60
 
     while True:
         try:
@@ -328,7 +328,7 @@ async def lifespan(app_instance: FastAPI):
 
     try:
         cleanup_task = asyncio.create_task(cleanup_cycle())
-        logger.info("Cleanup cycle task started (runs every 6 hours)")
+        logger.info("Cleanup cycle task started (runs every hour)")
     except Exception as e:
         logger.error(f"Failed to start cleanup cycle: {e}")
 

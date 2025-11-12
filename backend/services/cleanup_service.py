@@ -466,11 +466,11 @@ class CleanupService:
 
     # ===== Inactive Guest Player Cleanup =====
 
-    async def cleanup_inactive_guest_players(self, days_old: int = 0) -> int:
+    async def cleanup_inactive_guest_players(self, hours_old: int = 1) -> int:
         """
         Remove guest accounts that:
         1. Have is_guest=True
-        2. Have not logged in for more than days_old days (or never logged in AND old enough)
+        2. Have not logged in for more than hours_old hours (or never logged in AND old enough)
         3. Have no activity (no submitted rounds, no phraseset activities, and no transactions)
 
         For guests with NO activity, they are completely deleted from the database.
@@ -478,12 +478,12 @@ class CleanupService:
         with a random username (handled by _delete_players_by_ids).
 
         Args:
-            days_old: Delete guests who haven't logged in for this many days (default: 0)
+            hours_old: Delete guests who haven't logged in for this many hours (default: 1)
 
         Returns:
             Number of inactive guest players deleted
         """
-        cutoff_date = datetime.now(UTC) - timedelta(days=days_old)
+        cutoff_date = datetime.now(UTC) - timedelta(hours=hours_old)
 
         # Find guests who haven't logged in recently
         # For guests with NULL last_login_date, also check created_at to avoid deleting new accounts
@@ -552,7 +552,7 @@ class CleanupService:
 
         logger.info(
             f"Found {len(inactive_guest_ids)} inactive guest player(s) to clean up "
-            f"(haven't logged in for >{days_old} days, no activity)"
+            f"(haven't logged in for >{hours_old} hours, no activity)"
         )
 
         # Get IDs of any prompt rounds to remove from queue (before deletion)

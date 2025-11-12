@@ -256,7 +256,7 @@ class TestGuestCleanup:
 
             # Run cleanup
             cleanup_service = CleanupService(db_session)
-            deleted_count = await cleanup_service.cleanup_inactive_guest_players(days_old=7)
+            deleted_count = await cleanup_service.cleanup_inactive_guest_players(hours_old=168)
 
             # Verify the guest was deleted
             assert deleted_count == 1
@@ -310,7 +310,7 @@ class TestGuestCleanup:
 
             # Run cleanup
             cleanup_service = CleanupService(db_session)
-            deleted_count = await cleanup_service.cleanup_inactive_guest_players(days_old=7)
+            deleted_count = await cleanup_service.cleanup_inactive_guest_players(hours_old=168)
 
             # Verify the guest was NOT deleted (because they have rounds)
             # Note: This might be 0 if the round was created, or might clean up other guests
@@ -336,7 +336,7 @@ class TestGuestCleanup:
 
             # Run cleanup (guest is brand new, should not be deleted)
             cleanup_service = CleanupService(db_session)
-            deleted_count = await cleanup_service.cleanup_inactive_guest_players(days_old=7)
+            deleted_count = await cleanup_service.cleanup_inactive_guest_players(hours_old=168)
 
             # Verify the guest was NOT deleted
             from uuid import UUID
