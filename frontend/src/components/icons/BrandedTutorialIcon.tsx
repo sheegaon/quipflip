@@ -13,38 +13,36 @@ export const BrandedTutorialIcon: React.FC<BrandedTutorialIconProps> = ({ classN
       fill="none"
       aria-hidden="true"
     >
-      {/* Book background */}
-      <rect x="4" y="4" width="16" height="17" rx="1.5" fill="#26A69A" opacity="0.15" />
+      {/* Circle background */}
+      <circle cx="12" cy="12" r="10" fill="#26A69A" opacity="0.15" />
 
-      {/* Book outline */}
-      <path
-        d="M4 5.5C4 4.67157 4.67157 4 5.5 4H18.5C19.3284 4 20 4.67157 20 5.5V18.5C20 19.3284 19.3284 20 18.5 20H5.5C4.67157 20 4 19.3284 4 18.5V5.5Z"
+      {/* Circle outline */}
+      <circle
+        cx="12"
+        cy="12"
+        r="10"
         stroke="#26A69A"
+        strokeWidth="2"
+        fill="none"
+      />
+
+      {/* Question mark - centered at x=12 */}
+      {/* Top curve of question mark */}
+      <path
+        d="M10 8.5C10 7.12 11.12 6 12.5 6C13.88 6 15 7.12 15 8.5C15 9.6 14.3 10.5 13.3 10.9L12.5 11.2V13"
+        stroke="#FF6F00"
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
 
-      {/* Book spine/middle line */}
-      <line x1="12" y1="4" x2="12" y2="20" stroke="#26A69A" strokeWidth="1.5" />
-
-      {/* Bookmark */}
-      <path
-        d="M15 2L15 9L17 7L19 9L19 2L15 2Z"
+      {/* Question mark dot */}
+      <circle
+        cx="12.5"
+        cy="16"
+        r="1.2"
         fill="#FF6F00"
-        stroke="#FF6F00"
-        strokeWidth="0.5"
-        strokeLinejoin="round"
       />
-
-      {/* Light bulb/learning icon */}
-      <circle cx="8" cy="10" r="2.5" fill="none" stroke="#FF6F00" strokeWidth="1.5" />
-      <path d="M8 12.5 L8 14" stroke="#FF6F00" strokeWidth="1.5" strokeLinecap="round" />
-      <line x1="7" y1="14.5" x2="9" y2="14.5" stroke="#FF6F00" strokeWidth="1.5" strokeLinecap="round" />
-
-      {/* Book pages decoration */}
-      <path d="M7 16H10" stroke="#26A69A" strokeWidth="1" strokeLinecap="round" opacity="0.6" />
-      <path d="M14 16H17" stroke="#26A69A" strokeWidth="1" strokeLinecap="round" opacity="0.6" />
     </svg>
   );
 };
