@@ -33,15 +33,12 @@ const GuestLogoutWarning: React.FC<GuestLogoutWarningProps> = ({
             <h2 id="guest-logout-title" className="text-2xl font-bold text-quip-navy text-center">
               Save Your Guest Login
             </h2>
-            <p className="text-sm text-quip-navy opacity-80 text-center">
-              You&apos;ll need these details to sign back in after logging out. Keep a copy before you continue.
-            </p>
           </div>
 
           <div className="guest-credentials bg-gradient-to-r from-quip-orange to-quip-turquoise text-white md:p-6 px-3 py-6 rounded-tile mb-6 shadow-lg">
             <p className="font-bold md:mb-3 mb-2 text-lg">Guest Credentials</p>
             <p className="text-sm opacity-90 mb-3">
-              Enter this username/email and password in the Returning Player form on the login page.
+              You&apos;ll need this username/email and password to sign back in after logging out. Keep a copy before you continue.
             </p>
             <div className="bg-white bg-opacity-20 md:p-4 p-2 rounded-lg mb-3 backdrop-blur-sm">
               <p className="my-0 md:my-1 font-mono text-sm">
@@ -56,7 +53,7 @@ const GuestLogoutWarning: React.FC<GuestLogoutWarningProps> = ({
                 </p>
               ) : (
                 <p className="my-0 md:my-1 font-mono text-sm">
-                  <strong>Password:</strong> QuipFlip
+                  <strong>Password:</strong> QuipGuest
                 </p>
               )}
             </div>
