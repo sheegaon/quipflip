@@ -8,7 +8,7 @@ from backend.config import get_settings
 from backend.database import get_db
 from backend.dependencies import get_current_player
 from backend.models.player import Player
-from backend.schemas.auth import AuthTokenResponse, LoginRequest, LogoutRequest, RefreshRequest, SuggestUsernameResponse
+from backend.schemas.auth import AuthTokenResponse, LoginRequest, LogoutRequest, RefreshRequest, SuggestUsernameResponse, UsernameLoginRequest
 from backend.services.auth_service import AuthService, AuthError
 from backend.utils.cookies import (
     clear_auth_cookies,
@@ -19,6 +19,35 @@ from backend.utils.cookies import (
 
 router = APIRouter()
 settings = get_settings()
+
+
+async def _complete_login(
+    player: Player,
+    response: Response,
+    db: AsyncSession,
+) -> AuthTokenResponse:
+    """Handle post-authentication logic: update last login, issue tokens, set cookies.
+
+    This helper function encapsulates the common login success flow shared by
+    email-based and username-based login endpoints.
+    """
+    # Update last_login_date for tracking purposes
+    player.last_login_date = datetime.now(UTC)
+    await db.commit()
+
+    auth_service = AuthService(db)
+    access_token, refresh_token, expires_in = await auth_service.issue_tokens(player)
+    set_access_token_cookie(response, access_token)
+    set_refresh_cookie(response, refresh_token, expires_days=settings.refresh_token_exp_days)
+
+    return AuthTokenResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        token_type="bearer",
+        expires_in=expires_in,
+        player_id=player.player_id,
+        username=player.username,
+    )
 
 
 @router.post("/login", response_model=AuthTokenResponse)
@@ -35,22 +64,24 @@ async def login(
     except AuthError as exc:
         raise HTTPException(status_code=401, detail=str(exc)) from exc
 
-    # Update last_login_date for tracking purposes
-    player.last_login_date = datetime.now(UTC)
-    await db.commit()
+    return await _complete_login(player, response, db)
 
-    access_token, refresh_token, expires_in = await auth_service.issue_tokens(player)
-    set_access_token_cookie(response, access_token)
-    set_refresh_cookie(response, refresh_token, expires_days=settings.refresh_token_exp_days)
 
-    return AuthTokenResponse(
-        access_token=access_token,
-        refresh_token=refresh_token,
-        token_type="bearer",
-        expires_in=expires_in,
-        player_id=player.player_id,
-        username=player.username,
-    )
+@router.post("/login/username", response_model=AuthTokenResponse)
+async def login_with_username(
+    request: UsernameLoginRequest,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+) -> AuthTokenResponse:
+    """Authenticate a player via username/password and issue JWT tokens."""
+
+    auth_service = AuthService(db)
+    try:
+        player = await auth_service.authenticate_player_by_username(request.username, request.password)
+    except AuthError as exc:
+        raise HTTPException(status_code=401, detail=str(exc)) from exc
+
+    return await _complete_login(player, response, db)
 
 
 @router.get("/suggest-username", response_model=SuggestUsernameResponse)

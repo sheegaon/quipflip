@@ -9,7 +9,7 @@ export const Landing: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [registerEmail, setRegisterEmail] = useState('');
   const [registerPassword, setRegisterPassword] = useState('');
-  const [loginEmail, setLoginEmail] = useState('');
+  const [loginIdentifier, setLoginIdentifier] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [guestCredentials, setGuestCredentials] = useState<{ email: string; password: string } | null>(null);
 
@@ -90,22 +90,43 @@ export const Landing: React.FC = () => {
 
   const handleExistingPlayer = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!loginEmail.trim() || !loginPassword.trim()) {
-      setError('Please enter your email and password.');
+    const identifier = loginIdentifier.trim();
+    if (!identifier || !loginPassword.trim()) {
+      setError('Please enter your email or username and password.');
       landingLogger.warn('Login attempted with missing credentials');
       return;
     }
 
+    // Detect if input is email or username by presence of "@"
+    const isEmail = identifier.includes('@');
+
     try {
       setIsLoading(true);
       setError(null);
-      landingLogger.info('Attempting login for existing player', { loginEmail });
+      landingLogger.info('Attempting login for existing player', { identifier, isEmail });
 
-      // Send email and password to backend (now with correct field names)
-      const response = await apiClient.login({
-        email: loginEmail.trim(),
-        password: loginPassword,
-      });
+      let response;
+      if (isEmail) {
+        // Use email login endpoint
+        response = await apiClient.login({
+          email: identifier,
+          password: loginPassword,
+        });
+      } else {
+        // Validate username: only alphanumeric and spaces allowed
+        const isValidUsername = /^[a-zA-Z0-9\s]+$/.test(identifier);
+        if (!isValidUsername) {
+          setError('Username can only contain letters, numbers, and spaces.');
+          landingLogger.warn('Login attempted with invalid username characters');
+          return;
+        }
+
+        // Use username login endpoint
+        response = await apiClient.loginWithUsername({
+          username: identifier,
+          password: loginPassword,
+        });
+      }
 
       landingLogger.info('Login successful, starting session', { username: response.username });
       if (isMountedRef.current) {
@@ -113,7 +134,7 @@ export const Landing: React.FC = () => {
         navigate('/dashboard');
       }
     } catch (err) {
-      const message = extractErrorMessage(err) || 'Login failed. Please check your email and password, or create a new account.';
+      const message = extractErrorMessage(err) || 'Login failed. Please check your email/username and password, or create a new account.';
       landingLogger.error('Login failed', err);
       if (isMountedRef.current) {
         setError(message);
@@ -228,7 +249,7 @@ export const Landing: React.FC = () => {
                 type="email"
                 value={registerEmail}
                 onChange={(e) => setRegisterEmail(e.target.value)}
-                placeholder="Your email"
+                placeholder="Your email (no validation required)"
                 className="w-full px-4 py-2 border border-gray-300 rounded-tile focus:outline-none focus:ring-2 focus:ring-quip-turquoise"
                 disabled={isLoading}
                 autoComplete="email"
@@ -259,13 +280,13 @@ export const Landing: React.FC = () => {
             <h2 className="text-xl font-semibold mb-4 text-quip-navy">Returning Player</h2>
             <form onSubmit={handleExistingPlayer} className="space-y-3">
               <input
-                type="email"
-                value={loginEmail}
-                onChange={(e) => setLoginEmail(e.target.value)}
-                placeholder="Your email"
+                type="text"
+                value={loginIdentifier}
+                onChange={(e) => setLoginIdentifier(e.target.value)}
+                placeholder="Email or Username"
                 className="w-full px-4 py-2 border border-gray-300 rounded-tile focus:outline-none focus:ring-2 focus:ring-quip-turquoise"
                 disabled={isLoading}
-                autoComplete="email"
+                autoComplete="username"
               />
               <input
                 type="password"

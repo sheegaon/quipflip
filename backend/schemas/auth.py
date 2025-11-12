@@ -35,6 +35,13 @@ class LoginRequest(BaseModel):
     password: PasswordStr
 
 
+class UsernameLoginRequest(BaseModel):
+    """Login payload using username instead of email."""
+
+    username: UsernameStr
+    password: PasswordStr
+
+
 class SuggestUsernameResponse(BaseModel):
     """Response containing a suggested username."""
 
