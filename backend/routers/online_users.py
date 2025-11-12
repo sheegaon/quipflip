@@ -9,7 +9,7 @@ review events.
 from datetime import datetime, UTC, timedelta
 from typing import List, Optional
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect, status
-from sqlalchemy import select, exists
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 import asyncio
 import logging
@@ -202,24 +202,21 @@ async def get_online_users(db: AsyncSession) -> List[OnlineUser]:
     # If there are guests, check which ones have activity
     guests_with_activity = set()
     if guest_ids:
-        # Check for submitted rounds
+        # Check for rounds
         rounds_result = await db.execute(
             select(Round.player_id)
-            .where(
-                Round.player_id.in_(guest_ids),
-                Round.status == "submitted",
-            )
+            .where(Round.player_id.in_(guest_ids))
             .distinct()
         )
         guests_with_activity.update(row[0] for row in rounds_result)
 
         # Check for phraseset activities
-        activity_result = await db.execute(
+        phraseset_result = await db.execute(
             select(PhrasesetActivity.player_id)
             .where(PhrasesetActivity.player_id.in_(guest_ids))
             .distinct()
         )
-        guests_with_activity.update(row[0] for row in activity_result)
+        guests_with_activity.update(row[0] for row in phraseset_result)
 
         # Check for transactions
         transactions_result = await db.execute(
