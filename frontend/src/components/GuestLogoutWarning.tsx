@@ -1,16 +1,10 @@
 import React from 'react';
 import './GuestCredentialsOverlay.css';
 
-interface GuestCredentials {
-  email: string;
-  password: string;
-  timestamp: number;
-}
-
 interface GuestLogoutWarningProps {
   isVisible: boolean;
-  username: string;
-  guestCredentials: GuestCredentials | null;
+  username: string | null;
+  guestCredentials: { email: string | null; password: string | null } | null;
   onConfirmLogout: () => void;
   onDismiss: () => void;
 }
