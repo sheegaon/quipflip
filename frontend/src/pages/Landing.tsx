@@ -249,7 +249,7 @@ export const Landing: React.FC = () => {
                 type="email"
                 value={registerEmail}
                 onChange={(e) => setRegisterEmail(e.target.value)}
-                placeholder="Your email"
+                placeholder="Your email (no validation required)"
                 className="w-full px-4 py-2 border border-gray-300 rounded-tile focus:outline-none focus:ring-2 focus:ring-quip-turquoise"
                 disabled={isLoading}
                 autoComplete="email"
