@@ -4,7 +4,6 @@ import random
 import re
 from uuid import UUID
 from datetime import UTC, datetime, timedelta
-from typing import Optional
 
 from sqlalchemy import case, delete, func, or_, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,6 +22,7 @@ from backend.models import (
     Quest,
 )
 from backend.services.username_service import canonicalize_username
+from backend.services.queue_service import QueueService
 
 logger = logging.getLogger(__name__)
 
@@ -204,8 +204,6 @@ class CleanupService:
         Returns:
             Number of orphaned rounds deleted
         """
-        from backend.services.queue_service import QueueService
-
         orphaned_count, by_type = await self.count_orphaned_rounds()
 
         if orphaned_count == 0:
@@ -249,8 +247,6 @@ class CleanupService:
         Returns:
             List of Player objects
         """
-        from sqlalchemy import or_
-
         if not self._TEST_LIKE_PATTERNS:
             return []
 
@@ -284,8 +280,6 @@ class CleanupService:
         data integrity violations. Submitted rounds are preserved as they are
         referenced by phrasesets.
         """
-        from backend.services.queue_service import QueueService
-
         if not player_ids:
             return {}
 
@@ -466,24 +460,24 @@ class CleanupService:
 
     # ===== Inactive Guest Player Cleanup =====
 
-    async def cleanup_inactive_guest_players(self, days_old: int = 1) -> int:
+    async def cleanup_inactive_guest_players(self, hours_old: int = 1) -> int:
         """
         Remove guest accounts that:
         1. Have is_guest=True
-        2. Have not logged in for more than days_old days (or never logged in AND old enough)
-        3. Have no activity (no submitted rounds and no phraseset activities)
+        2. Have not logged in for more than hours_old hours (or never logged in AND old enough)
+        3. Have no activity (no submitted rounds, no phraseset activities, and no transactions)
 
         For guests with NO activity, they are completely deleted from the database.
         For guests WITH activity who are being deleted elsewhere, they get anonymized
         with a random username (handled by _delete_players_by_ids).
 
         Args:
-            days_old: Delete guests who haven't logged in for this many days (default: 1)
+            hours_old: Delete guests who haven't logged in for this many hours (default: 1)
 
         Returns:
             Number of inactive guest players deleted
         """
-        cutoff_date = datetime.now(UTC) - timedelta(days=days_old)
+        cutoff_date = datetime.now(UTC) - timedelta(hours=hours_old)
 
         # Find guests who haven't logged in recently
         # For guests with NULL last_login_date, also check created_at to avoid deleting new accounts
@@ -505,54 +499,40 @@ class CleanupService:
         # Get all player IDs for batch queries
         guest_ids = [guest.player_id for guest in all_old_guests]
 
-        # Optimize: Find all guests with submitted rounds in a single query
-        rounds_stmt = (
-            select(Round.player_id)
-            .where(
-                Round.player_id.in_(guest_ids),
-                Round.status == "submitted",
+        guests_with_activity = set()
+        if guest_ids:
+            # Check for rounds
+            rounds_result = await self.db.execute(
+                select(Round.player_id)
+                .where(Round.player_id.in_(guest_ids))
+                .distinct()
             )
-            .distinct()
-        )
-        rounds_result = await self.db.execute(rounds_stmt)
-        guests_with_rounds = {row[0] for row in rounds_result}
+            guests_with_activity.update(row[0] for row in rounds_result)
 
-        # Optimize: Find all guests with phraseset activities in a single query
-        activity_stmt = (
-            select(PhrasesetActivity.player_id)
-            .where(PhrasesetActivity.player_id.in_(guest_ids))
-            .distinct()
-        )
-        activity_result = await self.db.execute(activity_stmt)
-        guests_with_activity = {row[0] for row in activity_result}
+            # Check for phraseset activities
+            phraseset_result = await self.db.execute(
+                select(PhrasesetActivity.player_id)
+                .where(PhrasesetActivity.player_id.in_(guest_ids))
+                .distinct()
+            )
+            guests_with_activity.update(row[0] for row in phraseset_result)
+
+            # Check for transactions
+            transactions_result = await self.db.execute(
+                select(Transaction.player_id)
+                .where(Transaction.player_id.in_(guest_ids))
+                .distinct()
+            )
+            guests_with_activity.update(row[0] for row in transactions_result)
 
         # Filter to guests with NO activity
-        inactive_guest_ids = [
-            guest_id for guest_id in guest_ids
-            if guest_id not in guests_with_rounds and guest_id not in guests_with_activity
-        ]
+        inactive_guest_ids = [guest_id for guest_id in guest_ids if guest_id not in guests_with_activity]
 
         if not inactive_guest_ids:
-            logger.info(
-                f"Found {len(all_old_guests)} guest(s) who haven't logged in recently, "
-                f"but all have activity (submitted rounds or phraseset activity)"
-            )
+            logger.info(f"Found {len(all_old_guests)} guest(s) but all have activity")
             return 0
 
-        logger.info(
-            f"Found {len(inactive_guest_ids)} inactive guest player(s) to clean up "
-            f"(haven't logged in for >{days_old} days, no activity)"
-        )
-
-        # Get IDs of any prompt rounds to remove from queue (before deletion)
-        from backend.services.queue_service import QueueService
-
-        prompt_rounds_result = await self.db.execute(
-            select(Round.round_id)
-            .where(Round.player_id.in_(inactive_guest_ids))
-            .where(Round.round_type == "prompt")
-        )
-        prompt_round_ids = [row[0] for row in prompt_rounds_result]
+        logger.info(f"Found {len(inactive_guest_ids)} inactive guest player(s) to clean up")
 
         # Delete the players - related data will be deleted automatically via CASCADE
         # All related tables have ondelete="CASCADE" configured on their foreign keys
@@ -563,11 +543,6 @@ class CleanupService:
 
         # Commit the transaction
         await self.db.commit()
-
-        # Remove deleted prompt rounds from queue (after commit)
-        if prompt_round_ids:
-            removed_from_queue = QueueService.remove_prompt_rounds_from_queue(prompt_round_ids)
-            logger.info(f"Removed {removed_from_queue} prompt rounds from queue after guest deletion")
 
         if deleted_count > 0:
             logger.info(f"Deleted {deleted_count} inactive guest player(s) completely from database")

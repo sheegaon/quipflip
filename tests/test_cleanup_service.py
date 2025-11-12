@@ -419,7 +419,7 @@ class TestInactiveGuestCleanup:
         old_guest_id = old_guest.player_id
 
         # Cleanup should remove old inactive guest
-        deleted_count = await cleanup_service.cleanup_inactive_guest_players(days_old=7)
+        deleted_count = await cleanup_service.cleanup_inactive_guest_players(hours_old=168)
 
         assert deleted_count == 1
 
@@ -467,7 +467,7 @@ class TestInactiveGuestCleanup:
         await db_session.commit()
 
         # Cleanup should not remove active guest (has submitted rounds)
-        deleted_count = await cleanup_service.cleanup_inactive_guest_players(days_old=7)
+        deleted_count = await cleanup_service.cleanup_inactive_guest_players(hours_old=168)
 
         assert deleted_count == 0
 
@@ -521,7 +521,7 @@ class TestInactiveGuestCleanup:
         await db_session.commit()
 
         # Cleanup should not remove active guest (has phraseset activity)
-        deleted_count = await cleanup_service.cleanup_inactive_guest_players(days_old=7)
+        deleted_count = await cleanup_service.cleanup_inactive_guest_players(hours_old=168)
 
         assert deleted_count == 0
 
@@ -565,7 +565,7 @@ class TestInactiveGuestCleanup:
         old_guest_id = old_guest_null_login.player_id
 
         # Cleanup should only remove the old guest with NULL login
-        deleted_count = await cleanup_service.cleanup_inactive_guest_players(days_old=7)
+        deleted_count = await cleanup_service.cleanup_inactive_guest_players(hours_old=168)
 
         assert deleted_count == 1
 

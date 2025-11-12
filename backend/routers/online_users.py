@@ -19,6 +19,9 @@ from backend.database import get_db, AsyncSessionLocal
 from backend.dependencies import get_current_player
 from backend.models.user_activity import UserActivity
 from backend.models.player import Player
+from backend.models.round import Round
+from backend.models.phraseset_activity import PhrasesetActivity
+from backend.models.transaction import Transaction
 from backend.schemas.online_users import OnlineUser, OnlineUsersResponse
 from backend.services.auth_service import AuthService
 from backend.services.player_service import PlayerService
@@ -175,11 +178,15 @@ manager = ConnectionManager()
 
 
 async def get_online_users(db: AsyncSession) -> List[OnlineUser]:
-    """Get list of users who were active in the last 30 minutes."""
+    """Get list of users who were active in the last 30 minutes.
+
+    Excludes guest users who have taken no actions (no submitted rounds,
+    no phraseset activities, and no transactions).
+    """
     cutoff_time = datetime.now(UTC) - timedelta(minutes=30)
 
     result = await db.execute(
-        select(UserActivity, Player.balance, Player.created_at)
+        select(UserActivity, Player.balance, Player.created_at, Player.is_guest, Player.player_id)
         .join(Player, UserActivity.player_id == Player.player_id)
         .where(UserActivity.last_activity >= cutoff_time)
         .order_by(UserActivity.last_activity.desc())
@@ -189,8 +196,42 @@ async def get_online_users(db: AsyncSession) -> List[OnlineUser]:
     # Capture current time once for consistent calculations
     now = datetime.now(UTC)
 
+    # Collect guest player IDs to check for activity
+    guest_ids = [player_id for _, _, _, is_guest, player_id in rows if is_guest]
+
+    # If there are guests, check which ones have activity
+    guests_with_activity = set()
+    if guest_ids:
+        # Check for rounds
+        rounds_result = await db.execute(
+            select(Round.player_id)
+            .where(Round.player_id.in_(guest_ids))
+            .distinct()
+        )
+        guests_with_activity.update(row[0] for row in rounds_result)
+
+        # Check for phraseset activities
+        phraseset_result = await db.execute(
+            select(PhrasesetActivity.player_id)
+            .where(PhrasesetActivity.player_id.in_(guest_ids))
+            .distinct()
+        )
+        guests_with_activity.update(row[0] for row in phraseset_result)
+
+        # Check for transactions
+        transactions_result = await db.execute(
+            select(Transaction.player_id)
+            .where(Transaction.player_id.in_(guest_ids))
+            .distinct()
+        )
+        guests_with_activity.update(row[0] for row in transactions_result)
+
     online_users = []
-    for activity, balance, created_at in rows:
+    for activity, balance, created_at, is_guest, player_id in rows:
+        # Skip guests with no activity
+        if is_guest and player_id not in guests_with_activity:
+            continue
+
         # Calculate time ago
         time_diff = now - activity.last_activity
         seconds = int(time_diff.total_seconds())
