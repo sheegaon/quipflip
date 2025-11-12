@@ -335,6 +335,8 @@ Get player balance and status.
   "username": "Prompt Pirate",
   "email": "prompt.pirate@example.com",
   "balance": 5000,
+  "wallet": 5000,
+  "vault": 1250,
   "starting_balance": 5000,
   "daily_bonus_available": false,
   "daily_bonus_amount": 100,
@@ -349,6 +351,9 @@ Get player balance and status.
 ```
 
 **Response Fields:**
+- `balance` (integer): **DEPRECATED** - Use `wallet` instead. Kept for backwards compatibility, automatically synced with wallet.
+- `wallet` (integer): Current spendable balance for entering rounds and transactions.
+- `vault` (integer): Accumulated long-term balance from net earnings (30% rake). Used for leaderboard rankings.
 - `is_admin` (boolean): Whether player has admin privileges
 - `locked_until` (timestamp or null): Account lock expiration time (for temporary bans)
 - `flag_dismissal_streak` (integer): Consecutive flag dismissals by this player (moderation tracking)
@@ -2179,7 +2184,9 @@ CORS is enabled for all origins in development. For production:
 ### TypeScript Types (Example)
 ```typescript
 interface Player {
-  balance: number
+  balance: number  // DEPRECATED: Use wallet instead
+  wallet: number
+  vault: number
   daily_bonus_available: boolean
   outstanding_prompts: number
 }

@@ -135,6 +135,8 @@ class TransactionService:
         """
         Create payout with 70/30 split between wallet and vault based on net earnings.
 
+        Uses distributed lock to prevent race conditions (unless skip_lock=True).
+
         Rules:
         - If net earnings (gross - cost) > 0:
           - 70% of net goes to wallet
@@ -155,59 +157,67 @@ class TransactionService:
         Returns:
             Tuple of (wallet_transaction, vault_transaction)
         """
-        net_earnings = gross_amount - cost
+        async def _create_split_payout_impl():
+            net_earnings = gross_amount - cost
 
-        if net_earnings <= 0:
-            # All gross earnings go back to wallet
-            wallet_txn = await self.create_transaction(
-                player_id=player_id,
-                amount=gross_amount,
-                trans_type=trans_type,
-                reference_id=reference_id,
-                auto_commit=auto_commit,
-                skip_lock=skip_lock,
-                wallet_type="wallet",
-            )
-            return wallet_txn, None
+            if net_earnings <= 0:
+                # All gross earnings go back to wallet
+                wallet_txn = await self.create_transaction(
+                    player_id=player_id,
+                    amount=gross_amount,
+                    trans_type=trans_type,
+                    reference_id=reference_id,
+                    auto_commit=auto_commit,
+                    skip_lock=True,  # Lock already acquired by outer function
+                    wallet_type="wallet",
+                )
+                return wallet_txn, None
+            else:
+                # Split net earnings: 70% to wallet, 30% to vault
+                # Also return the cost to wallet
+                vault_amount = int(net_earnings * 0.3)
+                wallet_amount = gross_amount - vault_amount
+
+                # Create wallet transaction (cost + 70% of net)
+                wallet_txn = await self.create_transaction(
+                    player_id=player_id,
+                    amount=wallet_amount,
+                    trans_type=trans_type,
+                    reference_id=reference_id,
+                    auto_commit=False,
+                    skip_lock=True,  # Lock already acquired by outer function
+                    wallet_type="wallet",
+                )
+
+                # Create vault transaction (30% of net)
+                vault_txn = await self.create_transaction(
+                    player_id=player_id,
+                    amount=vault_amount,
+                    trans_type="vault_rake",
+                    reference_id=reference_id,
+                    auto_commit=False,
+                    skip_lock=True,  # Lock already acquired by outer function
+                    wallet_type="vault",
+                )
+
+                if auto_commit:
+                    await self.db.commit()
+                    await self.db.refresh(wallet_txn)
+                    await self.db.refresh(vault_txn)
+
+                logger.info(
+                    f"Split payout created: player={player_id}, gross={gross_amount}, cost={cost}, "
+                    f"net={net_earnings}, wallet={wallet_amount}, vault={vault_amount}"
+                )
+
+                return wallet_txn, vault_txn
+
+        if skip_lock:
+            return await _create_split_payout_impl()
         else:
-            # Split net earnings: 70% to wallet, 30% to vault
-            # Also return the cost to wallet
-            vault_amount = int(net_earnings * 0.3)
-            wallet_amount = gross_amount - vault_amount
-
-            # Create wallet transaction (cost + 70% of net)
-            wallet_txn = await self.create_transaction(
-                player_id=player_id,
-                amount=wallet_amount,
-                trans_type=trans_type,
-                reference_id=reference_id,
-                auto_commit=False,
-                skip_lock=skip_lock,
-                wallet_type="wallet",
-            )
-
-            # Create vault transaction (30% of net)
-            vault_txn = await self.create_transaction(
-                player_id=player_id,
-                amount=vault_amount,
-                trans_type="vault_rake",
-                reference_id=reference_id,
-                auto_commit=False,
-                skip_lock=skip_lock,
-                wallet_type="vault",
-            )
-
-            if auto_commit:
-                await self.db.commit()
-                await self.db.refresh(wallet_txn)
-                await self.db.refresh(vault_txn)
-
-            logger.info(
-                f"Split payout created: player={player_id}, gross={gross_amount}, cost={cost}, "
-                f"net={net_earnings}, wallet={wallet_amount}, vault={vault_amount}"
-            )
-
-            return wallet_txn, vault_txn
+            lock_name = f"create_transaction:{player_id}"
+            with lock_client.lock(lock_name, timeout=10):
+                return await _create_split_payout_impl()
 
     async def get_player_transactions(
         self,

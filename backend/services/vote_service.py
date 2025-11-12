@@ -876,21 +876,29 @@ class VoteService:
         scoring_service = ScoringService(self.db)
         payouts = await scoring_service.calculate_payouts(phraseset)
 
-        # Get round costs for split payout calculation
-        round_costs = {}
-        for role, round_id in [
-            ("original", phraseset.prompt_round_id),
-            ("copy1", phraseset.copy_round_1_id),
-            ("copy2", phraseset.copy_round_2_id),
-        ]:
-            if round_id:
-                round_obj = await self.db.get(Round, round_id)
-                if round_obj:
-                    round_costs[role] = round_obj.cost
-                else:
-                    round_costs[role] = 0
-            else:
-                round_costs[role] = 0
+        # Get round costs for split payout calculation - fetch all in one query
+        round_ids = [
+            phraseset.prompt_round_id,
+            phraseset.copy_round_1_id,
+            phraseset.copy_round_2_id,
+        ]
+        # Filter out None values
+        valid_round_ids = [rid for rid in round_ids if rid is not None]
+
+        # Fetch all rounds in a single query
+        round_cost_map = {}
+        if valid_round_ids:
+            result = await self.db.execute(
+                select(Round.round_id, Round.cost).where(Round.round_id.in_(valid_round_ids))
+            )
+            round_cost_map = {round_id: cost for round_id, cost in result.all()}
+
+        # Map costs to roles
+        round_costs = {
+            "original": round_cost_map.get(phraseset.prompt_round_id, 0),
+            "copy1": round_cost_map.get(phraseset.copy_round_1_id, 0),
+            "copy2": round_cost_map.get(phraseset.copy_round_2_id, 0),
+        }
 
         # Create prize transactions for each contributor
         # Split payout: 70% of net to wallet, 30% to vault
