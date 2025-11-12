@@ -244,7 +244,9 @@ async def get_balance(
         player_id=player.player_id,
         username=player.username,
         email=player.email,
-        balance=player.balance,
+        balance=player.balance,  # DEPRECATED: Use wallet instead
+        wallet=player.wallet,
+        vault=player.vault,
         starting_balance=settings.starting_balance,
         daily_bonus_available=bonus_available,
         daily_bonus_amount=settings.daily_bonus_amount,

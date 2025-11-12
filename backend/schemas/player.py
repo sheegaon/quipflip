@@ -14,7 +14,9 @@ class PlayerBalance(BaseSchema):
     player_id: UUID
     username: str
     email: EmailLike
-    balance: int
+    balance: int  # DEPRECATED: Use wallet instead
+    wallet: int
+    vault: int
     starting_balance: int
     daily_bonus_available: bool
     daily_bonus_amount: int

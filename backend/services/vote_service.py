@@ -538,13 +538,16 @@ class VoteService:
         await self.db.flush()
 
         # Give payout if correct (deferred commit)
+        # Split payout: 70% of net to wallet, 30% to vault
         if correct:
-            await transaction_service.create_transaction(
-                player.player_id,
-                payout,
-                "vote_payout",
-                vote.vote_id,
+            await transaction_service.create_split_payout(
+                player_id=player.player_id,
+                gross_amount=payout,
+                cost=settings.vote_cost,
+                trans_type="vote_payout",
+                reference_id=vote.vote_id,
                 auto_commit=False,  # Defer commit to end of this method
+                skip_lock=True,  # Already in transaction
             )
 
         # Update phraseset vote count and prize pool
@@ -661,13 +664,16 @@ class VoteService:
         await self.db.flush()
 
         # Give payout if correct (deferred commit)
+        # Split payout: 70% of net to wallet, 30% to vault
         if correct:
-            await transaction_service.create_transaction(
-                player.player_id,
-                payout,
-                "vote_payout",
-                vote.vote_id,
+            await transaction_service.create_split_payout(
+                player_id=player.player_id,
+                gross_amount=payout,
+                cost=settings.vote_cost,
+                trans_type="vote_payout",
+                reference_id=vote.vote_id,
                 auto_commit=False,  # Defer commit to end of this method
+                skip_lock=True,  # Already in transaction
             )
 
         # Track consecutive incorrect votes for guests
@@ -870,7 +876,24 @@ class VoteService:
         scoring_service = ScoringService(self.db)
         payouts = await scoring_service.calculate_payouts(phraseset)
 
+        # Get round costs for split payout calculation
+        round_costs = {}
+        for role, round_id in [
+            ("original", phraseset.prompt_round_id),
+            ("copy1", phraseset.copy_round_1_id),
+            ("copy2", phraseset.copy_round_2_id),
+        ]:
+            if round_id:
+                round_obj = await self.db.get(Round, round_id)
+                if round_obj:
+                    round_costs[role] = round_obj.cost
+                else:
+                    round_costs[role] = 0
+            else:
+                round_costs[role] = 0
+
         # Create prize transactions for each contributor
+        # Split payout: 70% of net to wallet, 30% to vault
         for role in ["original", "copy1", "copy2"]:
             payout_info = payouts[role]
             if payout_info["player_id"] is not None and payout_info["payout"] > 0:
@@ -883,12 +906,15 @@ class VoteService:
                     )
                     continue
 
-                await transaction_service.create_transaction(
-                    payout_info["player_id"],
-                    payout_info["payout"],
-                    "prize_payout",
-                    phraseset.phraseset_id,
+                # Use split payout to handle wallet/vault distribution
+                await transaction_service.create_split_payout(
+                    player_id=payout_info["player_id"],
+                    gross_amount=payout_info["payout"],
+                    cost=round_costs.get(role, 0),
+                    trans_type="prize_payout",
+                    reference_id=phraseset.phraseset_id,
                     auto_commit=False,  # Defer commit to caller
+                    skip_lock=True,  # Already in transaction
                 )
 
         # Update phraseset status

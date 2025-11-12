@@ -869,30 +869,17 @@ class ScoringService:
         return leaderboards
 
     async def _compute_gross_earnings_leaderboard(self, start_date: datetime | None = None) -> list[dict]:
-        """Calculate leaderboard ranking all players by gross earnings across all roles.
+        """Calculate leaderboard ranking all players by vault balance.
 
-        Gross earnings include:
-        - prize_payout (from prompt and copy roles)
-        - vote_payout (from voter role)
-
-        Excludes:
-        - daily_bonus
-        - quest_reward_* transactions
+        All-time leaderboard ranks by total vault balance.
+        Weekly leaderboard ranks by change in vault balance over the past week.
 
         Args:
-            start_date: Optional start date for filtering (None for all-time)
+            start_date: Optional start date for filtering (None for all-time, datetime for weekly)
 
         Returns:
-            List of leaderboard entries sorted by gross earnings
+            List of leaderboard entries sorted by vault balance/change
         """
-        # Build conditions for filtering transactions
-        transaction_conditions = [
-            Transaction.type.in_(["prize_payout", "vote_payout"]),
-            Transaction.amount > 0,
-        ]
-        if start_date:
-            transaction_conditions.append(Transaction.created_at >= start_date)
-
         # Calculate total rounds completed per player across all roles
         completion_conditions = [
             Round.status == "submitted",
@@ -911,24 +898,54 @@ class ScoringService:
             .subquery()
         )
 
-        # Build and execute final leaderboard query
-        # Using INNER JOIN since we only want players with transactions
-        leaderboard_stmt = (
-            select(
-                Player.player_id,
-                Player.username,
-                func.sum(Transaction.amount).label("gross_earnings"),
-                func.coalesce(rounds_stmt.c.total_rounds, 0).label("total_rounds"),
+        if start_date:
+            # Weekly leaderboard: rank by change in vault balance
+            # Calculate vault balance change by summing vault transactions since start_date
+            vault_change_stmt = (
+                select(
+                    Transaction.player_id.label("player_id"),
+                    func.sum(Transaction.amount).label("vault_change"),
+                )
+                .where(
+                    Transaction.wallet_type == "vault",
+                    Transaction.created_at >= start_date,
+                )
+                .group_by(Transaction.player_id)
+                .subquery()
             )
-            .join(Transaction, Transaction.player_id == Player.player_id)
-            .join(rounds_stmt, rounds_stmt.c.player_id == Player.player_id, isouter=True)
-            .where(
-                *transaction_conditions,
-                ~Player.email.like(f"%{AI_PLAYER_EMAIL_DOMAIN}"),
+
+            leaderboard_stmt = (
+                select(
+                    Player.player_id,
+                    Player.username,
+                    func.coalesce(vault_change_stmt.c.vault_change, 0).label("gross_earnings"),
+                    func.coalesce(rounds_stmt.c.total_rounds, 0).label("total_rounds"),
+                )
+                .join(vault_change_stmt, vault_change_stmt.c.player_id == Player.player_id)
+                .join(rounds_stmt, rounds_stmt.c.player_id == Player.player_id, isouter=True)
+                .where(
+                    ~Player.email.like(f"%{AI_PLAYER_EMAIL_DOMAIN}"),
+                    vault_change_stmt.c.vault_change > 0,  # Only show players with positive vault change
+                )
+                .group_by(Player.player_id, Player.username, vault_change_stmt.c.vault_change, rounds_stmt.c.total_rounds)
+                .order_by(vault_change_stmt.c.vault_change.desc(), Player.username.asc())
             )
-            .group_by(Player.player_id, Player.username, rounds_stmt.c.total_rounds)
-            .order_by(func.sum(Transaction.amount).desc(), Player.username.asc())
-        )
+        else:
+            # All-time leaderboard: rank by total vault balance
+            leaderboard_stmt = (
+                select(
+                    Player.player_id,
+                    Player.username,
+                    Player.vault.label("gross_earnings"),
+                    func.coalesce(rounds_stmt.c.total_rounds, 0).label("total_rounds"),
+                )
+                .join(rounds_stmt, rounds_stmt.c.player_id == Player.player_id, isouter=True)
+                .where(
+                    ~Player.email.like(f"%{AI_PLAYER_EMAIL_DOMAIN}"),
+                    Player.vault > 0,  # Only show players with non-zero vault
+                )
+                .order_by(Player.vault.desc(), Player.username.asc())
+            )
 
         result = await self.db.execute(leaderboard_stmt)
 

@@ -334,19 +334,33 @@ export const Header: React.FC = () => {
             </button>
           </div>
 
-          {/* Right: Flipcoins + Logout */}
+          {/* Right: Wallet + Vault + Logout */}
           <div className="flex items-center gap-0.5 md:gap-4">
-            {/* Flipcoin Balance */}
+            {/* Wallet Balance */}
             <button
               type="button"
               onClick={goToStatistics}
               className="flex items-center gap-0.5 tutorial-balance border border-white/10 rounded-xl px-1 md:px-3 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-quip-teal"
-              title="View your statistics"
-              aria-label="View your statistics"
+              title="Wallet balance"
+              aria-label="Wallet balance"
             >
-              <img src="/flipcoin.png" alt="Flipcoin" className="w-5 h-5 md:w-7 md:h-7" />
+              <img src="/flipcoin.png" alt="Wallet" className="w-5 h-5 md:w-7 md:h-7" />
               <BalanceFlipper
-                value={player.balance}
+                value={player.wallet}
+                className="text-xl md:text-2xl font-display font-bold text-quip-turquoise"
+              />
+            </button>
+            {/* Vault Balance */}
+            <button
+              type="button"
+              onClick={goToStatistics}
+              className="flex items-center gap-0.5 border border-white/10 rounded-xl px-1 md:px-3 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-quip-teal"
+              title="Vault balance"
+              aria-label="Vault balance"
+            >
+              <img src="/vault.png" alt="Vault" className="w-5 h-5 md:w-7 md:h-7" />
+              <BalanceFlipper
+                value={player.vault}
                 className="text-xl md:text-2xl font-display font-bold text-quip-turquoise"
               />
             </button>

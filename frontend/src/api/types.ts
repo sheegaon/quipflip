@@ -4,7 +4,9 @@ export interface Player {
   player_id: string;
   username: string;
   email: string;
-  balance: number;
+  balance: number;  // DEPRECATED: Use wallet instead
+  wallet: number;
+  vault: number;
   starting_balance: number;
   daily_bonus_available: boolean;
   daily_bonus_amount: number;
