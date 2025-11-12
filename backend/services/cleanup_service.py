@@ -466,7 +466,7 @@ class CleanupService:
 
     # ===== Inactive Guest Player Cleanup =====
 
-    async def cleanup_inactive_guest_players(self, days_old: int = 1) -> int:
+    async def cleanup_inactive_guest_players(self, days_old: int = 0) -> int:
         """
         Remove guest accounts that:
         1. Have is_guest=True
@@ -478,7 +478,7 @@ class CleanupService:
         with a random username (handled by _delete_players_by_ids).
 
         Args:
-            days_old: Delete guests who haven't logged in for this many days (default: 1)
+            days_old: Delete guests who haven't logged in for this many days (default: 0)
 
         Returns:
             Number of inactive guest players deleted
