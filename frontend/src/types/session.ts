@@ -3,19 +3,23 @@
  * Defines the different user session states and detection results
  */
 
+import type { Player } from '../api/types';
+
 /**
  * User session state types
  */
-export enum SessionState {
+export const SessionState = {
   /** New visitor - no auth, no visitor ID */
-  NEW = 'new',
+  NEW: 'new',
   /** Returning visitor - no auth, but has visitor ID */
-  RETURNING_VISITOR = 'returning_visitor',
+  RETURNING_VISITOR: 'returning_visitor',
   /** Returning user - authenticated with valid session */
-  RETURNING_USER = 'returning_user',
+  RETURNING_USER: 'returning_user',
   /** Checking session state */
-  CHECKING = 'checking',
-}
+  CHECKING: 'checking',
+} as const;
+
+export type SessionState = typeof SessionState[keyof typeof SessionState];
 
 /**
  * Session detection result
@@ -30,12 +34,7 @@ export interface SessionDetectionResult {
   /** Visitor ID (for both authenticated and anonymous users) */
   visitorId: string;
   /** Player data if authenticated */
-  player?: {
-    balance: number;
-    created_at?: string;
-    last_login_date?: string;
-    [key: string]: any;
-  };
+  player?: Player;
 }
 
 /**
