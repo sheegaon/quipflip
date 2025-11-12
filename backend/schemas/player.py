@@ -262,11 +262,11 @@ class WeeklyLeaderboardEntry(BaseModel):
 
 
 class GrossEarningsLeaderboardEntry(BaseModel):
-    """Gross earnings leaderboard row."""
+    """Vault balance leaderboard row (gross earnings from net-positive rounds)."""
 
     player_id: UUID
     username: str
-    gross_earnings: int
+    vault_balance: int  # Total vault balance (all-time) or vault balance change (weekly)
     total_rounds: int
     rank: Optional[int]
     is_current_player: bool = False

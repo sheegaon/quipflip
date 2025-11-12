@@ -233,7 +233,7 @@ export interface WeeklyLeaderboardEntry {
 export interface GrossEarningsLeaderboardEntry {
   player_id: string;
   username: string;
-  gross_earnings: number;
+  vault_balance: number;  // Total vault balance (all-time) or vault balance change (weekly)
   total_rounds: number;
   rank: number | null;
   is_current_player: boolean;

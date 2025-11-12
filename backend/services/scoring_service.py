@@ -427,7 +427,7 @@ class ScoringService:
                 },
             )
 
-        # Handle gross earnings leaderboard
+        # Handle gross earnings leaderboard (vault-based)
         gross_entries = role_leaderboards.get("gross_earnings", [])
         result["gross_earnings"] = self._add_current_player_to_leaderboard(
             gross_entries,
@@ -435,7 +435,7 @@ class ScoringService:
             player_id,
             username,
             {
-                "gross_earnings": 0,
+                "vault_balance": 0,
                 "total_rounds": 0,
                 "rank": None,
             },
@@ -842,7 +842,7 @@ class ScoringService:
                 },
             )
 
-        # Handle gross earnings leaderboard
+        # Handle gross earnings leaderboard (vault-based)
         gross_entries = role_leaderboards.get("gross_earnings", [])
         result["gross_earnings"] = self._add_current_player_to_leaderboard(
             gross_entries,
@@ -850,7 +850,7 @@ class ScoringService:
             player_id,
             username,
             {
-                "gross_earnings": 0,
+                "vault_balance": 0,
                 "total_rounds": 0,
                 "rank": None,
             },
@@ -956,7 +956,7 @@ class ScoringService:
                 {
                     "player_id": row.player_id,
                     "username": row.username,
-                    "gross_earnings": int(row.gross_earnings or 0),
+                    "vault_balance": int(row.gross_earnings or 0),
                     "total_rounds": int(row.total_rounds or 0),
                     "rank": rank,
                 }

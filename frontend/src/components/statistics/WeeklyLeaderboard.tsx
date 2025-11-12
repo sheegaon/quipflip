@@ -23,7 +23,7 @@ const roleLabels: Record<TabType, string> = {
   prompt: 'Prompt',
   copy: 'Copy',
   voter: 'Voter',
-  gross_earnings: 'Gross Earnings',
+  gross_earnings: 'Vault',
 };
 
 const MIN_BAR_PERCENTAGE = 8;
@@ -125,11 +125,11 @@ const GrossEarningsLeaderboardList: React.FC<{ leaders: GrossEarningsLeaderboard
     <GenericLeaderboardList
       leaders={leaders}
       config={{
-        metricLabel: 'Gross Earnings',
-        metricFormatter: (entry) => currencyFormatter.format((entry as GrossEarningsLeaderboardEntry).gross_earnings),
-        metricAccessor: (entry) => (entry as GrossEarningsLeaderboardEntry).gross_earnings,
+        metricLabel: 'Vault Balance',
+        metricFormatter: (entry) => currencyFormatter.format((entry as GrossEarningsLeaderboardEntry).vault_balance),
+        metricAccessor: (entry) => (entry as GrossEarningsLeaderboardEntry).vault_balance,
         detailFormatter: (entry) => `${entry.total_rounds} rounds`,
-        emptyMessage: 'No earnings yet—play some rounds to appear on the leaderboard!',
+        emptyMessage: 'No vault earnings yet—play some rounds to appear on the leaderboard!',
       }}
     />
   );
