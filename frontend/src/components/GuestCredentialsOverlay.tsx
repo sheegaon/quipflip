@@ -99,7 +99,7 @@ const GuestCredentialsOverlay: React.FC = () => {
           <h2 className="guest-welcome-description md:mb-4 mb-1">
             Welcome to Quipflip!
           </h2>
-          <div className="guest-credentials bg-gradient-to-r from-quip-orange to-quip-turquoise text-white p-6 rounded-tile mb-6 shadow-lg">
+          <div className="guest-credentials bg-gradient-to-r from-quip-orange to-quip-turquoise text-white md:p-6 px-3 py-6 rounded-tile mb-6 shadow-lg">
             <p className="font-bold md:mb-3 mb-2 text-lg">Guest Account Credentials</p>
             <div className="bg-white bg-opacity-20 md:p-4 p-2 rounded-lg mb-3 backdrop-blur-sm">
               <p className="my-0 md:my-1 font-mono text-sm">
