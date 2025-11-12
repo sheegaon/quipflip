@@ -9,7 +9,7 @@ export const Landing: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [registerEmail, setRegisterEmail] = useState('');
   const [registerPassword, setRegisterPassword] = useState('');
-  const [loginEmail, setLoginEmail] = useState('');
+  const [loginIdentifier, setLoginIdentifier] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [guestCredentials, setGuestCredentials] = useState<{ email: string; password: string } | null>(null);
 
@@ -90,31 +90,31 @@ export const Landing: React.FC = () => {
 
   const handleExistingPlayer = async (e: React.FormEvent) => {
     e.preventDefault();
-    const trimmedInput = loginEmail.trim();
-    if (!trimmedInput || !loginPassword.trim()) {
+    const identifier = loginIdentifier.trim();
+    if (!identifier || !loginPassword.trim()) {
       setError('Please enter your email or username and password.');
       landingLogger.warn('Login attempted with missing credentials');
       return;
     }
 
     // Detect if input is email or username by presence of "@"
-    const isEmail = trimmedInput.includes('@');
+    const isEmail = identifier.includes('@');
 
     try {
       setIsLoading(true);
       setError(null);
-      landingLogger.info('Attempting login for existing player', { loginEmail: trimmedInput, isEmail });
+      landingLogger.info('Attempting login for existing player', { identifier, isEmail });
 
       let response;
       if (isEmail) {
         // Use email login endpoint
         response = await apiClient.login({
-          email: trimmedInput,
+          email: identifier,
           password: loginPassword,
         });
       } else {
         // Validate username: only alphanumeric and spaces allowed
-        const isValidUsername = /^[a-zA-Z0-9\s]+$/.test(trimmedInput);
+        const isValidUsername = /^[a-zA-Z0-9\s]+$/.test(identifier);
         if (!isValidUsername) {
           setError('Username can only contain letters, numbers, and spaces.');
           landingLogger.warn('Login attempted with invalid username characters');
@@ -123,7 +123,7 @@ export const Landing: React.FC = () => {
 
         // Use username login endpoint
         response = await apiClient.loginWithUsername({
-          username: trimmedInput,
+          username: identifier,
           password: loginPassword,
         });
       }
@@ -281,8 +281,8 @@ export const Landing: React.FC = () => {
             <form onSubmit={handleExistingPlayer} className="space-y-3">
               <input
                 type="text"
-                value={loginEmail}
-                onChange={(e) => setLoginEmail(e.target.value)}
+                value={loginIdentifier}
+                onChange={(e) => setLoginIdentifier(e.target.value)}
                 placeholder="Email or Username"
                 className="w-full px-4 py-2 border border-gray-300 rounded-tile focus:outline-none focus:ring-2 focus:ring-quip-turquoise"
                 disabled={isLoading}
