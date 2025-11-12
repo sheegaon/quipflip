@@ -15,7 +15,7 @@ export const SubHeader: React.FC = () => {
   const { actions } = useGame();
   const { refreshDashboard } = actions;
   const navigate = useNavigate();
-  const { tutorialStatus } = useTutorial();
+  const { status: tutorialStatus } = useTutorial();
 
   // Use custom hook to get all indicator values
   const {
