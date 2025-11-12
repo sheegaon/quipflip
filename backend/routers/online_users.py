@@ -21,6 +21,7 @@ from backend.models.user_activity import UserActivity
 from backend.models.player import Player
 from backend.models.round import Round
 from backend.models.phraseset_activity import PhrasesetActivity
+from backend.models.transaction import Transaction
 from backend.schemas.online_users import OnlineUser, OnlineUsersResponse
 from backend.services.auth_service import AuthService
 from backend.services.player_service import PlayerService
@@ -179,8 +180,8 @@ manager = ConnectionManager()
 async def get_online_users(db: AsyncSession) -> List[OnlineUser]:
     """Get list of users who were active in the last 30 minutes.
 
-    Excludes guest users who have taken no actions (no submitted rounds
-    and no phraseset activities).
+    Excludes guest users who have taken no actions (no submitted rounds,
+    no phraseset activities, and no transactions).
     """
     cutoff_time = datetime.now(UTC) - timedelta(minutes=30)
 
@@ -219,6 +220,14 @@ async def get_online_users(db: AsyncSession) -> List[OnlineUser]:
             .distinct()
         )
         guests_with_activity.update(row[0] for row in activity_result)
+
+        # Check for transactions
+        transactions_result = await db.execute(
+            select(Transaction.player_id)
+            .where(Transaction.player_id.in_(guest_ids))
+            .distinct()
+        )
+        guests_with_activity.update(row[0] for row in transactions_result)
 
     online_users = []
     for activity, balance, created_at, is_guest, player_id in rows:

@@ -471,7 +471,7 @@ class CleanupService:
         Remove guest accounts that:
         1. Have is_guest=True
         2. Have not logged in for more than days_old days (or never logged in AND old enough)
-        3. Have no activity (no submitted rounds and no phraseset activities)
+        3. Have no activity (no submitted rounds, no phraseset activities, and no transactions)
 
         For guests with NO activity, they are completely deleted from the database.
         For guests WITH activity who are being deleted elsewhere, they get anonymized
@@ -526,16 +526,27 @@ class CleanupService:
         activity_result = await self.db.execute(activity_stmt)
         guests_with_activity = {row[0] for row in activity_result}
 
+        # Optimize: Find all guests with transactions in a single query
+        transactions_stmt = (
+            select(Transaction.player_id)
+            .where(Transaction.player_id.in_(guest_ids))
+            .distinct()
+        )
+        transactions_result = await self.db.execute(transactions_stmt)
+        guests_with_transactions = {row[0] for row in transactions_result}
+
         # Filter to guests with NO activity
         inactive_guest_ids = [
             guest_id for guest_id in guest_ids
-            if guest_id not in guests_with_rounds and guest_id not in guests_with_activity
+            if guest_id not in guests_with_rounds
+            and guest_id not in guests_with_activity
+            and guest_id not in guests_with_transactions
         ]
 
         if not inactive_guest_ids:
             logger.info(
                 f"Found {len(all_old_guests)} guest(s) who haven't logged in recently, "
-                f"but all have activity (submitted rounds or phraseset activity)"
+                f"but all have activity (submitted rounds, phraseset activity, or transactions)"
             )
             return 0
 
