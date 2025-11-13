@@ -357,6 +357,7 @@ export interface PhrasesetResults {
   your_points: number;
   total_points: number;
   your_payout: number;
+  vault_skim_amount: number;
   total_pool: number;
   total_votes: number;
   already_collected: boolean;

@@ -1167,6 +1167,18 @@ class VoteService:
         correct_vote_count = vote_counts[phraseset.original_phrase]
         incorrect_vote_count = total_votes - correct_vote_count
 
+        # Calculate vault skim amount (30% of net earnings if positive)
+        if role == "prompt":
+            round_cost = prompt_round.cost
+        elif role == "copy":
+            # Determine which copy round the player participated in
+            round_cost = copy1_round.cost if copy1_round.player_id == player_id else copy2_round.cost
+        else:  # role == "vote"
+            round_cost = settings.vote_cost
+
+        net_earnings = result_view.payout_amount - round_cost
+        vault_skim_amount = int(net_earnings * 0.3) if net_earnings > 0 else 0
+
         results_payload = {
             "prompt_text": phraseset.prompt_text,
             "votes": votes_display,
@@ -1175,6 +1187,7 @@ class VoteService:
             "your_points": points,
             "total_points": total_points,
             "your_payout": result_view.payout_amount,
+            "vault_skim_amount": vault_skim_amount,
             "total_pool": phraseset.total_pool,
             "total_votes": total_votes,
             "already_collected": already_viewed,

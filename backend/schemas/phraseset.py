@@ -49,6 +49,7 @@ class PhraseSetResults(BaseSchema):
     your_points: int
     total_points: int
     your_payout: int
+    vault_skim_amount: int  # Amount raked to vault (30% of net earnings if positive)
     total_pool: int
     total_votes: int
     already_collected: bool

@@ -346,6 +346,14 @@ export const Results: React.FC = () => {
                     </div>
                   </div>
                   <div className="mt-4 space-y-2">
+                    {results.vault_skim_amount > 0 && (
+                      <div className="p-3 bg-quip-turquoise bg-opacity-10 rounded-tile border border-quip-turquoise border-opacity-30">
+                        <p className="text-sm text-quip-navy text-center">
+                          <img src="/vault.png" alt="Vault" className="inline w-4 h-4 mr-1" />
+                          <span className="font-semibold">{results.vault_skim_amount} FC</span> secured in your vault
+                        </p>
+                      </div>
+                    )}
                     <div className="p-3 bg-quip-turquoise bg-opacity-5 rounded-tile border border-quip-turquoise border-opacity-20">
                       <p className="text-sm text-quip-teal text-center">
                         ✓ Automatically added to your wallet and vault when voting completed
