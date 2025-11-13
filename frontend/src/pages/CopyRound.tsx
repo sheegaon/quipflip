@@ -596,7 +596,7 @@ export const CopyRound: React.FC = () => {
             <button
               type="button"
               onClick={() => setShowSecondCopyDetails((prev) => !prev)}
-              className="mx-auto flex items-center justify-center gap-2 text-blue-600 font-semibold underline hover:text-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 rounded-tile"
+              className="mx-auto flex items-center justify-center gap-2 text-quip-teal font-semibold underline hover:text-quip-turquoise focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-quip-turquoise rounded-tile"
             >
               Want to submit another copy for the same phrase?
               <svg
