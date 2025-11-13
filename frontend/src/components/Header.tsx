@@ -70,7 +70,8 @@ export const Header: React.FC = () => {
   }
 
   // Determine if tutorial should be shown in menu
-  const showTutorialInMenu = !tutorialStatus?.tutorial_completed;
+  // Always show for guests, show for logged-in users only if not completed
+  const showTutorialInMenu = player.is_guest || !tutorialStatus?.tutorial_completed;
 
   const goToStatistics = React.useCallback(() => {
     navigate('/statistics');

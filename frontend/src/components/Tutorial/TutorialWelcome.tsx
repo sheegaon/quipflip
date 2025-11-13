@@ -15,8 +15,9 @@ const TutorialWelcome: React.FC<TutorialWelcomeProps> = ({ onStart, onSkip }) =>
   const [isSkipping, setIsSkipping] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
 
-  // Only show if tutorial hasn't been started or completed
-  if (tutorialStatus !== 'inactive') {
+  // For guests, always allow showing the welcome screen (they can replay the tutorial)
+  // For non-guests, only show if tutorial is inactive (not started or completed)
+  if (!player?.is_guest && tutorialStatus !== 'inactive') {
     return null;
   }
 
@@ -43,6 +44,24 @@ const TutorialWelcome: React.FC<TutorialWelcomeProps> = ({ onStart, onSkip }) =>
   return (
     <div className="tutorial-welcome-overlay">
       <div className="tutorial-welcome-modal">
+        <button
+          onClick={handleSkip}
+          disabled={isSkipping || isStarting}
+          className="tutorial-welcome-close"
+          aria-label="Skip tutorial"
+          title="Skip tutorial"
+        >
+          <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="10" fill="currentColor" opacity="0.1" />
+            <path
+              d="M8 8L16 16M16 8L8 16"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+          </svg>
+        </button>
+
         <div className="tutorial-welcome-content">
           <h1 className="tutorial-welcome-title">Welcome to Quipflip!</h1>
 
@@ -77,13 +96,6 @@ const TutorialWelcome: React.FC<TutorialWelcomeProps> = ({ onStart, onSkip }) =>
         </div>
 
         <div className="tutorial-welcome-actions">
-          <button
-            onClick={handleSkip}
-            disabled={isSkipping || isStarting}
-            className="tutorial-welcome-btn tutorial-welcome-btn-secondary"
-          >
-            {isSkipping ? 'Skipping...' : 'Skip for Now'}
-          </button>
           <button
             onClick={handleStart}
             disabled={isSkipping || isStarting}
