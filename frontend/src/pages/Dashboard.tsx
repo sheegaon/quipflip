@@ -380,7 +380,7 @@ export const Dashboard: React.FC = () => {
 
     dashboardLogger.info(`Starting prompt round in ${mode} mode...`);
     dashboardLogger.debug('Player state before start:', {
-      balance: player?.balance,
+      wallet: player?.wallet,
       outstandingPrompts: player?.outstanding_prompts,
       canPrompt: roundAvailability?.can_prompt,
       mode
@@ -416,7 +416,7 @@ export const Dashboard: React.FC = () => {
 
     dashboardLogger.info(`Starting copy round in ${mode} mode...`);
     dashboardLogger.debug('Player state before start:', {
-      balance: player?.balance,
+      wallet: player?.wallet,
       canCopy: roundAvailability?.can_copy,
       promptsWaiting: roundAvailability?.prompts_waiting,
       copyCost: roundAvailability?.copy_cost,
@@ -453,7 +453,7 @@ export const Dashboard: React.FC = () => {
 
     dashboardLogger.info(`Starting vote round in ${mode} mode...`);
     dashboardLogger.debug('Player state before start:', {
-      balance: player?.balance,
+      wallet: player?.wallet,
       canVote: roundAvailability?.can_vote,
       phrasesetsWaiting: roundAvailability?.phrasesets_waiting,
       mode

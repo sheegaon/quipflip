@@ -44,7 +44,7 @@ class AdminPlayerSummary(BaseModel):
     player_id: UUID
     username: str
     email: EmailLike
-    balance: int
+    wallet: int
     created_at: datetime
     outstanding_prompts: int
 
@@ -268,7 +268,7 @@ async def search_player(
         player_id=target_player.player_id,
         username=target_player.username,
         email=target_player.email,
-        balance=target_player.balance,
+        wallet=target_player.wallet,
         created_at=target_player.created_at,
         outstanding_prompts=outstanding,
     )

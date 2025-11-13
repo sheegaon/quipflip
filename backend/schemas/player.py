@@ -14,7 +14,6 @@ class PlayerBalance(BaseSchema):
     player_id: UUID
     username: str
     email: EmailLike
-    balance: int  # DEPRECATED: Use wallet instead
     wallet: int
     vault: int
     starting_balance: int

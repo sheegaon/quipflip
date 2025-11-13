@@ -22,7 +22,6 @@ class Transaction(Base):
     # Vault types: vault_rake (30% of net earnings)
     wallet_type = Column(String(20), default="wallet", nullable=False)  # "wallet" or "vault"
     reference_id = get_uuid_column(nullable=True, index=True)  # References round_id, phraseset_id, vote_id, or quest_id
-    balance_after = Column(Integer, nullable=False)  # For audit trail (DEPRECATED: use wallet_balance_after/vault_balance_after)
     wallet_balance_after = Column(Integer, nullable=True)  # For audit trail
     vault_balance_after = Column(Integer, nullable=True)  # For audit trail
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False, index=True)

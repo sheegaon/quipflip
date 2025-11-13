@@ -85,9 +85,6 @@ class TransactionService:
                 # Update wallet
                 player.wallet = new_balance
 
-            # Also update legacy balance field for backwards compatibility
-            player.balance = player.wallet
-
             # Create transaction record
             transaction = Transaction(
                 transaction_id=uuid.uuid4(),
@@ -96,7 +93,6 @@ class TransactionService:
                 type=trans_type,
                 wallet_type=wallet_type,
                 reference_id=reference_id,
-                balance_after=player.balance,  # Legacy field
                 wallet_balance_after=player.wallet,
                 vault_balance_after=player.vault,
             )

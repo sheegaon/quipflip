@@ -4,7 +4,6 @@ export interface Player {
   player_id: string;
   username: string;
   email: string;
-  balance: number;  // DEPRECATED: Use wallet instead
   wallet: number;
   vault: number;
   starting_balance: number;
@@ -40,7 +39,7 @@ export interface AdminPlayerSummary {
   player_id: string;
   username: string;
   email: string;
-  balance: number;
+  wallet: number;
   created_at: string;
   outstanding_prompts: number;
 }
@@ -697,7 +696,7 @@ export interface OnlineUser {
   last_action_category: string;
   last_activity: string;
   time_ago: string;
-  balance: number;
+  wallet: number;
   created_at: string;
 }
 

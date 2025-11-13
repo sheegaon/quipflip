@@ -283,7 +283,8 @@ export const GameProvider: React.FC<{
       try {
         const data = await apiClient.getDashboardData(signal);
         gameContextLogger.debug('✅ Dashboard data received successfully:', {
-          playerBalance: data.player?.balance,
+          playerWallet: data.player?.wallet,
+          playerVault: data.player?.vault,
           currentRound: data.current_round ? {
             id: data.current_round.round_id,
             type: data.current_round.round_type,
