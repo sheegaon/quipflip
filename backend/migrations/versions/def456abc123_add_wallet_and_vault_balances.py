@@ -30,7 +30,7 @@ def upgrade() -> None:
     # Add wallet and vault columns to players table
     # Default wallet to 1000 for new players, vault to 0
     op.add_column('players', sa.Column('wallet', sa.Integer(), nullable=False, server_default=1000))
-    op.add_column('players', sa.Column('vault', sa.Integer(), nullable=False, server_default='0'))
+    op.add_column('players', sa.Column('vault', sa.Integer(), nullable=False, server_default=0))
 
     # Migrate existing balances: balance -> wallet, vault = 0
     # This grandfathers all existing users by putting their current balance into wallet
