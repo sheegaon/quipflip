@@ -10,6 +10,7 @@ import { resultsLogger } from '../utils/logger';
 import { ResultsIcon } from '../components/icons/ResultsIcon';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { BotIcon } from '../components/icons/BotIcon';
+import { QuestionMarkIcon } from '../components/icons/QuestionMarkIcon';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -32,7 +33,8 @@ export const Results: React.FC = () => {
   const { refreshPhrasesetResults, refreshPhrasesetDetails, markResultsViewed } = resultsActions;
   const [selectedPhrasesetId, setSelectedPhrasesetId] = useState<string | null>(null);
   const [expandedVotes, setExpandedVotes] = useState<Record<string, boolean>>({});
-  const [showBreakdown, setShowBreakdown] = useState<boolean>(false);
+  const [isVaultInfoOpen, setIsVaultInfoOpen] = useState<boolean>(false);
+  const [isPrizeBreakdownOpen, setIsPrizeBreakdownOpen] = useState<boolean>(false);
   const [voteResultsPage, setVoteResultsPage] = useState<number>(1);
   const [latestResultsPage, setLatestResultsPage] = useState<number>(1);
 
@@ -121,9 +123,30 @@ export const Results: React.FC = () => {
     }));
   };
 
-  const toggleBreakdown = () => {
-    setShowBreakdown((prev) => !prev);
+  const toggleVaultInfo = () => {
+    setIsVaultInfoOpen((prev) => {
+      const next = !prev;
+      if (next) {
+        setIsPrizeBreakdownOpen(false);
+      }
+      return next;
+    });
   };
+
+  const togglePrizeBreakdown = () => {
+    setIsPrizeBreakdownOpen((prev) => {
+      const next = !prev;
+      if (next) {
+        setIsVaultInfoOpen(false);
+      }
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    setIsVaultInfoOpen(false);
+    setIsPrizeBreakdownOpen(false);
+  }, [selectedPhrasesetId]);
 
   const performanceBreakdown = useMemo(() => {
     if (!results) {
@@ -383,41 +406,98 @@ export const Results: React.FC = () => {
                       <p className="text-sm text-quip-teal">Final Prize Pool:</p>
                       <p className="text-xl font-bold text-quip-navy">{results.total_pool} FC</p>
                     </div>
-                    <div>
-                      <p className="text-sm text-quip-teal">Earnings:</p>
-                      <CurrencyDisplay
-                        amount={results.your_payout}
-                        iconClassName="w-6 h-6"
-                        textClassName="text-2xl font-display font-bold text-quip-turquoise"
-                      />
-                    </div>
-                  </div>
-                  <div className="mt-4 space-y-2">
-                    {results.vault_skim_amount > 0 && (
-                      <div className="p-3 bg-quip-turquoise bg-opacity-10 rounded-tile border border-quip-turquoise border-opacity-30">
-                        <p className="text-sm text-quip-navy text-center">
-                          <img src="/vault.png" alt="Vault" className="inline w-4 h-4 mr-1" />
-                          <span className="font-semibold">{results.vault_skim_amount}</span> secured in your vault
-                        </p>
+                    <div className="relative">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm text-quip-teal">Earnings:</p>
+                        <button
+                          type="button"
+                          onClick={togglePrizeBreakdown}
+                          className="text-quip-turquoise hover:text-quip-navy transition-colors"
+                          aria-label="Show prize pool breakdown"
+                          aria-expanded={isPrizeBreakdownOpen}
+                        >
+                          <QuestionMarkIcon className="h-5 w-5" />
+                        </button>
                       </div>
-                    )}
-                    <div className="p-4 bg-white bg-opacity-80 rounded-tile border border-quip-turquoise border-opacity-20">
-                      <button
-                        type="button"
-                        onClick={toggleBreakdown}
-                        className="text-sm font-medium text-quip-turquoise hover:text-quip-navy focus:outline-none"
-                      >
-                        {showBreakdown ? 'Hide Prize Pool Breakdown' : 'Show Prize Pool Breakdown'}
-                      </button>
-                      {showBreakdown && (
-                        <div className="mt-2">
-                          <p className="text-sm text-quip-teal font-medium">Prize Pool Breakdown</p>
-                          <p className="text-sm text-quip-navy">{performanceBreakdown.poolShareText}</p>
-                          <p className="text-sm text-quip-navy">{performanceBreakdown.totalPointsLabel}</p>
-                          <p className="text-sm font-semibold text-quip-turquoise">{performanceBreakdown.breakdownLine}</p>
+                      <p className="text-2xl font-display font-bold text-quip-turquoise">
+                        <CurrencyDisplay
+                          amount={results.your_payout}
+                          iconClassName="w-6 h-6"
+                          textClassName="text-2xl font-display font-bold text-quip-turquoise"
+                        />
+                      </p>
+                      {isPrizeBreakdownOpen && (
+                        <div className="absolute right-0 top-full mt-2 w-80 max-w-xs sm:max-w-sm bg-white border border-quip-turquoise border-opacity-40 rounded-2xl shadow-2xl z-30">
+                          <div className="p-4">
+                            <div className="flex items-start justify-between gap-2 mb-2">
+                              <p className="font-semibold text-quip-navy">Prize Pool Breakdown</p>
+                              <button
+                                type="button"
+                                onClick={() => setIsPrizeBreakdownOpen(false)}
+                                className="text-quip-teal hover:text-quip-navy font-bold"
+                                aria-label="Close prize pool breakdown"
+                              >
+                                ×
+                              </button>
+                            </div>
+                            <p className="text-xs uppercase tracking-wide text-quip-teal mb-1">Pool math</p>
+                            <p className="text-sm text-quip-navy">{performanceBreakdown.poolShareText}</p>
+                            <p className="text-xs uppercase tracking-wide text-quip-teal mt-3 mb-1">Points</p>
+                            <p className="text-sm text-quip-navy">{performanceBreakdown.totalPointsLabel}</p>
+                            <p className="text-sm font-semibold text-quip-turquoise mt-3">{performanceBreakdown.breakdownLine}</p>
+                          </div>
                         </div>
                       )}
                     </div>
+                  </div>
+                  <div className="mt-4 space-y-3">
+                    {results.vault_skim_amount > 0 && (
+                      <div className="relative">
+                        {isVaultInfoOpen && (
+                          <div className="absolute left-1/2 -top-3 -translate-y-full -translate-x-1/2 w-80 max-w-xs sm:max-w-sm bg-white border border-quip-turquoise border-opacity-40 rounded-2xl shadow-2xl z-30">
+                            <div className="p-4">
+                              <div className="flex items-start justify-between gap-2 mb-2">
+                                <p className="font-semibold text-quip-navy">Wallet vs. Vault</p>
+                                <button
+                                  type="button"
+                                  onClick={() => setIsVaultInfoOpen(false)}
+                                  className="text-quip-teal hover:text-quip-navy font-bold"
+                                  aria-label="Close wallet and vault explainer"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                              <p className="text-sm text-quip-navy">
+                                Winning rounds split the net payout: about 70% goes back into your spendable wallet and the
+                                remaining 30% is skimmed into the vault leaderboard balance.
+                              </p>
+                              <p className="text-sm text-quip-teal mt-2">
+                                Break-even or losing rounds pay entirely into the wallet, so vault growth only comes from profitable play.
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                        <div className="p-3 bg-quip-turquoise bg-opacity-10 rounded-tile border border-quip-turquoise border-opacity-30">
+                          <p className="text-sm text-quip-navy text-center flex items-center justify-center gap-2">
+                            <button
+                              type="button"
+                              onClick={toggleVaultInfo}
+                              className="text-quip-turquoise hover:text-quip-navy transition-colors"
+                              aria-label="Explain wallet and vault mechanics"
+                              aria-expanded={isVaultInfoOpen}
+                            >
+                              <QuestionMarkIcon className="h-5 w-5" />
+                            </button>
+                            <span className="flex items-center gap-1">
+                              <img src="/vault.png" alt="Vault" className="w-4 h-4" />
+                              <span>
+                                <span className="font-semibold">{results.vault_skim_amount}</span> secured in your vault
+                              </span>
+                            </span>
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
