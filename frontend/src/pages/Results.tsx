@@ -13,6 +13,11 @@ import { BotIcon } from '../components/icons/BotIcon';
 import { QuestionMarkIcon } from '../components/icons/QuestionMarkIcon';
 
 const ITEMS_PER_PAGE = 10;
+const WALLET_VS_VAULT_TITLE = 'Wallet vs. Vault';
+const WALLET_VS_VAULT_DESCRIPTION =
+  'Winning rounds split the net payout: about 70% goes back into your spendable wallet and the remaining 30% is skimmed into the vault leaderboard balance.';
+const WALLET_VS_VAULT_NOTE =
+  'Break-even or losing rounds pay entirely into the wallet, so vault growth only comes from profitable play.';
 
 // Helper function to generate unique key for each result
 const getResultKey = (result: { phraseset_id: string; role: string; prompt_round_id?: string; copy_round_id?: string }) => {
@@ -33,10 +38,11 @@ export const Results: React.FC = () => {
   const { refreshPhrasesetResults, refreshPhrasesetDetails, markResultsViewed } = resultsActions;
   const [selectedPhrasesetId, setSelectedPhrasesetId] = useState<string | null>(null);
   const [expandedVotes, setExpandedVotes] = useState<Record<string, boolean>>({});
-  const [isVaultInfoOpen, setIsVaultInfoOpen] = useState<boolean>(false);
-  const [isPrizeBreakdownOpen, setIsPrizeBreakdownOpen] = useState<boolean>(false);
+  const [activePopover, setActivePopover] = useState<'vault-info' | 'prize-breakdown' | null>(null);
   const [voteResultsPage, setVoteResultsPage] = useState<number>(1);
   const [latestResultsPage, setLatestResultsPage] = useState<number>(1);
+  const isVaultInfoOpen = activePopover === 'vault-info';
+  const isPrizeBreakdownOpen = activePopover === 'prize-breakdown';
 
   const refreshPhrasesetResultsRef = useRef(refreshPhrasesetResults);
   const refreshPhrasesetDetailsRef = useRef(refreshPhrasesetDetails);
@@ -123,29 +129,12 @@ export const Results: React.FC = () => {
     }));
   };
 
-  const toggleVaultInfo = () => {
-    setIsVaultInfoOpen((prev) => {
-      const next = !prev;
-      if (next) {
-        setIsPrizeBreakdownOpen(false);
-      }
-      return next;
-    });
-  };
-
-  const togglePrizeBreakdown = () => {
-    setIsPrizeBreakdownOpen((prev) => {
-      const next = !prev;
-      if (next) {
-        setIsVaultInfoOpen(false);
-      }
-      return next;
-    });
+  const togglePopover = (popover: 'vault-info' | 'prize-breakdown') => {
+    setActivePopover((prev) => (prev === popover ? null : popover));
   };
 
   useEffect(() => {
-    setIsVaultInfoOpen(false);
-    setIsPrizeBreakdownOpen(false);
+    setActivePopover(null);
   }, [selectedPhrasesetId]);
 
   const performanceBreakdown = useMemo(() => {
@@ -411,7 +400,7 @@ export const Results: React.FC = () => {
                         <p className="text-sm text-quip-teal">Earnings:</p>
                         <button
                           type="button"
-                          onClick={togglePrizeBreakdown}
+                          onClick={() => togglePopover('prize-breakdown')}
                           className="text-quip-turquoise hover:text-quip-navy transition-colors"
                           aria-label="Show prize pool breakdown"
                           aria-expanded={isPrizeBreakdownOpen}
@@ -433,7 +422,7 @@ export const Results: React.FC = () => {
                               <p className="font-semibold text-quip-navy">Prize Pool Breakdown</p>
                               <button
                                 type="button"
-                                onClick={() => setIsPrizeBreakdownOpen(false)}
+                                onClick={() => setActivePopover(null)}
                                 className="text-quip-teal hover:text-quip-navy font-bold"
                                 aria-label="Close prize pool breakdown"
                               >
@@ -457,23 +446,18 @@ export const Results: React.FC = () => {
                           <div className="absolute left-1/2 -top-3 -translate-y-full -translate-x-1/2 w-80 max-w-xs sm:max-w-sm bg-white border border-quip-turquoise border-opacity-40 rounded-2xl shadow-2xl z-30">
                             <div className="p-4">
                               <div className="flex items-start justify-between gap-2 mb-2">
-                                <p className="font-semibold text-quip-navy">Wallet vs. Vault</p>
+                              <p className="font-semibold text-quip-navy">{WALLET_VS_VAULT_TITLE}</p>
                                 <button
                                   type="button"
-                                  onClick={() => setIsVaultInfoOpen(false)}
+                                  onClick={() => setActivePopover(null)}
                                   className="text-quip-teal hover:text-quip-navy font-bold"
                                   aria-label="Close wallet and vault explainer"
                                 >
                                   ×
                                 </button>
                               </div>
-                              <p className="text-sm text-quip-navy">
-                                Winning rounds split the net payout: about 70% goes back into your spendable wallet and the
-                                remaining 30% is skimmed into the vault leaderboard balance.
-                              </p>
-                              <p className="text-sm text-quip-teal mt-2">
-                                Break-even or losing rounds pay entirely into the wallet, so vault growth only comes from profitable play.
-                              </p>
+                              <p className="text-sm text-quip-navy">{WALLET_VS_VAULT_DESCRIPTION}</p>
+                              <p className="text-sm text-quip-teal mt-2">{WALLET_VS_VAULT_NOTE}</p>
                             </div>
                           </div>
                         )}
@@ -481,7 +465,7 @@ export const Results: React.FC = () => {
                           <p className="text-sm text-quip-navy text-center flex items-center justify-center gap-2">
                             <button
                               type="button"
-                              onClick={toggleVaultInfo}
+                              onClick={() => togglePopover('vault-info')}
                               className="text-quip-turquoise hover:text-quip-navy transition-colors"
                               aria-label="Explain wallet and vault mechanics"
                               aria-expanded={isVaultInfoOpen}
