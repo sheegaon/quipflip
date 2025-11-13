@@ -334,7 +334,7 @@ export const Header: React.FC = () => {
                 {!player.is_guest && (
                   <div className="flex items-center gap-1">
                     <div
-                      className={`w-2 h-2 rounded-full ${!isOffline ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}
+                      className={`w-2 h-2 rounded-full ${!isOffline ? 'bg-green-500' : 'bg-red-500 animate-pulse'}`}
                     ></div>
                     <span className="text-xs font-medium text-quip-navy">
                       {!isOffline ? 'Live' : 'Reconnecting...'}
