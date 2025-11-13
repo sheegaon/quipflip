@@ -169,9 +169,9 @@ class AIService:
                 logger.info("Created AI backup player account")
             else:
                 # Validate AI player is in good state
-                if ai_player.balance < -1000:
+                if ai_player.wallet < -1000:
                     logger.warning(
-                        f"AI player has very negative balance: {ai_player.balance}. "
+                        f"AI player has very negative wallet: {ai_player.wallet}. "
                         "This may indicate an issue with payout logic."
                     )
 

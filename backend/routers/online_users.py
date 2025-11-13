@@ -186,7 +186,7 @@ async def get_online_users(db: AsyncSession) -> List[OnlineUser]:
     cutoff_time = datetime.now(UTC) - timedelta(minutes=30)
 
     result = await db.execute(
-        select(UserActivity, Player.balance, Player.created_at, Player.is_guest, Player.player_id)
+        select(UserActivity, Player.wallet, Player.created_at, Player.is_guest, Player.player_id)
         .join(Player, UserActivity.player_id == Player.player_id)
         .where(UserActivity.last_activity >= cutoff_time)
         .order_by(UserActivity.last_activity.desc())
@@ -227,7 +227,7 @@ async def get_online_users(db: AsyncSession) -> List[OnlineUser]:
         guests_with_activity.update(row[0] for row in transactions_result)
 
     online_users = []
-    for activity, balance, created_at, is_guest, player_id in rows:
+    for activity, wallet, created_at, is_guest, player_id in rows:
         # Skip guests with no activity
         if is_guest and player_id not in guests_with_activity:
             continue
@@ -252,7 +252,7 @@ async def get_online_users(db: AsyncSession) -> List[OnlineUser]:
                 last_action_category=activity.last_action_category,
                 last_activity=activity.last_activity,
                 time_ago=time_ago,
-                balance=balance,
+                wallet=wallet,
                 created_at=created_at,
             )
         )

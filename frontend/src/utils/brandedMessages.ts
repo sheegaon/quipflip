@@ -83,7 +83,7 @@ export const successMessages = {
   bonusClaimed: [
     "Bonus quipped into your bank!",
     "Daily quips collected!",
-    "Your balance just got flipped!",
+    "Your wallet just got flipped!",
     "Cha-ching!",
   ],
   prizesClaimed: [

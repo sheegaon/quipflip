@@ -24,7 +24,8 @@ class Player(Base):
     username_canonical = Column(String(80), nullable=False)
     email = Column(String(255), unique=True, nullable=False)
     password_hash = Column(String(255), nullable=False)
-    balance = Column(Integer, default=1000, nullable=False)
+    wallet = Column(Integer, default=1000, nullable=False)
+    vault = Column(Integer, default=0, nullable=False)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     last_login_date = Column(DateTime(timezone=True), nullable=True)
     active_round_id = get_uuid_column(ForeignKey("rounds.round_id", ondelete="SET NULL"), nullable=True)
@@ -64,4 +65,4 @@ class Player(Base):
     quests = relationship("Quest", back_populates="player")
 
     def __repr__(self):
-        return f"<Player(player_id={self.player_id}, username={self.username}, balance={self.balance})>"
+        return f"<Player(player_id={self.player_id}, username={self.username}, wallet={self.wallet}, vault={self.vault})>"

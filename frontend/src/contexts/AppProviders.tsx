@@ -70,11 +70,11 @@ const ContextBridge: React.FC<{
       }
 
       try {
-        gameContextLogger.debug('💰 Refreshing balance data after trigger');
+        gameContextLogger.debug('💰 Refreshing wallet and vault data after trigger');
         await refreshBalance(abortController.signal);
       } catch (err) {
         if (!abortController.signal.aborted) {
-          gameContextLogger.error('❌ Failed to refresh balance after trigger', err);
+          gameContextLogger.error('❌ Failed to refresh wallet and vault after trigger', err);
         }
       }
     };

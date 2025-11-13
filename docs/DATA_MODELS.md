@@ -8,7 +8,8 @@
 - `username_canonical` (string, unique) - lowercase form for lookups
 - `email` (string, unique) - player email for authentication
 - `password_hash` (string) - bcrypt hashed password
-- `balance` (integer, database default 1000) - current Flipcoin balance. New accounts are seeded from `settings.starting_balance` (5000f by default) when created via the service layer.
+- `wallet` (integer, database default 1000) - current spendable Flipcoin balance for entering rounds and transactions. New accounts are seeded from `settings.starting_balance` (5000f by default) when created via the service layer.
+- `vault` (integer, database default 0) - accumulated long-term Flipcoin balance from net earnings (30% rake). Used for leaderboard rankings.
 - `created_at` (timestamp)
 - `last_login_date` (timestamp with timezone, nullable) - UTC timestamp for last login tracking
 - `active_round_id` (UUID, nullable, references rounds.round_id) - enforces one-round-at-a-time
@@ -136,12 +137,15 @@
 - `type` (string, indexed) - transaction type
   - Core types: `prompt_entry`, `copy_entry`, `vote_entry`, `vote_payout`, `prize_payout`, `refund`, `daily_bonus`, `system_contribution`
   - Quest rewards: `quest_reward_hot_streak`, `quest_reward_deceptive_copy`, `quest_reward_obvious_original`, `quest_reward_round_completion`, `quest_reward_balanced_player`, `quest_reward_login_streak`, `quest_reward_feedback`, `quest_reward_milestone`
+  - Vault types: `vault_rake` (30% of net earnings deposited to vault)
+- `wallet_type` (string, default 'wallet') - which balance this transaction affects: 'wallet' or 'vault'
 - `reference_id` (UUID, nullable, indexed) - references round_id, phraseset_id, vote_id, or quest_id depending on type
-- `balance_after` (integer) - player balance after this transaction (for audit)
+- `wallet_balance_after` (integer, nullable) - wallet balance after this transaction (for audit)
+- `vault_balance_after` (integer, nullable) - vault balance after this transaction (for audit)
 - `created_at` (timestamp, indexed)
 - Indexes: `transaction_id`, `player_id`, `type`, `reference_id`, `created_at`, composite `(player_id, created_at)`
 - Relationships: `player`
-- Note: All balance changes MUST create transaction record for audit trail
+- Note: All balance changes MUST create transaction record for audit trail. Net earnings from rounds are automatically split: 70% to wallet, 30% to vault (via `vault_rake` transaction).
 
 ### DailyBonus
 - `bonus_id` (UUID, primary key)
@@ -244,7 +248,7 @@
 - Note: Activity log for tracking phraseset lifecycle events and player interactions
 
 ### WeeklyLeaderboardCache
-- `storage` (Redis key) - `leaderboard:weekly:v4`
+- `storage` (Redis key) - `leaderboard:weekly:v5`
 - `payload.prompt_leaderboard` (array) - cached leaderboard rows for prompt role
   - `player_id` (UUID string)
   - `username` (string)
@@ -259,12 +263,18 @@
   - Same structure as `prompt_leaderboard` with `role: "copy"`
 - `payload.voter_leaderboard` (array) - cached leaderboard rows for voter role
   - Same structure as `prompt_leaderboard` with `role: "voter"`
+- `payload.gross_earnings_leaderboard` (array) - cached vault balance leaderboard across all roles
+  - `player_id` (UUID string)
+  - `username` (string)
+  - `gross_earnings` (integer) - change in vault balance for weekly, or total vault balance for all-time
+  - `total_rounds` (integer) - total rounds played across all roles
+  - `rank` (integer)
 - `payload.generated_at` (ISO 8601 string) - timestamp when snapshot was calculated
 - TTL: 3600 seconds (1 hour) per write
 - Refresh triggers: automatically recomputed when phrasesets finalize, and on-demand when cache miss occurs
-- Note: Each role has a separate leaderboard ranked by win rate (descending) with ties broken alphabetically by username. Personalization flags (`is_current_player`) are added at request time; the shared cache only stores objective rankings.
+- Note: Role leaderboards are ranked by win rate (descending) with ties broken alphabetically by username. Gross earnings leaderboard ranks by vault balance (weekly: change in vault, all-time: total vault). Personalization flags (`is_current_player`) are added at request time; the shared cache only stores objective rankings.
 - AI players (email ending in `@quipflip.internal`) are excluded from all leaderboards.
-- Computation: All three role leaderboards are computed concurrently using `asyncio.gather` for performance.
+- Computation: All role leaderboards and gross earnings leaderboard are computed concurrently using `asyncio.gather` for performance.
 
 ### AIPhraseCache
 - `cache_id` (UUID, primary key)
@@ -396,3 +406,12 @@ PhrasesetActivity uses flexible JSON payload:
 - **Cons**: Queries on payload data are less efficient
 - **Decision**: Use JSON for flexibility in activity tracking and future analytics.
 - **Common activity types**: `vote_submitted`, `third_vote_reached`, `fifth_vote_reached`, `finalized`, and `finalization_error` (raised when a phraseset is closed due to missing round references).
+
+### Wallet/Vault Split
+Player balances split into wallet (spendable) and vault (accumulated earnings):
+- **Wallet**: Used for all spending (round entry costs, etc.). Quest rewards and bonuses go 100% to wallet.
+- **Vault**: Receives 30% of net earnings from rounds. Used for leaderboard rankings.
+- **Earnings Split**: When a player earns more than their entry cost (net > 0), 70% of net goes to wallet, 30% to vault. If net ≤ 0, all gross earnings return to wallet.
+- **Pros**: Creates a permanent wealth accumulation metric for leaderboards, encourages strategic play for net profit
+- **Cons**: Slightly more complex transaction logic
+- **Decision**: Implement split system to create meaningful long-term player progression and competitive leaderboards based on skill rather than volume.

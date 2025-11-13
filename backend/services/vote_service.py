@@ -538,13 +538,17 @@ class VoteService:
         await self.db.flush()
 
         # Give payout if correct (deferred commit)
+        # Split payout: 70% of net to wallet, 30% to vault
+        # Note: skip_lock=False (default) to acquire player lock for balance safety
         if correct:
-            await transaction_service.create_transaction(
-                player.player_id,
-                payout,
-                "vote_payout",
-                vote.vote_id,
+            await transaction_service.create_split_payout(
+                player_id=player.player_id,
+                gross_amount=payout,
+                cost=settings.vote_cost,
+                trans_type="vote_payout",
+                reference_id=vote.vote_id,
                 auto_commit=False,  # Defer commit to end of this method
+                skip_lock=False,  # Acquire lock for thread-safe balance updates
             )
 
         # Update phraseset vote count and prize pool
@@ -661,13 +665,17 @@ class VoteService:
         await self.db.flush()
 
         # Give payout if correct (deferred commit)
+        # Split payout: 70% of net to wallet, 30% to vault
+        # Note: skip_lock=False (default) to acquire player lock for balance safety
         if correct:
-            await transaction_service.create_transaction(
-                player.player_id,
-                payout,
-                "vote_payout",
-                vote.vote_id,
+            await transaction_service.create_split_payout(
+                player_id=player.player_id,
+                gross_amount=payout,
+                cost=settings.vote_cost,
+                trans_type="vote_payout",
+                reference_id=vote.vote_id,
                 auto_commit=False,  # Defer commit to end of this method
+                skip_lock=False,  # Acquire lock for thread-safe balance updates
             )
 
         # Track consecutive incorrect votes for guests
@@ -870,7 +878,32 @@ class VoteService:
         scoring_service = ScoringService(self.db)
         payouts = await scoring_service.calculate_payouts(phraseset)
 
+        # Get round costs for split payout calculation - fetch all in one query
+        round_ids = [
+            phraseset.prompt_round_id,
+            phraseset.copy_round_1_id,
+            phraseset.copy_round_2_id,
+        ]
+        # Filter out None values
+        valid_round_ids = [rid for rid in round_ids if rid is not None]
+
+        # Fetch all rounds in a single query
+        round_cost_map = {}
+        if valid_round_ids:
+            result = await self.db.execute(
+                select(Round.round_id, Round.cost).where(Round.round_id.in_(valid_round_ids))
+            )
+            round_cost_map = {round_id: cost for round_id, cost in result.all()}
+
+        # Map costs to roles
+        round_costs = {
+            "original": round_cost_map.get(phraseset.prompt_round_id, 0),
+            "copy1": round_cost_map.get(phraseset.copy_round_1_id, 0),
+            "copy2": round_cost_map.get(phraseset.copy_round_2_id, 0),
+        }
+
         # Create prize transactions for each contributor
+        # Split payout: 70% of net to wallet, 30% to vault
         for role in ["original", "copy1", "copy2"]:
             payout_info = payouts[role]
             if payout_info["player_id"] is not None and payout_info["payout"] > 0:
@@ -883,12 +916,16 @@ class VoteService:
                     )
                     continue
 
-                await transaction_service.create_transaction(
-                    payout_info["player_id"],
-                    payout_info["payout"],
-                    "prize_payout",
-                    phraseset.phraseset_id,
+                # Use split payout to handle wallet/vault distribution
+                # Note: skip_lock=False (default) to acquire player lock for balance safety
+                await transaction_service.create_split_payout(
+                    player_id=payout_info["player_id"],
+                    gross_amount=payout_info["payout"],
+                    cost=round_costs.get(role, 0),
+                    trans_type="prize_payout",
+                    reference_id=phraseset.phraseset_id,
                     auto_commit=False,  # Defer commit to caller
+                    skip_lock=False,  # Acquire lock for thread-safe balance updates
                 )
 
         # Update phraseset status
@@ -1130,6 +1167,18 @@ class VoteService:
         correct_vote_count = vote_counts[phraseset.original_phrase]
         incorrect_vote_count = total_votes - correct_vote_count
 
+        # Calculate vault skim amount (30% of net earnings if positive)
+        if role == "prompt":
+            round_cost = prompt_round.cost
+        elif role == "copy":
+            # Determine which copy round the player participated in
+            round_cost = copy1_round.cost if copy1_round.player_id == player_id else copy2_round.cost
+        else:  # role == "vote"
+            round_cost = settings.vote_cost
+
+        net_earnings = result_view.payout_amount - round_cost
+        vault_skim_amount = int(net_earnings * 0.3) if net_earnings > 0 else 0
+
         results_payload = {
             "prompt_text": phraseset.prompt_text,
             "votes": votes_display,
@@ -1138,6 +1187,7 @@ class VoteService:
             "your_points": points,
             "total_points": total_points,
             "your_payout": result_view.payout_amount,
+            "vault_skim_amount": vault_skim_amount,
             "total_pool": phraseset.total_pool,
             "total_votes": total_votes,
             "already_collected": already_viewed,

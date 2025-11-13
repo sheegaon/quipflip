@@ -455,7 +455,7 @@ class QuestService:
 
         logger.info(
             f"Quest reward claimed: player={player_id}, quest={quest.quest_type}, "
-            f"reward={quest.reward_amount}, new_balance={transaction.balance_after}"
+            f"reward={quest.reward_amount}, new_wallet={transaction.wallet_balance_after}, new_vault={transaction.vault_balance_after}"
         )
 
         # Check if we should auto-create next tier quest
@@ -470,7 +470,8 @@ class QuestService:
             "success": True,
             "quest_type": quest.quest_type,
             "reward_amount": quest.reward_amount,
-            "new_balance": transaction.balance_after,
+            "new_wallet": transaction.wallet_balance_after,
+            "new_vault": transaction.vault_balance_after,
         }
 
     async def check_and_update_vote_streak(self, player_id: UUID, vote_correct: bool) -> None:

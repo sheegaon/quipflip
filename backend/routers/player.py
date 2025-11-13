@@ -131,7 +131,8 @@ async def create_player(
         token_type="bearer",
         player_id=player.player_id,
         username=player.username,
-        balance=player.balance,
+        wallet=player.wallet,
+        vault=player.vault,
         message=(
             "Player created! Your account is ready to play. "
             "An access token and refresh token have been issued for authentication."
@@ -169,7 +170,8 @@ async def create_guest_player(
         token_type="bearer",
         player_id=player.player_id,
         username=player.username,
-        balance=player.balance,
+        wallet=player.wallet,
+        vault=player.vault,
         email=player.email,
         password=guest_password,
         message=(
@@ -244,7 +246,8 @@ async def get_balance(
         player_id=player.player_id,
         username=player.username,
         email=player.email,
-        balance=player.balance,
+        wallet=player.wallet,
+        vault=player.vault,
         starting_balance=settings.starting_balance,
         daily_bonus_available=bonus_available,
         daily_bonus_amount=settings.daily_bonus_amount,
@@ -272,16 +275,17 @@ async def claim_daily_bonus(
     try:
         amount = await player_service.claim_daily_bonus(player, transaction_service)
 
-        # Refresh player to get updated balance
+        # Refresh player to get updated wallet and vault
         await db.refresh(player)
-        
-        # Invalidate cached dashboard data since balance changed
+
+        # Invalidate cached dashboard data since wallet changed
         dashboard_cache.invalidate_player_data(player.player_id)
 
         return ClaimDailyBonusResponse(
             success=True,
             amount=amount,
-            new_balance=player.balance,
+            new_wallet=player.wallet,
+            new_vault=player.vault,
         )
     except DailyBonusNotAvailableError as e:
         raise HTTPException(status_code=400, detail=str(e))

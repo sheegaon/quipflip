@@ -508,7 +508,8 @@ class PhrasesetService:
         return {
             "success": True,
             "amount": payout_amount,
-            "new_balance": player.balance if player else 0,
+            "new_wallet": player.wallet if player else 0,
+            "new_vault": player.vault if player else 0,
             "already_claimed": already_viewed,  # For compatibility with frontend
         }
 

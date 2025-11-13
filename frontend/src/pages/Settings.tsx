@@ -645,7 +645,7 @@ const Settings: React.FC = () => {
           <div className="tile-card max-w-lg w-full p-6">
             <h3 className="text-2xl font-display font-bold text-red-700 mb-4">Confirm Account Deletion</h3>
             <p className="text-quip-teal mb-4">
-              This will permanently delete your account, balances, quests, and all associated gameplay history. This action cannot be undone.
+              This will permanently delete your account, wallet, vault, quests, and all associated gameplay history. This action cannot be undone.
             </p>
             {deleteError && <p className="text-red-600 mb-3">{deleteError}</p>}
             <form onSubmit={handleDeleteAccount} className="space-y-4">

@@ -286,7 +286,8 @@ export const GameProvider: React.FC<{
       try {
         const data = await apiClient.getDashboardData(signal);
         gameContextLogger.debug('✅ Dashboard data received successfully:', {
-          playerBalance: data.player?.balance,
+          playerWallet: data.player?.wallet,
+          playerVault: data.player?.vault,
           currentRound: data.current_round ? {
             id: data.current_round.round_id,
             type: data.current_round.round_type,
@@ -378,7 +379,7 @@ export const GameProvider: React.FC<{
   const refreshBalance = useCallback(async (signal?: AbortSignal) => {
       const storedUsername = apiClient.getStoredUsername();
       if (!storedUsername) {
-        gameContextLogger.debug('⏭️ Skipping balance refresh: no active session detected');
+        gameContextLogger.debug('⏭️ Skipping wallet and vault refresh: no active session detected');
         return;
       }
 
@@ -387,14 +388,15 @@ export const GameProvider: React.FC<{
       try {
         gameContextLogger.debug('📞 Calling apiClient.getBalance...');
         const data = await apiClient.getBalance(signal);
-        gameContextLogger.debug('✅ Balance data received:', {
-          balance: data.balance,
+        gameContextLogger.debug('✅ Wallet and vault data received:', {
+          wallet: data.wallet,
+          vault: data.vault,
           username: data.username
         });
-        
+
         setPlayer(data);
         if (data.username && data.username !== username) {
-          gameContextLogger.debug('👤 Username mismatch in balance, updating session:', {
+          gameContextLogger.debug('👤 Username mismatch in player data, updating session:', {
             stored: username,
             received: data.username
           });
@@ -404,14 +406,14 @@ export const GameProvider: React.FC<{
         setError(null);
       } catch (err) {
         if (err instanceof Error && err.name === 'CanceledError') {
-          gameContextLogger.debug('⏹️ Balance refresh canceled');
+          gameContextLogger.debug('⏹️ Wallet and vault refresh canceled');
           return;
         }
 
-        gameContextLogger.error('❌ Balance refresh failed:', err);
+        gameContextLogger.error('❌ Wallet and vault refresh failed:', err);
         const errorMessage = getActionErrorMessage('refresh-balance', err);
-        
-        // Only show balance refresh errors if they're auth-related
+
+        // Only show player data refresh errors if they're auth-related
         if (errorMessage.toLowerCase().includes('session') || errorMessage.toLowerCase().includes('login')) {
           setError(errorMessage);
           logout();

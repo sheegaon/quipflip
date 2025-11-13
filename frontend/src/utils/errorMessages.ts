@@ -30,7 +30,7 @@ export const errorMessages = {
   game: {
     roundExpired: "This round has expired. Don't worry - you can start a new one right away!",
     alreadySubmitted: "You've already submitted for this round. Check your dashboard for results!",
-    insufficientBalance: "Not enough coins for this round. Claim your daily bonus or complete more rounds to earn coins.",
+    insufficientBalance: "Not enough coins in your wallet for this round. Claim your daily bonus or complete more rounds to earn coins.",
     noPromptsAvailable: "No prompts are available for copy rounds right now. Try creating a prompt round first!",
     noPhrasesets: "No phrase sets are available for voting. Try creating some prompts or copies first!",
     maxOutstandingPrompts: "You have too many active prompts. Wait for some to complete before creating new ones.",
@@ -57,7 +57,7 @@ export const errorMessages = {
   rewards: {
     bonusAlreadyClaimed: "You've already claimed your daily bonus today. Come back tomorrow for more!",
     bonusNotEligible: "Daily bonus will be available tomorrow. New accounts need to wait 24 hours.",
-    prizeAlreadyClaimed: "You've already claimed this prize. Check your balance!",
+    prizeAlreadyClaimed: "You've already claimed this prize. Check your wallet!",
     prizeNotAvailable: "This prize is no longer available.",
   },
 

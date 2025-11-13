@@ -298,7 +298,7 @@ const OnlineUsers: React.FC = () => {
                         </div>
                         <div className="flex items-center gap-3 mt-2">
                           <div className="flex items-center gap-1">
-                            <CurrencyDisplay amount={user.balance} iconClassName="w-3 h-3" textClassName="text-sm text-quip-navy" />
+                            <CurrencyDisplay amount={user.wallet} iconClassName="w-3 h-3" textClassName="text-sm text-quip-navy" />
                           </div>
                           <span className="text-sm text-gray-500">•</span>
                           <span className="text-sm text-gray-600">{accountAgeDays} {accountAgeDays === 1 ? 'day' : 'days'} old</span>

@@ -4,7 +4,8 @@ export interface Player {
   player_id: string;
   username: string;
   email: string;
-  balance: number;
+  wallet: number;
+  vault: number;
   starting_balance: number;
   daily_bonus_available: boolean;
   daily_bonus_amount: number;
@@ -38,7 +39,7 @@ export interface AdminPlayerSummary {
   player_id: string;
   username: string;
   email: string;
-  balance: number;
+  wallet: number;
   created_at: string;
   outstanding_prompts: number;
 }
@@ -68,12 +69,14 @@ export interface AuthTokenResponse {
 }
 
 export interface CreatePlayerResponse extends AuthTokenResponse {
-  balance: number;
+  wallet: number;
+  vault: number;
   message: string;
 }
 
 export interface CreateGuestResponse extends AuthTokenResponse {
-  balance: number;
+  wallet: number;
+  vault: number;
   email: string;
   password: string;
   message: string;
@@ -183,7 +186,8 @@ export interface PendingResultsResponse {
 export interface DailyBonusResponse {
   success: boolean;
   amount: number;
-  new_balance: number;
+  new_wallet: number;
+  new_vault: number;
 }
 
 export interface BetaSurveyAnswerPayload {
@@ -231,7 +235,7 @@ export interface WeeklyLeaderboardEntry {
 export interface GrossEarningsLeaderboardEntry {
   player_id: string;
   username: string;
-  gross_earnings: number;
+  vault_balance: number;  // Total vault balance (all-time) or vault balance change (weekly)
   total_rounds: number;
   rank: number | null;
   is_current_player: boolean;
@@ -352,6 +356,7 @@ export interface PhrasesetResults {
   your_points: number;
   total_points: number;
   your_payout: number;
+  vault_skim_amount: number;
   total_pool: number;
   total_votes: number;
   already_collected: boolean;
@@ -501,7 +506,8 @@ export interface PhrasesetDetails {
 export interface ClaimPrizeResponse {
   success: boolean;
   amount: number;
-  new_balance: number;
+  new_wallet: number;
+  new_vault: number;
   already_claimed: boolean;
 }
 
@@ -613,7 +619,8 @@ export interface PlayerStatistics {
   player_id: string;
   username: string;
   email: string;
-  overall_balance: number;
+  wallet: number;
+  vault: number;
   prompt_stats: RoleStatistics;
   copy_stats: RoleStatistics;
   voter_stats: RoleStatistics;
@@ -678,7 +685,8 @@ export interface ClaimQuestRewardResponse {
   success: boolean;
   quest_type: string;
   reward_amount: number;
-  new_balance: number;
+  new_wallet: number;
+  new_vault: number;
 }
 
 // Online Users feature types
@@ -688,7 +696,7 @@ export interface OnlineUser {
   last_action_category: string;
   last_activity: string;
   time_ago: string;
-  balance: number;
+  wallet: number;
   created_at: string;
 }
 

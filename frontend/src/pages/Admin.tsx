@@ -520,8 +520,8 @@ const Admin: React.FC = () => {
                   <dd>{passwordResetLookup.email}</dd>
                 </div>
                 <div>
-                  <dt className="font-semibold">Balance</dt>
-                  <dd>{passwordResetLookup.balance}</dd>
+                  <dt className="font-semibold">Wallet</dt>
+                  <dd>{passwordResetLookup.wallet}</dd>
                 </div>
                 <div>
                   <dt className="font-semibold">Outstanding Prompts</dt>
@@ -602,8 +602,8 @@ const Admin: React.FC = () => {
                   <dd>{adminDeleteLookup.email}</dd>
                 </div>
                 <div>
-                  <dt className="font-semibold">Balance</dt>
-                  <dd>{adminDeleteLookup.balance}</dd>
+                  <dt className="font-semibold">Wallet</dt>
+                  <dd>{adminDeleteLookup.wallet}</dd>
                 </div>
                 <div>
                   <dt className="font-semibold">Outstanding Prompts</dt>

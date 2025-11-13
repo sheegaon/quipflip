@@ -68,7 +68,8 @@ class PlayerService:
             username_canonical=canonical_username,
             email=email.strip().lower(),
             password_hash=password_hash,
-            balance=settings.starting_balance,
+            wallet=settings.starting_balance,
+            vault=0,
             last_login_date=datetime.now(UTC),  # Track creation login time with precision
             is_admin=self._should_be_admin(email),
         )
@@ -77,7 +78,7 @@ class PlayerService:
             await self.db.commit()
             await self.db.refresh(player)
             logger.info(
-                f"Created player: {player.player_id} username={player.username} balance={player.balance}"
+                f"Created player: {player.player_id} username={player.username} wallet={player.wallet} vault={player.vault}"
             )
             return player
         except IntegrityError as exc:
@@ -288,8 +289,8 @@ class PlayerService:
         if player.locked_until and player.locked_until > datetime.now(UTC):
             return False, "player_locked"
 
-        # Check balance
-        if player.balance < settings.prompt_cost:
+        # Check wallet (spendable balance)
+        if player.wallet < settings.prompt_cost:
             return False, "insufficient_balance"
 
         # Check active round
@@ -333,9 +334,9 @@ class PlayerService:
         if player.locked_until and player.locked_until > datetime.now(UTC):
             return False, "player_locked"
 
-        # Check balance (need to check against current cost)
+        # Check wallet (spendable balance) against current copy cost
         copy_cost = QueueService.get_copy_cost()
-        if player.balance < copy_cost:
+        if player.wallet < copy_cost:
             return False, "insufficient_balance"
 
         # Check active round
@@ -358,7 +359,7 @@ class PlayerService:
 
         # Second copy costs 2x the normal cost
         second_copy_cost = settings.copy_cost_normal * 2
-        if player.balance < second_copy_cost:
+        if player.wallet < second_copy_cost:
             return False, "insufficient_balance"
 
         return True, ""
@@ -381,8 +382,8 @@ class PlayerService:
         if player.locked_until and player.locked_until > datetime.now(UTC):
             return False, "player_locked"
 
-        # Check balance
-        if player.balance < settings.vote_cost:
+        # Check wallet (spendable balance)
+        if player.wallet < settings.vote_cost:
             return False, "insufficient_balance"
 
         # Check active round

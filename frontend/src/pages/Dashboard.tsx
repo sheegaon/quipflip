@@ -379,7 +379,7 @@ export const Dashboard: React.FC = () => {
 
     dashboardLogger.info(`Starting prompt round in ${mode} mode...`);
     dashboardLogger.debug('Player state before start:', {
-      balance: player?.balance,
+      wallet: player?.wallet,
       outstandingPrompts: player?.outstanding_prompts,
       canPrompt: roundAvailability?.can_prompt,
       mode
@@ -415,7 +415,7 @@ export const Dashboard: React.FC = () => {
 
     dashboardLogger.info(`Starting copy round in ${mode} mode...`);
     dashboardLogger.debug('Player state before start:', {
-      balance: player?.balance,
+      wallet: player?.wallet,
       canCopy: roundAvailability?.can_copy,
       promptsWaiting: roundAvailability?.prompts_waiting,
       copyCost: roundAvailability?.copy_cost,
@@ -452,7 +452,7 @@ export const Dashboard: React.FC = () => {
 
     dashboardLogger.info(`Starting vote round in ${mode} mode...`);
     dashboardLogger.debug('Player state before start:', {
-      balance: player?.balance,
+      wallet: player?.wallet,
       canVote: roundAvailability?.can_vote,
       phrasesetsWaiting: roundAvailability?.phrasesets_waiting,
       mode
@@ -586,7 +586,7 @@ export const Dashboard: React.FC = () => {
                  roundAvailability?.can_prompt ? 'Start Prompt Round' :
                  activeRound?.round_type === 'prompt' ? 'Active Round - Use Continue Above' :
                  activeRound?.round_id ? 'Complete Current Round First' :
-                 (player?.balance ?? 0) < (roundAvailability?.prompt_cost || 100) ? 'Insufficient Balance' :
+                 (player?.wallet ?? 0) < (roundAvailability?.prompt_cost || 100) ? 'Insufficient Balance' :
                  (player?.outstanding_prompts ?? 0) >= 10 ? 'Too Many Outstanding Prompts' :
                  'Not Available'}
               </button>
@@ -632,7 +632,7 @@ export const Dashboard: React.FC = () => {
                  activeRound?.round_type === 'copy' ? 'Active Round - Use Continue Above' :
                  activeRound?.round_id ? 'Complete Current Round First' :
                  roundAvailability?.prompts_waiting === 0 ? 'No Quips Available' :
-                 (player?.balance ?? 0) < (roundAvailability?.copy_cost || 100) ? 'Insufficient Balance' :
+                 (player?.wallet ?? 0) < (roundAvailability?.copy_cost || 100) ? 'Insufficient Balance' :
                  'Not Available'}
               </button>
             </div>
@@ -668,7 +668,7 @@ export const Dashboard: React.FC = () => {
                  activeRound?.round_type === 'vote' ? 'Active Round - Use Continue Above' :
                  activeRound?.round_id ? 'Complete Current Round First' :
                  roundAvailability?.phrasesets_waiting === 0 ? 'No Quip Sets Available' :
-                 (player?.balance ?? 0) < (roundAvailability?.vote_cost || 10) ? 'Insufficient Balance' :
+                 (player?.wallet ?? 0) < (roundAvailability?.vote_cost || 10) ? 'Insufficient Balance' :
                  'Not Available'}
               </button>
             </div>

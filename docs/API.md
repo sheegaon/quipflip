@@ -159,7 +159,8 @@ curl -X POST http://localhost:8000/player/guest
   "access_token": "<jwt access token>",
   "refresh_token": "<refresh token>",
   "expires_in": 7200,
-  "balance": 5000,
+  "wallet": 5000,
+  "vault": 0,
   "email": "guest1234@quipflip.xyz",
   "password": "QuipGuest",
   "message": "Guest account created! Your temporary credentials are:\nEmail: guest1234@quipflip.xyz\nPassword: QuipGuest\n\nYou can upgrade to a full account anytime to choose your own email and password.",
@@ -198,7 +199,8 @@ See [Player](DATA_MODELS.md#player) for persisted fields.
   "access_token": "<jwt access token>",
   "refresh_token": "<refresh token>",
   "expires_in": 7200,
-  "balance": 5000,
+  "wallet": 5000,
+  "vault": 0,
   "message": "Player created! Your account is ready to play. An access token and refresh token have been issued for authentication.",
   "token_type": "bearer"
 }
@@ -335,6 +337,8 @@ Get player balance and status.
   "username": "Prompt Pirate",
   "email": "prompt.pirate@example.com",
   "balance": 5000,
+  "wallet": 5000,
+  "vault": 1250,
   "starting_balance": 5000,
   "daily_bonus_available": false,
   "daily_bonus_amount": 100,
@@ -349,6 +353,8 @@ Get player balance and status.
 ```
 
 **Response Fields:**
+- `wallet` (integer): Current spendable balance for entering rounds and transactions.
+- `vault` (integer): Accumulated long-term balance from net earnings (30% rake). Used for leaderboard rankings.
 - `is_admin` (boolean): Whether player has admin privileges
 - `locked_until` (timestamp or null): Account lock expiration time (for temporary bans)
 - `flag_dismissal_streak` (integer): Consecutive flag dismissals by this player (moderation tracking)
@@ -361,7 +367,8 @@ Claim daily login bonus (100f).
 {
   "success": true,
   "amount": 100,
-  "new_balance": 5100
+  "new_wallet": 5100,
+  "new_vault": 0
 }
 ```
 
@@ -519,7 +526,7 @@ Batched endpoint that composes balance, current round, pending results, phrasese
 
 ```json
 {
-  "player": { "username": "Prompt Pirate", "balance": 4985, "daily_bonus_available": true, "created_at": "2025-01-01T12:00:00Z" },
+  "player": { "username": "Prompt Pirate", "wallet": 4985, "vault": 250, "daily_bonus_available": true, "created_at": "2025-01-01T12:00:00Z" },
   "current_round": { "round_id": null, "round_type": null, "state": null, "expires_at": null },
   "pending_results": [],
   "phraseset_summary": { "in_progress": {"prompts": 1, "copies": 0, "unclaimed_prompts": 0, "unclaimed_copies": 0}, "finalized": {"prompts": 5, "copies": 8, "unclaimed_prompts": 1, "unclaimed_copies": 0}, "total_unclaimed_amount": 120 },
@@ -537,7 +544,8 @@ Get comprehensive player statistics including win rates, earnings breakdown, and
   "player_id": "uuid",
   "username": "Prompt Pirate",
   "email": "prompt.pirate@example.com",
-  "overall_balance": 1250,
+  "wallet": 1250,
+  "vault": 250,
   "prompt_stats": {
     "role": "prompt",
     "total_rounds": 15,
@@ -1470,7 +1478,8 @@ Explicitly mark a phraseset payout as claimed (idempotent).
 {
   "success": true,
   "amount": 150,
-  "new_balance": 1320,
+  "new_wallet": 1320,
+  "new_vault": 250,
   "already_claimed": false
 }
 ```
@@ -1739,7 +1748,8 @@ Claim a completed quest reward.
   "success": true,
   "quest_id": "uuid",
   "reward_amount": 25,
-  "new_balance": 1125,
+  "new_wallet": 1125,
+  "new_vault": 250,
   "message": "Quest reward claimed successfully!"
 }
 ```
@@ -1959,7 +1969,8 @@ Get list of currently online users (active in last 30 minutes).
       "last_action_category": "round",
       "last_activity": "2025-01-06T12:00:00Z",
       "time_ago": "2m ago",
-      "balance": 4250,
+      "wallet": 4250,
+      "vault": 750,
       "created_at": "2025-01-01T12:00:00Z"
     }
   ],
@@ -1973,7 +1984,8 @@ Get list of currently online users (active in last 30 minutes).
 - `last_action_category` (string): Category of the action ('round', 'phraseset', 'quest', 'auth', 'other')
 - `last_activity` (timestamp): ISO 8601 UTC timestamp of last activity
 - `time_ago` (string): Relative time display (e.g., "2m ago", "1h ago")
-- `balance` (integer): Current Flipcoin balance
+- `wallet` (integer): Current spendable Flipcoin balance
+- `vault` (integer): Accumulated long-term Flipcoin balance
 - `created_at` (timestamp): ISO 8601 UTC timestamp when account was created
 
 **Performance Notes:**
@@ -2179,7 +2191,8 @@ CORS is enabled for all origins in development. For production:
 ### TypeScript Types (Example)
 ```typescript
 interface Player {
-  balance: number
+  wallet: number
+  vault: number
   daily_bonus_available: boolean
   outstanding_prompts: number
 }

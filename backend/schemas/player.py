@@ -14,7 +14,8 @@ class PlayerBalance(BaseSchema):
     player_id: UUID
     username: str
     email: EmailLike
-    balance: int
+    wallet: int
+    vault: int
     starting_balance: int
     daily_bonus_available: bool
     daily_bonus_amount: int
@@ -31,7 +32,8 @@ class ClaimDailyBonusResponse(BaseModel):
     """Daily bonus claim response."""
     success: bool
     amount: int
-    new_balance: int
+    new_wallet: int
+    new_vault: int
 
 
 class CurrentRoundResponse(BaseSchema):
@@ -61,7 +63,8 @@ class PendingResultsResponse(BaseModel):
 class CreatePlayerResponse(AuthTokenResponse):
     """Create player response returning tokens and onboarding message."""
 
-    balance: int
+    wallet: int
+    vault: int
     message: str
 
 
@@ -112,7 +115,8 @@ class PlayerStatistics(BaseModel):
     player_id: UUID
     username: str
     email: str
-    overall_balance: int
+    wallet: int
+    vault: int
 
     # Role-specific stats
     prompt_stats: RoleStatistics
@@ -225,7 +229,8 @@ class DeleteAccountRequest(BaseModel):
 class CreateGuestResponse(AuthTokenResponse):
     """Create guest player response returning tokens and guest credentials."""
 
-    balance: int
+    wallet: int
+    vault: int
     email: str
     password: str  # Auto-generated password to show user
     message: str
@@ -260,11 +265,11 @@ class WeeklyLeaderboardEntry(BaseModel):
 
 
 class GrossEarningsLeaderboardEntry(BaseModel):
-    """Gross earnings leaderboard row."""
+    """Vault balance leaderboard row (gross earnings from net-positive rounds)."""
 
     player_id: UUID
     username: str
-    gross_earnings: int
+    vault_balance: int  # Total vault balance (all-time) or vault balance change (weekly)
     total_rounds: int
     rank: Optional[int]
     is_current_player: bool = False

@@ -27,6 +27,7 @@ class TransactionService:
         reference_id: UUID | None = None,
         auto_commit: bool = True,
         skip_lock: bool = False,
+        wallet_type: str = "wallet",
     ) -> Transaction:
         """
         Create transaction and update player balance atomically.
@@ -40,6 +41,7 @@ class TransactionService:
             reference_id: Optional reference to round/phraseset/vote
             auto_commit: If True, commits immediately. If False, caller must commit.
             skip_lock: If True, assumes caller has already acquired the lock.
+            wallet_type: "wallet" or "vault" - which balance to update
 
         Returns:
             Created transaction
@@ -57,17 +59,31 @@ class TransactionService:
             if not player:
                 raise ValueError(f"Player not found: {player_id}")
 
-            # Calculate new balance
-            new_balance = player.balance + amount
+            # Calculate new balance based on wallet type
+            if wallet_type == "vault":
+                current_balance = player.vault
+                new_balance = current_balance + amount
 
-            # Check sufficient balance for negative transactions
-            if new_balance < 0:
-                raise InsufficientBalanceError(
-                    f"Insufficient balance: {player.balance} + {amount} = {new_balance} < 0"
-                )
+                # Check sufficient balance for negative transactions
+                if new_balance < 0:
+                    raise InsufficientBalanceError(
+                        f"Insufficient vault balance: {current_balance} + {amount} = {new_balance} < 0"
+                    )
 
-            # Update balance
-            player.balance = new_balance
+                # Update vault
+                player.vault = new_balance
+            else:
+                current_balance = player.wallet
+                new_balance = current_balance + amount
+
+                # Check sufficient balance for negative transactions
+                if new_balance < 0:
+                    raise InsufficientBalanceError(
+                        f"Insufficient wallet balance: {current_balance} + {amount} = {new_balance} < 0"
+                    )
+
+                # Update wallet
+                player.wallet = new_balance
 
             # Create transaction record
             transaction = Transaction(
@@ -75,8 +91,10 @@ class TransactionService:
                 player_id=player_id,
                 amount=amount,
                 type=trans_type,
+                wallet_type=wallet_type,
                 reference_id=reference_id,
-                balance_after=new_balance,
+                wallet_balance_after=player.wallet,
+                vault_balance_after=player.vault,
             )
 
             self.db.add(transaction)
@@ -87,7 +105,8 @@ class TransactionService:
 
             logger.info(
                 f"Transaction created: player={player_id}, amount={amount}, "
-                f"type={trans_type}, new_balance={new_balance}, auto_commit={auto_commit}"
+                f"type={trans_type}, wallet_type={wallet_type}, "
+                f"new_wallet={player.wallet}, new_vault={player.vault}, auto_commit={auto_commit}"
             )
 
             return transaction
@@ -98,6 +117,103 @@ class TransactionService:
             lock_name = f"create_transaction:{player_id}"
             with lock_client.lock(lock_name, timeout=10):
                 return await _create_transaction_impl()
+
+    async def create_split_payout(
+        self,
+        player_id: UUID,
+        gross_amount: int,
+        cost: int,
+        trans_type: str,
+        reference_id: UUID | None = None,
+        auto_commit: bool = True,
+        skip_lock: bool = False,
+    ) -> tuple[Transaction | None, Transaction | None]:
+        """
+        Create payout with 70/30 split between wallet and vault based on net earnings.
+
+        Uses distributed lock to prevent race conditions (unless skip_lock=True).
+
+        Rules:
+        - If net earnings (gross - cost) > 0:
+          - 70% of net goes to wallet
+          - 30% of net goes to vault
+          - Cost is returned to wallet
+        - If net earnings <= 0:
+          - All gross earnings go back to wallet
+
+        Args:
+            player_id: Player UUID
+            gross_amount: Gross payout amount
+            cost: Cost that was paid to enter the round
+            trans_type: Transaction type (e.g., "vote_payout", "prize_payout")
+            reference_id: Optional reference to round/phraseset/vote
+            auto_commit: If True, commits immediately. If False, caller must commit.
+            skip_lock: If True, assumes caller has already acquired the lock.
+
+        Returns:
+            Tuple of (wallet_transaction, vault_transaction)
+        """
+        async def _create_split_payout_impl():
+            net_earnings = gross_amount - cost
+
+            if net_earnings <= 0:
+                # All gross earnings go back to wallet
+                wallet_txn = await self.create_transaction(
+                    player_id=player_id,
+                    amount=gross_amount,
+                    trans_type=trans_type,
+                    reference_id=reference_id,
+                    auto_commit=auto_commit,
+                    skip_lock=True,  # Lock already acquired by outer function
+                    wallet_type="wallet",
+                )
+                return wallet_txn, None
+            else:
+                # Split net earnings: 70% to wallet, 30% to vault
+                # Also return the cost to wallet
+                vault_amount = int(net_earnings * 0.3)
+                wallet_amount = gross_amount - vault_amount
+
+                # Create wallet transaction (cost + 70% of net)
+                wallet_txn = await self.create_transaction(
+                    player_id=player_id,
+                    amount=wallet_amount,
+                    trans_type=trans_type,
+                    reference_id=reference_id,
+                    auto_commit=False,
+                    skip_lock=True,  # Lock already acquired by outer function
+                    wallet_type="wallet",
+                )
+
+                # Create vault transaction (30% of net)
+                vault_txn = await self.create_transaction(
+                    player_id=player_id,
+                    amount=vault_amount,
+                    trans_type="vault_rake",
+                    reference_id=reference_id,
+                    auto_commit=False,
+                    skip_lock=True,  # Lock already acquired by outer function
+                    wallet_type="vault",
+                )
+
+                if auto_commit:
+                    await self.db.commit()
+                    await self.db.refresh(wallet_txn)
+                    await self.db.refresh(vault_txn)
+
+                logger.info(
+                    f"Split payout created: player={player_id}, gross={gross_amount}, cost={cost}, "
+                    f"net={net_earnings}, wallet={wallet_amount}, vault={vault_amount}"
+                )
+
+                return wallet_txn, vault_txn
+
+        if skip_lock:
+            return await _create_split_payout_impl()
+        else:
+            lock_name = f"create_transaction:{player_id}"
+            with lock_client.lock(lock_name, timeout=10):
+                return await _create_split_payout_impl()
 
     async def get_player_transactions(
         self,
