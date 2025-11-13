@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { GUEST_CREDENTIALS_KEY, GUEST_CREDENTIALS_SHOWN_KEY } from '../utils/storageKeys';
-import { LeaderboardIcon } from './icons/LeaderboardIcon';
+import { LeaderboardIcon } from './icons/NavigationIcons';
 import './GuestWelcomeOverlay.css';
 
 const GuestWelcomeOverlay: React.FC = () => {

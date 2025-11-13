@@ -6,18 +6,19 @@ import { useTutorial } from '../contexts/TutorialContext';
 import { useHeaderIndicators } from '../hooks/useHeaderIndicators';
 import { BalanceFlipper } from './BalanceFlipper';
 import { SubHeader } from './SubHeader';
-import { HomeIcon } from './icons/HomeIcon';
 import { TreasureChestIcon } from './TreasureChestIcon';
-import { StatisticsIcon } from './icons/StatisticsIcon';
-import { LeaderboardIcon } from './icons/LeaderboardIcon';
-import { ResultsIcon } from './icons/ResultsIcon';
-import { TrackingIcon } from './icons/TrackingIcon';
-import { ReviewIcon } from './icons/ReviewIcon';
-import { LobbyIcon } from './icons/LobbyIcon';
-import { SurveyIcon } from './icons/SurveyIcon.tsx';
-import { QuestionMarkIcon } from './icons/QuestionMarkIcon.tsx';
-import { SettingsIcon } from './icons/SettingsIcon.tsx';
-import { AdminIcon } from './icons/AdminIcon';
+import { ArrowLeftIcon } from './icons/ArrowIcons';
+import {
+  AdminIcon,
+  HomeIcon,
+  LeaderboardIcon,
+  LobbyIcon,
+  SettingsIcon,
+  StatisticsIcon,
+  SurveyIcon,
+  TrackingIcon,
+} from './icons/NavigationIcons';
+import { QuestionMarkIcon, ResultsIcon, ReviewIcon } from './icons/EngagementIcons';
 import { hasCompletedSurvey } from '../utils/betaSurvey';
 import { apiClient } from '../api/client';
 import { componentLogger } from '../utils/logger';
@@ -187,12 +188,7 @@ export const Header: React.FC = () => {
                 title={backArrowTitle}
                 aria-label={backArrowTitle}
               >
-                <img
-                  src="/icon_arrow_left.svg"
-                  alt=""
-                  className="w-7 h-7 md:w-9 md:h-9"
-                  aria-hidden="true"
-                />
+                <ArrowLeftIcon className="w-7 h-7 md:w-9 md:h-9" aria-hidden="true" />
               </button>
             )}
             <button

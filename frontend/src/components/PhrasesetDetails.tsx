@@ -8,7 +8,7 @@ import { StatusBadge } from './StatusBadge';
 import { ProgressBar } from './ProgressBar';
 import { ActivityTimeline } from './PhrasesetActivityTimeline';
 import { formatDateTimeInUserZone } from '../utils/datetime';
-import { BotIcon } from './icons/BotIcon';
+import { BotIcon } from './icons/EngagementIcons';
 
 interface PhrasesetDetailsProps {
   phraseset: PhrasesetDetailsType | null;

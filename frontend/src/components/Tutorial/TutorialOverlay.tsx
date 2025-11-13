@@ -3,10 +3,42 @@ import { useTutorial } from '../../contexts/TutorialContext';
 import { getTutorialStep, getPreviousStep } from '../../config/tutorialSteps';
 import type { TutorialProgress } from '../../api/types';
 import './TutorialOverlay.css';
+import { CopyRoundIcon, LiveModeIcon, PracticeModeIcon, VoteRoundIcon } from '../icons/RoundIcons';
+import { ArrowLeftIcon, ArrowRightIcon } from '../icons/ArrowIcons';
+import { FlagIcon } from '../icons/EngagementIcons';
+import {
+  QuestActivityIcon,
+  QuestClaimableIcon,
+  QuestMilestoneIcon,
+  QuestOverviewIcon,
+  QuestQualityIcon,
+  QuestStreakIcon,
+} from '../icons/QuestIcons';
+import { StateEmptyIcon, StateErrorIcon, StateFilterEmptyIcon, StateLoadingIcon } from '../icons/StateIcons';
 
 interface TutorialOverlayProps {
   onComplete?: () => void;
 }
+
+const tutorialIcons: Record<string, React.ComponentType<React.SVGProps<SVGSVGElement>>> = {
+  copy: CopyRoundIcon,
+  vote: VoteRoundIcon,
+  live: LiveModeIcon,
+  practice: PracticeModeIcon,
+  quest_overview: QuestOverviewIcon,
+  quest_claimable: QuestClaimableIcon,
+  quest_activity: QuestActivityIcon,
+  quest_quality: QuestQualityIcon,
+  quest_milestone: QuestMilestoneIcon,
+  quest_streak: QuestStreakIcon,
+  arrow_left: ArrowLeftIcon,
+  arrow_right: ArrowRightIcon,
+  flag: FlagIcon,
+  state_error: StateErrorIcon,
+  state_loading: StateLoadingIcon,
+  state_empty: StateEmptyIcon,
+  state_filter_empty: StateFilterEmptyIcon,
+};
 
 // Position offset constants
 const SPOTLIGHT_PADDING = 8; // Padding around highlighted element
@@ -33,15 +65,17 @@ const parseMarkdown = (text: string): React.ReactNode[] => {
       } else if (part.startsWith('{{icon:') && part.endsWith('}}')) {
         // Icon syntax: {{icon:iconname}}
         const iconName = part.slice(7, -2);
-        return (
-          <img
-            key={`${lineIndex}-${partIndex}`}
-            src={`/icon_${iconName}.svg`}
-            alt=""
-            className="inline-block w-5 h-5 mx-1 align-text-bottom"
-            aria-hidden="true"
-          />
-        );
+        const IconComponent = tutorialIcons[iconName];
+        if (IconComponent) {
+          return (
+            <IconComponent
+              key={`${lineIndex}-${partIndex}`}
+              className="inline-block w-5 h-5 mx-1 align-text-bottom"
+              aria-hidden="true"
+            />
+          );
+        }
+        return null;
       }
       return part;
     });

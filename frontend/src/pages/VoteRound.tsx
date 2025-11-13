@@ -10,6 +10,7 @@ import { useTimer } from '../hooks/useTimer';
 import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
 import type { VoteResponse, VoteState, PhrasesetDetails } from '../api/types';
 import { voteRoundLogger } from '../utils/logger';
+import { VoteRoundIcon } from '../components/icons/RoundIcons';
 
 export const VoteRound: React.FC = () => {
   const { state, actions } = useGame();
@@ -139,10 +140,9 @@ export const VoteRound: React.FC = () => {
           {/* Header with icon and result */}
           <div className="text-center mb-8">
             <div className="flex justify-center mb-4">
-              <img
-                src="/icon_vote.svg"
-                alt=""
+              <VoteRoundIcon
                 className={`w-32 h-32 ${voteResult.correct ? '' : 'opacity-60'}`}
+                aria-hidden="true"
               />
             </div>
 
@@ -337,7 +337,7 @@ export const VoteRound: React.FC = () => {
       <div className="max-w-2xl w-full tile-card p-8 slide-up-enter">
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-2 mb-2">
-            <img src="/icon_vote.svg" alt="" className="w-8 h-8" />
+            <VoteRoundIcon className="w-8 h-8" aria-hidden="true" />
             <h1 className="text-3xl font-display font-bold text-quip-navy">Vote Round</h1>
           </div>
           <p className="text-quip-teal">Identify the original phrase</p>

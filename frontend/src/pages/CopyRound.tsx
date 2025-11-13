@@ -10,6 +10,8 @@ import { usePhraseValidation } from '../hooks/usePhraseValidation';
 import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
 import type { CopyState, FlagCopyRoundResponse } from '../api/types';
 import { copyRoundLogger } from '../utils/logger';
+import { CopyRoundIcon } from '../components/icons/RoundIcons';
+import { FlagIcon } from '../components/icons/EngagementIcons';
 
 export const CopyRound: React.FC = () => {
   const { state, actions } = useGame();
@@ -260,7 +262,7 @@ export const CopyRound: React.FC = () => {
       <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center p-4">
         <div className="tile-card max-w-2xl w-full p-8 text-center flip-enter">
           <div className="flex justify-center mb-4">
-            <img src="/icon_copy.svg" alt="" className="w-24 h-24" />
+            <CopyRoundIcon className="w-24 h-24" aria-hidden="true" />
           </div>
           <h2 className="text-2xl font-display font-bold text-quip-turquoise mb-2 success-message">
             {successMessage}
@@ -355,7 +357,7 @@ export const CopyRound: React.FC = () => {
       <div className="max-w-2xl w-full tile-card p-8 slide-up-enter">
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-2 mb-2">
-            <img src="/icon_copy.svg" alt="" className="w-8 h-8" />
+            <CopyRoundIcon className="w-8 h-8" aria-hidden="true" />
             <h1 className="text-3xl font-display font-bold text-quip-navy">Copy Round</h1>
           </div>
           <p className="text-quip-teal">Submit a similar phrase</p>
@@ -384,7 +386,7 @@ export const CopyRound: React.FC = () => {
             aria-label="Flag this phrase"
           >
             <span className="sr-only">Flag this phrase</span>
-            <img src="/icon_flag.svg" alt="" className="h-5 w-5 pointer-events-none" aria-hidden="true" />
+            <FlagIcon className="h-5 w-5 pointer-events-none" aria-hidden="true" />
           </button>
           <p className="text-sm text-quip-teal mb-2 text-center font-medium">Original Phrase:</p>
           <p className="text-3xl text-center font-display font-bold text-quip-turquoise">
