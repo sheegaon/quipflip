@@ -40,6 +40,33 @@
   pointer-events: auto;
   z-index: 10001;
   animation: tutorialFadeIn 0.3s ease-in-out;
+  position: relative;
+}
+
+.tutorial-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #1a365d;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s, opacity 0.2s;
+  z-index: 1;
+}
+
+.tutorial-close:hover {
+  transform: scale(1.1);
+  opacity: 0.8;
+}
+
+.tutorial-close:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 @keyframes tutorialFadeIn {

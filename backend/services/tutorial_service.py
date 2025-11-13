@@ -52,6 +52,12 @@ class TutorialService:
         # Update progress
         player.tutorial_progress = progress
 
+        # If starting tutorial from 'welcome', reset completion status
+        # This allows players to restart the tutorial
+        if progress == "welcome":
+            player.tutorial_completed = False
+            player.tutorial_completed_at = None
+
         # Set started_at if this is the first progress update
         if progress != "not_started" and not player.tutorial_started_at:
             player.tutorial_started_at = datetime.now(UTC)

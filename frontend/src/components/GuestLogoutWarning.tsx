@@ -1,5 +1,5 @@
 import React from 'react';
-import './GuestCredentialsOverlay.css';
+import './GuestWelcomeOverlay.css';
 
 interface GuestLogoutWarningProps {
   isVisible: boolean;
@@ -28,6 +28,22 @@ const GuestLogoutWarning: React.FC<GuestLogoutWarningProps> = ({
         aria-labelledby="guest-logout-title"
         className="guest-welcome-modal"
       >
+        <button
+          onClick={onDismiss}
+          className="guest-welcome-close"
+          aria-label="Close"
+        >
+          <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="10" fill="currentColor" opacity="0.1" />
+            <path
+              d="M8 8L16 16M16 8L8 16"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+          </svg>
+        </button>
+
         <div className="guest-welcome-content">
           <div className="space-y-2 mb-6">
             <h2 id="guest-logout-title" className="text-2xl font-bold text-quip-navy text-center">
@@ -75,13 +91,6 @@ const GuestLogoutWarning: React.FC<GuestLogoutWarningProps> = ({
             className="guest-welcome-btn bg-quip-cream text-quip-navy hover:bg-quip-orange/20 hover:shadow-tile-sm transition-all"
           >
             Log Out Now
-          </button>
-          <button
-            type="button"
-            onClick={onDismiss}
-            className="guest-welcome-btn bg-quip-navy text-white hover:bg-quip-navy/90 hover:shadow-tile-sm transition-all"
-          >
-            Stay Logged In
           </button>
         </div>
       </div>
