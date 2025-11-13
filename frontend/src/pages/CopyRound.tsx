@@ -422,7 +422,7 @@ export const CopyRound: React.FC = () => {
 
   const secondCopyModal = awaitingSecondCopyDecision && secondCopyEligibility ? (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-quip-navy/60 p-4">
-      <div className="w-full max-w-lg rounded-tile bg-white p-6 shadow-tile-lg text-center space-y-4">
+      <div className="w-full max-w-lg rounded-tile bg-quip-warm-ivory p-6 shadow-tile-lg text-center space-y-4">
         <div className="flex justify-center">
           <CopyRoundIcon className="w-14 h-14 text-quip-turquoise" aria-hidden="true" />
         </div>
@@ -472,7 +472,7 @@ export const CopyRound: React.FC = () => {
           <button
             onClick={handleStartSecondCopy}
             disabled={isStartingSecondCopy}
-            className="flex-1 bg-quip-turquoise hover:bg-quip-teal disabled:bg-gray-400 text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm"
+            className="flex-1 bg-quip-teal hover:bg-quip-navy disabled:bg-gray-400 text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm"
           >
             {isStartingSecondCopy ? (
               'Starting...'
@@ -480,10 +480,9 @@ export const CopyRound: React.FC = () => {
               <span className="inline-flex items-center gap-1">
                 Yes (
                 <span className="inline-flex items-center gap-1">
-                  FC
                   <CurrencyDisplay
                     amount={secondCopyEligibility.cost}
-                    showIcon={false}
+                    showIcon={true}
                     textClassName="font-semibold"
                   />
                 </span>
@@ -494,7 +493,7 @@ export const CopyRound: React.FC = () => {
           <button
             onClick={handleDeclineSecondCopy}
             disabled={isStartingSecondCopy}
-            className="flex-1 bg-white hover:bg-gray-50 border-2 border-quip-navy text-quip-navy font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm disabled:opacity-50"
+            className="flex-1 bg-quip-teal-light hover:bg-quip-turquoise border-2 border-quip-navy text-quip-navy font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm disabled:opacity-50"
           >
             No
           </button>
