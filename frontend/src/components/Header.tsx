@@ -14,9 +14,9 @@ import { ResultsIcon } from './icons/ResultsIcon';
 import { TrackingIcon } from './icons/TrackingIcon';
 import { ReviewIcon } from './icons/ReviewIcon';
 import { LobbyIcon } from './icons/LobbyIcon';
-import { BrandedSurveyIcon } from './icons/BrandedSurveyIcon';
+import { SurveyIcon } from './icons/SurveyIcon.tsx';
 import { BrandedTutorialIcon } from './icons/BrandedTutorialIcon';
-import { BrandedSettingsIcon } from './icons/BrandedSettingsIcon';
+import { SettingsIcon } from './icons/SettingsIcon.tsx';
 import { AdminIcon } from './icons/AdminIcon';
 import { hasCompletedSurvey } from '../utils/betaSurvey';
 import { apiClient } from '../api/client';
@@ -286,7 +286,7 @@ export const Header: React.FC = () => {
                       onClick={() => handleNavigate('/survey/beta')}
                       className="w-full flex items-center gap-3 px-4 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
                     >
-                      <BrandedSurveyIcon className="h-5 w-5" />
+                      <SurveyIcon className="h-5 w-5" />
                       <span className="font-semibold">Survey</span>
                     </button>
                   )}
@@ -294,7 +294,7 @@ export const Header: React.FC = () => {
                     onClick={() => handleNavigate('/settings')}
                     className="w-full flex items-center gap-3 px-4 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
                   >
-                    <BrandedSettingsIcon className="h-5 w-5" />
+                    <SettingsIcon className="h-5 w-5" />
                     <span className="font-semibold">Settings</span>
                   </button>
                   {player?.is_admin && (

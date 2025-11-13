@@ -10,7 +10,7 @@ import { ReviewIcon } from './icons/ReviewIcon';
 import { LeaderboardIcon } from './icons/LeaderboardIcon';
 import { LobbyIcon } from './icons/LobbyIcon';
 import { BrandedTutorialIcon } from './icons/BrandedTutorialIcon';
-import { BrandedSettingsIcon } from './icons/BrandedSettingsIcon';
+import { SettingsIcon } from './icons/SettingsIcon.tsx';
 
 export const SubHeader: React.FC = () => {
   const { actions } = useGame();
@@ -164,7 +164,7 @@ export const SubHeader: React.FC = () => {
               title="Account settings"
               aria-label="Account settings"
             >
-              <BrandedSettingsIcon className="w-7 h-7 md:w-8 md:h-8 transition-transform group-hover:scale-110" />
+              <SettingsIcon className="w-7 h-7 md:w-8 md:h-8 transition-transform group-hover:scale-110" />
             </button>
           )}
 
