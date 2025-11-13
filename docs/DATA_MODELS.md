@@ -8,7 +8,6 @@
 - `username_canonical` (string, unique) - lowercase form for lookups
 - `email` (string, unique) - player email for authentication
 - `password_hash` (string) - bcrypt hashed password
-- `balance` (integer, database default 1000) - **DEPRECATED**: Use `wallet` instead. Kept for backwards compatibility, automatically synced with wallet.
 - `wallet` (integer, database default 1000) - current spendable Flipcoin balance for entering rounds and transactions. New accounts are seeded from `settings.starting_balance` (5000f by default) when created via the service layer.
 - `vault` (integer, database default 0) - accumulated long-term Flipcoin balance from net earnings (30% rake). Used for leaderboard rankings.
 - `created_at` (timestamp)
@@ -141,7 +140,6 @@
   - Vault types: `vault_rake` (30% of net earnings deposited to vault)
 - `wallet_type` (string, default 'wallet') - which balance this transaction affects: 'wallet' or 'vault'
 - `reference_id` (UUID, nullable, indexed) - references round_id, phraseset_id, vote_id, or quest_id depending on type
-- `balance_after` (integer) - **DEPRECATED**: Use `wallet_balance_after` instead. Kept for backwards compatibility, contains wallet balance.
 - `wallet_balance_after` (integer, nullable) - wallet balance after this transaction (for audit)
 - `vault_balance_after` (integer, nullable) - vault balance after this transaction (for audit)
 - `created_at` (timestamp, indexed)

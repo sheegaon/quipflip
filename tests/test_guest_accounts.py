@@ -21,7 +21,8 @@ class TestGuestAccountCreation:
             assert "refresh_token" in data
             assert "player_id" in data
             assert "username" in data
-            assert "balance" in data
+            assert "wallet" in data
+            assert "vault" in data
             assert "email" in data
             assert "password" in data
             assert "message" in data
@@ -33,8 +34,10 @@ class TestGuestAccountCreation:
             # Check password
             assert data["password"] == "QuipGuest"
 
-            # Check balance is starting balance (5000f default)
-            assert data["balance"] == 5000
+            # Check wallet is starting balance (5000 default)
+            assert data["wallet"] == 5000
+            # Check vault starts at 0
+            assert data["vault"] == 0
 
     async def test_guest_account_is_marked_as_guest(self, test_app, db_session):
         """Test that guest accounts have is_guest=True."""
