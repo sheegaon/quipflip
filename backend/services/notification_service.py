@@ -72,6 +72,7 @@ class NotificationService:
     ) -> None:
         """
         Notify the prompt player when someone copies their prompt.
+        TODO If this is a second copy, notify the first copy player as well.
 
         Only notifies if:
         - Both actor and recipient are human
@@ -101,8 +102,6 @@ class NotificationService:
                 f"Rate limit exceeded for player {prompt_round.player_id}, skipping notification"
             )
             return
-
-        notifications_created = False
 
         # Create notification
         truncated_phrase = _truncate_phrase(phraseset.prompt_text or "")
