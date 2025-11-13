@@ -97,17 +97,17 @@ Your goal is to identify which phrase was the original. Choose carefully - corre
 
   rounds_guide: {
     id: 'rounds_guide',
-    title: 'Explore Past Rounds',
-    message: `**Not sure you fully understand the game yet?**
+    title: 'Practice Makes Perfect!',
+    message: `Ready to play on your own?
 
-View completed rounds and observe how actual past games played out. Click the {{icon:completed}} in the header, or try practice mode by toggling the slider at the bottom of the dashboard.
+**Try practice mode first** to get comfortable with the game without risking coins. Use the toggle at the bottom of the dashboard to switch between Live and Practice modes.
 
-This is a great way to learn strategies and see examples of creative quips, convincing copies, and tricky votes!`,
-    target: '.tutorial-completed-icon',
-    position: 'bottom',
+When you're ready, switch to Live Mode and start earning coins! You can always come back to practice to refine your strategy.`,
+    target: 'div.fixed.bottom-5',
+    position: 'top',
     // No nextStep - this is the final tutorial screen, shows "End Tutorial" button
     showSkip: false,
-    showBack: false,
+    showBack: true,
   },
 
   completed: null,

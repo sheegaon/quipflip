@@ -110,15 +110,17 @@ export const SubHeader: React.FC = () => {
             </button>
           )}
 
-          {/* Completed rounds icon */}
-          <button
-            onClick={() => navigate('/completed')}
-            className="group tutorial-completed-icon"
-            title="View completed rounds"
-            aria-label="View completed rounds"
-          >
-            <ReviewIcon className="w-7 h-7 md:w-8 md:h-8 transition-transform group-hover:scale-110" />
-          </button>
+          {/* Completed rounds icon - Hidden on first day */}
+          {!isFirstDay && (
+            <button
+              onClick={() => navigate('/completed')}
+              className="group tutorial-completed-icon"
+              title="View completed rounds"
+              aria-label="View completed rounds"
+            >
+              <ReviewIcon className="w-7 h-7 md:w-8 md:h-8 transition-transform group-hover:scale-110" />
+            </button>
+          )}
 
           {/* Leaderboard icon - Hidden on first day */}
           {!isFirstDay && (
