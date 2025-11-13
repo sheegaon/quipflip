@@ -14,7 +14,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional
 from uuid import UUID
 
-from sqlalchemy import and_, desc, select
+from sqlalchemy import and_, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.models.notification import Notification
@@ -287,17 +287,21 @@ class NotificationService:
         # Get notifications created in the last minute
         one_minute_ago = datetime.now(timezone.utc) - timedelta(minutes=1)
 
-        stmt = select(Notification).where(
-            and_(
-                Notification.player_id == player_id,
-                Notification.created_at > one_minute_ago,
+        stmt = (
+            select(func.count())
+            .select_from(Notification)
+            .where(
+                and_(
+                    Notification.player_id == player_id,
+                    Notification.created_at > one_minute_ago,
+                )
             )
         )
 
         result = await self.db.execute(stmt)
-        recent_notifications = result.scalars().all()
+        recent_notification_count = result.scalar_one()
 
-        if len(recent_notifications) >= MAX_NOTIFICATIONS_PER_MINUTE:
+        if recent_notification_count >= MAX_NOTIFICATIONS_PER_MINUTE:
             return False
 
         return True

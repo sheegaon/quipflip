@@ -49,11 +49,11 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
 }) => {
   const [notifications, setNotifications] = useState<NotificationMessage[]>([]);
   const wsRef = useRef<WebSocket | null>(null);
+  const notificationIdRef = useRef(0);
   const { state } = useGame();
 
   useEffect(() => {
     let wsAttempted = false;
-    let notificationId = 0; // Simple counter for IDs when uuid is not available
 
     // Connect when authenticated
     const connectWebSocket = async () => {
@@ -108,7 +108,7 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
 
             if (data.type === 'notification') {
               const notification: NotificationMessage = {
-                id: `notification-${++notificationId}`,
+                id: `notification-${++notificationIdRef.current}`,
                 actor_username: data.actor_username,
                 action: data.action,
                 recipient_role: data.recipient_role,

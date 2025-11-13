@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.websockets import WebSocket
 
 from backend.database import get_db
-from backend.services.auth_service import AuthService
+from backend.services.auth_service import AuthError, AuthService
 from backend.services.notification_service import (
     NotificationConnectionManager,
     get_notification_manager,
@@ -38,8 +38,12 @@ async def authenticate_websocket(
         payload = auth_service.decode_access_token(token)
         player_id = UUID(payload.get("sub"))
         return player_id
-    except Exception as e:
-        logger.warning(f"WebSocket authentication failed: {e}")
+    except AuthError as exc:
+        logger.warning(f"WebSocket authentication failed: {exc}")
+        await websocket.close(code=1008, reason="Authentication failed")
+        raise WebSocketException(code=1008, reason="Authentication failed")
+    except ValueError as exc:
+        logger.warning(f"Invalid player ID in WebSocket token: {exc}")
         await websocket.close(code=1008, reason="Authentication failed")
         raise WebSocketException(code=1008, reason="Authentication failed")
 
