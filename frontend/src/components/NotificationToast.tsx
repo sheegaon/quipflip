@@ -9,7 +9,7 @@
 import { FC, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { NotificationMessage } from '../contexts/NotificationContext';
-import { TrackingIcon } from './icons/TrackingIcon';
+import { TrackingIcon } from './icons/NavigationIcons';
 
 interface NotificationToastProps {
   notification: NotificationMessage;

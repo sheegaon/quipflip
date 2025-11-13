@@ -8,6 +8,8 @@ import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import type { Quest } from '../api/types';
 import { questsLogger } from '../utils/logger';
 import { isSameDay } from '../utils/date';
+import { QuestClaimableIcon, QuestOverviewIcon } from '../components/icons/QuestIcons';
+import { StateEmptyIcon, StateErrorIcon, StateFilterEmptyIcon, StateLoadingIcon } from '../components/icons/StateIcons';
 
 // Quest categories for filtering
 const QUEST_CATEGORIES = ['all', 'streak', 'quality', 'activity', 'milestone'] as const;
@@ -208,11 +210,7 @@ export const Quests: React.FC = () => {
         <div className="tile-card p-6">
           <div className="flex items-center gap-3 mb-6">
             <div className="flex h-12 w-12 items-center justify-center rounded-tile border border-white/60 bg-quip-orange bg-opacity-10">
-              <img
-                src="/icon_quest_overview.svg"
-                alt="Rewards and quests overview"
-                className="h-8 w-8"
-              />
+              <QuestOverviewIcon className="h-8 w-8" aria-hidden="true" />
             </div>
             <div>
               <h2 className="text-2xl font-display font-bold text-quip-orange-deep">Quests</h2>
@@ -255,11 +253,7 @@ export const Quests: React.FC = () => {
 
           {questError && (
             <div className="text-center py-12">
-              <img
-                src="/icon_state_error.svg"
-                alt="Quest loading error"
-                className="mx-auto mb-4 h-16 w-16"
-              />
+              <StateErrorIcon className="mx-auto mb-4 h-16 w-16" aria-hidden="true" />
               <h3 className="text-xl font-display font-bold text-red-600 mb-2">Failed to Load Quests</h3>
               <p className="text-gray-600 dark:text-gray-400 mb-4">{questError}</p>
               <button
@@ -273,22 +267,14 @@ export const Quests: React.FC = () => {
 
           {!questError && questsLoading && (
             <div className="text-center py-12">
-              <img
-                src="/icon_state_loading.svg"
-                alt="Quests loading"
-                className="mx-auto mb-4 h-14 w-14 animate-spin"
-              />
+              <StateLoadingIcon className="mx-auto mb-4 h-14 w-14 animate-spin" aria-hidden="true" />
               <p className="text-gray-600 dark:text-gray-400">Loading quests...</p>
             </div>
           )}
 
           {!questError && !questsLoading && quests.length === 0 && (
             <div className="text-center py-12">
-              <img
-                src="/icon_state_empty.svg"
-                alt="No quests available"
-                className="mx-auto mb-4 h-20 w-20"
-              />
+              <StateEmptyIcon className="mx-auto mb-4 h-20 w-20" aria-hidden="true" />
               <h3 className="text-xl font-display font-bold text-quip-navy mb-2">No Quests Available</h3>
               <p className="text-quip-teal">
                 Complete some rounds to unlock quest challenges!
@@ -299,11 +285,7 @@ export const Quests: React.FC = () => {
           {!questsLoading && filteredClaimableQuests.length > 0 && (
             <div className="mb-8">
               <h3 className="mb-4 flex items-center gap-3 text-xl font-bold text-green-600 dark:text-green-400">
-                <img
-                  src="/icon_quest_claimable.svg"
-                  alt="Claimable quests"
-                  className="h-7 w-7"
-                />
+                <QuestClaimableIcon className="h-7 w-7" aria-hidden="true" />
                 Claimable Quests ({filteredClaimableQuests.length})
               </h3>
               <div className="space-y-4">
@@ -352,11 +334,7 @@ export const Quests: React.FC = () => {
 
           {!questsLoading && quests.length > 0 && filteredQuests.length === 0 && (
             <div className="text-center py-12">
-              <img
-                src="/icon_state_filter_empty.svg"
-                alt="No quests in selected category"
-                className="mx-auto mb-4 h-16 w-16"
-              />
+              <StateFilterEmptyIcon className="mx-auto mb-4 h-16 w-16" aria-hidden="true" />
               <p className="text-gray-600 dark:text-gray-400">
                 No quests in this category
               </p>

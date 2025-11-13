@@ -7,10 +7,8 @@ import { Pagination } from '../components/Pagination';
 import { loadingMessages } from '../utils/brandedMessages';
 import type { PhrasesetResults, PhrasesetDetails, PhrasesetVoteDetail } from '../api/types';
 import { resultsLogger } from '../utils/logger';
-import { ResultsIcon } from '../components/icons/ResultsIcon';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
-import { BotIcon } from '../components/icons/BotIcon';
-import { QuestionMarkIcon } from '../components/icons/QuestionMarkIcon';
+import { BotIcon, QuestionMarkIcon, ResultsIcon } from '../components/icons/EngagementIcons';
 
 const ITEMS_PER_PAGE = 10;
 const WALLET_VS_VAULT_TITLE = 'Wallet vs. Vault';
@@ -442,7 +440,7 @@ export const Results: React.FC = () => {
                         />
                       </p>
                       {isPrizeBreakdownOpen && (
-                        <div className="absolute right-0 top-full mt-2 w-80 max-w-xs sm:max-w-sm bg-white border border-quip-turquoise rounded-2xl shadow-2xl z-30">
+                        <div className="absolute right-0 top-full mt-2 w-80 max-w-xs sm:max-w-sm bg-white bg-opacity-100 border border-quip-turquoise rounded-2xl shadow-2xl z-30">
                           <div className="p-4">
                             <div className="flex items-start justify-between gap-2 mb-2">
                               <p className="font-semibold text-quip-navy">Prize Pool Breakdown</p>
@@ -482,7 +480,7 @@ export const Results: React.FC = () => {
                         />
                       </p>
                       {isEarningsBreakdownOpen && (
-                        <div className="absolute right-0 top-full mt-2 w-80 max-w-xs sm:max-w-sm bg-white border border-quip-turquoise rounded-2xl shadow-2xl z-30">
+                        <div className="absolute right-0 top-full mt-2 w-80 max-w-xs sm:max-w-sm bg-white bg-opacity-100 border border-quip-turquoise rounded-2xl shadow-2xl z-30">
                           <div className="p-4">
                             <div className="flex items-start justify-between gap-2 mb-2">
                               <p className="font-semibold text-quip-navy">Earnings Breakdown</p>

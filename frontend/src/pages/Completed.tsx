@@ -4,7 +4,8 @@ import { Header } from '../components/Header';
 import { apiClient } from '../api/client';
 import type { CompletedPhrasesetItem } from '../api/types';
 import { InlineLoadingSpinner } from '../components/LoadingSpinner';
-import { ReviewIcon } from '../components/icons/ReviewIcon';
+import { ReviewIcon } from '../components/icons/EngagementIcons';
+import { ArrowLeftIcon, ArrowRightIcon } from '../components/icons/ArrowIcons';
 import { getErrorMessage, isError } from '../types/errors';
 
 type SortField = 'vote_count' | 'total_pool' | 'created_at' | 'finalized_at';
@@ -253,12 +254,7 @@ export const Completed: React.FC = () => {
                   className="disabled:opacity-30 disabled:cursor-not-allowed hover:opacity-70 transition-opacity"
                   aria-label="Previous page"
                 >
-                  <img
-                    src="/icon_arrow_left.svg"
-                    alt=""
-                    className="w-4 h-6"
-                    aria-hidden="true"
-                  />
+                  <ArrowLeftIcon className="w-4 h-6" aria-hidden="true" />
                 </button>
                 <div className="text-sm text-quip-teal">
                   Page {page + 1} of {totalPages}
@@ -269,12 +265,7 @@ export const Completed: React.FC = () => {
                   className="disabled:opacity-30 disabled:cursor-not-allowed hover:opacity-70 transition-opacity"
                   aria-label="Next page"
                 >
-                  <img
-                    src="/icon_arrow_right.svg"
-                    alt=""
-                    className="w-4 h-6"
-                    aria-hidden="true"
-                  />
+                  <ArrowRightIcon className="w-4 h-6" aria-hidden="true" />
                 </button>
               </div>
             )}

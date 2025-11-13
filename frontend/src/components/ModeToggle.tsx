@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { LiveModeIcon, PracticeModeIcon } from './icons/RoundIcons';
 
 interface ModeToggleProps {
   mode: 'live' | 'practice';
@@ -37,11 +38,7 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({ mode, onChange }) => {
           aria-label="Switch to live mode"
         >
           <span className="font-bold text-quip-orange-deep">Live</span>
-          <img
-            src="/icon_live.svg"
-            alt=""
-            className="w-11 h-11"
-          />
+          <LiveModeIcon className="w-11 h-11" aria-hidden="true" />
         </button>
 
         {/* Toggle Switch */}
@@ -86,11 +83,7 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({ mode, onChange }) => {
           }`}
           aria-label="Switch to practice mode"
         >
-          <img
-            src="/icon_practice.svg"
-            alt=""
-            className="w-11 h-11"
-          />
+          <PracticeModeIcon className="w-11 h-11" aria-hidden="true" />
           <span className="font-bold text-quip-turquoise">Practice</span>
         </button>
       </div>
