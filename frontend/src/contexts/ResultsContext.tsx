@@ -3,11 +3,12 @@ import apiClient from '../api/client';
 import { getActionErrorMessage } from '../utils/errorMessages';
 import { gameContextLogger } from '../utils/logger';
 import { buildPhrasesetListKey, type PhrasesetListKeyParams } from '../utils/gameKeys';
-import type { 
-  PendingResult, 
-  PhrasesetListResponse, 
-  PhrasesetDetails as PhrasesetDetailsType, 
-  PhrasesetResults 
+import type {
+  PendingResult,
+  PhrasesetListResponse,
+  PhrasesetDetails as PhrasesetDetailsType,
+  PhrasesetResults,
+  PlayerStatistics,
 } from '../api/types';
 
 type PlayerPhrasesetParams = PhrasesetListKeyParams;
@@ -38,7 +39,7 @@ interface StatisticsData {
   totalRounds: number;
   totalEarnings: number;
   averageScore: number;
-  recentActivity: any[];
+  recentActivity: string[];
 }
 
 interface ResultsState {
@@ -66,7 +67,7 @@ interface ResultsActions {
     phrasesetId: string,
     options?: { force?: boolean }
   ) => Promise<PhrasesetResults | null>;
-  getStatistics: (signal?: AbortSignal) => Promise<any>;
+  getStatistics: (signal?: AbortSignal) => Promise<PlayerStatistics>;
   markResultsViewed: (phrasesetIds: string[]) => void;
   clearResultsCache: () => void;
   setPendingResults: (results: PendingResult[]) => void;

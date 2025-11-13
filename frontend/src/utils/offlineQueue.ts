@@ -5,7 +5,7 @@ export interface OfflineAction {
   type: 'api_call';
   method: string;
   url: string;
-  data?: any;
+  data?: unknown;
   headers?: Record<string, string>;
   timestamp: number;
   retryCount: number;

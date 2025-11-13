@@ -65,14 +65,6 @@ export const Header: React.FC = () => {
     checkSurveyStatus();
   }, [player?.player_id]);
 
-  if (!player) {
-    return null;
-  }
-
-  // Determine if tutorial should be shown in menu
-  // Always show for guests, show for logged-in users only if not completed
-  const showTutorialInMenu = player.is_guest || !tutorialStatus?.tutorial_completed;
-
   const goToStatistics = React.useCallback(() => {
     navigate('/statistics');
   }, [navigate]);
@@ -101,7 +93,7 @@ export const Header: React.FC = () => {
       return;
     }
 
-    let email: string | null = player.email ?? null;
+    let email: string | null = player?.email ?? null;
     let password: string | null = null;
 
     if (typeof window !== 'undefined') {
@@ -164,6 +156,14 @@ export const Header: React.FC = () => {
     setShowDropdown(false);
     navigate(path);
   }, [navigate]);
+
+  if (!player) {
+    return null;
+  }
+
+  // Determine if tutorial should be shown in menu
+  // Always show for guests, show for logged-in users only if not completed
+  const showTutorialInMenu = player.is_guest || !tutorialStatus?.tutorial_completed;
 
   return (
     <>

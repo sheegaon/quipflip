@@ -7,6 +7,14 @@ import apiClient, { extractErrorMessage } from '../api/client';
 import { settingsLogger } from '../utils/logger';
 import { formatDateInUserZone, formatDateTimeInUserZone } from '../utils/datetime';
 
+const getErrorDetail = (error: unknown): string | undefined => {
+  if (!error || typeof error !== 'object') {
+    return undefined;
+  }
+
+  return (error as { detail?: string }).detail;
+};
+
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const formatDate = (dateString?: string | null) =>
@@ -185,10 +193,10 @@ const Settings: React.FC = () => {
       setTimeout(() => {
         navigate('/dashboard');
       }, 2000);
-    } catch (err: any) {
-      if (err?.detail === 'not_a_guest') {
+    } catch (err: unknown) {
+      if (getErrorDetail(err) === 'not_a_guest') {
         setUpgradeError('This account is already a full account.');
-      } else if (err?.detail === 'email_taken') {
+      } else if (getErrorDetail(err) === 'email_taken') {
         setUpgradeError('That email address is already in use.');
       } else {
         setUpgradeError(extractErrorMessage(err) || 'Failed to upgrade account');
@@ -224,10 +232,10 @@ const Settings: React.FC = () => {
       setEmailSuccess(`Email updated to ${response.email}`);
       setEmailForm({ newEmail: response.email, password: '' });
       await refreshBalance();
-    } catch (err: any) {
-      if (err?.detail === 'email_taken') {
+    } catch (err: unknown) {
+      if (getErrorDetail(err) === 'email_taken') {
         setEmailError('That email address is already in use.');
-      } else if (err?.detail === 'invalid_email') {
+      } else if (getErrorDetail(err) === 'invalid_email') {
         setEmailError('Please enter a valid email address.');
       } else {
         setEmailError(extractErrorMessage(err, 'change-email') || 'Failed to update email');
@@ -269,10 +277,10 @@ const Settings: React.FC = () => {
       setUsernameSuccess(response.message);
       setUsernameForm({ newUsername: response.username, password: '' });
       await refreshBalance();
-    } catch (err: any) {
-      if (err?.detail === 'username_taken') {
+    } catch (err: unknown) {
+      if (getErrorDetail(err) === 'username_taken') {
         setUsernameError('That username is already in use.');
-      } else if (err?.detail === 'invalid_username') {
+      } else if (getErrorDetail(err) === 'invalid_username') {
         setUsernameError('Please enter a valid username (only letters, numbers, and spaces).');
       } else {
         setUsernameError(extractErrorMessage(err, 'change-username') || 'Failed to update username');
