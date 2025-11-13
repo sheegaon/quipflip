@@ -49,9 +49,16 @@ def _truncate_phrase(text: str, max_length: int = 50) -> str:
 class NotificationService:
     """Service for managing notifications and WebSocket delivery."""
 
-    def __init__(self, db: AsyncSession):
+    def __init__(
+        self,
+        db: AsyncSession,
+        connection_manager: Optional["NotificationConnectionManager"] = None,
+    ):
         self.db = db
-        self._connection_manager: Optional["NotificationConnectionManager"] = None
+        # Default to the global singleton so callers don't need to manually inject it
+        self._connection_manager: Optional["NotificationConnectionManager"] = (
+            connection_manager or get_notification_manager()
+        )
 
     def set_connection_manager(self, manager: "NotificationConnectionManager") -> None:
         """Set the WebSocket connection manager (injected by router)."""
@@ -95,6 +102,8 @@ class NotificationService:
             )
             return
 
+        notifications_created = False
+
         # Create notification
         truncated_phrase = _truncate_phrase(phraseset.prompt_text or "")
         metadata = {
@@ -110,6 +119,7 @@ class NotificationService:
             actor_player_id=copy_player_id,
             metadata=metadata,
         )
+        notifications_created = True
 
         # Send via WebSocket if connected
         if self._connection_manager:
@@ -129,6 +139,9 @@ class NotificationService:
             f"Created copy notification for player {prompt_round.player_id} "
             f"from {copy_player_id} on phraseset {phraseset.phraseset_id}"
         )
+
+        if notifications_created:
+            await self.db.commit()
 
     async def notify_vote_submission(
         self,
@@ -151,6 +164,8 @@ class NotificationService:
 
         # Get all contributors with their role and phrase
         contributors = await self._get_contributor_data(phraseset)
+
+        notifications_created = False
 
         for contributor in contributors:
             contributor_id = contributor["player_id"]
@@ -190,6 +205,7 @@ class NotificationService:
                 actor_player_id=voter_player_id,
                 metadata=metadata,
             )
+            notifications_created = True
 
             # Send via WebSocket if connected
             if self._connection_manager:
@@ -209,6 +225,9 @@ class NotificationService:
                 f"Created vote notification for player {contributor_id} "
                 f"from {voter_player_id} on phraseset {phraseset.phraseset_id}"
             )
+
+        if notifications_created:
+            await self.db.commit()
 
     async def _get_contributor_data(self, phraseset: Phraseset) -> List[Dict]:
         """
