@@ -4,6 +4,7 @@ import { useGame } from '../contexts/GameContext';
 import { useNavigationHistory } from '../contexts/NavigationHistoryContext';
 import { useTutorial } from '../contexts/TutorialContext';
 import { useHeaderIndicators } from '../hooks/useHeaderIndicators';
+import { useNetwork } from '../contexts/NetworkContext';
 import { BalanceFlipper } from './BalanceFlipper';
 import { SubHeader } from './SubHeader';
 import { TreasureChestIcon } from './TreasureChestIcon';
@@ -33,6 +34,7 @@ export const Header: React.FC = () => {
   const { goBack } = useNavigationHistory();
   const { status: tutorialStatus } = useTutorial();
   const { unviewedCount } = useHeaderIndicators();
+  const { isOffline } = useNetwork();
 
   const [showGuestLogoutWarning, setShowGuestLogoutWarning] = React.useState(false);
   const [guestCredentials, setGuestCredentials] = React.useState<{ email: string | null; password: string | null } | null>(null);
@@ -327,7 +329,18 @@ export const Header: React.FC = () => {
               className="text-lg md:text-2xl text-quip-turquoise font-semibold hover:text-quip-teal transition-colors"
               title="View your statistics"
             >
-              {player.username || username}
+              <div className="flex items-center justify-center gap-2 md:gap-3">
+                {!player.is_guest && (
+                  <div className="flex items-center" role="status" aria-live="polite">
+                    <div
+                      className={`w-2 h-2 rounded-full ${!isOffline ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}
+                    >
+                      <span className="sr-only">{!isOffline ? 'Online' : 'Offline'}</span>
+                    </div>
+                  </div>
+                )}
+                <span>{player.username || username}</span>
+              </div>
             </button>
           </div>
 
