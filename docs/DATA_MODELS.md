@@ -116,6 +116,18 @@
 - Constraints: Unique composite `(player_id, phraseset_id)` - one vote per player per phraseset
 - Relationships: `phraseset`, `player`
 
+### Notification
+- `notification_id` (UUID, primary key)
+- `player_id` (UUID, references players.player_id, indexed) - notification recipient
+- `notification_type` (string) - `copy_submitted` or `vote_submitted`
+- `phraseset_id` (UUID, references phrasesets.phraseset_id, indexed) - affected phraseset
+- `actor_player_id` (UUID, references players.player_id, nullable) - player that triggered the notification
+- `data` (JSON, nullable) - denormalized metadata used by the frontend (`phrase_text`, `recipient_role`, `actor_username`)
+- `created_at` (timestamp with timezone) - when notification was persisted
+- Indexes: composite `('player_id', 'created_at')` for rate limiting + history lookups, `phraseset_id`
+- Relationships: `player`, `actor_player`, `phraseset`
+- Notes: Records are created for every delivered/attempted notification so we can audit delivery counts, enforce the "10 per minute" rate limit, and add future notification center functionality
+
 ### ResultView
 - `view_id` (UUID, primary key)
 - `phraseset_id` (UUID, references phrasesets.phraseset_id, indexed)

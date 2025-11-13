@@ -736,6 +736,17 @@ class VoteService:
         await self.db.commit()
         await self.db.refresh(vote)
 
+        # Send notifications to phraseset contributors about vote submission
+        try:
+            from backend.services.notification_service import NotificationService
+            notification_service = NotificationService(self.db)
+            await notification_service.notify_vote_submission(
+                phraseset=phraseset,
+                voter_player_id=player.player_id,
+            )
+        except Exception as e:
+            logger.error(f"Failed to send vote notification: {e}", exc_info=True)
+
         # Track quest progress for votes (runs after commit)
         from backend.services.quest_service import QuestService
         quest_service = QuestService(self.db)
