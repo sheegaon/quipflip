@@ -129,7 +129,7 @@ export const QuestCard: React.FC<QuestCardProps> = ({
           <div
             className={`flex h-12 w-12 items-center justify-center rounded-xl border border-white/60 shadow-sm ${categoryInfo.iconWrapper}`}
           >
-            <CategoryIcon className="h-9 w-9" aria-label={categoryInfo.iconAlt} />
+            <CategoryIcon className="h-9 w-9" role="img" aria-label={categoryInfo.iconAlt} />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
