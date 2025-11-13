@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useReducer } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import apiClient, { extractErrorMessage } from '../api/client';
@@ -13,6 +13,117 @@ import { copyRoundLogger } from '../utils/logger';
 import { CopyRoundIcon } from '../components/icons/RoundIcons';
 import { FlagIcon } from '../components/icons/EngagementIcons';
 
+type SecondCopyEligibility = {
+  eligible: boolean;
+  cost: number;
+  promptRoundId: string;
+  originalPhrase: string;
+};
+
+type CompletionState = {
+  successMessage: string | null;
+  feedbackMessage: string | null;
+  awaitingSecondCopyDecision: boolean;
+  showSecondCopyDetails: boolean;
+  secondCopyEligibility: SecondCopyEligibility | null;
+  isStartingSecondCopy: boolean;
+  isPromptRevealLoading: boolean;
+  promptRevealError: string | null;
+  originalPromptText: string | null;
+  hasRequestedPromptReveal: boolean;
+};
+
+const initialCompletionState: CompletionState = {
+  successMessage: null,
+  feedbackMessage: null,
+  awaitingSecondCopyDecision: false,
+  showSecondCopyDetails: false,
+  secondCopyEligibility: null,
+  isStartingSecondCopy: false,
+  isPromptRevealLoading: false,
+  promptRevealError: null,
+  originalPromptText: null,
+  hasRequestedPromptReveal: false,
+};
+
+type CompletionAction =
+  | { type: 'RESET' }
+  | { type: 'SET_SUCCESS'; payload: { successMessage: string; feedbackMessage: string | null } }
+  | { type: 'SET_SECOND_COPY_ELIGIBILITY'; payload: SecondCopyEligibility }
+  | { type: 'CLEAR_SECOND_COPY_ELIGIBILITY' }
+  | { type: 'TOGGLE_SECOND_COPY_DETAILS' }
+  | { type: 'START_SECOND_COPY_REQUEST' }
+  | { type: 'START_SECOND_COPY_COMPLETE' }
+  | { type: 'PROMPT_REVEAL_REQUESTED' }
+  | { type: 'PROMPT_REVEAL_SUCCESS'; payload: string }
+  | { type: 'PROMPT_REVEAL_ERROR'; payload: string }
+  | { type: 'PROMPT_REVEAL_RESET' };
+
+const completionReducer = (state: CompletionState, action: CompletionAction): CompletionState => {
+  switch (action.type) {
+    case 'RESET':
+      return { ...initialCompletionState };
+    case 'SET_SUCCESS':
+      return {
+        ...state,
+        successMessage: action.payload.successMessage,
+        feedbackMessage: action.payload.feedbackMessage,
+      };
+    case 'SET_SECOND_COPY_ELIGIBILITY':
+      return {
+        ...state,
+        secondCopyEligibility: action.payload,
+        awaitingSecondCopyDecision: true,
+        showSecondCopyDetails: false,
+      };
+    case 'CLEAR_SECOND_COPY_ELIGIBILITY':
+      return {
+        ...state,
+        secondCopyEligibility: null,
+        awaitingSecondCopyDecision: false,
+        showSecondCopyDetails: false,
+      };
+    case 'TOGGLE_SECOND_COPY_DETAILS':
+      return { ...state, showSecondCopyDetails: !state.showSecondCopyDetails };
+    case 'START_SECOND_COPY_REQUEST':
+      return { ...state, isStartingSecondCopy: true };
+    case 'START_SECOND_COPY_COMPLETE':
+      return { ...state, isStartingSecondCopy: false };
+    case 'PROMPT_REVEAL_REQUESTED':
+      return {
+        ...state,
+        hasRequestedPromptReveal: true,
+        isPromptRevealLoading: true,
+        promptRevealError: null,
+        originalPromptText: null,
+      };
+    case 'PROMPT_REVEAL_SUCCESS':
+      return {
+        ...state,
+        originalPromptText: action.payload,
+        promptRevealError: null,
+        isPromptRevealLoading: false,
+      };
+    case 'PROMPT_REVEAL_ERROR':
+      return {
+        ...state,
+        promptRevealError: action.payload,
+        originalPromptText: null,
+        isPromptRevealLoading: false,
+      };
+    case 'PROMPT_REVEAL_RESET':
+      return {
+        ...state,
+        hasRequestedPromptReveal: false,
+        isPromptRevealLoading: false,
+        promptRevealError: null,
+        originalPromptText: null,
+      };
+    default:
+      return state;
+  }
+};
+
 export const CopyRound: React.FC = () => {
   const { state, actions } = useGame();
   const { activeRound, roundAvailability, copyRoundHints } = state;
@@ -21,8 +132,7 @@ export const CopyRound: React.FC = () => {
   const [phrase, setPhrase] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
+  const [completionState, dispatchCompletion] = useReducer(completionReducer, initialCompletionState);
   const [showFlagConfirm, setShowFlagConfirm] = useState(false);
   const [isFlagging, setIsFlagging] = useState(false);
   const [flagError, setFlagError] = useState<string | null>(null);
@@ -30,13 +140,20 @@ export const CopyRound: React.FC = () => {
   const [isFetchingHints, setIsFetchingHints] = useState(false);
   const [hintError, setHintError] = useState<string | null>(null);
   const [showHints, setShowHints] = useState(false);
-  const [secondCopyEligibility, setSecondCopyEligibility] = useState<{
-    eligible: boolean;
-    cost: number;
-    promptRoundId: string;
-    originalPhrase: string;
-  } | null>(null);
-  const [isStartingSecondCopy, setIsStartingSecondCopy] = useState(false);
+  const promptRevealRequestRef = useRef<string | null>(null);
+
+  const {
+    successMessage,
+    feedbackMessage,
+    awaitingSecondCopyDecision,
+    showSecondCopyDetails,
+    secondCopyEligibility,
+    isStartingSecondCopy,
+    originalPromptText,
+    isPromptRevealLoading,
+    promptRevealError,
+    hasRequestedPromptReveal,
+  } = completionState;
 
   const { isPhraseValid, trimmedPhrase } = usePhraseValidation(phrase);
 
@@ -58,6 +175,37 @@ export const CopyRound: React.FC = () => {
       setShowHints(true);
     }
   }, [copyRoundHints, roundData?.round_id]);
+
+  const fetchOriginalPrompt = useCallback(async (promptRoundId?: string | null) => {
+    if (!promptRoundId) {
+      dispatchCompletion({ type: 'PROMPT_REVEAL_RESET' });
+      promptRevealRequestRef.current = null;
+      return;
+    }
+
+    copyRoundLogger.debug('Fetching prompt reveal information', { promptRoundId });
+    dispatchCompletion({ type: 'PROMPT_REVEAL_REQUESTED' });
+    promptRevealRequestRef.current = promptRoundId;
+
+    try {
+      const details = await apiClient.getRoundDetails(promptRoundId);
+      if (promptRevealRequestRef.current === promptRoundId) {
+        if (details.prompt_text) {
+          dispatchCompletion({ type: 'PROMPT_REVEAL_SUCCESS', payload: details.prompt_text });
+        } else {
+          dispatchCompletion({
+            type: 'PROMPT_REVEAL_ERROR',
+            payload: 'The original prompt is not available yet. Check back soon!',
+          });
+        }
+      }
+    } catch (err) {
+      if (promptRevealRequestRef.current === promptRoundId) {
+        dispatchCompletion({ type: 'PROMPT_REVEAL_ERROR', payload: 'Unable to reveal the original prompt right now.' });
+      }
+      copyRoundLogger.error('Failed to fetch original prompt for reveal', err);
+    }
+  }, [dispatchCompletion]);
 
   const handleFetchHints = async () => {
     if (!roundData || isFetchingHints || isExpired) {
@@ -88,6 +236,12 @@ export const CopyRound: React.FC = () => {
       });
     }
   }, [roundData?.round_id, roundData?.expires_at, roundData?.status]);
+
+  useEffect(() => {
+    return () => {
+      promptRevealRequestRef.current = null;
+    };
+  }, []);
 
   // Redirect if already submitted
   useEffect(() => {
@@ -131,20 +285,26 @@ export const CopyRound: React.FC = () => {
       // Show success messages first to prevent navigation race condition
       const heading = getRandomMessage('copySubmitted');
       const feedback = getRandomMessage('copySubmittedFeedback');
-      setSuccessMessage(heading);
-      setFeedbackMessage(feedback);
+      dispatchCompletion({ type: 'SET_SUCCESS', payload: { successMessage: heading, feedbackMessage: feedback } });
       copyRoundLogger.info('Copy round phrase submitted successfully', {
         roundId: roundData.round_id,
         message: heading,
       });
 
+      const promptRoundIdForReveal = roundData.prompt_round_id || response.prompt_round_id || null;
+      void fetchOriginalPrompt(promptRoundIdForReveal);
+      dispatchCompletion({ type: 'CLEAR_SECOND_COPY_ELIGIBILITY' });
+
       // Check if eligible for second copy
       if (response.eligible_for_second_copy && response.second_copy_cost && response.prompt_round_id && response.original_phrase) {
-        setSecondCopyEligibility({
-          eligible: true,
-          cost: response.second_copy_cost,
-          promptRoundId: response.prompt_round_id,
-          originalPhrase: response.original_phrase,
+        dispatchCompletion({
+          type: 'SET_SECOND_COPY_ELIGIBILITY',
+          payload: {
+            eligible: true,
+            cost: response.second_copy_cost,
+            promptRoundId: response.prompt_round_id,
+            originalPhrase: response.original_phrase,
+          },
         });
         copyRoundLogger.info('Player eligible for second copy', {
           cost: response.second_copy_cost,
@@ -169,7 +329,7 @@ export const CopyRound: React.FC = () => {
         setTimeout(() => {
           copyRoundLogger.debug('Navigating back to dashboard after copy submission');
           navigate('/dashboard');
-        }, 1500);
+        }, 3000);
       }
     } catch (err) {
       const message = extractErrorMessage(err) || 'Unable to submit your phrase. The round may have expired or there may be a connection issue.';
@@ -201,7 +361,8 @@ export const CopyRound: React.FC = () => {
       });
       const response = await flagCopyRound(roundData.round_id);
       setFlagResult(response);
-      setSuccessMessage('Thanks for looking out!');
+      dispatchCompletion({ type: 'SET_SUCCESS', payload: { successMessage: 'Thanks for looking out!', feedbackMessage: null } });
+      dispatchCompletion({ type: 'CLEAR_SECOND_COPY_ELIGIBILITY' });
       setShowFlagConfirm(false);
       copyRoundLogger.info('Copy round flagged', {
         roundId: roundData.round_id,
@@ -226,7 +387,7 @@ export const CopyRound: React.FC = () => {
   const handleStartSecondCopy = async () => {
     if (!secondCopyEligibility) return;
 
-    setIsStartingSecondCopy(true);
+    dispatchCompletion({ type: 'START_SECOND_COPY_REQUEST' });
     setError(null);
 
     try {
@@ -240,24 +401,109 @@ export const CopyRound: React.FC = () => {
 
       copyRoundLogger.debug('Second copy round started, staying on page');
       // Reset states to allow for the new round
-      setSuccessMessage(null);
-      setSecondCopyEligibility(null);
+      dispatchCompletion({ type: 'RESET' });
     } catch (err) {
       const message = extractErrorMessage(err) || 'Unable to start second copy round. Please try again.';
       copyRoundLogger.error('Failed to start second copy round', err);
       setError(message);
     } finally {
-      setIsStartingSecondCopy(false);
+      dispatchCompletion({ type: 'START_SECOND_COPY_COMPLETE' });
     }
   };
 
   const handleDeclineSecondCopy = () => {
     copyRoundLogger.info('Player declined second copy option');
-    navigate('/dashboard');
+    dispatchCompletion({ type: 'CLEAR_SECOND_COPY_ELIGIBILITY' });
+    setTimeout(() => {
+      copyRoundLogger.debug('Navigating back to dashboard after declining second copy');
+      navigate('/dashboard');
+    }, 3000);
   };
 
+  const secondCopyModal = awaitingSecondCopyDecision && secondCopyEligibility ? (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-quip-navy/60 p-4">
+      <div className="w-full max-w-lg rounded-tile bg-quip-warm-ivory p-6 shadow-tile-lg text-center space-y-4">
+        <div className="flex justify-center">
+          <CopyRoundIcon className="w-14 h-14 text-quip-turquoise" aria-hidden="true" />
+        </div>
+        <h3 className="text-2xl font-display font-bold text-quip-navy">
+          {successMessage || 'Copy submitted!'}
+        </h3>
+        {feedbackMessage && <p className="text-quip-teal">{feedbackMessage}</p>}
+
+        <button
+          type="button"
+          onClick={() => dispatchCompletion({ type: 'TOGGLE_SECOND_COPY_DETAILS' })}
+          className="mx-auto flex items-center justify-center gap-2 text-blue-600 font-semibold underline hover:text-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 rounded-tile"
+        >
+          Want to submit another copy for the same phrase?
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className={`h-4 w-4 transition-transform ${showSecondCopyDetails ? 'rotate-180' : ''}`}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+
+        {showSecondCopyDetails && (
+          <div className="bg-quip-turquoise bg-opacity-10 border-2 border-quip-turquoise rounded-tile p-4 text-left space-y-2">
+            <p className="text-quip-teal">
+              You can submit a second copy for <strong>"{secondCopyEligibility.originalPhrase}"</strong> for{' '}
+              <CurrencyDisplay
+                amount={secondCopyEligibility.cost}
+                iconClassName="w-4 h-4"
+                textClassName="font-semibold text-quip-turquoise"
+              />
+              . This gives you two chances to match the prompt!
+            </p>
+          </div>
+        )}
+
+        {error && (
+          <div className="text-sm text-red-600" role="alert">
+            {error}
+          </div>
+        )}
+
+        <div className="flex flex-col sm:flex-row gap-3">
+          <button
+            onClick={handleStartSecondCopy}
+            disabled={isStartingSecondCopy}
+            className="flex-1 bg-quip-teal hover:bg-quip-navy disabled:bg-gray-400 text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm"
+          >
+            {isStartingSecondCopy ? (
+              'Starting...'
+            ) : (
+              <span className="inline-flex items-center gap-1">
+                Yes (
+                <span className="inline-flex items-center gap-1">
+                  <CurrencyDisplay
+                    amount={secondCopyEligibility.cost}
+                    showIcon={true}
+                    textClassName="font-semibold"
+                  />
+                </span>
+                )
+              </span>
+            )}
+          </button>
+          <button
+            onClick={handleDeclineSecondCopy}
+            disabled={isStartingSecondCopy}
+            className="flex-1 bg-quip-teal-light hover:bg-quip-turquoise border-2 border-quip-navy text-quip-navy font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm disabled:opacity-50"
+          >
+            No
+          </button>
+        </div>
+      </div>
+    </div>
+  ) : null;
+
   // Show success state
-  if (successMessage) {
+  if (successMessage && !awaitingSecondCopyDecision) {
     return (
       <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center p-4">
         <div className="tile-card max-w-2xl w-full p-8 text-center flip-enter">
@@ -280,63 +526,29 @@ export const CopyRound: React.FC = () => {
               </p>
               <p>Returning to dashboard...</p>
             </div>
-          ) : secondCopyEligibility ? (
-            <>
-              <p className="text-lg text-quip-teal mb-4">{feedbackMessage}</p>
-            <div className="space-y-4">
-              <div className="bg-quip-turquoise bg-opacity-10 border-2 border-quip-turquoise rounded-tile p-6 mb-4">
-                <p className="text-lg text-quip-navy mb-3">
-                  <strong>Want to submit another copy for the same phrase?</strong>
-                </p>
-                <p className="text-quip-teal mb-4">
-                  You can submit a second copy for <strong>"{secondCopyEligibility.originalPhrase}"</strong> for{' '}
-                  <CurrencyDisplay
-                    amount={secondCopyEligibility.cost}
-                    iconClassName="w-4 h-4"
-                    textClassName="font-semibold text-quip-turquoise"
-                  />
-                  . This gives you two chances to match the prompt!
-                </p>
-              </div>
-
-              {error && (
-                <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
-                  {error}
-                </div>
-              )}
-
-              <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <button
-                  onClick={handleStartSecondCopy}
-                  disabled={isStartingSecondCopy}
-                  className="bg-quip-turquoise hover:bg-quip-teal disabled:bg-gray-400 text-white font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm flex items-center justify-center gap-1"
-                >
-                  {isStartingSecondCopy ? 'Starting...' : (
-                    <>
-                      Submit Second Copy (
-                      <CurrencyDisplay
-                        amount={secondCopyEligibility.cost}
-                        iconClassName="w-4 h-4"
-                        textClassName="font-bold text-white"
-                      />
-                      )
-                    </>
-                  )}
-                </button>
-                <button
-                  onClick={handleDeclineSecondCopy}
-                  disabled={isStartingSecondCopy}
-                  className="bg-white hover:bg-gray-50 border-2 border-quip-navy text-quip-navy font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm disabled:opacity-50"
-                >
-                  Return to Dashboard
-                </button>
-              </div>
-            </div>
-            </>
           ) : (
             <>
-              <p className="text-lg text-quip-teal mb-4">{feedbackMessage}</p>
+              {feedbackMessage && (
+                <p className="text-lg text-quip-teal mb-4">{feedbackMessage}</p>
+              )}
               <p className="text-sm text-quip-teal">Returning to dashboard...</p>
+
+              {hasRequestedPromptReveal && (
+                <div className="mt-6 text-left bg-quip-warm-ivory border-2 border-quip-turquoise rounded-tile p-5">
+                  <p className="text-xs uppercase tracking-widest text-quip-teal mb-2">
+                    Original prompt reveal
+                  </p>
+                  {isPromptRevealLoading ? (
+                    <p className="text-quip-teal">Revealing the original prompt...</p>
+                  ) : promptRevealError ? (
+                    <p className="text-quip-orange">{promptRevealError}</p>
+                  ) : originalPromptText ? (
+                    <p className="text-2xl font-display font-semibold text-quip-navy">{originalPromptText}</p>
+                  ) : (
+                    <p className="text-quip-teal">We'll reveal the prompt shortly.</p>
+                  )}
+                </div>
+              )}
             </>
           )}
         </div>
@@ -345,6 +557,14 @@ export const CopyRound: React.FC = () => {
   }
 
   if (!roundData) {
+    if (secondCopyModal) {
+      return (
+        <div className="min-h-screen bg-quip-cream bg-pattern">
+          {secondCopyModal}
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center">
         <LoadingSpinner isLoading={true} message={loadingMessages.starting} />
@@ -535,6 +755,8 @@ export const CopyRound: React.FC = () => {
           </p>
         </div>
       </div>
+
+      {secondCopyModal}
     </div>
   );
 };

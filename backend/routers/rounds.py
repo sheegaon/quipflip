@@ -1,5 +1,6 @@
 """Rounds API router."""
 from fastapi import APIRouter, Depends, HTTPException, Path
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from backend.database import get_db
 from backend.dependencies import get_current_player
@@ -50,6 +51,28 @@ def ensure_utc(dt: datetime) -> datetime:
     if dt and dt.tzinfo is None:
         return dt.replace(tzinfo=UTC)
     return dt
+
+
+async def _player_can_view_prompt_round(
+    db: AsyncSession,
+    player: Player,
+    prompt_round: Round,
+) -> bool:
+    """Check if a player has a submitted copy for the given prompt round."""
+
+    if prompt_round.round_type != "prompt":
+        return False
+
+    result = await db.execute(
+        select(Round.round_id).where(
+            Round.round_type == "copy",
+            Round.player_id == player.player_id,
+            Round.prompt_round_id == prompt_round.round_id,
+            Round.status == "submitted",
+        ).limit(1)  # Add limit to prevent multiple results error
+    )
+
+    return result.scalar() is not None  # Use scalar() instead of scalar_one_or_none()
 
 
 @router.post("/prompt", response_model=StartPromptRoundResponse)
@@ -410,8 +433,13 @@ async def get_round_details(
     """Get round details."""
     round_object = await db.get(Round, round_id)
 
-    if not round_object or round_object.player_id != player.player_id:
+    if not round_object:
         raise HTTPException(status_code=404, detail="Round not found")
+
+    if round_object.player_id != player.player_id:
+        can_view_prompt = await _player_can_view_prompt_round(db, player, round_object)
+        if not can_view_prompt:
+            raise HTTPException(status_code=404, detail="Round not found")
 
     return RoundDetails(
         round_id=round_object.round_id,

@@ -176,7 +176,7 @@ export const PromptRound: React.FC = () => {
       setTimeout(() => {
         promptRoundLogger.debug('Navigating back to dashboard after prompt submission');
         navigate('/dashboard');
-      }, 1500);
+      }, 2000);
     } catch (err) {
       const message = extractErrorMessage(err) || 'Unable to submit your phrase. Please check your connection and try again.';
       promptRoundLogger.error('Failed to submit prompt round phrase', err);
