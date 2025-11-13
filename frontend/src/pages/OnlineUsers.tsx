@@ -103,7 +103,7 @@ const OnlineUsers: React.FC = () => {
               setOnlineUsers(data.users);
               setTotalCount(data.total_count);
             }
-          } catch (err) {
+          } catch {
             // Silently ignore malformed messages
           }
         };
@@ -131,7 +131,7 @@ const OnlineUsers: React.FC = () => {
         };
 
         wsRef.current = ws;
-      } catch (err) {
+      } catch {
         setConnected(false);
         startPolling();
       }

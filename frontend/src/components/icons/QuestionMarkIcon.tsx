@@ -1,10 +1,10 @@
 import React from 'react';
 
-interface BrandedTutorialIconProps {
+interface QuestionMarkIconProps {
   className?: string;
 }
 
-export const BrandedTutorialIcon: React.FC<BrandedTutorialIconProps> = ({ className = 'h-5 w-5' }) => {
+export const QuestionMarkIcon: React.FC<QuestionMarkIconProps> = ({ className = 'h-5 w-5' }) => {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"

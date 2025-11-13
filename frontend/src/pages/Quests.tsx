@@ -58,23 +58,15 @@ export const Quests: React.FC = () => {
     });
   }, [questsLoading, refreshQuests]);
 
-  if (!player) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-xl">Loading...</div>
-      </div>
-    );
-  }
-
-  const isGuestPlayer = Boolean(player.is_guest);
+  const isGuestPlayer = Boolean(player?.is_guest);
   const isFirstDayPlayer = useMemo(() => {
-    if (!player.created_at) {
+    if (!player?.created_at) {
       return false;
     }
 
     const createdAtDate = new Date(player.created_at);
     return isSameDay(createdAtDate, new Date());
-  }, [player.created_at]);
+  }, [player?.created_at]);
 
   const handleClaimBonus = async () => {
     if (isClaiming) return;
@@ -83,7 +75,8 @@ export const Quests: React.FC = () => {
     try {
       questsLogger.info('Claiming daily bonus');
       await claimBonus();
-      setSuccessMessage(`Daily bonus claimed! +${player.daily_bonus_amount}f`);
+      const claimedAmount = player?.daily_bonus_amount ?? 0;
+      setSuccessMessage(`Daily bonus claimed! +${claimedAmount}f`);
       await refreshQuests();
       questsLogger.info('Daily bonus claimed successfully');
     } catch (err) {
@@ -135,6 +128,14 @@ export const Quests: React.FC = () => {
     milestone: quests.filter((q: Quest) => q.category === 'milestone').length,
   };
 
+  if (!player) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-xl">Loading...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-quip-cream bg-pattern">
       <Header />
@@ -161,7 +162,7 @@ export const Quests: React.FC = () => {
                     Your daily bonus is ready!
                   </p>
                   <p className="text-quip-teal">
-                    Claim <CurrencyDisplay amount={player.daily_bonus_amount} iconClassName="w-4 h-4" textClassName="text-base" /> Flipcoins
+                    Claim <CurrencyDisplay amount={player?.daily_bonus_amount ?? 0} iconClassName="w-4 h-4" textClassName="text-base" /> Flipcoins
                   </p>
                 </div>
                 <button

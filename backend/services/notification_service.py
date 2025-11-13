@@ -72,76 +72,123 @@ class NotificationService:
     ) -> None:
         """
         Notify the prompt player when someone copies their prompt.
+        If this is a second copy, notify the first copy player as well.
 
         Only notifies if:
         - Both actor and recipient are human
         - Actor != recipient (no self-notifications)
         """
+        notifications_created = False
+
         # Get players
         copy_player = await self.db.get(Player, copy_player_id)
         prompt_player = await self.db.get(Player, prompt_round.player_id)
 
-        # Validate both are human
+        # Validate copy player is human
         if not _is_human_player(copy_player):
             logger.info(f"Copy player {copy_player_id} is AI, skipping notification")
             return
 
-        if not _is_human_player(prompt_player):
-            logger.info(f"Prompt player {prompt_round.player_id} is AI, skipping notification")
-            return
+        prompt_notified = await self._notify_copy_recipient(
+            phraseset=phraseset,
+            recipient=prompt_player,
+            recipient_role="prompt",
+            actor_player_id=copy_player_id,
+            actor_username=copy_player.username,
+            phrase_text=phraseset.prompt_text,
+        )
+        notifications_created = notifications_created or prompt_notified
 
-        # Skip self-notification
-        if copy_player_id == prompt_round.player_id:
-            logger.info("Copy player is same as prompt player, skipping self-notification")
-            return
+        # If this submission filled the second copy slot, notify the first copy player
+        first_copy_player_id = prompt_round.copy1_player_id
+        is_second_copy = (
+            prompt_round.copy2_player_id is not None
+            and prompt_round.copy2_player_id == copy_player_id
+        )
 
-        # Check rate limit
-        if not await self._check_rate_limit(prompt_round.player_id):
-            logger.warning(
-                f"Rate limit exceeded for player {prompt_round.player_id}, skipping notification"
+        if is_second_copy and first_copy_player_id:
+            # Get the first copy player
+            first_copy_player = await self.db.get(Player, first_copy_player_id)
+
+            first_copy_notified = await self._notify_copy_recipient(
+                phraseset=phraseset,
+                recipient=first_copy_player,
+                recipient_role="copy",
+                actor_player_id=copy_player_id,
+                actor_username=copy_player.username,
+                phrase_text=phraseset.copy_phrase_1,
             )
-            return
+            notifications_created = notifications_created or first_copy_notified
 
-        notifications_created = False
+        if notifications_created:
+            await self.db.commit()
 
-        # Create notification
-        truncated_phrase = _truncate_phrase(phraseset.prompt_text or "")
+    async def _notify_copy_recipient(
+        self,
+        *,
+        phraseset: Phraseset,
+        recipient: Optional[Player],
+        recipient_role: str,
+        actor_player_id: UUID,
+        actor_username: str,
+        phrase_text: Optional[str],
+    ) -> bool:
+        """Notify a copy recipient (prompt or first copy player)."""
+
+        if not recipient:
+            logger.info("Recipient player not found, skipping notification")
+            return False
+
+        if not _is_human_player(recipient):
+            logger.info(
+                f"Recipient player {recipient.player_id} is AI, skipping notification"
+            )
+            return False
+
+        if recipient.player_id == actor_player_id:
+            logger.info("Actor is same as recipient, skipping self-notification")
+            return False
+
+        if not await self._check_rate_limit(recipient.player_id):
+            logger.warning(
+                f"Rate limit exceeded for player {recipient.player_id}, skipping notification"
+            )
+            return False
+
+        truncated_phrase = _truncate_phrase(phrase_text or "")
         metadata = {
             "phrase_text": truncated_phrase,
-            "recipient_role": "prompt",
-            "actor_username": copy_player.username,
+            "recipient_role": recipient_role,
+            "actor_username": actor_username,
         }
 
         notification = await self._create_notification(
-            player_id=prompt_round.player_id,
+            player_id=recipient.player_id,
             notification_type="copy_submitted",
             phraseset_id=phraseset.phraseset_id,
-            actor_player_id=copy_player_id,
+            actor_player_id=actor_player_id,
             metadata=metadata,
         )
-        notifications_created = True
 
-        # Send via WebSocket if connected
         if self._connection_manager:
             message = NotificationWebSocketMessage(
                 notification_type="copy_submitted",
-                actor_username=copy_player.username,
+                actor_username=actor_username,
                 action="copied",
-                recipient_role="prompt",
+                recipient_role=recipient_role,
                 phrase_text=truncated_phrase,
                 timestamp=notification.created_at.isoformat(),
             )
             await self._connection_manager.send_to_player(
-                prompt_round.player_id, message.model_dump()
+                recipient.player_id, message.model_dump()
             )
 
         logger.info(
-            f"Created copy notification for player {prompt_round.player_id} "
-            f"from {copy_player_id} on phraseset {phraseset.phraseset_id}"
+            f"Created copy notification for player {recipient.player_id} "
+            f"from {actor_player_id} on phraseset {phraseset.phraseset_id}"
         )
 
-        if notifications_created:
-            await self.db.commit()
+        return True
 
     async def notify_vote_submission(
         self,

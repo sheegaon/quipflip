@@ -12,6 +12,15 @@ import { tutorialLogger } from '../utils/logger';
 import type { TutorialProgress, TutorialStatus } from '../api/types';
 import { getNextStep } from '../config/tutorialSteps';
 
+const isAbortError = (error: unknown): boolean => {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+
+  const maybeError = error as { name?: string; code?: string };
+  return maybeError.name === 'AbortError' || maybeError.code === 'ERR_CANCELED';
+};
+
 export type TutorialLifecycleStatus = 'loading' | 'inactive' | 'active' | 'completed' | 'error';
 
 interface TutorialContextState {
@@ -117,8 +126,8 @@ export const TutorialProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const data = await apiClient.getTutorialStatus(signal);
         setStatus(data);
         setError(null);
-      } catch (err: any) {
-        if (err?.name === 'AbortError' || err?.code === 'ERR_CANCELED') {
+      } catch (err: unknown) {
+        if (isAbortError(err)) {
           tutorialLogger.debug('Tutorial status request aborted');
           return;
         }
@@ -147,7 +156,7 @@ export const TutorialProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const response = await apiClient.updateTutorialProgress(progress);
         setStatus(response.tutorial_status);
         setError(null);
-      } catch (err) {
+      } catch (err: unknown) {
         const message = getActionErrorMessage('update-tutorial-progress', err);
         tutorialLogger.error('Failed to update tutorial progress', err);
         setError(message);
@@ -206,7 +215,7 @@ export const TutorialProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const data = await apiClient.resetTutorial();
       setStatus(data);
       setError(null);
-    } catch (err) {
+    } catch (err: unknown) {
       const message = getActionErrorMessage('reset-tutorial', err);
       tutorialLogger.error('Failed to reset tutorial', err);
       setError(message);

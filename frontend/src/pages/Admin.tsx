@@ -10,6 +10,14 @@ import type { AdminPlayerSummary } from '../api/types';
 import { formatDateTimeInUserZone } from '../utils/datetime';
 import { PHRASE_VALIDATION_BOUNDS, PHRASE_VALIDATION_LIMITS } from '../config/phraseValidation';
 
+const getErrorDetail = (error: unknown): string | undefined => {
+  if (!error || typeof error !== 'object') {
+    return undefined;
+  }
+
+  return (error as { detail?: string }).detail;
+};
+
 interface GameConfig {
   // Game Constants
   starting_balance: number;
@@ -229,8 +237,8 @@ const Admin: React.FC = () => {
       const params = passwordResetIdentifier === 'email' ? { email: trimmed } : { username: trimmed };
       const result = await apiClient.adminSearchPlayer(params);
       setPasswordResetLookup(result);
-    } catch (err: any) {
-      if (err?.detail === 'player_not_found') {
+    } catch (err: unknown) {
+      if (getErrorDetail(err) === 'player_not_found') {
         setPasswordResetError('No account found with that identifier.');
       } else {
         setPasswordResetError(extractErrorMessage(err, 'admin-search-player') || 'Failed to find player');
@@ -308,8 +316,8 @@ const Admin: React.FC = () => {
       const result = await apiClient.adminSearchPlayer(params);
       setAdminDeleteLookup(result);
       setAdminDeleteConfirm('');
-    } catch (err: any) {
-      if (err?.detail === 'player_not_found') {
+    } catch (err: unknown) {
+      if (getErrorDetail(err) === 'player_not_found') {
         setAdminDeleteError('No account found with that identifier.');
       } else {
         setAdminDeleteError(extractErrorMessage(err, 'admin-search-player') || 'Failed to find player');

@@ -4,6 +4,20 @@ import { offlineQueue, type OfflineAction } from '../utils/offlineQueue';
 import { axiosInstance } from '../api/client';
 import { networkLogger } from '../utils/logger';
 
+interface AxiosLikeError {
+  response?: {
+    status?: number;
+  };
+}
+
+const getAxiosStatus = (error: unknown): number | undefined => {
+  if (!error || typeof error !== 'object') {
+    return undefined;
+  }
+
+  return (error as AxiosLikeError).response?.status;
+};
+
 export interface NetworkContextType {
   isOnline: boolean;
   isOffline: boolean;
@@ -74,13 +88,14 @@ export const NetworkProvider: React.FC<{ children: React.ReactNode }> = ({ child
         // Success! Remove from queue
         offlineQueue.removeAction(action.id);
         networkLogger.info(`Successfully synced action ${action.id}`);
-      } catch (error: any) {
+      } catch (error) {
         // Check if it's a permanent error (4xx) vs transient (network, 5xx)
-        const isPermanentError = error.response && error.response.status >= 400 && error.response.status < 500;
+        const status = getAxiosStatus(error);
+        const isPermanentError = typeof status === 'number' && status >= 400 && status < 500;
 
-        if (isPermanentError && error.response.status !== 429) {
+        if (isPermanentError && status !== 429) {
           // Permanent error (not rate limit) - remove from queue
-          networkLogger.warn(`Action ${action.id} failed with permanent error ${error.response.status}, removing from queue`);
+          networkLogger.warn(`Action ${action.id} failed with permanent error ${status}, removing from queue`);
           offlineQueue.removeAction(action.id);
         } else {
           // Transient error - increment retry count

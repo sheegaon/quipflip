@@ -129,7 +129,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
         url: window.location.href,
         timestamp: new Date().toISOString(),
       };
-    } catch (e) {
+    } catch {
       return {
         url: window.location.href,
         timestamp: new Date().toISOString(),

@@ -8,6 +8,33 @@ import { getOrCreateVisitorId, getVisitorId } from '../utils/visitorId';
 import { SessionState, SessionDetectionResult } from '../types/session';
 import { createLogger } from '../utils/logger';
 
+interface ErrorWithStatus {
+  name?: string;
+  code?: string;
+  status?: number;
+  response?: {
+    status?: number;
+  };
+}
+
+const getStatusCode = (error: unknown): number | undefined => {
+  if (!error || typeof error !== 'object') {
+    return undefined;
+  }
+
+  const maybeError = error as ErrorWithStatus;
+  return maybeError.response?.status ?? maybeError.status;
+};
+
+const isCanceledRequest = (error: unknown): boolean => {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+
+  const maybeError = error as ErrorWithStatus;
+  return maybeError.name === 'CanceledError' || maybeError.code === 'ERR_CANCELED';
+};
+
 const logger = createLogger('SessionDetection');
 
 /**
@@ -51,15 +78,15 @@ export async function detectUserSession(
       visitorId,
       player: balanceResponse,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Handle request cancellation silently
-    if (error?.name === 'CanceledError' || error?.code === 'ERR_CANCELED') {
+    if (isCanceledRequest(error)) {
       logger.debug('Session detection request canceled');
       throw error; // Re-throw to let caller handle
     }
 
     // Check for 401 status - can be in error.response.status or error.status (after axios normalization)
-    const statusCode = error?.response?.status || error?.status;
+    const statusCode = getStatusCode(error);
 
     // If we get a network error or other non-auth error, still check visitor status
     if (statusCode !== 401) {
@@ -110,7 +137,7 @@ export async function detectUserSession(
         };
       } catch (refreshError) {
         // Refresh failed, clear stale credentials
-        logger.info('Token refresh failed, clearing stale session');
+        logger.info('Token refresh failed, clearing stale session', refreshError);
         apiClient.clearSession();
       }
     }

@@ -1,10 +1,10 @@
 import React from 'react';
 
-interface BrandedSettingsIconProps {
+interface SettingsIconProps {
   className?: string;
 }
 
-export const BrandedSettingsIcon: React.FC<BrandedSettingsIconProps> = ({ className = 'h-5 w-5' }) => {
+export const SettingsIcon: React.FC<SettingsIconProps> = ({ className = 'h-5 w-5' }) => {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"

@@ -20,16 +20,16 @@ const PRODUCTION_LOG_CONFIG = {
 
 export const createLogger = (defaultComponent?: string) => {
   return {
-    debug: (message: string, data?: any, config?: LogConfig) => {
+    debug: (message: string, data?: unknown, config?: LogConfig) => {
       log('debug', message, data, { component: defaultComponent, ...config });
     },
-    info: (message: string, data?: any, config?: LogConfig) => {
+    info: (message: string, data?: unknown, config?: LogConfig) => {
       log('info', message, data, { component: defaultComponent, ...config });
     },
-    warn: (message: string, data?: any, config?: LogConfig) => {
+    warn: (message: string, data?: unknown, config?: LogConfig) => {
       log('warn', message, data, { component: defaultComponent, ...config });
     },
-    error: (message: string, data?: any, config?: LogConfig) => {
+    error: (message: string, data?: unknown, config?: LogConfig) => {
       log('error', message, data, { component: defaultComponent, productionEnabled: true, ...config });
     },
   };
@@ -38,7 +38,7 @@ export const createLogger = (defaultComponent?: string) => {
 const log = (
   level: LogLevel,
   message: string,
-  data?: any,
+  data?: unknown,
   config: LogConfig = {}
 ) => {
   const { component, productionEnabled = false } = config;
@@ -73,7 +73,7 @@ const log = (
 };
 
 // Legacy compatibility function
-export const devLog = (component: string, message: string, data?: any) => {
+export const devLog = (component: string, message: string, data?: unknown) => {
   log('debug', message, data, { component });
 };
 

@@ -767,7 +767,7 @@ class RoundService:
 
         await self.db.commit()
 
-        # Send notification to prompt player about copy submission (after phraseset is created)
+        # Send notification to prompt / other copy player about copy submission (after phraseset is created)
         if phraseset and prompt_round:
             try:
                 from backend.services.notification_service import NotificationService

@@ -14,9 +14,9 @@ import { ResultsIcon } from './icons/ResultsIcon';
 import { TrackingIcon } from './icons/TrackingIcon';
 import { ReviewIcon } from './icons/ReviewIcon';
 import { LobbyIcon } from './icons/LobbyIcon';
-import { BrandedSurveyIcon } from './icons/BrandedSurveyIcon';
-import { BrandedTutorialIcon } from './icons/BrandedTutorialIcon';
-import { BrandedSettingsIcon } from './icons/BrandedSettingsIcon';
+import { SurveyIcon } from './icons/SurveyIcon.tsx';
+import { QuestionMarkIcon } from './icons/QuestionMarkIcon.tsx';
+import { SettingsIcon } from './icons/SettingsIcon.tsx';
 import { AdminIcon } from './icons/AdminIcon';
 import { hasCompletedSurvey } from '../utils/betaSurvey';
 import { apiClient } from '../api/client';
@@ -65,14 +65,6 @@ export const Header: React.FC = () => {
     checkSurveyStatus();
   }, [player?.player_id]);
 
-  if (!player) {
-    return null;
-  }
-
-  // Determine if tutorial should be shown in menu
-  // Always show for guests, show for logged-in users only if not completed
-  const showTutorialInMenu = player.is_guest || !tutorialStatus?.tutorial_completed;
-
   const goToStatistics = React.useCallback(() => {
     navigate('/statistics');
   }, [navigate]);
@@ -101,7 +93,7 @@ export const Header: React.FC = () => {
       return;
     }
 
-    let email: string | null = player.email ?? null;
+    let email: string | null = player?.email ?? null;
     let password: string | null = null;
 
     if (typeof window !== 'undefined') {
@@ -164,6 +156,14 @@ export const Header: React.FC = () => {
     setShowDropdown(false);
     navigate(path);
   }, [navigate]);
+
+  if (!player) {
+    return null;
+  }
+
+  // Determine if tutorial should be shown in menu
+  // Always show for guests, show for logged-in users only if not completed
+  const showTutorialInMenu = player.is_guest || !tutorialStatus?.tutorial_completed;
 
   return (
     <>
@@ -277,7 +277,7 @@ export const Header: React.FC = () => {
                       onClick={() => handleNavigate('/dashboard?startTutorial=true')}
                       className="w-full flex items-center gap-3 px-4 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
                     >
-                      <BrandedTutorialIcon className="h-5 w-5" />
+                      <QuestionMarkIcon className="h-5 w-5" />
                       <span className="font-semibold">Tutorial</span>
                     </button>
                   )}
@@ -286,7 +286,7 @@ export const Header: React.FC = () => {
                       onClick={() => handleNavigate('/survey/beta')}
                       className="w-full flex items-center gap-3 px-4 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
                     >
-                      <BrandedSurveyIcon className="h-5 w-5" />
+                      <SurveyIcon className="h-5 w-5" />
                       <span className="font-semibold">Survey</span>
                     </button>
                   )}
@@ -294,7 +294,7 @@ export const Header: React.FC = () => {
                     onClick={() => handleNavigate('/settings')}
                     className="w-full flex items-center gap-3 px-4 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
                   >
-                    <BrandedSettingsIcon className="h-5 w-5" />
+                    <SettingsIcon className="h-5 w-5" />
                     <span className="font-semibold">Settings</span>
                   </button>
                   {player?.is_admin && (
