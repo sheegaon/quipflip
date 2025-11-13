@@ -152,7 +152,7 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
         wsRef.current = null;
       }
     };
-  }, [state.isAuthenticated, state.player?.player_id]);
+  }, [state.isAuthenticated]);
 
   const addNotification = (message: NotificationMessage) => {
     setNotifications((prev) => [...prev, message]);
