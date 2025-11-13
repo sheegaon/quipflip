@@ -192,6 +192,24 @@ const TutorialOverlay: React.FC<TutorialOverlayProps> = ({ onComplete }) => {
             : highlightRect.left + highlightRect.width / 2 - cardDimensions.width / 2,
         } : undefined}
       >
+        <button
+          onClick={handleSkip}
+          disabled={isNavigating}
+          className="tutorial-close"
+          aria-label="Skip tutorial"
+          title="Skip tutorial"
+        >
+          <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="10" fill="currentColor" opacity="0.1" />
+            <path
+              d="M8 8L16 16M16 8L8 16"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+          </svg>
+        </button>
+
         <div className="tutorial-card-content">
           <h2 className="tutorial-title">{step.title}</h2>
           <div className="tutorial-message">{parseMarkdown(step.message)}</div>
@@ -207,18 +225,9 @@ const TutorialOverlay: React.FC<TutorialOverlayProps> = ({ onComplete }) => {
             </button>
           )}
 
-          <div className="tutorial-actions-right">
-            {step.showSkip && (
-              <button
-                onClick={handleSkip}
-                className="tutorial-btn tutorial-btn-text"
-              >
-                Skip Tutorial
-              </button>
-            )}
-
-            {/* Only show Next/End button if action is not 'wait' */}
-            {step.action !== 'wait' && (
+          {/* Only show Next/End button if action is not 'wait' */}
+          {step.action !== 'wait' && (
+            <div className={!step.showBack ? 'tutorial-actions-right' : ''}>
               <button
                 onClick={handleNext}
                 disabled={isNavigating}
@@ -226,8 +235,8 @@ const TutorialOverlay: React.FC<TutorialOverlayProps> = ({ onComplete }) => {
               >
                 {isNavigating ? 'Loading...' : (step.nextStep ? 'Next' : 'End Tutorial')}
               </button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

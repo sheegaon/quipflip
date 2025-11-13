@@ -10,7 +10,7 @@ import { trackPageView } from './utils/googleAnalytics';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { AppErrorFallback } from './components/ErrorFallback';
 import { OfflineBanner } from './components/OfflineBanner';
-import GuestCredentialsOverlay from './components/GuestCredentialsOverlay';
+import GuestWelcomeOverlay from './components/GuestWelcomeOverlay';
 
 // Suppress some logging messages
 if (typeof window !== 'undefined') {
@@ -110,7 +110,7 @@ const AppRoutes: React.FC = () => {
     <>
       <OfflineBanner />
       <ErrorNotification />
-      <GuestCredentialsOverlay />
+      <GuestWelcomeOverlay />
       <TutorialOverlay />
       <Routes>
         <Route
