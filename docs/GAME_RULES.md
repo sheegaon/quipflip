@@ -17,7 +17,7 @@ Player balances are split into two separate accounts:
 - Receives 70% of net earnings from rounds (or 100% of gross if net ≤ 0)
 - New accounts start with wallet = `starting_balance` and vault = 0
 
-**Vault (Accumulated Earnings):**
+**Vault (Accumulated Winnings):**
 - Receives 30% of net earnings from rounds when net > 0
 - Cannot be spent; serves as a permanent wealth accumulation metric
 - Used for leaderboard rankings (both weekly change and all-time total)
