@@ -41,11 +41,8 @@ export const Results: React.FC = () => {
   const [isVaultInfoOpen, setIsVaultInfoOpen] = useState<boolean>(false);
   const [isPrizeBreakdownOpen, setIsPrizeBreakdownOpen] = useState<boolean>(false);
   const [isEarningsBreakdownOpen, setIsEarningsBreakdownOpen] = useState<boolean>(false);
-  const [activePopover, setActivePopover] = useState<'vault-info' | 'prize-breakdown' | null>(null);
   const [voteResultsPage, setVoteResultsPage] = useState<number>(1);
   const [latestResultsPage, setLatestResultsPage] = useState<number>(1);
-  const isVaultInfoOpen = activePopover === 'vault-info';
-  const isPrizeBreakdownOpen = activePopover === 'prize-breakdown';
 
   const refreshPhrasesetResultsRef = useRef(refreshPhrasesetResults);
   const refreshPhrasesetDetailsRef = useRef(refreshPhrasesetDetails);
@@ -429,7 +426,7 @@ export const Results: React.FC = () => {
                         <p className="text-sm text-quip-teal">Final Prize Pool:</p>
                         <button
                           type="button"
-                          onClick={() => togglePopover('prize-breakdown')}
+                          onClick={togglePrizeBreakdown}
                           className="text-quip-turquoise hover:text-quip-navy transition-colors"
                           aria-label="Show prize pool breakdown"
                           aria-expanded={isPrizeBreakdownOpen}
@@ -451,7 +448,7 @@ export const Results: React.FC = () => {
                               <p className="font-semibold text-quip-navy">Prize Pool Breakdown</p>
                               <button
                                 type="button"
-                                onClick={() => setActivePopover(null)}
+                                onClick={() => setIsPrizeBreakdownOpen(false)}
                                 className="text-quip-teal hover:text-quip-navy font-bold"
                                 aria-label="Close prize pool breakdown"
                               >
@@ -514,10 +511,10 @@ export const Results: React.FC = () => {
                           <div className="absolute left-1/2 -top-3 -translate-y-full -translate-x-1/2 w-80 max-w-xs sm:max-w-sm bg-white border border-quip-turquoise border-opacity-40 rounded-2xl shadow-2xl z-30">
                             <div className="p-4">
                               <div className="flex items-start justify-between gap-2 mb-2">
-                              <p className="font-semibold text-quip-navy">{WALLET_VS_VAULT_TITLE}</p>
+                                <p className="font-semibold text-quip-navy">{WALLET_VS_VAULT_TITLE}</p>
                                 <button
                                   type="button"
-                                  onClick={() => setActivePopover(null)}
+                                  onClick={() => setIsVaultInfoOpen(false)}
                                   className="text-quip-teal hover:text-quip-navy font-bold"
                                   aria-label="Close wallet and vault explainer"
                                 >
@@ -533,7 +530,7 @@ export const Results: React.FC = () => {
                           <p className="text-sm text-quip-navy text-center flex items-center justify-center gap-2">
                             <button
                               type="button"
-                              onClick={() => togglePopover('vault-info')}
+                              onClick={toggleVaultInfo}
                               className="text-quip-turquoise hover:text-quip-navy transition-colors"
                               aria-label="Explain wallet and vault mechanics"
                               aria-expanded={isVaultInfoOpen}
