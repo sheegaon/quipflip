@@ -325,7 +325,7 @@ This endpoint is called via REST API (through Vercel proxy) using HttpOnly cooki
 
 **Notes:**
 - Token is valid for only 60 seconds
-- Token can be used for WebSocket authentication via query parameter: `wss://backend.com/online/ws?token=<token>`
+- Token can be used for WebSocket authentication via query parameter: `wss://backend.com/notifications/ws?token=<token>`
 - Designed for cross-domain WebSocket authentication where cookies are not reliable
 
 #### `GET /player/balance`
@@ -2040,6 +2040,53 @@ const ws = new WebSocket(`wss://api.example.com/online/ws?token=${accessToken}`)
 - Distinct from phraseset_activity tracking
 - Uses UserActivity model for player presence
 - Efficient broadcast: only sends updates when clients connected
+
+#### `WebSocket /notifications/ws`
+WebSocket endpoint for real-time copy/vote notifications targeted at specific players.
+
+**Authentication:**
+- Requires short-lived token from `GET /auth/ws-token`
+- Token is appended as query parameter: `wss://api.example.com/notifications/ws?token=<ws_token>`
+- Connections without a valid token are closed with WebSocket code `1008`
+
+**Connection:**
+```javascript
+const tokenResponse = await fetch('/api/auth/ws-token', { credentials: 'include' });
+const { token } = await tokenResponse.json();
+const ws = new WebSocket(`wss://api.example.com/notifications/ws?token=${token}`);
+```
+
+**Messages Received:**
+```json
+{
+  "type": "notification",
+  "notification_type": "copy_submitted",
+  "actor_username": "Copy Cat",
+  "action": "copied",
+  "recipient_role": "prompt",
+  "phrase_text": "a dog wearing a hat",
+  "timestamp": "2025-01-15T10:30:00Z"
+}
+```
+
+**Triggers:**
+- `copy_submitted`: Prompt player receives a toast when another human submits a copy on their prompt
+- `vote_submitted`: Prompt and copy players receive a toast when another human votes on their phraseset
+
+**Filtering & Rate Limits:**
+- AI players (emails ending with `@quipflip.internal`) are excluded as actors or recipients
+- Self-actions are ignored (no notification when actor == recipient)
+- Recipients are limited to 10 notifications per minute to avoid spam
+
+**Delivery Semantics:**
+- Notifications are persisted in the `notifications` table before being sent
+- If the player is connected, the server pushes the message immediately
+- If the player is offline, the record remains for future analytics / audits even though no push occurs
+
+**Error Handling:**
+- Authentication failures close the socket with code `1008`
+- Unexpected server errors close the socket with code `1011`
+- Individual send failures are logged and the connection is discarded silently to avoid disrupting gameplay
 
 ---
 
