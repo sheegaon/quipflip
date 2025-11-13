@@ -171,7 +171,8 @@ class ClaimPrizeResponse(BaseSchema):
     """Response payload for prize claim endpoint."""
     success: bool
     amount: int
-    new_balance: int
+    new_wallet: int
+    new_vault: int
     already_claimed: bool
 
 

@@ -70,12 +70,14 @@ export interface AuthTokenResponse {
 }
 
 export interface CreatePlayerResponse extends AuthTokenResponse {
-  balance: number;
+  wallet: number;
+  vault: number;
   message: string;
 }
 
 export interface CreateGuestResponse extends AuthTokenResponse {
-  balance: number;
+  wallet: number;
+  vault: number;
   email: string;
   password: string;
   message: string;
@@ -185,7 +187,8 @@ export interface PendingResultsResponse {
 export interface DailyBonusResponse {
   success: boolean;
   amount: number;
-  new_balance: number;
+  new_wallet: number;
+  new_vault: number;
 }
 
 export interface BetaSurveyAnswerPayload {
@@ -503,7 +506,8 @@ export interface PhrasesetDetails {
 export interface ClaimPrizeResponse {
   success: boolean;
   amount: number;
-  new_balance: number;
+  new_wallet: number;
+  new_vault: number;
   already_claimed: boolean;
 }
 
@@ -615,7 +619,8 @@ export interface PlayerStatistics {
   player_id: string;
   username: string;
   email: string;
-  overall_balance: number;
+  wallet: number;
+  vault: number;
   prompt_stats: RoleStatistics;
   copy_stats: RoleStatistics;
   voter_stats: RoleStatistics;
@@ -680,7 +685,8 @@ export interface ClaimQuestRewardResponse {
   success: boolean;
   quest_type: string;
   reward_amount: number;
-  new_balance: number;
+  new_wallet: number;
+  new_vault: number;
 }
 
 // Online Users feature types

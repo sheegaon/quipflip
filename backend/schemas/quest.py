@@ -58,7 +58,8 @@ class ClaimQuestRewardResponse(BaseModel):
     success: bool
     quest_type: str
     reward_amount: int
-    new_balance: int
+    new_wallet: int
+    new_vault: int
 
 
 class QuestListResponse(BaseModel):

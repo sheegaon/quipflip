@@ -348,7 +348,7 @@ export const Results: React.FC = () => {
                   <div className="mt-4 space-y-2">
                     <div className="p-3 bg-quip-turquoise bg-opacity-5 rounded-tile border border-quip-turquoise border-opacity-20">
                       <p className="text-sm text-quip-teal text-center">
-                        ✓ Automatically added to your balance when voting completed
+                        ✓ Automatically added to your wallet and vault when voting completed
                       </p>
                     </div>
                     <div className="p-4 bg-white bg-opacity-80 rounded-tile border border-quip-turquoise border-opacity-20">
