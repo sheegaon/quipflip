@@ -9,6 +9,7 @@ import type {
   PendingResultsResponse,
   DailyBonusResponse,
   RoundAvailability,
+  RoundDetails,
   StartPromptResponse,
   StartCopyResponse,
   StartVoteResponse,
@@ -460,6 +461,11 @@ export const apiClient = {
   // Round endpoints
   async getRoundAvailability(signal?: AbortSignal): Promise<RoundAvailability> {
     const { data } = await api.get('/rounds/available', { signal });
+    return data;
+  },
+
+  async getRoundDetails(roundId: string, signal?: AbortSignal): Promise<RoundDetails> {
+    const { data } = await api.get(`/rounds/${roundId}`, { signal });
     return data;
   },
 

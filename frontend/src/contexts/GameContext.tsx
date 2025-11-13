@@ -566,6 +566,7 @@ export const GameProvider: React.FC<{
             expires_at: response.expires_at,
             cost: response.cost,
             discount_active: response.discount_active,
+            prompt_round_id: response.prompt_round_id,
             status: 'active' as const,
           },
         };
