@@ -534,7 +534,7 @@ export const CopyRound: React.FC = () => {
               <p className="text-sm text-quip-teal">Returning to dashboard...</p>
 
               {hasRequestedPromptReveal && (
-                <div className="mt-6 text-left bg-white/80 border-2 border-quip-turquoise rounded-tile p-5">
+                <div className="mt-6 text-left bg-quip-warm-ivory border-2 border-quip-turquoise rounded-tile p-5">
                   <p className="text-xs uppercase tracking-widest text-quip-teal mb-2">
                     Original prompt reveal
                   </p>

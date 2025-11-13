@@ -69,10 +69,10 @@ async def _player_can_view_prompt_round(
             Round.player_id == player.player_id,
             Round.prompt_round_id == prompt_round.round_id,
             Round.status == "submitted",
-        )
+        ).limit(1)  # Add limit to prevent multiple results error
     )
 
-    return result.scalar_one_or_none() is not None
+    return result.scalar() is not None  # Use scalar() instead of scalar_one_or_none()
 
 
 @router.post("/prompt", response_model=StartPromptRoundResponse)
