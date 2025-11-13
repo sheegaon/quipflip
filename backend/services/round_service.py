@@ -756,6 +756,7 @@ class RoundService:
         await self.db.flush()
 
         phraseset = None
+        copy_player_id = player.player_id  # Store for later notification
         if prompt_round:
             phraseset = await self.create_phraseset_if_ready(prompt_round)
             if phraseset:
@@ -765,6 +766,19 @@ class RoundService:
                 )
 
         await self.db.commit()
+
+        # Send notification to prompt player about copy submission (after phraseset is created)
+        if phraseset and prompt_round:
+            try:
+                from backend.services.notification_service import NotificationService
+                notification_service = NotificationService(self.db)
+                await notification_service.notify_copy_submission(
+                    phraseset=phraseset,
+                    copy_player_id=copy_player_id,
+                    prompt_round=prompt_round,
+                )
+            except Exception as e:
+                logger.error(f"Failed to send copy notification: {e}", exc_info=True)
 
         await self.db.refresh(round_object)
         if prompt_round:

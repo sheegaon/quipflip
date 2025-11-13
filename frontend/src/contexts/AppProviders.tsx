@@ -5,6 +5,7 @@ import { TutorialProvider, useTutorial } from './TutorialContext';
 import { ResultsProvider, useResults } from './ResultsContext';
 import { NetworkProvider } from './NetworkContext';
 import { NavigationHistoryProvider } from './NavigationHistoryContext';
+import { NotificationProvider } from './NotificationContext';
 import { gameContextLogger } from '../utils/logger';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { PageErrorFallback } from '../components/ErrorFallback';
@@ -138,15 +139,17 @@ const InnerProviders: React.FC<{
   const { state: gameState } = useGame();
 
   return (
-    <NavigationHistoryProvider>
-      <ResultsProvider isAuthenticated={gameState.isAuthenticated}>
-        <ContextBridge
-          onDashboardTrigger={onDashboardTrigger}
-          dashboardRefreshToken={dashboardRefreshToken}
-        >
-          {children}
-        </ContextBridge>
-      </ResultsProvider>
-    </NavigationHistoryProvider>
+    <NotificationProvider>
+      <NavigationHistoryProvider>
+        <ResultsProvider isAuthenticated={gameState.isAuthenticated}>
+          <ContextBridge
+            onDashboardTrigger={onDashboardTrigger}
+            dashboardRefreshToken={dashboardRefreshToken}
+          >
+            {children}
+          </ContextBridge>
+        </ResultsProvider>
+      </NavigationHistoryProvider>
+    </NotificationProvider>
   );
 };

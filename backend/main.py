@@ -12,7 +12,7 @@ from contextlib import asynccontextmanager
 from backend.config import get_settings
 from backend.version import APP_VERSION
 from backend.services.prompt_seeder import sync_prompts_with_database
-from backend.routers import health, player, rounds, phrasesets, prompt_feedback, auth, quests, admin, feedback, online_users
+from backend.routers import health, player, rounds, phrasesets, prompt_feedback, auth, quests, admin, feedback, online_users, notifications
 from backend.middleware.deduplication import deduplication_middleware
 from backend.middleware.online_user_tracking import online_user_tracking_middleware
 
@@ -495,6 +495,7 @@ app.include_router(quests.router, prefix="/quests", tags=["quests"])
 app.include_router(admin.router, tags=["admin"])
 app.include_router(feedback.router, tags=["feedback"])
 app.include_router(online_users.router, prefix="/users", tags=["online_users"])
+app.include_router(notifications.router, tags=["notifications"])
 
 
 @app.get("/")

@@ -1,5 +1,18 @@
 // API Response Types based on backend documentation
 
+// Notification types
+export type NotificationType = 'copy_submitted' | 'vote_submitted';
+
+export interface NotificationWebSocketMessage {
+  type: 'notification';
+  notification_type: NotificationType;
+  actor_username: string;
+  action: 'copied' | 'voted on';
+  recipient_role: 'prompt' | 'copy';
+  phrase_text: string;
+  timestamp: string;
+}
+
 export interface Player {
   player_id: string;
   username: string;
