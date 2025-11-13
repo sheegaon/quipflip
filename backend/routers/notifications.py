@@ -100,7 +100,7 @@ async def websocket_endpoint(
         except Exception as e:
             logger.error(f"WebSocket error for player {player_id}: {e}")
         finally:
-            await connection_manager.disconnect(player_id)
+            await connection_manager.disconnect(str(player_id))
 
     except WebSocketException:
         # Already closed by authenticate_websocket
