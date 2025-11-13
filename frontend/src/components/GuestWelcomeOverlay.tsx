@@ -5,12 +5,6 @@ import { GUEST_CREDENTIALS_KEY, GUEST_CREDENTIALS_SHOWN_KEY } from '../utils/sto
 import { LeaderboardIcon } from './icons/LeaderboardIcon';
 import './GuestWelcomeOverlay.css';
 
-interface GuestCredentials {
-  email: string;
-  password: string;
-  timestamp: number;
-}
-
 const GuestWelcomeOverlay: React.FC = () => {
   const { state, actions } = useGame();
   const { player } = state;
