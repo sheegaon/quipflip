@@ -85,7 +85,7 @@ async def websocket_endpoint(
         logger.info(f"WebSocket authenticated for player {player_id}")
 
         # Add connection to manager
-        await connection_manager.connect(player_id, websocket)
+        await connection_manager.connect(str(player_id), websocket)
 
         # Keep connection alive, listening for any client-sent messages
         # (Currently clients don't send messages, but we keep connection open)
