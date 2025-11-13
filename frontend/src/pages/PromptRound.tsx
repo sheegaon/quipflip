@@ -13,6 +13,15 @@ import type { PromptState } from '../api/types';
 import { promptRoundLogger } from '../utils/logger';
 import { TrackingIcon } from '../components/icons/TrackingIcon';
 
+const isCanceledRequest = (error: unknown): boolean => {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+
+  const maybeError = error as { name?: string; code?: string };
+  return maybeError.name === 'AbortError' || maybeError.name === 'CanceledError' || maybeError.code === 'ERR_CANCELED';
+};
+
 export const PromptRound: React.FC = () => {
   const { state, actions } = useGame();
   const { activeRound, roundAvailability } = state;
@@ -59,9 +68,9 @@ export const PromptRound: React.FC = () => {
           roundId: roundData.round_id,
           feedbackType: feedbackResponse.feedback_type,
         });
-      } catch (err: any) {
+      } catch (err: unknown) {
         // Feedback not found or aborted is ok
-        if (err.name !== 'AbortError' && err.code !== 'ERR_CANCELED') {
+        if (!isCanceledRequest(err)) {
           promptRoundLogger.warn('Failed to load existing feedback', err);
         }
       }

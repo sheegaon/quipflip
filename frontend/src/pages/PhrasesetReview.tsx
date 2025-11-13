@@ -7,6 +7,24 @@ import { CopyRoundReview } from '../components/PhrasesetReview/CopyRoundReview';
 import { VoteRoundReview } from '../components/PhrasesetReview/VoteRoundReview';
 import type { PhrasesetDetails } from '../api/types';
 
+const isCanceledRequest = (error: unknown): boolean => {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+
+  const maybeError = error as { name?: string; code?: string };
+  return maybeError.name === 'CanceledError' || maybeError.code === 'ERR_CANCELED';
+};
+
+const getErrorDetail = (error: unknown): string | undefined => {
+  if (!error || typeof error !== 'object') {
+    return undefined;
+  }
+
+  const withDetail = error as { detail?: string; message?: string };
+  return withDetail.detail ?? withDetail.message;
+};
+
 type ReviewStage = 'prompt' | 'copy1' | 'copy2' | 'vote';
 
 export const PhrasesetReview: React.FC = () => {
@@ -33,9 +51,9 @@ export const PhrasesetReview: React.FC = () => {
         // Use public endpoint for completed phrasesets
         const data = await apiClient.getPublicPhrasesetDetails(phrasesetId, controller.signal);
         setPhrasesetData(data);
-      } catch (err: any) {
-        if (err.name !== 'CanceledError' && err.code !== 'ERR_CANCELED') {
-          setError(err.detail || err.message || 'Failed to load phraseset details');
+      } catch (err: unknown) {
+        if (!isCanceledRequest(err)) {
+          setError(getErrorDetail(err) || 'Failed to load phraseset details');
         }
       } finally {
         setLoading(false);

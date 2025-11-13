@@ -5,9 +5,11 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Header } from '../components/Header';
 import { Pagination } from '../components/Pagination';
 import { loadingMessages } from '../utils/brandedMessages';
-import type { PhrasesetResults } from '../api/types';
+import type { PhrasesetResults, PhrasesetDetails, PhrasesetVoteDetail } from '../api/types';
 import { resultsLogger } from '../utils/logger';
 import { ResultsIcon } from '../components/icons/ResultsIcon';
+import { CurrencyDisplay } from '../components/CurrencyDisplay';
+import { BotIcon } from '../components/icons/BotIcon';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -25,9 +27,9 @@ const getResultKey = (result: { phraseset_id: string; role: string; prompt_round
 export const Results: React.FC = () => {
   const { actions: gameActions } = useGame();
   const { state: resultsState, actions: resultsActions } = useResults();
-  const { pendingResults, phrasesetResults } = resultsState;
+  const { pendingResults, phrasesetResults, phrasesetDetails } = resultsState;
   const { refreshDashboard } = gameActions;
-  const { refreshPhrasesetResults, markResultsViewed } = resultsActions;
+  const { refreshPhrasesetResults, refreshPhrasesetDetails, markResultsViewed } = resultsActions;
   const [selectedPhrasesetId, setSelectedPhrasesetId] = useState<string | null>(null);
   const [expandedVotes, setExpandedVotes] = useState<Record<string, boolean>>({});
   const [showBreakdown, setShowBreakdown] = useState<boolean>(false);
@@ -35,11 +37,16 @@ export const Results: React.FC = () => {
   const [latestResultsPage, setLatestResultsPage] = useState<number>(1);
 
   const refreshPhrasesetResultsRef = useRef(refreshPhrasesetResults);
+  const refreshPhrasesetDetailsRef = useRef(refreshPhrasesetDetails);
   const refreshDashboardRef = useRef(refreshDashboard);
 
   useEffect(() => {
     refreshPhrasesetResultsRef.current = refreshPhrasesetResults;
   }, [refreshPhrasesetResults]);
+
+  useEffect(() => {
+    refreshPhrasesetDetailsRef.current = refreshPhrasesetDetails;
+  }, [refreshPhrasesetDetails]);
 
   useEffect(() => {
     refreshDashboardRef.current = refreshDashboard;
@@ -74,9 +81,13 @@ export const Results: React.FC = () => {
   }, [pendingResults, selectedPhrasesetId]);
 
   const currentEntry = selectedPhrasesetId ? phrasesetResults[selectedPhrasesetId] : undefined;
+  const currentDetailsEntry = selectedPhrasesetId ? phrasesetDetails[selectedPhrasesetId] : undefined;
   const results: PhrasesetResults | null = currentEntry?.data ?? null;
   const loading = currentEntry?.loading ?? false;
   const error = currentEntry?.error ?? null;
+  const selectedDetails: PhrasesetDetails | null = currentDetailsEntry?.data ?? null;
+  const detailsLoading = currentDetailsEntry?.loading ?? false;
+  const detailsError = currentDetailsEntry?.error ?? null;
 
   useEffect(() => {
     if (!selectedPhrasesetId) return;
@@ -90,6 +101,10 @@ export const Results: React.FC = () => {
       .catch((err) => {
         resultsLogger.error('Failed to refresh phraseset results', err);
       });
+
+    refreshPhrasesetDetailsRef.current(selectedPhrasesetId, { force: true }).catch((err) => {
+      resultsLogger.error('Failed to refresh phraseset details for results page', err);
+    });
   }, [selectedPhrasesetId]);
 
   const handleSelectPhraseset = (phrasesetId: string) => {
@@ -223,6 +238,36 @@ export const Results: React.FC = () => {
     };
   }, [results]);
 
+  const phraseAuthorMap = useMemo(() => {
+    if (!selectedDetails) {
+      return {} as Record<string, { username: string; isAi: boolean }>;
+    }
+
+    return selectedDetails.contributors.reduce<Record<string, { username: string; isAi: boolean }>>((acc, contributor) => {
+      if (contributor.phrase) {
+        acc[contributor.phrase] = {
+          username: contributor.username,
+          isAi: Boolean(contributor.is_ai),
+        };
+      }
+      return acc;
+    }, {});
+  }, [selectedDetails]);
+
+  const votesByPhrase = useMemo(() => {
+    if (!selectedDetails) {
+      return {} as Record<string, PhrasesetVoteDetail[]>;
+    }
+
+    return selectedDetails.votes.reduce<Record<string, PhrasesetVoteDetail[]>>((acc, voteDetail) => {
+      if (!acc[voteDetail.voted_phrase]) {
+        acc[voteDetail.voted_phrase] = [];
+      }
+      acc[voteDetail.voted_phrase].push(voteDetail);
+      return acc;
+    }, {});
+  }, [selectedDetails]);
+
   // Memoized vote results pagination
   const voteResultsPagination = useMemo(() => {
     if (!results) {
@@ -340,9 +385,11 @@ export const Results: React.FC = () => {
                     </div>
                     <div>
                       <p className="text-sm text-quip-teal">Earnings:</p>
-                      <p className="text-2xl font-display font-bold text-quip-turquoise">
-                        {results.your_payout} FC
-                      </p>
+                      <CurrencyDisplay
+                        amount={results.your_payout}
+                        iconClassName="w-6 h-6"
+                        textClassName="text-2xl font-display font-bold text-quip-turquoise"
+                      />
                     </div>
                   </div>
                   <div className="mt-4 space-y-2">
@@ -376,9 +423,15 @@ export const Results: React.FC = () => {
 
                 <div className="mb-6">
                   <h3 className="font-display font-bold text-lg text-quip-navy mb-3">Vote Results</h3>
+                  {detailsError && (
+                    <p className="text-sm text-red-600 mb-3">We couldn't load all contributor info. Showing basic vote data.</p>
+                  )}
                   <div className="space-y-2">
                     {voteResultsPagination.paginatedVotes.map((vote, pageIndex) => {
                       const actualIndex = voteResultsPagination.startIndex + pageIndex;
+                      const author = phraseAuthorMap[vote.phrase];
+                      const votesForPhrase = votesByPhrase[vote.phrase] ?? [];
+                      const isExpanded = expandedVotes[vote.phrase];
                       return (
                         <div
                           key={vote.phrase}
@@ -388,39 +441,76 @@ export const Results: React.FC = () => {
                               : 'bg-quip-cream border-quip-teal border-opacity-30'
                           }`}
                         >
-                          <div className="flex justify-between items-start gap-4">
-                            <div className="flex items-start gap-3">
-                              <span className="text-2xl font-display font-bold text-quip-teal text-opacity-50">
-                                #{actualIndex + 1}
-                              </span>
-                              <div>
-                                <p className="text-xl font-bold text-quip-navy">
-                                  {vote.phrase}
-                                  {vote.is_original && (
-                                    <span className="ml-2 text-sm bg-quip-orange text-white px-2 py-1 rounded-lg font-medium">
-                                      ORIGINAL
-                                    </span>
-                                  )}
-                                </p>
-                                <button
-                                  type="button"
-                                  onClick={() => toggleVotersList(vote.phrase)}
-                                  className="mt-2 inline-flex items-center text-sm font-medium text-quip-turquoise hover:text-quip-navy focus:outline-none"
-                                >
-                                  {expandedVotes[vote.phrase] ? 'Hide voters' : 'Show voters'} ({vote.voters.length})
-                                </button>
+                          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                            <div>
+                              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-quip-teal">
+                                <span className="text-quip-navy">Phrase #{actualIndex + 1}</span>
+                                {vote.is_original && (
+                                  <span className="bg-quip-orange text-white px-2 py-0.5 rounded-full text-[11px]">Original</span>
+                                )}
                               </div>
+                              <p className="text-xl font-bold text-quip-navy mt-1">{vote.phrase}</p>
+                              <div className="flex flex-wrap items-center gap-2 text-sm text-quip-teal mt-1">
+                                <span>by {author?.username ?? 'Unknown author'}</span>
+                                {author?.isAi && <BotIcon className="h-4 w-4" />}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => toggleVotersList(vote.phrase)}
+                                className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-quip-turquoise hover:text-quip-navy focus:outline-none"
+                              >
+                                {isExpanded ? 'Hide voters' : 'Show voters'}
+                                <span className="text-xs font-normal text-quip-teal">({vote.voters.length})</span>
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                >
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                              </button>
                             </div>
                             <div className="text-right">
-                              <p className="text-2xl font-display font-bold text-quip-turquoise">
+                              <p className="text-3xl font-display font-bold text-quip-turquoise leading-none">
                                 {vote.vote_count}
                               </p>
                               <p className="text-xs text-quip-teal">votes</p>
                             </div>
                           </div>
-                          {expandedVotes[vote.phrase] && (
+                          {isExpanded && (
                             <div className="mt-4 bg-white bg-opacity-80 rounded-tile border border-quip-teal border-opacity-20 p-3">
-                              {vote.voters.length === 0 ? (
+                              {detailsLoading ? (
+                                <div className="py-4">
+                                  <LoadingSpinner isLoading={true} message="Loading voter details..." />
+                                </div>
+                              ) : votesForPhrase.length > 0 ? (
+                                <div className="space-y-2">
+                                  {votesForPhrase.map((voterDetail) => (
+                                    <div
+                                      key={voterDetail.vote_id}
+                                      className={`flex items-center justify-between rounded-tile px-3 py-2 border ${
+                                        voterDetail.correct
+                                          ? 'bg-quip-turquoise bg-opacity-10 border-quip-turquoise'
+                                          : 'bg-quip-orange bg-opacity-10 border-quip-orange'
+                                      }`}
+                                    >
+                                      <div className="flex items-center gap-2 text-sm font-medium text-quip-navy">
+                                        <span>{voterDetail.voter_username}</span>
+                                        {voterDetail.is_ai && <BotIcon className="h-3.5 w-3.5" />}
+                                      </div>
+                                      <span
+                                        className={`text-xs font-semibold ${
+                                          voterDetail.correct ? 'text-quip-turquoise' : 'text-quip-orange'
+                                        }`}
+                                      >
+                                        {voterDetail.correct ? '✓ Correct' : '✗ Incorrect'}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : vote.voters.length === 0 ? (
                                 <p className="text-sm text-quip-teal italic">No votes for this phrase yet.</p>
                               ) : (
                                 <ul className="space-y-1">

@@ -474,7 +474,7 @@ export interface PhrasesetActivityEntry {
   activity_type: string;
   player_id?: string;
   player_username?: string;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   created_at: string;
 }
 
@@ -674,7 +674,7 @@ export interface Quest {
   name: string;
   description: string;
   status: QuestStatus;
-  progress: Record<string, any>;
+  progress: Record<string, unknown>;
   reward_amount: number;
   category: QuestCategory;
   created_at: string;

@@ -1,6 +1,17 @@
 import { useState, useEffect, useCallback } from 'react';
 import { networkLogger } from '../utils/logger';
 
+type NavigatorConnection = EventTarget & {
+  type?: string;
+  effectiveType?: string;
+};
+
+interface ExtendedNavigator extends Navigator {
+  connection?: NavigatorConnection;
+  mozConnection?: NavigatorConnection;
+  webkitConnection?: NavigatorConnection;
+}
+
 export interface NetworkStatus {
   isOnline: boolean;
   isOffline: boolean;
@@ -47,8 +58,9 @@ export const useNetworkStatus = (): NetworkStatus => {
    * Update connection information from Network Information API
    */
   const updateConnectionInfo = useCallback(() => {
-    if ('connection' in navigator || 'mozConnection' in navigator || 'webkitConnection' in navigator) {
-      const conn = (navigator as any).connection || (navigator as any).mozConnection || (navigator as any).webkitConnection;
+    const extendedNavigator = navigator as ExtendedNavigator;
+    if (extendedNavigator.connection || extendedNavigator.mozConnection || extendedNavigator.webkitConnection) {
+      const conn = extendedNavigator.connection || extendedNavigator.mozConnection || extendedNavigator.webkitConnection;
 
       if (conn) {
         setConnectionInfo({
@@ -117,8 +129,9 @@ export const useNetworkStatus = (): NetworkStatus => {
     window.addEventListener('offline', handleOffline);
 
     // Listen for connection changes (if supported)
-    if ('connection' in navigator) {
-      const conn = (navigator as any).connection;
+    const extendedNavigator = navigator as ExtendedNavigator;
+    if (extendedNavigator.connection) {
+      const conn = extendedNavigator.connection;
       if (conn) {
         conn.addEventListener('change', handleConnectionChange);
       }
@@ -132,8 +145,8 @@ export const useNetworkStatus = (): NetworkStatus => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
 
-      if ('connection' in navigator) {
-        const conn = (navigator as any).connection;
+      if ((navigator as ExtendedNavigator).connection) {
+        const conn = (navigator as ExtendedNavigator).connection;
         if (conn) {
           conn.removeEventListener('change', handleConnectionChange);
         }

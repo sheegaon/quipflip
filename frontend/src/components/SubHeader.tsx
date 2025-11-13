@@ -32,14 +32,6 @@ export const SubHeader: React.FC = () => {
     hasClaimableQuests,
   } = useHeaderIndicators();
 
-  if (!player) {
-    return null;
-  }
-
-  // Determine if tutorial should be shown
-  // Always show for guests, show for logged-in users only if not completed
-  const showTutorialIcon = player.is_guest || tutorialStatus?.tutorial_completed === false;
-
   const handleResultsClick = async () => {
     // Refresh dashboard to get latest data before navigating
     try {
@@ -56,6 +48,14 @@ export const SubHeader: React.FC = () => {
   const goToLeaderboard = React.useCallback(() => {
     navigate('/leaderboard');
   }, [navigate]);
+
+  if (!player) {
+    return null;
+  }
+
+  // Determine if tutorial should be shown
+  // Always show for guests, show for logged-in users only if not completed
+  const showTutorialIcon = player.is_guest || tutorialStatus?.tutorial_completed === false;
 
   return (
     <div className="bg-quip-warm-ivory shadow-tile-sm relative z-40">
