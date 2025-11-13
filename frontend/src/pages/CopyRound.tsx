@@ -474,7 +474,22 @@ export const CopyRound: React.FC = () => {
             disabled={isStartingSecondCopy}
             className="flex-1 bg-quip-turquoise hover:bg-quip-teal disabled:bg-gray-400 text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm"
           >
-            {isStartingSecondCopy ? 'Starting...' : 'Yes, submit another copy'}
+            {isStartingSecondCopy ? (
+              'Starting...'
+            ) : (
+              <span className="inline-flex items-center gap-1">
+                Yes (
+                <span className="inline-flex items-center gap-1">
+                  FC
+                  <CurrencyDisplay
+                    amount={secondCopyEligibility.cost}
+                    showIcon={false}
+                    textClassName="font-semibold"
+                  />
+                </span>
+                )
+              </span>
+            )}
           </button>
           <button
             onClick={handleDeclineSecondCopy}
