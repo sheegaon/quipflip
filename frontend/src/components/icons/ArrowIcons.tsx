@@ -3,7 +3,7 @@ import React from 'react';
 interface ArrowIconProps extends React.SVGProps<SVGSVGElement> {
   className?: string;
   color?: string;
-  strokeWidth?: number;
+  strokeWidth?: number | string;
 }
 
 export const ArrowLeftIcon: React.FC<ArrowIconProps> = ({

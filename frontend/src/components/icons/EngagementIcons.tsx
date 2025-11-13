@@ -7,7 +7,7 @@ interface SimpleIconProps {
 interface FlagIconProps extends React.SVGProps<SVGSVGElement> {
   className?: string;
   color?: string;
-  strokeWidth?: number;
+  strokeWidth?: number | string;
 }
 
 interface ResultsIconProps extends SimpleIconProps {
