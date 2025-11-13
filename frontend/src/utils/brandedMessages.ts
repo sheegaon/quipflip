@@ -4,13 +4,11 @@
 
 export const successMessages = {
   promptSubmitted: [
-    "Phrase submitted!",
-    "Your phrase is in!",
+    "Quip submitted!",
+    "Your quip is in!",
     "Submission received!",
-    "Thanks for playing!",
     "Your quip is recorded!",
     "Phrase locked in!",
-    "Let's see how it goes!",
   ],
   promptSubmittedFeedback: [
     "Let's see what creative copies emerge!",
@@ -19,16 +17,14 @@ export const successMessages = {
     "Fingers crossed for interesting matches!",
     "Others will work their magic soon.",
     "Can't wait to see what happens!",
-    "Let's hope for clever copies.",
+    "Let's see the creativity unfold!",
   ],
   copySubmitted: [
     "Copy submitted!",
     "Your phrase is in!",
     "Submission received!",
-    "Thanks for playing!",
     "Your copy is recorded!",
     "Phrase locked in!",
-    "Let's see how it goes!",
   ],
   copySubmittedFeedback: [
     "Voters will decide if it matches!",
@@ -38,6 +34,7 @@ export const successMessages = {
     "May the voting go your way!",
     "Let's see if voters find it convincing.",
     "Good luck with the vote!",
+    "Fingers crossed for your copy!",
   ],
   voteSubmitted: [
     "Vote locked in!",

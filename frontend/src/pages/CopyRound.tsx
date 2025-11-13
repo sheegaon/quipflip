@@ -169,7 +169,7 @@ export const CopyRound: React.FC = () => {
         setTimeout(() => {
           copyRoundLogger.debug('Navigating back to dashboard after copy submission');
           navigate('/dashboard');
-        }, 1500);
+        }, 3000);
       }
     } catch (err) {
       const message = extractErrorMessage(err) || 'Unable to submit your phrase. The round may have expired or there may be a connection issue.';
