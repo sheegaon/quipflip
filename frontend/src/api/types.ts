@@ -307,6 +307,17 @@ export interface RoundAvailability {
   abandoned_penalty: number;
 }
 
+export interface RoundDetails {
+  round_id: string;
+  type: string;
+  status: string;
+  expires_at: string;
+  prompt_text?: string | null;
+  original_phrase?: string | null;
+  submitted_phrase?: string | null;
+  cost: number;
+}
+
 export interface StartPromptResponse {
   round_id: string;
   prompt_text: string;
