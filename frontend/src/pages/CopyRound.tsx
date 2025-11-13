@@ -78,10 +78,12 @@ export const CopyRound: React.FC = () => {
   }, [copyRoundHints, roundData?.round_id]);
 
   const fetchOriginalPrompt = useCallback(async (promptRoundId?: string | null) => {
+    setOriginalPromptText(null);
+    setPromptRevealError(null);
+    promptRevealRequestRef.current = promptRoundId;
+
     if (!promptRoundId) {
       setHasRequestedPromptReveal(false);
-      setOriginalPromptText(null);
-      setPromptRevealError(null);
       setIsPromptRevealLoading(false);
       return;
     }
@@ -89,9 +91,6 @@ export const CopyRound: React.FC = () => {
     copyRoundLogger.debug('Fetching prompt reveal information', { promptRoundId });
     setHasRequestedPromptReveal(true);
     setIsPromptRevealLoading(true);
-    setPromptRevealError(null);
-    setOriginalPromptText(null);
-    promptRevealRequestRef.current = promptRoundId;
 
     try {
       const details = await apiClient.getRoundDetails(promptRoundId);
