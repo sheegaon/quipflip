@@ -440,7 +440,7 @@ export const Results: React.FC = () => {
                         />
                       </p>
                       {isPrizeBreakdownOpen && (
-                        <div className="absolute right-0 top-full mt-2 w-80 max-w-xs sm:max-w-sm bg-white border border-quip-turquoise rounded-2xl shadow-2xl z-30">
+                        <div className="absolute right-0 top-full mt-2 w-80 max-w-xs sm:max-w-sm bg-white bg-opacity-100 border border-quip-turquoise rounded-2xl shadow-2xl z-30">
                           <div className="p-4">
                             <div className="flex items-start justify-between gap-2 mb-2">
                               <p className="font-semibold text-quip-navy">Prize Pool Breakdown</p>
@@ -480,7 +480,7 @@ export const Results: React.FC = () => {
                         />
                       </p>
                       {isEarningsBreakdownOpen && (
-                        <div className="absolute right-0 top-full mt-2 w-80 max-w-xs sm:max-w-sm bg-white border border-quip-turquoise rounded-2xl shadow-2xl z-30">
+                        <div className="absolute right-0 top-full mt-2 w-80 max-w-xs sm:max-w-sm bg-white bg-opacity-100 border border-quip-turquoise rounded-2xl shadow-2xl z-30">
                           <div className="p-4">
                             <div className="flex items-start justify-between gap-2 mb-2">
                               <p className="font-semibold text-quip-navy">Earnings Breakdown</p>
