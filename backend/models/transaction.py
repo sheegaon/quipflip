@@ -20,11 +20,12 @@ class Transaction(Base):
     # quest_reward_round_completion, quest_reward_balanced_player, quest_reward_login_streak,
     # quest_reward_feedback, quest_reward_milestone
     # Vault types: vault_rake (30% of net earnings)
-    wallet_type = Column(String(20), default="wallet", nullable=False)  # "wallet" or "vault"
     reference_id = get_uuid_column(nullable=True, index=True)  # References round_id, phraseset_id, vote_id, or quest_id
+    balance_after = Column(Integer, nullable=False)  # Legacy column, kept for backwards compatibility
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False, index=True)
+    wallet_type = Column(String(20), default="wallet", nullable=False)  # "wallet" or "vault"
     wallet_balance_after = Column(Integer, nullable=True)  # For audit trail
     vault_balance_after = Column(Integer, nullable=True)  # For audit trail
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False, index=True)
 
     # Relationships
     player = relationship("Player", back_populates="transactions")
