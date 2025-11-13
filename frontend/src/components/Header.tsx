@@ -15,7 +15,7 @@ import { TrackingIcon } from './icons/TrackingIcon';
 import { ReviewIcon } from './icons/ReviewIcon';
 import { LobbyIcon } from './icons/LobbyIcon';
 import { SurveyIcon } from './icons/SurveyIcon.tsx';
-import { BrandedTutorialIcon } from './icons/BrandedTutorialIcon';
+import { QuestionMarkIcon } from './icons/QuestionMarkIcon.tsx';
 import { SettingsIcon } from './icons/SettingsIcon.tsx';
 import { AdminIcon } from './icons/AdminIcon';
 import { hasCompletedSurvey } from '../utils/betaSurvey';
@@ -277,7 +277,7 @@ export const Header: React.FC = () => {
                       onClick={() => handleNavigate('/dashboard?startTutorial=true')}
                       className="w-full flex items-center gap-3 px-4 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
                     >
-                      <BrandedTutorialIcon className="h-5 w-5" />
+                      <QuestionMarkIcon className="h-5 w-5" />
                       <span className="font-semibold">Tutorial</span>
                     </button>
                   )}
