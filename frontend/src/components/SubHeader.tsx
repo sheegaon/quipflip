@@ -4,13 +4,9 @@ import { useGame } from '../contexts/GameContext';
 import { useHeaderIndicators } from '../hooks/useHeaderIndicators';
 import { useTutorial } from '../contexts/TutorialContext';
 import { TreasureChestIcon } from './TreasureChestIcon';
-import { TrackingIcon } from './icons/TrackingIcon';
-import { ResultsIcon } from './icons/ResultsIcon';
-import { ReviewIcon } from './icons/ReviewIcon';
-import { LeaderboardIcon } from './icons/LeaderboardIcon';
-import { LobbyIcon } from './icons/LobbyIcon';
-import { QuestionMarkIcon } from './icons/QuestionMarkIcon.tsx';
-import { SettingsIcon } from './icons/SettingsIcon.tsx';
+import { CopyRoundIcon } from './icons/RoundIcons';
+import { LeaderboardIcon, LobbyIcon, SettingsIcon, TrackingIcon } from './icons/NavigationIcons';
+import { QuestionMarkIcon, ResultsIcon, ReviewIcon } from './icons/EngagementIcons';
 
 export const SubHeader: React.FC = () => {
   const { actions } = useGame();
@@ -79,11 +75,7 @@ export const SubHeader: React.FC = () => {
               {inProgressCopies > 0 && (
                 <span className="flex items-center md:gap-1 gap-0.5">
                   <span>{inProgressCopies}</span>
-                  <img
-                    src="/icon_copy.svg"
-                    alt="Copy rounds in progress"
-                    className="h-5 w-5 md:h-7 md:w-7"
-                  />
+                  <CopyRoundIcon className="h-5 w-5 md:h-7 md:w-7" aria-hidden="true" />
                 </span>
               )}
             </button>

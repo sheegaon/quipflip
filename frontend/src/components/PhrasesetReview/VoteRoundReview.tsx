@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { FrozenTimer } from './FrozenTimer';
 import { ReviewBackButton } from './ReviewBackButton';
-import { BotIcon } from '../icons/BotIcon';
+import { BotIcon } from '../icons/EngagementIcons';
+import { VoteRoundIcon } from '../icons/RoundIcons';
 import type { PhrasesetVoteDetail } from '../../api/types';
 
 interface VoteRoundReviewProps {
@@ -53,7 +54,7 @@ export const VoteRoundReview: React.FC<VoteRoundReviewProps> = ({
       <div className="max-w-2xl w-full tile-card p-8 slide-up-enter">
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-2 mb-2">
-            <img src="/icon_vote.svg" alt="" className="w-8 h-8" />
+            <VoteRoundIcon className="w-8 h-8" aria-hidden="true" />
             <h1 className="text-3xl font-display font-bold text-quip-navy">Vote Round</h1>
           </div>
           <p className="text-quip-teal">Identify the original phrase</p>

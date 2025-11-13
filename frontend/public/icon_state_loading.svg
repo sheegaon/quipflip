@@ -1,8 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-     viewBox="0 0 24 24" role="img" aria-label="Loading">
-  <!-- dual-tone progress ring -->
-  <circle cx="12" cy="12" r="8" fill="none" stroke="#10B5A4" stroke-width="4" opacity=".25"/>
-  <path d="M12 4a8 8 0 1 1-6.93 4" fill="none" stroke="#10B5A4" stroke-width="4" stroke-linecap="round"/>
-  <!-- gold tip to suggest motion -->
-  <circle cx="5.07" cy="8" r="2" fill="#FFC857"/>
-</svg>

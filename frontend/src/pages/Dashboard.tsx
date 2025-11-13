@@ -9,7 +9,8 @@ import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { ModeToggle } from '../components/ModeToggle';
 import TutorialWelcome from '../components/Tutorial/TutorialWelcome';
 import { dashboardLogger } from '../utils/logger';
-import { TrackingIcon } from '../components/icons/TrackingIcon';
+import { TrackingIcon } from '../components/icons/NavigationIcons';
+import { CopyRoundIcon, VoteRoundIcon } from '../components/icons/RoundIcons';
 import type { BetaSurveyStatusResponse } from '../api/types';
 import { hasDismissedSurvey, markSurveyDismissed, hasCompletedSurvey } from '../utils/betaSurvey';
 import { getErrorMessage } from '../types/errors';
@@ -596,7 +597,7 @@ export const Dashboard: React.FC = () => {
             <div className="tutorial-copy-round border-2 border-quip-turquoise rounded-tile p-4 bg-quip-turquoise bg-opacity-5 hover:bg-opacity-10 transition-all">
               <div className="flex justify-between items-center mb-2">
                 <div className="flex items-center gap-2">
-                  <img src="/icon_copy.svg" alt="" className="w-8 h-8" />
+                  <CopyRoundIcon className="w-8 h-8" aria-hidden="true" />
                   <h3 className="font-display font-semibold text-lg text-quip-turquoise">Copy Round</h3>
                 </div>
                 <span className="flex items-center gap-2 text-quip-orange-deep font-bold">
@@ -641,7 +642,7 @@ export const Dashboard: React.FC = () => {
             <div className="tutorial-vote-round border-2 border-quip-orange rounded-tile p-4 bg-quip-orange bg-opacity-5 hover:bg-opacity-10 transition-all">
               <div className="flex justify-between items-center mb-2">
                 <div className="flex items-center gap-2">
-                  <img src="/icon_vote.svg" alt="" className="w-8 h-8" />
+                  <VoteRoundIcon className="w-8 h-8" aria-hidden="true" />
                   <h3 className="font-display font-semibold text-lg text-quip-orange-deep">Vote Round</h3>
                 </div>
                 <span className="text-quip-orange-deep font-bold flex items-center gap-1">

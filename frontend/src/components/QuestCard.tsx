@@ -3,6 +3,13 @@ import { Quest, QuestCategory, QuestStatus } from '../api/types';
 import { QuestProgressBar } from './QuestProgressBar';
 import { CurrencyDisplay } from './CurrencyDisplay';
 import { formatDateInUserZone } from '../utils/datetime';
+import {
+  QuestActivityIcon,
+  QuestMilestoneIcon,
+  QuestOverviewIcon,
+  QuestQualityIcon,
+  QuestStreakIcon,
+} from './icons/QuestIcons';
 
 interface QuestCardProps {
   quest: Quest;
@@ -30,40 +37,47 @@ export const QuestCard: React.FC<QuestCardProps> = ({
     }
   };
 
+  type CategoryInfo = {
+    Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+    iconAlt: string;
+    iconWrapper: string;
+    badgeClass: string;
+  };
+
   // Get category icon and color
-  const getCategoryInfo = (category: QuestCategory) => {
+  const getCategoryInfo = (category: QuestCategory): CategoryInfo => {
     switch (category) {
       case 'streak':
         return {
-          iconSrc: '/icon_quest_streak.svg',
+          Icon: QuestStreakIcon,
           iconAlt: 'Streak quest icon',
           iconWrapper: 'bg-quest-streak/10',
           badgeClass: 'bg-quest-streak/10 text-quip-orange-deep'
         };
       case 'quality':
         return {
-          iconSrc: '/icon_quest_quality.svg',
+          Icon: QuestQualityIcon,
           iconAlt: 'Quality quest icon',
           iconWrapper: 'bg-quest-quality/10',
           badgeClass: 'bg-quest-quality/10 text-quest-quality-dark dark:text-quest-quality-light'
         };
       case 'activity':
         return {
-          iconSrc: '/icon_quest_activity.svg',
+          Icon: QuestActivityIcon,
           iconAlt: 'Activity quest icon',
           iconWrapper: 'bg-quip-turquoise/10',
           badgeClass: 'bg-quip-turquoise/10 text-quip-teal'
         };
       case 'milestone':
         return {
-          iconSrc: '/icon_quest_milestone.svg',
+          Icon: QuestMilestoneIcon,
           iconAlt: 'Milestone quest icon',
           iconWrapper: 'bg-quest-milestone/10',
           badgeClass: 'bg-quest-milestone/10 text-quest-milestone-dark dark:text-quest-milestone-light'
         };
       default:
         return {
-          iconSrc: '/icon_quest_overview.svg',
+          Icon: QuestOverviewIcon,
           iconAlt: 'Quest icon',
           iconWrapper: 'bg-gray-100 dark:bg-gray-800',
           badgeClass: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'
@@ -104,6 +118,7 @@ export const QuestCard: React.FC<QuestCardProps> = ({
   };
 
   const categoryInfo = getCategoryInfo(quest.category);
+  const CategoryIcon = categoryInfo.Icon;
   const tier = getTier(quest.quest_type);
 
   return (
@@ -114,11 +129,7 @@ export const QuestCard: React.FC<QuestCardProps> = ({
           <div
             className={`flex h-12 w-12 items-center justify-center rounded-xl border border-white/60 shadow-sm ${categoryInfo.iconWrapper}`}
           >
-            <img
-              src={categoryInfo.iconSrc}
-              alt={categoryInfo.iconAlt}
-              className="h-9 w-9"
-            />
+            <CategoryIcon className="h-9 w-9" role="img" aria-label={categoryInfo.iconAlt} />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
@@ -163,12 +174,7 @@ export const QuestCard: React.FC<QuestCardProps> = ({
         <span
           className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium ${categoryInfo.badgeClass}`}
         >
-          <img
-            src={categoryInfo.iconSrc}
-            alt=""
-            aria-hidden="true"
-            className="h-4 w-4"
-          />
+          <CategoryIcon className="h-4 w-4" aria-hidden="true" />
           <span className="capitalize">{quest.category}</span>
         </span>
 
