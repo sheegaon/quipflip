@@ -1,4 +1,5 @@
 import React from 'react';
+import { ArrowLeftIcon, ArrowRightIcon } from './icons/ArrowIcons';
 
 interface PaginationProps {
   currentPage: number;
@@ -43,11 +44,7 @@ export const Pagination: React.FC<PaginationProps> = ({
         className={getButtonClassName(currentPage === 1)}
         aria-label="Previous page"
       >
-        <img
-          src="/icon_arrow_left.svg"
-          alt="Previous"
-          className="w-4 h-6"
-        />
+        <ArrowLeftIcon className="w-4 h-6" aria-hidden="true" />
       </button>
 
       <div className="text-sm font-medium text-quip-navy">
@@ -60,11 +57,7 @@ export const Pagination: React.FC<PaginationProps> = ({
         className={getButtonClassName(currentPage === totalPages)}
         aria-label="Next page"
       >
-        <img
-          src="/icon_arrow_left.svg"
-          alt="Next"
-          className="w-4 h-6 transform rotate-180"
-        />
+        <ArrowRightIcon className="w-4 h-6" aria-hidden="true" />
       </button>
     </div>
   );

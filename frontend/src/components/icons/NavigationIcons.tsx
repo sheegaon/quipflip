@@ -1,0 +1,121 @@
+import React from 'react';
+
+interface SimpleIconProps {
+  className?: string;
+}
+
+export const AdminIcon: React.FC<SimpleIconProps> = ({ className = 'h-5 w-5' }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path d="M12 2L4 6V11C4 16 7 20.5 12 22C17 20.5 20 16 20 11V6L12 2Z" fill="#FF6F00" opacity="0.15" />
+    <path
+      d="M12 2L4 6V11C4 16 7 20.5 12 22C17 20.5 20 16 20 11V6L12 2Z"
+      stroke="#FF6F00"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M12 8L13.236 10.764L16 12L13.236 13.236L12 16L10.764 13.236L8 12L10.764 10.764L12 8Z"
+      fill="#26A69A"
+      stroke="#26A69A"
+      strokeWidth={1}
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+export const HomeIcon: React.FC<SimpleIconProps> = ({ className = 'h-5 w-5' }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+    />
+  </svg>
+);
+
+export const LeaderboardIcon: React.FC<SimpleIconProps> = ({ className = 'h-5 w-5' }) => (
+  <svg className={className} viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <circle cx={16} cy={16} r={15} fill="#26A69A" opacity={0.1} />
+    <rect x={8} y={14} width={4} height={10} rx={1} fill="#26A69A" />
+    <rect x={14} y={10} width={4} height={14} rx={1} fill="#26A69A" />
+    <rect x={20} y={18} width={4} height={6} rx={1} fill="#26A69A" />
+    <rect x={15} y={11} width={2} height={2} rx={0.5} fill="#FF6F00" opacity={0.7} />
+  </svg>
+);
+
+export const LobbyIcon: React.FC<SimpleIconProps> = ({ className = 'h-5 w-5' }) => (
+  <svg className={className} viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <circle cx={16} cy={16} r={15} fill="#26A69A" opacity={0.1} />
+    <circle cx={10} cy={13} r={2.5} fill="#26A69A" />
+    <path d="M6 23C6 19.5 7.5 18 10 18C12.5 18 14 19.5 14 23" stroke="#26A69A" strokeWidth={2} strokeLinecap="round" fill="none" />
+    <circle cx={16} cy={12} r={3} fill="#26A69A" />
+    <path d="M11 24C11 20 12.5 18.5 16 18.5C19.5 18.5 21 20 21 24" stroke="#26A69A" strokeWidth={2} strokeLinecap="round" fill="none" />
+    <circle cx={22} cy={13} r={2.5} fill="#26A69A" />
+    <path d="M18 23C18 19.5 19.5 18 22 18C24.5 18 26 19.5 26 23" stroke="#26A69A" strokeWidth={2} strokeLinecap="round" fill="none" />
+  </svg>
+);
+
+export const SettingsIcon: React.FC<SimpleIconProps> = ({ className = 'h-5 w-5' }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path
+      d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+      fill="#26A69A"
+      opacity={0.2}
+    />
+    <path
+      d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+      stroke="#26A69A"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <circle cx={12} cy={12} r={3} fill="#FF6F00" />
+    <circle cx={12} cy={12} r={3} stroke="#FF6F00" strokeWidth={1.5} />
+  </svg>
+);
+
+export const StatisticsIcon: React.FC<SimpleIconProps> = ({ className = 'h-5 w-5' }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <rect x={4} y={14} width={4} height={6} rx={1} fill="#26A69A" />
+    <rect x={10} y={10} width={4} height={10} rx={1} fill="#26A69A" />
+    <rect x={16} y={6} width={4} height={14} rx={1} fill="#26A69A" />
+    <path d="M5 16L11 12L17 8" stroke="#FF6F00" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" opacity={0.7} />
+    <circle cx={5} cy={16} r={1.5} fill="#FF6F00" />
+    <circle cx={11} cy={12} r={1.5} fill="#FF6F00" />
+    <circle cx={17} cy={8} r={1.5} fill="#FF6F00" />
+  </svg>
+);
+
+export const SurveyIcon: React.FC<SimpleIconProps> = ({ className = 'h-5 w-5' }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <rect x={5} y={3} width={14} height={18} rx={2} fill="#26A69A" opacity={0.15} />
+    <path
+      d="M5 5C5 3.895 5.895 3 7 3H17C18.105 3 19 3.895 19 5V19C19 20.105 18.105 21 17 21H7C5.895 21 5 20.105 5 19V5Z"
+      stroke="#26A69A"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <rect x={9} y={1} width={6} height={4} rx={1} fill="#FF6F00" />
+    <path d="M8 9H16" stroke="#26A69A" strokeWidth={1.5} strokeLinecap="round" />
+    <circle cx={9} cy={9} r={1} fill="#FF6F00" />
+    <path d="M8 13H16" stroke="#26A69A" strokeWidth={1.5} strokeLinecap="round" />
+    <circle cx={9} cy={13} r={1} fill="#FF6F00" />
+    <path d="M8 17H14" stroke="#26A69A" strokeWidth={1.5} strokeLinecap="round" />
+    <circle cx={9} cy={17} r={1} fill="#FF6F00" />
+  </svg>
+);
+
+export const TrackingIcon: React.FC<SimpleIconProps> = ({ className = 'h-5 w-5' }) => (
+  <svg className={className} viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <circle cx={16} cy={16} r={15} fill="#0B2137" opacity={0.1} />
+    <path
+      d="M16 6C12.686 6 10 8.686 10 12C10 13.857 10.838 15.519 12.167 16.583V20C12.167 20.921 12.913 21.667 13.833 21.667H18.167C19.087 21.667 19.833 20.921 19.833 20V16.583C21.162 15.519 22 13.857 22 12C22 8.686 19.314 6 16 6Z"
+      fill="#0B2137"
+    />
+    <path d="M14 23.333C14 23.702 14.299 24 14.667 24H17.333C17.702 24 18 23.702 18 23.333V22.333H14V23.333Z" fill="#0B2137" />
+    <circle cx={16} cy={12} r={2} fill="#26A69A" />
+  </svg>
+);

@@ -7,10 +7,8 @@ import { Pagination } from '../components/Pagination';
 import { loadingMessages } from '../utils/brandedMessages';
 import type { PhrasesetResults, PhrasesetDetails, PhrasesetVoteDetail } from '../api/types';
 import { resultsLogger } from '../utils/logger';
-import { ResultsIcon } from '../components/icons/ResultsIcon';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
-import { BotIcon } from '../components/icons/BotIcon';
-import { QuestionMarkIcon } from '../components/icons/QuestionMarkIcon';
+import { BotIcon, QuestionMarkIcon, ResultsIcon } from '../components/icons/EngagementIcons';
 
 const ITEMS_PER_PAGE = 10;
 const WALLET_VS_VAULT_TITLE = 'Wallet vs. Vault';
