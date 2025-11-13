@@ -35,6 +35,7 @@ export const Results: React.FC = () => {
   const [expandedVotes, setExpandedVotes] = useState<Record<string, boolean>>({});
   const [isVaultInfoOpen, setIsVaultInfoOpen] = useState<boolean>(false);
   const [isPrizeBreakdownOpen, setIsPrizeBreakdownOpen] = useState<boolean>(false);
+  const [isEarningsBreakdownOpen, setIsEarningsBreakdownOpen] = useState<boolean>(false);
   const [voteResultsPage, setVoteResultsPage] = useState<number>(1);
   const [latestResultsPage, setLatestResultsPage] = useState<number>(1);
 
@@ -138,6 +139,18 @@ export const Results: React.FC = () => {
       const next = !prev;
       if (next) {
         setIsVaultInfoOpen(false);
+        setIsEarningsBreakdownOpen(false);
+      }
+      return next;
+    });
+  };
+
+  const toggleEarningsBreakdown = () => {
+    setIsEarningsBreakdownOpen((prev) => {
+      const next = !prev;
+      if (next) {
+        setIsVaultInfoOpen(false);
+        setIsPrizeBreakdownOpen(false);
       }
       return next;
     });
@@ -146,6 +159,7 @@ export const Results: React.FC = () => {
   useEffect(() => {
     setIsVaultInfoOpen(false);
     setIsPrizeBreakdownOpen(false);
+    setIsEarningsBreakdownOpen(false);
   }, [selectedPhrasesetId]);
 
   const performanceBreakdown = useMemo(() => {
@@ -402,13 +416,9 @@ export const Results: React.FC = () => {
                       <p className="text-sm text-quip-teal">Total Points:</p>
                       <p className="text-xl font-bold text-quip-navy">{results.total_points}</p>
                     </div>
-                    <div>
-                      <p className="text-sm text-quip-teal">Final Prize Pool:</p>
-                      <p className="text-xl font-bold text-quip-navy">{results.total_pool} FC</p>
-                    </div>
                     <div className="relative">
                       <div className="flex items-center gap-2">
-                        <p className="text-sm text-quip-teal">Earnings:</p>
+                        <p className="text-sm text-quip-teal">Final Prize Pool:</p>
                         <button
                           type="button"
                           onClick={togglePrizeBreakdown}
@@ -419,15 +429,15 @@ export const Results: React.FC = () => {
                           <QuestionMarkIcon className="h-5 w-5" />
                         </button>
                       </div>
-                      <p className="text-2xl font-display font-bold text-quip-turquoise">
+                      <p className="text-xl font-bold text-quip-navy">
                         <CurrencyDisplay
-                          amount={results.your_payout}
-                          iconClassName="w-6 h-6"
-                          textClassName="text-2xl font-display font-bold text-quip-turquoise"
+                          amount={results.total_pool}
+                          iconClassName="w-5 h-5"
+                          textClassName="text-xl font-bold text-quip-navy"
                         />
                       </p>
                       {isPrizeBreakdownOpen && (
-                        <div className="absolute right-0 top-full mt-2 w-80 max-w-xs sm:max-w-sm bg-white border border-quip-turquoise border-opacity-40 rounded-2xl shadow-2xl z-30">
+                        <div className="absolute right-0 top-full mt-2 w-80 max-w-xs sm:max-w-sm bg-white border border-quip-turquoise rounded-2xl shadow-2xl z-30">
                           <div className="p-4">
                             <div className="flex items-start justify-between gap-2 mb-2">
                               <p className="font-semibold text-quip-navy">Prize Pool Breakdown</p>
@@ -442,9 +452,48 @@ export const Results: React.FC = () => {
                             </div>
                             <p className="text-xs uppercase tracking-wide text-quip-teal mb-1">Pool math</p>
                             <p className="text-sm text-quip-navy">{performanceBreakdown.poolShareText}</p>
-                            <p className="text-xs uppercase tracking-wide text-quip-teal mt-3 mb-1">Points</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm text-quip-teal">Earnings:</p>
+                        <button
+                          type="button"
+                          onClick={toggleEarningsBreakdown}
+                          className="text-quip-turquoise hover:text-quip-navy transition-colors"
+                          aria-label="Show earnings breakdown"
+                          aria-expanded={isEarningsBreakdownOpen}
+                        >
+                          <QuestionMarkIcon className="h-5 w-5" />
+                        </button>
+                      </div>
+                      <p className="text-2xl font-display font-bold text-quip-turquoise">
+                        <CurrencyDisplay
+                          amount={results.your_payout}
+                          iconClassName="w-6 h-6"
+                          textClassName="text-2xl font-display font-bold text-quip-turquoise"
+                        />
+                      </p>
+                      {isEarningsBreakdownOpen && (
+                        <div className="absolute right-0 top-full mt-2 w-80 max-w-xs sm:max-w-sm bg-white border border-quip-turquoise rounded-2xl shadow-2xl z-30">
+                          <div className="p-4">
+                            <div className="flex items-start justify-between gap-2 mb-2">
+                              <p className="font-semibold text-quip-navy">Earnings Breakdown</p>
+                              <button
+                                type="button"
+                                onClick={() => setIsEarningsBreakdownOpen(false)}
+                                className="text-quip-teal hover:text-quip-navy font-bold"
+                                aria-label="Close earnings breakdown"
+                              >
+                                ×
+                              </button>
+                            </div>
+                            <p className="text-xs uppercase tracking-wide text-quip-teal mb-1">Points</p>
                             <p className="text-sm text-quip-navy">{performanceBreakdown.totalPointsLabel}</p>
-                            <p className="text-sm font-semibold text-quip-turquoise mt-3">{performanceBreakdown.breakdownLine}</p>
+                            <p className="text-xs uppercase tracking-wide text-quip-teal mt-3 mb-1">Payout</p>
+                            <p className="text-sm font-semibold text-quip-turquoise">{performanceBreakdown.breakdownLine}</p>
                           </div>
                         </div>
                       )}
