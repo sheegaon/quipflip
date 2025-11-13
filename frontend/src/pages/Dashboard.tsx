@@ -34,7 +34,7 @@ export const Dashboard: React.FC = () => {
     isAuthenticated,
   } = state;
   const { refreshDashboard, clearError, abandonRound } = actions;
-  const { startTutorial, skipTutorial, advanceStep } = useTutorial();
+  const { startTutorial, skipTutorial } = useTutorial();
   const navigate = useNavigate();
   const location = useLocation();
   const [isRoundExpired, setIsRoundExpired] = useState(false);
