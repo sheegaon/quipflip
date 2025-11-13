@@ -268,6 +268,9 @@ export const GameProvider: React.FC<{
         setLoading(false);
         setError(null);
 
+        // Clear guest credentials on logout
+        localStorage.removeItem(GUEST_CREDENTIALS_KEY);
+
         // After logout, user is a returning visitor (visitor ID persists)
         setSessionState(visitorId ? SessionState.RETURNING_VISITOR : SessionState.NEW);
       }

@@ -35,30 +35,13 @@ const GuestWelcomeOverlay: React.FC = () => {
 
     // Show the welcome overlay for all guest users who haven't seen it this session
     setIsVisible(true);
-
-    // Clean up old credentials if they exist
-    const stored = localStorage.getItem(GUEST_CREDENTIALS_KEY);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored) as GuestCredentials;
-        // Clean up if more than 5 minutes old
-        if (Date.now() - parsed.timestamp >= 5 * 60 * 1000) {
-          localStorage.removeItem(GUEST_CREDENTIALS_KEY);
-        }
-      } catch (e) {
-        console.error('Failed to parse guest credentials', e);
-        localStorage.removeItem(GUEST_CREDENTIALS_KEY);
-      }
-    }
   }, [player?.is_guest]);
 
   const handleDismiss = () => {
     // Mark as shown for this session
     sessionStorage.setItem(GUEST_CREDENTIALS_SHOWN_KEY, 'true');
 
-    // Clean up credentials from localStorage
-    localStorage.removeItem(GUEST_CREDENTIALS_KEY);
-
+    // Don't clear credentials - allow guest to remain logged in
     setIsVisible(false);
   };
 
