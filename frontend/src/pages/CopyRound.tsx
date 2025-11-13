@@ -481,7 +481,7 @@ export const CopyRound: React.FC = () => {
             disabled={isStartingSecondCopy}
             className="flex-1 bg-white hover:bg-gray-50 border-2 border-quip-navy text-quip-navy font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm disabled:opacity-50"
           >
-            No, finish round
+            No
           </button>
         </div>
       </div>
