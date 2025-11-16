@@ -1,11 +1,15 @@
 """Rename all Quipflip tables with qf_ prefix to prepare for Initial Reaction.
 
 Revision ID: rename_qf_001
-Revises: guest_lockout_001
+Revises: 001_add_notifications, guest_lockout_001
 Create Date: 2025-01-15
 
 This migration renames all existing Quipflip tables to use the qf_ prefix,
 allowing Initial Reaction (IR) to use its own table namespace without conflicts.
+
+This is a merge migration that combines two migration branches:
+- The main 001_add_notifications branch
+- The guest_lockout_001 branch (which includes post-lockout migrations)
 """
 from typing import Sequence, Union
 from alembic import op
@@ -13,7 +17,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "rename_qf_001"
-down_revision: Union[str, None] = "guest_lockout_001"
+down_revision: Union[str, Sequence[str]] = ("001_add_notifications", "guest_lockout_001")
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
