@@ -37,7 +37,10 @@ class IRDailyBonusService:
         bonus_date = today.date()
 
         try:
-            async with self.db.begin():
+            transaction_ctx = (
+                self.db.begin_nested() if self.db.in_transaction() else self.db.begin()
+            )
+            async with transaction_ctx:
                 stmt = (
                     select(IRDailyBonus)
                     .where(
