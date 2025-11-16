@@ -170,9 +170,10 @@ class IRBackronymSetService:
             # Update set entry count
             set_obj.entry_count += 1
             if not is_ai:
-                set_obj.last_human_entry_at = datetime.now(UTC)
+                now = datetime.now(UTC)
+                set_obj.last_human_entry_at = now
                 if set_obj.first_participant_joined_at is None:
-                    set_obj.first_participant_joined_at = datetime.now(UTC)
+                    set_obj.first_participant_joined_at = now
 
             await self.db.commit()
             await self.db.refresh(entry)
