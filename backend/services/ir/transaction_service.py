@@ -104,7 +104,7 @@ class IRTransactionService:
         """
         try:
             # Calculate vault rake (30%)
-            vault_rake = int(amount * 0.3)
+            vault_rake = int(amount * (self.player_service.settings.ir_vault_rake_percent / 100))
             wallet_amount = amount - vault_rake
 
             # Update player wallet and vault
