@@ -9,7 +9,7 @@ from backend.models.ir.ir_backronym_set import IRBackronymSet
 from backend.models.ir.ir_backronym_entry import IRBackronymEntry
 from backend.models.ir.ir_backronym_vote import IRBackronymVote
 from backend.models.ir.enums import IRSetStatus
-from backend.services.ir.ir_transaction_service import (
+from backend.services.ir.transaction_service import (
     IRTransactionService,
     IRTransactionError,
 )
