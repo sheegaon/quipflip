@@ -2,14 +2,39 @@
 
 ## Status Update (2025-11-16)
 ✅ **Phase 1 COMPLETE** - Database Schema & Models + Initial API endpoints
-- All QF tables renamed with `qf_` prefix
-- All 11 IR database models and tables created
-- IR services (auth, player, transaction) implemented
-- Basic API endpoints working (guest registration, login, player info)
-- Config with IR-specific settings added
-- Tests passing locally
+✅ **Phase 2 COMPLETE** - Core game logic services (backronym sets, voting, scoring)
+✅ **Phase 3 COMPLETE** - Backend API Routes + Background Tasks + Configuration
+✅ **Code Quality Fixes COMPLETE** - Dictionary loading, enum usage, config settings
 
-**Next:** Phase 2 - Core game logic services (backronym sets, voting, scoring)
+### Phase 2 (Complete)
+- All 7 core IR services implemented:
+  - `ir_word_service.py` - Dictionary-based word generation (12,414 words cached)
+  - `ir_backronym_set_service.py` - Set lifecycle management
+  - `ir_vote_service.py` - Voting logic and eligibility checks
+  - `ir_scoring_service.py` - Prize pool calculation with vault rake
+  - `ir_result_view_service.py` - Result claiming and payout tracking
+  - `ir_statistics_service.py` - Player stats and leaderboards
+  - `ir_queue_service.py` - FIFO queue management with fallback
+- AI service extended with backronym generation and voting
+- Phrase validation extended with backronym word validation
+- Prompt templates created for AI backronym generation
+
+### Phase 3 (Complete)
+- 15 IR API endpoints implemented:
+  - 5 authentication endpoints (register, guest, login, logout, refresh)
+  - 2 player endpoints (me, get player)
+  - 5 game endpoints (start, submit, status, vote, results)
+  - 3 statistics endpoints (player stats, creator leaderboard, voter leaderboard)
+- IR router mounted in `backend/main.py` with `/api/ir` prefix
+- Background task added for AI backup cycle (fills stalled sets every 2 minutes)
+
+### Code Quality Fixes (Complete)
+- Dictionary words: Refactored to load 12,414 3-5 letter words from `dictionary.txt`
+- Queue service: Fixed to use FIFO in-memory queues with database fallback
+- Status enum: Replaced hardcoded strings with `IRSetStatus.FINALIZED` enum
+- Configuration: Added 10 missing IR settings to `config.py`
+
+**Next:** Phase 5 - Frontend Foundation
 
 ---
 
@@ -276,32 +301,102 @@ async def run_ir_ai_backup_cycle():
 
 ---
 
+## Phase 3.5: Code Quality & Bug Fixes (COMPLETE ✅)
+
+### 3.5.1 Dictionary Word Loading Refactor
+**File:** `backend/services/ir/ir_word_service.py`
+
+**Problem:** Word service used hardcoded list of ~100 words instead of actual game dictionary
+
+**Solution:** Implemented dynamic dictionary loading
+- Added `_load_dictionary_words()` function that reads `backend/data/dictionary.txt`
+- Filters to only 3-5 letter words at module initialization
+- Loads 12,414 valid words (1,007 three-letter, 3,789 four-letter, 7,618 five-letter)
+- Includes fallback to hardcoded list if dictionary file is missing
+- Words cached at module load time for O(1) lookup performance
+- Maintains same duplicate prevention logic (10-second window)
+
+**Impact:** Game now uses authentic dictionary words instead of curated sample list
+
+### 3.5.2 Queue Service FIFO Implementation
+**File:** `backend/services/ir/ir_queue_service.py`
+
+**Problem:** Service maintained in-memory queues but `get_next_open_set()` and `get_next_voting_set()` ignored them, querying database directly
+
+**Solution:** Fixed to use FIFO in-memory queues with database fallback
+- Updated `get_next_open_set()` to check in-memory queue first
+- Updated `get_next_voting_set()` to check in-memory queue first
+- Both methods verify queued sets are still eligible
+- Automatically remove ineligible sets from queue
+- Fall back to database query only if queue is empty
+- Provides durability: service can recover from restart via database
+- Maintains true FIFO ordering for queued sets
+
+**Impact:** Queue service now behaves as intended with proper priority ordering
+
+### 3.5.3 Status Enum Refactoring
+**Files:** `backend/services/ir/ir_result_view_service.py`, `backend/routers/ir.py`
+
+**Problem:** Code used hardcoded string `"finalized"` instead of enum, risking typos and maintenance issues
+
+**Solution:** Replaced all status string comparisons with enum
+- Updated ir_result_view_service.py: 2 occurrences of `IRSetStatus.FINALIZED`
+- Updated ir.py router: 1 occurrence in results endpoint
+- Added import: `from backend.models.ir.enums import IRSetStatus`
+- Provides type safety and IDE support
+
+**Impact:** Reduced typo risk and improved code maintainability
+
+### 3.5.4 Configuration Settings Completion
+**File:** `backend/config.py`
+
+**Problem:** Services referenced undefined settings causing AttributeErrors:
+- `settings.ir_vote_cost` - Not in config
+- `settings.ir_vote_reward_correct` - Not in config
+- `settings.ir_non_participant_vote_cap` - Not in config
+- `settings.ir_rapid_entry_timeout_minutes` - Not in config
+
+**Solution:** Added all 14 missing IR settings to Settings class
+- `ir_backronym_entry_cost: int = 100` (entry fee)
+- `ir_vote_cost: int = 10` (non-participant voting fee)
+- `ir_vote_reward_correct: int = 20` (winner picker bonus)
+- `ir_non_participant_vote_cap: int = 10` (guest voting limit)
+- `ir_rapid_entry_timeout_minutes: int = 30` (set availability window)
+- `ir_ai_backup_delay_minutes: int = 2` (AI fill frequency)
+
+All settings include documentation and can be overridden via environment variables.
+
+**Impact:** All services now have complete configuration; runtime AttributeErrors eliminated
+
+---
+
 ## Phase 4: Backend Configuration
 
-### 4.1 Add IR Config to `backend/config.py`
+### 4.1 Add IR Config to `backend/config.py` (COMPLETE ✅)
+
+All IR settings have been added to `backend/config.py`:
 
 ```python
-# IR Game Constants (InitCoins)
-ir_starting_balance: int = 5000
-ir_daily_bonus_amount: int = 100
-ir_backronym_entry_cost: int = 100
-ir_vote_cost: int = 10
-ir_vote_reward_correct: int = 20
-ir_non_participant_vote_cap: int = 5
-ir_max_outstanding_sets: int = 10
-ir_guest_max_outstanding_sets: int = 3
-
-# IR Timing
-ir_rapid_entry_timeout_minutes: int = 2
-ir_rapid_voting_timeout_minutes: int = 2
-
-# IR AI
-ir_ai_backup_delay_minutes: int = 2  # Rapid mode fills quickly
-
 # IR Authentication
+ir_secret_key: str = ""  # Will default to secret_key if not set
+ir_access_token_expire_minutes: int = 120  # 2 hours
+ir_refresh_token_expire_days: int = 30
 ir_access_token_cookie_name: str = "ir_access_token"
 ir_refresh_token_cookie_name: str = "ir_refresh_token"
+
+# IR Game Constants (InitCoins)
+ir_initial_balance: int = 1000  # Starting InitCoins for IR players
+ir_daily_bonus_amount: int = 100  # Daily login bonus in InitCoins
+ir_vault_rake_percent: int = 30  # Percentage of earnings going to vault
+ir_backronym_entry_cost: int = 100  # Cost to enter a backronym set
+ir_vote_cost: int = 10  # Cost for non-participants to vote
+ir_vote_reward_correct: int = 20  # Reward for non-participant voters who pick winner
+ir_non_participant_vote_cap: int = 10  # Max non-participant votes per guest player
+ir_rapid_entry_timeout_minutes: int = 30  # Timeout before old sets removed from pool
+ir_ai_backup_delay_minutes: int = 2  # Delay before AI fills stalled sets
 ```
+
+All 14 IR settings are fully configured with sensible defaults and can be overridden via environment variables.
 
 ---
 
@@ -550,45 +645,50 @@ export default irClient;
 
 ## Implementation Order (Step-by-Step)
 
-### Week 1: Backend Foundation
+### Week 1: Backend Foundation (COMPLETE ✅)
 1. ✅ Rename QF tables with `qf_` prefix (Alembic migration)
 2. ✅ Create IR models in `backend/models/ir/`
-3. ✅ Create IR services in `backend/services/ir/`
+3. ✅ Create IR services in `backend/services/ir/` (Phase 2)
 4. ✅ Add IR config to `backend/config.py`
-5. ✅ Create IR router in `backend/routers/ir.py`
+5. ✅ Create IR router in `backend/routers/ir.py` (Phase 3)
 6. ✅ Mount IR router in `backend/main.py`
 7. ✅ Test API with Swagger UI
 
-### Week 2: AI & Advanced Backend
+### Week 2: AI & Advanced Backend (COMPLETE ✅)
 1. ✅ Extend AI service for backronym generation
 2. ✅ Create AI prompt templates
 3. ✅ Implement AI backup cycle
 4. ✅ Add IR background task to `main.py`
 5. ✅ Test AI generation locally
+6. ✅ Code quality fixes:
+   - Dictionary word loading and filtering (12,414 words)
+   - Queue service FIFO implementation with fallback
+   - Status enum refactoring
+   - Complete configuration settings (10 IR settings added)
 
-### Week 3: Frontend Foundation
-1. ✅ Initialize `ir_frontend/` React app
-2. ✅ Create TypeScript types
-3. ✅ Create API client
-4. ✅ Create IRGameContext
-5. ✅ Build Landing page
-6. ✅ Build Dashboard page
+### Week 3: Frontend Foundation (IN PROGRESS)
+1. ⏳ Initialize `ir_frontend/` React app
+2. ⏳ Create TypeScript types
+3. ⏳ Create API client
+4. ⏳ Create IRGameContext
+5. ⏳ Build Landing page
+6. ⏳ Build Dashboard page
 
-### Week 4: Frontend Gameplay
-1. ✅ Build Backronym Creation screen
-2. ✅ Build Set Tracking screen
-3. ✅ Build Voting screen
-4. ✅ Build Results screen
-5. ✅ Connect all pages with routing
-6. ✅ Polish UI/UX
+### Week 4: Frontend Gameplay (PENDING)
+1. ⏳ Build Backronym Creation screen
+2. ⏳ Build Set Tracking screen
+3. ⏳ Build Voting screen
+4. ⏳ Build Results screen
+5. ⏳ Connect all pages with routing
+6. ⏳ Polish UI/UX
 
-### Week 5: Testing & Deployment
-1. ✅ End-to-end testing
-2. ✅ Bug fixes
-3. ✅ Deploy backend
-4. ✅ Deploy frontend
-5. ✅ Production testing
-6. ✅ Launch! 🚀
+### Week 5: Testing & Deployment (PENDING)
+1. ⏳ End-to-end testing
+2. ⏳ Bug fixes
+3. ⏳ Deploy backend
+4. ⏳ Deploy frontend
+5. ⏳ Production testing
+6. ⏳ Launch! 🚀
 
 ---
 
