@@ -243,7 +243,7 @@ async def register(
         access_token=access_token,
         refresh_token=refresh_token,
         expires_in=settings.ir_access_token_expire_minutes * 60,
-        player_id=player.player_id,
+        player_id=str(player.player_id),
         username=player.username,
         wallet=player.wallet,
         vault=player.vault,
@@ -298,7 +298,7 @@ async def login(
         access_token=access_token,
         refresh_token=refresh_token,
         expires_in=settings.ir_access_token_expire_minutes * 60,
-        player_id=player.player_id,
+        player_id=str(player.player_id),
         username=player.username,
         wallet=player.wallet,
         vault=player.vault,
@@ -348,7 +348,7 @@ async def register_guest(
         access_token=access_token,
         refresh_token=refresh_token,
         expires_in=settings.ir_access_token_expire_minutes * 60,
-        player_id=player.player_id,
+        player_id=str(player.player_id),
         username=player.username,
         wallet=player.wallet,
         vault=player.vault,
@@ -452,7 +452,7 @@ async def refresh_access_token(
     return IRAuthResponse(
         access_token=access_token,
         expires_in=settings.ir_access_token_expire_minutes * 60,
-        player_id=player.player_id,
+        player_id=str(player.player_id),
         username=player.username,
         wallet=player.wallet,
         vault=player.vault,
@@ -514,7 +514,7 @@ async def get_current_player(
         HTTPException: If player not found
     """
     return IRPlayerResponse(
-        player_id=player.player_id,
+        player_id=str(player.player_id),
         username=player.username,
         email=player.email,
         wallet=player.wallet,
@@ -655,7 +655,7 @@ async def get_player(
         raise HTTPException(status_code=404, detail="Player not found")
 
     return IRPlayerResponse(
-        player_id=player.player_id,
+        player_id=str(player.player_id),
         username=player.username,
         email=player.email,
         wallet=player.wallet,
