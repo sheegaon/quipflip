@@ -23,13 +23,13 @@ class AIPhraseCache(Base):
     - Random selection prevents bias toward first generated phrase
     - Unique constraint on prompt_round_id prevents duplicate generation
     """
-    __tablename__ = "ai_phrase_cache"
+    __tablename__ = "qf_ai_phrase_cache"
 
     cache_id = get_uuid_column(primary_key=True, default=uuid.uuid4)
 
     # Foreign key to the prompt round this cache is for
     prompt_round_id = get_uuid_column(
-        ForeignKey("rounds.round_id", ondelete="CASCADE"),
+        ForeignKey("qf_rounds.round_id", ondelete="CASCADE"),
         nullable=False,
         unique=True,
         index=True,

@@ -9,10 +9,10 @@ from backend.models.base import get_uuid_column
 
 class Round(Base):
     """Unified round model for all round types."""
-    __tablename__ = "rounds"
+    __tablename__ = "qf_rounds"
 
     round_id = get_uuid_column(primary_key=True, default=uuid.uuid4)
-    player_id = get_uuid_column(ForeignKey("players.player_id", ondelete="CASCADE"), nullable=False, index=True)
+    player_id = get_uuid_column(ForeignKey("qf_players.player_id", ondelete="CASCADE"), nullable=False, index=True)
     round_type = Column(String(20), nullable=False)  # prompt, copy, vote
     status = Column(String(20), nullable=False)  # active, submitted, expired, abandoned
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False, index=True)
@@ -20,21 +20,21 @@ class Round(Base):
     cost = Column(Integer, nullable=False)
 
     # Prompt-specific fields (nullable for non-prompt rounds)
-    prompt_id = get_uuid_column(ForeignKey("prompts.prompt_id"), nullable=True)
+    prompt_id = get_uuid_column(ForeignKey("qf_prompts.prompt_id"), nullable=True)
     prompt_text = Column(String(500), nullable=True)  # Denormalized
     submitted_phrase = Column(String(100), nullable=True)  # Prompt player's phrase
     phraseset_status = Column(String(20), nullable=True)  # waiting_copies, waiting_copy1, active, finalized, abandoned
-    copy1_player_id = get_uuid_column(ForeignKey("players.player_id", ondelete="CASCADE"), nullable=True, index=True)
-    copy2_player_id = get_uuid_column(ForeignKey("players.player_id", ondelete="CASCADE"), nullable=True, index=True)
+    copy1_player_id = get_uuid_column(ForeignKey("qf_players.player_id", ondelete="CASCADE"), nullable=True, index=True)
+    copy2_player_id = get_uuid_column(ForeignKey("qf_players.player_id", ondelete="CASCADE"), nullable=True, index=True)
 
     # Copy-specific fields (nullable for non-copy rounds)
-    prompt_round_id = get_uuid_column(ForeignKey("rounds.round_id"), nullable=True, index=True)
+    prompt_round_id = get_uuid_column(ForeignKey("qf_rounds.round_id"), nullable=True, index=True)
     original_phrase = Column(String(100), nullable=True)  # Phrase to copy
     copy_phrase = Column(String(100), nullable=True)  # Copy player's submitted phrase
     system_contribution = Column(Integer, default=0, nullable=False)  # 0 or 10
 
     # Vote-specific fields (nullable for non-vote rounds)
-    phraseset_id = get_uuid_column(ForeignKey("phrasesets.phraseset_id"), nullable=True, index=True)
+    phraseset_id = get_uuid_column(ForeignKey("qf_phrasesets.phraseset_id"), nullable=True, index=True)
     vote_submitted_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships

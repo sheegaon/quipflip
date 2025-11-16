@@ -9,12 +9,12 @@ from backend.models.base import get_uuid_column
 
 class Phraseset(Base):
     """Phraseset model for voting."""
-    __tablename__ = "phrasesets"
+    __tablename__ = "qf_phrasesets"
 
     phraseset_id = get_uuid_column(primary_key=True, default=uuid.uuid4)
-    prompt_round_id = get_uuid_column(ForeignKey("rounds.round_id"), nullable=False, index=True)
-    copy_round_1_id = get_uuid_column(ForeignKey("rounds.round_id"), nullable=False)
-    copy_round_2_id = get_uuid_column(ForeignKey("rounds.round_id"), nullable=False)
+    prompt_round_id = get_uuid_column(ForeignKey("qf_rounds.round_id"), nullable=False, index=True)
+    copy_round_1_id = get_uuid_column(ForeignKey("qf_rounds.round_id"), nullable=False)
+    copy_round_2_id = get_uuid_column(ForeignKey("qf_rounds.round_id"), nullable=False)
 
     # Denormalized fields for performance
     prompt_text = Column(String(500), nullable=False)

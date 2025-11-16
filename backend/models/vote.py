@@ -9,11 +9,11 @@ from backend.models.base import get_uuid_column
 
 class Vote(Base):
     """Vote model."""
-    __tablename__ = "votes"
+    __tablename__ = "qf_votes"
 
     vote_id = get_uuid_column(primary_key=True, default=uuid.uuid4)
-    phraseset_id = get_uuid_column(ForeignKey("phrasesets.phraseset_id"), nullable=False, index=True)
-    player_id = get_uuid_column(ForeignKey("players.player_id", ondelete="CASCADE"), nullable=False, index=True)
+    phraseset_id = get_uuid_column(ForeignKey("qf_phrasesets.phraseset_id"), nullable=False, index=True)
+    player_id = get_uuid_column(ForeignKey("qf_players.player_id", ondelete="CASCADE"), nullable=False, index=True)
     voted_phrase = Column(String(100), nullable=False)
     correct = Column(Boolean, nullable=False)
     payout = Column(Integer, nullable=False)  # 5 or 0

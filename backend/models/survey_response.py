@@ -14,11 +14,11 @@ from backend.models.base import get_uuid_column
 class SurveyResponse(Base):
     """Persisted survey response payloads for in-app surveys."""
 
-    __tablename__ = "survey_responses"
+    __tablename__ = "qf_survey_responses"
 
     response_id = get_uuid_column(primary_key=True, default=uuid.uuid4)
     player_id = get_uuid_column(
-        ForeignKey("players.player_id", ondelete="CASCADE"), index=True, nullable=False
+        ForeignKey("qf_players.player_id", ondelete="CASCADE"), index=True, nullable=False
     )
     survey_id = Column(String(64), nullable=False, index=True)
     payload = Column(JSON, nullable=False)

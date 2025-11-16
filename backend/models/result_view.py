@@ -9,11 +9,11 @@ from backend.models.base import get_uuid_column
 
 class ResultView(Base):
     """Result view tracking model."""
-    __tablename__ = "result_views"
+    __tablename__ = "qf_result_views"
 
     view_id = get_uuid_column(primary_key=True, default=uuid.uuid4)
-    phraseset_id = get_uuid_column(ForeignKey("phrasesets.phraseset_id"), nullable=False, index=True)
-    player_id = get_uuid_column(ForeignKey("players.player_id", ondelete="CASCADE"), nullable=False, index=True)
+    phraseset_id = get_uuid_column(ForeignKey("qf_phrasesets.phraseset_id"), nullable=False, index=True)
+    player_id = get_uuid_column(ForeignKey("qf_players.player_id", ondelete="CASCADE"), nullable=False, index=True)
     result_viewed = Column(Boolean, default=False, nullable=False, index=True)
     payout_amount = Column(Integer, nullable=False)
     viewed_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)

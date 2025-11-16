@@ -21,13 +21,13 @@ class PhrasesetActivity(Base):
     Tracks historical events like creation, review, approval, rejection, etc.
     Used for displaying phraseset history timelines and analytics.
     """
-    __tablename__ = "phraseset_activity"
+    __tablename__ = "qf_phraseset_activity"
 
     activity_id = get_uuid_column(primary_key=True, default=uuid.uuid4)
-    phraseset_id = get_uuid_column(ForeignKey("phrasesets.phraseset_id"), nullable=True, index=True)
-    prompt_round_id = get_uuid_column(ForeignKey("rounds.round_id"), nullable=True, index=True)
+    phraseset_id = get_uuid_column(ForeignKey("qf_phrasesets.phraseset_id"), nullable=True, index=True)
+    prompt_round_id = get_uuid_column(ForeignKey("qf_rounds.round_id"), nullable=True, index=True)
     activity_type = Column(String(50), nullable=False)
-    player_id = get_uuid_column(ForeignKey("players.player_id", ondelete="CASCADE"), nullable=True, index=True)
+    player_id = get_uuid_column(ForeignKey("qf_players.player_id", ondelete="CASCADE"), nullable=True, index=True)
     payload = Column("metadata", JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
 

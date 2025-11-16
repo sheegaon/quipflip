@@ -9,7 +9,7 @@ from backend.models.base import get_uuid_column
 
 class Prompt(Base):
     """Prompt library model."""
-    __tablename__ = "prompts"
+    __tablename__ = "qf_prompts"
 
     prompt_id = get_uuid_column(primary_key=True, default=uuid.uuid4)
     text = Column(String(500), unique=True, nullable=False)
