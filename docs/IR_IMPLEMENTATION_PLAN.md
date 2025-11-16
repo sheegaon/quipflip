@@ -6,8 +6,9 @@
 ✅ **Phase 3 COMPLETE** – `/auth/upgrade`, `/player/balance`, `/player/dashboard`, and `/player/claim-daily-bonus` join the existing IR routes, with the new daily bonus service persisting to `ir_daily_bonuses`/`ir_transactions` and exposing wallet/vault/daily bonus state plus pending payouts.
 ✅ **Code Quality Fixes COMPLETE** – Distributed wallet helpers, queue wiring, duplicate prevention, and the IR-only AI bootstrap removed the remaining backend blockers.
 ✅ **Phase 4 CONFIGURATION READY** – The settings module now includes the per-set non-participant vote cap consumed by the updated services.
+✅ **Phase 5 COMPLETE** – Frontend foundation established with React app structure, TypeScript types, API client, IRGameContext, Landing page, and Dashboard page. Routing configured with protected routes and placeholder pages for gameplay screens.
 
-**Next:** Move into Phase 5’s frontend work using the now-complete backend contracts.
+**Next:** Move into Phase 6's frontend gameplay implementation (Backronym Creation, Voting, Results screens).
 
 ### Phase 2 (Verification Snapshot – 2024-03-29)
 - Duplicate-prevention is now wired through `IRWordService` → `ir_ai_phrase_cache`, AI backups spawn dedicated `ir_players`, queue transitions fire when sets open/vote/finalize, votes reject self-selection and honor the per-set cap, and the new wallet helpers encapsulate locking + ledger writes.
@@ -656,13 +657,17 @@ export default irClient;
    - Status enum refactoring
    - Complete configuration settings (10 IR settings added)
 
-### Week 3: Frontend Foundation (IN PROGRESS)
-1. ⏳ Initialize `ir_frontend/` React app
-2. ⏳ Create TypeScript types
-3. ⏳ Create API client
-4. ⏳ Create IRGameContext
-5. ⏳ Build Landing page
-6. ⏳ Build Dashboard page
+### Week 3: Frontend Foundation (COMPLETE ✅)
+1. ✅ Initialize `ir_frontend/` React app
+2. ✅ Create TypeScript types (`ir_frontend/src/api/types.ts`)
+3. ✅ Create API client (`ir_frontend/src/api/client.ts`)
+4. ✅ Create IRGameContext (`ir_frontend/src/contexts/IRGameContext.tsx`)
+5. ✅ Build Landing page with guest/login/register modes
+6. ✅ Build Dashboard page with daily bonus, start battle, and pending results
+7. ✅ Create core components (Header, Timer, InitCoinDisplay)
+8. ✅ Create utility files (gameKeys, datetime)
+9. ✅ Create routing with protected routes
+10. ✅ Create placeholder pages for gameplay screens (BackronymCreate, Voting, Results)
 
 ### Week 4: Frontend Gameplay (PENDING)
 1. ⏳ Build Backronym Creation screen
