@@ -82,6 +82,11 @@ class IRVoteService:
             # Check wallet balance only for non-participants
             # Participants already paid entry fee and don't pay to vote
             if not is_participant:
+                if (
+                    set_obj.non_participant_vote_count
+                    >= self.settings.ir_non_participant_votes_per_set
+                ):
+                    return False, "non_participant_slots_filled", False
                 vote_cost = self.settings.ir_vote_cost
                 if player.wallet < vote_cost:
                     return False, "insufficient_balance", False
@@ -255,6 +260,9 @@ class IRVoteService:
             if not entry:
                 raise IRVoteError("entry_not_found")
 
+            if str(entry.player_id) == str(player_id):
+                raise IRVoteError("cannot_vote_own_entry")
+
             # Create vote
             vote = IRBackronymVote(
                 set_id=set_id,
@@ -272,6 +280,8 @@ class IRVoteService:
 
             if set_obj:
                 set_obj.vote_count += 1
+                if not is_participant:
+                    set_obj.non_participant_vote_count += 1
 
             # Update entry vote count
             entry.received_votes += 1

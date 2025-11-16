@@ -19,6 +19,9 @@ class IRQueueError(RuntimeError):
 class IRQueueService:
     """Service for managing queues of sets needing entries or votes."""
 
+    _entry_queue: list[str] = []
+    _voting_queue: list[str] = []
+
     def __init__(self, db: AsyncSession):
         """Initialize IR queue service.
 
@@ -26,9 +29,6 @@ class IRQueueService:
             db: Database session
         """
         self.db = db
-        # In-memory queue for sets needing entries/votes
-        self._entry_queue = []
-        self._voting_queue = []
 
     async def get_next_open_set(self) -> Optional[str]:
         """Get next set from entry queue (FIFO).
