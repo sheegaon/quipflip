@@ -292,6 +292,13 @@ class IRBackronymSetService:
                 f"Added vote {vote.vote_id} to set {set_id} from player {player_id}"
             )
 
+            # Finalize set once all 5 votes collected
+            if set_obj.vote_count >= 5:
+                await self.finalize_set(set_id)
+                logger.info(
+                    f"Set {set_id} finalized after reaching 5 votes"
+                )
+
             return vote
 
         except IRBackronymSetError:

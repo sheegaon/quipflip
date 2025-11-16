@@ -69,10 +69,6 @@ class IRVoteService:
             if not player:
                 return False, "player_not_found", False
 
-            vote_cost = self.settings.ir_vote_cost
-            if player.wallet < vote_cost:
-                return False, "insufficient_balance", False
-
             # Check if player is a participant (has entry in set)
             entry_stmt = select(IRBackronymEntry).where(
                 (IRBackronymEntry.set_id == set_id)
@@ -82,6 +78,13 @@ class IRVoteService:
             player_entry = entry_result.scalars().first()
 
             is_participant = player_entry is not None
+
+            # Check wallet balance only for non-participants
+            # Participants already paid entry fee and don't pay to vote
+            if not is_participant:
+                vote_cost = self.settings.ir_vote_cost
+                if player.wallet < vote_cost:
+                    return False, "insufficient_balance", False
 
             # Check if player already voted
             vote_stmt = select(IRBackronymVote).where(
@@ -225,6 +228,9 @@ class IRVoteService:
     ) -> dict:
         """Submit a vote for a backronym entry.
 
+        Assumes eligibility has already been checked by the caller (router).
+        For non-participants, assumes voting cost has already been deducted from wallet.
+
         Args:
             set_id: Set UUID
             player_id: Player UUID
@@ -238,14 +244,6 @@ class IRVoteService:
             IRVoteError: If vote submission fails
         """
         try:
-            # Check eligibility
-            is_eligible, error, is_part = await self.check_vote_eligibility(
-                player_id, set_id
-            )
-
-            if not is_eligible:
-                raise IRVoteError(error)
-
             # Verify chosen entry exists and belongs to set
             entry_stmt = select(IRBackronymEntry).where(
                 (IRBackronymEntry.entry_id == chosen_entry_id)
