@@ -11,6 +11,19 @@ import type {
 import { authAPI, playerAPI, gameAPI } from '../api/client';
 import { setActiveSetId, setPlayerId, clearGameStorage } from '../utils/gameKeys';
 
+// Helper to extract error messages from various error formats
+const getErrorMessage = (error: any, defaultMessage: string): string => {
+  if (!error) return defaultMessage;
+
+  // Try different error message paths
+  if (typeof error === 'string') return error;
+  if (error.response?.data?.detail) return error.response.data.detail;
+  if (error.message) return error.message;
+  if (error.detail) return error.detail;
+
+  return defaultMessage;
+};
+
 interface IRGameState {
   isAuthenticated: boolean;
   player: IRPlayer | null;
@@ -96,7 +109,8 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
       }));
       setPlayerId(response.player.player_id);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to create guest account');
+      const errorMessage = getErrorMessage(err, 'Failed to create guest account');
+      setError(errorMessage);
       setLoading(false);
       throw err;
     }
@@ -115,7 +129,8 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
       }));
       setPlayerId(response.player.player_id);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Login failed');
+      const errorMessage = getErrorMessage(err, 'Login failed');
+      setError(errorMessage);
       setLoading(false);
       throw err;
     }
@@ -134,7 +149,8 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
       }));
       setPlayerId(response.player.player_id);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Registration failed');
+      const errorMessage = getErrorMessage(err, 'Registration failed');
+      setError(errorMessage);
       setLoading(false);
       throw err;
     }
@@ -171,7 +187,8 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
         loading: false,
       }));
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to upgrade account');
+      const errorMessage = getErrorMessage(err, 'Failed to upgrade account');
+      setError(errorMessage);
       setLoading(false);
       throw err;
     }
@@ -183,22 +200,20 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
       setLoading(true);
       setError(null);
       const response = await gameAPI.startSession();
+
+      // Fetch complete set details to ensure we have accurate, server-authoritative data
+      let activeSet: BackronymSet | null = null;
+      try {
+        const setStatus = await gameAPI.getSetStatus(response.set_id);
+        activeSet = setStatus.set;
+      } catch (err: any) {
+        console.warn('Failed to fetch complete set details after starting battle:', err);
+        // Fallback: at least we have the basic response, but UI should handle null activeSet gracefully
+      }
+
       setState((prev) => ({
         ...prev,
-        activeSet: {
-          set_id: response.set_id,
-          word: response.word,
-          mode: response.mode as 'standard' | 'rapid',
-          status: response.status as 'open' | 'voting' | 'finalized',
-          entry_count: 0,
-          vote_count: 0,
-          non_participant_vote_count: 0,
-          total_pool: 0,
-          creator_final_pool: 0,
-          created_at: new Date().toISOString(),
-          transitions_to_voting_at: null,
-          voting_finalized_at: null,
-        },
+        activeSet,
         hasSubmittedEntry: false,
         hasVoted: false,
         loading: false,
@@ -206,7 +221,8 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
       setActiveSetId(response.set_id);
       return response;
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to start battle');
+      const errorMessage = getErrorMessage(err, 'Failed to start battle');
+      setError(errorMessage);
       setLoading(false);
       throw err;
     }
@@ -224,7 +240,8 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
         loading: false,
       }));
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to submit backronym');
+      const errorMessage = getErrorMessage(err, 'Failed to submit backronym');
+      setError(errorMessage);
       setLoading(false);
       throw err;
     }
@@ -242,7 +259,8 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
         loading: false,
       }));
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to submit vote');
+      const errorMessage = getErrorMessage(err, 'Failed to submit vote');
+      setError(errorMessage);
       setLoading(false);
       throw err;
     }
@@ -265,7 +283,8 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
         loading: false,
       }));
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to claim daily bonus');
+      const errorMessage = getErrorMessage(err, 'Failed to claim daily bonus');
+      setError(errorMessage);
       setLoading(false);
       throw err;
     }
@@ -276,37 +295,38 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
       setLoading(true);
       setError(null);
       const dashboard: DashboardData = await playerAPI.getDashboard();
+
+      // If there's an active session, fetch complete set details to get accurate data
+      let activeSet: BackronymSet | null = null;
+      if (dashboard.active_session) {
+        try {
+          const setStatus = await gameAPI.getSetStatus(dashboard.active_session.set_id);
+          activeSet = setStatus.set;
+        } catch (err: any) {
+          // If fetching set status fails, log the error but don't fail the entire dashboard refresh
+          console.warn('Failed to fetch set status for active session:', err);
+          // Continue with null activeSet - user will see they have an active session but without details
+        }
+      }
+
       setState((prev) => ({
         ...prev,
         player: dashboard.player,
         pendingResults: dashboard.pending_results,
-        activeSet: dashboard.active_session
-          ? {
-              set_id: dashboard.active_session.set_id,
-              word: dashboard.active_session.word,
-              mode: 'rapid',
-              status: dashboard.active_session.status as 'open' | 'voting' | 'finalized',
-              entry_count: 0,
-              vote_count: 0,
-              non_participant_vote_count: 0,
-              total_pool: 0,
-              creator_final_pool: 0,
-              created_at: new Date().toISOString(),
-              transitions_to_voting_at: null,
-              voting_finalized_at: null,
-            }
-          : null,
+        activeSet,
         hasSubmittedEntry: dashboard.active_session?.has_submitted_entry || false,
         hasVoted: dashboard.active_session?.has_voted || false,
         loading: false,
       }));
+
       if (dashboard.active_session) {
         setActiveSetId(dashboard.active_session.set_id);
       } else {
         setActiveSetId(null);
       }
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to refresh dashboard');
+      const errorMessage = getErrorMessage(err, 'Failed to refresh dashboard');
+      setError(errorMessage);
       setLoading(false);
       throw err;
     }
@@ -322,7 +342,8 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
         hasVoted: statusResponse.player_has_voted,
       }));
     } catch (err: any) {
-      console.error('Failed to check set status:', err);
+      const errorMessage = getErrorMessage(err, 'Failed to check set status');
+      console.error(errorMessage, err);
     }
   }, []);
 

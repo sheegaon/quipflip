@@ -1,4 +1,4 @@
-import axios, { AxiosError } from 'axios';
+import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import type {
   AuthResponse,
   RegisterRequest,
@@ -27,26 +27,71 @@ export const irClient = axios.create({
   },
 });
 
+// Track if we're currently refreshing to prevent multiple simultaneous refresh attempts
+let isRefreshing = false;
+let failedQueue: Array<{
+  resolve: (value?: unknown) => void;
+  reject: (error?: unknown) => void;
+}> = [];
+
+const processQueue = (error: unknown = null) => {
+  failedQueue.forEach((promise) => {
+    if (error) {
+      promise.reject(error);
+    } else {
+      promise.resolve();
+    }
+  });
+  failedQueue = [];
+};
+
 // Response interceptor for token refresh
 irClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    const originalRequest = error.config;
+    // Extend config type to include our custom _retry flag
+    interface RetryableConfig extends InternalAxiosRequestConfig {
+      _retry?: boolean;
+    }
+    const originalRequest = (error.config as RetryableConfig | undefined);
 
     // If we get a 401 and haven't already tried to refresh
-    if (error.response?.status === 401 && originalRequest && !(originalRequest as any)._retry) {
-      (originalRequest as any)._retry = true;
+    // AND the request is not already an auth endpoint (prevent infinite loops)
+    if (
+      error.response?.status === 401 &&
+      originalRequest &&
+      !originalRequest._retry &&
+      originalRequest.url !== '/auth/login' &&
+      originalRequest.url !== '/auth/refresh' &&
+      originalRequest.url !== '/auth/logout'
+    ) {
+      originalRequest._retry = true;
+
+      if (isRefreshing) {
+        // Queue the request while refresh is in progress
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        })
+          .then(() => irClient(originalRequest))
+          .catch((err) => Promise.reject(err));
+      }
+
+      isRefreshing = true;
 
       try {
         // Try to refresh the token
         await irClient.post('/auth/refresh');
+        processQueue(null);
 
         // Retry the original request
         return irClient(originalRequest);
       } catch (refreshError) {
         // Refresh failed, redirect to login
+        processQueue(refreshError);
         window.location.href = '/';
         return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
       }
     }
 
