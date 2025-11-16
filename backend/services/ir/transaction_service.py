@@ -42,9 +42,10 @@ class IRTransactionService:
         player_id: str,
         transaction_type: str,
         amount: int,
-        vault_contribution: int = 0,
-        entry_id: str | None = None,
-        set_id: str | None = None,
+        wallet_type: str = "wallet",
+        reference_id: str | None = None,
+        wallet_balance_after: int | None = None,
+        vault_balance_after: int | None = None,
     ) -> IRTransaction:
         """Record a transaction in the ledger.
 
@@ -52,9 +53,10 @@ class IRTransactionService:
             player_id: Player UUID
             transaction_type: Type of transaction
             amount: Amount (positive for income, negative for expenses)
-            vault_contribution: Amount contributed to vault (rake)
-            entry_id: Optional backronym entry ID
-            set_id: Optional backronym set ID
+            wallet_type: Either 'wallet' or 'vault'
+            reference_id: Optional reference ID (set_id, entry_id, etc.)
+            wallet_balance_after: Wallet balance after transaction
+            vault_balance_after: Vault balance after transaction
 
         Returns:
             IRTransaction: Created transaction record
@@ -66,11 +68,12 @@ class IRTransactionService:
         transaction = IRTransaction(
             transaction_id=transaction_id,
             player_id=player_id,
-            transaction_type=transaction_type,
+            type=transaction_type,
             amount=amount,
-            vault_contribution=vault_contribution,
-            entry_id=entry_id,
-            set_id=set_id,
+            wallet_type=wallet_type,
+            reference_id=reference_id,
+            wallet_balance_after=wallet_balance_after,
+            vault_balance_after=vault_balance_after,
             created_at=datetime.now(UTC),
         )
         self.db.add(transaction)
@@ -101,22 +104,25 @@ class IRTransactionService:
         """
         try:
             # Calculate vault rake (30%)
-            vault_contribution = int(amount * 0.3)
-            wallet_amount = amount - vault_contribution
+            vault_rake = int(amount * 0.3)
+            wallet_amount = amount - vault_rake
 
-            # Update player wallet
+            # Update player wallet and vault
             player = await self.player_service.update_wallet(player_id, wallet_amount)
+            player = await self.player_service.update_vault(player_id, vault_rake)
 
             # Record transaction
             transaction = await self.record_transaction(
                 player_id=player_id,
                 transaction_type=self.VOTE_PAYOUT,
                 amount=wallet_amount,
-                vault_contribution=vault_contribution,
-                set_id=set_id,
+                wallet_type="wallet",
+                reference_id=set_id,
+                wallet_balance_after=player.wallet,
+                vault_balance_after=player.vault,
             )
 
-            logger.info(f"Vote payout {wallet_amount} IC (vault: {vault_contribution}) to player {player_id}")
+            logger.info(f"Vote payout {wallet_amount} IC (vault: {vault_rake}) to player {player_id}")
             return transaction
 
         except IRPlayerError as e:
@@ -143,15 +149,17 @@ class IRTransactionService:
         """
         try:
             # Creator gets full amount (no rake for creator payouts)
-            await self.player_service.update_wallet(player_id, amount)
+            player = await self.player_service.update_wallet(player_id, amount)
 
             # Record transaction
             transaction = await self.record_transaction(
                 player_id=player_id,
                 transaction_type=self.CREATOR_PAYOUT,
                 amount=amount,
-                vault_contribution=0,
-                set_id=set_id,
+                wallet_type="wallet",
+                reference_id=set_id,
+                wallet_balance_after=player.wallet,
+                vault_balance_after=player.vault,
             )
 
             logger.info(f"Creator payout {amount} IC to player {player_id}")
@@ -179,14 +187,16 @@ class IRTransactionService:
         """
         try:
             # Transfer from wallet to vault
-            await self.player_service.transfer_wallet_to_vault(player_id, amount)
+            player = await self.player_service.transfer_wallet_to_vault(player_id, amount)
 
             # Record transaction
             transaction = await self.record_transaction(
                 player_id=player_id,
                 transaction_type=self.VAULT_CONTRIBUTION,
-                amount=0,
-                vault_contribution=amount,
+                amount=-amount,  # Negative because it's removed from wallet
+                wallet_type="wallet",
+                wallet_balance_after=player.wallet,
+                vault_balance_after=player.vault,
             )
 
             logger.info(f"Vault contribution {amount} IC from player {player_id}")
@@ -213,13 +223,15 @@ class IRTransactionService:
             IRTransactionError: If bonus fails
         """
         try:
-            await self.player_service.update_wallet(player_id, amount)
+            player = await self.player_service.update_wallet(player_id, amount)
 
             transaction = await self.record_transaction(
                 player_id=player_id,
                 transaction_type=self.DAILY_BONUS,
                 amount=amount,
-                vault_contribution=0,
+                wallet_type="wallet",
+                wallet_balance_after=player.wallet,
+                vault_balance_after=player.vault,
             )
 
             logger.info(f"Daily bonus {amount} IC awarded to player {player_id}")

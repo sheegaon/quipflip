@@ -122,19 +122,21 @@ def upgrade() -> None:
         'ir_transactions',
         sa.Column('transaction_id', uuid_type, nullable=False),
         sa.Column('player_id', uuid_type, nullable=False),
-        sa.Column('transaction_type', sa.String(50), nullable=False),
         sa.Column('amount', sa.Integer(), nullable=False),
-        sa.Column('vault_contribution', sa.Integer(), nullable=False, server_default='0'),
-        sa.Column('entry_id', uuid_type, nullable=True),
-        sa.Column('set_id', uuid_type, nullable=True),
+        sa.Column('type', sa.String(50), nullable=False),
+        sa.Column('wallet_type', sa.String(20), nullable=False, server_default='wallet'),
+        sa.Column('reference_id', uuid_type, nullable=True),
+        sa.Column('wallet_balance_after', sa.Integer(), nullable=True),
+        sa.Column('vault_balance_after', sa.Integer(), nullable=True),
         sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
         sa.PrimaryKeyConstraint('transaction_id'),
         sa.ForeignKeyConstraint(['player_id'], ['ir_players.player_id'], ondelete='CASCADE'),
-        sa.ForeignKeyConstraint(['set_id'], ['ir_backronym_sets.set_id'], ondelete='SET NULL'),
     )
-    op.create_index('ix_ir_transaction_player', 'ir_transactions', ['player_id'])
-    op.create_index('ix_ir_transaction_type', 'ir_transactions', ['transaction_type'])
-    op.create_index('ix_ir_transaction_created', 'ir_transactions', ['created_at'])
+    op.create_index('ix_ir_transaction_player_id', 'ir_transactions', ['player_id'])
+    op.create_index('ix_ir_transaction_type', 'ir_transactions', ['type'])
+    op.create_index('ix_ir_transaction_reference_id', 'ir_transactions', ['reference_id'])
+    op.create_index('ix_ir_transaction_created_at', 'ir_transactions', ['created_at'])
+    op.create_index('ix_ir_transaction_player_created', 'ir_transactions', ['player_id', 'created_at'])
 
     # ir_result_views table - Track result viewing and payout idempotency
     op.create_table(
@@ -144,17 +146,17 @@ def upgrade() -> None:
         sa.Column('player_id', uuid_type, nullable=False),
         sa.Column('result_viewed', sa.Boolean(), nullable=False, server_default='0'),
         sa.Column('payout_amount', sa.Integer(), nullable=False, server_default='0'),
-        sa.Column('viewed_at', sa.DateTime(timezone=True), nullable=False),
+        sa.Column('viewed_at', sa.DateTime(timezone=True), nullable=True),
         sa.Column('first_viewed_at', sa.DateTime(timezone=True), nullable=True),
         sa.Column('result_viewed_at', sa.DateTime(timezone=True), nullable=True),
         sa.PrimaryKeyConstraint('view_id'),
         sa.ForeignKeyConstraint(['set_id'], ['ir_backronym_sets.set_id'], ondelete='CASCADE'),
         sa.ForeignKeyConstraint(['player_id'], ['ir_players.player_id'], ondelete='CASCADE'),
-        sa.UniqueConstraint('player_id', 'set_id', name='uq_ir_result_player_set'),
+        sa.UniqueConstraint('player_id', 'set_id', name='uq_ir_result_view_player_set'),
     )
-    op.create_index('ix_ir_result_views_set', 'ir_result_views', ['set_id'])
-    op.create_index('ix_ir_result_views_player', 'ir_result_views', ['player_id'])
-    op.create_index('ix_ir_result_views_viewed', 'ir_result_views', ['result_viewed'])
+    op.create_index('ix_ir_result_view_set', 'ir_result_views', ['set_id'])
+    op.create_index('ix_ir_result_view_player', 'ir_result_views', ['player_id'])
+    op.create_index('ix_ir_result_view_result_viewed', 'ir_result_views', ['result_viewed'])
 
     # ir_refresh_tokens table - JWT refresh tokens for IR auth
     op.create_table(
@@ -164,6 +166,7 @@ def upgrade() -> None:
         sa.Column('token_hash', sa.String(255), nullable=False),
         sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
         sa.Column('expires_at', sa.DateTime(timezone=True), nullable=False),
+        sa.Column('revoked_at', sa.DateTime(timezone=True), nullable=True),
         sa.PrimaryKeyConstraint('token_id'),
         sa.ForeignKeyConstraint(['player_id'], ['ir_players.player_id'], ondelete='CASCADE'),
         sa.UniqueConstraint('token_hash', name='uq_ir_refresh_token_hash'),
@@ -201,6 +204,7 @@ def upgrade() -> None:
         sa.Column('cache_id', uuid_type, nullable=True),
         sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
         sa.PrimaryKeyConstraint('metric_id'),
+        sa.ForeignKeyConstraint(['cache_id'], ['ir_ai_phrase_cache.cache_id'], ondelete='SET NULL'),
     )
     op.create_index('ix_ir_ai_metrics_operation_type', 'ir_ai_metrics', ['operation_type'])
     op.create_index('ix_ir_ai_metrics_provider', 'ir_ai_metrics', ['provider'])
@@ -222,23 +226,20 @@ def upgrade() -> None:
         sa.Column('used_for_hints', sa.Boolean(), nullable=False, server_default='0'),
         sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
         sa.PrimaryKeyConstraint('cache_id'),
+        sa.ForeignKeyConstraint(['prompt_round_id'], ['ir_backronym_sets.set_id'], ondelete='CASCADE'),
     )
     op.create_index('ix_ir_ai_phrase_cache_prompt_round_id', 'ir_ai_phrase_cache', ['prompt_round_id'])
     op.create_index('ix_ir_ai_phrase_cache_created_at', 'ir_ai_phrase_cache', ['created_at'])
 
-    # ir_backronym_observer_guard table - Gating snapshot for non-participant voters (DEFERRED FOR MVP)
-    # Placeholder table created for schema consistency, will be populated later
+    # ir_backronym_observer_guards table - Eligibility snapshot for non-participant voters
     op.create_table(
-        'ir_backronym_observer_guard',
-        sa.Column('guard_id', uuid_type, nullable=False),
+        'ir_backronym_observer_guards',
         sa.Column('set_id', uuid_type, nullable=False),
-        sa.Column('entry_count_snapshot', sa.Integer(), nullable=False),
-        sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
-        sa.PrimaryKeyConstraint('guard_id'),
+        sa.Column('first_participant_created_at', sa.DateTime(timezone=True), nullable=False),
+        sa.PrimaryKeyConstraint('set_id'),
         sa.ForeignKeyConstraint(['set_id'], ['ir_backronym_sets.set_id'], ondelete='CASCADE'),
-        sa.UniqueConstraint('set_id', name='uq_ir_observer_guard_set'),
     )
-    op.create_index('ix_ir_observer_guard_set', 'ir_backronym_observer_guard', ['set_id'])
+    op.create_index('ix_ir_observer_guards_set', 'ir_backronym_observer_guards', ['set_id'])
 
 
 def downgrade() -> None:
@@ -251,6 +252,6 @@ def downgrade() -> None:
     op.drop_table('ir_transactions')
     op.drop_table('ir_backronym_votes')
     op.drop_table('ir_backronym_entries')
-    op.drop_table('ir_backronym_observer_guard')
+    op.drop_table('ir_backronym_observer_guards')
     op.drop_table('ir_backronym_sets')
     op.drop_table('ir_players')

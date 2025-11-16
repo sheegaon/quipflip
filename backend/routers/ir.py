@@ -1,7 +1,7 @@
 """Initial Reaction (IR) game API endpoints."""
 
 from datetime import UTC, datetime
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Response, Header, Cookie
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 
@@ -78,8 +78,8 @@ class IRLogoutRequest(BaseModel):
 # ================================================================
 
 async def get_ir_current_player(
-    authorization: str | None = None,
-    ir_access_token: str | None = None,
+    authorization: str | None = Header(None, alias="Authorization"),
+    ir_access_token: str | None = Cookie(None),
     db: AsyncSession = Depends(get_db),
 ) -> IRPlayer:
     """Get current authenticated IR player from token.
