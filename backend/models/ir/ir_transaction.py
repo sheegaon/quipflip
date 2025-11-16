@@ -25,22 +25,22 @@ class IRTransaction(Base):
         nullable=False,
         index=True,
     )
+    transaction_type = Column(String(50), nullable=False, index=True)  # ir_backronym_entry, ir_vote_entry, etc.
     amount = Column(Integer, nullable=False)  # Negative for charges, positive for payouts
-    type = Column(String(50), nullable=False, index=True)  # ir_backronym_entry, ir_vote_entry, etc.
-    wallet_type = Column(String(20), default="wallet", nullable=False)  # wallet or vault
-    reference_id = get_uuid_column(nullable=True, index=True)  # set_id, vote_id, etc.
-    wallet_balance_after = Column(Integer, nullable=True)
-    vault_balance_after = Column(Integer, nullable=True)
+    vault_contribution = Column(Integer, nullable=False, server_default='0')
+    entry_id = get_uuid_column(nullable=True)
+    set_id = get_uuid_column(
+        ForeignKey("ir_backronym_sets.set_id", ondelete="SET NULL"),
+        nullable=True,
+    )
     created_at = Column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False, index=True
     )
 
     __table_args__ = (
-        Index("ix_ir_transaction_player_id", player_id),
-        Index("ix_ir_transaction_type", type),
-        Index("ix_ir_transaction_reference_id", reference_id),
-        Index("ix_ir_transaction_created_at", created_at),
-        Index("ix_ir_transaction_player_created", player_id, created_at),
+        Index("ix_ir_transaction_player", player_id),
+        Index("ix_ir_transaction_type", transaction_type),
+        Index("ix_ir_transaction_created", created_at),
     )
 
     # Relationships

@@ -67,12 +67,10 @@ class IRTransactionService:
             transaction = IRTransaction(
                 transaction_id=str(uuid.uuid4()),
                 player_id=player_id,
-                type=transaction_type,
+                transaction_type=transaction_type,
                 amount=-amount,
-                wallet_type="wallet",
-                reference_id=reference_id,
-                wallet_balance_after=player.wallet,
-                vault_balance_after=player.vault,
+                vault_contribution=0,
+                set_id=reference_id,
                 created_at=datetime.now(UTC),
             )
             self.db.add(transaction)
@@ -103,12 +101,10 @@ class IRTransactionService:
             transaction = IRTransaction(
                 transaction_id=str(uuid.uuid4()),
                 player_id=player_id,
-                type=transaction_type,
+                transaction_type=transaction_type,
                 amount=amount,
-                wallet_type="wallet",
-                reference_id=reference_id,
-                wallet_balance_after=player.wallet,
-                vault_balance_after=player.vault,
+                vault_contribution=0,
+                set_id=reference_id,
                 created_at=datetime.now(UTC),
             )
             self.db.add(transaction)
@@ -140,12 +136,10 @@ class IRTransactionService:
             transaction = IRTransaction(
                 transaction_id=str(uuid.uuid4()),
                 player_id=player_id,
-                type=transaction_type,
+                transaction_type=transaction_type,
                 amount=amount,
-                wallet_type="vault",
-                reference_id=reference_id,
-                wallet_balance_after=player.wallet,
-                vault_balance_after=player.vault,
+                vault_contribution=amount,
+                set_id=reference_id,
                 created_at=datetime.now(UTC),
             )
             self.db.add(transaction)
@@ -187,15 +181,14 @@ class IRTransactionService:
             IRTransactionError: If transaction fails
         """
         transaction_id = str(uuid.uuid4())
+        vault_contrib = vault_balance_after if vault_balance_after else 0
         transaction = IRTransaction(
             transaction_id=transaction_id,
             player_id=player_id,
-            type=transaction_type,
+            transaction_type=transaction_type,
             amount=amount,
-            wallet_type=wallet_type,
-            reference_id=reference_id,
-            wallet_balance_after=wallet_balance_after,
-            vault_balance_after=vault_balance_after,
+            vault_contribution=vault_contrib,
+            set_id=reference_id,
             created_at=datetime.now(UTC),
         )
         self.db.add(transaction)
