@@ -255,7 +255,7 @@ class IRBackronymSetService:
             if not set_obj:
                 raise IRBackronymSetError("set_not_found")
 
-            if set_obj.status not in [IRSetStatus.VOTING, IRSetStatus.FINALIZED]:
+            if set_obj.status != IRSetStatus.VOTING:
                 raise IRBackronymSetError("set_not_in_voting_phase")
 
             # Create vote
