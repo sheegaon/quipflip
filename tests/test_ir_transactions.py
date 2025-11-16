@@ -50,7 +50,7 @@ async def test_ir_debit_wallet(db_session, ir_player_factory):
     )
 
     assert transaction is not None
-    assert transaction.amount == debit_amount
+    assert transaction.amount == -debit_amount  # Debits are stored as negative
 
     # Refresh player and check balance
     await db_session.refresh(player)
