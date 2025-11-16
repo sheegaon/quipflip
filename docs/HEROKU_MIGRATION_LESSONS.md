@@ -72,107 +72,16 @@ aborted during deploy.
   Using this shared helper function improves maintainability and consistency
   across all migrations.
 
-## Schema Changes & Table Renaming (November 2025)
-
-### The Problem
-When Phase 1 migration renamed Quipflip tables with the `qf_` prefix to prepare for Initial Reaction,
-raw SQL queries in service layers (`round_service.py`, `cleanup_service.py`) were not updated.
-This caused a 500 error in production on the `/api/player/dashboard` endpoint with the error
-"no such table: rounds". SQLAlchemy ORM models correctly used the new table names, but raw SQL
-queries still referenced old names.
-
-### Lessons Learned
-- **Update raw SQL when renaming tables.** Not just ORM models. When executing table renames via
-  migration, systematically audit all raw SQL queries (Common Table Expressions, DELETE, UPDATE,
-  SELECT statements) to ensure they reference the new table names. A single missed reference can
-  break production endpoints.
-- **Search comprehensively for SQL references.** After table renames, use grep/ripgrep to find
-  all occurrences of old table names in raw SQL strings. Look for patterns like:
-  - `FROM table_name` and `JOIN table_name`
-  - `UPDATE table_name` and `DELETE FROM table_name`
-  - References within CTEs (Common Table Expressions)
-  This should be a required step before committing migration-related changes.
-- **Keep migrations and models in sync.** Migration schema definitions must match model
-  definitions exactly. Check for:
-  - Missing columns (e.g., `revoked_at` on refresh tokens)
-  - Missing foreign key constraints
-  - Nullable field mismatches
-  - Index definitions
-  A mismatch between migration and model will cause runtime errors when the migration is applied.
-- **Test production-critical queries after schema changes.** Run integration tests that exercise
-  the affected endpoints (e.g., dashboard endpoint) to verify raw SQL queries work with the new
-  table names before deployment.
-
-## JWT Token Validation Using JTI Claim (November 2025)
-
-### The Problem
-Initial refresh token implementation generated a random token and hashed it for storage, but the
-client received a JWT. When validating, the code tried to hash the JWT and compare it to the
-stored hash—but the JWT is not the token that was hashed, so validation always failed.
-
-### The Solution
-Use the JWT's JTI (JWT ID) claim as the unique identifier instead:
-1. Generate a unique token ID (UUID)
-2. Include it as the `jti` claim in the JWT payload
-3. Hash the token ID (JTI) and store that hash in the database
-4. When validating, extract the JTI from the JWT payload, hash it, and compare to the stored hash
-
-This ensures consistency: the client receives a JWT containing the JTI, and the server validates
-by extracting the JTI from that same JWT.
-
-### Code Pattern
-```python
-# Creating the token
-jti = str(uuid.uuid4())  # Unique token identifier
-payload = {
-    "sub": player_id,
-    "jti": jti,  # Include JTI in payload
-    "exp": expiration_timestamp,
-}
-jwt_token = encode_jwt(payload, secret_key)
-jti_hash = hash_token(jti)  # Store hash of JTI, not the entire token
-# Save jti_hash to database
-
-# Validating the token
-decoded = decode_jwt(token, secret_key)
-jti_from_token = decoded.get("jti")
-jti_hash_computed = hash_token(jti_from_token)
-# Compare jti_hash_computed with stored jti_hash
-```
-
-### Lessons Learned
-- **JTI is the source of truth for token identity.** The JWT ID claim uniquely identifies a token;
-  use it as the primary identifier in validation logic.
-- **Hash the JTI for storage, not the entire token.** Storing a hash of the JTI (not the full
-  JWT) is secure and avoids the circular problem of hashing a JWT that contains the JTI.
-- **Token revocation via timestamps.** Instead of deleting tokens, set a `revoked_at` timestamp.
-  This preserves audit trails and simplifies cleanup (e.g., delete tokens older than 30 days where
-  `revoked_at IS NOT NULL`).
-
-## FastAPI HTTP Parameter Annotations (November 2025)
-
-### The Problem
-An IR authentication dependency declared `authorization` and `ir_access_token` as plain optional
-parameters. FastAPI treated them as query parameters instead of reading from HTTP headers and cookies.
-
-### The Solution
-Use FastAPI's `Header()` and `Cookie()` parameter annotations:
-```python
-async def get_ir_current_player(
-    authorization: str | None = Header(None, alias="Authorization"),
-    ir_access_token: str | None = Cookie(None),
-    db: AsyncSession = Depends(get_db),
-) -> IRPlayer:
-    """Get current authenticated IR player from token."""
-```
-
-- `Header(None, alias="Authorization")` reads from the HTTP `Authorization` header
-- `Cookie(None)` reads from HTTP cookies
-- Without these annotations, FastAPI looks for query parameters instead
-
-### Lessons Learned
-- **Always use FastAPI parameter annotations for headers and cookies.** Plain optional parameters
-  default to query parameters, which breaks authentication that relies on HTTP headers/cookies.
-- **Use `alias` for canonical header names.** HTTP headers are case-insensitive but conventionally
-  capitalized. Use `alias="Authorization"` to match the standard header name while allowing
-  Python to use lowercase parameter names.
+- **Audit raw SQL queries when renaming tables.** When executing table renames via migration,
+  systematically search for all raw SQL references (in CTEs, DELETE, UPDATE, SELECT statements).
+  Use grep/ripgrep with patterns like `FROM table_name`, `JOIN table_name`, and `DELETE FROM table_name`.
+  A single missed reference can break production endpoints (e.g., the November 2025 dashboard 500 error).
+- **Keep migrations and models in sync.** Migration schema definitions must match model definitions exactly.
+  Check for missing columns, missing foreign key constraints, nullable field mismatches, and indexes.
+  A mismatch will cause runtime errors when the migration is applied.
+- **Use JTI claim for token identity.** When implementing JWT refresh tokens, include a unique JTI (JWT ID)
+  claim in the payload, hash the JTI for storage, and validate by extracting and hashing the JTI from the token.
+  This avoids the circular problem of hashing a JWT that contains the JTI itself.
+- **Always use FastAPI parameter annotations for headers/cookies.** Use `Header()` and `Cookie()` annotations
+  in dependency functions (e.g., `authorization: str | None = Header(None, alias="Authorization")`).
+  Plain optional parameters default to query parameters, breaking HTTP header/cookie-based authentication.
