@@ -37,30 +37,34 @@ class IRDailyBonusService:
         bonus_date = today.date()
 
         try:
-            async with self.db.begin():
-                stmt = select(IRDailyBonus).where(
-                    (IRDailyBonus.player_id == player_id)
-                    & (IRDailyBonus.date == bonus_date)
-                ).with_for_update()
-                result = await self.db.execute(stmt)
-                if result.scalars().first():
-                    raise IRDailyBonusError("already_claimed")
+            stmt = select(IRDailyBonus).where(
+                (IRDailyBonus.player_id == player_id)
+                & (IRDailyBonus.date == bonus_date)
+            ).with_for_update()
+            result = await self.db.execute(stmt)
+            if result.scalars().first():
+                raise IRDailyBonusError("already_claimed")
 
-                bonus = IRDailyBonus(
-                    player_id=player_id,
-                    bonus_amount=self.settings.ir_daily_bonus_amount,
-                    claimed_at=today,
-                    date=bonus_date,
-                )
-                self.db.add(bonus)
+            bonus = IRDailyBonus(
+                player_id=player_id,
+                bonus_amount=self.settings.ir_daily_bonus_amount,
+                claimed_at=today,
+                date=bonus_date,
+            )
+            self.db.add(bonus)
 
-                transaction = await self.transaction_service.credit_wallet(
-                    player_id=player_id,
-                    amount=self.settings.ir_daily_bonus_amount,
-                    transaction_type=self.transaction_service.DAILY_BONUS,
-                    use_existing_transaction=True,
-                )
+            transaction = await self.transaction_service.credit_wallet(
+                player_id=player_id,
+                amount=self.settings.ir_daily_bonus_amount,
+                transaction_type=self.transaction_service.DAILY_BONUS,
+            )
+
+            await self.db.commit()
         except IRTransactionError as exc:
+            await self.db.rollback()
+            raise IRDailyBonusError(str(exc)) from exc
+        except Exception as exc:
+            await self.db.rollback()
             raise IRDailyBonusError(str(exc)) from exc
 
         return {

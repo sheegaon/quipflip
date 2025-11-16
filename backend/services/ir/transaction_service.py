@@ -91,8 +91,6 @@ class IRTransactionService:
         amount: int,
         transaction_type: str,
         reference_id: str | None = None,
-        *,
-        use_existing_transaction: bool = False,
     ) -> IRTransaction:
         """Credit a player's wallet with locking and ledger entry."""
 
