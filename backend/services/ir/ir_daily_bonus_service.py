@@ -36,29 +36,30 @@ class IRDailyBonusService:
         today = datetime.now(UTC)
         bonus_date = today.date()
 
-        async with self.db.begin():
-            stmt = select(IRDailyBonus).where(
-                (IRDailyBonus.player_id == player_id)
-                & (IRDailyBonus.date == bonus_date)
-            ).with_for_update()
-            result = await self.db.execute(stmt)
-            if result.scalars().first():
-                raise IRDailyBonusError("already_claimed")
-
-            bonus = IRDailyBonus(
-                player_id=player_id,
-                amount=self.settings.ir_daily_bonus_amount,
-                claimed_at=today,
-                date=bonus_date,
-            )
-            self.db.add(bonus)
-
         try:
-            transaction = await self.transaction_service.credit_wallet(
-                player_id=player_id,
-                amount=self.settings.ir_daily_bonus_amount,
-                transaction_type=self.transaction_service.DAILY_BONUS,
-            )
+            async with self.db.begin():
+                stmt = select(IRDailyBonus).where(
+                    (IRDailyBonus.player_id == player_id)
+                    & (IRDailyBonus.date == bonus_date)
+                ).with_for_update()
+                result = await self.db.execute(stmt)
+                if result.scalars().first():
+                    raise IRDailyBonusError("already_claimed")
+
+                bonus = IRDailyBonus(
+                    player_id=player_id,
+                    amount=self.settings.ir_daily_bonus_amount,
+                    claimed_at=today,
+                    date=bonus_date,
+                )
+                self.db.add(bonus)
+
+                transaction = await self.transaction_service.credit_wallet(
+                    player_id=player_id,
+                    amount=self.settings.ir_daily_bonus_amount,
+                    transaction_type=self.transaction_service.DAILY_BONUS,
+                    use_existing_transaction=True,
+                )
         except IRTransactionError as exc:
             raise IRDailyBonusError(str(exc)) from exc
 
