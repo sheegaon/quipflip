@@ -57,10 +57,10 @@ class QuestCategory(str, Enum):
 
 class Quest(Base):
     """Quest progress tracking model."""
-    __tablename__ = "quests"
+    __tablename__ = "qf_quests"
 
     quest_id = get_uuid_column(primary_key=True, default=uuid.uuid4)
-    player_id = get_uuid_column(ForeignKey("players.player_id", ondelete="CASCADE"), nullable=False, index=True)
+    player_id = get_uuid_column(ForeignKey("qf_players.player_id", ondelete="CASCADE"), nullable=False, index=True)
     quest_type = Column(String(50), nullable=False, index=True)
     status = Column(String(20), nullable=False, default=QuestStatus.ACTIVE.value, index=True)
     progress = Column(
@@ -86,7 +86,7 @@ class Quest(Base):
 
 class QuestTemplate(Base):
     """Quest template configuration."""
-    __tablename__ = "quest_templates"
+    __tablename__ = "qf_quest_templates"
 
     template_id = Column(String(50), primary_key=True)  # Matches QuestType
     name = Column(String(100), nullable=False)

@@ -12,12 +12,12 @@ from backend.models.base import get_uuid_column
 class Hint(Base):
     """Stores AI-generated hint phrases for a prompt round."""
 
-    __tablename__ = "hints"
+    __tablename__ = "qf_hints"
 
     hint_id = get_uuid_column(primary_key=True, default=uuid.uuid4)
     # Note: prompt_round_id is indexed via composite index in __table_args__
     prompt_round_id = get_uuid_column(
-        ForeignKey("rounds.round_id", ondelete="CASCADE"),
+        ForeignKey("qf_rounds.round_id", ondelete="CASCADE"),
         nullable=False,
     )
     hint_phrases = Column(JSON, nullable=False)

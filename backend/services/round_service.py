@@ -1264,28 +1264,28 @@ class RoundService:
         query = text("""
                 WITH player_prompt_rounds AS (
                     SELECT r.round_id
-                    FROM rounds r
+                    FROM qf_rounds r
                     WHERE LOWER(REPLACE(CAST(r.player_id AS TEXT), '-', '')) = :player_id_clean
                     AND r.round_type = 'prompt'
                     AND r.status = 'submitted'
                 ),
                 player_copy_rounds AS (
                     SELECT r.prompt_round_id
-                    FROM rounds r
+                    FROM qf_rounds r
                     WHERE LOWER(REPLACE(CAST(r.player_id AS TEXT), '-', '')) = :player_id_clean
                     AND r.round_type = 'copy'
                     AND r.status = 'submitted'
                 ),
                 player_abandoned_cooldown AS (
                     SELECT pap.prompt_round_id
-                    FROM player_abandoned_prompts pap
+                    FROM qf_player_abandoned_prompts pap
                     WHERE LOWER(REPLACE(CAST(pap.player_id AS TEXT), '-', '')) = :player_id_clean
                     AND pap.abandoned_at > :cutoff_time
                 ),
                 all_available_prompts AS (
                     SELECT r.round_id
-                    FROM rounds r
-                    LEFT JOIN phrasesets p ON p.prompt_round_id = r.round_id
+                    FROM qf_rounds r
+                    LEFT JOIN qf_phrasesets p ON p.prompt_round_id = r.round_id
                     WHERE r.round_type = 'prompt'
                     AND r.status = 'submitted'
                     AND (r.phraseset_status IS NULL OR r.phraseset_status NOT IN ('flagged_pending','flagged_removed'))

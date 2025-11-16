@@ -15,7 +15,7 @@ class AIMetric(Base):
     Tracks individual AI operations (copy generation, voting) with
     provider, cost, latency, and success information.
     """
-    __tablename__ = "ai_metrics"
+    __tablename__ = "qf_ai_metrics"
 
     metric_id = get_uuid_column(primary_key=True, default=uuid.uuid4)
 
@@ -44,7 +44,7 @@ class AIMetric(Base):
 
     # Link to phrase cache (if applicable)
     cache_id = get_uuid_column(
-        ForeignKey("ai_phrase_cache.cache_id", ondelete="SET NULL"),
+        ForeignKey("qf_ai_phrase_cache.cache_id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )

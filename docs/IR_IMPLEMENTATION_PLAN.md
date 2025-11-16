@@ -1,5 +1,18 @@
 # Initial Reaction MVP Implementation Plan
 
+## Status Update (2025-11-16)
+✅ **Phase 1 COMPLETE** - Database Schema & Models + Initial API endpoints
+- All QF tables renamed with `qf_` prefix
+- All 11 IR database models and tables created
+- IR services (auth, player, transaction) implemented
+- Basic API endpoints working (guest registration, login, player info)
+- Config with IR-specific settings added
+- Tests passing locally
+
+**Next:** Phase 2 - Core game logic services (backronym sets, voting, scoring)
+
+---
+
 ## Overview
 Build Initial Reaction as a completely separate game with:
 - New database tables (all prefixed `ir_`)

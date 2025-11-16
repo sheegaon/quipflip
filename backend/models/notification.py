@@ -32,11 +32,11 @@ class Notification(Base):
     - Another human votes on a phraseset they contributed to
     """
 
-    __tablename__ = "notifications"
+    __tablename__ = "qf_notifications"
 
     notification_id = get_uuid_column(primary_key=True, default=uuid.uuid4)
     player_id = get_uuid_column(
-        ForeignKey("players.player_id", ondelete="CASCADE"),
+        ForeignKey("qf_players.player_id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
@@ -44,10 +44,10 @@ class Notification(Base):
         String(50), nullable=False
     )  # 'copy_submitted' or 'vote_submitted'
     phraseset_id = get_uuid_column(
-        ForeignKey("phrasesets.phraseset_id", ondelete="CASCADE"), nullable=False
+        ForeignKey("qf_phrasesets.phraseset_id", ondelete="CASCADE"), nullable=False
     )
     actor_player_id = get_uuid_column(
-        ForeignKey("players.player_id", ondelete="CASCADE"), nullable=True
+        ForeignKey("qf_players.player_id", ondelete="CASCADE"), nullable=True
     )
     data = Column(JSON, nullable=True)  # {phrase_text, recipient_role, actor_username}
     created_at = Column(DateTime(timezone=True), default=get_current_utc, nullable=False)

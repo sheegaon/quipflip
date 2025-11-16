@@ -9,10 +9,10 @@ from backend.models.base import get_uuid_column
 
 class Transaction(Base):
     """Transaction ledger model."""
-    __tablename__ = "transactions"
+    __tablename__ = "qf_transactions"
 
     transaction_id = get_uuid_column(primary_key=True, default=uuid.uuid4)
-    player_id = get_uuid_column(ForeignKey("players.player_id", ondelete="CASCADE"), nullable=False, index=True)
+    player_id = get_uuid_column(ForeignKey("qf_players.player_id", ondelete="CASCADE"), nullable=False, index=True)
     amount = Column(Integer, nullable=False)  # Negative for charges, positive for payouts
     type = Column(String(50), nullable=False, index=True)
     # Types: prompt_entry, copy_entry, vote_entry, vote_payout, prize_payout, refund, daily_bonus, system_contribution,

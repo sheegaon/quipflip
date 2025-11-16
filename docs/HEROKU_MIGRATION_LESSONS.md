@@ -71,3 +71,17 @@ aborted during deploy.
   compatibility across both local development and production environments.
   Using this shared helper function improves maintainability and consistency
   across all migrations.
+
+- **Audit raw SQL queries when renaming tables.** When executing table renames via migration,
+  systematically search for all raw SQL references (in CTEs, DELETE, UPDATE, SELECT statements).
+  Use grep/ripgrep with patterns like `FROM table_name`, `JOIN table_name`, and `DELETE FROM table_name`.
+  A single missed reference can break production endpoints (e.g., the November 2025 dashboard 500 error).
+- **Keep migrations and models in sync.** Migration schema definitions must match model definitions exactly.
+  Check for missing columns, missing foreign key constraints, nullable field mismatches, and indexes.
+  A mismatch will cause runtime errors when the migration is applied.
+- **Use JTI claim for token identity.** When implementing JWT refresh tokens, include a unique JTI (JWT ID)
+  claim in the payload, hash the JTI for storage, and validate by extracting and hashing the JTI from the token.
+  This avoids the circular problem of hashing a JWT that contains the JTI itself.
+- **Always use FastAPI parameter annotations for headers/cookies.** Use `Header()` and `Cookie()` annotations
+  in dependency functions (e.g., `authorization: str | None = Header(None, alias="Authorization")`).
+  Plain optional parameters default to query parameters, breaking HTTP header/cookie-based authentication.

@@ -12,10 +12,10 @@ from backend.models.base import get_uuid_column
 class RefreshToken(Base):
     """Stored refresh tokens for JWT authentication."""
 
-    __tablename__ = "refresh_tokens"
+    __tablename__ = "qf_refresh_tokens"
 
     token_id = get_uuid_column(primary_key=True, default=uuid.uuid4)
-    player_id = get_uuid_column(ForeignKey("players.player_id", ondelete="CASCADE"), nullable=False, index=True)
+    player_id = get_uuid_column(ForeignKey("qf_players.player_id", ondelete="CASCADE"), nullable=False, index=True)
     token_hash = Column(String(255), nullable=False, index=True)
     expires_at = Column(DateTime(timezone=True), nullable=False)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)

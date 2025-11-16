@@ -4,7 +4,7 @@ from fastapi import Response
 from backend.config import get_settings
 
 
-def set_refresh_cookie(response: Response, token: str, *, expires_days: int | None = None) -> None:
+def set_refresh_cookie(response: Response, token: str, *, expires_days: int | None = None, cookie_name: str | None = None) -> None:
     """Set the refresh token cookie with secure defaults.
 
     In production, REST API uses Vercel proxy (same-origin with SameSite=Lax), but WebSocket
@@ -13,11 +13,18 @@ def set_refresh_cookie(response: Response, token: str, *, expires_days: int | No
 
     In development, frontend (localhost:5173) and backend (localhost:8000) are on different
     ports but browsers treat localhost as same-origin, so SameSite=Lax works fine.
+
+    Args:
+        response: FastAPI Response object
+        token: The token to set in the cookie
+        expires_days: Optional override for token expiration (defaults to configured value)
+        cookie_name: Optional override for cookie name (defaults to configured value)
     """
 
     settings = get_settings()
     days = expires_days or settings.refresh_token_exp_days
     max_age = days * 24 * 60 * 60
+    name = cookie_name or settings.refresh_token_cookie_name
 
     # Use SameSite=Lax for both dev and production (REST API via Vercel proxy)
     # WebSocket uses token exchange pattern (/auth/ws-token) instead of cookies
@@ -26,7 +33,7 @@ def set_refresh_cookie(response: Response, token: str, *, expires_days: int | No
     secure_value = settings.environment != "development"
 
     response.set_cookie(
-        key=settings.refresh_token_cookie_name,
+        key=name,
         value=token,
         httponly=True,
         secure=secure_value,
@@ -37,15 +44,21 @@ def set_refresh_cookie(response: Response, token: str, *, expires_days: int | No
     )
 
 
-def set_access_token_cookie(response: Response, token: str) -> None:
+def set_access_token_cookie(response: Response, token: str, *, cookie_name: str | None = None) -> None:
     """Set the access token cookie with secure defaults.
 
     Access tokens have a shorter lifetime than refresh tokens (hours vs days).
     Uses the same security settings as refresh tokens for consistency.
     WebSocket authentication uses token exchange pattern (/auth/ws-token).
+
+    Args:
+        response: FastAPI Response object
+        token: The token to set in the cookie
+        cookie_name: Optional override for cookie name (defaults to configured value)
     """
     settings = get_settings()
     max_age = settings.access_token_exp_minutes * 60
+    name = cookie_name or settings.access_token_cookie_name
 
     # Use SameSite=Lax for both dev and production (REST API via Vercel proxy)
     # WebSocket uses token exchange pattern (/auth/ws-token) instead of cookies
@@ -54,7 +67,7 @@ def set_access_token_cookie(response: Response, token: str) -> None:
     secure_value = settings.environment != "development"
 
     response.set_cookie(
-        key=settings.access_token_cookie_name,
+        key=name,
         value=token,
         httponly=True,
         secure=secure_value,

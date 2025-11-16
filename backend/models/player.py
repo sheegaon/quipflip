@@ -17,7 +17,7 @@ from backend.models.base import get_uuid_column
 
 class Player(Base):
     """Player account model."""
-    __tablename__ = "players"
+    __tablename__ = "qf_players"
 
     player_id = get_uuid_column(primary_key=True, default=uuid.uuid4)
     username = Column(String(80), unique=True, nullable=False)
@@ -28,7 +28,7 @@ class Player(Base):
     vault = Column(Integer, default=0, nullable=False)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     last_login_date = Column(DateTime(timezone=True), nullable=True)
-    active_round_id = get_uuid_column(ForeignKey("rounds.round_id", ondelete="SET NULL"), nullable=True)
+    active_round_id = get_uuid_column(ForeignKey("qf_rounds.round_id", ondelete="SET NULL"), nullable=True)
     is_guest = Column(Boolean, default=False, nullable=False)
     is_admin = Column(Boolean, default=False, nullable=False)
     locked_until = Column(DateTime(timezone=True), nullable=True)

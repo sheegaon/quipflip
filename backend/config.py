@@ -33,6 +33,16 @@ class Settings(BaseSettings):
     # Admin access
     admin_emails: set[str] = {"tfishman@gmail.com", "x9@x.com"}
 
+    # Initial Reaction (IR) Game Settings
+    ir_secret_key: str = ""  # Will default to secret_key if not set
+    ir_access_token_expire_minutes: int = 120  # 2 hours
+    ir_refresh_token_expire_days: int = 30
+    ir_access_token_cookie_name: str = "ir_access_token"
+    ir_refresh_token_cookie_name: str = "ir_refresh_token"
+    ir_initial_balance: int = 1000  # Starting InitCoins for IR players
+    ir_daily_bonus_amount: int = 100  # Daily login bonus in InitCoins
+    ir_vault_rake_percent: int = 30  # Percentage of earnings going to vault
+
     # Game Constants (all values in whole flipcoins)
     starting_balance: int = 5000
     daily_bonus_amount: int = 100
@@ -143,6 +153,10 @@ class Settings(BaseSettings):
                     raise ValueError(
                         "AI_BACKUP_SLEEP_SECONDS must be an integer value"
                     ) from exc
+
+        # Set IR secret key to main secret key if not explicitly set
+        if not self.ir_secret_key:
+            self.ir_secret_key = self.secret_key
 
         # Security validation
         if self.environment == "production":

@@ -21,7 +21,7 @@ class UserActivity(Base):
     Each row represents a single user's most recent activity.
     """
 
-    __tablename__ = "user_activity"
+    __tablename__ = "qf_user_activity"
 
     player_id: Mapped[UUID] = mapped_column(primary_key=True)
     username: Mapped[str] = mapped_column(String(255), nullable=False)

@@ -9,12 +9,12 @@ from backend.models.base import get_uuid_column
 
 class PromptFeedback(Base):
     """Prompt feedback model - tracks player feedback on prompts."""
-    __tablename__ = "prompt_feedback"
+    __tablename__ = "qf_prompt_feedback"
 
     feedback_id = get_uuid_column(primary_key=True, default=uuid.uuid4)
-    player_id = get_uuid_column(ForeignKey("players.player_id", ondelete="CASCADE"), nullable=False, index=True)
-    prompt_id = get_uuid_column(ForeignKey("prompts.prompt_id", ondelete="CASCADE"), nullable=False, index=True)
-    round_id = get_uuid_column(ForeignKey("rounds.round_id", ondelete="CASCADE"), nullable=False, index=True)
+    player_id = get_uuid_column(ForeignKey("qf_players.player_id", ondelete="CASCADE"), nullable=False, index=True)
+    prompt_id = get_uuid_column(ForeignKey("qf_prompts.prompt_id", ondelete="CASCADE"), nullable=False, index=True)
+    round_id = get_uuid_column(ForeignKey("qf_rounds.round_id", ondelete="CASCADE"), nullable=False, index=True)
     feedback_type = Column(String(10), nullable=False)  # 'like' or 'dislike'
     last_updated_at = Column(
         DateTime(timezone=True),

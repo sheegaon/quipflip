@@ -8,7 +8,7 @@ from backend.database import Base
 class SystemConfig(Base):
     """System configuration table for dynamic settings."""
 
-    __tablename__ = "system_config"
+    __tablename__ = "qf_system_config"
 
     key: Mapped[str] = mapped_column(String(100), primary_key=True)
     value: Mapped[str] = mapped_column(Text, nullable=False)
