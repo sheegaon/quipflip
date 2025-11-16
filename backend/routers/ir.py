@@ -911,9 +911,19 @@ async def submit_backronym(
     player: IRPlayer = Depends(get_ir_current_player),
     db: AsyncSession = Depends(get_db),
 ) -> SubmitBackronymResponse:
-    """Submit a backronym entry to a set."""
+    """Submit a backronym entry to a set.
+
+    Expected request body:
+    {
+        "words": ["word1", "word2", "word3", ...]
+    }
+    """
+    import logging
+    logger = logging.getLogger(__name__)
 
     try:
+        logger.debug(f"submit_backronym called with set_id={set_id}, words={request.words}")
+
         set_service = IRBackronymSetService(db)
 
         # Get set
@@ -938,7 +948,10 @@ async def submit_backronym(
             status=set_obj.status,
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.error(f"Error in submit_backronym: {e}", exc_info=True)
         raise HTTPException(status_code=400, detail=str(e)) from e
 
 

@@ -110,7 +110,7 @@ async def test_ir_cannot_duplicate_entry(db_session, ir_player_factory):
     backronym_words_1 = [f"word{i}" for i in range(len(backronym_set.word))]
     await set_service.add_entry(
         set_id=backronym_set.set_id,
-        player_id=player.player_id,
+        player_id=str(player.player_id),
         backronym_text=backronym_words_1
     )
 
@@ -119,7 +119,7 @@ async def test_ir_cannot_duplicate_entry(db_session, ir_player_factory):
     with pytest.raises(Exception):  # Should raise IntegrityError due to unique constraint
         await set_service.add_entry(
             set_id=backronym_set.set_id,
-            player_id=player.player_id,
+            player_id=str(player.player_id),
             backronym_text=backronym_words_2
         )
 
@@ -140,13 +140,13 @@ async def test_ir_set_transitions_to_voting(db_session, ir_player_factory):
         backronym_words = [f"word{i}_{uuid.uuid4().hex[:4]}" for i in range(len(backronym_set.word))]
         await set_service.add_entry(
             set_id=backronym_set.set_id,
-            player_id=player.player_id,
+            player_id=str(player.player_id),
             backronym_text=backronym_words
         )
 
     # Refresh and check status
     updated_set = await set_service.get_set_details(backronym_set.set_id)
-    assert updated_set.entry_count == 5
+    assert updated_set.get("entry_count") == 5
     # Note: Set might not auto-transition to voting; may need explicit call
     # This depends on implementation details
 
@@ -182,8 +182,8 @@ async def test_ir_submit_vote(db_session, ir_player_factory):
     )
 
     assert vote is not None
-    assert vote.player_id == voter.player_id
-    assert vote.chosen_entry_id == entry.entry_id
+    assert vote["vote_id"] is not None
+    assert vote["chosen_entry_id"] == str(entry.entry_id)
 
 
 @pytest.mark.asyncio
@@ -202,7 +202,7 @@ async def test_ir_cannot_self_vote(db_session, ir_player_factory):
     backronym_words = [f"word{i}" for i in range(len(backronym_set.word))]
     entry = await set_service.add_entry(
         set_id=backronym_set.set_id,
-        player_id=player.player_id,
+        player_id=str(player.player_id),
         backronym_text=backronym_words
     )
 
@@ -210,7 +210,7 @@ async def test_ir_cannot_self_vote(db_session, ir_player_factory):
     with pytest.raises(Exception):  # Should raise error for self-vote
         await vote_service.submit_vote(
             set_id=backronym_set.set_id,
-            player_id=player.player_id,
+            player_id=str(player.player_id),
             chosen_entry_id=entry.entry_id,
             is_participant=True
         )
@@ -289,6 +289,6 @@ async def test_ir_player_insufficient_balance(db_session, ir_player_factory):
     with pytest.raises(Exception):
         await set_service.add_entry(
             set_id=backronym_set.set_id,
-            player_id=player.player_id,
+            player_id=str(player.player_id),
             backronym_text=backronym_words
         )

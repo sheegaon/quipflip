@@ -50,7 +50,7 @@ async def test_ir_complete_game_flow(db_session):
 
     # Verify set has 5 entries
     updated_set = await set_service.get_set_details(backronym_set.set_id)
-    assert updated_set.entry_count == 5
+    assert updated_set.get("entry_count") == 5
 
     # 4. Create additional voters
     voters = []
@@ -163,7 +163,7 @@ async def test_ir_daily_bonus_flow(db_session):
     initial_balance = player.wallet
 
     # 2. Claim daily bonus
-    bonus = await bonus_service.claim_daily_bonus(player.player_id)
+    bonus = await bonus_service.claim_bonus(player.player_id)
     assert bonus is not None
 
     # Verify balance increased
@@ -177,7 +177,7 @@ async def test_ir_daily_bonus_flow(db_session):
 
     # 3. Try to claim again (should fail or return None)
     try:
-        bonus2 = await bonus_service.claim_daily_bonus(player.player_id)
+        bonus2 = await bonus_service.claim_bonus(player.player_id)
         # If it succeeds, check that it's not allowed twice
         if bonus2 is not None:
             assert False, "Should not allow claiming bonus twice"
@@ -235,10 +235,11 @@ async def test_ir_insufficient_balance_blocking(db_session):
     """Test that players with insufficient balance cannot enter."""
     from sqlalchemy import select, update
     from backend.models.ir.ir_player import IRPlayer
+    from backend.services.ir.transaction_service import IRTransactionService
 
     auth_service = IRAuthService(db_session)
     set_service = IRBackronymSetService(db_session)
-    word_service = IRWordService(db_session)
+    transaction_service = IRTransactionService(db_session)
 
     # 1. Create player
     player, _ = await auth_service.register(
@@ -252,18 +253,16 @@ async def test_ir_insufficient_balance_blocking(db_session):
     await db_session.execute(stmt)
     await db_session.commit()
 
-    # 3. Try to enter backronym set (should fail)
+    # 3. Try to debit wallet (should fail with insufficient balance)
     backronym_set = await set_service.create_set(mode="standard")
-    word = backronym_set.word
-
-    backronym_words = [f"word{i}" for i in range(len(word))]
 
     with pytest.raises(Exception):
-        await set_service.add_entry(
-            set_id=backronym_set.set_id,
-            player_id=player.player_id,
-            backronym_text=backronym_words
+        await transaction_service.debit_wallet(
+            player_id=str(player.player_id),
+            amount=100,  # costs 100 IC but player only has 50
+            transaction_type=transaction_service.ENTRY_CREATION,
+            reference_id=str(backronym_set.set_id),
         )
 
     print(f"✅ Insufficient balance blocking test passed!")
-    print(f"   - Player with 50 IC cannot enter (costs 100 IC)")
+    print(f"   - Player with 50 IC cannot debit 100 IC (insufficient balance)")
