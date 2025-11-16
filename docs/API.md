@@ -1856,7 +1856,7 @@ Update a game configuration value. Requires admin password validation.
 - All configuration changes are persisted to the database
 - Changes take effect immediately for new rounds/operations
 - Validation rules are enforced (e.g., minimum values, data types)
-- See [Game Rules](GAME_RULES.md) for detailed explanation of each setting
+- See [Game Rules](QF_GAME_RULES.md) for detailed explanation of each setting
 
 #### `GET /admin/flags`
 List flagged prompt phrases for administrative review.
