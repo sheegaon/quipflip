@@ -147,7 +147,7 @@ def build_backronym_vote_prompt(word: str, backronyms: list[str]) -> str:
         "- Which one best captures the essence of the word?",
         "- Which one is most memorable?",
     ]
-    chosen_considerations = list(set(random.choices(considerations, k=2)))
+    chosen_considerations = random.sample(considerations, k=2)
     chosen_considerations = ''.join([f"\n{c}" for c in chosen_considerations])
 
     return f"""You are playing Initial Reaction, a word game where players create backronyms.
