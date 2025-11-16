@@ -58,7 +58,7 @@ class IRTransactionService:
         if amount <= 0:
             raise IRTransactionError("amount_must_be_positive")
 
-        async with self.db.begin():
+        try:
             player = await self._lock_player(player_id)
             if player.wallet < amount:
                 raise IRTransactionError("insufficient_wallet_balance")
@@ -76,8 +76,13 @@ class IRTransactionService:
                 created_at=datetime.now(UTC),
             )
             self.db.add(transaction)
-
-        await self.db.refresh(transaction)
+            await self.db.flush()
+            await self.db.refresh(transaction)
+        except IRTransactionError:
+            raise
+        except Exception as e:
+            await self.db.rollback()
+            raise IRTransactionError(f"debit_wallet_failed: {str(e)}") from e
         return transaction
 
     async def credit_wallet(
@@ -94,7 +99,7 @@ class IRTransactionService:
         if amount <= 0:
             raise IRTransactionError("amount_must_be_positive")
 
-        async def _create_credit_transaction() -> IRTransaction:
+        try:
             player = await self._lock_player(player_id)
             player.wallet += amount
             transaction = IRTransaction(
@@ -109,16 +114,14 @@ class IRTransactionService:
                 created_at=datetime.now(UTC),
             )
             self.db.add(transaction)
-            return transaction
-
-        if use_existing_transaction:
-            transaction = await _create_credit_transaction()
             await self.db.flush()
-        else:
-            async with self.db.begin():
-                transaction = await _create_credit_transaction()
+            await self.db.refresh(transaction)
+        except IRTransactionError:
+            raise
+        except Exception as e:
+            await self.db.rollback()
+            raise IRTransactionError(f"credit_wallet_failed: {str(e)}") from e
 
-        await self.db.refresh(transaction)
         return transaction
 
     async def credit_vault(
@@ -133,7 +136,7 @@ class IRTransactionService:
         if amount <= 0:
             raise IRTransactionError("amount_must_be_positive")
 
-        async with self.db.begin():
+        try:
             player = await self._lock_player(player_id)
             player.vault += amount
             transaction = IRTransaction(
@@ -148,8 +151,14 @@ class IRTransactionService:
                 created_at=datetime.now(UTC),
             )
             self.db.add(transaction)
+            await self.db.flush()
+            await self.db.refresh(transaction)
+        except IRTransactionError:
+            raise
+        except Exception as e:
+            await self.db.rollback()
+            raise IRTransactionError(f"credit_vault_failed: {str(e)}") from e
 
-        await self.db.refresh(transaction)
         return transaction
 
     async def record_transaction(

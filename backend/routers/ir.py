@@ -856,6 +856,8 @@ async def start_game(
     db: AsyncSession = Depends(get_db),
 ) -> StartGameResponse:
     """Start a new backronym battle or join an existing one."""
+    import logging
+    logger = logging.getLogger(__name__)
 
     try:
         # Check balance
@@ -892,9 +894,13 @@ async def start_game(
             status=str(set_obj.status),
         )
 
+    except HTTPException:
+        raise
     except IRTransactionError as exc:
+        logger.error(f"IR transaction error in start_game: {exc}")
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as e:
+        logger.error(f"Unexpected error in start_game: {e}", exc_info=True)
         raise HTTPException(status_code=400, detail=str(e)) from e
 
 
