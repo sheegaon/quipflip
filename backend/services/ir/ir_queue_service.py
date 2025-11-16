@@ -2,14 +2,18 @@
 
 import logging
 from typing import Optional
-from datetime import datetime, UTC, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 
 from backend.models.ir.ir_backronym_set import IRBackronymSet
 from backend.models.ir.enums import IRSetStatus
+from backend.utils import queue_client
 
 logger = logging.getLogger(__name__)
+
+
+ENTRY_QUEUE = "queue:ir:entry_sets"
+VOTING_QUEUE = "queue:ir:voting_sets"
 
 
 class IRQueueError(RuntimeError):
@@ -26,15 +30,13 @@ class IRQueueService:
             db: Database session
         """
         self.db = db
-        # In-memory queue for sets needing entries/votes
-        self._entry_queue = []
-        self._voting_queue = []
 
     async def get_next_open_set(self) -> Optional[str]:
         """Get next set from entry queue (FIFO).
 
         Returns oldest enqueued open set with capacity < 5.
-        Uses in-memory queue for FIFO ordering; falls back to database query if queue is empty.
+        Uses the shared queue infrastructure for FIFO ordering; falls back to
+        database query if queue is empty.
 
         Returns:
             str: Set ID or None if no open sets
@@ -43,28 +45,16 @@ class IRQueueService:
             IRQueueError: If queue operation fails
         """
         try:
-            # Check in-memory queue first (FIFO)
-            while self._entry_queue:
-                set_id = self._entry_queue[0]
+            queued = await self._get_next_from_queue(
+                queue_name=ENTRY_QUEUE,
+                required_status=IRSetStatus.OPEN,
+                count_attr=IRBackronymSet.entry_count,
+                max_count=5,
+            )
+            if queued:
+                return queued
 
-                # Verify set still exists and is eligible
-                stmt = select(IRBackronymSet).where(
-                    and_(
-                        IRBackronymSet.set_id == set_id,
-                        IRBackronymSet.status == IRSetStatus.OPEN,
-                        IRBackronymSet.entry_count < 5,
-                    )
-                )
-                result = await self.db.execute(stmt)
-                set_obj = result.scalars().first()
-
-                if set_obj:
-                    return str(set_id)
-                else:
-                    # Set is no longer eligible, remove from queue
-                    self._entry_queue.pop(0)
-
-            # Fallback: Query database if in-memory queue is empty
+            # Fallback: Query database if queue empty
             stmt = (
                 select(IRBackronymSet)
                 .where(
@@ -79,7 +69,11 @@ class IRQueueService:
             result = await self.db.execute(stmt)
             set_obj = result.scalars().first()
 
-            return str(set_obj.set_id) if set_obj else None
+            if set_obj:
+                await self.enqueue_entry_set(str(set_obj.set_id))
+                return str(set_obj.set_id)
+
+            return None
 
         except Exception as e:
             raise IRQueueError(f"Failed to get next open set: {str(e)}") from e
@@ -88,7 +82,8 @@ class IRQueueService:
         """Get next set from voting queue (FIFO priority).
 
         Returns oldest enqueued set in voting phase with vote count < 5.
-        Uses in-memory queue for FIFO ordering; falls back to database query if queue is empty.
+        Uses the shared queue infrastructure for FIFO ordering; falls back to
+        database query if queue is empty.
 
         Returns:
             str: Set ID or None if no voting sets
@@ -97,28 +92,16 @@ class IRQueueService:
             IRQueueError: If queue operation fails
         """
         try:
-            # Check in-memory queue first (FIFO)
-            while self._voting_queue:
-                set_id = self._voting_queue[0]
+            queued = await self._get_next_from_queue(
+                queue_name=VOTING_QUEUE,
+                required_status=IRSetStatus.VOTING,
+                count_attr=IRBackronymSet.vote_count,
+                max_count=5,
+            )
+            if queued:
+                return queued
 
-                # Verify set still exists and is eligible
-                stmt = select(IRBackronymSet).where(
-                    and_(
-                        IRBackronymSet.set_id == set_id,
-                        IRBackronymSet.status == IRSetStatus.VOTING,
-                        IRBackronymSet.vote_count < 5,
-                    )
-                )
-                result = await self.db.execute(stmt)
-                set_obj = result.scalars().first()
-
-                if set_obj:
-                    return str(set_id)
-                else:
-                    # Set is no longer eligible, remove from queue
-                    self._voting_queue.pop(0)
-
-            # Fallback: Query database if in-memory queue is empty
+            # Fallback: Query database if queue empty
             stmt = (
                 select(IRBackronymSet)
                 .where(
@@ -133,7 +116,11 @@ class IRQueueService:
             result = await self.db.execute(stmt)
             set_obj = result.scalars().first()
 
-            return str(set_obj.set_id) if set_obj else None
+            if set_obj:
+                await self.enqueue_voting_set(str(set_obj.set_id))
+                return str(set_obj.set_id)
+
+            return None
 
         except Exception as e:
             raise IRQueueError(f"Failed to get next voting set: {str(e)}") from e
@@ -148,9 +135,10 @@ class IRQueueService:
             IRQueueError: If enqueue fails
         """
         try:
-            if set_id not in self._entry_queue:
-                self._entry_queue.append(set_id)
-                logger.debug(f"Enqueued set {set_id} for entries")
+            item = {"set_id": set_id}
+            queue_client.remove(ENTRY_QUEUE, item)
+            queue_client.push(ENTRY_QUEUE, item)
+            logger.debug(f"Enqueued set {set_id} for entries")
 
         except Exception as e:
             raise IRQueueError(f"Failed to enqueue entry set: {str(e)}") from e
@@ -165,9 +153,10 @@ class IRQueueService:
             IRQueueError: If enqueue fails
         """
         try:
-            if set_id not in self._voting_queue:
-                self._voting_queue.append(set_id)
-                logger.debug(f"Enqueued set {set_id} for voting")
+            item = {"set_id": set_id}
+            queue_client.remove(VOTING_QUEUE, item)
+            queue_client.push(VOTING_QUEUE, item)
+            logger.debug(f"Enqueued set {set_id} for voting")
 
         except Exception as e:
             raise IRQueueError(f"Failed to enqueue voting set: {str(e)}") from e
@@ -182,8 +171,8 @@ class IRQueueService:
             IRQueueError: If dequeue fails
         """
         try:
-            if set_id in self._entry_queue:
-                self._entry_queue.remove(set_id)
+            removed = queue_client.remove(ENTRY_QUEUE, {"set_id": set_id})
+            if removed:
                 logger.debug(f"Dequeued set {set_id} from entries")
 
         except Exception as e:
@@ -199,8 +188,8 @@ class IRQueueService:
             IRQueueError: If dequeue fails
         """
         try:
-            if set_id in self._voting_queue:
-                self._voting_queue.remove(set_id)
+            removed = queue_client.remove(VOTING_QUEUE, {"set_id": set_id})
+            if removed:
                 logger.debug(f"Dequeued set {set_id} from voting")
 
         except Exception as e:
@@ -244,17 +233,53 @@ class IRQueueService:
             return {}
 
     def get_entry_queue_length(self) -> int:
-        """Get length of in-memory entry queue.
+        """Get length of the distributed entry queue.
 
         Returns:
             int: Queue length
         """
-        return len(self._entry_queue)
+        return queue_client.length(ENTRY_QUEUE)
 
     def get_voting_queue_length(self) -> int:
-        """Get length of in-memory voting queue.
+        """Get length of the distributed voting queue.
 
         Returns:
             int: Queue length
         """
-        return len(self._voting_queue)
+        return queue_client.length(VOTING_QUEUE)
+
+    async def _get_next_from_queue(
+        self,
+        queue_name: str,
+        required_status: str,
+        count_attr,
+        max_count: int,
+    ) -> Optional[str]:
+        """Return the next queued set that still satisfies eligibility checks."""
+
+        # Allow a few stale removals each call to avoid tight loops
+        max_attempts = 10
+        attempts = 0
+        column_name = getattr(count_attr, "key", count_attr)
+        while attempts < max_attempts:
+            queued_item = queue_client.peek(queue_name)
+            if not queued_item:
+                return None
+
+            set_id = queued_item.get("set_id")
+            stmt = select(IRBackronymSet).where(IRBackronymSet.set_id == set_id)
+            result = await self.db.execute(stmt)
+            set_obj = result.scalars().first()
+
+            if (
+                set_obj
+                and set_obj.status == required_status
+                and getattr(set_obj, column_name) < max_count
+            ):
+                return str(set_id)
+
+            # Drop stale head item and keep scanning
+            queue_client.pop(queue_name)
+            attempts += 1
+
+        return None

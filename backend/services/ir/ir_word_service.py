@@ -117,6 +117,10 @@ class IRWordError(RuntimeError):
 _DICTIONARY_WORDS = _load_dictionary_words()
 
 
+RECENT_WORD_LOOKBACK_MINUTES = 30
+MAX_RECENT_WORD_ATTEMPTS = 10
+
+
 class IRWordService:
     """Service for generating and caching random words for backronym sets."""
 
@@ -150,17 +154,28 @@ class IRWordService:
 
             # Avoid getting same word twice in quick succession
             current_time = datetime.now(UTC)
-            if (
-                self._last_word
-                and self._last_word_time
-                and (current_time - self._last_word_time) < timedelta(seconds=10)
-            ):
-                # Return different word from recent picks
-                word = random.choice(_DICTIONARY_WORDS)
-                while word == self._last_word:
+            attempts = 0
+            word = random.choice(_DICTIONARY_WORDS)
+
+            while attempts < MAX_RECENT_WORD_ATTEMPTS:
+                if (
+                    self._last_word
+                    and self._last_word_time
+                    and (current_time - self._last_word_time) < timedelta(seconds=10)
+                    and word == self._last_word
+                ):
                     word = random.choice(_DICTIONARY_WORDS)
-            else:
-                word = random.choice(_DICTIONARY_WORDS)
+                    attempts += 1
+                    continue
+
+                recently_used = await self.is_word_recently_used(
+                    word, RECENT_WORD_LOOKBACK_MINUTES
+                )
+                if recently_used:
+                    word = random.choice(_DICTIONARY_WORDS)
+                    attempts += 1
+                    continue
+                break
 
             self._last_word = word
             self._last_word_time = current_time
@@ -184,7 +199,7 @@ class IRWordService:
         try:
             lookback_time = datetime.now(UTC) - timedelta(minutes=minutes)
             stmt = select(IRAIPhraseCache).where(
-                (IRAIPhraseCache.word == word.upper())
+                (IRAIPhraseCache.original_phrase == word.upper())
                 & (IRAIPhraseCache.created_at >= lookback_time)
             )
             result = await self.db.execute(stmt)
@@ -194,17 +209,26 @@ class IRWordService:
             logger.warning(f"Error checking recent word usage: {e}")
             return False
 
-    async def cache_word_usage(self, word: str) -> None:
+    async def cache_word_usage(
+        self,
+        set_id: str,
+        word: str,
+        validated_phrases: list[str] | None = None,
+    ) -> None:
         """Cache word usage for duplicate prevention.
 
         Args:
+            set_id: Backronym set identifier (maps to prompt_round_id)
             word: Word to cache
+            validated_phrases: Optional validated phrases to persist
         """
         try:
-            # Just record in AI phrase cache (can reuse for word tracking)
             cache_entry = IRAIPhraseCache(
-                word=word.upper(),
-                generated_phrases=[],
+                prompt_round_id=set_id,
+                original_phrase=word.upper(),
+                validated_phrases=validated_phrases or [],
+                generation_provider="system",
+                generation_model="word-cache",
                 created_at=datetime.now(UTC),
             )
             self.db.add(cache_entry)

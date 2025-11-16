@@ -3,14 +3,26 @@
 from datetime import UTC, datetime
 from fastapi import APIRouter, Depends, HTTPException, Response, Header, Cookie
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from pydantic import BaseModel
 
 from backend.config import get_settings
 from backend.database import get_db
 from backend.models.ir.ir_player import IRPlayer
 from backend.models.ir.enums import IRSetStatus
+from backend.models.ir.ir_backronym_set import IRBackronymSet
+from backend.models.ir.ir_backronym_entry import IRBackronymEntry
 from backend.services.ir.auth_service import IRAuthService, IRAuthError
 from backend.services.ir.player_service import IRPlayerService, IRPlayerError
+from backend.services.ir.transaction_service import IRTransactionService, IRTransactionError
+from backend.services.ir.ir_backronym_set_service import IRBackronymSetService
+from backend.services.ir.ir_vote_service import IRVoteService, IRVoteError
+from backend.services.ir.ir_result_view_service import IRResultViewService
+from backend.services.ir.ir_scoring_service import IRScoringService
+from backend.services.ir.ir_daily_bonus_service import (
+    IRDailyBonusService,
+    IRDailyBonusError,
+)
 from backend.utils.cookies import set_access_token_cookie, set_refresh_cookie, clear_auth_cookies
 
 router = APIRouter(prefix="/api/ir", tags=["ir"])
@@ -72,6 +84,57 @@ class IRLogoutRequest(BaseModel):
     """IR logout request."""
 
     player_id: str
+
+
+class IRUpgradeGuestRequest(BaseModel):
+    """Upgrade guest account request."""
+
+    email: str
+    password: str
+
+
+class IRPlayerBalanceResponse(BaseModel):
+    """Balance response payload."""
+
+    wallet: int
+    vault: int
+    daily_bonus_available: bool
+
+
+class IRDashboardPlayerSummary(BaseModel):
+    player_id: str
+    username: str
+    wallet: int
+    vault: int
+    daily_bonus_available: bool
+    created_at: datetime
+
+
+class IRDashboardActiveSet(BaseModel):
+    set_id: str
+    status: str
+    word: str
+    role: str
+
+
+class IRPendingResult(BaseModel):
+    set_id: str
+    word: str
+    payout_amount: int
+    finalized_at: str | None = None
+
+
+class IRDashboardResponse(BaseModel):
+    player: IRDashboardPlayerSummary
+    active_set: IRDashboardActiveSet | None
+    pending_results: list[IRPendingResult]
+
+
+class IRClaimDailyBonusResponse(BaseModel):
+    amount: int
+    claimed_at: datetime
+    wallet: int
+    vault: int
 
 
 # ================================================================
@@ -292,6 +355,57 @@ async def register_guest(
     )
 
 
+@router.post("/auth/upgrade", response_model=IRAuthResponse)
+async def upgrade_guest_account(
+    request: IRUpgradeGuestRequest,
+    response: Response,
+    player: IRPlayer = Depends(get_ir_current_player),
+    db: AsyncSession = Depends(get_db),
+) -> IRAuthResponse:
+    """Upgrade a guest account to a full account."""
+
+    auth_service = IRAuthService(db)
+    try:
+        upgraded_player, access_token = await auth_service.upgrade_guest(
+            player,
+            request.email,
+            request.password,
+        )
+    except IRAuthError as exc:
+        message = str(exc)
+        status = 400
+        if message == "email_taken":
+            status = 409
+        elif message == "not_a_guest":
+            status = 400
+        elif message.startswith("weak_password"):
+            status = 422
+        raise HTTPException(status_code=status, detail=message) from exc
+
+    refresh_token = await auth_service.create_refresh_token(upgraded_player.player_id)
+    set_access_token_cookie(
+        response,
+        access_token,
+        cookie_name=settings.ir_access_token_cookie_name,
+    )
+    set_refresh_cookie(
+        response,
+        refresh_token,
+        expires_days=settings.ir_refresh_token_expire_days,
+        cookie_name=settings.ir_refresh_token_cookie_name,
+    )
+
+    return IRAuthResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        expires_in=settings.ir_access_token_expire_minutes * 60,
+        player_id=upgraded_player.player_id,
+        username=upgraded_player.username,
+        wallet=upgraded_player.wallet,
+        vault=upgraded_player.vault,
+    )
+
+
 @router.post("/auth/refresh", response_model=IRAuthResponse)
 async def refresh_access_token(
     request: IRRefreshRequest,
@@ -411,6 +525,111 @@ async def get_current_player(
     )
 
 
+@router.get("/player/balance", response_model=IRPlayerBalanceResponse)
+async def get_player_balance(
+    player: IRPlayer = Depends(get_ir_current_player),
+    db: AsyncSession = Depends(get_db),
+) -> IRPlayerBalanceResponse:
+    """Return wallet/vault balances and bonus availability."""
+
+    player_service = IRPlayerService(db)
+    fresh_player = await player_service.get_player_by_id(str(player.player_id))
+    if not fresh_player:
+        raise HTTPException(status_code=404, detail="player_not_found")
+
+    bonus_service = IRDailyBonusService(db)
+    bonus_available = await bonus_service.is_bonus_available(str(player.player_id))
+
+    return IRPlayerBalanceResponse(
+        wallet=fresh_player.wallet,
+        vault=fresh_player.vault,
+        daily_bonus_available=bonus_available,
+    )
+
+
+@router.get("/player/dashboard", response_model=IRDashboardResponse)
+async def get_player_dashboard(
+    player: IRPlayer = Depends(get_ir_current_player),
+    db: AsyncSession = Depends(get_db),
+) -> IRDashboardResponse:
+    """Return dashboard summary for the signed-in player."""
+
+    player_service = IRPlayerService(db)
+    fresh_player = await player_service.get_player_by_id(str(player.player_id))
+    if not fresh_player:
+        raise HTTPException(status_code=404, detail="player_not_found")
+
+    bonus_service = IRDailyBonusService(db)
+    bonus_available = await bonus_service.is_bonus_available(str(player.player_id))
+
+    active_stmt = (
+        select(IRBackronymSet)
+        .join(IRBackronymEntry, IRBackronymEntry.set_id == IRBackronymSet.set_id)
+        .where(IRBackronymEntry.player_id == str(player.player_id))
+        .where(
+            IRBackronymSet.status.in_([IRSetStatus.OPEN, IRSetStatus.VOTING])
+        )
+        .order_by(IRBackronymSet.created_at.desc())
+        .limit(1)
+    )
+    active_result = await db.execute(active_stmt)
+    active_set = active_result.scalars().first()
+
+    result_service = IRResultViewService(db)
+    pending = await result_service.get_pending_results(str(player.player_id))
+    pending_models = [IRPendingResult(**item) for item in pending]
+
+    return IRDashboardResponse(
+        player=IRDashboardPlayerSummary(
+            player_id=str(fresh_player.player_id),
+            username=fresh_player.username,
+            wallet=fresh_player.wallet,
+            vault=fresh_player.vault,
+            daily_bonus_available=bonus_available,
+            created_at=fresh_player.created_at,
+        ),
+        active_set=(
+            IRDashboardActiveSet(
+                set_id=str(active_set.set_id),
+                status=active_set.status,
+                word=active_set.word,
+                role="participant",
+            )
+            if active_set
+            else None
+        ),
+        pending_results=pending_models,
+    )
+
+
+@router.post("/player/claim-daily-bonus", response_model=IRClaimDailyBonusResponse)
+async def claim_daily_bonus(
+    player: IRPlayer = Depends(get_ir_current_player),
+    db: AsyncSession = Depends(get_db),
+) -> IRClaimDailyBonusResponse:
+    """Claim the daily InitCoin bonus."""
+
+    bonus_service = IRDailyBonusService(db)
+    player_service = IRPlayerService(db)
+
+    try:
+        bonus = await bonus_service.claim_bonus(str(player.player_id))
+    except IRDailyBonusError as exc:
+        status = 400 if str(exc) == "already_claimed" else 400
+        raise HTTPException(status_code=status, detail=str(exc)) from exc
+
+    refreshed_player = await player_service.get_player_by_id(str(player.player_id))
+    if not refreshed_player:
+        raise HTTPException(status_code=404, detail="player_not_found")
+
+    return IRClaimDailyBonusResponse(
+        amount=bonus["amount"],
+        claimed_at=bonus["claimed_at"],
+        wallet=refreshed_player.wallet,
+        vault=refreshed_player.vault,
+    )
+
+
 @router.get("/players/{player_id}", response_model=IRPlayerResponse)
 async def get_player(
     player_id: str,
@@ -511,9 +730,6 @@ async def start_game(
     db: AsyncSession = Depends(get_db),
 ) -> StartGameResponse:
     """Start a new backronym battle or join an existing one."""
-    from backend.services.ir.ir_backronym_set_service import IRBackronymSetService
-    from backend.services.ir.player_service import IRPlayerService
-    from backend.services.ir.transaction_service import IRTransactionService
 
     try:
         # Check balance
@@ -524,7 +740,6 @@ async def start_game(
             )
 
         set_service = IRBackronymSetService(db)
-        player_service = IRPlayerService(db)
         txn_service = IRTransactionService(db)
 
         # Get or create open set
@@ -537,15 +752,10 @@ async def start_game(
         else:
             set_obj = available_set
 
-        # Debit wallet
-        await player_service.update_wallet(str(player.player_id), -settings.ir_backronym_entry_cost)
-
-        # Record transaction
-        await txn_service.record_transaction(
+        await txn_service.debit_wallet(
             player_id=str(player.player_id),
+            amount=settings.ir_backronym_entry_cost,
             transaction_type=txn_service.ENTRY_CREATION,
-            amount=-settings.ir_backronym_entry_cost,
-            wallet_type="wallet",
             reference_id=str(set_obj.set_id),
         )
 
@@ -556,6 +766,8 @@ async def start_game(
             entry_count=set_obj.entry_count,
         )
 
+    except IRTransactionError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
@@ -568,7 +780,6 @@ async def submit_backronym(
     db: AsyncSession = Depends(get_db),
 ) -> SubmitBackronymResponse:
     """Submit a backronym entry to a set."""
-    from backend.services.ir.ir_backronym_set_service import IRBackronymSetService
 
     try:
         set_service = IRBackronymSetService(db)
@@ -606,7 +817,6 @@ async def get_set_status(
     db: AsyncSession = Depends(get_db),
 ) -> SetStatusResponse:
     """Get current status of a backronym set."""
-    from backend.services.ir.ir_backronym_set_service import IRBackronymSetService
 
     try:
         set_service = IRBackronymSetService(db)
@@ -635,13 +845,9 @@ async def submit_vote(
     db: AsyncSession = Depends(get_db),
 ) -> SubmitVoteResponse:
     """Submit a vote on a backronym entry."""
-    from backend.services.ir.ir_vote_service import IRVoteService
-    from backend.services.ir.player_service import IRPlayerService
-    from backend.services.ir.transaction_service import IRTransactionService
 
     try:
         vote_service = IRVoteService(db)
-        player_service = IRPlayerService(db)
         txn_service = IRTransactionService(db)
 
         # Check eligibility
@@ -654,12 +860,10 @@ async def submit_vote(
 
         # Debit vote cost for non-participants
         if not is_participant:
-            await player_service.update_wallet(str(player.player_id), -settings.ir_vote_cost)
-            await txn_service.record_transaction(
+            await txn_service.debit_wallet(
                 player_id=str(player.player_id),
-                transaction_type="ir_vote_entry",
-                amount=-settings.ir_vote_cost,
-                wallet_type="wallet",
+                amount=settings.ir_vote_cost,
+                transaction_type=txn_service.VOTE_ENTRY,
                 reference_id=set_id,
             )
 
@@ -676,6 +880,8 @@ async def submit_vote(
             set_id=vote_result["set_id"],
         )
 
+    except (IRTransactionError, IRVoteError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
@@ -687,9 +893,6 @@ async def get_results(
     db: AsyncSession = Depends(get_db),
 ) -> ResultsResponse:
     """Get finalized results for a set."""
-    from backend.services.ir.ir_backronym_set_service import IRBackronymSetService
-    from backend.services.ir.ir_result_view_service import IRResultViewService
-    from backend.services.ir.ir_scoring_service import IRScoringService
 
     try:
         set_service = IRBackronymSetService(db)

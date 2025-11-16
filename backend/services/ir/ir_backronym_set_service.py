@@ -1,5 +1,4 @@
 """IR Backronym Set Service - Set lifecycle management for Initial Reaction."""
-
 import logging
 from datetime import datetime, UTC, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,6 +10,8 @@ from backend.models.ir.ir_backronym_entry import IRBackronymEntry
 from backend.models.ir.ir_backronym_vote import IRBackronymVote
 from backend.models.ir.enums import IRSetStatus, IRMode
 from backend.services.ir.ir_word_service import IRWordService, IRWordError
+from backend.services.ir.ir_queue_service import IRQueueService
+from backend.services.ir.ir_scoring_service import IRScoringService, IRScoringError
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +32,8 @@ class IRBackronymSetService:
         self.db = db
         self.settings = get_settings()
         self.word_service = IRWordService(db)
+        self.queue_service = IRQueueService(db)
+        self.scoring_service = IRScoringService(db)
 
     async def create_set(self, mode: str = IRMode.RAPID) -> IRBackronymSet:
         """Create a new backronym set with random word.
@@ -58,6 +61,8 @@ class IRBackronymSetService:
             self.db.add(set_obj)
             await self.db.commit()
             await self.db.refresh(set_obj)
+            await self.word_service.cache_word_usage(str(set_obj.set_id), word)
+            await self.queue_service.enqueue_entry_set(str(set_obj.set_id))
 
             logger.info(f"Created IR backronym set {set_obj.set_id} with word {word}")
             return set_obj
@@ -167,13 +172,14 @@ class IRBackronymSetService:
             )
             self.db.add(entry)
 
-            # Update set entry count
+            # Update set entry count and accounting columns
             set_obj.entry_count += 1
             if not is_ai:
                 now = datetime.now(UTC)
                 set_obj.last_human_entry_at = now
                 if set_obj.first_participant_joined_at is None:
                     set_obj.first_participant_joined_at = now
+                set_obj.total_pool += self.settings.ir_backronym_entry_cost
 
             await self.db.commit()
             await self.db.refresh(entry)
@@ -217,6 +223,8 @@ class IRBackronymSetService:
             set_obj.status = IRSetStatus.VOTING
             await self.db.commit()
             await self.db.refresh(set_obj)
+            await self.queue_service.dequeue_entry_set(set_id)
+            await self.queue_service.enqueue_voting_set(set_id)
 
             logger.info(f"Transitioned set {set_id} to VOTING phase")
             return set_obj
@@ -269,10 +277,15 @@ class IRBackronymSetService:
             )
             self.db.add(vote)
 
-            # Update set vote count
+            # Update set vote count and accounting columns
             set_obj.vote_count += 1
             if not is_ai:
                 set_obj.last_human_vote_at = datetime.now(UTC)
+            if not is_participant_voter:
+                set_obj.non_participant_vote_count += 1
+                if not is_ai:
+                    set_obj.total_pool += self.settings.ir_vote_cost
+                    set_obj.vote_contributions += self.settings.ir_vote_cost
 
             # Update entry vote count
             entry = (
@@ -327,16 +340,36 @@ class IRBackronymSetService:
             if not set_obj:
                 raise IRBackronymSetError("set_not_found")
 
+            if set_obj.status == IRSetStatus.FINALIZED:
+                return set_obj
+
+            payouts = await self.scoring_service.calculate_payouts(set_id)
+
             set_obj.status = IRSetStatus.FINALIZED
             set_obj.finalized_at = datetime.now(UTC)
+            set_obj.total_pool = payouts.get("total_pool", set_obj.total_pool)
+            set_obj.vote_contributions = payouts.get("vote_costs", set_obj.vote_contributions)
+            set_obj.non_participant_payouts_paid = payouts.get(
+                "non_participant_total_payout", set_obj.non_participant_payouts_paid
+            )
+            set_obj.creator_final_pool = payouts.get(
+                "creator_pool", set_obj.creator_final_pool
+            )
+
             await self.db.commit()
             await self.db.refresh(set_obj)
+            await self.queue_service.dequeue_voting_set(set_id)
+
+            await self.scoring_service.process_payouts(set_id)
 
             logger.info(f"Finalized set {set_id}")
             return set_obj
 
         except IRBackronymSetError:
             raise
+        except IRScoringError as e:
+            await self.db.rollback()
+            raise IRBackronymSetError(f"Failed to process payouts: {str(e)}") from e
         except Exception as e:
             await self.db.rollback()
             raise IRBackronymSetError(f"Failed to finalize set: {str(e)}") from e

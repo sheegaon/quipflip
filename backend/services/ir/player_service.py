@@ -181,6 +181,28 @@ class IRPlayerService:
 
         raise IRPlayerError("guest_creation_failed_max_retries")
 
+    async def upgrade_guest_to_full(
+        self, player: IRPlayer, email: str, password_hash: str
+    ) -> IRPlayer:
+        """Upgrade a guest player to a full account with email/password."""
+
+        if not player.is_guest:
+            raise IRPlayerError("not_a_guest")
+
+        normalized_email = email.strip().lower()
+        stmt = select(IRPlayer).where(IRPlayer.email == normalized_email)
+        result = await self.db.execute(stmt)
+        existing = result.scalars().first()
+        if existing and existing.player_id != player.player_id:
+            raise IRPlayerError("email_taken")
+
+        player.email = normalized_email
+        player.password_hash = password_hash
+        player.is_guest = False
+        await self.db.commit()
+        await self.db.refresh(player)
+        return player
+
     async def update_wallet(self, player_id: str, amount: int) -> IRPlayer:
         """Update player wallet balance.
 

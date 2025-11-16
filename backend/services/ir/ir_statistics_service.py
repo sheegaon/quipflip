@@ -8,6 +8,7 @@ from backend.models.ir.ir_backronym_entry import IRBackronymEntry
 from backend.models.ir.ir_backronym_vote import IRBackronymVote
 from backend.models.ir.ir_transaction import IRTransaction
 from backend.models.ir.ir_player import IRPlayer
+from backend.services.ir.transaction_service import IRTransactionService
 
 logger = logging.getLogger(__name__)
 
@@ -78,13 +79,23 @@ class IRStatisticsService:
             total_earnings = 0
             total_expenses = 0
 
+            income_types = {
+                IRTransactionService.CREATOR_PAYOUT,
+                IRTransactionService.VOTE_PAYOUT,
+                IRTransactionService.DAILY_BONUS,
+            }
+            expense_types = {
+                IRTransactionService.ENTRY_CREATION,
+                IRTransactionService.VOTE_ENTRY,
+            }
+
             for txn_type, count, total in txn_rows:
                 txn_summary[txn_type] = {"count": count, "total": total or 0}
 
                 # Calculate earnings/expenses
-                if txn_type in ["ir_creator_payout", "ir_vote_payout", "daily_bonus"]:
+                if txn_type in income_types:
                     total_earnings += total or 0
-                elif txn_type in ["ir_backronym_entry", "ir_vote_cost"]:
+                elif txn_type in expense_types:
                     total_expenses += abs(total or 0)
 
             return {
