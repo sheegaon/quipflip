@@ -178,6 +178,28 @@ class PhraseValidationClient:
                     f"and other copy: {other_copy_phrase}")
         return await self._make_request("/validate/copy", payload)
 
+    async def validate_backronym_words(
+        self,
+        words: list[str],
+        target_letter_count: int,
+    ) -> Tuple[bool, str]:
+        """
+        Validate backronym words for Initial Reaction.
+
+        Args:
+            words: List of words to validate
+            target_letter_count: Expected number of words (should match word length)
+
+        Returns:
+            (is_valid, error_message)
+        """
+        payload = {
+            "words": words,
+            "target_letter_count": target_letter_count
+        }
+        logger.info(f"Validating backronym words: {words} for target length: {target_letter_count}")
+        return await self._make_request("/validate/backronym", payload)
+
     async def health_check(self) -> bool:
         """
         Check if the phrase validation service is healthy.
