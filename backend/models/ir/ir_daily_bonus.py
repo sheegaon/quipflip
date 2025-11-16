@@ -26,7 +26,7 @@ class IRDailyBonus(Base):
         nullable=False,
         index=True,
     )
-    amount = Column(Integer, default=100, nullable=False)
+    bonus_amount = Column(Integer, default=100, nullable=False)
     claimed_at = Column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
     )

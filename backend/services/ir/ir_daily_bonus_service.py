@@ -48,7 +48,7 @@ class IRDailyBonusService:
 
                 bonus = IRDailyBonus(
                     player_id=player_id,
-                    amount=self.settings.ir_daily_bonus_amount,
+                    bonus_amount=self.settings.ir_daily_bonus_amount,
                     claimed_at=today,
                     date=bonus_date,
                 )
