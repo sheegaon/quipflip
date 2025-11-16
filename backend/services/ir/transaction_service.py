@@ -86,13 +86,15 @@ class IRTransactionService:
         amount: int,
         transaction_type: str,
         reference_id: str | None = None,
+        *,
+        use_existing_transaction: bool = False,
     ) -> IRTransaction:
         """Credit a player's wallet with locking and ledger entry."""
 
         if amount <= 0:
             raise IRTransactionError("amount_must_be_positive")
 
-        async with self.db.begin():
+        async def _create_credit_transaction() -> IRTransaction:
             player = await self._lock_player(player_id)
             player.wallet += amount
             transaction = IRTransaction(
@@ -107,6 +109,14 @@ class IRTransactionService:
                 created_at=datetime.now(UTC),
             )
             self.db.add(transaction)
+            return transaction
+
+        if use_existing_transaction:
+            transaction = await _create_credit_transaction()
+            await self.db.flush()
+        else:
+            async with self.db.begin():
+                transaction = await _create_credit_transaction()
 
         await self.db.refresh(transaction)
         return transaction
