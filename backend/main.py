@@ -284,6 +284,40 @@ async def cleanup_cycle():
         await asyncio.sleep(cleanup_interval)
 
 
+async def ir_backup_cycle():
+    """
+    Background task to fill stalled Initial Reaction game sets.
+
+    Runs periodically to:
+    - Generate AI backronym entries for sets waiting > 2 minutes
+    - Generate AI votes for sets voting > 2 minutes
+    """
+    from backend.database import AsyncSessionLocal
+    from backend.services.ai.ai_service import AIService
+
+    # Initial startup delay
+    startup_delay = 120
+    logger.info(f"IR backup cycle starting in {startup_delay}s")
+    await asyncio.sleep(startup_delay)
+
+    logger.info("IR backup cycle starting main loop")
+
+    # Run IR backup every 2 minutes (for rapid mode)
+    ir_backup_interval = settings.ir_ai_backup_delay_minutes * 60
+
+    while True:
+        try:
+            async with AsyncSessionLocal() as db:
+                ai_service = AIService(db)
+                await ai_service.run_ir_backup_cycle()
+
+        except Exception as e:
+            logger.error(f"IR backup cycle error: {e}")
+
+        # Wait before next cycle
+        await asyncio.sleep(ir_backup_interval)
+
+
 @asynccontextmanager
 async def lifespan(app_instance: FastAPI):
     """Manage application startup and shutdown tasks."""
@@ -309,6 +343,7 @@ async def lifespan(app_instance: FastAPI):
     ai_backup_task = None
     stale_handler_task = None
     cleanup_task = None
+    ir_backup_task = None
 
     try:
         ai_backup_task = asyncio.create_task(ai_backup_cycle())
@@ -331,6 +366,14 @@ async def lifespan(app_instance: FastAPI):
         logger.info("Cleanup cycle task started (runs every hour)")
     except Exception as e:
         logger.error(f"Failed to start cleanup cycle: {e}")
+
+    try:
+        ir_backup_task = asyncio.create_task(ir_backup_cycle())
+        logger.info(
+            f"IR backup cycle task started (runs every {settings.ir_ai_backup_delay_minutes} minutes)"
+        )
+    except Exception as e:
+        logger.error(f"Failed to start IR backup cycle: {e}")
 
     try:
         yield
@@ -356,6 +399,13 @@ async def lifespan(app_instance: FastAPI):
                 await cleanup_task
             except asyncio.CancelledError:
                 logger.info("Cleanup cycle task cancelled")
+
+        if ir_backup_task:
+            ir_backup_task.cancel()
+            try:
+                await ir_backup_task
+            except asyncio.CancelledError:
+                logger.info("IR backup cycle task cancelled")
 
         # Cleanup phrase validation client session
         if settings.use_phrase_validator_api:

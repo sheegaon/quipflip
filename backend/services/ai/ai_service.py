@@ -820,3 +820,247 @@ class AIService:
 
         finally:
             logger.info(f"AI backup cycle completed: {stats}")
+
+    async def generate_backronym(self, word: str) -> list[str]:
+        """
+        Generate a clever backronym for a word.
+
+        Args:
+            word: The target word (e.g., "FROG", "CAT")
+
+        Returns:
+            list[str]: Array of words forming the backronym
+
+        Raises:
+            AICopyError: If backronym generation fails
+        """
+        from backend.services.ai.prompt_builder import build_backronym_prompt
+
+        try:
+            word_upper = word.upper()
+            letter_count = len(word_upper)
+
+            # Build prompt
+            prompt = build_backronym_prompt(word_upper, count=1)
+
+            # Generate using configured provider
+            if self.provider == "openai":
+                from backend.services.ai.openai_api import call_openai
+                response_text = await call_openai(prompt, self.ai_model)
+            else:
+                from backend.services.ai.gemini_api import call_gemini
+                response_text = await call_gemini(prompt, self.ai_model)
+
+            # Parse response - should be words separated by spaces
+            words = response_text.strip().split()
+
+            # Validate we got the right number of words
+            if len(words) != letter_count:
+                logger.warning(
+                    f"AI generated {len(words)} words for {word} "
+                    f"(expected {letter_count}), truncating/padding"
+                )
+                words = words[:letter_count]
+                while len(words) < letter_count:
+                    words.append("WORD")
+
+            # Validate each word is 2-15 chars
+            validated_words = []
+            for w in words:
+                w_clean = w.upper().replace(".", "").replace(",", "").strip()
+                if 2 <= len(w_clean) <= 15 and w_clean.isalpha():
+                    validated_words.append(w_clean)
+                else:
+                    logger.warning(f"Invalid word in backronym: {w}")
+                    validated_words.append("WORD")
+
+            logger.info(f"Generated backronym for {word}: {' '.join(validated_words)}")
+            return validated_words
+
+        except Exception as e:
+            logger.error(f"Failed to generate backronym for {word}: {e}")
+            raise AICopyError(f"Backronym generation failed: {str(e)}") from e
+
+    async def generate_backronym_vote(self, word: str, backronyms: list[list[str]]) -> int:
+        """
+        Generate AI vote on backronym entries.
+
+        Args:
+            word: The target word
+            backronyms: List of backronym word arrays (e.g., [["FUNNY", "RODENT"], ...])
+
+        Returns:
+            int: Index of chosen backronym (0-based)
+
+        Raises:
+            AIVoteError: If vote generation fails
+        """
+        from backend.services.ai.prompt_builder import build_backronym_vote_prompt
+
+        try:
+            word_upper = word.upper()
+
+            # Format backronyms for prompt
+            backronym_strs = [" ".join(b) if isinstance(b, list) else b for b in backronyms]
+
+            # Build prompt
+            prompt = build_backronym_vote_prompt(word_upper, backronym_strs)
+
+            # Generate using configured provider
+            if self.provider == "openai":
+                from backend.services.ai.openai_api import call_openai
+                response_text = await call_openai(prompt, self.ai_model)
+            else:
+                from backend.services.ai.gemini_api import call_gemini
+                response_text = await call_gemini(prompt, self.ai_model)
+
+            # Parse response - should be a number 1-5
+            try:
+                choice_num = int(response_text.strip())
+                # Convert to 0-based index
+                choice_index = choice_num - 1
+
+                # Validate index
+                if 0 <= choice_index < len(backronyms):
+                    logger.info(
+                        f"AI voted on {word}: chose option {choice_num} "
+                        f"({backronym_strs[choice_index]})"
+                    )
+                    return choice_index
+                else:
+                    logger.warning(
+                        f"AI vote out of range: {choice_num} "
+                        f"(valid: 1-{len(backronyms)}), defaulting to 0"
+                    )
+                    return 0
+
+            except ValueError:
+                logger.warning(f"AI vote response not a number: {response_text}")
+                return 0
+
+        except Exception as e:
+            logger.error(f"Failed to generate backronym vote for {word}: {e}")
+            raise AIVoteError(f"Backronym vote generation failed: {str(e)}") from e
+
+    async def run_ir_backup_cycle(self) -> None:
+        """
+        Run backup cycle for Initial Reaction game.
+
+        Fills stalled backronym sets with AI entries and votes.
+        """
+        from backend.services.ir.ir_backronym_set_service import (
+            IRBackronymSetService,
+            IRBackronymSetError,
+        )
+        from backend.services.ir.ir_player_service import IRPlayerService
+
+        stats = {
+            "sets_checked": 0,
+            "entries_generated": 0,
+            "votes_generated": 0,
+            "errors": 0,
+        }
+
+        try:
+            # Get or create IR AI player
+            ai_player = await self._get_or_create_ai_player(
+                email="ai_backronym_001@initialreaction.internal"
+            )
+
+            set_service = IRBackronymSetService(self.db)
+            player_service = IRPlayerService(self.db)
+
+            # Get stalled open sets
+            stalled_open = await set_service.get_stalled_open_sets(
+                minutes=self.settings.ir_ai_backup_delay_minutes
+            )
+            stats["sets_checked"] = len(stalled_open)
+
+            # Fill stalled open sets
+            for set_obj in stalled_open:
+                try:
+                    while set_obj.entry_count < 5:
+                        # Generate backronym
+                        backronym = await self.generate_backronym(set_obj.word)
+
+                        # Add entry
+                        entry = await set_service.add_entry(
+                            set_id=str(set_obj.set_id),
+                            player_id=str(ai_player.player_id),
+                            backronym_text=backronym,
+                            is_ai=True,
+                        )
+                        stats["entries_generated"] += 1
+                        logger.info(
+                            f"AI entry {entry.entry_id} added to set {set_obj.set_id}"
+                        )
+
+                        # Refresh set to get updated count
+                        set_obj = await set_service.get_set_by_id(str(set_obj.set_id))
+                        if not set_obj:
+                            break
+
+                except Exception as e:
+                    logger.error(f"Error filling set {set_obj.set_id}: {e}")
+                    stats["errors"] += 1
+
+            # Get stalled voting sets
+            stalled_voting = await set_service.get_stalled_voting_sets(
+                minutes=self.settings.ir_ai_backup_delay_minutes
+            )
+
+            # Fill voting for stalled sets
+            for set_obj in stalled_voting:
+                try:
+                    # Get entries for this set
+                    from sqlalchemy import select
+                    from backend.models.ir.ir_backronym_entry import IRBackronymEntry
+
+                    entries_stmt = select(IRBackronymEntry).where(
+                        IRBackronymEntry.set_id == str(set_obj.set_id)
+                    )
+                    entries_result = await self.db.execute(entries_stmt)
+                    entries = entries_result.scalars().all()
+
+                    if len(entries) < 5:
+                        logger.warning(f"Set {set_obj.set_id} has < 5 entries, skipping voting fill")
+                        continue
+
+                    # Generate votes until we have 5
+                    while set_obj.vote_count < 5:
+                        # Get backronym texts as word arrays
+                        backronym_strs = [e.backronym_text for e in entries]
+
+                        # Generate vote
+                        chosen_index = await self.generate_backronym_vote(
+                            set_obj.word, backronym_strs
+                        )
+                        chosen_entry_id = entries[chosen_index].entry_id
+
+                        # Add vote
+                        vote = await set_service.add_vote(
+                            set_id=str(set_obj.set_id),
+                            player_id=str(ai_player.player_id),
+                            chosen_entry_id=str(chosen_entry_id),
+                            is_participant_voter=False,
+                            is_ai=True,
+                        )
+                        stats["votes_generated"] += 1
+                        logger.info(f"AI vote {vote.vote_id} added to set {set_obj.set_id}")
+
+                        # Refresh set
+                        set_obj = await set_service.get_set_by_id(str(set_obj.set_id))
+                        if not set_obj:
+                            break
+
+                except Exception as e:
+                    logger.error(f"Error filling votes for set {set_obj.set_id}: {e}")
+                    stats["errors"] += 1
+
+            await self.db.commit()
+            logger.info(f"IR backup cycle completed: {stats}")
+
+        except Exception as exc:
+            logger.error(f"IR backup cycle failed: {exc}")
+            await self.db.rollback()
+            stats["errors"] += 1
