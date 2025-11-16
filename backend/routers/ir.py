@@ -615,7 +615,7 @@ async def claim_daily_bonus(
     try:
         bonus = await bonus_service.claim_bonus(str(player.player_id))
     except IRDailyBonusError as exc:
-        status = 400 if str(exc) == "already_claimed" else 400
+        status = 400
         raise HTTPException(status_code=status, detail=str(exc)) from exc
 
     refreshed_player = await player_service.get_player_by_id(str(player.player_id))
