@@ -15,13 +15,17 @@ async def ir_player_factory(db_session):
 
     async def _create_player(
         email: str | None = None,
+        username: str | None = None,
         password: str = "TestPassword123!",
     ):
         if email is None:
             email = f"irplayer{uuid.uuid4().hex[:8]}@example.com"
+        if username is None:
+            username = f"player_{uuid.uuid4().hex[:8]}"
 
         password_hash = hash_password(password)
         return await player_service.create_player(
+            username=username,
             email=email,
             password_hash=password_hash,
         )

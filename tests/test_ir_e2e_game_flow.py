@@ -33,9 +33,9 @@ async def test_ir_complete_game_flow(db_session):
         players.append(player)
 
     # 2. Create a backronym set
-    word = word_service.get_random_word()
-    backronym_set = await set_service.create_set(word=word, mode="standard")
+    backronym_set = await set_service.create_set(mode="standard")
     assert backronym_set.status == "open"
+    word = backronym_set.word
 
     # 3. First 5 players submit backronyms
     entries = []
@@ -113,8 +113,8 @@ async def test_ir_guest_player_flow(db_session):
     assert guest.is_guest is True
 
     # 2. Guest can start a game
-    word = word_service.get_random_word()
-    backronym_set = await set_service.create_set(word=word, mode="standard")
+    backronym_set = await set_service.create_set(mode="standard")
+    word = backronym_set.word
 
     # 3. Guest submits backronym
     backronym_words = [f"word{i}" for i in range(len(word))]
@@ -207,8 +207,8 @@ async def test_ir_self_vote_prevention(db_session):
     )
 
     # 2. Create set and submit entry
-    word = word_service.get_random_word()
-    backronym_set = await set_service.create_set(word=word, mode="standard")
+    backronym_set = await set_service.create_set(mode="standard")
+    word = backronym_set.word
 
     backronym_words = [f"word{i}" for i in range(len(word))]
     entry = await set_service.add_entry(
@@ -253,8 +253,8 @@ async def test_ir_insufficient_balance_blocking(db_session):
     await db_session.commit()
 
     # 3. Try to enter backronym set (should fail)
-    word = word_service.get_random_word()
-    backronym_set = await set_service.create_set(word=word, mode="standard")
+    backronym_set = await set_service.create_set(mode="standard")
+    word = backronym_set.word
 
     backronym_words = [f"word{i}" for i in range(len(word))]
 
