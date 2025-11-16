@@ -11,6 +11,7 @@ from backend.models.ir.ir_backronym_entry import IRBackronymEntry
 from backend.models.ir.ir_backronym_vote import IRBackronymVote
 from backend.models.ir.enums import IRSetStatus, IRMode
 from backend.services.ir.ir_word_service import IRWordService, IRWordError
+from backend.services.ir.ir_queue_service import IRQueueService
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +32,7 @@ class IRBackronymSetService:
         self.db = db
         self.settings = get_settings()
         self.word_service = IRWordService(db)
+        self.queue_service = IRQueueService(db)
 
     async def create_set(self, mode: str = IRMode.RAPID) -> IRBackronymSet:
         """Create a new backronym set with random word.
@@ -58,6 +60,8 @@ class IRBackronymSetService:
             self.db.add(set_obj)
             await self.db.commit()
             await self.db.refresh(set_obj)
+            await self.word_service.cache_word_usage(str(set_obj.set_id), word)
+            await self.queue_service.enqueue_entry_set(str(set_obj.set_id))
 
             logger.info(f"Created IR backronym set {set_obj.set_id} with word {word}")
             return set_obj
@@ -217,6 +221,8 @@ class IRBackronymSetService:
             set_obj.status = IRSetStatus.VOTING
             await self.db.commit()
             await self.db.refresh(set_obj)
+            await self.queue_service.dequeue_entry_set(set_id)
+            await self.queue_service.enqueue_voting_set(set_id)
 
             logger.info(f"Transitioned set {set_id} to VOTING phase")
             return set_obj
@@ -273,6 +279,8 @@ class IRBackronymSetService:
             set_obj.vote_count += 1
             if not is_ai:
                 set_obj.last_human_vote_at = datetime.now(UTC)
+            if not is_participant_voter:
+                set_obj.non_participant_vote_count += 1
 
             # Update entry vote count
             entry = (
@@ -331,6 +339,7 @@ class IRBackronymSetService:
             set_obj.finalized_at = datetime.now(UTC)
             await self.db.commit()
             await self.db.refresh(set_obj)
+            await self.queue_service.dequeue_voting_set(set_id)
 
             logger.info(f"Finalized set {set_id}")
             return set_obj

@@ -22,6 +22,7 @@ class IRTransactionService:
 
     # Transaction type constants
     ENTRY_CREATION = "ir_backronym_entry"
+    VOTE_ENTRY = "ir_vote_entry"
     VOTE_PAYOUT = "ir_vote_payout"
     CREATOR_PAYOUT = "ir_creator_payout"
     VAULT_CONTRIBUTION = "vault_contribution"
@@ -36,6 +37,110 @@ class IRTransactionService:
         """
         self.db = db
         self.player_service = IRPlayerService(db)
+
+    async def _lock_player(self, player_id: str) -> IRPlayer:
+        stmt = select(IRPlayer).where(IRPlayer.player_id == player_id).with_for_update()
+        result = await self.db.execute(stmt)
+        player = result.scalars().first()
+        if not player:
+            raise IRTransactionError("player_not_found")
+        return player
+
+    async def debit_wallet(
+        self,
+        player_id: str,
+        amount: int,
+        transaction_type: str,
+        reference_id: str | None = None,
+    ) -> IRTransaction:
+        """Debit a player's wallet with locking and ledger entry."""
+
+        if amount <= 0:
+            raise IRTransactionError("amount_must_be_positive")
+
+        async with self.db.begin():
+            player = await self._lock_player(player_id)
+            if player.wallet < amount:
+                raise IRTransactionError("insufficient_wallet_balance")
+
+            player.wallet -= amount
+            transaction = IRTransaction(
+                transaction_id=str(uuid.uuid4()),
+                player_id=player_id,
+                type=transaction_type,
+                amount=-amount,
+                wallet_type="wallet",
+                reference_id=reference_id,
+                wallet_balance_after=player.wallet,
+                vault_balance_after=player.vault,
+                created_at=datetime.now(UTC),
+            )
+            self.db.add(transaction)
+
+        await self.db.refresh(transaction)
+        return transaction
+
+    async def credit_wallet(
+        self,
+        player_id: str,
+        amount: int,
+        transaction_type: str,
+        reference_id: str | None = None,
+    ) -> IRTransaction:
+        """Credit a player's wallet with locking and ledger entry."""
+
+        if amount <= 0:
+            raise IRTransactionError("amount_must_be_positive")
+
+        async with self.db.begin():
+            player = await self._lock_player(player_id)
+            player.wallet += amount
+            transaction = IRTransaction(
+                transaction_id=str(uuid.uuid4()),
+                player_id=player_id,
+                type=transaction_type,
+                amount=amount,
+                wallet_type="wallet",
+                reference_id=reference_id,
+                wallet_balance_after=player.wallet,
+                vault_balance_after=player.vault,
+                created_at=datetime.now(UTC),
+            )
+            self.db.add(transaction)
+
+        await self.db.refresh(transaction)
+        return transaction
+
+    async def credit_vault(
+        self,
+        player_id: str,
+        amount: int,
+        transaction_type: str,
+        reference_id: str | None = None,
+    ) -> IRTransaction:
+        """Credit a player's vault balance with ledger entry."""
+
+        if amount <= 0:
+            raise IRTransactionError("amount_must_be_positive")
+
+        async with self.db.begin():
+            player = await self._lock_player(player_id)
+            player.vault += amount
+            transaction = IRTransaction(
+                transaction_id=str(uuid.uuid4()),
+                player_id=player_id,
+                type=transaction_type,
+                amount=amount,
+                wallet_type="vault",
+                reference_id=reference_id,
+                wallet_balance_after=player.wallet,
+                vault_balance_after=player.vault,
+                created_at=datetime.now(UTC),
+            )
+            self.db.add(transaction)
+
+        await self.db.refresh(transaction)
+        return transaction
 
     async def record_transaction(
         self,
@@ -108,22 +213,23 @@ class IRTransactionService:
             wallet_amount = amount - vault_rake
 
             # Update player wallet and vault
-            player = await self.player_service.update_wallet(player_id, wallet_amount)
-            player = await self.player_service.update_vault(player_id, vault_rake)
-
-            # Record transaction
-            transaction = await self.record_transaction(
+            wallet_txn = await self.credit_wallet(
                 player_id=player_id,
-                transaction_type=self.VOTE_PAYOUT,
                 amount=wallet_amount,
-                wallet_type="wallet",
+                transaction_type=self.VOTE_PAYOUT,
                 reference_id=set_id,
-                wallet_balance_after=player.wallet,
-                vault_balance_after=player.vault,
+            )
+            await self.credit_vault(
+                player_id=player_id,
+                amount=vault_rake,
+                transaction_type=self.VAULT_CONTRIBUTION,
+                reference_id=set_id,
             )
 
-            logger.info(f"Vote payout {wallet_amount} IC (vault: {vault_rake}) to player {player_id}")
-            return transaction
+            logger.info(
+                f"Vote payout {wallet_amount} IC (vault: {vault_rake}) to player {player_id}"
+            )
+            return wallet_txn
 
         except IRPlayerError as e:
             raise IRTransactionError(f"vote_payout_failed: {str(e)}") from e
@@ -149,17 +255,11 @@ class IRTransactionService:
         """
         try:
             # Creator gets full amount (no rake for creator payouts)
-            player = await self.player_service.update_wallet(player_id, amount)
-
-            # Record transaction
-            transaction = await self.record_transaction(
+            transaction = await self.credit_wallet(
                 player_id=player_id,
-                transaction_type=self.CREATOR_PAYOUT,
                 amount=amount,
-                wallet_type="wallet",
+                transaction_type=self.CREATOR_PAYOUT,
                 reference_id=set_id,
-                wallet_balance_after=player.wallet,
-                vault_balance_after=player.vault,
             )
 
             logger.info(f"Creator payout {amount} IC to player {player_id}")
@@ -187,16 +287,15 @@ class IRTransactionService:
         """
         try:
             # Transfer from wallet to vault
-            player = await self.player_service.transfer_wallet_to_vault(player_id, amount)
-
-            # Record transaction
-            transaction = await self.record_transaction(
+            transaction = await self.debit_wallet(
                 player_id=player_id,
+                amount=amount,
                 transaction_type=self.VAULT_CONTRIBUTION,
-                amount=-amount,  # Negative because it's removed from wallet
-                wallet_type="wallet",
-                wallet_balance_after=player.wallet,
-                vault_balance_after=player.vault,
+            )
+            await self.credit_vault(
+                player_id=player_id,
+                amount=amount,
+                transaction_type=self.VAULT_CONTRIBUTION,
             )
 
             logger.info(f"Vault contribution {amount} IC from player {player_id}")

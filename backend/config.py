@@ -46,6 +46,7 @@ class Settings(BaseSettings):
     ir_vote_cost: int = 10  # Cost for non-participants to vote in InitCoins
     ir_vote_reward_correct: int = 20  # Reward for non-participant voters who pick winning entry
     ir_non_participant_vote_cap: int = 10  # Max non-participant votes per guest player
+    ir_non_participant_votes_per_set: int = 5  # Max non-participant votes per set
     ir_rapid_entry_timeout_minutes: int = 30  # Timeout before old sets are removed from available pool
     ir_ai_backup_delay_minutes: int = 2  # Delay before AI fills stalled backronym sets
 

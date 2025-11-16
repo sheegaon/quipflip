@@ -1,38 +1,28 @@
 # Initial Reaction MVP Implementation Plan
 
-## Status Update (2025-11-16)
-✅ **Phase 1 COMPLETE** - Database Schema & Models + Initial API endpoints
-✅ **Phase 2 COMPLETE** - Core game logic services (backronym sets, voting, scoring)
-✅ **Phase 3 COMPLETE** - Backend API Routes + Background Tasks + Configuration
-✅ **Code Quality Fixes COMPLETE** - Dictionary loading, enum usage, config settings
+## Status Update (2024-03-29)
+✅ **Phase 1 COMPLETE** – All legacy Quipflip tables were renamed with the `qf_` prefix and the IR models/enums/migrations exist as expected.
+✅ **Phase 2 COMPLETE** – Word caching now writes to `ir_ai_phrase_cache.original_phrase/validated_phrases`, queue hooks fire when sets are created, filled, or finalized, the AI backup loop provisions `ir_players`, and the vote service rejects self-votes while enforcing the non-participant cap.
+✅ **Phase 3 COMPLETE** – `/auth/upgrade`, `/player/balance`, `/player/dashboard`, and `/player/claim-daily-bonus` join the existing IR routes, with the new daily bonus service persisting to `ir_daily_bonuses`/`ir_transactions` and exposing wallet/vault/daily bonus state plus pending payouts.
+✅ **Code Quality Fixes COMPLETE** – Distributed wallet helpers, queue wiring, duplicate prevention, and the IR-only AI bootstrap removed the remaining backend blockers.
+✅ **Phase 4 CONFIGURATION READY** – The settings module now includes the per-set non-participant vote cap consumed by the updated services.
 
-### Phase 2 (Complete)
-- All 7 core IR services implemented:
-  - `ir_word_service.py` - Dictionary-based word generation (12,414 words cached)
-  - `ir_backronym_set_service.py` - Set lifecycle management
-  - `ir_vote_service.py` - Voting logic and eligibility checks
-  - `ir_scoring_service.py` - Prize pool calculation with vault rake
-  - `ir_result_view_service.py` - Result claiming and payout tracking
-  - `ir_statistics_service.py` - Player stats and leaderboards
-  - `ir_queue_service.py` - FIFO queue management with fallback
-- AI service extended with backronym generation and voting
-- Phrase validation extended with backronym word validation
-- Prompt templates created for AI backronym generation
+**Next:** Move into Phase 5’s frontend work using the now-complete backend contracts.
 
-### Phase 3 (Complete)
-- 15 IR API endpoints implemented:
-  - 5 authentication endpoints (register, guest, login, logout, refresh)
-  - 2 player endpoints (me, get player)
-  - 5 game endpoints (start, submit, status, vote, results)
-  - 3 statistics endpoints (player stats, creator leaderboard, voter leaderboard)
-- IR router mounted in `backend/main.py` with `/api/ir` prefix
-- Background task added for AI backup cycle (fills stalled sets every 2 minutes)
+### Phase 2 (Verification Snapshot – 2024-03-29)
+- Duplicate-prevention is now wired through `IRWordService` → `ir_ai_phrase_cache`, AI backups spawn dedicated `ir_players`, queue transitions fire when sets open/vote/finalize, votes reject self-selection and honor the per-set cap, and the new wallet helpers encapsulate locking + ledger writes.
+
+### Phase 3 (Verification Snapshot – 2024-03-29)
+- Authentication now covers guest upgrades in addition to register/login/guest/logout/refresh.
+- Player endpoints include `/me`, `/player/{id}`, `/player/balance`, `/player/dashboard`, `/player/claim-daily-bonus`, plus the existing statistics + leaderboard routes.
+- Game endpoints cover `/start`, `/sets/{set_id}/submit`, `/sets/{set_id}/status`, `/sets/{set_id}/vote`, and `/sets/{set_id}/results`, with the AI backup background task still running every two minutes.
+- Daily bonuses flow through the new service into `ir_daily_bonuses`/`ir_transactions`, surfacing pending payouts to the dashboard.
 
 ### Code Quality Fixes (Complete)
-- Dictionary words: Refactored to load 12,414 3-5 letter words from `dictionary.txt`
-- Queue service: Fixed to use FIFO in-memory queues with database fallback
-- Status enum: Replaced hardcoded strings with `IRSetStatus.FINALIZED` enum
-- Configuration: Added 10 missing IR settings to `config.py`
+- Word caching reads/writes the correct `IRAIPhraseCache` fields and avoids recently used words at runtime.
+- Queue wiring, vote guards, and AI bootstrap logic now execute inside the main service flows.
+- Transaction helpers centralize wallet/vault mutations to prevent race conditions.
+- Configuration includes the per-set vote cap along with the earlier IR-specific knobs.
 
 **Next:** Phase 5 - Frontend Foundation
 

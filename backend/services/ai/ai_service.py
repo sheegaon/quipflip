@@ -32,6 +32,9 @@ from backend.services.username_service import (
 )
 from .prompt_builder import build_copy_prompt
 from backend.services.queue_service import QueueService
+from backend.models.ir.ir_player import IRPlayer
+from backend.services.ir.player_service import IRPlayerService
+from backend.utils.passwords import hash_password
 
 
 logger = logging.getLogger(__name__)
@@ -39,6 +42,7 @@ logger = logging.getLogger(__name__)
 
 AI_PLAYER_EMAIL_DOMAIN = "@quipflip.internal"
 AI_COPY_PLAYER_EMAIL = f"ai_copy_backup{AI_PLAYER_EMAIL_DOMAIN}"
+IR_AI_PLAYER_EMAIL = "ai_backronym_001@initialreaction.internal"
 
 
 class AIServiceError(RuntimeError):
@@ -190,6 +194,38 @@ class AIService:
         except Exception as e:
             logger.error(f"Failed to get/create AI player: {e}")
             raise AIServiceError(f"AI player initialization failed: {e}")
+
+    async def _get_or_create_ir_ai_player(self, email: str | None = None) -> IRPlayer:
+        """Ensure an IR-specific AI player exists for backup actions."""
+
+        target_email = email.strip().lower() if email else IR_AI_PLAYER_EMAIL
+
+        try:
+            result = await self.db.execute(
+                select(IRPlayer).where(IRPlayer.email == target_email)
+            )
+            ir_ai_player = result.scalar_one_or_none()
+
+            if not ir_ai_player:
+                ir_player_service = IRPlayerService(self.db)
+                username = "IR AI Backup"
+                suffix = 1
+                base_username = username
+                while await ir_player_service.get_player_by_username(username):
+                    suffix += 1
+                    username = f"{base_username} {suffix}"
+
+                ir_ai_player = await ir_player_service.create_player(
+                    username=username,
+                    email=target_email,
+                    password_hash=hash_password("not-used-for-ai-player"),
+                )
+
+            return ir_ai_player
+
+        except Exception as exc:
+            logger.error(f"Failed to provision IR AI player: {exc}")
+            raise AIServiceError("ir_ai_player_init_failed") from exc
 
     async def get_common_words(self) -> list[str]:
         """
@@ -963,7 +999,7 @@ class AIService:
 
         try:
             # Get or create IR AI player
-            ai_player = await self._get_or_create_ai_player(
+            ai_player = await self._get_or_create_ir_ai_player(
                 email="ai_backronym_001@initialreaction.internal"
             )
 

@@ -96,6 +96,28 @@ class IRAuthService:
         logger.info(f"IR guest player {player.player_id} registered successfully")
         return player, access_token
 
+    async def upgrade_guest(
+        self, player: IRPlayer, email: str, password: str
+    ) -> tuple[IRPlayer, str]:
+        """Upgrade a guest account to a full account."""
+
+        try:
+            validate_password_strength(password)
+        except PasswordValidationError as exc:
+            raise IRAuthError(f"weak_password: {str(exc)}") from exc
+
+        try:
+            upgraded_player = await self.player_service.upgrade_guest_to_full(
+                player,
+                email,
+                hash_password(password),
+            )
+        except IRPlayerError as exc:
+            raise IRAuthError(str(exc)) from exc
+
+        access_token = self._generate_access_token(upgraded_player)
+        return upgraded_player, access_token
+
     async def login(self, username: str, password: str) -> tuple[IRPlayer, str]:
         """Authenticate IR player with username and password.
 
