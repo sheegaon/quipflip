@@ -25,7 +25,7 @@ from backend.services.ir.ir_daily_bonus_service import (
 )
 from backend.utils.cookies import set_access_token_cookie, set_refresh_cookie, clear_auth_cookies
 
-router = APIRouter(prefix="/api/ir", tags=["ir"])
+router = APIRouter(tags=["ir"])
 settings = get_settings()
 
 
