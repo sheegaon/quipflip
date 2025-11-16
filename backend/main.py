@@ -549,7 +549,7 @@ app.include_router(admin.router, tags=["admin"])
 app.include_router(feedback.router, tags=["feedback"])
 app.include_router(online_users.router, prefix="/users", tags=["online_users"])
 app.include_router(notifications.router, tags=["notifications"])
-app.include_router(ir.router, tags=["ir"])
+app.include_router(ir.router, prefix="/ir", tags=["ir"])
 
 
 @app.get("/")
