@@ -33,7 +33,8 @@ class IRQueueService:
     async def get_next_open_set(self) -> Optional[str]:
         """Get next set from entry queue (FIFO).
 
-        Returns oldest open set with capacity < 5.
+        Returns oldest enqueued open set with capacity < 5.
+        Uses in-memory queue for FIFO ordering; falls back to database query if queue is empty.
 
         Returns:
             str: Set ID or None if no open sets
@@ -42,6 +43,28 @@ class IRQueueService:
             IRQueueError: If queue operation fails
         """
         try:
+            # Check in-memory queue first (FIFO)
+            while self._entry_queue:
+                set_id = self._entry_queue[0]
+
+                # Verify set still exists and is eligible
+                stmt = select(IRBackronymSet).where(
+                    and_(
+                        IRBackronymSet.set_id == set_id,
+                        IRBackronymSet.status == IRSetStatus.OPEN,
+                        IRBackronymSet.entry_count < 5,
+                    )
+                )
+                result = await self.db.execute(stmt)
+                set_obj = result.scalars().first()
+
+                if set_obj:
+                    return str(set_id)
+                else:
+                    # Set is no longer eligible, remove from queue
+                    self._entry_queue.pop(0)
+
+            # Fallback: Query database if in-memory queue is empty
             stmt = (
                 select(IRBackronymSet)
                 .where(
@@ -62,10 +85,10 @@ class IRQueueService:
             raise IRQueueError(f"Failed to get next open set: {str(e)}") from e
 
     async def get_next_voting_set(self) -> Optional[str]:
-        """Get next set from voting queue (priority).
+        """Get next set from voting queue (FIFO priority).
 
-        Returns set in voting phase with vote count < 5,
-        prioritizing older sets.
+        Returns oldest enqueued set in voting phase with vote count < 5.
+        Uses in-memory queue for FIFO ordering; falls back to database query if queue is empty.
 
         Returns:
             str: Set ID or None if no voting sets
@@ -74,6 +97,28 @@ class IRQueueService:
             IRQueueError: If queue operation fails
         """
         try:
+            # Check in-memory queue first (FIFO)
+            while self._voting_queue:
+                set_id = self._voting_queue[0]
+
+                # Verify set still exists and is eligible
+                stmt = select(IRBackronymSet).where(
+                    and_(
+                        IRBackronymSet.set_id == set_id,
+                        IRBackronymSet.status == IRSetStatus.VOTING,
+                        IRBackronymSet.vote_count < 5,
+                    )
+                )
+                result = await self.db.execute(stmt)
+                set_obj = result.scalars().first()
+
+                if set_obj:
+                    return str(set_id)
+                else:
+                    # Set is no longer eligible, remove from queue
+                    self._voting_queue.pop(0)
+
+            # Fallback: Query database if in-memory queue is empty
             stmt = (
                 select(IRBackronymSet)
                 .where(

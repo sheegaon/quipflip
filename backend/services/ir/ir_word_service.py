@@ -3,6 +3,7 @@
 import logging
 import random
 from datetime import datetime, UTC, timedelta
+from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -12,16 +13,41 @@ from backend.models.ir.ir_ai_phrase_cache import IRAIPhraseCache
 logger = logging.getLogger(__name__)
 
 
-class IRWordError(RuntimeError):
-    """Raised when word service fails."""
+def _load_dictionary_words() -> list[str]:
+    """Load and filter dictionary words for backronym generation.
+
+    Loads words from backend/data/dictionary.txt and filters to 3-5 letters.
+    Words are cached at module load time for efficient access.
+
+    Returns:
+        list[str]: List of 3-5 letter words from dictionary, uppercase
+    """
+    dictionary_path = Path(__file__).parent.parent.parent / "data" / "dictionary.txt"
+
+    if not dictionary_path.exists():
+        logger.warning(f"Dictionary file not found at {dictionary_path}, using fallback list")
+        return _get_fallback_words()
+
+    try:
+        words = []
+        with open(dictionary_path, 'r') as f:
+            for line in f:
+                word = line.strip().upper()
+                # Filter to 3-5 letter words
+                if 3 <= len(word) <= 5:
+                    words.append(word)
+
+        logger.info(f"Loaded {len(words)} 3-5 letter words from dictionary")
+        return words
+
+    except Exception as e:
+        logger.error(f"Error loading dictionary: {e}, using fallback list")
+        return _get_fallback_words()
 
 
-class IRWordService:
-    """Service for generating and caching random words for backronym sets."""
-
-    # Common 3-5 letter words (curated for backronym fun)
-    # This can be expanded or loaded from a dictionary file
-    WORD_LIST = [
+def _get_fallback_words() -> list[str]:
+    """Fallback word list if dictionary cannot be loaded."""
+    return [
         # 3-letter words
         "CAT", "DOG", "BAT", "RAT", "HAT", "MAT", "SAT", "FAT", "PAT", "LAT",
         "BIT", "HIT", "SIT", "PIT", "WIT", "FIT", "KIT", "LIT",
@@ -82,6 +108,18 @@ class IRWordService:
         "CHIMNEY", "CHINA", "CHOIR", "CHORD", "CHORE", "CHOSE", "CHUNK",
     ]
 
+
+class IRWordError(RuntimeError):
+    """Raised when word service fails."""
+
+
+# Module-level cache: Load dictionary once at import time
+_DICTIONARY_WORDS = _load_dictionary_words()
+
+
+class IRWordService:
+    """Service for generating and caching random words for backronym sets."""
+
     def __init__(self, db: AsyncSession):
         """Initialize IR word service.
 
@@ -98,6 +136,7 @@ class IRWordService:
         """Get a random word for a backronym set.
 
         Words are cached to avoid near-duplicates in short timeframes.
+        Uses filtered dictionary words (3-5 letters) loaded at module initialization.
 
         Returns:
             str: A random 3-5 letter word
@@ -106,6 +145,9 @@ class IRWordService:
             IRWordError: If word generation fails
         """
         try:
+            if not _DICTIONARY_WORDS:
+                raise IRWordError("No words available in dictionary")
+
             # Avoid getting same word twice in quick succession
             current_time = datetime.now(UTC)
             if (
@@ -114,11 +156,11 @@ class IRWordService:
                 and (current_time - self._last_word_time) < timedelta(seconds=10)
             ):
                 # Return different word from recent picks
-                word = random.choice(self.WORD_LIST)
+                word = random.choice(_DICTIONARY_WORDS)
                 while word == self._last_word:
-                    word = random.choice(self.WORD_LIST)
+                    word = random.choice(_DICTIONARY_WORDS)
             else:
-                word = random.choice(self.WORD_LIST)
+                word = random.choice(_DICTIONARY_WORDS)
 
             self._last_word = word
             self._last_word_time = current_time

@@ -9,6 +9,7 @@ from backend.config import get_settings
 from backend.models.ir.ir_result_view import IRResultView
 from backend.models.ir.ir_backronym_set import IRBackronymSet
 from backend.models.ir.ir_transaction import IRTransaction
+from backend.models.ir.enums import IRSetStatus
 from backend.services.ir.ir_scoring_service import IRScoringService, IRScoringError
 
 logger = logging.getLogger(__name__)
@@ -57,7 +58,7 @@ class IRResultViewService:
             if not set_obj:
                 raise IRResultViewError("set_not_found")
 
-            if set_obj.status != "finalized":
+            if set_obj.status != IRSetStatus.FINALIZED:
                 raise IRResultViewError("set_not_finalized")
 
             # Check if result already claimed
@@ -148,7 +149,7 @@ class IRResultViewService:
         try:
             # Get all finalized sets
             sets_stmt = select(IRBackronymSet).where(
-                IRBackronymSet.status == "finalized"
+                IRBackronymSet.status == IRSetStatus.FINALIZED
             )
             sets_result = await self.db.execute(sets_stmt)
             finalized_sets = sets_result.scalars().all()
