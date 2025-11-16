@@ -22,8 +22,23 @@ const Dashboard: React.FC = () => {
   const [upgradeEmail, setUpgradeEmail] = useState('');
   const [upgradePassword, setUpgradePassword] = useState('');
 
+  // Initialize dashboard on component mount with proper error handling
   useEffect(() => {
-    refreshDashboard();
+    const controller = new AbortController();
+
+    // Use a separate promise handler to avoid "Uncaught (in promise)" errors
+    refreshDashboard()
+      .catch((err) => {
+        // Only log if the request wasn't aborted
+        if (controller.signal.aborted) {
+          return;
+        }
+        console.error('Failed to initialize dashboard:', err);
+      });
+
+    return () => {
+      controller.abort();
+    };
   }, [refreshDashboard]);
 
   const handleStartBattle = async () => {
