@@ -99,11 +99,11 @@ class CleanupService:
         # The query normalizes both sides to handle UUID format mismatches (with/without hyphens)
         result = await self.db.execute(
             text("""
-                DELETE FROM refresh_tokens
+                DELETE FROM qf_refresh_tokens
                 WHERE rowid IN (
-                    SELECT rt.rowid FROM refresh_tokens rt
+                    SELECT rt.rowid FROM qf_refresh_tokens rt
                     WHERE NOT EXISTS (
-                        SELECT 1 FROM players p
+                        SELECT 1 FROM qf_players p
                         WHERE LOWER(REPLACE(p.player_id, '-', '')) = LOWER(REPLACE(rt.player_id, '-', ''))
                     )
                 )
@@ -130,7 +130,7 @@ class CleanupService:
 
         result = await self.db.execute(
             text("""
-                DELETE FROM refresh_tokens
+                DELETE FROM qf_refresh_tokens
                 WHERE expires_at < :now OR revoked_at IS NOT NULL
             """),
             {"now": now}
@@ -159,7 +159,7 @@ class CleanupService:
 
         result = await self.db.execute(
             text("""
-                DELETE FROM refresh_tokens
+                DELETE FROM qf_refresh_tokens
                 WHERE revoked_at IS NOT NULL AND revoked_at < :cutoff_date
             """),
             {"cutoff_date": cutoff_date}
@@ -179,16 +179,16 @@ class CleanupService:
         # Count rounds with player_id not in players table
         result = await self.db.execute(text("""
             SELECT COUNT(*)
-            FROM rounds
-            WHERE player_id NOT IN (SELECT player_id FROM players)
+            FROM qf_rounds
+            WHERE player_id NOT IN (SELECT player_id FROM qf_players)
         """))
         orphaned_count = result.scalar() or 0
 
         # Count by type
         result = await self.db.execute(text("""
             SELECT round_type, COUNT(*) as count
-            FROM rounds
-            WHERE player_id NOT IN (SELECT player_id FROM players)
+            FROM qf_rounds
+            WHERE player_id NOT IN (SELECT player_id FROM qf_players)
             GROUP BY round_type
         """))
         by_type = {row.round_type: row.count for row in result}
@@ -214,16 +214,16 @@ class CleanupService:
 
         # Get IDs of orphaned prompt rounds before deleting them
         prompt_result = await self.db.execute(text("""
-            SELECT round_id FROM rounds
-            WHERE player_id NOT IN (SELECT player_id FROM players)
+            SELECT round_id FROM qf_rounds
+            WHERE player_id NOT IN (SELECT player_id FROM qf_players)
             AND round_type = 'prompt'
         """))
         orphaned_prompt_ids = [row[0] for row in prompt_result]
 
         # Delete orphaned rounds
         result = await self.db.execute(text("""
-            DELETE FROM rounds
-            WHERE player_id NOT IN (SELECT player_id FROM players)
+            DELETE FROM qf_rounds
+            WHERE player_id NOT IN (SELECT player_id FROM qf_players)
         """))
         await self.db.commit()
 
