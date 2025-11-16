@@ -48,17 +48,26 @@ class IRRegisterRequest(BaseModel):
     password: str
 
 
+class IRPlayerInfo(BaseModel):
+    """IR player info for auth response."""
+
+    player_id: str
+    username: str
+    email: str | None = None
+    wallet: int
+    vault: int
+    is_guest: bool
+    created_at: datetime | None = None
+    daily_bonus_available: bool = True
+    last_login_date: str | None = None
+
+
 class IRAuthResponse(BaseModel):
     """IR authentication response."""
 
     access_token: str
     refresh_token: str | None = None
-    token_type: str = "bearer"
-    expires_in: int
-    player_id: str
-    username: str
-    wallet: int
-    vault: int
+    player: IRPlayerInfo
 
 
 class IRPlayerResponse(BaseModel):
@@ -242,11 +251,17 @@ async def register(
     return IRAuthResponse(
         access_token=access_token,
         refresh_token=refresh_token,
-        expires_in=settings.ir_access_token_expire_minutes * 60,
-        player_id=str(player.player_id),
-        username=player.username,
-        wallet=player.wallet,
-        vault=player.vault,
+        player=IRPlayerInfo(
+            player_id=str(player.player_id),
+            username=player.username,
+            email=player.email,
+            wallet=player.wallet,
+            vault=player.vault,
+            is_guest=player.is_guest,
+            created_at=player.created_at,
+            daily_bonus_available=True,  # TODO: fetch from service
+            last_login_date=None,
+        ),
     )
 
 
@@ -297,11 +312,17 @@ async def login(
     return IRAuthResponse(
         access_token=access_token,
         refresh_token=refresh_token,
-        expires_in=settings.ir_access_token_expire_minutes * 60,
-        player_id=str(player.player_id),
-        username=player.username,
-        wallet=player.wallet,
-        vault=player.vault,
+        player=IRPlayerInfo(
+            player_id=str(player.player_id),
+            username=player.username,
+            email=player.email,
+            wallet=player.wallet,
+            vault=player.vault,
+            is_guest=player.is_guest,
+            created_at=player.created_at,
+            daily_bonus_available=True,  # TODO: fetch from service
+            last_login_date=None,
+        ),
     )
 
 
@@ -347,11 +368,17 @@ async def register_guest(
     return IRAuthResponse(
         access_token=access_token,
         refresh_token=refresh_token,
-        expires_in=settings.ir_access_token_expire_minutes * 60,
-        player_id=str(player.player_id),
-        username=player.username,
-        wallet=player.wallet,
-        vault=player.vault,
+        player=IRPlayerInfo(
+            player_id=str(player.player_id),
+            username=player.username,
+            email=player.email,
+            wallet=player.wallet,
+            vault=player.vault,
+            is_guest=player.is_guest,
+            created_at=player.created_at,
+            daily_bonus_available=True,  # TODO: fetch from service
+            last_login_date=None,
+        ),
     )
 
 
