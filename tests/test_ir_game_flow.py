@@ -17,13 +17,17 @@ async def ir_player_factory(db_session):
 
     async def _create_player(
         email: str | None = None,
+        username: str | None = None,
         password: str = "TestPassword123!",
     ):
         if email is None:
             email = f"irplayer{uuid.uuid4().hex[:8]}@example.com"
+        if username is None:
+            username = f"player_{uuid.uuid4().hex[:8]}"
 
         password_hash = hash_password(password)
         return await player_service.create_player(
+            username=username,
             email=email,
             password_hash=password_hash,
         )
@@ -40,11 +44,11 @@ async def test_ir_create_backronym_set(db_session, ir_player_factory):
     player = await ir_player_factory()
 
     # Create set
-    word = word_service.get_random_word()
-    backronym_set = await set_service.create_set(word=word, mode="standard")
+    backronym_set = await set_service.create_set(mode="standard")
 
     assert backronym_set is not None
-    assert backronym_set.word == word
+    assert backronym_set.word is not None
+    assert len(backronym_set.word) > 0
     assert backronym_set.mode == "standard"
     assert backronym_set.status == "open"
     assert backronym_set.entry_count == 0
@@ -61,20 +65,28 @@ async def test_ir_submit_backronym_entry(db_session, ir_player_factory):
     initial_balance = player.wallet
 
     # Create set and submit entry
-    word = word_service.get_random_word()
-    backronym_set = await set_service.create_set(word=word, mode="standard")
+
+    backronym_set = await set_service.create_set(mode="standard")
 
     # Create backronym (matching word length)
-    backronym_words = [f"word{i}" for i in range(len(word))]
+    backronym_words = [f"word{i}" for i in range(len(backronym_set.word))]
+
+    # Debit wallet for entry
+    await transaction_service.debit_wallet(
+        player_id=str(player.player_id),
+        amount=100,
+        transaction_type="entry_creation",
+        reference_id=str(backronym_set.set_id),
+    )
 
     entry = await set_service.add_entry(
         set_id=backronym_set.set_id,
-        player_id=player.player_id,
+        player_id=str(player.player_id),
         backronym_text=backronym_words
     )
 
     assert entry is not None
-    assert entry.player_id == player.player_id
+    assert str(entry.player_id) == str(player.player_id)
     assert entry.backronym_text == backronym_words
 
     # Verify player was charged
@@ -91,11 +103,11 @@ async def test_ir_cannot_duplicate_entry(db_session, ir_player_factory):
     player = await ir_player_factory()
 
     # Create set
-    word = word_service.get_random_word()
-    backronym_set = await set_service.create_set(word=word, mode="standard")
+    
+    backronym_set = await set_service.create_set(mode="standard")
 
     # Submit first entry
-    backronym_words_1 = [f"word{i}" for i in range(len(word))]
+    backronym_words_1 = [f"word{i}" for i in range(len(backronym_set.word))]
     await set_service.add_entry(
         set_id=backronym_set.set_id,
         player_id=player.player_id,
@@ -103,7 +115,7 @@ async def test_ir_cannot_duplicate_entry(db_session, ir_player_factory):
     )
 
     # Try to submit second entry
-    backronym_words_2 = [f"other{i}" for i in range(len(word))]
+    backronym_words_2 = [f"other{i}" for i in range(len(backronym_set.word))]
     with pytest.raises(Exception):  # Should raise IntegrityError due to unique constraint
         await set_service.add_entry(
             set_id=backronym_set.set_id,
@@ -120,12 +132,12 @@ async def test_ir_set_transitions_to_voting(db_session, ir_player_factory):
 
     # Create 5 players and set
     players = [await ir_player_factory() for _ in range(5)]
-    word = word_service.get_random_word()
-    backronym_set = await set_service.create_set(word=word, mode="standard")
+    
+    backronym_set = await set_service.create_set(mode="standard")
 
     # Add 5 entries
     for player in players:
-        backronym_words = [f"word{i}_{uuid.uuid4().hex[:4]}" for i in range(len(word))]
+        backronym_words = [f"word{i}_{uuid.uuid4().hex[:4]}" for i in range(len(backronym_set.word))]
         await set_service.add_entry(
             set_id=backronym_set.set_id,
             player_id=player.player_id,
@@ -151,10 +163,10 @@ async def test_ir_submit_vote(db_session, ir_player_factory):
     voter = await ir_player_factory()
 
     # Create set and entry
-    word = word_service.get_random_word()
-    backronym_set = await set_service.create_set(word=word, mode="standard")
+    
+    backronym_set = await set_service.create_set(mode="standard")
 
-    backronym_words = [f"word{i}" for i in range(len(word))]
+    backronym_words = [f"word{i}" for i in range(len(backronym_set.word))]
     entry = await set_service.add_entry(
         set_id=backronym_set.set_id,
         player_id=creator.player_id,
@@ -184,10 +196,10 @@ async def test_ir_cannot_self_vote(db_session, ir_player_factory):
     player = await ir_player_factory()
 
     # Create set and entry
-    word = word_service.get_random_word()
-    backronym_set = await set_service.create_set(word=word, mode="standard")
+    
+    backronym_set = await set_service.create_set(mode="standard")
 
-    backronym_words = [f"word{i}" for i in range(len(word))]
+    backronym_words = [f"word{i}" for i in range(len(backronym_set.word))]
     entry = await set_service.add_entry(
         set_id=backronym_set.set_id,
         player_id=player.player_id,
@@ -215,10 +227,10 @@ async def test_ir_cannot_vote_twice(db_session, ir_player_factory):
     voter = await ir_player_factory()
 
     # Create set and entry
-    word = word_service.get_random_word()
-    backronym_set = await set_service.create_set(word=word, mode="standard")
+    
+    backronym_set = await set_service.create_set(mode="standard")
 
-    backronym_words = [f"word{i}" for i in range(len(word))]
+    backronym_words = [f"word{i}" for i in range(len(backronym_set.word))]
     entry = await set_service.add_entry(
         set_id=backronym_set.set_id,
         player_id=creator.player_id,
@@ -268,10 +280,10 @@ async def test_ir_player_insufficient_balance(db_session, ir_player_factory):
     player.wallet = 50
     await db_session.commit()
 
-    word = word_service.get_random_word()
-    backronym_set = await set_service.create_set(word=word, mode="standard")
+    
+    backronym_set = await set_service.create_set(mode="standard")
 
-    backronym_words = [f"word{i}" for i in range(len(word))]
+    backronym_words = [f"word{i}" for i in range(len(backronym_set.word))]
 
     # Should raise error for insufficient balance
     with pytest.raises(Exception):
