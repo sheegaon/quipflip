@@ -57,10 +57,12 @@ const Results: React.FC = () => {
 
   const { set, entries, player_entry, player_vote, payout_breakdown } = results;
 
-  // Find winner (entry with highest vote count or vote share)
-  const winnerEntry = entries.reduce((max, entry) =>
-    (entry.received_votes > (max?.received_votes || 0)) ? entry : max
-  , entries[0]);
+  // Find winner (entry with highest vote count)
+  const winnerEntry = entries.length > 0
+    ? entries.reduce((max, entry) =>
+        entry.received_votes > max.received_votes ? entry : max
+      )
+    : null;
 
   // Sort entries by votes (descending)
   const sortedEntries = [...entries].sort((a, b) => b.received_votes - a.received_votes);

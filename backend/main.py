@@ -515,9 +515,12 @@ if not allowed_origins or allowed_origins == [""]:
     allowed_origins = [
         settings.frontend_url,                # Your production frontend
         "http://localhost:5173",              # Vite dev server
+        "http://localhost:5174",              # Vite dev server #2
         f"http://{get_local_ip()}:5173/",     # Alternative dev server
+        f"http://{get_local_ip()}:5174/",     # Alternative dev server
         "http://localhost:3000",              # Alternative React dev server
         "http://127.0.0.1:5173",              # Alternative localhost format
+        "http://127.0.0.1:5174",              # Alternative localhost format
         "http://127.0.0.1:3000",              # Alternative localhost format
     ]
 app.add_middleware(
