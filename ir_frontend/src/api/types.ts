@@ -138,6 +138,7 @@ export interface StartSessionResponse {
 export interface BalanceResponse {
   wallet: number;
   vault: number;
+  daily_bonus_available: boolean;
 }
 
 export interface ClaimBonusResponse {

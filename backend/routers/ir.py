@@ -119,11 +119,12 @@ class IRDashboardPlayerSummary(BaseModel):
     created_at: datetime
 
 
-class IRDashboardActiveSet(BaseModel):
+class IRDashboardActiveSession(BaseModel):
     set_id: str
-    status: str
     word: str
-    role: str
+    status: str
+    has_submitted_entry: bool
+    has_voted: bool
 
 
 class IRPendingResult(BaseModel):
@@ -135,15 +136,72 @@ class IRPendingResult(BaseModel):
 
 class IRDashboardResponse(BaseModel):
     player: IRDashboardPlayerSummary
-    active_set: IRDashboardActiveSet | None
+    active_session: IRDashboardActiveSession | None
     pending_results: list[IRPendingResult]
+    wallet: int
+    vault: int
+    daily_bonus_available: bool
 
 
 class IRClaimDailyBonusResponse(BaseModel):
-    amount: int
-    claimed_at: datetime
-    wallet: int
-    vault: int
+    bonus_amount: int
+    new_balance: int
+    next_claim_available_at: str
+
+
+# ================================================================
+# Game/Set Related Schemas
+# ================================================================
+
+class BackronymSet(BaseModel):
+    """Backronym set details."""
+    set_id: str
+    word: str
+    mode: str  # 'standard' or 'rapid'
+    status: str  # 'open', 'voting', 'finalized'
+    entry_count: int
+    vote_count: int
+    non_participant_vote_count: int = 0
+    total_pool: int = 0
+    creator_final_pool: int = 0
+    created_at: str
+    transitions_to_voting_at: str | None = None
+    voting_finalized_at: str | None = None
+
+
+class BackronymEntry(BaseModel):
+    """Backronym entry details."""
+    entry_id: str
+    set_id: str
+    player_id: str
+    backronym_text: list[str]  # Array of words
+    is_ai: bool = False
+    submitted_at: str
+    vote_share_pct: float | None = None
+    received_votes: int = 0
+    forfeited_to_vault: int = 0
+
+
+class BackronymVote(BaseModel):
+    """Backronym vote details."""
+    vote_id: str
+    set_id: str
+    player_id: str
+    chosen_entry_id: str
+    is_participant_voter: bool = True
+    is_ai: bool = False
+    is_correct_popular: bool | None = None
+    created_at: str
+
+
+class PayoutBreakdown(BaseModel):
+    """Payout breakdown for a result."""
+    entry_cost: int = 0
+    vote_cost: int = 0
+    gross_payout: int = 0
+    vault_rake: int = 0
+    net_payout: int = 0
+    vote_reward: int = 0
 
 
 # ================================================================
@@ -425,11 +483,17 @@ async def upgrade_guest_account(
     return IRAuthResponse(
         access_token=access_token,
         refresh_token=refresh_token,
-        expires_in=settings.ir_access_token_expire_minutes * 60,
-        player_id=upgraded_player.player_id,
-        username=upgraded_player.username,
-        wallet=upgraded_player.wallet,
-        vault=upgraded_player.vault,
+        player=IRPlayerInfo(
+            player_id=str(upgraded_player.player_id),
+            username=upgraded_player.username,
+            email=upgraded_player.email,
+            wallet=upgraded_player.wallet,
+            vault=upgraded_player.vault,
+            is_guest=upgraded_player.is_guest,
+            created_at=upgraded_player.created_at,
+            daily_bonus_available=True,  # TODO: fetch from service
+            last_login_date=None,
+        ),
     )
 
 
@@ -478,11 +542,17 @@ async def refresh_access_token(
 
     return IRAuthResponse(
         access_token=access_token,
-        expires_in=settings.ir_access_token_expire_minutes * 60,
-        player_id=str(player.player_id),
-        username=player.username,
-        wallet=player.wallet,
-        vault=player.vault,
+        player=IRPlayerInfo(
+            player_id=str(player.player_id),
+            username=player.username,
+            email=player.email,
+            wallet=player.wallet,
+            vault=player.vault,
+            is_guest=player.is_guest,
+            created_at=player.created_at,
+            daily_bonus_available=True,  # TODO: fetch from service
+            last_login_date=None,
+        ),
     )
 
 
@@ -606,6 +676,34 @@ async def get_player_dashboard(
     pending = await result_service.get_pending_results(str(player.player_id))
     pending_models = [IRPendingResult(**item) for item in pending]
 
+    # Determine boolean flags for active session
+    active_session = None
+    if active_set:
+        set_service = IRBackronymSetService(db)
+        set_details = await set_service.get_set_details(str(active_set.set_id))
+
+        has_submitted_entry = False
+        if set_details.get("entries"):
+            for entry in set_details["entries"]:
+                if entry.get("player_id") == str(player.player_id):
+                    has_submitted_entry = True
+                    break
+
+        has_voted = False
+        if set_details.get("votes"):
+            for vote in set_details["votes"]:
+                if vote.get("player_id") == str(player.player_id):
+                    has_voted = True
+                    break
+
+        active_session = IRDashboardActiveSession(
+            set_id=str(active_set.set_id),
+            word=active_set.word,
+            status=str(active_set.status),
+            has_submitted_entry=has_submitted_entry,
+            has_voted=has_voted,
+        )
+
     return IRDashboardResponse(
         player=IRDashboardPlayerSummary(
             player_id=str(fresh_player.player_id),
@@ -615,17 +713,11 @@ async def get_player_dashboard(
             daily_bonus_available=bonus_available,
             created_at=fresh_player.created_at,
         ),
-        active_set=(
-            IRDashboardActiveSet(
-                set_id=str(active_set.set_id),
-                status=active_set.status,
-                word=active_set.word,
-                role="participant",
-            )
-            if active_set
-            else None
-        ),
+        active_session=active_session,
         pending_results=pending_models,
+        wallet=fresh_player.wallet,
+        vault=fresh_player.vault,
+        daily_bonus_available=bonus_available,
     )
 
 
@@ -649,11 +741,19 @@ async def claim_daily_bonus(
     if not refreshed_player:
         raise HTTPException(status_code=404, detail="player_not_found")
 
+    # Calculate next claim time (24 hours from now)
+    from datetime import timedelta
+    claimed_at = bonus["claimed_at"]
+    if isinstance(claimed_at, str):
+        # Parse ISO format string to datetime
+        from datetime import datetime
+        claimed_at = datetime.fromisoformat(claimed_at.replace('Z', '+00:00'))
+    next_claim = claimed_at + timedelta(hours=24)
+
     return IRClaimDailyBonusResponse(
-        amount=bonus["amount"],
-        claimed_at=bonus["claimed_at"],
-        wallet=refreshed_player.wallet,
-        vault=refreshed_player.vault,
+        bonus_amount=bonus["amount"],
+        new_balance=refreshed_player.wallet,
+        next_claim_available_at=next_claim.isoformat(),
     )
 
 
@@ -706,8 +806,8 @@ class StartGameResponse(BaseModel):
     """Response when starting a game."""
     set_id: str
     word: str
+    mode: str
     status: str
-    entry_count: int
 
 
 class SubmitBackronymRequest(BaseModel):
@@ -724,11 +824,9 @@ class SubmitBackronymResponse(BaseModel):
 
 class SetStatusResponse(BaseModel):
     """Response with current set status."""
-    set_id: str
-    word: str
-    status: str
-    entry_count: int
-    vote_count: int
+    set: BackronymSet
+    player_has_submitted: bool
+    player_has_voted: bool
 
 
 class SubmitVoteRequest(BaseModel):
@@ -744,11 +842,12 @@ class SubmitVoteResponse(BaseModel):
 
 class ResultsResponse(BaseModel):
     """Response with finalized results."""
-    set_id: str
-    word: str
-    winning_entry_id: str
-    payout_amount: int
-    total_pool: int
+    set: BackronymSet
+    entries: list[BackronymEntry]
+    votes: list[BackronymVote]
+    player_entry: BackronymEntry | None = None
+    player_vote: BackronymVote | None = None
+    payout_breakdown: PayoutBreakdown | None = None
 
 
 @router.post("/start", response_model=StartGameResponse)
@@ -789,8 +888,8 @@ async def start_game(
         return StartGameResponse(
             set_id=str(set_obj.set_id),
             word=set_obj.word,
-            status=set_obj.status,
-            entry_count=set_obj.entry_count,
+            mode=set_obj.mode,
+            status=str(set_obj.status),
         )
 
     except IRTransactionError as exc:
@@ -852,12 +951,42 @@ async def get_set_status(
         if not set_obj:
             raise HTTPException(status_code=404, detail="Set not found")
 
+        # Get complete set details with entries and votes
+        set_details = await set_service.get_set_details(set_id)
+
+        # Check if player has submitted an entry
+        player_has_submitted = False
+        if set_details.get("entries"):
+            for entry in set_details["entries"]:
+                if entry.get("player_id") == str(player.player_id):
+                    player_has_submitted = True
+                    break
+
+        # Check if player has voted
+        player_has_voted = False
+        if set_details.get("votes"):
+            for vote in set_details["votes"]:
+                if vote.get("player_id") == str(player.player_id):
+                    player_has_voted = True
+                    break
+
         return SetStatusResponse(
-            set_id=set_id,
-            word=set_obj.word,
-            status=set_obj.status,
-            entry_count=set_obj.entry_count,
-            vote_count=set_obj.vote_count,
+            set=BackronymSet(
+                set_id=set_id,
+                word=set_obj.word,
+                mode=set_obj.mode,
+                status=str(set_obj.status),
+                entry_count=len(set_details.get("entries", [])),
+                vote_count=len(set_details.get("votes", [])),
+                non_participant_vote_count=0,  # TODO: calculate if needed
+                total_pool=0,  # TODO: fetch from scoring service if needed
+                creator_final_pool=0,  # TODO: calculate if needed
+                created_at=set_obj.created_at.isoformat() if set_obj.created_at else "",
+                transitions_to_voting_at=None,  # TODO: set if available
+                voting_finalized_at=None,  # TODO: set if available
+            ),
+            player_has_submitted=player_has_submitted,
+            player_has_voted=player_has_voted,
         )
 
     except Exception as e:
@@ -919,12 +1048,13 @@ async def get_results(
     player: IRPlayer = Depends(get_ir_current_player),
     db: AsyncSession = Depends(get_db),
 ) -> ResultsResponse:
-    """Get finalized results for a set."""
+    """Get finalized results for a set with full details."""
 
     try:
         set_service = IRBackronymSetService(db)
         result_service = IRResultViewService(db)
         scoring_service = IRScoringService(db)
+        vote_service = IRVoteService(db)
 
         # Get set
         set_obj = await set_service.get_set_by_id(set_id)
@@ -937,17 +1067,63 @@ async def get_results(
         # Claim result
         result = await result_service.claim_result(str(player.player_id), set_id)
 
-        # Get summary
+        # Get complete set details with entries and votes
+        set_details = await set_service.get_set_details(set_id)
+
+        # Get player's entry and vote
+        player_entry = None
+        if set_details.get("entries"):
+            for entry in set_details["entries"]:
+                if entry.get("player_id") == str(player.player_id):
+                    player_entry = entry
+                    break
+
+        player_vote = None
+        if set_details.get("votes"):
+            for vote in set_details["votes"]:
+                if vote.get("player_id") == str(player.player_id):
+                    player_vote = vote
+                    break
+
+        # Get payout summary
         summary = await scoring_service.get_payout_summary(set_id)
 
+        # Build payout breakdown
+        payout_breakdown = None
+        if result:
+            payout_breakdown = {
+                "entry_cost": result.get("entry_cost", 100),
+                "vote_cost": result.get("vote_cost", 0),
+                "gross_payout": result.get("gross_payout", 0),
+                "vault_rake": result.get("vault_rake", 0),
+                "net_payout": result.get("net_payout", 0),
+                "vote_reward": result.get("vote_reward", 0),
+            }
+
         return ResultsResponse(
-            set_id=set_id,
-            word=set_obj.word,
-            winning_entry_id=summary.get("winner_entry_id", ""),
-            payout_amount=result.get("payout_amount", 0),
-            total_pool=summary.get("total_pool", 0),
+            set=BackronymSet(
+                set_id=set_id,
+                word=set_obj.word,
+                mode=set_obj.mode,
+                status=str(set_obj.status),
+                entry_count=len(set_details.get("entries", [])),
+                vote_count=len(set_details.get("votes", [])),
+                non_participant_vote_count=0,  # TODO: calculate
+                total_pool=summary.get("total_pool", 0),
+                creator_final_pool=0,  # TODO: calculate
+                created_at=set_obj.created_at.isoformat() if set_obj.created_at else "",
+                transitions_to_voting_at=None,  # TODO
+                voting_finalized_at=None,  # TODO
+            ),
+            entries=set_details.get("entries", []),
+            votes=set_details.get("votes", []),
+            player_entry=player_entry,
+            player_vote=player_vote,
+            payout_breakdown=payout_breakdown,
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
