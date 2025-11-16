@@ -189,6 +189,24 @@ def upgrade() -> None:
     op.create_index('ix_ir_daily_bonus_player', 'ir_daily_bonuses', ['player_id'])
     op.create_index('ix_ir_daily_bonus_date', 'ir_daily_bonuses', ['date'])
 
+    # ir_ai_phrase_cache table - Cache for AI-generated backronym words
+    # Must be created BEFORE ir_ai_metrics because ir_ai_metrics has a foreign key to this table
+    op.create_table(
+        'ir_ai_phrase_cache',
+        sa.Column('cache_id', uuid_type, nullable=False),
+        sa.Column('prompt_round_id', uuid_type, nullable=False, unique=True),
+        sa.Column('validated_phrases', sa.JSON(), nullable=False),
+        sa.Column('generation_provider', sa.String(50), nullable=False),
+        sa.Column('generation_model', sa.String(100), nullable=False),
+        sa.Column('used_for_backup_copy', sa.Boolean(), nullable=False, server_default='0'),
+        sa.Column('used_for_hints', sa.Boolean(), nullable=False, server_default='0'),
+        sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+        sa.PrimaryKeyConstraint('cache_id'),
+        sa.ForeignKeyConstraint(['prompt_round_id'], ['ir_backronym_sets.set_id'], ondelete='CASCADE'),
+    )
+    op.create_index('ix_ir_ai_phrase_cache_prompt_round_id', 'ir_ai_phrase_cache', ['prompt_round_id'])
+    op.create_index('ix_ir_ai_phrase_cache_created_at', 'ir_ai_phrase_cache', ['created_at'])
+
     # ir_ai_metrics table - Track AI operation metrics and performance
     op.create_table(
         'ir_ai_metrics',
@@ -214,23 +232,6 @@ def upgrade() -> None:
     op.create_index('ix_ir_ai_metrics_created_at_success', 'ir_ai_metrics', ['created_at', 'success'])
     op.create_index('ix_ir_ai_metrics_cache_id', 'ir_ai_metrics', ['cache_id'])
 
-    # ir_ai_phrase_cache table - Cache for AI-generated backronym words
-    op.create_table(
-        'ir_ai_phrase_cache',
-        sa.Column('cache_id', uuid_type, nullable=False),
-        sa.Column('prompt_round_id', uuid_type, nullable=False, unique=True),
-        sa.Column('validated_phrases', sa.JSON(), nullable=False),
-        sa.Column('generation_provider', sa.String(50), nullable=False),
-        sa.Column('generation_model', sa.String(100), nullable=False),
-        sa.Column('used_for_backup_copy', sa.Boolean(), nullable=False, server_default='0'),
-        sa.Column('used_for_hints', sa.Boolean(), nullable=False, server_default='0'),
-        sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
-        sa.PrimaryKeyConstraint('cache_id'),
-        sa.ForeignKeyConstraint(['prompt_round_id'], ['ir_backronym_sets.set_id'], ondelete='CASCADE'),
-    )
-    op.create_index('ix_ir_ai_phrase_cache_prompt_round_id', 'ir_ai_phrase_cache', ['prompt_round_id'])
-    op.create_index('ix_ir_ai_phrase_cache_created_at', 'ir_ai_phrase_cache', ['created_at'])
-
     # ir_backronym_observer_guards table - Eligibility snapshot for non-participant voters
     op.create_table(
         'ir_backronym_observer_guards',
@@ -244,8 +245,9 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Drop Initial Reaction tables."""
-    op.drop_table('ir_ai_phrase_cache')
+    # Drop ir_ai_metrics BEFORE ir_ai_phrase_cache (has FK to ir_ai_phrase_cache)
     op.drop_table('ir_ai_metrics')
+    op.drop_table('ir_ai_phrase_cache')
     op.drop_table('ir_daily_bonuses')
     op.drop_table('ir_refresh_tokens')
     op.drop_table('ir_result_views')
