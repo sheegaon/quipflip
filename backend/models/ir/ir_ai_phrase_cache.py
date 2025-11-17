@@ -26,7 +26,7 @@ class IRAIPhraseCache(Base):
         unique=True,
         index=True,
     )
-    original_phrase = Column(String(5), nullable=False)  # The word being used
+    original_phrase = Column(String(5), nullable=True)  # The word being used (nullable for backward compatibility)
     prompt_text = Column(String(500), nullable=True)  # Optional context
     validated_phrases = Column(JSON, nullable=False)  # Array of 3-5 validated backronym words
     generation_provider = Column(String(50), nullable=False)  # openai, gemini
