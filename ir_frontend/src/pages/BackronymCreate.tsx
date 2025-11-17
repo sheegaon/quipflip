@@ -124,15 +124,15 @@ const BackronymCreate: React.FC = () => {
   const getTileColor = (status: WordStatus): string => {
     switch (status) {
       case 'empty':
-        return 'bg-gray-200 border-gray-300';
+        return 'bg-ir-cream border-ir-teal border-opacity-30';
       case 'typing':
-        return 'bg-yellow-100 border-yellow-400';
+        return 'bg-ir-orange-light border-ir-orange';
       case 'invalid':
-        return 'bg-red-100 border-red-400';
+        return 'bg-ir-orange bg-opacity-20 border-ir-orange';
       case 'valid':
-        return 'bg-green-100 border-green-500';
+        return 'bg-ir-teal-light border-ir-turquoise';
       default:
-        return 'bg-gray-200 border-gray-300';
+        return 'bg-ir-cream border-ir-teal border-opacity-30';
     }
   };
 
