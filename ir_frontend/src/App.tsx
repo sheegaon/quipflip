@@ -1,5 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import { AppProviders } from './contexts/AppProviders';
 import { useIRGame } from './contexts/IRGameContext';
 import Landing from './pages/Landing';
@@ -9,6 +11,24 @@ import SetTracking from './pages/SetTracking';
 import Voting from './pages/Voting';
 import Results from './pages/Results';
 import './App.css';
+
+// Suppress some logging messages
+if (typeof window !== 'undefined') {
+  const originalConsoleLog = console.log;
+  console.log = (...args) => {
+    const message = args.join(' ');
+    // Vercel analytics warnings when blocked by ad blockers
+    if (
+      message.includes('[Vercel Web Analytics]') ||
+      message.includes('[Vercel Speed Insights]') ||
+      message.includes('va.vercel-scripts.com')
+    ) {
+      // Silently ignore Vercel analytics warnings
+      return;
+    }
+    originalConsoleLog.apply(console, args);
+  };
+}
 
 // Protected route wrapper
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -73,9 +93,11 @@ const AppRoutes: React.FC = () => {
 const App: React.FC = () => {
   return (
     <Router>
-      <AppProviders>
-        <AppRoutes />
-      </AppProviders>
+        <AppProviders>
+          <AppRoutes />
+          <Analytics />
+          <SpeedInsights />
+        </AppProviders>
     </Router>
   );
 };
