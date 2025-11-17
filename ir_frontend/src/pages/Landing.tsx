@@ -75,7 +75,7 @@ export const Landing: React.FC = () => {
     e.preventDefault();
     const identifier = loginIdentifier.trim();
     if (!identifier || !loginPassword.trim()) {
-      setError('Please enter your email and password.');
+      setError('Please enter your email or username and password.');
       return;
     }
 
@@ -83,14 +83,14 @@ export const Landing: React.FC = () => {
       setIsLoading(true);
       setError(null);
 
-      // Use email login endpoint
+      // Backend supports both email and username - it auto-detects based on @ symbol
       await login(identifier, loginPassword);
 
       if (isMountedRef.current) {
         navigate('/dashboard');
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Login failed. Please check your email and password.';
+      const message = err instanceof Error ? err.message : 'Login failed. Please check your email/username and password.';
       if (isMountedRef.current) {
         setError(message);
       }
@@ -210,7 +210,7 @@ export const Landing: React.FC = () => {
                 type="text"
                 value={loginIdentifier}
                 onChange={(e) => setLoginIdentifier(e.target.value)}
-                placeholder="Email"
+                placeholder="Email or Username"
                 className="w-full px-4 py-2 border border-gray-300 rounded-tile focus:outline-none focus:ring-2 focus:ring-ir-turquoise"
                 disabled={isLoading}
                 autoComplete="username"

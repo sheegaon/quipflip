@@ -119,10 +119,10 @@ class IRAuthService:
         return upgraded_player, access_token
 
     async def login(self, username: str, password: str) -> tuple[IRPlayer, str]:
-        """Authenticate IR player with username and password.
+        """Authenticate IR player with username OR email and password.
 
         Args:
-            username: Username
+            username: Username or email address
             password: Plain text password
 
         Returns:
@@ -131,7 +131,12 @@ class IRAuthService:
         Raises:
             IRAuthError: If authentication fails
         """
-        player = await self.player_service.get_player_by_username(username)
+        # Detect if input is email by presence of "@"
+        if '@' in username:
+            player = await self.player_service.get_player_by_email(username)
+        else:
+            player = await self.player_service.get_player_by_username(username)
+
         if not player:
             raise IRAuthError("invalid_credentials")
 
