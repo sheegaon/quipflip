@@ -278,7 +278,7 @@ const BackronymCreate: React.FC = () => {
             </div>
 
             {/* Info */}
-            <div className="pt-4 border-t border-gray-200">
+            <div className="pt-4 border-t border-ir-navy border-opacity-10">
               <div className="flex items-center justify-between text-sm text-ir-teal">
                 <div>
                   <strong>Entry Cost:</strong> <InitCoinDisplay amount={entryCost} />
