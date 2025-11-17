@@ -39,6 +39,8 @@ class IRBackronymSet(Base):
     finalized_at = Column(DateTime(timezone=True), nullable=True)
     last_human_entry_at = Column(DateTime(timezone=True), nullable=True)
     last_human_vote_at = Column(DateTime(timezone=True), nullable=True)
+    transitions_to_voting_at = Column(DateTime(timezone=True), nullable=True)
+    voting_finalized_at = Column(DateTime(timezone=True), nullable=True)
 
     __table_args__ = (
         Index("ix_ir_set_status_created", status, created_at),

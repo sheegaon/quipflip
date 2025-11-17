@@ -215,17 +215,16 @@ const Voting: React.FC = () => {
             {/* Timer Section */}
             {set.voting_finalized_at && !isTransitioning && (
               <div className="mb-6 text-center">
-                <p className="text-sm text-ir-teal mb-2">Time remaining:</p>
+                <p className="text-sm text-ir-teal mb-3 font-semibold">Time remaining to vote:</p>
                 <Timer
                   targetTime={set.voting_finalized_at}
-                  className="text-3xl font-bold text-ir-navy"
                   onExpire={() => {
                     // Timer expired, AI will fill remaining votes
                     // Continue polling to detect when set moves to finalized
                   }}
                 />
-                <p className="text-xs text-gray-500 mt-2">
-                  AI voters will complete voting when time expires
+                <p className="text-xs text-ir-teal mt-3">
+                  When time expires, AI voters will complete the voting process
                 </p>
               </div>
             )}

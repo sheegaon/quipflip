@@ -12,6 +12,7 @@ export default {
         'ir-teal': '#0A5852', // Darkened from #0E6F6A for better contrast
         'ir-teal-light': '#E8F5F4', // Very light teal for tile backgrounds
         'ir-orange': '#FF9A3D',
+        'ir-orange-light': '#FFD4A3', // Light orange for warnings
         'ir-orange-deep': '#E26A00',
         'ir-cream': '#FFF6EE',
         'ir-warm-ivory': '#FFF9F2',

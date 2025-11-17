@@ -185,10 +185,10 @@ const BackronymCreate: React.FC = () => {
             {/* Timer - only show if we have a deadline */}
             {activeSet.transitions_to_voting_at && (
               <div className="bg-white rounded-tile px-4 py-3 border-2 border-ir-turquoise shadow-tile-sm text-center">
-                <div className="text-sm text-ir-teal">Time remaining</div>
+                <div className="text-sm text-ir-teal mb-2 font-semibold">Time remaining</div>
                 <Timer
                   targetTime={activeSet.transitions_to_voting_at}
-                  className="text-2xl font-bold text-ir-navy"
+                  compact={true}
                 />
               </div>
             )}
