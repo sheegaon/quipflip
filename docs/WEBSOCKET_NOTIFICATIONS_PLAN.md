@@ -676,7 +676,7 @@ export type NotificationType = 'copy_submitted' | 'vote_submitted';
 
 **Development:**
 ```typescript
-// REST API: http://localhost:8000
+// REST API: http://localhost:8000/qf
 // WebSocket: ws://localhost:8000/notifications/ws
 ```
 

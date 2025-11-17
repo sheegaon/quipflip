@@ -14,7 +14,7 @@ from contextlib import asynccontextmanager
 from backend.config import get_settings
 from backend.version import APP_VERSION
 from backend.services.prompt_seeder import sync_prompts_with_database
-from backend.routers import health, player, rounds, phrasesets, prompt_feedback, auth, quests, admin, feedback, online_users, notifications, ir
+from backend.routers import qf, ir
 from backend.middleware.deduplication import deduplication_middleware
 from backend.middleware.online_user_tracking import online_user_tracking_middleware
 
@@ -573,18 +573,8 @@ app.middleware("http")(deduplication_middleware)
 app.middleware("http")(online_user_tracking_middleware)
 
 # Import and register routers
-app.include_router(health.router, tags=["health"])
-app.include_router(auth.router, prefix="/auth", tags=["auth"])
-app.include_router(player.router, prefix="/player", tags=["player"])
-app.include_router(rounds.router, prefix="/rounds", tags=["rounds"])
-app.include_router(prompt_feedback.router, prefix="/rounds", tags=["prompt_feedback"])
-app.include_router(phrasesets.router, prefix="/phrasesets", tags=["phrasesets"])
-app.include_router(quests.router, prefix="/quests", tags=["quests"])
-app.include_router(admin.router, tags=["admin"])
-app.include_router(feedback.router, tags=["feedback"])
-app.include_router(online_users.router, prefix="/users", tags=["online_users"])
-app.include_router(notifications.router, tags=["notifications"])
-app.include_router(ir.router, prefix="/ir", tags=["ir"])
+app.include_router(qf.router)
+app.include_router(ir.router)
 
 
 @app.get("/")
