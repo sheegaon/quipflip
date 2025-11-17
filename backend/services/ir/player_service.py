@@ -50,9 +50,11 @@ class IRPlayerService:
         Raises:
             IRPlayerError: If player creation fails
         """
+        normalized_email = email.strip().lower()
+
         try:
-            # Check if email is taken
-            stmt = select(IRPlayer).where(IRPlayer.email == email)
+            # Check if email is taken (case-insensitive storage)
+            stmt = select(IRPlayer).where(IRPlayer.email == normalized_email)
             result = await self.db.execute(stmt)
             if result.scalars().first():
                 raise IRPlayerError("email_taken")
@@ -70,7 +72,7 @@ class IRPlayerService:
                 player_id=player_id,
                 username=username,
                 username_canonical=username_canonical,
-                email=email,
+                email=normalized_email,
                 password_hash=password_hash,
                 wallet=self.settings.ir_initial_balance,
                 vault=0,
@@ -127,7 +129,11 @@ class IRPlayerService:
         Returns:
             IRPlayer or None if not found
         """
-        stmt = select(IRPlayer).where(IRPlayer.email == email.lower())
+        normalized_email = email.strip().lower()
+        if not normalized_email:
+            return None
+
+        stmt = select(IRPlayer).where(IRPlayer.email == normalized_email)
         result = await self.db.execute(stmt)
         return result.scalars().first()
 
