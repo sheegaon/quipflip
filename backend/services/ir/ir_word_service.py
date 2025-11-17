@@ -33,6 +33,8 @@ def _load_dictionary_words() -> list[str]:
         with open(dictionary_path, 'r') as f:
             for line in f:
                 word = line.strip().upper()
+                if any([letter in word for letter in ['x', 'q']]):
+                    continue  # Exclude words with 'x', 'q'
                 # Filter to 3-5 letter words
                 if 3 <= len(word) <= 5:
                     words.append(word)
