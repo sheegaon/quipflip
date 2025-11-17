@@ -8,11 +8,13 @@ from backend.config import get_settings
 from backend.models.ir.ir_backronym_set import IRBackronymSet
 from backend.models.ir.ir_backronym_entry import IRBackronymEntry
 from backend.models.ir.ir_backronym_vote import IRBackronymVote
+from backend.models.ir.ir_result_view import IRResultView
 from backend.models.ir.enums import IRSetStatus
 from backend.services.ir.transaction_service import (
     IRTransactionService,
     IRTransactionError,
 )
+from datetime import datetime, UTC
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +39,9 @@ class IRScoringService:
     async def calculate_payouts(self, set_id: str) -> dict:
         """Calculate all payouts for a finalized set.
 
+        Enforces creator vote requirement: creators must vote to receive payout.
+        Otherwise, their share is forfeited to the vault.
+
         Args:
             set_id: Set UUID
 
@@ -50,6 +55,7 @@ class IRScoringService:
                 - vote_winner_count: Number of votes for winning entry
                 - creator_payouts: Dict of creator_id -> amount
                 - voter_payouts: Dict of voter_id -> amount
+                - forfeited_entries: List of entry IDs forfeited to vault
                 - vault_contributions: Dict of player_id -> vault amount
                 - payouts_processed: Whether payouts have been applied
 
@@ -81,96 +87,129 @@ class IRScoringService:
             human_entries = [e for e in entries if not e.is_ai]
             entry_costs = len(human_entries) * self.settings.ir_backronym_entry_cost
 
-            # Calculate vote costs (10 IC per vote)
-            human_votes = [v for v in votes if not v.is_ai]
-            vote_costs = len(human_votes) * self.settings.ir_vote_cost
+            # Calculate vote costs (10 IC per non-participant vote)
+            non_participant_votes = [
+                v for v in votes if not v.is_participant_voter and not v.is_ai
+            ]
+            vote_contributions = len(non_participant_votes) * self.settings.ir_vote_cost
 
-            # Total pool = entry costs + vote costs
-            total_pool = entry_costs + vote_costs
+            # Total pool = entry costs + vote costs from non-participants
+            total_pool = entry_costs + vote_contributions
 
             # Find winning entry (most votes)
             winning_entry = max(entries, key=lambda e: e.received_votes)
             vote_winner_count = winning_entry.received_votes
 
-            # Calculate payouts
-            vault_rake_pct = self.settings.ir_vault_rake_percent  # 30%
-            vault_rake = int(total_pool * (vault_rake_pct / 100))
-            remaining_pool = total_pool - vault_rake
-
             # Get all voters and determine winners
             voter_payouts = {}
-            creator_payouts = {}
 
             # Process non-participant voters (correct voters get 20 IC each)
-            non_participant_voters = [
-                v for v in votes if not v.is_participant_voter and not v.is_ai
-            ]
             non_participant_correct_voters = [
-                v for v in non_participant_voters
+                v for v in non_participant_votes
                 if v.chosen_entry_id == winning_entry.entry_id
             ]
 
             non_participant_payout_per_winner = self.settings.ir_vote_reward_correct
-            non_participant_total_payout = (
+            non_participant_payouts_paid = (
                 len(non_participant_correct_voters) * non_participant_payout_per_winner
             )
 
             for voter in non_participant_correct_voters:
                 voter_payouts[str(voter.player_id)] = non_participant_payout_per_winner
+                # Mark vote as correct for non-participants
+                for vote in votes:
+                    if (
+                        str(vote.player_id) == str(voter.player_id)
+                        and not vote.is_participant_voter
+                    ):
+                        vote.is_correct_popular = True
 
             # Remaining pool for creators (after non-participant payouts)
-            creator_pool = remaining_pool - non_participant_total_payout
+            creator_final_pool = total_pool - non_participant_payouts_paid
+
+            # Check which creators voted
+            creator_votes = {}
+            for vote in votes:
+                if vote.is_participant_voter:
+                    creator_votes[str(vote.player_id)] = True
 
             # Distribute creator pool pro-rata based on votes received
+            # BUT only to creators who cast votes
             total_votes_for_creators = sum(e.received_votes for e in entries)
             creator_payouts_dict = {}
+            forfeited_entries = []
+            total_forfeited = 0
 
             if total_votes_for_creators > 0:
                 for entry in entries:
-                    if entry.received_votes > 0:
-                        share_pct = (
-                            entry.received_votes / total_votes_for_creators
-                        ) * 100
+                    creator_id = str(entry.player_id)
+                    share_pct = (
+                        (entry.received_votes / total_votes_for_creators) * 100
+                        if total_votes_for_creators > 0
+                        else 0
+                    )
+
+                    # Update entry with vote share percentage
+                    entry.vote_share_pct = int(share_pct)
+
+                    # Check if creator voted
+                    creator_voted = creator_id in creator_votes
+
+                    if entry.received_votes > 0 and creator_voted:
                         creator_payout = int(
-                            creator_pool * (entry.received_votes / total_votes_for_creators)
+                            creator_final_pool * (entry.received_votes / total_votes_for_creators)
                         )
-                        creator_payouts_dict[str(entry.player_id)] = {
-                            "amount": creator_payout,
+
+                        # Apply 30% vault rake to creator payout
+                        vault_rake_pct = self.settings.ir_vault_rake_percent  # 30%
+                        vault_rake = int(creator_payout * (vault_rake_pct / 100))
+                        net_payout = creator_payout - vault_rake
+
+                        creator_payouts_dict[creator_id] = {
+                            "amount": net_payout,
+                            "vault_contribution": vault_rake,
                             "vote_share_pct": int(share_pct),
                         }
+                    elif entry.received_votes > 0 and not creator_voted:
+                        # Creator didn't vote - forfeit to vault
+                        entry.forfeited_to_vault = True
+                        forfeited_entries.append(str(entry.entry_id))
+                        forfeited_amount = int(
+                            creator_final_pool * (entry.received_votes / total_votes_for_creators)
+                        )
+                        total_forfeited += forfeited_amount
+                        logger.info(
+                            f"Creator {creator_id} for entry {entry.entry_id} did not vote - "
+                            f"forfeiting {forfeited_amount} to vault"
+                        )
 
-            # Calculate vault contributions (rake collected from payouts)
-            # Non-participant payouts don't have rake
-            creator_vault_rake = vault_rake
-            participant_vault_rake = {}
+            # Update set with pool totals
+            set_obj.total_pool = total_pool
+            set_obj.vote_contributions = vote_contributions
+            set_obj.non_participant_payouts_paid = non_participant_payouts_paid
+            set_obj.creator_final_pool = creator_final_pool
 
-            for creator_id, payout_info in creator_payouts_dict.items():
-                creator_payout = payout_info["amount"]
-                # Apply rake to creator payouts
-                creator_rake = int(creator_payout * (vault_rake_pct / 100))
-                # Actually, rake is already calculated from entry/vote costs
-                # Creator gets their share of remaining pool
-                participant_vault_rake[creator_id] = 0  # Rake already in creator_vault_rake
+            await self.db.commit()
 
             return {
                 "set_id": set_id,
                 "total_pool": total_pool,
                 "entry_costs": entry_costs,
-                "vote_costs": vote_costs,
-                "vault_rake_amount": vault_rake,
-                "remaining_pool_after_rake": remaining_pool,
+                "vote_contributions": vote_contributions,
+                "non_participant_payouts_paid": non_participant_payouts_paid,
+                "creator_final_pool": creator_final_pool,
                 "winning_entry_id": str(winning_entry.entry_id),
                 "winning_entry_creator": str(winning_entry.player_id),
                 "vote_winner_count": vote_winner_count,
                 "human_entries_count": len(human_entries),
-                "human_votes_count": len(human_votes),
+                "non_participant_votes_count": len(non_participant_votes),
                 "non_participant_correct_voters": len(non_participant_correct_voters),
                 "non_participant_payout_each": non_participant_payout_per_winner,
-                "non_participant_total_payout": non_participant_total_payout,
-                "creator_pool": creator_pool,
                 "voter_payouts": voter_payouts,
                 "creator_payouts": creator_payouts_dict,
-                "total_distributed": non_participant_total_payout + sum(
+                "forfeited_entries": forfeited_entries,
+                "total_forfeited_to_vault": total_forfeited,
+                "total_distributed": non_participant_payouts_paid + sum(
                     p["amount"] for p in creator_payouts_dict.values()
                 ),
             }
@@ -182,6 +221,8 @@ class IRScoringService:
 
     async def process_payouts(self, set_id: str) -> dict:
         """Process and apply payouts for a finalized set.
+
+        Includes vault contributions from creator payouts and forfeited amounts.
 
         Args:
             set_id: Set UUID
@@ -200,6 +241,7 @@ class IRScoringService:
                 "set_id": set_id,
                 "voter_transactions": [],
                 "creator_transactions": [],
+                "vault_transactions": [],
             }
 
             # Process non-participant voter payouts
@@ -225,34 +267,97 @@ class IRScoringService:
                         }
                     )
 
-            # Process creator payouts
+            # Process creator payouts (net after vault rake)
             for creator_id, payout_info in payouts["creator_payouts"].items():
-                amount = payout_info["amount"]
+                net_amount = payout_info["amount"]
+                vault_contribution = payout_info["vault_contribution"]
+
                 try:
+                    # Pay creator the net amount
                     txn = await self.transaction_service.process_creator_payout(
-                        player_id=creator_id, amount=amount, set_id=set_id
+                        player_id=creator_id, amount=net_amount, set_id=set_id
                     )
                     results["creator_transactions"].append(
                         {
                             "player_id": creator_id,
-                            "amount": amount,
+                            "amount": net_amount,
+                            "vault_contribution": vault_contribution,
                             "transaction_id": str(txn.transaction_id),
                         }
                     )
+
+                    # Record vault contribution from this creator
+                    if vault_contribution > 0:
+                        vault_txn = await self.transaction_service.process_vault_contribution(
+                            player_id=creator_id, amount=vault_contribution
+                        )
+                        results["vault_transactions"].append(
+                            {
+                                "player_id": creator_id,
+                                "amount": vault_contribution,
+                                "transaction_id": str(vault_txn.transaction_id),
+                            }
+                        )
+
                 except IRTransactionError as e:
                     logger.error(f"Failed to process creator payout: {e}")
                     results["creator_transactions"].append(
                         {
                             "player_id": creator_id,
-                            "amount": amount,
+                            "amount": net_amount,
+                            "vault_contribution": vault_contribution,
                             "error": str(e),
                         }
                     )
 
+            # Emit ResultView records per creator for claim flow
+            # This ensures that creators can view their results
+            entries_stmt = select(IRBackronymEntry).where(
+                IRBackronymEntry.set_id == set_id
+            )
+            entries_result = await self.db.execute(entries_stmt)
+            entries = entries_result.scalars().all()
+
+            for entry in entries:
+                creator_id = str(entry.player_id)
+
+                # Check if ResultView already exists for this creator
+                result_view_stmt = select(IRResultView).where(
+                    (IRResultView.set_id == set_id)
+                    & (IRResultView.player_id == creator_id)
+                )
+                result_view_result = await self.db.execute(result_view_stmt)
+                existing_view = result_view_result.scalars().first()
+
+                if not existing_view:
+                    # Get payout amount for this creator
+                    payout_amount = 0
+                    if creator_id in payouts.get("creator_payouts", {}):
+                        payout_amount = payouts["creator_payouts"][creator_id]["amount"]
+
+                    # Create ResultView record
+                    result_view = IRResultView(
+                        set_id=set_id,
+                        player_id=creator_id,
+                        result_viewed=False,  # Not viewed yet
+                        payout_amount=payout_amount,
+                        viewed_at=None,
+                        first_viewed_at=None,
+                    )
+                    self.db.add(result_view)
+
+                    logger.info(
+                        f"Created ResultView for creator {creator_id} on set {set_id}, "
+                        f"payout: {payout_amount}"
+                    )
+
+            await self.db.commit()
+
             logger.info(
                 f"Processed payouts for set {set_id}: "
                 f"{len(results['voter_transactions'])} voter payouts, "
-                f"{len(results['creator_transactions'])} creator payouts"
+                f"{len(results['creator_transactions'])} creator payouts, "
+                f"{len(results['vault_transactions'])} vault contributions"
             )
             return results
 
