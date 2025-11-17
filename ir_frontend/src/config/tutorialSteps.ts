@@ -36,13 +36,13 @@ You'll spend **InitCoins** to enter and can win a share of the prize pool based 
 • Standard mode waits for humans; Rapid mode fills with AI after short timeouts.
 • Daily bonuses help you stay funded.`,
     target: '.tutorial-dashboard',
-    nextStep: 'prompt_round',
+    nextStep: 'backronym_entry',
     showSkip: false,
     showBack: true,
   },
 
-  prompt_round: {
-    id: 'prompt_round',
+  backronym_entry: {
+    id: 'backronym_entry',
     title: 'Build Your Backronym',
     message: `Create one word for each letter of the prompt word. Keep these rules in mind:
 
@@ -53,19 +53,13 @@ You'll spend **InitCoins** to enter and can win a share of the prize pool based 
 When you're happy, submit and we'll queue your entry for voting.`,
     target: '.tutorial-backronym-form',
     position: 'bottom',
-    nextStep: 'vote_round',
+    nextStep: 'backronym_voting',
     showSkip: false,
     showBack: true,
   },
 
-  prompt_round_paused: null,
-
-  copy_round: null,
-
-  copy_round_paused: null,
-
-  vote_round: {
-    id: 'vote_round',
+  backronym_voting: {
+    id: 'backronym_voting',
     title: 'Cast Your Vote',
     message: `When voting opens you can choose one favorite backronym. Creators vote for free; non-participants pay 10 InitCoins but earn 20 if they match the crowd.
 
@@ -103,7 +97,7 @@ export const getNextStep = (currentStep: TutorialProgress): TutorialProgress | n
 };
 
 export const getPreviousStep = (currentStep: TutorialProgress): TutorialProgress | null => {
-  const steps: TutorialProgress[] = ['welcome', 'dashboard', 'prompt_round', 'vote_round', 'rounds_guide'];
+  const steps: TutorialProgress[] = ['welcome', 'dashboard', 'backronym_entry', 'backronym_voting', 'rounds_guide'];
   const currentIndex = steps.indexOf(currentStep);
   if (currentIndex > 0) {
     return steps[currentIndex - 1];
