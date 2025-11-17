@@ -62,7 +62,9 @@ import type {
 } from './types';
 
 // Base URL - configure based on environment
-const API_BASE_URL = `${(import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '')}/qf`;
+const baseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
+// Only add /qf if the base URL doesn't already contain it and isn't using the /api proxy
+const API_BASE_URL = baseUrl.includes('/qf') || baseUrl.includes('/api') ? baseUrl : `${baseUrl}/qf`;
 
 // Helper for dev logging
 const isDev = import.meta.env.DEV;
