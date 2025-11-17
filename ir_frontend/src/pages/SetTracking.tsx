@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useIRGame } from '../contexts/IRGameContext';
 import { gameAPI } from '../api/client';
-import Header from '../components/Header';
 import Timer from '../components/Timer';
 import type { BackronymSet } from '../api/types';
 
@@ -91,13 +90,8 @@ const SetTracking: React.FC = () => {
 
   if (!set || !player) {
     return (
-      <div className="min-h-screen bg-ir-cream bg-pattern">
-        <Header />
-        <div className="max-w-3xl mx-auto px-4 py-8">
-          <div className="tile-card p-6 text-center">
-            <div className="text-ir-teal">Loading set status...</div>
-          </div>
-        </div>
+      <div className="min-h-screen bg-gradient-to-br from-ir-navy to-ir-teal bg-pattern flex items-center justify-center p-4">
+        <div className="tile-card max-w-3xl w-full p-6 text-center text-ir-cream">Loading set status...</div>
       </div>
     );
   }
@@ -111,10 +105,8 @@ const SetTracking: React.FC = () => {
   const isTransitioning = set.status === 'voting' || hasNavigatedRef.current;
 
   return (
-    <div className="min-h-screen bg-ir-cream bg-pattern">
-      <Header />
-      <div className="max-w-3xl mx-auto px-4 py-8">
-        <div className="tile-card p-6">
+    <div className="min-h-screen bg-gradient-to-br from-ir-navy to-ir-teal bg-pattern flex items-center justify-center p-4">
+      <div className="max-w-3xl w-full tile-card p-6 slide-up-enter">
           {/* Header */}
           <div className="text-center mb-6">
             <h1 className="text-3xl font-display font-bold text-ir-navy mb-2">Waiting for Players...</h1>
