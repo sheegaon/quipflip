@@ -322,7 +322,6 @@ const Results: React.FC = () => {
               Play Again
             </button>
           </div>
-        </div>
       </div>
     </div>
   );

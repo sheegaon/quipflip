@@ -223,47 +223,49 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Pending Results Card */}
-        <div className="tile-card md:p-6 p-3 shuffle-enter">
-          <h2 className="text-2xl font-display font-bold mb-4 text-ir-navy">Pending Results</h2>
+        {/* Pending Results Card - Hidden for guests */}
+        {!player.is_guest && (
+          <div className="tile-card md:p-6 p-3 shuffle-enter">
+            <h2 className="text-2xl font-display font-bold mb-4 text-ir-navy">Pending Results</h2>
 
-          {pendingResults.length === 0 ? (
-            <div className="text-center py-8 text-ir-teal">
-              <p className="text-4xl mb-2">📊</p>
-              <p className="font-semibold">No pending results</p>
-              <p className="text-sm">Complete battles to see results here</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {pendingResults.map((result) => (
-                <div
-                  key={result.set_id}
-                  className="p-4 bg-ir-teal-light border-2 border-ir-turquoise rounded-tile hover:shadow-tile-sm transition-all"
-                >
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="font-display font-semibold text-ir-navy">
-                        Word: {result.word.toUpperCase()}
-                      </p>
-                      <p className="text-sm text-ir-teal">
-                        Payout: <span className={`font-bold ${result.payout_amount > 0 ? 'text-ir-turquoise' : 'text-ir-orange'}`}>
-                          {result.payout_amount > 0 ? '+' : ''}
-                          {result.payout_amount} IC
-                        </span>
-                      </p>
+            {pendingResults.length === 0 ? (
+              <div className="text-center py-8 text-ir-teal">
+                <p className="text-4xl mb-2">📊</p>
+                <p className="font-semibold">No pending results</p>
+                <p className="text-sm">Complete battles to see results here</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {pendingResults.map((result) => (
+                  <div
+                    key={result.set_id}
+                    className="p-4 bg-ir-teal-light border-2 border-ir-turquoise rounded-tile hover:shadow-tile-sm transition-all"
+                  >
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="font-display font-semibold text-ir-navy">
+                          Word: {result.word.toUpperCase()}
+                        </p>
+                        <p className="text-sm text-ir-teal">
+                          Payout: <span className={`font-bold ${result.payout_amount > 0 ? 'text-ir-turquoise' : 'text-ir-orange'}`}>
+                            {result.payout_amount > 0 ? '+' : ''}
+                            {result.payout_amount} IC
+                          </span>
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleViewResult(result.set_id)}
+                        className="px-4 py-2 bg-ir-turquoise text-white rounded-tile hover:bg-ir-teal transition-colors font-semibold"
+                      >
+                        View
+                      </button>
                     </div>
-                    <button
-                      onClick={() => handleViewResult(result.set_id)}
-                      className="px-4 py-2 bg-ir-turquoise text-white rounded-tile hover:bg-ir-teal transition-colors font-semibold"
-                    >
-                      View
-                    </button>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

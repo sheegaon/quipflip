@@ -28,6 +28,7 @@ const Voting: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
+  const [hasVotedInSession, setHasVotedInSession] = useState(false);
   const pollingIntervalRef = useRef<number | null>(null);
   const hasNavigatedRef = useRef(false);
   const hasShuffledRef = useRef(false);
@@ -40,7 +41,7 @@ const Voting: React.FC = () => {
       const response = await gameAPI.getSetStatus(setId);
       setSet(response.set);
 
-      // Fetch entries if we're in voting status
+      // Fetch entries if we're in voting status or if user has voted (for vote tracking)
       if (response.set.status === 'voting') {
         // Get full results to access entries
         const resultsResponse = await gameAPI.getResults(setId);
@@ -51,6 +52,14 @@ const Voting: React.FC = () => {
           const shuffled = shuffleArray(resultsResponse.entries);
           setShuffledEntries(shuffled);
           hasShuffledRef.current = true;
+        } else if (hasVotedInSession && resultsResponse.entries.length > 0) {
+          // Update entries to show live vote counts
+          setShuffledEntries(prevEntries => {
+            return prevEntries.map(entry => {
+              const updatedEntry = resultsResponse.entries.find(e => e.entry_id === entry.entry_id);
+              return updatedEntry || entry;
+            });
+          });
         }
       }
 
@@ -106,12 +115,13 @@ const Voting: React.FC = () => {
     }
   }, [setId, navigate]);
 
-  // Redirect if already voted
+  // Redirect if already voted (from context, not this session)
   useEffect(() => {
-    if (hasVoted && setId) {
-      navigate(`/results/${setId}`);
+    if (hasVoted && setId && !hasVotedInSession) {
+      // User voted in a previous session, show vote tracking view
+      setHasVotedInSession(true);
     }
-  }, [hasVoted, setId, navigate]);
+  }, [hasVoted, setId, hasVotedInSession]);
 
   if (loading || !set || !player) {
     return (
@@ -155,10 +165,9 @@ const Voting: React.FC = () => {
 
       await submitVote(setId!, entryId);
 
-      // Navigate to results after short delay
-      setTimeout(() => {
-        navigate(`/results/${setId}`);
-      }, 1000);
+      // Show vote tracking view instead of navigating to results
+      setHasVotedInSession(true);
+      setIsSubmitting(false);
     } catch (err: unknown) {
       const errorMessage = typeof err === 'object' && err !== null && 'response' in err
         ? ((err.response as any)?.data?.detail)
@@ -230,8 +239,100 @@ const Voting: React.FC = () => {
               </div>
             )}
 
-            {/* Voting Options */}
-            {!isTransitioning && (
+            {/* Vote Tracking View - shown after user has voted */}
+            {!isTransitioning && hasVotedInSession && (
+              <>
+                <div className="mb-6 p-6 bg-ir-teal-light border-2 border-ir-turquoise rounded-tile text-center">
+                  <div className="text-2xl font-bold text-ir-turquoise mb-2">
+                    ✓ Vote Submitted!
+                  </div>
+                  <p className="text-ir-teal">Waiting for other players to vote...</p>
+                </div>
+
+                {/* Vote Count Progress */}
+                <div className="mb-6">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-lg font-semibold text-ir-navy">
+                      Voting Progress
+                    </h3>
+                    <span className="text-xl font-bold text-ir-orange-deep">
+                      {set.vote_count} / 5 votes
+                    </span>
+                  </div>
+                  <div className="w-full bg-ir-warm-ivory rounded-full h-4 overflow-hidden border border-ir-navy border-opacity-10">
+                    <div
+                      className="bg-gradient-to-r from-ir-turquoise to-ir-teal h-4 rounded-full transition-all duration-500 ease-out"
+                      style={{ width: `${(set.vote_count / 5) * 100}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Live Vote Counts */}
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-ir-navy mb-4 text-center">Live Vote Counts</h3>
+                  <div className="space-y-3">
+                    {shuffledEntries.map((entry) => {
+                      const isOwnEntry = playerEntry ? entry.entry_id === playerEntry.entry_id : false;
+                      const isSelectedVote = selectedEntryId === entry.entry_id;
+
+                      return (
+                        <div
+                          key={entry.entry_id}
+                          className={`p-4 rounded-lg border-2 ${
+                            isSelectedVote
+                              ? 'bg-ir-turquoise bg-opacity-20 border-ir-turquoise'
+                              : 'bg-white border-ir-navy border-opacity-20'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex flex-wrap gap-2 items-center flex-1">
+                              {entry.backronym_text.map((word, wordIndex) => (
+                                <React.Fragment key={wordIndex}>
+                                  <span className="text-lg font-bold text-gray-800">
+                                    {word}
+                                  </span>
+                                  {wordIndex < entry.backronym_text.length - 1 && (
+                                    <span className="text-gray-400">•</span>
+                                  )}
+                                </React.Fragment>
+                              ))}
+                            </div>
+                            <div className="flex items-center gap-2 ml-4">
+                              {isOwnEntry && (
+                                <span className="bg-gray-600 text-white text-xs px-2 py-1 rounded-full font-semibold">
+                                  YOU
+                                </span>
+                              )}
+                              {isSelectedVote && (
+                                <span className="bg-ir-turquoise text-white text-xs px-2 py-1 rounded-full font-semibold">
+                                  YOUR VOTE
+                                </span>
+                              )}
+                              <span className="text-2xl font-bold text-ir-orange-deep">
+                                {entry.received_votes}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Info */}
+                <div className="border-t border-ir-navy border-opacity-10 pt-6">
+                  <div className="bg-ir-teal-light border-l-4 border-ir-turquoise p-4 rounded-tile">
+                    <p className="text-sm text-ir-teal">
+                      <strong>What's happening:</strong> We're waiting for all players to vote.
+                      When all votes are in or the timer expires, you'll automatically see the final results!
+                    </p>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Voting Options - shown before user has voted */}
+            {!isTransitioning && !hasVotedInSession && (
               <>
                 <div className="mb-6">
                   <p className="text-center text-gray-700 font-semibold mb-4">
@@ -333,19 +434,6 @@ const Voting: React.FC = () => {
                 </div>
               </>
             )}
-
-            {/* Back to Dashboard Button */}
-            <button
-              onClick={() => navigate('/dashboard')}
-              disabled={isSubmitting}
-              className="w-full mt-6 flex items-center justify-center gap-2 text-gray-600 hover:text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed py-2 font-medium transition-colors"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-              </svg>
-              <span>Back to Dashboard</span>
-            </button>
-          </div>
         </div>
       </div>
     </div>
