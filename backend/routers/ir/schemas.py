@@ -38,6 +38,8 @@ class IRAuthResponse(BaseModel):
     access_token: str
     refresh_token: str | None = None
     player: IRPlayerInfo
+    password: str | None = None  # Only returned for guest account creation
+    email: str | None = None  # Explicit email for guest accounts
 
 
 class IRPlayerResponse(BaseModel):
