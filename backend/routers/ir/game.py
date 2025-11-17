@@ -1,5 +1,6 @@
 """Game/backronym endpoints for Initial Reaction (IR)."""
 import logging
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,9 +29,17 @@ from backend.services.ir.ir_scoring_service import IRScoringService
 from backend.services.ir.transaction_service import IRTransactionError, IRTransactionService
 from backend.services.ir.ir_vote_service import IRVoteError, IRVoteService
 from backend.services.phrase_validation_client import PhraseValidationClient
+from backend.utils.datetime_helpers import ensure_utc
 
 router = APIRouter()
 settings = get_settings()
+
+
+def _format_datetime(dt: datetime | None) -> str | None:
+    """Ensure datetime responses include UTC timezone info."""
+
+    aware_dt = ensure_utc(dt)
+    return aware_dt.isoformat() if aware_dt else None
 
 
 @router.post("/start", response_model=StartGameResponse)
@@ -205,9 +214,9 @@ async def get_set_status(
                 non_participant_vote_count=0,
                 total_pool=0,
                 creator_final_pool=0,
-                created_at=set_obj.created_at.isoformat() if set_obj.created_at else "",
-                transitions_to_voting_at=set_obj.transitions_to_voting_at.isoformat() if set_obj.transitions_to_voting_at else None,
-                voting_finalized_at=set_obj.voting_finalized_at.isoformat() if set_obj.voting_finalized_at else None,
+                created_at=_format_datetime(set_obj.created_at) or "",
+                transitions_to_voting_at=_format_datetime(set_obj.transitions_to_voting_at),
+                voting_finalized_at=_format_datetime(set_obj.voting_finalized_at),
             ),
             player_has_submitted=player_has_submitted,
             player_has_voted=player_has_voted,
@@ -326,9 +335,9 @@ async def get_results(
                 non_participant_vote_count=0,
                 total_pool=summary.get("total_pool", 0),
                 creator_final_pool=0,
-                created_at=set_obj.created_at.isoformat() if set_obj.created_at else "",
-                transitions_to_voting_at=set_obj.transitions_to_voting_at.isoformat() if set_obj.transitions_to_voting_at else None,
-                voting_finalized_at=set_obj.voting_finalized_at.isoformat() if set_obj.voting_finalized_at else None,
+                created_at=_format_datetime(set_obj.created_at) or "",
+                transitions_to_voting_at=_format_datetime(set_obj.transitions_to_voting_at),
+                voting_finalized_at=_format_datetime(set_obj.voting_finalized_at),
             ),
             entries=set_details.get("entries", []),
             votes=set_details.get("votes", []),

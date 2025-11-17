@@ -24,6 +24,7 @@ from backend.services.ir.ir_backronym_set_service import IRBackronymSetService
 from backend.services.ir.ir_daily_bonus_service import IRDailyBonusError, IRDailyBonusService
 from backend.services.ir.ir_result_view_service import IRResultViewService
 from backend.services.ir.player_service import IRPlayerService
+from backend.utils.datetime_helpers import ensure_utc
 
 router = APIRouter()
 
@@ -166,12 +167,13 @@ async def claim_daily_bonus(
     claimed_at = bonus["claimed_at"]
     if isinstance(claimed_at, str):
         claimed_at = datetime.fromisoformat(claimed_at.replace("Z", "+00:00"))
-    next_claim = claimed_at + timedelta(hours=24)
+    claimed_at = ensure_utc(claimed_at)
+    next_claim = ensure_utc(claimed_at + timedelta(hours=24)) if claimed_at else None
 
     return IRClaimDailyBonusResponse(
         bonus_amount=bonus["amount"],
         new_balance=refreshed_player.wallet,
-        next_claim_available_at=next_claim.isoformat(),
+        next_claim_available_at=next_claim.isoformat() if next_claim else None,
     )
 
 
