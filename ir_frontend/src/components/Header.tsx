@@ -177,7 +177,7 @@ const Header: React.FC = () => {
                 title={logoTitle}
                 aria-label={logoTitle}
               >
-                <img src="/logo.png" alt="Initial Reaction" className="md:h-11 h-9 w-auto" />
+                <img src="/initial_reaction_logo.png" alt="Initial Reaction" className="md:h-11 h-9 w-auto" />
               </button>
 
               {/* Dropdown Menu */}
