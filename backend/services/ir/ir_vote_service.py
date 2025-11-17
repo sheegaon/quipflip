@@ -9,6 +9,7 @@ from backend.config import get_settings
 from backend.models.ir.ir_backronym_set import IRBackronymSet
 from backend.models.ir.ir_backronym_entry import IRBackronymEntry
 from backend.models.ir.ir_backronym_vote import IRBackronymVote
+from backend.models.ir.ir_backronym_observer_guard import IRBackronymObserverGuard
 from backend.models.ir.ir_player import IRPlayer
 from backend.models.ir.enums import IRSetStatus
 
@@ -90,6 +91,18 @@ class IRVoteService:
                 vote_cost = self.settings.ir_vote_cost
                 if player.wallet < vote_cost:
                     return False, "insufficient_balance", False
+
+                # Enforce observer gating: non-participant voters must have accounts
+                # created before the first participant joined
+                guard_stmt = select(IRBackronymObserverGuard).where(
+                    IRBackronymObserverGuard.set_id == set_id
+                )
+                guard_result = await self.db.execute(guard_stmt)
+                observer_guard = guard_result.scalars().first()
+
+                if observer_guard:
+                    if player.created_at > observer_guard.first_participant_created_at:
+                        return False, "account_too_new_for_non_participant_vote", False
 
             # Check if player already voted
             vote_stmt = select(IRBackronymVote).where(
