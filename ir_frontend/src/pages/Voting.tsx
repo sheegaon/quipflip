@@ -111,11 +111,11 @@ const Voting: React.FC = () => {
 
   if (loading || !set || !player) {
     return (
-      <div className="min-h-screen bg-gray-100">
+      <div className="min-h-screen bg-ir-cream bg-pattern">
         <Header />
         <div className="container mx-auto px-4 py-8">
-          <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-8 text-center">
-            <div className="text-gray-600">Loading voting options...</div>
+          <div className="max-w-2xl mx-auto tile-card p-8 text-center">
+            <div className="text-ir-teal">Loading voting options...</div>
           </div>
         </div>
       </div>
@@ -169,36 +169,36 @@ const Voting: React.FC = () => {
   const isTransitioning = set.status === 'finalized' || hasNavigatedRef.current;
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-ir-cream bg-pattern">
       <Header />
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-3xl mx-auto">
           {/* Header */}
           <div className="text-center mb-6">
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">Vote for the Best Backronym</h1>
-            <p className="text-gray-600 mb-2">
-              Word: <strong className="text-blue-600">{set.word.toUpperCase()}</strong>
+            <h1 className="text-3xl font-display font-bold text-ir-navy mb-2">Vote for the Best Backronym</h1>
+            <p className="text-ir-teal mb-2">
+              Word: <strong className="text-ir-orange">{set.word.toUpperCase()}</strong>
             </p>
             {isParticipant ? (
-              <p className="text-sm text-green-600">
+              <p className="text-sm text-ir-turquoise">
                 You're a participant - voting is free!
               </p>
             ) : (
-              <p className="text-sm text-orange-600">
+              <p className="text-sm text-ir-orange-deep">
                 Non-participant vote costs {voteCost} IC (earn 20 IC if you pick the winner)
               </p>
             )}
           </div>
 
           {/* Main Card */}
-          <div className="bg-white rounded-lg shadow-lg p-8">
+          <div className="bg-white rounded-tile shadow-tile p-8 border-2 border-ir-navy border-opacity-10">
             {/* Transitioning Message */}
             {isTransitioning && (
-              <div className="mb-6 p-6 bg-green-100 border-2 border-green-500 rounded-lg text-center">
-                <div className="text-2xl font-bold text-green-700 mb-2">
+              <div className="mb-6 p-6 bg-ir-teal-light border-2 border-ir-turquoise rounded-tile text-center">
+                <div className="text-2xl font-bold text-ir-turquoise mb-2">
                   ✓ Voting Complete!
                 </div>
-                <p className="text-green-600">Moving to results...</p>
+                <p className="text-ir-teal">Moving to results...</p>
               </div>
             )}
 
@@ -208,7 +208,7 @@ const Voting: React.FC = () => {
                 <p className="text-sm text-gray-600 mb-2">Time remaining:</p>
                 <Timer
                   targetTime={set.voting_finalized_at}
-                  className="text-3xl font-bold text-blue-600"
+                  className="text-3xl font-bold text-ir-navy"
                   onExpire={() => {
                     // Timer expired, AI will fill remaining votes
                     // Continue polling to detect when set moves to finalized
@@ -249,8 +249,8 @@ const Voting: React.FC = () => {
                             isOwnEntry
                               ? 'bg-gray-100 border-gray-300 cursor-not-allowed opacity-75'
                               : isSelected
-                              ? 'bg-blue-100 border-blue-500 shadow-md'
-                              : 'bg-white border-gray-300 hover:border-blue-400 hover:shadow-md'
+                              ? 'bg-ir-teal-light border-ir-turquoise shadow-md'
+                              : 'bg-white border-ir-navy border-opacity-20 hover:border-ir-turquoise hover:shadow-md'
                           } ${isSubmitting && !isSelected ? 'opacity-50' : ''}`}
                         >
                           {/* Own Entry Badge */}
@@ -279,7 +279,7 @@ const Voting: React.FC = () => {
                             {entry.backronym_text.map((word, wordIndex) => (
                               <span
                                 key={wordIndex}
-                                className="font-mono font-bold text-blue-600"
+                                className="font-mono font-bold text-ir-orange"
                               >
                                 {word.charAt(0)}
                               </span>
@@ -291,7 +291,7 @@ const Voting: React.FC = () => {
 
                           {/* Submitting indicator */}
                           {isSelected && isSubmitting && (
-                            <div className="mt-4 text-center text-blue-600 text-sm font-semibold">
+                            <div className="mt-4 text-center text-ir-teal text-sm font-semibold">
                               Submitting vote...
                             </div>
                           )}
@@ -302,9 +302,9 @@ const Voting: React.FC = () => {
                 </div>
 
                 {/* Instructions */}
-                <div className="border-t border-gray-200 pt-6">
-                  <div className="bg-blue-50 border-l-4 border-blue-500 p-4">
-                    <p className="text-sm text-gray-700">
+                <div className="border-t border-ir-navy border-opacity-10 pt-6">
+                  <div className="bg-ir-teal-light border-l-4 border-ir-turquoise p-4 rounded-tile">
+                    <p className="text-sm text-ir-teal">
                       <strong>How it works:</strong> Choose the backronym you think is most creative.
                       {isParticipant
                         ? ' The backronym with the most votes wins the prize pool!'

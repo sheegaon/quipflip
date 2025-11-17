@@ -47,8 +47,8 @@ const BackronymCreate: React.FC = () => {
 
   if (!activeSet || !player) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-gray-600">Loading...</div>
+      <div className="min-h-screen bg-ir-cream bg-pattern flex items-center justify-center">
+        <div className="text-ir-teal">Loading...</div>
       </div>
     );
   }
@@ -164,143 +164,143 @@ const BackronymCreate: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-ir-cream bg-pattern">
       <Header />
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-3xl mx-auto">
+      <div className="max-w-4xl mx-auto md:px-4 px-3 md:py-8 py-5">
+        <div className="tile-card md:p-8 p-5">
           {/* Header */}
-          <div className="text-center mb-6">
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">Create Your Backronym</h1>
-            <p className="text-gray-600 mb-4">
-              Create a phrase where each word starts with a letter from the target word
-            </p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-3">
+            <div className="text-center sm:text-left">
+              <h1 className="text-3xl font-display font-bold text-ir-navy mb-2">Create Your Backronym</h1>
+              <p className="text-ir-teal">
+                Create a phrase where each word starts with a letter from the target word
+              </p>
+            </div>
 
             {/* Timer - only show if we have a deadline */}
             {activeSet.transitions_to_voting_at && (
-              <div className="flex justify-center mb-4">
+              <div className="bg-white rounded-tile px-4 py-3 border-2 border-ir-turquoise shadow-tile-sm text-center">
+                <div className="text-sm text-ir-teal">Time remaining</div>
                 <Timer
                   targetTime={activeSet.transitions_to_voting_at}
-                  className="text-2xl font-bold text-blue-600"
+                  className="text-2xl font-bold text-ir-navy"
                 />
               </div>
             )}
           </div>
 
-          {/* Main Card */}
-          <div className="bg-white rounded-lg shadow-lg p-8">
-            {/* Target Word Display */}
-            <div className="mb-8">
-              <p className="text-sm text-gray-600 text-center mb-3">Target Word:</p>
-              <div className="flex justify-center gap-3 mb-6">
-                {letters.map((letter, index) => (
-                  <div
-                    key={index}
-                    className="w-16 h-16 flex items-center justify-center bg-blue-600 text-white text-3xl font-bold rounded-lg shadow-md"
-                  >
+          {/* Target Word Display */}
+          <div className="mb-8">
+            <p className="text-sm text-ir-teal text-center mb-3">Target Word:</p>
+            <div className="flex justify-center gap-3 mb-6">
+              {letters.map((letter, index) => (
+                <div
+                  key={index}
+                  className="w-16 h-16 flex items-center justify-center bg-ir-navy text-white text-3xl font-bold rounded-tile shadow-tile-sm"
+                >
+                  {letter}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Instructions */}
+          <div className="bg-white border-2 border-ir-turquoise rounded-tile p-4 mb-6 shadow-tile-sm">
+            <p className="text-sm text-ir-teal">
+              <strong className="text-ir-navy">💡 How to play:</strong> Enter one word for each letter. Each word must start with the corresponding letter.
+              Words should be 2-15 characters, letters only. Press Space or Tab to move to the next word.
+            </p>
+          </div>
+
+          {/* Error Message */}
+          {error && (
+            <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-tile">
+              {error}
+            </div>
+          )}
+
+          {/* Word Input Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 gap-4">
+              {letters.map((letter, index) => (
+                <div key={index} className="flex items-center gap-3">
+                  {/* Letter indicator */}
+                  <div className="w-12 h-12 flex items-center justify-center bg-ir-navy text-white text-xl font-bold rounded-tile flex-shrink-0">
                     {letter}
                   </div>
-                ))}
-              </div>
-            </div>
 
-            {/* Instructions */}
-            <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
-              <p className="text-sm text-gray-700">
-                <strong>💡 How to play:</strong> Enter one word for each letter. Each word must start with the corresponding letter.
-                Words should be 2-15 characters, letters only. Press Space or Tab to move to the next word.
-              </p>
-            </div>
+                  {/* Word input */}
+                  <div className="flex-1">
+                    <input
+                      ref={(el) => (inputRefs.current[index] = el)}
+                      type="text"
+                      value={wordInputs[index]?.word || ''}
+                      onChange={(e) => handleWordChange(index, e.target.value)}
+                      onKeyDown={(e) => handleKeyDown(index, e)}
+                      onPaste={(e) => handlePaste(index, e)}
+                      placeholder={`Word starting with ${letter}...`}
+                      className={`w-full px-4 py-3 text-lg border-2 rounded-tile focus:outline-none focus:ring-2 focus:ring-ir-turquoise transition-colors ${getTileColor(wordInputs[index]?.status || 'empty')}`}
+                      disabled={isSubmitting}
+                      maxLength={15}
+                      autoFocus={index === 0}
+                    />
 
-            {/* Error Message */}
-            {error && (
-              <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
-                {error}
-              </div>
-            )}
-
-            {/* Word Input Form */}
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 gap-4">
-                {letters.map((letter, index) => (
-                  <div key={index} className="flex items-center gap-3">
-                    {/* Letter indicator */}
-                    <div className="w-12 h-12 flex items-center justify-center bg-blue-600 text-white text-xl font-bold rounded-lg flex-shrink-0">
-                      {letter}
+                    {/* Status indicator */}
+                    <div className="mt-1 text-xs">
+                      {wordInputs[index]?.status === 'invalid' && (
+                        <span className="text-ir-orange-deep">
+                          {wordInputs[index]?.word.trim().toUpperCase().startsWith(letter)
+                            ? 'Invalid word format (2-15 letters, A-Z only)'
+                            : `Must start with ${letter}`}
+                        </span>
+                      )}
+                      {wordInputs[index]?.status === 'typing' && (
+                        <span className="text-ir-orange">Typing...</span>
+                      )}
+                      {wordInputs[index]?.status === 'valid' && (
+                        <span className="text-ir-turquoise">✓ Valid</span>
+                      )}
                     </div>
-
-                    {/* Word input */}
-                    <div className="flex-1">
-                      <input
-                        ref={el => inputRefs.current[index] = el}
-                        type="text"
-                        value={wordInputs[index]?.word || ''}
-                        onChange={(e) => handleWordChange(index, e.target.value)}
-                        onKeyDown={(e) => handleKeyDown(index, e)}
-                        onPaste={(e) => handlePaste(index, e)}
-                        placeholder={`Word starting with ${letter}...`}
-                        className={`w-full px-4 py-3 text-lg border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${getTileColor(wordInputs[index]?.status || 'empty')}`}
-                        disabled={isSubmitting}
-                        maxLength={15}
-                        autoFocus={index === 0}
-                      />
-
-                      {/* Status indicator */}
-                      <div className="mt-1 text-xs">
-                        {wordInputs[index]?.status === 'invalid' && (
-                          <span className="text-red-600">
-                            {wordInputs[index]?.word.trim().toUpperCase().startsWith(letter)
-                              ? 'Invalid word format (2-15 letters, A-Z only)'
-                              : `Must start with ${letter}`}
-                          </span>
-                        )}
-                        {wordInputs[index]?.status === 'typing' && (
-                          <span className="text-yellow-600">Typing...</span>
-                        )}
-                        {wordInputs[index]?.status === 'valid' && (
-                          <span className="text-green-600">✓ Valid</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Submit Button */}
-              <div className="pt-4">
-                <button
-                  type="submit"
-                  disabled={!allWordsValid || isSubmitting}
-                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-bold py-4 px-6 rounded-lg transition-colors text-lg shadow-md"
-                >
-                  {isSubmitting ? 'Submitting...' : `Submit Backronym (${entryCost} IC)`}
-                </button>
-              </div>
-
-              {/* Info */}
-              <div className="pt-4 border-t border-gray-200">
-                <div className="flex items-center justify-between text-sm text-gray-600">
-                  <div>
-                    <strong>Entry Cost:</strong> <InitCoinDisplay amount={entryCost} />
-                  </div>
-                  <div>
-                    <strong>Your Balance:</strong> <InitCoinDisplay amount={player.wallet} />
                   </div>
                 </div>
-              </div>
-            </form>
+              ))}
+            </div>
 
-            {/* Back Button */}
-            <button
-              onClick={() => navigate('/dashboard')}
-              disabled={isSubmitting}
-              className="w-full mt-4 flex items-center justify-center gap-2 text-gray-600 hover:text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed py-2 font-medium transition-colors"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-              </svg>
-              <span>Back to Dashboard</span>
-            </button>
-          </div>
+            {/* Submit Button */}
+            <div className="pt-4">
+              <button
+                type="submit"
+                disabled={!allWordsValid || isSubmitting}
+                className="w-full bg-ir-navy hover:bg-ir-teal disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-4 px-6 rounded-tile transition-colors text-lg shadow-tile-sm"
+              >
+                {isSubmitting ? 'Submitting...' : `Submit Backronym (${entryCost} IC)`}
+              </button>
+            </div>
+
+            {/* Info */}
+            <div className="pt-4 border-t border-gray-200">
+              <div className="flex items-center justify-between text-sm text-ir-teal">
+                <div>
+                  <strong>Entry Cost:</strong> <InitCoinDisplay amount={entryCost} />
+                </div>
+                <div>
+                  <strong>Your Balance:</strong> <InitCoinDisplay amount={player.wallet} />
+                </div>
+              </div>
+            </div>
+          </form>
+
+          {/* Back Button */}
+          <button
+            onClick={() => navigate('/dashboard')}
+            disabled={isSubmitting}
+            className="w-full mt-4 flex items-center justify-center gap-2 text-ir-teal hover:text-ir-navy disabled:opacity-50 disabled:cursor-not-allowed py-2 font-medium transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            </svg>
+            <span>Back to Dashboard</span>
+          </button>
         </div>
       </div>
     </div>
