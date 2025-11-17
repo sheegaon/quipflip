@@ -86,11 +86,11 @@ const SetTracking: React.FC = () => {
 
   if (!set || !player) {
     return (
-      <div className="min-h-screen bg-gray-100">
+      <div className="min-h-screen bg-ir-cream bg-pattern">
         <Header />
-        <div className="container mx-auto px-4 py-8">
-          <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-8 text-center">
-            <div className="text-gray-600">Loading set status...</div>
+        <div className="max-w-3xl mx-auto px-4 py-8">
+          <div className="tile-card p-6 text-center">
+            <div className="text-ir-teal">Loading set status...</div>
           </div>
         </div>
       </div>
@@ -106,33 +106,33 @@ const SetTracking: React.FC = () => {
   const isTransitioning = set.status === 'voting' || hasNavigatedRef.current;
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-ir-cream bg-pattern">
       <Header />
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-2xl mx-auto">
+      <div className="max-w-3xl mx-auto px-4 py-8">
+        <div className="tile-card p-6">
           {/* Header */}
           <div className="text-center mb-6">
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">Waiting for Players...</h1>
-            <p className="text-gray-600">
-              Your backronym has been submitted for word: <strong className="text-blue-600">{set.word.toUpperCase()}</strong>
+            <h1 className="text-3xl font-display font-bold text-ir-navy mb-2">Waiting for Players...</h1>
+            <p className="text-ir-teal">
+              Your backronym has been submitted for word: <strong className="text-ir-orange">{set.word.toUpperCase()}</strong>
             </p>
           </div>
 
           {/* Main Card */}
-          <div className="bg-white rounded-lg shadow-lg p-8">
+          <div className="bg-white rounded-tile shadow-tile p-6 border-2 border-ir-navy border-opacity-10">
             {/* Transitioning Message */}
             {isTransitioning && (
-              <div className="mb-6 p-6 bg-green-100 border-2 border-green-500 rounded-lg text-center">
-                <div className="text-2xl font-bold text-green-700 mb-2">
+              <div className="mb-6 p-6 bg-ir-teal-light border-2 border-ir-turquoise rounded-tile text-center">
+                <div className="text-2xl font-bold text-ir-turquoise mb-2">
                   ✓ All Entries Received!
                 </div>
-                <p className="text-green-600">Moving to voting phase...</p>
+                <p className="text-ir-teal">Moving to voting phase...</p>
               </div>
             )}
 
             {/* Error Message */}
             {error && !isTransitioning && (
-              <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+              <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-tile">
                 {error}
               </div>
             )}
@@ -142,18 +142,18 @@ const SetTracking: React.FC = () => {
               <>
                 <div className="mb-8">
                   <div className="flex items-center justify-between mb-3">
-                    <h2 className="text-xl font-bold text-gray-800">
+                    <h2 className="text-xl font-semibold text-ir-navy">
                       Backronym Submissions
                     </h2>
-                    <span className="text-2xl font-bold text-blue-600">
+                    <span className="text-2xl font-bold text-ir-orange-deep">
                       {currentEntries} / {requiredEntries}
                     </span>
                   </div>
 
                   {/* Progress Bar */}
-                  <div className="w-full bg-gray-200 rounded-full h-6 overflow-hidden">
+                  <div className="w-full bg-ir-warm-ivory rounded-full h-6 overflow-hidden border border-ir-navy border-opacity-10">
                     <div
-                      className="bg-blue-600 h-6 rounded-full transition-all duration-500 ease-out flex items-center justify-center"
+                      className="bg-gradient-to-r from-ir-turquoise to-ir-teal h-6 rounded-full transition-all duration-500 ease-out flex items-center justify-center"
                       style={{ width: `${progress}%` }}
                     >
                       {progress > 20 && (
@@ -164,7 +164,7 @@ const SetTracking: React.FC = () => {
                     </div>
                   </div>
 
-                  <p className="text-sm text-gray-600 mt-2 text-center">
+                  <p className="text-sm text-ir-teal mt-2 text-center">
                     {entriesRemaining > 0
                       ? `Waiting for ${entriesRemaining} more ${entriesRemaining === 1 ? 'entry' : 'entries'}...`
                       : 'All entries received!'}
@@ -174,25 +174,25 @@ const SetTracking: React.FC = () => {
                 {/* Timer Section */}
                 {set.transitions_to_voting_at && (
                   <div className="mb-8 text-center">
-                    <p className="text-sm text-gray-600 mb-2">Time remaining:</p>
+                    <p className="text-sm text-ir-teal mb-2">Time remaining:</p>
                     <Timer
                       targetTime={set.transitions_to_voting_at}
-                      className="text-4xl font-bold text-blue-600"
+                      className="text-4xl font-bold text-ir-navy"
                       onExpire={() => {
                         // Timer expired, AI will fill remaining slots
                         // Continue polling to detect when set moves to voting
                       }}
                     />
-                    <p className="text-xs text-gray-500 mt-2">
+                    <p className="text-xs text-ir-teal mt-2">
                       AI players will fill remaining slots when time expires
                     </p>
                   </div>
                 )}
 
                 {/* Status Info */}
-                <div className="border-t border-gray-200 pt-6">
-                  <div className="bg-blue-50 border-l-4 border-blue-500 p-4">
-                    <p className="text-sm text-gray-700">
+                <div className="border-t border-ir-navy border-opacity-10 pt-6">
+                  <div className="bg-ir-teal-light border-l-4 border-ir-turquoise p-4 rounded-tile">
+                    <p className="text-sm text-ir-teal">
                       <strong>What's happening:</strong> We're waiting for {requiredEntries} players to submit their backronyms.
                       Once we have enough entries, you'll automatically move to the voting phase where you can vote for your favorite!
                     </p>
@@ -202,7 +202,7 @@ const SetTracking: React.FC = () => {
                 {/* Loading Indicator */}
                 {loading && (
                   <div className="mt-4 text-center">
-                    <div className="inline-flex items-center text-sm text-gray-500">
+                    <div className="inline-flex items-center text-sm text-ir-teal">
                       <svg className="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -217,7 +217,7 @@ const SetTracking: React.FC = () => {
             {/* Back to Dashboard Button */}
             <button
               onClick={() => navigate('/dashboard')}
-              className="w-full mt-6 flex items-center justify-center gap-2 text-gray-600 hover:text-gray-800 py-2 font-medium transition-colors"
+              className="w-full mt-6 flex items-center justify-center gap-2 text-ir-teal hover:text-ir-navy py-2 font-medium transition-colors"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />

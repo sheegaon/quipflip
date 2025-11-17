@@ -153,7 +153,7 @@ const OnlineUsers: React.FC = () => {
 
     const fetchOnlineUsers = async () => {
       try {
-        const response = await fetch('/qf/api/users/online', {
+        const response = await fetch('/qf/users/online', {
           credentials: 'include', // Include cookies for authentication
         });
 

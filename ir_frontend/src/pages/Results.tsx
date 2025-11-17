@@ -44,11 +44,11 @@ const Results: React.FC = () => {
 
   if (loading || !results || !player) {
     return (
-      <div className="min-h-screen bg-gray-100">
+      <div className="min-h-screen bg-ir-cream bg-pattern">
         <Header />
         <div className="container mx-auto px-4 py-8">
-          <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-8 text-center">
-            <div className="text-gray-600">Loading results...</div>
+          <div className="max-w-2xl mx-auto tile-card p-8 text-center">
+            <div className="text-ir-teal">Loading results...</div>
           </div>
         </div>
       </div>
@@ -84,17 +84,17 @@ const Results: React.FC = () => {
   const netGainLoss = totalEarnings - totalCost - breakdown.vault_rake;
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-ir-cream bg-pattern">
       <Header />
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
           <div className="text-center mb-6">
-            <h1 className="text-4xl font-bold text-gray-800 mb-2">Results</h1>
-            <p className="text-gray-600 text-lg mb-2">
-              Word: <strong className="text-blue-600">{set.word.toUpperCase()}</strong>
+            <h1 className="text-4xl font-display font-bold text-ir-navy mb-2">Results</h1>
+            <p className="text-ir-teal text-lg mb-2">
+              Word: <strong className="text-ir-orange">{set.word.toUpperCase()}</strong>
             </p>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-ir-teal">
               {set.entry_count} entries • {set.vote_count} votes
             </p>
           </div>
@@ -108,20 +108,20 @@ const Results: React.FC = () => {
 
           {/* Payout Summary Card */}
           {payout_breakdown && (
-            <div className={`mb-6 p-6 rounded-lg shadow-lg ${netGainLoss >= 0 ? 'bg-green-50 border-2 border-green-500' : 'bg-red-50 border-2 border-red-400'}`}>
+            <div className={`mb-6 p-6 rounded-tile shadow-tile ${netGainLoss >= 0 ? 'bg-ir-teal-light border-2 border-ir-turquoise' : 'bg-red-50 border-2 border-red-400'}`}>
               <div className="text-center">
                 <h2 className="text-2xl font-bold mb-2">
                   {netGainLoss >= 0 ? '🎉 You Earned!' : '💸 Net Result'}
                 </h2>
-                <div className={`text-5xl font-bold mb-4 ${netGainLoss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                <div className={`text-5xl font-bold mb-4 ${netGainLoss >= 0 ? 'text-ir-turquoise' : 'text-red-600'}`}>
                   {netGainLoss >= 0 ? '+' : ''}
                   <InitCoinDisplay amount={netGainLoss} />
                 </div>
 
                 {/* Breakdown Details */}
                 <div className="mt-6 bg-white rounded-lg p-4 text-left">
-                  <h3 className="font-bold text-gray-800 mb-3 text-center">Transaction Breakdown</h3>
-                  <div className="space-y-2 text-sm">
+                  <h3 className="font-bold text-ir-navy mb-3 text-center">Transaction Breakdown</h3>
+                  <div className="space-y-2 text-sm text-ir-teal">
                     {/* Costs */}
                     {breakdown.entry_cost > 0 && (
                       <div className="flex justify-between">
