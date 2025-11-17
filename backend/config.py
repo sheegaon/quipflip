@@ -49,6 +49,9 @@ class Settings(BaseSettings):
     ir_non_participant_votes_per_set: int = 5  # Max non-participant votes per set
     ir_rapid_entry_timeout_minutes: int = 30  # Timeout before old sets are removed from available pool
     ir_ai_backup_delay_minutes: int = 2  # Delay before AI fills stalled backronym sets
+    ir_rapid_entry_timer_minutes: int = 2  # Rapid mode: minutes after last entry before AI fills slots
+    ir_rapid_voting_timer_minutes: int = 2  # Rapid mode: minutes for voting phase before AI fills votes
+    ir_standard_voting_timer_minutes: int = 30  # Standard mode: minutes for voting phase before AI fills votes
 
     # Game Constants (all values in whole flipcoins)
     starting_balance: int = 5000

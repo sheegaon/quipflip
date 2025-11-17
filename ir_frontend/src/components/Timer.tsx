@@ -1,36 +1,54 @@
-import React, { useState, useEffect } from 'react';
-import { getRemainingTime, formatCountdown } from '../utils/datetime';
+import React, { useEffect, useRef } from 'react';
+import { useTimer, formatTime } from '../hooks/useTimer';
 
 interface TimerProps {
-  targetTime: string;
+  targetTime: string | null;
   onExpire?: () => void;
+  compact?: boolean;
   className?: string;
 }
 
-const Timer: React.FC<TimerProps> = ({ targetTime, onExpire, className = '' }) => {
-  const [timeLeft, setTimeLeft] = useState(getRemainingTime(targetTime));
+const Timer: React.FC<TimerProps> = ({ targetTime, onExpire, compact = false, className = '' }) => {
+  const { timeRemaining, isExpired, isWarning, isUrgent } = useTimer(targetTime);
+  const hasFiredExpired = useRef(false);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      const remaining = getRemainingTime(targetTime);
-      setTimeLeft(remaining);
+    hasFiredExpired.current = false;
+  }, [targetTime]);
 
-      if (remaining.isExpired && onExpire) {
-        onExpire();
-        clearInterval(interval);
-      }
-    }, 1000);
+  useEffect(() => {
+    if (!onExpire) return;
+    if (isExpired && !hasFiredExpired.current) {
+      hasFiredExpired.current = true;
+      onExpire();
+    }
+  }, [isExpired, onExpire, targetTime, timeRemaining]);
 
-    return () => clearInterval(interval);
-  }, [targetTime, onExpire]);
+  if (!targetTime) return null;
 
-  if (timeLeft.isExpired) {
-    return <div className={`text-red-500 font-mono ${className}`}>Expired</div>;
-  }
+  const getTimerClass = () => {
+    if (compact) {
+      if (isExpired) return 'bg-ir-orange-deep text-white';
+      if (isUrgent) return 'bg-ir-orange text-white';
+      if (isWarning) return 'bg-ir-orange-light text-ir-navy';
+      return 'bg-ir-turquoise text-white';
+    }
+
+    if (isExpired) return 'bg-ir-orange-deep text-white';
+    if (isUrgent) return 'bg-ir-orange text-white animate-pulse';
+    if (isWarning) return 'bg-ir-orange-light text-ir-navy';
+    return 'bg-ir-turquoise text-white';
+  };
+
+  const baseClass = compact
+    ? 'inline-flex items-center rounded-tile px-3 py-1 text-sm font-semibold'
+    : 'px-6 py-3 rounded-tile font-bold text-2xl';
+
+  const displayValue = isExpired ? (compact ? '0:00' : "Time's Up!") : formatTime(timeRemaining);
 
   return (
-    <div className={`font-mono ${className}`}>
-      {formatCountdown(timeLeft.minutes, timeLeft.seconds)}
+    <div className={`${baseClass} ${getTimerClass()} ${className}`}>
+      {displayValue}
     </div>
   );
 };

@@ -179,17 +179,16 @@ const SetTracking: React.FC = () => {
                 {/* Timer Section */}
                 {set.transitions_to_voting_at && (
                   <div className="mb-8 text-center">
-                    <p className="text-sm text-ir-teal mb-2">Time remaining:</p>
+                    <p className="text-sm text-ir-teal mb-3 font-semibold">Time remaining until AI fills slots:</p>
                     <Timer
                       targetTime={set.transitions_to_voting_at}
-                      className="text-4xl font-bold text-ir-navy"
                       onExpire={() => {
                         // Timer expired, AI will fill remaining slots
                         // Continue polling to detect when set moves to voting
                       }}
                     />
-                    <p className="text-xs text-ir-teal mt-2">
-                      AI players will fill remaining slots when time expires
+                    <p className="text-xs text-ir-teal mt-3">
+                      When time expires, AI players will automatically fill any remaining slots
                     </p>
                   </div>
                 )}

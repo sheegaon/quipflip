@@ -181,6 +181,12 @@ class IRBackronymSetService:
                 if set_obj.first_participant_joined_at is None:
                     set_obj.first_participant_joined_at = now
 
+                # Set timer for when AI will fill remaining slots (Rapid mode only)
+                if set_obj.mode == IRMode.RAPID:
+                    set_obj.transitions_to_voting_at = now + timedelta(
+                        minutes=self.settings.ir_rapid_entry_timer_minutes
+                    )
+
             await self.db.commit()
             await self.db.refresh(entry)
 
@@ -221,6 +227,18 @@ class IRBackronymSetService:
                 raise IRBackronymSetError("set_not_in_open_status")
 
             set_obj.status = IRSetStatus.VOTING
+
+            # Set timer for when AI will fill remaining votes
+            now = datetime.now(UTC)
+            if set_obj.mode == IRMode.RAPID:
+                set_obj.voting_finalized_at = now + timedelta(
+                    minutes=self.settings.ir_rapid_voting_timer_minutes
+                )
+            else:  # Standard mode
+                set_obj.voting_finalized_at = now + timedelta(
+                    minutes=self.settings.ir_standard_voting_timer_minutes
+                )
+
             await self.db.commit()
             await self.db.refresh(set_obj)
             await self.queue_service.dequeue_entry_set(set_id)
