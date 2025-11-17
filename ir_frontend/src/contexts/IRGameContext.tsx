@@ -232,7 +232,7 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
     try {
       setLoading(true);
       setError(null);
-      const data: SubmitBackronymRequest = { backronym_text: words };
+      const data: SubmitBackronymRequest = { words };
       await gameAPI.submitBackronym(setId, data);
       setState((prev) => ({
         ...prev,

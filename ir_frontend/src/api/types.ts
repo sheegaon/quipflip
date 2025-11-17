@@ -114,7 +114,7 @@ export interface UpgradeGuestRequest {
 }
 
 export interface SubmitBackronymRequest {
-  backronym_text: string[];
+  words: string[];
 }
 
 export interface SubmitVoteRequest {
