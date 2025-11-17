@@ -33,6 +33,8 @@ def _load_dictionary_words() -> list[str]:
         with open(dictionary_path, 'r') as f:
             for line in f:
                 word = line.strip().upper()
+                if any([letter in word for letter in ['x', 'q']]):
+                    continue  # Exclude words with 'x', 'q'
                 # Filter to 3-5 letter words
                 if 3 <= len(word) <= 5:
                     words.append(word)
@@ -198,7 +200,8 @@ class IRWordService:
         """
         try:
             lookback_time = datetime.now(UTC) - timedelta(minutes=minutes)
-            stmt = select(IRAIPhraseCache).where(
+            # Select only cache_id to avoid issues if prompt_text column doesn't exist in DB
+            stmt = select(IRAIPhraseCache.cache_id).where(
                 (IRAIPhraseCache.original_phrase == word.upper())
                 & (IRAIPhraseCache.created_at >= lookback_time)
             )
