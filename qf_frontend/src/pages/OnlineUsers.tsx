@@ -52,7 +52,7 @@ const OnlineUsers: React.FC = () => {
       try {
         // Step 1: Fetch short-lived WebSocket token via REST API (through Vercel proxy)
         // This endpoint validates HttpOnly cookies and returns a token we can use for WebSocket
-        const tokenResponse = await fetch('/qf/api/auth/ws-token', {
+        const tokenResponse = await fetch('/api/auth/ws-token', {
           credentials: 'include', // Include HttpOnly cookies
         });
 
@@ -69,13 +69,13 @@ const OnlineUsers: React.FC = () => {
 
         if (apiUrl.startsWith('/')) {
           // Production: use direct Heroku connection (cannot proxy WebSocket through Vercel)
-          wsUrl = `${backendWsUrl}/users/online/ws`;
+          wsUrl = `${backendWsUrl}/qf/users/online/ws`;
 
         } else {
           // Development: connect directly to local backend
           wsUrl = apiUrl
             .replace('http://', 'ws://')
-            .replace('https://', 'wss://') + '/users/online/ws';
+            .replace('https://', 'wss://') + '/qf/users/online/ws';
         }
 
         // Step 3: Add short-lived token as query parameter
@@ -153,7 +153,7 @@ const OnlineUsers: React.FC = () => {
 
     const fetchOnlineUsers = async () => {
       try {
-        const response = await fetch('/qf/users/online', {
+        const response = await fetch('/api/users/online', {
           credentials: 'include', // Include cookies for authentication
         });
 
