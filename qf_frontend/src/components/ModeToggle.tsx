@@ -49,9 +49,7 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({ mode, onChange }) => {
           onClick={() => onChange(mode === 'live' ? 'practice' : 'live')}
           className="relative w-20 sm:w-20 h-10 bg-white rounded-full shadow-tile-sm border-2 border-quip-navy border-opacity-10 focus:outline-none focus:ring-2 focus:ring-quip-teal focus:ring-offset-2"
           style={{
-            width: isMobile ? '7rem' : '5rem',
-            marginLeft: isMobile ? '0.75rem' : '0',
-            marginRight: isMobile ? '-0.75rem' : '0'
+            width: '5rem',
           }}
         >
           {/* Slider Track Background */}
