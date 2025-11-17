@@ -18,7 +18,7 @@ from httpx import AsyncClient, ASGITransport
 @pytest.mark.asyncio
 async def test_status_requires_authentication(test_app):
     """Status endpoint should require authentication."""
-    async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test/qf") as client:
         response = await client.get("/feedback/beta-survey/status")
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
@@ -31,7 +31,7 @@ async def test_submission_requires_authentication(test_app):
         "answers": [{"question_id": "q1", "value": 5}],
     }
 
-    async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test/qf") as client:
         response = await client.post("/feedback/beta-survey", json=payload)
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
@@ -39,7 +39,7 @@ async def test_submission_requires_authentication(test_app):
 @pytest.mark.asyncio
 async def test_list_requires_authentication(test_app):
     """List endpoint should require authentication."""
-    async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test/qf") as client:
         response = await client.get("/feedback/beta-survey")
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 

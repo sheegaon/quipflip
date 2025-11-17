@@ -70,7 +70,7 @@ asyncio.run(test())
 
 **Symptom:**
 ```
-Cannot connect to backend server at http://localhost:8000
+Cannot connect to backend server at http://localhost:8000/qf
 ```
 
 **Solution:**
@@ -79,7 +79,7 @@ Cannot connect to backend server at http://localhost:8000
 uvicorn backend.main:app --reload
 
 # Verify it's running
-curl http://localhost:8000/health
+curl http://localhost:8000/qf/health
 ```
 
 ### 3. Port Already in Use
@@ -132,7 +132,7 @@ Tests run forever without completing
 #### A. Server Not Responding
 ```bash
 # Check server health
-curl -v http://localhost:8000/health
+curl -v http://localhost:8000/qf/health
 
 # Restart server if needed
 # Ctrl+C to stop
@@ -263,7 +263,7 @@ pip install -r requirements.txt
 
 ### Step 1: Verify Server Health
 ```bash
-curl http://localhost:8000/health
+curl http://localhost:8000/qf/health
 ```
 
 Expected:
@@ -273,7 +273,7 @@ Expected:
 
 ### Step 2: Test Player Creation Manually
 ```bash
-curl -X POST http://localhost:8000/player
+curl -X POST http://localhost:8000/qf/player
 ```
 
 Expected:

@@ -50,7 +50,7 @@ All backend and frontend components have been implemented and tested. The system
   ```
 
 #### 5. **Notification Router** (`backend/routers/notifications.py`) - NEW
-- WebSocket endpoint: `GET /notifications/ws?token={token}`
+- WebSocket endpoint: `GET /qf/notifications/ws?token={token}`
 - Authentication: Validates short-lived tokens from `AuthService`
 - Rejects invalid tokens with code 1008
 - Per-player connection management
@@ -81,7 +81,7 @@ All backend and frontend components have been implemented and tested. The system
 - WebSocket connection lifecycle management
 - **Connection Flow:**
   1. Fetches short-lived token via `GET /api/auth/ws-token`
-  2. Connects to WebSocket: `/notifications/ws?token=...`
+  2. Connects to WebSocket: `/qf/notifications/ws?token=...`
   3. Listens for notification messages on authenticated session
   4. Disconnects on logout
   5. **Silent failures**: No error messages, no polling fallback
@@ -195,7 +195,7 @@ CREATE INDEX ix_notifications_phraseset ON notifications(phraseset_id);
 
 ### WebSocket Connection
 ```
-GET /notifications/ws?token={short_lived_token}
+GET /qf/notifications/ws?token={short_lived_token}
 ```
 
 **Authentication:** Token from `/api/auth/ws-token` endpoint (already existed)

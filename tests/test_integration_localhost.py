@@ -1,7 +1,7 @@
 """
 Integration tests for Quipflip API running on localhost.
 
-IMPORTANT: These tests assume the backend is running on http://localhost:8000
+IMPORTANT: These tests assume the backend is running on http://localhost:8000/qf
 To run the server: uvicorn backend.main:app --reload
 
 Run these tests with: pytest tests/test_integration_localhost.py -v
@@ -13,7 +13,7 @@ from typing import Dict, Optional
 from backend.version import APP_VERSION
 
 # Base URL for localhost backend
-BASE_URL = "http://localhost:8000"
+BASE_URL = "http://localhost:8000/qf"
 TIMEOUT = 10.0  # seconds
 
 # Counter for unique test users
@@ -91,7 +91,7 @@ def verify_server_running():
             )
     except httpx.ConnectError:
         pytest.fail(
-            "Cannot connect to backend server at http://localhost:8000\n"
+            "Cannot connect to backend server at http://localhost:8000/qf\n"
             "Please start the server with: uvicorn backend.main:app --reload"
         )
     except Exception as e:
@@ -651,7 +651,7 @@ if __name__ == "__main__":
     print("=" * 60)
     print("Quipflip Integration Tests")
     print("=" * 60)
-    print("\nThese tests assume the backend is running on http://localhost:8000")
+    print("\nThese tests assume the backend is running on http://localhost:8000/qf")
     print("To start the server: uvicorn backend.main:app --reload")
     print("\nRun tests with: pytest tests/test_integration_localhost.py -v")
     print("=" * 60)

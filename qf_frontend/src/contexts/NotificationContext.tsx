@@ -84,12 +84,12 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
 
         if (apiUrl.startsWith('/')) {
           // Production: use direct Heroku connection
-          wsUrl = `${backendWsUrl}/notifications/ws`;
+          wsUrl = `${backendWsUrl}/qf/notifications/ws`;
         } else {
           // Development: connect directly to local backend
           wsUrl = apiUrl
             .replace('http://', 'ws://')
-            .replace('https://', 'wss://') + '/notifications/ws';
+            .replace('https://', 'wss://') + '/qf/notifications/ws';
         }
 
         // Step 3: Add short-lived token as query parameter

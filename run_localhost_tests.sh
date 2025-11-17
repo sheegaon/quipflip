@@ -13,7 +13,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Base URL for backend
-BASE_URL="http://localhost:8000"
+BASE_URL="http://localhost:8000/qf"
 
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}Quipflip Localhost Integration Tests${NC}"

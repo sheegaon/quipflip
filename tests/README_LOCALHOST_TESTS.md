@@ -4,7 +4,7 @@ Comprehensive test suite for testing the Quipflip backend API running on localho
 
 ## Overview
 
-This test suite assumes the backend server is **already running** on `http://localhost:8000` and performs integration tests against the live API endpoints.
+This test suite assumes the backend server is **already running** on `http://localhost:8000/qf` and performs integration tests against the live API endpoints.
 
 ## Prerequisites
 
@@ -15,7 +15,7 @@ This test suite assumes the backend server is **already running** on `http://loc
 uvicorn backend.main:app --reload
 ```
 
-The server should be running at http://localhost:8000
+The server should be running at http://localhost:8000/qf
 
 ### 2. Install Test Dependencies
 
@@ -232,7 +232,7 @@ tests/test_integration_localhost.py::TestPlayerManagement::test_create_player PA
 
 **Server Not Running**
 ```
-Cannot connect to backend server at http://localhost:8000
+Cannot connect to backend server at http://localhost:8000/qf
 Please start the server with: uvicorn backend.main:app --reload
 ```
 → Start the backend server
@@ -331,7 +331,7 @@ Some tests require sufficient balance. If tests fail after many rounds:
 ### Connection Timeouts
 
 If tests timeout:
-- Check server is responsive: `curl http://localhost:8000/health`
+- Check server is responsive: `curl http://localhost:8000/qf/health`
 - Increase timeout in test files (TIMEOUT constant)
 - Check system resources (database, Redis)
 
@@ -405,7 +405,7 @@ When adding new tests:
 ## Quick Start Checklist
 
 - [ ] Start backend server: `uvicorn backend.main:app --reload`
-- [ ] Verify health: `curl http://localhost:8000/health`
+- [ ] Verify health: `curl http://localhost:8000/qf/health`
 - [ ] Run tests: `pytest tests/test_integration_localhost.py -v`
 - [ ] Check results and server logs
 - [ ] Optional: Run stress tests for performance analysis

@@ -33,9 +33,9 @@ cd quipflip-pwv
 uvicorn main:app --port 9000 --reload
 ```
 
-Server runs at **http://localhost:8000**
+Server runs at **http://localhost:8000** with the Quipflip API under **/qf**
 - API Docs: http://localhost:8000/docs
-- Health Check: http://localhost:8000/health
+- Health Check: http://localhost:8000/qf/health
 
 ### Frontend
 

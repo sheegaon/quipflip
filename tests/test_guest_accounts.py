@@ -10,7 +10,7 @@ class TestGuestAccountCreation:
 
     async def test_create_guest_account(self, test_app):
         """Test creating a guest account."""
-        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test/qf") as client:
             response = await client.post("/player/guest")
 
             assert response.status_code == status.HTTP_201_CREATED
@@ -41,7 +41,7 @@ class TestGuestAccountCreation:
 
     async def test_guest_account_is_marked_as_guest(self, test_app, db_session):
         """Test that guest accounts have is_guest=True."""
-        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test/qf") as client:
             response = await client.post("/player/guest")
             assert response.status_code == status.HTTP_201_CREATED
 
@@ -60,7 +60,7 @@ class TestGuestAccountCreation:
 
     async def test_multiple_guest_accounts_have_unique_emails(self, test_app):
         """Test that multiple guest accounts get unique emails."""
-        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test/qf") as client:
             response1 = await client.post("/player/guest")
             response2 = await client.post("/player/guest")
 
@@ -74,7 +74,7 @@ class TestGuestAccountCreation:
 
     async def test_guest_can_login_with_generated_credentials(self, test_app):
         """Test that guest can login with auto-generated credentials."""
-        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test/qf") as client:
             # Create guest
             create_response = await client.post("/player/guest")
             assert create_response.status_code == status.HTTP_201_CREATED
@@ -99,7 +99,7 @@ class TestGuestAccountUpgrade:
 
     async def test_upgrade_guest_account(self, test_app):
         """Test upgrading a guest account to a full account."""
-        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test/qf") as client:
             # Create guest
             create_response = await client.post("/player/guest")
             assert create_response.status_code == status.HTTP_201_CREATED
@@ -124,7 +124,7 @@ class TestGuestAccountUpgrade:
 
     async def test_upgraded_account_is_not_guest(self, test_app, db_session):
         """Test that upgraded accounts have is_guest=False."""
-        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test/qf") as client:
             # Create guest
             create_response = await client.post("/player/guest")
             guest_data = create_response.json()
@@ -152,7 +152,7 @@ class TestGuestAccountUpgrade:
 
     async def test_upgrade_with_duplicate_email_fails(self, test_app):
         """Test that upgrading with an already-used email fails."""
-        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test/qf") as client:
             # Create regular account
             await client.post(
                 "/player",
@@ -181,7 +181,7 @@ class TestGuestAccountUpgrade:
 
     async def test_upgrade_non_guest_account_fails(self, test_app):
         """Test that upgrading a non-guest account fails."""
-        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test/qf") as client:
             # Create regular account
             create_response = await client.post(
                 "/player",
@@ -207,7 +207,7 @@ class TestGuestAccountUpgrade:
 
     async def test_upgraded_account_can_login_with_new_credentials(self, test_app):
         """Test that upgraded account can login with new credentials."""
-        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test/qf") as client:
             # Create guest
             create_response = await client.post("/player/guest")
             guest_data = create_response.json()
@@ -239,7 +239,7 @@ class TestGuestCleanup:
         from backend.services.cleanup_service import CleanupService
         from datetime import timedelta, UTC, datetime
 
-        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test/qf") as client:
             # Create a guest account
             create_response = await client.post("/player/guest")
             assert create_response.status_code == status.HTTP_201_CREATED
@@ -279,7 +279,7 @@ class TestGuestCleanup:
         from datetime import timedelta, UTC, datetime
         from sqlalchemy import update
 
-        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test/qf") as client:
             # Create a guest account
             create_response = await client.post("/player/guest")
             assert create_response.status_code == status.HTTP_201_CREATED
@@ -330,7 +330,7 @@ class TestGuestCleanup:
         """Test that recent inactive guests are not deleted."""
         from backend.services.cleanup_service import CleanupService
 
-        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test/qf") as client:
             # Create a guest account
             create_response = await client.post("/player/guest")
             assert create_response.status_code == status.HTTP_201_CREATED
@@ -361,7 +361,7 @@ class TestUsernameRecycling:
         from uuid import UUID
         from sqlalchemy import select, update
 
-        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test/qf") as client:
             # Create a guest account
             create_response = await client.post("/player/guest")
             assert create_response.status_code == status.HTTP_201_CREATED
@@ -408,7 +408,7 @@ class TestUsernameRecycling:
         from uuid import UUID
         from sqlalchemy import select, update
 
-        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test/qf") as client:
             # Create the guest account we will recycle
             guest_response = await client.post("/player/guest")
             assert guest_response.status_code == status.HTTP_201_CREATED
@@ -472,7 +472,7 @@ class TestUsernameRecycling:
         from uuid import UUID
         from sqlalchemy import select, update
 
-        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test/qf") as client:
             # Create a guest account
             create_response = await client.post("/player/guest")
             assert create_response.status_code == status.HTTP_201_CREATED
@@ -517,7 +517,7 @@ class TestUsernameRecycling:
         from uuid import UUID
         from sqlalchemy import select, update
 
-        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test/qf") as client:
             # Create a guest account
             create_response = await client.post("/player/guest")
             assert create_response.status_code == status.HTTP_201_CREATED
@@ -571,7 +571,7 @@ class TestUsernameRecycling:
         from uuid import UUID
         from sqlalchemy import select, update
 
-        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test/qf") as client:
             # Create a guest account
             create_response = await client.post("/player/guest")
             assert create_response.status_code == status.HTTP_201_CREATED

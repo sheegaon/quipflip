@@ -6,6 +6,9 @@ from httpx import AsyncClient, ASGITransport
 from backend.config import get_settings
 
 
+API_BASE_URL = "http://test/qf"
+
+
 @pytest.mark.asyncio
 async def test_create_player(test_app):
     """Test POST /player creates a new player."""
@@ -15,7 +18,7 @@ async def test_create_player(test_app):
         "password": "SecurePass123!",
     }
 
-    async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=test_app), base_url=API_BASE_URL) as client:
         response = await client.post("/player", json=payload)
 
     assert response.status_code == 201
@@ -41,7 +44,7 @@ async def test_get_balance(test_app):
         "password": "BalancePass123!",
     }
 
-    async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=test_app), base_url=API_BASE_URL) as client:
         create_response = await client.post("/player", json=payload)
         assert create_response.status_code == 201
         create_data = create_response.json()
@@ -63,7 +66,7 @@ async def test_get_balance(test_app):
 @pytest.mark.asyncio
 async def test_authentication_required(test_app):
     """Test endpoints require valid authentication."""
-    async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=test_app), base_url=API_BASE_URL) as client:
         # No header
         response = await client.get("/player/balance")
         assert response.status_code == 401
@@ -84,7 +87,7 @@ async def test_login_with_credentials(test_app):
         "password": "LoginPass123!",
     }
 
-    async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=test_app), base_url=API_BASE_URL) as client:
         create_response = await client.post("/player", json=payload)
         assert create_response.status_code == 201
         created_player = create_response.json()
@@ -106,7 +109,7 @@ async def test_login_with_credentials(test_app):
 @pytest.mark.asyncio
 async def test_login_with_unknown_username_returns_401(test_app):
     """Test logging in with unknown email returns 401."""
-    async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=test_app), base_url=API_BASE_URL) as client:
         response = await client.post(
             "/auth/login",
             json={"email": "nonexistent@example.com", "password": "WrongPass1!"},
@@ -117,7 +120,7 @@ async def test_login_with_unknown_username_returns_401(test_app):
 @pytest.mark.asyncio
 async def test_health_endpoint(test_app):
     """Test GET /health works without authentication."""
-    async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=test_app), base_url=API_BASE_URL) as client:
         response = await client.get("/health")
 
     assert response.status_code == 200

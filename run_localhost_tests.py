@@ -19,7 +19,7 @@ import httpx
 import json
 from pathlib import Path
 
-BASE_URL = "http://localhost:8000"
+BASE_URL = "http://localhost:8000/qf"
 TESTS_DIR = Path("tests")
 
 
