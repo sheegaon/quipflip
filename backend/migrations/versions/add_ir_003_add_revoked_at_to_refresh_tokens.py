@@ -26,21 +26,23 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Add revoked_at column to ir_refresh_tokens if it doesn't exist."""
-    # Check if column already exists (for environments that have the updated 002_add_ir_tables)
-    inspector = sa.inspect(op.get_context().bind)
-    columns = [col['name'] for col in inspector.get_columns('ir_refresh_tokens')]
-
-    if 'revoked_at' not in columns:
+    # Use try-except to handle both cases:
+    # - Fresh PostgreSQL databases (column doesn't exist)
+    # - SQLite development databases (column already exists from updated migration)
+    try:
         op.add_column(
             'ir_refresh_tokens',
             sa.Column('revoked_at', sa.DateTime(timezone=True), nullable=True)
         )
+    except sa.exc.OperationalError:
+        # Column already exists, continue silently
+        pass
 
 
 def downgrade() -> None:
     """Remove revoked_at column from ir_refresh_tokens."""
-    inspector = sa.inspect(op.get_context().bind)
-    columns = [col['name'] for col in inspector.get_columns('ir_refresh_tokens')]
-
-    if 'revoked_at' in columns:
+    try:
         op.drop_column('ir_refresh_tokens', 'revoked_at')
+    except sa.exc.OperationalError:
+        # Column doesn't exist, continue silently
+        pass
