@@ -119,8 +119,17 @@ export interface SubmitBackronymRequest {
   words: string[];
 }
 
+export interface ValidateBackronymRequest {
+  words: string[];
+}
+
 export interface SubmitVoteRequest {
   chosen_entry_id: string;
+}
+
+export interface ValidateBackronymResponse {
+  is_valid: boolean;
+  error?: string | null;
 }
 
 // API Response types

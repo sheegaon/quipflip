@@ -7,6 +7,8 @@ import type {
   StartSessionResponse,
   SubmitBackronymRequest,
   SubmitVoteRequest,
+  ValidateBackronymRequest,
+  ValidateBackronymResponse,
 } from '../api/types';
 import { authAPI, playerAPI, gameAPI } from '../api/client';
 import { setActiveSetId, setPlayerId, clearGameStorage } from '../utils/gameKeys';
@@ -34,6 +36,7 @@ interface IRGameContextType extends IRGameState {
   // Game actions
   startBackronymBattle: () => Promise<StartSessionResponse>;
   submitBackronym: (setId: string, words: string[]) => Promise<void>;
+  validateBackronym: (setId: string, words: string[]) => Promise<ValidateBackronymResponse>;
   submitVote: (setId: string, entryId: string) => Promise<void>;
   claimDailyBonus: () => Promise<void>;
 
@@ -235,6 +238,17 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
     }
   }, []);
 
+  const validateBackronym = useCallback(async (setId: string, words: string[]) => {
+    try {
+      const data: ValidateBackronymRequest = { words };
+      return await gameAPI.validateBackronym(setId, data);
+    } catch (err: unknown) {
+      const errorMessage = getErrorMessage(err, 'Failed to validate backronym');
+      setError(errorMessage);
+      throw err;
+    }
+  }, []);
+
   const submitVote = useCallback(async (setId: string, entryId: string) => {
     try {
       setLoading(true);
@@ -343,9 +357,10 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
     logout,
     upgradeGuest,
     startBackronymBattle,
-    submitBackronym,
-    submitVote,
-    claimDailyBonus,
+      submitBackronym,
+      validateBackronym,
+      submitVote,
+      claimDailyBonus,
     refreshDashboard,
     checkSetStatus,
     clearError,
