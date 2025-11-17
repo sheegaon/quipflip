@@ -12,7 +12,7 @@ import type {
 } from '../api/types';
 import { authAPI, playerAPI, gameAPI } from '../api/client';
 import { setActiveSetId, setPlayerId, clearGameStorage } from '../utils/gameKeys';
-import { getErrorMessage } from '../utils/errorHelpers';
+import { getActionErrorMessage } from '../utils/errorMessages';
 
 interface IRGameState {
   isAuthenticated: boolean;
@@ -100,7 +100,7 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
       }));
       setPlayerId(response.player.player_id);
     } catch (err: unknown) {
-      const errorMessage = getErrorMessage(err, 'Failed to create guest account');
+      const errorMessage = getActionErrorMessage('login-guest', err);
       setError(errorMessage);
       setLoading(false);
       throw err;
@@ -120,7 +120,7 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
       }));
       setPlayerId(response.player.player_id);
     } catch (err: unknown) {
-      const errorMessage = getErrorMessage(err, 'Login failed');
+      const errorMessage = getActionErrorMessage('login', err);
       setError(errorMessage);
       setLoading(false);
       throw err;
@@ -140,7 +140,7 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
       }));
       setPlayerId(response.player.player_id);
     } catch (err: unknown) {
-      const errorMessage = getErrorMessage(err, 'Registration failed');
+      const errorMessage = getActionErrorMessage('register', err);
       setError(errorMessage);
       setLoading(false);
       throw err;
@@ -178,7 +178,7 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
         loading: false,
       }));
     } catch (err: unknown) {
-      const errorMessage = getErrorMessage(err, 'Failed to upgrade account');
+      const errorMessage = getActionErrorMessage('upgrade-account', err);
       setError(errorMessage);
       setLoading(false);
       throw err;
@@ -212,7 +212,7 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
       setActiveSetId(response.set_id);
       return response;
     } catch (err: unknown) {
-      const errorMessage = getErrorMessage(err, 'Failed to start battle');
+      const errorMessage = getActionErrorMessage('start-battle', err);
       setError(errorMessage);
       setLoading(false);
       throw err;
@@ -231,7 +231,7 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
         loading: false,
       }));
     } catch (err: unknown) {
-      const errorMessage = getErrorMessage(err, 'Failed to submit backronym');
+      const errorMessage = getActionErrorMessage('submit-backronym', err);
       setError(errorMessage);
       setLoading(false);
       throw err;
@@ -243,7 +243,7 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
       const data: ValidateBackronymRequest = { words };
       return await gameAPI.validateBackronym(setId, data);
     } catch (err: unknown) {
-      const errorMessage = getErrorMessage(err, 'Failed to validate backronym');
+      const errorMessage = getActionErrorMessage('validate-backronym', err);
       setError(errorMessage);
       throw err;
     }
@@ -261,7 +261,7 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
         loading: false,
       }));
     } catch (err: unknown) {
-      const errorMessage = getErrorMessage(err, 'Failed to submit vote');
+      const errorMessage = getActionErrorMessage('submit-vote', err);
       setError(errorMessage);
       setLoading(false);
       throw err;
@@ -285,7 +285,7 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
         loading: false,
       }));
     } catch (err: unknown) {
-      const errorMessage = getErrorMessage(err, 'Failed to claim daily bonus');
+      const errorMessage = getActionErrorMessage('claim-bonus', err);
       setError(errorMessage);
       setLoading(false);
       throw err;
@@ -327,7 +327,7 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
         setActiveSetId(null);
       }
     } catch (err: unknown) {
-      const errorMessage = getErrorMessage(err, 'Failed to refresh dashboard');
+      const errorMessage = getActionErrorMessage('load-dashboard', err);
       setError(errorMessage);
       setLoading(false);
       throw err;
@@ -344,7 +344,7 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
         hasVoted: statusResponse.player_has_voted,
       }));
     } catch (err: unknown) {
-      const errorMessage = getErrorMessage(err, 'Failed to check set status');
+      const errorMessage = getActionErrorMessage('check-set-status', err);
       console.error(errorMessage, err);
     }
   }, []);

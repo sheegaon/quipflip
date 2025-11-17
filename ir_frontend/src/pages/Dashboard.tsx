@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useIRGame } from '../contexts/IRGameContext';
 import Header from '../components/Header';
 import InitCoinDisplay from '../components/InitCoinDisplay';
+import TutorialWelcome from '../components/Tutorial/TutorialWelcome';
+import { useTutorial } from '../contexts/TutorialContext';
+import { Pagination } from '../components/Pagination';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -18,11 +21,14 @@ const Dashboard: React.FC = () => {
     clearError,
     upgradeGuest,
   } = useIRGame();
+  const { startTutorial, skipTutorial, tutorialStatus } = useTutorial();
 
+  const RESULTS_PER_PAGE = 3;
   const [showUpgradeForm, setShowUpgradeForm] = useState(false);
   const [upgradeUsername, setUpgradeUsername] = useState('');
   const [upgradeEmail, setUpgradeEmail] = useState('');
   const [upgradePassword, setUpgradePassword] = useState('');
+  const [resultsPage, setResultsPage] = useState(1);
 
   // Initialize dashboard on component mount with proper error handling
   useEffect(() => {
@@ -40,6 +46,13 @@ const Dashboard: React.FC = () => {
       controller.abort();
     };
   }, [refreshDashboard]);
+
+  useEffect(() => {
+    const totalPages = Math.max(1, Math.ceil(pendingResults.length / RESULTS_PER_PAGE));
+    if (resultsPage > totalPages) {
+      setResultsPage(totalPages);
+    }
+  }, [pendingResults, resultsPage]);
 
   const handleStartBattle = async () => {
     try {
@@ -86,9 +99,19 @@ const Dashboard: React.FC = () => {
     );
   }
 
+  const totalPages = Math.max(1, Math.ceil(pendingResults.length / RESULTS_PER_PAGE));
+  const paginatedResults = pendingResults.slice(
+    (resultsPage - 1) * RESULTS_PER_PAGE,
+    resultsPage * RESULTS_PER_PAGE
+  );
+
   return (
     <div className="min-h-screen bg-ir-cream bg-pattern">
       <Header />
+
+      {tutorialStatus === 'inactive' && (
+        <TutorialWelcome onStart={startTutorial} onSkip={skipTutorial} />
+      )}
 
       <div className="max-w-4xl mx-auto md:px-4 px-3 md:pt-8 pt-3 md:pb-5 pb-5">
         {/* Error Display */}
@@ -188,7 +211,7 @@ const Dashboard: React.FC = () => {
         )}
 
         {/* Main Action Card */}
-        <div className="tile-card md:p-6 p-3 mb-6 shuffle-enter">
+        <div className="tile-card md:p-6 p-3 mb-6 shuffle-enter tutorial-dashboard">
           <h2 className="text-2xl font-display font-bold mb-4 text-ir-navy">Backronym Battle</h2>
 
           {/* Daily Bonus */}
@@ -236,7 +259,7 @@ const Dashboard: React.FC = () => {
               </div>
             ) : (
               <div className="space-y-3">
-                {pendingResults.map((result) => (
+                {paginatedResults.map((result) => (
                   <div
                     key={result.set_id}
                     className="p-4 bg-ir-teal-light border-2 border-ir-turquoise rounded-tile hover:shadow-tile-sm transition-all"
@@ -262,6 +285,13 @@ const Dashboard: React.FC = () => {
                     </div>
                   </div>
                 ))}
+                {pendingResults.length > RESULTS_PER_PAGE && (
+                  <Pagination
+                    currentPage={resultsPage}
+                    totalPages={totalPages}
+                    onPageChange={setResultsPage}
+                  />
+                )}
               </div>
             )}
           </div>

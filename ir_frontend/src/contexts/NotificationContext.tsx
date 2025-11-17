@@ -23,9 +23,9 @@ import { useIRGame } from './IRGameContext';
 export interface NotificationMessage {
   id: string;
   actor_username: string;
-  action: 'copied' | 'voted on';
-  recipient_role: 'prompt' | 'copy';
-  phrase_text: string;
+  action: 'voted on' | 'reacted to' | 'joined';
+  set_id?: string;
+  entry_text?: string;
   timestamp: string;
 }
 
@@ -61,8 +61,19 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
       wsAttempted = true;
 
       try {
-        // Step 1: Fetch short-lived WebSocket token via REST API
-        const tokenResponse = await fetch('/ir/api/auth/ws-token', {
+        // Step 1: Construct API base URL preserving the path prefix
+        const apiBase =
+          import.meta.env.VITE_API_URL || `http://${window.location.hostname}:8000/ir`;
+
+        // Normalize base URL - ensure it's a full URL and remove trailing slash
+        const baseUrl = apiBase.startsWith('http')
+          ? apiBase.replace(/\/$/, '')
+          : `${window.location.origin}${apiBase}`.replace(/\/$/, '');
+
+        // Step 2: Fetch short-lived WebSocket token via REST API
+        // Construct URL by appending to base (no leading slash to preserve path)
+        const tokenUrl = `${baseUrl}/auth/ws-token`;
+        const tokenResponse = await fetch(tokenUrl, {
           credentials: 'include', // Include HttpOnly cookies
         });
 
@@ -72,28 +83,12 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
 
         const { token } = await tokenResponse.json();
 
-        // Step 2: Construct WebSocket URL for direct connection
-        const apiUrl =
-          import.meta.env.VITE_API_URL ||
-          `http://${window.location.hostname}:8000/ir`;
-        const backendWsUrl =
-          import.meta.env.VITE_BACKEND_WS_URL ||
-          'wss://quipflip-c196034288cd.herokuapp.com';
+        // Step 3: Construct WebSocket URL preserving the base path
+        const wsBaseUrl = baseUrl
+          .replace('http://', 'ws://')
+          .replace('https://', 'wss://');
 
-        let wsUrl: string;
-
-        if (apiUrl.startsWith('/')) {
-          // Production: use direct Heroku connection
-          wsUrl = `${backendWsUrl}/ir/notifications/ws`;
-        } else {
-          // Development: connect directly to local backend
-          wsUrl = apiUrl
-            .replace('http://', 'ws://')
-            .replace('https://', 'wss://') + '/notifications/ws';
-        }
-
-        // Step 3: Add short-lived token as query parameter
-        wsUrl += `?token=${encodeURIComponent(token)}`;
+        const wsUrl = `${wsBaseUrl}/notifications/ws?token=${encodeURIComponent(token)}`;
 
         // Create WebSocket connection
         const ws = new WebSocket(wsUrl);
@@ -110,9 +105,9 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
               const notification: NotificationMessage = {
                 id: `notification-${++notificationIdRef.current}`,
                 actor_username: data.actor_username,
-                action: data.action,
-                recipient_role: data.recipient_role,
-                phrase_text: data.phrase_text,
+                action: data.action || 'reacted to',
+                set_id: data.set_id,
+                entry_text: data.entry_text,
                 timestamp: data.timestamp,
               };
 

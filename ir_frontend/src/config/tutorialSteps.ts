@@ -17,10 +17,10 @@ export const TUTORIAL_STEPS: Record<TutorialProgress, TutorialStep | null> = {
 
   welcome: {
     id: 'welcome',
-    title: 'Welcome to Quipflip!',
-    message: `Quipflip is a creative word game where you'll write quips, copy phrases, and vote on the best matches.
+    title: 'Welcome to Initial Reaction!',
+    message: `Initial Reaction is a backronym battle. You turn a short word into a clever phrase — one word per letter — and then vote on the best entry.
 
-Let's take a quick tour to show you how to play and earn some flipcoins!`,
+You'll spend **InitCoins** to enter and can win a share of the prize pool based on votes. Let's take a quick tour!`,
     position: 'bottom',
     nextStep: 'dashboard',
     showSkip: true,
@@ -29,83 +29,70 @@ Let's take a quick tour to show you how to play and earn some flipcoins!`,
 
   dashboard: {
     id: 'dashboard',
-    title: 'Your Dashboard',
-    message: `This is your game dashboard. Here you can:
+    title: 'Your Battle Hub',
+    message: `This dashboard shows your wallet, vault, and any active battles.
 
-• See your balance and claim daily bonuses
-• View your active rounds and pending results
-• Start new rounds to earn coins
-
-Let's start with a **Prompt Round** where you'll create a creative fill-in-the-blank challenge.`,
+• Tap **Start Backronym Battle** to spend 100 InitCoins and receive a random 3–5 letter word.
+• Standard mode waits for humans; Rapid mode fills with AI after short timeouts.
+• Daily bonuses help you stay funded.`,
     target: '.tutorial-dashboard',
-    nextStep: 'prompt_round',
+    nextStep: 'create_round',
     showSkip: false,
     showBack: true,
   },
 
-  prompt_round: {
-    id: 'prompt_round',
-    title: 'Answer a Prompt',
-    message: `In a Prompt Round, you answer a fill-in-the-blank sentence, or a *quip*.
+  create_round: {
+    id: 'create_round',
+    title: 'Build Your Backronym',
+    message: `Create one word for each letter of the prompt word. Keep these rules in mind:
 
-For example: "The best pizza topping is ______"
+• Words must start with the matching letter and use standard dictionary words.
+• Grammar doesn't matter; repeated words are allowed.
+• Hit **Validate** to check spelling before you submit.
 
-You might try writing "peppers and mushrooms" or "green and black olives".
-
-Then other players will try to write similar quips based on yours, but *without seeing the prompt*. The more uniquely your answer fits the prompt, the more coins you can earn!`,
-    // **Click "Next" to start your first Prompt Round.** The tutorial will resume when you finish.
-    target: '.tutorial-prompt-round',
+When you're happy, submit and we'll queue your entry for voting.`,
+    target: '.tutorial-backronym-form',
     position: 'bottom',
-    nextStep: 'copy_round',
+    nextStep: 'tracking',
     showSkip: false,
     showBack: true,
   },
 
-  copy_round: {
-    id: 'copy_round',
-    title: 'Write a Copy',
-    // Great job! Now let's try a **Copy Round**.
-    message: `In a Copy Round, you'll see another player's response to a prompt *without seeing the original prompt*.
+  tracking: {
+    id: 'tracking',
+    title: 'Waiting Room',
+    message: `You need five total backronyms before voting begins. We'll keep polling and AI will fill empty slots after the timeout window (2 minutes in Rapid, 30 minutes in Standard).
 
-Your job is to write a phrase that could blend in with the original. Make it convincing!
-
-Voters will try to identify the original, so the better you match the style, the more you earn.`,
-    // **Click "Next" to start a Copy Round.** The tutorial will resume when you finish.
-    target: '.tutorial-copy-round',
+You'll see a countdown and entry progress here.`,
+    target: '.tutorial-tracking-card',
     position: 'bottom',
-    nextStep: 'vote_round',
+    nextStep: 'voting',
     showSkip: false,
     showBack: true,
   },
 
-  vote_round: {
-    id: 'vote_round',
-    title: 'Vote for the Original',
-    // Excellent!
-    message: `The final type of round is **Voting**.
+  voting: {
+    id: 'voting',
+    title: 'Cast Your Vote',
+    message: `When voting opens you can choose one favorite backronym. Creators vote for free; non-participants pay 10 InitCoins but earn 20 if they match the crowd.
 
-You'll see a prompt and three phrases. One is the original, two are copies.
-
-Your goal is to identify which phrase was the original. Choose carefully - correct votes earn coins!`,
-    // **Make your vote now to complete the tutorial.**
-    target: '.tutorial-vote-round',
+You can't vote for your own entry. AI voters appear when timers expire to keep results moving.`,
+    target: '.tutorial-voting-card',
     position: 'top',
-    nextStep: 'rounds_guide',
+    nextStep: 'results',
     showSkip: false,
     showBack: true,
   },
 
-  rounds_guide: {
-    id: 'rounds_guide',
-    title: 'Practice Makes Perfect!',
-    message: `Ready to play on your own?
+  results: {
+    id: 'results',
+    title: 'See Payouts',
+    message: `Results split the prize pool among creators based on vote share. Non-participant winnings are paid first, then 30% of each player's net winnings goes to the vault automatically.
 
-**Try practice mode first** to get comfortable with the game without risking coins. Use the toggle at the bottom of the dashboard to switch between Live and Practice modes.
-
-When you're ready, switch to Live Mode and start earning coins! You can always come back to practice to refine your strategy.`,
-    target: 'div.fixed.bottom-5',
+From here you can review entries, check your earnings, and start another battle.`,
+    target: '.tutorial-results-card',
     position: 'top',
-    // No nextStep - this is the final tutorial screen, shows "End Tutorial" button
+    // End tutorial here
     showSkip: false,
     showBack: true,
   },
@@ -123,7 +110,7 @@ export const getNextStep = (currentStep: TutorialProgress): TutorialProgress | n
 };
 
 export const getPreviousStep = (currentStep: TutorialProgress): TutorialProgress | null => {
-  const steps: TutorialProgress[] = ['welcome', 'dashboard', 'prompt_round', 'copy_round', 'vote_round', 'rounds_guide'];
+  const steps: TutorialProgress[] = ['welcome', 'dashboard', 'create_round', 'tracking', 'voting', 'results'];
   const currentIndex = steps.indexOf(currentStep);
   if (currentIndex > 0) {
     return steps[currentIndex - 1];
