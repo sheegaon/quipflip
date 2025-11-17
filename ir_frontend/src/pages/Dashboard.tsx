@@ -19,6 +19,7 @@ const Dashboard: React.FC = () => {
   } = useIRGame();
 
   const [showUpgradeForm, setShowUpgradeForm] = useState(false);
+  const [upgradeUsername, setUpgradeUsername] = useState('');
   const [upgradeEmail, setUpgradeEmail] = useState('');
   const [upgradePassword, setUpgradePassword] = useState('');
 
@@ -61,8 +62,9 @@ const Dashboard: React.FC = () => {
   const handleUpgrade = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await upgradeGuest(upgradeEmail, upgradePassword);
+      await upgradeGuest(upgradeUsername, upgradeEmail, upgradePassword);
       setShowUpgradeForm(false);
+      setUpgradeUsername('');
       setUpgradeEmail('');
       setUpgradePassword('');
     } catch (err) {
@@ -121,6 +123,14 @@ const Dashboard: React.FC = () => {
             {/* Upgrade Form */}
             {showUpgradeForm && (
               <form onSubmit={handleUpgrade} className="mt-4 space-y-3">
+                <input
+                  type="text"
+                  value={upgradeUsername}
+                  onChange={(e) => setUpgradeUsername(e.target.value)}
+                  placeholder="Choose a username"
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500"
+                />
                 <input
                   type="email"
                   value={upgradeEmail}
