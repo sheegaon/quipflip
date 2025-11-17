@@ -97,7 +97,7 @@ const BackronymCreate: React.FC = () => {
       }
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      handleSubmit(e as any);
+      handleSubmit(e as unknown as React.FormEvent);
     }
   };
 
@@ -157,8 +157,13 @@ const BackronymCreate: React.FC = () => {
 
       // Navigate to tracking page
       navigate(`/tracking/${activeSet.set_id}`);
-    } catch (err: any) {
-      setError(err.response?.data?.detail || err.message || 'Failed to submit backronym. Please check your words and try again.');
+    } catch (err: unknown) {
+      const errorMessage = typeof err === 'object' && err !== null && 'response' in err
+        ? ((err.response as any)?.data?.detail) || 'Failed to submit backronym. Please check your words and try again.'
+        : typeof err === 'object' && err !== null && 'message' in err
+        ? (err.message as string)
+        : 'Failed to submit backronym. Please check your words and try again.';
+      setError(errorMessage);
       setIsSubmitting(false);
     }
   };

@@ -10,19 +10,7 @@ import type {
 } from '../api/types';
 import { authAPI, playerAPI, gameAPI } from '../api/client';
 import { setActiveSetId, setPlayerId, clearGameStorage } from '../utils/gameKeys';
-
-// Helper to extract error messages from various error formats
-const getErrorMessage = (error: any, defaultMessage: string): string => {
-  if (!error) return defaultMessage;
-
-  // Try different error message paths
-  if (typeof error === 'string') return error;
-  if (error.response?.data?.detail) return error.response.data.detail;
-  if (error.message) return error.message;
-  if (error.detail) return error.detail;
-
-  return defaultMessage;
-};
+import { getErrorMessage } from '../utils/errorHelpers';
 
 interface IRGameState {
   isAuthenticated: boolean;
@@ -108,7 +96,7 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
         loading: false,
       }));
       setPlayerId(response.player.player_id);
-    } catch (err: any) {
+    } catch (err: unknown) {
       const errorMessage = getErrorMessage(err, 'Failed to create guest account');
       setError(errorMessage);
       setLoading(false);
@@ -128,7 +116,7 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
         loading: false,
       }));
       setPlayerId(response.player.player_id);
-    } catch (err: any) {
+    } catch (err: unknown) {
       const errorMessage = getErrorMessage(err, 'Login failed');
       setError(errorMessage);
       setLoading(false);
@@ -148,7 +136,7 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
         loading: false,
       }));
       setPlayerId(response.player.player_id);
-    } catch (err: any) {
+    } catch (err: unknown) {
       const errorMessage = getErrorMessage(err, 'Registration failed');
       setError(errorMessage);
       setLoading(false);
@@ -159,7 +147,7 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
   const logout = useCallback(async () => {
     try {
       await authAPI.logout();
-    } catch (err) {
+    } catch {
       // Ignore logout errors
     } finally {
       setState({
@@ -186,7 +174,7 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
         player: response.player,
         loading: false,
       }));
-    } catch (err: any) {
+    } catch (err: unknown) {
       const errorMessage = getErrorMessage(err, 'Failed to upgrade account');
       setError(errorMessage);
       setLoading(false);
@@ -206,7 +194,7 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
       try {
         const setStatus = await gameAPI.getSetStatus(response.set_id);
         activeSet = setStatus.set;
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.warn('Failed to fetch complete set details after starting battle:', err);
         // Fallback: at least we have the basic response, but UI should handle null activeSet gracefully
       }
@@ -220,7 +208,7 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
       }));
       setActiveSetId(response.set_id);
       return response;
-    } catch (err: any) {
+    } catch (err: unknown) {
       const errorMessage = getErrorMessage(err, 'Failed to start battle');
       setError(errorMessage);
       setLoading(false);
@@ -239,7 +227,7 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
         hasSubmittedEntry: true,
         loading: false,
       }));
-    } catch (err: any) {
+    } catch (err: unknown) {
       const errorMessage = getErrorMessage(err, 'Failed to submit backronym');
       setError(errorMessage);
       setLoading(false);
@@ -258,7 +246,7 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
         hasVoted: true,
         loading: false,
       }));
-    } catch (err: any) {
+    } catch (err: unknown) {
       const errorMessage = getErrorMessage(err, 'Failed to submit vote');
       setError(errorMessage);
       setLoading(false);
@@ -282,7 +270,7 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
           : null,
         loading: false,
       }));
-    } catch (err: any) {
+    } catch (err: unknown) {
       const errorMessage = getErrorMessage(err, 'Failed to claim daily bonus');
       setError(errorMessage);
       setLoading(false);
@@ -302,7 +290,7 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
         try {
           const setStatus = await gameAPI.getSetStatus(dashboard.active_session.set_id);
           activeSet = setStatus.set;
-        } catch (err: any) {
+        } catch (err: unknown) {
           // If fetching set status fails, log the error but don't fail the entire dashboard refresh
           console.warn('Failed to fetch set status for active session:', err);
           // Continue with null activeSet - user will see they have an active session but without details
@@ -324,7 +312,7 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
       } else {
         setActiveSetId(null);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       const errorMessage = getErrorMessage(err, 'Failed to refresh dashboard');
       setError(errorMessage);
       setLoading(false);
@@ -341,7 +329,7 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
         hasSubmittedEntry: statusResponse.player_has_submitted,
         hasVoted: statusResponse.player_has_voted,
       }));
-    } catch (err: any) {
+    } catch (err: unknown) {
       const errorMessage = getErrorMessage(err, 'Failed to check set status');
       console.error(errorMessage, err);
     }
