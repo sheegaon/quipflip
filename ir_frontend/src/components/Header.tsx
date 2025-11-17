@@ -200,7 +200,15 @@ const Header: React.FC = () => {
                         onClick={() => handleNavigate('/dashboard')}
                         className="w-full flex items-center gap-3 px-4 py-3 text-left text-ir-navy hover:bg-ir-cream transition-colors"
                       >
-                        <SettingsIcon className="h-5 w-5" />
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-5 w-5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
                         <span className="font-semibold">Upgrade Account</span>
                       </button>
                     )}
