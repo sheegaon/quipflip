@@ -198,7 +198,8 @@ class IRWordService:
         """
         try:
             lookback_time = datetime.now(UTC) - timedelta(minutes=minutes)
-            stmt = select(IRAIPhraseCache).where(
+            # Select only cache_id to avoid issues if prompt_text column doesn't exist in DB
+            stmt = select(IRAIPhraseCache.cache_id).where(
                 (IRAIPhraseCache.original_phrase == word.upper())
                 & (IRAIPhraseCache.created_at >= lookback_time)
             )

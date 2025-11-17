@@ -988,7 +988,7 @@ class AIService:
             IRBackronymSetService,
             IRBackronymSetError,
         )
-        from backend.services.ir.ir_player_service import IRPlayerService
+        from backend.services.ir.player_service import IRPlayerService
 
         stats = {
             "sets_checked": 0,
