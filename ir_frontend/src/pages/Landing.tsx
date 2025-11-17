@@ -1,237 +1,248 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIRGame } from '../contexts/IRGameContext';
 
-const AUTO_GUEST_LOGIN_KEY = 'ir_auto_guest_login';
+export const Landing: React.FC = () => {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [registerEmail, setRegisterEmail] = useState('');
+  const [registerPassword, setRegisterPassword] = useState('');
+  const [loginIdentifier, setLoginIdentifier] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
 
-type AuthMode = 'welcome' | 'login' | 'register';
-
-const Landing: React.FC = () => {
+  const { loginAsGuest, login, register } = useIRGame();
   const navigate = useNavigate();
-  const { isAuthenticated, loginAsGuest, login, register, error, loading } = useIRGame();
-  const [mode, setMode] = useState<AuthMode>('welcome');
-  const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [autoLoginTriggered, setAutoLoginTriggered] = useState(false);
-
-  const autoLoginEnabled = useMemo(() => {
-    if (typeof window === 'undefined') return true;
-    const storedPreference = localStorage.getItem(AUTO_GUEST_LOGIN_KEY);
-    return storedPreference === null ? true : storedPreference === 'true';
-  }, []);
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
-    if (isAuthenticated || loading || autoLoginTriggered || !autoLoginEnabled) {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  const handleCreatePlayer = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Frontend validation
+    if (!registerEmail.trim()) {
+      setError('Please provide an email address.');
+      return;
+    }
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(registerEmail.trim())) {
+      setError('Please provide a valid email address.');
       return;
     }
 
-    setAutoLoginTriggered(true);
-    handleGuestLogin(true);
-  }, [autoLoginEnabled, autoLoginTriggered, isAuthenticated, loading]);
+    if (!registerPassword) {
+      setError('Please provide a password.');
+      return;
+    }
+    if (registerPassword.length < 8) {
+      setError('Password must be at least 8 characters long.');
+      return;
+    }
+    if (registerPassword.length > 128) {
+      setError('Password must be 128 characters or less.');
+      return;
+    }
 
-  const handleGuestLogin = async (isAuto = false) => {
     try {
-      await loginAsGuest();
-      localStorage.setItem(AUTO_GUEST_LOGIN_KEY, 'true');
-      navigate('/dashboard');
-    } catch (err) {
-      if (isAuto) {
-        setAutoLoginTriggered(false);
+      setIsLoading(true);
+      setError(null);
+
+      // Backend requires username, use email prefix as placeholder
+      await register(registerEmail.split('@')[0], registerEmail.trim(), registerPassword);
+
+      if (isMountedRef.current) {
+        navigate('/dashboard');
       }
-      console.error('Guest login failed:', err);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unable to create your account. Please try again.';
+      if (isMountedRef.current) {
+        setError(message);
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleExistingPlayer = async (e: React.FormEvent) => {
     e.preventDefault();
+    const identifier = loginIdentifier.trim();
+    if (!identifier || !loginPassword.trim()) {
+      setError('Please enter your email and password.');
+      return;
+    }
+
     try {
-      await login(email, password);
-      navigate('/dashboard');
+      setIsLoading(true);
+      setError(null);
+
+      // Use email login endpoint
+      await login(identifier, loginPassword);
+
+      if (isMountedRef.current) {
+        navigate('/dashboard');
+      }
     } catch (err) {
-      console.error('Login failed:', err);
+      const message = err instanceof Error ? err.message : 'Login failed. Please check your email and password.';
+      if (isMountedRef.current) {
+        setError(message);
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handlePlayAsGuest = async () => {
     try {
-      await register(username, email, password);
-      navigate('/dashboard');
+      setIsLoading(true);
+      setError(null);
+
+      await loginAsGuest();
+
+      if (isMountedRef.current) {
+        navigate('/dashboard');
+      }
     } catch (err) {
-      console.error('Registration failed:', err);
+      const message = err instanceof Error ? err.message : 'Unable to create guest account. Please try again.';
+      if (isMountedRef.current) {
+        setError(message);
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-ir-orange to-ir-orange-deep flex items-center justify-center p-4 bg-pattern">
-      <div className="max-w-xl w-full tile-card p-8">
-        {/* Logo/Title */}
-        <div className="text-center mb-6">
-          <h1 className="text-4xl font-display font-bold text-ir-navy mb-2">Initial Reaction</h1>
-          <p className="text-ir-teal text-lg">Create clever backronyms and win InitCoins!</p>
+      <div className="max-w-md w-full tile-card p-8 animate-slide-up">
+        {/* Logo */}
+        <div className="flex justify-center mb-4">
+          <img
+            src="/initial_reaction_logo.png"
+            alt="Initial Reaction"
+            className="h-auto w-auto"
+          />
         </div>
 
-        {/* Error Display */}
+        <p className="text-center text-ir-navy text-lg font-medium mb-4">
+          Create clever backronyms and win InitCoins!
+        </p>
+
+        <div className="mb-6 border-t border-gray-200" aria-hidden="true"></div>
+
+        {/* Play Now Button */}
+        <div className="mb-6">
+          <button
+            onClick={handlePlayAsGuest}
+            disabled={isLoading}
+            className="w-full bg-gradient-to-r from-ir-orange to-ir-turquoise hover:from-ir-orange-deep hover:to-ir-teal disabled:bg-gray-400 text-white font-bold py-4 px-4 rounded-tile transition-all hover:shadow-tile-sm transform hover:-translate-y-0.5 text-lg"
+          >
+            {isLoading ? 'Creating Guest Account...' : 'Play Now'}
+          </button>
+        </div>
+
         {error && (
-          <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-tile">
+          <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
             {error}
           </div>
         )}
 
-        {/* Welcome Mode */}
-        {mode === 'welcome' && (
-          <div className="space-y-4">
-            <button
-              onClick={() => handleGuestLogin()}
-              disabled={loading}
-              className="w-full py-4 px-4 bg-gradient-to-r from-ir-turquoise to-ir-teal text-white font-semibold rounded-tile hover:shadow-tile-sm transition-all disabled:opacity-50 text-lg"
-            >
-              {loading ? 'Creating Account...' : 'Play as Guest'}
-            </button>
-
-            {autoLoginEnabled && !autoLoginTriggered && (
-              <p className="text-center text-sm text-ir-teal">
-                Auto-login is enabled for guests on this device. We’ll sign you in automatically next time.
-              </p>
-            )}
-
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-ir-navy border-opacity-10"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-ir-teal-light text-ir-teal">or</span>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setMode('login')}
-              className="w-full py-3 px-4 bg-white border-2 border-ir-navy text-ir-navy font-semibold rounded-tile hover:bg-ir-cream transition-all"
-            >
-              Login with Email
-            </button>
-
-            <button
-              onClick={() => setMode('register')}
-              className="w-full py-3 px-4 bg-white border-2 border-ir-orange text-ir-orange font-semibold rounded-tile hover:bg-ir-cream transition-all"
-            >
-              Create Account
-            </button>
+        <div className="relative mb-6">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-300"></div>
           </div>
-        )}
+          <div className="relative flex justify-center text-sm">
+            <span className="px-2 bg-white text-gray-500">or</span>
+          </div>
+        </div>
 
-        {/* Login Mode */}
-        {mode === 'login' && (
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-ir-teal mb-2">Email</label>
+        <div className="space-y-6">
+          {/* New Player */}
+          <div className="border-b border-ir-teal pb-6">
+            <h2 className="text-xl font-semibold mb-4 text-ir-navy">Create an Account</h2>
+            <form onSubmit={handleCreatePlayer} className="space-y-3">
               <input
                 type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full px-4 py-2 border-2 border-ir-navy border-opacity-20 rounded-tile focus:ring-2 focus:ring-ir-turquoise focus:border-transparent"
-                placeholder="your@email.com"
+                value={registerEmail}
+                onChange={(e) => setRegisterEmail(e.target.value)}
+                placeholder="Your email (no validation required)"
+                className="w-full px-4 py-2 border border-gray-300 rounded-tile focus:outline-none focus:ring-2 focus:ring-ir-turquoise"
+                disabled={isLoading}
+                autoComplete="email"
               />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-ir-teal mb-2">Password</label>
               <input
                 type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full px-4 py-2 border-2 border-ir-navy border-opacity-20 rounded-tile focus:ring-2 focus:ring-ir-turquoise focus:border-transparent"
-                placeholder="••••••••"
+                value={registerPassword}
+                onChange={(e) => setRegisterPassword(e.target.value)}
+                placeholder="Password (min 8 characters)"
+                className="w-full px-4 py-2 border border-gray-300 rounded-tile focus:outline-none focus:ring-2 focus:ring-ir-turquoise"
+                disabled={isLoading}
+                autoComplete="new-password"
+                minLength={8}
+                maxLength={128}
               />
-            </div>
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full bg-ir-turquoise hover:bg-ir-teal disabled:bg-gray-400 text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm transform hover:-translate-y-0.5"
+              >
+                {isLoading ? 'Creating Account...' : 'Create New Account'}
+              </button>
+            </form>
+          </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 px-4 bg-ir-navy text-white font-semibold rounded-tile hover:bg-ir-teal transition-all shadow-tile-sm disabled:opacity-50"
-            >
-              {loading ? 'Logging in...' : 'Login'}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setMode('welcome')}
-              className="w-full py-2 text-gray-600 hover:text-gray-800"
-            >
-              Back
-            </button>
-          </form>
-        )}
-
-        {/* Register Mode */}
-        {mode === 'register' && (
-          <form onSubmit={handleRegister} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-ir-teal mb-2">Username</label>
+          {/* Returning Player */}
+          <div>
+            <h2 className="text-xl font-semibold mb-4 text-ir-navy">Returning Player</h2>
+            <form onSubmit={handleExistingPlayer} className="space-y-3">
               <input
                 type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
-                className="w-full px-4 py-2 border-2 border-ir-navy border-opacity-20 rounded-tile focus:ring-2 focus:ring-ir-turquoise focus:border-transparent"
-                placeholder="choose-a-username"
+                value={loginIdentifier}
+                onChange={(e) => setLoginIdentifier(e.target.value)}
+                placeholder="Email"
+                className="w-full px-4 py-2 border border-gray-300 rounded-tile focus:outline-none focus:ring-2 focus:ring-ir-turquoise"
+                disabled={isLoading}
+                autoComplete="username"
               />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-ir-teal mb-2">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full px-4 py-2 border-2 border-ir-navy border-opacity-20 rounded-tile focus:ring-2 focus:ring-ir-turquoise focus:border-transparent"
-                placeholder="your@email.com"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-ir-teal mb-2">Password</label>
               <input
                 type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-                className="w-full px-4 py-2 border-2 border-ir-navy border-opacity-20 rounded-tile focus:ring-2 focus:ring-ir-turquoise focus:border-transparent"
-                placeholder="••••••••"
+                value={loginPassword}
+                onChange={(e) => setLoginPassword(e.target.value)}
+                placeholder="Password"
+                className="w-full px-4 py-2 border border-gray-300 rounded-tile focus:outline-none focus:ring-2 focus:ring-ir-turquoise"
+                disabled={isLoading}
+                autoComplete="current-password"
               />
-              <p className="text-xs text-ir-teal mt-1">At least 6 characters</p>
-            </div>
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full bg-ir-orange hover:bg-ir-orange-deep disabled:bg-gray-400 text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm transform hover:-translate-y-0.5"
+              >
+                {isLoading ? 'Logging in...' : 'Login'}
+              </button>
+            </form>
+            <p className="text-sm text-gray-600 mt-2">
+              Forgot your password? Email support@initialreaction.xyz for assistance.
+            </p>
+          </div>
+        </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 px-4 bg-ir-orange text-white font-semibold rounded-tile hover:bg-ir-orange-deep transition-all shadow-tile-sm disabled:opacity-50"
-            >
-              {loading ? 'Creating Account...' : 'Create Account'}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setMode('welcome')}
-              className="w-full py-2 text-gray-600 hover:text-gray-800"
-            >
-              Back
-            </button>
-          </form>
-        )}
-
-        {/* Game Info */}
-        <div className="mt-8 text-center text-sm text-ir-teal">
-          <p className="font-display font-semibold mb-2 text-ir-navy">How to Play:</p>
-          <p className="text-ir-turquoise">1. Submit clever phrases for prompts</p>
-          <p className="text-ir-turquoise">2. Copy phrases without seeing the prompt</p>
-          <p className="text-ir-turquoise">3. Vote to identify the original phrase</p>
-          <p className="text-xs text-ir-teal mt-3">Guest accounts are created automatically so you can start playing right away.</p>
+        <div className="mt-8 text-center text-sm text-ir-navy">
+          <p className="font-display font-semibold mb-2">How to Play:</p>
+          <p className="text-ir-teal">1. Submit clever backronyms for prompts</p>
+          <p className="text-ir-teal">2. Vote to identify the most popular entry</p>
+          <p className="text-ir-teal">3. Win InitCoins and climb the leaderboard!</p>
         </div>
       </div>
     </div>
