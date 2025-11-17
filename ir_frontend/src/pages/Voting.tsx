@@ -205,7 +205,7 @@ const Voting: React.FC = () => {
             {/* Timer Section */}
             {set.voting_finalized_at && !isTransitioning && (
               <div className="mb-6 text-center">
-                <p className="text-sm text-gray-600 mb-2">Time remaining:</p>
+                <p className="text-sm text-ir-teal mb-2">Time remaining:</p>
                 <Timer
                   targetTime={set.voting_finalized_at}
                   className="text-3xl font-bold text-ir-navy"
