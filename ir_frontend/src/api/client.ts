@@ -16,6 +16,9 @@ import type {
   LeaderboardEntry,
   ValidateBackronymRequest,
   ValidateBackronymResponse,
+  TutorialStatus,
+  TutorialProgress,
+  UpdateTutorialProgressResponse,
 } from './types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/ir';
@@ -182,6 +185,30 @@ export const gameAPI = {
 
   getResults: async (setId: string): Promise<ResultsResponse> => {
     const response = await irClient.get<ResultsResponse>(`/sets/${setId}/results`);
+    return response.data;
+  },
+};
+
+export const tutorialAPI = {
+  getTutorialStatus: async (signal?: AbortSignal): Promise<TutorialStatus> => {
+    const response = await irClient.get<TutorialStatus>('/player/tutorial/status', { signal });
+    return response.data;
+  },
+
+  updateTutorialProgress: async (
+    progress: TutorialProgress,
+    signal?: AbortSignal,
+  ): Promise<UpdateTutorialProgressResponse> => {
+    const response = await irClient.post<UpdateTutorialProgressResponse>(
+      '/player/tutorial/progress',
+      { progress },
+      { signal },
+    );
+    return response.data;
+  },
+
+  resetTutorial: async (signal?: AbortSignal): Promise<TutorialStatus> => {
+    const response = await irClient.post<TutorialStatus>('/player/tutorial/reset', {}, { signal });
     return response.data;
   },
 };
