@@ -195,7 +195,7 @@ def upgrade() -> None:
         'ir_ai_phrase_cache',
         sa.Column('cache_id', uuid_type, nullable=False),
         sa.Column('prompt_round_id', uuid_type, nullable=False, unique=True),
-        sa.Column('original_phrase', sa.String(5), nullable=False),
+        sa.Column('original_phrase', sa.String(5), nullable=True),  # Nullable for backward compatibility
         sa.Column('prompt_text', sa.String(500), nullable=True),
         sa.Column('validated_phrases', sa.JSON(), nullable=False),
         sa.Column('generation_provider', sa.String(50), nullable=False),
