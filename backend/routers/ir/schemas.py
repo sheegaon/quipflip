@@ -211,6 +211,19 @@ class SubmitVoteRequest(BaseModel):
     entry_id: str
 
 
+class ValidateBackronymRequest(BaseModel):
+    """Request to validate backronym words for a set."""
+
+    words: list[str]
+
+
+class ValidateBackronymResponse(BaseModel):
+    """Response from validating a set of backronym words."""
+
+    is_valid: bool
+    error: str | None = None
+
+
 class SubmitVoteResponse(BaseModel):
     """Response after submitting vote."""
 

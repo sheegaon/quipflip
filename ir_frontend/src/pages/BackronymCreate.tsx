@@ -6,7 +6,7 @@ import Timer from '../components/Timer';
 import InitCoinDisplay from '../components/InitCoinDisplay';
 
 // Word validation state for each input
-type WordStatus = 'empty' | 'typing' | 'invalid' | 'valid';
+type WordStatus = 'empty' | 'typing' | 'invalid' | 'pending_validation' | 'validating' | 'valid';
 
 interface WordInputState {
   word: string;
@@ -15,12 +15,14 @@ interface WordInputState {
 
 const BackronymCreate: React.FC = () => {
   const navigate = useNavigate();
-  const { activeSet, player, submitBackronym, hasSubmittedEntry, loading } = useIRGame();
+  const { activeSet, player, submitBackronym, validateBackronym, hasSubmittedEntry, loading } = useIRGame();
 
   const [wordInputs, setWordInputs] = useState<WordInputState[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isValidating, setIsValidating] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const validationRequestId = useRef(0);
 
   // Initialize word inputs when activeSet is available
   useEffect(() => {
@@ -76,7 +78,7 @@ const BackronymCreate: React.FC = () => {
       return 'invalid';
     }
 
-    return 'valid';
+    return 'pending_validation';
   };
 
   // Handle word input change
@@ -90,6 +92,12 @@ const BackronymCreate: React.FC = () => {
 
   // Handle space key to move to next input
   const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if ((e.key === ' ' || e.key === 'Tab') && wordInputs[index].word.trim() !== '') {
+      if (!['typing', 'invalid'].includes(wordInputs[index].status)) {
+        triggerBackendValidation();
+      }
+    }
+
     if (e.key === ' ' && wordInputs[index].word.trim() !== '') {
       e.preventDefault();
       if (index < letters.length - 1) {
@@ -120,12 +128,86 @@ const BackronymCreate: React.FC = () => {
     }
   };
 
+  const triggerBackendValidation = async () => {
+    const hasPendingWords = wordInputs.some(
+      (input) => input.status === 'pending_validation'
+    );
+
+    if (!hasPendingWords || isValidating) {
+      return;
+    }
+
+    const wordsToValidate = wordInputs.map((input) => input.word.trim().toUpperCase());
+    validationRequestId.current += 1;
+    const requestId = validationRequestId.current;
+
+    setIsValidating(true);
+    setWordInputs((prev) =>
+      prev.map((input) =>
+        input.status === 'pending_validation' ? { ...input, status: 'validating' } : input
+      )
+    );
+
+    try {
+      const response = await validateBackronym(activeSet.set_id, wordsToValidate);
+
+      if (validationRequestId.current !== requestId) {
+        return;
+      }
+
+      if (response.is_valid) {
+        setWordInputs((prev) =>
+          prev.map((input) =>
+            input.status === 'validating' || input.status === 'pending_validation'
+              ? { ...input, status: 'valid' }
+              : input
+          )
+        );
+        setError(null);
+      } else {
+        setWordInputs((prev) =>
+          prev.map((input) =>
+            input.status === 'validating' || input.status === 'pending_validation'
+              ? { ...input, status: 'invalid' }
+              : input
+          )
+        );
+        setError(
+          response.error || 'One or more words are invalid. Please adjust and try again.'
+        );
+      }
+    } catch (err: unknown) {
+      if (validationRequestId.current !== requestId) {
+        return;
+      }
+
+      setWordInputs((prev) =>
+        prev.map((input) =>
+          input.status === 'validating' ? { ...input, status: 'invalid' } : input
+        )
+      );
+
+      const errorMessage =
+        typeof err === 'object' && err !== null && 'message' in err
+          ? (err.message as string)
+          : 'Unable to validate words. Please try again.';
+      setError(errorMessage);
+    } finally {
+      if (validationRequestId.current === requestId) {
+        setIsValidating(false);
+      }
+    }
+  };
+
   // Get tile color based on status
   const getTileColor = (status: WordStatus): string => {
     switch (status) {
       case 'empty':
         return 'bg-gray-200 border-gray-300';
       case 'typing':
+        return 'bg-yellow-100 border-yellow-400';
+      case 'pending_validation':
+      case 'validating':
         return 'bg-yellow-100 border-yellow-400';
       case 'invalid':
         return 'bg-red-100 border-red-400';
@@ -144,7 +226,7 @@ const BackronymCreate: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!allWordsValid || isSubmitting) {
+    if (!allWordsValid || isSubmitting || isValidating) {
       return;
     }
 
@@ -262,6 +344,12 @@ const BackronymCreate: React.FC = () => {
                       {wordInputs[index]?.status === 'typing' && (
                         <span className="text-ir-orange">Typing...</span>
                       )}
+                      {wordInputs[index]?.status === 'pending_validation' && (
+                        <span className="text-ir-orange">Ready to validate</span>
+                      )}
+                      {wordInputs[index]?.status === 'validating' && (
+                        <span className="text-ir-orange">Validating...</span>
+                      )}
                       {wordInputs[index]?.status === 'valid' && (
                         <span className="text-ir-turquoise">✓ Valid</span>
                       )}
@@ -275,10 +363,14 @@ const BackronymCreate: React.FC = () => {
             <div className="pt-4">
               <button
                 type="submit"
-                disabled={!allWordsValid || isSubmitting}
+                disabled={!allWordsValid || isSubmitting || isValidating}
                 className="w-full bg-ir-navy hover:bg-ir-teal disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-4 px-6 rounded-tile transition-colors text-lg shadow-tile-sm"
               >
-                {isSubmitting ? 'Submitting...' : `Submit Backronym (${entryCost} IC)`}
+                {isSubmitting
+                  ? 'Submitting...'
+                  : isValidating
+                  ? 'Validating...'
+                  : `Submit Backronym (${entryCost} IC)`}
               </button>
             </div>
 
