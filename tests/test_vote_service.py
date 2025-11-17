@@ -10,14 +10,14 @@ import uuid
 
 from sqlalchemy import delete
 
-from backend.models.player import Player
-from backend.models.round import Round
-from backend.models.phraseset import Phraseset
-from backend.models.vote import Vote
-from backend.models.result_view import ResultView
-from backend.services.vote_service import VoteService
-from backend.services.transaction_service import TransactionService
-from backend.services.scoring_service import ScoringService
+from backend.models.qf.player import QFPlayer
+from backend.models.qf.round import Round
+from backend.models.qf.phraseset import Phraseset
+from backend.models.qf.vote import Vote
+from backend.models.qf.result_view import ResultView
+from backend.services import VoteService
+from backend.services import TransactionService
+from backend.services import ScoringService
 from backend.config import get_settings
 from backend.utils.exceptions import InvalidPhraseError
 
@@ -30,7 +30,7 @@ async def test_phraseset_with_players(db_session):
     test_id = uuid.uuid4().hex[:8]
 
     # Create players
-    prompter = Player(
+    prompter = QFPlayer(
         player_id=uuid.uuid4(),
         username=f"prompter_{test_id}",
         username_canonical=f"prompter_{test_id}",
@@ -38,7 +38,7 @@ async def test_phraseset_with_players(db_session):
         password_hash="hash",
         balance=1000,
     )
-    copier1 = Player(
+    copier1 = QFPlayer(
         player_id=uuid.uuid4(),
         username=f"copier1_{test_id}",
         username_canonical=f"copier1_{test_id}",
@@ -46,7 +46,7 @@ async def test_phraseset_with_players(db_session):
         password_hash="hash",
         balance=1000,
     )
-    copier2 = Player(
+    copier2 = QFPlayer(
         player_id=uuid.uuid4(),
         username=f"copier2_{test_id}",
         username_canonical=f"copier2_{test_id}",
@@ -54,7 +54,7 @@ async def test_phraseset_with_players(db_session):
         password_hash="hash",
         balance=1000,
     )
-    voter = Player(
+    voter = QFPlayer(
         player_id=uuid.uuid4(),
         username=f"voter_{test_id}",
         username_canonical=f"voter_{test_id}",
@@ -300,7 +300,7 @@ class TestPhrasesetStatusTransitions:
         test_id = uuid.uuid4().hex[:8]
         voters = []
         for i in range(3):
-            voter = Player(
+            voter = QFPlayer(
                 player_id=uuid.uuid4(),
                 username=f"voter{i}_{test_id}",
                 username_canonical=f"voter{i}_{test_id}",
@@ -384,7 +384,7 @@ class TestVoteBalanceAccounting:
         # Create voters who all vote incorrectly
         test_id = uuid.uuid4().hex[:8]
         for i in range(5):
-            voter = Player(
+            voter = QFPlayer(
                 player_id=uuid.uuid4(),
                 username=f"wrong_voter{i}_{test_id}",
                 username_canonical=f"wrong_voter{i}_{test_id}",
@@ -538,7 +538,7 @@ class TestGuestVoteLockoutFlow:
         guest_id = test_phraseset_with_players["voter"].player_id
 
         # Mark voter as guest and ensure clean slate
-        guest = await db_session.get(Player, guest_id)
+        guest = await db_session.get(QFPlayer, guest_id)
         guest.is_guest = True
         guest.consecutive_incorrect_votes = 0
         guest.vote_lockout_until = None
@@ -551,8 +551,8 @@ class TestGuestVoteLockoutFlow:
         vote_service = VoteService(db_session)
         transaction_service = TransactionService(db_session)
 
-        async def submit_guest_vote(phrase: str) -> Player:
-            current_player = await db_session.get(Player, guest_id)
+        async def submit_guest_vote(phrase: str) -> QFPlayer:
+            current_player = await db_session.get(QFPlayer, guest_id)
             phraseset_obj = await db_session.get(Phraseset, phraseset_id)
 
             vote_round = Round(
@@ -580,7 +580,7 @@ class TestGuestVoteLockoutFlow:
             await db_session.execute(delete(Vote).where(Vote.vote_id == vote.vote_id))
             await db_session.commit()
 
-            return await db_session.get(Player, guest_id)
+            return await db_session.get(QFPlayer, guest_id)
 
         # Incorrect votes should increment the counter
         guest = await submit_guest_vote(incorrect_phrases[0])

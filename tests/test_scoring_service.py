@@ -6,11 +6,11 @@ import pytest
 from datetime import datetime, timedelta, UTC
 import uuid
 
-from backend.models.player import Player
-from backend.models.round import Round
-from backend.models.phraseset import Phraseset
-from backend.models.vote import Vote
-from backend.services.scoring_service import ScoringService
+from backend.models.qf.player import QFPlayer
+from backend.models.qf.round import Round
+from backend.models.qf.phraseset import Phraseset
+from backend.models.qf.vote import Vote
+from backend.services import ScoringService
 from backend.config import get_settings
 
 settings = get_settings()
@@ -22,7 +22,7 @@ async def finalized_phraseset_with_votes(db_session):
     test_id = uuid.uuid4().hex[:8]
 
     # Create players
-    prompter = Player(
+    prompter = QFPlayer(
         player_id=uuid.uuid4(),
         username=f"prompter_{test_id}",
         username_canonical=f"prompter_{test_id}",
@@ -30,7 +30,7 @@ async def finalized_phraseset_with_votes(db_session):
         password_hash="hash",
         balance=5000,
     )
-    copier1 = Player(
+    copier1 = QFPlayer(
         player_id=uuid.uuid4(),
         username=f"copier1_{test_id}",
         username_canonical=f"copier1_{test_id}",
@@ -38,7 +38,7 @@ async def finalized_phraseset_with_votes(db_session):
         password_hash="hash",
         balance=5000,
     )
-    copier2 = Player(
+    copier2 = QFPlayer(
         player_id=uuid.uuid4(),
         username=f"copier2_{test_id}",
         username_canonical=f"copier2_{test_id}",
@@ -199,7 +199,7 @@ class TestPayoutCalculation:
         """Should handle phraseset with no votes gracefully."""
         test_id = uuid.uuid4().hex[:8]
 
-        prompter = Player(
+        prompter = QFPlayer(
             player_id=uuid.uuid4(),
             username=f"prompter_{test_id}",
             username_canonical=f"prompter_{test_id}",

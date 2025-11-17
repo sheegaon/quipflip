@@ -20,7 +20,7 @@ import asyncio
 import sys
 import argparse
 from backend.database import AsyncSessionLocal
-from backend.services.cleanup_service import CleanupService
+from backend.services import CleanupService
 
 
 async def run_cleanup(

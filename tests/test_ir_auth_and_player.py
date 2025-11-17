@@ -1,10 +1,10 @@
 """Tests for IR authentication and player services."""
 import pytest
 import uuid
-from backend.services.ir.auth_service import IRAuthService
-from backend.services.ir.player_service import IRPlayerService
+from backend.services import IRAuthService
+from backend.services import IRPlayerService
 from backend.utils.passwords import hash_password, verify_password
-from backend.services.username_service import UsernameService
+from backend.services import UsernameService
 
 
 @pytest.mark.asyncio

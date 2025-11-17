@@ -1,9 +1,9 @@
 """Tests for complete game flow."""
 import pytest
 import uuid
-from backend.models.prompt import Prompt
-from backend.services.round_service import RoundService
-from backend.services.transaction_service import TransactionService
+from backend.models.qf.prompt import Prompt
+from backend.services import RoundService
+from backend.services import TransactionService
 
 
 @pytest.mark.asyncio
@@ -16,7 +16,7 @@ async def test_prompt_round_lifecycle(db_session, player_factory):
     player = await player_factory()
 
     # Disable existing prompts and seed a test prompt
-    from backend.models.prompt import Prompt as PromptModel
+    from backend.models.qf.prompt import Prompt as PromptModel
     from sqlalchemy import update
     await db_session.execute(update(PromptModel).values(enabled=False))
     await db_session.commit()
@@ -49,7 +49,7 @@ async def test_prompt_round_lifecycle(db_session, player_factory):
 @pytest.mark.asyncio
 async def test_one_round_at_a_time_enforcement(db_session, player_factory):
     """Test player can only have one active round."""
-    from backend.services.player_service import PlayerService
+    from backend.services import PlayerService
 
     player_service = PlayerService(db_session)
     round_service = RoundService(db_session)
@@ -74,7 +74,7 @@ async def test_one_round_at_a_time_enforcement(db_session, player_factory):
 @pytest.mark.asyncio
 async def test_insufficient_balance_prevention(db_session, player_factory):
     """Test player cannot start round without sufficient balance."""
-    from backend.services.player_service import PlayerService
+    from backend.services import PlayerService
 
     player_service = PlayerService(db_session)
     player = await player_factory()
@@ -106,9 +106,9 @@ async def test_transaction_ledger_tracking(db_session, player_factory):
 
     # Check transaction exists
     from sqlalchemy import select
-    from backend.models.transaction import Transaction
+    from backend.models.qf.transaction import QFTransaction
     result = await db_session.execute(
-        select(Transaction).where(Transaction.player_id == player.player_id)
+        select(QFTransaction).where(QFTransaction.player_id == player.player_id)
     )
     transactions = result.scalars().all()
 
@@ -122,8 +122,8 @@ async def test_transaction_ledger_tracking(db_session, player_factory):
 async def test_daily_bonus_logic(db_session, player_factory):
     """Test daily bonus availability and claiming."""
     from datetime import date, timedelta, datetime, UTC
-    from backend.models.player import Player as PlayerModel
-    from backend.services.player_service import PlayerService
+    from backend.models.qf.player import QFPlayer as PlayerModel
+    from backend.services import PlayerService
 
     player_service = PlayerService(db_session)
     transaction_service = TransactionService(db_session)
@@ -171,7 +171,7 @@ async def test_daily_bonus_logic(db_session, player_factory):
 @pytest.mark.asyncio
 async def test_cannot_copy_own_prompt(db_session, player_factory):
     """Test that players cannot copy their own prompts."""
-    from backend.services.queue_service import QueueService
+    from backend.services import QueueService
 
     round_service = RoundService(db_session)
     transaction_service = TransactionService(db_session)
@@ -179,7 +179,7 @@ async def test_cannot_copy_own_prompt(db_session, player_factory):
     player = await player_factory()
 
     # Disable existing prompts and seed a test prompt
-    from backend.models.prompt import Prompt as PromptModel
+    from backend.models.qf.prompt import Prompt as PromptModel
     from sqlalchemy import update
     await db_session.execute(update(PromptModel).values(enabled=False))
     await db_session.commit()

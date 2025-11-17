@@ -1,13 +1,13 @@
 """Test variable prize pool implementation."""
 import pytest
-from backend.models.player import Player
-from backend.models.round import Round
-from backend.models.phraseset import Phraseset
-from backend.models.vote import Vote
-from backend.services.round_service import RoundService
-from backend.services.vote_service import VoteService
-from backend.services.transaction_service import TransactionService
-from backend.services.scoring_service import ScoringService
+from backend.models.qf.player import QFPlayer
+from backend.models.qf.round import Round
+from backend.models.qf.phraseset import Phraseset
+from backend.models.qf.vote import Vote
+from backend.services import RoundService
+from backend.services import VoteService
+from backend.services import TransactionService
+from backend.services import ScoringService
 from backend.config import get_settings
 import uuid
 from datetime import datetime, timedelta, UTC
@@ -19,7 +19,7 @@ settings = get_settings()
 async def test_prize_pool_initialization(db_session):
     """Test that prize pool is initialized correctly when phraseset is created."""
     # Create test players
-    player1 = Player(
+    player1 = QFPlayer(
         player_id=uuid.uuid4(),
         username="prompter",
         username_canonical="prompter",
@@ -27,7 +27,7 @@ async def test_prize_pool_initialization(db_session):
         password_hash="hash",
         balance=5000,
     )
-    player2 = Player(
+    player2 = QFPlayer(
         player_id=uuid.uuid4(),
         username="copier1",
         username_canonical="copier1",
@@ -35,7 +35,7 @@ async def test_prize_pool_initialization(db_session):
         password_hash="hash",
         balance=5000,
     )
-    player3 = Player(
+    player3 = QFPlayer(
         player_id=uuid.uuid4(),
         username="copier2",
         username_canonical="copier2",
@@ -106,7 +106,7 @@ async def test_prize_pool_updates_with_votes(db_session):
     """Test that prize pool updates correctly as votes come in."""
     # Create test players with unique IDs to avoid conflicts
     test_id = uuid.uuid4().hex[:8]
-    player1 = Player(
+    player1 = QFPlayer(
         player_id=uuid.uuid4(),
         username=f"prompter_{test_id}",
         username_canonical=f"prompter_{test_id}",
@@ -114,7 +114,7 @@ async def test_prize_pool_updates_with_votes(db_session):
         password_hash="hash",
         balance=1000,
     )
-    player2 = Player(
+    player2 = QFPlayer(
         player_id=uuid.uuid4(),
         username=f"copier1_{test_id}",
         username_canonical=f"copier1_{test_id}",
@@ -122,7 +122,7 @@ async def test_prize_pool_updates_with_votes(db_session):
         password_hash="hash",
         balance=1000,
     )
-    player3 = Player(
+    player3 = QFPlayer(
         player_id=uuid.uuid4(),
         username=f"copier2_{test_id}",
         username_canonical=f"copier2_{test_id}",
@@ -130,7 +130,7 @@ async def test_prize_pool_updates_with_votes(db_session):
         password_hash="hash",
         balance=1000,
     )
-    voter1 = Player(
+    voter1 = QFPlayer(
         player_id=uuid.uuid4(),
         username=f"voter1_{test_id}",
         username_canonical=f"voter1_{test_id}",
@@ -138,7 +138,7 @@ async def test_prize_pool_updates_with_votes(db_session):
         password_hash="hash",
         balance=1000,
     )
-    voter2 = Player(
+    voter2 = QFPlayer(
         player_id=uuid.uuid4(),
         username=f"voter2_{test_id}",
         username_canonical=f"voter2_{test_id}",
@@ -250,7 +250,7 @@ async def test_scoring_uses_dynamic_prize_pool(db_session):
     """Test that scoring service uses the dynamically updated prize pool."""
     # Create test players with unique IDs to avoid conflicts
     test_id = uuid.uuid4().hex[:8]
-    player1 = Player(
+    player1 = QFPlayer(
         player_id=uuid.uuid4(),
         username=f"prompter_{test_id}",
         username_canonical=f"prompter_{test_id}",
@@ -258,7 +258,7 @@ async def test_scoring_uses_dynamic_prize_pool(db_session):
         password_hash="hash",
         balance=1000,
     )
-    player2 = Player(
+    player2 = QFPlayer(
         player_id=uuid.uuid4(),
         username=f"copier1_{test_id}",
         username_canonical=f"copier1_{test_id}",
@@ -266,7 +266,7 @@ async def test_scoring_uses_dynamic_prize_pool(db_session):
         password_hash="hash",
         balance=1000,
     )
-    player3 = Player(
+    player3 = QFPlayer(
         player_id=uuid.uuid4(),
         username=f"copier2_{test_id}",
         username_canonical=f"copier2_{test_id}",

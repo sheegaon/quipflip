@@ -7,10 +7,10 @@ from uuid import UUID
 
 from backend.config import get_settings
 from backend.database import get_db
-from backend.models.player import Player
-from backend.services.player_service import PlayerService
+from backend.services.qf import PlayerService
 from backend.utils.rate_limiter import RateLimiter
-from backend.services.auth_service import AuthService, AuthError
+from backend.services import AuthService, AuthError
+from backend.models.qf.player import QFPlayer
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +66,7 @@ async def get_current_player(
     request: Request,
     authorization: str | None = Header(default=None, alias="Authorization"),
     db: AsyncSession = Depends(get_db),
-) -> Player:
+) -> QFPlayer:
     """Resolve the current authenticated player via JWT access token.
 
     Checks for access token in the following order:
@@ -115,8 +115,8 @@ async def get_current_player(
 
 
 async def enforce_vote_rate_limit(
-    player: Player = Depends(get_current_player),
-) -> Player:
+    player: QFPlayer = Depends(get_current_player),
+) -> QFPlayer:
     """Enforce tighter limits on vote submissions and return the authenticated player.
 
     This dependency leverages get_current_player to authenticate the user and then
@@ -162,8 +162,8 @@ async def enforce_guest_creation_rate_limit(
 
 
 async def get_admin_player(
-    player: Player = Depends(get_current_player),
-) -> Player:
+    player: QFPlayer = Depends(get_current_player),
+) -> QFPlayer:
     """Verify that the current authenticated player is an admin.
 
     This dependency checks if the player's email is in the admin_emails

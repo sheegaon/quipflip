@@ -1,29 +1,29 @@
 """Initial Reaction database models."""
-from backend.models.ir.enums import IRSetStatus, IRMode
-from backend.models.ir.ir_player import IRPlayer
-from backend.models.ir.ir_backronym_set import IRBackronymSet
-from backend.models.ir.ir_backronym_entry import IRBackronymEntry
-from backend.models.ir.ir_backronym_vote import IRBackronymVote
-from backend.models.ir.ir_backronym_observer_guard import IRBackronymObserverGuard
-from backend.models.ir.ir_transaction import IRTransaction
-from backend.models.ir.ir_result_view import IRResultView
-from backend.models.ir.ir_refresh_token import IRRefreshToken
-from backend.models.ir.ir_daily_bonus import IRDailyBonus
-from backend.models.ir.ir_ai_metric import IRAIMetric
-from backend.models.ir.ir_ai_phrase_cache import IRAIPhraseCache
+from backend.models.ir.enums import SetStatus, Mode
+from backend.models.ir.player import IRPlayer
+from backend.models.ir.backronym_set import BackronymSet
+from backend.models.ir.backronym_entry import BackronymEntry
+from backend.models.ir.backronym_vote import BackronymVote
+from backend.models.ir.backronym_observer_guard import BackronymObserverGuard
+from backend.models.ir.transaction import IRTransaction
+from backend.models.ir.result_view import ResultView
+from backend.models.ir.refresh_token import IRRefreshToken
+from backend.models.ir.daily_bonus import IRDailyBonus
+from backend.models.ir.ai_metric import IRAIMetric
+from backend.models.ir.ai_phrase_cache import AIPhraseCache
 
 __all__ = [
-    "IRSetStatus",
-    "IRMode",
+    "SetStatus",
+    "Mode",
     "IRPlayer",
-    "IRBackronymSet",
-    "IRBackronymEntry",
-    "IRBackronymVote",
-    "IRBackronymObserverGuard",
+    "BackronymSet",
+    "BackronymEntry",
+    "BackronymVote",
+    "BackronymObserverGuard",
     "IRTransaction",
-    "IRResultView",
+    "ResultView",
     "IRRefreshToken",
     "IRDailyBonus",
     "IRAIMetric",
-    "IRAIPhraseCache",
+    "AIPhraseCache",
 ]

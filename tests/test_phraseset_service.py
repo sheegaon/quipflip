@@ -3,18 +3,18 @@ import pytest
 from datetime import datetime, UTC, timedelta
 from uuid import uuid4
 
-from backend.models.player import Player
-from backend.models.round import Round
-from backend.models.phraseset import Phraseset
-from backend.models.vote import Vote
-from backend.services.phraseset_service import PhrasesetService
+from backend.models.qf.player import QFPlayer
+from backend.models.qf.round import Round
+from backend.models.qf.phraseset import Phraseset
+from backend.models.qf.vote import Vote
+from backend.services import PhrasesetService
 
 
-def _base_player(username: str) -> Player:
+def _base_player(username: str) -> QFPlayer:
     from backend.utils.passwords import hash_password
 
     now = datetime.now(UTC)
-    return Player(
+    return QFPlayer(
         player_id=uuid4(),
         username=username,
         username_canonical=username,

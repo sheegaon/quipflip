@@ -8,16 +8,15 @@ import uuid
 
 from sqlalchemy import select
 
-from backend.services.ai.ai_service import AIService, AICopyError, AIVoteError, AIServiceError
-from backend.services.ai.metrics_service import AIMetricsService
-from backend.services.phrase_validator import PhraseValidator
-from backend.models.player import Player
-from backend.models.round import Round
-from backend.models.phraseset import Phraseset
+from backend.services import AIService, AICopyError, AIServiceError
+from backend.services import AIMetricsService
+from backend.services import PhraseValidator
+from backend.models.qf.player import QFPlayer
+from backend.models.qf.round import Round
+from backend.models.qf.phraseset import Phraseset
 from backend.models.ai_metric import AIMetric
 from backend.models.ai_phrase_cache import AIPhraseCache
-from backend.models.hint import Hint
-from backend.models.vote import Vote
+from backend.models.qf.vote import Vote
 from backend.config import get_settings
 
 
@@ -582,7 +581,7 @@ class TestAIPlayerManagement:
             ) as mock_generate,
             patch('backend.services.player_service.PlayerService.create_player') as mock_create,
         ):
-            mock_player = Player(
+            mock_player = QFPlayer(
                 player_id=uuid.uuid4(),
                 username="AI_BACKUP",
                 email="ai_copy_backup@quipflip.internal",
@@ -601,7 +600,7 @@ class TestAIPlayerManagement:
     async def test_get_or_create_ai_player_reuses_existing(self, db_session):
         """Should reuse existing AI player."""
         # Create AI player first with a randomized username
-        ai_player = Player(
+        ai_player = QFPlayer(
             player_id=uuid.uuid4(),
             username="AI Copy Runner",
             username_canonical="aicopyrunner",

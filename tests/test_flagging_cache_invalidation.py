@@ -1,8 +1,8 @@
 """Test cache invalidation when flagging prompts to ensure dashboard shows accurate counts."""
 import pytest
-from backend.services.round_service import RoundService
-from backend.services.transaction_service import TransactionService
-from backend.services.player_service import PlayerService
+from backend.services import RoundService
+from backend.services import TransactionService
+from backend.services import PlayerService
 from backend.utils.cache import dashboard_cache
 from backend.config import get_settings
 
@@ -29,7 +29,7 @@ async def test_prompts_waiting_count_after_flagging(db_session, player_factory):
     await db_session.commit()
 
     # Seed test prompts
-    from backend.models.prompt import Prompt
+    from backend.models.qf.prompt import Prompt
     import uuid
     prompts = [
         Prompt(prompt_id=uuid.uuid4(), text="A FEELING GOOD", category="test", enabled=True),
@@ -119,7 +119,7 @@ async def test_dashboard_endpoint_shows_correct_count_after_flagging(
     await db_session.commit()
 
     # Seed test prompts
-    from backend.models.prompt import Prompt
+    from backend.models.qf.prompt import Prompt
     import uuid
     prompts = [
         Prompt(prompt_id=uuid.uuid4(), text="TEST PROMPT ONE", category="test", enabled=True),
@@ -188,8 +188,8 @@ async def test_abandoned_prompt_not_counted_in_available(db_session, player_fact
     This is the root cause of the bug where dashboard shows prompts_waiting > 0
     but starting a copy round fails with no_prompts_available.
     """
-    from backend.models.prompt import Prompt
-    from backend.models.player_abandoned_prompt import PlayerAbandonedPrompt
+    from backend.models.qf.prompt import Prompt
+    from backend.models.qf.player_abandoned_prompt import PlayerAbandonedPrompt
     from datetime import datetime, UTC
     import uuid
 

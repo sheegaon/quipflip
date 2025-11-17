@@ -3,10 +3,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.database import get_db
-from backend.models.ir.ir_player import IRPlayer
-from backend.routers.ir.dependencies import get_ir_current_player
+from backend.models.ir.player import IRPlayer
+from backend.routers.ir.dependencies import get_current_player
 from backend.routers.ir.schemas import LeaderboardEntry
-from backend.services.ir.ir_statistics_service import IRStatisticsService
+from backend.services.ir.statistics_service import IRStatisticsService
 
 router = APIRouter()
 
@@ -15,7 +15,7 @@ router = APIRouter()
 async def get_creator_leaderboard(
     limit: int = 10,
     db: AsyncSession = Depends(get_db),
-    _: IRPlayer = Depends(get_ir_current_player),
+    _: IRPlayer = Depends(get_current_player),
 ) -> list[LeaderboardEntry]:
     """Get creator leaderboard ranked by vault contributions."""
 
@@ -42,7 +42,7 @@ async def get_creator_leaderboard(
 async def get_voter_leaderboard(
     limit: int = 10,
     db: AsyncSession = Depends(get_db),
-    _: IRPlayer = Depends(get_ir_current_player),
+    _: IRPlayer = Depends(get_current_player),
 ) -> list[LeaderboardEntry]:
     """Get voter leaderboard."""
 

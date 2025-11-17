@@ -7,16 +7,16 @@ This test suite ensures that:
 4. Bonus can only be claimed once per day
 """
 import pytest
-from datetime import date, timedelta, datetime, UTC
+from datetime import timedelta, datetime, UTC
 from uuid import uuid4
 
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy import select, update
 
-from backend.models.player import Player
-from backend.models.daily_bonus import DailyBonus
-from backend.services.player_service import PlayerService
-from backend.services.transaction_service import TransactionService
+from backend.models.qf.player import QFPlayer
+from backend.models.qf.daily_bonus import QFDailyBonus
+from backend.services import PlayerService
+from backend.services import TransactionService
 from backend.config import get_settings
 
 
@@ -72,8 +72,8 @@ async def test_guest_players_cannot_claim_daily_bonus(test_app, db_session):
         # Move the creation date back so first-day logic isn't the only blocker
         two_days_ago = datetime.now(UTC) - timedelta(days=2)
         await db_session.execute(
-            update(Player)
-            .where(Player.player_id == player_id)
+            update(QFPlayer)
+            .where(QFPlayer.player_id == player_id)
             .values(created_at=two_days_ago)
         )
         await db_session.commit()
@@ -109,14 +109,14 @@ async def test_daily_bonus_available_after_login(test_app, db_session):
 
         # Simulate player created yesterday by updating database
         result = await db_session.execute(
-            select(Player).where(Player.player_id == player_id)
+            select(QFPlayer).where(QFPlayer.player_id == player_id)
         )
         player = result.scalar_one()
 
         yesterday = datetime.now(UTC) - timedelta(days=1)
         await db_session.execute(
-            update(Player)
-            .where(Player.player_id == player_id)
+            update(QFPlayer)
+            .where(QFPlayer.player_id == player_id)
             .values(
                 created_at=yesterday,
                 last_login_date=yesterday
@@ -156,7 +156,7 @@ async def test_daily_bonus_uses_dailybonus_table_not_last_login(db_session):
     This ensures the fix is working at the service layer.
     """
     # Create a player with last_login_date = today (which would fail the old logic)
-    from backend.services.auth_service import AuthService
+    from backend.services import AuthService
 
     auth_service = AuthService(db_session)
     email = f"tabletest_{uuid4().hex[:6]}@example.com"
@@ -165,8 +165,8 @@ async def test_daily_bonus_uses_dailybonus_table_not_last_login(db_session):
     # Set created_at to yesterday so bonus would be eligible
     yesterday = datetime.now(UTC) - timedelta(days=1)
     await db_session.execute(
-        update(Player)
-        .where(Player.player_id == player.player_id)
+        update(QFPlayer)
+        .where(QFPlayer.player_id == player.player_id)
         .values(created_at=yesterday)
     )
     await db_session.commit()
@@ -186,9 +186,9 @@ async def test_daily_bonus_uses_dailybonus_table_not_last_login(db_session):
 
     # Verify no DailyBonus record exists
     result = await db_session.execute(
-        select(DailyBonus)
-        .where(DailyBonus.player_id == player.player_id)
-        .where(DailyBonus.date == datetime.now(UTC).date())
+        select(QFDailyBonus)
+        .where(QFDailyBonus.player_id == player.player_id)
+        .where(QFDailyBonus.date == datetime.now(UTC).date())
     )
     bonus_record = result.scalar_one_or_none()
     assert bonus_record is None
@@ -209,8 +209,8 @@ async def test_claim_daily_bonus_makes_it_unavailable(test_app, db_session):
         # Make player eligible by setting created_at to yesterday
         yesterday = datetime.now(UTC) - timedelta(days=1)
         await db_session.execute(
-            update(Player)
-            .where(Player.player_id == player_id)
+            update(QFPlayer)
+            .where(QFPlayer.player_id == player_id)
             .values(created_at=yesterday)
         )
         await db_session.commit()
@@ -237,9 +237,9 @@ async def test_claim_daily_bonus_makes_it_unavailable(test_app, db_session):
 
         # Verify DailyBonus record was created
         result = await db_session.execute(
-            select(DailyBonus)
-            .where(DailyBonus.player_id == player_id)
-            .where(DailyBonus.date == datetime.now(UTC).date())
+            select(QFDailyBonus)
+            .where(QFDailyBonus.player_id == player_id)
+            .where(QFDailyBonus.date == datetime.now(UTC).date())
         )
         bonus_record = result.scalar_one_or_none()
         assert bonus_record is not None
@@ -261,8 +261,8 @@ async def test_cannot_claim_daily_bonus_twice(test_app, db_session):
         # Make eligible
         yesterday = datetime.now(UTC) - timedelta(days=1)
         await db_session.execute(
-            update(Player)
-            .where(Player.player_id == player_id)
+            update(QFPlayer)
+            .where(QFPlayer.player_id == player_id)
             .values(created_at=yesterday)
         )
         await db_session.commit()
@@ -300,8 +300,8 @@ async def test_multiple_logins_preserve_bonus_availability(test_app, db_session)
         # Make eligible
         yesterday = datetime.now(UTC) - timedelta(days=1)
         await db_session.execute(
-            update(Player)
-            .where(Player.player_id == player_id)
+            update(QFPlayer)
+            .where(QFPlayer.player_id == player_id)
             .values(created_at=yesterday)
         )
         await db_session.commit()
@@ -341,8 +341,8 @@ async def test_dashboard_endpoint_includes_bonus_status(test_app, db_session):
         # Make eligible
         yesterday = datetime.now(UTC) - timedelta(days=1)
         await db_session.execute(
-            update(Player)
-            .where(Player.player_id == player_id)
+            update(QFPlayer)
+            .where(QFPlayer.player_id == player_id)
             .values(created_at=yesterday)
         )
         await db_session.commit()
@@ -368,7 +368,7 @@ async def test_dashboard_endpoint_includes_bonus_status(test_app, db_session):
 @pytest.mark.asyncio
 async def test_bonus_available_next_day_after_claiming(test_app, db_session):
     """After claiming bonus, it should be available again the next day."""
-    from backend.services.auth_service import AuthService
+    from backend.services import AuthService
 
     # Create player
     auth_service = AuthService(db_session)
@@ -378,8 +378,8 @@ async def test_bonus_available_next_day_after_claiming(test_app, db_session):
     # Set created_at to 2 days ago
     two_days_ago = datetime.now(UTC) - timedelta(days=2)
     await db_session.execute(
-        update(Player)
-        .where(Player.player_id == player.player_id)
+        update(QFPlayer)
+        .where(QFPlayer.player_id == player.player_id)
         .values(created_at=two_days_ago)
     )
     await db_session.commit()
@@ -387,7 +387,7 @@ async def test_bonus_available_next_day_after_claiming(test_app, db_session):
 
     # Claim bonus for yesterday
     yesterday = datetime.now(UTC).date() - timedelta(days=1)
-    bonus_yesterday = DailyBonus(
+    bonus_yesterday = QFDailyBonus(
         player_id=player.player_id,
         amount=100,
         date=yesterday,
@@ -411,7 +411,7 @@ async def test_bonus_available_next_day_after_claiming(test_app, db_session):
 
     # Verify two separate DailyBonus records exist
     result = await db_session.execute(
-        select(DailyBonus).where(DailyBonus.player_id == player.player_id)
+        select(QFDailyBonus).where(QFDailyBonus.player_id == player.player_id)
     )
     all_bonuses = result.scalars().all()
     assert len(all_bonuses) == 2

@@ -50,17 +50,21 @@ The backend server terminal will show the actual error. Look for:
 - Foreign key constraint violations
 
 #### D. Verify Database Connection
+
 ```python
 # Test database connection
-python3 -c "
+python3 - c
+"
 from backend.database import engine
-from backend.models.player import Player
+from backend.models.qf.player import QFPlayer
 import asyncio
+
 
 async def test():
     async with engine.begin() as conn:
         await conn.execute('SELECT 1')
         print('Database connection OK')
+
 
 asyncio.run(test())
 "

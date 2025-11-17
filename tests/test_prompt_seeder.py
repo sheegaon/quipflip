@@ -13,17 +13,12 @@ Tests cover:
 
 import pytest
 from unittest.mock import patch, mock_open, MagicMock
-from datetime import datetime
-from pathlib import Path
-from sqlalchemy import select
-import uuid
 
-from backend.services.prompt_seeder import (
+from backend.services import (
     get_current_season,
     load_prompts_from_csv,
     sync_prompts_with_database,
 )
-from backend.models.prompt import Prompt
 
 
 class TestSeasonDetection:

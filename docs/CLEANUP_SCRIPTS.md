@@ -116,7 +116,7 @@ The `backend/services/cleanup_service.py` module provides the following methods:
 
 ```python
 from backend.database import AsyncSessionLocal
-from backend.services.cleanup_service import CleanupService
+from backend.services import CleanupService
 
 async with AsyncSessionLocal() as session:
     cleanup_service = CleanupService(session)

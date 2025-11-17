@@ -1,10 +1,9 @@
 """Service for managing dynamic system configuration."""
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from backend.models.system_config import SystemConfig
-from backend.config import get_settings, Settings
+from backend.models.system_config_base import SystemConfigBase
+from backend.config import get_settings
 from datetime import datetime, timezone
-from functools import lru_cache
 from typing import Any, Dict, Optional
 import logging
 
@@ -311,7 +310,7 @@ class SystemConfigService:
             Configuration value, or None if not found
         """
         result = await self.session.execute(
-            select(SystemConfig).where(SystemConfig.key == key)
+            select(SystemConfigBase).where(SystemConfigBase.key == key)
         )
         config_entry = result.scalar_one_or_none()
 
@@ -328,7 +327,7 @@ class SystemConfigService:
         key: str,
         value: Any,
         updated_by: Optional[str] = None
-    ) -> SystemConfig:
+    ) -> SystemConfigBase:
         """
         Set a configuration value in the database.
 
@@ -338,7 +337,7 @@ class SystemConfigService:
             updated_by: Player ID of the admin making the change
 
         Returns:
-            Updated SystemConfig entry
+            Updated SystemConfigBase entry
 
         Raises:
             ValueError: If key is not in schema or value is invalid
@@ -357,7 +356,7 @@ class SystemConfigService:
 
         # Check if config entry exists
         result = await self.session.execute(
-            select(SystemConfig).where(SystemConfig.key == key)
+            select(SystemConfigBase).where(SystemConfigBase.key == key)
         )
         config_entry = result.scalar_one_or_none()
 
@@ -369,7 +368,7 @@ class SystemConfigService:
             config_entry.updated_by = updated_by
         else:
             # Create new entry
-            config_entry = SystemConfig(
+            config_entry = SystemConfigBase(
                 key=key,
                 value=serialized_value,
                 value_type=value_type,
@@ -405,7 +404,7 @@ class SystemConfigService:
             config_dict[key] = getattr(settings, key, None)
 
         # Override with database values
-        result = await self.session.execute(select(SystemConfig))
+        result = await self.session.execute(select(SystemConfigBase))
         db_configs = result.scalars().all()
 
         legacy_sleep_key = "ai_backup_sleep_seconds"
@@ -429,7 +428,8 @@ class SystemConfigService:
 
         return config_dict
 
-    def _validate_value(self, key: str, value: Any, schema: Dict[str, Any]) -> Any:
+    @staticmethod
+    def _validate_value(key: str, value: Any, schema: Dict[str, Any]) -> Any:
         """Validate and convert a configuration value."""
         value_type = schema["type"]
 
@@ -478,13 +478,15 @@ class SystemConfigService:
 
         return validated
 
-    def _serialize_value(self, value: Any, value_type: str) -> str:
+    @staticmethod
+    def _serialize_value(value: Any, value_type: str) -> str:
         """Convert a value to string for database storage."""
         if value_type == "bool":
             return "true" if value else "false"
         return str(value)
 
-    def _deserialize_value(self, value: str, value_type: str) -> Any:
+    @staticmethod
+    def _deserialize_value(value: str, value_type: str) -> Any:
         """Convert a string value from database to proper Python type."""
         if value_type == "int":
             return int(value)

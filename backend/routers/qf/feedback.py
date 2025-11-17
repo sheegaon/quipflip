@@ -11,8 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.database import get_db
 from backend.dependencies import get_current_player
-from backend.models.round import Round
-from backend.models.survey_response import SurveyResponse
+from backend.models.qf.round import Round
+from backend.models.qf.survey_response import QFSurveyResponse
 from backend.schemas.feedback import (
     SurveySubmission,
     SurveySubmissionResponse,
@@ -49,9 +49,9 @@ async def submit_beta_survey(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="unknown_survey")
 
     existing = await db.execute(
-        select(SurveyResponse).where(
-            SurveyResponse.player_id == player.player_id,
-            SurveyResponse.survey_id == SURVEY_ID,
+        select(QFSurveyResponse).where(
+            QFSurveyResponse.player_id == player.player_id,
+            QFSurveyResponse.survey_id == SURVEY_ID,
         )
     )
     if existing.scalar_one_or_none():
@@ -65,7 +65,7 @@ async def submit_beta_survey(
         ]
     }
 
-    response = SurveyResponse(
+    response = QFSurveyResponse(
         response_id=uuid.uuid4(),
         player_id=player.player_id,
         survey_id=SURVEY_ID,
@@ -90,9 +90,9 @@ async def list_beta_survey_submissions(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="forbidden")
 
     result = await db.execute(
-        select(SurveyResponse)
-        .where(SurveyResponse.survey_id == SURVEY_ID)
-        .order_by(SurveyResponse.created_at.desc())
+        select(QFSurveyResponse)
+        .where(QFSurveyResponse.survey_id == SURVEY_ID)
+        .order_by(QFSurveyResponse.created_at.desc())
         .limit(100)
     )
     submissions = result.scalars().all()
@@ -128,10 +128,10 @@ async def get_beta_survey_status(
 
     submission_check = await db.execute(
         select(func.count())
-        .select_from(SurveyResponse)
+        .select_from(QFSurveyResponse)
         .where(
-            SurveyResponse.player_id == player.player_id,
-            SurveyResponse.survey_id == SURVEY_ID,
+            QFSurveyResponse.player_id == player.player_id,
+            QFSurveyResponse.survey_id == SURVEY_ID,
         )
     )
     has_submitted = submission_check.scalar_one() > 0

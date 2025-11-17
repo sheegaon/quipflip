@@ -1,8 +1,7 @@
 """Tests for guest account creation and upgrade functionality."""
-import pytest
 from fastapi import status
 from httpx import AsyncClient, ASGITransport
-from backend.models.player import Player
+from backend.models.qf.player import QFPlayer
 
 
 class TestGuestAccountCreation:
@@ -52,7 +51,7 @@ class TestGuestAccountCreation:
             from uuid import UUID
             from sqlalchemy import select
             result = await db_session.execute(
-                select(Player).where(Player.player_id == UUID(player_id))
+                select(QFPlayer).where(QFPlayer.player_id == UUID(player_id))
             )
             player = result.scalar_one()
 
@@ -143,7 +142,7 @@ class TestGuestAccountUpgrade:
             from uuid import UUID
             from sqlalchemy import select
             result = await db_session.execute(
-                select(Player).where(Player.player_id == UUID(guest_data["player_id"]))
+                select(QFPlayer).where(QFPlayer.player_id == UUID(guest_data["player_id"]))
             )
             player = result.scalar_one()
 
@@ -236,7 +235,7 @@ class TestGuestCleanup:
 
     async def test_cleanup_inactive_guest_players(self, test_app, db_session):
         """Test that inactive guest players are cleaned up after specified days."""
-        from backend.services.cleanup_service import CleanupService
+        from backend.services import CleanupService
         from datetime import timedelta, UTC, datetime
 
         async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test/qf") as client:
@@ -251,8 +250,8 @@ class TestGuestCleanup:
             from sqlalchemy import update
             old_date = datetime.now(UTC) - timedelta(days=8)
             await db_session.execute(
-                update(Player)
-                .where(Player.player_id == UUID(guest_id))
+                update(QFPlayer)
+                .where(QFPlayer.player_id == UUID(guest_id))
                 .values(created_at=old_date, last_login_date=old_date)
             )
             await db_session.commit()
@@ -267,15 +266,15 @@ class TestGuestCleanup:
             # Verify player no longer exists
             from sqlalchemy import select
             result = await db_session.execute(
-                select(Player).where(Player.player_id == UUID(guest_id))
+                select(QFPlayer).where(QFPlayer.player_id == UUID(guest_id))
             )
             player = result.scalar_one_or_none()
             assert player is None
 
     async def test_cleanup_does_not_delete_active_guests(self, test_app, db_session):
         """Test that guests who have played rounds are not deleted."""
-        from backend.services.cleanup_service import CleanupService
-        from backend.services.round_service import RoundService
+        from backend.services import CleanupService
+        from backend.services import RoundService
         from datetime import timedelta, UTC, datetime
         from sqlalchemy import update
 
@@ -290,7 +289,7 @@ class TestGuestCleanup:
             from uuid import UUID
             from sqlalchemy import select
             player_result = await db_session.execute(
-                select(Player).where(Player.player_id == UUID(guest_id))
+                select(QFPlayer).where(QFPlayer.player_id == UUID(guest_id))
             )
             player = player_result.scalar_one()
 
@@ -305,8 +304,8 @@ class TestGuestCleanup:
             # Artificially age the guest account
             old_date = datetime.now(UTC) - timedelta(days=8)
             await db_session.execute(
-                update(Player)
-                .where(Player.player_id == UUID(guest_id))
+                update(QFPlayer)
+                .where(QFPlayer.player_id == UUID(guest_id))
                 .values(created_at=old_date)
             )
             await db_session.commit()
@@ -319,7 +318,7 @@ class TestGuestCleanup:
             # Note: This might be 0 if the round was created, or might clean up other guests
             # Let's just verify our specific guest still exists
             result = await db_session.execute(
-                select(Player).where(Player.player_id == UUID(guest_id))
+                select(QFPlayer).where(QFPlayer.player_id == UUID(guest_id))
             )
             player = result.scalar_one_or_none()
             # If the guest played, they should still exist
@@ -328,7 +327,7 @@ class TestGuestCleanup:
 
     async def test_cleanup_does_not_delete_recent_guests(self, test_app, db_session):
         """Test that recent inactive guests are not deleted."""
-        from backend.services.cleanup_service import CleanupService
+        from backend.services import CleanupService
 
         async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test/qf") as client:
             # Create a guest account
@@ -345,7 +344,7 @@ class TestGuestCleanup:
             from uuid import UUID
             from sqlalchemy import select
             result = await db_session.execute(
-                select(Player).where(Player.player_id == UUID(guest_id))
+                select(QFPlayer).where(QFPlayer.player_id == UUID(guest_id))
             )
             player = result.scalar_one_or_none()
             assert player is not None
@@ -356,7 +355,7 @@ class TestUsernameRecycling:
 
     async def test_recycle_inactive_guest_usernames(self, test_app, db_session):
         """Test that inactive guest usernames are recycled after 30+ days."""
-        from backend.services.cleanup_service import CleanupService
+        from backend.services import CleanupService
         from datetime import timedelta, UTC, datetime
         from uuid import UUID
         from sqlalchemy import select, update
@@ -370,7 +369,7 @@ class TestUsernameRecycling:
 
             # Get original username and canonical_username
             result = await db_session.execute(
-                select(Player).where(Player.player_id == UUID(guest_id))
+                select(QFPlayer).where(QFPlayer.player_id == UUID(guest_id))
             )
             player = result.scalar_one()
             original_username = player.username
@@ -379,8 +378,8 @@ class TestUsernameRecycling:
             # Artificially age the last login date (31 days ago)
             old_login_date = datetime.now(UTC) - timedelta(days=31)
             await db_session.execute(
-                update(Player)
-                .where(Player.player_id == UUID(guest_id))
+                update(QFPlayer)
+                .where(QFPlayer.player_id == UUID(guest_id))
                 .values(last_login_date=old_login_date)
             )
             await db_session.commit()
@@ -395,7 +394,7 @@ class TestUsernameRecycling:
 
             # Verify username was modified
             result = await db_session.execute(
-                select(Player).where(Player.player_id == UUID(guest_id))
+                select(QFPlayer).where(QFPlayer.player_id == UUID(guest_id))
             )
             player = result.scalar_one()
             assert player.username == original_username + " X"
@@ -403,7 +402,7 @@ class TestUsernameRecycling:
 
     async def test_recycle_handles_canonical_conflicts(self, test_app, db_session):
         """Test recycling retries when canonical username conflicts exist."""
-        from backend.services.cleanup_service import CleanupService
+        from backend.services import CleanupService
         from datetime import timedelta, UTC, datetime
         from uuid import UUID
         from sqlalchemy import select, update
@@ -417,16 +416,16 @@ class TestUsernameRecycling:
 
             # Normalize the guest username to a predictable value
             await db_session.execute(
-                update(Player)
-                .where(Player.player_id == UUID(guest_id))
+                update(QFPlayer)
+                .where(QFPlayer.player_id == UUID(guest_id))
                 .values(username="Foo", username_canonical="foo")
             )
 
             # Age the guest login so it qualifies for recycling
             old_login_date = datetime.now(UTC) - timedelta(days=31)
             await db_session.execute(
-                update(Player)
-                .where(Player.player_id == UUID(guest_id))
+                update(QFPlayer)
+                .where(QFPlayer.player_id == UUID(guest_id))
                 .values(last_login_date=old_login_date)
             )
 
@@ -445,8 +444,8 @@ class TestUsernameRecycling:
             conflict_player_id = conflict_player["player_id"]
 
             await db_session.execute(
-                update(Player)
-                .where(Player.player_id == UUID(conflict_player_id))
+                update(QFPlayer)
+                .where(QFPlayer.player_id == UUID(conflict_player_id))
                 .values(username="Foox", username_canonical="foox")
             )
 
@@ -459,7 +458,7 @@ class TestUsernameRecycling:
             assert recycled_count == 1
 
             result = await db_session.execute(
-                select(Player).where(Player.player_id == UUID(guest_id))
+                select(QFPlayer).where(QFPlayer.player_id == UUID(guest_id))
             )
             player = result.scalar_one()
             assert player.username == "Foo X2"
@@ -467,7 +466,7 @@ class TestUsernameRecycling:
 
     async def test_username_recycling_does_not_affect_recent_logins(self, test_app, db_session):
         """Test that guests who logged in recently are not recycled."""
-        from backend.services.cleanup_service import CleanupService
+        from backend.services import CleanupService
         from datetime import timedelta, UTC, datetime
         from uuid import UUID
         from sqlalchemy import select, update
@@ -481,7 +480,7 @@ class TestUsernameRecycling:
 
             # Get original username
             result = await db_session.execute(
-                select(Player).where(Player.player_id == UUID(guest_id))
+                select(QFPlayer).where(QFPlayer.player_id == UUID(guest_id))
             )
             player = result.scalar_one()
             original_username = player.username
@@ -489,8 +488,8 @@ class TestUsernameRecycling:
             # Set last login to 25 days ago (less than 30)
             recent_login_date = datetime.now(UTC) - timedelta(days=25)
             await db_session.execute(
-                update(Player)
-                .where(Player.player_id == UUID(guest_id))
+                update(QFPlayer)
+                .where(QFPlayer.player_id == UUID(guest_id))
                 .values(last_login_date=recent_login_date)
             )
             await db_session.commit()
@@ -505,14 +504,14 @@ class TestUsernameRecycling:
 
             # Verify username unchanged
             result = await db_session.execute(
-                select(Player).where(Player.player_id == UUID(guest_id))
+                select(QFPlayer).where(QFPlayer.player_id == UUID(guest_id))
             )
             player = result.scalar_one()
             assert player.username == original_username
 
     async def test_username_recycling_does_not_affect_upgraded_accounts(self, test_app, db_session):
         """Test that upgraded accounts (is_guest=False) are not recycled."""
-        from backend.services.cleanup_service import CleanupService
+        from backend.services import CleanupService
         from datetime import timedelta, UTC, datetime
         from uuid import UUID
         from sqlalchemy import select, update
@@ -537,7 +536,7 @@ class TestUsernameRecycling:
 
             # Get upgraded username
             result = await db_session.execute(
-                select(Player).where(Player.player_id == UUID(guest_id))
+                select(QFPlayer).where(QFPlayer.player_id == UUID(guest_id))
             )
             player = result.scalar_one()
             original_username = player.username
@@ -546,8 +545,8 @@ class TestUsernameRecycling:
             # Artificially age the last login date (31 days ago)
             old_login_date = datetime.now(UTC) - timedelta(days=31)
             await db_session.execute(
-                update(Player)
-                .where(Player.player_id == UUID(guest_id))
+                update(QFPlayer)
+                .where(QFPlayer.player_id == UUID(guest_id))
                 .values(last_login_date=old_login_date)
             )
             await db_session.commit()
@@ -559,14 +558,14 @@ class TestUsernameRecycling:
             # Verify no recycling occurred (upgraded accounts should not be recycled)
             # Note: recycled_count might be > 0 if there are other guests, but our player should be unchanged
             result = await db_session.execute(
-                select(Player).where(Player.player_id == UUID(guest_id))
+                select(QFPlayer).where(QFPlayer.player_id == UUID(guest_id))
             )
             player = result.scalar_one()
             assert player.username == original_username  # Should not have " X" appended
 
     async def test_username_recycling_is_idempotent(self, test_app, db_session):
         """Test that running username recycling multiple times doesn't double-append."""
-        from backend.services.cleanup_service import CleanupService
+        from backend.services import CleanupService
         from datetime import timedelta, UTC, datetime
         from uuid import UUID
         from sqlalchemy import select, update
@@ -581,8 +580,8 @@ class TestUsernameRecycling:
             # Artificially age the last login date (31 days ago)
             old_login_date = datetime.now(UTC) - timedelta(days=31)
             await db_session.execute(
-                update(Player)
-                .where(Player.player_id == UUID(guest_id))
+                update(QFPlayer)
+                .where(QFPlayer.player_id == UUID(guest_id))
                 .values(last_login_date=old_login_date)
             )
             await db_session.commit()
@@ -594,7 +593,7 @@ class TestUsernameRecycling:
 
             # Get username after first recycling
             result = await db_session.execute(
-                select(Player).where(Player.player_id == UUID(guest_id))
+                select(QFPlayer).where(QFPlayer.player_id == UUID(guest_id))
             )
             player = result.scalar_one()
             username_after_first = player.username
@@ -606,7 +605,7 @@ class TestUsernameRecycling:
 
             # Verify username unchanged (not double-appended)
             result = await db_session.execute(
-                select(Player).where(Player.player_id == UUID(guest_id))
+                select(QFPlayer).where(QFPlayer.player_id == UUID(guest_id))
             )
             player = result.scalar_one()
             assert player.username == username_after_first  # Should not be "username X X"

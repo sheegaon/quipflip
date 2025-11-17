@@ -7,7 +7,7 @@ from typing import Optional
 import logging
 import os
 
-SQLITE_LOCAL_URL = "sqlite+aiosqlite:///./quipflip.db"
+SQLITE_LOCAL_URL = "sqlite+aiosqlite:///./crowdcraft.db"
 
 
 class Settings(BaseSettings):

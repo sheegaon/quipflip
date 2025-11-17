@@ -6,23 +6,23 @@ import logging
 
 from backend.database import get_db
 from backend.dependencies import get_current_player
-from backend.models.player import Player
-from backend.models.quest import Quest
+from backend.models.qf.player import QFPlayer
+from backend.models.qf.quest import QFQuest
 from backend.schemas.quest import (
     QuestResponse,
     QuestListResponse,
     ClaimQuestRewardResponse,
 )
-from backend.services.quest_service import QuestService, QUEST_CONFIGS
-from backend.services.transaction_service import TransactionService
-from backend.models.quest import QuestType
+from backend.services import TransactionService
+from backend.services.qf import QuestService, QUEST_CONFIGS
+from backend.models.qf.quest import QuestType
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 
-def _map_quest_to_response(quest: Quest) -> QuestResponse:
+def _map_quest_to_response(quest: QFQuest) -> QuestResponse:
     """Map a Quest model to QuestResponse schema."""
     # Convert string quest_type from database to QuestType enum for lookup
     try:
@@ -93,7 +93,7 @@ def _map_quest_to_response(quest: Quest) -> QuestResponse:
 
 @router.get("", response_model=QuestListResponse)
 async def get_player_quests(
-    player: Player = Depends(get_current_player),
+    player: QFPlayer = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Get all quests for the current player."""
@@ -121,7 +121,7 @@ async def get_player_quests(
 
 @router.get("/active", response_model=list[QuestResponse])
 async def get_active_quests(
-    player: Player = Depends(get_current_player),
+    player: QFPlayer = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Get only active quests for the current player."""
@@ -134,7 +134,7 @@ async def get_active_quests(
 
 @router.get("/claimable", response_model=list[QuestResponse])
 async def get_claimable_quests(
-    player: Player = Depends(get_current_player),
+    player: QFPlayer = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Get completed but unclaimed quests for the current player."""
@@ -148,7 +148,7 @@ async def get_claimable_quests(
 @router.get("/{quest_id}", response_model=QuestResponse)
 async def get_quest(
     quest_id: UUID,
-    player: Player = Depends(get_current_player),
+    player: QFPlayer = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Get a single quest by ID."""
@@ -168,7 +168,7 @@ async def get_quest(
 @router.post("/{quest_id}/claim", response_model=ClaimQuestRewardResponse)
 async def claim_quest_reward(
     quest_id: UUID,
-    player: Player = Depends(get_current_player),
+    player: QFPlayer = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Claim a completed quest reward."""

@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.data.username_pool import USERNAME_POOL
 from backend.data.profanity_list import contains_profanity
-from backend.models.player import Player
+from backend.models.player_base import PlayerBase
 
 
 def canonicalize_username(username: str) -> str:
@@ -46,7 +46,7 @@ class UsernameService:
         self.db = db
 
     async def _existing_canonicals(self) -> set[str]:
-        result = await self.db.execute(select(Player.username_canonical))
+        result = await self.db.execute(select(PlayerBase.username_canonical))
         return {row[0] for row in result if row[0]}
 
     async def generate_unique_username(self) -> Tuple[str, str]:
@@ -91,7 +91,7 @@ class UsernameService:
 
         raise RuntimeError("Unable to generate a unique username.")
 
-    async def find_player_by_username(self, username: str) -> Player | None:
+    async def find_player_by_username(self, username: str) -> PlayerBase | None:
         """Return the player matching the supplied username (case-insensitive)."""
         if not username:
             return None
@@ -99,6 +99,6 @@ class UsernameService:
         if not canonical:
             return None
         result = await self.db.execute(
-            select(Player).where(Player.username_canonical == canonical)
+            select(PlayerBase).where(PlayerBase.username_canonical == canonical)
         )
         return result.scalar_one_or_none()

@@ -10,17 +10,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from backend.config import get_settings
-from backend.models.phraseset import Phraseset
-from backend.models.player import Player
-from backend.models.round import Round
-from backend.models.vote import Vote
-from backend.services.ai.ai_service import AIService
-from backend.services.player_service import PlayerService
-from backend.services.queue_service import QueueService
-from backend.services.round_service import RoundService
-from backend.services.transaction_service import TransactionService
-from backend.services.username_service import UsernameService
-from backend.services.vote_service import VoteService
+from backend.models.qf.phraseset import Phraseset
+from backend.models.qf.player import QFPlayer
+from backend.models.qf.round import Round
+from backend.models.qf.vote import Vote
+from backend.services import AIService
+from backend.services import PlayerService
+from backend.services import QueueService
+from backend.services import RoundService
+from backend.services import TransactionService
+from backend.services import UsernameService
+from backend.services import VoteService
 
 
 logger = logging.getLogger(__name__)
@@ -38,7 +38,7 @@ class StaleAIService:
         self.settings = get_settings()
         self.ai_service = AIService(db)
 
-    async def _get_or_create_stale_player(self, email: str) -> Player:
+    async def _get_or_create_stale_player(self, email: str) -> QFPlayer:
         """
         Get or create a stale AI player with the given email.
 
@@ -53,7 +53,7 @@ class StaleAIService:
         """
         # Check if player exists
         result = await self.db.execute(
-            select(Player).where(Player.email == email)
+            select(QFPlayer).where(QFPlayer.email == email)
         )
         player = result.scalar_one_or_none()
 

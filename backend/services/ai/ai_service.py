@@ -16,24 +16,17 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from backend.config import get_settings
-from backend.models.player import Player
-from backend.models.round import Round
-from backend.models.hint import Hint
-from backend.models.phraseset import Phraseset
-from backend.models.phraseset_activity import PhrasesetActivity
-from backend.models.vote import Vote
-from backend.models.ai_phrase_cache import AIPhraseCache
+from backend.models.player_base import PlayerBase
+from backend.models.qf.round import Round
+from backend.models.qf.phraseset import Phraseset
+from backend.models.qf.phraseset_activity import PhrasesetActivity
+from backend.models.qf.vote import Vote
+from backend.models.qf.ai_phrase_cache import AIPhraseCache
 from backend.services.ai.metrics_service import AIMetricsService, MetricsTracker
-from backend.services.player_service import PlayerService
-from backend.services.username_service import (
-    UsernameService,
-    canonicalize_username,
-    normalize_username,
-)
+from backend.services.qf import PlayerService, QueueService
+from backend.services import UsernameService
 from .prompt_builder import build_copy_prompt
-from backend.services.queue_service import QueueService
-from backend.models.ir.ir_player import IRPlayer
-from backend.services.ir.player_service import IRPlayerService
+from backend.services import PlayerServiceBase
 from backend.utils.passwords import hash_password
 
 
@@ -76,10 +69,10 @@ class AIService:
         self.db = db
         self.settings = get_settings()
         if self.settings.use_phrase_validator_api:
-            from backend.services.phrase_validation_client import get_phrase_validation_client
+            from backend.services import get_phrase_validation_client
             self.phrase_validator = get_phrase_validation_client()
         else:
-            from backend.services.phrase_validator import get_phrase_validator
+            from backend.services import get_phrase_validator
             self.phrase_validator = get_phrase_validator()
         self.common_words = None
         self.metrics_service = AIMetricsService(db)
@@ -134,7 +127,7 @@ class AIService:
         logger.error("No AI provider API keys found (OPENAI_API_KEY or GEMINI_API_KEY)")
         raise AIServiceError("No AI provider configured - set OPENAI_API_KEY or GEMINI_API_KEY")
 
-    async def _get_or_create_ai_player(self, email: str | None = None) -> Player:
+    async def _get_or_create_ai_player(self, email: str | None = None) -> PlayerBase:
         """
         Get or create the AI player account.
 
@@ -155,7 +148,7 @@ class AIService:
 
             # Check if AI player exists
             result = await self.db.execute(
-                select(Player).where(Player.email == target_email)
+                select(PlayerBase).where(PlayerBase.email == target_email)
             )
             ai_player = result.scalar_one_or_none()
 
@@ -195,27 +188,27 @@ class AIService:
             logger.error(f"Failed to get/create AI player: {e}")
             raise AIServiceError(f"AI player initialization failed: {e}")
 
-    async def _get_or_create_ir_ai_player(self, email: str | None = None) -> IRPlayer:
+    async def _get_or_create_ir_ai_player(self, email: str | None = None) -> PlayerBase:
         """Ensure an IR-specific AI player exists for backup actions."""
 
         target_email = email.strip().lower() if email else IR_AI_PLAYER_EMAIL
 
         try:
             result = await self.db.execute(
-                select(IRPlayer).where(IRPlayer.email == target_email)
+                select(PlayerBase).where(PlayerBase.email == target_email)
             )
             ir_ai_player = result.scalar_one_or_none()
 
             if not ir_ai_player:
-                ir_player_service = IRPlayerService(self.db)
+                player_service = PlayerServiceBase(self.db)
                 username = "IR AI Backup"
                 suffix = 1
                 base_username = username
-                while await ir_player_service.get_player_by_username(username):
+                while await player_service.get_player_by_username(username):
                     suffix += 1
                     username = f"{base_username} {suffix}"
 
-                ir_ai_player = await ir_player_service.create_player(
+                ir_ai_player = await player_service.create_player(
                     username=username,
                     email=target_email,
                     password_hash=hash_password("not-used-for-ai-player"),
@@ -327,9 +320,9 @@ class AIService:
             try:
                 # Generate using configured provider
                 if self.provider == "openai":
-                    from backend.services.ai.openai_api import generate_copy
+                    from backend.services import generate_copy
                 else:  # gemini
-                    from backend.services.ai.gemini_api import generate_copy
+                    from backend.services import generate_copy
 
                 test_phrases = await generate_copy(
                     prompt=ai_prompt, model=self.ai_model, timeout=self.settings.ai_timeout_seconds)
@@ -581,7 +574,7 @@ class AIService:
         Returns:
             True if AI has attempted this prompt recently, False otherwise
         """
-        from backend.models.ai_metric import AIMetric
+        from backend.models.qf.ai_metric import QFAIMetric
         
         # Look back specified hours for attempts
         since = datetime.now(UTC) - timedelta(hours=lookback_hours)
@@ -589,10 +582,10 @@ class AIService:
         # Check if there are any copy generation attempts for this prompt
         # We use the prompt round ID in error messages, so we can search for it
         result = await self.db.execute(
-            select(AIMetric.metric_id)
-            .where(AIMetric.operation_type == "copy_generation")
-            .where(AIMetric.created_at >= since)
-            .where(AIMetric.error_message.contains(str(prompt_round_id)))
+            select(QFAIMetric.metric_id)
+            .where(QFAIMetric.operation_type == "copy_generation")
+            .where(QFAIMetric.created_at >= since)
+            .where(QFAIMetric.error_message.contains(str(prompt_round_id)))
             .limit(1)
         )
         
@@ -641,7 +634,7 @@ class AIService:
             # Get all prompt rounds that meet our basic criteria
             result = await self.db.execute(
                 select(Round)
-                .join(Player, Player.player_id == Round.player_id)
+                .join(PlayerBase, PlayerBase.player_id == Round.player_id)
                 .outerjoin(PhrasesetActivity, PhrasesetActivity.prompt_round_id == Round.round_id)
                 .where(Round.round_type == 'prompt')
                 .where(Round.status == 'submitted')
@@ -706,7 +699,7 @@ class AIService:
                     copy_phrase = await self.generate_copy_phrase(prompt_round.submitted_phrase, prompt_round)
 
                     # Create copy round for AI player
-                    from backend.services.round_service import RoundService
+                    from backend.services import RoundService
                     round_service = RoundService(self.db)
 
                     # Start copy round for AI player
@@ -766,8 +759,8 @@ class AIService:
             # Get all phrasesets that meet our basic criteria
             human_vote_phrasesets_subquery = (
                 select(Vote.phraseset_id)
-                .join(Player, Player.player_id == Vote.player_id)
-                .where(~Player.email.like(f"%{AI_PLAYER_EMAIL_DOMAIN}"))
+                .join(PlayerBase, PlayerBase.player_id == Vote.player_id)
+                .where(~PlayerBase.email.like(f"%{AI_PLAYER_EMAIL_DOMAIN}"))
                 .distinct()
             )
 
@@ -816,8 +809,8 @@ class AIService:
                 f"Found {len(filtered_phrasesets)} phrasesets waiting for AI backup votes: {filtered_phrasesets}")
             
             # Initialize services once for all votes (performance improvement)
-            from backend.services.vote_service import VoteService
-            from backend.services.transaction_service import TransactionService
+            from backend.services import VoteService
+            from backend.services import TransactionService
             vote_service = VoteService(self.db)
             transaction_service = TransactionService(self.db)
 
@@ -881,10 +874,10 @@ class AIService:
 
             # Generate using configured provider
             if self.provider == "openai":
-                from backend.services.ai.openai_api import call_openai
+                from backend.services import call_openai
                 response_text = await call_openai(prompt, self.ai_model)
             else:
-                from backend.services.ai.gemini_api import call_gemini
+                from backend.services import call_gemini
                 response_text = await call_gemini(prompt, self.ai_model)
 
             # Parse response - should be words separated by spaces
@@ -944,10 +937,10 @@ class AIService:
 
             # Generate using configured provider
             if self.provider == "openai":
-                from backend.services.ai.openai_api import call_openai
+                from backend.services import call_openai
                 response_text = await call_openai(prompt, self.ai_model)
             else:
-                from backend.services.ai.gemini_api import call_gemini
+                from backend.services import call_gemini
                 response_text = await call_gemini(prompt, self.ai_model)
 
             # Parse response - should be a number 1-5
@@ -984,10 +977,7 @@ class AIService:
 
         Fills stalled backronym sets with AI entries and votes.
         """
-        from backend.services.ir.ir_backronym_set_service import (
-            IRBackronymSetService,
-            IRBackronymSetError,
-        )
+        from backend.services.ir.backronym_set_service import BackronymSetService
 
         stats = {
             "sets_checked": 0,
@@ -1002,8 +992,8 @@ class AIService:
                 email="ai_backronym_001@initialreaction.internal"
             )
 
-            set_service = IRBackronymSetService(self.db)
-            player_service = IRPlayerService(self.db)
+            set_service = BackronymSetService(self.db)
+            player_service = PlayerServiceBase(self.db)
 
             # Get stalled open sets
             stalled_open = await set_service.get_stalled_open_sets(
@@ -1049,10 +1039,10 @@ class AIService:
                 try:
                     # Get entries for this set
                     from sqlalchemy import select
-                    from backend.models.ir.ir_backronym_entry import IRBackronymEntry
+                    from backend.models.ir.backronym_entry import BackronymEntry
 
-                    entries_stmt = select(IRBackronymEntry).where(
-                        IRBackronymEntry.set_id == str(set_obj.set_id)
+                    entries_stmt = select(BackronymEntry).where(
+                        BackronymEntry.set_id == str(set_obj.set_id)
                     )
                     entries_result = await self.db.execute(entries_stmt)
                     entries = entries_result.scalars().all()

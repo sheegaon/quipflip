@@ -105,7 +105,7 @@ When `Settings.use_phrase_validator_api` is `True`, the service uses the remote 
 
 ```python
 from sqlalchemy.ext.asyncio import AsyncSession
-from backend.services.ai.ai_service import AIService
+from backend.services import AIService
 
 ai_service = AIService(db_session)  # db_session: AsyncSession
 ```
@@ -117,7 +117,7 @@ ai_service = AIService(db_session)  # db_session: AsyncSession
 ```python
 copy = await ai_service.generate_copy_phrase(
     original_phrase="HAPPY BIRTHDAY",
-    prompt_round=prompt_round,  # backend.models.round.Round instance
+    prompt_round=prompt_round,  # backend.models.qf.round.Round instance
 )
 ```
 
@@ -131,7 +131,7 @@ copy = await ai_service.generate_copy_phrase(
 choice = await ai_service.generate_vote_choice(phraseset)  # returns the chosen phrase string
 ```
 
-* Accepts a fully populated `backend.models.phraseset.Phraseset` (prompt text and phrase fields are used).
+* Accepts a fully populated `backend.models.qf.phraseset.Phraseset` (prompt text and phrase fields are used).
 * Returns the phrase text selected by the AI.
 * Raises `AIVoteError` if the provider cannot return a valid choice.
 
@@ -148,7 +148,7 @@ await ai_service.run_backup_cycle()
 ### Metrics helpers
 
 ```python
-from backend.services.ai.metrics_service import AIMetricsService, MetricsTracker
+from backend.services import AIMetricsService, MetricsTracker
 
 metrics = AIMetricsService(db_session)
 stats = await metrics.get_stats()

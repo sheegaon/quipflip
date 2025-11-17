@@ -1,10 +1,10 @@
 """Tests for IR transaction and daily bonus services."""
 import pytest
 import uuid
-from datetime import datetime, timedelta
-from backend.services.ir.player_service import IRPlayerService
-from backend.services.ir.transaction_service import IRTransactionService
-from backend.services.ir.ir_daily_bonus_service import IRDailyBonusError, IRDailyBonusService
+from datetime import timedelta
+from backend.services import IRPlayerService
+from backend.services import IRTransactionService
+from backend.services import IRDailyBonusError, IRDailyBonusService
 from backend.utils.passwords import hash_password
 
 

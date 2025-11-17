@@ -3,9 +3,9 @@ import pytest
 from datetime import datetime, UTC, timedelta
 from uuid import uuid4
 
-from backend.models.player import Player
-from backend.models.round import Round
-from backend.services.phraseset_activity_service import ActivityService
+from backend.models.qf.player import QFPlayer
+from backend.models.qf.round import Round
+from backend.services import ActivityService
 
 
 @pytest.mark.asyncio

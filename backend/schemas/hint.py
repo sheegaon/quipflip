@@ -8,4 +8,3 @@ class HintResponse(BaseSchema):
     """Response payload containing AI-generated hints for a copy round."""
 
     hints: list[str] = Field(..., min_length=1, max_length=3, description="AI-generated hint phrases")
-

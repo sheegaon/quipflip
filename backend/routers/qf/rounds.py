@@ -4,8 +4,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from backend.database import get_db
 from backend.dependencies import get_current_player
-from backend.models.player import Player
-from backend.models.round import Round
+from backend.models.qf.player import QFPlayer
+from backend.models.qf.round import Round
 from backend.schemas.round import (
     StartPromptRoundResponse,
     StartCopyRoundResponse,
@@ -18,11 +18,8 @@ from backend.schemas.round import (
     AbandonRoundResponse,
 )
 from backend.schemas.hint import HintResponse
-from backend.services.player_service import PlayerService
-from backend.services.transaction_service import TransactionService
-from backend.services.round_service import RoundService
-from backend.services.vote_service import VoteService
-from backend.services.queue_service import QueueService
+from backend.services import TransactionService
+from backend.services.qf import PlayerService, RoundService, VoteService, QueueService
 from backend.services.ai.ai_service import AICopyError
 from backend.config import get_settings
 from backend.utils.exceptions import (
@@ -55,7 +52,7 @@ def ensure_utc(dt: datetime) -> datetime:
 
 async def _player_can_view_prompt_round(
     db: AsyncSession,
-    player: Player,
+    player: QFPlayer,
     prompt_round: Round,
 ) -> bool:
     """Check if a player has a submitted copy for the given prompt round."""
@@ -77,7 +74,7 @@ async def _player_can_view_prompt_round(
 
 @router.post("/prompt", response_model=StartPromptRoundResponse)
 async def start_prompt_round(
-    player: Player = Depends(get_current_player),
+    player: QFPlayer = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Start a prompt round."""
@@ -113,7 +110,7 @@ async def start_prompt_round(
 @router.post("/copy", response_model=StartCopyRoundResponse)
 async def start_copy_round(
     prompt_round_id: UUID | None = None,
-    player: Player = Depends(get_current_player),
+    player: QFPlayer = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Start a copy round. If prompt_round_id is provided, start a second copy for that prompt."""
@@ -166,7 +163,7 @@ async def start_copy_round(
 
 @router.post("/vote", response_model=StartVoteRoundResponse)
 async def start_vote_round(
-    player: Player = Depends(get_current_player),
+    player: QFPlayer = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Start a vote round."""
@@ -205,7 +202,7 @@ async def start_vote_round(
 async def submit_phrase(
     round_id: UUID = Path(...),
     request: SubmitPhraseRequest = ...,
-    player: Player = Depends(get_current_player),
+    player: QFPlayer = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Submit phrase for prompt or copy round."""
@@ -252,7 +249,7 @@ async def submit_phrase(
 @router.post("/{round_id}/flag", response_model=FlagCopyRoundResponse)
 async def flag_copy_round(
     round_id: UUID = Path(...),
-    player: Player = Depends(get_current_player),
+    player: QFPlayer = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Flag an active copy round and trigger administrative review."""
@@ -285,7 +282,7 @@ async def flag_copy_round(
 @router.post("/{round_id}/abandon", response_model=AbandonRoundResponse)
 async def abandon_round(
     round_id: UUID = Path(...),
-    player: Player = Depends(get_current_player),
+    player: QFPlayer = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Abandon an active prompt, copy, or vote round."""
@@ -318,7 +315,7 @@ async def abandon_round(
 
 @router.get("/available", response_model=RoundAvailability)
 async def get_rounds_available(
-    player: Player = Depends(get_current_player),
+    player: QFPlayer = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Get which round types are currently available."""
@@ -369,7 +366,7 @@ async def get_rounds_available(
 @router.get("/{round_id}/hints", response_model=HintResponse)
 async def get_copy_round_hints(
     round_id: UUID = Path(...),
-    player: Player = Depends(get_current_player),
+    player: QFPlayer = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Return AI-generated hints for an active copy round.
@@ -427,7 +424,7 @@ async def get_copy_round_hints(
 @router.get("/{round_id}", response_model=RoundDetails)
 async def get_round_details(
     round_id: UUID = Path(...),
-    player: Player = Depends(get_current_player),
+    player: QFPlayer = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Get round details."""

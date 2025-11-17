@@ -10,14 +10,13 @@ review events and lifecycle information.
 import logging
 from datetime import datetime, UTC
 from uuid import UUID
-from fastapi import Request, BackgroundTasks
+from fastapi import Request
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 from jwt import InvalidTokenError, ExpiredSignatureError, DecodeError
 
 from backend.database import AsyncSessionLocal
-from backend.models.user_activity import UserActivity
-from backend.services.auth_service import AuthService
+from backend.models.user_activity_base import UserActivityBase
+from backend.services import AuthService
 from backend.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -102,7 +101,7 @@ async def update_user_activity_task(
         async with AsyncSessionLocal() as db:
             # Update or create activity record
             result = await db.execute(
-                select(UserActivity).where(UserActivity.player_id == player_id)
+                select(UserActivityBase).where(UserActivityBase.player_id == player_id)
             )
             activity = result.scalar_one_or_none()
             
@@ -117,7 +116,7 @@ async def update_user_activity_task(
                 activity.last_activity = current_time
             else:
                 # Create new activity record
-                activity = UserActivity(
+                activity = UserActivityBase(
                     player_id=player_id,
                     username=username,
                     last_action=action_name,

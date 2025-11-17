@@ -1,7 +1,7 @@
 """FastAPI application entry point."""
 import asyncio
 import time
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -13,7 +13,7 @@ from contextlib import asynccontextmanager
 
 from backend.config import get_settings
 from backend.version import APP_VERSION
-from backend.services.prompt_seeder import sync_prompts_with_database
+from backend.services.qf.prompt_seeder import sync_prompts_with_database
 from backend.routers import qf, ir
 from backend.middleware.deduplication import deduplication_middleware
 from backend.middleware.online_user_tracking import online_user_tracking_middleware
@@ -123,7 +123,7 @@ async def initialize_phrase_validation():
     try:
         if settings.use_phrase_validator_api:
             # Use remote phrase validation service
-            from backend.services.phrase_validation_client import get_phrase_validation_client
+            from backend.services.qf.phrase_validation_client import get_phrase_validation_client
             client = get_phrase_validation_client()
 
             # Perform health check
@@ -135,7 +135,7 @@ async def initialize_phrase_validation():
                 logger.error("Phrase validation will fail until the API service is available")
         else:
             # Use local phrase validator
-            from backend.services.phrase_validator import get_phrase_validator
+            from backend.services import get_phrase_validator
             validator = get_phrase_validator()
             logger.info(f"Local phrase validator initialized with {len(validator.dictionary)} words")
     except Exception as e:
@@ -150,7 +150,7 @@ async def initialize_phrase_validation():
 
 async def initialize_missing_player_quests():
     """Ensure all players have their starter quests."""
-    from backend.scripts.initialize_quests import initialize_quests_for_all_players
+    from backend.scripts.qf.initialize_quests import initialize_quests_for_all_players
 
     try:
         logger.info(
@@ -175,12 +175,12 @@ async def ai_backup_cycle():
     # Verify phrase validator is ready before starting
     try:
         if settings.use_phrase_validator_api:
-            from backend.services.phrase_validation_client import get_phrase_validation_client
+            from backend.services import get_phrase_validation_client
             client = get_phrase_validation_client()
             if not await client.health_check():
                 logger.warning("Phrase validator API not healthy yet, AI backup may experience issues")
         else:
-            from backend.services.phrase_validator import get_phrase_validator
+            from backend.services import get_phrase_validator
             validator = get_phrase_validator()
             if not validator.dictionary:
                 logger.warning("Local phrase validator dictionary not loaded, AI backup may experience issues")
@@ -218,12 +218,12 @@ async def ai_stale_handler_cycle():
 
     try:
         if settings.use_phrase_validator_api:
-            from backend.services.phrase_validation_client import get_phrase_validation_client
+            from backend.services import get_phrase_validation_client
             client = get_phrase_validation_client()
             if not await client.health_check():
                 logger.warning("Phrase validator API not healthy yet, stale AI may experience issues")
         else:
-            from backend.services.phrase_validator import get_phrase_validator
+            from backend.services import get_phrase_validator
             validator = get_phrase_validator()
             if not validator.dictionary:
                 logger.warning("Local phrase validator dictionary not loaded, stale AI may experience issues")
@@ -261,7 +261,7 @@ async def cleanup_cycle():
     - Old revoked tokens
     """
     from backend.database import AsyncSessionLocal
-    from backend.services.cleanup_service import CleanupService
+    from backend.services.qf.cleanup_service import CleanupService
 
     # Initial startup delay
     startup_delay = 120
@@ -412,7 +412,7 @@ async def lifespan(app_instance: FastAPI):
         # Cleanup phrase validation client session
         if settings.use_phrase_validator_api:
             try:
-                from backend.services.phrase_validation_client import get_phrase_validation_client
+                from backend.services import get_phrase_validation_client
                 client = get_phrase_validation_client()
                 await client.close()
                 logger.info("Phrase validation client session closed")

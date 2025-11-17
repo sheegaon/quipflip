@@ -5,7 +5,7 @@ from datetime import datetime, UTC, timedelta
 from uuid import uuid4
 from sqlalchemy import select
 
-from backend.services.cleanup_service import CleanupService
+from backend.services import CleanupService
 from backend.models import (
     Player,
     Round,

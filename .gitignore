@@ -2,6 +2,7 @@
 # PROJECT SPECIFIC
 # =============================================================================
 quipflip*.db
+crowdcraft*.db
 test.db
 
 # Backend logs

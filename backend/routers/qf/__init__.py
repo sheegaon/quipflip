@@ -3,9 +3,7 @@ from fastapi import APIRouter
 
 from backend.routers.qf import (
     admin,
-    auth,
     feedback,
-    health,
     notifications,
     online_users,
     phrasesets,
@@ -14,6 +12,7 @@ from backend.routers.qf import (
     quests,
     rounds,
 )
+from backend.routers import health, auth
 
 router = APIRouter(prefix="/qf", tags=["qf"])
 

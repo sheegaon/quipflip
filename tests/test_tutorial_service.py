@@ -1,8 +1,7 @@
 """Tests for the tutorial service."""
 import pytest
-from datetime import datetime, UTC
 
-from backend.services.tutorial_service import TutorialService
+from backend.services import TutorialService
 
 
 @pytest.mark.asyncio

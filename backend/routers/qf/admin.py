@@ -9,14 +9,14 @@ import logging
 from backend.config import get_settings
 from backend.database import get_db
 from backend.dependencies import get_admin_player
-from backend.models.player import Player
-from backend.services.phrase_validator import get_phrase_validator
-from backend.services.system_config_service import SystemConfigService
-from backend.services.player_service import PlayerService
-from backend.services.cleanup_service import CleanupService
-from backend.services.flagged_prompt_service import FlaggedPromptService
-from backend.services.transaction_service import TransactionService
-from backend.services.auth_service import AuthService
+from backend.models.qf.player import QFPlayer
+from backend.services import SystemConfigService, AuthService, TransactionService
+from backend.services.qf import (
+    get_phrase_validator,
+    PlayerService,
+    CleanupService,
+    FlaggedPromptService,
+)
 from backend.schemas.auth import EmailLike
 from backend.schemas.flagged_prompt import (
     FlaggedPromptListResponse,
@@ -152,7 +152,7 @@ class GameConfigResponse(BaseModel):
 
 @router.get("/config", response_model=GameConfigResponse)
 async def get_game_config(
-    player: Annotated[Player, Depends(get_admin_player)],
+    player: Annotated[QFPlayer, Depends(get_admin_player)],
     session: Annotated[AsyncSession, Depends(get_db)]
 ) -> GameConfigResponse:
     """
@@ -220,7 +220,7 @@ async def get_game_config(
 @router.post("/validate-password", response_model=ValidatePasswordResponse, deprecated=True)
 async def validate_admin_password(
     request: ValidatePasswordRequest,
-    player: Annotated[Player, Depends(get_admin_player)]
+    player: Annotated[QFPlayer, Depends(get_admin_player)]
 ) -> ValidatePasswordResponse:
     """
     [DEPRECATED] This endpoint is deprecated and will be removed.
@@ -241,7 +241,7 @@ async def validate_admin_password(
 
 @router.get("/players/search", response_model=AdminPlayerSummary)
 async def search_player(
-    player: Annotated[Player, Depends(get_admin_player)],
+    player: Annotated[QFPlayer, Depends(get_admin_player)],
     session: Annotated[AsyncSession, Depends(get_db)],
     email: Optional[EmailLike] = Query(None),
     username: Optional[str] = Query(None),
@@ -252,7 +252,7 @@ async def search_player(
         raise HTTPException(status_code=400, detail="missing_identifier")
 
     player_service = PlayerService(session)
-    target_player: Player | None = None
+    target_player: QFPlayer | None = None
 
     if email:
         target_player = await player_service.get_player_by_email(email)
@@ -277,7 +277,7 @@ async def search_player(
 @router.delete("/players", response_model=AdminDeletePlayerResponse)
 async def delete_player_admin(
     request: AdminDeletePlayerRequest,
-    player: Annotated[Player, Depends(get_admin_player)],
+    player: Annotated[QFPlayer, Depends(get_admin_player)],
     session: Annotated[AsyncSession, Depends(get_db)]
 ) -> AdminDeletePlayerResponse:
     """Delete a player account and associated data via admin panel."""
@@ -287,7 +287,7 @@ async def delete_player_admin(
         raise HTTPException(status_code=400, detail="missing_identifier")
 
     player_service = PlayerService(session)
-    target_player: Player | None = None
+    target_player: QFPlayer | None = None
 
     if request.player_id:
         target_player = await player_service.get_player_by_id(request.player_id)
@@ -312,7 +312,7 @@ async def delete_player_admin(
 
 @router.get("/flags", response_model=FlaggedPromptListResponse)
 async def list_flagged_prompts(
-    player: Annotated[Player, Depends(get_admin_player)],
+    player: Annotated[QFPlayer, Depends(get_admin_player)],
     session: Annotated[AsyncSession, Depends(get_db)],
     status: Optional[str] = Query("pending"),
 ) -> FlaggedPromptListResponse:
@@ -331,7 +331,7 @@ async def list_flagged_prompts(
 async def resolve_flagged_prompt(
     flag_id: UUID,
     request: ResolveFlaggedPromptRequest,
-    player: Annotated[Player, Depends(get_admin_player)],
+    player: Annotated[QFPlayer, Depends(get_admin_player)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> FlaggedPromptItem:
     """Resolve a flagged prompt by confirming or dismissing it."""
@@ -356,7 +356,7 @@ async def resolve_flagged_prompt(
 @router.post("/test-phrase-validation", response_model=TestPhraseValidationResponse)
 async def test_phrase_validation(
     request: TestPhraseValidationRequest,
-    player: Annotated[Player, Depends(get_admin_player)]
+    player: Annotated[QFPlayer, Depends(get_admin_player)]
 ) -> TestPhraseValidationResponse:
     """
     Test phrase validation for admin testing purposes.
@@ -490,7 +490,7 @@ class AdminResetPasswordResponse(BaseModel):
 @router.patch("/config", response_model=UpdateConfigResponse)
 async def update_config(
     request: UpdateConfigRequest,
-    player: Annotated[Player, Depends(get_admin_player)],
+    player: Annotated[QFPlayer, Depends(get_admin_player)],
     session: Annotated[AsyncSession, Depends(get_db)]
 ) -> UpdateConfigResponse:
     """
@@ -542,7 +542,7 @@ logger = logging.getLogger(__name__)
 @router.post("/players/reset-password", response_model=AdminResetPasswordResponse)
 async def reset_player_password(
     request: AdminResetPasswordRequest,
-    player: Annotated[Player, Depends(get_admin_player)],
+    player: Annotated[QFPlayer, Depends(get_admin_player)],
     session: Annotated[AsyncSession, Depends(get_db)]
 ) -> AdminResetPasswordResponse:
     """
@@ -569,7 +569,7 @@ async def reset_player_password(
 
     # Find target player
     player_service = PlayerService(session)
-    target_player: Player | None = None
+    target_player: QFPlayer | None = None
 
     if request.player_id:
         target_player = await player_service.get_player_by_id(request.player_id)

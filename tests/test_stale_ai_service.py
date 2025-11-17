@@ -5,13 +5,13 @@ from unittest.mock import patch, MagicMock, AsyncMock
 from datetime import datetime, UTC, timedelta
 import uuid
 
-from backend.services.ai.stale_ai_service import StaleAIService
-from backend.services.ai.ai_service import AIService
-from backend.services.phrase_validator import PhraseValidator
-from backend.models.player import Player
-from backend.models.round import Round
-from backend.models.phraseset import Phraseset
-from backend.models.vote import Vote
+from backend.services import StaleAIService
+from backend.services import AIService
+from backend.services import PhraseValidator
+from backend.models.qf.player import QFPlayer
+from backend.models.qf.round import Round
+from backend.models.qf.phraseset import Phraseset
+from backend.models.qf.vote import Vote
 from backend.config import get_settings
 
 
@@ -96,7 +96,7 @@ class TestFindStalePrompts:
         settings = get_settings()
 
         # Create a player for the prompt
-        from backend.services.player_service import PlayerService
+        from backend.services import PlayerService
         player_service = PlayerService(db_session)
         player = await player_service.create_player(
             username="test_user",
@@ -129,7 +129,7 @@ class TestFindStalePrompts:
     async def test_exclude_recent_prompts(self, db_session, stale_ai_service):
         """Should exclude prompts newer than the stale threshold."""
         # Create a player
-        from backend.services.player_service import PlayerService
+        from backend.services import PlayerService
         player_service = PlayerService(db_session)
         player = await player_service.create_player(
             username="test_user2",
@@ -161,7 +161,7 @@ class TestFindStalePrompts:
     @pytest.mark.asyncio
     async def test_exclude_prompts_with_phraseset(self, db_session, stale_ai_service):
         """Should exclude prompts that already have a phraseset."""
-        from backend.services.player_service import PlayerService
+        from backend.services import PlayerService
         player_service = PlayerService(db_session)
         player = await player_service.create_player(
             username="test_user3",
@@ -208,7 +208,7 @@ class TestFindStalePrompts:
     @pytest.mark.asyncio
     async def test_exclude_prompts_already_copied_by_stale_ai(self, db_session, stale_ai_service):
         """Should exclude prompts already copied by stale AI (no N+1 query)."""
-        from backend.services.player_service import PlayerService
+        from backend.services import PlayerService
         player_service = PlayerService(db_session)
         player = await player_service.create_player(
             username="test_user4",
@@ -397,7 +397,7 @@ class TestStaleAICycleIntegration:
     @pytest.mark.asyncio
     async def test_cycle_processes_stale_prompts(self, db_session, stale_ai_service):
         """Should process stale prompts and generate copies."""
-        from backend.services.player_service import PlayerService
+        from backend.services import PlayerService
         player_service = PlayerService(db_session)
         player = await player_service.create_player(
             username="cycle_test_user",
@@ -434,7 +434,7 @@ class TestStaleAICycleIntegration:
     @pytest.mark.asyncio
     async def test_cycle_handles_errors_gracefully(self, db_session, stale_ai_service):
         """Should handle errors without crashing the cycle."""
-        from backend.services.player_service import PlayerService
+        from backend.services import PlayerService
         player_service = PlayerService(db_session)
         player = await player_service.create_player(
             username="error_test_user",
@@ -475,7 +475,7 @@ class TestMetricsTracking:
     @pytest.mark.asyncio
     async def test_metrics_recorded_on_success(self, db_session, stale_ai_service):
         """Should record metrics when copy generation succeeds."""
-        from backend.services.player_service import PlayerService
+        from backend.services import PlayerService
         player_service = PlayerService(db_session)
         player = await player_service.create_player(
             username="metrics_test_user",
@@ -520,7 +520,7 @@ class TestMetricsTracking:
     @pytest.mark.asyncio
     async def test_metrics_recorded_on_failure(self, db_session, stale_ai_service):
         """Should record metrics when copy generation fails."""
-        from backend.services.player_service import PlayerService
+        from backend.services import PlayerService
         player_service = PlayerService(db_session)
         player = await player_service.create_player(
             username="fail_metrics_user",

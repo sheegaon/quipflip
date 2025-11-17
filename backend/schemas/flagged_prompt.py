@@ -8,7 +8,7 @@ from uuid import UUID
 from pydantic import BaseModel
 
 if TYPE_CHECKING:  # pragma: no cover - for typing only
-    from backend.services.flagged_prompt_service import FlaggedPromptRecord
+    from backend.services import FlaggedPromptRecord
 
 
 class FlaggedPromptItem(BaseModel):

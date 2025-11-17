@@ -103,7 +103,7 @@ async def test_app(test_engine):
 @pytest.fixture
 async def player_factory(db_session):
     """Factory for creating test players with default credentials."""
-    from backend.services.player_service import PlayerService
+    from backend.services import PlayerService
     from backend.utils.passwords import hash_password
     import uuid
 

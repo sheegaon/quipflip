@@ -4,8 +4,8 @@ import uuid
 
 import pytest
 
-from backend.models.player import Player
-from backend.models.quest import Quest, QuestType, QuestStatus
+from backend.models.qf.player import QFPlayer
+from backend.models.qf.quest import QFQuest, QuestType, QuestStatus
 
 
 @pytest.mark.asyncio
@@ -16,7 +16,7 @@ async def test_quest_progress_updates_are_persisted(db_session):
 
     canonical = f"player_{test_id}"
 
-    player = Player(
+    player = QFPlayer(
         player_id=uuid.uuid4(),
         username=canonical,
         username_canonical=canonical,
@@ -27,7 +27,7 @@ async def test_quest_progress_updates_are_persisted(db_session):
     db_session.add(player)
     await db_session.commit()
 
-    quest = Quest(
+    quest = QFQuest(
         player_id=player.player_id,
         quest_type=QuestType.MILESTONE_VOTES_100.value,
         status=QuestStatus.ACTIVE.value,
