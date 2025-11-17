@@ -95,6 +95,11 @@ const Settings: React.FC = () => {
     );
   }
 
+  const handleLogout = async () => {
+    await logout();
+    navigate('/', { replace: true });
+  };
+
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setPasswordError(null);
@@ -349,6 +354,20 @@ const Settings: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Session Controls - provide logout for registered users */}
+        {!player.is_guest && (
+          <div className="tile-card p-6 mb-6">
+            <h2 className="text-2xl font-display font-bold text-ir-navy mb-2">Session</h2>
+            <p className="text-ir-teal mb-4">Sign out of your account from settings.</p>
+            <button
+              onClick={handleLogout}
+              className="px-4 py-2 bg-ir-orange text-white rounded-tile hover:bg-ir-orange-deep transition-colors font-semibold"
+            >
+              Logout
+            </button>
+          </div>
+        )}
 
         {/* Upgrade Guest Account */}
         {player.is_guest && (
