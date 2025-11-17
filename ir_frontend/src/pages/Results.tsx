@@ -84,7 +84,7 @@ const Results: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-ir-navy to-ir-teal bg-pattern flex items-center justify-center p-4">
-      <div className="max-w-5xl w-full tile-card p-6 md:p-8 slide-up-enter">
+      <div className="max-w-5xl w-full tile-card p-6 md:p-8 slide-up-enter tutorial-results-card">
         {/* Header */}
         <div className="text-center mb-6">
           <h1 className="text-4xl font-display font-bold text-ir-navy mb-2">Results</h1>

@@ -251,7 +251,7 @@ const BackronymCreate: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-ir-navy to-ir-teal bg-pattern flex items-center justify-center p-4">
-      <div className="max-w-4xl w-full tile-card md:p-8 p-5 slide-up-enter">
+      <div className="max-w-4xl w-full tile-card md:p-8 p-5 slide-up-enter tutorial-backronym-form">
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-3">
             <div className="text-center sm:text-left">

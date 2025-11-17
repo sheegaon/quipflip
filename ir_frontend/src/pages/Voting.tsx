@@ -5,6 +5,7 @@ import { gameAPI } from '../api/client';
 import Timer from '../components/Timer';
 import InitCoinDisplay from '../components/InitCoinDisplay';
 import type { BackronymSet, BackronymEntry } from '../api/types';
+import { getErrorMessage } from '../utils/errorHelpers';
 
 // Fisher-Yates shuffle algorithm
 const shuffleArray = <T,>(array: T[]): T[] => {
@@ -76,12 +77,7 @@ const Voting: React.FC = () => {
 
       setLoading(false);
     } catch (err: unknown) {
-      const errorMessage = typeof err === 'object' && err !== null && 'response' in err
-        ? ((err.response as any)?.data?.detail)
-        : typeof err === 'object' && err !== null && 'message' in err
-        ? (err.message as string)
-        : 'Failed to fetch set details';
-      setError(errorMessage || 'Failed to fetch set details');
+      setError(getErrorMessage(err, 'Failed to fetch set details'));
       setLoading(false);
     }
   };
@@ -169,12 +165,7 @@ const Voting: React.FC = () => {
       setHasVotedInSession(true);
       setIsSubmitting(false);
     } catch (err: unknown) {
-      const errorMessage = typeof err === 'object' && err !== null && 'response' in err
-        ? ((err.response as any)?.data?.detail)
-        : typeof err === 'object' && err !== null && 'message' in err
-        ? (err.message as string)
-        : 'Failed to submit vote';
-      setError(errorMessage || 'Failed to submit vote');
+      setError(getErrorMessage(err, 'Failed to submit vote'));
       setIsSubmitting(false);
       setSelectedEntryId(null);
     }
@@ -185,7 +176,7 @@ const Voting: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-ir-navy to-ir-teal bg-pattern flex items-center justify-center p-4">
-      <div className="max-w-4xl w-full tile-card p-6 md:p-8 slide-up-enter">
+      <div className="max-w-4xl w-full tile-card p-6 md:p-8 slide-up-enter tutorial-voting-card">
         {/* Header */}
         <div className="text-center mb-6">
           <h1 className="text-3xl font-display font-bold text-ir-navy mb-2">Vote for the Best Backronym</h1>
