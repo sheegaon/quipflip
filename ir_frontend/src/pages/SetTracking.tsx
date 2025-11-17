@@ -221,7 +221,6 @@ const SetTracking: React.FC = () => {
               <span>Back to Dashboard</span>
             </button>
           </div>
-        </div>
       </div>
     </div>
   );

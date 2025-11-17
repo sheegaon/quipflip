@@ -24,6 +24,6 @@ This document compares the current backend implementation to the intended Initia
 4. **Automate timeouts and AI backfill**
    - Add scheduled tasks/workers to move stalled sets forward by injecting AI entries/votes per rapid/standard timers and finalizing when timers expire.
 5. **Harden queueing**
-   - Move entry/voting queues to durable storage (e.g., Redis or DB tables) so matchmaking survives restarts and scales horizontally.
+   - Move entry/voting queues to durable storage (e.g., DB tables) so matchmaking survives restarts and scales horizontally.
 6. **Result claim flow**
    - Emit `ResultView` records per creator and gate `GET /sets/{set_id}/results` payouts on that claim path to match the UX plan.

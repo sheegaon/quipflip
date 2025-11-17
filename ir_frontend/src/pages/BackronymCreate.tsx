@@ -395,7 +395,6 @@ const BackronymCreate: React.FC = () => {
             </svg>
             <span>Back to Dashboard</span>
           </button>
-        </div>
       </div>
     </div>
   );
