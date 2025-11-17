@@ -237,6 +237,7 @@ const Settings: React.FC = () => {
 
       setUsernameSuccess(response.message);
       setUsernameForm({ newUsername: response.username, password: '' });
+      await refreshDashboard();
     } catch (err: unknown) {
       if (getErrorDetail(err) === 'username_taken') {
         setUsernameError('That username is already in use.');
