@@ -51,7 +51,7 @@ npm run dev -- --host
 ```
 
 Frontend runs at **http://localhost:5173**
-- See [frontend/README.md](frontend/README.md) for detailed documentation
+- See [frontend/README.md](qf_frontend/README.md) for detailed documentation
 
 ## 📚 Documentation
 
