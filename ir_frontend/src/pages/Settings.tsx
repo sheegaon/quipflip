@@ -26,7 +26,7 @@ const formatDateTime = (dateString?: string | null) => {
 };
 
 const Settings: React.FC = () => {
-  const { player, logout, upgradeGuest } = useIRGame();
+  const { player, logout, upgradeGuest, refreshDashboard } = useIRGame();
   const navigate = useNavigate();
 
   const [error, setError] = useState<string | null>(null);
