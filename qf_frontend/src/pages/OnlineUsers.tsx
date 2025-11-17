@@ -52,7 +52,7 @@ const OnlineUsers: React.FC = () => {
       try {
         // Step 1: Fetch short-lived WebSocket token via REST API (through Vercel proxy)
         // This endpoint validates HttpOnly cookies and returns a token we can use for WebSocket
-        const tokenResponse = await fetch('/api/auth/ws-token', {
+        const tokenResponse = await fetch('/qf/api/auth/ws-token', {
           credentials: 'include', // Include HttpOnly cookies
         });
 
@@ -153,7 +153,7 @@ const OnlineUsers: React.FC = () => {
 
     const fetchOnlineUsers = async () => {
       try {
-        const response = await fetch('/api/users/online', {
+        const response = await fetch('/qf/api/users/online', {
           credentials: 'include', // Include cookies for authentication
         });
 

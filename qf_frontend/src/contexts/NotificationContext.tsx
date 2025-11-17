@@ -62,7 +62,7 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
 
       try {
         // Step 1: Fetch short-lived WebSocket token via REST API
-        const tokenResponse = await fetch('/api/auth/ws-token', {
+        const tokenResponse = await fetch('/qf/api/auth/ws-token', {
           credentials: 'include', // Include HttpOnly cookies
         });
 
