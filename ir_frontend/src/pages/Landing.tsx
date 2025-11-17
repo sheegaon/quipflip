@@ -136,7 +136,7 @@ export const Landing: React.FC = () => {
         </div>
 
         <p className="text-center text-ir-navy text-lg font-medium mb-4">
-          Create clever backronyms and win InitCoins!
+          Create clever backronyms and vote on your favorite!
         </p>
 
         <div className="mb-6 border-t border-gray-200" aria-hidden="true"></div>

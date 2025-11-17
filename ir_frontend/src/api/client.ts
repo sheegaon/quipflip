@@ -21,7 +21,9 @@ import type {
   UpdateTutorialProgressResponse,
 } from './types';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/ir';
+const baseApiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+// Only add /ir if the base URL doesn't already contain it and isn't using the /api proxy
+const API_URL = baseApiUrl.includes('/ir') || baseApiUrl.includes('/api') ? baseApiUrl : `${baseApiUrl}/ir`;
 
 // Create axios instance
 export const irClient = axios.create({
