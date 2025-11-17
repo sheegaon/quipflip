@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useTutorial } from '../../contexts/TutorialContext';
 import { getTutorialStep, getPreviousStep } from '../../config/tutorialSteps';
-import type { TutorialProgress } from '../../types/tutorial';
+import type { TutorialProgress } from '../../api/types';
 import './TutorialOverlay.css';
 import { ArrowLeftIcon, ArrowRightIcon } from '../icons/ArrowIcons';
 import { FlagIcon } from '../icons/EngagementIcons';
