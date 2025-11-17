@@ -370,7 +370,7 @@
 - `player_id` (UUID, primary key)
 - `username` (string, max 255 chars) - denormalized for quick lookups
 - `last_action` (string, max 100 chars) - human-readable description of last action
-- `last_action_category` (string, max 50 chars, default 'other') - action category ('round', 'phraseset', 'quest', 'auth', 'other')
+- `last_action_category` (string, max 50 chars, default 'other') - action category (e.g., `round_prompt`, `review`, `stats`, `quests`, `economy`, `tutorial`, `account`, `notifications`, `feedback`)
 - `last_action_path` (text) - API endpoint path of last action
 - `last_activity` (timestamp with timezone) - UTC timestamp of last activity
 - Indexes: `player_id`, `last_activity`
