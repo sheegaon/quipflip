@@ -213,39 +213,46 @@ class IRAuthService:
         Raises:
             IRAuthError: If player not found
         """
-        player = await self.player_service.get_player_by_id(player_id)
-        if not player:
-            raise IRAuthError("player_not_found")
+        try:
+            player = await self.player_service.get_player_by_id(player_id)
+            if not player:
+                raise IRAuthError("player_not_found")
 
-        # Generate unique token ID (JTI)
-        token_id = str(uuid.uuid4())
-        expires_at = datetime.now(UTC) + timedelta(days=self.settings.ir_refresh_token_expire_days)
+            # Generate unique token ID (JTI)
+            token_id = str(uuid.uuid4())
+            expires_at = datetime.now(UTC) + timedelta(days=self.settings.ir_refresh_token_expire_days)
 
-        # Create JWT payload with JTI
-        payload = {
-            "sub": str(player_id),
-            "jti": token_id,  # JTI is the token's unique identifier
-            "exp": int(expires_at.timestamp()),
-        }
-        jwt_token = encode_jwt(payload, self.settings.ir_secret_key)
+            # Create JWT payload with JTI
+            payload = {
+                "sub": str(player_id),
+                "jti": token_id,  # JTI is the token's unique identifier
+                "exp": int(expires_at.timestamp()),
+            }
+            jwt_token = encode_jwt(payload, self.settings.ir_secret_key)
 
-        # Store hash of the token ID (JTI), not the entire token
-        jti_hash = self._hash_token(token_id)
+            # Store hash of the token ID (JTI), not the entire token
+            jti_hash = self._hash_token(token_id)
 
-        refresh_token_record = IRRefreshToken(
-            token_id=token_id,
-            player_id=player_id,
-            token_hash=jti_hash,
-            created_at=datetime.now(UTC),
-            expires_at=expires_at,
-        )
-        self.db.add(refresh_token_record)
-        await self.db.commit()
+            refresh_token_record = IRRefreshToken(
+                token_id=token_id,
+                player_id=player_id,
+                token_hash=jti_hash,
+                created_at=datetime.now(UTC),
+                expires_at=expires_at,
+            )
+            self.db.add(refresh_token_record)
+            await self.db.commit()
 
-        logger.debug(f"Created refresh token for IR player {player_id}")
-        return jwt_token
+            logger.debug(f"Created refresh token for IR player {player_id}")
+            return jwt_token
+        except IRAuthError:
+            raise
+        except Exception as e:
+            await self.db.rollback()
+            logger.error(f"Error creating refresh token: {e}", exc_info=True)
+            raise IRAuthError(f"refresh_token_creation_failed: {str(e)}") from e
 
-    async def logout(self, player_id: str) -> None:
+    async def revoke_tokens(self, player_id: str) -> None:
         """Invalidate all refresh tokens for player (logout).
 
         Args:
@@ -261,6 +268,10 @@ class IRAuthService:
 
         await self.db.commit()
         logger.info(f"IR player {player_id} logged out - refresh tokens revoked")
+
+    async def logout(self, player_id: str) -> None:
+        """Alias for revoke_tokens for backward compatibility."""
+        await self.revoke_tokens(player_id)
 
     async def verify_access_token(self, token: str) -> str:
         """Verify access token and return player ID.

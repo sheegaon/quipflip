@@ -15,6 +15,7 @@ from backend.routers.ir.schemas import (
     IRUpgradeGuestRequest,
 )
 from backend.services.ir.auth_service import IRAuthService, IRAuthError
+from backend.services.ir.player_service import IRPlayerService
 from backend.utils.cookies import set_access_token_cookie, set_refresh_cookie, clear_auth_cookies
 
 router = APIRouter()

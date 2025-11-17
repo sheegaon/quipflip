@@ -50,39 +50,46 @@ class IRPlayerService:
         Raises:
             IRPlayerError: If player creation fails
         """
-        # Check if email is taken
-        stmt = select(IRPlayer).where(IRPlayer.email == email)
-        result = await self.db.execute(stmt)
-        if result.scalars().first():
-            raise IRPlayerError("email_taken")
+        try:
+            # Check if email is taken
+            stmt = select(IRPlayer).where(IRPlayer.email == email)
+            result = await self.db.execute(stmt)
+            if result.scalars().first():
+                raise IRPlayerError("email_taken")
 
-        # Normalize and check username
-        username_canonical = canonicalize_username(username)
-        stmt = select(IRPlayer).where(IRPlayer.username_canonical == username_canonical)
-        result = await self.db.execute(stmt)
-        if result.scalars().first():
-            raise IRPlayerError("username_taken")
+            # Normalize and check username
+            username_canonical = canonicalize_username(username)
+            stmt = select(IRPlayer).where(IRPlayer.username_canonical == username_canonical)
+            result = await self.db.execute(stmt)
+            if result.scalars().first():
+                raise IRPlayerError("username_taken")
 
-        # Create new player
-        player_id = str(uuid.uuid4())
-        player = IRPlayer(
-            player_id=player_id,
-            username=username,
-            username_canonical=username_canonical,
-            email=email,
-            password_hash=password_hash,
-            wallet=self.settings.ir_initial_balance,
-            vault=0,
-            created_at=datetime.now(UTC),
-            is_guest=False,
-            is_admin=False,
-        )
-        self.db.add(player)
-        await self.db.commit()
-        await self.db.refresh(player)
+            # Create new player
+            player_id = str(uuid.uuid4())
+            player = IRPlayer(
+                player_id=player_id,
+                username=username,
+                username_canonical=username_canonical,
+                email=email,
+                password_hash=password_hash,
+                wallet=self.settings.ir_initial_balance,
+                vault=0,
+                created_at=datetime.now(UTC),
+                is_guest=False,
+                is_admin=False,
+            )
+            self.db.add(player)
+            await self.db.commit()
+            await self.db.refresh(player)
 
-        logger.info(f"Created IR player {player_id} with username {username}")
-        return player
+            logger.info(f"Created IR player {player_id} with username {username}")
+            return player
+        except IRPlayerError:
+            raise
+        except Exception as e:
+            await self.db.rollback()
+            logger.error(f"Error creating IR player: {e}", exc_info=True)
+            raise IRPlayerError(f"player_creation_failed: {str(e)}") from e
 
     async def get_player_by_id(self, player_id: str) -> IRPlayer | None:
         """Get IR player by ID.
