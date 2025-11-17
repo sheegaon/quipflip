@@ -9,12 +9,12 @@ import type { BackronymSet } from '../api/types';
 const SetTracking: React.FC = () => {
   const navigate = useNavigate();
   const { setId } = useParams<{ setId: string }>();
-  const { player, checkSetStatus, activeSet } = useIRGame();
+  const { player, activeSet } = useIRGame();
 
   const [set, setSet] = useState<BackronymSet | null>(activeSet);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pollingIntervalRef = useRef<number | null>(null);
   const hasNavigatedRef = useRef(false);
 
   // Fetch set status

@@ -4,7 +4,7 @@ import { useIRGame } from '../contexts/IRGameContext';
 import { gameAPI } from '../api/client';
 import Header from '../components/Header';
 import InitCoinDisplay from '../components/InitCoinDisplay';
-import type { BackronymSet, BackronymEntry, BackronymVote, ResultsResponse } from '../api/types';
+import type { ResultsResponse } from '../api/types';
 
 const Results: React.FC = () => {
   const navigate = useNavigate();
@@ -67,7 +67,6 @@ const Results: React.FC = () => {
   // Sort entries by votes (descending)
   const sortedEntries = [...entries].sort((a, b) => b.received_votes - a.received_votes);
 
-  const isParticipant = player_entry !== null;
   const playerVotedForWinner = player_vote && winnerEntry && player_vote.chosen_entry_id === winnerEntry.entry_id;
 
   // Calculate totals from payout_breakdown if available

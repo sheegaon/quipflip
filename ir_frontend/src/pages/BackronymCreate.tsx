@@ -15,7 +15,7 @@ interface WordInputState {
 
 const BackronymCreate: React.FC = () => {
   const navigate = useNavigate();
-  const { activeSet, player, submitBackronym, checkSetStatus, hasSubmittedEntry, loading } = useIRGame();
+  const { activeSet, player, submitBackronym, hasSubmittedEntry, loading } = useIRGame();
 
   const [wordInputs, setWordInputs] = useState<WordInputState[]>([]);
   const [error, setError] = useState<string | null>(null);

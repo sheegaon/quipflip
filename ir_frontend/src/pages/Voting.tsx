@@ -23,14 +23,13 @@ const Voting: React.FC = () => {
   const { player, submitVote, hasVoted } = useIRGame();
 
   const [set, setSet] = useState<BackronymSet | null>(null);
-  const [entries, setEntries] = useState<BackronymEntry[]>([]);
   const [shuffledEntries, setShuffledEntries] = useState<BackronymEntry[]>([]);
   const [playerEntry, setPlayerEntry] = useState<BackronymEntry | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
-  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pollingIntervalRef = useRef<number | null>(null);
   const hasNavigatedRef = useRef(false);
   const hasShuffledRef = useRef(false);
 
@@ -46,7 +45,6 @@ const Voting: React.FC = () => {
       if (response.set.status === 'voting') {
         // Get full results to access entries
         const resultsResponse = await gameAPI.getResults(setId);
-        setEntries(resultsResponse.entries);
         setPlayerEntry(resultsResponse.player_entry || null);
 
         // Shuffle entries only once
@@ -238,8 +236,8 @@ const Voting: React.FC = () => {
                   </p>
 
                   <div className="space-y-4">
-                    {shuffledEntries.map((entry, index) => {
-                      const isOwnEntry = playerEntry && entry.entry_id === playerEntry.entry_id;
+                    {shuffledEntries.map((entry) => {
+                      const isOwnEntry = playerEntry ? entry.entry_id === playerEntry.entry_id : false;
                       const isSelected = selectedEntryId === entry.entry_id;
 
                       return (
