@@ -180,6 +180,28 @@ export interface ResultsResponse {
   } | null;
 }
 
+export type TutorialProgress =
+  | 'not_started'
+  | 'welcome'
+  | 'dashboard'
+  | 'prompt_round'
+  | 'copy_round'
+  | 'vote_round'
+  | 'rounds_guide'
+  | 'completed';
+
+export interface TutorialStatus {
+  tutorial_completed: boolean;
+  tutorial_progress: TutorialProgress;
+  tutorial_started_at: string | null;
+  tutorial_completed_at: string | null;
+}
+
+export interface UpdateTutorialProgressResponse {
+  success: boolean;
+  tutorial_status: TutorialStatus;
+}
+
 // Error response type
 export interface APIError {
   detail: string;
