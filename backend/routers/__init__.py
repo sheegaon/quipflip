@@ -1,16 +1,7 @@
 """API routers."""
-from backend.routers import health, player, rounds, phrasesets, prompt_feedback, auth, quests, admin, feedback, online_users, notifications
+from backend.routers import qf, ir
 
 __all__ = [
-    "health",
-    "player",
-    "rounds",
-    "phrasesets",
-    "prompt_feedback",
-    "auth",
-    "quests",
-    "admin",
-    "feedback",
-    "online_users",
-    "notifications",
+    "qf",
+    "ir",
 ]

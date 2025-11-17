@@ -2,7 +2,7 @@
 Stress and load tests for Quipflip API on localhost.
 
 These tests simulate high-load scenarios and edge cases.
-IMPORTANT: Backend must be running on http://localhost:8000
+IMPORTANT: Backend must be running on http://localhost:8000/qf
 
 Run with: pytest tests/test_stress_localhost.py -v
 """
@@ -12,7 +12,7 @@ import concurrent.futures
 import time
 from typing import List, Dict
 
-BASE_URL = "http://localhost:8000"
+BASE_URL = "http://localhost:8000/qf"
 TIMEOUT = 30.0
 
 # Counter for unique test users
@@ -83,7 +83,7 @@ def verify_server_running():
             pytest.fail(f"Server unhealthy: {response.status_code}")
     except httpx.ConnectError:
         pytest.fail(
-            "Cannot connect to http://localhost:8000\n"
+            "Cannot connect to http://localhost:8000/qf\n"
             "Start server: uvicorn backend.main:app --reload"
         )
 
@@ -387,7 +387,7 @@ if __name__ == "__main__":
     print("=" * 60)
     print("Quipflip Stress Tests")
     print("=" * 60)
-    print("\nBackend must be running on http://localhost:8000")
+    print("\nBackend must be running on http://localhost:8000/qf")
     print("Start: uvicorn backend.main:app --reload")
     print("\nRun: pytest tests/test_stress_localhost.py -v -s")
     print("=" * 60)

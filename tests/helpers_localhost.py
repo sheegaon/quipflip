@@ -10,7 +10,7 @@ from typing import Dict, Optional, List, Tuple
 from dataclasses import dataclass
 from uuid import uuid4
 
-BASE_URL = "http://localhost:8000"
+BASE_URL = "http://localhost:8000/qf"
 TIMEOUT = 10.0
 
 

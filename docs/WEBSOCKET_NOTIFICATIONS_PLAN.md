@@ -163,11 +163,11 @@ def is_human(player: Player) -> bool:
 #### 3. WebSocket Router
 **File**: `backend/routers/notifications.py`
 
-**Endpoint**: `GET /notifications/ws?token={short_lived_token}`
+**Endpoint**: `GET /qf/notifications/ws?token={short_lived_token}`
 
 **Authentication Flow:**
 1. Frontend fetches short-lived token via REST: `GET /api/auth/ws-token`
-2. Frontend connects to WebSocket with token: `/notifications/ws?token=...`
+2. Frontend connects to WebSocket with token: `/qf/notifications/ws?token=...`
 3. Backend validates token using `AuthService.decode_access_token()`
 4. If valid: accept connection, add to connection manager
 5. If invalid: reject with code 1008 (policy violation)
@@ -359,7 +359,7 @@ const connectWebSocket = async () => {
     const { token } = await tokenResponse.json();
 
     // 3. Build WebSocket URL
-    const wsUrl = buildWebSocketUrl('/notifications/ws', token);
+    const wsUrl = buildWebSocketUrl('/qf/notifications/ws', token);
 
     // 4. Connect
     const ws = new WebSocket(wsUrl);
@@ -676,14 +676,14 @@ export type NotificationType = 'copy_submitted' | 'vote_submitted';
 
 **Development:**
 ```typescript
-// REST API: http://localhost:8000
-// WebSocket: ws://localhost:8000/notifications/ws
+// REST API: http://localhost:8000/qf
+// WebSocket: ws://localhost:8000/qf/notifications/ws
 ```
 
 **Production:**
 ```typescript
 // REST API: /api (proxied through Vercel to Heroku)
-// WebSocket: wss://quipflip-c196034288cd.herokuapp.com/notifications/ws
+// WebSocket: wss://quipflip-c196034288cd.herokuapp.com/qf/notifications/ws
 // (Direct connection, cannot proxy WebSocket through Vercel)
 ```
 

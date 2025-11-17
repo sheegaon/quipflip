@@ -11,7 +11,7 @@ uvicorn backend.main:app --reload
 
 **2. Verify server is running:**
 ```bash
-curl http://localhost:8000/health
+curl http://localhost:8000/qf/health
 ```
 
 Expected response:
@@ -124,7 +124,7 @@ tests/test_integration_localhost.py::TestPlayerManagement::test_create_player PA
 
 **If server not running:**
 ```
-Cannot connect to backend server at http://localhost:8000
+Cannot connect to backend server at http://localhost:8000/qf
 Please start the server with: uvicorn backend.main:app --reload
 ```
 
@@ -144,7 +144,7 @@ uvicorn backend.main:app --reload
 
 ### Tests Fail
 1. Check server logs in the terminal running uvicorn
-2. Verify database is connected: `curl http://localhost:8000/health`
+2. Verify database is connected: `curl http://localhost:8000/qf/health`
 3. Try restarting the server
 4. Run tests with verbose output: `-vv -s`
 

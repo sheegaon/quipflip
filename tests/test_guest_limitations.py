@@ -24,7 +24,7 @@ class TestGuestOutstandingRoundsLimit:
 
     async def test_guest_limited_to_3_outstanding_rounds(self, test_app, db_session):
         """Test that guests use a limit of 3 outstanding prompts vs 10 for regular players."""
-        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test/qf") as client:
             # Create guest
             create_response = await client.post("/player/guest")
             assert create_response.status_code == status.HTTP_201_CREATED
@@ -61,7 +61,7 @@ class TestGuestOutstandingRoundsLimit:
         """Test that regular players can have up to 10 outstanding prompts."""
         from backend.services.round_service import RoundService
 
-        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test/qf") as client:
             # Create regular account
             create_response = await client.post(
                 "/player",
@@ -97,7 +97,7 @@ class TestGuestVoteLockout:
 
     async def test_guest_locked_out_after_3_incorrect_votes(self, test_app, db_session):
         """Test that guests are locked out after the configured number of incorrect votes."""
-        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test/qf") as client:
             # Create guest
             create_response = await client.post("/player/guest")
             assert create_response.status_code == status.HTTP_201_CREATED
@@ -134,7 +134,7 @@ class TestGuestVoteLockout:
 
     async def test_guest_lockout_expires_after_24_hours(self, test_app, db_session):
         """Test that expired guest lockouts are cleared automatically."""
-        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test/qf") as client:
             # Create guest
             create_response = await client.post("/player/guest")
             assert create_response.status_code == status.HTTP_201_CREATED
@@ -183,7 +183,7 @@ class TestGuestVoteLockout:
 
     async def test_regular_player_not_affected_by_lockout(self, test_app, db_session):
         """Test that regular players are not affected by vote lockout logic."""
-        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test/qf") as client:
             # Create regular account
             create_response = await client.post(
                 "/player",
@@ -219,7 +219,7 @@ class TestGuestVoteLockout:
 
     async def test_guest_consecutive_votes_reset_on_correct_vote(self, test_app, db_session):
         """Test that consecutive incorrect votes counter resets on a correct vote."""
-        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test/qf") as client:
             # Create guest
             create_response = await client.post("/player/guest")
             assert create_response.status_code == status.HTTP_201_CREATED
