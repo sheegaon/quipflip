@@ -8,6 +8,7 @@ const Landing: React.FC = () => {
   const navigate = useNavigate();
   const { loginAsGuest, login, register, error, loading } = useIRGame();
   const [mode, setMode] = useState<AuthMode>('welcome');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
@@ -33,7 +34,7 @@ const Landing: React.FC = () => {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await register(email, password);
+      await register(username, email, password);
       navigate('/dashboard');
     } catch (err) {
       console.error('Registration failed:', err);
@@ -140,6 +141,18 @@ const Landing: React.FC = () => {
         {/* Register Mode */}
         {mode === 'register' && (
           <form onSubmit={handleRegister} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Username</label>
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                placeholder="choose-a-username"
+              />
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
               <input

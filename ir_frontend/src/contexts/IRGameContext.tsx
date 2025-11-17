@@ -39,9 +39,9 @@ interface IRGameContextType extends IRGameState {
   // Authentication
   loginAsGuest: () => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string) => Promise<void>;
+  register: (username: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  upgradeGuest: (email: string, password: string) => Promise<void>;
+  upgradeGuest: (username: string, email: string, password: string) => Promise<void>;
 
   // Game actions
   startBackronymBattle: () => Promise<StartSessionResponse>;
@@ -136,11 +136,11 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
     }
   }, []);
 
-  const register = useCallback(async (email: string, password: string) => {
+  const register = useCallback(async (username: string, email: string, password: string) => {
     try {
       setLoading(true);
       setError(null);
-      const response = await authAPI.register({ email, password });
+      const response = await authAPI.register({ username, email, password });
       setState((prev) => ({
         ...prev,
         isAuthenticated: true,
@@ -176,11 +176,11 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
     }
   }, []);
 
-  const upgradeGuest = useCallback(async (email: string, password: string) => {
+  const upgradeGuest = useCallback(async (username: string, email: string, password: string) => {
     try {
       setLoading(true);
       setError(null);
-      const response = await authAPI.upgradeGuest({ email, password });
+      const response = await authAPI.upgradeGuest({ username, email, password });
       setState((prev) => ({
         ...prev,
         player: response.player,
