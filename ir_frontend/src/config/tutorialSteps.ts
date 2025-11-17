@@ -36,13 +36,13 @@ You'll spend **InitCoins** to enter and can win a share of the prize pool based 
 • Standard mode waits for humans; Rapid mode fills with AI after short timeouts.
 • Daily bonuses help you stay funded.`,
     target: '.tutorial-dashboard',
-    nextStep: 'create_round',
+    nextStep: 'backronym_entry',
     showSkip: false,
     showBack: true,
   },
 
-  create_round: {
-    id: 'create_round',
+  backronym_entry: {
+    id: 'backronym_entry',
     title: 'Build Your Backronym',
     message: `Create one word for each letter of the prompt word. Keep these rules in mind:
 
@@ -53,39 +53,26 @@ You'll spend **InitCoins** to enter and can win a share of the prize pool based 
 When you're happy, submit and we'll queue your entry for voting.`,
     target: '.tutorial-backronym-form',
     position: 'bottom',
-    nextStep: 'tracking',
+    nextStep: 'backronym_voting',
     showSkip: false,
     showBack: true,
   },
 
-  tracking: {
-    id: 'tracking',
-    title: 'Waiting Room',
-    message: `You need five total backronyms before voting begins. We'll keep polling and AI will fill empty slots after the timeout window (2 minutes in Rapid, 30 minutes in Standard).
-
-You'll see a countdown and entry progress here.`,
-    target: '.tutorial-tracking-card',
-    position: 'bottom',
-    nextStep: 'voting',
-    showSkip: false,
-    showBack: true,
-  },
-
-  voting: {
-    id: 'voting',
+  backronym_voting: {
+    id: 'backronym_voting',
     title: 'Cast Your Vote',
     message: `When voting opens you can choose one favorite backronym. Creators vote for free; non-participants pay 10 InitCoins but earn 20 if they match the crowd.
 
 You can't vote for your own entry. AI voters appear when timers expire to keep results moving.`,
     target: '.tutorial-voting-card',
     position: 'top',
-    nextStep: 'results',
+    nextStep: 'rounds_guide',
     showSkip: false,
     showBack: true,
   },
 
-  results: {
-    id: 'results',
+  rounds_guide: {
+    id: 'rounds_guide',
     title: 'See Payouts',
     message: `Results split the prize pool among creators based on vote share. Non-participant winnings are paid first, then 30% of each player's net winnings goes to the vault automatically.
 
@@ -110,7 +97,7 @@ export const getNextStep = (currentStep: TutorialProgress): TutorialProgress | n
 };
 
 export const getPreviousStep = (currentStep: TutorialProgress): TutorialProgress | null => {
-  const steps: TutorialProgress[] = ['welcome', 'dashboard', 'create_round', 'tracking', 'voting', 'results'];
+  const steps: TutorialProgress[] = ['welcome', 'dashboard', 'backronym_entry', 'backronym_voting', 'rounds_guide'];
   const currentIndex = steps.indexOf(currentStep);
   if (currentIndex > 0) {
     return steps[currentIndex - 1];

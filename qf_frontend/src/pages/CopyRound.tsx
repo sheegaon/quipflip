@@ -420,6 +420,11 @@ export const CopyRound: React.FC = () => {
     }, 3000);
   };
 
+  const handleHintClick = (hintText: string) => {
+    setPhrase(hintText);
+    setError(null); // Clear any validation errors when using a hint
+  };
+
   const secondCopyModal = awaitingSecondCopyDecision && secondCopyEligibility ? (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-quip-navy/60 p-4">
       <div className="w-full max-w-lg rounded-tile bg-quip-warm-ivory p-6 shadow-tile-lg text-center space-y-4">
@@ -642,12 +647,16 @@ export const CopyRound: React.FC = () => {
                     </p>
                     <ul className="space-y-2">
                       {copyRoundHints.map((hint, index) => (
-                        <li
-                          key={`${hint}-${index}`}
-                          className="flex items-start gap-2 rounded-tile border border-quip-turquoise/30 bg-white px-3 py-2 text-quip-navy shadow-inner"
-                        >
-                          <span className="font-semibold text-quip-turquoise">Hint {index + 1}:</span>
-                          <span>{hint}</span>
+                        <li key={`${hint}-${index}`} className="w-full">
+                          <button
+                            type="button"
+                            onClick={() => handleHintClick(hint)}
+                            disabled={isSubmitting || isFlagging || isExpired}
+                            className="w-full text-left flex items-start gap-2 rounded-tile border border-quip-turquoise/30 bg-white px-3 py-2 text-quip-navy shadow-inner transition hover:bg-quip-turquoise/10 hover:border-quip-turquoise/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-quip-turquoise disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            <span className="font-semibold text-quip-turquoise shrink-0">Hint {index + 1}:</span>
+                            <span className="break-words">{hint}</span>
+                          </button>
                         </li>
                       ))}
                     </ul>
