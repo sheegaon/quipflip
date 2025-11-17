@@ -58,11 +58,14 @@ class IRBackronymSetService:
                 created_at=datetime.now(UTC),
             )
             self.db.add(set_obj)
+            await self.db.flush()  # Flush to get the set_id without committing
+            # Store set_id locally to avoid lazy load issues
+            set_id_str = str(set_obj.set_id)
+            # Cache word usage (doesn't commit)
+            await self.word_service.cache_word_usage(set_id_str, word)
+            # Now commit everything together
             await self.db.commit()
             await self.db.refresh(set_obj)
-            # Store set_id locally to avoid lazy load issues after commit
-            set_id_str = str(set_obj.set_id)
-            await self.word_service.cache_word_usage(set_id_str, word)
             await self.queue_service.enqueue_entry_set(set_id_str)
 
             logger.info(f"Created IR backronym set {set_obj.set_id} with word {word}")

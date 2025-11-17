@@ -220,6 +220,8 @@ class IRWordService:
     ) -> None:
         """Cache word usage for duplicate prevention.
 
+        Note: This method does NOT commit - the caller is responsible for committing.
+
         Args:
             set_id: Backronym set identifier (maps to prompt_round_id)
             word: Word to cache
@@ -235,7 +237,7 @@ class IRWordService:
                 created_at=datetime.now(UTC),
             )
             self.db.add(cache_entry)
-            await self.db.commit()
+            # Note: Caller is responsible for committing
         except Exception as e:
             logger.warning(f"Error caching word usage: {e}")
-            await self.db.rollback()
+            # Don't rollback here - let the caller handle the transaction
