@@ -4,7 +4,7 @@ import { useIRGame } from '../contexts/IRGameContext';
 import { BalanceFlipper } from './BalanceFlipper';
 import SubHeader from './SubHeader';
 import { ArrowLeftIcon } from './icons/ArrowIcons';
-import { HomeIcon } from './icons/NavigationIcons';
+import { HomeIcon, SettingsIcon } from './icons/NavigationIcons';
 
 const Header: React.FC = () => {
   const { player, logout, isAuthenticated } = useIRGame();
@@ -195,9 +195,17 @@ const Header: React.FC = () => {
                       <span className="font-semibold">Dashboard</span>
                     </button>
 
+                    <button
+                      onClick={() => handleNavigate('/settings')}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-left text-ir-navy hover:bg-ir-cream transition-colors"
+                    >
+                      <SettingsIcon className="h-5 w-5" />
+                      <span className="font-semibold">Settings</span>
+                    </button>
+
                     {player.is_guest && (
                       <button
-                        onClick={() => handleNavigate('/dashboard')}
+                        onClick={() => handleNavigate('/settings')}
                         className="w-full flex items-center gap-3 px-4 py-3 text-left text-ir-navy hover:bg-ir-cream transition-colors"
                       >
                         <svg

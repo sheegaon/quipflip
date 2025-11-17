@@ -193,3 +193,25 @@ export const leaderboardAPI = {
 };
 
 export default irClient;
+
+// Settings API
+export const settingsAPI = {
+  changePassword: async (data: { current_password: string; new_password: string }): Promise<{ message: string }> => {
+    const response = await irClient.post<{ message: string }>('/settings/password', data);
+    return response.data;
+  },
+
+  updateEmail: async (data: { new_email: string; password: string }): Promise<{ email: string }> => {
+    const response = await irClient.post<{ email: string }>('/settings/email', data);
+    return response.data;
+  },
+
+  changeUsername: async (data: { new_username: string; password: string }): Promise<{ username: string; message: string }> => {
+    const response = await irClient.post<{ username: string; message: string }>('/settings/username', data);
+    return response.data;
+  },
+
+  deleteAccount: async (data: { password: string; confirmation: string }): Promise<void> => {
+    await irClient.post('/settings/delete-account', data);
+  },
+};

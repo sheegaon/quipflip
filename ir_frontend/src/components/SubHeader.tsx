@@ -59,7 +59,7 @@ const SubHeader: React.FC = () => {
           {/* Settings Icon - Only shown for guest players */}
           {player.is_guest && (
             <button
-              onClick={() => navigate('/dashboard')}
+              onClick={() => navigate('/settings')}
               className="group"
               title="Account settings"
               aria-label="Account settings"

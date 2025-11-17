@@ -10,6 +10,7 @@ import BackronymCreate from './pages/BackronymCreate';
 import SetTracking from './pages/SetTracking';
 import Voting from './pages/Voting';
 import Results from './pages/Results';
+import Settings from './pages/Settings';
 import './App.css';
 
 // Suppress some logging messages
@@ -80,6 +81,14 @@ const AppRoutes: React.FC = () => {
         element={
           <ProtectedRoute>
             <Results />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings"
+        element={
+          <ProtectedRoute>
+            <Settings />
           </ProtectedRoute>
         }
       />
