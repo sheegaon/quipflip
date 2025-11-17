@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.config import get_settings
 from backend.models.ir.ir_daily_bonus import IRDailyBonus
+from backend.models.ir.ir_player import IRPlayer
 from backend.services.ir.transaction_service import IRTransactionService, IRTransactionError
 
 
@@ -24,6 +25,20 @@ class IRDailyBonusService:
         """Return True if the player can still claim today's bonus."""
 
         today = datetime.now(UTC).date()
+
+        player_result = await self.db.execute(
+            select(IRPlayer).where(IRPlayer.player_id == player_id)
+        )
+        player = player_result.scalars().first()
+        if not player:
+            return False
+
+        if player.is_guest:
+            return False
+
+        if player.created_at.date() == today:
+            return False
+
         stmt = select(IRDailyBonus).where(
             (IRDailyBonus.player_id == player_id) & (IRDailyBonus.date == today)
         )
@@ -37,6 +52,16 @@ class IRDailyBonusService:
         bonus_date = today.date()
 
         try:
+            player_result = await self.db.execute(
+                select(IRPlayer).where(IRPlayer.player_id == player_id)
+            )
+            player = player_result.scalars().first()
+            if not player:
+                raise IRDailyBonusError("not_available")
+
+            if player.is_guest or player.created_at.date() == bonus_date:
+                raise IRDailyBonusError("not_available")
+
             stmt = select(IRDailyBonus).where(
                 (IRDailyBonus.player_id == player_id)
                 & (IRDailyBonus.date == bonus_date)

@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime, timedelta
 from backend.services.ir.player_service import IRPlayerService
 from backend.services.ir.transaction_service import IRTransactionService
-from backend.services.ir.ir_daily_bonus_service import IRDailyBonusService
+from backend.services.ir.ir_daily_bonus_service import IRDailyBonusError, IRDailyBonusService
 from backend.utils.passwords import hash_password
 
 
@@ -159,6 +159,9 @@ async def test_ir_claim_bonus(db_session, ir_player_factory):
     player = await ir_player_factory()
     bonus_service = IRDailyBonusService(db_session)
 
+    player.created_at = player.created_at - timedelta(days=1)
+    await db_session.commit()
+
     initial_balance = player.wallet
 
     # Claim daily bonus
@@ -176,6 +179,9 @@ async def test_ir_daily_bonus_once_per_day(db_session, ir_player_factory):
     """Test that daily bonus can only be claimed once per day."""
     player = await ir_player_factory()
     bonus_service = IRDailyBonusService(db_session)
+
+    player.created_at = player.created_at - timedelta(days=1)
+    await db_session.commit()
 
     # Claim first bonus
     bonus1 = await bonus_service.claim_bonus(player.player_id)
@@ -197,7 +203,10 @@ async def test_ir_daily_bonus_available_check(db_session, ir_player_factory):
     player = await ir_player_factory()
     bonus_service = IRDailyBonusService(db_session)
 
-    # Should be available initially
+    player.created_at = player.created_at - timedelta(days=1)
+    await db_session.commit()
+
+    # Should be available after first day
     available = await bonus_service.is_bonus_available(player.player_id)
     assert available is True
 
@@ -244,3 +253,32 @@ async def test_ir_concurrent_transactions(db_session, ir_player_factory):
     # Refresh and verify
     await db_session.refresh(player)
     assert player.wallet == initial_balance - 50
+
+
+@pytest.mark.asyncio
+async def test_ir_daily_bonus_unavailable_on_first_day(db_session, ir_player_factory):
+    """Ensure newly created players cannot claim the daily bonus."""
+
+    player = await ir_player_factory()
+    bonus_service = IRDailyBonusService(db_session)
+
+    available = await bonus_service.is_bonus_available(player.player_id)
+    assert available is False
+
+    with pytest.raises(IRDailyBonusError):
+        await bonus_service.claim_bonus(player.player_id)
+
+
+@pytest.mark.asyncio
+async def test_ir_daily_bonus_unavailable_for_guests(db_session):
+    """Guests should not be able to claim the daily bonus."""
+
+    player_service = IRPlayerService(db_session)
+    guest, _ = await player_service.register_guest()
+    bonus_service = IRDailyBonusService(db_session)
+
+    available = await bonus_service.is_bonus_available(guest.player_id)
+    assert available is False
+
+    with pytest.raises(IRDailyBonusError):
+        await bonus_service.claim_bonus(guest.player_id)
