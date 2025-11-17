@@ -26,6 +26,7 @@ from backend.schemas.online_users import OnlineUser, OnlineUsersResponse
 from backend.services.auth_service import AuthService
 from backend.services.player_service import PlayerService
 from backend.config import get_settings
+from backend.utils.datetime_helpers import ensure_utc
 
 logger = logging.getLogger(__name__)
 
@@ -233,7 +234,9 @@ async def get_online_users(db: AsyncSession) -> List[OnlineUser]:
             continue
 
         # Calculate time ago
-        time_diff = now - activity.last_activity
+        # Ensure last_activity is timezone-aware (handle naive datetimes from DB)
+        last_activity = ensure_utc(activity.last_activity)
+        time_diff = now - last_activity
         seconds = int(time_diff.total_seconds())
 
         if seconds < 60:
