@@ -36,17 +36,17 @@
   input:focus,
   textarea:focus,
   select:focus {
-    outline: 2px solid #6366f1;
+    outline: 2px solid theme('colors.ir-turquoise');
     outline-offset: 2px;
   }
 
   /* Card styling */
   .tile-card {
-    @apply rounded-lg shadow-lg bg-white transition-all duration-300;
+    @apply rounded-tile shadow-tile bg-ir-teal-light transition-all duration-300;
   }
 
   .tile-card:hover {
-    @apply shadow-xl;
+    @apply shadow-tile-sm;
     transform: translateY(-2px);
   }
 
@@ -74,16 +74,16 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: #FFF6EE;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #a855f7;
+  background: #10B4A4;
   border-radius: 5px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #9333ea;
+  background: #0A5852;
 }
 
 /* Keyframe animations */
