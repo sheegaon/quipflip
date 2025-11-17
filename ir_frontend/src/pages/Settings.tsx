@@ -200,6 +200,7 @@ const Settings: React.FC = () => {
 
       setEmailSuccess(`Email updated to ${response.email}`);
       setEmailForm({ newEmail: response.email, password: '' });
+      await refreshDashboard();
     } catch (err: unknown) {
       if (getErrorDetail(err) === 'email_taken') {
         setEmailError('That email address is already in use.');
