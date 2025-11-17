@@ -85,3 +85,42 @@ aborted during deploy.
 - **Always use FastAPI parameter annotations for headers/cookies.** Use `Header()` and `Cookie()` annotations
   in dependency functions (e.g., `authorization: str | None = Header(None, alias="Authorization")`).
   Plain optional parameters default to query parameters, breaking HTTP header/cookie-based authentication.
+- **Avoid exception handling for DDL statements in async migrations.** When using SQLAlchemy with asyncpg,
+  failed DDL statements (like `ALTER TABLE`) leave the transaction in a failed state. Using try-except around
+  DDL can corrupt the transaction, causing all subsequent database operations to fail with "current transaction
+  is aborted, commands ignored until end of transaction block" errors. Instead, check preconditions BEFORE
+  executing DDL using dialect-aware schema inspection.
+- **Use dialect-aware schema inspection in migrations.** PostgreSQL and SQLite have different ways to check
+  if a table or column exists. PostgreSQL uses `information_schema.columns`, while SQLite uses `PRAGMA table_info()`.
+  When writing migrations that should work on both databases, detect the database dialect and use the appropriate
+  query method:
+  ```python
+  def column_exists(connection, table_name, column_name):
+      dialect = connection.dialect.name
+
+      if dialect == 'postgresql':
+          result = connection.execute(
+              sa.text("""
+                  SELECT EXISTS (
+                      SELECT FROM information_schema.columns
+                      WHERE table_name = :table_name AND column_name = :column_name
+                  )
+              """),
+              {"table_name": table_name, "column_name": column_name}
+          )
+          return result.scalar()
+      elif dialect == 'sqlite':
+          result = connection.execute(
+              sa.text(f"PRAGMA table_info({table_name})")
+          )
+          columns = [row[1] for row in result.fetchall()]
+          return column_name in columns
+      return False
+  ```
+  Use this precondition check in upgrade/downgrade to avoid attempting DDL on non-existent or existing columns.
+- **Validate API contracts between frontend and backend.** Frontend TypeScript interfaces must exactly match
+  backend Pydantic request models in both field names and field presence. A missing field in the frontend
+  request will cause backend validation errors (422 Unprocessable Entity). Use your type system to catch
+  these mismatches at compile time: ensure all request/response types are fully typed and match the backend
+  API specification. This is especially important for authentication endpoints where contract mismatches can
+  prevent users from signing up or logging in.

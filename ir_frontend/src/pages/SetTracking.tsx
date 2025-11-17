@@ -47,8 +47,13 @@ const SetTracking: React.FC = () => {
         }
         navigate(`/results/${setId}`);
       }
-    } catch (err: any) {
-      setError(err.response?.data?.detail || err.message || 'Failed to fetch set status');
+    } catch (err: unknown) {
+      const errorMessage = typeof err === 'object' && err !== null && 'response' in err
+        ? ((err.response as any)?.data?.detail)
+        : typeof err === 'object' && err !== null && 'message' in err
+        ? (err.message as string)
+        : 'Failed to fetch set status';
+      setError(errorMessage || 'Failed to fetch set status');
       setLoading(false);
     } finally {
       setLoading(false);
