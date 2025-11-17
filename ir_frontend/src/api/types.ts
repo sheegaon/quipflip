@@ -114,7 +114,7 @@ export interface UpgradeGuestRequest {
 }
 
 export interface SubmitBackronymRequest {
-  backronym_text: string[];
+  words: string[];
 }
 
 export interface SubmitVoteRequest {
@@ -138,6 +138,7 @@ export interface StartSessionResponse {
 export interface BalanceResponse {
   wallet: number;
   vault: number;
+  daily_bonus_available: boolean;
 }
 
 export interface ClaimBonusResponse {

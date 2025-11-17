@@ -1,35 +1,27 @@
 import React from 'react';
 
 interface InitCoinDisplayProps {
-  wallet: number;
-  vault: number;
-  showVault?: boolean;
+  amount: number;
+  className?: string;
+  iconClassName?: string;
+  textClassName?: string;
 }
 
 const InitCoinDisplay: React.FC<InitCoinDisplayProps> = ({
-  wallet,
-  vault,
-  showVault = true,
+  amount,
+  className = '',
+  iconClassName = 'w-4 h-4',
+  textClassName = 'text-sm font-semibold',
 }) => {
   return (
-    <div className="flex items-center space-x-4">
-      <div className="flex items-center space-x-2 bg-white/20 px-3 py-2 rounded-lg">
-        <span className="text-yellow-300 text-xl">💰</span>
-        <div className="flex flex-col">
-          <span className="text-xs opacity-75">Wallet</span>
-          <span className="font-bold">{wallet} IC</span>
-        </div>
-      </div>
-      {showVault && (
-        <div className="flex items-center space-x-2 bg-white/20 px-3 py-2 rounded-lg">
-          <span className="text-green-300 text-xl">🏦</span>
-          <div className="flex flex-col">
-            <span className="text-xs opacity-75">Vault</span>
-            <span className="font-bold">{vault} IC</span>
-          </div>
-        </div>
-      )}
-    </div>
+    <span className={`inline-flex items-center gap-1 ${className}`}>
+      <img
+        src="/initcoin.png"
+        alt="IC"
+        className={iconClassName}
+      />
+      <span className={textClassName}>{amount.toLocaleString()}</span>
+    </span>
   );
 };
 

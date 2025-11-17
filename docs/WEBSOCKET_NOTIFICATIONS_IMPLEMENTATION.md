@@ -357,8 +357,8 @@ MODIFIED:
 ## Reference Documentation
 
 - **Planning Document:** [docs/WEBSOCKET_NOTIFICATIONS_PLAN.md](WEBSOCKET_NOTIFICATIONS_PLAN.md)
-- **OnlineUsers Pattern:** [frontend/src/pages/OnlineUsers.tsx](../frontend/src/pages/OnlineUsers.tsx)
-- **SuccessNotification Styling:** [frontend/src/components/SuccessNotification.tsx](../frontend/src/components/SuccessNotification.tsx)
+- **OnlineUsers Pattern:** [frontend/src/pages/OnlineUsers.tsx](../qf_frontend/src/pages/OnlineUsers.tsx)
+- **SuccessNotification Styling:** [frontend/src/components/SuccessNotification.tsx](../qf_frontend/src/components/SuccessNotification.tsx)
 
 ---
 

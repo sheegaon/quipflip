@@ -5,6 +5,7 @@ import { useIRGame } from './contexts/IRGameContext';
 import Landing from './pages/Landing';
 import Dashboard from './pages/Dashboard';
 import BackronymCreate from './pages/BackronymCreate';
+import SetTracking from './pages/SetTracking';
 import Voting from './pages/Voting';
 import Results from './pages/Results';
 import './App.css';
@@ -35,6 +36,14 @@ const AppRoutes: React.FC = () => {
         element={
           <ProtectedRoute>
             <BackronymCreate />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/tracking/:setId"
+        element={
+          <ProtectedRoute>
+            <SetTracking />
           </ProtectedRoute>
         }
       />

@@ -3,6 +3,8 @@ import asyncio
 import time
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 import logging
 from logging.handlers import RotatingFileHandler
 import os
@@ -429,6 +431,39 @@ app = FastAPI(
 )
 
 
+# Custom exception handler for validation errors
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Handle Pydantic validation errors with user-friendly messages."""
+    logger = logging.getLogger(__name__)
+
+    # Log the validation error for debugging
+    logger.warning(f"Validation error on {request.url.path}: {exc.errors()}")
+
+    # Convert validation errors to user-friendly format
+    errors = []
+    for error in exc.errors():
+        loc = error.get("loc", [])
+        msg = error.get("msg", "Validation error")
+        error_type = error.get("type", "unknown")
+
+        # Build a readable error message
+        field_path = " -> ".join(str(x) for x in loc[1:]) if len(loc) > 1 else "unknown field"
+        errors.append({
+            "field": field_path,
+            "message": msg,
+            "type": error_type
+        })
+
+    return JSONResponse(
+        status_code=422,
+        content={
+            "detail": "Request validation failed",
+            "errors": errors
+        }
+    )
+
+
 # Comprehensive API Request Logging Middleware
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
@@ -515,9 +550,12 @@ if not allowed_origins or allowed_origins == [""]:
     allowed_origins = [
         settings.frontend_url,                # Your production frontend
         "http://localhost:5173",              # Vite dev server
+        "http://localhost:5174",              # Vite dev server #2
         f"http://{get_local_ip()}:5173/",     # Alternative dev server
+        f"http://{get_local_ip()}:5174/",     # Alternative dev server
         "http://localhost:3000",              # Alternative React dev server
         "http://127.0.0.1:5173",              # Alternative localhost format
+        "http://127.0.0.1:5174",              # Alternative localhost format
         "http://127.0.0.1:3000",              # Alternative localhost format
     ]
 app.add_middleware(
@@ -546,7 +584,7 @@ app.include_router(admin.router, tags=["admin"])
 app.include_router(feedback.router, tags=["feedback"])
 app.include_router(online_users.router, prefix="/users", tags=["online_users"])
 app.include_router(notifications.router, tags=["notifications"])
-app.include_router(ir.router, tags=["ir"])
+app.include_router(ir.router, prefix="/ir", tags=["ir"])
 
 
 @app.get("/")

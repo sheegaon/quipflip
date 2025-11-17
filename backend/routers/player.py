@@ -538,86 +538,101 @@ async def get_dashboard_data(
     Reuses existing endpoint logic to avoid code duplication.
     Executes sequentially because AsyncSession is not concurrency-safe.
     Still much faster than 6 separate HTTP requests from the client.
-    
+
     Now includes caching to reduce database load from rapid-fire requests.
     """
     from backend.utils.cache import dashboard_cache
-    
-    # Check cache first
-    cache_key = f"dashboard:{player.player_id}"
-    cached_data = dashboard_cache.get(cache_key)
-    if cached_data:
-        logger.info(f"Returning cached dashboard data for player {player.player_id}")
-        return cached_data
-    
-    logger.info(f"Generating fresh dashboard data for player {player.player_id}")
 
-    # Create a single PhrasesetService instance to share across calls
-    # This allows the contributions cache to work across all three endpoints,
-    # reducing payout calculations from 3x to 1x per dashboard load
-    phraseset_service = PhrasesetService(db)
+    try:
+        # Check cache first
+        cache_key = f"dashboard:{player.player_id}"
+        cached_data = dashboard_cache.get(cache_key)
+        if cached_data:
+            logger.info(f"Returning cached dashboard data for player {player.player_id}")
+            return cached_data
 
-    # Reuse existing endpoint logic by calling the internal functions
-    player_balance = await get_balance(player, db)
-    current_round = await get_current_round(player, db)
-    pending_results_response = await _get_pending_results_internal(player, db, phraseset_service)
-    phraseset_summary = await _get_phraseset_summary_internal(player, db, phraseset_service)
-    unclaimed_results_response = await _get_unclaimed_results_internal(player, db, phraseset_service)
+        logger.info(f"Generating fresh dashboard data for player {player.player_id}")
 
-    # Round availability needs services
-    player_service = PlayerService(db)
-    round_service = RoundService(db)
-    vote_service = VoteService(db)
+        # Create a single PhrasesetService instance to share across calls
+        # This allows the contributions cache to work across all three endpoints,
+        # reducing payout calculations from 3x to 1x per dashboard load
+        phraseset_service = PhrasesetService(db)
 
-    prompts_waiting = await round_service.get_available_prompts_count(player.player_id)
-    phrasesets_waiting = await vote_service.count_available_phrasesets_for_player(player.player_id)
+        try:
+            # Reuse existing endpoint logic by calling the internal functions
+            player_balance = await get_balance(player, db)
+            current_round = await get_current_round(player, db)
+            pending_results_response = await _get_pending_results_internal(player, db, phraseset_service)
+            phraseset_summary = await _get_phraseset_summary_internal(player, db, phraseset_service)
+            unclaimed_results_response = await _get_unclaimed_results_internal(player, db, phraseset_service)
+        except Exception as e:
+            logger.error(f"Failed to fetch player results data for {player.player_id}: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Failed to load player results")
 
-    # Make sure the prompt queue reflects database state before checking availability.
-    await round_service.ensure_prompt_queue_populated()
+        # Round availability needs services
+        try:
+            player_service = PlayerService(db)
+            round_service = RoundService(db)
+            vote_service = VoteService(db)
 
-    can_prompt, _ = await player_service.can_start_prompt_round(player)
-    can_copy, _ = await player_service.can_start_copy_round(player)
-    await player_service.refresh_vote_lockout_state(player)
-    can_vote, _ = await player_service.can_start_vote_round(
-        player,
-        vote_service,
-        available_count=phrasesets_waiting,
-    )
+            prompts_waiting = await round_service.get_available_prompts_count(player.player_id)
+            phrasesets_waiting = await vote_service.count_available_phrasesets_for_player(player.player_id)
 
-    if prompts_waiting == 0:
-        can_copy = False
-    if phrasesets_waiting == 0:
-        can_vote = False
+            # Make sure the prompt queue reflects database state before checking availability.
+            await round_service.ensure_prompt_queue_populated()
 
-    round_availability = RoundAvailability(
-        can_prompt=can_prompt,
-        can_copy=can_copy,
-        can_vote=can_vote,
-        prompts_waiting=prompts_waiting,
-        phrasesets_waiting=phrasesets_waiting,
-        copy_discount_active=QueueService.is_copy_discount_active(),
-        copy_cost=QueueService.get_copy_cost(),
-        current_round_id=player.active_round_id,
-        # Game constants from config
-        prompt_cost=settings.prompt_cost,
-        vote_cost=settings.vote_cost,
-        vote_payout_correct=settings.vote_payout_correct,
-        abandoned_penalty=settings.abandoned_penalty,
-    )
+            can_prompt, _ = await player_service.can_start_prompt_round(player)
+            can_copy, _ = await player_service.can_start_copy_round(player)
+            await player_service.refresh_vote_lockout_state(player)
+            can_vote, _ = await player_service.can_start_vote_round(
+                player,
+                vote_service,
+                available_count=phrasesets_waiting,
+            )
 
-    dashboard_data = DashboardDataResponse(
-        player=player_balance,
-        current_round=current_round,
-        pending_results=pending_results_response.pending,
-        phraseset_summary=phraseset_summary,
-        unclaimed_results=unclaimed_results_response.unclaimed,
-        round_availability=round_availability,
-    )
-    
-    # Cache the response for 10 seconds (shorter TTL for dashboard since it changes frequently)
-    dashboard_cache.set(cache_key, dashboard_data, ttl=10.0)
-    
-    return dashboard_data
+            if prompts_waiting == 0:
+                can_copy = False
+            if phrasesets_waiting == 0:
+                can_vote = False
+
+            round_availability = RoundAvailability(
+                can_prompt=can_prompt,
+                can_copy=can_copy,
+                can_vote=can_vote,
+                prompts_waiting=prompts_waiting,
+                phrasesets_waiting=phrasesets_waiting,
+                copy_discount_active=QueueService.is_copy_discount_active(),
+                copy_cost=QueueService.get_copy_cost(),
+                current_round_id=player.active_round_id,
+                # Game constants from config
+                prompt_cost=settings.prompt_cost,
+                vote_cost=settings.vote_cost,
+                vote_payout_correct=settings.vote_payout_correct,
+                abandoned_penalty=settings.abandoned_penalty,
+            )
+        except Exception as e:
+            logger.error(f"Failed to determine round availability for {player.player_id}: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Failed to load round availability")
+
+        dashboard_data = DashboardDataResponse(
+            player=player_balance,
+            current_round=current_round,
+            pending_results=pending_results_response.pending,
+            phraseset_summary=phraseset_summary,
+            unclaimed_results=unclaimed_results_response.unclaimed,
+            round_availability=round_availability,
+        )
+
+        # Cache the response for 10 seconds (shorter TTL for dashboard since it changes frequently)
+        dashboard_cache.set(cache_key, dashboard_data, ttl=10.0)
+
+        return dashboard_data
+    except HTTPException:
+        # Re-raise HTTPException to pass through
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error in dashboard endpoint for {player.player_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to load dashboard")
 
 
 @router.get("/statistics", response_model=PlayerStatistics)
