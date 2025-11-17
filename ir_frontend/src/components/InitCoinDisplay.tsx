@@ -16,7 +16,7 @@ const InitCoinDisplay: React.FC<InitCoinDisplayProps> = ({
   return (
     <span className={`inline-flex items-center gap-1 ${className}`}>
       <img
-        src="/flipcoin.png"
+        src="/initcoin.png"
         alt="IC"
         className={iconClassName}
       />
