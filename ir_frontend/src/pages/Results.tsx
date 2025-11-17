@@ -26,7 +26,7 @@ const Results: React.FC = () => {
         setError(null);
       } catch (err: unknown) {
         const errorMessage = typeof err === 'object' && err !== null && 'response' in err
-          ? ((err.response as any)?.data?.detail)
+          ? ((err.response as { data?: { detail?: string } })?.data?.detail)
           : typeof err === 'object' && err !== null && 'message' in err
           ? (err.message as string)
           : 'Failed to fetch results';

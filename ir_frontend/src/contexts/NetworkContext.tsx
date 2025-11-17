@@ -140,6 +140,7 @@ export const NetworkProvider: React.FC<{ children: React.ReactNode }> = ({ child
 /**
  * Hook to access network context
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export const useNetwork = (): NetworkContextType => {
   const context = useContext(NetworkContext);
   if (!context) {

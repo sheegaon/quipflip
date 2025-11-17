@@ -49,6 +49,7 @@ export const ErrorNotification: React.FC<ErrorNotificationProps> = ({
     } else {
       setIsVisible(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [error, autoHide, duration]);
 
   if (!error || !isVisible) return null;

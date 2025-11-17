@@ -24,21 +24,45 @@ logger = logging.getLogger(__name__)
 
 # Action type mapping based on URL paths with categories for consistent frontend styling
 ACTION_MAP = {
-    "/rounds/prompt": {"name": "Prompt Round", "category": "round_prompt"},
-    "/rounds/copy": {"name": "Copy Round", "category": "round_copy"}, 
-    "/rounds/vote": {"name": "Vote Round", "category": "round_vote"},
-    "/player/leaderboard": {"name": "Leaderboard", "category": "stats"},
+    # Player paths (from most specific to least specific)
+    "/player/statistics/weekly-leaderboard": {"name": "Weekly Leaderboard", "category": "stats"},
+    "/player/statistics/alltime-leaderboard": {"name": "All-Time Leaderboard", "category": "stats"},
     "/player/statistics": {"name": "Statistics", "category": "stats"},
-    "/rounds/results": {"name": "Round Review", "category": "review"},
+    "/player/leaderboard": {"name": "Leaderboard", "category": "stats"},
     "/player/dashboard": {"name": "Dashboard", "category": "navigation"},
+    "/player/current-round": {"name": "Current Round", "category": "round_navigation"},
+    "/player/pending-results": {"name": "Pending Results", "category": "review"},
+    "/player/balance": {"name": "Wallet", "category": "economy"},
+    "/player/claim-daily-bonus": {"name": "Daily Bonus", "category": "economy"},
+    "/player/tutorial": {"name": "Tutorial", "category": "tutorial"},
+    "/player/password": {"name": "Updating Password", "category": "account"},
+    "/player/email": {"name": "Updating Email", "category": "account"},
+    "/player/username": {"name": "Updating Username", "category": "account"},
+    "/player/account": {"name": "Account Settings", "category": "account"},
+
+    # Round paths
+    "/rounds/prompt": {"name": "Prompt Round", "category": "round_prompt"},
+    "/rounds/copy": {"name": "Copy Round", "category": "round_copy"},
+    "/rounds/vote": {"name": "Vote Round", "category": "round_vote"},
+    "/rounds/available": {"name": "Browsing Rounds", "category": "round_navigation"},
+    "/rounds/results": {"name": "Round Review", "category": "review"},
     "/rounds/completed": {"name": "Completed Rounds", "category": "review"},
+    "/rounds/": {"name": "Round Activity", "category": "round_other"},  # Generic rounds path
+
+    # Quest paths
+    "/quests/active": {"name": "Active Quests", "category": "quests"},
+    "/quests/claimable": {"name": "Claiming Quest Rewards", "category": "quest_rewards"},
     "/quests": {"name": "Quests", "category": "quests"},
+
+    # Phraseset paths
+    "/phrasesets/practice": {"name": "Practice Mode", "category": "practice"},
     "/phrasesets": {"name": "Phraseset Review", "category": "review"},
-    "/player/balance": {"name": "Balance Check", "category": "navigation"},
-    "/player/tutorial": {"name": "Tutorial", "category": "navigation"},
-    # Add missing mappings that frontend expects
-    "/rounds/": {"name": "Round Review", "category": "review"},  # Generic rounds path
     "/phrasesets/": {"name": "Phraseset Review", "category": "review"},  # Generic phrasesets path
+
+    # Other paths
+    "/feedback/beta-survey": {"name": "Beta Survey", "category": "feedback"},
+    "/notifications": {"name": "Notifications", "category": "notifications"},
+    "/online-users": {"name": "Online Users", "category": "navigation"},
 }
 
 
