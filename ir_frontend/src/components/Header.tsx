@@ -4,7 +4,7 @@ import { useIRGame } from '../contexts/IRGameContext';
 import { BalanceFlipper } from './BalanceFlipper';
 import SubHeader from './SubHeader';
 import { ArrowLeftIcon } from './icons/ArrowIcons';
-import { HomeIcon, SettingsIcon } from './icons/NavigationIcons';
+import { HomeIcon } from './icons/NavigationIcons';
 
 const Header: React.FC = () => {
   const { player, logout, isAuthenticated } = useIRGame();
