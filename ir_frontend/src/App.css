@@ -36,7 +36,7 @@
   input:focus,
   textarea:focus,
   select:focus {
-    outline: 2px solid #10B4A4;
+    outline: 2px solid theme('colors.ir-turquoise');
     outline-offset: 2px;
   }
 
