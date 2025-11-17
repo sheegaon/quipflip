@@ -184,9 +184,8 @@ export type TutorialProgress =
   | 'not_started'
   | 'welcome'
   | 'dashboard'
-  | 'prompt_round'
-  | 'copy_round'
-  | 'vote_round'
+  | 'backronym_entry'
+  | 'backronym_voting'
   | 'rounds_guide'
   | 'completed';
 
