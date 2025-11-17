@@ -116,7 +116,7 @@ const Voting: React.FC = () => {
   if (loading || !set || !player) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-ir-navy to-ir-teal bg-pattern flex items-center justify-center p-4">
-        <div className="max-w-2xl w-full tile-card p-8 text-center text-ir-cream">
+        <div className="max-w-2xl w-full tile-card p-6 md:p-8 text-center text-ir-cream">
           Loading voting options...
         </div>
       </div>
@@ -195,10 +195,10 @@ const Voting: React.FC = () => {
         </div>
 
         {/* Main Card */}
-        <div className="bg-white rounded-tile shadow-tile p-8 border-2 border-ir-navy border-opacity-10">
+        <div className="bg-white rounded-tile shadow-tile p-6 md:p-8 border-2 border-ir-navy border-opacity-10">
             {/* Transitioning Message */}
             {isTransitioning && (
-              <div className="mb-6 p-6 bg-ir-teal-light border-2 border-ir-turquoise rounded-tile text-center">
+              <div className="mb-6 p-5 md:p-6 bg-ir-teal-light border-2 border-ir-turquoise rounded-tile text-center">
                 <div className="text-2xl font-bold text-ir-turquoise mb-2">
                   ✓ Voting Complete!
                 </div>
@@ -244,17 +244,17 @@ const Voting: React.FC = () => {
                       const isOwnEntry = playerEntry ? entry.entry_id === playerEntry.entry_id : false;
                       const isSelected = selectedEntryId === entry.entry_id;
 
-                      return (
-                        <button
-                          key={entry.entry_id}
-                          onClick={() => !isOwnEntry && handleVote(entry.entry_id)}
-                          disabled={isSubmitting || isOwnEntry}
-                          className={`w-full p-6 rounded-lg border-2 transition-all text-left relative ${
-                            isOwnEntry
-                              ? 'bg-gray-100 border-gray-300 cursor-not-allowed opacity-75'
-                              : isSelected
-                              ? 'bg-ir-teal-light border-ir-turquoise shadow-md'
-                              : 'bg-white border-ir-navy border-opacity-20 hover:border-ir-turquoise hover:shadow-md'
+                          return (
+                            <button
+                              key={entry.entry_id}
+                              onClick={() => !isOwnEntry && handleVote(entry.entry_id)}
+                              disabled={isSubmitting || isOwnEntry}
+                              className={`w-full p-5 md:p-6 rounded-lg border-2 transition-all text-left relative ${
+                                isOwnEntry
+                                  ? 'bg-gray-100 border-gray-300 cursor-not-allowed opacity-75'
+                                  : isSelected
+                                  ? 'bg-ir-teal-light border-ir-turquoise shadow-md'
+                                  : 'bg-white border-ir-navy border-opacity-20 hover:border-ir-turquoise hover:shadow-md'
                           } ${isSubmitting && !isSelected ? 'opacity-50' : ''}`}
                         >
                           {/* Own Entry Badge */}
