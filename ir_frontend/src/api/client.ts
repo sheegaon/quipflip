@@ -14,6 +14,8 @@ import type {
   ResultsResponse,
   PlayerStats,
   LeaderboardEntry,
+  ValidateBackronymRequest,
+  ValidateBackronymResponse,
 } from './types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/ir';
@@ -162,6 +164,11 @@ export const gameAPI = {
 
   submitBackronym: async (setId: string, data: SubmitBackronymRequest): Promise<void> => {
     await irClient.post(`/sets/${setId}/submit`, data);
+  },
+
+  validateBackronym: async (setId: string, data: ValidateBackronymRequest): Promise<ValidateBackronymResponse> => {
+    const response = await irClient.post<ValidateBackronymResponse>(`/sets/${setId}/validate`, data);
+    return response.data;
   },
 
   getSetStatus: async (setId: string): Promise<SetStatusResponse> => {

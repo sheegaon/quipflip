@@ -19,12 +19,15 @@ from backend.routers.ir.schemas import (
     SubmitBackronymResponse,
     SubmitVoteRequest,
     SubmitVoteResponse,
+    ValidateBackronymRequest,
+    ValidateBackronymResponse,
 )
 from backend.services.ir.ir_backronym_set_service import IRBackronymSetService
 from backend.services.ir.ir_result_view_service import IRResultViewService
 from backend.services.ir.ir_scoring_service import IRScoringService
 from backend.services.ir.transaction_service import IRTransactionError, IRTransactionService
 from backend.services.ir.ir_vote_service import IRVoteError, IRVoteService
+from backend.services.phrase_validation_client import PhraseValidationClient
 
 router = APIRouter()
 settings = get_settings()
@@ -120,6 +123,43 @@ async def submit_backronym(
         raise
     except Exception as e:
         logger.error(f"Error in submit_backronym: {e}", exc_info=True)
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+@router.post("/sets/{set_id}/validate", response_model=ValidateBackronymResponse)
+async def validate_backronym(
+    set_id: str,
+    request: ValidateBackronymRequest,
+    _: IRPlayer = Depends(get_ir_current_player),
+    db: AsyncSession = Depends(get_db),
+) -> ValidateBackronymResponse:
+    """Validate backronym words using the backend validator service."""
+    logger = logging.getLogger(__name__)
+
+    try:
+        set_service = IRBackronymSetService(db)
+        set_obj = await set_service.get_set_by_id(set_id)
+
+        if not set_obj:
+            raise HTTPException(status_code=404, detail="Set not found")
+
+        normalized_words = [word.strip().upper() for word in request.words]
+
+        async with PhraseValidationClient() as validator:
+            is_valid, error = await validator.validate_backronym_words(
+                normalized_words,
+                len(set_obj.word),
+            )
+
+        return ValidateBackronymResponse(
+            is_valid=is_valid,
+            error=error or None,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error validating backronym words: {e}", exc_info=True)
         raise HTTPException(status_code=400, detail=str(e)) from e
 
 

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useIRGame } from '../contexts/IRGameContext';
 import { gameAPI } from '../api/client';
-import Header from '../components/Header';
 import InitCoinDisplay from '../components/InitCoinDisplay';
 import type { ResultsResponse } from '../api/types';
 
@@ -49,13 +48,8 @@ const Results: React.FC = () => {
 
   if (loading || !results || !player) {
     return (
-      <div className="min-h-screen bg-ir-cream bg-pattern">
-        <Header />
-        <div className="container mx-auto px-4 py-8">
-          <div className="max-w-2xl mx-auto tile-card p-8 text-center">
-            <div className="text-ir-teal">Loading results...</div>
-          </div>
-        </div>
+      <div className="min-h-screen bg-gradient-to-br from-ir-navy to-ir-teal bg-pattern flex items-center justify-center p-4">
+        <div className="max-w-2xl w-full tile-card p-8 text-center text-ir-cream">Loading results...</div>
       </div>
     );
   }
@@ -89,20 +83,18 @@ const Results: React.FC = () => {
   const netGainLoss = totalEarnings - totalCost - breakdown.vault_rake;
 
   return (
-    <div className="min-h-screen bg-ir-cream bg-pattern">
-      <Header />
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          {/* Header */}
-          <div className="text-center mb-6">
-            <h1 className="text-4xl font-display font-bold text-ir-navy mb-2">Results</h1>
-            <p className="text-ir-teal text-lg mb-2">
-              Word: <strong className="text-ir-orange">{set.word.toUpperCase()}</strong>
-            </p>
-            <p className="text-sm text-ir-teal">
-              {set.entry_count} entries • {set.vote_count} votes
-            </p>
-          </div>
+    <div className="min-h-screen bg-gradient-to-br from-ir-navy to-ir-teal bg-pattern flex items-center justify-center p-4">
+      <div className="max-w-5xl w-full tile-card p-6 md:p-8 slide-up-enter">
+        {/* Header */}
+        <div className="text-center mb-6">
+          <h1 className="text-4xl font-display font-bold text-ir-navy mb-2">Results</h1>
+          <p className="text-ir-teal text-lg mb-2">
+            Word: <strong className="text-ir-orange">{set.word.toUpperCase()}</strong>
+          </p>
+          <p className="text-sm text-ir-teal">
+            {set.entry_count} entries • {set.vote_count} votes
+          </p>
+        </div>
 
           {/* Error Message */}
           {error && (

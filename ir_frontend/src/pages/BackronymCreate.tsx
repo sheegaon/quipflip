@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIRGame } from '../contexts/IRGameContext';
-import Header from '../components/Header';
 import Timer from '../components/Timer';
 import InitCoinDisplay from '../components/InitCoinDisplay';
 
 // Word validation state for each input
-type WordStatus = 'empty' | 'typing' | 'invalid' | 'valid';
+type WordStatus = 'empty' | 'typing' | 'invalid' | 'pending_validation' | 'validating' | 'valid';
 
 interface WordInputState {
   word: string;
@@ -15,12 +14,14 @@ interface WordInputState {
 
 const BackronymCreate: React.FC = () => {
   const navigate = useNavigate();
-  const { activeSet, player, submitBackronym, hasSubmittedEntry, loading } = useIRGame();
+  const { activeSet, player, submitBackronym, validateBackronym, hasSubmittedEntry, loading } = useIRGame();
 
   const [wordInputs, setWordInputs] = useState<WordInputState[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isValidating, setIsValidating] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const validationRequestId = useRef(0);
 
   // Initialize word inputs when activeSet is available
   useEffect(() => {
@@ -47,8 +48,8 @@ const BackronymCreate: React.FC = () => {
 
   if (!activeSet || !player) {
     return (
-      <div className="min-h-screen bg-ir-cream bg-pattern flex items-center justify-center">
-        <div className="text-ir-teal">Loading...</div>
+      <div className="min-h-screen bg-gradient-to-br from-ir-navy to-ir-teal bg-pattern flex items-center justify-center p-4">
+        <div className="tile-card max-w-md w-full p-6 text-center text-ir-cream">Loading...</div>
       </div>
     );
   }
@@ -76,7 +77,7 @@ const BackronymCreate: React.FC = () => {
       return 'invalid';
     }
 
-    return 'valid';
+    return 'pending_validation';
   };
 
   // Handle word input change
@@ -90,6 +91,12 @@ const BackronymCreate: React.FC = () => {
 
   // Handle space key to move to next input
   const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if ((e.key === ' ' || e.key === 'Tab') && wordInputs[index].word.trim() !== '') {
+      if (!['typing', 'invalid'].includes(wordInputs[index].status)) {
+        triggerBackendValidation();
+      }
+    }
+
     if (e.key === ' ' && wordInputs[index].word.trim() !== '') {
       e.preventDefault();
       if (index < letters.length - 1) {
@@ -120,13 +127,87 @@ const BackronymCreate: React.FC = () => {
     }
   };
 
+  const triggerBackendValidation = async () => {
+    const hasPendingWords = wordInputs.some(
+      (input) => input.status === 'pending_validation'
+    );
+
+    if (!hasPendingWords || isValidating) {
+      return;
+    }
+
+    const wordsToValidate = wordInputs.map((input) => input.word.trim().toUpperCase());
+    validationRequestId.current += 1;
+    const requestId = validationRequestId.current;
+
+    setIsValidating(true);
+    setWordInputs((prev) =>
+      prev.map((input) =>
+        input.status === 'pending_validation' ? { ...input, status: 'validating' } : input
+      )
+    );
+
+    try {
+      const response = await validateBackronym(activeSet.set_id, wordsToValidate);
+
+      if (validationRequestId.current !== requestId) {
+        return;
+      }
+
+      if (response.is_valid) {
+        setWordInputs((prev) =>
+          prev.map((input) =>
+            input.status === 'validating' || input.status === 'pending_validation'
+              ? { ...input, status: 'valid' }
+              : input
+          )
+        );
+        setError(null);
+      } else {
+        setWordInputs((prev) =>
+          prev.map((input) =>
+            input.status === 'validating' || input.status === 'pending_validation'
+              ? { ...input, status: 'invalid' }
+              : input
+          )
+        );
+        setError(
+          response.error || 'One or more words are invalid. Please adjust and try again.'
+        );
+      }
+    } catch (err: unknown) {
+      if (validationRequestId.current !== requestId) {
+        return;
+      }
+
+      setWordInputs((prev) =>
+        prev.map((input) =>
+          input.status === 'validating' ? { ...input, status: 'invalid' } : input
+        )
+      );
+
+      const errorMessage =
+        typeof err === 'object' && err !== null && 'message' in err
+          ? (err.message as string)
+          : 'Unable to validate words. Please try again.';
+      setError(errorMessage);
+    } finally {
+      if (validationRequestId.current === requestId) {
+        setIsValidating(false);
+      }
+    }
+  };
+
   // Get tile color based on status
   const getTileColor = (status: WordStatus): string => {
     switch (status) {
       case 'empty':
         return 'bg-ir-cream border-ir-teal border-opacity-30';
       case 'typing':
-        return 'bg-ir-orange-light border-ir-orange';
+        return 'bg-yellow-100 border-yellow-400';
+      case 'pending_validation':
+      case 'validating':
+        return 'bg-yellow-100 border-yellow-400';
       case 'invalid':
         return 'bg-ir-orange bg-opacity-20 border-ir-orange';
       case 'valid':
@@ -144,7 +225,7 @@ const BackronymCreate: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!allWordsValid || isSubmitting) {
+    if (!allWordsValid || isSubmitting || isValidating) {
       return;
     }
 
@@ -169,10 +250,8 @@ const BackronymCreate: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-ir-cream bg-pattern">
-      <Header />
-      <div className="max-w-4xl mx-auto md:px-4 px-3 md:py-8 py-5">
-        <div className="tile-card md:p-8 p-5">
+    <div className="min-h-screen bg-gradient-to-br from-ir-navy to-ir-teal bg-pattern flex items-center justify-center p-4">
+      <div className="max-w-4xl w-full tile-card md:p-8 p-5 slide-up-enter">
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-3">
             <div className="text-center sm:text-left">
@@ -262,6 +341,12 @@ const BackronymCreate: React.FC = () => {
                       {wordInputs[index]?.status === 'typing' && (
                         <span className="text-ir-orange">Typing...</span>
                       )}
+                      {wordInputs[index]?.status === 'pending_validation' && (
+                        <span className="text-ir-orange">Ready to validate</span>
+                      )}
+                      {wordInputs[index]?.status === 'validating' && (
+                        <span className="text-ir-orange">Validating...</span>
+                      )}
                       {wordInputs[index]?.status === 'valid' && (
                         <span className="text-ir-turquoise">✓ Valid</span>
                       )}
@@ -275,10 +360,14 @@ const BackronymCreate: React.FC = () => {
             <div className="pt-4">
               <button
                 type="submit"
-                disabled={!allWordsValid || isSubmitting}
+                disabled={!allWordsValid || isSubmitting || isValidating}
                 className="w-full bg-ir-navy hover:bg-ir-teal disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-4 px-6 rounded-tile transition-colors text-lg shadow-tile-sm"
               >
-                {isSubmitting ? 'Submitting...' : `Submit Backronym (${entryCost} IC)`}
+                {isSubmitting
+                  ? 'Submitting...'
+                  : isValidating
+                  ? 'Validating...'
+                  : `Submit Backronym (${entryCost} IC)`}
               </button>
             </div>
 

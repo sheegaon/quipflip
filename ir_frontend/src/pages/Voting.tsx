@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useIRGame } from '../contexts/IRGameContext';
 import { gameAPI } from '../api/client';
-import Header from '../components/Header';
 import Timer from '../components/Timer';
 import InitCoinDisplay from '../components/InitCoinDisplay';
 import type { BackronymSet, BackronymEntry } from '../api/types';
@@ -116,12 +115,9 @@ const Voting: React.FC = () => {
 
   if (loading || !set || !player) {
     return (
-      <div className="min-h-screen bg-ir-cream bg-pattern">
-        <Header />
-        <div className="container mx-auto px-4 py-8">
-          <div className="max-w-2xl mx-auto tile-card p-8 text-center">
-            <div className="text-ir-teal">Loading voting options...</div>
-          </div>
+      <div className="min-h-screen bg-gradient-to-br from-ir-navy to-ir-teal bg-pattern flex items-center justify-center p-4">
+        <div className="max-w-2xl w-full tile-card p-6 md:p-8 text-center text-ir-cream">
+          Loading voting options...
         </div>
       </div>
     );
@@ -179,32 +175,30 @@ const Voting: React.FC = () => {
   const isTransitioning = set.status === 'finalized' || hasNavigatedRef.current;
 
   return (
-    <div className="min-h-screen bg-ir-cream bg-pattern">
-      <Header />
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-3xl mx-auto">
-          {/* Header */}
-          <div className="text-center mb-6">
-            <h1 className="text-3xl font-display font-bold text-ir-navy mb-2">Vote for the Best Backronym</h1>
-            <p className="text-ir-teal mb-2">
-              Word: <strong className="text-ir-orange">{set.word.toUpperCase()}</strong>
+    <div className="min-h-screen bg-gradient-to-br from-ir-navy to-ir-teal bg-pattern flex items-center justify-center p-4">
+      <div className="max-w-4xl w-full tile-card p-6 md:p-8 slide-up-enter">
+        {/* Header */}
+        <div className="text-center mb-6">
+          <h1 className="text-3xl font-display font-bold text-ir-navy mb-2">Vote for the Best Backronym</h1>
+          <p className="text-ir-teal mb-2">
+            Word: <strong className="text-ir-orange">{set.word.toUpperCase()}</strong>
+          </p>
+          {isParticipant ? (
+            <p className="text-sm text-ir-turquoise">
+              You're a participant - voting is free!
             </p>
-            {isParticipant ? (
-              <p className="text-sm text-ir-turquoise">
-                You're a participant - voting is free!
-              </p>
-            ) : (
-              <p className="text-sm text-ir-orange-deep">
-                Non-participant vote costs {voteCost} IC (earn 20 IC if you pick the winner)
-              </p>
-            )}
-          </div>
+          ) : (
+            <p className="text-sm text-ir-orange-deep">
+              Non-participant vote costs {voteCost} IC (earn 20 IC if you pick the winner)
+            </p>
+          )}
+        </div>
 
-          {/* Main Card */}
-          <div className="bg-white rounded-tile shadow-tile p-8 border-2 border-ir-navy border-opacity-10">
+        {/* Main Card */}
+        <div className="bg-white rounded-tile shadow-tile p-6 md:p-8 border-2 border-ir-navy border-opacity-10">
             {/* Transitioning Message */}
             {isTransitioning && (
-              <div className="mb-6 p-6 bg-ir-teal-light border-2 border-ir-turquoise rounded-tile text-center">
+              <div className="mb-6 p-5 md:p-6 bg-ir-teal-light border-2 border-ir-turquoise rounded-tile text-center">
                 <div className="text-2xl font-bold text-ir-turquoise mb-2">
                   ✓ Voting Complete!
                 </div>
@@ -249,17 +243,17 @@ const Voting: React.FC = () => {
                       const isOwnEntry = playerEntry ? entry.entry_id === playerEntry.entry_id : false;
                       const isSelected = selectedEntryId === entry.entry_id;
 
-                      return (
-                        <button
-                          key={entry.entry_id}
-                          onClick={() => !isOwnEntry && handleVote(entry.entry_id)}
-                          disabled={isSubmitting || isOwnEntry}
-                          className={`w-full p-6 rounded-lg border-2 transition-all text-left relative ${
-                            isOwnEntry
-                              ? 'bg-gray-100 border-gray-300 cursor-not-allowed opacity-75'
-                              : isSelected
-                              ? 'bg-ir-teal-light border-ir-turquoise shadow-md'
-                              : 'bg-white border-ir-navy border-opacity-20 hover:border-ir-turquoise hover:shadow-md'
+                          return (
+                            <button
+                              key={entry.entry_id}
+                              onClick={() => !isOwnEntry && handleVote(entry.entry_id)}
+                              disabled={isSubmitting || isOwnEntry}
+                              className={`w-full p-5 md:p-6 rounded-lg border-2 transition-all text-left relative ${
+                                isOwnEntry
+                                  ? 'bg-gray-100 border-gray-300 cursor-not-allowed opacity-75'
+                                  : isSelected
+                                  ? 'bg-ir-teal-light border-ir-turquoise shadow-md'
+                                  : 'bg-white border-ir-navy border-opacity-20 hover:border-ir-turquoise hover:shadow-md'
                           } ${isSubmitting && !isSelected ? 'opacity-50' : ''}`}
                         >
                           {/* Own Entry Badge */}
