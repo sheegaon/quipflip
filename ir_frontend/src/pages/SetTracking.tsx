@@ -60,6 +60,7 @@ const SetTracking: React.FC = () => {
     if (setId) {
       fetchSetStatus();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setId]);
 
   // Start polling every 2 seconds
@@ -75,6 +76,7 @@ const SetTracking: React.FC = () => {
         }
       };
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setId]);
 
   // Redirect if no setId

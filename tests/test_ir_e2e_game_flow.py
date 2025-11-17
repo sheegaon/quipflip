@@ -147,6 +147,7 @@ async def test_ir_guest_player_flow(db_session):
 async def test_ir_daily_bonus_flow(db_session):
     """Test daily bonus claiming flow."""
     from backend.services.ir.ir_daily_bonus_service import IRDailyBonusService
+    from datetime import timedelta
 
     auth_service = IRAuthService(db_session)
     bonus_service = IRDailyBonusService(db_session)
@@ -159,6 +160,10 @@ async def test_ir_daily_bonus_flow(db_session):
         email=email,
         password="TestPassword123!"
     )
+
+    # Set created_at to at least 1 day ago so bonus is available
+    player.created_at = player.created_at - timedelta(days=1)
+    await db_session.commit()
 
     initial_balance = player.wallet
 

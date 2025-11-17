@@ -51,9 +51,6 @@ class IRDailyBonusService:
         today = datetime.now(UTC)
         bonus_date = today.date()
 
-        if not await self.is_bonus_available(player_id):
-            raise IRDailyBonusError("not_available")
-
         try:
             player_result = await self.db.execute(
                 select(IRPlayer).where(IRPlayer.player_id == player_id)
@@ -65,6 +62,7 @@ class IRDailyBonusService:
             if player.is_guest or player.created_at.date() == bonus_date:
                 raise IRDailyBonusError("not_available")
 
+            # Check if bonus was already claimed today (do this before general availability check)
             stmt = select(IRDailyBonus).where(
                 (IRDailyBonus.player_id == player_id)
                 & (IRDailyBonus.date == bonus_date)

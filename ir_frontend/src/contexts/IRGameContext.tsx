@@ -50,6 +50,7 @@ interface IRGameContextType extends IRGameState {
 
 const IRGameContext = createContext<IRGameContextType | undefined>(undefined);
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useIRGame = () => {
   const context = useContext(IRGameContext);
   if (!context) {
