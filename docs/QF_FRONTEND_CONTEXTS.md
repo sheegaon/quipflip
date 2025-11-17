@@ -1,10 +1,10 @@
-# Frontend Context Architecture
+# Quipflip Frontend Context Architecture
 
 This document describes the current state of the Quipflip frontend context architecture, which is organized into specialized contexts for different domains of application state.
 
 ## Overview
 
-The frontend uses a modular context architecture that separates concerns across different domains:
+The Quipflip frontend uses a modular context architecture that separates concerns across different domains:
 
 - **GameContext**: Core game state, authentication, and round management
 - **QuestContext**: Quest system, rewards, and progression tracking
@@ -147,16 +147,14 @@ Where `TutorialLifecycleStatus` is: `'loading' | 'inactive' | 'active' | 'comple
 
 The tutorial follows a linear progression through these steps:
 
-1. **not_started**: Initial state before tutorial begins
-2. **welcome**: Introduction to Quipflip
-3. **dashboard**: Understanding the dashboard
-4. **prompt_round**: Creating engaging prompts
-5. **copy_round**: Writing compelling copy
-6. **vote_round**: Voting mechanics and rewards
-7. **completed_rounds_guide**: Checking performance and earnings
-8. **completed**: Tutorial finished
-
-Note: These values match the `TutorialProgress` type and `Player.tutorial_progress` field values.
+1. **not_started**
+2. **welcome**
+3. **dashboard**
+4. **prompt_round**
+5. **copy_round**
+6. **vote_round**
+7. **completed_rounds_guide**
+8. **completed**
 
 ### Key Actions
 
