@@ -240,7 +240,7 @@ const BackronymCreate: React.FC = () => {
       navigate(`/tracking/${activeSet.set_id}`);
     } catch (err: unknown) {
       const errorMessage = typeof err === 'object' && err !== null && 'response' in err
-        ? ((err.response as any)?.data?.detail) || 'Failed to submit backronym. Please check your words and try again.'
+        ? ((err.response as { data?: { detail?: string } })?.data?.detail) || 'Failed to submit backronym. Please check your words and try again.'
         : typeof err === 'object' && err !== null && 'message' in err
         ? (err.message as string)
         : 'Failed to submit backronym. Please check your words and try again.';

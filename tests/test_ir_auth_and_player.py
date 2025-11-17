@@ -289,10 +289,9 @@ async def test_ir_invalid_token_verification(db_session):
 async def test_ir_password_verification(db_session):
     """Test password hashing and verification."""
     player_service = IRPlayerService(db_session)
-    username_service = UsernameService(db_session)
 
     email = f"pwd{uuid.uuid4().hex[:8]}@example.com"
-    username, _ = await username_service.generate_unique_username()
+    username = f"pwduser{uuid.uuid4().hex[:8]}"
     raw_password = "TestPassword123!"
     password_hash = hash_password(raw_password)
 

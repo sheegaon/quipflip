@@ -87,6 +87,7 @@ const Voting: React.FC = () => {
     if (setId) {
       fetchSetDetails();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setId]);
 
   // Start polling every 3 seconds to check for finalization
@@ -102,6 +103,7 @@ const Voting: React.FC = () => {
         }
       };
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setId]);
 
   // Redirect if no setId

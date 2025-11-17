@@ -247,6 +247,7 @@ export const TutorialProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   return <TutorialContext.Provider value={value}>{children}</TutorialContext.Provider>;
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useTutorial = (): TutorialContextType => {
   const context = useContext(TutorialContext);
   if (!context) {
