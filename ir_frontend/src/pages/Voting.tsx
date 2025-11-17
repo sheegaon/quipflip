@@ -67,8 +67,13 @@ const Voting: React.FC = () => {
       }
 
       setLoading(false);
-    } catch (err: any) {
-      setError(err.response?.data?.detail || err.message || 'Failed to fetch set details');
+    } catch (err: unknown) {
+      const errorMessage = typeof err === 'object' && err !== null && 'response' in err
+        ? ((err.response as any)?.data?.detail)
+        : typeof err === 'object' && err !== null && 'message' in err
+        ? (err.message as string)
+        : 'Failed to fetch set details';
+      setError(errorMessage || 'Failed to fetch set details');
       setLoading(false);
     }
   };
@@ -158,8 +163,13 @@ const Voting: React.FC = () => {
       setTimeout(() => {
         navigate(`/results/${setId}`);
       }, 1000);
-    } catch (err: any) {
-      setError(err.response?.data?.detail || err.message || 'Failed to submit vote');
+    } catch (err: unknown) {
+      const errorMessage = typeof err === 'object' && err !== null && 'response' in err
+        ? ((err.response as any)?.data?.detail)
+        : typeof err === 'object' && err !== null && 'message' in err
+        ? (err.message as string)
+        : 'Failed to submit vote';
+      setError(errorMessage || 'Failed to submit vote');
       setIsSubmitting(false);
       setSelectedEntryId(null);
     }

@@ -25,8 +25,13 @@ const Results: React.FC = () => {
         const response = await gameAPI.getResults(setId);
         setResults(response);
         setError(null);
-      } catch (err: any) {
-        setError(err.response?.data?.detail || err.message || 'Failed to fetch results');
+      } catch (err: unknown) {
+        const errorMessage = typeof err === 'object' && err !== null && 'response' in err
+          ? ((err.response as any)?.data?.detail)
+          : typeof err === 'object' && err !== null && 'message' in err
+          ? (err.message as string)
+          : 'Failed to fetch results';
+        setError(errorMessage || 'Failed to fetch results');
       } finally {
         setLoading(false);
       }
