@@ -31,7 +31,7 @@ async def test_new_player_no_bonus_on_creation_day(test_app):
         "password": "TestPass123!",
     }
 
-    async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test/qf") as client:
         response = await client.post("/player", json=payload)
         assert response.status_code == 201
         data = response.json()
@@ -54,7 +54,7 @@ async def test_new_player_no_bonus_on_creation_day(test_app):
 async def test_guest_players_cannot_claim_daily_bonus(test_app, db_session):
     """Guest accounts should not have access to the daily bonus."""
 
-    async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test/qf") as client:
         response = await client.post("/player/guest")
         assert response.status_code == 201
         data = response.json()
@@ -102,7 +102,7 @@ async def test_daily_bonus_available_after_login(test_app, db_session):
         "password": "TestPass123!",
     }
 
-    async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test/qf") as client:
         create_response = await client.post("/player", json=payload)
         assert create_response.status_code == 201
         player_id = create_response.json()["player_id"]
@@ -202,7 +202,7 @@ async def test_claim_daily_bonus_makes_it_unavailable(test_app, db_session):
         "password": "TestPass123!",
     }
 
-    async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test/qf") as client:
         create_response = await client.post("/player", json=payload)
         player_id = create_response.json()["player_id"]
 
@@ -254,7 +254,7 @@ async def test_cannot_claim_daily_bonus_twice(test_app, db_session):
         "password": "TestPass123!",
     }
 
-    async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test/qf") as client:
         create_response = await client.post("/player", json=payload)
         player_id = create_response.json()["player_id"]
 
@@ -293,7 +293,7 @@ async def test_multiple_logins_preserve_bonus_availability(test_app, db_session)
         "password": "TestPass123!",
     }
 
-    async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test/qf") as client:
         create_response = await client.post("/player", json=payload)
         player_id = create_response.json()["player_id"]
 
@@ -334,7 +334,7 @@ async def test_dashboard_endpoint_includes_bonus_status(test_app, db_session):
         "password": "TestPass123!",
     }
 
-    async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test/qf") as client:
         create_response = await client.post("/player", json=payload)
         player_id = create_response.json()["player_id"]
 

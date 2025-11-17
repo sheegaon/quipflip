@@ -17,7 +17,7 @@
    - Fix: each notifier now tracks whether it created rows and performs `await self.db.commit()` once at the end of the method. This ensures durable storage before WebSocket delivery. (File: `backend/services/notification_service.py`).
 
 ## Verification Notes
-- `GET /auth/ws-token` + `WebSocket /notifications/ws` handshake documented and matches the frontend `NotificationContext` implementation.
+- `GET /auth/ws-token` + `WebSocket /qf/notifications/ws` handshake documented and matches the frontend `NotificationContext` implementation.
 - Rate limiting (10 per player/minute), human-only filtering, and self-action filtering align with the service code.
 - Frontend providers/components (`NotificationProvider`, `NotificationDisplay`, `NotificationToast`) mount globally via `AppProviders`/`App.tsx`, ensuring toasts appear on every page when the WebSocket emits a payload.
 - Alembic migration `001_add_notifications_table.py` introduces the table + indexes described in the implementation doc; `docs/DATA_MODELS.md` now mirrors that schema.

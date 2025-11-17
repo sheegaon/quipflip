@@ -84,7 +84,7 @@ async def test_general_rate_limit_per_api_key():
     to prevent bypassing limits by rotating keys.
     """
 
-    async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test/qf") as client:
         headers = {"X-API-Key": "key-123"}
 
         for _ in range(GENERAL_RATE_LIMIT):
@@ -105,7 +105,7 @@ async def test_vote_rate_limit_is_stricter_than_general():
     to prevent bypassing limits by rotating keys.
     """
 
-    async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test/qf") as client:
         headers = {"X-API-Key": "key-456"}
 
         for _ in range(VOTE_RATE_LIMIT):

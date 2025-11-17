@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 const BASE_URL = 'http://localhost:5173';
-const API_URL = 'http://localhost:8000';
+const API_URL = 'http://localhost:8000/qf';
 
 test.describe('Quipflip Frontend E2E Tests', () => {
   test('should load the landing page', async ({ page }) => {

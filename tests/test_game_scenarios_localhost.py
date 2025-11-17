@@ -2,7 +2,7 @@
 Real-world game scenario tests for Quipflip API on localhost.
 
 These tests simulate actual game flows and player behaviors.
-IMPORTANT: Backend must be running on http://localhost:8000
+IMPORTANT: Backend must be running on http://localhost:8000/qf
 
 Run with: pytest tests/test_game_scenarios_localhost.py -v
 """
@@ -14,7 +14,7 @@ from tests.helpers_localhost import (
     verify_server_is_running
 )
 
-BASE_URL = "http://localhost:8000"
+BASE_URL = "http://localhost:8000/qf"
 
 
 @pytest.fixture(scope="session")
@@ -22,7 +22,7 @@ def verify_server():
     """Verify server is running before tests."""
     if not verify_server_is_running():
         pytest.fail(
-            "Backend server not running at http://localhost:8000\n"
+            "Backend server not running at http://localhost:8000/qf\n"
             "Start with: uvicorn backend.main:app --reload"
         )
 
@@ -462,7 +462,7 @@ if __name__ == "__main__":
     print("=" * 60)
     print("Quipflip Game Scenario Tests")
     print("=" * 60)
-    print("\nBackend must be running: http://localhost:8000")
+    print("\nBackend must be running: http://localhost:8000/qf")
     print("Start: uvicorn backend.main:app --reload")
     print("\nRun: pytest tests/test_game_scenarios_localhost.py -v -s")
     print("=" * 60)

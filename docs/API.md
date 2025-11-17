@@ -3,7 +3,7 @@
 ## Base URL
 
 ```
-Development: http://localhost:8000
+Development: http://localhost:8000/qf
 Production (Frontend): https://quipflip.xyz
 Production (API): https://quipflip.xyz/api (proxied to Heroku backend)
 ```
@@ -148,7 +148,7 @@ Create a guest account instantly (no authentication required). Guest accounts al
 
 **Request:**
 ```bash
-curl -X POST http://localhost:8000/player/guest
+curl -X POST http://localhost:8000/qf/player/guest
 ```
 
 **Response (201 Created):**
@@ -179,7 +179,7 @@ Create a new player account (no authentication required).
 
 **Request:**
 ```bash
-curl -X POST http://localhost:8000/player \
+curl -X POST http://localhost:8000/qf/player \
   -H "Content-Type: application/json" \
   -d '{
         "email": "prompt.pirate@example.com",
@@ -213,7 +213,7 @@ Upgrade a guest account to a full account with custom email and password. Preser
 
 **Request:**
 ```bash
-curl -X POST http://localhost:8000/player/upgrade \
+curl -X POST http://localhost:8000/qf/player/upgrade \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <guest_access_token>" \
   -d '{
@@ -256,7 +256,7 @@ Generate a random, available display name. Useful for previewing what the regist
 Exchange an email and password for a new access token + refresh token pair.
 
 ```bash
-curl -X POST http://localhost:8000/auth/login \
+curl -X POST http://localhost:8000/qf/auth/login \
   -H "Content-Type: application/json" \
   -d '{
         "email": "prompt.pirate@example.com",
@@ -280,7 +280,7 @@ curl -X POST http://localhost:8000/auth/login \
 Use an existing refresh token (or the refresh cookie) to obtain a new access token.
 
 ```bash
-curl -X POST http://localhost:8000/auth/refresh \
+curl -X POST http://localhost:8000/qf/auth/refresh \
   -H "Content-Type: application/json" \
   -d '{"refresh_token": "<refresh token>"}'
 ```
@@ -291,7 +291,7 @@ Returns the same shape as `POST /auth/login` with a rotated refresh token.
 Invalidate a refresh token and clear the server cookie.
 
 ```bash
-curl -X POST http://localhost:8000/auth/logout \
+curl -X POST http://localhost:8000/qf/auth/logout \
   -H "Content-Type: application/json" \
   -d '{"refresh_token": "<refresh token>"}'
 ```
@@ -325,7 +325,7 @@ This endpoint is called via REST API (through Vercel proxy) using HttpOnly cooki
 
 **Notes:**
 - Token is valid for only 60 seconds
-- Token can be used for WebSocket authentication via query parameter: `wss://backend.com/notifications/ws?token=<token>`
+- Token can be used for WebSocket authentication via query parameter: `wss://backend.com/qf/notifications/ws?token=<token>`
 - Designed for cross-domain WebSocket authentication where cookies are not reliable
 
 #### `GET /player/balance`
@@ -2041,19 +2041,19 @@ const ws = new WebSocket(`wss://api.example.com/online/ws?token=${accessToken}`)
 - Uses UserActivity model for player presence
 - Efficient broadcast: only sends updates when clients connected
 
-#### `WebSocket /notifications/ws`
+#### `WebSocket /qf/notifications/ws`
 WebSocket endpoint for real-time copy/vote notifications targeted at specific players.
 
 **Authentication:**
 - Requires short-lived token from `GET /auth/ws-token`
-- Token is appended as query parameter: `wss://api.example.com/notifications/ws?token=<ws_token>`
+- Token is appended as query parameter: `wss://api.example.com/qf/notifications/ws?token=<ws_token>`
 - Connections without a valid token are closed with WebSocket code `1008`
 
 **Connection:**
 ```javascript
 const tokenResponse = await fetch('/api/auth/ws-token', { credentials: 'include' });
 const { token } = await tokenResponse.json();
-const ws = new WebSocket(`wss://api.example.com/notifications/ws?token=${token}`);
+const ws = new WebSocket(`wss://api.example.com/qf/notifications/ws?token=${token}`);
 ```
 
 **Messages Received:**
@@ -2096,37 +2096,37 @@ const ws = new WebSocket(`wss://api.example.com/notifications/ws?token=${token}`
 
 ```bash
 # 1. Check balance
-curl -H "Authorization: Bearer <access_token>" http://localhost:8000/player/balance
+curl -H "Authorization: Bearer <access_token>" http://localhost:8000/qf/player/balance
 
 # 2. Start prompt round
-curl -X POST -H "Authorization: Bearer <access_token>" http://localhost:8000/rounds/prompt
+curl -X POST -H "Authorization: Bearer <access_token>" http://localhost:8000/qf/rounds/prompt
 
 # 3. Submit phrase
 curl -X POST -H "Authorization: Bearer <access_token>" \
   -H "Content-Type: application/json" \
   -d '{"phrase":"famous"}' \
-  http://localhost:8000/rounds/{round_id}/submit
+  http://localhost:8000/qf/rounds/{round_id}/submit
 
 # 4. Start copy round (as different player)
-curl -X POST -H "Authorization: Bearer <other_access_token>" http://localhost:8000/rounds/copy
+curl -X POST -H "Authorization: Bearer <other_access_token>" http://localhost:8000/qf/rounds/copy
 
 # 5. Submit copy word
 curl -X POST -H "Authorization: Bearer <other_access_token>" \
   -H "Content-Type: application/json" \
   -d '{"phrase":"popular"}' \
-  http://localhost:8000/rounds/{round_id}/submit
+  http://localhost:8000/qf/rounds/{round_id}/submit
 
 # 6. Start vote round (after 2 copies submitted)
-curl -X POST -H "Authorization: Bearer <voter_access_token>" http://localhost:8000/rounds/vote
+curl -X POST -H "Authorization: Bearer <voter_access_token>" http://localhost:8000/qf/rounds/vote
 
 # 7. Submit vote
 curl -X POST -H "Authorization: Bearer <voter_access_token>" \
   -H "Content-Type: application/json" \
   -d '{"phrase":"FAMOUS"}' \
-  http://localhost:8000/phrasesets/{phraseset_id}/vote
+  http://localhost:8000/qf/phrasesets/{phraseset_id}/vote
 
 # 8. View results (after finalization)
-curl -H "Authorization: Bearer <access_token>" http://localhost:8000/phrasesets/{phraseset_id}/results
+curl -H "Authorization: Bearer <access_token>" http://localhost:8000/qf/phrasesets/{phraseset_id}/results
 ```
 
 ---
