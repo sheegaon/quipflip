@@ -24,25 +24,51 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+def column_exists(connection, table_name, column_name):
+    """Check if a column exists in a table (works for both PostgreSQL and SQLite)."""
+    # Get the database dialect
+    dialect = connection.dialect.name
+
+    if dialect == 'postgresql':
+        # Use information_schema for PostgreSQL
+        result = connection.execute(
+            sa.text("""
+                SELECT EXISTS (
+                    SELECT FROM information_schema.columns
+                    WHERE table_name = :table_name AND column_name = :column_name
+                )
+            """),
+            {"table_name": table_name, "column_name": column_name}
+        )
+        return result.scalar()
+    elif dialect == 'sqlite':
+        # Use PRAGMA for SQLite
+        result = connection.execute(
+            sa.text(f"PRAGMA table_info({table_name})")
+        )
+        columns = [row[1] for row in result.fetchall()]
+        return column_name in columns
+    else:
+        # For other databases, assume column doesn't exist to be safe
+        return False
+
+
 def upgrade() -> None:
     """Add revoked_at column to ir_refresh_tokens if it doesn't exist."""
-    # Use try-except to handle both cases:
-    # - Fresh PostgreSQL databases (column doesn't exist)
-    # - SQLite development databases (column already exists from updated migration)
-    try:
+    connection = op.get_context().connection
+
+    # Check if column already exists before attempting to add it
+    if not column_exists(connection, 'ir_refresh_tokens', 'revoked_at'):
         op.add_column(
             'ir_refresh_tokens',
             sa.Column('revoked_at', sa.DateTime(timezone=True), nullable=True)
         )
-    except sa.exc.OperationalError:
-        # Column already exists, continue silently
-        pass
 
 
 def downgrade() -> None:
     """Remove revoked_at column from ir_refresh_tokens."""
-    try:
+    connection = op.get_context().connection
+
+    # Only drop if column exists
+    if column_exists(connection, 'ir_refresh_tokens', 'revoked_at'):
         op.drop_column('ir_refresh_tokens', 'revoked_at')
-    except sa.exc.OperationalError:
-        # Column doesn't exist, continue silently
-        pass
