@@ -184,20 +184,17 @@ class IRBackronymSetService:
                     set_obj.first_participant_joined_at = now
 
                     # Create observer guard when first participant joins
-                    # Get the player's account creation timestamp
-                    player_stmt = select(IRPlayer).where(IRPlayer.player_id == player_id)
-                    player_result = await self.db.execute(player_stmt)
-                    player = player_result.scalars().first()
-
-                    if player:
-                        observer_guard = IRBackronymObserverGuard(
-                            set_id=set_id,
-                            first_participant_created_at=player.created_at,
-                        )
-                        self.db.add(observer_guard)
-                        logger.info(
-                            f"Created observer guard for set {set_id} with timestamp {player.created_at}"
-                        )
+                    # Use the timestamp when first participant joined the set,
+                    # not their account creation time. This blocks accounts created
+                    # after the set started, preventing gaming the system.
+                    observer_guard = IRBackronymObserverGuard(
+                        set_id=set_id,
+                        first_participant_created_at=now,  # When they joined, not account age
+                    )
+                    self.db.add(observer_guard)
+                    logger.info(
+                        f"Created observer guard for set {set_id} with timestamp {now}"
+                    )
 
                 # Set timer for when AI will fill remaining slots (Rapid mode only)
                 if set_obj.mode == IRMode.RAPID:
@@ -339,9 +336,8 @@ class IRBackronymSetService:
             )
 
             # Check if we should finalize:
-            # - Need all 5 participant votes first
-            # - Then can accept up to 5 non-participant votes
-            # - Finalize when: (all participants voted AND 5 non-participants voted) OR timeout
+            # Finalize when all 5 participant creators have voted
+            # Non-participant votes are "up to 5" but not required for finalization
             participant_votes = (
                 await self.db.execute(
                     select(IRBackronymVote).where(
@@ -355,13 +351,8 @@ class IRBackronymSetService:
 
             participant_vote_count = len(participant_votes)
 
-            # Finalize if we have all 5 participant votes AND max non-participant votes
-            should_finalize = (
-                participant_vote_count >= 5
-                and set_obj.non_participant_vote_count >= 5
-            )
-
-            if should_finalize:
+            # Finalize if all 5 participant creators have voted
+            if participant_vote_count >= 5:
                 await self.finalize_set(set_id)
                 logger.info(
                     f"Set {set_id} finalized after {participant_vote_count} participant votes "

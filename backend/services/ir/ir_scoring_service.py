@@ -189,7 +189,9 @@ class IRScoringService:
             set_obj.non_participant_payouts_paid = non_participant_payouts_paid
             set_obj.creator_final_pool = creator_final_pool
 
-            await self.db.commit()
+            # Flush changes to make them visible in current transaction
+            # but don't commit yet - commit happens in process_payouts
+            await self.db.flush()
 
             return {
                 "set_id": set_id,
@@ -287,9 +289,14 @@ class IRScoringService:
                     )
 
                     # Record vault contribution from this creator
+                    # Note: The vault rake was already subtracted from net_amount,
+                    # so we just credit the vault directly (not debit wallet again)
                     if vault_contribution > 0:
-                        vault_txn = await self.transaction_service.process_vault_contribution(
-                            player_id=creator_id, amount=vault_contribution
+                        vault_txn = await self.transaction_service.credit_vault(
+                            player_id=creator_id,
+                            amount=vault_contribution,
+                            transaction_type=self.transaction_service.VAULT_CONTRIBUTION,
+                            reference_id=set_id,
                         )
                         results["vault_transactions"].append(
                             {
