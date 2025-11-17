@@ -1,10 +1,10 @@
-import type { TutorialProgress } from '../types/tutorial';
+import type { TutorialProgress } from '../api/types';
 
 export interface TutorialStep {
   id: TutorialProgress;
   title: string;
   message: string;
-  target?: string;
+  target?: string; // CSS selector for element to highlight
   position?: 'top' | 'bottom' | 'left' | 'right';
   action?: 'click' | 'wait';
   nextStep?: TutorialProgress;

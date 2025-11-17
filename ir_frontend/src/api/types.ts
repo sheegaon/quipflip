@@ -105,7 +105,7 @@ export interface RegisterRequest {
 }
 
 export interface LoginRequest {
-  email: string;
+  username: string;
   password: string;
 }
 
@@ -178,6 +178,28 @@ export interface ResultsResponse {
     net_payout: number;
     vote_reward: number;
   } | null;
+}
+
+export type TutorialProgress =
+  | 'not_started'
+  | 'welcome'
+  | 'dashboard'
+  | 'prompt_round'
+  | 'copy_round'
+  | 'vote_round'
+  | 'rounds_guide'
+  | 'completed';
+
+export interface TutorialStatus {
+  tutorial_completed: boolean;
+  tutorial_progress: TutorialProgress;
+  tutorial_started_at: string | null;
+  tutorial_completed_at: string | null;
+}
+
+export interface UpdateTutorialProgressResponse {
+  success: boolean;
+  tutorial_status: TutorialStatus;
 }
 
 // Error response type

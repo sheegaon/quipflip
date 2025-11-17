@@ -28,7 +28,7 @@ interface IRGameState {
 interface IRGameContextType extends IRGameState {
   // Authentication
   loginAsGuest: () => Promise<void>;
-  login: (email: string, password: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<void>;
   register: (username: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   upgradeGuest: (username: string, email: string, password: string) => Promise<void>;
@@ -107,11 +107,11 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
     }
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
+  const login = useCallback(async (username: string, password: string) => {
     try {
       setLoading(true);
       setError(null);
-      const response = await authAPI.login({ email, password });
+      const response = await authAPI.login({ username, password });
       setState((prev) => ({
         ...prev,
         isAuthenticated: true,
