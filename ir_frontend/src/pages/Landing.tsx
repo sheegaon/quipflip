@@ -9,7 +9,6 @@ export const Landing: React.FC = () => {
   const [registerPassword, setRegisterPassword] = useState('');
   const [loginIdentifier, setLoginIdentifier] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
-  const [guestCredentials, setGuestCredentials] = useState<{ email: string; password: string } | null>(null);
 
   const { loginAsGuest, login, register } = useIRGame();
   const navigate = useNavigate();
@@ -156,15 +155,6 @@ export const Landing: React.FC = () => {
         {error && (
           <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
             {error}
-          </div>
-        )}
-
-        {guestCredentials && (
-          <div className="mb-6 p-4 bg-blue-100 border border-blue-400 text-blue-900 rounded">
-            <p className="font-semibold mb-2">Guest Account Created!</p>
-            <p className="text-sm mb-1">Email: {guestCredentials.email}</p>
-            <p className="text-sm">Password: {guestCredentials.password}</p>
-            <p className="text-xs mt-2 text-blue-700">Save these credentials to log in later, or upgrade your account in Settings.</p>
           </div>
         )}
 
