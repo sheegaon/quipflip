@@ -92,21 +92,21 @@ const GuestWelcomeOverlay: React.FC = () => {
 
           <ul className="guest-welcome-list">
             <li>
-              <strong>Create Quips:</strong> Write fun fill-in-the-blank challenges
+              <strong>Quip:</strong> Write the original answer to a fill-in-the-blank prompt
             </li>
             <li>
-              <strong>Copy Phrases:</strong> Try to blend in with the original answers
+              <strong>Impostor:</strong> Fake the original answer so it blends in with the real one
             </li>
             <li>
-              <strong>Vote:</strong> Identify the original phrase from clever copies
+              <strong>Guess:</strong> Pick which answer you think was written first
             </li>
           </ul>
 
           <div className="guest-welcome-example">
-            <strong>Example:</strong> In a Prompt Round, you might answer "The best pizza topping
-            is ______" with "peppers and mushrooms". Other players will try to write similar
-            answers without seeing the prompt! Then voters will try to pick out your answer from
-            the copies.
+            <strong>Example:</strong> In a Quip Round, you might answer "The best pizza topping is
+            ______" with "peppers and mushrooms." In the Impostor Round (fake the original), other
+            players will try to write similar answers without seeing the prompt. Guessers then try
+            to pick which answer was the original.
           </div>
 
           <hr className="guest-welcome-divider" />

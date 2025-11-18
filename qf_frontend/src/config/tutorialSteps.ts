@@ -20,9 +20,9 @@ export const TUTORIAL_STEPS: Record<TutorialProgress, TutorialStep | null> = {
     title: 'Welcome to Quipflip!',
     message: `Quipflip is a creative word game where you:
 
-• Write original quips
-• Fake believable answers
-• Guess which answer was written first
+• Quip: write the original answer to a prompt
+• Impostor: fake the original answer so it blends in
+• Guess: pick which answer was written first
 
 We will take a quick tour so you know how to play and earn Flipcoins.`,
     position: 'bottom',
@@ -38,7 +38,7 @@ We will take a quick tour so you know how to play and earn Flipcoins.`,
 
 • See your balance and claim your daily bonus
 • Continue active rounds and check results
-• Start new rounds as Write, Impostor, or Guess
+• Start new rounds as Quip, Impostor, or Guess
 • Switch between Practice Mode and Live Mode using the toggle at the bottom
 
 Next we will look at a Quip Round, where you write the original answer.`,
