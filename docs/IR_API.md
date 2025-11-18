@@ -32,6 +32,7 @@ Field-level schemas live in the backend Pydantic models under `backend/routers/i
 - `POST /auth/upgrade` – Convert a guest to a registered player with `email` and `password`; returns fresh tokens and profile.
 - `POST /auth/refresh` – Exchange a refresh token (cookie or body) for a new access token and refresh token; updates cookies.
 - `POST /auth/logout` – Clear access and refresh cookies.
+- `GET /auth/ws-token` – Issue a short-lived token for the notifications WebSocket. The frontend builds the socket URL with the `/ir` prefix intact (e.g., `${API_BASE}/notifications/ws?token=...`).
 
 ## Player Endpoints
 
