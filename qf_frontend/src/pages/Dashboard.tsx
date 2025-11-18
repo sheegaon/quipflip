@@ -9,12 +9,11 @@ import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { ModeToggle } from '../components/ModeToggle';
 import { UpgradeGuestAccount } from '../components/UpgradeGuestAccount';
 import TutorialWelcome from '../components/Tutorial/TutorialWelcome';
+import BetaSurveyModal from '../components/BetaSurveyModal';
 import { dashboardLogger } from '../utils/logger';
 import { TrackingIcon } from '../components/icons/NavigationIcons';
 import { CopyRoundIcon, VoteRoundIcon } from '../components/icons/RoundIcons';
-import type { BetaSurveyStatusResponse } from '../api/types';
-import { hasDismissedSurvey, markSurveyDismissed, hasCompletedSurvey } from '../utils/betaSurvey';
-import { getErrorMessage } from '../types/errors';
+import { hasDismissedSurvey, hasCompletedSurvey } from '../utils/betaSurvey';
 
 const formatWaitingCount = (count: number): string => (count > 10 ? 'over 10' : count.toString());
 export const Dashboard: React.FC = () => {
@@ -42,7 +41,6 @@ export const Dashboard: React.FC = () => {
   const [isRoundExpired, setIsRoundExpired] = useState(false);
   const [startingRound, setStartingRound] = useState<string | null>(null);
   const [roundStartError, setRoundStartError] = useState<string | null>(null);
-  const [surveyStatus, setSurveyStatus] = useState<BetaSurveyStatusResponse | null>(null);
   const [showSurveyPrompt, setShowSurveyPrompt] = useState(false);
   const [isAbandoningRound, setIsAbandoningRound] = useState(false);
   const [abandonError, setAbandonError] = useState<string | null>(null);
@@ -110,23 +108,18 @@ export const Dashboard: React.FC = () => {
     }
   }, [activeRound]);
 
-  // Beta survey status with proper cleanup
-  // NOTE: In development, React StrictMode will cause this effect to run twice,
-  // leading to duplicate API calls. This is intentional React behavior to help catch bugs.
-  // In production, this won't happen. We use AbortController to cancel pending requests
-  // when the component unmounts/remounts.
+  // Check if survey should be shown
   useEffect(() => {
     const playerId = player?.player_id;
 
     if (!playerId || !isAuthenticated) {
-      setSurveyStatus(null);
       setShowSurveyPrompt(false);
       return;
     }
 
     const controller = new AbortController();
 
-    const fetchStatus = async () => {
+    const checkSurveyEligibility = async () => {
       try {
         const status = await apiClient.getBetaSurveyStatus(controller.signal);
 
@@ -134,34 +127,16 @@ export const Dashboard: React.FC = () => {
         const completedLocal = hasCompletedSurvey(playerId);
         const shouldShow = status.eligible && !status.has_submitted && !dismissed && !completedLocal;
 
-        setSurveyStatus(status);
         setShowSurveyPrompt(shouldShow);
-
-        if (shouldShow) {
-          dashboardLogger.info('[Beta Survey] ✨ SHOWING SURVEY PROMPT ✨');
-        }
       } catch (error: unknown) {
         if (controller.signal.aborted) {
           return;
         }
-        // Only log non-auth errors - 401 is expected when not authenticated
-        // Check if error is an axios error with response status
-        const isAuthError =
-          error &&
-          typeof error === 'object' &&
-          'response' in error &&
-          error.response &&
-          typeof error.response === 'object' &&
-          'status' in error.response &&
-          error.response.status === 401;
-
-        if (!isAuthError) {
-          dashboardLogger.warn('[Beta Survey] Failed to fetch survey status', getErrorMessage(error));
-        }
+        // Silently handle errors for survey check
       }
     };
 
-    fetchStatus();
+    checkSurveyEligibility();
 
     return () => {
       controller.abort();
@@ -191,18 +166,6 @@ export const Dashboard: React.FC = () => {
       navigate(`/dashboard${newSearch ? `?${newSearch}` : ''}`, { replace: true });
     }
   }, [location.search, navigate]);
-
-  const handleSurveyStart = useCallback(() => {
-    setShowSurveyPrompt(false);
-    navigate('/survey/beta');
-  }, [navigate]);
-
-  const handleSurveyDismiss = useCallback(() => {
-    if (player?.player_id) {
-      markSurveyDismissed(player.player_id);
-    }
-    setShowSurveyPrompt(false);
-  }, [player?.player_id]);
 
   const activeRoundRoute = useMemo(() => {
     return activeRound?.round_type ? `/${activeRound.round_type}` : null;
@@ -438,10 +401,6 @@ export const Dashboard: React.FC = () => {
       }
     } catch (err) {
       dashboardLogger.error('❌ Failed to start impostor round:', err);
-      const errorMsg = extractErrorMessage(err) || 'Unable to start impostor round. Please try again.';
-      setRoundStartError(errorMsg);
-    } finally {
-      setStartingRound(null);
       dashboardLogger.debug('Impostor round start process completed');
     }
   };
@@ -684,39 +643,10 @@ export const Dashboard: React.FC = () => {
       <ModeToggle mode={mode} onChange={setMode} />
 
       {/* Beta Survey Modal */}
-      {showSurveyPrompt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="tile-card w-full max-w-lg space-y-4 p-6">
-            <h2 className="text-2xl font-display font-bold text-quip-navy">
-              Share your beta feedback
-            </h2>
-            <p className="text-quip-navy">
-              We&apos;d love to hear how Quipflip feels after ten rounds. Take a short survey to help us tune the beta experience.
-            </p>
-            {surveyStatus && (
-              <p className="text-sm text-quip-teal">
-                You&apos;ve completed <span className="font-semibold">{surveyStatus.total_rounds}</span> rounds so far — perfect!
-              </p>
-            )}
-            <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-              <button
-                type="button"
-                onClick={handleSurveyDismiss}
-                className="rounded-tile border border-quip-navy/20 px-5 py-2 font-semibold text-quip-navy transition hover:border-quip-teal hover:text-quip-teal"
-              >
-                Maybe later
-              </button>
-              <button
-                type="button"
-                onClick={handleSurveyStart}
-                className="rounded-tile bg-quip-navy px-6 py-2 font-semibold text-white shadow-tile-sm transition hover:bg-quip-teal"
-              >
-                Take the survey
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <BetaSurveyModal 
+        isVisible={showSurveyPrompt}
+        onDismiss={() => setShowSurveyPrompt(false)}
+      />
     </div>
   );
 };
