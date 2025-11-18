@@ -656,7 +656,7 @@ export const apiClient = {
   },
 
   async getOnlineUsers(signal?: AbortSignal): Promise<OnlineUsersResponse> {
-    const { data } = await api.get('/users/online', { signal });
+    const { data } = await api.get<OnlineUsersResponse>('/users/online', { signal });
     return data;
   },
 
