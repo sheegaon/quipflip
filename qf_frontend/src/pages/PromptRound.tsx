@@ -220,7 +220,7 @@ export const PromptRound: React.FC = () => {
             <TrackingIcon className="w-8 h-8" />
             <h1 className="text-3xl font-display font-bold text-quip-navy">Quip Round</h1>
           </div>
-          <p className="text-quip-teal">Write a quip for the prompt</p>
+          <p className="text-quip-teal">Write an original quip for the prompt</p>
         </div>
 
         {/* Timer */}

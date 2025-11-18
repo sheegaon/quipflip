@@ -340,9 +340,9 @@ export const VoteRound: React.FC = () => {
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-2 mb-2">
             <VoteRoundIcon className="w-8 h-8" aria-hidden="true" />
-            <h1 className="text-3xl font-display font-bold text-quip-navy">Vote Round</h1>
+            <h1 className="text-3xl font-display font-bold text-quip-navy">Guess the Original</h1>
           </div>
-          <p className="text-quip-teal">Identify the original phrase</p>
+          <p className="text-quip-teal">One is the original answer. Two are fakes. Tap the one you think came first.</p>
         </div>
 
         {/* Timer */}
@@ -368,7 +368,7 @@ export const VoteRound: React.FC = () => {
         {/* Phrase Choices */}
         <div className="tutorial-vote-options space-y-4 mb-6">
           <p className="text-center text-quip-navy font-display font-semibold mb-4 text-lg">
-            Which phrase is the original?
+            Which phrase was written first?
           </p>
           {roundData.phrases.map((phrase, idx) => (
             <button

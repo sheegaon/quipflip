@@ -441,7 +441,7 @@ export const CopyRound: React.FC = () => {
           onClick={() => dispatchCompletion({ type: 'TOGGLE_SECOND_COPY_DETAILS' })}
           className="mx-auto flex items-center justify-center gap-2 text-blue-600 font-semibold underline hover:text-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 rounded-tile"
         >
-          Want to submit another fake for the same phrase?
+          Want to submit another fake for the same quip?
           <svg
             xmlns="http://www.w3.org/2000/svg"
             className={`h-4 w-4 transition-transform ${showSecondCopyDetails ? 'rotate-180' : ''}`}
@@ -462,7 +462,7 @@ export const CopyRound: React.FC = () => {
                 iconClassName="w-4 h-4"
                 textClassName="font-semibold text-quip-turquoise"
               />
-              . This gives you two chances to match the prompt!
+              . This gives you two chances to fool voters.
             </p>
           </div>
         )}
@@ -596,7 +596,13 @@ export const CopyRound: React.FC = () => {
         {/* Instructions */}
         <div className="bg-quip-orange bg-opacity-10 border-2 border-quip-orange rounded-tile p-4 mb-6">
           <p className="text-sm text-quip-navy">
-            <strong>💡 Your goal:</strong> You don't know the prompt! Write a phrase that <em>could have been the original</em> and might trick voters. Do NOT submit your best guess of the prompt.
+            <strong>💡 Your goal:</strong> You don't know the prompt!
+            <br />
+            Write a phrase that <em>could have been the original</em> and might trick voters.
+            <br />
+            <strong>Do:</strong> stay close in meaning.
+            <br />
+            <strong>Don't:</strong> repeat the original or try to guess the exact prompt.
           </p>
         </div>
 
@@ -613,7 +619,7 @@ export const CopyRound: React.FC = () => {
             <span className="sr-only">Flag this phrase</span>
             <FlagIcon className="h-5 w-5 pointer-events-none" aria-hidden="true" />
           </button>
-          <p className="text-sm text-quip-teal mb-2 text-center font-medium">Original Phrase:</p>
+          <p className="text-sm text-quip-teal mb-2 text-center font-medium">The original answer was:</p>
           <p className="text-3xl text-center font-display font-bold text-quip-turquoise">
             {roundData.original_phrase}
           </p>
@@ -695,7 +701,7 @@ export const CopyRound: React.FC = () => {
               maxLength={100}
             />
             <p className="text-sm text-quip-teal mt-1">
-              2-5 words (4-100 characters), A-Z and spaces only, must be different from the original, no proper nouns
+              2-5 words (4-100 characters), A-Z and spaces only, no proper nouns
             </p>
           </div>
 

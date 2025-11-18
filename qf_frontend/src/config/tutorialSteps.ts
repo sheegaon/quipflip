@@ -18,9 +18,13 @@ export const TUTORIAL_STEPS: Record<TutorialProgress, TutorialStep | null> = {
   welcome: {
     id: 'welcome',
     title: 'Welcome to Quipflip!',
-    message: `Quipflip is a creative word game where you'll write quips, copy phrases, and vote on the best matches.
+    message: `Quipflip is a creative word game where you:
 
-Let's take a quick tour to show you how to play and earn some flipcoins!`,
+• Write original quips
+• Fake believable answers
+• Guess which answer was written first
+
+We will take a quick tour so you know how to play and earn Flipcoins.`,
     position: 'bottom',
     nextStep: 'dashboard',
     showSkip: true,
@@ -30,14 +34,16 @@ Let's take a quick tour to show you how to play and earn some flipcoins!`,
   dashboard: {
     id: 'dashboard',
     title: 'Your Dashboard',
-    message: `This is your game dashboard. Here you can:
+    message: `This is your main hub. From here you can:
 
-• See your balance and claim daily bonuses
-• View your active rounds and pending results
-• Start new rounds to earn coins
+• See your balance and claim your daily bonus
+• Continue active rounds and check results
+• Start new rounds as Write, Impostor, or Guess
+• Switch between Practice Mode and Live Mode using the toggle at the bottom
 
-Let's start with a **Prompt Round** where you'll create a creative fill-in-the-blank challenge.`,
+Next we will look at a Quip Round, where you write the original answer.`,
     target: '.tutorial-dashboard',
+    position: 'top',
     nextStep: 'prompt_round',
     showSkip: false,
     showBack: true,
@@ -45,17 +51,17 @@ Let's start with a **Prompt Round** where you'll create a creative fill-in-the-b
 
   prompt_round: {
     id: 'prompt_round',
-    title: 'Answer a Prompt',
-    message: `In a Prompt Round, you answer a fill-in-the-blank sentence, or a *quip*.
+    title: 'Quip Round: Write the Original',
+    message: `In a Quip Round you see a fill-in-the-blank style prompt and write the original answer.
 
-For example: "The best pizza topping is ______"
+• Keep it short and punchy (around 2–5 words)
+• Make it something a normal person might say
+• Avoid private info or proper names
 
-You might try writing "peppers and mushrooms" or "green and black olives".
-
-Then other players will try to write similar quips based on yours, but *without seeing the prompt*. The more uniquely your answer fits the prompt, the more coins you can earn!`,
-      // **Click "Next" to start your first Prompt Round.** The tutorial will resume when you finish.
-    target: '.tutorial-prompt-round',
-    position: 'bottom',
+Later, other players will only see your answer (not the prompt) in Impostor Rounds and try to write fakes that look like your original.`,
+    target: '.tutorial-prompt-input',
+    position: 'top',
+    // The tutorial will pause while you complete your first Quip Round.
     nextStep: 'copy_round',
     showSkip: false,
     showBack: true,
@@ -63,16 +69,20 @@ Then other players will try to write similar quips based on yours, but *without 
 
   copy_round: {
     id: 'copy_round',
-    title: 'Write a Copy',
-      // Great job! Now let's try a **Copy Round**.
-    message: `In a Copy Round, you'll see another player's response to a prompt *without seeing the original prompt*.
+    title: 'Impostor Round: Fake the Original',
+    message: `In an Impostor Round you do not see the original prompt. You only see another player's answer.
 
-Your job is to write a phrase that could blend in with the original. Make it convincing!
+Your job is to write a phrase that could have been the original and might trick voters.
 
-Voters will try to identify the original, so the better you match the style, the more you earn.`,
-      // **Click "Next" to start a Copy Round.** The tutorial will resume when you finish.
-    target: '.tutorial-copy-round',
-    position: 'bottom',
+• Do: stay close in meaning, 2–5 words, and keep it natural
+• Do: make it sound like a reasonable answer to some prompt
+• Do not: repeat the original word for word
+• Do not: go totally off-topic or try to guess the hidden prompt literally
+
+If you are stuck, you can tap a suggested phrase and tweak it.`,
+    target: '.tutorial-copy-input',
+    position: 'top',
+    // The tutorial will resume after you submit your first impostor phrase.
     nextStep: 'vote_round',
     showSkip: false,
     showBack: true,
@@ -80,16 +90,16 @@ Voters will try to identify the original, so the better you match the style, the
 
   vote_round: {
     id: 'vote_round',
-    title: 'Vote for the Original',
-      // Excellent!
-    message: `The final type of round is **Voting**.
+    title: 'Guess the Original (Vote Round)',
+    message: `In a Guess Round you see three phrases:
 
-You'll see a prompt and three phrases. One is the original, two are copies.
+• One is the original answer
+• Two are impostor fakes
 
-Your goal is to identify which phrase was the original. Choose carefully - correct votes earn coins!`,
-      // **Make your vote now to complete the tutorial.**
-    target: '.tutorial-vote-round',
+Tap the one you think was written first. If you guess the original correctly you earn Flipcoins. After you vote, you will see which phrase was the original and how everyone voted.`,
+    target: '.tutorial-vote-options',
     position: 'top',
+    // The tutorial will resume after you finish your first guess.
     nextStep: 'rounds_guide',
     showSkip: false,
     showBack: true,
@@ -98,11 +108,15 @@ Your goal is to identify which phrase was the original. Choose carefully - corre
   rounds_guide: {
     id: 'rounds_guide',
     title: 'Practice Makes Perfect!',
-    message: `Ready to play on your own?
+    message: `You are ready to play on your own.
 
-**Try practice mode first** to get comfortable with the game without risking coins. Use the toggle at the bottom of the dashboard to switch between Live and Practice modes.
+To get comfortable with the game, try Practice Mode:
 
-When you're ready, switch to Live Mode and start earning coins! You can always come back to practice to refine your strategy.`,
+• Use the mode toggle at the bottom of the screen to switch between Practice and Live
+• Practice Mode lets you play rounds without worrying about your main balance
+• Live Mode lets you earn and lose Flipcoins in real games
+
+Experiment in Practice, then switch to Live Mode when you feel confident. You can always return to Practice to refine your strategy.`,
     target: 'div.fixed.bottom-5',
     position: 'top',
     // No nextStep - this is the final tutorial screen, shows "End Tutorial" button
