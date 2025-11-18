@@ -140,9 +140,7 @@ class RoundService:
         prompt = result.scalar_one_or_none()
 
         if not prompt:
-            logger.info(
-                f"Player {player.player_id} has seen all available prompts; no unseen prompts remaining"
-            )
+            logger.info(f"Player {player.player_id} has seen all available prompts; no unseen prompts remaining")
             raise NoPromptsAvailableError("no_unseen_prompts_available")
 
         return prompt
@@ -252,10 +250,7 @@ class RoundService:
         try:
             asyncio.create_task(generate_ai_copies_background(round_object.round_id))
         except Exception as exc:
-            logger.warning(
-                "Failed to start background AI copy generation task for prompt round %s: %s", round_id, exc,
-                exc_info=True,
-            )
+            logger.warning(f"Failed to start background AI copy generation task for prompt round {round_id}: {exc}", exc_info=True)
 
         # Track quest progress for round completion
         from backend.services.qf.quest_service import QuestService
@@ -345,9 +340,7 @@ class RoundService:
         else:
             # First copy: normal flow
             queue_populated = await self.ensure_prompt_queue_populated()
-            logger.info(
-                f"[Copy Round Start] Queue populated: {queue_populated}, queue length: {QueueService.get_prompt_rounds_waiting()}"
-            )
+            logger.info(f"[Copy Round Start] Queue populated: {queue_populated}, queue length: {QueueService.get_prompt_rounds_waiting()}")
 
             prompt_round = await self._get_next_valid_prompt_round(
                 player, self.settings.copy_round_max_attempts
@@ -367,10 +360,7 @@ class RoundService:
 
         dashboard_cache.invalidate_player_data(player.player_id)
 
-        logger.info(
-            f"Started copy round {round_object.round_id} for player {player.player_id}, "
-            f"cost=${copy_cost}, is_second_copy={is_second_copy}"
-        )
+        logger.info(f"Started copy round {round_object.round_id} for player {player.player_id}, cost=${copy_cost}, is_second_copy={is_second_copy}")
         return round_object, is_second_copy
 
     def _calculate_copy_round_cost(self) -> tuple[int, bool, int]:
@@ -452,9 +442,7 @@ class RoundService:
             if not candidate_prompt_round_ids:
                 # Check if we've hit too many stale entries - trigger rehydration
                 if stale_count >= 5:
-                    logger.warning(
-                        f"[Copy Round Start] Found {stale_count} consecutive stale entries, rehydrating queue"
-                    )
+                    logger.warning(f"[Copy Round Start] Found {stale_count} consecutive stale entries, rehydrating queue")
                     await self.ensure_prompt_queue_populated()
                     stale_count = 0  # Reset counter after rehydration
 
@@ -469,9 +457,7 @@ class RoundService:
                 ]
 
                 if not candidate_prompt_round_ids:
-                    logger.warning(
-                        f"[Copy Round Start] No new prompts available (attempt {attempts + 1}, tried {len(tried_prompt_ids)} unique prompts), rehydrating queue"
-                    )
+                    logger.warning(f"[Copy Round Start] No new prompts available (attempt {attempts + 1}, tried {len(tried_prompt_ids)} unique prompts), rehydrating queue")
                     await self.ensure_prompt_queue_populated()
                     candidate_prompt_round_ids = await self._pop_prompt_batch(
                         max_attempts - attempts
@@ -483,11 +469,7 @@ class RoundService:
                     ]
 
                     if not candidate_prompt_round_ids:
-                        logger.error(
-                            f"[Copy Round Start] No new prompts available after rehydration. "
-                            f"Queue length: {QueueService.get_prompt_rounds_waiting()}, "
-                            f"already tried {len(tried_prompt_ids)} unique prompts"
-                        )
+                        logger.error(f"[Copy Round Start] No new prompts available after rehydration. Queue length: {QueueService.get_prompt_rounds_waiting()}, already tried {len(tried_prompt_ids)} unique prompts")
                         # Requeue everything we tried before raising
                         for tried_prompt_id in tried_prompt_ids:
                             QueueService.add_prompt_round_to_queue(tried_prompt_id)
@@ -500,16 +482,11 @@ class RoundService:
             prompt_round_id = candidate_prompt_round_ids.pop(0)
             prompt_round = prefetched_rounds.get(prompt_round_id)
             attempts += 1
-            logger.info(
-                f"[Copy Round Start] Attempt {attempts}/{max_attempts} for player {player.player_id} using prompt {prompt_round_id}"
-            )
+            logger.info(f"[Copy Round Start] Attempt {attempts}/{max_attempts} for player {player.player_id} using prompt {prompt_round_id}")
 
             if not prompt_round:
                 stale_count += 1
-                logger.warning(
-                    f"[Copy Round Start] Prompt round not found in DB: {prompt_round_id} "
-                    f"(attempt {attempts}, stale_count: {stale_count})"
-                )
+                logger.warning(f"[Copy Round Start] Prompt round not found in DB: {prompt_round_id} (attempt {attempts}, stale_count: {stale_count})")
                 # Don't count stale entries as heavily - only count as 0.5 attempts
                 if stale_count % 2 == 1:  # Every other stale entry, don't count attempt
                     attempts -= 1
@@ -519,11 +496,7 @@ class RoundService:
             stale_count = 0
 
             if prompt_round.phraseset_status in {"flagged_pending", "flagged_removed"}:
-                logger.info(
-                    "[Copy Round Start] "
-                    f"Prompt {prompt_round_id} is flagged (status={prompt_round.phraseset_status}), "
-                    f"skipping for copy queue (attempt {attempts})"
-                )
+                logger.info(f"[Copy Round Start] Prompt {prompt_round_id} is flagged (status={prompt_round.phraseset_status}), skipping for copy queue (attempt {attempts})")
                 # Don't requeue flagged prompts and don't mark as tried
                 continue
 
@@ -545,9 +518,7 @@ class RoundService:
                 # Couldn't lock this prompt, but don't requeue yet - wait until end
                 continue
 
-            logger.info(
-                f"[Copy Round Start] Found valid prompt {prompt_round_id} for player {player.player_id} on attempt {attempts}"
-            )
+            logger.info(f"[Copy Round Start] Found valid prompt {prompt_round_id} for player {player.player_id} on attempt {attempts}")
 
             # Success! Requeue remaining candidates and all tried prompts (except the one we're using)
             tried_prompt_ids.discard(prompt_round_id)  # Don't requeue the one we're using
