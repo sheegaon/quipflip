@@ -72,21 +72,21 @@ const TutorialWelcome: React.FC<TutorialWelcomeProps> = ({ onStart, onSkip }) =>
           )}
 
           <p className="tutorial-welcome-description">
-            Quipflip is a creative word game where you can:
+            Quipflip is a creative word game where you:
           </p>
 
           <ul className="tutorial-welcome-features">
             <li>
-              <strong>Create Quips:</strong> Write fun fill-in-the-blank challenges
+              <strong>Quip:</strong> Write the original answer to a fill-in-the-blank prompt
             </li>
             <li>
-              <strong>Copy Phrases:</strong> Try to blend in with the original answers
+              <strong>Impostor:</strong> Fake the original answer so it blends in with the real one
             </li>
             <li>
-              <strong>Vote:</strong> Identify the original phrase from clever copies
+              <strong>Guess:</strong> Pick which answer you think was written first
             </li>
             <li>
-              <strong>Earn Coins:</strong> The more clever your quips, the more you earn!
+              <strong>Earn Flipcoins:</strong> Clever quips and convincing fakes earn you more!
             </li>
           </ul>
 
