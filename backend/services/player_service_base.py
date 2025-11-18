@@ -455,7 +455,7 @@ class PlayerServiceBase(ABC):
 
     def get_guest_password(self) -> str:
         """Get the default guest password."""
-        return "QuipGuest"
+        return self.settings.guest_password
 
     def _get_initial_balance(self) -> int:
         """Get the initial balance for new players."""
