@@ -18,6 +18,7 @@ from backend.models.qf.player_abandoned_prompt import PlayerAbandonedPrompt
 from backend.services.transaction_service import TransactionService
 from backend.services.qf.queue_service import QueueService
 from backend.services.qf.phraseset_activity_service import ActivityService
+from backend.services.ai.ai_service import AIService
 from backend.config import get_settings
 from backend.utils.exceptions import (
     InvalidPhraseError,
@@ -249,6 +250,16 @@ class RoundService:
 
         await self.db.commit()
         await self.db.refresh(round_object)
+
+        # Immediately generate and cache AI copies for this prompt
+        # This ensures copies are ready for hints and AI backup copies without waiting for the backup cycle
+        try:
+            ai_service = AIService(self.db)
+            await ai_service.generate_and_cache_phrases(round_object)
+            logger.info(f"Generated and cached AI copies for prompt round {round_id}")
+        except Exception as e:
+            # Don't fail the submission if AI generation fails - the backup cycle will retry later
+            logger.warning(f"Failed to generate AI copies for prompt round {round_id}: {e}", exc_info=True)
 
         # Track quest progress for round completion
         from backend.services.qf.quest_service import QuestService
