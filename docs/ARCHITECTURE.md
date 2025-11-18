@@ -8,22 +8,24 @@ Quipflip is a FastAPI-based backend service with a stateless REST API architectu
 
 ```
 repo/
-├── backend/              # FastAPI application, SQLAlchemy models, and services
-│   ├── main.py           # ASGI entrypoint
-│   ├── routers/          # Route modules (players, rounds, phrasesets, quests, feedback, health)
-│   ├── services/         # Business logic (rounds, votes, phrasesets, players, quests)
-│   ├── models/           # ORM models (Player, Round, Phraseset, Quest, etc.)
-│   ├── schemas/          # Pydantic request/response schemas
-│   ├── utils/            # Queue/lock abstractions, JSON encoders, helpers
-│   └── migrations/       # Alembic migrations
-├── frontend/             # React + TypeScript client (Vite powered)
-├── docs/                 # Architecture, API, data model, and planning docs
-├── scripts/              # Utilities (e.g., dictionary download)
-├── tests/                # Pytest suites (integration coverage)
-└── requirements.txt      # Backend dependencies
+├── backend/                # FastAPI application, SQLAlchemy models, and services
+│   ├── main.py             # ASGI entrypoint
+│   ├── routers/            # Shared auth/health plus game-specific routers
+│   │   ├── qf/             # Quipflip routes mounted at /qf/*
+│   │   └── ir/             # Initial Reaction routes mounted at /ir/*
+│   ├── services/           # Shared utilities plus game-specific service layers (qf/ and ir/)
+│   ├── models/             # Shared base tables + game packages (qf/ and ir/)
+│   ├── schemas/            # Pydantic request/response schemas
+│   ├── utils/              # Queue/lock abstractions, JSON encoders, helpers
+│   └── migrations/         # Alembic migrations
+├── frontend/               # React + TypeScript client (Vite powered)
+├── docs/                   # Architecture, API, data model, and planning docs
+├── scripts/                # Utilities (e.g., dictionary download)
+├── tests/                  # Pytest suites (integration coverage)
+└── requirements.txt        # Backend dependencies
 ```
 
-The backend is designed around a clear service layer (`backend/services`) that encapsulates database access and business rules. Routers perform authentication and validation before delegating to services. Shared infrastructure concerns (queues, distributed locks, JSON encoding) live in `backend/utils`. The React frontend consumes the documented API but remains optional for backend development.
+The backend is designed around a clear service layer (`backend/services`) that encapsulates database access and business rules. Routers perform authentication and validation before delegating to services. Shared infrastructure concerns (queues, distributed locks, JSON encoding) live in `backend/utils`. Game-specific logic is isolated to `backend/routers/{qf,ir}`, `backend/services/{qf,ir}`, and `backend/models/{qf,ir}` while the shared bases in `backend/models/*_base.py` keep authentication, tokens, transactions, and configuration consistent across both games. The React frontend consumes the documented API but remains optional for backend development.
 
 ### Technology Stack
 - **Framework**: FastAPI (async Python web framework)

@@ -1,5 +1,7 @@
 # Initial Reaction (IR) API Documentation
 
+Initial Reaction routes are mounted under `/ir` and live in `backend/routers/ir`, sharing authentication and error-handling contracts with the common routers described in [API.md](API.md).
+
 ## Base URL
 
 ```
