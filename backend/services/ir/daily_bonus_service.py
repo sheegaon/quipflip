@@ -6,7 +6,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.config import get_settings
 from backend.models.ir.daily_bonus import IRDailyBonus
 from backend.models.ir.player import IRPlayer
-from backend.services.ir.transaction_service import TransactionService, TransactionError
+from backend.services.transaction_service import TransactionService
+from backend.services.auth_service import GameType
+from backend.utils.exceptions import InsufficientBalanceError
 
 
 class IRDailyBonusError(RuntimeError):
@@ -19,7 +21,7 @@ class IRDailyBonusService:
     def __init__(self, db: AsyncSession):
         self.db = db
         self.settings = get_settings()
-        self.transaction_service = TransactionService(db)
+        self.transaction_service = TransactionService(db, game_type=GameType.IR)
 
     async def is_bonus_available(self, player_id: str) -> bool:
         """Return True if the player can still claim today's bonus."""
@@ -79,14 +81,16 @@ class IRDailyBonusService:
             )
             self.db.add(bonus)
 
-            transaction = await self.transaction_service.credit_wallet(
+            transaction = await self.transaction_service.create_transaction(
                 player_id=player_id,
                 amount=self.settings.ir_daily_bonus_amount,
-                transaction_type=self.transaction_service.DAILY_BONUS,
+                trans_type="daily_bonus",
+                auto_commit=False,
+                wallet_type="wallet",
             )
 
             await self.db.commit()
-        except TransactionError as exc:
+        except InsufficientBalanceError as exc:
             await self.db.rollback()
             raise IRDailyBonusError(str(exc)) from exc
         except Exception as exc:

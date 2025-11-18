@@ -9,7 +9,9 @@ from backend.models.ir.backronym_set import BackronymSet
 from backend.models.ir.backronym_entry import BackronymEntry
 from backend.models.ir.backronym_vote import BackronymVote
 from backend.models.ir.result_view import IRResultView
-from backend.services.transaction_service import TransactionService, InsufficientBalanceError
+from backend.services.transaction_service import TransactionService
+from backend.services.auth_service import GameType
+from backend.utils.exceptions import InsufficientBalanceError
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +31,7 @@ class IRScoringService:
         """
         self.db = db
         self.settings = get_settings()
-        self.transaction_service = TransactionService(db)
+        self.transaction_service = TransactionService(db, game_type=GameType.IR)
 
     async def calculate_payouts(self, set_id: str) -> dict:
         """Calculate all payouts for a finalized set.

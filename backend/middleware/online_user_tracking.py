@@ -15,10 +15,10 @@ from sqlalchemy import select
 from jwt import InvalidTokenError, ExpiredSignatureError, DecodeError
 
 from backend.database import AsyncSessionLocal
-from backend.models.user_activity_base import UserActivityBase
 from backend.services import AuthService
 from backend.services.auth_service import GameType
 from backend.config import get_settings
+from backend.utils.model_registry import get_user_activity_model
 
 logger = logging.getLogger(__name__)
 
@@ -95,19 +95,23 @@ async def update_user_activity_task(
     username: str,
     action_name: str,
     action_category: str,
-    action_path: str
+    action_path: str,
+    game_type: GameType
 ):
     """Background task to update user activity without blocking response."""
     try:
         async with AsyncSessionLocal() as db:
+            # Get the concrete user activity model for this game type
+            user_activity_model = get_user_activity_model(game_type)
+
             # Update or create activity record
             result = await db.execute(
-                select(UserActivityBase).where(UserActivityBase.player_id == player_id)
+                select(user_activity_model).where(user_activity_model.player_id == player_id)
             )
             activity = result.scalar_one_or_none()
-            
+
             current_time = datetime.now(UTC)
-            
+
             if activity:
                 # Update existing activity
                 activity.username = username
@@ -117,7 +121,7 @@ async def update_user_activity_task(
                 activity.last_activity = current_time
             else:
                 # Create new activity record
-                activity = UserActivityBase(
+                activity = user_activity_model(
                     player_id=player_id,
                     username=username,
                     last_action=action_name,
@@ -126,9 +130,9 @@ async def update_user_activity_task(
                     last_activity=current_time
                 )
                 db.add(activity)
-            
+
             await db.commit()
-                        
+
     except Exception as e:
         logger.error(f"Error updating user activity in background task: {e}")
 
@@ -154,31 +158,34 @@ async def online_user_tracking_middleware(request: Request, call_next):
                 # Try QF first, then IR if that fails
                 async with AsyncSessionLocal() as temp_db:
                     payload = None
-                    
+                    detected_game_type = None
+
                     # Try QF game type first
                     try:
                         qf_auth_service = AuthService(temp_db, game_type=GameType.QF)
                         payload = qf_auth_service.decode_access_token(token)
+                        detected_game_type = GameType.QF
                     except Exception:
                         # If QF fails, try IR game type
                         try:
                             ir_auth_service = AuthService(temp_db, game_type=GameType.IR)
                             payload = ir_auth_service.decode_access_token(token)
+                            detected_game_type = GameType.IR
                         except Exception:
                             # If both fail, let it raise to the outer exception handler
                             raise
-                    
+
                     # Decode token to get player info
                     player_id_str = payload.get("sub")
                     username = payload.get("username")
-                    
-                    if player_id_str and username:
+
+                    if player_id_str and username and detected_game_type:
                         player_id = UUID(player_id_str)
                         action_path = str(request.url.path)
-                        
+
                         # Use friendly action info instead of raw HTTP method + path
                         friendly_action_info = get_friendly_action_info(request.method, action_path)
-                        
+
                         # Update activity in background task - fire and forget approach
                         import asyncio
                         asyncio.create_task(update_user_activity_task(
@@ -186,7 +193,8 @@ async def online_user_tracking_middleware(request: Request, call_next):
                             username,
                             friendly_action_info["name"],
                             friendly_action_info["category"],
-                            action_path
+                            action_path,
+                            detected_game_type
                         ))
                         
             except (InvalidTokenError, ExpiredSignatureError, DecodeError):

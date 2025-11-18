@@ -48,9 +48,13 @@ class StaleAIService:
         Returns:
             The AI player instance
         """
+        from backend.utils.model_registry import get_player_model
+
+        player_model = get_player_model(game_type)
+
         # Check if player exists
         result = await self.db.execute(
-            select(PlayerBase).where(PlayerBase.email == email)
+            select(player_model).where(player_model.email == email)
         )
         player = result.scalar_one_or_none()
 
@@ -286,7 +290,7 @@ class StaleAIService:
 
             from backend.services.qf.vote_service import VoteService
             vote_service = VoteService(self.db)
-            transaction_service = TransactionService(self.db)
+            transaction_service = TransactionService(self.db, game_type=GameType.QF)
 
             # Process each stale phraseset with a different AI voter
             for phraseset in stale_phrasesets:
