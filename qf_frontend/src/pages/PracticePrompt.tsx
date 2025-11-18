@@ -47,17 +47,17 @@ const PracticePrompt: React.FC = () => {
     );
   }
 
-  return (
-    <PromptRoundReview
-      promptText={phraseset.prompt_text}
-      originalPhrase={phraseset.original_phrase}
-      playerUsername={phraseset.prompt_player}
-      isAiPlayer={phraseset.prompt_player_is_ai}
-      onSubmit={handleContinue}
-      onBack={handleBack}
-      isPractice={true}
-    />
-  );
+  const reviewProps = {
+    promptText: phraseset.prompt_text,
+    originalPhrase: phraseset.original_phrase,
+    playerUsername: phraseset.prompt_player,
+    isAiPlayer: phraseset.prompt_player_is_ai,
+    onSubmit: handleContinue,
+    onBack: handleBack,
+    isPractice: true,
+  };
+
+  return <PromptRoundReview {...reviewProps} />;
 };
 
 export default PracticePrompt;
