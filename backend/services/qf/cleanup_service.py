@@ -97,11 +97,12 @@ class CleanupService:
         """
         # Find and delete orphaned refresh tokens
         # The query normalizes both sides to handle UUID format mismatches (with/without hyphens)
+        # Using refresh_token_id instead of rowid for PostgreSQL compatibility
         result = await self.db.execute(
             text("""
                 DELETE FROM qf_refresh_tokens
-                WHERE rowid IN (
-                    SELECT rt.rowid FROM qf_refresh_tokens rt
+                WHERE refresh_token_id IN (
+                    SELECT rt.refresh_token_id FROM qf_refresh_tokens rt
                     WHERE NOT EXISTS (
                         SELECT 1 FROM qf_players p
                         WHERE LOWER(REPLACE(p.player_id, '-', '')) = LOWER(REPLACE(rt.player_id, '-', ''))
