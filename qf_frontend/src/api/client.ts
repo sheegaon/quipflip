@@ -59,12 +59,13 @@ import type {
   PracticePhraseset,
   AdminConfig,
   UpdateAdminConfigResponse,
+  OnlineUsersResponse,
+  WsAuthTokenResponse,
 } from './types';
 
 // Base URL - configure based on environment
 const baseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
-// Only add /qf if the base URL doesn't already contain it and isn't using the /api proxy
-const API_BASE_URL = baseUrl.includes('/qf') || baseUrl.includes('/api') ? baseUrl : `${baseUrl}/qf`;
+const API_BASE_URL = /\/qf($|\/)/.test(baseUrl) ? baseUrl : `${baseUrl}/qf`;
 
 // Helper for dev logging
 const isDev = import.meta.env.DEV;
@@ -382,6 +383,11 @@ export const apiClient = {
     clearStoredCredentials();
   },
 
+  async getWebsocketToken(signal?: AbortSignal): Promise<WsAuthTokenResponse> {
+    const { data } = await api.get<WsAuthTokenResponse>('/auth/ws-token', { signal });
+    return data;
+  },
+
   async changePassword(
     payload: { current_password: string; new_password: string },
     signal?: AbortSignal,
@@ -646,6 +652,11 @@ export const apiClient = {
 
   async claimQuestReward(questId: string, signal?: AbortSignal): Promise<ClaimQuestRewardResponse> {
     const { data } = await api.post(`/quests/${questId}/claim`, {}, { signal });
+    return data;
+  },
+
+  async getOnlineUsers(signal?: AbortSignal): Promise<OnlineUsersResponse> {
+    const { data } = await api.get('/users/online', { signal });
     return data;
   },
 

@@ -81,6 +81,12 @@ export interface AuthTokenResponse {
   username: string;
 }
 
+export interface WsAuthTokenResponse {
+  token: string;
+  expires_in: number;
+  token_type: 'bearer';
+}
+
 export interface CreatePlayerResponse extends AuthTokenResponse {
   wallet: number;
   vault: number;
@@ -721,6 +727,7 @@ export interface OnlineUser {
   last_activity: string;
   time_ago: string;
   wallet: number;
+  vault: number;
   created_at: string;
 }
 
