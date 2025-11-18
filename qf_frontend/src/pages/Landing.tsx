@@ -201,7 +201,7 @@ export const Landing: React.FC = () => {
         </div>
 
         <p className="text-center text-quip-navy text-lg font-medium mb-4">
-          A multiplayer phrase association game
+          Write a quip. Fake a quip. Guess the original.
         </p>
 
         <div className="mb-6 border-t border-gray-200" aria-hidden="true"></div>
@@ -215,6 +215,9 @@ export const Landing: React.FC = () => {
           >
             {isLoading ? 'Creating Guest Account...' : 'Play Now'}
           </button>
+          <p className="text-center text-sm text-quip-navy mt-2">
+            We’ll create a guest account so you can try the game with no signup.
+          </p>
         </div>
 
         {error && (
@@ -228,7 +231,7 @@ export const Landing: React.FC = () => {
             <p className="font-semibold mb-2">Guest Account Created!</p>
             <p className="text-sm mb-1">Email: {guestCredentials.email}</p>
             <p className="text-sm">Password: {guestCredentials.password}</p>
-            <p className="text-xs mt-2 text-blue-700">Save these credentials to log in later, or upgrade your account in Settings.</p>
+            <p className="text-xs mt-2 text-blue-700">Save these if you want to come back to this guest account later. You can upgrade to a full account in Settings.</p>
           </div>
         )}
 
@@ -314,9 +317,9 @@ export const Landing: React.FC = () => {
 
         <div className="mt-8 text-center text-sm text-quip-navy">
           <p className="font-display font-semibold mb-2">How to Play:</p>
-          <p className="text-quip-teal">1. Submit clever phrases for prompts</p>
-          <p className="text-quip-teal">2. Copy phrases without seeing the prompt</p>
-          <p className="text-quip-teal">3. Vote to identify the original phrase</p>
+          <p className="text-quip-teal">1. Write an original answer to a prompt</p>
+          <p className="text-quip-teal">2. Write a fake answer that could have been the original</p>
+          <p className="text-quip-teal">3. Guess which answer was written first</p>
         </div>
       </div>
     </div>
