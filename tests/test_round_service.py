@@ -10,22 +10,20 @@ import uuid
 from unittest.mock import AsyncMock, patch
 from sqlalchemy import select, update
 
-from backend.models.player import Player
-from backend.models.prompt import Prompt
-from backend.models.round import Round
-from backend.models.hint import Hint
-from backend.models.phraseset import Phraseset
-from backend.models.player_abandoned_prompt import PlayerAbandonedPrompt
-from backend.services.round_service import RoundService
-from backend.services.ai.ai_service import AIService
-from backend.services.transaction_service import TransactionService
-from backend.services.queue_service import QueueService
-from backend.services.vote_service import VoteService
+from backend.models.qf.player import QFPlayer
+from backend.models.qf.prompt import Prompt
+from backend.models.qf.round import Round
+from backend.models.qf.phraseset import Phraseset
+from backend.models.qf.player_abandoned_prompt import PlayerAbandonedPrompt
+from backend.services import RoundService
+from backend.services import AIService
+from backend.services import TransactionService
+from backend.services import QueueService
+from backend.services import VoteService
 from backend.utils.exceptions import (
     RoundExpiredError,
     InvalidPhraseError,
     NoPromptsAvailableError,
-    RoundNotFoundError,
 )
 from backend.config import get_settings
 
@@ -42,7 +40,7 @@ def drain_prompt_queue():
 async def player_with_balance(db_session):
     """Create a player with sufficient balance for testing."""
     identifier = uuid.uuid4().hex[:8]
-    player = Player(
+    player = QFPlayer(
         player_id=uuid.uuid4(),
         username=f"test_player_{identifier}",
         username_canonical=f"test_player_{identifier}",
@@ -498,7 +496,7 @@ class TestAbandonRound:
         transaction_service = TransactionService(db_session)
 
         # Create a submitted prompt round owned by a different player
-        prompter = Player(
+        prompter = QFPlayer(
             player_id=uuid.uuid4(),
             username=f"prompter_{uuid.uuid4().hex[:8]}",
             username_canonical=f"prompter_{uuid.uuid4().hex[:8]}",
@@ -570,7 +568,7 @@ class TestAbandonRound:
         transaction_service = TransactionService(db_session)
 
         # Create other players involved in the phraseset
-        prompter = Player(
+        prompter = QFPlayer(
             player_id=uuid.uuid4(),
             username=f"prompter_{uuid.uuid4().hex[:8]}",
             username_canonical=f"prompter_{uuid.uuid4().hex[:8]}",
@@ -578,7 +576,7 @@ class TestAbandonRound:
             password_hash="hash",
             balance=1000,
         )
-        copier_one = Player(
+        copier_one = QFPlayer(
             player_id=uuid.uuid4(),
             username=f"copier1_{uuid.uuid4().hex[:8]}",
             username_canonical=f"copier1_{uuid.uuid4().hex[:8]}",
@@ -586,7 +584,7 @@ class TestAbandonRound:
             password_hash="hash",
             balance=1000,
         )
-        copier_two = Player(
+        copier_two = QFPlayer(
             player_id=uuid.uuid4(),
             username=f"copier2_{uuid.uuid4().hex[:8]}",
             username_canonical=f"copier2_{uuid.uuid4().hex[:8]}",
@@ -681,7 +679,7 @@ class TestPhrasesetCreation:
 
         # Create players
         test_id = uuid.uuid4().hex[:8]
-        prompter = Player(
+        prompter = QFPlayer(
             player_id=uuid.uuid4(),
             username=f"prompter_{test_id}",
             username_canonical=f"prompter_{test_id}",
@@ -689,7 +687,7 @@ class TestPhrasesetCreation:
             password_hash="hash",
             balance=1000,
         )
-        copier1 = Player(
+        copier1 = QFPlayer(
             player_id=uuid.uuid4(),
             username=f"copier1_{test_id}",
             username_canonical=f"copier1_{test_id}",
@@ -697,7 +695,7 @@ class TestPhrasesetCreation:
             password_hash="hash",
             balance=1000,
         )
-        copier2 = Player(
+        copier2 = QFPlayer(
             player_id=uuid.uuid4(),
             username=f"copier2_{test_id}",
             username_canonical=f"copier2_{test_id}",
@@ -774,7 +772,7 @@ class TestPhrasesetCreation:
         round_service = RoundService(db_session)
 
         test_id = uuid.uuid4().hex[:8]
-        prompter = Player(
+        prompter = QFPlayer(
             player_id=uuid.uuid4(),
             username=f"prompter_{test_id}",
             username_canonical=f"prompter_{test_id}",
@@ -846,7 +844,7 @@ class TestQueueIntegration:
         # The actual implementation would involve queue matching
         test_id = uuid.uuid4().hex[:8]
 
-        prompter = Player(
+        prompter = QFPlayer(
             player_id=uuid.uuid4(),
             username=f"prompter_{test_id}",
             username_canonical=f"prompter_{test_id}",
@@ -881,10 +879,10 @@ class TestCopyHints:
     """Tests for AI-generated hint retrieval in RoundService."""
 
     @staticmethod
-    async def _create_prompt_and_copy_round(db_session) -> tuple[Round, Round, Player]:
+    async def _create_prompt_and_copy_round(db_session) -> tuple[Round, Round, QFPlayer]:
         identifier = uuid.uuid4().hex[:6]
 
-        player = Player(
+        player = QFPlayer(
             player_id=uuid.uuid4(),
             username=f"copy_player_{identifier}",
             username_canonical=f"copy_player_{identifier}",

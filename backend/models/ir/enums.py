@@ -2,7 +2,7 @@
 from enum import Enum
 
 
-class IRSetStatus(str, Enum):
+class SetStatus(str, Enum):
     """Status of a backronym set."""
 
     OPEN = "open"
@@ -10,7 +10,7 @@ class IRSetStatus(str, Enum):
     FINALIZED = "finalized"
 
 
-class IRMode(str, Enum):
+class Mode(str, Enum):
     """Game mode for Initial Reaction."""
 
     STANDARD = "standard"

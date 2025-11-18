@@ -3,12 +3,13 @@ from fastapi import Depends, HTTPException, Header, Cookie
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.database import get_db
-from backend.models.ir.ir_player import IRPlayer
-from backend.services.ir.auth_service import IRAuthService, IRAuthError
-from backend.services.ir.player_service import IRPlayerService
+from backend.models.ir.player import IRPlayer
+from backend.services import AuthService, AuthError
+from backend.services.auth_service import GameType
+from backend.services.ir import PlayerService
 
 
-async def get_ir_current_player(
+async def get_current_player(
     authorization: str | None = Header(None, alias="Authorization"),
     ir_access_token: str | None = Cookie(None),
     db: AsyncSession = Depends(get_db),
@@ -32,13 +33,15 @@ async def get_ir_current_player(
     if not token:
         raise HTTPException(status_code=401, detail="Missing authentication token")
 
-    auth_service = IRAuthService(db)
+    auth_service = AuthService(db, game_type=GameType.IR)
     try:
-        player_id = await auth_service.verify_access_token(token)
-    except IRAuthError as e:
+        payload = auth_service.decode_access_token(token)
+        player_id = payload.get("sub")
+    except AuthError as e:
         raise HTTPException(status_code=401, detail=str(e)) from e
 
-    player_service = IRPlayerService(db)
+    # Use IR player service since this is IR dependencies
+    player_service = PlayerService(db)
     player = await player_service.get_player_by_id(player_id)
     if not player:
         raise HTTPException(status_code=401, detail="Player not found")

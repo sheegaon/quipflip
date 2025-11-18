@@ -14,10 +14,10 @@ Tests cover:
 """
 
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from uuid import UUID, uuid4
 
-from backend.services.queue_service import QueueService, PROMPT_QUEUE, PHRASESET_QUEUE
+from backend.services import QueueService, PROMPT_QUEUE, PHRASESET_QUEUE
 from backend.config import get_settings
 
 

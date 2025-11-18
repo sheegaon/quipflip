@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
 
-from backend.models.ai_metric import AIMetric
+from backend.models.ai_metric_base import AIMetricBase
 
 
 # Cost estimates per 1M tokens (approximate)
@@ -95,7 +95,7 @@ class AIMetricsService:
             validation_passed: Optional[bool] = None,
             vote_correct: Optional[bool] = None,
             cache_id: Optional[str] = None,
-    ) -> AIMetric:
+    ) -> AIMetricBase:
         """
         Record an AI operation for tracking.
 
@@ -113,14 +113,14 @@ class AIMetricsService:
             cache_id: UUID of the phrase cache entry (if applicable)
 
         Returns:
-            Created AIMetric instance
+            Created AIMetricBase instance
         """
         # Calculate estimated cost
         estimated_cost = None
         if success and prompt_length and response_length:
             estimated_cost = self._estimate_cost(model, prompt_length, response_length)
 
-        metric = AIMetric(
+        metric = AIMetricBase(
             metric_id=uuid.uuid4(),
             operation_type=operation_type,
             provider=provider,
@@ -161,53 +161,53 @@ class AIMetricsService:
             since = datetime.now(UTC) - timedelta(days=1)
 
         # Build query filters
-        filters = [AIMetric.created_at >= since]
+        filters = [AIMetricBase.created_at >= since]
         if operation_type:
-            filters.append(AIMetric.operation_type == operation_type)
+            filters.append(AIMetricBase.operation_type == operation_type)
         if provider:
-            filters.append(AIMetric.provider == provider)
+            filters.append(AIMetricBase.provider == provider)
 
         # Get total operations
         total_result = await self.db.execute(
-            select(func.count(AIMetric.metric_id)).where(and_(*filters))
+            select(func.count(AIMetricBase.metric_id)).where(and_(*filters))
         )
         total_operations = total_result.scalar() or 0
 
         # Get successful operations
         success_result = await self.db.execute(
-            select(func.count(AIMetric.metric_id)).where(
-                and_(*filters, AIMetric.success == True)
+            select(func.count(AIMetricBase.metric_id)).where(
+                and_(*filters, AIMetricBase.success == True)
             )
         )
         successful_operations = success_result.scalar() or 0
 
         # Get total cost
         cost_result = await self.db.execute(
-            select(func.sum(AIMetric.estimated_cost_usd)).where(and_(*filters))
+            select(func.sum(AIMetricBase.estimated_cost_usd)).where(and_(*filters))
         )
         total_cost = cost_result.scalar() or 0.0
 
         # Get average latency
         latency_result = await self.db.execute(
-            select(func.avg(AIMetric.latency_ms)).where(
-                and_(*filters, AIMetric.success == True, AIMetric.latency_ms.isnot(None))
+            select(func.avg(AIMetricBase.latency_ms)).where(
+                and_(*filters, AIMetricBase.success == True, AIMetricBase.latency_ms.isnot(None))
             )
         )
         avg_latency = latency_result.scalar() or 0.0
 
         # Get operations by provider
         provider_result = await self.db.execute(
-            select(AIMetric.provider, func.count(AIMetric.metric_id))
+            select(AIMetricBase.provider, func.count(AIMetricBase.metric_id))
             .where(and_(*filters))
-            .group_by(AIMetric.provider)
+            .group_by(AIMetricBase.provider)
         )
         operations_by_provider = {row[0]: row[1] for row in provider_result.all()}
 
         # Get operations by type
         type_result = await self.db.execute(
-            select(AIMetric.operation_type, func.count(AIMetric.metric_id))
+            select(AIMetricBase.operation_type, func.count(AIMetricBase.metric_id))
             .where(and_(*filters))
-            .group_by(AIMetric.operation_type)
+            .group_by(AIMetricBase.operation_type)
         )
         operations_by_type = {row[0]: row[1] for row in type_result.all()}
 
@@ -245,23 +245,23 @@ class AIMetricsService:
 
         # Build query filters
         filters = [
-            AIMetric.created_at >= since,
-            AIMetric.operation_type == "vote_generation",
-            AIMetric.vote_correct.isnot(None),
+            AIMetricBase.created_at >= since,
+            AIMetricBase.operation_type == "vote_generation",
+            AIMetricBase.vote_correct.isnot(None),
         ]
         if provider:
-            filters.append(AIMetric.provider == provider)
+            filters.append(AIMetricBase.provider == provider)
 
         # Get total votes
         total_result = await self.db.execute(
-            select(func.count(AIMetric.metric_id)).where(and_(*filters))
+            select(func.count(AIMetricBase.metric_id)).where(and_(*filters))
         )
         total_votes = total_result.scalar() or 0
 
         # Get correct votes
         correct_result = await self.db.execute(
-            select(func.count(AIMetric.metric_id)).where(
-                and_(*filters, AIMetric.vote_correct == True)
+            select(func.count(AIMetricBase.metric_id)).where(
+                and_(*filters, AIMetricBase.vote_correct == True)
             )
         )
         correct_votes = correct_result.scalar() or 0
@@ -282,21 +282,6 @@ class MetricsTracker:
 
     Automatically records operation start, duration, and success/failure.
     Handles exceptions gracefully and ensures metrics are always saved.
-
-    Example:
-        >>> async with MetricsTracker(
-        ...     metrics_service,
-        ...     operation_type="copy_generation",
-        ...     provider="openai",
-        ...     model="gpt-4",
-        ... ) as tracker:
-        ...     result = await generate_copy(...)
-        ...     tracker.set_result(
-        ...         result,
-        ...         success=True,
-        ...         response_length=len(result),
-        ...         validation_passed=True,
-        ...     )
 
     Metrics are automatically committed when the context exits.
     If an exception occurs, success=False is recorded with error message.

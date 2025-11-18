@@ -1,6 +1,5 @@
 """Tests for guest account limitations."""
 import uuid
-import pytest
 from fastapi import status
 from httpx import AsyncClient, ASGITransport
 from datetime import datetime, UTC, timedelta
@@ -8,12 +7,12 @@ from uuid import UUID
 from sqlalchemy import select
 
 from backend.config import get_settings
-from backend.models.player import Player
-from backend.models.round import Round
-from backend.models.phraseset import Phraseset
-from backend.services.player_service import PlayerService
-from backend.services.transaction_service import TransactionService
-from backend.services.vote_service import VoteService
+from backend.models.qf.player import QFPlayer
+from backend.models.qf.round import Round
+from backend.models.qf.phraseset import Phraseset
+from backend.services import PlayerService
+from backend.services import TransactionService
+from backend.services import VoteService
 
 
 settings = get_settings()
@@ -33,7 +32,7 @@ class TestGuestOutstandingRoundsLimit:
 
             # Get player from database
             result = await db_session.execute(
-                select(Player).where(Player.player_id == player_id)
+                select(QFPlayer).where(QFPlayer.player_id == player_id)
             )
             player = result.scalar_one()
 
@@ -59,7 +58,6 @@ class TestGuestOutstandingRoundsLimit:
 
     async def test_regular_player_can_have_10_outstanding_rounds(self, test_app, db_session):
         """Test that regular players can have up to 10 outstanding prompts."""
-        from backend.services.round_service import RoundService
 
         async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test/qf") as client:
             # Create regular account
@@ -76,7 +74,7 @@ class TestGuestOutstandingRoundsLimit:
 
             # Get player from database
             result = await db_session.execute(
-                select(Player).where(Player.player_id == player_id)
+                select(QFPlayer).where(QFPlayer.player_id == player_id)
             )
             player = result.scalar_one()
             assert not player.is_guest
@@ -106,7 +104,7 @@ class TestGuestVoteLockout:
 
             # Get player from database - need to get fresh player object for proper session tracking
             result = await db_session.execute(
-                select(Player).where(Player.player_id == player_id)
+                select(QFPlayer).where(QFPlayer.player_id == player_id)
             )
             player = result.scalar_one()
 
@@ -118,7 +116,7 @@ class TestGuestVoteLockout:
 
             # Get fresh player instance to avoid stale state
             result = await db_session.execute(
-                select(Player).where(Player.player_id == player_id)
+                select(QFPlayer).where(QFPlayer.player_id == player_id)
             )
             player = result.scalar_one()
 
@@ -143,7 +141,7 @@ class TestGuestVoteLockout:
 
             # Get player from database
             result = await db_session.execute(
-                select(Player).where(Player.player_id == player_id)
+                select(QFPlayer).where(QFPlayer.player_id == player_id)
             )
             player = result.scalar_one()
 
@@ -157,7 +155,7 @@ class TestGuestVoteLockout:
 
             # Get fresh player instance
             result = await db_session.execute(
-                select(Player).where(Player.player_id == player_id)
+                select(QFPlayer).where(QFPlayer.player_id == player_id)
             )
             player = result.scalar_one()
 
@@ -172,7 +170,7 @@ class TestGuestVoteLockout:
 
             # After the refresh, lockout should be cleared (get fresh instance to verify)
             result = await db_session.execute(
-                select(Player).where(Player.player_id == player_id)
+                select(QFPlayer).where(QFPlayer.player_id == player_id)
             )
             player = result.scalar_one()
             assert player.vote_lockout_until is None
@@ -198,7 +196,7 @@ class TestGuestVoteLockout:
 
             # Get player from database
             result = await db_session.execute(
-                select(Player).where(Player.player_id == player_id)
+                select(QFPlayer).where(QFPlayer.player_id == player_id)
             )
             player = result.scalar_one()
             assert not player.is_guest
@@ -228,14 +226,14 @@ class TestGuestVoteLockout:
 
             # Get player from database
             result = await db_session.execute(
-                select(Player).where(Player.player_id == player_id)
+                select(QFPlayer).where(QFPlayer.player_id == player_id)
             )
             player = result.scalar_one()
 
             # Simulate vote context to exercise VoteService logic
             unique_id = uuid.uuid4().hex[:8]
 
-            prompter = Player(
+            prompter = QFPlayer(
                 player_id=uuid.uuid4(),
                 username=f"prompter_{unique_id}",
                 username_canonical=f"prompter_{unique_id}",
@@ -243,7 +241,7 @@ class TestGuestVoteLockout:
                 password_hash="hash",
                 balance=1000,
             )
-            copier1 = Player(
+            copier1 = QFPlayer(
                 player_id=uuid.uuid4(),
                 username=f"copier1_{unique_id}",
                 username_canonical=f"copier1_{unique_id}",
@@ -251,7 +249,7 @@ class TestGuestVoteLockout:
                 password_hash="hash",
                 balance=1000,
             )
-            copier2 = Player(
+            copier2 = QFPlayer(
                 player_id=uuid.uuid4(),
                 username=f"copier2_{unique_id}",
                 username_canonical=f"copier2_{unique_id}",
@@ -337,7 +335,7 @@ class TestGuestVoteLockout:
 
             # Reload entities to avoid stale state before invoking the service
             player = (await db_session.execute(
-                select(Player).where(Player.player_id == player_id)
+                select(QFPlayer).where(QFPlayer.player_id == player_id)
             )).scalar_one()
             vote_round = await db_session.get(Round, vote_round.round_id)
             phraseset = await db_session.get(Phraseset, phraseset.phraseset_id)
@@ -354,7 +352,7 @@ class TestGuestVoteLockout:
             )
 
             refreshed_player = (await db_session.execute(
-                select(Player).where(Player.player_id == player_id)
+                select(QFPlayer).where(QFPlayer.player_id == player_id)
             )).scalar_one()
 
             assert refreshed_player.consecutive_incorrect_votes == 0

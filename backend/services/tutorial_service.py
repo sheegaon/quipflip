@@ -5,7 +5,7 @@ from datetime import datetime, UTC
 from uuid import UUID
 import logging
 
-from backend.models.player import Player
+from backend.models.player_base import PlayerBase
 from backend.schemas.player import TutorialStatus
 
 logger = logging.getLogger(__name__)
@@ -17,20 +17,21 @@ class TutorialService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def _get_player(self, player_id: UUID) -> Player:
+    async def _get_player(self, player_id: UUID) -> PlayerBase:
         """Fetch a player by ID or raise ValueError if not found."""
         result = await self.db.execute(
-            select(Player).where(Player.player_id == player_id)
+            select(PlayerBase).where(PlayerBase.player_id == player_id)
         )
         player = result.scalar_one_or_none()
 
         if not player:
-            raise ValueError("Player not found")
+            raise ValueError("PlayerBase not found")
 
         return player
 
-    def _create_tutorial_status(self, player: Player) -> TutorialStatus:
-        """Create a TutorialStatus schema from a Player model."""
+    @staticmethod
+    def _create_tutorial_status(player: PlayerBase) -> TutorialStatus:
+        """Create a TutorialStatus schema from a PlayerBase model."""
         return TutorialStatus(
             tutorial_completed=player.tutorial_completed,
             tutorial_progress=player.tutorial_progress,

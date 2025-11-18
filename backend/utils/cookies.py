@@ -4,7 +4,8 @@ from fastapi import Response
 from backend.config import get_settings
 
 
-def set_refresh_cookie(response: Response, token: str, *, expires_days: int | None = None, cookie_name: str | None = None) -> None:
+def set_refresh_cookie(response: Response, token: str, *, expires_days: int | None = None,
+                       cookie_name: str | None = None) -> None:
     """Set the refresh token cookie with secure defaults.
 
     In production, REST API uses Vercel proxy (same-origin with SameSite=Lax), but WebSocket

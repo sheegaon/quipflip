@@ -1,11 +1,15 @@
 """Player API router."""
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import datetime, UTC, timedelta
+from typing import Optional
+import logging
+
 from backend.database import get_db
 from backend.dependencies import get_current_player, enforce_guest_creation_rate_limit
-from backend.models.player import Player
-from backend.models.phraseset import Phraseset
-from backend.models.round import Round
+from backend.models.qf.player import QFPlayer
+from backend.models.qf.phraseset import Phraseset
+from backend.models.qf.round import Round
 from backend.schemas.player import (
     PlayerBalance,
     ClaimDailyBonusResponse,
@@ -38,18 +42,10 @@ from backend.schemas.phraseset import (
     PhrasesetListResponse,
     PhrasesetDashboardSummary,
     UnclaimedResultsResponse,
-    UnclaimedResult,
 )
 from backend.schemas.round import RoundAvailability
-from backend.services.player_service import PlayerService
-from backend.services.transaction_service import TransactionService
-from backend.services.round_service import RoundService
-from backend.services.phraseset_service import PhrasesetService
-from backend.services.statistics_service import StatisticsService
-from backend.services.scoring_service import ScoringService, LEADERBOARD_ROLES
+from backend.services import TransactionService, GameType, AuthService, AuthError
 from backend.services.tutorial_service import TutorialService
-from backend.services.vote_service import VoteService
-from backend.services.queue_service import QueueService
 from backend.services.username_service import canonicalize_username
 from backend.utils.exceptions import (
     DailyBonusNotAvailableError,
@@ -58,11 +54,8 @@ from backend.utils.exceptions import (
 )
 from backend.config import get_settings
 from backend.schemas.auth import RegisterRequest
-from backend.services.auth_service import AuthService, AuthError
-from backend.services.cleanup_service import CleanupService
 from backend.utils.cookies import (
     clear_auth_cookies,
-    clear_refresh_cookie,
     set_access_token_cookie,
     set_refresh_cookie,
 )
@@ -71,10 +64,14 @@ from backend.utils.passwords import (
     validate_password_strength,
     PasswordValidationError,
 )
-from datetime import datetime, UTC, timedelta
-from typing import Optional
-from sqlalchemy import select
-import logging
+from backend.services.qf.player_service import PlayerService
+from backend.services.qf.round_service import RoundService
+from backend.services.qf.phraseset_service import PhrasesetService
+from backend.services.qf.statistics_service import StatisticsService
+from backend.services.qf.scoring_service import ScoringService, LEADERBOARD_ROLES
+from backend.services.qf.vote_service import VoteService
+from backend.services.qf.cleanup_service import CleanupService
+from backend.services.qf.queue_service import QueueService
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -148,7 +145,7 @@ async def create_guest_player(
 ):
     """Create a guest account with auto-generated credentials."""
 
-    auth_service = AuthService(db)
+    auth_service = AuthService(db, game_type=GameType.QF)
     try:
         player, guest_password = await auth_service.register_guest()
     except AuthError as exc:
@@ -187,7 +184,7 @@ async def create_guest_player(
 async def upgrade_guest_account(
     request: UpgradeGuestRequest,
     response: Response,
-    player: Player = Depends(get_current_player),
+    player: QFPlayer = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Upgrade a guest account to a full account."""
@@ -230,7 +227,7 @@ async def upgrade_guest_account(
 
 @router.get("/balance", response_model=PlayerBalance)
 async def get_balance(
-    player: Player = Depends(get_current_player),
+    player: QFPlayer = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Get player balance and status."""
@@ -263,7 +260,7 @@ async def get_balance(
 
 @router.post("/claim-daily-bonus", response_model=ClaimDailyBonusResponse)
 async def claim_daily_bonus(
-    player: Player = Depends(get_current_player),
+    player: QFPlayer = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Claim daily login bonus."""
@@ -293,7 +290,7 @@ async def claim_daily_bonus(
 
 @router.get("/current-round", response_model=CurrentRoundResponse)
 async def get_current_round(
-    player: Player = Depends(get_current_player),
+    player: QFPlayer = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Get player's current active round if any."""
@@ -384,7 +381,7 @@ async def get_current_round(
 
 @router.get("/pending-results", response_model=PendingResultsResponse)
 async def get_pending_results(
-    player: Player = Depends(get_current_player),
+    player: QFPlayer = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Get list of finalized phrasesets where player was contributor.
@@ -396,7 +393,7 @@ async def get_pending_results(
 
 
 async def _get_pending_results_internal(
-    player: Player,
+    player: QFPlayer,
     db: AsyncSession,
     phraseset_service: Optional[PhrasesetService],
 ):
@@ -460,7 +457,7 @@ async def list_player_phrasesets(
     status: str = Query("all"),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
-    player: Player = Depends(get_current_player),
+    player: QFPlayer = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Return paginated list of phrasesets for the current player."""
@@ -485,7 +482,7 @@ async def list_player_phrasesets(
     response_model=PhrasesetDashboardSummary,
 )
 async def get_phraseset_summary(
-    player: Player = Depends(get_current_player),
+    player: QFPlayer = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Return dashboard summary of phrasesets for the player."""
@@ -493,7 +490,7 @@ async def get_phraseset_summary(
 
 
 async def _get_phraseset_summary_internal(
-    player: Player,
+    player: QFPlayer,
     db: AsyncSession,
     phraseset_service: Optional[PhrasesetService],
 ):
@@ -509,7 +506,7 @@ async def _get_phraseset_summary_internal(
     response_model=UnclaimedResultsResponse,
 )
 async def get_unclaimed_results(
-    player: Player = Depends(get_current_player),
+    player: QFPlayer = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Return finalized phrasesets with unclaimed payouts."""
@@ -517,7 +514,7 @@ async def get_unclaimed_results(
 
 
 async def _get_unclaimed_results_internal(
-    player: Player,
+    player: QFPlayer,
     db: AsyncSession,
     phraseset_service: Optional[PhrasesetService],
 ):
@@ -530,7 +527,7 @@ async def _get_unclaimed_results_internal(
 
 @router.get("/dashboard", response_model=DashboardDataResponse)
 async def get_dashboard_data(
-    player: Player = Depends(get_current_player),
+    player: QFPlayer = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Get all dashboard data in a single batched request for optimal performance.
@@ -637,7 +634,7 @@ async def get_dashboard_data(
 
 @router.get("/statistics", response_model=PlayerStatistics)
 async def get_player_statistics(
-    player: Player = Depends(get_current_player),
+    player: QFPlayer = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Get comprehensive player statistics including win rates and earnings."""
@@ -648,7 +645,7 @@ async def get_player_statistics(
 
 @router.get("/statistics/weekly-leaderboard", response_model=LeaderboardResponse)
 async def get_weekly_leaderboard(
-    player: Player = Depends(get_current_player),
+    player: QFPlayer = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Return weekly leaderboards for all three roles plus gross earnings highlighting the current player."""
@@ -682,7 +679,7 @@ async def get_weekly_leaderboard(
 
 @router.get("/statistics/alltime-leaderboard", response_model=LeaderboardResponse)
 async def get_alltime_leaderboard(
-    player: Player = Depends(get_current_player),
+    player: QFPlayer = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Return all-time leaderboards for all three roles plus gross earnings highlighting the current player."""
@@ -716,7 +713,7 @@ async def get_alltime_leaderboard(
 
 @router.get("/tutorial/status", response_model=TutorialStatus)
 async def get_tutorial_status(
-    player: Player = Depends(get_current_player),
+    player: QFPlayer = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Get tutorial status for the current player."""
@@ -727,7 +724,7 @@ async def get_tutorial_status(
 @router.post("/tutorial/progress", response_model=UpdateTutorialProgressResponse)
 async def update_tutorial_progress(
     request: UpdateTutorialProgressRequest,
-    player: Player = Depends(get_current_player),
+    player: QFPlayer = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Update tutorial progress for the current player."""
@@ -743,7 +740,7 @@ async def update_tutorial_progress(
 
 @router.post("/tutorial/reset", response_model=TutorialStatus)
 async def reset_tutorial(
-    player: Player = Depends(get_current_player),
+    player: QFPlayer = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Reset tutorial progress for the current player."""
@@ -755,7 +752,7 @@ async def reset_tutorial(
 async def change_password(
     request: ChangePasswordRequest,
     response: Response,
-    player: Player = Depends(get_current_player),
+    player: QFPlayer = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Allow the current player to change their password."""
@@ -790,7 +787,7 @@ async def change_password(
 @router.patch("/email", response_model=UpdateEmailResponse)
 async def update_email(
     request: UpdateEmailRequest,
-    player: Player = Depends(get_current_player),
+    player: QFPlayer = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Allow the current player to update their email address."""
@@ -819,7 +816,7 @@ async def update_email(
 @router.patch("/username", response_model=ChangeUsernameResponse)
 async def change_username(
     request: ChangeUsernameRequest,
-    player: Player = Depends(get_current_player),
+    player: QFPlayer = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Allow the current player to change their username."""
@@ -854,7 +851,7 @@ async def change_username(
 async def delete_account(
     request: DeleteAccountRequest,
     response: Response,
-    player: Player = Depends(get_current_player),
+    player: QFPlayer = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Delete the current player's account and related data."""

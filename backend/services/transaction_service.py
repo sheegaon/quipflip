@@ -5,8 +5,8 @@ from uuid import UUID
 import uuid
 import logging
 
-from backend.models.player import Player
-from backend.models.transaction import Transaction
+from backend.models.player_base import PlayerBase
+from backend.models.transaction_base import TransactionBase
 from backend.utils import lock_client
 from backend.utils.exceptions import InsufficientBalanceError
 
@@ -28,16 +28,16 @@ class TransactionService:
         auto_commit: bool = True,
         skip_lock: bool = False,
         wallet_type: str = "wallet",
-    ) -> Transaction:
+    ) -> TransactionBase:
         """
         Create transaction and update player balance atomically.
 
         Uses distributed lock to prevent race conditions (unless skip_lock=True).
 
         Args:
-            player_id: Player UUID
+            player_id: PlayerBase UUID
             amount: Amount (negative for charges, positive for payouts)
-            trans_type: Transaction type
+            trans_type: TransactionBase type
             reference_id: Optional reference to round/phraseset/vote
             auto_commit: If True, commits immediately. If False, caller must commit.
             skip_lock: If True, assumes caller has already acquired the lock.
@@ -52,12 +52,12 @@ class TransactionService:
         async def _create_transaction_impl():
             # Get current player with row lock
             result = await self.db.execute(
-                select(Player).where(Player.player_id == player_id).with_for_update()
+                select(PlayerBase).where(PlayerBase.player_id == player_id).with_for_update()
             )
             player = result.scalar_one_or_none()
 
             if not player:
-                raise ValueError(f"Player not found: {player_id}")
+                raise ValueError(f"PlayerBase not found: {player_id}")
 
             # Calculate new balance based on wallet type
             if wallet_type == "vault":
@@ -86,7 +86,7 @@ class TransactionService:
                 player.wallet = new_balance
 
             # Create transaction record
-            transaction = Transaction(
+            transaction = TransactionBase(
                 transaction_id=uuid.uuid4(),
                 player_id=player_id,
                 amount=amount,
@@ -105,7 +105,7 @@ class TransactionService:
                 await self.db.refresh(transaction)
 
             logger.info(
-                f"Transaction created: player={player_id}, amount={amount}, "
+                f"TransactionBase created: player={player_id}, amount={amount}, "
                 f"type={trans_type}, wallet_type={wallet_type}, "
                 f"new_wallet={player.wallet}, new_vault={player.vault}, auto_commit={auto_commit}"
             )
@@ -128,7 +128,7 @@ class TransactionService:
         reference_id: UUID | None = None,
         auto_commit: bool = True,
         skip_lock: bool = False,
-    ) -> tuple[Transaction | None, Transaction | None]:
+    ) -> tuple[TransactionBase | None, TransactionBase | None]:
         """
         Create payout with 70/30 split between wallet and vault based on net earnings.
 
@@ -143,10 +143,10 @@ class TransactionService:
           - All gross earnings go back to wallet
 
         Args:
-            player_id: Player UUID
+            player_id: PlayerBase UUID
             gross_amount: Gross payout amount
             cost: Cost that was paid to enter the round
-            trans_type: Transaction type (e.g., "vote_payout", "prize_payout")
+            trans_type: TransactionBase type (e.g., "vote_payout", "prize_payout")
             reference_id: Optional reference to round/phraseset/vote
             auto_commit: If True, commits immediately. If False, caller must commit.
             skip_lock: If True, assumes caller has already acquired the lock.
@@ -221,12 +221,12 @@ class TransactionService:
         player_id: UUID,
         limit: int = 50,
         offset: int = 0,
-    ) -> list[Transaction]:
+    ) -> list[TransactionBase]:
         """Get player transaction history."""
         result = await self.db.execute(
-            select(Transaction)
-            .where(Transaction.player_id == player_id)
-            .order_by(Transaction.created_at.desc())
+            select(TransactionBase)
+            .where(TransactionBase.player_id == player_id)
+            .order_by(TransactionBase.created_at.desc())
             .limit(limit)
             .offset(offset)
         )

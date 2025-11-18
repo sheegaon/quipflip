@@ -2,9 +2,8 @@
 import asyncio
 import hashlib
 import time
-from typing import Dict, Optional, Tuple, Any
+from typing import Dict, Tuple
 from fastapi import Request, Response
-from fastapi.responses import JSONResponse
 import logging
 
 logger = logging.getLogger(__name__)

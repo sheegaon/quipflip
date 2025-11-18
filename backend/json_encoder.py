@@ -1,5 +1,4 @@
 """Custom JSON encoder for FastAPI responses."""
-from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from datetime import datetime, UTC
 from typing import Any

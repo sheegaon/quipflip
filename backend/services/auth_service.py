@@ -6,14 +6,14 @@ import logging
 import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
+from enum import Enum
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.config import get_settings
-from backend.models.player import Player
-from backend.models.refresh_token import RefreshToken
-from backend.services.player_service import PlayerService
-from backend.services.username_service import canonicalize_username, normalize_username
+from backend.models.player_base import PlayerBase
+from backend.models.refresh_token_base import RefreshTokenBase
+from backend.services.username_service import canonicalize_username
 from backend.utils.simple_jwt import (
     encode_jwt,
     decode_jwt,
@@ -30,6 +30,12 @@ from backend.utils.passwords import (
 logger = logging.getLogger(__name__)
 
 
+class GameType(Enum):
+    """Enum for different game types."""
+    QF = "qf"
+    IR = "ir"
+
+
 class AuthError(RuntimeError):
     """Raised when authentication fails."""
 
@@ -37,28 +43,37 @@ class AuthError(RuntimeError):
 class AuthService:
     """Service responsible for credential management and JWT issuance."""
 
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: AsyncSession, game_type: GameType = GameType.QF):
         self.db = db
+        self.game_type = game_type
         self.settings = get_settings()
+        
+        # Instantiate the correct player service based on game type
+        if game_type == GameType.QF:
+            from backend.services.qf.player_service import PlayerService
+        elif game_type == GameType.IR:
+            from backend.services.ir.player_service import PlayerService
+        else:
+            raise ValueError(f"Unsupported game type: {game_type}")
         self.player_service = PlayerService(db)
 
     # ------------------------------------------------------------------
     # Registration
     # ------------------------------------------------------------------
-    async def register_guest(self) -> tuple[Player, str]:
+    async def register_guest(self) -> tuple[PlayerBase, str]:
         """Create a guest account with auto-generated credentials.
 
         Returns:
-            tuple[Player, str]: The created player and the auto-generated password
+            tuple[PlayerBase, str]: The created player and the auto-generated password
         """
         from backend.services.username_service import UsernameService
-        from backend.services.quest_service import QuestService
         import random
 
         # Generate random 4-digit number for email
         random_digits = str(random.randint(1000, 9999))
-        guest_email = f"guest{random_digits}@quipflip.xyz"
-        guest_password = "QuipGuest"
+        guest_domain = self.player_service.get_guest_domain()
+        guest_email = f"guest{random_digits}@{guest_domain}"
+        guest_password = self.player_service.get_guest_password()
 
         password_hash = hash_password(guest_password)
 
@@ -80,12 +95,14 @@ class AuthService:
                 await self.db.commit()
                 await self.db.refresh(player)
 
-                logger.info(f"Created guest player {player.player_id} with email {guest_email}")
+                logger.info(f"Created {self.game_type.value} guest player {player.player_id} with email {guest_email}")
 
-                # Initialize starter quests for new guest
-                quest_service = QuestService(self.db)
-                await quest_service.initialize_quests_for_player(player.player_id)
-                logger.info(f"Initialized starter quests for guest {player.player_id}")
+                # Initialize game-specific content for new guest
+                if self.game_type == GameType.QF:
+                    from backend.services.qf.quest_service import QuestService
+                    quest_service = QuestService(self.db)
+                    await quest_service.initialize_quests_for_player(player.player_id)
+                    logger.info(f"Initialized starter quests for guest {player.player_id}")
 
                 return player, guest_password
             except ValueError as exc:
@@ -93,7 +110,7 @@ class AuthService:
                 if message == "email_taken" and attempt < max_retries - 1:
                     # Generate new random number and retry
                     random_digits = str(random.randint(1000, 9999))
-                    guest_email = f"guest{random_digits}@quipflip.xyz"
+                    guest_email = f"guest{random_digits}@{guest_domain}"
                     continue
                 elif message == "username_taken":
                     raise AuthError("username_generation_failed") from exc
@@ -105,10 +122,9 @@ class AuthService:
 
         raise AuthError("guest_email_generation_failed")
 
-    async def register_player(self, email: str, password: str) -> Player:
+    async def register_player(self, email: str, password: str) -> PlayerBase:
         """Create a new player with provided credentials."""
         from backend.services.username_service import UsernameService
-        from backend.services.quest_service import QuestService
 
         email_normalized = email.strip().lower()
         try:
@@ -129,13 +145,16 @@ class AuthService:
                 password_hash=password_hash,
             )
             logger.info(
-                f"Created player {player.player_id} via credential signup with username {username_display}"
+                f"Created {self.game_type.value} player {player.player_id} via credential signup with username "
+                f"{username_display}"
             )
 
-            # Initialize starter quests for new player
-            quest_service = QuestService(self.db)
-            await quest_service.initialize_quests_for_player(player.player_id)
-            logger.info(f"Initialized starter quests for player {player.player_id}")
+            # Initialize game-specific content for new player
+            if self.game_type == GameType.QF:
+                from backend.services.qf.quest_service import QuestService
+                quest_service = QuestService(self.db)
+                await quest_service.initialize_quests_for_player(player.player_id)
+                logger.info(f"Initialized starter quests for player {player.player_id}")
 
             return player
         except ValueError as exc:
@@ -149,7 +168,7 @@ class AuthService:
                 raise AuthError("invalid_username") from exc
             raise
 
-    async def upgrade_guest(self, player: Player, email: str, password: str) -> Player:
+    async def upgrade_guest(self, player: PlayerBase, email: str, password: str) -> PlayerBase:
         """Upgrade a guest account to a full account.
 
         Args:
@@ -158,7 +177,7 @@ class AuthService:
             password: New password for the account
 
         Returns:
-            Player: The upgraded player
+            PlayerBase: The upgraded player
 
         Raises:
             AuthError: If player is not a guest, email is taken, or password is invalid
@@ -187,24 +206,27 @@ class AuthService:
         try:
             await self.db.commit()
             await self.db.refresh(player)
-            logger.info(f"Upgraded guest {player.player_id} to full account with email {email_normalized}")
+            logger.info(f"Upgraded {self.game_type.value} guest {player.player_id} to full account with email "
+                        f"{email_normalized}")
             return player
         except Exception as exc:
             await self.db.rollback()
-            logger.error(f"Failed to upgrade guest {player.player_id}: {exc}")
+            logger.error(f"Failed to upgrade {self.game_type.value} guest {player.player_id}: {exc}")
             raise AuthError("upgrade_failed") from exc
 
     # ------------------------------------------------------------------
     # Authentication
     # ------------------------------------------------------------------
-    async def authenticate_player(self, email: str, password: str) -> Player:
+    async def authenticate_player(self, email: str, password: str) -> PlayerBase:
         """Authenticate a player using email and password."""
         email_normalized = email.strip().lower()
         if not email_normalized:
             raise AuthError("Email/password combination is invalid")
 
+        # Use the game-specific player model for authentication
+        player_model = self.player_service.player_model
         result = await self.db.execute(
-            select(Player).where(Player.email == email_normalized)
+            select(player_model).where(player_model.email == email_normalized)
         )
         player = result.scalar_one_or_none()
         if not player or not verify_password(password, player.password_hash):
@@ -214,7 +236,7 @@ class AuthService:
 
         return player
 
-    async def authenticate_player_by_username(self, username: str, password: str) -> Player:
+    async def authenticate_player_by_username(self, username: str, password: str) -> PlayerBase:
         """Authenticate a player using username and password."""
         username_stripped = username.strip()
         if not username_stripped:
@@ -225,8 +247,10 @@ class AuthService:
         if not username_canonical:
             raise AuthError("Username/password combination is invalid")
 
+        # Use the game-specific player model for authentication
+        player_model = self.player_service.player_model
         result = await self.db.execute(
-            select(Player).where(Player.username_canonical == username_canonical)
+            select(player_model).where(player_model.username_canonical == username_canonical)
         )
         player = result.scalar_one_or_none()
         if not player or not verify_password(password, player.password_hash):
@@ -239,7 +263,7 @@ class AuthService:
     # ------------------------------------------------------------------
     # Token helpers
     # ------------------------------------------------------------------
-    def _access_token_payload(self, player: Player) -> dict[str, str]:
+    def _access_token_payload(self, player: PlayerBase) -> dict[str, str]:
         expire = datetime.now(UTC) + timedelta(minutes=self.settings.access_token_exp_minutes)
         return {
             "sub": str(player.player_id),
@@ -247,13 +271,13 @@ class AuthService:
             "exp": int(expire.timestamp()),
         }
 
-    def create_access_token(self, player: Player) -> tuple[str, int]:
+    def create_access_token(self, player: PlayerBase) -> tuple[str, int]:
         payload = self._access_token_payload(player)
         token = encode_jwt(payload, self.settings.secret_key, algorithm=self.settings.jwt_algorithm)
         expires_in = self.settings.access_token_exp_minutes * 60
         return token, expires_in
 
-    def create_short_lived_token(self, player: Player, expires_seconds: int) -> tuple[str, int]:
+    def create_short_lived_token(self, player: PlayerBase, expires_seconds: int) -> tuple[str, int]:
         """Create a short-lived access token with custom expiration (for WebSocket auth).
 
         Args:
@@ -272,9 +296,9 @@ class AuthService:
         token = encode_jwt(payload, self.settings.secret_key, algorithm=self.settings.jwt_algorithm)
         return token, expires_seconds
 
-    async def _store_refresh_token(self, player: Player, raw_token: str, expires_at: datetime) -> RefreshToken:
+    async def _store_refresh_token(self, player: PlayerBase, raw_token: str, expires_at: datetime) -> RefreshTokenBase:
         token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
-        refresh_token = RefreshToken(
+        refresh_token = RefreshTokenBase(
             token_id=uuid.uuid4(),
             player_id=player.player_id,
             token_hash=token_hash,
@@ -286,7 +310,7 @@ class AuthService:
     async def revoke_refresh_token(self, raw_token: str) -> None:
         token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
         result = await self.db.execute(
-            select(RefreshToken).where(RefreshToken.token_hash == token_hash)
+            select(RefreshTokenBase).where(RefreshTokenBase.token_hash == token_hash)
         )
         refresh_token = result.scalar_one_or_none()
         if refresh_token:
@@ -295,14 +319,14 @@ class AuthService:
 
     async def revoke_all_refresh_tokens(self, player_id: uuid.UUID) -> None:
         await self.db.execute(
-            update(RefreshToken)
-            .where(RefreshToken.player_id == player_id)
-            .where(RefreshToken.revoked_at.is_(None))
+            update(RefreshTokenBase)
+            .where(RefreshTokenBase.player_id == player_id)
+            .where(RefreshTokenBase.revoked_at.is_(None))
             .values(revoked_at=datetime.now(UTC))
         )
         await self.db.commit()
 
-    async def issue_tokens(self, player: Player, *, rotate_existing: bool = True) -> tuple[str, str, int]:
+    async def issue_tokens(self, player: PlayerBase, *, rotate_existing: bool = True) -> tuple[str, str, int]:
         if rotate_existing:
             await self.revoke_all_refresh_tokens(player.player_id)
 
@@ -326,11 +350,11 @@ class AuthService:
         except InvalidTokenError as exc:
             raise AuthError("Invalid token error, please try again") from exc
 
-    async def exchange_refresh_token(self, raw_token: str) -> tuple[Player, str, str, int]:
+    async def exchange_refresh_token(self, raw_token: str) -> tuple[PlayerBase, str, str, int]:
         try:
             token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
             result = await self.db.execute(
-                select(RefreshToken).where(RefreshToken.token_hash == token_hash)
+                select(RefreshTokenBase).where(RefreshTokenBase.token_hash == token_hash)
             )
             refresh_token = result.scalar_one_or_none()
             if not refresh_token or not refresh_token.is_active():
@@ -351,7 +375,7 @@ class AuthService:
         except AuthError:
             await self.db.rollback()
             raise
-        except Exception as exc:  # pragma: no cover - defensive logging
+        except Exception:  # pragma: no cover - defensive logging
             await self.db.rollback()
             logger.error("Unexpected error exchanging refresh token", exc_info=True)
             raise

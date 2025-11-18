@@ -3,17 +3,17 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.database import get_db
-from backend.models.ir.ir_player import IRPlayer
-from backend.routers.ir.dependencies import get_ir_current_player
+from backend.models.ir.player import IRPlayer
+from backend.routers.ir.dependencies import get_current_player
 from backend.routers.ir.schemas import PlayerStatsResponse
-from backend.services.ir.ir_statistics_service import IRStatisticsService
+from backend.services.ir.statistics_service import IRStatisticsService
 
 router = APIRouter()
 
 
 @router.get("/player/statistics", response_model=PlayerStatsResponse)
 async def get_player_stats(
-    player: IRPlayer = Depends(get_ir_current_player),
+    player: IRPlayer = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ) -> PlayerStatsResponse:
     """Get player statistics."""

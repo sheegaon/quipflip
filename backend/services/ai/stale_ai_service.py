@@ -10,17 +10,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from backend.config import get_settings
-from backend.models.phraseset import Phraseset
-from backend.models.player import Player
-from backend.models.round import Round
-from backend.models.vote import Vote
+from backend.models.player_base import PlayerBase
+from backend.models.qf.phraseset import Phraseset
+from backend.models.qf.round import Round
+from backend.models.qf.vote import Vote
 from backend.services.ai.ai_service import AIService
-from backend.services.player_service import PlayerService
-from backend.services.queue_service import QueueService
-from backend.services.round_service import RoundService
-from backend.services.transaction_service import TransactionService
-from backend.services.username_service import UsernameService
-from backend.services.vote_service import VoteService
+from backend.services.auth_service import GameType
+from backend.services import TransactionService
+from backend.services import UsernameService
 
 
 logger = logging.getLogger(__name__)
@@ -38,7 +35,7 @@ class StaleAIService:
         self.settings = get_settings()
         self.ai_service = AIService(db)
 
-    async def _get_or_create_stale_player(self, email: str) -> Player:
+    async def _get_or_create_stale_player(self, email: str, game_type: GameType) -> PlayerBase:
         """
         Get or create a stale AI player with the given email.
 
@@ -53,7 +50,7 @@ class StaleAIService:
         """
         # Check if player exists
         result = await self.db.execute(
-            select(Player).where(Player.email == email)
+            select(PlayerBase).where(PlayerBase.email == email)
         )
         player = result.scalar_one_or_none()
 
@@ -68,7 +65,14 @@ class StaleAIService:
             return player
 
         # Create new AI player with random username from pool
+        if game_type == GameType.QF:
+            from backend.services.qf.player_service import PlayerService
+        elif game_type == GameType.IR:
+            from backend.services.ir.player_service import PlayerService
+        else:
+            raise ValueError(f"Unsupported game type: {game_type}")
         player_service = PlayerService(self.db)
+
         username_service = UsernameService(self.db)
 
         try:
@@ -162,6 +166,8 @@ class StaleAIService:
         }
 
         try:
+            from backend.services.qf.round_service import RoundService
+
             # Find stale content first (don't need player IDs for queries anymore)
             stale_prompts = await self._find_stale_prompts()
             stats["stale_prompts_found"] = len(stale_prompts)
@@ -268,6 +274,7 @@ class StaleAIService:
 
                     # Re-enqueue the prompt so it can be retried later
                     try:
+                        from backend.services.qf.queue_service import QueueService
                         QueueService.add_prompt_round_to_queue(prompt_round.round_id)
                         logger.info(f"Re-enqueued prompt {prompt_round.round_id} after stale AI failure")
                     except Exception as queue_exc:
@@ -277,6 +284,7 @@ class StaleAIService:
             stale_phrasesets = await self._find_stale_phrasesets()
             stats["stale_phrasesets_found"] = len(stale_phrasesets)
 
+            from backend.services.qf.vote_service import VoteService
             vote_service = VoteService(self.db)
             transaction_service = TransactionService(self.db)
 

@@ -7,10 +7,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.config import get_settings
 from backend.database import get_db
-from backend.models.ir.enums import IRSetStatus
-from backend.models.ir.ir_player import IRPlayer
-from backend.routers.ir.dependencies import get_ir_current_player
-from backend.routers.ir.schemas import (
+from backend.dependencies import get_current_player, enforce_vote_rate_limit
+from backend.models.ir.enums import SetStatus
+from backend.models.ir.player import IRPlayer
+from backend.schemas.backronym import (
     BackronymSet,
     ResultsResponse,
     SetStatusResponse,
@@ -23,11 +23,11 @@ from backend.routers.ir.schemas import (
     ValidateBackronymRequest,
     ValidateBackronymResponse,
 )
-from backend.services.ir.ir_backronym_set_service import IRBackronymSetService
-from backend.services.ir.ir_result_view_service import IRResultViewService
-from backend.services.ir.ir_scoring_service import IRScoringService
-from backend.services.ir.transaction_service import IRTransactionError, IRTransactionService
-from backend.services.ir.ir_vote_service import IRVoteError, IRVoteService
+from backend.services.ir.backronym_set_service import BackronymSetService
+from backend.services.ir.result_view_service import IRResultViewService
+from backend.services.ir.scoring_service import IRScoringService
+from backend.services.transaction_service import TransactionService
+from backend.services.ir.vote_service import IRVoteError, IRVoteService
 from backend.services.phrase_validation_client import PhraseValidationClient
 from backend.utils.datetime_helpers import ensure_utc
 
@@ -45,7 +45,7 @@ def _format_datetime(dt: datetime | None) -> str | None:
 @router.post("/start", response_model=StartGameResponse)
 async def start_game(
     _: StartGameRequest | None = None,
-    player: IRPlayer = Depends(get_ir_current_player),
+    player: IRPlayer = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ) -> StartGameResponse:
     """Start a new backronym battle or join an existing one."""
@@ -58,8 +58,8 @@ async def start_game(
                 detail=f"Insufficient balance (need {settings.ir_backronym_entry_cost} IC)",
             )
 
-        set_service = IRBackronymSetService(db)
-        txn_service = IRTransactionService(db)
+        set_service = BackronymSetService(db)
+        txn_service = TransactionService(db)
 
         available_set = await set_service.get_available_set_for_entry(
             exclude_player_id=str(player.player_id)
@@ -86,9 +86,6 @@ async def start_game(
 
     except HTTPException:
         raise
-    except IRTransactionError as exc:
-        logger.error(f"IR transaction error in start_game: {exc}")
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as e:
         logger.error(f"Unexpected error in start_game: {e}", exc_info=True)
         raise HTTPException(status_code=400, detail=str(e)) from e
@@ -98,7 +95,7 @@ async def start_game(
 async def submit_backronym(
     set_id: str,
     request: SubmitBackronymRequest,
-    player: IRPlayer = Depends(get_ir_current_player),
+    player: IRPlayer = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ) -> SubmitBackronymResponse:
     """Submit a backronym entry to a set."""
@@ -107,7 +104,7 @@ async def submit_backronym(
     try:
         logger.debug(f"submit_backronym called with set_id={set_id}, words={request.words}")
 
-        set_service = IRBackronymSetService(db)
+        set_service = BackronymSetService(db)
 
         set_obj = await set_service.get_set_by_id(set_id)
         if not set_obj:
@@ -139,14 +136,14 @@ async def submit_backronym(
 async def validate_backronym(
     set_id: str,
     request: ValidateBackronymRequest,
-    _: IRPlayer = Depends(get_ir_current_player),
+    _: IRPlayer = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ) -> ValidateBackronymResponse:
     """Validate backronym words using the backend validator service."""
     logger = logging.getLogger(__name__)
 
     try:
-        set_service = IRBackronymSetService(db)
+        set_service = BackronymSetService(db)
         set_obj = await set_service.get_set_by_id(set_id)
 
         if not set_obj:
@@ -175,13 +172,13 @@ async def validate_backronym(
 @router.get("/sets/{set_id}/status", response_model=SetStatusResponse)
 async def get_set_status(
     set_id: str,
-    player: IRPlayer = Depends(get_ir_current_player),
+    player: IRPlayer = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ) -> SetStatusResponse:
     """Get current status of a backronym set."""
 
     try:
-        set_service = IRBackronymSetService(db)
+        set_service = BackronymSetService(db)
         set_obj = await set_service.get_set_by_id(set_id)
 
         if not set_obj:
@@ -230,14 +227,14 @@ async def get_set_status(
 async def submit_vote(
     set_id: str,
     request: SubmitVoteRequest,
-    player: IRPlayer = Depends(get_ir_current_player),
+    player: IRPlayer = Depends(enforce_vote_rate_limit),
     db: AsyncSession = Depends(get_db),
 ) -> SubmitVoteResponse:
     """Submit a vote on a backronym entry."""
 
     try:
         vote_service = IRVoteService(db)
-        txn_service = IRTransactionService(db)
+        txn_service = TransactionService(db)
 
         is_eligible, error, is_participant = await vote_service.check_vote_eligibility(
             str(player.player_id), set_id
@@ -266,7 +263,7 @@ async def submit_vote(
             set_id=vote_result["set_id"],
         )
 
-    except (IRTransactionError, IRVoteError) as exc:
+    except IRVoteError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
@@ -275,13 +272,13 @@ async def submit_vote(
 @router.get("/sets/{set_id}/results", response_model=ResultsResponse)
 async def get_results(
     set_id: str,
-    player: IRPlayer = Depends(get_ir_current_player),
+    player: IRPlayer = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ) -> ResultsResponse:
     """Get finalized results for a set with full details."""
 
     try:
-        set_service = IRBackronymSetService(db)
+        set_service = BackronymSetService(db)
         result_service = IRResultViewService(db)
         scoring_service = IRScoringService(db)
         vote_service = IRVoteService(db)
@@ -290,7 +287,7 @@ async def get_results(
         if not set_obj:
             raise HTTPException(status_code=404, detail="Set not found")
 
-        if set_obj.status != IRSetStatus.FINALIZED:
+        if set_obj.status != SetStatus.FINALIZED:
             raise HTTPException(status_code=400, detail="Set not finalized yet")
 
         result = await result_service.claim_result(str(player.player_id), set_id)

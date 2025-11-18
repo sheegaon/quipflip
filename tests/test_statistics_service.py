@@ -3,19 +3,19 @@ import pytest
 from datetime import datetime, UTC, timedelta
 from uuid import uuid4
 
-from backend.models.player import Player
-from backend.models.round import Round
-from backend.models.phraseset import Phraseset
-from backend.models.vote import Vote
-from backend.models.transaction import Transaction
-from backend.services.statistics_service import StatisticsService
+from backend.models.qf.player import QFPlayer
+from backend.models.qf.round import Round
+from backend.models.qf.phraseset import Phraseset
+from backend.models.qf.vote import Vote
+from backend.models.qf.transaction import QFTransaction
+from backend.services import StatisticsService
 
 
-def _base_player(username: str) -> Player:
+def _base_player(username: str) -> QFPlayer:
     from backend.utils.passwords import hash_password
 
     now = datetime.now(UTC)
-    return Player(
+    return QFPlayer(
         player_id=uuid4(),
         username=username,
         username_canonical=username.lower(),
@@ -129,7 +129,7 @@ async def test_get_player_statistics_with_rounds(db_session):
 
     # Add some transactions (earnings)
     # Daily bonus
-    daily_bonus = Transaction(
+    daily_bonus = QFTransaction(
         transaction_id=uuid4(),
         player_id=player.player_id,
         amount=50,
@@ -140,7 +140,7 @@ async def test_get_player_statistics_with_rounds(db_session):
     db_session.add(daily_bonus)
 
     # Vote payout
-    vote_payout = Transaction(
+    vote_payout = QFTransaction(
         transaction_id=uuid4(),
         player_id=player.player_id,
         amount=25,
@@ -225,7 +225,7 @@ async def test_get_player_statistics_win_rate(db_session):
 
     # Add winning transactions for each phraseset (2 wins total)
     for i, phraseset in enumerate(phrasesets):
-        payout = Transaction(
+        payout = QFTransaction(
             transaction_id=uuid4(),
             player_id=player.player_id,
             amount=100,

@@ -4,9 +4,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from backend.database import get_db
 from backend.dependencies import get_current_player
-from backend.models.player import Player
-from backend.models.round import Round
-from backend.models.prompt_feedback import PromptFeedback
+from backend.models.qf.player import QFPlayer
+from backend.models.qf.round import Round
+from backend.models.qf.prompt_feedback import PromptFeedback
 from backend.schemas.prompt_feedback import (
     SubmitPromptFeedbackRequest,
     PromptFeedbackResponse,
@@ -25,7 +25,7 @@ router = APIRouter()
 async def submit_prompt_feedback(
     round_id: UUID = Path(...),
     request: SubmitPromptFeedbackRequest = ...,
-    player: Player = Depends(get_current_player),
+    player: QFPlayer = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -79,7 +79,7 @@ async def submit_prompt_feedback(
             logger.info(f"Created feedback for player {player.player_id}, round {round_id}: {request.feedback_type}")
 
             # Track quest progress for feedback contributions (only for new feedback, not updates)
-            from backend.services.quest_service import QuestService
+            from backend.services import QuestService
             quest_service = QuestService(db)
             try:
                 await quest_service.increment_feedback_count(player.player_id)
@@ -104,7 +104,7 @@ async def submit_prompt_feedback(
 @router.get("/{round_id}/feedback", response_model=GetPromptFeedbackResponse)
 async def get_prompt_feedback(
     round_id: UUID = Path(...),
-    player: Player = Depends(get_current_player),
+    player: QFPlayer = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ):
     """

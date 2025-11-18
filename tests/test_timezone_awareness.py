@@ -23,14 +23,14 @@ import pytest
 from datetime import datetime, UTC, timedelta
 import uuid
 
-from backend.models.player import Player
-from backend.models.round import Round
-from backend.models.phraseset import Phraseset
-from backend.models.vote import Vote
-from backend.models.transaction import Transaction
-from backend.services.round_service import RoundService
-from backend.services.vote_service import VoteService
-from backend.services.transaction_service import TransactionService
+from backend.models.qf.player import QFPlayer
+from backend.models.qf.round import Round
+from backend.models.qf.phraseset import Phraseset
+from backend.models.qf.vote import Vote
+from backend.models.qf.transaction import QFTransaction
+from backend.services import RoundService
+from backend.services import VoteService
+from backend.services import TransactionService
 from sqlalchemy import select
 
 
@@ -48,7 +48,7 @@ class TestDatabaseTimezoneAwareness:
         """Player.created_at should be automatically set."""
         from backend.utils.datetime_helpers import ensure_utc
 
-        player = Player(
+        player = QFPlayer(
             player_id=uuid.uuid4(),
             username=f"test_{uuid.uuid4().hex[:8]}",
             username_canonical=f"test_{uuid.uuid4().hex[:8]}",
@@ -71,7 +71,7 @@ class TestDatabaseTimezoneAwareness:
         """Round created_at and expires_at should be UTC-aware."""
         from backend.utils.datetime_helpers import ensure_utc
 
-        player = Player(
+        player = QFPlayer(
             player_id=uuid.uuid4(),
             username=f"test_{uuid.uuid4().hex[:8]}",
             username_canonical=f"test_{uuid.uuid4().hex[:8]}",
@@ -107,7 +107,7 @@ class TestDatabaseTimezoneAwareness:
         from backend.utils.datetime_helpers import ensure_utc
 
         # Create minimal phraseset for testing
-        player = Player(
+        player = QFPlayer(
             player_id=uuid.uuid4(),
             username=f"test_{uuid.uuid4().hex[:8]}",
             username_canonical=f"test_{uuid.uuid4().hex[:8]}",
@@ -159,7 +159,7 @@ class TestDatabaseTimezoneAwareness:
         from backend.utils.datetime_helpers import ensure_utc
 
         # Create minimal vote for testing
-        player = Player(
+        player = QFPlayer(
             player_id=uuid.uuid4(),
             username=f"test_{uuid.uuid4().hex[:8]}",
             username_canonical=f"test_{uuid.uuid4().hex[:8]}",
@@ -191,7 +191,7 @@ class TestDatabaseTimezoneAwareness:
         """Transaction.created_at should be UTC-aware."""
         from backend.utils.datetime_helpers import ensure_utc
 
-        player = Player(
+        player = QFPlayer(
             player_id=uuid.uuid4(),
             username=f"test_{uuid.uuid4().hex[:8]}",
             username_canonical=f"test_{uuid.uuid4().hex[:8]}",
@@ -223,7 +223,7 @@ class TestServiceTimezoneAwareness:
         """RoundService should create rounds with UTC-aware timestamps."""
         from backend.utils.datetime_helpers import ensure_utc
 
-        player = Player(
+        player = QFPlayer(
             player_id=uuid.uuid4(),
             username=f"test_{uuid.uuid4().hex[:8]}",
             username_canonical=f"test_{uuid.uuid4().hex[:8]}",
@@ -235,7 +235,7 @@ class TestServiceTimezoneAwareness:
         await db_session.commit()
 
         # Create a prompt first
-        from backend.models.prompt import Prompt
+        from backend.models.qf.prompt import Prompt
         prompt = Prompt(
             prompt_id=uuid.uuid4(),
             text=f"Test prompt {uuid.uuid4().hex[:6]}",
@@ -315,7 +315,7 @@ class TestFrontendTimezoneDisplay:
         """Timestamps should be serializable to ISO 8601 format for JSON responses."""
         from backend.utils.datetime_helpers import ensure_utc
 
-        player = Player(
+        player = QFPlayer(
             player_id=uuid.uuid4(),
             username=f"test_{uuid.uuid4().hex[:8]}",
             username_canonical=f"test_{uuid.uuid4().hex[:8]}",

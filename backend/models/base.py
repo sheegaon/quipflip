@@ -8,27 +8,12 @@ from sqlalchemy.sql import func
 from sqlalchemy.sql.elements import ClauseElement
 
 
-class RoundType(str, Enum):
-    """Round type enumeration for type safety."""
-    PROMPT = "prompt"
-    COPY = "copy"
-    VOTE = "vote"
-
-
 class RoundStatus(str, Enum):
     """Round status enumeration for type safety."""
     ACTIVE = "active"
     SUBMITTED = "submitted"
     EXPIRED = "expired"
     ABANDONED = "abandoned"
-
-
-class PhraseSetStatus(str, Enum):
-    """Phraseset status enumeration for type safety."""
-    OPEN = "open"
-    CLOSING = "closing"
-    CLOSED = "closed"
-    FINALIZED = "finalized"
 
 
 def get_uuid_column(*args, **kwargs):

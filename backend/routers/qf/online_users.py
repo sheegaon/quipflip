@@ -17,14 +17,15 @@ from uuid import UUID
 
 from backend.database import get_db, AsyncSessionLocal
 from backend.dependencies import get_current_player
-from backend.models.user_activity import UserActivity
-from backend.models.player import Player
-from backend.models.round import Round
-from backend.models.phraseset_activity import PhrasesetActivity
-from backend.models.transaction import Transaction
+from backend.models.qf.user_activity import QFUserActivity
+from backend.models.qf.player import QFPlayer
+from backend.models.qf.round import Round
+from backend.models.qf.phraseset_activity import PhrasesetActivity
+from backend.models.qf.transaction import QFTransaction
 from backend.schemas.online_users import OnlineUser, OnlineUsersResponse
-from backend.services.auth_service import AuthService
-from backend.services.player_service import PlayerService
+from backend.services import AuthService
+from backend.services.auth_service import GameType
+from backend.services.qf import PlayerService
 from backend.config import get_settings
 from backend.utils.datetime_helpers import ensure_utc
 
@@ -35,7 +36,7 @@ router = APIRouter()
 settings = get_settings()
 
 
-async def authenticate_websocket(websocket: WebSocket) -> Optional[Player]:
+async def authenticate_websocket(websocket: WebSocket) -> Optional[QFPlayer]:
     """Authenticate a WebSocket connection using token from query params or cookies.
 
     Returns the authenticated Player or None if authentication fails.
@@ -54,7 +55,7 @@ async def authenticate_websocket(websocket: WebSocket) -> Optional[Player]:
     # Validate token
     try:
         async with AsyncSessionLocal() as db:
-            auth_service = AuthService(db)
+            auth_service = AuthService(db, game_type=GameType.QF)
             payload = auth_service.decode_access_token(token)
 
             player_id_str = payload.get("sub")
@@ -64,7 +65,10 @@ async def authenticate_websocket(websocket: WebSocket) -> Optional[Player]:
 
             player_id = UUID(player_id_str)
 
+            # Use QF player service since this is a QF endpoint
+            from backend.services.qf.player_service import PlayerService
             player_service = PlayerService(db)
+            
             player = await player_service.get_player_by_id(player_id)
 
             if not player:
@@ -187,10 +191,10 @@ async def get_online_users(db: AsyncSession) -> List[OnlineUser]:
     cutoff_time = datetime.now(UTC) - timedelta(minutes=30)
 
     result = await db.execute(
-        select(UserActivity, Player.wallet, Player.created_at, Player.is_guest, Player.player_id)
-        .join(Player, UserActivity.player_id == Player.player_id)
-        .where(UserActivity.last_activity >= cutoff_time)
-        .order_by(UserActivity.last_activity.desc())
+        select(QFUserActivity, QFPlayer.wallet, QFPlayer.created_at, QFPlayer.is_guest, QFPlayer.player_id)
+        .join(QFPlayer, QFUserActivity.player_id == QFPlayer.player_id)
+        .where(QFUserActivity.last_activity >= cutoff_time)
+        .order_by(QFUserActivity.last_activity.desc())
     )
     rows = result.all()
 
@@ -221,8 +225,8 @@ async def get_online_users(db: AsyncSession) -> List[OnlineUser]:
 
         # Check for transactions
         transactions_result = await db.execute(
-            select(Transaction.player_id)
-            .where(Transaction.player_id.in_(guest_ids))
+            select(QFTransaction.player_id)
+            .where(QFTransaction.player_id.in_(guest_ids))
             .distinct()
         )
         guests_with_activity.update(row[0] for row in transactions_result)
@@ -265,7 +269,7 @@ async def get_online_users(db: AsyncSession) -> List[OnlineUser]:
 
 @router.get("/online", response_model=OnlineUsersResponse)
 async def get_online_users_endpoint(
-    player: Player = Depends(get_current_player),
+    player: QFPlayer = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Get list of currently online users (last 30 minutes)."""

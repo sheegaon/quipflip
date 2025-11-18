@@ -7,10 +7,10 @@ a server restart).
 """
 import pytest
 import uuid
-from backend.models.prompt import Prompt
-from backend.services.round_service import RoundService
-from backend.services.transaction_service import TransactionService
-from backend.services.player_service import PlayerService
+from backend.models.qf.prompt import Prompt
+from backend.services import RoundService
+from backend.services import TransactionService
+from backend.services import PlayerService
 
 
 @pytest.mark.asyncio
@@ -31,7 +31,7 @@ async def test_copy_available_when_prompts_in_database(db_session, player_factor
     player_service = PlayerService(db_session)
 
     # Disable all existing prompts to ensure we only use our test prompt
-    from backend.models.prompt import Prompt as PromptModel
+    from backend.models.qf.prompt import Prompt as PromptModel
     from sqlalchemy import update
     await db_session.execute(update(PromptModel).values(enabled=False))
     await db_session.commit()
@@ -85,7 +85,7 @@ async def test_copy_not_available_for_own_prompts(db_session, player_factory):
     transaction_service = TransactionService(db_session)
 
     # Disable all existing prompts to ensure we only use our test prompt
-    from backend.models.prompt import Prompt as PromptModel
+    from backend.models.qf.prompt import Prompt as PromptModel
     from sqlalchemy import update
     await db_session.execute(update(PromptModel).values(enabled=False))
     await db_session.commit()
@@ -134,7 +134,7 @@ async def test_copy_not_available_after_already_copied(db_session, player_factor
     transaction_service = TransactionService(db_session)
 
     # Disable all existing prompts to ensure we only use our test prompt
-    from backend.models.prompt import Prompt as PromptModel
+    from backend.models.qf.prompt import Prompt as PromptModel
     from sqlalchemy import update
     await db_session.execute(update(PromptModel).values(enabled=False))
     await db_session.commit()
@@ -188,7 +188,7 @@ async def test_multiple_prompts_available_count(db_session, player_factory):
     transaction_service = TransactionService(db_session)
 
     # Disable all existing prompts to ensure we only use our test prompts
-    from backend.models.prompt import Prompt as PromptModel
+    from backend.models.qf.prompt import Prompt as PromptModel
     from sqlalchemy import update
     await db_session.execute(update(PromptModel).values(enabled=False))
     await db_session.commit()

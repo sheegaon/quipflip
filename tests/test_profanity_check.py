@@ -1,8 +1,7 @@
 """Tests for profanity checking in usernames."""
 
-import pytest
 from backend.data.profanity_list import contains_profanity
-from backend.services.username_service import is_username_profanity_free
+from backend.services import is_username_profanity_free
 
 
 class TestProfanityDetection:

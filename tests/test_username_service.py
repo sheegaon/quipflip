@@ -1,13 +1,13 @@
 """Tests for username service and validation."""
 
 import pytest
-from backend.services.username_service import (
+from backend.services import (
     UsernameService,
     canonicalize_username,
     normalize_username,
     is_username_input_valid,
 )
-from backend.models.player import Player
+from backend.models.qf.player import QFPlayer
 import uuid
 
 
@@ -127,7 +127,7 @@ class TestUsernameServiceGeneration:
             display, canonical = await service.generate_unique_username()
 
             # Store username in database to mark as taken
-            player = Player(
+            player = QFPlayer(
                 player_id=uuid.uuid4(),
                 username=display,
                 username_canonical=canonical,
@@ -151,7 +151,7 @@ class TestUsernameServiceGeneration:
         display1, canonical1 = await service.generate_unique_username()
 
         # Create player with this username
-        player1 = Player(
+        player1 = QFPlayer(
             player_id=uuid.uuid4(),
             username=display1,
             username_canonical=canonical1,
@@ -163,7 +163,7 @@ class TestUsernameServiceGeneration:
         # Also create a player with display2 variation if it exists
         display2 = f"{display1} 2"
         canonical2 = canonicalize_username(display2)
-        player2 = Player(
+        player2 = QFPlayer(
             player_id=uuid.uuid4(),
             username=display2,
             username_canonical=canonical2,
@@ -190,7 +190,7 @@ class TestUsernameServiceLookup:
         service = UsernameService(db_session)
 
         # Create player
-        player = Player(
+        player = QFPlayer(
             player_id=uuid.uuid4(),
             username="TestUser",
             username_canonical="testuser",
@@ -215,7 +215,7 @@ class TestUsernameServiceLookup:
         username = f"TestUser{test_id}"
         canonical = f"testuser{test_id}"
 
-        player = Player(
+        player = QFPlayer(
             player_id=uuid.uuid4(),
             username=username,
             username_canonical=canonical,
@@ -247,7 +247,7 @@ class TestUsernameServiceLookup:
         username = f"Test User{test_id}"
         canonical = f"testuser{test_id}"
 
-        player = Player(
+        player = QFPlayer(
             player_id=uuid.uuid4(),
             username=username,
             username_canonical=canonical,
@@ -295,7 +295,7 @@ class TestUsernameServiceLookup:
         test_id = uuid.uuid4().hex[:8]
 
         # Create player
-        player = Player(
+        player = QFPlayer(
             player_id=uuid.uuid4(),
             username="test123",
             username_canonical="test123",

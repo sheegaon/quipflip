@@ -5,19 +5,19 @@ from datetime import datetime, UTC
 import pytest
 from sqlalchemy import select
 
-from backend.models.player import Player
-from backend.models.prompt import Prompt
-from backend.models.round import Round
-from backend.models.flagged_prompt import FlaggedPrompt
-from backend.services.round_service import RoundService
-from backend.services.transaction_service import TransactionService
-from backend.services.flagged_prompt_service import FlaggedPromptService
-from backend.services.queue_service import QueueService
+from backend.models.qf.player import QFPlayer
+from backend.models.qf.prompt import Prompt
+from backend.models.qf.round import Round
+from backend.models.qf.flagged_prompt import FlaggedPrompt
+from backend.services import RoundService
+from backend.services import TransactionService
+from backend.services import FlaggedPromptService
+from backend.services import QueueService
 
 
-def _create_player(email_prefix: str, balance: int = 1000) -> Player:
+def _create_player(email_prefix: str, balance: int = 1000) -> QFPlayer:
     unique = uuid.uuid4().hex[:8]
-    return Player(
+    return QFPlayer(
         player_id=uuid.uuid4(),
         username=f"{email_prefix}_{unique}",
         username_canonical=f"{email_prefix}_{unique}",

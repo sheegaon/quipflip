@@ -241,7 +241,7 @@ const Dashboard: React.FC = () => {
               disabled={loading || !!activeSet}
               className="w-full bg-ir-navy hover:bg-ir-teal disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm"
             >
-              {activeSet ? '⚠️ Battle in Progress' : '🚀 Start Backronym Battle'}
+              {activeSet ? 'Battle in Progress' : 'Start Backronym Battle'}
             </button>
           </div>
         </div>

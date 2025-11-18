@@ -6,8 +6,8 @@ This script checks the database state and round availability logic.
 
 import asyncio
 from backend.database import AsyncSessionLocal
-from backend.services.round_service import RoundService
-from backend.services.player_service import PlayerService
+from backend.services import RoundService
+from backend.services import PlayerService
 from sqlalchemy import func, select, text
 from datetime import datetime, timezone
 

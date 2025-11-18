@@ -10,17 +10,16 @@ Tests cover:
 """
 
 import pytest
-from unittest.mock import patch, MagicMock
 from datetime import datetime, UTC, timedelta
 import uuid
 
-from backend.services.vote_service import VoteService
-from backend.services.round_service import RoundService
-from backend.services.transaction_service import TransactionService
-from backend.services.phrase_validation_client import PhraseValidationClient
+from backend.services import VoteService
+from backend.services import RoundService
+from backend.services import TransactionService
+from backend.services import PhraseValidationClient
 from backend.utils.datetime_helpers import ensure_utc
-from backend.models.round import Round
-from backend.models.phraseset import Phraseset
+from backend.models.qf.round import Round
+from backend.models.qf.phraseset import Phraseset
 from backend.config import get_settings
 from backend.utils.exceptions import AlreadyVotedError
 

@@ -1,12 +1,12 @@
 """Tests for IR game flow (backronym creation, voting, results)."""
 import pytest
 import uuid
-from backend.services.ir.player_service import IRPlayerService
-from backend.services.ir.ir_backronym_set_service import IRBackronymSetService
-from backend.services.ir.ir_vote_service import IRVoteService
-from backend.services.ir.transaction_service import IRTransactionService
-from backend.services.ir.ir_scoring_service import IRScoringService
-from backend.services.ir.ir_word_service import IRWordService
+from backend.services import IRPlayerService
+from backend.services import IRBackronymSetService
+from backend.services import IRVoteService
+from backend.services import IRTransactionService
+from backend.services import IRScoringService
+from backend.services import IRWordService
 from backend.utils.passwords import hash_password
 
 
@@ -272,7 +272,7 @@ async def test_ir_non_participant_vote_cap(db_session, ir_player_factory):
 @pytest.mark.asyncio
 async def test_ir_player_insufficient_balance(db_session, ir_player_factory):
     """Test that player cannot debit more than their balance."""
-    from backend.services.ir.transaction_service import IRTransactionService
+    from backend.services import IRTransactionService
 
     player = await ir_player_factory()
     transaction_service = IRTransactionService(db_session)

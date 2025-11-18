@@ -18,7 +18,7 @@ from unittest.mock import AsyncMock, patch, MagicMock
 import aiohttp
 from aiohttp import ClientTimeout, ClientError
 
-from backend.services.phrase_validation_client import (
+from backend.services import (
     PhraseValidationClient,
     get_phrase_validation_client,
 )

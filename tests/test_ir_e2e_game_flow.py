@@ -1,12 +1,12 @@
 """End-to-end tests for complete IR game flows."""
 import pytest
 import uuid
-from backend.services.ir.auth_service import IRAuthService
-from backend.services.ir.ir_backronym_set_service import IRBackronymSetService
-from backend.services.ir.ir_vote_service import IRVoteService
-from backend.services.ir.ir_word_service import IRWordService
-from backend.services.ir.ir_result_view_service import IRResultViewService
-from backend.services.ir.ir_statistics_service import IRStatisticsService
+from backend.services import IRAuthService
+from backend.services import IRBackronymSetService
+from backend.services import IRVoteService
+from backend.services import IRWordService
+from backend.services import IRResultViewService
+from backend.services import IRStatisticsService
 
 
 @pytest.mark.asyncio
@@ -146,7 +146,7 @@ async def test_ir_guest_player_flow(db_session):
 @pytest.mark.asyncio
 async def test_ir_daily_bonus_flow(db_session):
     """Test daily bonus claiming flow."""
-    from backend.services.ir.ir_daily_bonus_service import IRDailyBonusService
+    from backend.services import IRDailyBonusService
     from datetime import timedelta
 
     auth_service = IRAuthService(db_session)
@@ -173,7 +173,7 @@ async def test_ir_daily_bonus_flow(db_session):
 
     # Verify balance increased
     from sqlalchemy import select
-    from backend.models.ir.ir_player import IRPlayer
+    from backend.models.ir.player import IRPlayer
     stmt = select(IRPlayer).where(IRPlayer.player_id == player.player_id)
     result = await db_session.execute(stmt)
     updated_player = result.scalars().first()
@@ -238,9 +238,9 @@ async def test_ir_self_vote_prevention(db_session):
 @pytest.mark.asyncio
 async def test_ir_insufficient_balance_blocking(db_session):
     """Test that players with insufficient balance cannot enter."""
-    from sqlalchemy import select, update
-    from backend.models.ir.ir_player import IRPlayer
-    from backend.services.ir.transaction_service import IRTransactionService
+    from sqlalchemy import update
+    from backend.models.ir.player import IRPlayer
+    from backend.services import IRTransactionService
 
     auth_service = IRAuthService(db_session)
     set_service = IRBackronymSetService(db_session)
