@@ -94,8 +94,8 @@ const GrossEarningsLeaderboardList: React.FC<{ leaders: GrossEarningsLeaderboard
       leaders={leaders}
       config={{
         metricLabel: 'Balance',
-        metricFormatter: (entry) => currencyFormatter.format((entry as GrossEarningsLeaderboardEntry).vault_balance),
-        metricAccessor: (entry) => (entry as GrossEarningsLeaderboardEntry).vault_balance,
+        metricFormatter: (entry) => currencyFormatter.format(entry.vault_balance),
+        metricAccessor: (entry) => entry.vault_balance,
         detailFormatter: (entry) => `${entry.total_rounds} rounds`,
         emptyMessage: 'No vault earnings yet—play some rounds to appear on the leaderboard!',
       }}
