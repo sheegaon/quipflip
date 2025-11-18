@@ -19,20 +19,13 @@ from backend.schemas.phraseset import (
 from backend.services import TransactionService
 from backend.services.qf import VoteService, PhrasesetService
 from backend.utils.exceptions import RoundExpiredError, AlreadyVotedError
-from datetime import datetime, UTC
+from backend.utils import ensure_utc
 from uuid import UUID
 import logging
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-
-
-def ensure_utc(dt: datetime) -> datetime:
-    """Ensure datetime has UTC timezone for proper JSON serialization."""
-    if dt and dt.tzinfo is None:
-        return dt.replace(tzinfo=UTC)
-    return dt
 
 
 @router.post("/{phraseset_id}/vote", response_model=VoteResponse)

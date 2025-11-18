@@ -22,6 +22,7 @@ from backend.services import TransactionService
 from backend.services.qf import PlayerService, RoundService, VoteService, QueueService
 from backend.services.ai.ai_service import AICopyError
 from backend.config import get_settings
+from backend.utils import ensure_utc
 from backend.utils.exceptions import (
     InsufficientBalanceError,
     AlreadyInRoundError,
@@ -41,13 +42,6 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 router = APIRouter()
-
-
-def ensure_utc(dt: datetime) -> datetime:
-    """Ensure datetime has UTC timezone for proper JSON serialization."""
-    if dt and dt.tzinfo is None:
-        return dt.replace(tzinfo=UTC)
-    return dt
 
 
 async def _player_can_view_prompt_round(

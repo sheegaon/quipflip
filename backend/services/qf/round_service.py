@@ -20,6 +20,7 @@ from backend.services.transaction_service import TransactionService
 from backend.services.qf.queue_service import QueueService
 from backend.services.qf.phraseset_activity_service import ActivityService
 from backend.config import get_settings
+from backend.utils import ensure_utc
 from backend.utils.exceptions import (
     InvalidPhraseError,
     DuplicatePhraseError,
@@ -31,13 +32,6 @@ from backend.utils.exceptions import (
 from sqlalchemy.exc import SQLAlchemyError
 
 logger = logging.getLogger(__name__)
-
-
-def ensure_utc(dt: Optional[datetime]) -> Optional[datetime]:
-    """Normalize datetimes returned from SQLite to be timezone aware."""
-    if dt is None:
-        return None
-    return dt if dt.tzinfo is not None else dt.replace(tzinfo=UTC)
 
 
 class RoundService:
@@ -930,10 +924,7 @@ class RoundService:
         # Generate phrase cache (which includes hints) outside lock to avoid holding during AI call
         from backend.services.ai.ai_service import AIService
         ai_service = AIService(self.db)
-        try:
-            hints = await ai_service.get_hints_from_cache(prompt_round, count=3)
-        except Exception:
-            raise
+        hints = await ai_service.get_hints_from_cache(prompt_round, count=3)
 
         # Charge player after successful hint generation
         await transaction_service.create_transaction(
