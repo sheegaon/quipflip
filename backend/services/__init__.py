@@ -1,4 +1,4 @@
-from backend.services.auth_service import AuthService, AuthError
+from backend.services.auth_service import AuthService, AuthError, GameType
 from backend.services.system_config_service import SystemConfigService
 from backend.services.username_service import UsernameService
 from backend.services.player_service_base import PlayerServiceBase
@@ -8,6 +8,7 @@ from backend.services.phrase_validation_client import get_phrase_validation_clie
 __all__ = [
     'AuthService',
     'AuthError',
+    'GameType',
     'SystemConfigService',
     'UsernameService',
     'PlayerServiceBase',

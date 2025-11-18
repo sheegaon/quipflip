@@ -10,7 +10,7 @@ from backend.config import get_settings
 from backend.database import get_db
 from backend.dependencies import get_admin_player
 from backend.models.qf.player import QFPlayer
-from backend.services import SystemConfigService, AuthService, TransactionService
+from backend.services import SystemConfigService, AuthService, TransactionService, GameType
 from backend.services.qf import (
     get_phrase_validator,
     PlayerService,
@@ -588,7 +588,7 @@ async def reset_player_password(
     await player_service.update_password(target_player, generated_password)
 
     # Revoke all refresh tokens to force re-login
-    auth_service = AuthService(session)
+    auth_service = AuthService(session, game_type=GameType.QF)
     await auth_service.revoke_all_refresh_tokens(target_player.player_id)
 
     # Log the action

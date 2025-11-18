@@ -1,6 +1,10 @@
 """Player API router."""
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import datetime, UTC, timedelta
+from typing import Optional
+import logging
+
 from backend.database import get_db
 from backend.dependencies import get_current_player, enforce_guest_creation_rate_limit
 from backend.models.qf.player import QFPlayer
@@ -40,15 +44,8 @@ from backend.schemas.phraseset import (
     UnclaimedResultsResponse,
 )
 from backend.schemas.round import RoundAvailability
-from backend.services.qf.player_service import PlayerService
-from backend.services.transaction_service import TransactionService
-from backend.services.qf.round_service import RoundService
-from backend.services.qf.phraseset_service import PhrasesetService
-from backend.services.qf.statistics_service import StatisticsService
-from backend.services.qf.scoring_service import ScoringService, LEADERBOARD_ROLES
+from backend.services import TransactionService, GameType, AuthService, AuthError
 from backend.services.tutorial_service import TutorialService
-from backend.services.qf.vote_service import VoteService
-from backend.services.qf.queue_service import QueueService
 from backend.services.username_service import canonicalize_username
 from backend.utils.exceptions import (
     DailyBonusNotAvailableError,
@@ -57,8 +54,6 @@ from backend.utils.exceptions import (
 )
 from backend.config import get_settings
 from backend.schemas.auth import RegisterRequest
-from backend.services.auth_service import AuthService, AuthError
-from backend.services.qf.cleanup_service import CleanupService
 from backend.utils.cookies import (
     clear_auth_cookies,
     set_access_token_cookie,
@@ -69,9 +64,14 @@ from backend.utils.passwords import (
     validate_password_strength,
     PasswordValidationError,
 )
-from datetime import datetime, UTC, timedelta
-from typing import Optional
-import logging
+from backend.services.qf.player_service import PlayerService
+from backend.services.qf.round_service import RoundService
+from backend.services.qf.phraseset_service import PhrasesetService
+from backend.services.qf.statistics_service import StatisticsService
+from backend.services.qf.scoring_service import ScoringService, LEADERBOARD_ROLES
+from backend.services.qf.vote_service import VoteService
+from backend.services.qf.cleanup_service import CleanupService
+from backend.services.qf.queue_service import QueueService
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -145,7 +145,7 @@ async def create_guest_player(
 ):
     """Create a guest account with auto-generated credentials."""
 
-    auth_service = AuthService(db)
+    auth_service = AuthService(db, game_type=GameType.QF)
     try:
         player, guest_password = await auth_service.register_guest()
     except AuthError as exc:
