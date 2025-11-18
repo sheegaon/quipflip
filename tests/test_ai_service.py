@@ -14,8 +14,7 @@ from backend.services import PhraseValidator
 from backend.models.qf.player import QFPlayer
 from backend.models.qf.round import Round
 from backend.models.qf.phraseset import Phraseset
-from backend.models.ai_metric import AIMetric
-from backend.models.ai_phrase_cache import AIPhraseCache
+from backend.models import AIMetric, AIPhraseCache
 from backend.models.qf.vote import Vote
 from backend.config import get_settings
 
