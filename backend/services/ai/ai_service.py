@@ -23,12 +23,12 @@ from backend.models.qf.phraseset_activity import PhrasesetActivity
 from backend.models.qf.vote import Vote
 from backend.models.qf.ai_phrase_cache import QFAIPhraseCache
 from backend.services.ai.metrics_service import AIMetricsService, MetricsTracker
-from backend.services.qf import PlayerService, QueueService
-from backend.services import UsernameService
+from backend.services.qf import QueueService
 from backend.utils.model_registry import GameType
 from .prompt_builder import build_copy_prompt
 from backend.utils.passwords import hash_password
-
+from backend.services.ai.openai_api import generate_copy as openai_generate_copy
+from backend.services.ai.gemini_api import generate_copy as gemini_generate_copy
 
 logger = logging.getLogger(__name__)
 
@@ -878,11 +878,9 @@ class AIService:
 
             # Generate using configured provider
             if self.provider == "openai":
-                from backend.services.ai.openai_api import generate_copy
-                response_text = await generate_copy(prompt, self.ai_model)
+                response_text = await openai_generate_copy(prompt, self.ai_model)
             else:
-                from backend.services.ai.gemini_api import generate_copy
-                response_text = await generate_copy(prompt, self.ai_model)
+                response_text = await gemini_generate_copy(prompt, self.ai_model)
 
             # Parse response - should be words separated by spaces
             words = response_text.strip().split()
@@ -941,11 +939,9 @@ class AIService:
 
             # Generate using configured provider
             if self.provider == "openai":
-                from backend.services.ai.openai_api import generate_copy
-                response_text = await generate_copy(prompt, self.ai_model)
+                response_text = await openai_generate_copy(prompt, self.ai_model)
             else:
-                from backend.services.ai.gemini_api import generate_copy
-                response_text = await generate_copy(prompt, self.ai_model)
+                response_text = await gemini_generate_copy(prompt, self.ai_model)
 
             # Parse response - should be a number 1-5
             try:
