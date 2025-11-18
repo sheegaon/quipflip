@@ -311,7 +311,7 @@ class ScoringService:
             _placeholder_player_id(phraseset.phraseset_id, "copy2"),
         )
 
-        logger.info(
+        logger.debug(
             f"Calculated payouts for phraseset {phraseset.phraseset_id}: original={original_payout}, copy1={copy1_payout}, copy2={copy2_payout}"
         )
 
