@@ -2,7 +2,7 @@
 
 ## Overview
 
-The AI service fills in for missing players by generating backup copy phrases and casting votes when human activity is low. It supports both OpenAI and Google Gemini models, records detailed telemetry for every AI operation, and integrates with the existing queue, phrase validation, and round management services so that AI decisions follow the same rules as real players.
+The AI service fills in for missing players by generating backup copy phrases and casting votes when human activity is low. It supports both OpenAI and Google Gemini models, records detailed telemetry for every AI operation, and integrates with the existing queue, phrase validation, and round management services so that AI decisions follow the same rules as real players. The same service also powers Initial Reaction (IR) by generating backronym entries and votes when IR sets stall.
 
 ## Module Layout
 
@@ -20,12 +20,14 @@ backend/services/ai/
 Related models and helpers live in other packages:
 
 ```
-backend/models/ai_metric.py   # ORM model persisted by AIMetricsService
-backend/models/ai_phrase_cache.py  # ORM model storing pre-validated phrases for reuse
+backend/models/qf/ai_metric.py   # ORM model persisted by AIMetricsService
+backend/models/qf/ai_phrase_cache.py  # ORM model storing pre-validated phrases for reuse
 backend/services/queue_service.py  # Used to claim work during backup cycles
 backend/services/round_service.py  # Used to build phrasesets when AI copies arrive
 backend/services/vote_service.py   # Used to submit AI votes with full transaction handling
 backend/services/phrase_validator.py (or phrase_validation_client.py)  # Validation rules reused by AI copies
+backend/services/ir/backronym_set_service.py  # IR set management for backronym generation/voting
+backend/services/ir/player_service.py  # IR AI player management
 ```
 
 ## Key Capabilities
@@ -67,18 +69,24 @@ backend/services/phrase_validator.py (or phrase_validation_client.py)  # Validat
 
 * `AIService.run_backup_cycle()` creates or retrieves a dedicated AI player, then:
   1. Finds prompt rounds that have been waiting longer than `Settings.ai_backup_delay_minutes` and are still missing copies.
-  2. Skips prompts the AI recently attempted (based on previous metrics entries).
+  2. Skips prompts the AI previously attempted (based on existing cache usage) to avoid duplicate work.
   3. Generates copies, submits them as the AI player, and lets `RoundService` finalize phrasesets when both copies are present.
   4. Finds phrasesets that have been idle past the same delay but already have at least one human vote.
   5. Generates AI votes using `VoteService.submit_system_vote`, crediting payouts and recording metrics like any other vote.
-* The method commits all successful work in one transaction and rolls back on failure. Statistics are logged for observability.
+* The method commits all successful work in one transaction and rolls back on failure. Statistics are logged for observability and batch sizes are capped by `Settings.ai_backup_batch_size`.
 
 ### Metrics and analytics
 
 * `AIMetricsService.record_operation` stores a row in `ai_metrics` with provider, model, latency, validation or vote correctness, and an estimated cost based on prompt/response lengths.
-* `AIMetricsService.get_stats` returns aggregate counts, success rates, cost totals, average latency, and breakdowns per provider/type for a time window (default: 24 hours).
+* `AIMetricsService.get_stats` returns aggregate counts, success rates, cost totals, average latency, and breakdowns per provider/type for a time window (default: 24 hours). Operation types include `copy_generation`, `vote_generation`, `hint_generation`, and stale/IR variants where applicable.
 * `AIMetricsService.get_vote_accuracy` reports how often AI votes matched the original phrase.
 * `MetricsTracker` is an async context manager that simplifies latency measurement and automatic failure logging.
+
+### Initial Reaction (IR) support
+
+* `AIService.generate_backronym(word)` creates a list of uppercased words for each letter in the target word, sanitizing punctuation and invalid entries.
+* `AIService.generate_backronym_vote(word, backronyms)` ranks backronym submissions and returns the selected index.
+* `AIService.run_ir_backup_cycle()` fills stalled IR sets by generating backronym entries until each set has five entries and then casting votes until five votes exist, using the IR-specific AI player.
 
 ## Configuration
 
@@ -91,11 +99,12 @@ The AI service reads its configuration from `backend.config.Settings` (environme
 | `AI_PROVIDER` | Preferred provider (`"openai"`, `"gemini"`, or `"none"`) | `openai` |
 | `AI_OPENAI_MODEL` | OpenAI model name passed to the API | `gpt-5-nano` |
 | `AI_GEMINI_MODEL` | Gemini model name passed to the API | `gemini-2.5-flash-lite` |
-| `AI_TIMEOUT_SECONDS` | Request timeout for provider calls | `60` |
-| `AI_BACKUP_DELAY_MINUTES` | Age threshold before AI copies/votes run | `15` |
-| `AI_BACKUP_BATCH_SIZE` | Max prompts/phrasesets processed per cycle | `3` |
-| `AI_BACKUP_SLEEP_MINUTES` | Recommended sleep between scheduled cycles | `60` |
+| `AI_TIMEOUT_SECONDS` | Request timeout for provider calls | `90` |
+| `AI_BACKUP_DELAY_MINUTES` | Age threshold before AI copies/votes run | `30` |
+| `AI_BACKUP_BATCH_SIZE` | Max prompts/phrasesets processed per cycle | `10` |
+| `AI_BACKUP_SLEEP_MINUTES` | Recommended sleep between scheduled cycles | `30` |
 | `HINT_COST` | Cost in Flipcoins to generate new AI hints | `10` |
+| `IR_AI_BACKUP_DELAY_MINUTES` | Idle time before IR backronym sets receive AI help | `2` |
 
 When `Settings.use_phrase_validator_api` is `True`, the service uses the remote validator via `phrase_validation_client`; otherwise it falls back to the local validator.
 
@@ -169,7 +178,7 @@ async with MetricsTracker(metrics,
 
 ### AIPhraseCache Table
 
-`backend/models/ai_phrase_cache.py` defines the `ai_phrase_cache` table for storing pre-validated copy phrases:
+`backend/models/qf/ai_phrase_cache.py` defines the `ai_phrase_cache` table for storing pre-validated copy phrases:
 
 * Primary key `cache_id` uses UUIDs generated by `uuid.uuid4`.
 * `prompt_round_id` is a unique foreign key to `rounds.round_id` (cascade delete) - one cache per prompt round.
@@ -184,7 +193,7 @@ The cache eliminates redundant AI API calls by generating phrases once and reusi
 
 ### AIMetric Table
 
-`backend/models/ai_metric.py` defines the `ai_metrics` table with the following notable columns and behaviour:
+`backend/models/qf/ai_metric.py` defines the `ai_metrics` table with the following notable columns and behaviour:
 
 * Primary key `metric_id` uses UUIDs generated by `uuid.uuid4`.
 * `operation_type` distinguishes copy and vote flows (`"copy_generation"` or `"vote_generation"`).
@@ -242,12 +251,12 @@ The stale AI handler (`StaleAIService`) provides a complementary safety net for 
 | Feature | Backup AI | Stale AI |
 |---------|-----------|----------|
 | **Email** | `ai_copy_backup@quipflip.internal` | `ai_stale_handler@quipflip.internal` (copies)<br>`ai_stale_voter@quipflip.internal` (votes) |
-| **Trigger Time** | `ai_backup_delay_minutes` (default: 60 min) | `ai_stale_threshold_days` (default: 3 days) |
+| **Trigger Time** | `ai_backup_delay_minutes` (default: 30 min) | `ai_stale_threshold_days` (default: 3 days) |
 | **Human Activity Required** | Yes - requires human vote before voting | No - can act independently |
-| **Batch Size** | Limited to `ai_backup_batch_size` (default: 2) | Processes ALL stale content |
-| **Frequency** | Every `ai_backup_sleep_minutes` (default: 120 min) | Every `ai_stale_check_interval_hours` (default: 12 hours) |
+| **Batch Size** | Limited to `ai_backup_batch_size` (default: 10) | Processes ALL stale content |
+| **Frequency** | Every `ai_backup_sleep_minutes` (default: 30 min) | Every `ai_stale_check_interval_hours` (default: 6 hours) |
 | **Purpose** | Handle temporary gaps in activity | Handle permanently abandoned content |
-| **Operation Types** | `"backup_copy"`, `"backup_vote"` | `"stale_copy"`, `"stale_vote"` |
+| **Operation Types** | `"copy_generation"`, `"vote_generation"` | `"stale_copy"`, `"stale_vote"` |
 
 ### Architecture
 
