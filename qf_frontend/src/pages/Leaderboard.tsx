@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import apiClient, { extractErrorMessage } from '../api/client';
 import type { LeaderboardResponse } from '../api/types';
 import { Header } from '../components/Header';
@@ -13,6 +13,7 @@ const Leaderboard: React.FC = () => {
   const [alltimeData, setAlltimeData] = useState<LeaderboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const touchStartX = useRef<number | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -81,6 +82,26 @@ const Leaderboard: React.FC = () => {
 
   const currentData = activePeriod === 'weekly' ? weeklyData : alltimeData;
 
+  const handleTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
+    touchStartX.current = event.touches[0]?.clientX ?? null;
+  };
+
+  const handleTouchEnd = (event: React.TouchEvent<HTMLDivElement>) => {
+    if (touchStartX.current === null) return;
+    const endX = event.changedTouches[0]?.clientX ?? touchStartX.current;
+    const deltaX = endX - touchStartX.current;
+
+    if (Math.abs(deltaX) > 40) {
+      if (deltaX < 0 && activePeriod === 'weekly') {
+        setActivePeriod('alltime');
+      } else if (deltaX > 0 && activePeriod === 'alltime') {
+        setActivePeriod('weekly');
+      }
+    }
+
+    touchStartX.current = null;
+  };
+
   return (
     <div className="min-h-screen bg-quip-cream bg-pattern">
       <Header />
@@ -96,7 +117,7 @@ const Leaderboard: React.FC = () => {
         </div>
 
         {/* Period Tabs */}
-        <div className="tile-card p-6">
+        <div className="tile-card p-6" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
           <div className="flex border-b border-quip-navy/10 mb-6" role="tablist">
             <button
               role="tab"
@@ -127,16 +148,13 @@ const Leaderboard: React.FC = () => {
           {/* Description */}
           <p className="text-sm text-quip-teal mb-4">
             {activePeriod === 'weekly'
-              ? 'Ranking players by win rate over the past seven days across all three roles.'
-              : 'All-time rankings by win rate across all three roles since the beginning.'}
+              ? 'Ranking players by vault gains over the past seven days.'
+              : 'All-time rankings by vault balance since the beginning.'}
           </p>
 
           {/* Leaderboard Content */}
           {currentData && (
             <WeeklyLeaderboard
-              promptLeaderboard={currentData.prompt_leaderboard}
-              copyLeaderboard={currentData.copy_leaderboard}
-              voterLeaderboard={currentData.voter_leaderboard}
               grossEarningsLeaderboard={currentData.gross_earnings_leaderboard}
               loading={false}
               error={null}

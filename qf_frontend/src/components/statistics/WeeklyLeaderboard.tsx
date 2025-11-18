@@ -1,10 +1,9 @@
-import { useState } from 'react';
-import type { RoleLeaderboard, WeeklyLeaderboardEntry, GrossEarningsLeaderboard, GrossEarningsLeaderboardEntry } from '../../api/types';
+import type { GrossEarningsLeaderboard, GrossEarningsLeaderboardEntry } from '../../api/types';
 
 interface WeeklyLeaderboardProps {
-  promptLeaderboard: RoleLeaderboard | null;
-  copyLeaderboard: RoleLeaderboard | null;
-  voterLeaderboard: RoleLeaderboard | null;
+  promptLeaderboard?: null;
+  copyLeaderboard?: null;
+  voterLeaderboard?: null;
   grossEarningsLeaderboard: GrossEarningsLeaderboard | null;
   loading?: boolean;
   error?: string | null;
@@ -16,28 +15,18 @@ const currencyFormatter = new Intl.NumberFormat('en-US', {
   maximumFractionDigits: 0,
 });
 
-type Role = 'prompt' | 'copy' | 'voter';
-type TabType = Role | 'gross_earnings';
-
-const roleLabels: Record<TabType, string> = {
-  prompt: 'Prompt',
-  copy: 'Copy',
-  voter: 'Voter',
-  gross_earnings: 'Vault',
-};
-
 const MIN_BAR_PERCENTAGE = 8;
 
 interface LeaderboardEntryDisplayConfig {
   metricLabel: string;
-  metricFormatter: (entry: WeeklyLeaderboardEntry | GrossEarningsLeaderboardEntry) => string;
-  metricAccessor: (entry: WeeklyLeaderboardEntry | GrossEarningsLeaderboardEntry) => number;
-  detailFormatter: (entry: WeeklyLeaderboardEntry | GrossEarningsLeaderboardEntry) => string;
+  metricFormatter: (entry: GrossEarningsLeaderboardEntry) => string;
+  metricAccessor: (entry: GrossEarningsLeaderboardEntry) => number;
+  detailFormatter: (entry: GrossEarningsLeaderboardEntry) => string;
   emptyMessage: string;
 }
 
 interface GenericLeaderboardListProps {
-  leaders: (WeeklyLeaderboardEntry | GrossEarningsLeaderboardEntry)[];
+  leaders: GrossEarningsLeaderboardEntry[];
   config: LeaderboardEntryDisplayConfig;
 }
 
@@ -65,22 +54,25 @@ const GenericLeaderboardList: React.FC<GenericLeaderboardListProps> = ({ leaders
           : 'border border-quip-navy/10 bg-white';
         const rankLabel = entry.rank ? `#${entry.rank}` : '-';
         const formattedMetric = config.metricFormatter(entry);
+        const detailText = config.detailFormatter(entry);
 
         return (
           <div
             key={entry.player_id}
-            className={`rounded-tile px-3 py-2.5 transition-colors duration-200 ${highlightClasses}`}
+            className={`rounded-tile px-3 py-2 transition-colors duration-200 ${highlightClasses}`}
             role="listitem"
             aria-label={`${entry.username} ${config.metricLabel.toLowerCase()} ${formattedMetric}`}
           >
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-semibold uppercase tracking-wide text-quip-navy/60">{rankLabel}</span>
-                <span className="font-display text-lg text-quip-navy">{entry.username}</span>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold uppercase tracking-wide text-quip-navy/60">{rankLabel}</span>
+                <span className="font-display text-base text-quip-navy">{entry.username}</span>
               </div>
               <div className="text-right">
-                <span className="block text-xs uppercase tracking-wide text-quip-navy/50">{config.metricLabel}</span>
-                <div className="font-mono text-lg font-semibold text-quip-teal">{formattedMetric}</div>
+                {config.metricLabel && (
+                  <span className="block text-[11px] uppercase tracking-wide text-quip-navy/50">{config.metricLabel}</span>
+                )}
+                <div className="font-mono text-lg font-semibold text-quip-teal leading-tight">{formattedMetric}</div>
               </div>
             </div>
 
@@ -88,35 +80,11 @@ const GenericLeaderboardList: React.FC<GenericLeaderboardListProps> = ({ leaders
               <div className="h-full bg-quip-teal" style={{ width: `${percent}%` }} aria-hidden="true" />
             </div>
 
-            {entry.is_current_player ? (
-              <p className="mt-1.5 text-xs font-semibold uppercase tracking-wide text-quip-orange">
-                You&apos;re here! Keep climbing the leaderboard.
-              </p>
-            ) : (
-              <p className="mt-1.5 text-xs text-quip-navy/50">{config.detailFormatter(entry)}</p>
-            )}
+            <p className="mt-1 text-xs text-quip-navy/60">{detailText}</p>
           </div>
         );
       })}
     </div>
-  );
-};
-
-const LeaderboardList: React.FC<{ leaders: WeeklyLeaderboardEntry[] }> = ({ leaders }) => {
-  return (
-    <GenericLeaderboardList
-      leaders={leaders}
-      config={{
-        metricLabel: 'Win Rate',
-        metricFormatter: (entry) => `${(entry as WeeklyLeaderboardEntry).win_rate.toFixed(1)}%`,
-        metricAccessor: (entry) => (entry as WeeklyLeaderboardEntry).win_rate,
-        detailFormatter: (entry) => {
-          const e = entry as WeeklyLeaderboardEntry;
-          return `${e.total_rounds} rounds · Net ${currencyFormatter.format(e.net_earnings)}`;
-        },
-        emptyMessage: 'No completed rounds yet this week—play a round to appear on the leaderboard!',
-      }}
-    />
   );
 };
 
@@ -125,7 +93,7 @@ const GrossEarningsLeaderboardList: React.FC<{ leaders: GrossEarningsLeaderboard
     <GenericLeaderboardList
       leaders={leaders}
       config={{
-        metricLabel: 'Vault Balance',
+        metricLabel: 'Balance',
         metricFormatter: (entry) => currencyFormatter.format((entry as GrossEarningsLeaderboardEntry).vault_balance),
         metricAccessor: (entry) => (entry as GrossEarningsLeaderboardEntry).vault_balance,
         detailFormatter: (entry) => `${entry.total_rounds} rounds`,
@@ -136,15 +104,10 @@ const GrossEarningsLeaderboardList: React.FC<{ leaders: GrossEarningsLeaderboard
 };
 
 const WeeklyLeaderboard: React.FC<WeeklyLeaderboardProps> = ({
-  promptLeaderboard,
-  copyLeaderboard,
-  voterLeaderboard,
   grossEarningsLeaderboard,
   loading = false,
   error = null,
 }) => {
-  const [activeTab, setActiveTab] = useState<TabType>('prompt');
-
   if (loading) {
     return (
       <div className="w-full h-64 flex items-center justify-center" role="status" aria-live="polite">
@@ -163,47 +126,14 @@ const WeeklyLeaderboard: React.FC<WeeklyLeaderboardProps> = ({
     );
   }
 
-  const roleLeaderboards: Record<Role, RoleLeaderboard | null> = {
-    prompt: promptLeaderboard,
-    copy: copyLeaderboard,
-    voter: voterLeaderboard,
-  };
-
-  const currentLeaderboard = activeTab === 'gross_earnings'
-    ? null
-    : roleLeaderboards[activeTab as Role];
+  const filteredLeaders = (grossEarningsLeaderboard?.leaders ?? []).filter((entry) => {
+    const isBot = (entry as GrossEarningsLeaderboardEntry & { is_ai?: boolean }).is_bot || (entry as any).is_ai;
+    return !isBot && entry.vault_balance > 0;
+  });
 
   return (
     <div className="space-y-4">
-      {/* Tab Navigation */}
-      <div className="flex border-b border-quip-navy/10" role="tablist">
-        {(['prompt', 'copy', 'voter', 'gross_earnings'] as TabType[]).map((tab) => {
-          const isActive = activeTab === tab;
-          return (
-            <button
-              key={tab}
-              role="tab"
-              aria-selected={isActive}
-              onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2 font-semibold text-sm transition-colors duration-200 border-b-2 ${
-                isActive
-                  ? 'border-quip-orange text-quip-orange'
-                  : 'border-transparent text-quip-navy/60 hover:text-quip-navy hover:border-quip-navy/30'
-              }`}
-            >
-              {roleLabels[tab]}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Leaderboard Content */}
-      {activeTab === 'gross_earnings' && grossEarningsLeaderboard && (
-        <GrossEarningsLeaderboardList leaders={grossEarningsLeaderboard.leaders} />
-      )}
-      {activeTab !== 'gross_earnings' && currentLeaderboard && (
-        <LeaderboardList leaders={currentLeaderboard.leaders} />
-      )}
+      <GrossEarningsLeaderboardList leaders={filteredLeaders} />
     </div>
   );
 };
