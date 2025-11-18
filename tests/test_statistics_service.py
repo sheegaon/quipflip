@@ -134,7 +134,7 @@ async def test_get_player_statistics_with_rounds(db_session):
         player_id=player.player_id,
         amount=50,
         type="daily_bonus",
-        balance_after=1050,
+        wallet_balance_after=1050,
         created_at=now,
     )
     db_session.add(daily_bonus)
@@ -145,7 +145,7 @@ async def test_get_player_statistics_with_rounds(db_session):
         player_id=player.player_id,
         amount=25,
         type="vote_payout",
-        balance_after=1075,
+        wallet_balance_after=1075,
         created_at=now,
     )
     db_session.add(vote_payout)
@@ -231,7 +231,7 @@ async def test_get_player_statistics_win_rate(db_session):
             amount=100,
             type="prize_payout",
             reference_id=phraseset.phraseset_id,
-            balance_after=1100 + (i * 100),
+            wallet_balance_after=1100 + (i * 100),
             created_at=now - timedelta(days=i),
         )
         db_session.add(payout)
