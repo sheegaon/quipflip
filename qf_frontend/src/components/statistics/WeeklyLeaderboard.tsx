@@ -127,7 +127,7 @@ const WeeklyLeaderboard: React.FC<WeeklyLeaderboardProps> = ({
   }
 
   const filteredLeaders = (grossEarningsLeaderboard?.leaders ?? []).filter((entry) => {
-    const isBot = (entry as GrossEarningsLeaderboardEntry & { is_ai?: boolean }).is_bot || (entry as any).is_ai;
+    const isBot = entry.is_bot || (entry as any).is_ai;
     return !isBot && entry.vault_balance > 0;
   });
 
