@@ -195,11 +195,7 @@ class RoundService:
         await self.db.refresh(round_object)
 
         # Immediately kick off AI copy generation without blocking the response
-        try:
-            asyncio.create_task(generate_ai_hints_background(round_object.round_id))
-        except Exception as exc:
-            logger.warning(f"Failed to start background AI copy generation task for prompt round {round_id}: {exc}",
-                           exc_info=True)
+        asyncio.create_task(generate_ai_hints_background(round_object.round_id))
 
         # Track quest progress for round completion
         from backend.services.qf.quest_service import QuestService
@@ -684,6 +680,7 @@ class RoundService:
         """Fetch cached hints for a copy round or generate and persist new ones.
 
         Charges the player hint_cost coins only when generating new hints (not for cached results).
+        Uses the AI service's locking mechanism to prevent duplicate generation.
         """
         round_object = await self.db.get(Round, round_id)
         if not round_object:
@@ -717,16 +714,18 @@ class RoundService:
         if phrase_cache and phrase_cache.validated_phrases:
             # Return cached hints for free (reuse phrases from cache)
             hints = phrase_cache.validated_phrases[:3]  # Return up to 3 hints
+            # Mark cache as used for hints if not already marked
+            if not phrase_cache.used_for_hints:
+                phrase_cache.used_for_hints = True
+                await self.db.flush()
             return hints
 
         # Check player wallet before generating new hints/cache
         if player.wallet < self.settings.hint_cost:
             raise InsufficientBalanceError(f"Insufficient wallet balance: {player.wallet} < {self.settings.hint_cost}")
 
-        # Generate phrase cache (which includes hints) outside lock to avoid holding during AI call
-        from backend.services.ai.ai_service import AIService
-        ai_service = AIService(self.db)
-        hints = await ai_service.get_hints(prompt_round, count=3)
+        # Generate hints using AI service (which includes proper locking)
+        hints = await self.ai_service.get_hints(prompt_round, count=3)
 
         # Charge player after successful hint generation
         await transaction_service.create_transaction(
