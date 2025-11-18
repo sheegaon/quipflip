@@ -47,12 +47,16 @@ class AuthService:
         self.db = db
         self.game_type = game_type
         self.settings = get_settings()
-        
-        # Instantiate the correct player service based on game type
+
+        # Instantiate the correct player service and refresh token model based on game type
         if game_type == GameType.QF:
             from backend.services.qf.player_service import PlayerService
+            from backend.models.qf.refresh_token import QFRefreshToken
+            self.refresh_token_model = QFRefreshToken
         elif game_type == GameType.IR:
             from backend.services.ir.player_service import PlayerService
+            from backend.models.ir.refresh_token import IRRefreshToken
+            self.refresh_token_model = IRRefreshToken
         else:
             raise ValueError(f"Unsupported game type: {game_type}")
         self.player_service = PlayerService(db)
@@ -298,7 +302,7 @@ class AuthService:
 
     async def _store_refresh_token(self, player: PlayerBase, raw_token: str, expires_at: datetime) -> RefreshTokenBase:
         token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
-        refresh_token = RefreshTokenBase(
+        refresh_token = self.refresh_token_model(
             token_id=uuid.uuid4(),
             player_id=player.player_id,
             token_hash=token_hash,
@@ -310,7 +314,7 @@ class AuthService:
     async def revoke_refresh_token(self, raw_token: str) -> None:
         token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
         result = await self.db.execute(
-            select(RefreshTokenBase).where(RefreshTokenBase.token_hash == token_hash)
+            select(self.refresh_token_model).where(self.refresh_token_model.token_hash == token_hash)
         )
         refresh_token = result.scalar_one_or_none()
         if refresh_token:
@@ -319,9 +323,9 @@ class AuthService:
 
     async def revoke_all_refresh_tokens(self, player_id: uuid.UUID) -> None:
         await self.db.execute(
-            update(RefreshTokenBase)
-            .where(RefreshTokenBase.player_id == player_id)
-            .where(RefreshTokenBase.revoked_at.is_(None))
+            update(self.refresh_token_model)
+            .where(self.refresh_token_model.player_id == player_id)
+            .where(self.refresh_token_model.revoked_at.is_(None))
             .values(revoked_at=datetime.now(UTC))
         )
         await self.db.commit()
@@ -354,7 +358,7 @@ class AuthService:
         try:
             token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
             result = await self.db.execute(
-                select(RefreshTokenBase).where(RefreshTokenBase.token_hash == token_hash)
+                select(self.refresh_token_model).where(self.refresh_token_model.token_hash == token_hash)
             )
             refresh_token = result.scalar_one_or_none()
             if not refresh_token or not refresh_token.is_active():
