@@ -12,6 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.data.username_pool import USERNAME_POOL
 from backend.data.profanity_list import contains_profanity
 from backend.models.player_base import PlayerBase
+from backend.services.auth_service import GameType
+from backend.utils.model_registry import get_player_model
 
 
 def canonicalize_username(username: str) -> str:
@@ -42,11 +44,13 @@ def is_username_profanity_free(username: str) -> bool:
 class UsernameService:
     """Encapsulates username generation and lookup helpers."""
 
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: AsyncSession, game_type: GameType = GameType.QF):
         self.db = db
+        self.game_type = game_type
+        self.player_model = get_player_model(game_type)
 
     async def _existing_canonicals(self) -> set[str]:
-        result = await self.db.execute(select(PlayerBase.username_canonical))
+        result = await self.db.execute(select(self.player_model.username_canonical))
         return {row[0] for row in result if row[0]}
 
     async def generate_unique_username(self) -> Tuple[str, str]:
@@ -99,6 +103,6 @@ class UsernameService:
         if not canonical:
             return None
         result = await self.db.execute(
-            select(PlayerBase).where(PlayerBase.username_canonical == canonical)
+            select(self.player_model).where(self.player_model.username_canonical == canonical)
         )
         return result.scalar_one_or_none()

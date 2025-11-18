@@ -48,6 +48,12 @@ class PlayerService(PlayerServiceBase):
         """Return the QF player error class."""
         return PlayerError
 
+    @property
+    def game_type(self):
+        """Return the game type for this service."""
+        from backend.services.auth_service import GameType
+        return GameType.QF
+
     def get_guest_domain(self) -> str:
         """Get the domain for QF guest email addresses."""
         return "quipflip.xyz"

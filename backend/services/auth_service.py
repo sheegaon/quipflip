@@ -82,7 +82,7 @@ class AuthService:
         password_hash = hash_password(guest_password)
 
         # Generate unique username for this player
-        username_service = UsernameService(self.db)
+        username_service = UsernameService(self.db, game_type=self.game_type)
         username_display, username_canonical = await username_service.generate_unique_username()
 
         # Try to create the guest account, retry with new email if collision
@@ -139,7 +139,7 @@ class AuthService:
         password_hash = hash_password(password)
 
         # Generate unique username for this player
-        username_service = UsernameService(self.db)
+        username_service = UsernameService(self.db, game_type=self.game_type)
         username_display, username_canonical = await username_service.generate_unique_username()
 
         try:

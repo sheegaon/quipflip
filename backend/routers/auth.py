@@ -100,7 +100,7 @@ async def suggest_username(
     """Generate a suggested username for registration."""
     from backend.services import UsernameService
 
-    username_service = UsernameService(db)
+    username_service = UsernameService(db, game_type=GameType.QF)
     display_name, _ = await username_service.generate_unique_username()
 
     return SuggestUsernameResponse(suggested_username=display_name)

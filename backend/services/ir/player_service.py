@@ -35,6 +35,12 @@ class PlayerService(PlayerServiceBase):
         """Return the IR player error class."""
         return PlayerError
 
+    @property
+    def game_type(self):
+        """Return the game type for this service."""
+        from backend.services.auth_service import GameType
+        return GameType.IR
+
     def get_guest_domain(self) -> str:
         """Get the domain for IR guest email addresses."""
         return "initialreaction.xyz"

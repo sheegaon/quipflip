@@ -77,7 +77,7 @@ class StaleAIService:
             raise ValueError(f"Unsupported game type: {game_type}")
         player_service = PlayerService(self.db)
 
-        username_service = UsernameService(self.db)
+        username_service = UsernameService(self.db, game_type=game_type)
 
         try:
             normalized_username, canonical_username = await username_service.generate_unique_username()

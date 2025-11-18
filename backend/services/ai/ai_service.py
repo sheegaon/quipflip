@@ -180,7 +180,7 @@ class AIService:
                 
                 # Generate unique username
                 from backend.services.username_service import UsernameService
-                username_service = UsernameService(self.db)
+                username_service = UsernameService(self.db, game_type=game_type)
 
                 if game_type == GameType.QF:
                     base_username = "AI Copy Backup"
