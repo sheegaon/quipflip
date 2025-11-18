@@ -1223,13 +1223,13 @@ const Admin: React.FC = () => {
                     />
                   </div>
                   <div className="mb-4">
-                    <label className="block text-sm font-semibold text-quip-navy mb-2">Other Copy Phrase (Optional)</label>
+                    <label className="block text-sm font-semibold text-quip-navy mb-2">Other Fake Phrase (Optional)</label>
                     <input
                       type="text"
                       value={otherCopyPhrase}
                       onChange={(e) => setOtherCopyPhrase(e.target.value)}
                       className="w-full border-2 border-quip-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-quip-orange"
-                      placeholder="Enter the other copy phrase if it exists..."
+                      placeholder="Enter the other fake phrase if it exists..."
                     />
                   </div>
                 </>
@@ -1353,7 +1353,7 @@ const Admin: React.FC = () => {
                     {validationResult.similarity_to_other_copy !== null && (
                       <div>
                         <div className="flex justify-between text-sm mb-1">
-                          <span className="text-quip-teal">Similarity to Other Copy</span>
+                          <span className="text-quip-teal">Similarity to Other Fake</span>
                           <span className="font-bold text-quip-navy">{validationResult.similarity_to_other_copy.toFixed(4)}</span>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-4">

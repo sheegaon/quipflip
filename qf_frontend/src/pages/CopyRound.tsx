@@ -227,9 +227,9 @@ export const CopyRound: React.FC = () => {
 
   useEffect(() => {
     if (!roundData) {
-      copyRoundLogger.debug('Copy round page mounted without active round');
+      copyRoundLogger.debug('Impostor round page mounted without active round');
     } else {
-      copyRoundLogger.debug('Copy round page mounted', {
+      copyRoundLogger.debug('Impostor round page mounted', {
         roundId: roundData.round_id,
         expiresAt: roundData.expires_at,
         status: roundData.status,
@@ -250,7 +250,7 @@ export const CopyRound: React.FC = () => {
     }
   }, [roundData?.status, navigate]);
 
-  // Redirect if no active copy round - but NOT during the submission process
+  // Redirect if no active impostor round - but NOT during the submission process
   useEffect(() => {
     if (!activeRound || activeRound.round_type !== 'copy') {
       // Don't navigate if we're showing success message (submission in progress)
@@ -277,7 +277,7 @@ export const CopyRound: React.FC = () => {
     setFlagResult(null);
 
     try {
-      copyRoundLogger.debug('Submitting copy round phrase', {
+      copyRoundLogger.debug('Submitting impostor round phrase', {
         roundId: roundData.round_id,
       });
       const response = await apiClient.submitPhrase(roundData.round_id, trimmedPhrase);
@@ -286,7 +286,7 @@ export const CopyRound: React.FC = () => {
       const heading = getRandomMessage('copySubmitted');
       const feedback = getRandomMessage('copySubmittedFeedback');
       dispatchCompletion({ type: 'SET_SUCCESS', payload: { successMessage: heading, feedbackMessage: feedback } });
-      copyRoundLogger.info('Copy round phrase submitted successfully', {
+      copyRoundLogger.info('Impostor round phrase submitted successfully', {
         roundId: roundData.round_id,
         message: heading,
       });
@@ -327,13 +327,13 @@ export const CopyRound: React.FC = () => {
       if (!response.eligible_for_second_copy) {
         // Navigate after delay - dashboard should now show no active round
         setTimeout(() => {
-          copyRoundLogger.debug('Navigating back to dashboard after copy submission');
+          copyRoundLogger.debug('Navigating back to dashboard after fake submission');
           navigate('/dashboard');
         }, 3000);
       }
     } catch (err) {
       const message = extractErrorMessage(err) || 'Unable to submit your phrase. The round may have expired or there may be a connection issue.';
-      copyRoundLogger.error('Failed to submit copy round phrase', err);
+      copyRoundLogger.error('Failed to submit impostor round phrase', err);
       setError(message);
     } finally {
       setIsSubmitting(false);
@@ -356,7 +356,7 @@ export const CopyRound: React.FC = () => {
     setFlagError(null);
 
     try {
-      copyRoundLogger.debug('Flagging copy round phrase', {
+      copyRoundLogger.debug('Flagging impostor round phrase', {
         roundId: roundData.round_id,
       });
       const response = await flagCopyRound(roundData.round_id);
@@ -364,19 +364,19 @@ export const CopyRound: React.FC = () => {
       dispatchCompletion({ type: 'SET_SUCCESS', payload: { successMessage: 'Thanks for looking out!', feedbackMessage: null } });
       dispatchCompletion({ type: 'CLEAR_SECOND_COPY_ELIGIBILITY' });
       setShowFlagConfirm(false);
-      copyRoundLogger.info('Copy round flagged', {
+      copyRoundLogger.info('Impostor round flagged', {
         roundId: roundData.round_id,
         flagId: response.flag_id,
       });
 
       setTimeout(() => {
-        copyRoundLogger.debug('Navigating back to dashboard after flagging copy round');
+        copyRoundLogger.debug('Navigating back to dashboard after flagging impostor round');
         navigate('/dashboard');
       }, 1500);
     } catch (err) {
       const message = extractErrorMessage(err, 'flag-copy-round') ||
         'Unable to flag this phrase right now. Please try again.';
-      copyRoundLogger.error('Failed to flag copy round', err);
+      copyRoundLogger.error('Failed to flag impostor round', err);
       setFlagError(message);
       setShowFlagConfirm(false);
     } finally {
@@ -391,7 +391,7 @@ export const CopyRound: React.FC = () => {
     setError(null);
 
     try {
-      copyRoundLogger.info('Starting second copy round', {
+      copyRoundLogger.info('Starting second impostor round', {
         promptRoundId: secondCopyEligibility.promptRoundId,
         cost: secondCopyEligibility.cost,
       });
@@ -399,12 +399,12 @@ export const CopyRound: React.FC = () => {
       await apiClient.startCopyRound(secondCopyEligibility.promptRoundId);
       await refreshDashboard();
 
-      copyRoundLogger.debug('Second copy round started, staying on page');
+      copyRoundLogger.debug('Second impostor round started, staying on page');
       // Reset states to allow for the new round
       dispatchCompletion({ type: 'RESET' });
     } catch (err) {
-      const message = extractErrorMessage(err) || 'Unable to start second copy round. Please try again.';
-      copyRoundLogger.error('Failed to start second copy round', err);
+      const message = extractErrorMessage(err) || 'Unable to start second impostor round. Please try again.';
+      copyRoundLogger.error('Failed to start second impostor round', err);
       setError(message);
     } finally {
       dispatchCompletion({ type: 'START_SECOND_COPY_COMPLETE' });
@@ -441,7 +441,7 @@ export const CopyRound: React.FC = () => {
           onClick={() => dispatchCompletion({ type: 'TOGGLE_SECOND_COPY_DETAILS' })}
           className="mx-auto flex items-center justify-center gap-2 text-blue-600 font-semibold underline hover:text-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 rounded-tile"
         >
-          Want to submit another copy for the same phrase?
+          Want to submit another fake for the same phrase?
           <svg
             xmlns="http://www.w3.org/2000/svg"
             className={`h-4 w-4 transition-transform ${showSecondCopyDetails ? 'rotate-180' : ''}`}
@@ -456,7 +456,7 @@ export const CopyRound: React.FC = () => {
         {showSecondCopyDetails && (
           <div className="bg-quip-turquoise bg-opacity-10 border-2 border-quip-turquoise rounded-tile p-4 text-left space-y-2">
             <p className="text-quip-teal">
-              You can submit a second copy for <strong>"{secondCopyEligibility.originalPhrase}"</strong> for{' '}
+              You can submit a second fake for <strong>"{secondCopyEligibility.originalPhrase}"</strong> for{' '}
               <CurrencyDisplay
                 amount={secondCopyEligibility.cost}
                 iconClassName="w-4 h-4"
@@ -583,7 +583,7 @@ export const CopyRound: React.FC = () => {
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-2 mb-2">
             <CopyRoundIcon className="w-8 h-8" aria-hidden="true" />
-            <h1 className="text-3xl font-display font-bold text-quip-navy">Copy Round</h1>
+            <h1 className="text-3xl font-display font-bold text-quip-navy">Impostor Round</h1>
           </div>
           <p className="text-quip-teal">Submit a similar phrase</p>
         </div>
@@ -596,7 +596,7 @@ export const CopyRound: React.FC = () => {
         {/* Instructions */}
         <div className="bg-quip-orange bg-opacity-10 border-2 border-quip-orange rounded-tile p-4 mb-6">
           <p className="text-sm text-quip-navy">
-            <strong>💡 Your goal:</strong> You don't know the prompt! Write a phrase that <em>could have been the original</em> and might trick voeters. Do NOT submit your best guess of the prompt.
+            <strong>💡 Your goal:</strong> You don't know the prompt! Write a phrase that <em>could have been the original</em> and might trick voters. Do NOT submit your best guess of the prompt.
           </p>
         </div>
 
