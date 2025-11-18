@@ -28,7 +28,8 @@ async def finalized_phraseset_with_votes(db_session):
         username_canonical=f"prompter_{test_id}",
         email=f"prompter_{test_id}@test.com",
         password_hash="hash",
-        balance=5000,
+        wallet=5000,
+        vault=0,
     )
     copier1 = QFPlayer(
         player_id=uuid.uuid4(),
@@ -36,7 +37,8 @@ async def finalized_phraseset_with_votes(db_session):
         username_canonical=f"copier1_{test_id}",
         email=f"copier1_{test_id}@test.com",
         password_hash="hash",
-        balance=5000,
+        wallet=5000,
+        vault=0,
     )
     copier2 = QFPlayer(
         player_id=uuid.uuid4(),
@@ -44,7 +46,8 @@ async def finalized_phraseset_with_votes(db_session):
         username_canonical=f"copier2_{test_id}",
         email=f"copier2_{test_id}@test.com",
         password_hash="hash",
-        balance=5000,
+        wallet=5000,
+        vault=0,
     )
     db_session.add_all([prompter, copier1, copier2])
     await db_session.commit()
@@ -205,7 +208,8 @@ class TestPayoutCalculation:
             username_canonical=f"prompter_{test_id}",
             email=f"prompter_{test_id}@test.com",
             password_hash="hash",
-            balance=5000,
+            wallet=5000,
+            vault=0,
         )
         db_session.add(prompter)
         await db_session.commit()

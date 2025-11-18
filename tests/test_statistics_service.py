@@ -21,7 +21,8 @@ def _base_player(username: str) -> QFPlayer:
         username_canonical=username.lower(),
         email=f"{username}@example.com",
         password_hash=hash_password("TestPassword123!"),
-        balance=1000,
+        wallet=1000,
+        vault=0,
         created_at=now,
     )
 
@@ -41,7 +42,8 @@ async def test_get_player_statistics_new_player(db_session):
     # Verify basic info
     assert stats.player_id == player.player_id
     assert stats.username == player.username
-    assert stats.overall_balance == 1000
+    assert stats.wallet == 1000
+    assert stats.vault == 0
 
     # Verify all roles have zero stats
     assert stats.prompt_stats.total_rounds == 0
