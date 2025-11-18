@@ -28,7 +28,8 @@ async def test_create_player(test_app):
     assert "refresh_token" in data
     assert "username" in data
     settings = get_settings()
-    assert data["balance"] == settings.starting_balance
+    assert data["wallet"] == settings.starting_balance
+    assert data["vault"] == 0
     assert "message" in data
     assert data["username"]
     assert "Player created!" in data["message"]
@@ -56,7 +57,8 @@ async def test_get_balance(test_app):
 
         assert response.status_code == 200
         data = response.json()
-        assert data["balance"] == 5000
+        assert data["wallet"] == 5000
+        assert data["vault"] == 0
         assert data["starting_balance"] == 5000
         assert data["username"] == create_data["username"]
         assert "daily_bonus_available" in data

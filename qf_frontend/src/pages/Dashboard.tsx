@@ -378,7 +378,7 @@ export const Dashboard: React.FC = () => {
       return;
     }
 
-    dashboardLogger.info(`Starting prompt round in ${mode} mode...`);
+    dashboardLogger.info(`Starting quip round in ${mode} mode...`);
     dashboardLogger.debug('Player state before start:', {
       wallet: player?.wallet,
       outstandingPrompts: player?.outstanding_prompts,
@@ -395,16 +395,16 @@ export const Dashboard: React.FC = () => {
       } else {
         dashboardLogger.debug('Calling actions.startPromptRound()...');
         await actions.startPromptRound();
-        dashboardLogger.info('✅ Prompt round started successfully, navigating to /prompt');
+        dashboardLogger.info('✅ Quip round started successfully, navigating to /prompt');
         navigate('/prompt');
       }
     } catch (err) {
-      dashboardLogger.error('❌ Failed to start prompt round:', err);
-      const errorMsg = extractErrorMessage(err) || 'Unable to start prompt round. Please try again.';
+      dashboardLogger.error('❌ Failed to start quip round:', err);
+      const errorMsg = extractErrorMessage(err) || 'Unable to start quip round. Please try again.';
       setRoundStartError(errorMsg);
     } finally {
       setStartingRound(null);
-      dashboardLogger.debug('Prompt round start process completed');
+      dashboardLogger.debug('Quip round start process completed');
     }
   };
 
@@ -414,7 +414,7 @@ export const Dashboard: React.FC = () => {
       return;
     }
 
-    dashboardLogger.info(`Starting copy round in ${mode} mode...`);
+    dashboardLogger.info(`Starting impostor round in ${mode} mode...`);
     dashboardLogger.debug('Player state before start:', {
       wallet: player?.wallet,
       canCopy: roundAvailability?.can_copy,
@@ -432,16 +432,16 @@ export const Dashboard: React.FC = () => {
       } else {
         dashboardLogger.debug('Calling actions.startCopyRound()...');
         await actions.startCopyRound();
-        dashboardLogger.info('✅ Copy round started successfully, navigating to /copy');
+        dashboardLogger.info('✅ Impostor round started successfully, navigating to /copy');
         navigate('/copy');
       }
     } catch (err) {
-      dashboardLogger.error('❌ Failed to start copy round:', err);
-      const errorMsg = extractErrorMessage(err) || 'Unable to start copy round. Please try again.';
+      dashboardLogger.error('❌ Failed to start impostor round:', err);
+      const errorMsg = extractErrorMessage(err) || 'Unable to start impostor round. Please try again.';
       setRoundStartError(errorMsg);
     } finally {
       setStartingRound(null);
-      dashboardLogger.debug('Copy round start process completed');
+      dashboardLogger.debug('Impostor round start process completed');
     }
   };
 
@@ -563,19 +563,19 @@ export const Dashboard: React.FC = () => {
 
           <div className="space-y-4">
 
-            {/* Prompt Round */}
+            {/* Quip Round */}
             <div className="tutorial-prompt-round border-2 border-quip-navy rounded-tile p-4 bg-quip-navy bg-opacity-5 hover:bg-opacity-10 transition-all">
               <div className="flex justify-between items-center mb-2">
                 <div className="flex items-center gap-2">
                   <TrackingIcon className="w-8 h-8" />
-                  <h3 className="font-display font-semibold text-lg text-quip-navy">Prompt Round</h3>
+                  <h3 className="font-display font-semibold text-lg text-quip-navy">Quip Round</h3>
                 </div>
                 <span className="text-quip-orange-deep font-bold flex items-center gap-1">
                   <CurrencyDisplay amount={mode === 'practice' ? 0 : (roundAvailability?.prompt_cost || 100)} iconClassName="w-4 h-4" textClassName="font-bold" />
                 </span>
               </div>
               <p className="text-sm text-quip-teal mb-3">
-                Submit a phrase for a creative prompt
+                Write an original phrase for a creative prompt
               </p>
               <button
                 onClick={handleStartPrompt}
@@ -583,8 +583,8 @@ export const Dashboard: React.FC = () => {
                 className="w-full bg-quip-navy hover:bg-quip-teal disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm"
               >
                 {startingRound === 'prompt' ? 'Starting Round...' :
-                 mode === 'practice' ? 'Practice Prompt Round' :
-                 roundAvailability?.can_prompt ? 'Start Prompt Round' :
+                 mode === 'practice' ? 'Practice Quip Round' :
+                 roundAvailability?.can_prompt ? 'Start Quip Round' :
                  activeRound?.round_type === 'prompt' ? 'Active Round - Use Continue Above' :
                  activeRound?.round_id ? 'Complete Current Round First' :
                  (player?.wallet ?? 0) < (roundAvailability?.prompt_cost || 100) ? 'Insufficient Balance' :
@@ -593,12 +593,12 @@ export const Dashboard: React.FC = () => {
               </button>
             </div>
 
-            {/* Copy Round */}
+            {/* Impostor Round */}
             <div className="tutorial-copy-round border-2 border-quip-turquoise rounded-tile p-4 bg-quip-turquoise bg-opacity-5 hover:bg-opacity-10 transition-all">
               <div className="flex justify-between items-center mb-2">
                 <div className="flex items-center gap-2">
                   <CopyRoundIcon className="w-8 h-8" aria-hidden="true" />
-                  <h3 className="font-display font-semibold text-lg text-quip-turquoise">Copy Round</h3>
+                  <h3 className="font-display font-semibold text-lg text-quip-turquoise">Impostor Round</h3>
                 </div>
                 <span className="flex items-center gap-2 text-quip-orange-deep font-bold">
                   {mode === 'live' && roundAvailability?.copy_discount_active && roundAvailability?.prompts_waiting > 0 && (
@@ -614,7 +614,7 @@ export const Dashboard: React.FC = () => {
                 </span>
               </div>
               <p className="text-sm text-quip-teal mb-1">
-                Submit a similar phrase without seeing the prompt
+                Write a phrase that <em>could have been the original</em> and might trick voters.
               </p>
               {mode === 'live' && roundAvailability && roundAvailability.prompts_waiting > 0 && (
                 <p className="text-xs text-quip-turquoise mb-3 font-semibold">
@@ -628,8 +628,8 @@ export const Dashboard: React.FC = () => {
                 className="w-full bg-quip-turquoise hover:bg-quip-teal disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm"
               >
                 {startingRound === 'copy' ? 'Starting Round...' :
-                 mode === 'practice' ? 'Practice Copy Round' :
-                 roundAvailability?.can_copy ? 'Start Copy Round' :
+                 mode === 'practice' ? 'Practice Impostor Round' :
+                 roundAvailability?.can_copy ? 'Start Impostor Round' :
                  activeRound?.round_type === 'copy' ? 'Active Round - Use Continue Above' :
                  activeRound?.round_id ? 'Complete Current Round First' :
                  roundAvailability?.prompts_waiting === 0 ? 'No Quips Available' :
@@ -650,7 +650,7 @@ export const Dashboard: React.FC = () => {
                 </span>
               </div>
               <p className="text-sm text-quip-teal mb-1">
-                Identify the original phrase from three options
+                Spot the original phrase from three options
               </p>
               {mode === 'live' && roundAvailability && roundAvailability.phrasesets_waiting > 0 && (
                 <p className="text-xs text-quip-orange-deep mb-3 font-semibold">

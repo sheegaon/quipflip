@@ -18,6 +18,7 @@ from backend.models.qf.player_abandoned_prompt import PlayerAbandonedPrompt
 from backend.services.transaction_service import TransactionService
 from backend.services.qf.queue_service import QueueService
 from backend.services.qf.phraseset_activity_service import ActivityService
+from backend.services import AIService, AICopyError
 from backend.config import get_settings
 from backend.utils.exceptions import (
     InvalidPhraseError,
@@ -27,6 +28,7 @@ from backend.utils.exceptions import (
     NoPromptsAvailableError,
     InsufficientBalanceError,
 )
+from sqlalchemy.exc import SQLAlchemyError
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +53,7 @@ class RoundService:
             from backend.services.phrase_validator import get_phrase_validator
             self.phrase_validator = get_phrase_validator()
         self.activity_service = ActivityService(db)
+        self.ai_service = AIService(db)
 
     async def start_prompt_round(self, player: QFPlayer, transaction_service: TransactionService) -> Optional[Round]:
         """
@@ -249,6 +252,25 @@ class RoundService:
 
         await self.db.commit()
         await self.db.refresh(round_object)
+
+        # Immediately generate and cache AI copies for this prompt
+        # This ensures copies are ready for hints and AI backup copies without waiting for the backup cycle
+        try:
+            await self.ai_service.generate_and_cache_phrases(round_object)
+            logger.info(f"Generated and cached AI copies for prompt round {round_id}")
+        except AICopyError as exc:
+            # Don't fail the submission if AI generation fails - the backup cycle will retry later
+            logger.warning(
+                f"Failed to generate AI copies for prompt round {round_id}: {exc}",
+                exc_info=True,
+            )
+        except SQLAlchemyError as exc:
+            # Roll back the session so subsequent operations can continue
+            await self.db.rollback()
+            logger.warning(
+                f"Database error while caching AI copies for prompt round {round_id}: {exc}",
+                exc_info=True,
+            )
 
         # Track quest progress for round completion
         from backend.services.qf.quest_service import QuestService

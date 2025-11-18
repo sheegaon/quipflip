@@ -230,7 +230,8 @@ async def test_claim_daily_bonus_makes_it_unavailable(test_app, db_session):
         claim_data = claim_response.json()
         assert claim_data["success"] is True
         assert claim_data["amount"] == settings.daily_bonus_amount
-        assert claim_data["new_balance"] == settings.starting_balance + settings.daily_bonus_amount
+        assert claim_data["new_wallet"] == settings.starting_balance + settings.daily_bonus_amount
+        assert claim_data["new_vault"] == 0
 
         # Verify bonus is now unavailable
         balance_response = await client.get("/player/balance", headers=headers)

@@ -1,12 +1,21 @@
 /**
- * Session Detection Service
+ * Session Detection Service for Initial Reaction
  * Implements the user session detection flow on app load
  */
 
-import { apiClient } from '../api/client';
-import { getOrCreateVisitorId, getVisitorId } from '../utils/visitorId';
-import { SessionState, SessionDetectionResult } from '../types/session';
+import { playerAPI } from '../api/client';
 import { createLogger } from '../utils/logger';
+
+const logger = createLogger('SessionDetection');
+
+export const SessionState = {
+  CHECKING: 'checking',
+  NEW: 'new',
+  RETURNING_VISITOR: 'returning_visitor',
+  RETURNING_USER: 'returning_user',
+} as const;
+
+export type SessionState = typeof SessionState[keyof typeof SessionState];
 
 interface ErrorWithStatus {
   name?: string;
@@ -35,7 +44,49 @@ const isCanceledRequest = (error: unknown): boolean => {
   return maybeError.name === 'CanceledError' || maybeError.code === 'ERR_CANCELED';
 };
 
-const logger = createLogger('SessionDetection');
+// Visitor ID management
+const VISITOR_ID_KEY = 'ir_visitor_id';
+
+export function getVisitorId(): string | null {
+  return localStorage.getItem(VISITOR_ID_KEY);
+}
+
+export function getOrCreateVisitorId(): string {
+  const existing = getVisitorId();
+  if (existing) return existing;
+
+  const newId = `v_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  localStorage.setItem(VISITOR_ID_KEY, newId);
+  logger.info('Created new visitor ID:', newId);
+  return newId;
+}
+
+// Username storage
+const USERNAME_STORAGE_KEY = 'ir_username';
+
+export function getStoredUsername(): string | null {
+  return localStorage.getItem(USERNAME_STORAGE_KEY);
+}
+
+export function setStoredUsername(username: string): void {
+  localStorage.setItem(USERNAME_STORAGE_KEY, username);
+}
+
+export function clearStoredUsername(): void {
+  localStorage.removeItem(USERNAME_STORAGE_KEY);
+}
+
+export interface SessionDetectionResult {
+  state: SessionState;
+  isAuthenticated: boolean;
+  username?: string;
+  visitorId: string;
+  player?: {
+    wallet: number;
+    vault: number;
+    daily_bonus_available: boolean;
+  };
+}
 
 /**
  * Detect user session state on app load
@@ -47,12 +98,9 @@ const logger = createLogger('SessionDetection');
  * 4. If still 401: Check visitor ID
  *    - Has visitor ID: Returning visitor, not signed in
  *    - No visitor ID: New visitor
- *
- * @param signal Optional AbortSignal for cancellation
- * @returns SessionDetectionResult with user state and data
  */
 export async function detectUserSession(
-  signal?: AbortSignal
+  _signal?: AbortSignal
 ): Promise<SessionDetectionResult> {
   // Check if visitor ID exists BEFORE creating one to distinguish new vs returning visitors
   const existingVisitorId = getVisitorId();
@@ -61,20 +109,29 @@ export async function detectUserSession(
   // Now ensure visitor ID exists (creates if not present)
   const visitorId = getOrCreateVisitorId();
 
+  // Skip auth check if no stored session - user is not authenticated
+  const storedUsername = getStoredUsername();
+  if (!storedUsername && !isReturningVisitor) {
+    // New visitor with no stored session - skip API call to avoid 401 errors
+    return {
+      state: SessionState.NEW,
+      isAuthenticated: false,
+      visitorId,
+    };
+  }
+
   try {
     // Step 1: Try to get player balance (validates auth via HTTP-only cookies)
-    const balanceResponse = await apiClient.getBalance(signal);
+    const balanceResponse = await playerAPI.getBalance();
 
     // Success! User is authenticated
-    // Ensure username is persisted to localStorage for future session checks
-    if (balanceResponse.username) {
-      apiClient.setSession(balanceResponse.username);
-    }
+    // Note: IR API doesn't return username in balance response, use stored username
+    const username = storedUsername;
 
     return {
       state: SessionState.RETURNING_USER,
       isAuthenticated: true,
-      username: balanceResponse.username || apiClient.getStoredUsername() || undefined,
+      username: username ?? undefined,
       visitorId,
       player: balanceResponse,
     };
@@ -111,39 +168,11 @@ export async function detectUserSession(
     // Got expected 401 - user not authenticated, this is normal
     logger.debug('User not authenticated (401), checking visitor status');
 
-    // Step 2: Got 401, check if we have stored credentials that suggest we should try refresh
-    const storedUsername = apiClient.getStoredUsername();
-
-    if (storedUsername) {
-      try {
-        // Step 3: Try to refresh the token
-        await apiClient.refreshToken();
-
-        // Step 4: Retry balance check
-        const retryBalanceResponse = await apiClient.getBalance(signal);
-
-        // Refresh succeeded! Use username from response if available, fallback to stored
-        const username = retryBalanceResponse.username || storedUsername;
-        if (username) {
-          apiClient.setSession(username);
-        }
-
-        return {
-          state: SessionState.RETURNING_USER,
-          isAuthenticated: true,
-          username,
-          visitorId,
-          player: retryBalanceResponse,
-        };
-      } catch (refreshError) {
-        // Refresh failed, clear stale credentials
-        logger.info('Token refresh failed, clearing stale session', refreshError);
-        apiClient.clearSession();
-      }
-    }
-
-    // Step 5: Not authenticated - determine if returning visitor or new
+    // Step 2: Not authenticated - determine if returning visitor or new
     if (isReturningVisitor) {
+      // Clear stale credentials on 401
+      clearStoredUsername();
+
       return {
         state: SessionState.RETURNING_VISITOR,
         isAuthenticated: false,
@@ -170,7 +199,7 @@ export function getSessionMessage(sessionState: SessionState, username?: string)
     case SessionState.RETURNING_VISITOR:
       return 'Welcome back! Ready to play?';
     case SessionState.NEW:
-      return 'Welcome to QuipFlip!';
+      return 'Welcome to Initial Reaction!';
     case SessionState.CHECKING:
       return 'Loading...';
     default:
@@ -181,13 +210,9 @@ export function getSessionMessage(sessionState: SessionState, username?: string)
 /**
  * Store visitor ID with player account for attribution
  * Call this when a user creates or upgrades an account
- *
- * @param visitorId The visitor ID to associate
- * @param username The username of the newly created account
  */
 export function associateVisitorWithPlayer(visitorId: string, username: string): void {
-  // Store the association in localStorage for potential backend sync
-  const associationKey = `quipflip_visitor_association_${username}`;
+  const associationKey = `ir_visitor_association_${username}`;
   localStorage.setItem(associationKey, JSON.stringify({
     visitorId,
     username,
@@ -195,21 +220,4 @@ export function associateVisitorWithPlayer(visitorId: string, username: string):
   }));
 
   logger.info(`Associated visitor ${visitorId} with player ${username}`);
-}
-
-/**
- * Get visitor association for a username
- */
-export function getVisitorAssociation(username: string): { visitorId: string; associatedAt: string } | null {
-  const associationKey = `quipflip_visitor_association_${username}`;
-  const data = localStorage.getItem(associationKey);
-
-  if (!data) return null;
-
-  try {
-    return JSON.parse(data);
-  } catch (error) {
-    logger.error(`Failed to parse visitor association for ${username}:`, error);
-    return null;
-  }
 }

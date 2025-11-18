@@ -37,6 +37,19 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 };
 
 const AppRoutes: React.FC = () => {
+  const { sessionState } = useIRGame();
+
+  // Show loading screen while initializing session
+  const isInitializing = sessionState === 'checking';
+
+  if (isInitializing) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <span className="text-lg font-semibold text-gray-900">Loading...</span>
+      </div>
+    );
+  }
+
   return (
     <Routes>
       <Route path="/" element={<Landing />} />

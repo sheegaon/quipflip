@@ -11,6 +11,7 @@ import type { TutorialProgress, TutorialStatus } from '../api/types';
 import { tutorialLogger } from '../utils/logger';
 import { getNextStep } from '../config/tutorialSteps';
 import { getErrorMessage } from '../utils/errorHelpers';
+import { getStoredUsername } from '../services/sessionDetection';
 
 const isAbortError = (error: unknown): boolean => {
   if (!error || typeof error !== 'object') {
@@ -100,6 +101,18 @@ export const TutorialProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return 'active';
   }, [status, loading, error]);
 
+  const ensureToken = useCallback(async (): Promise<string | null> => {
+    // Authentication is now handled via cookies
+    // Check if user is logged in by looking for stored username
+    const username = getStoredUsername();
+    if (!username) {
+      tutorialLogger.debug('No stored username, skipping tutorial API calls');
+      return null;
+    }
+    // If we have a username, cookies should handle authentication
+    return 'authenticated';
+  }, []);
+
   const refreshStatus = useCallback(
     async (options: RefreshOptions = {}) => {
       const { signal, showLoading = true } = options;
@@ -107,6 +120,12 @@ export const TutorialProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setLoading(true);
       }
       try {
+        const token = await ensureToken();
+        if (!token) {
+          setError(null);
+          return;
+        }
+
         tutorialLogger.debug('Fetching tutorial status from backend');
         const data = await tutorialAPI.getTutorialStatus(signal);
         setStatus(data);
@@ -125,11 +144,16 @@ export const TutorialProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
       }
     },
-    [],
+    [ensureToken],
   );
 
   const updateProgress = useCallback(
     async (progress: TutorialProgress) => {
+      const token = await ensureToken();
+      if (!token) {
+        return;
+      }
+
       setLoading(true);
       try {
         tutorialLogger.debug('Updating tutorial progress', { progress });
@@ -144,7 +168,7 @@ export const TutorialProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setLoading(false);
       }
     },
-    [],
+    [ensureToken],
   );
 
   const startTutorial = useCallback(async () => {
@@ -184,6 +208,11 @@ export const TutorialProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [completeTutorial]);
 
   const resetTutorial = useCallback(async () => {
+    const token = await ensureToken();
+    if (!token) {
+      return;
+    }
+
     setLoading(true);
     try {
       tutorialLogger.debug('Resetting tutorial via backend');
@@ -197,7 +226,7 @@ export const TutorialProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [ensureToken]);
 
   useEffect(() => {
     const controller = new AbortController();

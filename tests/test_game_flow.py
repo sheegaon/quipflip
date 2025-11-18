@@ -90,7 +90,7 @@ async def test_insufficient_balance_prevention(db_session, player_factory):
 
 @pytest.mark.asyncio
 async def test_transaction_ledger_tracking(db_session, player_factory):
-    """Test all transactions are recorded with balance_after."""
+    """Test all transactions are recorded with wallet_balance_after."""
     round_service = RoundService(db_session)
     transaction_service = TransactionService(db_session)
 
@@ -115,7 +115,7 @@ async def test_transaction_ledger_tracking(db_session, player_factory):
     assert len(transactions) == 1
     assert transactions[0].amount == -100
     assert transactions[0].type == "prompt_entry"
-    assert transactions[0].balance_after == 4900
+    assert transactions[0].wallet_balance_after == 4900
 
 
 @pytest.mark.asyncio
