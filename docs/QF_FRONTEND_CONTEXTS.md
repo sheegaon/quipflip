@@ -6,7 +6,10 @@ This document describes the current state of the Quipflip frontend context archi
 
 The Quipflip frontend uses a modular context architecture that separates concerns across different domains:
 
+- **NetworkContext**: Network status, offline queueing, and reconnection helpers
 - **GameContext**: Core game state, authentication, and round management
+- **NotificationContext**: WebSocket notifications for round activity
+- **NavigationHistoryContext**: Client-side back-navigation stack
 - **QuestContext**: Quest system, rewards, and progression tracking
 - **TutorialContext**: Tutorial system and user onboarding
 - **ResultsContext**: Results tracking, statistics, and completed rounds
@@ -16,13 +19,49 @@ The Quipflip frontend uses a modular context architecture that separates concern
 
 ```
 AppProviders
-├── TutorialContext
-└── GameProvider
-    └── InnerProviders
-        ├── ResultsProvider
-        └── ContextBridge
-            └── QuestProvider
-                └── Application Components
+├── NetworkProvider
+    └── TutorialContext
+        └── GameProvider
+            └── InnerProviders
+                ├── NotificationProvider
+                ├── NavigationHistoryProvider
+                ├── ResultsProvider
+                └── ContextBridge
+                    └── QuestProvider
+                        └── Application Components
+```
+
+## NetworkContext
+
+**Purpose**: Tracks connectivity, exposes connection quality, and replays queued API requests when the user comes back online.
+
+### State Structure
+
+```typescript
+interface NetworkContextType {
+  isOnline: boolean;
+  isOffline: boolean;
+  wasOffline: boolean;
+  connectionQuality: 'fast' | 'slow' | 'offline';
+  queueSize: number;
+  retryFailedRequests: () => Promise<void>;
+  clearOfflineQueue: () => void;
+}
+```
+
+### Features
+
+- **Offline Queue**: Subscribes to `offlineQueue` to track and replay queued Axios requests
+- **Auto-Retry**: Automatically retries queued actions after reconnecting if any are pending
+- **Retry Safety**: Drops actions that exceed retry limits or fail with permanent 4xx errors (except 429)
+- **Connection Quality**: Exposes a derived `fast | slow | offline` status for UI hints
+
+### Usage
+
+```typescript
+import { useNetwork } from '../contexts/NetworkContext';
+
+const { isOffline, queueSize, retryFailedRequests } = useNetwork();
 ```
 
 ## GameContext
@@ -44,6 +83,8 @@ interface GameState {
   copyRoundHints: string[] | null;
   loading: boolean;
   error: string | null;
+  sessionState: SessionState;
+  visitorId: string | null;
 }
 ```
 
@@ -68,8 +109,10 @@ interface GameState {
 
 - **Smart Polling**: Automatically polls dashboard and balance data
 - **Authentication Management**: Handles token validation and session state
+- **Session Detection**: Detects returning visitors, auto-creates guest accounts for new visitors, and stores visitor IDs
 - **Round State Management**: Tracks active rounds and their progression
 - **Round Control Actions**: Supports flagging problematic copy rounds and abandoning active rounds with automatic refunds
+- **bfcache Awareness**: Refreshes dashboard data after browser back/forward cache restores
 - **Error Handling**: Centralized error management with detailed logging
 - **Navigation Utilities**: Delayed navigation helpers
 
@@ -81,6 +124,64 @@ import { useGame } from '../contexts/GameContext';
 const { state, actions } = useGame();
 const { isAuthenticated, player, activeRound } = state;
 const { startPromptRound, claimBonus } = actions;
+```
+
+## NotificationContext
+
+**Purpose**: Manages WebSocket notifications about phrase interactions and exposes a simple notification list API.
+
+### State Structure
+
+```typescript
+interface NotificationContextType {
+  notifications: NotificationMessage[];
+  addNotification: (message: NotificationMessage) => void;
+  removeNotification: (id: string) => void;
+  clearAll: () => void;
+}
+```
+
+### Features
+
+- **Auth-Aware Lifecycle**: Opens the WebSocket when the player is authenticated and cleans up on logout/unmount
+- **Token-Based Connection**: Fetches a short-lived token via REST before establishing the socket
+- **Silent Failure**: Swallows connection errors and avoids noisy retries
+- **Manual Controls**: Exposes helpers to append, remove, or clear notifications for UI components
+
+### Usage
+
+```typescript
+import { useNotifications } from '../contexts/NotificationContext';
+
+const { notifications, removeNotification } = useNotifications();
+```
+
+## NavigationHistoryContext
+
+**Purpose**: Maintains a lightweight navigation stack to power consistent back navigation across the app.
+
+### State Structure
+
+```typescript
+interface NavigationHistoryContextType {
+  canGoBack: boolean;
+  goBack: () => void;
+  clearHistory: () => void;
+}
+```
+
+### Features
+
+- **Dashboard Reset**: Clears history when landing on `/dashboard` to avoid looping back
+- **Back Navigation**: Handles manual/browser back operations by maintaining a stack of visited paths
+- **Fallback Safety**: Falls back to `/dashboard` when no history is available
+
+### Usage
+
+```typescript
+import { useNavigationHistory } from '../contexts/NavigationHistoryContext';
+
+const { canGoBack, goBack } = useNavigationHistory();
 ```
 
 ## QuestContext
@@ -240,18 +341,22 @@ const { refreshPhrasesetResults, markResultsViewed } = actions;
 
 The `AppProviders` component uses a nested structure to ensure proper dependency injection:
 
-1. **TutorialProvider**: Outermost, no dependencies
-2. **GameProvider**: Core context with authentication
-3. **InnerProviders**: Accesses GameContext for authentication state
-4. **ResultsProvider**: Needs authentication state
-5. **ContextBridge**: Syncs data between contexts
-6. **QuestProvider**: Needs authentication and dashboard triggers
+1. **NetworkProvider**: Provides online/offline state and offline queue data
+2. **TutorialProvider**: Runs outside GameContext to bootstrap tutorial status checks
+3. **GameProvider** *(inside an error boundary)*: Core auth and dashboard provider
+4. **InnerProviders**: Collection of contexts that depend on GameContext state
+5. **NotificationProvider**: Opens notification WebSocket when authenticated
+6. **NavigationHistoryProvider**: Tracks route stack for consistent back navigation
+7. **ResultsProvider**: Needs authentication state for player data
+8. **ContextBridge**: Syncs tutorial status, pending results, and dashboard triggers
+9. **QuestProvider**: Needs authentication and dashboard triggers for refreshes
 
 ### Inter-Context Communication
 
-- **Dashboard Triggers**: GameContext actions trigger updates in other contexts
-- **Authentication Propagation**: Auth state flows from GameContext to child contexts
-- **Data Synchronization**: Pending results sync from GameContext to ResultsContext
+- **Dashboard Triggers**: GameContext actions notify QuestContext, which can request dashboard/balance refreshes
+- **Authentication Propagation**: Auth state flows from GameContext to child contexts, including notification socket setup
+- **Data Synchronization**: Pending results sync from GameContext to ResultsContext; tutorial status refreshes after auth changes
+- **Offline Awareness**: NetworkContext exposes queue size/connection quality for UI components throughout the tree
 
 ### Usage
 

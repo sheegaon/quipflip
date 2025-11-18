@@ -16,6 +16,18 @@ from backend.models.qf.system_config import QFSystemConfig
 from backend.models.qf.flagged_prompt import FlaggedPrompt
 from backend.models.qf.survey_response import QFSurveyResponse
 from backend.models.qf.hint import Hint
+from backend.models.qf.ai_metric import QFAIMetric
+from backend.models.qf.ai_phrase_cache import QFAIPhraseCache
+
+# Aliases for backward compatibility with tests
+Player = QFPlayer
+Transaction = QFTransaction
+DailyBonus = QFDailyBonus
+ResultView = QFResultView
+RefreshToken = QFRefreshToken
+Quest = QFQuest
+AIMetric = QFAIMetric
+AIPhraseCache = QFAIPhraseCache
 
 __all__ = [
     "QFPlayer",
@@ -36,4 +48,15 @@ __all__ = [
     "FlaggedPrompt",
     "QFSurveyResponse",
     "Hint",
+    "QFAIMetric",
+    "QFAIPhraseCache",
+    # Aliases
+    "Player",
+    "Transaction",
+    "DailyBonus",
+    "ResultView",
+    "RefreshToken",
+    "Quest",
+    "AIMetric",
+    "AIPhraseCache",
 ]

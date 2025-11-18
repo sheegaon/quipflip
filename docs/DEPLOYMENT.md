@@ -1,12 +1,14 @@
 # Deployment Guide
 
-This guide covers the production deployment setup for QuipFlip, including environment variables and configuration for both frontend (Vercel) and backend (Heroku).
+This guide covers the production deployment setup for the multi-game QuipFlip backend and both frontends (all housed in this repository), including environment variables and configuration for Vercel and Heroku.
 
 ## Architecture Overview
 
-- **Frontend**: Hosted on Vercel at `quipflip.xyz`
-- **Backend**: Hosted on Heroku at `quipflip-c196034288cd.herokuapp.com`
-- **REST API**: Proxied through Vercel (`/api/*` → Heroku) for same-origin
+- **Backend (multi-game)**: Single FastAPI service on Heroku (`https://quipflip-c196034288cd.herokuapp.com`) hosting both Quipflip (`/qf/*`) and Initial Reaction (`/ir/*`) APIs.
+- **Frontends**: Two Vercel projects in this repo
+  - `qf_frontend` → Quipflip web client
+  - `ir_frontend` → Initial Reaction web client
+- **API proxy**: Vercel rewrites `/api/*` to the shared backend for same-origin REST calls
   - HttpOnly cookies work seamlessly
   - Maximum iOS Safari compatibility
 - **WebSocket**: Token exchange pattern (Vercel doesn't support WebSocket proxying)
@@ -84,21 +86,9 @@ CORS is configured with:
 
 ## Frontend Configuration (Vercel)
 
-### Environment Variables
+### Shared proxy setup
 
-Set these in the Vercel dashboard under Project Settings → Environment Variables:
-
-```bash
-# API URL (proxied through Vercel for same-origin)
-# All traffic (REST + WebSocket) uses this prefix
-VITE_API_URL=/api
-```
-
-**Note**: No separate WebSocket URL needed - WebSocket connections use the same `/api` prefix and Vercel proxy automatically handles both HTTP and WebSocket protocols.
-
-### Vercel Configuration
-
-Ensure `vercel.json` includes the rewrite rule for the API proxy:
+Both Vercel projects (`qf_frontend` and `ir_frontend`) ship with a `vercel.json` that rewrites `/api/:path*` to the Heroku backend. This keeps REST requests same-origin so HttpOnly cookies work across both games.
 
 ```json
 {
@@ -106,53 +96,49 @@ Ensure `vercel.json` includes the rewrite rule for the API proxy:
     {
       "source": "/api/:path*",
       "destination": "https://quipflip-c196034288cd.herokuapp.com/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/"
     }
   ]
 }
 ```
 
-### Build Settings
+### Quipflip frontend (`qf_frontend`)
 
-- **Framework Preset**: Vite
-- **Build Command**: `npm run build`
-- **Output Directory**: `dist`
-- **Install Command**: `npm install`
+- **Environment variable**: `VITE_API_URL=/api` → client appends `/qf` automatically (requests land at `/api/qf/*`).
+- **Build settings** (Vercel):
+  - Framework Preset: Vite
+  - Build Command: `npm run build`
+  - Output Directory: `dist`
+  - Install Command: `npm install`
+- **WebSocket**: Uses REST token exchange then connects directly to `wss://quipflip-c196034288cd.herokuapp.com/qf/users/online/ws?token=...`.
 
-### Important Notes
+### Initial Reaction frontend (`ir_frontend`)
 
-1. **REST API (Same-Origin via Vercel Proxy)**:
-   - Uses `/api` which Vercel proxies to Heroku
-   - HttpOnly cookies automatically sent by browser
-   - Maximum iOS Safari compatibility
-   - All cookies are `SameSite=Lax` (same-origin)
-
-2. **WebSocket (Token Exchange Pattern)**:
-   - Vercel doesn't support WebSocket proxying
-   - Frontend fetches short-lived token via `/api/auth/ws-token` (REST)
-   - Uses token for direct WebSocket connection to Heroku
-   - Token expires in 60 seconds (limits security risk)
-   - Production URL: `wss://quipflip-c196034288cd.herokuapp.com/users/online/ws?token=...`
-
-3. **Security Model**:
-   - Long-lived tokens (2h access, 30d refresh) protected by HttpOnly cookies
-   - WebSocket tokens are short-lived (60s) and exposed to JavaScript
-   - Minimal exposure window limits risk
-   - No cross-site cookies needed (REST is same-origin, WebSocket uses token)
+- **Environment variable**: `VITE_API_URL=/api/ir` (includes game prefix so axios base URL resolves to `/api/ir/*`).
+- **Build settings** (Vercel):
+  - Framework Preset: Vite
+  - Build Command: `npm run build`
+  - Output Directory: `dist`
+  - Install Command: `npm install`
+- **WebSocket**: Not currently required for gameplay; REST uses same proxy and HttpOnly cookies.
 
 ## WebSocket Setup
 
-### Online Users Feature
+### Online Users Feature (Quipflip)
 
-The Online Users page demonstrates real-time WebSocket functionality with token exchange:
+The Quipflip Online Users page demonstrates real-time WebSocket functionality with token exchange:
 
 1. **Token Exchange Flow**:
-   - Frontend calls `GET /api/auth/ws-token` (REST via Vercel proxy)
+   - Frontend calls `GET /api/qf/auth/ws-token` (REST via Vercel proxy)
    - HttpOnly cookie automatically validated
    - Backend returns short-lived token (60 seconds)
    - Frontend uses token for WebSocket connection
 
 2. **WebSocket Connection**:
-   - URL: `wss://quipflip-c196034288cd.herokuapp.com/users/online/ws?token=<short_token>`
+   - URL: `wss://quipflip-c196034288cd.herokuapp.com/qf/users/online/ws?token=<short_token>`
    - Direct connection to Heroku (bypasses Vercel)
    - Token passed as query parameter
    - Server validates token from query parameter
@@ -170,7 +156,7 @@ The Online Users page demonstrates real-time WebSocket functionality with token 
 
 5. **Fallback Mechanism**:
    - If WebSocket fails, client falls back to HTTP polling
-   - Polls `GET /api/users/online` every 10 seconds
+   - Polls `GET /api/qf/users/online` every 10 seconds
    - Seamless transition between WebSocket and polling
 
 ### Acceptance Criteria
@@ -188,15 +174,14 @@ The Online Users page demonstrates real-time WebSocket functionality with token 
 - [ ] Set unique `SECRET_KEY` (not the default value)
 - [ ] Configure `DATABASE_URL` (via Heroku Postgres addon)
 - [ ] Configure `REDIS_URL` (via Heroku Redis addon, optional)
-- [ ] Set `FRONTEND_URL=https://quipflip.xyz`
+- [ ] Set `FRONTEND_URL` to the primary production host and include both Vercel frontends in `ALLOWED_ORIGINS`
 - [ ] Add API keys (`OPENAI_API_KEY`, `GEMINI_API_KEY`)
-- [ ] Verify CORS allows `https://quipflip.xyz`
+- [ ] Verify CORS covers both frontend domains
 - [ ] Test WebSocket endpoint: `wss://quipflip-c196034288cd.herokuapp.com/users/online/ws`
 
-### Frontend (Vercel)
+### Quipflip frontend (Vercel)
 
-- [ ] Set `VITE_API_URL=/api` (proxied through Vercel)
-- [ ] Set `VITE_WEBSOCKET_URL=wss://quipflip-c196034288cd.herokuapp.com`
+- [ ] Set `VITE_API_URL=/api` (proxied through Vercel and auto-appended with `/qf`)
 - [ ] Verify `vercel.json` has API proxy rewrite rule
 - [ ] Deploy and verify build succeeds
 - [ ] Test REST API calls go through Vercel proxy
@@ -205,24 +190,33 @@ The Online Users page demonstrates real-time WebSocket functionality with token 
 - [ ] Test in multiple browsers (Chrome, Safari, Firefox)
 - [ ] Test on iOS Safari (common cookie issue)
 
+### Initial Reaction frontend (Vercel)
+
+- [ ] Set `VITE_API_URL=/api/ir` (proxied through Vercel with IR prefix)
+- [ ] Verify `vercel.json` has API proxy rewrite rule
+- [ ] Deploy and verify build succeeds
+- [ ] Test REST API calls go through Vercel proxy
+- [ ] Verify cookies are set and sent with requests
+- [ ] Test in multiple browsers (Chrome, Safari, Firefox)
+
 ## Testing
 
 ### Manual Testing
 
-1. **Cookie Authentication**:
+1. **Cookie Authentication (Quipflip routes)**:
    ```bash
    # Login and verify cookies are set
-   curl -X POST https://quipflip-c196034288cd.herokuapp.com/auth/login \
+   curl -X POST https://quipflip-c196034288cd.herokuapp.com/qf/auth/login \
      -H "Content-Type: application/json" \
      -d '{"username":"test","password":"test"}' \
      -c cookies.txt -v
 
    # Verify cookies work on subsequent requests
-   curl https://quipflip-c196034288cd.herokuapp.com/player/me \
+   curl https://quipflip-c196034288cd.herokuapp.com/qf/player/me \
      -b cookies.txt
    ```
 
-2. **WebSocket Connection**:
+2. **WebSocket Connection (Quipflip Online Users)**:
    ```javascript
    // Test in browser console on https://quipflip.xyz
    const token = document.cookie.split('; ')
@@ -230,7 +224,7 @@ The Online Users page demonstrates real-time WebSocket functionality with token 
      .split('=')[1];
 
    const ws = new WebSocket(
-     `wss://quipflip-c196034288cd.herokuapp.com/users/online/ws?token=${token}`
+     `wss://quipflip-c196034288cd.herokuapp.com/qf/users/online/ws?token=${token}`
    );
 
    ws.onopen = () => console.log('Connected!');
@@ -249,11 +243,15 @@ The Online Users page demonstrates real-time WebSocket functionality with token 
 
 ```bash
 # Backend tests
-cd backend
-pytest tests/
+pytest
 
-# Frontend build test
-cd frontend
+# Quipflip frontend build test
+cd qf_frontend
+npm run build
+npm run preview
+
+# Initial Reaction frontend build test
+cd ../ir_frontend
 npm run build
 npm run preview
 ```
@@ -264,8 +262,8 @@ npm run preview
 
 **Solution**: Verify:
 1. `ENVIRONMENT=production` is set on Heroku
-2. Frontend is accessed via HTTPS (`https://quipflip.xyz`)
-3. Backend CORS allows `https://quipflip.xyz`
+2. Frontend is accessed via HTTPS (match the deployed domain)
+3. Backend CORS allows each deployed frontend host
 
 ### Issue: WebSocket connection fails
 
@@ -305,9 +303,9 @@ heroku logs --tail --app quipflip-c196034288cd
 
 ### Frontend Build Status
 
-- Check Vercel dashboard for deployment status
+- Check each Vercel project (`qf_frontend`, `ir_frontend`) for deployment status
 - View deployment logs for build errors
-- Test at https://quipflip.xyz
+- Test Quipflip at https://quipflip.xyz and Initial Reaction at its Vercel deployment URL
 
 ### WebSocket Metrics
 
