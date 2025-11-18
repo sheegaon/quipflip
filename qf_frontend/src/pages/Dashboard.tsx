@@ -7,6 +7,7 @@ import { Timer } from '../components/Timer';
 import { Header } from '../components/Header';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { ModeToggle } from '../components/ModeToggle';
+import { UpgradeGuestAccount } from '../components/UpgradeGuestAccount';
 import TutorialWelcome from '../components/Tutorial/TutorialWelcome';
 import { dashboardLogger } from '../utils/logger';
 import { TrackingIcon } from '../components/icons/NavigationIcons';
@@ -481,7 +482,6 @@ export const Dashboard: React.FC = () => {
     }
   };
 
-
   if (!player) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
@@ -537,6 +537,9 @@ export const Dashboard: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Upgrade Guest Account */}
+        {player.is_guest && <UpgradeGuestAccount className="mb-6" />}
 
         {/* Round Selection */}
         <div className="tutorial-dashboard tile-card md:p-6 p-3 shuffle-enter">
