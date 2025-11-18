@@ -29,7 +29,7 @@ from backend.utils.exceptions import (
     NoPromptsAvailableError,
     InsufficientBalanceError,
 )
-from sqlalchemy.exc import SQLAlchemyError
+from backend.services.qf.round_service_helpers import generate_ai_copies_background
 
 logger = logging.getLogger(__name__)
 
@@ -49,42 +49,6 @@ class RoundService:
         self.activity_service = ActivityService(db)
         from backend.services import AIService
         self.ai_service = AIService(db)
-
-    async def _generate_ai_copies_background(self, prompt_round_id: UUID) -> None:
-        """Generate AI copies without blocking the prompt submission response."""
-
-        from backend.database import AsyncSessionLocal
-        from backend.services import AIService, AICopyError
-
-        async with AsyncSessionLocal() as background_db:
-            ai_service = AIService(background_db)
-
-            try:
-                prompt_round = await background_db.get(Round, prompt_round_id)
-                if not prompt_round:
-                    logger.warning(
-                        "Prompt round %s not found for background AI copy generation", prompt_round_id
-                    )
-                    return
-
-                await ai_service.generate_and_cache_phrases(prompt_round)
-                logger.info("Generated and cached AI copies for prompt round %s (background)", prompt_round_id)
-            except AICopyError as exc:
-                logger.warning(
-                    "Failed to generate AI copies for prompt round %s: %s", prompt_round_id, exc,
-                    exc_info=True,
-                )
-            except SQLAlchemyError as exc:
-                await background_db.rollback()
-                logger.warning(
-                    "Database error while caching AI copies for prompt round %s: %s", prompt_round_id, exc,
-                    exc_info=True,
-                )
-            except Exception as exc:  # Catch-all to avoid unhandled background task errors
-                logger.warning(
-                    "Unexpected error during background AI copy generation for prompt round %s: %s", prompt_round_id, exc,
-                    exc_info=True,
-                )
 
     async def start_prompt_round(self, player: QFPlayer, transaction_service: TransactionService) -> Optional[Round]:
         """
@@ -286,7 +250,7 @@ class RoundService:
 
         # Immediately kick off AI copy generation without blocking the response
         try:
-            asyncio.create_task(self._generate_ai_copies_background(round_object.round_id))
+            asyncio.create_task(generate_ai_copies_background(round_object.round_id))
         except Exception as exc:
             logger.warning(
                 "Failed to start background AI copy generation task for prompt round %s: %s", round_id, exc,
