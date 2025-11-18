@@ -86,6 +86,9 @@ class PromptQueryBuilder:
     @staticmethod
     def build_available_prompts_count_query(player_id: UUID, cutoff_time: datetime) -> text:
         """Build optimized query for counting available prompts for a player."""
+        # Process UUID to match the format expected by the SQL query
+        player_id_clean = str(player_id).lower().replace('-', '')
+        
         query = text("""
                 WITH player_prompt_rounds AS (
                     SELECT r.round_id
@@ -123,8 +126,8 @@ class PromptQueryBuilder:
                 AND NOT EXISTS (SELECT 1 FROM player_abandoned_cooldown pac WHERE pac.prompt_round_id = a.round_id)
             """)
         return query.bindparams(
-            bindparam("player_id_clean", type_=String),
-            bindparam("cutoff_time", type_=DateTime(timezone=True)),
+            bindparam("player_id_clean", player_id_clean, type_=String),
+            bindparam("cutoff_time", cutoff_time, type_=DateTime(timezone=True)),
         )
 
     @staticmethod
@@ -150,12 +153,8 @@ class RoundValidationHelper:
     """Helper class for round validation logic."""
     
     @staticmethod
-    async def check_prompt_round_eligibility(
-        db: AsyncSession,
-        player: QFPlayer,
-        prompt_round: Round,
-        abandoned_prompt_cooldown_hours: int
-    ) -> tuple[bool, bool]:
+    async def check_prompt_round_eligibility(db: AsyncSession, player: QFPlayer, prompt_round: Round,
+                                             abandoned_prompt_cooldown_hours: int) -> tuple[bool, bool]:
         """
         Determine if the candidate prompt should be skipped and requeued.
         
@@ -163,9 +162,7 @@ class RoundValidationHelper:
             Tuple of (should_skip, should_requeue)
         """
         if prompt_round.player_id == player.player_id:
-            logger.info(
-                f"[Copy Round Start] Player {player.player_id} got their own prompt {prompt_round.round_id}, retrying..."
-            )
+            logger.debug(f"Player {player.player_id} got their own prompt {prompt_round.round_id}, retrying...")
             return True, True
 
         # Check if player already submitted a copy for this prompt
@@ -176,9 +173,8 @@ class RoundValidationHelper:
             .where(Round.player_id == player.player_id)
         )
         if existing_copy_result.scalar_one_or_none():
-            logger.info(
-                f"[Copy Round Start] Player {player.player_id} already submitted a copy for prompt {prompt_round.round_id}, retrying..."
-            )
+            logger.debug(
+                f"Player {player.player_id} already submitted a copy for prompt {prompt_round.round_id}, retrying...")
             return True, True
 
         # Check abandoned prompt cooldown
@@ -190,19 +186,14 @@ class RoundValidationHelper:
             .where(PlayerAbandonedPrompt.abandoned_at > cutoff)
         )
         if result.scalar_one_or_none():
-            logger.info(
-                f"[Copy Round Start] Player {player.player_id} abandoned prompt {prompt_round.round_id} recently, retrying..."
-            )
+            logger.debug(f"Player {player.player_id} abandoned prompt {prompt_round.round_id} recently, retrying...")
             return True, True
 
         return False, False
 
     @staticmethod
-    async def validate_second_copy_eligibility(
-        db: AsyncSession,
-        player: QFPlayer,
-        prompt_round_id: UUID
-    ) -> tuple[bool, str]:
+    async def validate_second_copy_eligibility(db: AsyncSession, player: QFPlayer, prompt_round_id: UUID
+                                               ) -> tuple[bool, str]:
         """
         Validate if player is eligible for second copy.
         
@@ -246,18 +237,11 @@ class CostCalculationHelper:
         """Return copy round cost, discount flag, and system contribution."""
         copy_cost = queue_service.get_copy_cost()
         is_discounted = copy_cost == settings.copy_cost_discount
-        system_contribution = (
-            settings.copy_cost_normal - copy_cost if is_discounted else 0
-        )
+        system_contribution = settings.copy_cost_normal - copy_cost if is_discounted else 0
         return copy_cost, is_discounted, system_contribution
 
     @staticmethod
-    def calculate_second_copy_info(
-        prompt_round: Round,
-        is_first_copy: bool,
-        player_wallet: int,
-        settings
-    ) -> dict:
+    def calculate_second_copy_info(prompt_round: Round, is_first_copy: bool, player_wallet: int, settings) -> dict:
         """Calculate second copy eligibility and cost info."""
         second_copy_info = {
             "eligible_for_second_copy": False,
@@ -346,11 +330,7 @@ class RoundTimeoutHelper:
     """Helper class for handling round timeouts."""
     
     @staticmethod
-    async def handle_prompt_timeout(
-        round_object: Round,
-        settings,
-        transaction_service
-    ) -> int:
+    async def handle_prompt_timeout(round_object: Round, settings, transaction_service) -> int:
         """Handle timeout for prompt round."""
         round_object.status = "expired"
         round_object.phraseset_status = "abandoned"
@@ -366,13 +346,8 @@ class RoundTimeoutHelper:
         return refund_amount
 
     @staticmethod
-    async def handle_copy_timeout(
-        db: AsyncSession,
-        round_object: Round,
-        settings,
-        transaction_service,
-        queue_service
-    ) -> int:
+    async def handle_copy_timeout(db: AsyncSession, round_object: Round, settings, transaction_service, queue_service
+                                  ) -> int:
         """Handle timeout for copy round."""
         round_object.status = "abandoned"
         refund_amount = max(round_object.cost - settings.abandoned_penalty, 0)
@@ -401,11 +376,7 @@ class RoundTimeoutHelper:
         return refund_amount
 
     @staticmethod
-    async def handle_vote_timeout(
-        round_object: Round,
-        settings,
-        transaction_service
-    ) -> int:
+    async def handle_vote_timeout(round_object: Round, settings, transaction_service) -> int:
         """Handle timeout for vote round."""
         round_object.status = "expired"
         refund_amount = max(round_object.cost - settings.abandoned_penalty, 0)
@@ -430,11 +401,8 @@ class QueueManagementHelper:
             queue_service.add_prompt_round_to_queue(prompt_id)
 
     @staticmethod
-    async def prefetch_prompt_rounds(
-        db: AsyncSession,
-        prompt_ids: list[UUID],
-        prefetched_rounds: dict[UUID, Round],
-    ) -> None:
+    async def prefetch_prompt_rounds(db: AsyncSession, prompt_ids: list[UUID], prefetched_rounds: dict[UUID, Round]
+                                     ) -> None:
         """Load prompt rounds for the provided IDs, updating the cache."""
         ids_to_fetch = [pid for pid in prompt_ids if pid not in prefetched_rounds]
         if not ids_to_fetch:
@@ -478,11 +446,11 @@ async def generate_ai_copies_background(prompt_round_id: UUID) -> None:
                     existing_cache = result.scalar_one_or_none()
                     
                     if existing_cache:
-                        logger.info(f"AI copies already generated for prompt round {prompt_round_id}, skipping")
+                        logger.debug(f"AI copies already generated for prompt round {prompt_round_id}, skipping")
                         return
 
                     await ai_service.generate_and_cache_phrases(prompt_round)
-                    logger.info(f"Generated and cached AI copies for prompt round {prompt_round_id} (background)")
+                    logger.info(f"Generated and cached AI copies for prompt round {prompt_round_id}")
                 except AICopyError as exc:
                     logger.warning(f"Failed to generate AI copies for prompt round {prompt_round_id}: {exc}",
                                    exc_info=True)
