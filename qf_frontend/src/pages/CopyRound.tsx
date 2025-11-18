@@ -13,6 +13,34 @@ import { copyRoundLogger } from '../utils/logger';
 import { CopyRoundIcon } from '../components/icons/RoundIcons';
 import { FlagIcon } from '../components/icons/EngagementIcons';
 
+const AUTO_HINT_ROUND_LIMIT = 10;
+const hintProgressKey = (playerId: string) => `impostorHintProgress:${playerId}`;
+
+type HintProgress = {
+  roundIds: string[];
+};
+
+const loadHintProgress = (playerId: string): HintProgress => {
+  try {
+    const stored = localStorage.getItem(hintProgressKey(playerId));
+    if (stored) {
+      return JSON.parse(stored) as HintProgress;
+    }
+  } catch (err) {
+    copyRoundLogger.warn('Failed to load impostor hint progress from storage', err);
+  }
+
+  return { roundIds: [] };
+};
+
+const saveHintProgress = (playerId: string, progress: HintProgress) => {
+  try {
+    localStorage.setItem(hintProgressKey(playerId), JSON.stringify(progress));
+  } catch (err) {
+    copyRoundLogger.warn('Failed to save impostor hint progress to storage', err);
+  }
+};
+
 type SecondCopyEligibility = {
   eligible: boolean;
   cost: number;
@@ -126,7 +154,7 @@ const completionReducer = (state: CompletionState, action: CompletionAction): Co
 
 export const CopyRound: React.FC = () => {
   const { state, actions } = useGame();
-  const { activeRound, roundAvailability, copyRoundHints } = state;
+  const { activeRound, roundAvailability, copyRoundHints, player } = state;
   const { flagCopyRound, refreshDashboard, fetchCopyHints } = actions;
   const navigate = useNavigate();
   const [phrase, setPhrase] = useState('');
@@ -140,6 +168,8 @@ export const CopyRound: React.FC = () => {
   const [isFetchingHints, setIsFetchingHints] = useState(false);
   const [hintError, setHintError] = useState<string | null>(null);
   const [showHints, setShowHints] = useState(false);
+  const [isEarlyImpostorPlayer, setIsEarlyImpostorPlayer] = useState(false);
+  const autoFetchTriggeredRef = useRef(false);
   const promptRevealRequestRef = useRef<string | null>(null);
 
   const {
@@ -167,6 +197,7 @@ export const CopyRound: React.FC = () => {
     setShowHints(false);
     setHintError(null);
     setIsFetchingHints(false);
+    autoFetchTriggeredRef.current = false;
   }, [roundData?.round_id]);
 
   useEffect(() => {
@@ -175,6 +206,39 @@ export const CopyRound: React.FC = () => {
       setShowHints(true);
     }
   }, [copyRoundHints, roundData?.round_id]);
+
+  useEffect(() => {
+    if (!player?.player_id || !roundData?.round_id) {
+      setIsEarlyImpostorPlayer(false);
+      return;
+    }
+
+    const progress = loadHintProgress(player.player_id);
+    const hasSeenRound = progress.roundIds.includes(roundData.round_id);
+    const updatedRoundIds = hasSeenRound ? progress.roundIds : [...progress.roundIds, roundData.round_id];
+
+    if (!hasSeenRound) {
+      saveHintProgress(player.player_id, { roundIds: updatedRoundIds });
+    }
+
+    setIsEarlyImpostorPlayer(updatedRoundIds.length <= AUTO_HINT_ROUND_LIMIT);
+  }, [player?.player_id, roundData?.round_id]);
+
+  useEffect(() => {
+    if (!isEarlyImpostorPlayer || !roundData || autoFetchTriggeredRef.current) {
+      return;
+    }
+
+    if (copyRoundHints && copyRoundHints.length > 0) {
+      setShowHints(true);
+      autoFetchTriggeredRef.current = true;
+      return;
+    }
+
+    autoFetchTriggeredRef.current = true;
+    setShowHints(true);
+    void handleFetchHints();
+  }, [copyRoundHints, handleFetchHints, isEarlyImpostorPlayer, roundData]);
 
   const fetchOriginalPrompt = useCallback(async (promptRoundId?: string | null) => {
     if (!promptRoundId) {
@@ -207,7 +271,7 @@ export const CopyRound: React.FC = () => {
     }
   }, [dispatchCompletion]);
 
-  const handleFetchHints = async () => {
+  const handleFetchHints = useCallback(async () => {
     if (!roundData || isFetchingHints || isExpired) {
       return;
     }
@@ -223,7 +287,7 @@ export const CopyRound: React.FC = () => {
     } finally {
       setIsFetchingHints(false);
     }
-  };
+  }, [fetchCopyHints, isExpired, isFetchingHints, roundData]);
 
   useEffect(() => {
     if (!roundData) {
