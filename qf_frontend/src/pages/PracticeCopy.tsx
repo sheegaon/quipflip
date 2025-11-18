@@ -57,7 +57,7 @@ const PracticeCopy: React.FC = () => {
     copyPhrase: phraseset.copy_phrase_1,
     playerUsername: phraseset.copy1_player,
     isAiPlayer: phraseset.copy1_player_is_ai,
-    copyNumber: 1,
+    copyNumber: 1 as const,
     roundId: phraseset.phraseset_id,
     existingHints: phraseset.hints,
     onSubmit: handleContinue,

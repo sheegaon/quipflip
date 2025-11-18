@@ -258,6 +258,7 @@ export interface GrossEarningsLeaderboardEntry {
   total_rounds: number;
   rank: number | null;
   is_current_player: boolean;
+  is_bot?: boolean;
 }
 
 export interface RoleLeaderboard {
