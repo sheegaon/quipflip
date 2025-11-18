@@ -31,7 +31,7 @@ class TestGuestAccountCreation:
             assert data["email"].endswith("@quipflip.xyz")
 
             # Check password
-            assert data["password"] == "QuipGuest"
+            assert data["password"] == "Guest"
 
             # Check wallet is starting balance (5000 default)
             assert data["wallet"] == 5000

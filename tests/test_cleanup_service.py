@@ -365,7 +365,7 @@ class TestTestPlayerCleanup:
             transaction_id=uuid4(),
             player_id=test_player.player_id,
             amount=100,
-            balance_after=1100,
+            wallet_balance_after=1100,
             type="prompt_entry",
         )
         db_session.add(test_transaction)
@@ -710,7 +710,7 @@ class TestDeletePlayer:
             transaction_id=uuid4(),
             player_id=player_id,
             amount=100,
-            balance_after=1100,
+            wallet_balance_after=1100,
             type="prompt_entry",
         )
         db_session.add(test_transaction)

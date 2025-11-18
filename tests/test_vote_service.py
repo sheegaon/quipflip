@@ -36,7 +36,8 @@ async def test_phraseset_with_players(db_session):
         username_canonical=f"prompter_{test_id}",
         email=f"prompter_{test_id}@test.com",
         password_hash="hash",
-        balance=1000,
+        wallet=1000,
+        vault=0,
     )
     copier1 = QFPlayer(
         player_id=uuid.uuid4(),
@@ -44,7 +45,8 @@ async def test_phraseset_with_players(db_session):
         username_canonical=f"copier1_{test_id}",
         email=f"copier1_{test_id}@test.com",
         password_hash="hash",
-        balance=1000,
+        wallet=1000,
+        vault=0,
     )
     copier2 = QFPlayer(
         player_id=uuid.uuid4(),
@@ -52,7 +54,8 @@ async def test_phraseset_with_players(db_session):
         username_canonical=f"copier2_{test_id}",
         email=f"copier2_{test_id}@test.com",
         password_hash="hash",
-        balance=1000,
+        wallet=1000,
+        vault=0,
     )
     voter = QFPlayer(
         player_id=uuid.uuid4(),
@@ -60,7 +63,8 @@ async def test_phraseset_with_players(db_session):
         username_canonical=f"voter_{test_id}",
         email=f"voter_{test_id}@test.com",
         password_hash="hash",
-        balance=1000,
+        wallet=1000,
+        vault=0,
     )
     db_session.add_all([prompter, copier1, copier2, voter])
     await db_session.commit()
@@ -144,7 +148,7 @@ class TestVoteSubmission:
         vote_service = VoteService(db_session)
         transaction_service = TransactionService(db_session)
 
-        initial_balance = voter.balance
+        initial_balance = voter.wallet + voter.vault
         initial_pool = phraseset.total_pool
 
         # Submit correct vote
@@ -160,10 +164,10 @@ class TestVoteSubmission:
         assert vote.correct is True
         assert vote.payout == settings.vote_payout_correct
 
-        # Verify voter balance increased
+        # Verify voter balance increased (total across wallet and vault)
         await db_session.refresh(voter)
         expected_balance = initial_balance - settings.vote_cost + settings.vote_payout_correct
-        assert voter.balance == expected_balance
+        assert voter.wallet + voter.vault == expected_balance
 
         # Verify phraseset was updated
         await db_session.refresh(phraseset)
@@ -182,7 +186,7 @@ class TestVoteSubmission:
         vote_service = VoteService(db_session)
         transaction_service = TransactionService(db_session)
 
-        initial_balance = voter.balance
+        initial_balance = voter.wallet
         initial_pool = phraseset.total_pool
 
         # Submit incorrect vote
@@ -201,7 +205,7 @@ class TestVoteSubmission:
         # Verify voter balance decreased by vote cost only
         await db_session.refresh(voter)
         expected_balance = initial_balance - settings.vote_cost
-        assert voter.balance == expected_balance
+        assert voter.wallet == expected_balance
 
         # Verify phraseset pool increased (no payout deducted)
         await db_session.refresh(phraseset)
@@ -306,7 +310,8 @@ class TestPhrasesetStatusTransitions:
                 username_canonical=f"voter{i}_{test_id}",
                 email=f"voter{i}_{test_id}@test.com",
                 password_hash="hash",
-                balance=1000,
+                wallet=1000,
+                vault=0,
             )
             voters.append(voter)
 
@@ -338,7 +343,7 @@ class TestVoteBalanceAccounting:
         vote_service = VoteService(db_session)
         transaction_service = TransactionService(db_session)
 
-        initial_balance = voter.balance
+        initial_balance = voter.wallet
 
         await vote_service.submit_system_vote(
             phraseset=phraseset,
@@ -348,7 +353,7 @@ class TestVoteBalanceAccounting:
         )
 
         await db_session.refresh(voter)
-        assert voter.balance == initial_balance - settings.vote_cost
+        assert voter.wallet == initial_balance - settings.vote_cost
 
     @pytest.mark.asyncio
     async def test_vote_payout_awarded(self, db_session, test_phraseset_with_players):
@@ -359,7 +364,7 @@ class TestVoteBalanceAccounting:
         vote_service = VoteService(db_session)
         transaction_service = TransactionService(db_session)
 
-        initial_balance = voter.balance
+        initial_balance = voter.wallet + voter.vault
 
         await vote_service.submit_system_vote(
             phraseset=phraseset,
@@ -370,7 +375,7 @@ class TestVoteBalanceAccounting:
 
         await db_session.refresh(voter)
         net_change = settings.vote_payout_correct - settings.vote_cost
-        assert voter.balance == initial_balance + net_change
+        assert voter.wallet + voter.vault == initial_balance + net_change
 
     @pytest.mark.asyncio
     async def test_prize_pool_grows_with_incorrect_votes(self, db_session, test_phraseset_with_players):
@@ -390,7 +395,8 @@ class TestVoteBalanceAccounting:
                 username_canonical=f"wrong_voter{i}_{test_id}",
                 email=f"wrong_voter{i}_{test_id}@test.com",
                 password_hash="hash",
-                balance=1000,
+                wallet=1000,
+                vault=0,
             )
             db_session.add(voter)
             await db_session.flush()
