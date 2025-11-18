@@ -1,12 +1,10 @@
 from uuid import UUID
 import logging
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import select, func, text, or_, union, bindparam
 from sqlalchemy.types import DateTime, String
 from sqlalchemy.orm import aliased
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, UTC, timedelta
-from typing import Optional
 
 from backend.models.qf.round import Round
 from backend.models.qf.prompt import Prompt
