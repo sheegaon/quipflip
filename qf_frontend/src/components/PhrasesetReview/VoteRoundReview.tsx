@@ -18,6 +18,7 @@ interface VoteRoundReviewProps {
   promptPlayerIsAi?: boolean;
   copy1PlayerIsAi?: boolean;
   copy2PlayerIsAi?: boolean;
+  isPractice?: boolean;
 }
 
 export const VoteRoundReview: React.FC<VoteRoundReviewProps> = ({
@@ -33,6 +34,7 @@ export const VoteRoundReview: React.FC<VoteRoundReviewProps> = ({
   promptPlayerIsAi = false,
   copy1PlayerIsAi = false,
   copy2PlayerIsAi = false,
+  isPractice = false,
 }) => {
   const [isRevealed, setIsRevealed] = useState(false);
 
@@ -65,6 +67,14 @@ export const VoteRoundReview: React.FC<VoteRoundReviewProps> = ({
           <FrozenTimer displayTime="3:00" />
         </div>
 
+        {/* Instructions */}
+        <div className="bg-quip-orange bg-opacity-10 border-2 border-quip-orange rounded-tile p-4 mb-6">
+          <p className="text-sm text-quip-navy">
+            <strong>❓ Question:</strong> Which phrase is the original? Click any phrase to reveal how players voted once you're
+            done reviewing.
+          </p>
+        </div>
+
         {/* Prompt */}
         <div className="bg-quip-orange bg-opacity-5 border-2 border-quip-orange rounded-tile p-6 mb-6">
           <p className="text-sm text-quip-teal mb-2 text-center font-medium">Prompt:</p>
@@ -75,8 +85,15 @@ export const VoteRoundReview: React.FC<VoteRoundReviewProps> = ({
 
         {/* Phrase Choices with Vote Information */}
         <div className="space-y-4 mb-6">
-          <p className="text-center text-quip-navy font-display font-semibold mb-4 text-lg">
-            {!isRevealed ? 'Click to reveal voting results' : 'Voting Results'}
+          <p className="text-center text-quip-navy font-display font-semibold mb-1 text-lg">
+            Which phrase is the original?
+          </p>
+          <p className="text-center text-quip-teal mb-4 text-sm">
+            {!isRevealed
+              ? isPractice
+                ? 'Click any phrase to reveal how players voted after you decide.'
+                : 'Click any phrase to reveal how players voted.'
+              : 'Voting Results'}
           </p>
           {phrases.map((phrase, idx) => {
             const phraseVotes = getVotesForPhrase(phrase);

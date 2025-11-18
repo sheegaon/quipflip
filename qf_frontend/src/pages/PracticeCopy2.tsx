@@ -52,20 +52,20 @@ const PracticeCopy2: React.FC = () => {
     );
   }
 
-  return (
-    <CopyRoundReview
-      originalPhrase={phraseset.original_phrase}
-      copyPhrase={phraseset.copy_phrase_2}
-      playerUsername={phraseset.copy2_player}
-      isAiPlayer={phraseset.copy2_player_is_ai}
-      copyNumber={2}
-      roundId={phraseset.phraseset_id}
-      existingHints={phraseset.hints}
-      onSubmit={handleContinue}
-      onBack={handleBack}
-      isPractice={true}
-    />
-  );
+  const reviewProps = {
+    originalPhrase: phraseset.original_phrase,
+    copyPhrase: phraseset.copy_phrase_2,
+    playerUsername: phraseset.copy2_player,
+    isAiPlayer: phraseset.copy2_player_is_ai,
+    copyNumber: 2,
+    roundId: phraseset.phraseset_id,
+    existingHints: phraseset.hints,
+    onSubmit: handleContinue,
+    onBack: handleBack,
+    isPractice: true,
+  };
+
+  return <CopyRoundReview {...reviewProps} />;
 };
 
 export default PracticeCopy2;
