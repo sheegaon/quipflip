@@ -97,7 +97,6 @@ class TransactionService:
                 amount=amount,
                 type=trans_type,
                 reference_id=reference_id,
-                balance_after=player.wallet + player.vault,  # Legacy column: total balance
                 wallet_type=wallet_type,
                 wallet_balance_after=player.wallet,
                 vault_balance_after=player.vault,

@@ -12,6 +12,7 @@ from datetime import datetime, UTC
 from uuid import UUID
 from fastapi import Request
 from sqlalchemy import select, insert
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from jwt import InvalidTokenError, ExpiredSignatureError, DecodeError
 
 from backend.database import AsyncSessionLocal
@@ -113,7 +114,8 @@ async def update_user_activity_task(
             # Use atomic INSERT...ON CONFLICT DO UPDATE to handle concurrent requests
             # This avoids race conditions where both requests SELECT, find nothing,
             # then both try to INSERT, causing UNIQUE constraint violations
-            stmt = insert(user_activity_model).values(
+            # Using PostgreSQL-specific insert syntax for UPSERT functionality
+            stmt = pg_insert(user_activity_model).values(
                 player_id=player_id,
                 username=username,
                 last_action=action_name,
