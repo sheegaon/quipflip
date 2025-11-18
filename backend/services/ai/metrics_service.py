@@ -113,7 +113,7 @@ class AIMetricsService:
             cache_id: UUID of the phrase cache entry (if applicable)
 
         Returns:
-            Created AIMetricBase instance
+            Created QFAIMetric instance
         """
         # Calculate estimated cost
         estimated_cost = None
@@ -161,53 +161,53 @@ class AIMetricsService:
             since = datetime.now(UTC) - timedelta(days=1)
 
         # Build query filters
-        filters = [AIMetricBase.created_at >= since]
+        filters = [QFAIMetric.created_at >= since]
         if operation_type:
-            filters.append(AIMetricBase.operation_type == operation_type)
+            filters.append(QFAIMetric.operation_type == operation_type)
         if provider:
-            filters.append(AIMetricBase.provider == provider)
+            filters.append(QFAIMetric.provider == provider)
 
         # Get total operations
         total_result = await self.db.execute(
-            select(func.count(AIMetricBase.metric_id)).where(and_(*filters))
+            select(func.count(QFAIMetric.metric_id)).where(and_(*filters))
         )
         total_operations = total_result.scalar() or 0
 
         # Get successful operations
         success_result = await self.db.execute(
-            select(func.count(AIMetricBase.metric_id)).where(
-                and_(*filters, AIMetricBase.success == True)
+            select(func.count(QFAIMetric.metric_id)).where(
+                and_(*filters, QFAIMetric.success == True)
             )
         )
         successful_operations = success_result.scalar() or 0
 
         # Get total cost
         cost_result = await self.db.execute(
-            select(func.sum(AIMetricBase.estimated_cost_usd)).where(and_(*filters))
+            select(func.sum(QFAIMetric.estimated_cost_usd)).where(and_(*filters))
         )
         total_cost = cost_result.scalar() or 0.0
 
         # Get average latency
         latency_result = await self.db.execute(
-            select(func.avg(AIMetricBase.latency_ms)).where(
-                and_(*filters, AIMetricBase.success == True, AIMetricBase.latency_ms.isnot(None))
+            select(func.avg(QFAIMetric.latency_ms)).where(
+                and_(*filters, QFAIMetric.success == True, QFAIMetric.latency_ms.isnot(None))
             )
         )
         avg_latency = latency_result.scalar() or 0.0
 
         # Get operations by provider
         provider_result = await self.db.execute(
-            select(AIMetricBase.provider, func.count(AIMetricBase.metric_id))
+            select(QFAIMetric.provider, func.count(QFAIMetric.metric_id))
             .where(and_(*filters))
-            .group_by(AIMetricBase.provider)
+            .group_by(QFAIMetric.provider)
         )
         operations_by_provider = {row[0]: row[1] for row in provider_result.all()}
 
         # Get operations by type
         type_result = await self.db.execute(
-            select(AIMetricBase.operation_type, func.count(AIMetricBase.metric_id))
+            select(QFAIMetric.operation_type, func.count(QFAIMetric.metric_id))
             .where(and_(*filters))
-            .group_by(AIMetricBase.operation_type)
+            .group_by(QFAIMetric.operation_type)
         )
         operations_by_type = {row[0]: row[1] for row in type_result.all()}
 
@@ -245,23 +245,23 @@ class AIMetricsService:
 
         # Build query filters
         filters = [
-            AIMetricBase.created_at >= since,
-            AIMetricBase.operation_type == "vote_generation",
-            AIMetricBase.vote_correct.isnot(None),
+            QFAIMetric.created_at >= since,
+            QFAIMetric.operation_type == "vote_generation",
+            QFAIMetric.vote_correct.isnot(None),
         ]
         if provider:
-            filters.append(AIMetricBase.provider == provider)
+            filters.append(QFAIMetric.provider == provider)
 
         # Get total votes
         total_result = await self.db.execute(
-            select(func.count(AIMetricBase.metric_id)).where(and_(*filters))
+            select(func.count(QFAIMetric.metric_id)).where(and_(*filters))
         )
         total_votes = total_result.scalar() or 0
 
         # Get correct votes
         correct_result = await self.db.execute(
-            select(func.count(AIMetricBase.metric_id)).where(
-                and_(*filters, AIMetricBase.vote_correct == True)
+            select(func.count(QFAIMetric.metric_id)).where(
+                and_(*filters, QFAIMetric.vote_correct == True)
             )
         )
         correct_votes = correct_result.scalar() or 0
