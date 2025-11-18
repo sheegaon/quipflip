@@ -57,6 +57,7 @@ const PracticeVote: React.FC = () => {
       promptPlayerIsAi={phraseset.prompt_player_is_ai}
       copy1PlayerIsAi={phraseset.copy1_player_is_ai}
       copy2PlayerIsAi={phraseset.copy2_player_is_ai}
+      isPractice={true}
     />
   );
 };

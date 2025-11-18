@@ -20,7 +20,8 @@ def _base_player(username: str) -> QFPlayer:
         username_canonical=username,
         email=f"{username}@example.com",
         password_hash=hash_password("TestPassword123!"),
-        balance=1000,
+        wallet=1000,
+        vault=0,
         created_at=now,
     )
 
@@ -245,7 +246,7 @@ async def test_phraseset_excludes_non_selected_copy_rounds(db_session):
     assert len(rejected_phrasesets) == 0
 
     # Verify that trying to get details for this phraseset as the rejected player fails
-    with pytest.raises(ValueError, match="Not a contributor to this phraseset"):
+    with pytest.raises(ValueError, match="Not a contributor or voter for this phraseset"):
         await service.get_phraseset_details(phraseset_id, rejected_player.player_id)
 
     # The selected players SHOULD see the phraseset

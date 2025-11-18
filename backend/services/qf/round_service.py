@@ -4,6 +4,7 @@ from sqlalchemy import select, func, text, or_, union, bindparam, update
 from sqlalchemy.types import DateTime, String
 from sqlalchemy.orm import aliased
 from datetime import datetime, UTC, timedelta
+import asyncio
 from typing import Optional
 from uuid import UUID
 import uuid
@@ -18,7 +19,6 @@ from backend.models.qf.player_abandoned_prompt import PlayerAbandonedPrompt
 from backend.services.transaction_service import TransactionService
 from backend.services.qf.queue_service import QueueService
 from backend.services.qf.phraseset_activity_service import ActivityService
-from backend.services import AIService, AICopyError
 from backend.config import get_settings
 from backend.utils.exceptions import (
     InvalidPhraseError,
@@ -53,7 +53,44 @@ class RoundService:
             from backend.services.phrase_validator import get_phrase_validator
             self.phrase_validator = get_phrase_validator()
         self.activity_service = ActivityService(db)
+        from backend.services import AIService
         self.ai_service = AIService(db)
+
+    async def _generate_ai_copies_background(self, prompt_round_id: UUID) -> None:
+        """Generate AI copies without blocking the prompt submission response."""
+
+        from backend.database import AsyncSessionLocal
+        from backend.services import AIService, AICopyError
+
+        async with AsyncSessionLocal() as background_db:
+            ai_service = AIService(background_db)
+
+            try:
+                prompt_round = await background_db.get(Round, prompt_round_id)
+                if not prompt_round:
+                    logger.warning(
+                        "Prompt round %s not found for background AI copy generation", prompt_round_id
+                    )
+                    return
+
+                await ai_service.generate_and_cache_phrases(prompt_round)
+                logger.info("Generated and cached AI copies for prompt round %s (background)", prompt_round_id)
+            except AICopyError as exc:
+                logger.warning(
+                    "Failed to generate AI copies for prompt round %s: %s", prompt_round_id, exc,
+                    exc_info=True,
+                )
+            except SQLAlchemyError as exc:
+                await background_db.rollback()
+                logger.warning(
+                    "Database error while caching AI copies for prompt round %s: %s", prompt_round_id, exc,
+                    exc_info=True,
+                )
+            except Exception as exc:  # Catch-all to avoid unhandled background task errors
+                logger.warning(
+                    "Unexpected error during background AI copy generation for prompt round %s: %s", prompt_round_id, exc,
+                    exc_info=True,
+                )
 
     async def start_prompt_round(self, player: QFPlayer, transaction_service: TransactionService) -> Optional[Round]:
         """
@@ -253,22 +290,12 @@ class RoundService:
         await self.db.commit()
         await self.db.refresh(round_object)
 
-        # Immediately generate and cache AI copies for this prompt
-        # This ensures copies are ready for hints and AI backup copies without waiting for the backup cycle
+        # Immediately kick off AI copy generation without blocking the response
         try:
-            await self.ai_service.generate_and_cache_phrases(round_object)
-            logger.info(f"Generated and cached AI copies for prompt round {round_id}")
-        except AICopyError as exc:
-            # Don't fail the submission if AI generation fails - the backup cycle will retry later
+            asyncio.create_task(self._generate_ai_copies_background(round_object.round_id))
+        except Exception as exc:
             logger.warning(
-                f"Failed to generate AI copies for prompt round {round_id}: {exc}",
-                exc_info=True,
-            )
-        except SQLAlchemyError as exc:
-            # Roll back the session so subsequent operations can continue
-            await self.db.rollback()
-            logger.warning(
-                f"Database error while caching AI copies for prompt round {round_id}: {exc}",
+                "Failed to start background AI copy generation task for prompt round %s: %s", round_id, exc,
                 exc_info=True,
             )
 

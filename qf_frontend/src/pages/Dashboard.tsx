@@ -583,8 +583,8 @@ export const Dashboard: React.FC = () => {
                 className="w-full bg-quip-navy hover:bg-quip-teal disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm"
               >
                 {startingRound === 'prompt' ? 'Starting Round...' :
-                 mode === 'practice' ? 'Practice Quip Round' :
-                 roundAvailability?.can_prompt ? 'Start Quip Round' :
+                 mode === 'practice' ? 'Practice Quip' :
+                 roundAvailability?.can_prompt ? 'Quip!' :
                  activeRound?.round_type === 'prompt' ? 'Active Round - Use Continue Above' :
                  activeRound?.round_id ? 'Complete Current Round First' :
                  (player?.wallet ?? 0) < (roundAvailability?.prompt_cost || 100) ? 'Insufficient Balance' :
@@ -628,8 +628,8 @@ export const Dashboard: React.FC = () => {
                 className="w-full bg-quip-turquoise hover:bg-quip-teal disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm"
               >
                 {startingRound === 'copy' ? 'Starting Round...' :
-                 mode === 'practice' ? 'Practice Impostor Round' :
-                 roundAvailability?.can_copy ? 'Start Impostor Round' :
+                 mode === 'practice' ? 'Practice Faking It' :
+                 roundAvailability?.can_copy ? 'Fake It!' :
                  activeRound?.round_type === 'copy' ? 'Active Round - Use Continue Above' :
                  activeRound?.round_id ? 'Complete Current Round First' :
                  roundAvailability?.prompts_waiting === 0 ? 'No Quips Available' :
@@ -664,8 +664,8 @@ export const Dashboard: React.FC = () => {
                 className="w-full bg-quip-orange hover:bg-quip-orange-deep disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm"
               >
                 {startingRound === 'vote' ? 'Starting Round...' :
-                 mode === 'practice' ? 'Practice Vote Round' :
-                 roundAvailability?.can_vote ? 'Start Vote Round' :
+                 mode === 'practice' ? 'Practice Guessing' :
+                 roundAvailability?.can_vote ? 'Guess the Original!' :
                  activeRound?.round_type === 'vote' ? 'Active Round - Use Continue Above' :
                  activeRound?.round_id ? 'Complete Current Round First' :
                  roundAvailability?.phrasesets_waiting === 0 ? 'No Quip Sets Available' :

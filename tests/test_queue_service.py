@@ -24,7 +24,7 @@ from backend.config import get_settings
 @pytest.fixture
 def mock_queue_client():
     """Mock queue client for testing."""
-    with patch("backend.services.queue_service.queue_client") as mock_client:
+    with patch("backend.services.qf.queue_service.queue_client") as mock_client:
         # Default mock behavior - empty queue
         mock_client.length.return_value = 0
         mock_client.pop.return_value = None
