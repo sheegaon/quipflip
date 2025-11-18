@@ -430,3 +430,29 @@ async def generate_ai_hints_background(prompt_round_id: UUID) -> None:
             logger.warning(f"Failed to generate AI hints for {prompt_round_id=}: {exc}", exc_info=True)
         except Exception as exc:  # Catch-all to avoid unhandled background task errors
             logger.warning(f"Unexpected error during AI hint generation for {prompt_round_id=}: {exc}", exc_info=True)
+
+
+async def revalidate_ai_hints_background(prompt_round_id: UUID) -> None:
+    """Re-run AI hint validation in the background after the first copy submission."""
+
+    from backend.database import AsyncSessionLocal
+    from backend.services import AIService
+
+    async with AsyncSessionLocal() as background_db:
+        ai_service = AIService(background_db)
+
+        try:
+            prompt_round = await background_db.get(Round, prompt_round_id)
+            if not prompt_round:
+                logger.warning(
+                    f"{prompt_round_id=} not found for background AI hint revalidation"
+                )
+                return
+
+            await ai_service.revalidate_cached_phrases(prompt_round)
+            logger.info(f"Revalidated cached AI hints for {prompt_round_id=}")
+        except Exception as exc:  # Catch-all to avoid unhandled background task errors
+            logger.warning(
+                f"Unexpected error during AI hint revalidation for {prompt_round_id=}: {exc}",
+                exc_info=True,
+            )
