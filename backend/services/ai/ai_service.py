@@ -24,6 +24,7 @@ from backend.models.qf.vote import Vote
 from backend.models.qf.ai_phrase_cache import QFAIPhraseCache
 from backend.services.ai.metrics_service import AIMetricsService, MetricsTracker
 from backend.services.qf import QueueService
+from backend.services.ir.player_service import PlayerService as IRPlayerService
 from backend.utils.model_registry import GameType
 from .prompt_builder import build_copy_prompt
 from backend.utils.passwords import hash_password
@@ -991,7 +992,7 @@ class AIService:
             ai_player = await self._get_or_create_ai_player(GameType.IR)
 
             set_service = BackronymSetService(self.db)
-            player_service = PlayerServiceBase(self.db)
+            player_service = IRPlayerService(self.db)
 
             # Get stalled open sets
             stalled_open = await set_service.get_stalled_open_sets(
