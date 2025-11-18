@@ -45,10 +45,6 @@ class PlayerService(PlayerServiceBase):
         """Get the domain for IR guest email addresses."""
         return "initialreaction.xyz"
 
-    def get_guest_password(self) -> str:
-        """Get the default IR guest password."""
-        return "IRGuest"
-
     def _get_initial_balance(self) -> int:
         """Get the initial balance for new IR players."""
         return self.settings.ir_initial_balance

@@ -32,6 +32,7 @@ class Settings(BaseSettings):
 
     # Admin access
     admin_emails: set[str] = {"tfishman@gmail.com", "x9@x.com"}
+    guest_password: str = "QuipGuest"
 
     # Initial Reaction (IR) Game Settings
     ir_secret_key: str = ""  # Will default to secret_key if not set

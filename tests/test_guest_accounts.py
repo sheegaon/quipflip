@@ -2,7 +2,7 @@
 from fastapi import status
 from httpx import AsyncClient, ASGITransport
 from backend.models.qf.player import QFPlayer
-
+from backend.config import get_settings
 
 class TestGuestAccountCreation:
     """Test guest account creation flow."""
@@ -31,7 +31,7 @@ class TestGuestAccountCreation:
             assert data["email"].endswith("@quipflip.xyz")
 
             # Check password
-            assert data["password"] == "Guest"
+            assert data["password"] == get_settings().guest_password
 
             # Check wallet is starting balance (5000 default)
             assert data["wallet"] == 5000
