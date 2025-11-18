@@ -58,10 +58,6 @@ class PlayerService(PlayerServiceBase):
         """Get the domain for QF guest email addresses."""
         return "quipflip.xyz"
 
-    def get_guest_password(self) -> str:
-        """Get the default QF guest password."""
-        return "Guest"
-
     def _get_initial_balance(self) -> int:
         """Get the initial balance for new QF players."""
         return settings.starting_balance
