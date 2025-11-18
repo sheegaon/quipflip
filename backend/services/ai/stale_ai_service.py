@@ -197,7 +197,7 @@ class StaleAIService:
                     # This ensures different players can fill different slots
                     handler_index = 0 if initial_slot == "copy1" else 1
                     stale_handler_email = f"ai_stale_handler_{handler_index}{AI_PLAYER_EMAIL_DOMAIN}"
-                    stale_handler = await self._get_or_create_stale_player(stale_handler_email)
+                    stale_handler = await self._get_or_create_stale_player(stale_handler_email, GameType.QF)
 
                     copy_phrase = await self.ai_service.generate_copy_phrase(
                         prompt_round.submitted_phrase,
@@ -307,7 +307,7 @@ class StaleAIService:
                     # This ensures we use different players for each vote
                     voter_index = phraseset.vote_count % 5  # Rotate through 5 voters
                     stale_voter_email = f"ai_stale_voter_{voter_index}{AI_PLAYER_EMAIL_DOMAIN}"
-                    stale_voter = await self._get_or_create_stale_player(stale_voter_email)
+                    stale_voter = await self._get_or_create_stale_player(stale_voter_email, GameType.QF)
 
                     # Check if this specific voter has already voted (additional safety check)
                     existing_vote = await self.db.execute(
