@@ -25,9 +25,14 @@ logger = logging.getLogger(__name__)
 from backend.database import Base
 from backend.config import get_settings
 # Import all models so Alembic can detect them
+# Using concrete game-type-specific models (QF = Quip Flip)
 from backend.models import (
-    Player, Prompt, Round, Phraseset, Vote,
-    Transaction, DailyBonus, ResultView, PlayerAbandonedPrompt
+    QFPlayer, Prompt, Round, Phraseset, Vote,
+    QFTransaction, QFDailyBonus, QFResultView, PlayerAbandonedPrompt
+)
+# Also import IR models for multi-game support
+from backend.models import (
+    IRPlayer, IRTransaction, IRDailyBonus, IRResultView
 )
 
 # Set database URL from config

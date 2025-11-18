@@ -878,11 +878,11 @@ class AIService:
 
             # Generate using configured provider
             if self.provider == "openai":
-                from backend.services import call_openai
-                response_text = await call_openai(prompt, self.ai_model)
+                from backend.services.ai.openai_api import generate_copy
+                response_text = await generate_copy(prompt, self.ai_model)
             else:
-                from backend.services import call_gemini
-                response_text = await call_gemini(prompt, self.ai_model)
+                from backend.services.ai.gemini_api import generate_copy
+                response_text = await generate_copy(prompt, self.ai_model)
 
             # Parse response - should be words separated by spaces
             words = response_text.strip().split()
@@ -941,11 +941,11 @@ class AIService:
 
             # Generate using configured provider
             if self.provider == "openai":
-                from backend.services import call_openai
-                response_text = await call_openai(prompt, self.ai_model)
+                from backend.services.ai.openai_api import generate_copy
+                response_text = await generate_copy(prompt, self.ai_model)
             else:
-                from backend.services import call_gemini
-                response_text = await call_gemini(prompt, self.ai_model)
+                from backend.services.ai.gemini_api import generate_copy
+                response_text = await generate_copy(prompt, self.ai_model)
 
             # Parse response - should be a number 1-5
             try:
