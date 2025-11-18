@@ -995,7 +995,7 @@ class RoundService:
         cutoff_time = datetime.now(UTC) - timedelta(hours=self.settings.abandoned_prompt_cooldown_hours)
         
         result = await self.db.execute(
-            PromptQueryBuilder.build_available_prompts_count_query(player_id, cutoff_time),
+            PromptQueryBuilder.build_available_prompts_count_query(),
             {"player_id_clean": str(player_id).replace('-', '').lower(), "cutoff_time": cutoff_time})
 
         return result.scalar() or 0

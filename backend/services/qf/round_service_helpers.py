@@ -82,11 +82,8 @@ class PromptQueryBuilder:
         )
 
     @staticmethod
-    def build_available_prompts_count_query(player_id: UUID, cutoff_time: datetime) -> text:
+    def build_available_prompts_count_query() -> text:
         """Build optimized query for counting available prompts for a player."""
-        # Process UUID to match the format expected by the SQL query
-        player_id_clean = str(player_id).lower().replace('-', '')
-        
         query = text("""
                 WITH player_prompt_rounds AS (
                     SELECT r.round_id
@@ -124,8 +121,8 @@ class PromptQueryBuilder:
                 AND NOT EXISTS (SELECT 1 FROM player_abandoned_cooldown pac WHERE pac.prompt_round_id = a.round_id)
             """)
         return query.bindparams(
-            bindparam("player_id_clean", player_id_clean, type_=String),
-            bindparam("cutoff_time", cutoff_time, type_=DateTime(timezone=True)),
+            bindparam("player_id_clean", type_=String),
+            bindparam("cutoff_time", type_=DateTime(timezone=True)),
         )
 
     @staticmethod
