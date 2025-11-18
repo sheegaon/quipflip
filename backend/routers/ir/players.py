@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, UTC
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.utils import ensure_utc
 from backend.config import get_settings
 from backend.database import get_db
 from backend.dependencies import get_current_player, enforce_guest_creation_rate_limit
@@ -34,13 +35,6 @@ from backend.utils.passwords import (
 router = APIRouter()
 settings = get_settings()
 logger = logging.getLogger(__name__)
-
-
-def ensure_utc(dt: datetime | None) -> datetime | None:
-    """Ensure datetime has UTC timezone for proper JSON serialization."""
-    if dt and dt.tzinfo is None:
-        return dt.replace(tzinfo=UTC)
-    return dt
 
 
 @router.post("", response_model=CreatePlayerResponse, status_code=201)

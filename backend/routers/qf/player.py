@@ -47,6 +47,7 @@ from backend.schemas.round import RoundAvailability
 from backend.services import TransactionService, GameType, AuthService, AuthError
 from backend.services.tutorial_service import TutorialService
 from backend.services.username_service import canonicalize_username
+from backend.utils import ensure_utc
 from backend.utils.exceptions import (
     DailyBonusNotAvailableError,
     UsernameTakenError,
@@ -77,13 +78,6 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 router = APIRouter()
-
-
-def ensure_utc(dt: Optional[datetime]) -> Optional[datetime]:
-    """Ensure datetime has UTC timezone for proper JSON serialization."""
-    if dt and dt.tzinfo is None:
-        return dt.replace(tzinfo=UTC)
-    return dt
 
 
 @router.post("", response_model=CreatePlayerResponse, status_code=201)

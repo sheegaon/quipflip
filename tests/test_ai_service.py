@@ -390,7 +390,7 @@ class TestAIHintGeneration:
         mock_validator.validate_copy = AsyncMock(return_value=(True, ""))
 
         service = AIService(db_session)
-        hints = await service.get_hints_from_cache(prompt_round, count=3)
+        hints = await service.get_hints(prompt_round, count=3)
 
         # Should get 3 hints from the cache (not uppercased - that happens in the UI)
         assert len(hints) == 3
@@ -434,13 +434,13 @@ class TestAIHintGeneration:
         service = AIService(db_session)
 
         # First call creates the cache
-        hints1 = await service.get_hints_from_cache(prompt_round, count=3)
+        hints1 = await service.get_hints(prompt_round, count=3)
         assert len(hints1) == 3
         assert len(set(hints1)) == 3
         assert mock_openai.await_count == 1
 
         # Second call reuses the cache (doesn't call generate_copy again)
-        hints2 = await service.get_hints_from_cache(prompt_round, count=3)
+        hints2 = await service.get_hints(prompt_round, count=3)
         assert len(hints2) == 3
         assert hints1 == hints2  # Same hints returned
         assert mock_openai.await_count == 1  # Still only 1 call

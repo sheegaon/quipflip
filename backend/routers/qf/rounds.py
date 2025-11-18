@@ -22,6 +22,7 @@ from backend.services import TransactionService
 from backend.services.qf import PlayerService, RoundService, VoteService, QueueService
 from backend.services.ai.ai_service import AICopyError
 from backend.config import get_settings
+from backend.utils import ensure_utc
 from backend.utils.exceptions import (
     InsufficientBalanceError,
     AlreadyInRoundError,
@@ -41,13 +42,6 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 router = APIRouter()
-
-
-def ensure_utc(dt: datetime) -> datetime:
-    """Ensure datetime has UTC timezone for proper JSON serialization."""
-    if dt and dt.tzinfo is None:
-        return dt.replace(tzinfo=UTC)
-    return dt
 
 
 async def _player_can_view_prompt_round(
@@ -389,12 +383,6 @@ async def get_copy_round_hints(
 
     try:
         hints = await round_service.get_or_generate_hints(round_id, player, transaction_service)
-        logger.info(
-            "[API /rounds/%s/hints] Returned %s hints for player %s",
-            round_id,
-            len(hints),
-            player.player_id,
-        )
         return HintResponse(hints=hints)
     except InsufficientBalanceError as exc:
         raise HTTPException(status_code=400, detail=str(exc))

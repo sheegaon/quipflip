@@ -1,7 +1,7 @@
 """
-AI Copy Service for automated backup copy and vote generation.
+AI Service for automated hint, copy, and vote generation.
 
-This service provides AI-generated backup copies and votes when human players
+This service provides AI-generated hints, backup copies and votes when human players
 are unavailable, supporting multiple AI providers (OpenAI, Gemini)
 with configurable fallback behavior and comprehensive metrics tracking.
 """
@@ -24,7 +24,6 @@ from backend.models.qf.vote import Vote
 from backend.models.qf.ai_phrase_cache import QFAIPhraseCache
 from backend.services.ai.metrics_service import AIMetricsService, MetricsTracker
 from backend.services.qf import QueueService
-from backend.services.ir.player_service import PlayerService as IRPlayerService
 from backend.utils.model_registry import GameType
 from .prompt_builder import build_copy_prompt
 from backend.utils.passwords import hash_password
@@ -274,7 +273,7 @@ class AIService:
         This is the core method that generates 5 phrases from the AI provider,
         validates all of them, and stores 3-5 valid phrases in the cache for reuse.
 
-        Checks for existing cache first to avoid redundant API calls.
+        Uses distributed locking to prevent duplicate AI generation for the same prompt.
 
         Args:
             prompt_round: The prompt round to generate phrases for
@@ -286,115 +285,141 @@ class AIService:
             AICopyError: If fewer than 3 valid phrases can be generated
         """
         import uuid as uuid_module
+        from backend.utils import lock_client
 
-        # Check if cache already exists
-        result = await self.db.execute(
-            select(QFAIPhraseCache)
-            .where(QFAIPhraseCache.prompt_round_id == prompt_round.round_id)
-        )
-        existing_cache = result.scalar_one_or_none()
-
-        if existing_cache:
-            logger.info(f"Using existing phrase cache for prompt_round {prompt_round.round_id}")
-            return existing_cache
-
-        # Generate new phrases
-        original_phrase = prompt_round.submitted_phrase
-        other_copy_phrase = await self._get_existing_copy_phrase(prompt_round.round_id)
-
-        # Build prompt and get common words
-        ai_prompt = build_copy_prompt(original_phrase, other_copy_phrase)
-        common_words = await self.get_common_words()
-        if not isinstance(common_words, (list, tuple)):
-            logger.warning(f"common_words is not iterable: {type(common_words)}, using empty list")
-            common_words = []
-
-        common_words = [word for word in common_words if len(word) > 3]
-        ai_prompt = ai_prompt.format(common_words=", ".join(common_words))
-
-        # Don't create cache until validation succeeds - avoids FK constraint errors
-        cache_id = uuid_module.uuid4()
-
-        async with MetricsTracker(
-                self.metrics_service,
-                operation_type="copy_generation",
-                provider=self.provider,
-                model=self.ai_model,
-                cache_id=None,  # Will be set after cache is successfully created
-        ) as tracker:
-            try:
-                # Generate using configured provider
-                if self.provider == "openai":
-                    test_phrases = await openai_generate_copy(
-                        prompt=ai_prompt, model=self.ai_model, timeout=self.settings.ai_timeout_seconds)
-                else:  # gemini
-                    test_phrases = await gemini_generate_copy(
-                        prompt=ai_prompt, model=self.ai_model, timeout=self.settings.ai_timeout_seconds)
-                test_phrases = test_phrases.split(";")
-            except Exception as e:
-                # Wrap API exceptions in AICopyError
-                logger.error(f"Failed to generate AI copy: {e}")
-                raise AICopyError(f"Failed to generate AI copy using {ai_prompt=}: {e}")
-
-            # Validate all phrases
-            validated_phrases = []
-            errors = []
-            for phrase in test_phrases:
-                phrase = phrase.strip()
-                is_valid, error_message = await self.phrase_validator.validate_copy(
-                    phrase,
-                    original_phrase,
-                    other_copy_phrase,
-                    prompt_round.prompt_text,
+        # Use distributed lock to prevent duplicate AI generation for the same prompt
+        lock_name = f"ai_phrase_generation:{prompt_round.round_id}"
+        
+        try:
+            with lock_client.lock(lock_name, timeout=30):
+                # Check if cache already exists (double-check inside lock)
+                result = await self.db.execute(
+                    select(QFAIPhraseCache)
+                    .where(QFAIPhraseCache.prompt_round_id == prompt_round.round_id)
                 )
-                if is_valid:
-                    validated_phrases.append(phrase)
-                else:
-                    errors.append((phrase, error_message))
-                    logger.info(f"AI generated invalid copy phrase '{phrase}': {error_message}")
+                existing_cache = result.scalar_one_or_none()
 
-            # Require at least 3 valid phrases
-            if len(validated_phrases) < 3:
-                tracker.set_result(
-                    "",
-                    success=False,
-                    response_length=0,
-                    validation_passed=False,
-                )
-                raise AICopyError(
-                    f"AI generated only {len(validated_phrases)} valid phrases (need 3+) for "
-                    f"{original_phrase=} {other_copy_phrase=}: {errors=}"
-                )
+                if existing_cache:
+                    logger.info(f"Using existing phrase cache for prompt_round {prompt_round.round_id}")
+                    return existing_cache
 
-            # Create and store cache now that validation succeeded
-            cache = QFAIPhraseCache(
-                cache_id=cache_id,
-                prompt_round_id=prompt_round.round_id,
-                original_phrase=original_phrase,
-                prompt_text=prompt_round.prompt_text,
-                validated_phrases=validated_phrases[:5],  # Limit to 5
-                generation_provider=self.provider,
-                generation_model=self.ai_model,
+                # Generate new phrases
+                original_phrase = prompt_round.submitted_phrase
+                other_copy_phrase = await self._get_existing_copy_phrase(prompt_round.round_id)
+
+                # Build prompt and get common words
+                ai_prompt = build_copy_prompt(original_phrase, other_copy_phrase)
+                common_words = await self.get_common_words()
+                if not isinstance(common_words, (list, tuple)):
+                    logger.warning(f"common_words is not iterable: {type(common_words)}, using empty list")
+                    common_words = []
+
+                common_words = [word for word in common_words if len(word) > 3]
+                ai_prompt = ai_prompt.format(common_words=", ".join(common_words))
+
+                # Don't create cache until validation succeeds - avoids FK constraint errors
+                cache_id = uuid_module.uuid4()
+
+                async with MetricsTracker(
+                        self.metrics_service,
+                        operation_type="copy_generation",
+                        provider=self.provider,
+                        model=self.ai_model,
+                        cache_id=None,  # Will be set after cache is successfully created
+                ) as tracker:
+                    try:
+                        # Generate using configured provider
+                        if self.provider == "openai":
+                            test_phrases = await openai_generate_copy(
+                                prompt=ai_prompt, model=self.ai_model, timeout=self.settings.ai_timeout_seconds)
+                        else:  # gemini
+                            test_phrases = await gemini_generate_copy(
+                                prompt=ai_prompt, model=self.ai_model, timeout=self.settings.ai_timeout_seconds)
+                        test_phrases = test_phrases.split(";")
+                    except Exception as e:
+                        # Wrap API exceptions in AICopyError
+                        logger.error(f"Failed to generate AI copy: {e}")
+                        raise AICopyError(f"Failed to generate AI copy using {ai_prompt=}: {e}")
+
+                    # Validate all phrases
+                    validated_phrases = []
+                    errors = []
+                    for phrase in test_phrases:
+                        phrase = phrase.strip()
+                        is_valid, error_message = await self.phrase_validator.validate_copy(
+                            phrase,
+                            original_phrase,
+                            other_copy_phrase,
+                            prompt_round.prompt_text,
+                        )
+                        if is_valid:
+                            validated_phrases.append(phrase)
+                        else:
+                            errors.append((phrase, error_message))
+                            logger.info(f"AI generated invalid copy phrase '{phrase}': {error_message}")
+
+                    # Require at least 3 valid phrases
+                    if len(validated_phrases) < 3:
+                        tracker.set_result(
+                            "",
+                            success=False,
+                            response_length=0,
+                            validation_passed=False,
+                        )
+                        raise AICopyError(
+                            f"AI generated only {len(validated_phrases)} valid phrases (need 3+) for "
+                            f"{original_phrase=} {other_copy_phrase=}: {errors=}"
+                        )
+
+                    # Create and store cache now that validation succeeded
+                    cache = QFAIPhraseCache(
+                        cache_id=cache_id,
+                        prompt_round_id=prompt_round.round_id,
+                        original_phrase=original_phrase,
+                        prompt_text=prompt_round.prompt_text,
+                        validated_phrases=validated_phrases[:5],  # Limit to 5
+                        generation_provider=self.provider,
+                        generation_model=self.ai_model,
+                    )
+                    self.db.add(cache)
+                    await self.db.flush()
+
+                    # Update tracker with cache_id now that cache exists in DB
+                    tracker.cache_id = str(cache.cache_id)
+
+                    # Track successful generation
+                    tracker.set_result(
+                        f"{len(validated_phrases)} phrases",
+                        success=True,
+                        response_length=sum(len(p) for p in validated_phrases),
+                        validation_passed=True,
+                    )
+
+                    logger.info(
+                        f"AI ({self.provider}) generated and cached {len(validated_phrases)} valid phrases "
+                        f"for prompt_round {prompt_round.round_id}"
+                    )
+                    return cache
+                    
+        except TimeoutError:
+            logger.warning(f"Could not acquire lock for AI phrase generation of prompt round {prompt_round.round_id}, "
+                           f"another process may be handling it")
+            # Check one more time if cache was created by another process
+            result = await self.db.execute(
+                select(QFAIPhraseCache)
+                .where(QFAIPhraseCache.prompt_round_id == prompt_round.round_id)
             )
-            self.db.add(cache)
-            await self.db.flush()
-
-            # Update tracker with cache_id now that cache exists in DB
-            tracker.cache_id = str(cache.cache_id)
-
-            # Track successful generation
-            tracker.set_result(
-                f"{len(validated_phrases)} phrases",
-                success=True,
-                response_length=sum(len(p) for p in validated_phrases),
-                validation_passed=True,
-            )
-
-            logger.info(
-                f"AI ({self.provider}) generated and cached {len(validated_phrases)} valid phrases "
-                f"for prompt_round {prompt_round.round_id}"
-            )
-            return cache
+            existing_cache = result.scalar_one_or_none()
+            if existing_cache:
+                logger.info(f"Using cache created by another process for prompt_round {prompt_round.round_id}")
+                return existing_cache
+            else:
+                raise AICopyError(f"Could not acquire lock for AI phrase generation and no cache exists")
+        except Exception as exc:
+            logger.error(
+                f"Error acquiring lock for AI phrase generation of prompt round {prompt_round.round_id}: {exc}",
+                exc_info=True)
+            raise AICopyError(f"AI phrase generation failed: {str(exc)}") from exc
 
     async def generate_copy_phrase(self, original_phrase: str, prompt_round: Round) -> str:
         """
@@ -419,9 +444,7 @@ class AIService:
         # Select random phrase from cache
         if not cache.validated_phrases or len(cache.validated_phrases) == 0:
             # Cache is empty, regenerate
-            logger.warning(
-                f"Phrase cache for prompt_round {prompt_round.round_id} is empty, regenerating..."
-            )
+            logger.warning(f"Phrase cache for {prompt_round.round_id=} is empty, regenerating...")
             # Delete empty cache and regenerate
             await self.db.delete(cache)
             await self.db.flush()
@@ -436,14 +459,14 @@ class AIService:
         await self.db.flush()
 
         logger.info(
-            f"AI ({self.provider}) selected cached copy: '{selected_phrase}' for original: '{original_phrase}' "
+            f"AI ({self.provider}) {selected_phrase=} for {original_phrase=} "
             f"({len(cache.validated_phrases)} phrases remaining in cache)"
         )
         return selected_phrase
 
-    async def get_hints_from_cache(self, prompt_round: Round, count: int = 3) -> list[str]:
+    async def get_hints(self, prompt_round: Round, count: int = 3) -> list[str]:
         """
-        Get hint phrases from the phrase cache.
+        Get hint phrases from the phrase cache, or generate and cache if not present.
 
         This method reuses the phrase cache created by generate_and_cache_phrases(),
         eliminating the need for separate hint generation. All players get the same
@@ -479,36 +502,9 @@ class AIService:
         if len(hints) == 0:
             raise AICopyError("Phrase cache is empty, cannot provide hints")
 
-        logger.info(
-            f"AI ({self.provider}) provided {len(hints)} cached hints for prompt_round {prompt_round.round_id}"
-        )
+        logger.info(f"AI ({self.provider}) provided {len(hints)} cached hints for prompt_round {prompt_round.round_id}")
 
         return hints
-
-    async def generate_copy_hints(self, prompt_round: Round, count: int = 3) -> list[str]:
-        """
-        DEPRECATED: Use get_hints_from_cache() instead.
-
-        This method is maintained for backward compatibility but now delegates
-        to get_hints_from_cache() which reuses the phrase cache.
-
-        Generate multiple hint phrases to assist a copy round player.
-
-        Args:
-            prompt_round: The prompt round containing the original phrase and context
-            count: Number of unique hints to generate (default: 3)
-
-        Returns:
-            List of validated hint phrases ready for display to the player
-
-        Raises:
-            AICopyError: If hints cannot be generated or validated
-        """
-        logger.warning(
-            "generate_copy_hints() is deprecated, use get_hints_from_cache() instead"
-        )
-        # Delegate to new method
-        return await self.get_hints_from_cache(prompt_round, count)
 
     async def generate_vote_choice(self, phraseset: Phraseset) -> str:
         """
@@ -527,11 +523,7 @@ class AIService:
 
         # Extract prompt and phrases from denormalized fields on Phraseset
         prompt_text = phraseset.prompt_text
-        phrases = [
-            phraseset.original_phrase,
-            phraseset.copy_phrase_1,
-            phraseset.copy_phrase_2,
-        ]
+        phrases = [phraseset.original_phrase, phraseset.copy_phrase_1, phraseset.copy_phrase_2]
         random.shuffle(phrases)
 
         async with MetricsTracker(
@@ -636,9 +628,11 @@ class AIService:
             cutoff_time = datetime.now(UTC) - timedelta(minutes=self.settings.ai_backup_delay_minutes)
 
             # Get all prompt rounds that meet our basic criteria
+            from backend.models.qf.player import QFPlayer
+            
             result = await self.db.execute(
                 select(Round)
-                .join(PlayerBase, PlayerBase.player_id == Round.player_id)
+                .join(QFPlayer, QFPlayer.player_id == Round.player_id)
                 .outerjoin(PhrasesetActivity, PhrasesetActivity.prompt_round_id == Round.round_id)
                 .where(Round.round_type == 'prompt')
                 .where(Round.status == 'submitted')
@@ -761,22 +755,20 @@ class AIService:
             # ai_voted_subquery = select(Vote.phraseset_id).where(Vote.player_id == ai_player.player_id)
 
             # Get all phrasesets that meet our basic criteria
+            from backend.models.qf.player import QFPlayer
+            
             human_vote_phrasesets_subquery = (
                 select(Vote.phraseset_id)
-                .join(PlayerBase, PlayerBase.player_id == Vote.player_id)
-                .where(~PlayerBase.email.like(f"%{AI_PLAYER_EMAIL_DOMAIN}"))
+                .join(QFPlayer, QFPlayer.player_id == Vote.player_id)
+                .where(~QFPlayer.email.like(f"%{AI_PLAYER_EMAIL_DOMAIN}"))
                 .distinct()
             )
 
             phraseset_result = await self.db.execute(
                 select(Phraseset)
-                # .join(Round, Round.round_id == Phraseset.prompt_round_id)
-                # .join(Player, Player.player_id == Round.player_id)
                 .where(Phraseset.status.in_(["open", "closing"]))
                 .where(Phraseset.created_at <= cutoff_time)
                 .where(Phraseset.phraseset_id.in_(human_vote_phrasesets_subquery))
-                # .where(~Player.username.like('%test%'))  # Exclude test players
-                # .where(Phraseset.phraseset_id.not_in(ai_voted_subquery))  # Exclude already voted
                 .options(
                     selectinload(Phraseset.prompt_round),
                     selectinload(Phraseset.copy_round_1),
@@ -835,7 +827,7 @@ class AIService:
                     stats["votes_generated"] += 1
                     logger.info(
                         f"AI generated vote '{vote.voted_phrase}' for phraseset {phraseset.phraseset_id} "
-                        f"({'CORRECT' if vote.correct else 'INCORRECT'}, payout: ${vote.payout})"
+                        f"({'CORRECT' if vote.correct else 'INCORRECT'}, payout: {vote.payout})"
                     )
 
                 except Exception as e:
@@ -991,7 +983,6 @@ class AIService:
             ai_player = await self._get_or_create_ai_player(GameType.IR)
 
             set_service = BackronymSetService(self.db)
-            player_service = IRPlayerService(self.db)
 
             # Get stalled open sets
             stalled_open = await set_service.get_stalled_open_sets(
@@ -1028,9 +1019,7 @@ class AIService:
                     stats["errors"] += 1
 
             # Get stalled voting sets
-            stalled_voting = await set_service.get_stalled_voting_sets(
-                minutes=self.settings.ir_ai_backup_delay_minutes
-            )
+            stalled_voting = await set_service.get_stalled_voting_sets(minutes=self.settings.ir_ai_backup_delay_minutes)
 
             # Fill voting for stalled sets
             for set_obj in stalled_voting:
@@ -1039,9 +1028,7 @@ class AIService:
                     from sqlalchemy import select
                     from backend.models.ir.backronym_entry import BackronymEntry
 
-                    entries_stmt = select(BackronymEntry).where(
-                        BackronymEntry.set_id == str(set_obj.set_id)
-                    )
+                    entries_stmt = select(BackronymEntry).where(BackronymEntry.set_id == str(set_obj.set_id))
                     entries_result = await self.db.execute(entries_stmt)
                     entries = entries_result.scalars().all()
 
@@ -1055,9 +1042,7 @@ class AIService:
                         backronym_strs = [e.backronym_text for e in entries]
 
                         # Generate vote
-                        chosen_index = await self.generate_backronym_vote(
-                            set_obj.word, backronym_strs
-                        )
+                        chosen_index = await self.generate_backronym_vote(set_obj.word, backronym_strs)
                         chosen_entry_id = entries[chosen_index].entry_id
 
                         # Add vote
