@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import apiClient, { extractErrorMessage } from '../api/client';
@@ -67,9 +67,14 @@ export const UpgradeGuestAccount: React.FC<UpgradeGuestAccountProps> = ({ classN
       await actions.refreshBalance();
 
       // Redirect to dashboard after a short delay
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 2000);
+      useEffect(() => {
+        if (upgradeSuccess) {
+          const timer = setTimeout(() => {
+            navigate('/dashboard');
+          }, 2000);
+          return () => clearTimeout(timer);
+        }
+      }, [upgradeSuccess, navigate]);
     } catch (err: unknown) {
       if (getErrorDetail(err) === 'not_a_guest') {
         setUpgradeError('This account is already a full account.');
