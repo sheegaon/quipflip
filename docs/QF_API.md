@@ -1,5 +1,7 @@
 # Quipflip (QF) API Documentation
 
+Quipflip endpoints live under the `/qf` prefix and are implemented in `backend/routers/qf`, sharing authentication middleware and response envelopes with the common routers documented in [API.md](API.md).
+
 ## Base URL
 
 ```
@@ -44,7 +46,7 @@ Authorization: Bearer <access_token>
 
 ## Data Model Reference
 
-Field-level definitions for database entities live in [DATA_MODELS.md](DATA_MODELS.md). This API guide focuses on HTTP requests and response envelopes; whenever you see a player, round, phraseset, quest, or transaction object referenced here, the authoritative schema lives in that document.
+Field-level definitions for database entities live in [QF_DATA_MODELS.md](QF_DATA_MODELS.md). This API guide focuses on HTTP requests and response envelopes; whenever you see a player, round, phraseset, quest, or transaction object referenced here, the authoritative schema lives in that document.
 
 ## Response Format
 
@@ -189,7 +191,7 @@ curl -X POST http://localhost:8000/qf/player \
 
 **Note:** The backend assigns the username; clients should not send custom values.
 
-See [Player](DATA_MODELS.md#player) for persisted fields.
+See [Player](QF_DATA_MODELS.md#player) for persisted fields.
 
 **Response (201 Created):**
 ```json
@@ -465,8 +467,8 @@ Get list of finalized phrasesets awaiting result viewing.
 #### `GET /player/phrasesets`
 Retrieve a paginated list of the current player's prompt and copy contributions.
 
-- Query params: `role` (`all`, `prompt`, `copy`), `status` (`all` or any [phraseset status](DATA_MODELS.md#phraseset)), `limit` (1-100), `offset` (>=0).
-- Response mirrors `PhrasesetListResponse` with summaries derived from [Phraseset](DATA_MODELS.md#phraseset) rows.
+- Query params: `role` (`all`, `prompt`, `copy`), `status` (`all` or any [phraseset status](QF_DATA_MODELS.md#phraseset)), `limit` (1-100), `offset` (>=0).
+- Response mirrors `PhrasesetListResponse` with summaries derived from [Phraseset](QF_DATA_MODELS.md#phraseset) rows.
 
 ```json
 {
@@ -503,7 +505,7 @@ Dashboard-friendly counts of in-progress and finalized phrasesets. Useful for qu
 ```
 
 #### `GET /player/unclaimed-results`
-Returns finalized phrasesets where the player still has unclaimed payouts. Mirrors [ResultView](DATA_MODELS.md#resultview) tracking.
+Returns finalized phrasesets where the player still has unclaimed payouts. Mirrors [ResultView](QF_DATA_MODELS.md#resultview) tracking.
 
 ```json
 {
@@ -617,7 +619,7 @@ Get comprehensive player statistics including win rates, earnings breakdown, and
 - Vote accuracy is percentage of correct votes
 - Best performing phrases ranked by votes received
 
-Statistics aggregate data from [Player](DATA_MODELS.md#player), [Round](DATA_MODELS.md#round-unified-for-prompt-copy-and-vote), [Phraseset](DATA_MODELS.md#phraseset), and [Transaction](DATA_MODELS.md#transaction-ledger) tables.
+Statistics aggregate data from [Player](QF_DATA_MODELS.md#player), [Round](QF_DATA_MODELS.md#round-unified-for-prompt-copy-and-vote), [Phraseset](QF_DATA_MODELS.md#phraseset), and [Transaction](QF_DATA_MODELS.md#transaction-ledger) tables.
 
 #### `GET /player/statistics/weekly-leaderboard`
 Get the weekly leaderboard split by role (prompt, copy, voter), with players ranked by win rate for the trailing seven days.
@@ -1072,7 +1074,7 @@ Get AI-generated hints for an active copy round. Returns 1-3 hint phrases that c
 #### `POST /rounds/{round_id}/feedback`
 Submit thumbs up/down feedback for a prompt round.
 
-Feedback records persist to [PromptFeedback](DATA_MODELS.md#promptfeedback).
+Feedback records persist to [PromptFeedback](QF_DATA_MODELS.md#promptfeedback).
 
 **Request Body:**
 ```json
@@ -1239,13 +1241,13 @@ Get round details.
 }
 ```
 
-See [Round](DATA_MODELS.md#round-unified-for-prompt-copy-and-vote) for persisted round attributes.
+See [Round](QF_DATA_MODELS.md#round-unified-for-prompt-copy-and-vote) for persisted round attributes.
 
 ---
 
 ### Phraseset Endpoints
 
-Phraseset payloads map onto [Phraseset](DATA_MODELS.md#phraseset), [Vote](DATA_MODELS.md#vote), and [ResultView](DATA_MODELS.md#resultview) database records.
+Phraseset payloads map onto [Phraseset](QF_DATA_MODELS.md#phraseset), [Vote](QF_DATA_MODELS.md#vote), and [ResultView](QF_DATA_MODELS.md#resultview) database records.
 
 #### `POST /phrasesets/{phraseset_id}/vote`
 Submit vote for phraseset.
@@ -1604,7 +1606,7 @@ Get a random completed phraseset for practice mode (phrasesets user was NOT invo
 
 ### Quest Endpoints
 
-Quest responses correspond to [Quest](DATA_MODELS.md#quest) rows (with extra derived fields) and reference configuration stored in `quest_templates` (see [QuestTemplate](DATA_MODELS.md#questtemplate)).
+Quest responses correspond to [Quest](QF_DATA_MODELS.md#quest) rows (with extra derived fields) and reference configuration stored in `quest_templates` (see [QuestTemplate](QF_DATA_MODELS.md#questtemplate)).
 
 #### `GET /quests`
 Get all quests for the current player.
@@ -1897,7 +1899,7 @@ List flagged prompt phrases for administrative review.
 - Requires admin authentication
 - Returns all flags matching the status filter
 - Default is to show only pending flags
-- See [FlaggedPrompt](DATA_MODELS.md#flaggedprompt) for field definitions
+- See [FlaggedPrompt](QF_DATA_MODELS.md#flaggedprompt) for field definitions
 
 #### `POST /admin/flags/{flag_id}/resolve`
 Resolve a flagged prompt by confirming or dismissing it.

@@ -1,6 +1,6 @@
 # Initial Reaction Data Model Specification
 
-*(Companion to `DATA_MODELS.md`. All wallet, vault, transactions, result views, players, auth, rate limits, AI metrics, and validator integration are reused as-is.)*
+This guide covers the Initial Reaction models inside `backend/models/ir`, which extend the shared foundations documented in [DATA_MODELS.md](DATA_MODELS.md). Wallets, tokens, quests, notifications, and other shared primitives come from the base modules and are not repeated here.
 
 ---
 
