@@ -11,6 +11,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Header } from '../components/Header';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import type { OnlineUser } from '../api/types';
+import apiClient from '../api/client';
 
 // Calculate account age in days (rounded up)
 const getAccountAgeDays = (createdAt: string): number => {
@@ -52,15 +53,7 @@ const OnlineUsers: React.FC = () => {
       try {
         // Step 1: Fetch short-lived WebSocket token via REST API (through Vercel proxy)
         // This endpoint validates HttpOnly cookies and returns a token we can use for WebSocket
-        const tokenResponse = await fetch('/api/auth/ws-token', {
-          credentials: 'include', // Include HttpOnly cookies
-        });
-
-        if (!tokenResponse.ok) {
-          throw new Error('Failed to get WebSocket token');
-        }
-
-        const { token } = await tokenResponse.json();
+        const { token } = await apiClient.getWebsocketToken();
 
         // Step 2: Construct WebSocket URL for direct connection to Heroku
         const apiUrl = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:8000`;
@@ -153,15 +146,7 @@ const OnlineUsers: React.FC = () => {
 
     const fetchOnlineUsers = async () => {
       try {
-        const response = await fetch('/api/users/online', {
-          credentials: 'include', // Include cookies for authentication
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-
-        const data: { users: OnlineUser[]; total_count: number } = await response.json();
+        const data = await apiClient.getOnlineUsers();
         setOnlineUsers(data.users);
         setTotalCount(data.total_count);
         
