@@ -21,13 +21,17 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     # Make balance_after column nullable in qf_transactions
     # This column is deprecated and no longer populated by the code
-    op.alter_column('qf_transactions', 'balance_after',
-               existing_type=sa.Integer(),
-               nullable=True)
+    # Use batch_alter_table for SQLite compatibility
+    with op.batch_alter_table('qf_transactions', schema=None) as batch_op:
+        batch_op.alter_column('balance_after',
+                   existing_type=sa.Integer(),
+                   nullable=True)
 
 
 def downgrade() -> None:
     # Restore balance_after as NOT NULL (would need default value)
-    op.alter_column('qf_transactions', 'balance_after',
-               existing_type=sa.Integer(),
-               nullable=False)
+    # Use batch_alter_table for SQLite compatibility
+    with op.batch_alter_table('qf_transactions', schema=None) as batch_op:
+        batch_op.alter_column('balance_after',
+                   existing_type=sa.Integer(),
+                   nullable=False)
