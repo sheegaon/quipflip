@@ -628,9 +628,11 @@ class AIService:
             cutoff_time = datetime.now(UTC) - timedelta(minutes=self.settings.ai_backup_delay_minutes)
 
             # Get all prompt rounds that meet our basic criteria
+            from backend.models.qf.player import QFPlayer
+            
             result = await self.db.execute(
                 select(Round)
-                .join(PlayerBase, PlayerBase.player_id == Round.player_id)
+                .join(QFPlayer, QFPlayer.player_id == Round.player_id)
                 .outerjoin(PhrasesetActivity, PhrasesetActivity.prompt_round_id == Round.round_id)
                 .where(Round.round_type == 'prompt')
                 .where(Round.status == 'submitted')
@@ -753,10 +755,12 @@ class AIService:
             # ai_voted_subquery = select(Vote.phraseset_id).where(Vote.player_id == ai_player.player_id)
 
             # Get all phrasesets that meet our basic criteria
+            from backend.models.qf.player import QFPlayer
+            
             human_vote_phrasesets_subquery = (
                 select(Vote.phraseset_id)
-                .join(PlayerBase, PlayerBase.player_id == Vote.player_id)
-                .where(~PlayerBase.email.like(f"%{AI_PLAYER_EMAIL_DOMAIN}"))
+                .join(QFPlayer, QFPlayer.player_id == Vote.player_id)
+                .where(~QFPlayer.email.like(f"%{AI_PLAYER_EMAIL_DOMAIN}"))
                 .distinct()
             )
 
@@ -823,7 +827,7 @@ class AIService:
                     stats["votes_generated"] += 1
                     logger.info(
                         f"AI generated vote '{vote.voted_phrase}' for phraseset {phraseset.phraseset_id} "
-                        f"({'CORRECT' if vote.correct else 'INCORRECT'}, payout: ${vote.payout})"
+                        f"({'CORRECT' if vote.correct else 'INCORRECT'}, payout: {vote.payout})"
                     )
 
                 except Exception as e:
