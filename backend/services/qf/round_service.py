@@ -18,7 +18,6 @@ from backend.models.qf.player_abandoned_prompt import PlayerAbandonedPrompt
 from backend.services.transaction_service import TransactionService
 from backend.services.qf.queue_service import QueueService
 from backend.services.qf.phraseset_activity_service import ActivityService
-from backend.services import AIService, AICopyError
 from backend.config import get_settings
 from backend.utils.exceptions import (
     InvalidPhraseError,
@@ -53,6 +52,7 @@ class RoundService:
             from backend.services.phrase_validator import get_phrase_validator
             self.phrase_validator = get_phrase_validator()
         self.activity_service = ActivityService(db)
+        from backend.services import AIService
         self.ai_service = AIService(db)
 
     async def start_prompt_round(self, player: QFPlayer, transaction_service: TransactionService) -> Optional[Round]:
@@ -255,6 +255,7 @@ class RoundService:
 
         # Immediately generate and cache AI copies for this prompt
         # This ensures copies are ready for hints and AI backup copies without waiting for the backup cycle
+        from backend.services import AICopyError
         try:
             await self.ai_service.generate_and_cache_phrases(round_object)
             logger.info(f"Generated and cached AI copies for prompt round {round_id}")
