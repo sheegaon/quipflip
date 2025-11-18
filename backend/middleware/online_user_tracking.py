@@ -11,7 +11,7 @@ import logging
 from datetime import datetime, UTC
 from uuid import UUID
 from fastapi import Request
-from sqlalchemy import select
+from sqlalchemy import select, insert
 from jwt import InvalidTokenError, ExpiredSignatureError, DecodeError
 
 from backend.database import AsyncSessionLocal
@@ -98,39 +98,40 @@ async def update_user_activity_task(
     action_path: str,
     game_type: GameType
 ):
-    """Background task to update user activity without blocking response."""
+    """Background task to update user activity without blocking response.
+
+    Uses atomic UPSERT to avoid race conditions when multiple concurrent requests
+    from the same user try to update activity simultaneously.
+    """
     try:
         async with AsyncSessionLocal() as db:
             # Get the concrete user activity model for this game type
             user_activity_model = get_user_activity_model(game_type)
 
-            # Update or create activity record
-            result = await db.execute(
-                select(user_activity_model).where(user_activity_model.player_id == player_id)
-            )
-            activity = result.scalar_one_or_none()
-
             current_time = datetime.now(UTC)
 
-            if activity:
-                # Update existing activity
-                activity.username = username
-                activity.last_action = action_name
-                activity.last_action_category = action_category
-                activity.last_action_path = action_path
-                activity.last_activity = current_time
-            else:
-                # Create new activity record
-                activity = user_activity_model(
-                    player_id=player_id,
-                    username=username,
-                    last_action=action_name,
-                    last_action_category=action_category,
-                    last_action_path=action_path,
-                    last_activity=current_time
-                )
-                db.add(activity)
+            # Use atomic INSERT...ON CONFLICT DO UPDATE to handle concurrent requests
+            # This avoids race conditions where both requests SELECT, find nothing,
+            # then both try to INSERT, causing UNIQUE constraint violations
+            stmt = insert(user_activity_model).values(
+                player_id=player_id,
+                username=username,
+                last_action=action_name,
+                last_action_category=action_category,
+                last_action_path=action_path,
+                last_activity=current_time
+            ).on_conflict_do_update(
+                index_elements=['player_id'],
+                set_={
+                    'username': username,
+                    'last_action': action_name,
+                    'last_action_category': action_category,
+                    'last_action_path': action_path,
+                    'last_activity': current_time
+                }
+            )
 
+            await db.execute(stmt)
             await db.commit()
 
     except Exception as e:
