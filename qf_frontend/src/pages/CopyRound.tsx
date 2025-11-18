@@ -224,22 +224,6 @@ export const CopyRound: React.FC = () => {
     setIsEarlyImpostorPlayer(updatedRoundIds.length <= AUTO_HINT_ROUND_LIMIT);
   }, [player?.player_id, roundData?.round_id]);
 
-  useEffect(() => {
-    if (!isEarlyImpostorPlayer || !roundData || autoFetchTriggeredRef.current) {
-      return;
-    }
-
-    if (copyRoundHints && copyRoundHints.length > 0) {
-      setShowHints(true);
-      autoFetchTriggeredRef.current = true;
-      return;
-    }
-
-    autoFetchTriggeredRef.current = true;
-    setShowHints(true);
-    void handleFetchHints();
-  }, [copyRoundHints, handleFetchHints, isEarlyImpostorPlayer, roundData]);
-
   const fetchOriginalPrompt = useCallback(async (promptRoundId?: string | null) => {
     if (!promptRoundId) {
       dispatchCompletion({ type: 'PROMPT_REVEAL_RESET' });
@@ -288,6 +272,22 @@ export const CopyRound: React.FC = () => {
       setIsFetchingHints(false);
     }
   }, [fetchCopyHints, isExpired, isFetchingHints, roundData]);
+
+  useEffect(() => {
+    if (!isEarlyImpostorPlayer || !roundData || autoFetchTriggeredRef.current) {
+      return;
+    }
+
+    if (copyRoundHints && copyRoundHints.length > 0) {
+      setShowHints(true);
+      autoFetchTriggeredRef.current = true;
+      return;
+    }
+
+    autoFetchTriggeredRef.current = true;
+    setShowHints(true);
+    void handleFetchHints();
+  }, [copyRoundHints, handleFetchHints, isEarlyImpostorPlayer, roundData]);
 
   useEffect(() => {
     if (!roundData) {
