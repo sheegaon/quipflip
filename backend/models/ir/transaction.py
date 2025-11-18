@@ -11,11 +11,7 @@ class IRTransaction(TransactionBase):
     __tablename__ = "ir_transactions"
 
     # Override player_id to add IR-specific foreign key constraint
-    player_id = get_uuid_column(
-        ForeignKey("ir_players.player_id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
-    )
+    player_id = get_uuid_column(ForeignKey("ir_players.player_id", ondelete="CASCADE"), nullable=False, index=True)
     
     # IR-specific fields for backwards compatibility
     transaction_type = Column(String(50), nullable=False, index=True)  # ir_backronym_entry, ir_vote_entry, etc.
@@ -27,7 +23,7 @@ class IRTransaction(TransactionBase):
     )
 
     # Relationships
-    player = relationship("Player", back_populates="transactions")
+    player = relationship("IRPlayer", back_populates="transactions")
 
     # Indexes - use string references for inherited columns
     __table_args__ = (

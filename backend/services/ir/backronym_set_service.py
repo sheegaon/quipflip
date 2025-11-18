@@ -45,7 +45,7 @@ class BackronymSetService:
             BackronymSet: Created set
 
         Raises:
-            IRBackronymSetError: If set creation fails
+            BackronymSetError: If set creation fails
         """
         try:
             # Generate random word
@@ -85,7 +85,7 @@ class BackronymSetService:
             set_id: Set UUID
 
         Returns:
-            IRBackronymSet or None if not found
+            BackronymSet or None if not found
         """
         stmt = select(BackronymSet).where(BackronymSet.set_id == set_id)
         result = await self.db.execute(stmt)
@@ -104,7 +104,7 @@ class BackronymSetService:
                               has entry in a set)
 
         Returns:
-            IRBackronymSet or None if no available sets
+            BackronymSet or None if no available sets
         """
         try:
             # Find open sets that are not too old
@@ -157,7 +157,7 @@ class BackronymSetService:
             BackronymEntry: Created entry
 
         Raises:
-            IRBackronymSetError: If entry creation fails
+            BackronymSetError: If entry creation fails
         """
         try:
             set_obj = await self.get_set_by_id(set_id)
@@ -233,7 +233,7 @@ class BackronymSetService:
             BackronymSet: Updated set
 
         Raises:
-            IRBackronymSetError: If transition fails
+            BackronymSetError: If transition fails
         """
         try:
             set_obj = await self.get_set_by_id(set_id)
@@ -291,7 +291,7 @@ class BackronymSetService:
             BackronymVote: Created vote
 
         Raises:
-            IRBackronymSetError: If vote addition fails
+            BackronymSetError: If vote addition fails
         """
         try:
             set_obj = await self.get_set_by_id(set_id)
@@ -382,7 +382,7 @@ class BackronymSetService:
             BackronymSet: Updated set
 
         Raises:
-            IRBackronymSetError: If finalization fails
+            BackronymSetError: If finalization fails
         """
         try:
             set_obj = await self.get_set_by_id(set_id)
@@ -414,7 +414,7 @@ class BackronymSetService:
             dict: Set details with entries and votes
 
         Raises:
-            IRBackronymSetError: If set not found
+            BackronymSetError: If set not found
         """
         try:
             set_obj = await self.get_set_by_id(set_id)

@@ -15,7 +15,7 @@ from backend.database import Base
 from backend.models.base import get_uuid_column
 
 
-class ResultView(Base):
+class IRResultView(Base):
     """Result viewing tracking for prize claiming."""
 
     __tablename__ = "ir_result_views"
@@ -45,5 +45,5 @@ class ResultView(Base):
     )
 
     # Relationships
-    set = relationship("IRBackronymSet", back_populates="result_views")
+    set = relationship("BackronymSet", back_populates="result_views")
     player = relationship("IRPlayer", back_populates="result_views")

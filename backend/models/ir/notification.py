@@ -37,8 +37,8 @@ class IRNotification(NotificationBase):
     )
 
     # Relationships
-    player = relationship("Player", foreign_keys=[player_id])
-    actor_player = relationship("Player", foreign_keys=[actor_player_id])
+    player = relationship("IRPlayer", foreign_keys=[player_id])
+    actor_player = relationship("IRPlayer", foreign_keys=[actor_player_id])
     backronym_set = relationship("BackronymSet")
 
     # Indexes for efficient querying

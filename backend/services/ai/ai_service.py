@@ -21,7 +21,7 @@ from backend.models.qf.round import Round
 from backend.models.qf.phraseset import Phraseset
 from backend.models.qf.phraseset_activity import PhrasesetActivity
 from backend.models.qf.vote import Vote
-from backend.models.qf.ai_phrase_cache import AIPhraseCache
+from backend.models.qf.ai_phrase_cache import QFAIPhraseCache
 from backend.services.ai.metrics_service import AIMetricsService, MetricsTracker
 from backend.services.qf import PlayerService, QueueService
 from backend.services import UsernameService
@@ -262,7 +262,7 @@ class AIService:
         )
         return result.scalars().first()
 
-    async def generate_and_cache_phrases(self, prompt_round: Round) -> AIPhraseCache:
+    async def generate_and_cache_phrases(self, prompt_round: Round) -> QFAIPhraseCache:
         """
         Generate and cache multiple validated copy phrases for a prompt round.
 
@@ -284,8 +284,8 @@ class AIService:
 
         # Check if cache already exists
         result = await self.db.execute(
-            select(AIPhraseCache)
-            .where(AIPhraseCache.prompt_round_id == prompt_round.round_id)
+            select(QFAIPhraseCache)
+            .where(QFAIPhraseCache.prompt_round_id == prompt_round.round_id)
         )
         existing_cache = result.scalar_one_or_none()
 
@@ -363,7 +363,7 @@ class AIService:
                 )
 
             # Create and store cache now that validation succeeded
-            cache = AIPhraseCache(
+            cache = QFAIPhraseCache(
                 cache_id=cache_id,
                 prompt_round_id=prompt_round.round_id,
                 original_phrase=original_phrase,
@@ -667,9 +667,9 @@ class AIService:
             for prompt_round in filtered_prompts:
                 # Check if phrase cache exists and has been used for backup
                 cache_result = await self.db.execute(
-                    select(AIPhraseCache.cache_id)
-                    .where(AIPhraseCache.prompt_round_id == prompt_round.round_id)
-                    .where(AIPhraseCache.used_for_backup_copy == True)
+                    select(QFAIPhraseCache.cache_id)
+                    .where(QFAIPhraseCache.prompt_round_id == prompt_round.round_id)
+                    .where(QFAIPhraseCache.used_for_backup_copy == True)
                 )
                 cache_exists = cache_result.scalar_one_or_none() is not None
 

@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from backend.config import get_settings
-from backend.models.ir.ai_phrase_cache import AIPhraseCache
+from backend.models.ir.ai_phrase_cache import IRAIPhraseCache
 
 logger = logging.getLogger(__name__)
 
@@ -201,9 +201,9 @@ class WordService:
         try:
             lookback_time = datetime.now(UTC) - timedelta(minutes=minutes)
             # Select only cache_id to avoid issues if prompt_text column doesn't exist in DB
-            stmt = select(AIPhraseCache.cache_id).where(
-                (AIPhraseCache.original_phrase == word.upper())
-                & (AIPhraseCache.created_at >= lookback_time)
+            stmt = select(IRAIPhraseCache.cache_id).where(
+                (IRAIPhraseCache.original_phrase == word.upper())
+                & (IRAIPhraseCache.created_at >= lookback_time)
             )
             result = await self.db.execute(stmt)
             return result.scalars().first() is not None
@@ -228,7 +228,7 @@ class WordService:
             validated_phrases: Optional validated phrases to persist
         """
         try:
-            cache_entry = AIPhraseCache(
+            cache_entry = IRAIPhraseCache(
                 prompt_round_id=set_id,
                 original_phrase=word.upper(),
                 validated_phrases=validated_phrases or [],

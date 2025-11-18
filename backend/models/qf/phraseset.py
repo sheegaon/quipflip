@@ -44,7 +44,7 @@ class Phraseset(Base):
     copy_round_2 = relationship("Round", foreign_keys=[copy_round_2_id])
     votes = relationship("Vote", back_populates="phraseset")
     vote_rounds = relationship("Round", back_populates="phraseset", foreign_keys="Round.phraseset_id")
-    result_views = relationship("ResultView", back_populates="phraseset")
+    result_views = relationship("QFResultView", back_populates="phraseset")
     activities = relationship(
         "PhrasesetActivity",
         back_populates="phraseset",

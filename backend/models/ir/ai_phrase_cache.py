@@ -14,7 +14,7 @@ from backend.database import Base
 from backend.models.base import get_uuid_column
 
 
-class AIPhraseCache(Base):
+class IRAIPhraseCache(Base):
     """Cache for AI-generated backronym words."""
 
     __tablename__ = "ir_ai_phrase_cache"

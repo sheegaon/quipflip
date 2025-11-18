@@ -23,7 +23,7 @@ from backend.models.qf.player import QFPlayer
 from backend.models.qf.round import Round
 from backend.models.qf.phraseset import Phraseset
 from backend.models.qf.vote import Vote
-from backend.models.qf.result_view import ResultView
+from backend.models.qf.result_view import QFResultView
 from backend.services.transaction_service import TransactionService
 from backend.services.qf.phraseset_activity_service import ActivityService
 from backend.services.qf.helpers import upsert_result_view
@@ -157,7 +157,7 @@ class VoteService:
         phraseset_id: UUID,
         player_id: UUID,
         player_payout: int,
-    ) -> tuple[ResultView, bool]:
+    ) -> tuple[QFResultView, bool]:
         """Create a result view for the contributor, handling duplicates gracefully."""
 
         values = {
@@ -1083,9 +1083,9 @@ class VoteService:
 
         # Get or create result view
         result = await self.db.execute(
-            select(ResultView)
-            .where(ResultView.phraseset_id == phraseset_id)
-            .where(ResultView.player_id == player_id)
+            select(QFResultView)
+            .where(QFResultView.phraseset_id == phraseset_id)
+            .where(QFResultView.player_id == player_id)
         )
         result_view = result.scalar_one_or_none()
         already_viewed = bool(result_view and result_view.result_viewed)

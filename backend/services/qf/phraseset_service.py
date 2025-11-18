@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 from backend.models.qf.player import QFPlayer
 from backend.models.qf.phraseset import Phraseset
-from backend.models.qf.result_view import ResultView
+from backend.models.qf.result_view import QFResultView
 from backend.models.qf.round import Round
 from backend.models.qf.vote import Vote
 from backend.services.qf.phraseset_activity_service import ActivityService
@@ -456,7 +456,7 @@ class PhrasesetService:
         """Mark a finalized phraseset result as viewed (legacy endpoint for compatibility)."""
         already_viewed = False
         payout_amount = 0
-        result_view: Optional[ResultView] = None
+        result_view: Optional[QFResultView] = None
 
         async def _apply_claim_updates() -> None:
             nonlocal already_viewed, payout_amount, result_view
@@ -1048,7 +1048,7 @@ class PhrasesetService:
 
     async def _load_result_views_for_player(
         self, player_id: UUID, phrasesets: list[Phraseset]
-    ) -> dict[UUID, ResultView]:
+    ) -> dict[UUID, QFResultView]:
         """Load any existing result views for the player."""
 
         phraseset_ids = [phraseset.phraseset_id for phraseset in phrasesets]
@@ -1056,9 +1056,9 @@ class PhrasesetService:
             return {}
 
         rv_result = await self.db.execute(
-            select(ResultView)
-            .where(ResultView.player_id == player_id)
-            .where(ResultView.phraseset_id.in_(phraseset_ids))
+            select(QFResultView)
+            .where(QFResultView.player_id == player_id)
+            .where(QFResultView.phraseset_id.in_(phraseset_ids))
         )
         return {rv.phraseset_id: rv for rv in rv_result.scalars().all()}
 
@@ -1092,7 +1092,7 @@ class PhrasesetService:
         self,
         prompt_rounds: list[Round],
         phraseset_map: dict[UUID, Phraseset],
-        result_view_map: dict[UUID, ResultView],
+        result_view_map: dict[UUID, QFResultView],
         payouts_by_phraseset: dict[UUID, dict],
     ) -> list[dict]:
         """Build contribution metadata for prompt rounds."""
@@ -1143,7 +1143,7 @@ class PhrasesetService:
         copy_rounds: list[Round],
         prompt_round_map: dict[UUID, Round],
         phraseset_map: dict[UUID, Phraseset],
-        result_view_map: dict[UUID, ResultView],
+        result_view_map: dict[UUID, QFResultView],
         payouts_by_phraseset: dict[UUID, dict],
     ) -> list[dict]:
         """Build contribution metadata for copy rounds."""
@@ -1225,7 +1225,7 @@ class PhrasesetService:
         self,
         votes: list[Vote],
         phraseset_map: dict[UUID, Phraseset],
-        result_view_map: dict[UUID, ResultView],
+        result_view_map: dict[UUID, QFResultView],
         payouts_by_phraseset: dict[UUID, dict],
     ) -> list[dict]:
         """Build contribution metadata for vote entries."""
@@ -1318,12 +1318,12 @@ class PhrasesetService:
         self,
         phraseset: Phraseset,
         player_id: UUID,
-    ) -> Optional[ResultView]:
+    ) -> Optional[QFResultView]:
         """Fetch an existing result view record."""
         result = await self.db.execute(
-            select(ResultView)
-            .where(ResultView.phraseset_id == phraseset.phraseset_id)
-            .where(ResultView.player_id == player_id)
+            select(QFResultView)
+            .where(QFResultView.phraseset_id == phraseset.phraseset_id)
+            .where(QFResultView.player_id == player_id)
         )
         return result.scalar_one_or_none()
 
@@ -1331,7 +1331,7 @@ class PhrasesetService:
         self,
         phraseset: Phraseset,
         player_id: UUID,
-    ) -> ResultView:
+    ) -> QFResultView:
         """Create a result view entry for a player with the current payout amount."""
         payouts = await self.scoring_service.calculate_payouts(phraseset)
         payout_amount = self._extract_player_payout(payouts, player_id) or 0

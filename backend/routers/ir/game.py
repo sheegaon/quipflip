@@ -28,7 +28,7 @@ from backend.services.ir.result_view_service import IRResultViewService
 from backend.services.ir.scoring_service import IRScoringService
 from backend.services.transaction_service import TransactionService
 from backend.services.ir.vote_service import IRVoteError, IRVoteService
-from backend.services.qf.phrase_validation_client import PhraseValidationClient
+from backend.services.phrase_validation_client import PhraseValidationClient
 from backend.utils.datetime_helpers import ensure_utc
 
 router = APIRouter()

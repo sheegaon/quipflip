@@ -19,6 +19,7 @@ from backend.schemas.player import (
     UpgradeGuestResponse,
 )
 from backend.services import AuthService, AuthError
+from backend.services.auth_service import GameType
 from backend.services.ir import PlayerService
 from backend.utils.cookies import (
     clear_auth_cookies,
@@ -50,7 +51,7 @@ async def create_player(
 ):
     """Create a new IR player account and return credentials."""
 
-    auth_service = AuthService(db)
+    auth_service = AuthService(db, GameType.IR)
     try:
         player = await auth_service.register_player(
             email=request.email,
@@ -101,7 +102,7 @@ async def create_guest_player(
 ):
     """Create an IR guest account with auto-generated credentials."""
 
-    auth_service = AuthService(db)
+    auth_service = AuthService(db, GameType.IR)
     try:
         player, guest_password = await auth_service.register_guest()
     except AuthError as exc:
@@ -145,7 +146,7 @@ async def upgrade_guest_account(
 ):
     """Upgrade an IR guest account to a full account."""
 
-    auth_service = AuthService(db)
+    auth_service = AuthService(db, GameType.IR)
     try:
         upgraded_player = await auth_service.upgrade_guest(player, request.email, request.password)
     except AuthError as exc:

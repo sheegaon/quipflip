@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.database import get_db
 from backend.models.ir.player import IRPlayer
 from backend.services import AuthService, AuthError
+from backend.services.auth_service import GameType
 from backend.services.ir import PlayerService
 
 
@@ -32,12 +33,14 @@ async def get_current_player(
     if not token:
         raise HTTPException(status_code=401, detail="Missing authentication token")
 
-    auth_service = AuthService(db)
+    auth_service = AuthService(db, game_type=GameType.IR)
     try:
-        player_id = await auth_service.verify_access_token(token)
+        payload = auth_service.decode_access_token(token)
+        player_id = payload.get("sub")
     except AuthError as e:
         raise HTTPException(status_code=401, detail=str(e)) from e
 
+    # Use IR player service since this is IR dependencies
     player_service = PlayerService(db)
     player = await player_service.get_player_by_id(player_id)
     if not player:

@@ -8,7 +8,7 @@ from backend.database import Base
 from backend.models.base import get_uuid_column
 
 
-class AIPhraseCache(Base):
+class QFAIPhraseCache(Base):
     """
     AI phrase cache for storing validated copy phrases generated per prompt round.
 

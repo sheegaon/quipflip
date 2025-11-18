@@ -294,8 +294,8 @@ class PlayerServiceBase(ABC):
 
         # Generate random 4-digit number for email
         random_digits = str(random.randint(1000, 9999))
-        guest_email = f"guest{random_digits}@{self._get_guest_domain()}"
-        guest_password = self._get_guest_password()
+        guest_email = f"guest{random_digits}@{self.get_guest_domain()}"
+        guest_password = self.get_guest_password()
 
         password_hash = hash_password(guest_password)
 
@@ -331,7 +331,7 @@ class PlayerServiceBase(ABC):
                 if "email" in str(e).lower() and attempt < max_retries - 1:
                     # Generate new random number and retry
                     random_digits = str(random.randint(1000, 9999))
-                    guest_email = f"guest{random_digits}@{self._get_guest_domain()}"
+                    guest_email = f"guest{random_digits}@{self.get_guest_domain()}"
                     await self.db.rollback()
                     continue
                 else:
@@ -442,11 +442,11 @@ class PlayerServiceBase(ABC):
         """
         return False
 
-    def _get_guest_domain(self) -> str:
+    def get_guest_domain(self) -> str:
         """Get the domain for guest email addresses."""
         return "quipflip.xyz"
 
-    def _get_guest_password(self) -> str:
+    def get_guest_password(self) -> str:
         """Get the default guest password."""
         return "Guest"
 

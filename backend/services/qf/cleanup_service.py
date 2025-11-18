@@ -14,7 +14,7 @@ from backend.models.qf import (
     Vote,
     QFTransaction,
     QFDailyBonus,
-    ResultView,
+    QFResultView,
     PlayerAbandonedPrompt,
     PromptFeedback,
     PhrasesetActivity,
@@ -307,7 +307,7 @@ class CleanupService:
 
         # 4. Result views (references player_id)
         result = await self.db.execute(
-            delete(ResultView).where(ResultView.player_id.in_(player_ids))
+            delete(QFResultView).where(QFResultView.player_id.in_(player_ids))
         )
         deletion_counts['result_views'] = result.rowcount or 0
 

@@ -14,7 +14,7 @@ from contextlib import asynccontextmanager
 from backend.config import get_settings
 from backend.version import APP_VERSION
 from backend.services.qf.prompt_seeder import sync_prompts_with_database
-from backend.routers import qf, ir
+from backend.routers import qf, ir, auth, health
 from backend.middleware.deduplication import deduplication_middleware
 from backend.middleware.online_user_tracking import online_user_tracking_middleware
 
@@ -41,7 +41,7 @@ sql_rotating_handler = RotatingFileHandler(sql_log_file, maxBytes=1024 * 1024, b
 sql_rotating_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
 
 # Create rotating file handler for API request logs (2MB max size, keep 15 backup files)
-api_rotating_handler = RotatingFileHandler(api_log_file, maxBytes=2 * 1024 * 1024, backupCount=15, encoding='utf-8')  # 2 MB
+api_rotating_handler = RotatingFileHandler(api_log_file, maxBytes=2 * 1024 * 1024, backupCount=15, encoding='utf-8')
 api_rotating_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 
 # Configure logging with both console and rotating file handlers
@@ -123,7 +123,7 @@ async def initialize_phrase_validation():
     try:
         if settings.use_phrase_validator_api:
             # Use remote phrase validation service
-            from backend.services.qf.phrase_validation_client import get_phrase_validation_client
+            from backend.services.phrase_validation_client import get_phrase_validation_client
             client = get_phrase_validation_client()
 
             # Perform health check
@@ -135,7 +135,7 @@ async def initialize_phrase_validation():
                 logger.error("Phrase validation will fail until the API service is available")
         else:
             # Use local phrase validator
-            from backend.services import get_phrase_validator
+            from backend.services.phrase_validator import get_phrase_validator
             validator = get_phrase_validator()
             logger.info(f"Local phrase validator initialized with {len(validator.dictionary)} words")
     except Exception as e:
@@ -175,12 +175,12 @@ async def ai_backup_cycle():
     # Verify phrase validator is ready before starting
     try:
         if settings.use_phrase_validator_api:
-            from backend.services import get_phrase_validation_client
+            from backend.services.phrase_validation_client import get_phrase_validation_client
             client = get_phrase_validation_client()
             if not await client.health_check():
                 logger.warning("Phrase validator API not healthy yet, AI backup may experience issues")
         else:
-            from backend.services import get_phrase_validator
+            from backend.services.phrase_validator import get_phrase_validator
             validator = get_phrase_validator()
             if not validator.dictionary:
                 logger.warning("Local phrase validator dictionary not loaded, AI backup may experience issues")
@@ -218,12 +218,12 @@ async def ai_stale_handler_cycle():
 
     try:
         if settings.use_phrase_validator_api:
-            from backend.services import get_phrase_validation_client
+            from backend.services.phrase_validation_client import get_phrase_validation_client
             client = get_phrase_validation_client()
             if not await client.health_check():
                 logger.warning("Phrase validator API not healthy yet, stale AI may experience issues")
         else:
-            from backend.services import get_phrase_validator
+            from backend.services.phrase_validator import get_phrase_validator
             validator = get_phrase_validator()
             if not validator.dictionary:
                 logger.warning("Local phrase validator dictionary not loaded, stale AI may experience issues")
@@ -412,7 +412,7 @@ async def lifespan(app_instance: FastAPI):
         # Cleanup phrase validation client session
         if settings.use_phrase_validator_api:
             try:
-                from backend.services import get_phrase_validation_client
+                from backend.services.phrase_validation_client import get_phrase_validation_client
                 client = get_phrase_validation_client()
                 await client.close()
                 logger.info("Phrase validation client session closed")
@@ -424,8 +424,8 @@ async def lifespan(app_instance: FastAPI):
 
 # Create FastAPI app
 app = FastAPI(
-    title="Quipflip API",
-    description="Phase 2 - Phrase association game backend",
+    title="Crowdcraft Labs API",
+    description="Phase 3 - Multi game backend",
     version=APP_VERSION,
     lifespan=lifespan,
 )
@@ -435,10 +435,10 @@ app = FastAPI(
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     """Handle Pydantic validation errors with user-friendly messages."""
-    logger = logging.getLogger(__name__)
+    ve_logger = logging.getLogger(__name__)
 
     # Log the validation error for debugging
-    logger.warning(f"Validation error on {request.url.path}: {exc.errors()}")
+    ve_logger.warning(f"Validation error on {request.url.path}: {exc.errors()}")
 
     # Convert validation errors to user-friendly format
     errors = []
@@ -575,6 +575,8 @@ app.middleware("http")(online_user_tracking_middleware)
 # Import and register routers
 app.include_router(qf.router)
 app.include_router(ir.router)
+app.include_router(auth.router)
+app.include_router(health.router)
 
 
 @app.get("/")

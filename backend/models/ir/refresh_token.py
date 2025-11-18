@@ -18,4 +18,4 @@ class IRRefreshToken(RefreshTokenBase):
     )
 
     # Relationships
-    player = relationship("Player", back_populates="refresh_tokens")
+    player = relationship("IRPlayer", back_populates="refresh_tokens")

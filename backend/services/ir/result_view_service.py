@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from backend.config import get_settings
-from backend.models.ir.result_view import ResultView
+from backend.models.ir.result_view import IRResultView
 from backend.models.ir.backronym_set import BackronymSet
 from backend.models.ir.enums import SetStatus
 from backend.services.ir.scoring_service import IRScoringService, IRScoringError
@@ -61,8 +61,8 @@ class IRResultViewService:
                 raise IRResultViewError("set_not_finalized")
 
             # Check if result already claimed
-            result_view_stmt = select(ResultView).where(
-                (ResultView.set_id == set_id) & (ResultView.player_id == player_id)
+            result_view_stmt = select(IRResultView).where(
+                (IRResultView.set_id == set_id) & (IRResultView.player_id == player_id)
             )
             result_view_result = await self.db.execute(result_view_stmt)
             result_view = result_view_result.scalars().first()
@@ -91,7 +91,7 @@ class IRResultViewService:
                     payout_source = None
 
                 # Create result view record
-                result_view = ResultView(
+                result_view = IRResultView(
                     set_id=set_id,
                     player_id=player_id,
                     result_viewed=True,
@@ -157,9 +157,9 @@ class IRResultViewService:
 
             for set_obj in finalized_sets:
                 # Check if player has result view record
-                result_view_stmt = select(ResultView).where(
-                    (ResultView.set_id == str(set_obj.set_id))
-                    & (ResultView.player_id == player_id)
+                result_view_stmt = select(IRResultView).where(
+                    (IRResultView.set_id == str(set_obj.set_id))
+                    & (IRResultView.player_id == player_id)
                 )
                 result_view_result = await self.db.execute(result_view_stmt)
                 result_view = result_view_result.scalars().first()

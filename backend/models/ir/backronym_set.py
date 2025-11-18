@@ -52,13 +52,13 @@ class BackronymSet(Base):
 
     # Relationships
     entries = relationship(
-        "IRBackronymEntry", back_populates="set", cascade="all, delete-orphan"
+        "BackronymEntry", back_populates="set", cascade="all, delete-orphan"
     )
     votes = relationship(
-        "IRBackronymVote", back_populates="set", cascade="all, delete-orphan"
+        "BackronymVote", back_populates="set", cascade="all, delete-orphan"
     )
     observer_guard = relationship(
-        "IRBackronymObserverGuard",
+        "BackronymObserverGuard",
         back_populates="set",
         uselist=False,
         cascade="all, delete-orphan",

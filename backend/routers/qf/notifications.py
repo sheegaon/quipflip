@@ -14,6 +14,7 @@ from starlette.websockets import WebSocket
 
 from backend.database import get_db
 from backend.services import AuthService, AuthError
+from backend.services.auth_service import GameType
 from backend.services.qf import NotificationConnectionManager, get_notification_manager
 
 logger = logging.getLogger(__name__)
@@ -78,7 +79,7 @@ async def websocket_endpoint(
         - Notifications fail silently if connection drops
         - No reconnect logic - client handles reconnection if needed
     """
-    auth_service = AuthService(db)
+    auth_service = AuthService(db, game_type=GameType.QF)
 
     try:
         # Authenticate using token

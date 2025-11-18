@@ -17,7 +17,7 @@ class PlayerAbandonedPrompt(Base):
     abandoned_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
 
     # Relationships
-    player = relationship("Player", back_populates="abandoned_prompts")
+    player = relationship("QFPlayer", back_populates="abandoned_prompts")
 
     # Constraints
     __table_args__ = (

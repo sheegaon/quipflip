@@ -24,6 +24,7 @@ from backend.models.qf.phraseset_activity import PhrasesetActivity
 from backend.models.qf.transaction import QFTransaction
 from backend.schemas.online_users import OnlineUser, OnlineUsersResponse
 from backend.services import AuthService
+from backend.services.auth_service import GameType
 from backend.services.qf import PlayerService
 from backend.config import get_settings
 from backend.utils.datetime_helpers import ensure_utc
@@ -54,7 +55,7 @@ async def authenticate_websocket(websocket: WebSocket) -> Optional[QFPlayer]:
     # Validate token
     try:
         async with AsyncSessionLocal() as db:
-            auth_service = AuthService(db)
+            auth_service = AuthService(db, game_type=GameType.QF)
             payload = auth_service.decode_access_token(token)
 
             player_id_str = payload.get("sub")
@@ -64,7 +65,10 @@ async def authenticate_websocket(websocket: WebSocket) -> Optional[QFPlayer]:
 
             player_id = UUID(player_id_str)
 
+            # Use QF player service since this is a QF endpoint
+            from backend.services.qf.player_service import PlayerService
             player_service = PlayerService(db)
+            
             player = await player_service.get_player_by_id(player_id)
 
             if not player:

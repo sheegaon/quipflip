@@ -13,4 +13,4 @@ class QFRefreshToken(RefreshTokenBase):
     # Override player_id to add QF-specific foreign key constraint
     player_id = get_uuid_column(ForeignKey("qf_players.player_id", ondelete="CASCADE"), nullable=False, index=True)
 
-    player = relationship("Player", back_populates="refresh_tokens")
+    player = relationship("QFPlayer", back_populates="refresh_tokens")

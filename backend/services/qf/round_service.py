@@ -45,10 +45,10 @@ class RoundService:
         self.db = db
         self.settings = get_settings()
         if self.settings.use_phrase_validator_api:
-            from backend.services.qf.phrase_validation_client import get_phrase_validation_client
+            from backend.services.phrase_validation_client import get_phrase_validation_client
             self.phrase_validator = get_phrase_validation_client()
         else:
-            from backend.services.qf.phrase_validator import get_phrase_validator
+            from backend.services.phrase_validator import get_phrase_validator
             self.phrase_validator = get_phrase_validator()
         self.activity_service = ActivityService(db)
 
@@ -858,12 +858,12 @@ class RoundService:
         if not prompt_round.submitted_phrase:
             raise InvalidPhraseError("Original phrase not submitted yet; hints unavailable")
 
-        from backend.models.qf.ai_phrase_cache import AIPhraseCache
+        from backend.models.qf.ai_phrase_cache import QFAIPhraseCache
 
         # Check if phrase cache exists (which provides hints)
         result = await self.db.execute(
-            select(AIPhraseCache)
-            .where(AIPhraseCache.prompt_round_id == prompt_round.round_id)
+            select(QFAIPhraseCache)
+            .where(QFAIPhraseCache.prompt_round_id == prompt_round.round_id)
         )
         phrase_cache = result.scalar_one_or_none()
 

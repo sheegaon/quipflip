@@ -6,7 +6,7 @@ from backend.models.qf.phraseset import Phraseset
 from backend.models.qf.vote import Vote
 from backend.models.qf.transaction import QFTransaction
 from backend.models.qf.daily_bonus import QFDailyBonus
-from backend.models.qf.result_view import ResultView
+from backend.models.qf.result_view import QFResultView
 from backend.models.qf.player_abandoned_prompt import PlayerAbandonedPrompt
 from backend.models.qf.prompt_feedback import PromptFeedback
 from backend.models.qf.phraseset_activity import PhrasesetActivity
@@ -25,7 +25,7 @@ __all__ = [
     "Vote",
     "QFTransaction",
     "QFDailyBonus",
-    "ResultView",
+    "QFResultView",
     "PlayerAbandonedPrompt",
     "PromptFeedback",
     "PhrasesetActivity",

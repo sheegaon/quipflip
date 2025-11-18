@@ -43,9 +43,9 @@ class FlaggedPrompt(Base):
     penalty_kept = Column(Integer, nullable=False)
 
     # Relationships
-    reporter = relationship("Player", foreign_keys=[reporter_player_id])
-    prompt_player = relationship("Player", foreign_keys=[prompt_player_id])
-    reviewer = relationship("Player", foreign_keys=[reviewer_player_id])
+    reporter = relationship("QFPlayer", foreign_keys=[reporter_player_id])
+    prompt_player = relationship("QFPlayer", foreign_keys=[prompt_player_id])
+    reviewer = relationship("QFPlayer", foreign_keys=[reviewer_player_id])
     prompt_round = relationship("Round", foreign_keys=[prompt_round_id])
     copy_round = relationship("Round", foreign_keys=[copy_round_id])
 

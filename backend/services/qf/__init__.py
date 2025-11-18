@@ -1,5 +1,5 @@
 """Quipflip (QF) Services module."""
-from backend.services.qf.phrase_validator import get_phrase_validator
+from backend.services.phrase_validator import get_phrase_validator
 from backend.services.qf.queue_service import QueueService
 from backend.services.qf.player_service import PlayerService
 from backend.services.qf.scoring_service import ScoringService

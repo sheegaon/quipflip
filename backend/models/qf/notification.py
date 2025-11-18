@@ -37,8 +37,8 @@ class QFNotification(NotificationBase):
     )
 
     # Relationships
-    player = relationship("Player", foreign_keys=[player_id])
-    actor_player = relationship("Player", foreign_keys=[actor_player_id])
+    player = relationship("QFPlayer", foreign_keys=[player_id])
+    actor_player = relationship("QFPlayer", foreign_keys=[actor_player_id])
     phraseset = relationship("Phraseset")
 
     # Indexes for efficient querying

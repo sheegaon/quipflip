@@ -15,7 +15,7 @@ class IRSurveyResponse(SurveyResponseBase):
         ForeignKey("ir_players.player_id", ondelete="CASCADE"), index=True, nullable=False
     )
 
-    player = relationship("Player", backref="survey_responses")
+    player = relationship("IRPlayer", backref="survey_responses")
 
     __table_args__ = (
         Index("ix_survey_responses_player_survey", "player_id", "survey_id", unique=True),

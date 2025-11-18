@@ -14,7 +14,7 @@ from backend.models.qf.player import QFPlayer
 from backend.models.qf.round import Round
 from backend.models.qf.phraseset import Phraseset
 from backend.models.qf.vote import Vote
-from backend.models.qf.result_view import ResultView
+from backend.models.qf.result_view import QFResultView
 from backend.services import VoteService
 from backend.services import TransactionService
 from backend.services import ScoringService
@@ -500,7 +500,7 @@ class TestPhrasesetResults:
         payouts = await scoring_service.calculate_payouts(phraseset)
         prompter_payout = payouts["original"]["payout"]
 
-        preexisting_view = ResultView(
+        preexisting_view = QFResultView(
             view_id=uuid.uuid4(),
             phraseset_id=phraseset.phraseset_id,
             player_id=prompter.player_id,

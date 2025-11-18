@@ -48,10 +48,10 @@ class BackronymVote(Base):
     )
 
     # Relationships
-    set = relationship("IRBackronymSet", back_populates="votes")
+    set = relationship("BackronymSet", back_populates="votes")
     player = relationship("IRPlayer", back_populates="backronym_votes")
     chosen_entry = relationship(
-        "IRBackronymEntry",
+        "BackronymEntry",
         back_populates="received_votes_rel",
         foreign_keys=[chosen_entry_id],
     )

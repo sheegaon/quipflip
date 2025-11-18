@@ -38,11 +38,11 @@ class Round(Base):
     vote_submitted_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
-    player = relationship("Player", back_populates="rounds", foreign_keys=[player_id])
+    player = relationship("QFPlayer", back_populates="rounds", foreign_keys=[player_id])
     prompt = relationship("Prompt", back_populates="rounds")
     phraseset = relationship("Phraseset", back_populates="vote_rounds", foreign_keys=[phraseset_id])
-    copy1_player = relationship("Player", foreign_keys=[copy1_player_id])
-    copy2_player = relationship("Player", foreign_keys=[copy2_player_id])
+    copy1_player = relationship("QFPlayer", foreign_keys=[copy1_player_id])
+    copy2_player = relationship("QFPlayer", foreign_keys=[copy2_player_id])
 
     # Self-referential for copy rounds
     prompt_round = relationship("Round", remote_side=[round_id], foreign_keys=[prompt_round_id])

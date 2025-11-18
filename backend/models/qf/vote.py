@@ -21,7 +21,7 @@ class Vote(Base):
 
     # Relationships
     phraseset = relationship("Phraseset", back_populates="votes")
-    player = relationship("Player", back_populates="votes")
+    player = relationship("QFPlayer", back_populates="votes")
 
     # Constraints
     __table_args__ = (

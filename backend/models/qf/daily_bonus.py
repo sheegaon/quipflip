@@ -17,7 +17,7 @@ class QFDailyBonus(DailyBonusBase):
     )
 
     # Relationships
-    player = relationship("Player", back_populates="daily_bonuses")
+    player = relationship("QFPlayer", back_populates="daily_bonuses")
 
     # Constraints - one bonus per player per day
     __table_args__ = (

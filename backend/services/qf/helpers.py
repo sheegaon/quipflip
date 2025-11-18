@@ -8,7 +8,7 @@ from sqlalchemy import select, insert as sa_insert
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.models.qf.result_view import ResultView
+from backend.models.qf.result_view import QFResultView
 
 
 async def upsert_result_view(
@@ -17,7 +17,7 @@ async def upsert_result_view(
     phraseset_id: UUID,
     player_id: UUID,
     values: dict,
-) -> Tuple[ResultView, bool]:
+) -> Tuple[QFResultView, bool]:
     """Insert a ResultView row if missing and return the persisted instance.
 
     Args:
@@ -35,14 +35,14 @@ async def upsert_result_view(
 
     if dialect == "postgresql":
         stmt = (
-            pg_insert(ResultView)
+            pg_insert(QFResultView)
             .values(**values)
             .on_conflict_do_nothing(
-                index_elements=[ResultView.player_id, ResultView.phraseset_id]
+                index_elements=[QFResultView.player_id, QFResultView.phraseset_id]
             )
         )
     else:
-        stmt = sa_insert(ResultView).values(**values)
+        stmt = sa_insert(QFResultView).values(**values)
         if dialect == "sqlite":
             stmt = stmt.prefix_with("OR IGNORE")
 
@@ -51,9 +51,9 @@ async def upsert_result_view(
 
     inserted = bool(getattr(result, "rowcount", 0))
 
-    reload_stmt = select(ResultView).where(
-        ResultView.phraseset_id == phraseset_id,
-        ResultView.player_id == player_id,
+    reload_stmt = select(QFResultView).where(
+        QFResultView.phraseset_id == phraseset_id,
+        QFResultView.player_id == player_id,
     )
     reload_result = await db.execute(reload_stmt)
     result_view = reload_result.scalar_one()

@@ -13,21 +13,9 @@ class IRPlayer(PlayerBase):
     )
 
     # Relationships
-    backronym_entries = relationship(
-        "BackronymEntry", back_populates="player", cascade="all, delete-orphan"
-    )
-    backronym_votes = relationship(
-        "BackronymVote", back_populates="player", cascade="all, delete-orphan"
-    )
-    transactions = relationship(
-        "Transaction", back_populates="player", cascade="all, delete-orphan"
-    )
-    result_views = relationship(
-        "ResultView", back_populates="player", cascade="all, delete-orphan"
-    )
-    refresh_tokens = relationship(
-        "RefreshToken", back_populates="player", cascade="all, delete-orphan"
-    )
-    daily_bonuses = relationship(
-        "DailyBonus", back_populates="player", cascade="all, delete-orphan"
-    )
+    backronym_entries = relationship("BackronymEntry", back_populates="player", cascade="all, delete-orphan")
+    backronym_votes = relationship("BackronymVote", back_populates="player", cascade="all, delete-orphan")
+    transactions = relationship("IRTransaction", back_populates="player", cascade="all, delete-orphan")
+    result_views = relationship("IRResultView", back_populates="player", cascade="all, delete-orphan")
+    refresh_tokens = relationship("IRRefreshToken", back_populates="player", cascade="all, delete-orphan")
+    daily_bonuses = relationship("IRDailyBonus", back_populates="player", cascade="all, delete-orphan")

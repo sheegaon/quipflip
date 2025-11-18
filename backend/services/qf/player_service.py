@@ -48,11 +48,11 @@ class PlayerService(PlayerServiceBase):
         """Return the QF player error class."""
         return PlayerError
 
-    def _get_guest_domain(self) -> str:
+    def get_guest_domain(self) -> str:
         """Get the domain for QF guest email addresses."""
         return "quipflip.xyz"
 
-    def _get_guest_password(self) -> str:
+    def get_guest_password(self) -> str:
         """Get the default QF guest password."""
         return "Guest"
 

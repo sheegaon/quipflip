@@ -35,11 +35,11 @@ class PlayerService(PlayerServiceBase):
         """Return the IR player error class."""
         return PlayerError
 
-    def _get_guest_domain(self) -> str:
+    def get_guest_domain(self) -> str:
         """Get the domain for IR guest email addresses."""
         return "initialreaction.xyz"
 
-    def _get_guest_password(self) -> str:
+    def get_guest_password(self) -> str:
         """Get the default IR guest password."""
         return "IRGuest"
 

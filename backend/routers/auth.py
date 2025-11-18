@@ -15,7 +15,8 @@ from backend.schemas.auth import (
     SuggestUsernameResponse,
     UsernameLoginRequest,
 )
-from backend.services import AuthService, AuthError
+from backend.services import AuthError
+from backend.services.auth_service import AuthService, GameType
 from backend.utils.cookies import (
     clear_auth_cookies,
     clear_refresh_cookie,
@@ -43,7 +44,7 @@ async def _complete_login(
     player.last_login_date = datetime.now(UTC)
     await db.commit()
 
-    auth_service = AuthService(db)
+    auth_service = AuthService(db, game_type=GameType.QF)
     access_token, refresh_token, expires_in = await auth_service.issue_tokens(player)
     set_access_token_cookie(response, access_token)
     set_refresh_cookie(response, refresh_token, expires_days=settings.refresh_token_exp_days)
@@ -66,7 +67,7 @@ async def login(
 ) -> AuthTokenResponse:
     """Authenticate a player via email/password and issue JWT tokens."""
 
-    auth_service = AuthService(db)
+    auth_service = AuthService(db, game_type=GameType.QF)
     try:
         player = await auth_service.authenticate_player(request.email, request.password)
     except AuthError as exc:
@@ -83,7 +84,7 @@ async def login_with_username(
 ) -> AuthTokenResponse:
     """Authenticate a player via username/password and issue JWT tokens."""
 
-    auth_service = AuthService(db)
+    auth_service = AuthService(db, game_type=GameType.QF)
     try:
         player = await auth_service.authenticate_player_by_username(request.username, request.password)
     except AuthError as exc:
@@ -120,7 +121,7 @@ async def refresh_tokens(
     if not token:
         raise HTTPException(status_code=401, detail="missing_refresh_token")
 
-    auth_service = AuthService(db)
+    auth_service = AuthService(db, game_type=GameType.QF)
     try:
         player, access_token, new_refresh_token, expires_in = await auth_service.exchange_refresh_token(token)
     except AuthError as exc:
@@ -152,7 +153,7 @@ async def logout(
 
     token = request.refresh_token or refresh_cookie
     if token:
-        auth_service = AuthService(db)
+        auth_service = AuthService(db, game_type=GameType.QF)
         await auth_service.revoke_refresh_token(token)
 
     clear_auth_cookies(response)
@@ -178,7 +179,7 @@ async def get_websocket_token(
     3. Frontend uses token for direct WebSocket connection to Heroku
     4. Short lifetime limits security risk if token is exposed
     """
-    auth_service = AuthService(db)
+    auth_service = AuthService(db, game_type=GameType.QF)
 
     # Generate a short-lived access token (60 seconds) for WebSocket auth
     ws_token, expires_in = auth_service.create_short_lived_token(

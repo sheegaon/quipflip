@@ -35,15 +35,11 @@ class QFPlayer(PlayerBase):
     # Relationships
     active_round = relationship("Round", foreign_keys=[active_round_id], post_update=True)
     rounds = relationship("Round", back_populates="player", foreign_keys="Round.player_id")
-    transactions = relationship("Transaction", back_populates="player")
+    transactions = relationship("QFTransaction", back_populates="player")
     votes = relationship("Vote", back_populates="player")
-    daily_bonuses = relationship("DailyBonus", back_populates="player")
-    result_views = relationship("ResultView", back_populates="player")
+    daily_bonuses = relationship("QFDailyBonus", back_populates="player")
+    result_views = relationship("QFResultView", back_populates="player")
     abandoned_prompts = relationship("PlayerAbandonedPrompt", back_populates="player")
     phraseset_activities = relationship("PhrasesetActivity", back_populates="player")
-    refresh_tokens = relationship(
-        "RefreshToken",
-        back_populates="player",
-        cascade="all, delete-orphan",
-    )
-    quests = relationship("Quest", back_populates="player")
+    refresh_tokens = relationship("QFRefreshToken", back_populates="player", cascade="all, delete-orphan")
+    quests = relationship("QFQuest", back_populates="player")

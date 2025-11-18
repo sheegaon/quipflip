@@ -7,7 +7,7 @@ from backend.database import Base
 from backend.models.base import get_uuid_column
 
 
-class ResultView(Base):
+class QFResultView(Base):
     """Result view tracking model."""
     __tablename__ = "qf_result_views"
 
@@ -22,7 +22,7 @@ class ResultView(Base):
 
     # Relationships
     phraseset = relationship("Phraseset", back_populates="result_views")
-    player = relationship("Player", back_populates="result_views")
+    player = relationship("QFPlayer", back_populates="result_views")
 
     # Constraints - one view per player per phraseset
     __table_args__ = (

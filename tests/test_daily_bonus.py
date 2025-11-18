@@ -157,8 +157,9 @@ async def test_daily_bonus_uses_dailybonus_table_not_last_login(db_session):
     """
     # Create a player with last_login_date = today (which would fail the old logic)
     from backend.services import AuthService
+    from backend.services.auth_service import GameType
 
-    auth_service = AuthService(db_session)
+    auth_service = AuthService(db_session, game_type=GameType.QF)
     email = f"tabletest_{uuid4().hex[:6]}@example.com"
     player = await auth_service.register_player(email, "TestPass123!")
 
@@ -369,9 +370,10 @@ async def test_dashboard_endpoint_includes_bonus_status(test_app, db_session):
 async def test_bonus_available_next_day_after_claiming(test_app, db_session):
     """After claiming bonus, it should be available again the next day."""
     from backend.services import AuthService
+    from backend.services.auth_service import GameType
 
     # Create player
-    auth_service = AuthService(db_session)
+    auth_service = AuthService(db_session, game_type=GameType.QF)
     email = f"nextday_{uuid4().hex[:6]}@example.com"
     player = await auth_service.register_player(email, "TestPass123!")
 

@@ -29,7 +29,7 @@ class PromptFeedback(Base):
     )
 
     # Relationships
-    player = relationship("Player", backref="prompt_feedbacks")
+    player = relationship("QFPlayer", backref="prompt_feedbacks")
     prompt = relationship("Prompt", backref="feedbacks")
     round = relationship("Round", backref="prompt_feedbacks")
 

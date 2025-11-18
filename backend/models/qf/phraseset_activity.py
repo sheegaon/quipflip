@@ -33,7 +33,7 @@ class PhrasesetActivity(Base):
 
     phraseset = relationship("Phraseset", back_populates="activities")
     prompt_round = relationship("Round", foreign_keys=[prompt_round_id])
-    player = relationship("Player", back_populates="phraseset_activities")
+    player = relationship("QFPlayer", back_populates="phraseset_activities")
 
     __table_args__ = (
         Index("ix_phraseset_activity_phraseset_id_created", "phraseset_id", "created_at"),

@@ -7,10 +7,9 @@ from uuid import UUID
 
 from backend.config import get_settings
 from backend.database import get_db
-from backend.services.qf import PlayerService
 from backend.utils.rate_limiter import RateLimiter
-from backend.services import AuthService, AuthError
-from backend.models.qf.player import QFPlayer
+from backend.services.auth_service import AuthService, AuthError, GameType
+from backend.models.player_base import PlayerBase
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +65,8 @@ async def get_current_player(
     request: Request,
     authorization: str | None = Header(default=None, alias="Authorization"),
     db: AsyncSession = Depends(get_db),
-) -> QFPlayer:
+    game_type: GameType = GameType.QF
+) -> PlayerBase:
     """Resolve the current authenticated player via JWT access token.
 
     Checks for access token in the following order:
@@ -89,7 +89,7 @@ async def get_current_player(
     if not token:
         raise HTTPException(status_code=401, detail="missing_credentials")
 
-    auth_service = AuthService(db)
+    auth_service = AuthService(db, game_type=game_type)
     try:
         payload = auth_service.decode_access_token(token)
         player_id_str = payload.get("sub")
@@ -100,7 +100,15 @@ async def get_current_player(
         detail = "token_expired" if isinstance(exc, AuthError) and str(exc) == "token_expired" else "invalid_token"
         raise HTTPException(status_code=401, detail=detail) from exc
 
+    # Instantiate the correct player service based on game type
+    if game_type == GameType.QF:
+        from backend.services.qf.player_service import PlayerService
+    elif game_type == GameType.IR:
+        from backend.services.ir.player_service import PlayerService
+    else:
+        raise ValueError(f"Unsupported game type: {game_type}")
     player_service = PlayerService(db)
+
     player = await player_service.get_player_by_id(player_id)
     if not player:
         raise HTTPException(status_code=401, detail="invalid_token")
@@ -115,8 +123,8 @@ async def get_current_player(
 
 
 async def enforce_vote_rate_limit(
-    player: QFPlayer = Depends(get_current_player),
-) -> QFPlayer:
+    player: PlayerBase = Depends(get_current_player),
+) -> PlayerBase:
     """Enforce tighter limits on vote submissions and return the authenticated player.
 
     This dependency leverages get_current_player to authenticate the user and then
@@ -162,8 +170,8 @@ async def enforce_guest_creation_rate_limit(
 
 
 async def get_admin_player(
-    player: QFPlayer = Depends(get_current_player),
-) -> QFPlayer:
+    player: PlayerBase = Depends(get_current_player),
+) -> PlayerBase:
     """Verify that the current authenticated player is an admin.
 
     This dependency checks if the player's email is in the admin_emails

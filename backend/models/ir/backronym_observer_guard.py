@@ -17,4 +17,4 @@ class BackronymObserverGuard(Base):
     first_participant_created_at = Column(DateTime(timezone=True), nullable=False)
 
     # Relationships
-    set = relationship("IRBackronymSet", back_populates="observer_guard")
+    set = relationship("BackronymSet", back_populates="observer_guard")

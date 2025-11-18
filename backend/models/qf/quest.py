@@ -45,7 +45,7 @@ class QFQuest(QuestBase):
     player_id = get_uuid_column(ForeignKey("qf_players.player_id", ondelete="CASCADE"), nullable=False, index=True)
 
     # Relationships
-    player = relationship("Player", back_populates="quests")
+    player = relationship("QFPlayer", back_populates="quests")
 
     # Indexes and constraints
     __table_args__ = (

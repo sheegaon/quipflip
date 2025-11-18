@@ -23,7 +23,7 @@ class QFAIMetric(AIMetricBase):
     )
 
     # Relationships
-    phrase_cache = relationship("AIPhraseCache", foreign_keys=[cache_id], backref="metrics")
+    phrase_cache = relationship("QFAIPhraseCache", foreign_keys=[cache_id], backref="metrics")
 
     # Indexes for common queries
     __table_args__ = (

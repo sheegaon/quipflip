@@ -8,7 +8,7 @@ from backend.config import get_settings
 from backend.models.ir.backronym_set import BackronymSet
 from backend.models.ir.backronym_entry import BackronymEntry
 from backend.models.ir.backronym_vote import BackronymVote
-from backend.models.ir.result_view import ResultView
+from backend.models.ir.result_view import IRResultView
 from backend.services.transaction_service import TransactionService, InsufficientBalanceError
 
 logger = logging.getLogger(__name__)
@@ -324,9 +324,9 @@ class IRScoringService:
                 creator_id = str(entry.player_id)
 
                 # Check if ResultView already exists for this creator
-                result_view_stmt = select(ResultView).where(
-                    (ResultView.set_id == set_id)
-                    & (ResultView.player_id == creator_id)
+                result_view_stmt = select(IRResultView).where(
+                    (IRResultView.set_id == set_id)
+                    & (IRResultView.player_id == creator_id)
                 )
                 result_view_result = await self.db.execute(result_view_stmt)
                 existing_view = result_view_result.scalars().first()
@@ -338,7 +338,7 @@ class IRScoringService:
                         payout_amount = payouts["creator_payouts"][creator_id]["amount"]
 
                     # Create ResultView record
-                    result_view = ResultView(
+                    result_view = IRResultView(
                         set_id=set_id,
                         player_id=creator_id,
                         result_viewed=False,  # Not viewed yet
