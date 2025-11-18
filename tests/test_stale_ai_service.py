@@ -13,6 +13,7 @@ from backend.models.qf.round import Round
 from backend.models.qf.phraseset import Phraseset
 from backend.models.qf.vote import Vote
 from backend.config import get_settings
+from backend.utils.model_registry import GameType
 
 
 @pytest.fixture(autouse=True)
@@ -48,7 +49,7 @@ class TestStaleAIPlayerCreation:
     @pytest.mark.asyncio
     async def test_create_stale_handler_player(self, db_session, stale_ai_service):
         """Should create stale handler player if it doesn't exist."""
-        player = await stale_ai_service._get_or_create_stale_player("ai_stale_handler_0@quipflip.internal")
+        player = await stale_ai_service._get_or_create_stale_player("ai_stale_handler_0@quipflip.internal", GameType.QF)
 
         assert player is not None
         assert player.email == "ai_stale_handler_0@quipflip.internal"
@@ -59,18 +60,18 @@ class TestStaleAIPlayerCreation:
     async def test_reuse_existing_stale_handler_player(self, db_session, stale_ai_service):
         """Should reuse existing stale handler player if it exists."""
         # Create player first time
-        player1 = await stale_ai_service._get_or_create_stale_player("ai_stale_handler_0@quipflip.internal")
+        player1 = await stale_ai_service._get_or_create_stale_player("ai_stale_handler_0@quipflip.internal", GameType.QF)
         await db_session.commit()
 
         # Get player second time
-        player2 = await stale_ai_service._get_or_create_stale_player("ai_stale_handler_0@quipflip.internal")
+        player2 = await stale_ai_service._get_or_create_stale_player("ai_stale_handler_0@quipflip.internal", GameType.QF)
 
         assert player1.player_id == player2.player_id
 
     @pytest.mark.asyncio
     async def test_create_stale_voter_player(self, db_session, stale_ai_service):
         """Should create stale voter player if it doesn't exist."""
-        player = await stale_ai_service._get_or_create_stale_player("ai_stale_voter_0@quipflip.internal")
+        player = await stale_ai_service._get_or_create_stale_player("ai_stale_voter_0@quipflip.internal", GameType.QF)
 
         assert player is not None
         assert player.email == "ai_stale_voter_0@quipflip.internal"
@@ -80,8 +81,8 @@ class TestStaleAIPlayerCreation:
     @pytest.mark.asyncio
     async def test_separate_handler_and_voter_players(self, db_session, stale_ai_service):
         """Handler and voter should be separate players."""
-        handler = await stale_ai_service._get_or_create_stale_player("ai_stale_handler_0@quipflip.internal")
-        voter = await stale_ai_service._get_or_create_stale_player("ai_stale_voter_0@quipflip.internal")
+        handler = await stale_ai_service._get_or_create_stale_player("ai_stale_handler_0@quipflip.internal", GameType.QF)
+        voter = await stale_ai_service._get_or_create_stale_player("ai_stale_voter_0@quipflip.internal", GameType.QF)
 
         assert handler.player_id != voter.player_id
         assert handler.email != voter.email
@@ -217,7 +218,7 @@ class TestFindStalePrompts:
         )
 
         # Get stale handler
-        handler = await stale_ai_service._get_or_create_stale_player("ai_stale_handler_0@quipflip.internal")
+        handler = await stale_ai_service._get_or_create_stale_player("ai_stale_handler_0@quipflip.internal", GameType.QF)
 
         # Create stale prompt
         old_time = datetime.now(UTC) - timedelta(days=4)
@@ -351,7 +352,7 @@ class TestFindStalePhrasesets:
     async def test_exclude_phrasesets_already_voted_by_stale_ai(self, db_session, stale_ai_service):
         """Should exclude phrasesets that have enough votes."""
         # Get stale voter
-        voter = await stale_ai_service._get_or_create_stale_player("ai_stale_voter_0@quipflip.internal")
+        voter = await stale_ai_service._get_or_create_stale_player("ai_stale_voter_0@quipflip.internal", GameType.QF)
 
         # Create stale phraseset
         old_time = datetime.now(UTC) - timedelta(days=4)
