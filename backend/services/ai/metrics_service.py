@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
 
+from backend.models.ai_metric_base import AIMetricBase
 from backend.models.qf.ai_metric import QFAIMetric
 
 
