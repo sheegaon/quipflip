@@ -20,10 +20,11 @@ import type {
   TutorialProgress,
   UpdateTutorialProgressResponse,
 } from './types';
+import { getStoredUsername, clearStoredUsername } from '../services/sessionDetection';
 
-const baseApiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-// Only add /ir if the base URL doesn't already contain it and isn't using the /api proxy
-const API_URL = baseApiUrl.includes('/ir') || baseApiUrl.includes('/api') ? baseApiUrl : `${baseApiUrl}/ir`;
+// Base URL - configure based on environment
+const baseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
+const API_URL = /\/ir($|\/)/.test(baseUrl) ? baseUrl : `${baseUrl}/ir`;
 
 // Create axios instance
 export const irClient = axios.create({
@@ -62,6 +63,17 @@ irClient.interceptors.response.use(
     }
     const originalRequest = (error.config as RetryableConfig | undefined);
 
+    // Don't log or process canceled requests - they're intentional
+    const isCanceled =
+      error.code === 'ERR_CANCELED' ||
+      error.name === 'CanceledError' ||
+      error.message === 'canceled' ||
+      error.message?.includes('cancel');
+
+    if (isCanceled) {
+      return Promise.reject(error);
+    }
+
     // If we get a 401 and haven't already tried to refresh
     // AND the request is not already an auth endpoint (prevent infinite loops)
     if (
@@ -72,33 +84,37 @@ irClient.interceptors.response.use(
       originalRequest.url !== '/auth/refresh' &&
       originalRequest.url !== '/auth/logout'
     ) {
-      originalRequest._retry = true;
+      // Only attempt refresh if we have evidence of a previous login
+      const hasStoredUsername = getStoredUsername();
 
-      if (isRefreshing) {
-        // Queue the request while refresh is in progress
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        })
-          .then(() => irClient(originalRequest))
-          .catch((err) => Promise.reject(err));
-      }
+      if (hasStoredUsername) {
+        if (isRefreshing) {
+          // Queue the request while refresh is in progress
+          return new Promise((resolve, reject) => {
+            failedQueue.push({ resolve, reject });
+          })
+            .then(() => irClient(originalRequest))
+            .catch((err) => Promise.reject(err));
+        }
 
-      isRefreshing = true;
+        originalRequest._retry = true;
+        isRefreshing = true;
 
-      try {
-        // Try to refresh the token
-        await irClient.post('/auth/refresh');
-        processQueue(null);
+        try {
+          // Try to refresh the token
+          await irClient.post('/auth/refresh');
+          processQueue(null);
 
-        // Retry the original request
-        return irClient(originalRequest);
-      } catch (refreshError) {
-        // Refresh failed, redirect to login
-        processQueue(refreshError);
-        window.location.href = '/';
-        return Promise.reject(refreshError);
-      } finally {
-        isRefreshing = false;
+          // Retry the original request
+          return irClient(originalRequest);
+        } catch (refreshError) {
+          // Refresh failed, clear stale credentials
+          processQueue(refreshError);
+          clearStoredUsername();
+          return Promise.reject(refreshError);
+        } finally {
+          isRefreshing = false;
+        }
       }
     }
 
