@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from backend.config import get_settings
+from backend.utils.model_registry import GameType
 from backend.utils.passwords import hash_password
 from backend.services.username_service import (
     UsernameService,
@@ -52,6 +53,12 @@ class PlayerServiceBase(ABC):
     @abstractmethod
     def error_class(self) -> Type[Exception]:
         """Return the error class for this service."""
+        pass
+
+    @property
+    @abstractmethod
+    def game_type(self) -> GameType:
+        """Return the game type for this service."""
         pass
 
     def apply_admin_status(self, player: "PlayerBase | None") -> "PlayerBase | None":
@@ -300,7 +307,7 @@ class PlayerServiceBase(ABC):
         password_hash = hash_password(guest_password)
 
         # Generate unique username
-        username_service = UsernameService(self.db)
+        username_service = UsernameService(self.db, game_type=self.game_type)
         username_display, username_canonical = await username_service.generate_unique_username()
 
         # Try to create guest account, retry with new email if collision

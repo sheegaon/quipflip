@@ -6,6 +6,8 @@ from uuid import UUID
 import logging
 
 from backend.models.player_base import PlayerBase
+from backend.utils.model_registry import GameType
+from backend.utils.model_registry import get_player_model
 from backend.schemas.player import TutorialStatus
 
 logger = logging.getLogger(__name__)
@@ -14,18 +16,20 @@ logger = logging.getLogger(__name__)
 class TutorialService:
     """Service for managing tutorial progress."""
 
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: AsyncSession, game_type: GameType = GameType.QF):
         self.db = db
+        self.game_type = game_type
+        self.player_model = get_player_model(game_type)
 
     async def _get_player(self, player_id: UUID) -> PlayerBase:
         """Fetch a player by ID or raise ValueError if not found."""
         result = await self.db.execute(
-            select(PlayerBase).where(PlayerBase.player_id == player_id)
+            select(self.player_model).where(self.player_model.player_id == player_id)
         )
         player = result.scalar_one_or_none()
 
         if not player:
-            raise ValueError("PlayerBase not found")
+            raise ValueError("Player not found")
 
         return player
 

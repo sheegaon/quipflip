@@ -2,6 +2,8 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from backend.models.system_config_base import SystemConfigBase
+from backend.utils.model_registry import GameType
+from backend.utils.model_registry import get_system_config_model
 from backend.config import get_settings
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
@@ -295,9 +297,11 @@ class SystemConfigService:
         },
     }
 
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession, game_type: GameType = GameType.QF):
         """Initialize the service with a database session."""
         self.session = session
+        self.game_type = game_type
+        self.config_model = get_system_config_model(game_type)
 
     async def get_config_value(self, key: str) -> Optional[Any]:
         """
@@ -310,7 +314,7 @@ class SystemConfigService:
             Configuration value, or None if not found
         """
         result = await self.session.execute(
-            select(SystemConfigBase).where(SystemConfigBase.key == key)
+            select(self.config_model).where(self.config_model.key == key)
         )
         config_entry = result.scalar_one_or_none()
 
@@ -356,7 +360,7 @@ class SystemConfigService:
 
         # Check if config entry exists
         result = await self.session.execute(
-            select(SystemConfigBase).where(SystemConfigBase.key == key)
+            select(self.config_model).where(self.config_model.key == key)
         )
         config_entry = result.scalar_one_or_none()
 
@@ -368,7 +372,7 @@ class SystemConfigService:
             config_entry.updated_by = updated_by
         else:
             # Create new entry
-            config_entry = SystemConfigBase(
+            config_entry = self.config_model(
                 key=key,
                 value=serialized_value,
                 value_type=value_type,
@@ -404,7 +408,7 @@ class SystemConfigService:
             config_dict[key] = getattr(settings, key, None)
 
         # Override with database values
-        result = await self.session.execute(select(SystemConfigBase))
+        result = await self.session.execute(select(self.config_model))
         db_configs = result.scalars().all()
 
         legacy_sleep_key = "ai_backup_sleep_seconds"

@@ -7,8 +7,10 @@ import logging
 
 from backend.models.player_base import PlayerBase
 from backend.models.transaction_base import TransactionBase
+from backend.utils.model_registry import GameType
 from backend.utils import lock_client
 from backend.utils.exceptions import InsufficientBalanceError
+from backend.utils.model_registry import get_player_model, get_transaction_model
 
 logger = logging.getLogger(__name__)
 
@@ -16,8 +18,11 @@ logger = logging.getLogger(__name__)
 class TransactionService:
     """Service for managing player transactions."""
 
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: AsyncSession, game_type: GameType = GameType.QF):
         self.db = db
+        self.game_type = game_type
+        self.player_model = get_player_model(game_type)
+        self.transaction_model = get_transaction_model(game_type)
 
     async def create_transaction(
         self,
@@ -52,12 +57,12 @@ class TransactionService:
         async def _create_transaction_impl():
             # Get current player with row lock
             result = await self.db.execute(
-                select(PlayerBase).where(PlayerBase.player_id == player_id).with_for_update()
+                select(self.player_model).where(self.player_model.player_id == player_id).with_for_update()
             )
             player = result.scalar_one_or_none()
 
             if not player:
-                raise ValueError(f"PlayerBase not found: {player_id}")
+                raise ValueError(f"Player not found: {player_id}")
 
             # Calculate new balance based on wallet type
             if wallet_type == "vault":
@@ -86,7 +91,7 @@ class TransactionService:
                 player.wallet = new_balance
 
             # Create transaction record
-            transaction = TransactionBase(
+            transaction = self.transaction_model(
                 transaction_id=uuid.uuid4(),
                 player_id=player_id,
                 amount=amount,
@@ -224,9 +229,9 @@ class TransactionService:
     ) -> list[TransactionBase]:
         """Get player transaction history."""
         result = await self.db.execute(
-            select(TransactionBase)
-            .where(TransactionBase.player_id == player_id)
-            .order_by(TransactionBase.created_at.desc())
+            select(self.transaction_model)
+            .where(self.transaction_model.player_id == player_id)
+            .order_by(self.transaction_model.created_at.desc())
             .limit(limit)
             .offset(offset)
         )

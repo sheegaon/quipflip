@@ -15,7 +15,7 @@ from backend.models.qf.phraseset import Phraseset
 from backend.models.qf.round import Round
 from backend.models.qf.vote import Vote
 from backend.services.ai.ai_service import AIService
-from backend.services.auth_service import GameType
+from backend.utils.model_registry import GameType
 from backend.services import TransactionService
 from backend.services import UsernameService
 
@@ -48,9 +48,13 @@ class StaleAIService:
         Returns:
             The AI player instance
         """
+        from backend.utils.model_registry import get_player_model
+
+        player_model = get_player_model(game_type)
+
         # Check if player exists
         result = await self.db.execute(
-            select(PlayerBase).where(PlayerBase.email == email)
+            select(player_model).where(player_model.email == email)
         )
         player = result.scalar_one_or_none()
 
@@ -73,7 +77,7 @@ class StaleAIService:
             raise ValueError(f"Unsupported game type: {game_type}")
         player_service = PlayerService(self.db)
 
-        username_service = UsernameService(self.db)
+        username_service = UsernameService(self.db, game_type=game_type)
 
         try:
             normalized_username, canonical_username = await username_service.generate_unique_username()
@@ -286,7 +290,7 @@ class StaleAIService:
 
             from backend.services.qf.vote_service import VoteService
             vote_service = VoteService(self.db)
-            transaction_service = TransactionService(self.db)
+            transaction_service = TransactionService(self.db, game_type=GameType.QF)
 
             # Process each stale phraseset with a different AI voter
             for phraseset in stale_phrasesets:

@@ -254,7 +254,7 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
     try {
       setLoading(true);
       setError(null);
-      const data: SubmitVoteRequest = { chosen_entry_id: entryId };
+      const data: SubmitVoteRequest = { entry_id: entryId };
       await gameAPI.submitVote(setId, data);
       setState((prev) => ({
         ...prev,

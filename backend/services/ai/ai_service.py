@@ -25,8 +25,8 @@ from backend.models.qf.ai_phrase_cache import QFAIPhraseCache
 from backend.services.ai.metrics_service import AIMetricsService, MetricsTracker
 from backend.services.qf import PlayerService, QueueService
 from backend.services import UsernameService
+from backend.utils.model_registry import GameType
 from .prompt_builder import build_copy_prompt
-from backend.services import PlayerServiceBase
 from backend.utils.passwords import hash_password
 
 
@@ -127,9 +127,13 @@ class AIService:
         logger.error("No AI provider API keys found (OPENAI_API_KEY or GEMINI_API_KEY)")
         raise AIServiceError("No AI provider configured - set OPENAI_API_KEY or GEMINI_API_KEY")
 
-    async def _get_or_create_ai_player(self, email: str | None = None) -> PlayerBase:
+    async def _get_or_create_ai_player(self, game_type: GameType, email: str | None = None) -> PlayerBase:
         """
-        Get or create the AI player account.
+        Get or create an AI player account for the specified game type.
+
+        Args:
+            game_type: The game type (QF or IR) to create the AI player for
+            email: Optional custom email, defaults to game-specific AI email
 
         Returns:
             The AI player instance
@@ -142,83 +146,83 @@ class AIService:
             This method should NOT commit or refresh the session.
         """
         try:
-            username_service = UsernameService(self.db)
+            # Determine target email based on game type
+            if email:
+                target_email = email.strip().lower()
+            elif game_type == GameType.QF:
+                target_email = AI_COPY_PLAYER_EMAIL
+            elif game_type == GameType.IR:
+                target_email = IR_AI_PLAYER_EMAIL
+            else:
+                raise ValueError(f"Unsupported game type: {game_type}")
 
-            target_email = email.strip().lower() if email else AI_COPY_PLAYER_EMAIL
+            # Instantiate the correct player service and model based on game type
+            if game_type == GameType.QF:
+                from backend.models.qf.player import QFPlayer
+                from backend.services.qf.player_service import PlayerService
+                player_model = QFPlayer
+            elif game_type == GameType.IR:
+                from backend.models.ir.player import IRPlayer
+                from backend.services.ir.player_service import PlayerService
+                player_model = IRPlayer
+            else:
+                raise ValueError(f"Unsupported game type: {game_type}")
 
-            # Check if AI player exists
+            # Check if AI player exists using the correct model
             result = await self.db.execute(
-                select(PlayerBase).where(PlayerBase.email == target_email)
+                select(player_model).where(player_model.email == target_email)
             )
             ai_player = result.scalar_one_or_none()
 
             if not ai_player:
-                # Create AI player
+                # Create AI player using the correct service
                 player_service = PlayerService(self.db)
+                
+                # Generate unique username
+                from backend.services.username_service import UsernameService
+                username_service = UsernameService(self.db, game_type=game_type)
 
-                normalized_username, canonical_username = await username_service.generate_unique_username()
+                if game_type == GameType.QF:
+                    base_username = "AI Copy Backup"
+                else:  # IR
+                    base_username = "IR AI Backup"
 
-                ai_player = await player_service.create_player(
-                    username=normalized_username,
-                    email=target_email,
-                    password_hash="not-used-for-ai-player",
-                )
-                logger.info("Created AI backup player account")
-            else:
-                # Validate AI player is in good state
-                if ai_player.wallet < -1000:
-                    logger.warning(
-                        f"AI player has very negative wallet: {ai_player.wallet}. "
-                        "This may indicate an issue with payout logic."
-                    )
-
-                # Check for stuck active rounds (shouldn't happen, but handle gracefully)
-                if ai_player.active_round_id:
-                    logger.warning(
-                        f"AI player has stuck active round: {ai_player.active_round_id}. "
-                        "Clearing it to allow new operations."
-                    )
-                    # Clear the stuck round - AI doesn't use traditional rounds
-                    ai_player.active_round_id = None
-                    await self.db.flush()
-
-            return ai_player
-
-        except Exception as e:
-            logger.error(f"Failed to get/create AI player: {e}")
-            raise AIServiceError(f"AI player initialization failed: {e}")
-
-    async def _get_or_create_ir_ai_player(self, email: str | None = None) -> PlayerBase:
-        """Ensure an IR-specific AI player exists for backup actions."""
-
-        target_email = email.strip().lower() if email else IR_AI_PLAYER_EMAIL
-
-        try:
-            result = await self.db.execute(
-                select(PlayerBase).where(PlayerBase.email == target_email)
-            )
-            ir_ai_player = result.scalar_one_or_none()
-
-            if not ir_ai_player:
-                player_service = PlayerServiceBase(self.db)
-                username = "IR AI Backup"
+                username = base_username
                 suffix = 1
-                base_username = username
                 while await player_service.get_player_by_username(username):
                     suffix += 1
                     username = f"{base_username} {suffix}"
 
-                ir_ai_player = await player_service.create_player(
+                ai_player = await player_service.create_player(
                     username=username,
                     email=target_email,
                     password_hash=hash_password("not-used-for-ai-player"),
                 )
+                logger.info(f"Created {game_type.value} AI backup player account: {username}")
+            else:
+                # Validate AI player is in good state (QF-specific validations)
+                if game_type == GameType.QF:
+                    if ai_player.wallet < -1000:
+                        logger.warning(
+                            f"AI player has very negative wallet: {ai_player.wallet}. "
+                            "This may indicate an issue with payout logic."
+                        )
 
-            return ir_ai_player
+                    # Check for stuck active rounds (shouldn't happen, but handle gracefully)
+                    if hasattr(ai_player, 'active_round_id') and ai_player.active_round_id:
+                        logger.warning(
+                            f"AI player has stuck active round: {ai_player.active_round_id}. "
+                            "Clearing it to allow new operations."
+                        )
+                        # Clear the stuck round - AI doesn't use traditional rounds
+                        ai_player.active_round_id = None
+                        await self.db.flush()
 
-        except Exception as exc:
-            logger.error(f"Failed to provision IR AI player: {exc}")
-            raise AIServiceError("ir_ai_player_init_failed") from exc
+            return ai_player
+
+        except Exception as e:
+            logger.error(f"Failed to get/create {game_type.value} AI player: {e}")
+            raise AIServiceError(f"{game_type.value}_ai_player_init_failed") from e
 
     async def get_common_words(self) -> list[str]:
         """
@@ -620,7 +624,7 @@ class AIService:
 
         try:
             # Get or create AI copy player (within transaction)
-            ai_copy_player = await self._get_or_create_ai_player()
+            ai_copy_player = await self._get_or_create_ai_player(GameType.QF)
 
             # Query for submitted prompt rounds that:
             # 1. Don't have a phraseset yet (still waiting for copies)
@@ -784,7 +788,7 @@ class AIService:
             
             # Get or create AI voter player (within transaction)
             ai_voter_player = await self._get_or_create_ai_player(
-                f"ai_voter_{random.randint(0, 9)}{AI_PLAYER_EMAIL_DOMAIN}")
+                GameType.QF, f"ai_voter_{random.randint(0, 9)}{AI_PLAYER_EMAIL_DOMAIN}")
 
             # Filter out phrasesets with activity after cutoff_time and in which this AI has voted
             waiting_phrasesets = list(phraseset_result.scalars().all())
@@ -988,9 +992,7 @@ class AIService:
 
         try:
             # Get or create IR AI player
-            ai_player = await self._get_or_create_ir_ai_player(
-                email="ai_backronym_001@initialreaction.internal"
-            )
+            ai_player = await self._get_or_create_ai_player(GameType.IR)
 
             set_service = BackronymSetService(self.db)
             player_service = PlayerServiceBase(self.db)

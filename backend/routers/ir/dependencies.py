@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.database import get_db
 from backend.models.ir.player import IRPlayer
 from backend.services import AuthService, AuthError
-from backend.services.auth_service import GameType
+from backend.utils.model_registry import GameType
 from backend.services.ir import PlayerService
 
 

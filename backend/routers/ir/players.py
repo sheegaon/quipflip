@@ -19,7 +19,7 @@ from backend.schemas.player import (
     UpgradeGuestResponse,
 )
 from backend.services import AuthService, AuthError
-from backend.services.auth_service import GameType
+from backend.utils.model_registry import GameType
 from backend.services.ir import PlayerService
 from backend.utils.cookies import (
     clear_auth_cookies,

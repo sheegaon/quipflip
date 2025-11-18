@@ -14,7 +14,7 @@ from starlette.websockets import WebSocket
 
 from backend.database import get_db
 from backend.services import AuthService, AuthError
-from backend.services.auth_service import GameType
+from backend.utils.model_registry import GameType
 from backend.services.qf import NotificationConnectionManager, get_notification_manager
 
 logger = logging.getLogger(__name__)
