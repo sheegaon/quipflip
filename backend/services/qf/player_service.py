@@ -60,7 +60,7 @@ class PlayerService(PlayerServiceBase):
 
     def get_guest_password(self) -> str:
         """Get the default QF guest password."""
-        return "Guest"
+        return "QuipGuest"
 
     def _get_initial_balance(self) -> int:
         """Get the initial balance for new QF players."""
