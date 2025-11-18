@@ -66,20 +66,21 @@ export interface SetDetails {
 }
 
 export interface PlayerStats {
-  total_sets_entered: number;
-  total_votes_cast: number;
-  total_earnings: number;
-  vault_contributions: number;
-  vote_accuracy: number;
-  avg_vote_share: number;
+  player_id: string;
+  username: string;
+  wallet: number;
+  vault: number;
+  entries_submitted: number;
+  votes_cast: number;
+  net_earnings: number;
 }
 
 export interface LeaderboardEntry {
   player_id: string;
   username: string;
-  vault_contributions?: number;
-  vote_accuracy?: number;
   rank: number;
+  vault: number;
+  value: number;
 }
 
 export interface DashboardData {
@@ -124,7 +125,7 @@ export interface ValidateBackronymRequest {
 }
 
 export interface SubmitVoteRequest {
-  chosen_entry_id: string;
+  entry_id: string;
 }
 
 export interface ValidateBackronymResponse {
