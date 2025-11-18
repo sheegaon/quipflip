@@ -28,13 +28,9 @@ from backend.config import get_settings
 # Using concrete game-type-specific models (QF = Quip Flip)
 from backend.models import (
     QFPlayer, Prompt, Round, Phraseset, Vote,
-    QFTransaction, QFDailyBonus, QFResultView, PlayerAbandonedPrompt
-)
-# Also import IR models for multi-game support
-from backend.models import (
+    QFTransaction, QFDailyBonus, QFResultView, PlayerAbandonedPrompt,
     IRPlayer, IRTransaction, IRDailyBonus, IRResultView
 )
-
 # Set database URL from config
 settings = get_settings()
 config.set_main_option("sqlalchemy.url", settings.database_url)
