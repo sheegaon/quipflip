@@ -401,6 +401,10 @@ export const Dashboard: React.FC = () => {
       }
     } catch (err) {
       dashboardLogger.error('❌ Failed to start impostor round:', err);
+      const errorMsg = extractErrorMessage(err) || 'Unable to start impostor round. Please try again.';
+      setRoundStartError(errorMsg);
+    } finally {
+      setStartingRound(null);
       dashboardLogger.debug('Impostor round start process completed');
     }
   };
