@@ -326,7 +326,7 @@ export const Header: React.FC = () => {
           <div className="flex-1 text-center">
             <button
               onClick={goToStatistics}
-              className="text-lg md:text-2xl text-quip-turquoise font-semibold hover:text-quip-teal transition-colors"
+              className="text-md md:text-2xl text-quip-turquoise font-semibold hover:text-quip-teal transition-colors"
               title="View your statistics"
             >
               <div className="flex items-center justify-center gap-0.5 md:gap-3">
