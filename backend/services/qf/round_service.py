@@ -28,7 +28,7 @@ from backend.utils.exceptions import (
     InsufficientBalanceError,
 )
 from backend.services.qf.round_service_helpers import (
-    generate_ai_copies_background,
+    generate_ai_hints_background,
     PromptQueryBuilder,
     RoundValidationHelper,
     CostCalculationHelper,
@@ -196,7 +196,7 @@ class RoundService:
 
         # Immediately kick off AI copy generation without blocking the response
         try:
-            asyncio.create_task(generate_ai_copies_background(round_object.round_id))
+            asyncio.create_task(generate_ai_hints_background(round_object.round_id))
         except Exception as exc:
             logger.warning(f"Failed to start background AI copy generation task for prompt round {round_id}: {exc}",
                            exc_info=True)
@@ -381,28 +381,20 @@ class RoundService:
                     await self.ensure_prompt_queue_populated()
                     stale_count = 0  # Reset counter after rehydration
 
-                candidate_prompt_round_ids = await self._pop_prompt_batch(
-                    max_attempts - attempts
-                )
+                candidate_prompt_round_ids = await self._pop_prompt_batch(max_attempts - attempts)
                 # Filter out prompts we've already tried in this request to prevent cycling.
                 # Filtered prompts will be requeued at the end (success or failure).
                 candidate_prompt_round_ids = [
-                    pid for pid in candidate_prompt_round_ids
-                    if pid not in tried_prompt_ids
-                ]
+                    pid for pid in candidate_prompt_round_ids if pid not in tried_prompt_ids]
 
                 if not candidate_prompt_round_ids:
                     logger.warning(f"No new prompts available (attempt {attempts + 1}, tried "
                                    f"{len(tried_prompt_ids)} unique prompts), rehydrating queue")
                     await self.ensure_prompt_queue_populated()
-                    candidate_prompt_round_ids = await self._pop_prompt_batch(
-                        max_attempts - attempts
-                    )
+                    candidate_prompt_round_ids = await self._pop_prompt_batch(max_attempts - attempts)
                     # Filter again after rehydration
                     candidate_prompt_round_ids = [
-                        pid for pid in candidate_prompt_round_ids
-                        if pid not in tried_prompt_ids
-                    ]
+                        pid for pid in candidate_prompt_round_ids if pid not in tried_prompt_ids]
 
                     if not candidate_prompt_round_ids:
                         logger.error(
@@ -437,7 +429,7 @@ class RoundService:
 
             if prompt_round.phraseset_status in {"flagged_pending", "flagged_removed"}:
                 logger.debug(f"{prompt_round_id=} is flagged (status={prompt_round.phraseset_status}), "
-                            f"skipping for copy queue ({attempts=})")
+                             f"skipping for copy queue ({attempts=})")
                 # Don't requeue flagged prompts and don't mark as tried
                 continue
 
@@ -452,9 +444,7 @@ class RoundService:
                 # This prevents infinite cycling through the same unavailable prompts
                 continue
 
-            locked_prompt_round = await self._lock_prompt_round_for_update(
-                prompt_round_id
-            )
+            locked_prompt_round = await self._lock_prompt_round_for_update(prompt_round_id)
             if not locked_prompt_round:
                 # Couldn't lock this prompt, but don't requeue yet - wait until end
                 continue
@@ -484,32 +474,22 @@ class RoundService:
             "Could not find a valid prompt after multiple attempts"
         )
 
-    async def _pop_prompt_batch(self, limit: int) -> list[UUID]:
+    @staticmethod
+    async def _pop_prompt_batch(limit: int) -> list[UUID]:
         """Pop the next batch of prompt IDs from the queue."""
 
         return QueueService.get_next_prompt_round_batch(limit)
 
-    async def _prefetch_prompt_rounds(
-        self,
-        prompt_ids: list[UUID],
-        prefetched_rounds: dict[UUID, Round],
-    ) -> None:
+    async def _prefetch_prompt_rounds(self, prompt_ids: list[UUID], prefetched_rounds: dict[UUID, Round]) -> None:
         """Load prompt rounds for the provided IDs, updating the cache."""
         await QueueManagementHelper.prefetch_prompt_rounds(self.db, prompt_ids, prefetched_rounds)
 
-    async def _should_skip_prompt_round(
-        self,
-        player: QFPlayer,
-        prompt_round: Round,
-    ) -> tuple[bool, bool]:
+    async def _should_skip_prompt_round(self, player: QFPlayer, prompt_round: Round) -> tuple[bool, bool]:
         """Determine if the candidate prompt should be skipped and requeued."""
         return await RoundValidationHelper.check_prompt_round_eligibility(
-            self.db, player, prompt_round, self.settings.abandoned_prompt_cooldown_hours
-        )
+            self.db, player, prompt_round, self.settings.abandoned_prompt_cooldown_hours)
 
-    async def _lock_prompt_round_for_update(
-        self, prompt_round_id: UUID
-    ) -> Optional[Round]:
+    async def _lock_prompt_round_for_update(self, prompt_round_id: UUID) -> Optional[Round]:
         """Lock the prompt round row to avoid assignment races."""
 
         result = await self.db.execute(
@@ -520,21 +500,15 @@ class RoundService:
         prompt_round = result.scalar_one_or_none()
 
         if not prompt_round:
-            logger.warning(
-                f"Prompt round {prompt_round_id} missing when attempting to lock"
-            )
+            logger.warning(f"Prompt round {prompt_round_id} missing when attempting to lock")
             return None
 
         if prompt_round.status != "submitted":
-            logger.debug(
-                f"Prompt {prompt_round_id} no longer submitted (status={prompt_round.status}), skipping"
-            )
+            logger.debug(f"Prompt {prompt_round_id} no longer submitted (status={prompt_round.status}), skipping")
             return None
 
         if prompt_round.phraseset_status in {"flagged_pending", "flagged_removed"}:
-            logger.debug(
-                f"Prompt {prompt_round_id} flagged during locking, skipping"
-            )
+            logger.debug(f"Prompt {prompt_round_id} flagged during locking, skipping")
             return None
 
         return prompt_round
@@ -542,9 +516,7 @@ class RoundService:
     async def _lock_round_for_update(self, round_id: UUID) -> Optional[Round]:
         """Lock a round record for update to avoid concurrent submissions."""
 
-        result = await self.db.execute(
-            select(Round).where(Round.round_id == round_id).with_for_update()
-        )
+        result = await self.db.execute(select(Round).where(Round.round_id == round_id).with_for_update())
         return result.scalar_one_or_none()
 
     async def submit_copy_phrase(
@@ -707,12 +679,8 @@ class RoundService:
 
         return round_object, second_copy_info
 
-    async def get_or_generate_hints(
-        self,
-        round_id: UUID,
-        player: QFPlayer,
-        transaction_service: TransactionService
-    ) -> list[str]:
+    async def get_or_generate_hints(self, round_id: UUID, player: QFPlayer, transaction_service: TransactionService
+                                    ) -> list[str]:
         """Fetch cached hints for a copy round or generate and persist new ones.
 
         Charges the player hint_cost coins only when generating new hints (not for cached results).
@@ -736,6 +704,7 @@ class RoundService:
 
         if not prompt_round.submitted_phrase:
             raise InvalidPhraseError("Original phrase not submitted yet; hints unavailable")
+        hints = await get_ai_hints(prompt_round)
 
         from backend.models.qf.ai_phrase_cache import QFAIPhraseCache
 
@@ -753,14 +722,12 @@ class RoundService:
 
         # Check player wallet before generating new hints/cache
         if player.wallet < self.settings.hint_cost:
-            raise InsufficientBalanceError(
-                f"Insufficient wallet balance: {player.wallet} < {self.settings.hint_cost}"
-            )
+            raise InsufficientBalanceError(f"Insufficient wallet balance: {player.wallet} < {self.settings.hint_cost}")
 
         # Generate phrase cache (which includes hints) outside lock to avoid holding during AI call
         from backend.services.ai.ai_service import AIService
         ai_service = AIService(self.db)
-        hints = await ai_service.get_hints_from_cache(prompt_round, count=3)
+        hints = await ai_service.get_hints(prompt_round, count=3)
 
         # Charge player after successful hint generation
         await transaction_service.create_transaction(
@@ -773,12 +740,8 @@ class RoundService:
 
         return hints
 
-    async def abandon_round(
-            self,
-            round_id: UUID,
-            player: QFPlayer,
-            transaction_service: TransactionService,
-    ) -> tuple[Round, int, int]:
+    async def abandon_round(self, round_id: UUID, player: QFPlayer, transaction_service: TransactionService
+                            ) -> tuple[Round, int, int]:
         """Abandon an active prompt, copy, or vote round and process refund."""
 
         from backend.utils import lock_client
@@ -849,12 +812,8 @@ class RoundService:
 
         return round_object, refund_amount, penalty_kept
 
-    async def flag_copy_round(
-            self,
-            round_id: UUID,
-            player: QFPlayer,
-            transaction_service: TransactionService,
-    ) -> FlaggedPrompt:
+    async def flag_copy_round(self, round_id: UUID, player: QFPlayer, transaction_service: TransactionService
+                              ) -> FlaggedPrompt:
         """Flag an active copy round as inappropriate and abandon it."""
 
         round_object = await self.db.get(Round, round_id)
@@ -924,8 +883,7 @@ class RoundService:
         if prompt_round.player_id:
             dashboard_cache.invalidate_player_data(prompt_round.player_id)
 
-        logger.debug(
-            f"Copy {round_id=} flagged by player {player.player_id}; {prompt_round.round_id=} marked pending review")
+        logger.debug(f"{round_id=} flagged by {player.player_id}; {prompt_round.round_id=} marked pending review")
 
         return flag
 
@@ -938,37 +896,26 @@ class RoundService:
         """
         logger.debug(f"Attempting to create phraseset for prompt {prompt_round.round_id}")
 
-        copy_rounds = await PhrasesetCreationHelper.get_copy_rounds_for_prompt(
-            self.db, prompt_round.round_id
-        )
+        copy_rounds = await PhrasesetCreationHelper.get_copy_rounds_for_prompt(self.db, prompt_round.round_id)
         
         is_valid, error = PhrasesetCreationHelper.validate_phraseset_data(prompt_round, copy_rounds)
         if not is_valid:
             logger.error(f"Cannot create phraseset for prompt {prompt_round.round_id}: {error}")
             return None
 
-        copy1, copy2 = copy_rounds[0], copy_rounds[1]
-        
         initial_pool, system_contribution, second_copy_contribution = (
-            PhrasesetCreationHelper.calculate_phraseset_pool(copy_rounds, self.settings)
-        )
+            PhrasesetCreationHelper.calculate_phraseset_pool(copy_rounds, self.settings))
         
-        if second_copy_contribution > 0:
-            logger.debug(
-                f"Both copies from same player {copy1.player_id}, "
-                f"adding {second_copy_contribution} FC to pool (new total: {initial_pool})"
-            )
-
         phraseset = Phraseset(
             phraseset_id=uuid.uuid4(),
             prompt_round_id=prompt_round.round_id,
-            copy_round_1_id=copy1.round_id,
-            copy_round_2_id=copy2.round_id,
+            copy_round_1_id=copy_rounds[0].round_id,
+            copy_round_2_id=copy_rounds[1].round_id,
             # Denormalized fields - explicitly copy from source rounds
             prompt_text=prompt_round.prompt_text,
             original_phrase=prompt_round.submitted_phrase.upper(),
-            copy_phrase_1=copy1.copy_phrase.upper(),
-            copy_phrase_2=copy2.copy_phrase.upper(),
+            copy_phrase_1=copy_rounds[0].copy_phrase.upper(),
+            copy_phrase_2=copy_rounds[1].copy_phrase.upper(),
             status="open",
             vote_count=0,
             total_pool=initial_pool,
@@ -982,15 +929,10 @@ class RoundService:
         await self.db.flush()
 
         QueueService.add_phraseset_to_queue(phraseset.phraseset_id)
-        logger.debug(f"Created phraseset {phraseset.phraseset_id} from prompt {prompt_round.round_id}")
 
         return phraseset
 
-    async def handle_timeout(
-            self,
-            round_id: UUID,
-            transaction_service: TransactionService,
-    ):
+    async def handle_timeout(self, round_id: UUID, transaction_service: TransactionService):
         """
         Handle timeout for abandoned round.
 
@@ -1001,8 +943,7 @@ class RoundService:
         if not round_object:
             return
 
-        expires_at = round_object.expires_at
-        expires_at_aware = ensure_utc(expires_at)
+        expires_at_aware = ensure_utc(round_object.expires_at)
         grace_cutoff = (
             expires_at_aware + timedelta(seconds=self.settings.grace_period_seconds) if expires_at_aware else None
         )
@@ -1021,29 +962,17 @@ class RoundService:
 
         # Handle timeout based on round type using helper methods
         if round_object.round_type == "prompt":
-            refund_amount = await RoundTimeoutHelper.handle_prompt_timeout(
-                round_object, self.settings, transaction_service
-            )
-            logger.debug(f"Prompt round {round_id} expired, refunded ${refund_amount}")
+            await RoundTimeoutHelper.handle_prompt_timeout(round_object, self.settings, transaction_service)
 
         elif round_object.round_type == "copy":
-            refund_amount = await RoundTimeoutHelper.handle_copy_timeout(
-                self.db, round_object, self.settings, transaction_service, QueueService
-            )
-            logger.debug(
-                f"Copy round {round_id} abandoned, refunded ${refund_amount}, "
-                f"returned prompt {round_object.prompt_round_id} to queue"
-            )
+            await RoundTimeoutHelper.handle_copy_timeout(
+                self.db, round_object, self.settings, transaction_service, QueueService)
 
         elif round_object.round_type == "vote":
-            refund_amount = await RoundTimeoutHelper.handle_vote_timeout(
-                round_object, self.settings, transaction_service
-            )
-            logger.debug(f"Vote round {round_id} expired, refunded ${refund_amount}")
+            await RoundTimeoutHelper.handle_vote_timeout(round_object, self.settings, transaction_service)
 
         else:
             round_object.status = "expired"
-            logger.debug(f"Round {round_id} of type {round_object.round_type} expired")
 
         # Clear player's active round if still set
         player = await self.db.get(QFPlayer, round_object.player_id)
@@ -1067,19 +996,11 @@ class RoundService:
         """
         cutoff_time = datetime.now(UTC) - timedelta(hours=self.settings.abandoned_prompt_cooldown_hours)
         
-        query = PromptQueryBuilder.build_available_prompts_count_query(player_id, cutoff_time)
-        
         result = await self.db.execute(
-            query,
-            {
-                "player_id_clean": str(player_id).replace('-', '').lower(),
-                "cutoff_time": cutoff_time,
-            },
-        )
+            PromptQueryBuilder.build_available_prompts_count_query(player_id, cutoff_time),
+            {"player_id_clean": str(player_id).replace('-', '').lower(), "cutoff_time": cutoff_time})
 
-        available_count = result.scalar() or 0
-        logger.debug(f"Available prompts for player {player_id}: {available_count}")
-        return available_count
+        return result.scalar() or 0
 
     async def ensure_prompt_queue_populated(self) -> bool:
         """
@@ -1088,16 +1009,10 @@ class RoundService:
         Returns:
             True if queue has items after running, False otherwise.
         """
-        current_queue_length = QueueService.get_prompt_rounds_waiting()
-        logger.debug(f"[Queue Check] Current queue length: {current_queue_length}")
-
-        if current_queue_length > 0:
+        if QueueService.get_prompt_rounds_waiting() > 0:
             return True
 
-        logger.debug("[Queue Check] Queue is empty, attempting to rehydrate from database")
-        rehydrated = await self._rehydrate_prompt_queue()
-        logger.debug(f"[Queue Check] Rehydrated {rehydrated} prompts from database")
-        return rehydrated > 0
+        return await self._rehydrate_prompt_queue() > 0
 
     async def _rehydrate_prompt_queue(self) -> int:
         """

@@ -414,15 +414,15 @@ class QueueManagementHelper:
         )
 
 
-async def generate_ai_copies_background(prompt_round_id: UUID) -> None:
-    """Generate AI copies without blocking the prompt submission response."""
+async def generate_ai_hints_background(prompt_round_id: UUID) -> None:
+    """Generate AI hints without blocking the prompt submission response."""
 
     from backend.database import AsyncSessionLocal
     from backend.services import AIService, AICopyError
     from backend.utils import lock_client
 
     # Use distributed lock to prevent duplicate AI generation for the same prompt
-    lock_name = f"ai_copy_generation:{prompt_round_id}"
+    lock_name = f"ai_hint_generation:{prompt_round_id}"
     
     try:
         with lock_client.lock(lock_name, timeout=30):

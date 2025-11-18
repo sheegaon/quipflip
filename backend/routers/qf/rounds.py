@@ -383,12 +383,6 @@ async def get_copy_round_hints(
 
     try:
         hints = await round_service.get_or_generate_hints(round_id, player, transaction_service)
-        logger.info(
-            "[API /rounds/%s/hints] Returned %s hints for player %s",
-            round_id,
-            len(hints),
-            player.player_id,
-        )
         return HintResponse(hints=hints)
     except InsufficientBalanceError as exc:
         raise HTTPException(status_code=400, detail=str(exc))

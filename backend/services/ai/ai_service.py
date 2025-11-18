@@ -441,9 +441,9 @@ class AIService:
         )
         return selected_phrase
 
-    async def get_hints_from_cache(self, prompt_round: Round, count: int = 3) -> list[str]:
+    async def get_hints(self, prompt_round: Round, count: int = 3) -> list[str]:
         """
-        Get hint phrases from the phrase cache.
+        Get hint phrases from the phrase cache, or generate and cache if not present.
 
         This method reuses the phrase cache created by generate_and_cache_phrases(),
         eliminating the need for separate hint generation. All players get the same
@@ -479,36 +479,9 @@ class AIService:
         if len(hints) == 0:
             raise AICopyError("Phrase cache is empty, cannot provide hints")
 
-        logger.info(
-            f"AI ({self.provider}) provided {len(hints)} cached hints for prompt_round {prompt_round.round_id}"
-        )
+        logger.info(f"AI ({self.provider}) provided {len(hints)} cached hints for prompt_round {prompt_round.round_id}")
 
         return hints
-
-    async def generate_copy_hints(self, prompt_round: Round, count: int = 3) -> list[str]:
-        """
-        DEPRECATED: Use get_hints_from_cache() instead.
-
-        This method is maintained for backward compatibility but now delegates
-        to get_hints_from_cache() which reuses the phrase cache.
-
-        Generate multiple hint phrases to assist a copy round player.
-
-        Args:
-            prompt_round: The prompt round containing the original phrase and context
-            count: Number of unique hints to generate (default: 3)
-
-        Returns:
-            List of validated hint phrases ready for display to the player
-
-        Raises:
-            AICopyError: If hints cannot be generated or validated
-        """
-        logger.warning(
-            "generate_copy_hints() is deprecated, use get_hints_from_cache() instead"
-        )
-        # Delegate to new method
-        return await self.get_hints_from_cache(prompt_round, count)
 
     async def generate_vote_choice(self, phraseset: Phraseset) -> str:
         """
