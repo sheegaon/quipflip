@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
 
-from backend.models.ai_metric_base import AIMetricBase
+from backend.models.qf.ai_metric import QFAIMetric
 
 
 # Cost estimates per 1M tokens (approximate)
@@ -95,7 +95,7 @@ class AIMetricsService:
             validation_passed: Optional[bool] = None,
             vote_correct: Optional[bool] = None,
             cache_id: Optional[str] = None,
-    ) -> AIMetricBase:
+    ) -> QFAIMetric:
         """
         Record an AI operation for tracking.
 
@@ -120,7 +120,7 @@ class AIMetricsService:
         if success and prompt_length and response_length:
             estimated_cost = self._estimate_cost(model, prompt_length, response_length)
 
-        metric = AIMetricBase(
+        metric = QFAIMetric(
             metric_id=uuid.uuid4(),
             operation_type=operation_type,
             provider=provider,
@@ -133,6 +133,7 @@ class AIMetricsService:
             response_length=response_length,
             validation_passed=validation_passed,
             vote_correct=vote_correct,
+            cache_id=cache_id,
         )
 
         self.db.add(metric)
