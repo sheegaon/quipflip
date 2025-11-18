@@ -46,7 +46,8 @@ async def player_with_balance(db_session):
         username_canonical=f"test_player_{identifier}",
         email=f"test_{identifier}@test.com",
         password_hash="test_hash",
-        balance=10000,  # Plenty of balance
+        wallet=10000,  # Plenty of balance
+        vault=0,
     )
     db_session.add(player)
     await db_session.commit()
@@ -77,7 +78,7 @@ class TestPromptRoundCreation:
         round_service = RoundService(db_session)
         transaction_service = TransactionService(db_session)
 
-        initial_balance = player_with_balance.balance
+        initial_balance = player_with_balance.wallet
 
         # Start prompt round
         round_obj = await round_service.start_prompt_round(
@@ -95,7 +96,7 @@ class TestPromptRoundCreation:
 
         # Verify balance was deducted
         await db_session.refresh(player_with_balance)
-        assert player_with_balance.balance == initial_balance - settings.prompt_cost
+        assert player_with_balance.wallet == initial_balance - settings.prompt_cost
 
     @pytest.mark.asyncio
     async def test_start_prompt_round_sets_active_round(self, db_session, player_with_balance, test_prompt):
@@ -434,7 +435,7 @@ class TestCopyRoundCreation:
         db_session.add(prompt_round)
         await db_session.commit()
 
-        initial_balance = player_with_balance.balance
+        initial_balance = player_with_balance.wallet
 
         # Start copy round
         drain_prompt_queue()
@@ -454,7 +455,7 @@ class TestCopyRoundCreation:
 
         # Verify balance was deducted (normal cost)
         await db_session.refresh(player_with_balance)
-        assert player_with_balance.balance == initial_balance - settings.copy_cost_normal
+        assert player_with_balance.wallet == initial_balance - settings.copy_cost_normal
 
 
 class TestAbandonRound:
@@ -472,7 +473,7 @@ class TestAbandonRound:
             transaction_service
         )
         await db_session.refresh(player_with_balance)
-        balance_after_charge = player_with_balance.balance
+        balance_after_charge = player_with_balance.wallet
 
         abandoned_round, refund_amount, penalty_kept = await round_service.abandon_round(
             prompt_round.round_id,
@@ -487,7 +488,7 @@ class TestAbandonRound:
 
         await db_session.refresh(player_with_balance)
         assert player_with_balance.active_round_id is None
-        assert player_with_balance.balance == balance_after_charge + refund_amount
+        assert player_with_balance.wallet == balance_after_charge + refund_amount
 
     @pytest.mark.asyncio
     async def test_abandon_copy_round_returns_prompt(self, db_session, player_with_balance, test_prompt):
@@ -502,7 +503,8 @@ class TestAbandonRound:
             username_canonical=f"prompter_{uuid.uuid4().hex[:8]}",
             email=f"prompter_{uuid.uuid4().hex[:8]}@test.com",
             password_hash="hash",
-            balance=1000,
+            wallet=1000,
+            vault=0,
         )
         db_session.add(prompter)
         await db_session.commit()
@@ -529,7 +531,7 @@ class TestAbandonRound:
             transaction_service,
         )
         await db_session.refresh(player_with_balance)
-        balance_after_charge = player_with_balance.balance
+        balance_after_charge = player_with_balance.wallet
 
         assert copy_round.prompt_round_id == prompt_round.round_id
 
@@ -546,7 +548,7 @@ class TestAbandonRound:
 
         await db_session.refresh(player_with_balance)
         assert player_with_balance.active_round_id is None
-        assert player_with_balance.balance == balance_after_charge + refund_amount
+        assert player_with_balance.wallet == balance_after_charge + refund_amount
 
         # Prompt should be re-queued for other players
         assert QueueService.remove_prompt_round_from_queue(prompt_round.round_id) is True
@@ -574,7 +576,8 @@ class TestAbandonRound:
             username_canonical=f"prompter_{uuid.uuid4().hex[:8]}",
             email=f"prompter_{uuid.uuid4().hex[:8]}@test.com",
             password_hash="hash",
-            balance=1000,
+            wallet=1000,
+            vault=0,
         )
         copier_one = QFPlayer(
             player_id=uuid.uuid4(),
@@ -582,7 +585,8 @@ class TestAbandonRound:
             username_canonical=f"copier1_{uuid.uuid4().hex[:8]}",
             email=f"copier1_{uuid.uuid4().hex[:8]}@test.com",
             password_hash="hash",
-            balance=1000,
+            wallet=1000,
+            vault=0,
         )
         copier_two = QFPlayer(
             player_id=uuid.uuid4(),
@@ -590,7 +594,8 @@ class TestAbandonRound:
             username_canonical=f"copier2_{uuid.uuid4().hex[:8]}",
             email=f"copier2_{uuid.uuid4().hex[:8]}@test.com",
             password_hash="hash",
-            balance=1000,
+            wallet=1000,
+            vault=0,
         )
 
         db_session.add_all([prompter, copier_one, copier_two])
@@ -651,7 +656,7 @@ class TestAbandonRound:
 
         vote_round, _ = await vote_service.start_vote_round(player_with_balance, transaction_service)
         await db_session.refresh(player_with_balance)
-        balance_after_charge = player_with_balance.balance
+        balance_after_charge = player_with_balance.wallet
 
         abandoned_round, refund_amount, penalty_kept = await round_service.abandon_round(
             vote_round.round_id,
@@ -666,7 +671,7 @@ class TestAbandonRound:
 
         await db_session.refresh(player_with_balance)
         assert player_with_balance.active_round_id is None
-        assert player_with_balance.balance == balance_after_charge + refund_amount
+        assert player_with_balance.wallet == balance_after_charge + refund_amount
 
 
 class TestPhrasesetCreation:
@@ -685,7 +690,8 @@ class TestPhrasesetCreation:
             username_canonical=f"prompter_{test_id}",
             email=f"prompter_{test_id}@test.com",
             password_hash="hash",
-            balance=1000,
+            wallet=1000,
+            vault=0,
         )
         copier1 = QFPlayer(
             player_id=uuid.uuid4(),
@@ -693,7 +699,8 @@ class TestPhrasesetCreation:
             username_canonical=f"copier1_{test_id}",
             email=f"copier1_{test_id}@test.com",
             password_hash="hash",
-            balance=1000,
+            wallet=1000,
+            vault=0,
         )
         copier2 = QFPlayer(
             player_id=uuid.uuid4(),
@@ -701,7 +708,8 @@ class TestPhrasesetCreation:
             username_canonical=f"copier2_{test_id}",
             email=f"copier2_{test_id}@test.com",
             password_hash="hash",
-            balance=1000,
+            wallet=1000,
+            vault=0,
         )
         db_session.add_all([prompter, copier1, copier2])
         await db_session.commit()
@@ -778,7 +786,8 @@ class TestPhrasesetCreation:
             username_canonical=f"prompter_{test_id}",
             email=f"prompter_{test_id}@test.com",
             password_hash="hash",
-            balance=1000,
+            wallet=1000,
+            vault=0,
         )
         db_session.add(prompter)
         await db_session.commit()
@@ -850,7 +859,8 @@ class TestQueueIntegration:
             username_canonical=f"prompter_{test_id}",
             email=f"prompter_{test_id}@test.com",
             password_hash="hash",
-            balance=1000,
+            wallet=1000,
+            vault=0,
         )
         db_session.add(prompter)
         await db_session.commit()
@@ -888,7 +898,8 @@ class TestCopyHints:
             username_canonical=f"copy_player_{identifier}",
             email=f"copy_{identifier}@test.com",
             password_hash="hash",
-            balance=500,
+            wallet=500,
+            vault=0,
         )
         db_session.add(player)
         await db_session.commit()
@@ -934,7 +945,7 @@ class TestCopyHints:
         hints_payload = ["HINT ONE", "HINT TWO", "HINT THREE"]
 
         # Mock the generate_and_cache_phrases method to create and persist cache
-        from backend.models.ai_phrase_cache import AIPhraseCache
+        from backend.models import AIPhraseCache
 
         async def mock_generate_and_cache(self, prompt_round):
             """Mock that actually creates the cache in DB."""
