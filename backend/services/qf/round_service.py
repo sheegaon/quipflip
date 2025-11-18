@@ -704,7 +704,6 @@ class RoundService:
 
         if not prompt_round.submitted_phrase:
             raise InvalidPhraseError("Original phrase not submitted yet; hints unavailable")
-        hints = await get_ai_hints(prompt_round)
 
         from backend.models.qf.ai_phrase_cache import QFAIPhraseCache
 
