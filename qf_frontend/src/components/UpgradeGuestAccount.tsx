@@ -92,7 +92,7 @@ export const UpgradeGuestAccount: React.FC<UpgradeGuestAccountProps> = ({ classN
     <div className={`bg-gradient-to-br from-orange-50 to-cyan-50 border-2 border-quip-orange rounded-tile mb-4 ${className}`}>
       <button
         onClick={toggleExpanded}
-        className="w-full px-4 py-3 text-left focus:outline-none focus:ring-2 focus:ring-quip-orange focus:ring-inset rounded-tile"
+        className="w-full px-4 py-3 text-left focus:outline-none rounded-tile"
         aria-expanded={isExpanded}
         aria-controls="upgrade-content"
       >
@@ -122,7 +122,7 @@ export const UpgradeGuestAccount: React.FC<UpgradeGuestAccountProps> = ({ classN
       <div
         id="upgrade-content"
         className={`transition-all duration-300 ease-in-out overflow-hidden ${
-          isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+          isExpanded ? 'max-h-screen opacity-100' : 'max-h-0 opacity-0'
         }`}
       >
         <div className="px-4 pb-4">
@@ -137,46 +137,48 @@ export const UpgradeGuestAccount: React.FC<UpgradeGuestAccountProps> = ({ classN
           </ul>
           {upgradeError && <p className="text-red-600 mb-3">{upgradeError}</p>}
           {upgradeSuccess && <p className="text-green-600 mb-3">{upgradeSuccess}</p>}
-          <form onSubmit={handleUpgradeSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="flex flex-col">
-              <label className="text-sm font-semibold text-quip-teal mb-2">Email Address</label>
-              <input
-                type="email"
-                value={upgradeForm.email}
-                onChange={(e) => setUpgradeForm((prev) => ({ ...prev, email: e.target.value }))}
-                className="border-2 border-quip-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-quip-orange bg-white"
-                placeholder="your@email.com"
-                disabled={upgradeLoading}
-                required
-              />
+          <form onSubmit={handleUpgradeSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="flex flex-col">
+                <label className="text-sm font-semibold text-quip-teal mb-2">Email Address</label>
+                <input
+                  type="email"
+                  value={upgradeForm.email}
+                  onChange={(e) => setUpgradeForm((prev) => ({ ...prev, email: e.target.value }))}
+                  className="border-2 border-quip-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-quip-orange bg-white"
+                  placeholder="your@email.com"
+                  disabled={upgradeLoading}
+                  required
+                />
+              </div>
+              <div className="flex flex-col">
+                <label className="text-sm font-semibold text-quip-teal mb-2">Password</label>
+                <input
+                  type="password"
+                  value={upgradeForm.password}
+                  onChange={(e) => setUpgradeForm((prev) => ({ ...prev, password: e.target.value }))}
+                  className="border-2 border-quip-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-quip-orange bg-white"
+                  placeholder="Min 8 characters"
+                  disabled={upgradeLoading}
+                  minLength={8}
+                  required
+                />
+              </div>
+              <div className="flex flex-col">
+                <label className="text-sm font-semibold text-quip-teal mb-2">Confirm Password</label>
+                <input
+                  type="password"
+                  value={upgradeForm.confirmPassword}
+                  onChange={(e) => setUpgradeForm((prev) => ({ ...prev, confirmPassword: e.target.value }))}
+                  className="border-2 border-quip-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-quip-orange bg-white"
+                  placeholder="Re-enter password"
+                  disabled={upgradeLoading}
+                  minLength={8}
+                  required
+                />
+              </div>
             </div>
-            <div className="flex flex-col">
-              <label className="text-sm font-semibold text-quip-teal mb-2">Password</label>
-              <input
-                type="password"
-                value={upgradeForm.password}
-                onChange={(e) => setUpgradeForm((prev) => ({ ...prev, password: e.target.value }))}
-                className="border-2 border-quip-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-quip-orange bg-white"
-                placeholder="Min 8 characters"
-                disabled={upgradeLoading}
-                minLength={8}
-                required
-              />
-            </div>
-            <div className="flex flex-col">
-              <label className="text-sm font-semibold text-quip-teal mb-2">Confirm Password</label>
-              <input
-                type="password"
-                value={upgradeForm.confirmPassword}
-                onChange={(e) => setUpgradeForm((prev) => ({ ...prev, confirmPassword: e.target.value }))}
-                className="border-2 border-quip-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-quip-orange bg-white"
-                placeholder="Re-enter password"
-                disabled={upgradeLoading}
-                minLength={8}
-                required
-              />
-            </div>
-            <div className="md:col-span-3 flex justify-end">
+            <div className="flex justify-end">
               <button
                 type="submit"
                 disabled={upgradeLoading}

@@ -539,7 +539,7 @@ export const Dashboard: React.FC = () => {
         )}
 
         {/* Upgrade Guest Account */}
-        {player.is_guest && <UpgradeGuestAccount className="mb-6" />}
+        {player.is_guest && <UpgradeGuestAccount className="mb-0.5 md:mb-2" />}
 
         {/* Round Selection */}
         <div className="tutorial-dashboard tile-card md:p-6 p-3 shuffle-enter">
