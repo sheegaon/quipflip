@@ -61,6 +61,17 @@ export async function detectUserSession(
   // Now ensure visitor ID exists (creates if not present)
   const visitorId = getOrCreateVisitorId();
 
+  // Skip auth check if no stored session - user is not authenticated
+  const storedUsername = apiClient.getStoredUsername();
+  if (!storedUsername && !isReturningVisitor) {
+    // New visitor with no stored session - skip API call to avoid 401 errors
+    return {
+      state: SessionState.NEW,
+      isAuthenticated: false,
+      visitorId,
+    };
+  }
+
   try {
     // Step 1: Try to get player balance (validates auth via HTTP-only cookies)
     const balanceResponse = await apiClient.getBalance(signal);
