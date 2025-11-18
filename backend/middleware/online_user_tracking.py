@@ -16,7 +16,7 @@ from jwt import InvalidTokenError, ExpiredSignatureError, DecodeError
 
 from backend.database import AsyncSessionLocal
 from backend.services import AuthService
-from backend.services.auth_service import GameType
+from backend.utils.model_registry import GameType
 from backend.config import get_settings
 from backend.utils.model_registry import get_user_activity_model
 

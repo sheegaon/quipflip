@@ -15,7 +15,7 @@ from backend.models.qf.phraseset import Phraseset
 from backend.models.qf.round import Round
 from backend.models.qf.vote import Vote
 from backend.services.ai.ai_service import AIService
-from backend.services.auth_service import GameType
+from backend.utils.model_registry import GameType
 from backend.services import TransactionService
 from backend.services import UsernameService
 

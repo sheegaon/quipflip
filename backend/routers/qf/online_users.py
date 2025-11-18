@@ -24,7 +24,7 @@ from backend.models.qf.phraseset_activity import PhrasesetActivity
 from backend.models.qf.transaction import QFTransaction
 from backend.schemas.online_users import OnlineUser, OnlineUsersResponse
 from backend.services import AuthService
-from backend.services.auth_service import GameType
+from backend.utils.model_registry import GameType
 from backend.services.qf import PlayerService
 from backend.config import get_settings
 from backend.utils.datetime_helpers import ensure_utc

@@ -7,7 +7,7 @@ from backend.config import get_settings
 from backend.models.ir.daily_bonus import IRDailyBonus
 from backend.models.ir.player import IRPlayer
 from backend.services.transaction_service import TransactionService
-from backend.services.auth_service import GameType
+from backend.utils.model_registry import GameType
 from backend.utils.exceptions import InsufficientBalanceError
 
 

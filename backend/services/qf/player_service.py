@@ -51,7 +51,7 @@ class PlayerService(PlayerServiceBase):
     @property
     def game_type(self):
         """Return the game type for this service."""
-        from backend.services.auth_service import GameType
+        from backend.utils.model_registry import GameType
         return GameType.QF
 
     def get_guest_domain(self) -> str:

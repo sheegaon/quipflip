@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from backend.config import get_settings
-from backend.services.auth_service import GameType
+from backend.utils.model_registry import GameType
 from backend.utils.passwords import hash_password
 from backend.services.username_service import (
     UsernameService,

@@ -6,7 +6,7 @@ from uuid import UUID
 import logging
 
 from backend.models.player_base import PlayerBase
-from backend.services.auth_service import GameType
+from backend.utils.model_registry import GameType
 from backend.utils.model_registry import get_player_model
 from backend.schemas.player import TutorialStatus
 

@@ -25,7 +25,7 @@ from backend.models.qf.ai_phrase_cache import QFAIPhraseCache
 from backend.services.ai.metrics_service import AIMetricsService, MetricsTracker
 from backend.services.qf import PlayerService, QueueService
 from backend.services import UsernameService
-from backend.services.auth_service import GameType
+from backend.utils.model_registry import GameType
 from .prompt_builder import build_copy_prompt
 from backend.utils.passwords import hash_password
 

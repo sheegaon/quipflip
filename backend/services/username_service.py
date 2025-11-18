@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import random
 from itertools import count
-from typing import Tuple
+from typing import Tuple, TYPE_CHECKING
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,8 +12,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.data.username_pool import USERNAME_POOL
 from backend.data.profanity_list import contains_profanity
 from backend.models.player_base import PlayerBase
-from backend.services.auth_service import GameType
-from backend.utils.model_registry import get_player_model
+
+if TYPE_CHECKING:
+    from backend.utils.model_registry import GameType
 
 
 def canonicalize_username(username: str) -> str:
@@ -44,10 +45,13 @@ def is_username_profanity_free(username: str) -> bool:
 class UsernameService:
     """Encapsulates username generation and lookup helpers."""
 
-    def __init__(self, db: AsyncSession, game_type: GameType = GameType.QF):
+    def __init__(self, db: AsyncSession, game_type: "GameType | None" = None):
+        from backend.utils.model_registry import GameType
+        from backend.utils.model_registry import get_player_model
+
         self.db = db
-        self.game_type = game_type
-        self.player_model = get_player_model(game_type)
+        self.game_type = game_type or GameType.QF
+        self.player_model = get_player_model(self.game_type)
 
     async def _existing_canonicals(self) -> set[str]:
         result = await self.db.execute(select(self.player_model.username_canonical))

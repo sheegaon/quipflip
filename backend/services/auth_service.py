@@ -6,11 +6,11 @@ import logging
 import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
-from enum import Enum
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.config import get_settings
+from backend.utils.model_registry import GameType
 from backend.models.player_base import PlayerBase
 from backend.models.refresh_token_base import RefreshTokenBase
 from backend.services.username_service import canonicalize_username
@@ -28,12 +28,6 @@ from backend.utils.passwords import (
 )
 
 logger = logging.getLogger(__name__)
-
-
-class GameType(Enum):
-    """Enum for different game types."""
-    QF = "qf"
-    IR = "ir"
 
 
 class AuthError(RuntimeError):

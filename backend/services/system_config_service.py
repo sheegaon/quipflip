@@ -2,7 +2,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from backend.models.system_config_base import SystemConfigBase
-from backend.services.auth_service import GameType
+from backend.utils.model_registry import GameType
 from backend.utils.model_registry import get_system_config_model
 from backend.config import get_settings
 from datetime import datetime, timezone

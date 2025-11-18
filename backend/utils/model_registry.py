@@ -5,9 +5,15 @@ for a given game type, ensuring abstract base models are never used directly
 in database operations.
 """
 from typing import Type, TypeVar
-from backend.services.auth_service import GameType
+from enum import Enum
 
 T = TypeVar('T')
+
+
+class GameType(Enum):
+    """Enum for different game types."""
+    QF = "qf"
+    IR = "ir"
 
 
 def get_player_model(game_type: GameType) -> Type:

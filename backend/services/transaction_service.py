@@ -7,7 +7,7 @@ import logging
 
 from backend.models.player_base import PlayerBase
 from backend.models.transaction_base import TransactionBase
-from backend.services.auth_service import GameType
+from backend.utils.model_registry import GameType
 from backend.utils import lock_client
 from backend.utils.exceptions import InsufficientBalanceError
 from backend.utils.model_registry import get_player_model, get_transaction_model
