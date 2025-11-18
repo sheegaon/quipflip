@@ -4,6 +4,7 @@ import { useIRGame } from '../contexts/IRGameContext';
 import { gameAPI } from '../api/client';
 import InitCoinDisplay from '../components/InitCoinDisplay';
 import type { ResultsResponse } from '../api/types';
+import { HomeIcon } from '../components/icons/NavigationIcons';
 
 const Results: React.FC = () => {
   const navigate = useNavigate();
@@ -311,9 +312,10 @@ const Results: React.FC = () => {
         <div className="flex gap-4">
           <button
             onClick={() => navigate('/dashboard')}
-            className="flex-1 bg-ir-navy hover:bg-ir-teal text-white font-bold py-4 px-6 rounded-lg transition-colors shadow-md"
+            className="flex-1 bg-ir-navy hover:bg-ir-teal text-white font-bold py-4 px-6 rounded-lg transition-colors shadow-md flex items-center justify-center gap-2"
           >
-            Back to Dashboard
+            <HomeIcon className="h-5 w-5" />
+            <span>Back to Dashboard</span>
           </button>
           <button
             onClick={() => navigate('/create')}

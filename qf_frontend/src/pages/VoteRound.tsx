@@ -11,6 +11,7 @@ import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
 import type { VoteResponse, VoteState, PhrasesetDetails } from '../api/types';
 import { voteRoundLogger } from '../utils/logger';
 import { VoteRoundIcon } from '../components/icons/RoundIcons';
+import { HomeIcon } from '../components/icons/NavigationIcons';
 
 export const VoteRound: React.FC = () => {
   const { state, actions } = useGame();
@@ -313,9 +314,10 @@ export const VoteRound: React.FC = () => {
           <div className="flex justify-center">
             <button
               onClick={handleDismiss}
-              className="bg-quip-turquoise hover:bg-quip-teal text-white font-bold py-3 px-8 rounded-tile transition-all hover:shadow-tile-sm"
+              className="bg-quip-turquoise hover:bg-quip-teal text-white font-bold py-3 px-8 rounded-tile transition-all hover:shadow-tile-sm flex items-center gap-2"
             >
-              Back to Dashboard
+              <HomeIcon className="h-5 w-5" />
+              <span>Back to Dashboard</span>
             </button>
           </div>
         </div>
