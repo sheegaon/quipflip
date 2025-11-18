@@ -61,7 +61,7 @@ export const CopyRoundReview: React.FC<CopyRoundReviewProps> = ({
         {/* Instructions */}
         <div className="bg-quip-orange bg-opacity-10 border-2 border-quip-orange rounded-tile p-4 mb-6">
           <p className="text-sm text-quip-navy">
-            <strong>💡 Tip:</strong> You don't know the prompt! Submit a phrase that could be <em>similar or related</em> to the phrase shown below. Do NOT submit your best guess of the prompt.
+            <strong>💡 Your goal:</strong> You don't know the prompt! Write a phrase that <em>could have been the original</em> and might trick voters. Do NOT submit your best guess of the prompt.
           </p>
         </div>
 
@@ -142,7 +142,7 @@ export const CopyRoundReview: React.FC<CopyRoundReviewProps> = ({
               )}
             </div>
             <p className="text-sm text-quip-teal mt-1">
-              2-5 words (4-100 characters), A-Z and spaces only, must be different from the original
+              2-5 words (4-100 characters), A-Z and spaces only, must be different from the original, no proper nouns
             </p>
           </div>
 

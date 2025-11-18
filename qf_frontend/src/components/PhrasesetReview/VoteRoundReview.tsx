@@ -75,8 +75,11 @@ export const VoteRoundReview: React.FC<VoteRoundReviewProps> = ({
 
         {/* Phrase Choices with Vote Information */}
         <div className="space-y-4 mb-6">
-          <p className="text-center text-quip-navy font-display font-semibold mb-4 text-lg">
-            {!isRevealed ? 'Click to reveal voting results' : 'Voting Results'}
+          <p className="text-center text-quip-navy font-display font-semibold mb-1 text-lg">
+            Which phrase is the original?
+          </p>
+          <p className="text-center text-quip-teal mb-4 text-sm">
+            {!isRevealed ? 'Click any phrase to reveal how players voted.' : 'Voting Results'}
           </p>
           {phrases.map((phrase, idx) => {
             const phraseVotes = getVotesForPhrase(phrase);

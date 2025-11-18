@@ -48,7 +48,7 @@ export const PromptRoundReview: React.FC<PromptRoundReviewProps> = ({
             <TrackingIcon className="w-8 h-8" />
             <h1 className="text-3xl font-display font-bold text-quip-navy">Prompt Round</h1>
           </div>
-          <p className="text-quip-teal">Submit a phrase for the prompt</p>
+          <p className="text-quip-teal">Write a quip for the prompt</p>
         </div>
 
         {/* Timer - frozen */}
@@ -110,7 +110,7 @@ export const PromptRoundReview: React.FC<PromptRoundReviewProps> = ({
               )}
             </div>
             <p className="text-sm text-quip-teal mt-1">
-              2-5 words (4-100 characters), A-Z and spaces only
+              2-5 words (4-100 characters), A-Z and spaces only, must not repeat prompt, no proper nouns
             </p>
           </div>
 
