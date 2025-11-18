@@ -325,12 +325,11 @@ class AIService:
             try:
                 # Generate using configured provider
                 if self.provider == "openai":
-                    from backend.services import generate_copy
+                    test_phrases = await openai_generate_copy(
+                        prompt=ai_prompt, model=self.ai_model, timeout=self.settings.ai_timeout_seconds)
                 else:  # gemini
-                    from backend.services import generate_copy
-
-                test_phrases = await generate_copy(
-                    prompt=ai_prompt, model=self.ai_model, timeout=self.settings.ai_timeout_seconds)
+                    test_phrases = await gemini_generate_copy(
+                        prompt=ai_prompt, model=self.ai_model, timeout=self.settings.ai_timeout_seconds)
                 test_phrases = test_phrases.split(";")
             except Exception as e:
                 # Wrap API exceptions in AICopyError

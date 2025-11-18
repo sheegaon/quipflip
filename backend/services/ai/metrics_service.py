@@ -133,7 +133,6 @@ class AIMetricsService:
             response_length=response_length,
             validation_passed=validation_passed,
             vote_correct=vote_correct,
-            cache_id=cache_id,
         )
 
         self.db.add(metric)
