@@ -40,7 +40,7 @@ export function usePartyWebSocket(
   options: UsePartyWebSocketOptions
 ): UsePartyWebSocketReturn {
   const { state } = useGame();
-  const { sessionId, ...handlers } = options;
+  const { sessionId } = options;
 
   const [connected, setConnected] = useState(false);
   const [connecting, setConnecting] = useState(false);
@@ -52,6 +52,11 @@ export function usePartyWebSocket(
   const maxReconnectAttempts = 5;
   const isRateLimitedRef = useRef(false);
   const rateLimitCooldownRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Store handlers in a ref to prevent reconnection on every render
+  // The ref is updated on every render but doesn't trigger the connect callback
+  const handlersRef = useRef(options);
+  handlersRef.current = options;
 
   const connect = useCallback(async () => {
     if (!state.isAuthenticated || !sessionId) {
@@ -101,35 +106,35 @@ export function usePartyWebSocket(
           // TypeScript now knows the exact type of message.data based on message.type
           switch (message.type) {
             case 'phase_transition':
-              handlers.onPhaseTransition?.(message.data);
+              handlersRef.current.onPhaseTransition?.(message.data);
               break;
 
             case 'player_joined':
-              handlers.onPlayerJoined?.(message.data);
+              handlersRef.current.onPlayerJoined?.(message.data);
               break;
 
             case 'player_left':
-              handlers.onPlayerLeft?.(message.data);
+              handlersRef.current.onPlayerLeft?.(message.data);
               break;
 
             case 'player_ready':
-              handlers.onPlayerReady?.(message.data);
+              handlersRef.current.onPlayerReady?.(message.data);
               break;
 
             case 'player_progress':
-              handlers.onProgressUpdate?.(message.data);
+              handlersRef.current.onProgressUpdate?.(message.data);
               break;
 
             case 'session_started':
-              handlers.onSessionStarted?.(message.data);
+              handlersRef.current.onSessionStarted?.(message.data);
               break;
 
             case 'session_completed':
-              handlers.onSessionCompleted?.(message.data);
+              handlersRef.current.onSessionCompleted?.(message.data);
               break;
 
             case 'session_update':
-              handlers.onSessionUpdate?.(message.data);
+              handlersRef.current.onSessionUpdate?.(message.data);
               break;
 
             default:
@@ -195,7 +200,7 @@ export function usePartyWebSocket(
 
       setConnecting(false);
     }
-  }, [state.isAuthenticated, sessionId, handlers]);
+  }, [state.isAuthenticated, sessionId]);
 
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
