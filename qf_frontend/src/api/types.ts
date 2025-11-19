@@ -1030,6 +1030,9 @@ export type PartyWebSocketMessage =
         username: string;
         participant_count: number;
       };
+      player_id?: string;
+      username?: string;
+      participant_count?: number;
       timestamp: string;
     }
   | {
@@ -1040,6 +1043,9 @@ export type PartyWebSocketMessage =
         username: string;
         participant_count: number;
       };
+      player_id?: string;
+      username?: string;
+      participant_count?: number;
       timestamp: string;
     }
   | {
@@ -1051,6 +1057,10 @@ export type PartyWebSocketMessage =
         ready_count: number;
         total_count: number;
       };
+      player_id?: string;
+      username?: string;
+      ready_count?: number;
+      total_count?: number;
       timestamp: string;
     }
   | {
@@ -1090,6 +1100,18 @@ export type PartyWebSocketMessage =
           total_players: number;
         };
       };
+      player_id?: string;
+      username?: string;
+      action?: string;
+      progress?: {
+        prompts_submitted: number;
+        copies_submitted: number;
+        votes_submitted: number;
+      };
+      session_progress?: {
+        players_done_with_phase: number;
+        total_players: number;
+      };
       timestamp: string;
     }
   | {
@@ -1105,6 +1127,8 @@ export type PartyWebSocketMessage =
       type: 'session_update';
       session_id: string;
       data?: Record<string, unknown>;
+      reason?: string;
+      message?: string;
       timestamp: string;
     }
   | {

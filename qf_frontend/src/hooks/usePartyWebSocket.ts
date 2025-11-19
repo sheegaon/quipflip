@@ -106,8 +106,17 @@ export function usePartyWebSocket(
 
           // WebSocket messages may include their payload in a nested "data" field or at the top level.
           const getPayload = <T extends Record<string, unknown>>(fallback: PartyWebSocketMessage) => {
-            const candidate = (message as { data?: Record<string, unknown> }).data;
-            return (candidate ?? fallback) as T;
+            const parsed = message as Record<string, unknown>;
+            const candidate = parsed.data;
+
+            if (candidate && typeof candidate === 'object') {
+              return candidate as T;
+            }
+
+            // Strip common metadata so flat payloads (e.g., reason/message) pass through without being undefined
+            // while avoiding passing undefined to handlers.
+            const { type, session_id, timestamp, ...payload } = parsed;
+            return (Object.keys(payload).length ? payload : {}) as T;
           };
 
           switch (message.type) {
