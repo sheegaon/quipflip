@@ -22,6 +22,7 @@ export const PartyLobby: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
+  const [notification, setNotification] = useState<string | null>(null);
 
   // Check if current player is host
   const isHost = sessionStatus?.participants.find(p => p.player_id === player?.player_id)?.is_host ?? false;
@@ -81,6 +82,15 @@ export const PartyLobby: React.FC = () => {
       console.log('Party started!', data);
       // Navigate to game page
       navigate(`/party/game/${sessionId}`);
+    },
+    onSessionUpdate: (data) => {
+      console.log('Session update:', data);
+      // Show host change notification
+      if (data.reason === 'inactive_player_removed' && data.message) {
+        setNotification(data.message);
+        setTimeout(() => setNotification(null), 5000); // Clear after 5 seconds
+      }
+      loadSessionStatus();
     },
   });
 
@@ -170,6 +180,13 @@ export const PartyLobby: React.FC = () => {
         </div>
 
         <div className="space-y-6">
+          {/* Notification Display */}
+          {notification && (
+            <div className="bg-quip-turquoise bg-opacity-10 border-2 border-quip-turquoise rounded-tile p-4 text-center">
+              <p className="text-quip-navy font-semibold">{notification}</p>
+            </div>
+          )}
+
           {/* Party Code Display */}
           <div className="tile-card shadow-tile p-6 text-center bg-quip-orange bg-opacity-5 border-2 border-quip-orange">
             <h2 className="text-sm font-semibold text-quip-teal uppercase mb-2">Party Code</h2>

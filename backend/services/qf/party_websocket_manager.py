@@ -3,6 +3,8 @@ import logging
 from typing import Dict, List
 from uuid import UUID
 from datetime import datetime, UTC
+from sqlalchemy import select, and_
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +26,7 @@ class PartyWebSocketManager:
         session_id: UUID,
         player_id: UUID,
         websocket: "WebSocket",
+        db: AsyncSession = None,
     ) -> None:
         """Add player's WebSocket connection to a session.
 
@@ -31,6 +34,7 @@ class PartyWebSocketManager:
             session_id: UUID of the party session
             player_id: UUID of the player
             websocket: WebSocket connection to add
+            db: Optional database session to update connection status
         """
         await websocket.accept()
 
@@ -44,6 +48,28 @@ class PartyWebSocketManager:
         # Store player's connection
         self.session_connections[session_id_str][player_id_str] = websocket
 
+        # Update participant connection status in database
+        if db:
+            from backend.models.qf.party_participant import PartyParticipant
+
+            result = await db.execute(
+                select(PartyParticipant)
+                .where(
+                    and_(
+                        PartyParticipant.session_id == session_id,
+                        PartyParticipant.player_id == player_id
+                    )
+                )
+            )
+            participant = result.scalar_one_or_none()
+
+            if participant:
+                participant.connection_status = 'connected'
+                participant.last_activity_at = datetime.now(UTC)
+                participant.disconnected_at = None
+                await db.commit()
+                logger.info(f"Updated participant {player_id} to connected status")
+
         logger.info(
             f"WebSocket connected for player {player_id} in session {session_id} "
             f"(total connections in session: {len(self.session_connections[session_id_str])})"
@@ -53,12 +79,14 @@ class PartyWebSocketManager:
         self,
         session_id: UUID,
         player_id: UUID,
+        db: AsyncSession = None,
     ) -> None:
         """Remove player's WebSocket connection from a session.
 
         Args:
             session_id: UUID of the party session
             player_id: UUID of the player
+            db: Optional database session to update connection status
         """
         session_id_str = str(session_id)
         player_id_str = str(player_id)
@@ -67,6 +95,27 @@ class PartyWebSocketManager:
             if player_id_str in self.session_connections[session_id_str]:
                 del self.session_connections[session_id_str][player_id_str]
                 logger.info(f"WebSocket disconnected for player {player_id} in session {session_id}")
+
+                # Update participant connection status in database
+                if db:
+                    from backend.models.qf.party_participant import PartyParticipant
+
+                    result = await db.execute(
+                        select(PartyParticipant)
+                        .where(
+                            and_(
+                                PartyParticipant.session_id == session_id,
+                                PartyParticipant.player_id == player_id
+                            )
+                        )
+                    )
+                    participant = result.scalar_one_or_none()
+
+                    if participant:
+                        participant.connection_status = 'disconnected'
+                        participant.disconnected_at = datetime.now(UTC)
+                        await db.commit()
+                        logger.info(f"Updated participant {player_id} to disconnected status")
 
                 # Clean up empty session dict
                 if not self.session_connections[session_id_str]:

@@ -327,7 +327,10 @@ class PartySessionService:
         session_id: UUID,
         player_id: UUID,
     ) -> bool:
-        """Remove a player from the session (lobby only).
+        """Remove a player from the session.
+
+        Players can leave at any time, including during active games.
+        If the host leaves, another participant is automatically promoted.
 
         Args:
             session_id: UUID of the session
@@ -338,16 +341,11 @@ class PartySessionService:
 
         Raises:
             SessionNotFoundError: If session doesn't exist
-            SessionAlreadyStartedError: If session has already started
         """
         # Get session
         session = await self.get_session_by_id(session_id)
         if not session:
             raise SessionNotFoundError(f"Session {session_id} not found")
-
-        # Can only remove from lobby
-        if session.status != 'OPEN':
-            raise SessionAlreadyStartedError("Cannot leave session that has already started")
 
         # Get participant
         participant = await self.get_participant(session_id, player_id)
@@ -427,6 +425,109 @@ class PartySessionService:
             await self.db.delete(session)
             await self.db.commit()
             logger.info(f"Deleted empty party session {session_id}")
+
+    async def remove_inactive_participants(self, session_id: UUID) -> List[Dict]:
+        """Remove participants who have been inactive for more than 5 minutes.
+
+        A participant is considered inactive if:
+        - connection_status is 'disconnected' AND
+        - last_activity_at is more than 5 minutes ago
+
+        Args:
+            session_id: UUID of the session to check
+
+        Returns:
+            List[Dict]: List of removed participants with their info
+        """
+        from backend.websocket.party_manager import party_manager
+
+        # Calculate cutoff time (5 minutes ago)
+        cutoff_time = datetime.now(UTC) - timedelta(minutes=5)
+
+        # Find inactive participants
+        result = await self.db.execute(
+            select(PartyParticipant)
+            .join(QFPlayer, PartyParticipant.player_id == QFPlayer.player_id)
+            .where(
+                and_(
+                    PartyParticipant.session_id == session_id,
+                    PartyParticipant.connection_status == 'disconnected',
+                    PartyParticipant.last_activity_at < cutoff_time
+                )
+            )
+        )
+        inactive_participants = result.scalars().all()
+
+        removed_participants = []
+        for participant in inactive_participants:
+            # Get player info before deleting
+            player_result = await self.db.execute(
+                select(QFPlayer)
+                .where(QFPlayer.player_id == participant.player_id)
+            )
+            player = player_result.scalar_one_or_none()
+
+            if player:
+                participant_info = {
+                    'player_id': str(participant.player_id),
+                    'username': player.username,
+                    'was_host': participant.is_host,
+                }
+
+                # Remove the participant
+                was_host = participant.is_host
+                await self.db.delete(participant)
+                await self.db.commit()
+
+                logger.info(f"Removed inactive player {participant.player_id} from session {session_id}")
+                removed_participants.append(participant_info)
+
+                # Broadcast player left event
+                await party_manager.notify_player_left(
+                    session_id=session_id,
+                    player_id=participant.player_id,
+                    username=player.username,
+                    participant_count=await self._get_participant_count(session_id)
+                )
+
+                # Check if session is now empty
+                remaining_count = await self._get_participant_count(session_id)
+                if remaining_count == 0:
+                    await self._delete_empty_session(session_id)
+                    break
+                elif was_host:
+                    # Host was removed - reassign host
+                    await self._reassign_host(session_id)
+                    # Broadcast host change event
+                    new_host_result = await self.db.execute(
+                        select(PartyParticipant)
+                        .join(QFPlayer, PartyParticipant.player_id == QFPlayer.player_id)
+                        .where(
+                            and_(
+                                PartyParticipant.session_id == session_id,
+                                PartyParticipant.is_host == True
+                            )
+                        )
+                    )
+                    new_host = new_host_result.scalar_one_or_none()
+                    if new_host:
+                        new_host_player = await self.db.execute(
+                            select(QFPlayer)
+                            .where(QFPlayer.player_id == new_host.player_id)
+                        )
+                        new_host_player = new_host_player.scalar_one_or_none()
+                        if new_host_player:
+                            await party_manager.notify_session_update(
+                                session_id=session_id,
+                                session_status={
+                                    'new_host_player_id': str(new_host.player_id),
+                                    'new_host_username': new_host_player.username,
+                                    'reason': 'inactive_player_removed',
+                                    'message': f'{new_host_player.username} is now the host'
+                                }
+                            )
+
+        return removed_participants
 
     async def mark_participant_ready(
         self,

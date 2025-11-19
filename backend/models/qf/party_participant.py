@@ -50,7 +50,12 @@ class PartyParticipant(Base):
     # Timestamps
     joined_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC))
     ready_at = Column(DateTime(timezone=True), nullable=True)
-    last_activity_at = Column(DateTime(timezone=True), nullable=True)
+    last_activity_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC))
+    disconnected_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Connection tracking
+    connection_status = Column(String(20), nullable=False, default='connected')
+    # Possible values: 'connected', 'disconnected'
 
     __table_args__ = (
         UniqueConstraint("session_id", "player_id", name="uq_party_participants_session_player"),
