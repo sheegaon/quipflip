@@ -63,7 +63,6 @@ export const PartyLobby: React.FC = () => {
   const {
     connected: wsConnected,
     connecting: wsConnecting,
-    error: wsError,
   } = usePartyWebSocket({
     sessionId: sessionId ?? '',
     onPlayerJoined: (data) => {
@@ -183,13 +182,6 @@ export const PartyLobby: React.FC = () => {
             </div>
             <p className="text-sm text-quip-teal mt-2">Click to copy code</p>
           </div>
-
-          {/* WebSocket Status */}
-          {wsError && (
-            <div className="tile-card bg-yellow-100 border-2 border-yellow-400 p-3 text-sm text-yellow-800">
-              Connection issue: {wsError}. Updates may be delayed.
-            </div>
-          )}
 
           {/* Session Info */}
           <div className="tile-card shadow-tile-sm p-4">
