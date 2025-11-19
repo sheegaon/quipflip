@@ -28,6 +28,7 @@ export const PartyGame: React.FC = () => {
   const [phraseInput, setPhraseInput] = useState('');
   const [selectedPhrase, setSelectedPhrase] = useState<string | null>(null);
   const [waitingForPhaseTransition, setWaitingForPhaseTransition] = useState(false);
+  const [pingNotice, setPingNotice] = useState<{ host: string; joinUrl: string } | null>(null);
 
   // Check if current player has completed their required rounds for current phase
   const currentPlayer = sessionStatus?.participants.find(p => p.player_id === player?.player_id);
@@ -100,6 +101,12 @@ export const PartyGame: React.FC = () => {
     loadSessionStatus();
   }, [loadSessionStatus]);
 
+  useEffect(() => {
+    if (!pingNotice) return;
+    const timeout = setTimeout(() => setPingNotice(null), 8000);
+    return () => clearTimeout(timeout);
+  }, [pingNotice]);
+
   // WebSocket handlers - wrapped in useCallback to prevent reconnection on every render
   const handlePhaseTransition = useCallback((data: unknown) => {
     console.log('Phase transition:', data);
@@ -125,6 +132,9 @@ export const PartyGame: React.FC = () => {
     onPhaseTransition: handlePhaseTransition,
     onProgressUpdate: handleProgressUpdate,
     onSessionCompleted: handleSessionCompleted,
+    onHostPing: (data) => {
+      setPingNotice({ host: data.host_username, joinUrl: data.join_url });
+    },
   });
 
   const handleSubmitPrompt = async () => {
@@ -541,6 +551,23 @@ export const PartyGame: React.FC = () => {
             {currentPhase === 'VOTE' && 'Vote for the originals'}
           </p>
         </div>
+
+        {pingNotice && (
+          <div className="mb-4 bg-white border-2 border-quip-navy rounded-tile p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div>
+              <p className="text-quip-navy font-semibold">
+                {pingNotice.host} pinged everyone to regroup in the lobby.
+              </p>
+              <p className="text-sm text-quip-teal">Tap below to jump back if you're away.</p>
+            </div>
+            <button
+              onClick={() => navigate(pingNotice.joinUrl)}
+              className="w-full md:w-auto bg-quip-navy text-white font-semibold py-2 px-4 rounded-tile hover:bg-quip-teal transition-colors"
+            >
+              Go to Lobby
+            </button>
+          </div>
+        )}
 
         {/* Phase Indicator */}
         {renderPhaseIndicator()}

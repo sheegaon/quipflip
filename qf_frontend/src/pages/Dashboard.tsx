@@ -512,7 +512,7 @@ export const Dashboard: React.FC = () => {
                 <PartyIcon className="h-7 w-7" />
                 Party Mode
               </h2>
-              <p className="text-quip-teal">Play with 3-8 friends in a coordinated multiplayer match!</p>
+              <p className="text-quip-teal">Play with 6-9 players in a coordinated multiplayer match!</p>
             </div>
             <button
               onClick={() => navigate('/party')}

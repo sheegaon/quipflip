@@ -23,6 +23,7 @@ from backend.models.qf import (
 )
 from backend.services.username_service import canonicalize_username
 from backend.services.qf.queue_service import QueueService
+from backend.services.qf.party_session_service import PartySessionService
 
 logger = logging.getLogger(__name__)
 
@@ -723,6 +724,17 @@ class CleanupService:
             "inactive_guests": await self.cleanup_inactive_guest_players(),
             "recycled_guest_usernames": await self.recycle_inactive_guest_usernames(),
         }
+
+        party_service = PartySessionService(self.db)
+        party_cleanup = await party_service.cleanup_inactive_sessions()
+        results["party_inactive_participants_removed"] = party_cleanup["participants_removed"]
+        results["party_sessions_deleted"] = party_cleanup["sessions_deleted"]
+        logger.info(
+            "Party cleanup stats: %s sessions checked, %s participants removed, %s sessions deleted",
+            party_cleanup["sessions_checked"],
+            party_cleanup["participants_removed"],
+            party_cleanup["sessions_deleted"],
+        )
 
         test_player_results = await self.cleanup_test_players()
         results.update(test_player_results)

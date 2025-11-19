@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { usePartyWebSocket } from '../hooks/usePartyWebSocket';
 import apiClient from '../api/client';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { PartyIcon } from '../components/icons/NavigationIcons';
+import { BotIcon } from '../components/icons/EngagementIcons';
 import { loadingMessages } from '../utils/brandedMessages';
 import type { PartySessionStatusResponse, PartyParticipant } from '../api/types';
 
@@ -20,31 +21,36 @@ export const PartyLobby: React.FC = () => {
   const [sessionStatus, setSessionStatus] = useState<PartySessionStatusResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isReady, setIsReady] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
   const [isAddingAI, setIsAddingAI] = useState(false);
+  const [isPinging, setIsPinging] = useState(false);
+  const [pingNotice, setPingNotice] = useState<{ host: string; joinUrl: string } | null>(null);
 
   // Check if current player is host
   const isHost = sessionStatus?.participants.find(p => p.player_id === player?.player_id)?.is_host ?? false;
 
-  // Count ready players
-  const readyCount = sessionStatus?.participants.filter(p => p.status === 'READY').length ?? 0;
-  const totalCount = sessionStatus?.participants.length ?? 0;
-  const minPlayers = sessionStatus?.min_players ?? 3;
-  const canStart = isHost && readyCount >= minPlayers;
+  // Participant breakdowns
+  const participants = sessionStatus?.participants ?? [];
+  const totalCount = participants.length;
+  const minPlayers = sessionStatus?.min_players ?? 6;
+  const maxPlayers = sessionStatus?.max_players ?? 9;
+  const humanParticipants = participants.filter(p => !p.is_ai);
+  const humanReadyCount = humanParticipants.filter(p => p.status === 'READY').length;
+  const humanNotReady = humanParticipants.filter(p => p.status !== 'READY');
+  const allHumansReady = humanNotReady.length === 0;
+  const hasEnoughPlayers = totalCount >= minPlayers;
+  const neededAi = Math.max(0, minPlayers - totalCount);
+  const availableSlots = Math.max(0, maxPlayers - totalCount);
+  const needsAutoAiStart = isHost && allHumansReady && !hasEnoughPlayers;
 
   // Load session status
-  const loadSessionStatus = async () => {
+  const loadSessionStatus = useCallback(async () => {
     if (!sessionId) return;
 
     try {
       const status = await apiClient.getPartySessionStatus(sessionId);
       setSessionStatus(status);
-
-      // Check if we're already ready
-      const currentPlayer = status.participants.find(p => p.player_id === player?.player_id);
-      setIsReady(currentPlayer?.status === 'READY');
 
       // If session already started, navigate to game
       if (status.status === 'ACTIVE') {
@@ -55,11 +61,17 @@ export const PartyLobby: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [navigate, sessionId]);
 
   useEffect(() => {
     loadSessionStatus();
-  }, [sessionId]);
+  }, [loadSessionStatus]);
+
+  useEffect(() => {
+    if (!pingNotice) return;
+    const timeout = setTimeout(() => setPingNotice(null), 8000);
+    return () => clearTimeout(timeout);
+  }, [pingNotice]);
 
   // WebSocket handlers
   const {
@@ -93,24 +105,27 @@ export const PartyLobby: React.FC = () => {
       }
       loadSessionStatus();
     },
+    onHostPing: (data) => {
+      setPingNotice({ host: data.host_username, joinUrl: data.join_url });
+    },
   });
 
-  const handleToggleReady = async () => {
-    if (!sessionId) return;
-
-    try {
-      await apiClient.markPartyReady(sessionId);
-      setIsReady(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to mark ready');
-    }
-  };
-
   const handleStartParty = async () => {
-    if (!sessionId || !canStart) return;
+    if (!sessionId || !isHost || isStarting || !allHumansReady) return;
 
     setIsStarting(true);
     try {
+      if (!hasEnoughPlayers) {
+        if (neededAi > availableSlots) {
+          throw new Error('Not enough open slots to add AI players.');
+        }
+
+        for (let i = 0; i < neededAi; i += 1) {
+          await apiClient.addAIPlayerToParty(sessionId);
+        }
+        await loadSessionStatus();
+      }
+
       await apiClient.startPartySession(sessionId);
       // WebSocket will trigger navigation to game page
     } catch (err) {
@@ -156,6 +171,22 @@ export const PartyLobby: React.FC = () => {
     }
   };
 
+  const handlePingPlayers = async () => {
+    if (!sessionId || !isHost) return;
+
+    setIsPinging(true);
+    try {
+      await apiClient.pingPartySession(sessionId);
+      setNotification('Ping sent to everyone in your party.');
+      setTimeout(() => setNotification(null), 4000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to ping players');
+      setTimeout(() => setError(null), 4000);
+    } finally {
+      setIsPinging(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center">
@@ -195,14 +226,34 @@ export const PartyLobby: React.FC = () => {
             <PartyIcon className="w-8 h-8" />
             <h1 className="text-3xl font-display font-bold text-quip-navy">Party Lobby</h1>
           </div>
-          <p className="text-quip-teal">Waiting for all players to be ready</p>
+          <p className="text-quip-teal">Players are marked ready whenever they're in this lobby.</p>
         </div>
 
         <div className="space-y-6">
           {/* Notification Display */}
-          {notification && (
-            <div className="bg-quip-turquoise bg-opacity-10 border-2 border-quip-turquoise rounded-tile p-4 text-center">
-              <p className="text-quip-navy font-semibold">{notification}</p>
+          {(notification || pingNotice) && (
+            <div className="space-y-3">
+              {notification && (
+                <div className="bg-quip-turquoise bg-opacity-10 border-2 border-quip-turquoise rounded-tile p-4 text-center">
+                  <p className="text-quip-navy font-semibold">{notification}</p>
+                </div>
+              )}
+              {pingNotice && (
+                <div className="bg-white border-2 border-quip-navy rounded-tile p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                  <div>
+                    <p className="text-quip-navy font-semibold">
+                      {pingNotice.host} pinged everyone to come back to the lobby.
+                    </p>
+                    <p className="text-sm text-quip-teal">Tap below to jump back in.</p>
+                  </div>
+                  <button
+                    onClick={() => navigate(pingNotice.joinUrl)}
+                    className="w-full md:w-auto bg-quip-navy text-white font-semibold py-2 px-4 rounded-tile hover:bg-quip-teal transition-colors"
+                  >
+                    Rejoin Lobby
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -221,25 +272,36 @@ export const PartyLobby: React.FC = () => {
 
           {/* Session Info */}
           <div className="tile-card shadow-tile-sm p-4">
-            <div className="flex items-center justify-between">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <p className="text-sm text-quip-teal">Players Ready</p>
+                <p className="text-sm text-quip-teal">Humans Ready</p>
                 <p className="text-2xl font-display font-bold text-quip-navy">
-                  {readyCount} / {totalCount}
+                  {humanReadyCount} / {humanParticipants.length}
                 </p>
               </div>
-              <div className="text-right">
-                <p className="text-sm text-quip-teal">Minimum Required</p>
+              <div>
+                <p className="text-sm text-quip-teal">Total Players</p>
+                <p className="text-2xl font-display font-bold text-quip-navy">
+                  {totalCount} / {maxPlayers}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-quip-teal">Minimum to Start</p>
                 <p className="text-2xl font-display font-bold text-quip-navy">{minPlayers}</p>
               </div>
             </div>
+            {!hasEnoughPlayers && (
+              <p className="text-xs text-quip-teal mt-2">
+                Need {neededAi} more player{neededAi === 1 ? '' : 's'} before starting.
+              </p>
+            )}
           </div>
 
           {/* Player List */}
           <div className="tile-card shadow-tile p-4">
             <h3 className="text-lg font-display font-bold text-quip-navy mb-4">Players</h3>
             <div className="space-y-2">
-              {sessionStatus.participants.map((participant: PartyParticipant) => (
+              {participants.map((participant: PartyParticipant) => (
                 <div
                   key={participant.participant_id}
                   className="flex items-center justify-between p-3 bg-quip-cream rounded-tile"
@@ -253,8 +315,9 @@ export const PartyLobby: React.FC = () => {
                       }`}
                       title={participant.status === 'READY' ? 'Ready' : 'Not ready'}
                     />
-                    <span className="font-semibold text-quip-navy">
+                    <span className="font-semibold text-quip-navy flex items-center gap-2">
                       {participant.username}
+                      {participant.is_ai && <BotIcon className="w-4 h-4" />}
                     </span>
                     {participant.is_host && (
                       <span className="px-2 py-1 text-xs font-semibold text-quip-orange-deep bg-quip-orange bg-opacity-20 rounded-tile">
@@ -264,6 +327,11 @@ export const PartyLobby: React.FC = () => {
                     {participant.player_id === player?.player_id && (
                       <span className="px-2 py-1 text-xs font-semibold text-quip-turquoise bg-quip-turquoise bg-opacity-20 rounded-tile">
                         YOU
+                      </span>
+                    )}
+                    {participant.is_ai && (
+                      <span className="px-2 py-1 text-xs font-semibold text-quip-navy bg-quip-cream border border-quip-navy rounded-tile">
+                        AI
                       </span>
                     )}
                   </div>
@@ -279,23 +347,19 @@ export const PartyLobby: React.FC = () => {
 
           {/* Action Buttons */}
           <div className="space-y-3">
-            {/* Ready Button (for non-host or host who isn't ready) */}
-            {(!isHost || !isReady) && (
+            {/* Ping Button (host only) */}
+            {isHost && (
               <button
-                onClick={handleToggleReady}
-                disabled={isReady}
-                className={`w-full font-bold py-3 px-4 rounded-tile transition-all text-lg ${
-                  isReady
-                    ? 'bg-quip-turquoise text-white cursor-not-allowed'
-                    : 'bg-quip-turquoise hover:bg-quip-teal text-white hover:shadow-tile-sm'
-                }`}
+                onClick={handlePingPlayers}
+                disabled={isPinging}
+                className="w-full border-2 border-quip-navy text-quip-navy bg-white hover:bg-quip-navy hover:text-white font-semibold py-3 px-4 rounded-tile transition-all disabled:opacity-60"
               >
-                {isReady ? '✓ Ready!' : 'Mark Ready'}
+                {isPinging ? 'Pinging players...' : 'Ping Everyone'}
               </button>
             )}
 
             {/* Add AI Player Button (host only) */}
-            {isHost && totalCount < (sessionStatus?.max_players ?? 8) && (
+            {isHost && totalCount < maxPlayers && (
               <button
                 onClick={handleAddAI}
                 disabled={isAddingAI}
@@ -309,20 +373,38 @@ export const PartyLobby: React.FC = () => {
             {isHost && (
               <button
                 onClick={handleStartParty}
-                disabled={!canStart || isStarting}
+                disabled={!allHumansReady || isStarting}
                 className={`w-full font-bold py-3 px-4 rounded-tile transition-all text-lg ${
-                  canStart && !isStarting
+                  allHumansReady && !isStarting
                     ? 'bg-quip-orange hover:bg-quip-orange-deep text-white hover:shadow-tile-sm'
                     : 'bg-gray-400 text-white cursor-not-allowed'
                 }`}
               >
-                {isStarting ? 'Starting...' : 'Start Party'}
+                {isStarting
+                  ? 'Starting...'
+                  : needsAutoAiStart
+                    ? (
+                      <span className="flex items-center justify-center gap-2">
+                        Start Party With <BotIcon className="w-5 h-5" /> AI
+                      </span>
+                    )
+                    : 'Start Party'}
               </button>
             )}
 
-            {!canStart && isHost && (
+            {isHost && !allHumansReady && (
               <p className="text-sm text-center text-quip-teal">
-                Need at least {minPlayers} players ready to start
+                Waiting for {humanNotReady.length} human player{humanNotReady.length === 1 ? '' : 's'} to return to the lobby.
+              </p>
+            )}
+            {isHost && needsAutoAiStart && (
+              <p className="text-sm text-center text-quip-teal">
+                All humans are ready! We'll add {neededAi} AI teammate{neededAi === 1 ? '' : 's'} and start immediately.
+              </p>
+            )}
+            {isHost && !hasEnoughPlayers && !needsAutoAiStart && allHumansReady && (
+              <p className="text-sm text-center text-quip-teal">
+                Need at least {minPlayers} total players to start.
               </p>
             )}
 

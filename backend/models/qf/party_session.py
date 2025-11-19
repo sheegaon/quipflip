@@ -35,8 +35,8 @@ class PartySession(Base):
     )
 
     # Configuration
-    min_players = Column(Integer, nullable=False, default=3)
-    max_players = Column(Integer, nullable=False, default=8)
+    min_players = Column(Integer, nullable=False, default=6)
+    max_players = Column(Integer, nullable=False, default=9)
     prompts_per_player = Column(Integer, nullable=False, default=1)
     copies_per_player = Column(Integer, nullable=False, default=2)
     votes_per_player = Column(Integer, nullable=False, default=3)

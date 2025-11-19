@@ -18,7 +18,8 @@ export interface UsePartyWebSocketOptions {
   }) => void;
   onSessionStarted?: (data: { current_phase: string; participant_count: number; message: string }) => void;
   onSessionCompleted?: (data: { completed_at: string; message: string }) => void;
-  onSessionUpdate?: (data: any) => void;
+  onSessionUpdate?: (data: Record<string, unknown>) => void;
+  onHostPing?: (data: { host_player_id: string; host_username: string; join_url: string }) => void;
 }
 
 export interface UsePartyWebSocketReturn {
@@ -137,10 +138,16 @@ export function usePartyWebSocket(
               handlersRef.current.onSessionUpdate?.(message.data);
               break;
 
-            default:
+            case 'host_ping':
+              handlersRef.current.onHostPing?.(message.data);
+              break;
+
+            default: {
               // Exhaustiveness check - TypeScript will error if we miss a case
               const _exhaustiveCheck: never = message;
               console.warn('Unknown Party WebSocket message type:', _exhaustiveCheck);
+              break;
+            }
           }
         } catch (err) {
           console.error('Error parsing WebSocket message:', err);
