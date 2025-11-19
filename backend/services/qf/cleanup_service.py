@@ -55,6 +55,20 @@ class CleanupService:
         self.db = db
 
     @staticmethod
+    def _normalize_rowcount(rowcount: int | None) -> int:
+        """Return a non-negative rowcount value.
+
+        SQLite (and some drivers) may return -1 when the exact number of rows
+        affected is unknown. The tests rely on receiving ``0`` when nothing was
+        deleted and a positive integer when rows were removed, so we coerce any
+        falsey or negative values to ``0``.
+        """
+
+        if not rowcount or rowcount < 0:
+            return 0
+        return rowcount
+
+    @staticmethod
     def _has_recycled_suffix(username: str | None) -> bool:
         """Return True if the username already carries a recycled suffix."""
         if not username:
@@ -113,7 +127,7 @@ class CleanupService:
         )
         await self.db.commit()
 
-        deleted_count = result.rowcount or 0
+        deleted_count = self._normalize_rowcount(result.rowcount)
         if deleted_count > 0:
             logger.warning(f"Cleaned up {deleted_count} orphaned refresh tokens")
         else:
@@ -139,7 +153,7 @@ class CleanupService:
         )
         await self.db.commit()
 
-        deleted_count = result.rowcount or 0
+        deleted_count = self._normalize_rowcount(result.rowcount)
         if deleted_count > 0:
             logger.info(f"Cleaned up {deleted_count} expired/revoked refresh tokens")
         else:
@@ -168,7 +182,7 @@ class CleanupService:
         )
         await self.db.commit()
 
-        deleted_count = result.rowcount or 0
+        deleted_count = self._normalize_rowcount(result.rowcount)
         if deleted_count > 0:
             logger.info(f"Cleaned up {deleted_count} old revoked tokens (>{days_old} days)")
 
@@ -229,7 +243,7 @@ class CleanupService:
         """))
         await self.db.commit()
 
-        deleted_count = result.rowcount or 0
+        deleted_count = self._normalize_rowcount(result.rowcount)
         if deleted_count > 0:
             logger.info(f"Deleted {deleted_count} orphaned round(s)")
 
@@ -293,55 +307,55 @@ class CleanupService:
         result = await self.db.execute(
             delete(Vote).where(Vote.player_id.in_(player_ids))
         )
-        deletion_counts['votes'] = result.rowcount or 0
+        deletion_counts['votes'] = self._normalize_rowcount(result.rowcount)
 
         # 2. Transactions (references player_id)
         result = await self.db.execute(
             delete(QFTransaction).where(QFTransaction.player_id.in_(player_ids))
         )
-        deletion_counts['transactions'] = result.rowcount or 0
+        deletion_counts['transactions'] = self._normalize_rowcount(result.rowcount)
 
         # 3. Daily bonuses (references player_id)
         result = await self.db.execute(
             delete(QFDailyBonus).where(QFDailyBonus.player_id.in_(player_ids))
         )
-        deletion_counts['daily_bonuses'] = result.rowcount or 0
+        deletion_counts['daily_bonuses'] = self._normalize_rowcount(result.rowcount)
 
         # 4. Result views (references player_id)
         result = await self.db.execute(
             delete(QFResultView).where(QFResultView.player_id.in_(player_ids))
         )
-        deletion_counts['result_views'] = result.rowcount or 0
+        deletion_counts['result_views'] = self._normalize_rowcount(result.rowcount)
 
         # 5. Abandoned prompts (references player_id)
         result = await self.db.execute(
             delete(PlayerAbandonedPrompt).where(PlayerAbandonedPrompt.player_id.in_(player_ids))
         )
-        deletion_counts['abandoned_prompts'] = result.rowcount or 0
+        deletion_counts['abandoned_prompts'] = self._normalize_rowcount(result.rowcount)
 
         # 6. Prompt feedback (references player_id)
         result = await self.db.execute(
             delete(PromptFeedback).where(PromptFeedback.player_id.in_(player_ids))
         )
-        deletion_counts['prompt_feedback'] = result.rowcount or 0
+        deletion_counts['prompt_feedback'] = self._normalize_rowcount(result.rowcount)
 
         # 7. Phraseset activities (references player_id)
         result = await self.db.execute(
             delete(PhrasesetActivity).where(PhrasesetActivity.player_id.in_(player_ids))
         )
-        deletion_counts['phraseset_activities'] = result.rowcount or 0
+        deletion_counts['phraseset_activities'] = self._normalize_rowcount(result.rowcount)
 
         # 8. Refresh tokens (references player_id)
         result = await self.db.execute(
             delete(QFRefreshToken).where(QFRefreshToken.player_id.in_(player_ids))
         )
-        deletion_counts['refresh_tokens'] = result.rowcount or 0
+        deletion_counts['refresh_tokens'] = self._normalize_rowcount(result.rowcount)
 
         # 9. Quests (references player_id)
         result = await self.db.execute(
             delete(QFQuest).where(QFQuest.player_id.in_(player_ids))
         )
-        deletion_counts['quests'] = result.rowcount or 0
+        deletion_counts['quests'] = self._normalize_rowcount(result.rowcount)
 
         # 10. Get IDs of prompt rounds to be deleted from queue (for abandoned prompts only)
         # Note: We do NOT delete submitted rounds as they are part of phrasesets and game history
@@ -364,7 +378,7 @@ class CleanupService:
                 Round.status != "submitted"  # Preserve submitted rounds
             )
         )
-        deletion_counts['rounds'] = result.rowcount or 0
+        deletion_counts['rounds'] = self._normalize_rowcount(result.rowcount)
 
         # Count submitted rounds that were NOT deleted (for logging)
         submitted_rounds_result = await self.db.execute(
@@ -541,7 +555,7 @@ class CleanupService:
         result = await self.db.execute(
             delete(QFPlayer).where(QFPlayer.player_id.in_(inactive_guest_ids))
         )
-        deleted_count = result.rowcount or 0
+        deleted_count = self._normalize_rowcount(result.rowcount)
 
         # Commit the transaction
         await self.db.commit()
