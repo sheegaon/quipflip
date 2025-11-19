@@ -326,9 +326,7 @@ async def lifespan(app_instance: FastAPI):
     logger.info("=" * 60)
     logger.info("Quipflip API Starting")
     logger.info(f"Environment: {settings.environment}")
-    logger.info(
-        f"Database: {settings.database_url.split('@')[-1] if '@' in settings.database_url else 'SQLite'}"
-    )
+    logger.info(f"Database: {settings.database_url.split('@')[-1] if '@' in settings.database_url else 'SQLite'}")
     logger.info(f"Redis: {'Enabled' if settings.redis_url else 'In-Memory Fallback'}")
     logger.info("=" * 60)
 
@@ -349,17 +347,13 @@ async def lifespan(app_instance: FastAPI):
 
     try:
         ai_backup_task = asyncio.create_task(ai_backup_cycle())
-        logger.info(
-            f"AI backup cycle task started (runs every {settings.ai_backup_sleep_minutes} minutes)"
-        )
+        logger.info(f"AI backup cycle task started (runs every {settings.ai_backup_sleep_minutes} minutes)")
     except Exception as e:
         logger.error(f"Failed to start AI backup cycle: {e}")
 
     try:
         stale_handler_task = asyncio.create_task(ai_stale_handler_cycle())
-        logger.info(
-            f"Stale AI handler task started (runs every {settings.ai_stale_check_interval_hours} hours)"
-        )
+        logger.info(f"Stale AI handler task started (runs every {settings.ai_stale_check_interval_hours} hours)")
     except Exception as exc:
         logger.error(f"Failed to start stale AI handler cycle: {exc}")
 
@@ -369,13 +363,11 @@ async def lifespan(app_instance: FastAPI):
     except Exception as e:
         logger.error(f"Failed to start cleanup cycle: {e}")
 
-    try:
-        ir_backup_task = asyncio.create_task(ir_backup_cycle())
-        logger.info(
-            f"IR backup cycle task started (runs every {settings.ir_ai_backup_delay_minutes} minutes)"
-        )
-    except Exception as e:
-        logger.error(f"Failed to start IR backup cycle: {e}")
+    # try:
+    #     ir_backup_task = asyncio.create_task(ir_backup_cycle())
+    #     logger.info(f"IR backup cycle task started (runs every {settings.ir_ai_backup_delay_minutes} minutes)")
+    # except Exception as e:
+    #     logger.error(f"Failed to start IR backup cycle: {e}")
 
     try:
         yield
