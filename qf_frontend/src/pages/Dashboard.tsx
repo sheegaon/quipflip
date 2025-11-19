@@ -45,7 +45,7 @@ export const Dashboard: React.FC = () => {
   const [isAbandoningRound, setIsAbandoningRound] = useState(false);
   const [abandonError, setAbandonError] = useState<string | null>(null);
   const [showTutorialWelcome, setShowTutorialWelcome] = useState(false);
-  const roundExpiryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const roundExpiryTimeoutRef = useRef<number | null>(null);
 
   // Log component mount and key state changes
   useEffect(() => {

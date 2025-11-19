@@ -90,7 +90,7 @@ export const PartyResults: React.FC = () => {
   if (loading) {
     return (
       <div className="flex min-h-screen flex-col bg-quip-cream">
-        <Header title="Party Results" />
+        <Header />
         <div className="flex-grow flex items-center justify-center">
           <span className="text-lg font-semibold text-quip-navy">Loading results...</span>
         </div>
@@ -101,7 +101,7 @@ export const PartyResults: React.FC = () => {
   if (error || !results) {
     return (
       <div className="flex min-h-screen flex-col bg-quip-cream">
-        <Header title="Party Results" />
+        <Header />
         <div className="flex-grow flex items-center justify-center p-4">
           <div className="max-w-md w-full space-y-4">
             <div className="tile-card bg-red-100 border-2 border-red-400 p-4">
@@ -123,7 +123,7 @@ export const PartyResults: React.FC = () => {
 
   return (
     <div className="flex min-h-screen flex-col bg-quip-cream">
-      <Header title="Party Results" />
+      <Header />
 
       <div className="flex-grow p-4">
         <div className="max-w-4xl mx-auto space-y-6">

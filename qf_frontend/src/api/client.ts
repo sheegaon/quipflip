@@ -63,13 +63,11 @@ import type {
   WsAuthTokenResponse,
   CreatePartySessionRequest,
   CreatePartySessionResponse,
-  JoinPartySessionRequest,
   JoinPartySessionResponse,
   MarkReadyResponse,
   StartPartySessionResponse,
   PartySessionStatusResponse,
   StartPartyRoundResponse,
-  SubmitPartyRoundRequest,
   SubmitPartyRoundResponse,
   PartyResultsResponse,
 } from './types';
@@ -832,6 +830,20 @@ export const apiClient = {
     signal?: AbortSignal,
   ): Promise<StartPartyRoundResponse> {
     const { data } = await api.post<StartPartyRoundResponse>(`/party/${sessionId}/rounds/vote`, {}, { signal });
+    return data;
+  },
+
+  async submitPartyRound(
+    sessionId: string,
+    roundId: string,
+    phrase: string,
+    signal?: AbortSignal,
+  ): Promise<SubmitPartyRoundResponse> {
+    const { data } = await api.post<SubmitPartyRoundResponse>(
+      `/party/${sessionId}/rounds/${roundId}/submit`,
+      { phrase },
+      { signal }
+    );
     return data;
   },
 

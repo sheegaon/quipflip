@@ -4,11 +4,9 @@ import { useGame } from '../contexts/GameContext';
 import { usePartyWebSocket } from '../hooks/usePartyWebSocket';
 import apiClient from '../api/client';
 import { Header } from '../components/Header';
-import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import type {
   PartySessionStatusResponse,
   StartPartyRoundResponse,
-  ActiveRound,
 } from '../api/types';
 
 /**
@@ -16,7 +14,7 @@ import type {
  */
 export const PartyGame: React.FC = () => {
   const { sessionId } = useParams<{ sessionId: string }>();
-  const { state, dispatch } = useGame();
+  const { state } = useGame();
   const { player } = state;
   const navigate = useNavigate();
 
@@ -125,8 +123,8 @@ export const PartyGame: React.FC = () => {
 
     setSubmitting(true);
     try {
-      // Use the existing round submission endpoint
-      await apiClient.submitPromptPhrase(activeRound.round_id, phraseInput.trim());
+      // Submit the party round
+      await apiClient.submitPartyRound(sessionId, activeRound.round_id, phraseInput.trim());
 
       // Clear state
       setPhraseInput('');
@@ -146,7 +144,7 @@ export const PartyGame: React.FC = () => {
 
     setSubmitting(true);
     try {
-      await apiClient.submitCopyPhrase(activeRound.round_id, phraseInput.trim());
+      await apiClient.submitPartyRound(sessionId, activeRound.round_id, phraseInput.trim());
 
       setPhraseInput('');
       setActiveRound(null);
@@ -164,7 +162,7 @@ export const PartyGame: React.FC = () => {
 
     setSubmitting(true);
     try {
-      await apiClient.submitVote(activeRound.round_id, selectedPhrase);
+      await apiClient.submitPartyRound(sessionId, activeRound.round_id, selectedPhrase);
 
       setSelectedPhrase(null);
       setActiveRound(null);
@@ -440,7 +438,7 @@ export const PartyGame: React.FC = () => {
   if (loading) {
     return (
       <div className="flex min-h-screen flex-col bg-quip-cream">
-        <Header title="Party Game" />
+        <Header />
         <div className="flex-grow flex items-center justify-center">
           <span className="text-lg font-semibold text-quip-navy">Loading game...</span>
         </div>
@@ -451,7 +449,7 @@ export const PartyGame: React.FC = () => {
   if (!sessionStatus) {
     return (
       <div className="flex min-h-screen flex-col bg-quip-cream">
-        <Header title="Party Game" />
+        <Header />
         <div className="flex-grow flex items-center justify-center p-4">
           <div className="max-w-md w-full space-y-4">
             <div className="tile-card bg-red-100 border-2 border-red-400 p-4">
@@ -471,7 +469,7 @@ export const PartyGame: React.FC = () => {
 
   return (
     <div className="flex min-h-screen flex-col bg-quip-cream">
-      <Header title={`Party Game - ${sessionStatus.party_code}`} />
+      <Header />
 
       <div className="flex-grow p-4">
         <div className="max-w-2xl mx-auto space-y-4">

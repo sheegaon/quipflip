@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import apiClient from '../api/client';
 import { Header } from '../components/Header';
-import { CurrencyDisplay } from '../components/CurrencyDisplay';
 
 /**
  * Party Mode entry page - Create or Join a party session
@@ -62,20 +61,10 @@ export const PartyMode: React.FC = () => {
 
   return (
     <div className="flex min-h-screen flex-col bg-quip-navy/5">
-      <Header title="Party Mode" />
+      <Header />
 
       <div className="flex-grow flex items-center justify-center p-4">
         <div className="max-w-md w-full space-y-8">
-          {/* Player Info */}
-          {player && (
-            <div className="bg-white rounded-lg shadow p-4">
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-quip-navy">{player.username}</span>
-                <CurrencyDisplay wallet={player.wallet} vault={player.vault} showVault={false} />
-              </div>
-            </div>
-          )}
-
           {/* Error Display */}
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4">

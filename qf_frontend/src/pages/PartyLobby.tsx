@@ -4,7 +4,6 @@ import { useGame } from '../contexts/GameContext';
 import { usePartyWebSocket } from '../hooks/usePartyWebSocket';
 import apiClient from '../api/client';
 import { Header } from '../components/Header';
-import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import type { PartySessionStatusResponse, PartyParticipant } from '../api/types';
 
 /**
@@ -44,7 +43,7 @@ export const PartyLobby: React.FC = () => {
       setIsReady(currentPlayer?.status === 'READY');
 
       // If session already started, navigate to game
-      if (status.status === 'IN_PROGRESS') {
+      if (status.status === 'ACTIVE') {
         navigate(`/party/game/${sessionId}`);
       }
     } catch (err) {
@@ -130,7 +129,7 @@ export const PartyLobby: React.FC = () => {
   if (loading) {
     return (
       <div className="flex min-h-screen flex-col bg-quip-cream">
-        <Header title="Party Lobby" />
+        <Header />
         <div className="flex-grow flex items-center justify-center">
           <span className="text-lg font-semibold text-quip-navy">Loading lobby...</span>
         </div>
@@ -141,7 +140,7 @@ export const PartyLobby: React.FC = () => {
   if (error || !sessionStatus) {
     return (
       <div className="flex min-h-screen flex-col bg-quip-cream">
-        <Header title="Party Lobby" />
+        <Header />
         <div className="flex-grow flex items-center justify-center p-4">
           <div className="max-w-md w-full space-y-4">
             <div className="tile-card bg-red-100 border-2 border-red-400 p-4">
@@ -161,7 +160,7 @@ export const PartyLobby: React.FC = () => {
 
   return (
     <div className="flex min-h-screen flex-col bg-quip-cream">
-      <Header title="Party Lobby" />
+      <Header />
 
       <div className="flex-grow flex items-center justify-center p-4">
         <div className="max-w-2xl w-full space-y-6">

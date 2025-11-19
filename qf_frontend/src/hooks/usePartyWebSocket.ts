@@ -67,10 +67,10 @@ export function usePartyWebSocket(
 
     try {
       // Get WebSocket authentication token
-      const { ws_token } = await apiClient.getWsAuthToken();
+      const { token } = await apiClient.getWebsocketToken();
 
       // Construct WebSocket URL
-      const wsUrl = `${WS_BASE_URL}/qf/party/${sessionId}/ws?token=${ws_token}`;
+      const wsUrl = `${WS_BASE_URL}/qf/party/${sessionId}/ws?token=${token}`;
 
       console.log('🔌 Connecting to Party WebSocket:', wsUrl);
 
@@ -92,39 +92,36 @@ export function usePartyWebSocket(
 
           switch (message.type) {
             case 'phase_transition':
-              handlers.onPhaseTransition?.(message);
+              handlers.onPhaseTransition?.(message.data as any);
               break;
 
             case 'player_joined':
-              handlers.onPlayerJoined?.(message);
+              handlers.onPlayerJoined?.(message.data as any);
               break;
 
             case 'player_left':
-              handlers.onPlayerLeft?.(message);
+              handlers.onPlayerLeft?.(message.data as any);
               break;
 
             case 'player_ready':
-              handlers.onPlayerReady?.(message);
+              handlers.onPlayerReady?.(message.data as any);
               break;
 
-            case 'progress_update':
-              handlers.onProgressUpdate?.(message);
+            case 'player_progress':
+              handlers.onProgressUpdate?.(message.data as any);
               break;
 
             case 'session_started':
-              handlers.onSessionStarted?.(message);
-              break;
-
-            case 'session_completed':
-              handlers.onSessionCompleted?.(message);
-              break;
-
-            case 'session_update':
-              handlers.onSessionUpdate?.(message);
+              handlers.onSessionStarted?.(message.data as any);
               break;
 
             default:
-              console.warn('Unknown Party WebSocket message type:', message.type);
+              // Handle other message types
+              if (message.type === 'session_completed' || message.type === 'session_update') {
+                handlers.onSessionUpdate?.(message.data);
+              } else {
+                console.warn('Unknown Party WebSocket message type:', message.type);
+              }
           }
         } catch (err) {
           console.error('Error parsing WebSocket message:', err);
