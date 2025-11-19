@@ -10,7 +10,8 @@ from sqlalchemy.orm import relationship
 from datetime import datetime, UTC
 import uuid
 
-from backend.models.base import Base, get_uuid_column
+from backend.database import Base
+from backend.models.base import get_uuid_column
 
 
 class PartyRound(Base):
