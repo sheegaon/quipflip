@@ -82,11 +82,18 @@ class PartySessionService:
         self.db = db
         self.settings = get_settings()
 
+    @staticmethod
+    def _is_ai_player(player: QFPlayer | None) -> bool:
+        """Determine whether a player account represents an AI participant."""
+        if not player or not getattr(player, 'email', None):
+            return False
+        return player.email.lower().endswith('@quipflip.internal')
+
     async def create_session(
         self,
         host_player_id: UUID,
-        min_players: int = 3,
-        max_players: int = 8,
+        min_players: int = 6,
+        max_players: int = 9,
         prompts_per_player: int = 1,
         copies_per_player: int = 2,
         votes_per_player: int = 3,
@@ -95,8 +102,8 @@ class PartySessionService:
 
         Args:
             host_player_id: UUID of the host player
-            min_players: Minimum players required to start (default: 3)
-            max_players: Maximum players allowed (default: 8)
+            min_players: Minimum players required to start (default: 6)
+            max_players: Maximum players allowed (default: 9)
             prompts_per_player: Number of prompts each player must submit (default: 1)
             copies_per_player: Number of copies each player must submit (default: 2)
             votes_per_player: Number of votes each player must submit (default: 3)
@@ -128,13 +135,16 @@ class PartySessionService:
         self.db.add(session)
 
         # Add host as first participant
+        now = datetime.now(UTC)
         participant = PartyParticipant(
             participant_id=uuid.uuid4(),
             session_id=session.session_id,
             player_id=host_player_id,
-            status='JOINED',
+            status='READY',
             is_host=True,
-            joined_at=datetime.now(UTC),
+            joined_at=now,
+            ready_at=now,
+            last_activity_at=now,
         )
 
         self.db.add(participant)
@@ -317,13 +327,16 @@ class PartySessionService:
             )
 
         # Create participant
+        now = datetime.now(UTC)
         participant = PartyParticipant(
             participant_id=uuid.uuid4(),
             session_id=session_id,
             player_id=player_id,
-            status='JOINED',
+            status='READY',
             is_host=False,
-            joined_at=datetime.now(UTC),
+            joined_at=now,
+            ready_at=now,
+            last_activity_at=now,
         )
 
         self.db.add(participant)
@@ -376,10 +389,16 @@ class PartySessionService:
 
         # Get or create AI player
         from backend.services.ai.ai_service import AIService
+        from backend.services.username_service import UsernameService
+
+        username_service = UsernameService(self.db, game_type=game_type)
+        ai_display_username, _ = await username_service.generate_unique_username()
+
         ai_service = AIService(self.db)
         ai_player = await ai_service._get_or_create_ai_player(
             game_type=game_type,
             email=f"ai_party_{uuid.uuid4().hex[:8]}@quipflip.internal",
+            display_username=ai_display_username,
         )
 
         # Create participant
@@ -391,6 +410,7 @@ class PartySessionService:
             is_host=False,
             joined_at=datetime.now(UTC),
             ready_at=datetime.now(UTC),
+            last_activity_at=datetime.now(UTC),
         )
 
         self.db.add(participant)
@@ -644,6 +664,29 @@ class PartySessionService:
             )
 
         return removed_participants
+
+    async def cleanup_inactive_sessions(self) -> Dict[str, int]:
+        """Clean up inactive participants across all open sessions."""
+        result = await self.db.execute(
+            select(PartySession.session_id).where(PartySession.status == 'OPEN')
+        )
+        session_ids = [row.session_id for row in result]
+
+        participants_removed = 0
+        sessions_deleted = 0
+
+        for session_id in session_ids:
+            removed = await self.remove_inactive_participants(session_id)
+            participants_removed += len(removed)
+            session_exists = await self.get_session_by_id(session_id)
+            if not session_exists:
+                sessions_deleted += 1
+
+        return {
+            'sessions_checked': len(session_ids),
+            'participants_removed': participants_removed,
+            'sessions_deleted': sessions_deleted,
+        }
 
     async def mark_participant_ready(
         self,
@@ -940,6 +983,7 @@ class PartySessionService:
                 'participant_id': str(participant.participant_id),
                 'player_id': str(participant.player_id),
                 'username': player.username,
+                'is_ai': self._is_ai_player(player),
                 'is_host': participant.is_host,
                 'status': participant.status,
                 'prompts_submitted': participant.prompts_submitted,

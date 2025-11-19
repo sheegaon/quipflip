@@ -10,8 +10,8 @@ from backend.schemas.base import BaseSchema
 # Request schemas
 class CreatePartySessionRequest(BaseModel):
     """Request to create a new party session."""
-    min_players: int = Field(default=3, ge=2, le=8, description="Minimum players to start")
-    max_players: int = Field(default=8, ge=2, le=8, description="Maximum players allowed")
+    min_players: int = Field(default=6, ge=2, le=9, description="Minimum players to start")
+    max_players: int = Field(default=9, ge=2, le=9, description="Maximum players allowed")
     prompts_per_player: int = Field(default=1, ge=1, le=3, description="Prompts per player")
     copies_per_player: int = Field(default=2, ge=1, le=4, description="Copies per player")
     votes_per_player: int = Field(default=3, ge=2, le=5, description="Votes per player")
@@ -33,6 +33,7 @@ class PartyParticipantResponse(BaseSchema):
     participant_id: str
     player_id: str
     username: str
+    is_ai: bool
     is_host: bool
     status: str
     prompts_submitted: int
@@ -113,6 +114,12 @@ class AddAIPlayerResponse(BaseSchema):
     player_id: str
     username: str
     is_ai: bool
+
+
+class PartyPingResponse(BaseSchema):
+    """Response after pinging all party participants."""
+    success: bool
+    message: str
 
 
 class StartPartySessionResponse(BaseSchema):

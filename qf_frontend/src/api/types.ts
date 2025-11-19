@@ -259,6 +259,7 @@ export interface GrossEarningsLeaderboardEntry {
   rank: number | null;
   is_current_player: boolean;
   is_bot?: boolean;
+  is_ai?: boolean;
 }
 
 export interface RoleLeaderboard {
@@ -798,6 +799,7 @@ export interface PartyParticipant {
   participant_id: string;
   player_id: string;
   username: string;
+  is_ai: boolean;
   is_host: boolean;
   status: 'JOINED' | 'READY' | 'ACTIVE' | 'COMPLETED';
   prompts_submitted: number;
@@ -906,7 +908,7 @@ export interface StartPartySessionResponse {
   participants: PartyParticipant[];
 }
 
-export interface PartySessionStatusResponse extends PartySession {}
+export type PartySessionStatusResponse = PartySession;
 
 // Party Round Response - Discriminated Union based on round_type
 export type StartPartyRoundResponse =
@@ -1013,6 +1015,11 @@ export interface PartyResultsResponse {
   phrasesets_summary: PartyPhrasesetSummary[];
 }
 
+export interface PartyPingResponse {
+  success: boolean;
+  message: string;
+}
+
 // Party Mode WebSocket message types - Discriminated Union
 export type PartyWebSocketMessage =
   | {
@@ -1098,5 +1105,15 @@ export type PartyWebSocketMessage =
       type: 'session_update';
       session_id: string;
       data: Record<string, unknown>;
+      timestamp: string;
+    }
+  | {
+      type: 'host_ping';
+      session_id: string;
+      data: {
+        host_player_id: string;
+        host_username: string;
+        join_url: string;
+      };
       timestamp: string;
     };

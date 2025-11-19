@@ -71,6 +71,7 @@ import type {
   SubmitPartyRoundResponse,
   PartyResultsResponse,
   PartyListResponse,
+  PartyPingResponse,
 } from './types';
 
 // Base URL - configure based on environment
@@ -806,6 +807,14 @@ export const apiClient = {
     signal?: AbortSignal,
   ): Promise<{ participant_id: string; player_id: string; username: string; is_ai: boolean }> {
     const { data } = await api.post<{ participant_id: string; player_id: string; username: string; is_ai: boolean }>(`/party/${sessionId}/add-ai`, {}, { signal });
+    return data;
+  },
+
+  async pingPartySession(
+    sessionId: string,
+    signal?: AbortSignal,
+  ): Promise<PartyPingResponse> {
+    const { data } = await api.post<PartyPingResponse>(`/party/${sessionId}/ping`, {}, { signal });
     return data;
   },
 

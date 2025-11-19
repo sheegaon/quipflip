@@ -127,13 +127,19 @@ class AIService:
         logger.error("No AI provider API keys found (OPENAI_API_KEY or GEMINI_API_KEY)")
         raise AIServiceError("No AI provider configured - set OPENAI_API_KEY or GEMINI_API_KEY")
 
-    async def _get_or_create_ai_player(self, game_type: GameType, email: str | None = None) -> PlayerBase:
+    async def _get_or_create_ai_player(
+        self,
+        game_type: GameType,
+        email: str | None = None,
+        display_username: str | None = None,
+    ) -> PlayerBase:
         """
         Get or create an AI player account for the specified game type.
 
         Args:
             game_type: The game type (QF or IR) to create the AI player for
             email: Optional custom email, defaults to game-specific AI email
+            display_username: Optional preferred username for new AI accounts
 
         Returns:
             The AI player instance
@@ -182,7 +188,9 @@ class AIService:
                 from backend.services.username_service import UsernameService
                 username_service = UsernameService(self.db, game_type=game_type)
 
-                if game_type == GameType.QF:
+                if display_username:
+                    base_username = display_username
+                elif game_type == GameType.QF:
                     base_username = "AI Copy Backup"
                 else:  # IR
                     base_username = "IR AI Backup"

@@ -22,6 +22,7 @@ from backend.schemas.party import (
     SubmitPartyRoundResponse,
     PartyListResponse,
     PartyListItemResponse,
+    PartyPingResponse,
 )
 from backend.services import TransactionService
 from backend.services.qf import (
@@ -401,6 +402,40 @@ async def add_ai_player_to_session(
     except Exception as e:
         logger.error(f"Error adding AI player: {e}")
         raise HTTPException(status_code=500, detail="Failed to add AI player")
+
+
+@router.post("/{session_id}/ping", response_model=PartyPingResponse)
+async def ping_party_session(
+    session_id: UUID,
+    player: QFPlayer = Depends(get_current_player),
+    db: AsyncSession = Depends(get_db),
+):
+    """Allow the host to ping all players with a lobby reminder."""
+
+    try:
+        party_service = PartySessionService(db)
+        session = await party_service.get_session_by_id(session_id)
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
+
+        participant = await party_service.get_participant(session_id, player.player_id)
+        if not participant or not participant.is_host:
+            raise HTTPException(status_code=403, detail="Only the host can ping players")
+
+        join_url = f"/party/{session_id}"
+        await ws_manager.notify_host_ping(
+            session_id=session_id,
+            host_player_id=player.player_id,
+            host_username=player.username,
+            join_url=join_url,
+        )
+
+        return PartyPingResponse(success=True, message="Ping sent to all players")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error pinging party session {session_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to send ping")
 
 
 @router.post("/{session_id}/process-ai")

@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useNetworkStatus, getConnectionQuality } from '../hooks/useNetworkStatus';
 import { offlineQueue, type OfflineAction } from '../utils/offlineQueue';
