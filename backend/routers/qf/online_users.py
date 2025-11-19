@@ -186,7 +186,7 @@ async def get_online_users(db: AsyncSession) -> List[OnlineUser]:
     """Get list of users who were active in the last 30 minutes.
 
     Excludes guest users who have taken no actions (no submitted rounds,
-    no phraseset activities, and no transactions).
+    no phraseset activities, no transactions, and haven't navigated beyond dashboard).
     """
     cutoff_time = datetime.now(UTC) - timedelta(minutes=30)
 
@@ -233,9 +233,32 @@ async def get_online_users(db: AsyncSession) -> List[OnlineUser]:
 
     online_users = []
     for activity, wallet, created_at, is_guest, player_id in rows:
-        # Skip guests with no activity
+        # Skip guests with no meaningful activity
         if is_guest and player_id not in guests_with_activity:
-            continue
+            # Check if guest has navigated to meaningful pages beyond dashboard
+            meaningful_actions = {
+                'Online Users',
+                'Statistics', 
+                'Leaderboard',
+                'Weekly Leaderboard',
+                'All-Time Leaderboard',
+                'Account Settings',
+                'Beta Survey',
+                'Browsing Rounds',
+                'Round Review',
+                'Completed Rounds',
+                'Active Quests',
+                'Quests',
+                'Phraseset Review',
+                'Practice Mode',
+                'Current Round',
+                'Pending Results',
+                'Notifications'
+            }
+            
+            # If guest has performed meaningful navigation, include them
+            if activity.last_action not in meaningful_actions:
+                continue
 
         # Calculate time ago
         # Ensure last_activity is timezone-aware (handle naive datetimes from DB)
