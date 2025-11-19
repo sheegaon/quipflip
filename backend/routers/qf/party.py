@@ -616,13 +616,22 @@ async def leave_party_session(
         if not participant:
             raise HTTPException(status_code=404, detail="Not in this session")
 
-        # Remove participant
-        await party_service.remove_participant(
+        # Remove participant (returns True if session was deleted)
+        session_deleted = await party_service.remove_participant(
             session_id=session_id,
             player_id=player.player_id,
         )
 
-        # Get updated participant count
+        if session_deleted:
+            # Last player left - session was deleted
+            logger.info(f"Session {session_id} was deleted after last player left")
+            return {
+                "success": True,
+                "message": "Left party session",
+                "session_deleted": True,
+            }
+
+        # Session still exists - get status and broadcast
         status_data = await party_service.get_session_status(session_id)
 
         # Broadcast player left
@@ -633,7 +642,11 @@ async def leave_party_session(
             participant_count=len(status_data['participants']),
         )
 
-        return {"success": True, "message": "Left party session"}
+        return {
+            "success": True,
+            "message": "Left party session",
+            "session_deleted": False,
+        }
 
     except SessionNotFoundError:
         raise HTTPException(status_code=404, detail="Session not found")
