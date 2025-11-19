@@ -61,6 +61,17 @@ import type {
   UpdateAdminConfigResponse,
   OnlineUsersResponse,
   WsAuthTokenResponse,
+  CreatePartySessionRequest,
+  CreatePartySessionResponse,
+  JoinPartySessionRequest,
+  JoinPartySessionResponse,
+  MarkReadyResponse,
+  StartPartySessionResponse,
+  PartySessionStatusResponse,
+  StartPartyRoundResponse,
+  SubmitPartyRoundRequest,
+  SubmitPartyRoundResponse,
+  PartyResultsResponse,
 } from './types';
 
 // Base URL - configure based on environment
@@ -748,6 +759,87 @@ export const apiClient = {
       original_phrase: originalPhrase,
       other_copy_phrase: otherCopyPhrase,
     }, { signal });
+    return data;
+  },
+
+  // Party Mode endpoints
+  async createPartySession(
+    request: CreatePartySessionRequest = {},
+    signal?: AbortSignal,
+  ): Promise<CreatePartySessionResponse> {
+    const { data } = await api.post<CreatePartySessionResponse>('/party/create', request, { signal });
+    return data;
+  },
+
+  async joinPartySession(
+    partyCode: string,
+    signal?: AbortSignal,
+  ): Promise<JoinPartySessionResponse> {
+    const { data } = await api.post<JoinPartySessionResponse>('/party/join', { party_code: partyCode }, { signal });
+    return data;
+  },
+
+  async markPartyReady(
+    sessionId: string,
+    signal?: AbortSignal,
+  ): Promise<MarkReadyResponse> {
+    const { data } = await api.post<MarkReadyResponse>(`/party/${sessionId}/ready`, {}, { signal });
+    return data;
+  },
+
+  async startPartySession(
+    sessionId: string,
+    signal?: AbortSignal,
+  ): Promise<StartPartySessionResponse> {
+    const { data } = await api.post<StartPartySessionResponse>(`/party/${sessionId}/start`, {}, { signal });
+    return data;
+  },
+
+  async getPartySessionStatus(
+    sessionId: string,
+    signal?: AbortSignal,
+  ): Promise<PartySessionStatusResponse> {
+    const { data } = await api.get<PartySessionStatusResponse>(`/party/${sessionId}/status`, { signal });
+    return data;
+  },
+
+  async leavePartySession(
+    sessionId: string,
+    signal?: AbortSignal,
+  ): Promise<{ success: boolean; message: string }> {
+    const { data } = await api.post<{ success: boolean; message: string }>(`/party/${sessionId}/leave`, {}, { signal });
+    return data;
+  },
+
+  async startPartyPromptRound(
+    sessionId: string,
+    signal?: AbortSignal,
+  ): Promise<StartPartyRoundResponse> {
+    const { data } = await api.post<StartPartyRoundResponse>(`/party/${sessionId}/rounds/prompt`, {}, { signal });
+    return data;
+  },
+
+  async startPartyCopyRound(
+    sessionId: string,
+    signal?: AbortSignal,
+  ): Promise<StartPartyRoundResponse> {
+    const { data } = await api.post<StartPartyRoundResponse>(`/party/${sessionId}/rounds/copy`, {}, { signal });
+    return data;
+  },
+
+  async startPartyVoteRound(
+    sessionId: string,
+    signal?: AbortSignal,
+  ): Promise<StartPartyRoundResponse> {
+    const { data } = await api.post<StartPartyRoundResponse>(`/party/${sessionId}/rounds/vote`, {}, { signal });
+    return data;
+  },
+
+  async getPartyResults(
+    sessionId: string,
+    signal?: AbortSignal,
+  ): Promise<PartyResultsResponse> {
+    const { data } = await api.get<PartyResultsResponse>(`/party/${sessionId}/results`, { signal });
     return data;
   },
 };

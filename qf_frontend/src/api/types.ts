@@ -792,3 +792,174 @@ export interface UpdateAdminConfigResponse {
   value: number | string;
   message?: string;
 }
+
+// Party Mode types
+export interface PartyParticipant {
+  participant_id: string;
+  player_id: string;
+  username: string;
+  is_host: boolean;
+  status: 'JOINED' | 'READY' | 'ACTIVE' | 'COMPLETED';
+  prompts_submitted: number;
+  copies_submitted: number;
+  votes_submitted: number;
+  prompts_required: number;
+  copies_required: number;
+  votes_required: number;
+  joined_at: string | null;
+  ready_at: string | null;
+}
+
+export interface PartySessionProgress {
+  total_prompts: number;
+  total_copies: number;
+  total_votes: number;
+  required_prompts: number;
+  required_copies: number;
+  required_votes: number;
+  players_ready_for_next_phase: number;
+  total_players: number;
+}
+
+export interface PartySession {
+  session_id: string;
+  party_code: string;
+  host_player_id: string;
+  status: 'LOBBY' | 'ACTIVE' | 'COMPLETED';
+  current_phase: 'LOBBY' | 'PROMPT' | 'COPY' | 'VOTE' | 'RESULTS';
+  min_players: number;
+  max_players: number;
+  phase_started_at: string | null;
+  created_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+  participants: PartyParticipant[];
+  progress: PartySessionProgress;
+}
+
+export interface CreatePartySessionRequest {
+  min_players?: number;
+  max_players?: number;
+  prompts_per_player?: number;
+  copies_per_player?: number;
+  votes_per_player?: number;
+}
+
+export interface CreatePartySessionResponse {
+  session_id: string;
+  party_code: string;
+  host_player_id: string;
+  status: string;
+  current_phase: string;
+  created_at: string;
+  participants: PartyParticipant[];
+  min_players: number;
+  max_players: number;
+}
+
+export interface JoinPartySessionRequest {
+  party_code: string;
+}
+
+export interface JoinPartySessionResponse {
+  session_id: string;
+  party_code: string;
+  status: string;
+  current_phase: string;
+  participants: PartyParticipant[];
+  participant_count: number;
+  min_players: number;
+  max_players: number;
+}
+
+export interface MarkReadyResponse {
+  participant_id: string;
+  status: string;
+  session: {
+    ready_count: number;
+    total_count: number;
+    can_start: boolean;
+  };
+}
+
+export interface StartPartySessionResponse {
+  session_id: string;
+  status: string;
+  current_phase: string;
+  phase_started_at: string;
+  locked_at: string;
+  participants: PartyParticipant[];
+}
+
+export interface PartySessionStatusResponse extends PartySession {}
+
+export interface StartPartyRoundResponse {
+  round_id: string;
+  party_round_id: string;
+  round_type: 'prompt' | 'copy' | 'vote';
+  expires_at: string;
+  cost: number;
+  session_progress: Record<string, number>;
+}
+
+export interface SubmitPartyRoundRequest {
+  phrase: string;
+}
+
+export interface SubmitPartyRoundResponse {
+  success: boolean;
+  phrase: string;
+  round_type: string;
+  session_progress: Record<string, number>;
+  phase_transition?: Record<string, unknown> | null;
+}
+
+export interface PartyPlayerStats {
+  player_id: string;
+  username: string;
+  rank: number;
+  spent: number;
+  earned: number;
+  net: number;
+  votes_on_originals: number;
+  votes_fooled: number;
+  correct_votes: number;
+  total_votes: number;
+  vote_accuracy: number;
+  prompts_submitted: number;
+  copies_submitted: number;
+  votes_submitted: number;
+}
+
+export interface PartyAward {
+  player_id: string;
+  username: string;
+  metric_value: number;
+}
+
+export interface PartyPhrasesetSummary {
+  phraseset_id: string;
+  prompt_text: string;
+  original_phrase: string;
+  vote_count: number;
+  original_player: string;
+  most_votes: string;
+  votes_breakdown: Record<string, number>;
+}
+
+export interface PartyResultsResponse {
+  session_id: string;
+  party_code: string;
+  completed_at: string | null;
+  rankings: PartyPlayerStats[];
+  awards: Record<string, PartyAward>;
+  phrasesets_summary: PartyPhrasesetSummary[];
+}
+
+// Party Mode WebSocket message types
+export interface PartyWebSocketMessage {
+  type: 'player_joined' | 'player_left' | 'player_ready' | 'session_started' | 'phase_transition' | 'player_progress';
+  session_id: string;
+  data: Record<string, unknown>;
+  timestamp: string;
+}
