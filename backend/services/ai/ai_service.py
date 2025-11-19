@@ -421,6 +421,65 @@ class AIService:
                 exc_info=True)
             raise AICopyError(f"AI phrase generation failed: {str(exc)}") from exc
 
+    async def revalidate_cached_phrases(self, prompt_round: Round) -> QFAIPhraseCache | None:
+        """Re-run phrase validation on cached phrases and refresh the cache if needed."""
+
+        from backend.utils import lock_client
+
+        lock_name = f"ai_phrase_generation:{prompt_round.round_id}"
+
+        try:
+            with lock_client.lock(lock_name, timeout=30):
+                result = await self.db.execute(
+                    select(QFAIPhraseCache)
+                    .where(QFAIPhraseCache.prompt_round_id == prompt_round.round_id)
+                )
+                cache = result.scalar_one_or_none()
+
+                if not cache or not cache.validated_phrases:
+                    return cache
+
+                other_copy_phrase = await self._get_existing_copy_phrase(prompt_round.round_id)
+                valid_phrases: list[str] = []
+
+                for phrase in cache.validated_phrases:
+                    is_valid, error_message = await self.phrase_validator.validate_copy(
+                        phrase,
+                        prompt_round.submitted_phrase,
+                        other_copy_phrase,
+                        prompt_round.prompt_text,
+                    )
+
+                    if is_valid:
+                        valid_phrases.append(phrase)
+                    else:
+                        logger.info(
+                            "Cached AI phrase invalidated after first copy submission: %s (%s)",
+                            phrase,
+                            error_message,
+                        )
+
+                if len(valid_phrases) >= 3:
+                    cache.validated_phrases = valid_phrases
+                    await self.db.flush()
+                    return cache
+
+                logger.info(
+                    "Cached AI phrases for prompt_round %s fell below 3 after revalidation; regenerating",
+                    prompt_round.round_id,
+                )
+
+                await self.db.delete(cache)
+                await self.db.flush()
+        except TimeoutError:
+            logger.warning(
+                "Could not acquire lock for AI phrase revalidation of prompt round %s, another process may be handling it",
+                prompt_round.round_id,
+            )
+            return None
+
+        return await self.generate_and_cache_phrases(prompt_round)
+
     async def generate_copy_phrase(self, original_phrase: str, prompt_round: Round) -> str:
         """
         Generate a copy phrase using cached validated phrases.

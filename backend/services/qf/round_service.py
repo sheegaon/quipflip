@@ -29,6 +29,7 @@ from backend.utils.exceptions import (
 )
 from backend.services.qf.round_service_helpers import (
     generate_ai_hints_background,
+    revalidate_ai_hints_background,
     PromptQueryBuilder,
     RoundValidationHelper,
     CostCalculationHelper,
@@ -609,6 +610,16 @@ class RoundService:
                 prompt_round.phraseset_status = "active"
                 await self.activity_service.attach_phraseset_id(
                     prompt_round.round_id, phraseset.phraseset_id
+                )
+
+        if prompt_round and is_first_copy:
+            try:
+                asyncio.create_task(
+                    revalidate_ai_hints_background(prompt_round.round_id)
+                )
+            except Exception as e:
+                logger.error(
+                    "Failed to revalidate AI hints after first copy submission: %s", e, exc_info=True
                 )
 
         await self.db.commit()
