@@ -1025,7 +1025,7 @@ export type PartyWebSocketMessage =
   | {
       type: 'player_joined';
       session_id: string;
-      data: {
+      data?: {
         player_id: string;
         username: string;
         participant_count: number;
@@ -1035,7 +1035,7 @@ export type PartyWebSocketMessage =
   | {
       type: 'player_left';
       session_id: string;
-      data: {
+      data?: {
         player_id: string;
         username: string;
         participant_count: number;
@@ -1045,7 +1045,7 @@ export type PartyWebSocketMessage =
   | {
       type: 'player_ready';
       session_id: string;
-      data: {
+      data?: {
         player_id: string;
         username: string;
         ready_count: number;
@@ -1056,7 +1056,7 @@ export type PartyWebSocketMessage =
   | {
       type: 'session_started';
       session_id: string;
-      data: {
+      data?: {
         current_phase: string;
         participant_count: number;
         message: string;
@@ -1066,7 +1066,7 @@ export type PartyWebSocketMessage =
   | {
       type: 'phase_transition';
       session_id: string;
-      data: {
+      data?: {
         old_phase: string;
         new_phase: string;
         message: string;
@@ -1076,7 +1076,7 @@ export type PartyWebSocketMessage =
   | {
       type: 'player_progress';
       session_id: string;
-      data: {
+      data?: {
         player_id: string;
         username: string;
         action: string;
@@ -1095,7 +1095,7 @@ export type PartyWebSocketMessage =
   | {
       type: 'session_completed';
       session_id: string;
-      data: {
+      data?: {
         completed_at: string;
         message: string;
       };
@@ -1104,13 +1104,13 @@ export type PartyWebSocketMessage =
   | {
       type: 'session_update';
       session_id: string;
-      data: Record<string, unknown>;
+      data?: Record<string, unknown>;
       timestamp: string;
     }
   | {
       type: 'host_ping';
       session_id: string;
-      data: {
+      data?: {
         host_player_id: string;
         host_username: string;
         join_url: string;
