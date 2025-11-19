@@ -34,6 +34,7 @@ from backend.services.qf.party_session_service import (
     SessionAlreadyStartedError,
     SessionFullError,
     AlreadyInSessionError,
+    AlreadyInAnotherSessionError,
     NotHostError,
     NotEnoughPlayersError,
     WrongPhaseError,
@@ -151,22 +152,29 @@ async def _handle_party_join(
         SessionFullError: If session is at max capacity
         AlreadyInSessionError: If player is already in session
     """
-    # Add participant
-    participant = await party_service.add_participant(
+    existing_participant = await party_service.get_participant(
         session_id=session_id,
         player_id=player.player_id,
     )
+
+    # Add participant if they're not already in the session
+    if not existing_participant:
+        await party_service.add_participant(
+            session_id=session_id,
+            player_id=player.player_id,
+        )
 
     # Get updated status
     status_data = await party_service.get_session_status(session_id)
 
-    # Broadcast player joined
-    await ws_manager.notify_player_joined(
-        session_id=session_id,
-        player_id=player.player_id,
-        username=player.username,
-        participant_count=len(status_data['participants']),
-    )
+    # Broadcast player joined if this is a new participant
+    if not existing_participant:
+        await ws_manager.notify_player_joined(
+            session_id=session_id,
+            player_id=player.player_id,
+            username=player.username,
+            participant_count=len(status_data['participants']),
+        )
 
     return JoinPartySessionResponse(
         session_id=status_data['session_id'],
@@ -221,6 +229,8 @@ async def join_party_session(
         raise HTTPException(status_code=400, detail="Session is full")
     except AlreadyInSessionError:
         raise HTTPException(status_code=409, detail="Already in this session")
+    except AlreadyInAnotherSessionError:
+        raise HTTPException(status_code=409, detail="already_in_another_session")
     except Exception as e:
         logger.error(f"Error joining party session: {e}")
         raise HTTPException(status_code=500, detail="Failed to join party session")
@@ -262,6 +272,8 @@ async def join_party_session_by_id(
         raise HTTPException(status_code=400, detail="Session is full")
     except AlreadyInSessionError:
         raise HTTPException(status_code=409, detail="Already in this session")
+    except AlreadyInAnotherSessionError:
+        raise HTTPException(status_code=409, detail="already_in_another_session")
     except Exception as e:
         logger.error(f"Error joining party session: {e}")
         raise HTTPException(status_code=500, detail="Failed to join party session")

@@ -50,6 +50,11 @@ class AlreadyInSessionError(PartyModeError):
     pass
 
 
+class AlreadyInAnotherSessionError(PartyModeError):
+    """Raised when player tries to join a different session while active in one."""
+    pass
+
+
 class NotHostError(PartyModeError):
     """Raised when non-host tries to perform host-only action."""
     pass
@@ -303,6 +308,13 @@ class PartySessionService:
         existing_participant = await self.get_participant(session_id, player_id)
         if existing_participant:
             raise AlreadyInSessionError("Player is already in this session")
+
+        # Check if player is already in another active session
+        active_session = await self.get_active_session_for_player(player_id)
+        if active_session and active_session.session_id != session_id:
+            raise AlreadyInAnotherSessionError(
+                "Player is already participating in another active party session"
+            )
 
         # Create participant
         participant = PartyParticipant(
@@ -849,6 +861,20 @@ class PartySessionService:
             select(PartyParticipant)
             .where(PartyParticipant.session_id == session_id)
             .where(PartyParticipant.player_id == player_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def get_active_session_for_player(
+        self,
+        player_id: UUID,
+    ) -> Optional[PartySession]:
+        """Return an active session that already includes the player."""
+
+        result = await self.db.execute(
+            select(PartySession)
+            .join(PartyParticipant, PartyParticipant.session_id == PartySession.session_id)
+            .where(PartyParticipant.player_id == player_id)
+            .where(PartySession.status.in_(['OPEN', 'IN_PROGRESS']))
         )
         return result.scalar_one_or_none()
 

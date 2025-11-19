@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import apiClient from '../api/client';
@@ -68,7 +69,16 @@ export const PartyMode: React.FC = () => {
       // Navigate to party lobby
       navigate(`/party/${response.session_id}`);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to join party');
+      if (axios.isAxiosError<{ detail?: string }>(err)) {
+        const detail = err.response?.data?.detail;
+        if (detail === 'already_in_another_session') {
+          setError('You are already in another party. Leave it before joining a new one.');
+        } else {
+          setError(err.message || 'Failed to join party');
+        }
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to join party');
+      }
     } finally {
       setJoiningSessionId(null);
     }
