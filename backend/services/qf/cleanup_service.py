@@ -5,7 +5,18 @@ import re
 from uuid import UUID
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import case, delete, func, or_, select, text, update
+from sqlalchemy import (
+    String,
+    case,
+    cast,
+    delete,
+    exists,
+    func,
+    or_,
+    select,
+    text,
+    update,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.models.qf import (
@@ -75,6 +86,17 @@ class CleanupService:
             return False
         return username.endswith(" X") or bool(re.search(r" X\d+$", username))
 
+    @staticmethod
+    def _normalized_uuid(column):
+        """Return a lowercase, hyphen-less string representation of a UUID column.
+
+        Uses SQLAlchemy expressions to remain portable across database dialects
+        (e.g., SQLite vs. Postgres) instead of relying on dialect-specific casts
+        like ``::text``.
+        """
+
+        return func.lower(func.replace(cast(column, String), "-", ""))
+
     async def _generate_anonymous_username(self) -> tuple[str, str]:
         """Generate a unique anonymous username like 'Deleted User #12345'.
 
@@ -113,17 +135,20 @@ class CleanupService:
         # Find and delete orphaned refresh tokens
         # The query normalizes both sides to handle UUID format mismatches (with/without hyphens)
         # Using token_id (the actual primary key column name)
+        player_id_normalized = self._normalized_uuid(QFPlayer.player_id)
+        token_player_normalized = self._normalized_uuid(QFRefreshToken.player_id)
+
+        orphaned_tokens = (
+            select(QFRefreshToken.token_id)
+            .where(
+                ~exists()
+                .where(player_id_normalized == token_player_normalized)
+                .correlate(QFRefreshToken)
+            )
+        )
+
         result = await self.db.execute(
-            text("""
-                DELETE FROM qf_refresh_tokens
-                WHERE token_id IN (
-                    SELECT rt.token_id FROM qf_refresh_tokens rt
-                    WHERE NOT EXISTS (
-                        SELECT 1 FROM qf_players p
-                        WHERE LOWER(REPLACE(p.player_id::text, '-', '')) = LOWER(REPLACE(rt.player_id::text, '-', ''))
-                    )
-                )
-            """)
+            delete(QFRefreshToken).where(QFRefreshToken.token_id.in_(orphaned_tokens))
         )
         await self.db.commit()
 
