@@ -98,38 +98,44 @@ export function usePartyWebSocket(
           const message: PartyWebSocketMessage = JSON.parse(event.data);
           console.log('📨 Party WebSocket message:', message);
 
+          // TypeScript now knows the exact type of message.data based on message.type
           switch (message.type) {
             case 'phase_transition':
-              handlers.onPhaseTransition?.(message.data as any);
+              handlers.onPhaseTransition?.(message.data);
               break;
 
             case 'player_joined':
-              handlers.onPlayerJoined?.(message.data as any);
+              handlers.onPlayerJoined?.(message.data);
               break;
 
             case 'player_left':
-              handlers.onPlayerLeft?.(message.data as any);
+              handlers.onPlayerLeft?.(message.data);
               break;
 
             case 'player_ready':
-              handlers.onPlayerReady?.(message.data as any);
+              handlers.onPlayerReady?.(message.data);
               break;
 
             case 'player_progress':
-              handlers.onProgressUpdate?.(message.data as any);
+              handlers.onProgressUpdate?.(message.data);
               break;
 
             case 'session_started':
-              handlers.onSessionStarted?.(message.data as any);
+              handlers.onSessionStarted?.(message.data);
+              break;
+
+            case 'session_completed':
+              handlers.onSessionCompleted?.(message.data);
+              break;
+
+            case 'session_update':
+              handlers.onSessionUpdate?.(message.data);
               break;
 
             default:
-              // Handle other message types
-              if (message.type === 'session_completed' || message.type === 'session_update') {
-                handlers.onSessionUpdate?.(message.data);
-              } else {
-                console.warn('Unknown Party WebSocket message type:', message.type);
-              }
+              // Exhaustiveness check - TypeScript will error if we miss a case
+              const _exhaustiveCheck: never = message;
+              console.warn('Unknown Party WebSocket message type:', _exhaustiveCheck);
           }
         } catch (err) {
           console.error('Error parsing WebSocket message:', err);

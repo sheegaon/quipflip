@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { usePartyWebSocket } from '../hooks/usePartyWebSocket';
@@ -36,57 +36,8 @@ export const PartyGame: React.FC = () => {
     (currentPhase === 'COPY' && (currentPlayer?.copies_submitted ?? 0) >= (currentPlayer?.copies_required ?? 2)) ||
     (currentPhase === 'VOTE' && (currentPlayer?.votes_submitted ?? 0) >= (currentPlayer?.votes_required ?? 3));
 
-  // Load session status
-  const loadSessionStatus = async () => {
-    if (!sessionId) return;
-
-    try {
-      const status = await apiClient.getPartySessionStatus(sessionId);
-      setSessionStatus(status);
-
-      // Check if session completed
-      if (status.current_phase === 'RESULTS' || status.status === 'COMPLETED') {
-        navigate(`/party/results/${sessionId}`);
-        return;
-      }
-
-      // If we don't have an active round and phase isn't complete, start one
-      if (!activeRound && !isPhaseComplete && !waitingForPhaseTransition) {
-        await startRoundForCurrentPhase(status.current_phase);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load session');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadSessionStatus();
-  }, [sessionId]);
-
-  // WebSocket handlers
-  const { connected: wsConnected } = usePartyWebSocket({
-    sessionId: sessionId ?? '',
-    onPhaseTransition: (data) => {
-      console.log('Phase transition:', data);
-      setWaitingForPhaseTransition(false);
-      setActiveRound(null);
-      setPhraseInput('');
-      setSelectedPhrase(null);
-      loadSessionStatus();
-    },
-    onProgressUpdate: (data) => {
-      console.log('Progress update:', data);
-      loadSessionStatus();
-    },
-    onSessionCompleted: (data) => {
-      console.log('Session completed:', data);
-      navigate(`/party/results/${sessionId}`);
-    },
-  });
-
-  const startRoundForCurrentPhase = async (phase: string) => {
+  // Start round for current phase - wrapped in useCallback to prevent stale closures
+  const startRoundForCurrentPhase = useCallback(async (phase: string) => {
     if (!sessionId) return;
 
     try {
@@ -116,7 +67,63 @@ export const PartyGame: React.FC = () => {
         setError(err instanceof Error ? err.message : 'Failed to start round');
       }
     }
-  };
+  }, [sessionId]);
+
+  // Load session status - wrapped in useCallback to prevent stale closures
+  const loadSessionStatus = useCallback(async () => {
+    if (!sessionId) return;
+
+    try {
+      const status = await apiClient.getPartySessionStatus(sessionId);
+      setSessionStatus(status);
+
+      // Check if session completed
+      if (status.current_phase === 'RESULTS' || status.status === 'COMPLETED') {
+        navigate(`/party/results/${sessionId}`);
+        return;
+      }
+
+      // If we don't have an active round and phase isn't complete, start one
+      if (!activeRound && !isPhaseComplete && !waitingForPhaseTransition) {
+        await startRoundForCurrentPhase(status.current_phase);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load session');
+    } finally {
+      setLoading(false);
+    }
+  }, [sessionId, navigate, activeRound, isPhaseComplete, waitingForPhaseTransition, startRoundForCurrentPhase]);
+
+  useEffect(() => {
+    loadSessionStatus();
+  }, [loadSessionStatus]);
+
+  // WebSocket handlers - wrapped in useCallback to prevent reconnection on every render
+  const handlePhaseTransition = useCallback((data: unknown) => {
+    console.log('Phase transition:', data);
+    setWaitingForPhaseTransition(false);
+    setActiveRound(null);
+    setPhraseInput('');
+    setSelectedPhrase(null);
+    loadSessionStatus();
+  }, [loadSessionStatus]);
+
+  const handleProgressUpdate = useCallback((data: unknown) => {
+    console.log('Progress update:', data);
+    loadSessionStatus();
+  }, [loadSessionStatus]);
+
+  const handleSessionCompleted = useCallback((data: unknown) => {
+    console.log('Session completed:', data);
+    navigate(`/party/results/${sessionId}`);
+  }, [navigate, sessionId]);
+
+  const { connected: wsConnected } = usePartyWebSocket({
+    sessionId: sessionId ?? '',
+    onPhaseTransition: handlePhaseTransition,
+    onProgressUpdate: handleProgressUpdate,
+    onSessionCompleted: handleSessionCompleted,
+  });
 
   const handleSubmitPrompt = async () => {
     if (!sessionId || !activeRound || !phraseInput.trim()) return;
@@ -315,10 +322,10 @@ export const PartyGame: React.FC = () => {
   };
 
   const renderCopyPhase = () => {
-    if (!activeRound) return null;
+    if (!activeRound || activeRound.round_type !== 'copy') return null;
 
-    // TODO: Get the original phrase from activeRound
-    const originalPhrase = 'PLACEHOLDER'; // This should come from the round data
+    // Get the original phrase from the discriminated union type
+    const originalPhrase = activeRound.original_phrase;
 
     return (
       <div className="tile-card shadow-tile p-6">
@@ -369,14 +376,18 @@ export const PartyGame: React.FC = () => {
   };
 
   const renderVotePhase = () => {
-    if (!activeRound) return null;
+    if (!activeRound || activeRound.round_type !== 'vote') return null;
 
-    // TODO: Get phrases from activeRound
-    const phrases = ['PHRASE1', 'PHRASE2', 'PHRASE3']; // This should come from round data
+    // Get the phrases from the discriminated union type
+    const phrases = activeRound.phrases;
+    const promptText = activeRound.prompt_text;
 
     return (
       <div className="tile-card shadow-tile p-6">
         <h2 className="text-2xl font-display font-bold text-quip-navy mb-4">Vote for the Original</h2>
+        <p className="text-quip-teal mb-2">
+          Prompt: <span className="font-semibold">{promptText}</span>
+        </p>
         <p className="text-quip-teal mb-6">
           Which phrase do you think is the real one?
         </p>
