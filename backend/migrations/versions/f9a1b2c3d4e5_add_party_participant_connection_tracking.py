@@ -31,6 +31,10 @@ def upgrade() -> None:
     """Add connection tracking columns to party_participants."""
     timestamp_default = get_timestamp_default()
 
+    # Detect database dialect for SQLite-specific handling
+    bind = op.get_bind()
+    dialect_name = bind.dialect.name
+
     # Add disconnected_at column (nullable)
     op.add_column(
         'party_participants',
@@ -51,14 +55,26 @@ def upgrade() -> None:
         WHERE last_activity_at IS NULL
     """)
 
-    # Then alter the column to be non-nullable with default
-    op.alter_column(
-        'party_participants',
-        'last_activity_at',
-        existing_type=sa.TIMESTAMP(timezone=True),
-        nullable=False,
-        server_default=timestamp_default
-    )
+    # For SQLite, use batch mode to handle column alteration
+    # For PostgreSQL, use standard ALTER COLUMN
+    if dialect_name == 'sqlite':
+        # SQLite requires batch operations for column modifications
+        with op.batch_alter_table('party_participants') as batch_op:
+            batch_op.alter_column(
+                'last_activity_at',
+                existing_type=sa.TIMESTAMP(timezone=True),
+                nullable=False,
+                server_default=timestamp_default
+            )
+    else:
+        # PostgreSQL supports ALTER COLUMN directly
+        op.alter_column(
+            'party_participants',
+            'last_activity_at',
+            existing_type=sa.TIMESTAMP(timezone=True),
+            nullable=False,
+            server_default=timestamp_default
+        )
 
     # Create index for efficient inactive participant queries
     op.create_index(
@@ -71,17 +87,32 @@ def upgrade() -> None:
 def downgrade() -> None:
     """Remove connection tracking columns from party_participants."""
 
+    # Detect database dialect for SQLite-specific handling
+    bind = op.get_bind()
+    dialect_name = bind.dialect.name
+
     # Drop index
     op.drop_index('idx_party_participants_inactive', table_name='party_participants')
 
     # Revert last_activity_at to nullable (remove default)
-    op.alter_column(
-        'party_participants',
-        'last_activity_at',
-        existing_type=sa.TIMESTAMP(timezone=True),
-        nullable=True,
-        server_default=None
-    )
+    if dialect_name == 'sqlite':
+        # SQLite requires batch operations for column modifications
+        with op.batch_alter_table('party_participants') as batch_op:
+            batch_op.alter_column(
+                'last_activity_at',
+                existing_type=sa.TIMESTAMP(timezone=True),
+                nullable=True,
+                server_default=None
+            )
+    else:
+        # PostgreSQL supports ALTER COLUMN directly
+        op.alter_column(
+            'party_participants',
+            'last_activity_at',
+            existing_type=sa.TIMESTAMP(timezone=True),
+            nullable=True,
+            server_default=None
+        )
 
     # Drop new columns
     op.drop_column('party_participants', 'connection_status')
