@@ -18,13 +18,10 @@ from backend.services.ai.ai_service import AIService
 from backend.utils.model_registry import GameType
 from backend.services import TransactionService
 from backend.services import UsernameService
+from backend.services.ai.ai_service import AI_PLAYER_EMAIL_DOMAIN
 
 
 logger = logging.getLogger(__name__)
-
-
-# Use same pattern as AI backup service - create players dynamically with random usernames
-AI_PLAYER_EMAIL_DOMAIN = "@quipflip.internal"
 
 
 class StaleAIService:

@@ -590,7 +590,7 @@ class TestAIPlayerManagement:
             )
             mock_create.return_value = mock_player
 
-            player = await service._get_or_create_ai_player(GameType.QF)
+            player = await service.get_or_create_ai_player(GameType.QF)
 
             assert player.username == "AI_BACKUP"
             mock_create.assert_called_once()
@@ -615,7 +615,7 @@ class TestAIPlayerManagement:
         service = AIService(db_session)
 
         with patch('backend.services.qf.player_service.PlayerService.create_player') as mock_create:
-            player = await service._get_or_create_ai_player(GameType.QF)
+            player = await service.get_or_create_ai_player(GameType.QF)
 
             assert player.username == "AI Copy Runner"
             assert player.player_id == ai_player.player_id

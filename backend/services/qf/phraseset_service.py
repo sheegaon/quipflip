@@ -9,8 +9,6 @@ from sqlalchemy import select
 from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-logger = logging.getLogger(__name__)
-
 from backend.models.qf.player import QFPlayer
 from backend.models.qf.phraseset import Phraseset
 from backend.models.qf.result_view import QFResultView
@@ -19,6 +17,9 @@ from backend.models.qf.vote import Vote
 from backend.services.qf.phraseset_activity_service import ActivityService
 from backend.services.qf.scoring_service import ScoringService
 from backend.services.qf.helpers import upsert_result_view
+from backend.services.ai.ai_service import AI_PLAYER_EMAIL_DOMAIN
+
+logger = logging.getLogger(__name__)
 
 
 class PhrasesetService:
@@ -698,14 +699,13 @@ class PhrasesetService:
         Returns up to 500 phrasesets. When more than 500 exist, prioritizes
         phrasesets with the least AI player involvement.
 
-        AI players are identified by email ending with '@quipflip.internal'.
+        AI players are identified by email ending with AI_PLAYER_EMAIL_DOMAIN.
         """
         from sqlalchemy import func, or_
         from backend.models.qf.round import Round
         from backend.models.qf.player import QFPlayer
         from backend.models.qf.vote import Vote
 
-        AI_DOMAIN = "@quipflip.internal"
         MAX_RESULTS = 500
 
         # Get total count to determine if we need special handling
@@ -743,7 +743,7 @@ class PhrasesetService:
                 .outerjoin(QFPlayer, Round.player_id == QFPlayer.player_id)
                 .where(
                     Phraseset.status == "finalized",
-                    QFPlayer.email.like(f"%{AI_DOMAIN}")
+                    QFPlayer.email.like(f"%{AI_PLAYER_EMAIL_DOMAIN}")
                 )
                 .group_by(Phraseset.phraseset_id)
                 .subquery()
@@ -754,7 +754,7 @@ class PhrasesetService:
                 select(Vote.phraseset_id, func.count().label('ai_voter_count'))
                 .select_from(Vote)
                 .join(QFPlayer, Vote.player_id == QFPlayer.player_id)
-                .where(QFPlayer.email.like(f"%{AI_DOMAIN}"))
+                .where(QFPlayer.email.like(f"%{AI_PLAYER_EMAIL_DOMAIN}"))
                 .group_by(Vote.phraseset_id)
                 .subquery()
             )
@@ -1374,7 +1374,7 @@ class PhrasesetService:
         for player_id, username, email in result.all():
             mapping[player_id] = {
                 "username": username,
-                "is_ai": email.endswith("@quipflip.internal") if email else False
+                "is_ai": email.endswith(AI_PLAYER_EMAIL_DOMAIN) if email else False
             }
         return mapping
 

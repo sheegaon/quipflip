@@ -18,6 +18,7 @@ from backend.models.qf.party_phraseset import PartyPhraseset
 from backend.models.qf.round import Round
 from backend.models.qf.phraseset import Phraseset
 from backend.config import get_settings
+from backend.services.ai.ai_service import AI_PLAYER_EMAIL_DOMAIN
 from backend.utils.exceptions import QuipflipException
 
 logger = logging.getLogger(__name__)
@@ -87,7 +88,7 @@ class PartySessionService:
         """Determine whether a player account represents an AI participant."""
         if not player or not getattr(player, 'email', None):
             return False
-        return player.email.lower().endswith('@quipflip.internal')
+        return player.email.lower().endswith(AI_PLAYER_EMAIL_DOMAIN)
 
     async def create_session(
         self,
@@ -388,17 +389,10 @@ class PartySessionService:
             raise SessionFullError(f"Session is full (max {session.max_players} players)")
 
         # Get or create AI player
-        from backend.services.ai.ai_service import AIService
-        from backend.services.username_service import UsernameService
-
-        username_service = UsernameService(self.db, game_type=game_type)
-        ai_display_username, _ = await username_service.generate_unique_username()
-
-        ai_service = AIService(self.db)
-        ai_player = await ai_service._get_or_create_ai_player(
+        from backend.services.ai.ai_service import AIService, AI_PLAYER_EMAIL_DOMAIN
+        ai_player = await AIService(self.db).get_or_create_ai_player(
             game_type=game_type,
-            email=f"ai_party_{uuid.uuid4().hex[:8]}@quipflip.internal",
-            display_username=ai_display_username,
+            email=f"ai_party_{uuid.uuid4().hex[:4]}{AI_PLAYER_EMAIL_DOMAIN}",
         )
 
         # Create participant

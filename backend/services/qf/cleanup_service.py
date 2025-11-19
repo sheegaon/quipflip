@@ -120,7 +120,7 @@ class CleanupService:
                     SELECT rt.token_id FROM qf_refresh_tokens rt
                     WHERE NOT EXISTS (
                         SELECT 1 FROM qf_players p
-                        WHERE LOWER(REPLACE(p.player_id, '-', '')) = LOWER(REPLACE(rt.player_id, '-', ''))
+                        WHERE LOWER(REPLACE(p.player_id::text, '-', '')) = LOWER(REPLACE(rt.player_id::text, '-', ''))
                     )
                 )
             """)
