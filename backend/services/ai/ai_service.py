@@ -679,13 +679,12 @@ class AIService:
                 .where(Round.status == 'submitted')
                 .where(Round.created_at <= cutoff_time)
                 .where(Round.player_id != ai_copy_player.player_id)
-                # .where(~Player.username.like('%test%'))  # Exclude test players
                 .where(PhrasesetActivity.phraseset_id.is_(None))  # Not yet a phraseset
                 .order_by(Round.created_at.asc())  # Process oldest first
                 .limit(self.settings.ai_backup_batch_size)  # Configurable batch size
             )
             
-            waiting_prompts = list(result.scalars().all())
+            waiting_prompts = set(result.scalars().all())
             
             # Filter out prompts already copied by AI (check separately to avoid complex joins)
             filtered_prompts = []
