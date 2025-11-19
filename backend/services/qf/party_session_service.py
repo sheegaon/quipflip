@@ -502,20 +502,27 @@ class PartySessionService:
         - connection_status is 'disconnected' AND
         - last_activity_at is more than 5 minutes ago
 
+        Uses batch operations for efficiency and atomicity.
+
         Args:
             session_id: UUID of the session to check
 
         Returns:
             List[Dict]: List of removed participants with their info
         """
-        from backend.websocket.party_manager import party_manager
+        from backend.services.qf.party_websocket_manager import get_party_websocket_manager
 
         # Calculate cutoff time (5 minutes ago)
         cutoff_time = datetime.now(UTC) - timedelta(minutes=5)
 
-        # Find inactive participants
+        # Fetch all inactive participants with player info in a single query
         result = await self.db.execute(
-            select(PartyParticipant)
+            select(
+                PartyParticipant.participant_id,
+                PartyParticipant.player_id,
+                PartyParticipant.is_host,
+                QFPlayer.username,
+            )
             .join(QFPlayer, PartyParticipant.player_id == QFPlayer.player_id)
             .where(
                 and_(
@@ -525,76 +532,104 @@ class PartySessionService:
                 )
             )
         )
-        inactive_participants = result.scalars().all()
+        inactive_rows = result.all()
 
+        if not inactive_rows:
+            return []
+
+        # Process in memory to prepare for batch operations
         removed_participants = []
-        for participant in inactive_participants:
-            # Get player info before deleting
-            player_result = await self.db.execute(
-                select(QFPlayer)
-                .where(QFPlayer.player_id == participant.player_id)
-            )
-            player = player_result.scalar_one_or_none()
+        participant_ids_to_delete = []
+        any_host_removed = False
 
-            if player:
-                participant_info = {
-                    'player_id': str(participant.player_id),
-                    'username': player.username,
-                    'was_host': participant.is_host,
+        for row in inactive_rows:
+            participant_ids_to_delete.append(row.participant_id)
+            removed_participants.append({
+                'player_id': str(row.player_id),
+                'username': row.username,
+                'was_host': row.is_host,
+            })
+            if row.is_host:
+                any_host_removed = True
+
+        # Batch delete all inactive participants in a single operation
+        if participant_ids_to_delete:
+            await self.db.execute(
+                select(PartyParticipant)
+                .where(PartyParticipant.participant_id.in_(participant_ids_to_delete))
+            )
+            # Use delete() with synchronize_session=False for better performance
+            from sqlalchemy import delete as sql_delete
+            await self.db.execute(
+                sql_delete(PartyParticipant)
+                .where(PartyParticipant.participant_id.in_(participant_ids_to_delete))
+                .execution_options(synchronize_session=False)
+            )
+
+        # Check if session is now empty
+        remaining_count = await self._get_participant_count(session_id)
+
+        if remaining_count == 0:
+            # Session is empty - delete it
+            await self._delete_empty_session(session_id)
+            # Don't commit yet - _delete_empty_session handles its own commit
+            logger.info(f"Removed {len(removed_participants)} inactive participants from session {session_id} (session deleted)")
+            return removed_participants
+
+        # Handle host reassignment if needed
+        new_host_info = None
+        if any_host_removed:
+            # Reassign host to oldest remaining participant
+            await self._reassign_host(session_id)
+
+            # Get new host info for notification
+            new_host_result = await self.db.execute(
+                select(
+                    PartyParticipant.player_id,
+                    QFPlayer.username,
+                )
+                .join(QFPlayer, PartyParticipant.player_id == QFPlayer.player_id)
+                .where(
+                    and_(
+                        PartyParticipant.session_id == session_id,
+                        PartyParticipant.is_host == True
+                    )
+                )
+            )
+            new_host_row = new_host_result.first()
+            if new_host_row:
+                new_host_info = {
+                    'player_id': str(new_host_row.player_id),
+                    'username': new_host_row.username,
                 }
 
-                # Remove the participant
-                was_host = participant.is_host
-                await self.db.delete(participant)
-                await self.db.commit()
+        # Commit all database changes in a single transaction
+        await self.db.commit()
 
-                logger.info(f"Removed inactive player {participant.player_id} from session {session_id}")
-                removed_participants.append(participant_info)
+        logger.info(f"Removed {len(removed_participants)} inactive participants from session {session_id}")
 
-                # Broadcast player left event
-                await party_manager.notify_player_left(
-                    session_id=session_id,
-                    player_id=participant.player_id,
-                    username=player.username,
-                    participant_count=await self._get_participant_count(session_id)
-                )
+        # Send WebSocket notifications after successful commit
+        ws_manager = get_party_websocket_manager()
 
-                # Check if session is now empty
-                remaining_count = await self._get_participant_count(session_id)
-                if remaining_count == 0:
-                    await self._delete_empty_session(session_id)
-                    break
-                elif was_host:
-                    # Host was removed - reassign host
-                    await self._reassign_host(session_id)
-                    # Broadcast host change event
-                    new_host_result = await self.db.execute(
-                        select(PartyParticipant)
-                        .join(QFPlayer, PartyParticipant.player_id == QFPlayer.player_id)
-                        .where(
-                            and_(
-                                PartyParticipant.session_id == session_id,
-                                PartyParticipant.is_host == True
-                            )
-                        )
-                    )
-                    new_host = new_host_result.scalar_one_or_none()
-                    if new_host:
-                        new_host_player = await self.db.execute(
-                            select(QFPlayer)
-                            .where(QFPlayer.player_id == new_host.player_id)
-                        )
-                        new_host_player = new_host_player.scalar_one_or_none()
-                        if new_host_player:
-                            await party_manager.notify_session_update(
-                                session_id=session_id,
-                                session_status={
-                                    'new_host_player_id': str(new_host.player_id),
-                                    'new_host_username': new_host_player.username,
-                                    'reason': 'inactive_player_removed',
-                                    'message': f'{new_host_player.username} is now the host'
-                                }
-                            )
+        for participant in removed_participants:
+            await ws_manager.notify_player_left(
+                session_id=session_id,
+                player_id=UUID(participant['player_id']),
+                username=participant['username'],
+                participant_count=remaining_count,
+            )
+
+        # Send host change notification if applicable
+        if new_host_info:
+            await ws_manager.notify_session_update(
+                session_id=session_id,
+                session_status={
+                    'new_host_player_id': new_host_info['player_id'],
+                    'new_host_username': new_host_info['username'],
+                    'reason': 'inactive_player_removed',
+                    'message': f"{new_host_info['username']} is now the host"
+                }
+            )
 
         return removed_participants
 
