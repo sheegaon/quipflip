@@ -214,35 +214,35 @@ export const Header: React.FC = () => {
                 <div className="py-2">
                   <button
                     onClick={() => handleNavigate('/dashboard')}
-                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-3 text-left text-quip-teal hover:bg-quip-cream transition-colors"
+                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-quip-teal hover:bg-quip-cream transition-colors"
                   >
                     <HomeIcon className="h-5 w-5" />
                     <span className="font-semibold">Dashboard</span>
                   </button>
                   <button
                     onClick={() => handleNavigate('/party')}
-                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
+                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
                   >
                     <PartyIcon className="h-5 w-5" />
                     <span className="font-semibold">Party Mode</span>
                   </button>
                   <button
                     onClick={() => handleNavigate('/statistics')}
-                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
+                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
                   >
                     <StatisticsIcon className="h-5 w-5" />
                     <span className="font-semibold">Statistics</span>
                   </button>
                   <button
                     onClick={() => handleNavigate('/leaderboard')}
-                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
+                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
                   >
                     <LeaderboardIcon className="h-5 w-5" />
                     <span className="font-semibold">Leaderboard</span>
                   </button>
                   <button
                     onClick={() => handleNavigate('/results')}
-                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
+                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
                   >
                     <ResultsIcon
                       className="h-5 w-5"
@@ -252,28 +252,28 @@ export const Header: React.FC = () => {
                   </button>
                   <button
                     onClick={() => handleNavigate('/tracking')}
-                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
+                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
                   >
                     <TrackingIcon className="h-5 w-5" />
                     <span className="font-semibold">Tracking</span>
                   </button>
                   <button
                     onClick={() => handleNavigate('/completed')}
-                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
+                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
                   >
                     <ReviewIcon className="h-5 w-5" />
                     <span className="font-semibold">Review</span>
                   </button>
                   <button
                     onClick={() => handleNavigate('/quests')}
-                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
+                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
                   >
                     <TreasureChestIcon className="h-5 w-5" isAvailable={true} />
                     <span className="font-semibold">Quests</span>
                   </button>
                   <button
                     onClick={() => handleNavigate('/online-users')}
-                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
+                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
                   >
                     <LobbyIcon className="h-5 w-5" />
                     <span className="font-semibold">Lobby</span>
@@ -281,7 +281,7 @@ export const Header: React.FC = () => {
                   {showTutorialInMenu && (
                     <button
                       onClick={() => handleNavigate('/dashboard?startTutorial=true')}
-                      className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
+                      className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
                     >
                       <QuestionMarkIcon className="h-5 w-5" />
                       <span className="font-semibold">Tutorial</span>
@@ -290,7 +290,7 @@ export const Header: React.FC = () => {
                   {!surveyCompleted && (
                     <button
                       onClick={() => handleNavigate('/survey/beta')}
-                      className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
+                      className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
                     >
                       <SurveyIcon className="h-5 w-5" />
                       <span className="font-semibold">Survey</span>
@@ -298,7 +298,7 @@ export const Header: React.FC = () => {
                   )}
                   <button
                     onClick={() => handleNavigate('/settings')}
-                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
+                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
                   >
                     <SettingsIcon className="h-5 w-5" />
                     <span className="font-semibold">Settings</span>
@@ -306,7 +306,7 @@ export const Header: React.FC = () => {
                   {player?.is_admin && (
                     <button
                       onClick={() => handleNavigate('/admin')}
-                      className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
+                      className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
                     >
                       <AdminIcon className="h-5 w-5" />
                       <span className="font-semibold">Admin</span>
@@ -318,7 +318,7 @@ export const Header: React.FC = () => {
                       setShowDropdown(false);
                       handleLogoutClick();
                     }}
-                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-3 text-left text-quip-teal hover:bg-quip-cream transition-colors"
+                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-quip-teal hover:bg-quip-cream transition-colors"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
