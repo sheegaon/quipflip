@@ -12,6 +12,10 @@ from backend.services.qf.quest_service import QuestService, QUEST_CONFIGS
 from backend.services.qf.round_service import RoundService
 from backend.services.qf.notification_service import (
     NotificationService, NotificationConnectionManager, get_notification_manager)
+from backend.services.qf.party_session_service import PartySessionService
+from backend.services.qf.party_coordination_service import PartyCoordinationService
+from backend.services.qf.party_scoring_service import PartyScoringService
+from backend.services.qf.party_websocket_manager import PartyWebSocketManager, get_party_websocket_manager
 
 __all__ = [
     "get_phrase_validator",
@@ -28,4 +32,9 @@ __all__ = [
     "ActivityService",
     "QuestService",
     "QUEST_CONFIGS",
+    "PartySessionService",
+    "PartyCoordinationService",
+    "PartyScoringService",
+    "PartyWebSocketManager",
+    "get_party_websocket_manager",
 ]
