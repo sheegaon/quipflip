@@ -52,7 +52,15 @@ export const BetaSurveyModal: React.FC<BetaSurveyModalProps> = ({ isVisible, onD
         }
         // Only log non-auth errors - 401 is expected when not authenticated
         // Check if error is an axios error with response status
-        const isAuthError = (error as any)?.response?.status === 401;
+        const status =
+          typeof error === 'object' &&
+          error !== null &&
+          'response' in error &&
+          typeof (error as { response?: { status?: number } }).response?.status === 'number'
+            ? (error as { response?: { status?: number } }).response?.status
+            : undefined;
+
+        const isAuthError = status === 401;
 
         if (!isAuthError) {
           dashboardLogger.warn('[Beta Survey] Failed to fetch survey status', getErrorMessage(error));

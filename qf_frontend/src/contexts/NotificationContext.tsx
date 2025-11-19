@@ -9,6 +9,7 @@
  * Use NotificationDisplay component for rendering.
  */
 
+/* eslint-disable react-refresh/only-export-components */
 import {
   createContext,
   useContext,

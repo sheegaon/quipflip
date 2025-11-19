@@ -128,7 +128,7 @@ export const Dashboard: React.FC = () => {
         const shouldShow = status.eligible && !status.has_submitted && !dismissed && !completedLocal;
 
         setShowSurveyPrompt(shouldShow);
-      } catch (error: unknown) {
+      } catch {
         if (controller.signal.aborted) {
           return;
         }
