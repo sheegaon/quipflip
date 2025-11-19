@@ -27,8 +27,8 @@ export const PartyMode: React.FC = () => {
 
     try {
       const response = await apiClient.createPartySession({
-        min_players: 3,
-        max_players: 8,
+        min_players: 6,
+        max_players: 9,
         prompts_per_player: 1,
         copies_per_player: 2,
         votes_per_player: 3,
@@ -100,7 +100,7 @@ export const PartyMode: React.FC = () => {
             <PartyIcon className="w-12 h-12" />
             <h1 className="text-3xl font-display font-bold text-quip-navy">Party Mode</h1>
           </div>
-          <p className="text-quip-teal">Play with 3-8 friends!</p>
+          <p className="text-quip-teal">Play with 6-9 players!</p>
         </div>
 
         {/* Error Display */}
@@ -114,7 +114,7 @@ export const PartyMode: React.FC = () => {
         <div className="bg-quip-orange bg-opacity-5 border-2 border-quip-orange rounded-tile p-6">
           <h2 className="text-xl font-display font-bold text-quip-navy mb-2">Create a Party</h2>
           <p className="text-quip-teal mb-4 text-sm">
-            Host a new party match with 3-8 players. You'll get a code to share with friends.
+            Host a new party match with 6-9 players. You'll get a code to share with friends.
           </p>
           <button
             onClick={handleCreateParty}

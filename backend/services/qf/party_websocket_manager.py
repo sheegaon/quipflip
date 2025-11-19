@@ -51,9 +51,11 @@ class PartyWebSocketManager:
         # Update participant connection status in database
         if db:
             from backend.models.qf.party_participant import PartyParticipant
+            from backend.models.qf.party_session import PartySession
 
             result = await db.execute(
-                select(PartyParticipant)
+                select(PartyParticipant, PartySession)
+                .join(PartySession, PartyParticipant.session_id == PartySession.session_id)
                 .where(
                     and_(
                         PartyParticipant.session_id == session_id,
@@ -61,14 +63,27 @@ class PartyWebSocketManager:
                     )
                 )
             )
-            participant = result.scalar_one_or_none()
+            row = result.first()
 
-            if participant:
+            if row:
+                participant, session = row
                 participant.connection_status = 'connected'
                 participant.last_activity_at = datetime.now(UTC)
                 participant.disconnected_at = None
+                if session.status == 'OPEN':
+                    participant.status = 'READY'
+                    participant.ready_at = datetime.now(UTC)
                 await db.commit()
                 logger.info(f"Updated participant {player_id} to connected status")
+
+                if session.status == 'OPEN':
+                    await self.notify_session_update(
+                        session_id=session_id,
+                        session_status={
+                            'reason': 'lobby_presence_changed',
+                            'message': 'player_reconnected'
+                        }
+                    )
 
         logger.info(
             f"WebSocket connected for player {player_id} in session {session_id} "
@@ -99,9 +114,11 @@ class PartyWebSocketManager:
                 # Update participant connection status in database
                 if db:
                     from backend.models.qf.party_participant import PartyParticipant
+                    from backend.models.qf.party_session import PartySession
 
                     result = await db.execute(
-                        select(PartyParticipant)
+                        select(PartyParticipant, PartySession)
+                        .join(PartySession, PartyParticipant.session_id == PartySession.session_id)
                         .where(
                             and_(
                                 PartyParticipant.session_id == session_id,
@@ -109,13 +126,27 @@ class PartyWebSocketManager:
                             )
                         )
                     )
-                    participant = result.scalar_one_or_none()
+                    row = result.first()
 
-                    if participant:
+                    if row:
+                        participant, session = row
                         participant.connection_status = 'disconnected'
                         participant.disconnected_at = datetime.now(UTC)
+                        participant.last_activity_at = datetime.now(UTC)
+                        if session.status == 'OPEN':
+                            participant.status = 'JOINED'
+                            participant.ready_at = None
                         await db.commit()
                         logger.info(f"Updated participant {player_id} to disconnected status")
+
+                        if session.status == 'OPEN':
+                            await self.notify_session_update(
+                                session_id=session_id,
+                                session_status={
+                                    'reason': 'lobby_presence_changed',
+                                    'message': 'player_disconnected'
+                                }
+                            )
 
                 # Clean up empty session dict
                 if not self.session_connections[session_id_str]:
@@ -345,6 +376,26 @@ class PartyWebSocketManager:
 
         await self.broadcast_to_session(session_id, notification)
         logger.info(f"Sent player ready notification to session {session_id}: {username}")
+
+    async def notify_host_ping(
+        self,
+        session_id: UUID,
+        host_player_id: UUID,
+        host_username: str,
+        join_url: str,
+    ) -> None:
+        """Notify all players that the host pinged the lobby."""
+
+        notification = {
+            'type': 'host_ping',
+            'host_player_id': str(host_player_id),
+            'host_username': host_username,
+            'join_url': join_url,
+            'timestamp': datetime.now(UTC).isoformat(),
+        }
+
+        await self.broadcast_to_session(session_id, notification)
+        logger.info(f"Sent host ping notification to session {session_id}")
 
     async def notify_session_started(
         self,
