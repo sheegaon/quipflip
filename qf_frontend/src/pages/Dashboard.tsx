@@ -458,7 +458,7 @@ export const Dashboard: React.FC = () => {
       <Header />
       {showTutorialWelcome && <TutorialWelcome onStart={handleStartTutorial} onSkip={handleSkipTutorial} />}
 
-      <div className="max-w-4xl mx-auto md:px-4 px-3 md:pt-8 pt-3 md:pb-5 pb-20">
+      <div className="max-w-4xl mx-auto md:px-4 px-3 md:pt-6 pt-2 md:pb-5 pb-20">
         {/* Active Round Notification */}
         {activeRound?.round_id && !isRoundExpired && (
           <div className="tile-card bg-quip-orange bg-opacity-10 border-2 border-quip-orange p-4 mb-6 slide-up-enter relative">
@@ -505,10 +505,10 @@ export const Dashboard: React.FC = () => {
         {player.is_guest && <UpgradeGuestAccount className="mb-0 md:mb-2" />}
 
         {/* Party Mode */}
-        <div className="tile-card md:p-6 p-4 mt-6 shuffle-enter bg-quip-orange bg-opacity-10 border-2 border-quip-orange">
+        <div className="tile-card md:p-4 p-2 mt-1 mb-1 shuffle-enter bg-quip-orange bg-opacity-10 border-2 border-quip-orange">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div>
-              <h2 className="text-2xl font-display font-bold text-quip-navy mb-2 flex items-center gap-2">
+              <h2 className="text-xl md:text-2xl font-display font-bold text-quip-navy mb-2 flex items-center gap-2">
                 <PartyIcon className="h-7 w-7" />
                 Party Mode
               </h2>
