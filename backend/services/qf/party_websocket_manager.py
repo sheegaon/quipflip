@@ -388,9 +388,12 @@ class PartyWebSocketManager:
 
         notification = {
             'type': 'host_ping',
-            'host_player_id': str(host_player_id),
-            'host_username': host_username,
-            'join_url': join_url,
+            'session_id': str(session_id),
+            'data': {
+                'host_player_id': str(host_player_id),
+                'host_username': host_username,
+                'join_url': join_url,
+            },
             'timestamp': datetime.now(UTC).isoformat(),
         }
 
