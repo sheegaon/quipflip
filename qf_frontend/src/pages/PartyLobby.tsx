@@ -23,6 +23,7 @@ export const PartyLobby: React.FC = () => {
   const [isReady, setIsReady] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
+  const [isAddingAI, setIsAddingAI] = useState(false);
 
   // Check if current player is host
   const isHost = sessionStatus?.participants.find(p => p.player_id === player?.player_id)?.is_host ?? false;
@@ -134,6 +135,24 @@ export const PartyLobby: React.FC = () => {
     if (sessionStatus?.party_code) {
       navigator.clipboard.writeText(sessionStatus.party_code);
       // Could show a toast notification here
+    }
+  };
+
+  const handleAddAI = async () => {
+    if (!sessionId) return;
+
+    setIsAddingAI(true);
+    try {
+      await apiClient.addAIPlayerToParty(sessionId);
+      // Reload session status to show new AI player
+      await loadSessionStatus();
+      setNotification('AI player added to the party!');
+      setTimeout(() => setNotification(null), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to add AI player');
+      setTimeout(() => setError(null), 3000);
+    } finally {
+      setIsAddingAI(false);
     }
   };
 
@@ -272,6 +291,17 @@ export const PartyLobby: React.FC = () => {
                 }`}
               >
                 {isReady ? '✓ Ready!' : 'Mark Ready'}
+              </button>
+            )}
+
+            {/* Add AI Player Button (host only) */}
+            {isHost && totalCount < (sessionStatus?.max_players ?? 8) && (
+              <button
+                onClick={handleAddAI}
+                disabled={isAddingAI}
+                className="w-full bg-quip-teal hover:bg-quip-turquoise text-white font-semibold py-3 px-4 rounded-tile transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isAddingAI ? 'Adding AI Player...' : '+ Add AI Player'}
               </button>
             )}
 

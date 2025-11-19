@@ -801,6 +801,14 @@ export const apiClient = {
     return data;
   },
 
+  async addAIPlayerToParty(
+    sessionId: string,
+    signal?: AbortSignal,
+  ): Promise<{ participant_id: string; player_id: string; username: string; is_ai: boolean }> {
+    const { data } = await api.post<{ participant_id: string; player_id: string; username: string; is_ai: boolean }>(`/party/${sessionId}/add-ai`, {}, { signal });
+    return data;
+  },
+
   async startPartySession(
     sessionId: string,
     signal?: AbortSignal,

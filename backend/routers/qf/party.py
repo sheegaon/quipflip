@@ -391,6 +391,58 @@ async def add_ai_player_to_session(
         raise HTTPException(status_code=500, detail="Failed to add AI player")
 
 
+@router.post("/{session_id}/process-ai")
+async def process_ai_submissions(
+    session_id: UUID,
+    player: QFPlayer = Depends(get_current_player),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Trigger AI player submissions for the current phase (host only).
+
+    This endpoint can be called manually or scheduled to process pending
+    AI submissions for the current phase.
+
+    Args:
+        session_id: UUID of the party session
+        player: Current authenticated player (must be host)
+        db: Database session
+
+    Returns:
+        dict: Summary of AI submissions processed
+
+    Raises:
+        404: Session not found
+        403: Player is not the host
+    """
+    try:
+        party_service = PartySessionService(db)
+        coordination_service = PartyCoordinationService(db)
+        transaction_service = TransactionService(db)
+
+        # Verify caller is host
+        participant = await party_service.get_participant(session_id, player.player_id)
+        if not participant or not participant.is_host:
+            raise HTTPException(status_code=403, detail="Only the host can trigger AI submissions")
+
+        # Process AI submissions
+        stats = await coordination_service.process_ai_submissions(
+            session_id=session_id,
+            transaction_service=transaction_service,
+        )
+
+        return {
+            'success': True,
+            'stats': stats,
+        }
+
+    except SessionNotFoundError:
+        raise HTTPException(status_code=404, detail="Session not found")
+    except Exception as e:
+        logger.error(f"Error processing AI submissions: {e}")
+        raise HTTPException(status_code=500, detail="Failed to process AI submissions")
+
+
 @router.post("/{session_id}/start", response_model=StartPartySessionResponse)
 async def start_party_session(
     session_id: UUID,
