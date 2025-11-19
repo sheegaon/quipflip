@@ -50,6 +50,8 @@ export function usePartyWebSocket(
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttemptsRef = useRef(0);
   const maxReconnectAttempts = 5;
+  const isRateLimitedRef = useRef(false);
+  const rateLimitCooldownRef = useRef<NodeJS.Timeout | null>(null);
 
   const connect = useCallback(async () => {
     if (!state.isAuthenticated || !sessionId) {
@@ -59,6 +61,12 @@ export function usePartyWebSocket(
 
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       console.log('✅ WebSocket already connected');
+      return;
+    }
+
+    // Don't attempt connection if we're rate-limited
+    if (isRateLimitedRef.current) {
+      console.log('⏸️ WebSocket connection paused due to rate limiting');
       return;
     }
 
@@ -139,22 +147,46 @@ export function usePartyWebSocket(
         setConnecting(false);
         wsRef.current = null;
 
-        // Attempt reconnection if not max attempts
-        if (reconnectAttemptsRef.current < maxReconnectAttempts) {
-          const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 30000);
+        // Attempt reconnection if not max attempts and not rate limited
+        if (reconnectAttemptsRef.current < maxReconnectAttempts && !isRateLimitedRef.current) {
+          // Start with 5 second delay, then exponential backoff up to 60 seconds
+          const delay = Math.min(5000 * Math.pow(2, reconnectAttemptsRef.current), 60000);
           console.log(`🔄 Reconnecting in ${delay}ms (attempt ${reconnectAttemptsRef.current + 1}/${maxReconnectAttempts})`);
 
           reconnectTimeoutRef.current = setTimeout(() => {
             reconnectAttemptsRef.current++;
             connect();
           }, delay);
+        } else if (isRateLimitedRef.current) {
+          console.log('⏸️ Reconnection paused due to rate limiting');
         } else {
           setError('Maximum reconnection attempts reached');
         }
       };
     } catch (err) {
       console.error('Failed to connect WebSocket:', err);
-      setError(err instanceof Error ? err.message : 'Failed to connect');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to connect';
+
+      // Check if this is a rate limit error
+      if (errorMessage.includes('429') || errorMessage.includes('Rate limit')) {
+        console.log('⏸️ Rate limited - pausing reconnection for 60 seconds');
+        isRateLimitedRef.current = true;
+        setError('Rate limited. Retrying in 60 seconds...');
+
+        // Clear rate limit flag after 60 seconds
+        if (rateLimitCooldownRef.current) {
+          clearTimeout(rateLimitCooldownRef.current);
+        }
+        rateLimitCooldownRef.current = setTimeout(() => {
+          console.log('✅ Rate limit cooldown complete');
+          isRateLimitedRef.current = false;
+          reconnectAttemptsRef.current = 0; // Reset attempts after cooldown
+          setError(null);
+        }, 60000);
+      } else {
+        setError(errorMessage);
+      }
+
       setConnecting(false);
     }
   }, [state.isAuthenticated, sessionId, handlers]);
@@ -165,6 +197,11 @@ export function usePartyWebSocket(
       reconnectTimeoutRef.current = null;
     }
 
+    if (rateLimitCooldownRef.current) {
+      clearTimeout(rateLimitCooldownRef.current);
+      rateLimitCooldownRef.current = null;
+    }
+
     if (wsRef.current) {
       wsRef.current.close();
       wsRef.current = null;
@@ -172,6 +209,7 @@ export function usePartyWebSocket(
 
     setConnected(false);
     setConnecting(false);
+    isRateLimitedRef.current = false;
   }, []);
 
   const reconnect = useCallback(() => {

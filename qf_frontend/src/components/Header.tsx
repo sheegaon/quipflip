@@ -14,6 +14,7 @@ import {
   HomeIcon,
   LeaderboardIcon,
   LobbyIcon,
+  PartyIcon,
   SettingsIcon,
   StatisticsIcon,
   SurveyIcon,
@@ -217,6 +218,13 @@ export const Header: React.FC = () => {
                   >
                     <HomeIcon className="h-5 w-5" />
                     <span className="font-semibold">Dashboard</span>
+                  </button>
+                  <button
+                    onClick={() => handleNavigate('/party')}
+                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
+                  >
+                    <PartyIcon className="h-5 w-5" />
+                    <span className="font-semibold">Party Mode</span>
                   </button>
                   <button
                     onClick={() => handleNavigate('/statistics')}

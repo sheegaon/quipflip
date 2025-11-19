@@ -11,7 +11,7 @@ import { UpgradeGuestAccount } from '../components/UpgradeGuestAccount';
 import TutorialWelcome from '../components/Tutorial/TutorialWelcome';
 import BetaSurveyModal from '../components/BetaSurveyModal';
 import { dashboardLogger } from '../utils/logger';
-import { TrackingIcon } from '../components/icons/NavigationIcons';
+import { TrackingIcon, PartyIcon } from '../components/icons/NavigationIcons';
 import { CopyRoundIcon, VoteRoundIcon } from '../components/icons/RoundIcons';
 import { hasDismissedSurvey, hasCompletedSurvey } from '../utils/betaSurvey';
 
@@ -646,7 +646,10 @@ export const Dashboard: React.FC = () => {
         <div className="tile-card md:p-6 p-4 mt-6 shuffle-enter bg-quip-orange bg-opacity-10 border-2 border-quip-orange">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div>
-              <h2 className="text-2xl font-display font-bold text-quip-navy mb-2">🎉 Party Mode</h2>
+              <h2 className="text-2xl font-display font-bold text-quip-navy mb-2 flex items-center gap-2">
+                <PartyIcon className="h-7 w-7" />
+                Party Mode
+              </h2>
               <p className="text-quip-teal">Play with 3-8 friends in a coordinated multiplayer match!</p>
             </div>
             <button

@@ -207,3 +207,48 @@ export const TrackingIcon: React.FC<TrackingIconProps> = ({
     <circle cx={16} cy={12} r={2} fill={accentColor} />
   </svg>
 );
+
+interface PartyIconProps extends SimpleIconProps {
+  primaryColor?: string;
+  accentColor?: string;
+  backgroundOpacity?: number;
+}
+
+export const PartyIcon: React.FC<PartyIconProps> = ({
+  className = 'h-5 w-5',
+  primaryColor = '#10B4A4',
+  accentColor = '#FF9A3D',
+  backgroundOpacity = 0.12,
+  ...props
+}) => (
+  <svg className={className} viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" {...props}>
+    {/* Background circle */}
+    <circle cx={16} cy={16} r={15} fill={primaryColor} opacity={backgroundOpacity} />
+
+    {/* Center celebration burst */}
+    <circle cx={16} cy={16} r={4} fill={accentColor} opacity={0.3} />
+
+    {/* Confetti/celebration elements in a circular pattern */}
+    {/* Top */}
+    <rect x={15} y={5} width={2} height={4} rx={1} fill={primaryColor} transform="rotate(0 16 7)" />
+    {/* Top-right */}
+    <rect x={23} y={8} width={2} height={4} rx={1} fill={accentColor} transform="rotate(45 24 10)" />
+    {/* Right */}
+    <circle cx={25} cy={16} r={1.5} fill={primaryColor} />
+    {/* Bottom-right */}
+    <rect x={22} y={20} width={2} height={4} rx={1} fill={accentColor} transform="rotate(-45 23 22)" />
+    {/* Bottom */}
+    <rect x={15} y={23} width={2} height={4} rx={1} fill={primaryColor} transform="rotate(0 16 25)" />
+    {/* Bottom-left */}
+    <rect x={8} y={20} width={2} height={4} rx={1} fill={accentColor} transform="rotate(45 9 22)" />
+    {/* Left */}
+    <circle cx={7} cy={16} r={1.5} fill={primaryColor} />
+    {/* Top-left */}
+    <rect x={9} y={8} width={2} height={4} rx={1} fill={accentColor} transform="rotate(-45 10 10)" />
+
+    {/* Inner sparkle stars */}
+    <path d="M16 11L16.5 13L18 13.5L16.5 14L16 16L15.5 14L14 13.5L15.5 13L16 11Z" fill={accentColor} />
+    <path d="M20 15L20.3 16L21 16.3L20.3 16.6L20 18L19.7 16.6L19 16.3L19.7 16L20 15Z" fill={primaryColor} />
+    <path d="M12 17L12.3 18L13 18.3L12.3 18.6L12 20L11.7 18.6L11 18.3L11.7 18L12 17Z" fill={primaryColor} />
+  </svg>
+);
