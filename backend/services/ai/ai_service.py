@@ -102,10 +102,10 @@ class AIService:
 
         # Check if configured provider is available
         if configured_provider == "openai" and openai_key:
-            logger.info("Using OpenAI as AI copy provider")
+            logger.debug("Using OpenAI as AI copy provider")
             return "openai"
         elif configured_provider == "gemini" and gemini_key:
-            logger.info("Using Gemini as AI copy provider")
+            logger.debug("Using Gemini as AI copy provider")
             return "gemini"
         elif configured_provider == "none":
             logger.error("No AI provider configured")
@@ -248,7 +248,7 @@ class AIService:
                     self.common_words = list(result)
                 elif isinstance(result, set):
                     self.common_words = list(result)
-                    logger.info(f"Converted set to list for common_words: {len(self.common_words)} words")
+                    logger.debug(f"Converted set to list for common_words: {len(self.common_words)} words")
                 else:
                     logger.error(f"phrase_validator.common_words() returned {type(result)}, expected list/tuple/set")
                     self.common_words = []
@@ -308,7 +308,7 @@ class AIService:
                 existing_cache = result.scalar_one_or_none()
 
                 if existing_cache:
-                    logger.info(f"Using existing phrase cache for prompt_round {prompt_round.round_id}")
+                    logger.debug(f"Using existing phrase cache for prompt_round {prompt_round.round_id}")
                     return existing_cache
 
                 # Generate new phrases
@@ -419,7 +419,7 @@ class AIService:
             )
             existing_cache = result.scalar_one_or_none()
             if existing_cache:
-                logger.info(f"Using cache created by another process for prompt_round {prompt_round.round_id}")
+                logger.debug(f"Using cache created by another process for prompt_round {prompt_round.round_id}")
                 return existing_cache
             else:
                 raise AICopyError(f"Could not acquire lock for AI phrase generation and no cache exists")
@@ -462,10 +462,7 @@ class AIService:
                         valid_phrases.append(phrase)
                     else:
                         logger.info(
-                            "Cached AI phrase invalidated after first copy submission: %s (%s)",
-                            phrase,
-                            error_message,
-                        )
+                            f"Cached AI phrase invalidated after first copy submission: {phrase} ({error_message})")
 
                 if len(valid_phrases) >= 3:
                     cache.validated_phrases = valid_phrases
@@ -473,17 +470,12 @@ class AIService:
                     return cache
 
                 logger.info(
-                    "Cached AI phrases for prompt_round %s fell below 3 after revalidation; regenerating",
-                    prompt_round.round_id,
-                )
+                    f"Cached AI phrases for {prompt_round.round_id=} fell below 3 after revalidation; regenerating")
 
                 await self.db.delete(cache)
                 await self.db.flush()
         except TimeoutError:
-            logger.warning(
-                "Could not acquire lock for AI phrase revalidation of prompt round %s, another process may be handling it",
-                prompt_round.round_id,
-            )
+            logger.warning(f"Could not acquire lock for AI phrase revalidation of {prompt_round.round_id=}")
             return None
 
         return await self.generate_and_cache_phrases(prompt_round)
