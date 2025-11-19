@@ -17,6 +17,8 @@ from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
 
+from backend.migrations.util import get_timestamp_default
+
 
 # revision identifiers, used by Alembic.
 revision: str = 'f9a1b2c3d4e5'
@@ -27,6 +29,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Add connection tracking columns to party_participants."""
+    timestamp_default = get_timestamp_default()
 
     # Add disconnected_at column (nullable)
     op.add_column(
@@ -54,7 +57,7 @@ def upgrade() -> None:
         'last_activity_at',
         existing_type=sa.TIMESTAMP(timezone=True),
         nullable=False,
-        server_default=sa.text('NOW()')
+        server_default=timestamp_default
     )
 
     # Create index for efficient inactive participant queries
