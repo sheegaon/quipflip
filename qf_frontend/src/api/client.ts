@@ -769,6 +769,21 @@ export const apiClient = {
     return data;
   },
 
+  async listActiveParties(
+    signal?: AbortSignal,
+  ): Promise<PartyListResponse> {
+    const { data } = await api.get<PartyListResponse>('/party/list', { signal });
+    return data;
+  },
+
+  async joinPartySessionById(
+    sessionId: string,
+    signal?: AbortSignal,
+  ): Promise<JoinPartySessionResponse> {
+    const { data } = await api.post<JoinPartySessionResponse>(`/party/${sessionId}/join`, {}, { signal });
+    return data;
+  },
+
   async joinPartySession(
     partyCode: string,
     signal?: AbortSignal,
