@@ -10,6 +10,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Header } from '../components/Header';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
+import { useGame } from '../contexts/GameContext';
 import type { OnlineUser } from '../api/types';
 import apiClient from '../api/client';
 
@@ -33,6 +34,7 @@ const getUserInitials = (username: string): string => {
 };
 
 const OnlineUsers: React.FC = () => {
+  const { state } = useGame();
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -42,6 +44,11 @@ const OnlineUsers: React.FC = () => {
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    // Only start connections if authenticated
+    if (!state.isAuthenticated) {
+      return;
+    }
+
     let wsAttempted = false;
     let pollingInterval: ReturnType<typeof setInterval> | null = null;
 
@@ -165,7 +172,7 @@ const OnlineUsers: React.FC = () => {
     // Start with WebSocket attempt
     connectWebSocket();
 
-    // Cleanup on unmount
+    // Cleanup on unmount or auth change
     return () => {
       // Clear polling interval
       if (pollingInterval) {
@@ -185,7 +192,7 @@ const OnlineUsers: React.FC = () => {
         wsRef.current = null;
       }
     };
-  }, []);
+  }, [state.isAuthenticated]); // Key: depend on auth state
 
   // Get action color based on action category (centralized from backend)
   const getActionColor = (category: string): string => {

@@ -9,7 +9,7 @@ import { getErrorMessage } from '../utils/errorHelpers';
 const SetTracking: React.FC = () => {
   const navigate = useNavigate();
   const { setId } = useParams<{ setId: string }>();
-  const { player, activeSet } = useIRGame();
+  const { player, activeSet, isAuthenticated } = useIRGame();
 
   const [set, setSet] = useState<BackronymSet | null>(activeSet);
   const [loading, setLoading] = useState(false);
@@ -65,19 +65,21 @@ const SetTracking: React.FC = () => {
 
   // Start polling every 2 seconds
   useEffect(() => {
-    if (setId && !hasNavigatedRef.current) {
-      pollingIntervalRef.current = setInterval(() => {
-        fetchSetStatus();
-      }, 2000); // Poll every 2 seconds
-
-      return () => {
-        if (pollingIntervalRef.current) {
-          clearInterval(pollingIntervalRef.current);
-        }
-      };
+    // Only start polling if authenticated
+    if (!isAuthenticated || !setId || hasNavigatedRef.current) {
+      return;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setId]);
+
+    pollingIntervalRef.current = setInterval(() => {
+      fetchSetStatus();
+    }, 2000); // Poll every 2 seconds
+
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
+  }, [setId, isAuthenticated]); // Key: depend on auth state
 
   // Redirect if no setId
   useEffect(() => {

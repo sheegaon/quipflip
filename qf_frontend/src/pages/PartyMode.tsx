@@ -86,10 +86,15 @@ export const PartyMode: React.FC = () => {
 
   // Load parties on mount and refresh every 5 seconds
   useEffect(() => {
+    // Only start polling if authenticated
+    if (!state.isAuthenticated) {
+      return;
+    }
+
     loadParties();
     const interval = setInterval(loadParties, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [state.isAuthenticated]); // Key: depend on auth state
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-quip-orange to-quip-turquoise flex items-center justify-center p-4 bg-pattern">
