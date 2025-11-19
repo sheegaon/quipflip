@@ -322,6 +322,76 @@ class PartySessionService:
         logger.info(f"Player {player_id} joined session {session_id}")
         return participant
 
+    async def add_ai_player(
+        self,
+        session_id: UUID,
+        host_player_id: UUID,
+        game_type: "GameType",
+    ) -> PartyParticipant:
+        """Add an AI player to the session (host only, lobby only).
+
+        Args:
+            session_id: UUID of the session
+            host_player_id: UUID of the host player (for verification)
+            game_type: Game type for AI player creation
+
+        Returns:
+            PartyParticipant: Created AI participant
+
+        Raises:
+            SessionNotFoundError: If session doesn't exist
+            NotHostError: If caller is not the host
+            SessionAlreadyStartedError: If session has already started
+            SessionFullError: If session is at max capacity
+        """
+        # Get session
+        session = await self.get_session_by_id(session_id)
+        if not session:
+            raise SessionNotFoundError(f"Session {session_id} not found")
+
+        # Verify caller is host
+        host_participant = await self.get_participant(session_id, host_player_id)
+        if not host_participant or not host_participant.is_host:
+            raise NotHostError("Only the host can add AI players")
+
+        # Check if session has started
+        if session.status != 'OPEN':
+            raise SessionAlreadyStartedError("Cannot add AI players after session has started")
+
+        # Check if session is full
+        participant_count = await self._get_participant_count(session_id)
+        if participant_count >= session.max_players:
+            raise SessionFullError(f"Session is full (max {session.max_players} players)")
+
+        # Get or create AI player
+        from backend.services.ai.ai_service import AIService
+        ai_service = AIService(self.db)
+        ai_player = await ai_service._get_or_create_ai_player(
+            game_type=game_type,
+            email=f"ai_party_{uuid.uuid4().hex[:8]}@quipflip.internal",
+        )
+
+        # Create participant
+        participant = PartyParticipant(
+            participant_id=uuid.uuid4(),
+            session_id=session_id,
+            player_id=ai_player.player_id,
+            status='READY',  # AI players are always ready
+            is_host=False,
+            joined_at=datetime.now(UTC),
+            ready_at=datetime.now(UTC),
+        )
+
+        self.db.add(participant)
+        await self.db.commit()
+        await self.db.refresh(participant)
+
+        # Load the player relationship
+        await self.db.refresh(participant, attribute_names=['player'])
+
+        logger.info(f"AI player {ai_player.player_id} added to session {session_id}")
+        return participant
+
     async def remove_participant(
         self,
         session_id: UUID,

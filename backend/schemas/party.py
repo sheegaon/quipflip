@@ -107,6 +107,14 @@ class MarkReadyResponse(BaseSchema):
         # ready_count, total_count, can_start
 
 
+class AddAIPlayerResponse(BaseSchema):
+    """Response after adding an AI player."""
+    participant_id: str
+    player_id: str
+    username: str
+    is_ai: bool
+
+
 class StartPartySessionResponse(BaseSchema):
     """Response after starting a party session."""
     session_id: str

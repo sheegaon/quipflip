@@ -13,6 +13,7 @@ from backend.schemas.party import (
     JoinPartySessionRequest,
     JoinPartySessionResponse,
     MarkReadyResponse,
+    AddAIPlayerResponse,
     StartPartySessionResponse,
     PartySessionStatusResponse,
     PartyResultsResponse,
@@ -325,6 +326,69 @@ async def mark_ready(
     except Exception as e:
         logger.error(f"Error marking ready: {e}")
         raise HTTPException(status_code=500, detail="Failed to mark ready")
+
+
+@router.post("/{session_id}/add-ai", response_model=AddAIPlayerResponse)
+async def add_ai_player_to_session(
+    session_id: UUID,
+    player: QFPlayer = Depends(get_current_player),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Add an AI player to the party session (host only, lobby only).
+
+    The AI player will automatically participate in all rounds.
+
+    Args:
+        session_id: UUID of the party session
+        player: Current authenticated player (must be host)
+        db: Database session
+
+    Returns:
+        AddAIPlayerResponse: Created AI participant info
+
+    Raises:
+        404: Session not found
+        403: Player is not the host
+        400: Session already started or session is full
+    """
+    try:
+        party_service = PartySessionService(db)
+
+        # Add AI player to session
+        from backend.utils.model_registry import GameType
+        participant = await party_service.add_ai_player(
+            session_id=session_id,
+            host_player_id=player.player_id,
+            game_type=GameType.QF,
+        )
+
+        # Broadcast player joined event
+        await ws_manager.notify_player_joined(
+            session_id=session_id,
+            player_id=participant.player_id,
+            username=participant.player.username,
+            participant_count=await party_service._get_participant_count(session_id),
+        )
+
+        return AddAIPlayerResponse(
+            participant_id=str(participant.participant_id),
+            player_id=str(participant.player_id),
+            username=participant.player.username,
+            is_ai=True,
+        )
+
+    except SessionNotFoundError:
+        raise HTTPException(status_code=404, detail="Session not found")
+    except NotHostError:
+        raise HTTPException(status_code=403, detail="Only the host can add AI players")
+    except SessionAlreadyStartedError:
+        raise HTTPException(status_code=400, detail="Cannot add AI players after session has started")
+    except SessionFullError:
+        raise HTTPException(status_code=400, detail="Session is full")
+    except Exception as e:
+        logger.error(f"Error adding AI player: {e}")
+        raise HTTPException(status_code=500, detail="Failed to add AI player")
 
 
 @router.post("/{session_id}/start", response_model=StartPartySessionResponse)

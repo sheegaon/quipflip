@@ -124,6 +124,30 @@ Generate {count} unique backronym options for {word_upper}:"""
     return prompt
 
 
+def build_party_prompt_generation(prompt_text: str) -> str:
+    """
+    Build structured prompt for Party Mode prompt round phrase generation.
+
+    Args:
+        prompt_text: The prompt to respond to
+
+    Returns:
+        A formatted prompt string for AI phrase generation
+    """
+    return f"""Generate a creative, short phrase that responds to the following prompt.
+
+**Prompt: "{prompt_text}"**
+
+Rules:
+- 2-30 characters total
+- Letters and spaces only
+- Make it clever, funny, or creative
+- Should directly relate to the prompt
+- Keep it concise and memorable
+
+Generate ONE phrase that best responds to the prompt. Do not include quotes or explanation, just the phrase itself."""
+
+
 def build_backronym_vote_prompt(word: str, backronyms: list[str]) -> str:
     """
     Build structured prompt for AI vote generation in Initial Reaction.
