@@ -18,6 +18,10 @@ from backend.models.qf.survey_response import QFSurveyResponse
 from backend.models.qf.hint import Hint
 from backend.models.qf.ai_metric import QFAIMetric
 from backend.models.qf.ai_phrase_cache import QFAIPhraseCache
+from backend.models.qf.party_session import PartySession
+from backend.models.qf.party_participant import PartyParticipant
+from backend.models.qf.party_round import PartyRound
+from backend.models.qf.party_phraseset import PartyPhraseset
 
 # Aliases for backward compatibility with tests
 Player = QFPlayer
@@ -50,6 +54,10 @@ __all__ = [
     "Hint",
     "QFAIMetric",
     "QFAIPhraseCache",
+    "PartySession",
+    "PartyParticipant",
+    "PartyRound",
+    "PartyPhraseset",
     # Aliases
     "Player",
     "Transaction",
