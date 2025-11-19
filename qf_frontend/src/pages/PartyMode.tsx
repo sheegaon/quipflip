@@ -74,7 +74,7 @@ export const PartyMode: React.FC = () => {
         if (detail === 'already_in_another_session') {
           setError('You are already in another party. Leave it before joining a new one.');
         } else {
-          setError(err.message || 'Failed to join party');
+          setError(detail || err.message || 'Failed to join party');
         }
       } else {
         setError(err instanceof Error ? err.message : 'Failed to join party');
