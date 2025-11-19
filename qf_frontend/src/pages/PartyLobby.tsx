@@ -99,7 +99,7 @@ export const PartyLobby: React.FC = () => {
     onSessionUpdate: (data) => {
       console.log('Session update:', data);
       // Show host change notification
-      if (data.reason === 'inactive_player_removed' && data.message) {
+      if (data.reason === 'inactive_player_removed' && typeof data.message === 'string') {
         setNotification(data.message);
         setTimeout(() => setNotification(null), 5000); // Clear after 5 seconds
       }
