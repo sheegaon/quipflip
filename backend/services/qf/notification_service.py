@@ -22,11 +22,9 @@ from backend.models.qf.phraseset import Phraseset
 from backend.models.qf.player import QFPlayer
 from backend.models.qf.round import Round
 from backend.schemas.notification import NotificationWebSocketMessage
+from backend.services.ai.ai_service import AI_PLAYER_EMAIL_DOMAIN
 
 logger = logging.getLogger(__name__)
-
-# AI players have emails ending with this domain
-AI_PLAYER_EMAIL_DOMAIN = "@quipflip.internal"
 
 # Rate limiting: max notifications per player per minute
 MAX_NOTIFICATIONS_PER_MINUTE = 10

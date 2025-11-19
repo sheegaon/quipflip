@@ -22,6 +22,7 @@ from backend.models.qf.player import QFPlayer
 from backend.models.qf.transaction import QFTransaction
 from backend.models.qf.vote import Vote
 from backend.models.qf.round import Round
+from backend.services.ai.ai_service import AI_PLAYER_EMAIL_DOMAIN
 from backend.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -35,7 +36,6 @@ WEEKLY_LEADERBOARD_LIMIT = 5
 WEEKLY_LEADERBOARD_CACHE_KEY = "leaderboard:weekly:v5"  # v5: added gross earnings category
 ALLTIME_LEADERBOARD_LIMIT = 10
 ALLTIME_LEADERBOARD_CACHE_KEY = "leaderboard:alltime:v2"  # v2: added gross earnings category
-AI_PLAYER_EMAIL_DOMAIN = "@quipflip.internal"
 LEADERBOARD_ROLES = ["prompt", "copy", "voter"]
 GROSS_EARNINGS_LEADERBOARD_LIMIT_WEEKLY = 10
 GROSS_EARNINGS_LEADERBOARD_LIMIT_ALLTIME = 20

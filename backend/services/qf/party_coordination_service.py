@@ -26,6 +26,7 @@ from backend.services.qf.party_session_service import (
 from backend.services.qf.party_websocket_manager import get_party_websocket_manager
 from backend.config import get_settings
 from backend.utils.exceptions import NoPromptsAvailableError, NoPhrasesetsAvailableError
+from backend.services.ai.ai_service import AI_PLAYER_EMAIL_DOMAIN
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -669,10 +670,10 @@ class PartyCoordinationService:
             # Get all participants
             participants = await self.party_session_service.get_participants(session_id)
 
-            # Filter AI participants (check if email contains @quipflip.internal)
+            # Filter AI participants (check if email contains AI_PLAYER_EMAIL_DOMAIN)
             ai_participants = []
             for p in participants:
-                if p.player and '@quipflip.internal' in p.player.email:
+                if p.player and AI_PLAYER_EMAIL_DOMAIN in p.player.email:
                     ai_participants.append(p)
 
             if not ai_participants:
