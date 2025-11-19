@@ -20,6 +20,7 @@ import {
   FC,
 } from 'react';
 import { useGame } from './GameContext';
+import apiClient from '../api/client';
 
 export interface NotificationMessage {
   id: string;
@@ -62,29 +63,16 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
       wsAttempted = true;
 
       try {
-        // Step 1: Fetch short-lived WebSocket token via REST API
-        const tokenResponse = await fetch('/qf/api/auth/ws-token', {
-          credentials: 'include', // Include HttpOnly cookies
-        });
+        // Step 1: Fetch short-lived WebSocket token via REST API (through Vercel proxy)
+        const { token } = await apiClient.getWebsocketToken();
 
-        if (!tokenResponse.ok) {
-          throw new Error('Failed to get WebSocket token');
-        }
-
-        const { token } = await tokenResponse.json();
-
-        // Step 2: Construct WebSocket URL for direct connection
-        const apiUrl =
-          import.meta.env.VITE_API_URL ||
-          `http://${window.location.hostname}:8000`;
-        const backendWsUrl =
-          import.meta.env.VITE_BACKEND_WS_URL ||
-          'wss://quipflip-c196034288cd.herokuapp.com';
-
+        // Step 2: Construct WebSocket URL for direct connection to Heroku
+        const apiUrl = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:8000`;
+        const backendWsUrl = import.meta.env.VITE_BACKEND_WS_URL || 'wss://quipflip-c196034288cd.herokuapp.com';
         let wsUrl: string;
 
         if (apiUrl.startsWith('/')) {
-          // Production: use direct Heroku connection
+          // Production: use direct Heroku connection (cannot proxy WebSocket through Vercel)
           wsUrl = `${backendWsUrl}/qf/notifications/ws`;
         } else {
           // Development: connect directly to local backend

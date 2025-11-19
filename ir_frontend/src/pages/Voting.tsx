@@ -20,7 +20,7 @@ const shuffleArray = <T,>(array: T[]): T[] => {
 const Voting: React.FC = () => {
   const navigate = useNavigate();
   const { setId } = useParams<{ setId: string }>();
-  const { player, submitVote, hasVoted } = useIRGame();
+  const { player, submitVote, hasVoted, isAuthenticated } = useIRGame();
 
   const [set, setSet] = useState<BackronymSet | null>(null);
   const [shuffledEntries, setShuffledEntries] = useState<BackronymEntry[]>([]);
@@ -92,19 +92,21 @@ const Voting: React.FC = () => {
 
   // Start polling every 3 seconds to check for finalization
   useEffect(() => {
-    if (setId && !hasNavigatedRef.current) {
-      pollingIntervalRef.current = setInterval(() => {
-        fetchSetDetails();
-      }, 3000); // Poll every 3 seconds
-
-      return () => {
-        if (pollingIntervalRef.current) {
-          clearInterval(pollingIntervalRef.current);
-        }
-      };
+    // Only start polling if authenticated
+    if (!isAuthenticated || !setId || hasNavigatedRef.current) {
+      return;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setId]);
+
+    pollingIntervalRef.current = setInterval(() => {
+      fetchSetDetails();
+    }, 3000); // Poll every 3 seconds
+
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
+  }, [setId, isAuthenticated]); // Key: depend on auth state
 
   // Redirect if no setId
   useEffect(() => {

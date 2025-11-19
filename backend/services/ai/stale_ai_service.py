@@ -4,6 +4,7 @@ import logging
 import uuid
 from datetime import UTC, datetime, timedelta
 from typing import List
+from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -318,7 +319,8 @@ class StaleAIService:
                         )
                         continue
 
-                    chosen_phrase = await self.ai_service.generate_vote_choice(phraseset)
+                    seed = int(UUID(stale_voter.player_id))
+                    chosen_phrase = await self.ai_service.generate_vote_choice(phraseset, seed)
 
                     await vote_service.submit_system_vote(
                         phraseset=phraseset,

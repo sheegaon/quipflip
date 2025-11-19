@@ -243,7 +243,7 @@ class TestAIVoting:
         mock_vote.return_value = 0
 
         service = AIService(db_session)
-        result = await service.generate_vote_choice(mock_phraseset)
+        result = await service.generate_vote_choice(mock_phraseset, seed=1)
 
         assert result == "happy birthday"
         mock_vote.assert_called_once()
@@ -262,7 +262,7 @@ class TestAIVoting:
         mock_vote.return_value = 1
 
         service = AIService(db_session)
-        result = await service.generate_vote_choice(mock_phraseset)
+        result = await service.generate_vote_choice(mock_phraseset, seed=1)
 
         assert result == "joyful anniversary"
 
@@ -342,7 +342,7 @@ class TestAIMetrics:
         mock_vote.return_value = 0  # Correct choice
 
         service = AIService(db_session)
-        await service.generate_vote_choice(mock_phraseset)
+        await service.generate_vote_choice(mock_phraseset, seed=1)
 
         metrics = db_session.new
         ai_metrics = [m for m in metrics if isinstance(m, AIMetric)]

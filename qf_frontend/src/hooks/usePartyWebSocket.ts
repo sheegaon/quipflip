@@ -29,7 +29,7 @@ export interface UsePartyWebSocketReturn {
   reconnect: () => void;
 }
 
-const WS_BASE_URL = import.meta.env.VITE_WS_URL ||
+const WS_BASE_URL = import.meta.env.VITE_BACKEND_WS_URL ||
   (window.location.protocol === 'https:' ? 'wss:' : 'ws:') +
   '//' + window.location.host.replace(':5173', ':8000');
 
