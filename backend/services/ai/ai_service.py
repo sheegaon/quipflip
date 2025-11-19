@@ -181,7 +181,7 @@ class AIService:
                 
                 # Generate unique username
                 username_service = UsernameService(self.db, game_type=game_type)
-                username = username_service.generate_unique_username()
+                username = await username_service.generate_unique_username()
 
                 ai_player = await player_service.create_player(
                     username=username,
