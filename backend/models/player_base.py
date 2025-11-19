@@ -42,6 +42,13 @@ class PlayerBase(Base):
     tutorial_started_at = Column(DateTime(timezone=True), nullable=True)
     tutorial_completed_at = Column(DateTime(timezone=True), nullable=True)
 
+    @property
+    def balance(self) -> int:
+        """Return the player's total liquid balance (wallet + vault)."""
+
+        # Wallet and vault should never be None, but guard for safety in tests
+        return int(self.wallet or 0) + int(self.vault or 0)
+
     def __repr__(self):
         return (f"<{self.__class__.__name__}(player_id={self.player_id}, username={self.username}, "
                 f"wallet={self.wallet}, vault={self.vault})>")

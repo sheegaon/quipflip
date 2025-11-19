@@ -27,6 +27,7 @@ from backend.utils.exceptions import (
     NoPromptsAvailableError,
     InsufficientBalanceError,
 )
+from backend.services.ai.ai_service import AIServiceError
 from backend.services.qf.round_service_helpers import (
     generate_ai_hints_background,
     revalidate_ai_hints_background,
@@ -55,7 +56,13 @@ class RoundService:
             self.phrase_validator = get_phrase_validator()
         self.activity_service = ActivityService(db)
         from backend.services import AIService
-        self.ai_service = AIService(db)
+        try:
+            self.ai_service = AIService(db)
+        except AIServiceError:
+            logger.warning(
+                "AI service unavailable during RoundService initialization; disabling AI-dependent features",
+            )
+            self.ai_service = None
 
     async def start_prompt_round(self, player: QFPlayer, transaction_service: TransactionService) -> Optional[Round]:
         """
@@ -736,6 +743,9 @@ class RoundService:
             raise InsufficientBalanceError(f"Insufficient wallet balance: {player.wallet} < {self.settings.hint_cost}")
 
         # Generate hints using AI service (which includes proper locking)
+        if not self.ai_service:
+            raise AIServiceError("AI service is not configured; cannot generate hints")
+
         hints = await self.ai_service.get_hints(prompt_round, count=3)
 
         # Charge player after successful hint generation
