@@ -259,6 +259,7 @@ export interface GrossEarningsLeaderboardEntry {
   rank: number | null;
   is_current_player: boolean;
   is_bot?: boolean;
+  is_ai?: boolean;
 }
 
 export interface RoleLeaderboard {
@@ -907,7 +908,7 @@ export interface StartPartySessionResponse {
   participants: PartyParticipant[];
 }
 
-export interface PartySessionStatusResponse extends PartySession {}
+export type PartySessionStatusResponse = PartySession;
 
 // Party Round Response - Discriminated Union based on round_type
 export type StartPartyRoundResponse =

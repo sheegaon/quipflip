@@ -32,6 +32,18 @@ export const UpgradeGuestAccount: React.FC<UpgradeGuestAccountProps> = ({ classN
   const [upgradeSuccess, setUpgradeSuccess] = useState<string | null>(null);
   const [upgradeLoading, setUpgradeLoading] = useState(false);
 
+  useEffect(() => {
+    if (!upgradeSuccess) {
+      return undefined;
+    }
+
+    const timer = setTimeout(() => {
+      navigate('/dashboard');
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, [navigate, upgradeSuccess]);
+
   const handleUpgradeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setUpgradeError(null);
@@ -65,16 +77,6 @@ export const UpgradeGuestAccount: React.FC<UpgradeGuestAccountProps> = ({ classN
       setUpgradeSuccess('Account upgraded successfully! You can now log in with your new credentials.');
       setUpgradeForm({ email: '', password: '', confirmPassword: '' });
       await actions.refreshBalance();
-
-      // Redirect to dashboard after a short delay
-      useEffect(() => {
-        if (upgradeSuccess) {
-          const timer = setTimeout(() => {
-            navigate('/dashboard');
-          }, 2000);
-          return () => clearTimeout(timer);
-        }
-      }, [upgradeSuccess, navigate]);
     } catch (err: unknown) {
       if (getErrorDetail(err) === 'not_a_guest') {
         setUpgradeError('This account is already a full account.');
