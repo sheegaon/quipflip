@@ -70,6 +70,7 @@ import type {
   StartPartyRoundResponse,
   SubmitPartyRoundResponse,
   PartyResultsResponse,
+  PartyListResponse,
 } from './types';
 
 // Base URL - configure based on environment
