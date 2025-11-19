@@ -17,7 +17,7 @@ export interface UsePartyWebSocketOptions {
     session_progress: { players_done_with_phase: number; total_players: number };
   }) => void;
   onSessionStarted?: (data: { current_phase: string; participant_count: number; message: string }) => void;
-  onSessionCompleted?: (data: { completed_at: string; message: string }) => void;
+  onSessionCompleted?: (data: { completed_at: string | null; message: string }) => void;
   onSessionUpdate?: (data: Record<string, unknown>) => void;
   onHostPing?: (data: { host_player_id: string; host_username: string; join_url: string }) => void;
 }
@@ -104,42 +104,45 @@ export function usePartyWebSocket(
           const message: PartyWebSocketMessage = JSON.parse(event.data);
           console.log('📨 Party WebSocket message:', message);
 
-          // TypeScript now knows the exact type of message.data based on message.type
+          // WebSocket messages may include their payload in a nested "data" field or at the top level.
+          const getPayload = <M extends PartyWebSocketMessage>(payloadMessage: M) =>
+            payloadMessage.data ?? payloadMessage;
+
           switch (message.type) {
             case 'phase_transition':
-              handlersRef.current.onPhaseTransition?.(message.data);
+              handlersRef.current.onPhaseTransition?.(getPayload(message));
               break;
 
             case 'player_joined':
-              handlersRef.current.onPlayerJoined?.(message.data);
+              handlersRef.current.onPlayerJoined?.(getPayload(message));
               break;
 
             case 'player_left':
-              handlersRef.current.onPlayerLeft?.(message.data);
+              handlersRef.current.onPlayerLeft?.(getPayload(message));
               break;
 
             case 'player_ready':
-              handlersRef.current.onPlayerReady?.(message.data);
+              handlersRef.current.onPlayerReady?.(getPayload(message));
               break;
 
-            case 'player_progress':
-              handlersRef.current.onProgressUpdate?.(message.data);
+            case 'progress_update':
+              handlersRef.current.onProgressUpdate?.(getPayload(message));
               break;
 
             case 'session_started':
-              handlersRef.current.onSessionStarted?.(message.data);
+              handlersRef.current.onSessionStarted?.(getPayload(message));
               break;
 
             case 'session_completed':
-              handlersRef.current.onSessionCompleted?.(message.data);
+              handlersRef.current.onSessionCompleted?.(getPayload(message));
               break;
 
             case 'session_update':
-              handlersRef.current.onSessionUpdate?.(message.data);
+              handlersRef.current.onSessionUpdate?.(getPayload(message));
               break;
 
             case 'host_ping':
-              handlersRef.current.onHostPing?.(message.data);
+              handlersRef.current.onHostPing?.(getPayload(message));
               break;
 
             default: {
