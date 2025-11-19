@@ -1021,99 +1021,101 @@ export interface PartyPingResponse {
 }
 
 // Party Mode WebSocket message types - Discriminated Union
+export type PlayerJoinedPayload = {
+  player_id: string;
+  username: string;
+  participant_count: number;
+};
+
+export type PlayerLeftPayload = PlayerJoinedPayload;
+
+export type PlayerReadyPayload = {
+  player_id: string;
+  username: string;
+  ready_count: number;
+  total_count: number;
+};
+
+export type PhaseTransitionPayload = {
+  old_phase: string;
+  new_phase: string;
+  message: string;
+};
+
+export type ProgressUpdatePayload = {
+  player_id: string;
+  username: string;
+  action: string;
+  progress: {
+    prompts_submitted: number;
+    copies_submitted: number;
+    votes_submitted: number;
+  };
+  session_progress: {
+    players_done_with_phase: number;
+    total_players: number;
+  };
+};
+
+export type SessionStartedPayload = {
+  current_phase: string;
+  participant_count: number;
+  message: string;
+};
+
+export type SessionCompletedPayload = {
+  completed_at: string | null;
+  message: string;
+};
+
+export type SessionUpdatePayload = Record<string, unknown> & {
+  reason?: string;
+  message?: string;
+};
+
+export type HostPingPayload = {
+  host_player_id: string;
+  host_username: string;
+  join_url: string;
+};
+
+type WebsocketPayload<TBase, TPayload> =
+  TBase & ({ data: TPayload } | ({ data?: undefined } & TPayload));
+
 export type PartyWebSocketMessage =
-  | {
-      type: 'player_joined';
-      session_id: string;
-      data: {
-        player_id: string;
-        username: string;
-        participant_count: number;
-      };
-      timestamp: string;
-    }
-  | {
-      type: 'player_left';
-      session_id: string;
-      data: {
-        player_id: string;
-        username: string;
-        participant_count: number;
-      };
-      timestamp: string;
-    }
-  | {
-      type: 'player_ready';
-      session_id: string;
-      data: {
-        player_id: string;
-        username: string;
-        ready_count: number;
-        total_count: number;
-      };
-      timestamp: string;
-    }
-  | {
-      type: 'session_started';
-      session_id: string;
-      data: {
-        current_phase: string;
-        participant_count: number;
-        message: string;
-      };
-      timestamp: string;
-    }
-  | {
-      type: 'phase_transition';
-      session_id: string;
-      data: {
-        old_phase: string;
-        new_phase: string;
-        message: string;
-      };
-      timestamp: string;
-    }
-  | {
-      type: 'player_progress';
-      session_id: string;
-      data: {
-        player_id: string;
-        username: string;
-        action: string;
-        progress: {
-          prompts_submitted: number;
-          copies_submitted: number;
-          votes_submitted: number;
-        };
-        session_progress: {
-          players_done_with_phase: number;
-          total_players: number;
-        };
-      };
-      timestamp: string;
-    }
-  | {
-      type: 'session_completed';
-      session_id: string;
-      data: {
-        completed_at: string;
-        message: string;
-      };
-      timestamp: string;
-    }
-  | {
-      type: 'session_update';
-      session_id: string;
-      data: Record<string, unknown>;
-      timestamp: string;
-    }
-  | {
-      type: 'host_ping';
-      session_id: string;
-      data: {
-        host_player_id: string;
-        host_username: string;
-        join_url: string;
-      };
-      timestamp: string;
-    };
+  | WebsocketPayload<
+      { type: 'player_joined'; session_id: string; timestamp: string },
+      PlayerJoinedPayload
+    >
+  | WebsocketPayload<
+      { type: 'player_left'; session_id: string; timestamp: string },
+      PlayerLeftPayload
+    >
+  | WebsocketPayload<
+      { type: 'player_ready'; session_id: string; timestamp: string },
+      PlayerReadyPayload
+    >
+  | WebsocketPayload<
+      { type: 'session_started'; session_id: string; timestamp: string },
+      SessionStartedPayload
+    >
+  | WebsocketPayload<
+      { type: 'phase_transition'; session_id: string; timestamp: string },
+      PhaseTransitionPayload
+    >
+  | WebsocketPayload<
+      { type: 'progress_update'; session_id: string; timestamp: string },
+      ProgressUpdatePayload
+    >
+  | WebsocketPayload<
+      { type: 'session_completed'; session_id: string; timestamp: string },
+      SessionCompletedPayload
+    >
+  | WebsocketPayload<
+      { type: 'session_update'; session_id: string; timestamp: string },
+      SessionUpdatePayload
+    >
+  | WebsocketPayload<
+      { type: 'host_ping'; session_id: string; timestamp: string },
+      HostPingPayload
+    >;

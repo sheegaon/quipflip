@@ -254,6 +254,7 @@ class PartyWebSocketManager:
         """
         notification = {
             'type': 'phase_transition',
+            'session_id': str(session_id),
             'old_phase': old_phase,
             'new_phase': new_phase,
             'message': message,
@@ -284,6 +285,7 @@ class PartyWebSocketManager:
         """
         notification = {
             'type': 'progress_update',
+            'session_id': str(session_id),
             'player_id': str(player_id),
             'username': username,
             'action': action,
@@ -312,6 +314,7 @@ class PartyWebSocketManager:
         """
         notification = {
             'type': 'player_joined',
+            'session_id': str(session_id),
             'player_id': str(player_id),
             'username': username,
             'participant_count': participant_count,
@@ -339,6 +342,7 @@ class PartyWebSocketManager:
         """
         notification = {
             'type': 'player_left',
+            'session_id': str(session_id),
             'player_id': str(player_id),
             'username': username,
             'participant_count': participant_count,
@@ -367,6 +371,7 @@ class PartyWebSocketManager:
         """
         notification = {
             'type': 'player_ready',
+            'session_id': str(session_id),
             'player_id': str(player_id),
             'username': username,
             'ready_count': ready_count,
@@ -417,6 +422,7 @@ class PartyWebSocketManager:
         """
         notification = {
             'type': 'session_started',
+            'session_id': str(session_id),
             'current_phase': current_phase,
             'participant_count': participant_count,
             'message': message,
@@ -441,6 +447,7 @@ class PartyWebSocketManager:
         """
         notification = {
             'type': 'session_completed',
+            'session_id': str(session_id),
             'completed_at': completed_at.isoformat() if completed_at else None,
             'message': message,
             'timestamp': datetime.now(UTC).isoformat(),
@@ -462,6 +469,7 @@ class PartyWebSocketManager:
         """
         notification = {
             'type': 'session_update',
+            'session_id': str(session_id),
             **session_status,
             'timestamp': datetime.now(UTC).isoformat(),
         }
