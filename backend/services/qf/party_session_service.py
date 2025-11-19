@@ -215,54 +215,53 @@ class PartySessionService:
         """
         from backend.schemas.party import PartyListItemResponse
 
-        # Query sessions with participant counts
-        result = await self.db.execute(
+        # Subquery to get participant counts for all sessions
+        participant_counts = (
+            select(
+                PartyParticipant.session_id,
+                func.count(PartyParticipant.participant_id).label("participant_count"),
+            )
+            .group_by(PartyParticipant.session_id)
+            .subquery()
+        )
+
+        # A single query to fetch all required data for open, non-full parties
+        stmt = (
             select(
                 PartySession.session_id,
                 PartySession.max_players,
                 PartySession.min_players,
                 PartySession.created_at,
-                func.count(PartyParticipant.participant_id).label('participant_count')
+                QFPlayer.username.label("host_username"),
+                func.coalesce(participant_counts.c.participant_count, 0).label("participant_count"),
             )
-            .outerjoin(PartyParticipant, PartySession.session_id == PartyParticipant.session_id)
-            .where(PartySession.status == 'OPEN')
-            .group_by(PartySession.session_id)
+            .join(QFPlayer, PartySession.host_player_id == QFPlayer.player_id)
+            .outerjoin(
+                participant_counts,
+                PartySession.session_id == participant_counts.c.session_id,
+            )
+            .where(PartySession.status == "OPEN")
+            .where(
+                func.coalesce(participant_counts.c.participant_count, 0)
+                < PartySession.max_players
+            )
             .order_by(PartySession.created_at.desc())
         )
 
-        sessions = result.all()
+        result = await self.db.execute(stmt)
 
-        # Build response list
-        parties = []
-        for session in sessions:
-            # Get host username
-            host_result = await self.db.execute(
-                select(QFPlayer.username)
-                .join(PartyParticipant, PartyParticipant.player_id == QFPlayer.player_id)
-                .where(
-                    and_(
-                        PartyParticipant.session_id == session.session_id,
-                        PartyParticipant.is_host == True
-                    )
-                )
+        parties = [
+            PartyListItemResponse(
+                session_id=str(session.session_id),
+                host_username=session.host_username or "Unknown",
+                participant_count=session.participant_count,
+                min_players=session.min_players,
+                max_players=session.max_players,
+                created_at=session.created_at,
+                is_full=False,  # Already filtered by the query
             )
-            host_username = host_result.scalar_one_or_none() or "Unknown"
-
-            is_full = session.participant_count >= session.max_players
-
-            # Only include non-full sessions
-            if not is_full:
-                parties.append(
-                    PartyListItemResponse(
-                        session_id=str(session.session_id),
-                        host_username=host_username,
-                        participant_count=session.participant_count,
-                        min_players=session.min_players,
-                        max_players=session.max_players,
-                        created_at=session.created_at,
-                        is_full=is_full,
-                    )
-                )
+            for session in result.all()
+        ]
 
         return parties
 
