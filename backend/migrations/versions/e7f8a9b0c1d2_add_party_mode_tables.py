@@ -87,10 +87,12 @@ def upgrade() -> None:
         sa.Column('joined_at', sa.TIMESTAMP(timezone=True), nullable=False, server_default=timestamp_default),
         sa.Column('ready_at', sa.TIMESTAMP(timezone=True), nullable=True),
         sa.Column('last_activity_at', sa.TIMESTAMP(timezone=True), nullable=True),
+
+        # Unique constraint defined inline for SQLite compatibility
+        sa.UniqueConstraint('session_id', 'player_id', name='uq_party_participants_session_player'),
     )
 
-    # Create unique constraint and indexes for party_participants
-    op.create_unique_constraint('uq_party_participants_session_player', 'party_participants', ['session_id', 'player_id'])
+    # Create indexes for party_participants
     op.create_index('idx_party_participants_session', 'party_participants', ['session_id'])
     op.create_index('idx_party_participants_player', 'party_participants', ['player_id'])
     op.create_index('idx_party_participants_status', 'party_participants', ['session_id', 'status'])
@@ -109,10 +111,12 @@ def upgrade() -> None:
 
         # Timestamps
         sa.Column('created_at', sa.TIMESTAMP(timezone=True), nullable=False, server_default=timestamp_default),
+
+        # Unique constraint defined inline for SQLite compatibility
+        sa.UniqueConstraint('session_id', 'round_id', name='uq_party_rounds_session_round'),
     )
 
-    # Create unique constraint and indexes for party_rounds
-    op.create_unique_constraint('uq_party_rounds_session_round', 'party_rounds', ['session_id', 'round_id'])
+    # Create indexes for party_rounds
     op.create_index('idx_party_rounds_session', 'party_rounds', ['session_id', 'phase'])
     op.create_index('idx_party_rounds_participant', 'party_rounds', ['participant_id'])
     op.create_index('idx_party_rounds_round', 'party_rounds', ['round_id'])
@@ -130,10 +134,12 @@ def upgrade() -> None:
 
         # Timestamps
         sa.Column('created_at', sa.TIMESTAMP(timezone=True), nullable=False, server_default=timestamp_default),
+
+        # Unique constraint defined inline for SQLite compatibility
+        sa.UniqueConstraint('session_id', 'phraseset_id', name='uq_party_phrasesets_session_phraseset'),
     )
 
-    # Create unique constraint and indexes for party_phrasesets
-    op.create_unique_constraint('uq_party_phrasesets_session_phraseset', 'party_phrasesets', ['session_id', 'phraseset_id'])
+    # Create indexes for party_phrasesets
     op.create_index('idx_party_phrasesets_session', 'party_phrasesets', ['session_id', 'available_for_voting'])
     op.create_index('idx_party_phrasesets_phraseset', 'party_phrasesets', ['phraseset_id'])
 
