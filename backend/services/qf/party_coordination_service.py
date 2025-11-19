@@ -631,3 +631,238 @@ class PartyCoordinationService:
             'players_done_with_phase': done,
             'total_players': len(participants),
         }
+
+    async def process_ai_submissions(
+        self,
+        session_id: UUID,
+        transaction_service: TransactionService,
+    ) -> dict:
+        """
+        Process submissions for all AI participants in the current phase.
+
+        This method should be called after a phase starts or when checking
+        if AI players need to submit.
+
+        Args:
+            session_id: UUID of the party session
+            transaction_service: Transaction service for player operations
+
+        Returns:
+            dict: Summary of AI submissions processed
+        """
+        from backend.services.ai.ai_service import AIService, AICopyError, AIVoteError
+
+        stats = {
+            'prompts_submitted': 0,
+            'copies_submitted': 0,
+            'votes_submitted': 0,
+            'errors': 0,
+        }
+
+        try:
+            # Get session
+            session = await self.party_session_service.get_session_by_id(session_id)
+            if not session or session.status != 'IN_PROGRESS':
+                logger.info(f"Session {session_id} not in progress, skipping AI submissions")
+                return stats
+
+            # Get all participants
+            participants = await self.party_session_service.get_participants(session_id)
+
+            # Filter AI participants (check if email contains @quipflip.internal)
+            ai_participants = []
+            for p in participants:
+                if p.player and '@quipflip.internal' in p.player.email:
+                    ai_participants.append(p)
+
+            if not ai_participants:
+                logger.info(f"No AI participants in session {session_id}")
+                return stats
+
+            logger.info(
+                f"Processing {len(ai_participants)} AI participants for {session.current_phase} phase"
+            )
+
+            # Initialize AI service
+            ai_service = AIService(self.db)
+
+            # Process each AI participant based on current phase
+            for participant in ai_participants:
+                try:
+                    if session.current_phase == 'PROMPT':
+                        # Check if AI has submitted all prompts
+                        if participant.prompts_submitted >= session.prompts_per_player:
+                            continue
+
+                        # Get a random prompt for AI to respond to
+                        prompt_result = await self.db.execute(
+                            select(Prompt)
+                            .where(Prompt.is_active == True)
+                            .order_by(func.random())
+                            .limit(1)
+                        )
+                        prompt = prompt_result.scalar_one_or_none()
+
+                        if not prompt:
+                            logger.warning("No prompts available for AI")
+                            continue
+
+                        # Generate phrase for prompt
+                        phrase = await ai_service.generate_party_prompt(prompt.prompt_text)
+
+                        # Submit prompt round
+                        round_obj, party_round_id = await self.start_party_prompt_round(
+                            session_id=session_id,
+                            player=participant.player,
+                            transaction_service=transaction_service,
+                        )
+
+                        # Submit phrase
+                        await self.submit_party_prompt(
+                            session_id=session_id,
+                            player=participant.player,
+                            phrase=phrase,
+                            party_round_id=party_round_id,
+                            transaction_service=transaction_service,
+                        )
+
+                        stats['prompts_submitted'] += 1
+                        logger.info(
+                            f"AI player {participant.player.username} submitted prompt: {phrase}"
+                        )
+
+                    elif session.current_phase == 'COPY':
+                        # Check if AI has submitted all copies
+                        if participant.copies_submitted >= session.copies_per_player:
+                            continue
+
+                        # Get eligible prompt to copy
+                        prompt_round_id = await self._get_eligible_prompt_for_copy(
+                            session_id, participant.player_id
+                        )
+
+                        if not prompt_round_id:
+                            logger.info(f"No eligible prompts for AI {participant.player.username}")
+                            continue
+
+                        # Get prompt round details
+                        prompt_round_result = await self.db.execute(
+                            select(Round).where(Round.round_id == prompt_round_id)
+                        )
+                        prompt_round = prompt_round_result.scalar_one_or_none()
+
+                        if not prompt_round:
+                            continue
+
+                        # Check if there's already a copy
+                        existing_copy_result = await self.db.execute(
+                            select(Round.copy_phrase)
+                            .where(Round.prompt_round_id == prompt_round_id)
+                            .where(Round.round_type == 'copy')
+                            .where(Round.status == 'submitted')
+                            .limit(1)
+                        )
+                        existing_copy = existing_copy_result.scalar_one_or_none()
+
+                        # Generate copy phrase
+                        copy_phrase = await ai_service.generate_party_copy(
+                            original_phrase=prompt_round.submitted_phrase,
+                            prompt_text=prompt_round.prompt_text,
+                            other_copy_phrase=existing_copy,
+                        )
+
+                        # Submit copy round
+                        round_obj, party_round_id = await self.start_party_copy_round(
+                            session_id=session_id,
+                            player=participant.player,
+                            prompt_round_id=prompt_round_id,
+                            transaction_service=transaction_service,
+                        )
+
+                        # Submit copy phrase
+                        await self.submit_party_copy(
+                            session_id=session_id,
+                            player=participant.player,
+                            phrase=copy_phrase,
+                            party_round_id=party_round_id,
+                            transaction_service=transaction_service,
+                        )
+
+                        stats['copies_submitted'] += 1
+                        logger.info(
+                            f"AI player {participant.player.username} submitted copy: {copy_phrase}"
+                        )
+
+                    elif session.current_phase == 'VOTE':
+                        # Check if AI has submitted all votes
+                        if participant.votes_submitted >= session.votes_per_player:
+                            continue
+
+                        # Get eligible phraseset to vote on
+                        phraseset_id = await self._get_eligible_phraseset_for_vote(
+                            session_id, participant.player_id
+                        )
+
+                        if not phraseset_id:
+                            logger.info(f"No eligible phrasesets for AI {participant.player.username}")
+                            continue
+
+                        # Get phraseset details
+                        phraseset_result = await self.db.execute(
+                            select(Phraseset).where(Phraseset.phraseset_id == phraseset_id)
+                        )
+                        phraseset = phraseset_result.scalar_one_or_none()
+
+                        if not phraseset:
+                            continue
+
+                        # Generate vote
+                        phrases = [
+                            phraseset.original_phrase,
+                            phraseset.copy_phrase_1,
+                            phraseset.copy_phrase_2,
+                        ]
+                        chosen_phrase = await ai_service.generate_party_vote(
+                            prompt_text=phraseset.prompt_text,
+                            phrases=phrases,
+                        )
+
+                        # Submit vote round
+                        round_obj, party_round_id = await self.start_party_vote_round(
+                            session_id=session_id,
+                            player=participant.player,
+                            phraseset_id=phraseset_id,
+                            transaction_service=transaction_service,
+                        )
+
+                        # Submit vote
+                        await self.submit_party_vote(
+                            session_id=session_id,
+                            player=participant.player,
+                            phrase=chosen_phrase,
+                            party_round_id=party_round_id,
+                            transaction_service=transaction_service,
+                        )
+
+                        stats['votes_submitted'] += 1
+                        logger.info(
+                            f"AI player {participant.player.username} voted for: {chosen_phrase}"
+                        )
+
+                except (AICopyError, AIVoteError) as e:
+                    logger.error(f"AI submission error for {participant.player.username}: {e}")
+                    stats['errors'] += 1
+                except Exception as e:
+                    logger.error(
+                        f"Unexpected error processing AI {participant.player.username}: {e}",
+                        exc_info=True,
+                    )
+                    stats['errors'] += 1
+
+            logger.info(f"AI submissions processed for session {session_id}: {stats}")
+            return stats
+
+        except Exception as e:
+            logger.error(f"Error processing AI submissions for session {session_id}: {e}")
+            stats['errors'] += 1
+            return stats

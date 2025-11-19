@@ -872,6 +872,21 @@ export interface JoinPartySessionResponse {
   max_players: number;
 }
 
+export interface PartyListItem {
+  session_id: string;
+  host_username: string;
+  participant_count: number;
+  min_players: number;
+  max_players: number;
+  created_at: string;
+  is_full: boolean;
+}
+
+export interface PartyListResponse {
+  parties: PartyListItem[];
+  total_count: number;
+}
+
 export interface MarkReadyResponse {
   participant_id: string;
   status: string;

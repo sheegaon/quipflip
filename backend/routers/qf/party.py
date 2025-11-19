@@ -13,12 +13,15 @@ from backend.schemas.party import (
     JoinPartySessionRequest,
     JoinPartySessionResponse,
     MarkReadyResponse,
+    AddAIPlayerResponse,
     StartPartySessionResponse,
     PartySessionStatusResponse,
     PartyResultsResponse,
     StartPartyRoundResponse,
     SubmitPartyRoundRequest,
     SubmitPartyRoundResponse,
+    PartyListResponse,
+    PartyListItemResponse,
 )
 from backend.services import TransactionService
 from backend.services.qf import (
@@ -53,6 +56,34 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 router = APIRouter()
 ws_manager = get_party_websocket_manager()
+
+
+@router.get("/list", response_model=PartyListResponse)
+async def list_active_parties(
+    player: QFPlayer = Depends(get_current_player),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get list of all joinable party sessions.
+
+    Returns only sessions that are:
+    - In OPEN status (lobby, not started)
+    - Not full (participant_count < max_players)
+
+    Returns:
+        PartyListResponse: List of active parties with summary info
+    """
+    try:
+        party_service = PartySessionService(db)
+        parties = await party_service.list_active_parties()
+
+        return PartyListResponse(
+            parties=parties,
+            total_count=len(parties),
+        )
+
+    except Exception as e:
+        logger.error(f"Error listing parties: {e}")
+        raise HTTPException(status_code=500, detail="Failed to list parties")
 
 
 @router.post("/create", response_model=CreatePartySessionResponse)
@@ -99,6 +130,56 @@ async def create_party_session(
         raise HTTPException(status_code=500, detail="Failed to create party session")
 
 
+async def _handle_party_join(
+    session_id: UUID,
+    player: QFPlayer,
+    party_service: PartySessionService,
+) -> JoinPartySessionResponse:
+    """Helper function to handle the common logic of joining a party session.
+
+    Args:
+        session_id: UUID of the party session to join
+        player: Current authenticated player
+        party_service: PartySessionService instance
+
+    Returns:
+        JoinPartySessionResponse: Session information after joining
+
+    Raises:
+        SessionNotFoundError: If session doesn't exist
+        SessionAlreadyStartedError: If session has already started
+        SessionFullError: If session is at max capacity
+        AlreadyInSessionError: If player is already in session
+    """
+    # Add participant
+    participant = await party_service.add_participant(
+        session_id=session_id,
+        player_id=player.player_id,
+    )
+
+    # Get updated status
+    status_data = await party_service.get_session_status(session_id)
+
+    # Broadcast player joined
+    await ws_manager.notify_player_joined(
+        session_id=session_id,
+        player_id=player.player_id,
+        username=player.username,
+        participant_count=len(status_data['participants']),
+    )
+
+    return JoinPartySessionResponse(
+        session_id=status_data['session_id'],
+        party_code=status_data['party_code'],
+        status=status_data['status'],
+        current_phase=status_data['current_phase'],
+        participants=status_data['participants'],
+        participant_count=len(status_data['participants']),
+        min_players=status_data['min_players'],
+        max_players=status_data['max_players'],
+    )
+
+
 @router.post("/join", response_model=JoinPartySessionResponse)
 async def join_party_session(
     request: JoinPartySessionRequest,
@@ -129,33 +210,49 @@ async def join_party_session(
                 detail=f"Party session '{request.party_code}' not found"
             )
 
-        # Add participant
-        participant = await party_service.add_participant(
-            session_id=session.session_id,
-            player_id=player.player_id,
-        )
+        # Use common join logic
+        return await _handle_party_join(session.session_id, player, party_service)
 
-        # Get updated status
-        status_data = await party_service.get_session_status(session.session_id)
+    except SessionNotFoundError:
+        raise HTTPException(status_code=404, detail="Party session not found")
+    except SessionAlreadyStartedError:
+        raise HTTPException(status_code=400, detail="Session has already started")
+    except SessionFullError:
+        raise HTTPException(status_code=400, detail="Session is full")
+    except AlreadyInSessionError:
+        raise HTTPException(status_code=409, detail="Already in this session")
+    except Exception as e:
+        logger.error(f"Error joining party session: {e}")
+        raise HTTPException(status_code=500, detail="Failed to join party session")
 
-        # Broadcast player joined
-        await ws_manager.notify_player_joined(
-            session_id=session.session_id,
-            player_id=player.player_id,
-            username=player.username,
-            participant_count=len(status_data['participants']),
-        )
 
-        return JoinPartySessionResponse(
-            session_id=status_data['session_id'],
-            party_code=status_data['party_code'],
-            status=status_data['status'],
-            current_phase=status_data['current_phase'],
-            participants=status_data['participants'],
-            participant_count=len(status_data['participants']),
-            min_players=status_data['min_players'],
-            max_players=status_data['max_players'],
-        )
+@router.post("/{session_id}/join", response_model=JoinPartySessionResponse)
+async def join_party_session_by_id(
+    session_id: UUID,
+    player: QFPlayer = Depends(get_current_player),
+    db: AsyncSession = Depends(get_db),
+):
+    """Join an existing party session by session ID.
+
+    This endpoint allows joining a party directly by its session_id,
+    typically used when selecting from the party list.
+
+    Args:
+        session_id: UUID of the party session
+
+    Returns:
+        JoinPartySessionResponse: Session information
+
+    Raises:
+        404: Session not found
+        400: Session already started or full
+        409: Already in session
+    """
+    try:
+        party_service = PartySessionService(db)
+
+        # Use common join logic
+        return await _handle_party_join(session_id, player, party_service)
 
     except SessionNotFoundError:
         raise HTTPException(status_code=404, detail="Party session not found")
@@ -229,6 +326,121 @@ async def mark_ready(
     except Exception as e:
         logger.error(f"Error marking ready: {e}")
         raise HTTPException(status_code=500, detail="Failed to mark ready")
+
+
+@router.post("/{session_id}/add-ai", response_model=AddAIPlayerResponse)
+async def add_ai_player_to_session(
+    session_id: UUID,
+    player: QFPlayer = Depends(get_current_player),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Add an AI player to the party session (host only, lobby only).
+
+    The AI player will automatically participate in all rounds.
+
+    Args:
+        session_id: UUID of the party session
+        player: Current authenticated player (must be host)
+        db: Database session
+
+    Returns:
+        AddAIPlayerResponse: Created AI participant info
+
+    Raises:
+        404: Session not found
+        403: Player is not the host
+        400: Session already started or session is full
+    """
+    try:
+        party_service = PartySessionService(db)
+
+        # Add AI player to session
+        from backend.utils.model_registry import GameType
+        participant = await party_service.add_ai_player(
+            session_id=session_id,
+            host_player_id=player.player_id,
+            game_type=GameType.QF,
+        )
+
+        # Broadcast player joined event
+        await ws_manager.notify_player_joined(
+            session_id=session_id,
+            player_id=participant.player_id,
+            username=participant.player.username,
+            participant_count=await party_service._get_participant_count(session_id),
+        )
+
+        return AddAIPlayerResponse(
+            participant_id=str(participant.participant_id),
+            player_id=str(participant.player_id),
+            username=participant.player.username,
+            is_ai=True,
+        )
+
+    except SessionNotFoundError:
+        raise HTTPException(status_code=404, detail="Session not found")
+    except NotHostError:
+        raise HTTPException(status_code=403, detail="Only the host can add AI players")
+    except SessionAlreadyStartedError:
+        raise HTTPException(status_code=400, detail="Cannot add AI players after session has started")
+    except SessionFullError:
+        raise HTTPException(status_code=400, detail="Session is full")
+    except Exception as e:
+        logger.error(f"Error adding AI player: {e}")
+        raise HTTPException(status_code=500, detail="Failed to add AI player")
+
+
+@router.post("/{session_id}/process-ai")
+async def process_ai_submissions(
+    session_id: UUID,
+    player: QFPlayer = Depends(get_current_player),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Trigger AI player submissions for the current phase (host only).
+
+    This endpoint can be called manually or scheduled to process pending
+    AI submissions for the current phase.
+
+    Args:
+        session_id: UUID of the party session
+        player: Current authenticated player (must be host)
+        db: Database session
+
+    Returns:
+        dict: Summary of AI submissions processed
+
+    Raises:
+        404: Session not found
+        403: Player is not the host
+    """
+    try:
+        party_service = PartySessionService(db)
+        coordination_service = PartyCoordinationService(db)
+        transaction_service = TransactionService(db)
+
+        # Verify caller is host
+        participant = await party_service.get_participant(session_id, player.player_id)
+        if not participant or not participant.is_host:
+            raise HTTPException(status_code=403, detail="Only the host can trigger AI submissions")
+
+        # Process AI submissions
+        stats = await coordination_service.process_ai_submissions(
+            session_id=session_id,
+            transaction_service=transaction_service,
+        )
+
+        return {
+            'success': True,
+            'stats': stats,
+        }
+
+    except SessionNotFoundError:
+        raise HTTPException(status_code=404, detail="Session not found")
+    except Exception as e:
+        logger.error(f"Error processing AI submissions: {e}")
+        raise HTTPException(status_code=500, detail="Failed to process AI submissions")
 
 
 @router.post("/{session_id}/start", response_model=StartPartySessionResponse)
@@ -705,8 +917,8 @@ async def party_websocket_endpoint(
                 logger.warning(f"Player {player_id} attempted to connect to session they're not in")
                 return
 
-            # Connect WebSocket
-            await ws_manager.connect(session_id, player_id, websocket)
+            # Connect WebSocket and update connection status
+            await ws_manager.connect(session_id, player_id, websocket, db)
             logger.info(f"Party WebSocket connected for player {player_id} in session {session_id}")
 
             try:
@@ -723,7 +935,7 @@ async def party_websocket_endpoint(
             except Exception as e:
                 logger.error(f"Party WebSocket error for player {player_id}: {e}")
             finally:
-                await ws_manager.disconnect(session_id, player_id)
+                await ws_manager.disconnect(session_id, player_id, db)
                 logger.info(f"Party WebSocket disconnected for player {player_id}")
 
     except Exception as e:

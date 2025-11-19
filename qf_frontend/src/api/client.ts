@@ -70,6 +70,7 @@ import type {
   StartPartyRoundResponse,
   SubmitPartyRoundResponse,
   PartyResultsResponse,
+  PartyListResponse,
 } from './types';
 
 // Base URL - configure based on environment
@@ -769,6 +770,21 @@ export const apiClient = {
     return data;
   },
 
+  async listActiveParties(
+    signal?: AbortSignal,
+  ): Promise<PartyListResponse> {
+    const { data } = await api.get<PartyListResponse>('/party/list', { signal });
+    return data;
+  },
+
+  async joinPartySessionById(
+    sessionId: string,
+    signal?: AbortSignal,
+  ): Promise<JoinPartySessionResponse> {
+    const { data } = await api.post<JoinPartySessionResponse>(`/party/${sessionId}/join`, {}, { signal });
+    return data;
+  },
+
   async joinPartySession(
     partyCode: string,
     signal?: AbortSignal,
@@ -782,6 +798,14 @@ export const apiClient = {
     signal?: AbortSignal,
   ): Promise<MarkReadyResponse> {
     const { data } = await api.post<MarkReadyResponse>(`/party/${sessionId}/ready`, {}, { signal });
+    return data;
+  },
+
+  async addAIPlayerToParty(
+    sessionId: string,
+    signal?: AbortSignal,
+  ): Promise<{ participant_id: string; player_id: string; username: string; is_ai: boolean }> {
+    const { data } = await api.post<{ participant_id: string; player_id: string; username: string; is_ai: boolean }>(`/party/${sessionId}/add-ai`, {}, { signal });
     return data;
   },
 

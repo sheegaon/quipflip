@@ -107,6 +107,14 @@ class MarkReadyResponse(BaseSchema):
         # ready_count, total_count, can_start
 
 
+class AddAIPlayerResponse(BaseSchema):
+    """Response after adding an AI player."""
+    participant_id: str
+    player_id: str
+    username: str
+    is_ai: bool
+
+
 class StartPartySessionResponse(BaseSchema):
     """Response after starting a party session."""
     session_id: str
@@ -197,3 +205,20 @@ class PartyResultsResponse(BaseSchema):
     rankings: List[PartyPlayerStatsResponse]
     awards: Dict[str, PartyAwardResponse]
     phrasesets_summary: List[PartyPhrasesetSummaryResponse]
+
+
+class PartyListItemResponse(BaseSchema):
+    """Information about a joinable party session."""
+    session_id: str
+    host_username: str
+    participant_count: int
+    min_players: int
+    max_players: int
+    created_at: datetime
+    is_full: bool
+
+
+class PartyListResponse(BaseSchema):
+    """List of active/joinable party sessions."""
+    parties: List[PartyListItemResponse]
+    total_count: int

@@ -202,6 +202,69 @@ class PartySessionService:
         )
         return result.scalar_one_or_none()
 
+    async def list_active_parties(self) -> List[Dict]:
+        """Get list of all joinable party sessions.
+
+        Returns only sessions that are:
+        - In OPEN status (lobby, not started)
+        - Not full (participant_count < max_players)
+        - Ordered by created_at desc (newest first)
+
+        Returns:
+            List[Dict]: List of party session summaries
+        """
+        from backend.schemas.party import PartyListItemResponse
+
+        # Subquery to get participant counts for all sessions
+        participant_counts = (
+            select(
+                PartyParticipant.session_id,
+                func.count(PartyParticipant.participant_id).label("participant_count"),
+            )
+            .group_by(PartyParticipant.session_id)
+            .subquery()
+        )
+
+        # A single query to fetch all required data for open, non-full parties
+        stmt = (
+            select(
+                PartySession.session_id,
+                PartySession.max_players,
+                PartySession.min_players,
+                PartySession.created_at,
+                QFPlayer.username.label("host_username"),
+                func.coalesce(participant_counts.c.participant_count, 0).label("participant_count"),
+            )
+            .join(QFPlayer, PartySession.host_player_id == QFPlayer.player_id)
+            .outerjoin(
+                participant_counts,
+                PartySession.session_id == participant_counts.c.session_id,
+            )
+            .where(PartySession.status == "OPEN")
+            .where(
+                func.coalesce(participant_counts.c.participant_count, 0)
+                < PartySession.max_players
+            )
+            .order_by(PartySession.created_at.desc())
+        )
+
+        result = await self.db.execute(stmt)
+
+        parties = [
+            PartyListItemResponse(
+                session_id=str(session.session_id),
+                host_username=session.host_username or "Unknown",
+                participant_count=session.participant_count,
+                min_players=session.min_players,
+                max_players=session.max_players,
+                created_at=session.created_at,
+                is_full=False,  # Already filtered by the query
+            )
+            for session in result.all()
+        ]
+
+        return parties
+
     async def add_participant(
         self,
         session_id: UUID,
@@ -258,12 +321,85 @@ class PartySessionService:
         logger.info(f"Player {player_id} joined session {session_id}")
         return participant
 
+    async def add_ai_player(
+        self,
+        session_id: UUID,
+        host_player_id: UUID,
+        game_type: "GameType",
+    ) -> PartyParticipant:
+        """Add an AI player to the session (host only, lobby only).
+
+        Args:
+            session_id: UUID of the session
+            host_player_id: UUID of the host player (for verification)
+            game_type: Game type for AI player creation
+
+        Returns:
+            PartyParticipant: Created AI participant
+
+        Raises:
+            SessionNotFoundError: If session doesn't exist
+            NotHostError: If caller is not the host
+            SessionAlreadyStartedError: If session has already started
+            SessionFullError: If session is at max capacity
+        """
+        # Get session
+        session = await self.get_session_by_id(session_id)
+        if not session:
+            raise SessionNotFoundError(f"Session {session_id} not found")
+
+        # Verify caller is host
+        host_participant = await self.get_participant(session_id, host_player_id)
+        if not host_participant or not host_participant.is_host:
+            raise NotHostError("Only the host can add AI players")
+
+        # Check if session has started
+        if session.status != 'OPEN':
+            raise SessionAlreadyStartedError("Cannot add AI players after session has started")
+
+        # Check if session is full
+        participant_count = await self._get_participant_count(session_id)
+        if participant_count >= session.max_players:
+            raise SessionFullError(f"Session is full (max {session.max_players} players)")
+
+        # Get or create AI player
+        from backend.services.ai.ai_service import AIService
+        ai_service = AIService(self.db)
+        ai_player = await ai_service._get_or_create_ai_player(
+            game_type=game_type,
+            email=f"ai_party_{uuid.uuid4().hex[:8]}@quipflip.internal",
+        )
+
+        # Create participant
+        participant = PartyParticipant(
+            participant_id=uuid.uuid4(),
+            session_id=session_id,
+            player_id=ai_player.player_id,
+            status='READY',  # AI players are always ready
+            is_host=False,
+            joined_at=datetime.now(UTC),
+            ready_at=datetime.now(UTC),
+        )
+
+        self.db.add(participant)
+        await self.db.commit()
+        await self.db.refresh(participant)
+
+        # Load the player relationship
+        await self.db.refresh(participant, attribute_names=['player'])
+
+        logger.info(f"AI player {ai_player.player_id} added to session {session_id}")
+        return participant
+
     async def remove_participant(
         self,
         session_id: UUID,
         player_id: UUID,
     ) -> bool:
-        """Remove a player from the session (lobby only).
+        """Remove a player from the session.
+
+        Players can leave at any time, including during active games.
+        If the host leaves, another participant is automatically promoted.
 
         Args:
             session_id: UUID of the session
@@ -274,16 +410,11 @@ class PartySessionService:
 
         Raises:
             SessionNotFoundError: If session doesn't exist
-            SessionAlreadyStartedError: If session has already started
         """
         # Get session
         session = await self.get_session_by_id(session_id)
         if not session:
             raise SessionNotFoundError(f"Session {session_id} not found")
-
-        # Can only remove from lobby
-        if session.status != 'OPEN':
-            raise SessionAlreadyStartedError("Cannot leave session that has already started")
 
         # Get participant
         participant = await self.get_participant(session_id, player_id)
@@ -363,6 +494,144 @@ class PartySessionService:
             await self.db.delete(session)
             await self.db.commit()
             logger.info(f"Deleted empty party session {session_id}")
+
+    async def remove_inactive_participants(self, session_id: UUID) -> List[Dict]:
+        """Remove participants who have been inactive for more than 5 minutes.
+
+        A participant is considered inactive if:
+        - connection_status is 'disconnected' AND
+        - last_activity_at is more than 5 minutes ago
+
+        Uses batch operations for efficiency and atomicity.
+
+        Args:
+            session_id: UUID of the session to check
+
+        Returns:
+            List[Dict]: List of removed participants with their info
+        """
+        from backend.services.qf.party_websocket_manager import get_party_websocket_manager
+
+        # Calculate cutoff time (5 minutes ago)
+        cutoff_time = datetime.now(UTC) - timedelta(minutes=5)
+
+        # Fetch all inactive participants with player info in a single query
+        result = await self.db.execute(
+            select(
+                PartyParticipant.participant_id,
+                PartyParticipant.player_id,
+                PartyParticipant.is_host,
+                QFPlayer.username,
+            )
+            .join(QFPlayer, PartyParticipant.player_id == QFPlayer.player_id)
+            .where(
+                and_(
+                    PartyParticipant.session_id == session_id,
+                    PartyParticipant.connection_status == 'disconnected',
+                    PartyParticipant.last_activity_at < cutoff_time
+                )
+            )
+        )
+        inactive_rows = result.all()
+
+        if not inactive_rows:
+            return []
+
+        # Process in memory to prepare for batch operations
+        removed_participants = []
+        participant_ids_to_delete = []
+        any_host_removed = False
+
+        for row in inactive_rows:
+            participant_ids_to_delete.append(row.participant_id)
+            removed_participants.append({
+                'player_id': str(row.player_id),
+                'username': row.username,
+                'was_host': row.is_host,
+            })
+            if row.is_host:
+                any_host_removed = True
+
+        # Batch delete all inactive participants in a single operation
+        if participant_ids_to_delete:
+            await self.db.execute(
+                select(PartyParticipant)
+                .where(PartyParticipant.participant_id.in_(participant_ids_to_delete))
+            )
+            # Use delete() with synchronize_session=False for better performance
+            from sqlalchemy import delete as sql_delete
+            await self.db.execute(
+                sql_delete(PartyParticipant)
+                .where(PartyParticipant.participant_id.in_(participant_ids_to_delete))
+                .execution_options(synchronize_session=False)
+            )
+
+        # Check if session is now empty
+        remaining_count = await self._get_participant_count(session_id)
+
+        if remaining_count == 0:
+            # Session is empty - delete it
+            await self._delete_empty_session(session_id)
+            # Don't commit yet - _delete_empty_session handles its own commit
+            logger.info(f"Removed {len(removed_participants)} inactive participants from session {session_id} (session deleted)")
+            return removed_participants
+
+        # Handle host reassignment if needed
+        new_host_info = None
+        if any_host_removed:
+            # Reassign host to oldest remaining participant
+            await self._reassign_host(session_id)
+
+            # Get new host info for notification
+            new_host_result = await self.db.execute(
+                select(
+                    PartyParticipant.player_id,
+                    QFPlayer.username,
+                )
+                .join(QFPlayer, PartyParticipant.player_id == QFPlayer.player_id)
+                .where(
+                    and_(
+                        PartyParticipant.session_id == session_id,
+                        PartyParticipant.is_host == True
+                    )
+                )
+            )
+            new_host_row = new_host_result.first()
+            if new_host_row:
+                new_host_info = {
+                    'player_id': str(new_host_row.player_id),
+                    'username': new_host_row.username,
+                }
+
+        # Commit all database changes in a single transaction
+        await self.db.commit()
+
+        logger.info(f"Removed {len(removed_participants)} inactive participants from session {session_id}")
+
+        # Send WebSocket notifications after successful commit
+        ws_manager = get_party_websocket_manager()
+
+        for participant in removed_participants:
+            await ws_manager.notify_player_left(
+                session_id=session_id,
+                player_id=UUID(participant['player_id']),
+                username=participant['username'],
+                participant_count=remaining_count,
+            )
+
+        # Send host change notification if applicable
+        if new_host_info:
+            await ws_manager.notify_session_update(
+                session_id=session_id,
+                session_status={
+                    'new_host_player_id': new_host_info['player_id'],
+                    'new_host_username': new_host_info['username'],
+                    'reason': 'inactive_player_removed',
+                    'message': f"{new_host_info['username']} is now the host"
+                }
+            )
+
+        return removed_participants
 
     async def mark_participant_ready(
         self,

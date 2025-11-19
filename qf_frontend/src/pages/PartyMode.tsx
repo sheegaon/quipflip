@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import apiClient from '../api/client';
 import { PartyIcon } from '../components/icons/NavigationIcons';
+import type { PartyListItem } from '../api/types';
 
 /**
  * Party Mode entry page - Create or Join a party session
@@ -11,9 +12,10 @@ export const PartyMode: React.FC = () => {
   const { state } = useGame();
   const { player } = state;
   const navigate = useNavigate();
-  const [partyCode, setPartyCode] = useState('');
+  const [parties, setParties] = useState<PartyListItem[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
-  const [isJoining, setIsJoining] = useState(false);
+  const [joiningSessionId, setJoiningSessionId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handleCreateParty = async () => {
@@ -40,24 +42,44 @@ export const PartyMode: React.FC = () => {
     }
   };
 
-  const handleJoinParty = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!player || !partyCode.trim()) return;
-
-    setIsJoining(true);
+  const loadParties = async () => {
+    setIsLoading(true);
     setError(null);
 
     try {
-      const response = await apiClient.joinPartySession(partyCode.trim().toUpperCase());
+      const response = await apiClient.listActiveParties();
+      setParties(response.parties);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to load parties');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleJoinParty = async (sessionId: string) => {
+    if (!player) return;
+
+    setJoiningSessionId(sessionId);
+    setError(null);
+
+    try {
+      const response = await apiClient.joinPartySessionById(sessionId);
 
       // Navigate to party lobby
       navigate(`/party/${response.session_id}`);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to join party');
     } finally {
-      setIsJoining(false);
+      setJoiningSessionId(null);
     }
   };
+
+  // Load parties on mount and refresh every 5 seconds
+  useEffect(() => {
+    loadParties();
+    const interval = setInterval(loadParties, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-quip-orange to-quip-turquoise flex items-center justify-center p-4 bg-pattern">
@@ -105,27 +127,63 @@ export const PartyMode: React.FC = () => {
 
         {/* Join Party */}
         <div className="bg-quip-turquoise bg-opacity-5 border-2 border-quip-turquoise rounded-tile p-6">
-          <h2 className="text-xl font-display font-bold text-quip-navy mb-2">Join a Party</h2>
-          <p className="text-quip-teal mb-4 text-sm">
-            Enter an 8-character party code to join an existing match.
-          </p>
-          <form onSubmit={handleJoinParty} className="space-y-4">
-            <input
-              type="text"
-              value={partyCode}
-              onChange={(e) => setPartyCode(e.target.value.toUpperCase())}
-              placeholder="ABCD1234"
-              maxLength={8}
-              className="w-full px-4 py-3 border-2 border-quip-teal rounded-tile text-center text-2xl font-mono uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-quip-turquoise"
-            />
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-xl font-display font-bold text-quip-navy">Join a Party</h2>
             <button
-              type="submit"
-              disabled={isJoining || partyCode.length !== 8}
-              className="w-full bg-quip-turquoise hover:bg-quip-teal disabled:bg-gray-400 text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm text-lg"
+              onClick={loadParties}
+              disabled={isLoading}
+              className="text-quip-turquoise hover:text-quip-teal transition-colors"
+              title="Refresh party list"
             >
-              {isJoining ? 'Joining...' : 'Join Party'}
+              <svg className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
             </button>
-          </form>
+          </div>
+          <p className="text-quip-teal mb-4 text-sm">
+            Browse available parties and join with one click.
+          </p>
+
+          {/* Party List */}
+          {isLoading && parties.length === 0 ? (
+            <div className="text-center py-8 text-quip-teal">
+              <svg className="animate-spin h-8 w-8 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Loading parties...
+            </div>
+          ) : parties.length === 0 ? (
+            <div className="text-center py-8 text-quip-teal">
+              <p className="mb-2">No parties available</p>
+              <p className="text-sm">Be the first to create one!</p>
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {parties.map((party) => (
+                <div
+                  key={party.session_id}
+                  className="bg-white border-2 border-quip-teal rounded-tile p-3 flex items-center justify-between hover:border-quip-turquoise transition-colors"
+                >
+                  <div className="flex-1">
+                    <p className="font-bold text-quip-navy">{party.host_username}'s Party</p>
+                    <p className="text-sm text-quip-teal">
+                      {party.participant_count} / {party.max_players} players
+                      {party.participant_count >= party.min_players && (
+                        <span className="ml-2 text-xs bg-quip-turquoise text-white px-2 py-0.5 rounded">Ready to start</span>
+                      )}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleJoinParty(party.session_id)}
+                    disabled={joiningSessionId === party.session_id}
+                    className="bg-quip-turquoise hover:bg-quip-teal disabled:bg-gray-400 text-white font-bold py-2 px-4 rounded-tile transition-all text-sm"
+                  >
+                    {joiningSessionId === party.session_id ? 'Joining...' : 'Join'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Back to Dashboard */}

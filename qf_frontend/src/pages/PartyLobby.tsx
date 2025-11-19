@@ -22,6 +22,8 @@ export const PartyLobby: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
+  const [notification, setNotification] = useState<string | null>(null);
+  const [isAddingAI, setIsAddingAI] = useState(false);
 
   // Check if current player is host
   const isHost = sessionStatus?.participants.find(p => p.player_id === player?.player_id)?.is_host ?? false;
@@ -82,6 +84,15 @@ export const PartyLobby: React.FC = () => {
       // Navigate to game page
       navigate(`/party/game/${sessionId}`);
     },
+    onSessionUpdate: (data) => {
+      console.log('Session update:', data);
+      // Show host change notification
+      if (data.reason === 'inactive_player_removed' && data.message) {
+        setNotification(data.message);
+        setTimeout(() => setNotification(null), 5000); // Clear after 5 seconds
+      }
+      loadSessionStatus();
+    },
   });
 
   const handleToggleReady = async () => {
@@ -124,6 +135,24 @@ export const PartyLobby: React.FC = () => {
     if (sessionStatus?.party_code) {
       navigator.clipboard.writeText(sessionStatus.party_code);
       // Could show a toast notification here
+    }
+  };
+
+  const handleAddAI = async () => {
+    if (!sessionId) return;
+
+    setIsAddingAI(true);
+    try {
+      await apiClient.addAIPlayerToParty(sessionId);
+      // Reload session status to show new AI player
+      await loadSessionStatus();
+      setNotification('AI player added to the party!');
+      setTimeout(() => setNotification(null), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to add AI player');
+      setTimeout(() => setError(null), 3000);
+    } finally {
+      setIsAddingAI(false);
     }
   };
 
@@ -170,6 +199,13 @@ export const PartyLobby: React.FC = () => {
         </div>
 
         <div className="space-y-6">
+          {/* Notification Display */}
+          {notification && (
+            <div className="bg-quip-turquoise bg-opacity-10 border-2 border-quip-turquoise rounded-tile p-4 text-center">
+              <p className="text-quip-navy font-semibold">{notification}</p>
+            </div>
+          )}
+
           {/* Party Code Display */}
           <div className="tile-card shadow-tile p-6 text-center bg-quip-orange bg-opacity-5 border-2 border-quip-orange">
             <h2 className="text-sm font-semibold text-quip-teal uppercase mb-2">Party Code</h2>
@@ -255,6 +291,17 @@ export const PartyLobby: React.FC = () => {
                 }`}
               >
                 {isReady ? '✓ Ready!' : 'Mark Ready'}
+              </button>
+            )}
+
+            {/* Add AI Player Button (host only) */}
+            {isHost && totalCount < (sessionStatus?.max_players ?? 8) && (
+              <button
+                onClick={handleAddAI}
+                disabled={isAddingAI}
+                className="w-full bg-quip-teal hover:bg-quip-turquoise text-white font-semibold py-3 px-4 rounded-tile transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isAddingAI ? 'Adding AI Player...' : '+ Add AI Player'}
               </button>
             )}
 
