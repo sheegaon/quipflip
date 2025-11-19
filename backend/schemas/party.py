@@ -197,3 +197,20 @@ class PartyResultsResponse(BaseSchema):
     rankings: List[PartyPlayerStatsResponse]
     awards: Dict[str, PartyAwardResponse]
     phrasesets_summary: List[PartyPhrasesetSummaryResponse]
+
+
+class PartyListItemResponse(BaseSchema):
+    """Information about a joinable party session."""
+    session_id: str
+    host_username: str
+    participant_count: int
+    min_players: int
+    max_players: int
+    created_at: datetime
+    is_full: bool
+
+
+class PartyListResponse(BaseSchema):
+    """List of active/joinable party sessions."""
+    parties: List[PartyListItemResponse]
+    total_count: int

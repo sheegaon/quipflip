@@ -19,6 +19,8 @@ from backend.schemas.party import (
     StartPartyRoundResponse,
     SubmitPartyRoundRequest,
     SubmitPartyRoundResponse,
+    PartyListResponse,
+    PartyListItemResponse,
 )
 from backend.services import TransactionService
 from backend.services.qf import (
@@ -53,6 +55,34 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 router = APIRouter()
 ws_manager = get_party_websocket_manager()
+
+
+@router.get("/list", response_model=PartyListResponse)
+async def list_active_parties(
+    player: QFPlayer = Depends(get_current_player),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get list of all joinable party sessions.
+
+    Returns only sessions that are:
+    - In OPEN status (lobby, not started)
+    - Not full (participant_count < max_players)
+
+    Returns:
+        PartyListResponse: List of active parties with summary info
+    """
+    try:
+        party_service = PartySessionService(db)
+        parties = await party_service.list_active_parties()
+
+        return PartyListResponse(
+            parties=parties,
+            total_count=len(parties),
+        )
+
+    except Exception as e:
+        logger.error(f"Error listing parties: {e}")
+        raise HTTPException(status_code=500, detail="Failed to list parties")
 
 
 @router.post("/create", response_model=CreatePartySessionResponse)
@@ -141,6 +171,72 @@ async def join_party_session(
         # Broadcast player joined
         await ws_manager.notify_player_joined(
             session_id=session.session_id,
+            player_id=player.player_id,
+            username=player.username,
+            participant_count=len(status_data['participants']),
+        )
+
+        return JoinPartySessionResponse(
+            session_id=status_data['session_id'],
+            party_code=status_data['party_code'],
+            status=status_data['status'],
+            current_phase=status_data['current_phase'],
+            participants=status_data['participants'],
+            participant_count=len(status_data['participants']),
+            min_players=status_data['min_players'],
+            max_players=status_data['max_players'],
+        )
+
+    except SessionNotFoundError:
+        raise HTTPException(status_code=404, detail="Party session not found")
+    except SessionAlreadyStartedError:
+        raise HTTPException(status_code=400, detail="Session has already started")
+    except SessionFullError:
+        raise HTTPException(status_code=400, detail="Session is full")
+    except AlreadyInSessionError:
+        raise HTTPException(status_code=409, detail="Already in this session")
+    except Exception as e:
+        logger.error(f"Error joining party session: {e}")
+        raise HTTPException(status_code=500, detail="Failed to join party session")
+
+
+@router.post("/{session_id}/join", response_model=JoinPartySessionResponse)
+async def join_party_session_by_id(
+    session_id: UUID,
+    player: QFPlayer = Depends(get_current_player),
+    db: AsyncSession = Depends(get_db),
+):
+    """Join an existing party session by session ID.
+
+    This endpoint allows joining a party directly by its session_id,
+    typically used when selecting from the party list.
+
+    Args:
+        session_id: UUID of the party session
+
+    Returns:
+        JoinPartySessionResponse: Session information
+
+    Raises:
+        404: Session not found
+        400: Session already started or full
+        409: Already in session
+    """
+    try:
+        party_service = PartySessionService(db)
+
+        # Add participant
+        participant = await party_service.add_participant(
+            session_id=session_id,
+            player_id=player.player_id,
+        )
+
+        # Get updated status
+        status_data = await party_service.get_session_status(session_id)
+
+        # Broadcast player joined
+        await ws_manager.notify_player_joined(
+            session_id=session_id,
             player_id=player.player_id,
             username=player.username,
             participant_count=len(status_data['participants']),

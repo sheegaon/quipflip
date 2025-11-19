@@ -202,6 +202,70 @@ class PartySessionService:
         )
         return result.scalar_one_or_none()
 
+    async def list_active_parties(self) -> List[Dict]:
+        """Get list of all joinable party sessions.
+
+        Returns only sessions that are:
+        - In OPEN status (lobby, not started)
+        - Not full (participant_count < max_players)
+        - Ordered by created_at desc (newest first)
+
+        Returns:
+            List[Dict]: List of party session summaries
+        """
+        from backend.schemas.party import PartyListItemResponse
+
+        # Query sessions with participant counts
+        result = await self.db.execute(
+            select(
+                PartySession.session_id,
+                PartySession.max_players,
+                PartySession.min_players,
+                PartySession.created_at,
+                func.count(PartyParticipant.participant_id).label('participant_count')
+            )
+            .outerjoin(PartyParticipant, PartySession.session_id == PartyParticipant.session_id)
+            .where(PartySession.status == 'OPEN')
+            .group_by(PartySession.session_id)
+            .order_by(PartySession.created_at.desc())
+        )
+
+        sessions = result.all()
+
+        # Build response list
+        parties = []
+        for session in sessions:
+            # Get host username
+            host_result = await self.db.execute(
+                select(QFPlayer.username)
+                .join(PartyParticipant, PartyParticipant.player_id == QFPlayer.player_id)
+                .where(
+                    and_(
+                        PartyParticipant.session_id == session.session_id,
+                        PartyParticipant.is_host == True
+                    )
+                )
+            )
+            host_username = host_result.scalar_one_or_none() or "Unknown"
+
+            is_full = session.participant_count >= session.max_players
+
+            # Only include non-full sessions
+            if not is_full:
+                parties.append(
+                    PartyListItemResponse(
+                        session_id=str(session.session_id),
+                        host_username=host_username,
+                        participant_count=session.participant_count,
+                        min_players=session.min_players,
+                        max_players=session.max_players,
+                        created_at=session.created_at,
+                        is_full=is_full,
+                    )
+                )
+
+        return parties
+
     async def add_participant(
         self,
         session_id: UUID,
