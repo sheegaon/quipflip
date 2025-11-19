@@ -3,7 +3,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { usePartyWebSocket } from '../hooks/usePartyWebSocket';
 import apiClient from '../api/client';
-import { Header } from '../components/Header';
+import { LoadingSpinner } from '../components/LoadingSpinner';
+import { PartyIcon } from '../components/icons/NavigationIcons';
+import { loadingMessages } from '../utils/brandedMessages';
 import type { PartySessionStatusResponse, PartyParticipant } from '../api/types';
 
 /**
@@ -128,42 +130,47 @@ export const PartyLobby: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen flex-col bg-quip-cream">
-        <Header />
-        <div className="flex-grow flex items-center justify-center">
-          <span className="text-lg font-semibold text-quip-navy">Loading lobby...</span>
-        </div>
+      <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center">
+        <LoadingSpinner isLoading={true} message={loadingMessages.starting} />
       </div>
     );
   }
 
   if (error || !sessionStatus) {
     return (
-      <div className="flex min-h-screen flex-col bg-quip-cream">
-        <Header />
-        <div className="flex-grow flex items-center justify-center p-4">
-          <div className="max-w-md w-full space-y-4">
-            <div className="tile-card bg-red-100 border-2 border-red-400 p-4">
-              <p className="text-sm text-red-800">{error || 'Session not found'}</p>
-            </div>
-            <button
-              onClick={() => navigate('/party')}
-              className="w-full bg-quip-navy hover:bg-quip-teal text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm"
-            >
-              Back to Party Mode
-            </button>
+      <div className="min-h-screen bg-gradient-to-br from-quip-orange to-quip-turquoise flex items-center justify-center p-4 bg-pattern">
+        <div className="max-w-md w-full tile-card p-8 slide-up-enter text-center space-y-4">
+          <div className="flex justify-center mb-4">
+            <PartyIcon className="w-16 h-16" />
           </div>
+          <h2 className="text-2xl font-display font-bold text-quip-navy mb-2">Session Not Found</h2>
+          <div className="tile-card bg-red-100 border-2 border-red-400 p-4">
+            <p className="text-sm text-red-800">{error || 'Session not found'}</p>
+          </div>
+          <button
+            onClick={() => navigate('/party')}
+            className="w-full bg-quip-navy hover:bg-quip-teal text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm text-lg"
+          >
+            Back to Party Mode
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-quip-cream">
-      <Header />
+    <div className="min-h-screen bg-gradient-to-br from-quip-orange to-quip-turquoise flex items-center justify-center p-4 bg-pattern">
+      <div className="max-w-2xl w-full tile-card p-8 slide-up-enter">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <PartyIcon className="w-8 h-8" />
+            <h1 className="text-3xl font-display font-bold text-quip-navy">Party Lobby</h1>
+          </div>
+          <p className="text-quip-teal">Waiting for all players to be ready</p>
+        </div>
 
-      <div className="flex-grow flex items-center justify-center p-4">
-        <div className="max-w-2xl w-full space-y-6">
+        <div className="space-y-6">
           {/* Party Code Display */}
           <div className="tile-card shadow-tile p-6 text-center bg-quip-orange bg-opacity-5 border-2 border-quip-orange">
             <h2 className="text-sm font-semibold text-quip-teal uppercase mb-2">Party Code</h2>
@@ -249,7 +256,7 @@ export const PartyLobby: React.FC = () => {
               <button
                 onClick={handleToggleReady}
                 disabled={isReady}
-                className={`w-full font-bold py-3 px-4 rounded-tile transition-all ${
+                className={`w-full font-bold py-3 px-4 rounded-tile transition-all text-lg ${
                   isReady
                     ? 'bg-quip-turquoise text-white cursor-not-allowed'
                     : 'bg-quip-turquoise hover:bg-quip-teal text-white hover:shadow-tile-sm'
@@ -264,7 +271,7 @@ export const PartyLobby: React.FC = () => {
               <button
                 onClick={handleStartParty}
                 disabled={!canStart || isStarting}
-                className={`w-full font-bold py-3 px-4 rounded-tile transition-all ${
+                className={`w-full font-bold py-3 px-4 rounded-tile transition-all text-lg ${
                   canStart && !isStarting
                     ? 'bg-quip-orange hover:bg-quip-orange-deep text-white hover:shadow-tile-sm'
                     : 'bg-gray-400 text-white cursor-not-allowed'
@@ -283,17 +290,30 @@ export const PartyLobby: React.FC = () => {
             {/* Leave Button */}
             <button
               onClick={handleLeave}
-              className="w-full bg-gray-200 hover:bg-gray-300 text-quip-navy font-semibold py-3 px-4 rounded-tile transition-colors"
+              className="w-full border-2 border-quip-navy bg-white hover:bg-quip-navy hover:text-white text-quip-navy font-semibold py-3 px-4 rounded-tile transition-all"
             >
               Leave Party
             </button>
           </div>
 
-          {/* Connection Status Indicator */}
-          <div className="text-center text-sm text-quip-teal">
-            {wsConnecting && '🔄 Connecting to live updates...'}
-            {wsConnected && '✅ Connected'}
-            {!wsConnecting && !wsConnected && '⚠️ Not connected'}
+          {/* Back to Dashboard Button */}
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="w-full mt-4 flex items-center justify-center gap-2 text-quip-teal hover:text-quip-turquoise py-2 font-medium transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            </svg>
+            <span>Back to Dashboard</span>
+          </button>
+
+          {/* Connection Status */}
+          <div className="mt-6 p-4 bg-quip-navy bg-opacity-5 rounded-tile">
+            <p className="text-sm text-center text-quip-teal">
+              {wsConnecting && '🔄 Connecting to live updates...'}
+              {wsConnected && '✅ Connected to live updates'}
+              {!wsConnecting && !wsConnected && '⚠️ Not connected - updates may be delayed'}
+            </p>
           </div>
         </div>
       </div>

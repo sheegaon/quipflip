@@ -3,7 +3,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { usePartyWebSocket } from '../hooks/usePartyWebSocket';
 import apiClient from '../api/client';
-import { Header } from '../components/Header';
+import { LoadingSpinner } from '../components/LoadingSpinner';
+import { PartyIcon } from '../components/icons/NavigationIcons';
+import { loadingMessages } from '../utils/brandedMessages';
 import type {
   PartySessionStatusResponse,
   StartPartyRoundResponse,
@@ -276,46 +278,58 @@ export const PartyGame: React.FC = () => {
   };
 
   const renderPromptPhase = () => {
-    if (!activeRound) return null;
+    if (!activeRound || activeRound.round_type !== 'prompt') return null;
 
     return (
-      <div className="tile-card shadow-tile p-6">
-        <h2 className="text-2xl font-display font-bold text-quip-navy mb-4">Write Your Best Original Phrase</h2>
-        <p className="text-quip-teal mb-6">
-          Create a phrase that will fool others into thinking it's a real definition!
-        </p>
+      <div className="space-y-4">
+        <h2 className="text-xl font-display font-bold text-quip-navy">Write Your Best Original Phrase</h2>
 
-        <div className="mb-6">
-          <label className="block text-sm font-semibold text-quip-navy mb-2">
-            Your Phrase
-          </label>
+        {/* Instructions */}
+        <div className="bg-quip-orange bg-opacity-10 border-2 border-quip-orange rounded-tile p-4">
+          <p className="text-sm text-quip-navy">
+            <strong>💡 Tip:</strong> Create a phrase that will fool others into thinking it's a real definition!
+          </p>
+        </div>
+
+        {/* Prompt Display */}
+        <div className="bg-quip-navy bg-opacity-5 border-2 border-quip-navy rounded-tile p-6 relative min-h-[100px] flex items-center">
+          <p className="text-xl md:text-2xl text-center font-display font-semibold text-quip-navy flex-1">
+            {activeRound.prompt_text}
+          </p>
+        </div>
+
+        {/* Error Message */}
+        {error && (
+          <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+            {error}
+          </div>
+        )}
+
+        {/* Input Form */}
+        <div>
           <input
             type="text"
             value={phraseInput}
             onChange={(e) => setPhraseInput(e.target.value.toUpperCase())}
             placeholder="Enter your phrase..."
-            className="w-full px-4 py-3 border-2 border-quip-navy rounded-tile text-lg uppercase focus:outline-none focus:ring-2 focus:ring-quip-orange"
+            className="w-full px-4 py-3 text-lg border-2 border-quip-teal rounded-tile focus:outline-none focus:ring-2 focus:ring-quip-turquoise uppercase"
             maxLength={100}
           />
-          <p className="text-sm text-quip-teal mt-1">{phraseInput.length} / 100 characters</p>
+          <p className="text-sm text-quip-teal mt-1">
+            2-5 words (4-100 characters), A-Z and spaces only
+          </p>
         </div>
-
-        {error && (
-          <div className="tile-card bg-red-100 border-2 border-red-400 p-3 mb-4 text-sm text-red-800">
-            {error}
-          </div>
-        )}
 
         <button
           onClick={handleSubmitPrompt}
           disabled={!phraseInput.trim() || submitting}
-          className={`w-full font-bold py-3 px-4 rounded-tile transition-all ${
+          className={`w-full font-bold py-3 px-4 rounded-tile transition-all text-lg ${
             phraseInput.trim() && !submitting
-              ? 'bg-quip-orange hover:bg-quip-orange-deep text-white hover:shadow-tile-sm'
+              ? 'bg-quip-navy hover:bg-quip-teal text-white hover:shadow-tile-sm'
               : 'bg-gray-400 text-white cursor-not-allowed'
           }`}
         >
-          {submitting ? 'Submitting...' : 'Submit Phrase'}
+          {submitting ? loadingMessages.submitting : 'Submit Phrase'}
         </button>
       </div>
     );
@@ -328,48 +342,58 @@ export const PartyGame: React.FC = () => {
     const originalPhrase = activeRound.original_phrase;
 
     return (
-      <div className="tile-card shadow-tile p-6">
-        <h2 className="text-2xl font-display font-bold text-quip-navy mb-4">Write a Convincing Copy</h2>
-        <p className="text-quip-teal mb-6">
-          Try to mimic this phrase style to fool the voters!
-        </p>
+      <div className="space-y-4">
+        <h2 className="text-xl font-display font-bold text-quip-navy">Write a Convincing Copy</h2>
 
-        <div className="tile-card bg-quip-orange bg-opacity-10 border-2 border-quip-orange p-4 mb-6">
-          <p className="text-sm font-semibold text-quip-teal mb-2">Original Phrase:</p>
-          <p className="text-2xl font-bold text-quip-orange-deep">{originalPhrase}</p>
+        {/* Instructions */}
+        <div className="bg-quip-orange bg-opacity-10 border-2 border-quip-orange rounded-tile p-4">
+          <p className="text-sm text-quip-navy">
+            <strong>💡 Your goal:</strong> Write a phrase that <em>could have been the original</em> and might trick voters.
+            <br />
+            <strong>Do:</strong> stay close in meaning. <strong>Don't:</strong> repeat the original exactly.
+          </p>
         </div>
 
-        <div className="mb-6">
-          <label className="block text-sm font-semibold text-quip-navy mb-2">
-            Your Copy
-          </label>
+        {/* Original Phrase */}
+        <div className="bg-quip-turquoise bg-opacity-5 border-2 border-quip-turquoise rounded-tile p-6 relative">
+          <p className="text-sm text-quip-teal mb-2 text-center font-medium">The original answer was:</p>
+          <p className="text-3xl text-center font-display font-bold text-quip-turquoise">
+            {originalPhrase}
+          </p>
+        </div>
+
+        {/* Error Message */}
+        {error && (
+          <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+            {error}
+          </div>
+        )}
+
+        {/* Input Form */}
+        <div>
           <input
             type="text"
             value={phraseInput}
             onChange={(e) => setPhraseInput(e.target.value.toUpperCase())}
             placeholder="Enter your copy..."
-            className="w-full px-4 py-3 border-2 border-quip-turquoise rounded-tile text-lg uppercase focus:outline-none focus:ring-2 focus:ring-quip-orange"
+            className="w-full px-4 py-3 text-lg border-2 border-quip-teal rounded-tile focus:outline-none focus:ring-2 focus:ring-quip-turquoise uppercase"
             maxLength={100}
           />
-          <p className="text-sm text-quip-teal mt-1">{phraseInput.length} / 100 characters</p>
+          <p className="text-sm text-quip-teal mt-1">
+            2-5 words (4-100 characters), A-Z and spaces only
+          </p>
         </div>
-
-        {error && (
-          <div className="tile-card bg-red-100 border-2 border-red-400 p-3 mb-4 text-sm text-red-800">
-            {error}
-          </div>
-        )}
 
         <button
           onClick={handleSubmitCopy}
           disabled={!phraseInput.trim() || submitting}
-          className={`w-full font-bold py-3 px-4 rounded-tile transition-all ${
+          className={`w-full font-bold py-3 px-4 rounded-tile transition-all text-lg ${
             phraseInput.trim() && !submitting
               ? 'bg-quip-turquoise hover:bg-quip-teal text-white hover:shadow-tile-sm'
               : 'bg-gray-400 text-white cursor-not-allowed'
           }`}
         >
-          {submitting ? 'Submitting...' : 'Submit Copy'}
+          {submitting ? loadingMessages.submitting : 'Submit Copy'}
         </button>
       </div>
     );
@@ -383,47 +407,62 @@ export const PartyGame: React.FC = () => {
     const promptText = activeRound.prompt_text;
 
     return (
-      <div className="tile-card shadow-tile p-6">
-        <h2 className="text-2xl font-display font-bold text-quip-navy mb-4">Vote for the Original</h2>
-        <p className="text-quip-teal mb-2">
-          Prompt: <span className="font-semibold">{promptText}</span>
-        </p>
-        <p className="text-quip-teal mb-6">
+      <div className="space-y-4">
+        <h2 className="text-xl font-display font-bold text-quip-navy">Vote for the Original</h2>
+
+        {/* Instructions */}
+        <div className="bg-quip-orange bg-opacity-10 border-2 border-quip-orange rounded-tile p-4">
+          <p className="text-sm text-quip-navy">
+            <strong>💡 Your goal:</strong> Identify which phrase is the real original and which are the impostors!
+          </p>
+        </div>
+
+        {/* Prompt Display */}
+        <div className="bg-quip-navy bg-opacity-5 border-2 border-quip-navy rounded-tile p-4">
+          <p className="text-sm text-quip-teal mb-1 text-center">Original Prompt:</p>
+          <p className="text-xl md:text-2xl text-center font-display font-semibold text-quip-navy">
+            {promptText}
+          </p>
+        </div>
+
+        <p className="text-quip-teal text-center font-semibold">
           Which phrase do you think is the real one?
         </p>
 
-        <div className="space-y-3 mb-6">
+        {/* Error Message */}
+        {error && (
+          <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+            {error}
+          </div>
+        )}
+
+        {/* Vote Options */}
+        <div className="space-y-3">
           {phrases.map((phrase, idx) => (
             <button
               key={idx}
               onClick={() => setSelectedPhrase(phrase)}
               className={`w-full p-4 rounded-tile border-2 text-left transition-all ${
                 selectedPhrase === phrase
-                  ? 'border-quip-orange bg-quip-orange bg-opacity-10'
-                  : 'border-gray-300 hover:border-quip-orange hover:border-opacity-50'
+                  ? 'border-quip-orange bg-quip-orange bg-opacity-10 shadow-tile-sm'
+                  : 'border-quip-teal hover:border-quip-orange hover:shadow-tile-xs'
               }`}
             >
-              <span className="text-lg font-bold text-quip-navy">{phrase}</span>
+              <span className="text-lg font-bold text-quip-navy uppercase">{phrase}</span>
             </button>
           ))}
         </div>
 
-        {error && (
-          <div className="tile-card bg-red-100 border-2 border-red-400 p-3 mb-4 text-sm text-red-800">
-            {error}
-          </div>
-        )}
-
         <button
           onClick={handleSubmitVote}
           disabled={!selectedPhrase || submitting}
-          className={`w-full font-bold py-3 px-4 rounded-tile transition-all ${
+          className={`w-full font-bold py-3 px-4 rounded-tile transition-all text-lg ${
             selectedPhrase && !submitting
               ? 'bg-quip-orange hover:bg-quip-orange-deep text-white hover:shadow-tile-sm'
               : 'bg-gray-400 text-white cursor-not-allowed'
           }`}
         >
-          {submitting ? 'Submitting...' : 'Submit Vote'}
+          {submitting ? loadingMessages.submitting : 'Submit Vote'}
         </button>
       </div>
     );
@@ -431,80 +470,113 @@ export const PartyGame: React.FC = () => {
 
   const renderWaitingState = () => {
     return (
-      <div className="tile-card shadow-tile p-8 text-center">
-        <div className="text-6xl mb-4">⏳</div>
-        <h2 className="text-2xl font-display font-bold text-quip-navy mb-2">Waiting for Others...</h2>
-        <p className="text-quip-teal mb-4">
-          You've completed this phase! Waiting for other players to finish.
-        </p>
-        {sessionStatus && (
-          <p className="text-sm text-gray-500">
-            {sessionStatus.progress.players_ready_for_next_phase} / {sessionStatus.progress.total_players} players ready
+      <div className="space-y-4">
+        <div className="bg-quip-turquoise bg-opacity-10 border-2 border-quip-turquoise rounded-tile p-8 text-center">
+          <div className="flex justify-center mb-4">
+            <PartyIcon className="w-16 h-16" />
+          </div>
+          <h2 className="text-2xl font-display font-bold text-quip-navy mb-2">Waiting for Others...</h2>
+          <p className="text-quip-teal mb-4">
+            You've completed this phase! Waiting for other players to finish.
           </p>
-        )}
+          {sessionStatus && (
+            <div className="inline-flex items-center gap-2 bg-white rounded-tile px-4 py-2 border-2 border-quip-turquoise">
+              <span className="text-2xl font-bold text-quip-turquoise">
+                {sessionStatus.progress.players_ready_for_next_phase}
+              </span>
+              <span className="text-quip-teal">/</span>
+              <span className="text-xl font-bold text-quip-navy">
+                {sessionStatus.progress.total_players}
+              </span>
+              <span className="text-sm text-quip-teal">players ready</span>
+            </div>
+          )}
+        </div>
       </div>
     );
   };
 
   if (loading) {
     return (
-      <div className="flex min-h-screen flex-col bg-quip-cream">
-        <Header />
-        <div className="flex-grow flex items-center justify-center">
-          <span className="text-lg font-semibold text-quip-navy">Loading game...</span>
-        </div>
+      <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center">
+        <LoadingSpinner isLoading={true} message={loadingMessages.starting} />
       </div>
     );
   }
 
   if (!sessionStatus) {
     return (
-      <div className="flex min-h-screen flex-col bg-quip-cream">
-        <Header />
-        <div className="flex-grow flex items-center justify-center p-4">
-          <div className="max-w-md w-full space-y-4">
-            <div className="tile-card bg-red-100 border-2 border-red-400 p-4">
-              <p className="text-sm text-red-800">{error || 'Session not found'}</p>
-            </div>
-            <button
-              onClick={() => navigate('/party')}
-              className="w-full bg-quip-navy hover:bg-quip-teal text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm"
-            >
-              Back to Party Mode
-            </button>
+      <div className="min-h-screen bg-gradient-to-br from-quip-orange to-quip-turquoise flex items-center justify-center p-4 bg-pattern">
+        <div className="max-w-md w-full tile-card p-8 slide-up-enter text-center space-y-4">
+          <div className="flex justify-center mb-4">
+            <PartyIcon className="w-16 h-16" />
           </div>
+          <h2 className="text-2xl font-display font-bold text-quip-navy mb-2">Session Not Found</h2>
+          <div className="tile-card bg-red-100 border-2 border-red-400 p-4">
+            <p className="text-sm text-red-800">{error || 'Session not found'}</p>
+          </div>
+          <button
+            onClick={() => navigate('/party')}
+            className="w-full bg-quip-navy hover:bg-quip-teal text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm text-lg"
+          >
+            Back to Party Mode
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-quip-cream">
-      <Header />
-
-      <div className="flex-grow p-4">
-        <div className="max-w-2xl mx-auto space-y-4">
-          {/* Phase Indicator */}
-          {renderPhaseIndicator()}
-
-          {/* Progress Widget */}
-          {renderProgressWidget()}
-
-          {/* Phase-specific content */}
-          {isPhaseComplete || waitingForPhaseTransition ? (
-            renderWaitingState()
-          ) : (
-            <>
-              {currentPhase === 'PROMPT' && renderPromptPhase()}
-              {currentPhase === 'COPY' && renderCopyPhase()}
-              {currentPhase === 'VOTE' && renderVotePhase()}
-            </>
-          )}
-
-          {/* Connection Status */}
-          <div className="text-center text-sm text-quip-teal">
-            {wsConnected ? '✅ Connected' : '⚠️ Not connected'}
+    <div className="min-h-screen bg-gradient-to-br from-quip-orange to-quip-turquoise flex items-center justify-center p-4 bg-pattern">
+      <div className="max-w-2xl w-full tile-card p-8 slide-up-enter">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <PartyIcon className="w-8 h-8" />
+            <h1 className="text-3xl font-display font-bold text-quip-navy">Party Mode</h1>
           </div>
+          <p className="text-quip-teal">
+            {currentPhase === 'PROMPT' && 'Write original phrases'}
+            {currentPhase === 'COPY' && 'Create convincing imitations'}
+            {currentPhase === 'VOTE' && 'Vote for the originals'}
+          </p>
+        </div>
+
+        {/* Phase Indicator */}
+        {renderPhaseIndicator()}
+
+        {/* Progress Widget */}
+        {renderProgressWidget()}
+
+        {/* Phase-specific content */}
+        {isPhaseComplete || waitingForPhaseTransition ? (
+          renderWaitingState()
+        ) : (
+          <>
+            {currentPhase === 'PROMPT' && renderPromptPhase()}
+            {currentPhase === 'COPY' && renderCopyPhase()}
+            {currentPhase === 'VOTE' && renderVotePhase()}
+          </>
+        )}
+
+        {/* Back to Dashboard Button */}
+        <button
+          onClick={() => navigate('/dashboard')}
+          disabled={submitting}
+          className="w-full mt-4 flex items-center justify-center gap-2 text-quip-teal hover:text-quip-turquoise disabled:opacity-50 disabled:cursor-not-allowed py-2 font-medium transition-colors"
+          title={submitting ? "Please wait for submission to complete" : "Back to Dashboard"}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+          </svg>
+          <span>Back to Dashboard</span>
+        </button>
+
+        {/* Connection Status */}
+        <div className="mt-6 p-4 bg-quip-navy bg-opacity-5 rounded-tile">
+          <p className="text-sm text-center text-quip-teal">
+            {wsConnected ? '✅ Connected to live updates' : '⚠️ Not connected - updates may be delayed'}
+          </p>
         </div>
       </div>
     </div>
