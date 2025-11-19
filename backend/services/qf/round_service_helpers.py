@@ -451,6 +451,7 @@ async def revalidate_ai_hints_background(prompt_round_id: UUID) -> None:
 
             await ai_service.revalidate_cached_phrases(prompt_round)
             logger.info(f"Revalidated cached AI hints for {prompt_round_id=}")
+            await background_db.commit()
         except Exception as exc:  # Catch-all to avoid unhandled background task errors
             logger.warning(
                 f"Unexpected error during AI hint revalidation for {prompt_round_id=}: {exc}",
