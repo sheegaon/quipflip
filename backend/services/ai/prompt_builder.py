@@ -22,24 +22,25 @@ def build_copy_prompt(original_phrase: str, existing_copy_phrase: str = None) ->
     base_prompt = f"""Create 5 phrases meaning roughly the same thing as the original phrase.
 
 **Original phrase: "{original_phrase}"**
-
+""" + """
 Rules:
 - 1-15 characters per word
-- 2-5 words total, 4-100 characters total
+- 2-5 words per phrase, 4-100 characters per phrase
 - Letters and spaces only
 - Each word must pass dictionary validation
-- Phrase should be similar enough to be believable as the original"""
+- Each phrase should be similar enough to be believable as the original
+- Words which are 4 or more letters long, except common words: [{common_words}], are known as *significant words*
+- Do NOT use the same significant word in more than two phrases"""
 
     if existing_copy_phrase:
         base_prompt += f"""
 - **IMPORTANT: Another player already submitted this copy: "{existing_copy_phrase}"**"""
         base_prompt += """
-- Do NOT use or lightly modify (e.g., pluralize) any words from either the original phrase or the existing copy phrase
-  which are 4 or more letters long, except common words {common_words}"""
+- Do NOT use or lightly modify (e.g., pluralize) any significant words from either the original phrase or 
+  the submitted copy phrase"""
     else:
         base_prompt += """
-- Do NOT use or lightly modify (e.g., pluralize) any words from the original phrase which are 4 or more letters long, 
-  except common words: [{common_words}]"""
+- Do NOT use or lightly modify (e.g., pluralize) any significant words from the original phrase"""
 
     base_prompt += f"""
 
@@ -48,17 +49,19 @@ Generate FIVE alternative phrases, separated by semicolons (;):"""
     return base_prompt
 
 
-def build_vote_prompt(prompt_text: str, phrases: list[str]) -> str:
+def build_vote_prompt(prompt_text: str, phrases: list[str], seed: int) -> str:
     """
     Build structured prompt for AI vote generation.
 
     Args:
         prompt_text: The prompt that the phrases were created for
         phrases: List of 3 phrases (1 original, 2 copies)
+        seed: Seed for randomization to ensure consistent output
 
     Returns:
         A formatted prompt string for AI vote generation
     """
+    random.seed(seed)
     phrases_formatted = "\n".join([f"{i+1}. {phrase}" for i, phrase in enumerate(phrases)])
     considerations = [
         "- The original is often more natural and straightforward",
@@ -66,13 +69,14 @@ def build_vote_prompt(prompt_text: str, phrases: list[str]) -> str:
         "- The original usually best matches the prompt intent",
         "- Look for subtle differences in word choice and phrasing",
         "- Consider the length and complexity of each phrase",
+        "- Each copy may be riffing off a different idea from the original",
     ]
-    chosen_considerations = list(set(random.choices(considerations, k=2)))  # Shuffle considerations for variety
+    chosen_considerations = list(set(random.sample(considerations, 4)))  # Shuffle considerations for variety
     chosen_considerations = ''.join([f"\n{c}" for c in chosen_considerations])
 
-    return f"""You are playing a word game where you need to identify the original phrase.
-
-Given a prompt and three phrases, one phrase is the ORIGINAL that was submitted by a player, and two phrases are COPIES created by other players trying to mimic the original.
+    return f"""You are playing a game where you need to identify the original phrase.
+Given a prompt and three phrases, one phrase is the ORIGINAL that was submitted by a player, and two phrases are FAKES
+created by other players trying to mimic the original without knowing the prompt.
 
 Your task: Identify which phrase is most likely the ORIGINAL.
 

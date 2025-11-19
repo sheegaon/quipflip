@@ -35,6 +35,7 @@ class AIVoteError(RuntimeError):
 async def generate_vote_choice_openai(
         prompt_text: str,
         phrases: list[str],
+        seed: int,
         model: str = "gpt-5-nano",
         timeout: int = 120,
 ) -> int:
@@ -44,6 +45,7 @@ async def generate_vote_choice_openai(
     Args:
         prompt_text: The prompt text
         phrases: List of 3 phrases to choose from
+        seed: Seed for random number generator
         model: OpenAI model to use
         timeout: Request timeout in seconds
 
@@ -64,7 +66,7 @@ async def generate_vote_choice_openai(
 
     try:
         client = AsyncOpenAI(api_key=settings.openai_api_key, timeout=timeout)
-        prompt = build_vote_prompt(prompt_text, phrases)
+        prompt = build_vote_prompt(prompt_text, phrases, seed)
 
         response = await client.chat.completions.create(
             model=model,
@@ -104,6 +106,7 @@ async def generate_vote_choice_openai(
 async def generate_vote_choice_gemini(
         prompt_text: str,
         phrases: list[str],
+        seed: int,
         model: str = "gemini-2.5-flash-lite",
         timeout: int = 120,
 ) -> int:
@@ -113,6 +116,7 @@ async def generate_vote_choice_gemini(
     Args:
         prompt_text: The prompt text
         phrases: List of 3 phrases to choose from
+        seed: Random seed for prompt generation
         model: Gemini model to use
         timeout: Request timeout in seconds (currently unused)
 
@@ -133,7 +137,7 @@ async def generate_vote_choice_gemini(
 
     try:
         client = genai.Client(api_key=settings.gemini_api_key)
-        prompt = build_vote_prompt(prompt_text, phrases)
+        prompt = build_vote_prompt(prompt_text, phrases, seed)
 
         contents = [
             types.Content(
@@ -178,6 +182,7 @@ async def generate_vote_choice_gemini(
 async def generate_vote_choice(
         prompt_text: str,
         phrases: list[str],
+        seed: int,
         provider: str = "openai",
         model: str = "gpt-5-nano",
         timeout: int = 120,
@@ -188,6 +193,7 @@ async def generate_vote_choice(
     Args:
         prompt_text: The prompt text
         phrases: List of 3 phrases to choose from
+        seed: Seed for random number generator
         provider: "openai" or "gemini"
         model: AI model to use
         timeout: Request timeout in seconds
@@ -202,6 +208,7 @@ async def generate_vote_choice(
         return await generate_vote_choice_openai(
             prompt_text=prompt_text,
             phrases=phrases,
+            seed=seed,
             model=model,
             timeout=timeout,
         )
@@ -209,6 +216,7 @@ async def generate_vote_choice(
         return await generate_vote_choice_gemini(
             prompt_text=prompt_text,
             phrases=phrases,
+            seed=seed,
             model=model,
             timeout=timeout,
         )

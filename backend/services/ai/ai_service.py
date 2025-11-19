@@ -547,12 +547,13 @@ class AIService:
 
         return hints
 
-    async def generate_vote_choice(self, phraseset: Phraseset) -> str:
+    async def generate_vote_choice(self, phraseset: Phraseset, seed: int) -> str:
         """
         Generate a vote choice using the configured AI provider with metrics tracking.
 
         Args:
             phraseset: The phraseset to vote on (must have prompt and 3 phrases loaded)
+            seed: Random seed for reproducibility
 
         Returns:
             The chosen phrase (one of the 3 phrases in the phraseset)
@@ -577,6 +578,7 @@ class AIService:
             choice_index = await generate_vote_choice(
                 prompt_text=prompt_text,
                 phrases=phrases,
+                seed=seed,
                 provider=self.provider,
                 model=self.ai_model,
                 timeout=self.settings.ai_timeout_seconds,
@@ -854,7 +856,8 @@ class AIService:
             for phraseset in filtered_phrasesets:
                 try:
                     # Generate AI vote choice
-                    chosen_phrase = await self.generate_vote_choice(phraseset)
+                    seed = int(UUID(ai_voter_player.player_id))
+                    chosen_phrase = await self.generate_vote_choice(phraseset, seed)
 
                     # Use VoteService for centralized voting logic
                     vote = await vote_service.submit_system_vote(
@@ -1121,13 +1124,14 @@ class AIService:
             tracker.set_result("", success=False, response_length=0, validation_passed=False)
             raise AICopyError(f"AI generated no valid copy phrases for {original_phrase=}")
 
-    async def generate_party_vote(self, prompt_text: str, phrases: list[str]) -> str:
+    async def generate_party_vote(self, prompt_text: str, phrases: list[str], seed: int) -> str:
         """
         Generate a vote choice for Party Mode.
 
         Args:
             prompt_text: The prompt text
             phrases: List of phrase options to choose from
+            seed: Random seed for reproducibility
 
         Returns:
             The chosen phrase (one of the phrases in the list)
@@ -1152,6 +1156,7 @@ class AIService:
             choice_index = await generate_vote_choice(
                 prompt_text=prompt_text,
                 phrases=shuffled_phrases,
+                seed=seed,
                 provider=self.provider,
                 model=self.ai_model,
                 timeout=self.settings.ai_timeout_seconds,

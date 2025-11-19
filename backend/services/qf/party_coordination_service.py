@@ -680,9 +680,7 @@ class PartyCoordinationService:
                 logger.info(f"No AI participants in session {session_id}")
                 return stats
 
-            logger.info(
-                f"Processing {len(ai_participants)} AI participants for {session.current_phase} phase"
-            )
+            logger.info(f"Processing {len(ai_participants)} AI participants for {session.current_phase} phase")
 
             # Initialize AI service
             ai_service = AIService(self.db)
@@ -823,9 +821,11 @@ class PartyCoordinationService:
                             phraseset.copy_phrase_1,
                             phraseset.copy_phrase_2,
                         ]
+                        seed = int(UUID(participant.player_id))
                         chosen_phrase = await ai_service.generate_party_vote(
                             prompt_text=phraseset.prompt_text,
                             phrases=phrases,
+                            seed=seed,
                         )
 
                         # Submit vote round
