@@ -55,6 +55,10 @@ const Settings = lazy(() => import('./pages/Settings'));
 const Admin = lazy(() => import('./pages/Admin'));
 const AdminFlagged = lazy(() => import('./pages/AdminFlagged'));
 const BetaSurveyPage = lazy(() => import('./pages/BetaSurveyPage'));
+const PartyMode = lazy(() => import('./pages/PartyMode'));
+const PartyLobby = lazy(() => import('./pages/PartyLobby'));
+const PartyGame = lazy(() => import('./pages/PartyGame'));
+const PartyResults = lazy(() => import('./pages/PartyResults'));
 
 // Protected Route wrapper
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -196,6 +200,22 @@ const AppRoutes: React.FC = () => {
         <Route
           path="/survey/beta"
           element={renderProtectedRoute(<BetaSurveyPage />)}
+        />
+        <Route
+          path="/party"
+          element={renderProtectedRoute(<PartyMode />)}
+        />
+        <Route
+          path="/party/:sessionId"
+          element={renderProtectedRoute(<PartyLobby />)}
+        />
+        <Route
+          path="/party/game/:sessionId"
+          element={renderProtectedRoute(<PartyGame />)}
+        />
+        <Route
+          path="/party/results/:sessionId"
+          element={renderProtectedRoute(<PartyResults />)}
         />
         <Route
           path="/admin"

@@ -893,14 +893,56 @@ export interface StartPartySessionResponse {
 
 export interface PartySessionStatusResponse extends PartySession {}
 
-export interface StartPartyRoundResponse {
-  round_id: string;
-  party_round_id: string;
-  round_type: 'prompt' | 'copy' | 'vote';
-  expires_at: string;
-  cost: number;
-  session_progress: Record<string, number>;
-}
+// Party Round Response - Discriminated Union based on round_type
+export type StartPartyRoundResponse =
+  | {
+      round_type: 'prompt';
+      round_id: string;
+      party_round_id: string;
+      prompt_text: string;
+      expires_at: string;
+      cost: number;
+      session_progress: {
+        your_prompts_submitted: number;
+        prompts_required: number;
+        players_done: number;
+        total_players: number;
+      };
+    }
+  | {
+      round_type: 'copy';
+      round_id: string;
+      party_round_id: string;
+      original_phrase: string;
+      prompt_round_id: string;
+      expires_at: string;
+      cost: number;
+      discount_active: boolean;
+      is_second_copy: boolean;
+      from_party: boolean;
+      session_progress: {
+        your_copies_submitted: number;
+        copies_required: number;
+        players_done: number;
+        total_players: number;
+      };
+    }
+  | {
+      round_type: 'vote';
+      round_id: string;
+      party_round_id: string;
+      phraseset_id: string;
+      prompt_text: string;
+      phrases: string[];
+      expires_at: string;
+      from_party: boolean;
+      session_progress: {
+        your_votes_submitted: number;
+        votes_required: number;
+        players_done: number;
+        total_players: number;
+      };
+    };
 
 export interface SubmitPartyRoundRequest {
   phrase: string;
@@ -956,10 +998,90 @@ export interface PartyResultsResponse {
   phrasesets_summary: PartyPhrasesetSummary[];
 }
 
-// Party Mode WebSocket message types
-export interface PartyWebSocketMessage {
-  type: 'player_joined' | 'player_left' | 'player_ready' | 'session_started' | 'phase_transition' | 'player_progress';
-  session_id: string;
-  data: Record<string, unknown>;
-  timestamp: string;
-}
+// Party Mode WebSocket message types - Discriminated Union
+export type PartyWebSocketMessage =
+  | {
+      type: 'player_joined';
+      session_id: string;
+      data: {
+        player_id: string;
+        username: string;
+        participant_count: number;
+      };
+      timestamp: string;
+    }
+  | {
+      type: 'player_left';
+      session_id: string;
+      data: {
+        player_id: string;
+        username: string;
+        participant_count: number;
+      };
+      timestamp: string;
+    }
+  | {
+      type: 'player_ready';
+      session_id: string;
+      data: {
+        player_id: string;
+        username: string;
+        ready_count: number;
+        total_count: number;
+      };
+      timestamp: string;
+    }
+  | {
+      type: 'session_started';
+      session_id: string;
+      data: {
+        current_phase: string;
+        participant_count: number;
+        message: string;
+      };
+      timestamp: string;
+    }
+  | {
+      type: 'phase_transition';
+      session_id: string;
+      data: {
+        old_phase: string;
+        new_phase: string;
+        message: string;
+      };
+      timestamp: string;
+    }
+  | {
+      type: 'player_progress';
+      session_id: string;
+      data: {
+        player_id: string;
+        username: string;
+        action: string;
+        progress: {
+          prompts_submitted: number;
+          copies_submitted: number;
+          votes_submitted: number;
+        };
+        session_progress: {
+          players_done_with_phase: number;
+          total_players: number;
+        };
+      };
+      timestamp: string;
+    }
+  | {
+      type: 'session_completed';
+      session_id: string;
+      data: {
+        completed_at: string;
+        message: string;
+      };
+      timestamp: string;
+    }
+  | {
+      type: 'session_update';
+      session_id: string;
+      data: Record<string, unknown>;
+      timestamp: string;
+    };

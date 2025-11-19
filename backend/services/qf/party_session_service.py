@@ -262,12 +262,15 @@ class PartySessionService:
         self,
         session_id: UUID,
         player_id: UUID,
-    ) -> None:
+    ) -> bool:
         """Remove a player from the session (lobby only).
 
         Args:
             session_id: UUID of the session
             player_id: UUID of the player to remove
+
+        Returns:
+            bool: True if session was deleted (was empty), False otherwise
 
         Raises:
             SessionNotFoundError: If session doesn't exist
@@ -285,14 +288,27 @@ class PartySessionService:
         # Get participant
         participant = await self.get_participant(session_id, player_id)
         if participant:
+            was_host = participant.is_host
+
             await self.db.delete(participant)
             await self.db.commit()
 
             logger.info(f"Player {player_id} left session {session_id}")
 
-            # If host left and there are other participants, assign new host
-            if participant.is_host:
+            # Check if any participants remain
+            remaining_count = await self._get_participant_count(session_id)
+
+            if remaining_count == 0:
+                # Last player left - delete the session
+                await self._delete_empty_session(session_id)
+                return True
+            elif was_host:
+                # Host left but others remain - reassign host
                 await self._reassign_host(session_id)
+
+            return False
+
+        return False
 
     async def _reassign_host(self, session_id: UUID) -> None:
         """Reassign host to another participant if host leaves.
@@ -314,6 +330,39 @@ class PartySessionService:
             new_host.is_host = True
             await self.db.commit()
             logger.info(f"Reassigned host to player {new_host.player_id} in session {session_id}")
+
+    async def _get_participant_count(self, session_id: UUID) -> int:
+        """Get count of participants in a session.
+
+        Args:
+            session_id: UUID of the session
+
+        Returns:
+            int: Number of participants
+        """
+        from sqlalchemy import func
+
+        result = await self.db.execute(
+            select(func.count(PartyParticipant.participant_id))
+            .where(PartyParticipant.session_id == session_id)
+        )
+        count = result.scalar()
+        return count or 0
+
+    async def _delete_empty_session(self, session_id: UUID) -> None:
+        """Delete a party session when it becomes empty.
+
+        This method deletes the session and all related data via cascade.
+        Related data includes: PartyParticipant, PartyRound, PartyPhraseset.
+
+        Args:
+            session_id: UUID of the session to delete
+        """
+        session = await self.get_session_by_id(session_id)
+        if session:
+            await self.db.delete(session)
+            await self.db.commit()
+            logger.info(f"Deleted empty party session {session_id}")
 
     async def mark_participant_ready(
         self,
