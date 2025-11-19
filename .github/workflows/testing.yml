@@ -1,8 +1,8 @@
-name: IR Testing & Deployment
+name: Testing & Deployment
 
 on:
   push:
-    branches: [ main, claude/* ]
+    branches: [ main, claude/*, codex/* ]
   pull_request:
     branches: [ main ]
 
@@ -13,7 +13,7 @@ env:
 
 jobs:
   backend-tests:
-    name: Backend IR Tests
+    name: Backend QF Tests
     runs-on: ubuntu-latest
 
     steps:
@@ -22,7 +22,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.12'
+        python-version: '3.11'
         cache: 'pip'
 
     - name: Install dependencies
@@ -30,17 +30,25 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    - name: Run IR backend tests
+    - name: Run backend tests
       run: |
-        python -m pytest tests/test_ir_auth_and_player.py -v
-        python -m pytest tests/test_ir_game_flow.py -v
-        python -m pytest tests/test_ir_transactions.py -v
-        python -m pytest tests/test_ir_e2e_game_flow.py -v
+        python -m pytest tests/test_activity_service.py -v
+        python -m pytest tests/test_api_player.py -v
+        python -m pytest tests/test_beta_survey.py -v
+        python -m pytest tests/test_cleanup_service.py -v
+        python -m pytest tests/test_code_quality_improvements.py -v
+        python -m pytest tests/test_party_session_service.py -v
+        python -m pytest tests/test_queue_service.py -v
+        python -m pytest tests/test_round_service.py -v
+        python -m pytest tests/test_scoring_service.py -v
+        python -m pytest tests/test_statistics_service.py -v
+        python -m pytest tests/test_username_service.py -v
+        python -m pytest tests/test_vote_service.py -v
 
     - name: Generate test report
       if: always()
       run: |
-        python -m pytest tests/test_ir_*.py --tb=short --junit-xml=test-results.xml
+        python -m pytest tests/test_*.py --tb=short --junit-xml=test-results.xml
 
     - name: Upload test results
       if: always()
@@ -61,18 +69,18 @@ jobs:
       with:
         node-version: '18'
         cache: 'npm'
-        cache-dependency-path: ir_frontend/package-lock.json
+        cache-dependency-path: qf_frontend/package-lock.json
 
     - name: Install dependencies
-      working-directory: ./ir_frontend
+      working-directory: ./qf_frontend
       run: npm install
 
     - name: Run linter
-      working-directory: ./ir_frontend
+      working-directory: ./qf_frontend
       run: npm run lint
 
     - name: Build frontend
-      working-directory: ./ir_frontend
+      working-directory: ./qf_frontend
       run: npm run build
 
   notify-success:
@@ -84,6 +92,6 @@ jobs:
     steps:
     - name: Send notification
       run: |
-        echo "✅ IR Testing pipeline passed!"
+        echo "✅ QF Testing pipeline passed!"
         echo "Backend tests: PASSED"
         echo "Frontend lint: PASSED"

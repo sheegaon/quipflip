@@ -23,9 +23,9 @@ logs_dir = Path("logs")
 logs_dir.mkdir(exist_ok=True)
 
 # Set up log file paths
-log_file = logs_dir / "quipflip.log"
-sql_log_file = logs_dir / "quipflip_sql.log"
-api_log_file = logs_dir / "quipflip_api.log"
+log_file = logs_dir / "crowdcraft.log"
+sql_log_file = logs_dir / "crowdcraft_sql.log"
+api_log_file = logs_dir / "crowdcraft_api.log"
 
 # Print log file locations to console immediately
 print(f"General logging to: {log_file.absolute()}")
@@ -61,7 +61,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Create dedicated API request logger
-api_logger = logging.getLogger("quipflip.api")
+api_logger = logging.getLogger("crowdcraft.api")
 api_logger.handlers.clear()  # Remove any existing handlers
 api_logger.addHandler(api_rotating_handler)
 api_logger.setLevel(logging.INFO)
@@ -324,7 +324,7 @@ async def ir_backup_cycle():
 async def lifespan(app_instance: FastAPI):
     """Manage application startup and shutdown tasks."""
     logger.info("=" * 60)
-    logger.info("Quipflip API Starting")
+    logger.info("Crowdcraft Labs API Starting")
     logger.info(f"Environment: {settings.environment}")
     logger.info(f"Database: {settings.database_url.split('@')[-1] if '@' in settings.database_url else 'SQLite'}")
     logger.info(f"Redis: {'Enabled' if settings.redis_url else 'In-Memory Fallback'}")
@@ -411,7 +411,7 @@ async def lifespan(app_instance: FastAPI):
             except Exception as e:
                 logger.error(f"Error closing phrase validation client: {e}")
 
-        logger.info("Quipflip API Shutting Down... Goodbye!")
+        logger.info("Crowdcraft Labs API Shutting Down... Goodbye!")
 
 
 # Create FastAPI app
@@ -575,7 +575,7 @@ app.include_router(health.router)
 async def root():
     """Root endpoint."""
     return {
-        "message": "Quipflip API - Phase 3 Beta",
+        "message": "Crowdcraft Labs API - Phase 5 Beta",
         "version": APP_VERSION,
         "environment": settings.environment,
         "docs": "/docs",
