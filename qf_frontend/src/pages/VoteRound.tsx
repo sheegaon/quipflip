@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import apiClient, { extractErrorMessage } from '../api/client';
@@ -12,11 +12,14 @@ import type { VoteResponse, VoteState, PhrasesetDetails } from '../api/types';
 import { voteRoundLogger } from '../utils/logger';
 import { VoteRoundIcon } from '../components/icons/RoundIcons';
 import { HomeIcon } from '../components/icons/NavigationIcons';
+import { usePartyMode } from '../contexts/PartyModeContext';
+import PartyRoundModal from '../components/party/PartyRoundModal';
 
 export const VoteRound: React.FC = () => {
   const { state, actions } = useGame();
   const { activeRound, roundAvailability } = state;
   const { refreshDashboard } = actions;
+  const { state: partyState, actions: partyActions } = usePartyMode();
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -30,6 +33,17 @@ export const VoteRound: React.FC = () => {
   const roundData = activeRound?.round_type === 'vote' ? activeRound.state as VoteState : null;
   const { isExpired } = useTimer(roundData?.expires_at || null);
 
+  useEffect(() => {
+    if (partyState.isPartyMode) {
+      partyActions.setCurrentStep('vote');
+    }
+  }, [partyActions, partyState.isPartyMode]);
+
+  const partyResultsPath = partyState.sessionId ? `/party/results/${partyState.sessionId}` : '/party/results';
+  const partyOverlay = partyState.isPartyMode && partyState.sessionId ? (
+    <PartyRoundModal sessionId={partyState.sessionId} currentStep="vote" />
+  ) : null;
+
   // Get dynamic values from config or use defaults
   const voteCost = roundAvailability?.vote_cost || 10;
   const votePayoutCorrect = roundAvailability?.vote_payout_correct || 20;
@@ -38,9 +52,14 @@ export const VoteRound: React.FC = () => {
   // Redirect if already submitted
   useEffect(() => {
     if (roundData?.status === 'submitted') {
-      navigate('/dashboard');
+      if (partyState.isPartyMode) {
+        partyActions.endPartyMode();
+        navigate(partyResultsPath);
+      } else {
+        navigate('/dashboard');
+      }
     }
-  }, [roundData?.status, navigate]);
+  }, [navigate, partyActions, partyResultsPath, partyState.isPartyMode, roundData?.status]);
 
   // Redirect if no active vote round - but NOT during the submission process
   useEffect(() => {
@@ -53,12 +72,26 @@ export const VoteRound: React.FC = () => {
       // Add a small delay to prevent race conditions during navigation
       const timeoutId = setTimeout(() => {
         // Redirect to dashboard instead of starting new rounds
-        navigate('/dashboard');
+        if (partyState.isPartyMode) {
+          partyActions.endPartyMode();
+          navigate(partyResultsPath);
+        } else {
+          navigate('/dashboard');
+        }
       }, 100);
 
       return () => clearTimeout(timeoutId);
     }
-  }, [activeRound, navigate, headingMessage, voteResult]);
+  }, [activeRound, headingMessage, navigate, partyActions, partyResultsPath, partyState.isPartyMode, voteResult]);
+
+  const navigateAfterVote = useCallback(() => {
+    if (partyState.isPartyMode) {
+      partyActions.endPartyMode();
+      navigate(partyResultsPath);
+    } else {
+      navigate('/dashboard');
+    }
+  }, [navigate, partyActions, partyResultsPath, partyState.isPartyMode]);
 
   useEffect(() => {
     if (!roundData) {
@@ -125,8 +158,8 @@ export const VoteRound: React.FC = () => {
   };
 
   const handleDismiss = () => {
-    voteRoundLogger.debug('Dismissing vote results, navigating to dashboard');
-    navigate('/dashboard');
+    voteRoundLogger.debug('Dismissing vote results');
+    navigateAfterVote();
   };
 
   // Show vote result (check this first, before checking roundData)
@@ -136,8 +169,10 @@ export const VoteRound: React.FC = () => {
     const isFirstVoter = voteCount === 1;
 
     return (
-      <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center p-4">
-        <div className="max-w-3xl w-full tile-card p-8 flip-enter">
+      <>
+        {partyOverlay}
+        <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center p-4">
+          <div className="max-w-3xl w-full tile-card p-8 flip-enter">
           {/* Header with icon and result */}
           <div className="text-center mb-8">
             <div className="flex justify-center mb-4">
@@ -317,26 +352,32 @@ export const VoteRound: React.FC = () => {
               className="bg-quip-turquoise hover:bg-quip-teal text-white font-bold py-3 px-8 rounded-tile transition-all hover:shadow-tile-sm flex items-center gap-2"
             >
               <HomeIcon className="h-5 w-5" />
-              <span>Back to Dashboard</span>
+              <span>{partyState.isPartyMode ? 'View Party Summary' : 'Back to Dashboard'}</span>
             </button>
           </div>
         </div>
       </div>
+      </>
     );
   }
 
   // If no roundData and no vote result, show loading
   if (!roundData) {
     return (
-      <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center">
-        <LoadingSpinner isLoading={true} message={loadingMessages.starting} />
-      </div>
+      <>
+        {partyOverlay}
+        <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center">
+          <LoadingSpinner isLoading={true} message={loadingMessages.starting} />
+        </div>
+      </>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-quip-orange to-quip-orange-deep flex items-center justify-center p-4 bg-pattern">
-      <div className="max-w-2xl w-full tile-card p-8 slide-up-enter">
+    <>
+      {partyOverlay}
+      <div className="min-h-screen bg-gradient-to-br from-quip-orange to-quip-orange-deep flex items-center justify-center p-4 bg-pattern">
+        <div className="max-w-2xl w-full tile-card p-8 slide-up-enter">
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-2 mb-2">
             <VoteRoundIcon className="w-8 h-8" aria-hidden="true" />
@@ -410,6 +451,7 @@ export const VoteRound: React.FC = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 
