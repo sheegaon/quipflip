@@ -130,6 +130,56 @@ async def create_party_session(
         raise HTTPException(status_code=500, detail="Failed to create party session")
 
 
+async def _handle_party_join(
+    session_id: UUID,
+    player: QFPlayer,
+    party_service: PartySessionService,
+) -> JoinPartySessionResponse:
+    """Helper function to handle the common logic of joining a party session.
+
+    Args:
+        session_id: UUID of the party session to join
+        player: Current authenticated player
+        party_service: PartySessionService instance
+
+    Returns:
+        JoinPartySessionResponse: Session information after joining
+
+    Raises:
+        SessionNotFoundError: If session doesn't exist
+        SessionAlreadyStartedError: If session has already started
+        SessionFullError: If session is at max capacity
+        AlreadyInSessionError: If player is already in session
+    """
+    # Add participant
+    participant = await party_service.add_participant(
+        session_id=session_id,
+        player_id=player.player_id,
+    )
+
+    # Get updated status
+    status_data = await party_service.get_session_status(session_id)
+
+    # Broadcast player joined
+    await ws_manager.notify_player_joined(
+        session_id=session_id,
+        player_id=player.player_id,
+        username=player.username,
+        participant_count=len(status_data['participants']),
+    )
+
+    return JoinPartySessionResponse(
+        session_id=status_data['session_id'],
+        party_code=status_data['party_code'],
+        status=status_data['status'],
+        current_phase=status_data['current_phase'],
+        participants=status_data['participants'],
+        participant_count=len(status_data['participants']),
+        min_players=status_data['min_players'],
+        max_players=status_data['max_players'],
+    )
+
+
 @router.post("/join", response_model=JoinPartySessionResponse)
 async def join_party_session(
     request: JoinPartySessionRequest,
@@ -160,33 +210,8 @@ async def join_party_session(
                 detail=f"Party session '{request.party_code}' not found"
             )
 
-        # Add participant
-        participant = await party_service.add_participant(
-            session_id=session.session_id,
-            player_id=player.player_id,
-        )
-
-        # Get updated status
-        status_data = await party_service.get_session_status(session.session_id)
-
-        # Broadcast player joined
-        await ws_manager.notify_player_joined(
-            session_id=session.session_id,
-            player_id=player.player_id,
-            username=player.username,
-            participant_count=len(status_data['participants']),
-        )
-
-        return JoinPartySessionResponse(
-            session_id=status_data['session_id'],
-            party_code=status_data['party_code'],
-            status=status_data['status'],
-            current_phase=status_data['current_phase'],
-            participants=status_data['participants'],
-            participant_count=len(status_data['participants']),
-            min_players=status_data['min_players'],
-            max_players=status_data['max_players'],
-        )
+        # Use common join logic
+        return await _handle_party_join(session.session_id, player, party_service)
 
     except SessionNotFoundError:
         raise HTTPException(status_code=404, detail="Party session not found")
@@ -226,33 +251,8 @@ async def join_party_session_by_id(
     try:
         party_service = PartySessionService(db)
 
-        # Add participant
-        participant = await party_service.add_participant(
-            session_id=session_id,
-            player_id=player.player_id,
-        )
-
-        # Get updated status
-        status_data = await party_service.get_session_status(session_id)
-
-        # Broadcast player joined
-        await ws_manager.notify_player_joined(
-            session_id=session_id,
-            player_id=player.player_id,
-            username=player.username,
-            participant_count=len(status_data['participants']),
-        )
-
-        return JoinPartySessionResponse(
-            session_id=status_data['session_id'],
-            party_code=status_data['party_code'],
-            status=status_data['status'],
-            current_phase=status_data['current_phase'],
-            participants=status_data['participants'],
-            participant_count=len(status_data['participants']),
-            min_players=status_data['min_players'],
-            max_players=status_data['max_players'],
-        )
+        # Use common join logic
+        return await _handle_party_join(session_id, player, party_service)
 
     except SessionNotFoundError:
         raise HTTPException(status_code=404, detail="Party session not found")
