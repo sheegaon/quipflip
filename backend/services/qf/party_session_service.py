@@ -650,7 +650,7 @@ class PartySessionService:
             },
         }
 
-    async def record_round_completion(
+    async def link_round_to_party(
         self,
         session_id: UUID,
         player_id: UUID,
@@ -658,12 +658,14 @@ class PartySessionService:
         round_type: str,
         phase: str,
     ) -> PartyRound:
-        """Record round completion in party context.
+        """Link a round to party session without incrementing progress counters.
+
+        Use this when a round starts (before submission).
 
         Args:
             session_id: UUID of the session
             player_id: UUID of the player
-            round_id: UUID of the completed round
+            round_id: UUID of the round
             round_type: Type of round ('prompt', 'copy', 'vote')
             phase: Current phase ('PROMPT', 'COPY', 'VOTE')
 
@@ -687,8 +689,38 @@ class PartySessionService:
         )
 
         self.db.add(party_round)
+        participant.last_activity_at = datetime.now(UTC)
 
-        # Update participant progress counters
+        await self.db.commit()
+        await self.db.refresh(party_round)
+
+        logger.info(f"Linked {round_type} round {round_id} to party session {session_id}")
+        return party_round
+
+    async def increment_participant_progress(
+        self,
+        session_id: UUID,
+        player_id: UUID,
+        round_type: str,
+    ) -> PartyParticipant:
+        """Increment participant progress counter after successful round submission.
+
+        Use this when a round is successfully submitted.
+
+        Args:
+            session_id: UUID of the session
+            player_id: UUID of the player
+            round_type: Type of round ('prompt', 'copy', 'vote')
+
+        Returns:
+            PartyParticipant: Updated participant
+        """
+        # Get participant
+        participant = await self.get_participant(session_id, player_id)
+        if not participant:
+            raise PartyModeError(f"Player {player_id} not in session {session_id}")
+
+        # Increment appropriate counter
         if round_type == 'prompt':
             participant.prompts_submitted += 1
         elif round_type == 'copy':
@@ -699,10 +731,13 @@ class PartySessionService:
         participant.last_activity_at = datetime.now(UTC)
 
         await self.db.commit()
-        await self.db.refresh(party_round)
+        await self.db.refresh(participant)
 
-        logger.info(f"Recorded {round_type} round {round_id} for player {player_id} in session {session_id}")
-        return party_round
+        logger.info(
+            f"Incremented {round_type} progress for player {player_id} in session {session_id} "
+            f"(now {participant.prompts_submitted}/{participant.copies_submitted}/{participant.votes_submitted})"
+        )
+        return participant
 
     async def link_phraseset_to_party(
         self,

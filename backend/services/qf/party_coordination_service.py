@@ -53,7 +53,7 @@ class PartyCoordinationService:
         session_id: UUID,
         player: QFPlayer,
         transaction_service: TransactionService,
-    ) -> Round:
+    ) -> tuple[Round, UUID]:
         """Start a prompt round within party context.
 
         Args:
@@ -62,7 +62,7 @@ class PartyCoordinationService:
             transaction_service: Transaction service instance
 
         Returns:
-            Round: Created round
+            tuple: (Round object, party_round_id UUID)
 
         Raises:
             SessionNotFoundError: If session doesn't exist
@@ -94,8 +94,8 @@ class PartyCoordinationService:
         # Start normal prompt round
         round_obj = await self.round_service.start_prompt_round(player, transaction_service)
 
-        # Link round to party
-        await self.party_session_service.record_round_completion(
+        # Link round to party (without incrementing counter yet)
+        party_round = await self.party_session_service.link_round_to_party(
             session_id=session_id,
             player_id=player.player_id,
             round_id=round_obj.round_id,
@@ -108,7 +108,7 @@ class PartyCoordinationService:
             f"in session {session_id}"
         )
 
-        return round_obj
+        return round_obj, party_round.party_round_id
 
     async def submit_party_prompt(
         self,
@@ -131,10 +131,11 @@ class PartyCoordinationService:
         # Submit via normal round service
         result = await self.round_service.submit_prompt_phrase(round_id, phrase, player)
 
-        # Update participant progress counter (already done by record_round_completion)
-        # Just need to broadcast progress
-        participant = await self.party_session_service.get_participant(
-            session_id, player.player_id
+        # Increment participant progress counter (only on successful submission)
+        participant = await self.party_session_service.increment_participant_progress(
+            session_id=session_id,
+            player_id=player.player_id,
+            round_type='prompt',
         )
 
         # Broadcast progress update
@@ -174,7 +175,7 @@ class PartyCoordinationService:
         session_id: UUID,
         player: QFPlayer,
         transaction_service: TransactionService,
-    ) -> Round:
+    ) -> tuple[Round, UUID]:
         """Start a copy round within party context.
 
         Args:
@@ -183,7 +184,7 @@ class PartyCoordinationService:
             transaction_service: Transaction service instance
 
         Returns:
-            Round: Created round
+            tuple: (Round object, party_round_id UUID)
 
         Raises:
             SessionNotFoundError: If session doesn't exist
@@ -228,8 +229,8 @@ class PartyCoordinationService:
             prompt_round_id=eligible_prompt_round_id,
         )
 
-        # Link round to party
-        await self.party_session_service.record_round_completion(
+        # Link round to party (without incrementing counter yet)
+        party_round = await self.party_session_service.link_round_to_party(
             session_id=session_id,
             player_id=player.player_id,
             round_id=round_obj.round_id,
@@ -242,7 +243,7 @@ class PartyCoordinationService:
             f"in session {session_id}"
         )
 
-        return round_obj
+        return round_obj, party_round.party_round_id
 
     async def submit_party_copy(
         self,
@@ -265,6 +266,13 @@ class PartyCoordinationService:
         # Submit via normal round service
         result = await self.round_service.submit_copy_phrase(round_id, phrase, player)
 
+        # Increment participant progress counter (only on successful submission)
+        participant = await self.party_session_service.increment_participant_progress(
+            session_id=session_id,
+            player_id=player.player_id,
+            round_type='copy',
+        )
+
         # If phraseset was created, link it to party
         if result.get('phraseset_created') and result.get('phraseset_id'):
             await self.party_session_service.link_phraseset_to_party(
@@ -275,11 +283,6 @@ class PartyCoordinationService:
             logger.info(
                 f"Linked phraseset {result['phraseset_id']} to party session {session_id}"
             )
-
-        # Broadcast progress update
-        participant = await self.party_session_service.get_participant(
-            session_id, player.player_id
-        )
 
         await self.ws_manager.notify_player_progress(
             session_id=session_id,
@@ -318,7 +321,7 @@ class PartyCoordinationService:
         session_id: UUID,
         player: QFPlayer,
         transaction_service: TransactionService,
-    ) -> Round:
+    ) -> tuple[Round, UUID]:
         """Start a vote round within party context.
 
         Args:
@@ -327,7 +330,7 @@ class PartyCoordinationService:
             transaction_service: Transaction service instance
 
         Returns:
-            Round: Created round
+            tuple: (Round object, party_round_id UUID)
 
         Raises:
             SessionNotFoundError: If session doesn't exist
@@ -372,8 +375,8 @@ class PartyCoordinationService:
             phraseset_id=eligible_phraseset_id,
         )
 
-        # Link round to party
-        await self.party_session_service.record_round_completion(
+        # Link round to party (without incrementing counter yet)
+        party_round = await self.party_session_service.link_round_to_party(
             session_id=session_id,
             player_id=player.player_id,
             round_id=round_obj.round_id,
@@ -386,7 +389,7 @@ class PartyCoordinationService:
             f"in session {session_id}"
         )
 
-        return round_obj
+        return round_obj, party_round.party_round_id
 
     async def submit_party_vote(
         self,
@@ -415,9 +418,11 @@ class PartyCoordinationService:
             chosen_phrase=phrase,
         )
 
-        # Broadcast progress update
-        participant = await self.party_session_service.get_participant(
-            session_id, player.player_id
+        # Increment participant progress counter (only on successful submission)
+        participant = await self.party_session_service.increment_participant_progress(
+            session_id=session_id,
+            player_id=player.player_id,
+            round_type='vote',
         )
 
         await self.ws_manager.notify_player_progress(
@@ -502,10 +507,10 @@ class PartyCoordinationService:
 
             # Exclude player's own prompts
             result = await self.db.execute(
-                select(Round.player_id)
+                select(Round.round_id, Round.player_id)
                 .where(Round.round_id.in_([pr.round_id for pr in eligible_party_prompts]))
             )
-            prompt_players = {pr.round_id: row[0] for pr, row in zip(eligible_party_prompts, result.all())}
+            prompt_players = {round_id: player_id for round_id, player_id in result.all()}
 
             eligible_party_prompts = [
                 pr for pr in eligible_party_prompts

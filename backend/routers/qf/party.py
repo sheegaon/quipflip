@@ -390,7 +390,7 @@ async def start_party_prompt_round(
         coordination_service = PartyCoordinationService(db)
 
         # Start party prompt round
-        round_obj = await coordination_service.start_party_prompt_round(
+        round_obj, party_round_id = await coordination_service.start_party_prompt_round(
             session_id=session_id,
             player=player,
             transaction_service=transaction_service,
@@ -402,7 +402,7 @@ async def start_party_prompt_round(
 
         return StartPartyRoundResponse(
             round_id=str(round_obj.round_id),
-            party_round_id=str(round_obj.round_id),  # Will be set after linking
+            party_round_id=str(party_round_id),
             round_type='prompt',
             expires_at=round_obj.expires_at,
             cost=round_obj.cost,
@@ -448,7 +448,7 @@ async def start_party_copy_round(
         coordination_service = PartyCoordinationService(db)
 
         # Start party copy round
-        round_obj = await coordination_service.start_party_copy_round(
+        round_obj, party_round_id = await coordination_service.start_party_copy_round(
             session_id=session_id,
             player=player,
             transaction_service=transaction_service,
@@ -461,7 +461,7 @@ async def start_party_copy_round(
 
         return StartPartyRoundResponse(
             round_id=str(round_obj.round_id),
-            party_round_id=str(round_obj.round_id),
+            party_round_id=str(party_round_id),
             round_type='copy',
             expires_at=round_obj.expires_at,
             cost=round_obj.cost,
@@ -509,7 +509,7 @@ async def start_party_vote_round(
         coordination_service = PartyCoordinationService(db)
 
         # Start party vote round
-        round_obj = await coordination_service.start_party_vote_round(
+        round_obj, party_round_id = await coordination_service.start_party_vote_round(
             session_id=session_id,
             player=player,
             transaction_service=transaction_service,
@@ -522,7 +522,7 @@ async def start_party_vote_round(
 
         return StartPartyRoundResponse(
             round_id=str(round_obj.round_id),
-            party_round_id=str(round_obj.round_id),
+            party_round_id=str(party_round_id),
             round_type='vote',
             expires_at=round_obj.expires_at,
             cost=settings.vote_cost,

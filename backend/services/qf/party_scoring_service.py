@@ -70,13 +70,19 @@ class PartyScoringService:
         party_rounds = result.scalars().all()
         round_ids = [pr.round_id for pr in party_rounds]
 
-        # Get all transactions for these rounds
+        # Get all transactions for these rounds and phrasesets
+        # Note: 'prize_payout' references phraseset_id, while entry costs and 'vote_payout' reference round_id
         result = await self.db.execute(
             select(QFTransaction)
             .where(
                 or_(
+                    # Entry costs (prompt_entry, copy_entry, vote_entry) and vote payouts reference round_id
                     QFTransaction.reference_id.in_(round_ids),
-                    QFTransaction.type.in_(['prize_payout', 'vote_payout'])
+                    # Prize payouts reference phraseset_id
+                    and_(
+                        QFTransaction.type == 'prize_payout',
+                        QFTransaction.reference_id.in_(phraseset_ids)
+                    )
                 )
             )
         )
@@ -91,6 +97,7 @@ class PartyScoringService:
         party_phrasesets_data = result.all()
         party_phrasesets = [pp for pp, _ in party_phrasesets_data]
         phrasesets = {pp.phraseset_id: phraseset for pp, phraseset in party_phrasesets_data}
+        phraseset_ids = [pp.phraseset_id for pp in party_phrasesets]
 
         # Calculate per-player statistics
         player_stats = {}
@@ -271,24 +278,27 @@ class PartyScoringService:
         Returns:
             List[dict]: Phraseset summaries
         """
+        # Fetch all player information in bulk to avoid N+1 queries
+        participant_ids = [pr.participant_id for pr in party_rounds]
+        result = await self.db.execute(
+            select(PartyParticipant.participant_id, QFPlayer.username)
+            .join(QFPlayer, PartyParticipant.player_id == QFPlayer.player_id)
+            .where(PartyParticipant.participant_id.in_(participant_ids))
+        )
+        participant_usernames = {participant_id: username for participant_id, username in result.all()}
+
+        # Build mapping from round_id to participant_id for quick lookup
+        round_to_participant = {pr.round_id: pr.participant_id for pr in party_rounds}
+
         summaries = []
 
         for phraseset_id, ps in phrasesets.items():
             # Get prompt player username
             prompt_round_id = ps.prompt_round_id
-            prompt_party_round = next(
-                (pr for pr in party_rounds if pr.round_id == prompt_round_id),
-                None
-            )
+            participant_id = round_to_participant.get(prompt_round_id)
 
-            if prompt_party_round:
-                result = await self.db.execute(
-                    select(QFPlayer)
-                    .join(PartyParticipant, QFPlayer.player_id == PartyParticipant.player_id)
-                    .where(PartyParticipant.participant_id == prompt_party_round.participant_id)
-                )
-                prompt_player = result.scalar_one_or_none()
-                prompt_username = prompt_player.username if prompt_player else "Unknown"
+            if participant_id:
+                prompt_username = participant_usernames.get(participant_id, "Unknown")
             else:
                 prompt_username = "Unknown"
 
