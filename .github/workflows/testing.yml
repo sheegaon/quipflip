@@ -48,18 +48,6 @@ jobs:
         python -m pytest tests/test_username_service.py -v
         python -m pytest tests/test_vote_service.py -v
 
-    - name: Generate test report
-      if: always()
-      run: |
-        python -m pytest tests/test_*_service.py --tb=short --junit-xml=test-results.xml
-
-    - name: Upload test results
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: test-results
-        path: test-results.xml
-
   frontend-lint:
     name: Frontend Lint Check
     runs-on: ubuntu-latest
