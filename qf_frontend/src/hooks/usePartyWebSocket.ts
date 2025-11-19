@@ -1,7 +1,17 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useGame } from '../contexts/GameContext';
 import apiClient from '../api/client';
-import type { PartyWebSocketMessage } from '../api/types';
+import type {
+  HostPingPayload,
+  PartyWebSocketMessage,
+  PhaseTransitionPayload,
+  PlayerJoinedPayload,
+  PlayerReadyPayload,
+  ProgressUpdatePayload,
+  SessionCompletedPayload,
+  SessionStartedPayload,
+  SessionUpdatePayload,
+} from '../api/types';
 
 export interface UsePartyWebSocketOptions {
   sessionId: string;
@@ -105,8 +115,25 @@ export function usePartyWebSocket(
           console.log('📨 Party WebSocket message:', message);
 
           // WebSocket messages may include their payload in a nested "data" field or at the top level.
-          const getPayload = <M extends PartyWebSocketMessage>(payloadMessage: M) =>
-            payloadMessage.data ?? payloadMessage;
+          type PartyMessageByType<T extends PartyWebSocketMessage['type']> = Extract<
+            PartyWebSocketMessage,
+            { type: T }
+          >;
+
+          function getPayload(
+            message: PartyMessageByType<'phase_transition'>
+          ): PhaseTransitionPayload;
+          function getPayload(message: PartyMessageByType<'player_joined'>): PlayerJoinedPayload;
+          function getPayload(message: PartyMessageByType<'player_left'>): PlayerJoinedPayload;
+          function getPayload(message: PartyMessageByType<'player_ready'>): PlayerReadyPayload;
+          function getPayload(message: PartyMessageByType<'progress_update'>): ProgressUpdatePayload;
+          function getPayload(message: PartyMessageByType<'session_started'>): SessionStartedPayload;
+          function getPayload(message: PartyMessageByType<'session_completed'>): SessionCompletedPayload;
+          function getPayload(message: PartyMessageByType<'session_update'>): SessionUpdatePayload;
+          function getPayload(message: PartyMessageByType<'host_ping'>): HostPingPayload;
+          function getPayload(message: PartyWebSocketMessage) {
+            return message.data ?? message;
+          }
 
           switch (message.type) {
             case 'phase_transition':

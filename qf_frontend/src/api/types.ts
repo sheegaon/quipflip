@@ -1021,28 +1021,28 @@ export interface PartyPingResponse {
 }
 
 // Party Mode WebSocket message types - Discriminated Union
-type PlayerJoinedPayload = {
+export type PlayerJoinedPayload = {
   player_id: string;
   username: string;
   participant_count: number;
 };
 
-type PlayerLeftPayload = PlayerJoinedPayload;
+export type PlayerLeftPayload = PlayerJoinedPayload;
 
-type PlayerReadyPayload = {
+export type PlayerReadyPayload = {
   player_id: string;
   username: string;
   ready_count: number;
   total_count: number;
 };
 
-type PhaseTransitionPayload = {
+export type PhaseTransitionPayload = {
   old_phase: string;
   new_phase: string;
   message: string;
 };
 
-type ProgressUpdatePayload = {
+export type ProgressUpdatePayload = {
   player_id: string;
   username: string;
   action: string;
@@ -1057,23 +1057,23 @@ type ProgressUpdatePayload = {
   };
 };
 
-type SessionStartedPayload = {
+export type SessionStartedPayload = {
   current_phase: string;
   participant_count: number;
   message: string;
 };
 
-type SessionCompletedPayload = {
+export type SessionCompletedPayload = {
   completed_at: string | null;
   message: string;
 };
 
-type SessionUpdatePayload = Record<string, unknown> & {
+export type SessionUpdatePayload = Record<string, unknown> & {
   reason?: string;
   message?: string;
 };
 
-type HostPingPayload = {
+export type HostPingPayload = {
   host_player_id: string;
   host_username: string;
   join_url: string;
