@@ -184,7 +184,7 @@ export const PartyGame: React.FC = () => {
     const currentPhaseIndex = phases.indexOf(sessionStatus.current_phase);
 
     return (
-      <div className="bg-white rounded-lg shadow p-4 mb-4">
+      <div className="tile-card shadow-tile-sm p-4 mb-4">
         <div className="flex items-center justify-between">
           {phases.slice(1, -1).map((phase, idx) => {
             const phaseIndex = idx + 1;
@@ -197,23 +197,23 @@ export const PartyGame: React.FC = () => {
                   <div
                     className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
                       isActive
-                        ? 'bg-quip-blue text-white'
+                        ? 'bg-quip-orange text-white'
                         : isComplete
-                        ? 'bg-green-500 text-white'
+                        ? 'bg-quip-turquoise text-white'
                         : 'bg-gray-300 text-gray-600'
                     }`}
                   >
                     {isComplete ? '✓' : idx + 1}
                   </div>
-                  <span className={`text-xs mt-1 font-medium ${
-                    isActive ? 'text-quip-blue' : 'text-gray-600'
+                  <span className={`text-xs mt-1 font-semibold ${
+                    isActive ? 'text-quip-orange-deep' : 'text-quip-teal'
                   }`}>
                     {phase}
                   </span>
                 </div>
                 {idx < 2 && (
                   <div className={`flex-1 h-1 mx-2 ${
-                    isComplete ? 'bg-green-500' : 'bg-gray-300'
+                    isComplete ? 'bg-quip-turquoise' : 'bg-gray-300'
                   }`} />
                 )}
               </React.Fragment>
@@ -232,10 +232,10 @@ export const PartyGame: React.FC = () => {
     const totalPlayers = progress.total_players;
 
     return (
-      <div className="bg-white rounded-lg shadow p-4 mb-4">
+      <div className="tile-card shadow-tile-sm p-4 mb-4">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-semibold text-gray-700">Your Progress</span>
-          <span className="text-sm font-semibold text-gray-700">
+          <span className="text-sm font-semibold text-quip-teal">Your Progress</span>
+          <span className="text-sm font-semibold text-quip-teal">
             {playersReady} / {totalPlayers} players ready
           </span>
         </div>
@@ -243,24 +243,24 @@ export const PartyGame: React.FC = () => {
         <div className="space-y-2 text-sm">
           {currentPhase === 'PROMPT' && (
             <div className="flex items-center justify-between">
-              <span>Prompts:</span>
-              <span className="font-bold">
+              <span className="text-quip-navy">Prompts:</span>
+              <span className="font-bold text-quip-navy">
                 {currentPlayer.prompts_submitted} / {currentPlayer.prompts_required}
               </span>
             </div>
           )}
           {currentPhase === 'COPY' && (
             <div className="flex items-center justify-between">
-              <span>Copies:</span>
-              <span className="font-bold">
+              <span className="text-quip-navy">Copies:</span>
+              <span className="font-bold text-quip-navy">
                 {currentPlayer.copies_submitted} / {currentPlayer.copies_required}
               </span>
             </div>
           )}
           {currentPhase === 'VOTE' && (
             <div className="flex items-center justify-between">
-              <span>Votes:</span>
-              <span className="font-bold">
+              <span className="text-quip-navy">Votes:</span>
+              <span className="font-bold text-quip-navy">
                 {currentPlayer.votes_submitted} / {currentPlayer.votes_required}
               </span>
             </div>
@@ -274,14 +274,14 @@ export const PartyGame: React.FC = () => {
     if (!activeRound) return null;
 
     return (
-      <div className="bg-white rounded-lg shadow-lg p-6">
-        <h2 className="text-2xl font-bold text-quip-navy mb-4">Write Your Best Original Phrase</h2>
-        <p className="text-gray-600 mb-6">
+      <div className="tile-card shadow-tile p-6">
+        <h2 className="text-2xl font-display font-bold text-quip-navy mb-4">Write Your Best Original Phrase</h2>
+        <p className="text-quip-teal mb-6">
           Create a phrase that will fool others into thinking it's a real definition!
         </p>
 
         <div className="mb-6">
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
+          <label className="block text-sm font-semibold text-quip-navy mb-2">
             Your Phrase
           </label>
           <input
@@ -289,14 +289,14 @@ export const PartyGame: React.FC = () => {
             value={phraseInput}
             onChange={(e) => setPhraseInput(e.target.value.toUpperCase())}
             placeholder="Enter your phrase..."
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg text-lg uppercase focus:outline-none focus:ring-2 focus:ring-quip-blue"
+            className="w-full px-4 py-3 border-2 border-quip-navy rounded-tile text-lg uppercase focus:outline-none focus:ring-2 focus:ring-quip-orange"
             maxLength={100}
           />
-          <p className="text-sm text-gray-500 mt-1">{phraseInput.length} / 100 characters</p>
+          <p className="text-sm text-quip-teal mt-1">{phraseInput.length} / 100 characters</p>
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 text-sm text-red-800">
+          <div className="tile-card bg-red-100 border-2 border-red-400 p-3 mb-4 text-sm text-red-800">
             {error}
           </div>
         )}
@@ -304,9 +304,9 @@ export const PartyGame: React.FC = () => {
         <button
           onClick={handleSubmitPrompt}
           disabled={!phraseInput.trim() || submitting}
-          className={`w-full font-semibold py-3 px-4 rounded-lg transition-colors ${
+          className={`w-full font-bold py-3 px-4 rounded-tile transition-all ${
             phraseInput.trim() && !submitting
-              ? 'bg-quip-blue hover:bg-quip-blue/90 text-white'
+              ? 'bg-quip-orange hover:bg-quip-orange-deep text-white hover:shadow-tile-sm'
               : 'bg-gray-400 text-white cursor-not-allowed'
           }`}
         >
@@ -323,19 +323,19 @@ export const PartyGame: React.FC = () => {
     const originalPhrase = 'PLACEHOLDER'; // This should come from the round data
 
     return (
-      <div className="bg-white rounded-lg shadow-lg p-6">
-        <h2 className="text-2xl font-bold text-quip-navy mb-4">Write a Convincing Copy</h2>
-        <p className="text-gray-600 mb-6">
+      <div className="tile-card shadow-tile p-6">
+        <h2 className="text-2xl font-display font-bold text-quip-navy mb-4">Write a Convincing Copy</h2>
+        <p className="text-quip-teal mb-6">
           Try to mimic this phrase style to fool the voters!
         </p>
 
-        <div className="bg-quip-blue/10 rounded-lg p-4 mb-6">
-          <p className="text-sm font-semibold text-gray-700 mb-2">Original Phrase:</p>
-          <p className="text-2xl font-bold text-quip-blue">{originalPhrase}</p>
+        <div className="tile-card bg-quip-orange bg-opacity-10 border-2 border-quip-orange p-4 mb-6">
+          <p className="text-sm font-semibold text-quip-teal mb-2">Original Phrase:</p>
+          <p className="text-2xl font-bold text-quip-orange-deep">{originalPhrase}</p>
         </div>
 
         <div className="mb-6">
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
+          <label className="block text-sm font-semibold text-quip-navy mb-2">
             Your Copy
           </label>
           <input
@@ -343,14 +343,14 @@ export const PartyGame: React.FC = () => {
             value={phraseInput}
             onChange={(e) => setPhraseInput(e.target.value.toUpperCase())}
             placeholder="Enter your copy..."
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg text-lg uppercase focus:outline-none focus:ring-2 focus:ring-quip-blue"
+            className="w-full px-4 py-3 border-2 border-quip-turquoise rounded-tile text-lg uppercase focus:outline-none focus:ring-2 focus:ring-quip-orange"
             maxLength={100}
           />
-          <p className="text-sm text-gray-500 mt-1">{phraseInput.length} / 100 characters</p>
+          <p className="text-sm text-quip-teal mt-1">{phraseInput.length} / 100 characters</p>
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 text-sm text-red-800">
+          <div className="tile-card bg-red-100 border-2 border-red-400 p-3 mb-4 text-sm text-red-800">
             {error}
           </div>
         )}
@@ -358,9 +358,9 @@ export const PartyGame: React.FC = () => {
         <button
           onClick={handleSubmitCopy}
           disabled={!phraseInput.trim() || submitting}
-          className={`w-full font-semibold py-3 px-4 rounded-lg transition-colors ${
+          className={`w-full font-bold py-3 px-4 rounded-tile transition-all ${
             phraseInput.trim() && !submitting
-              ? 'bg-quip-blue hover:bg-quip-blue/90 text-white'
+              ? 'bg-quip-turquoise hover:bg-quip-teal text-white hover:shadow-tile-sm'
               : 'bg-gray-400 text-white cursor-not-allowed'
           }`}
         >
@@ -377,9 +377,9 @@ export const PartyGame: React.FC = () => {
     const phrases = ['PHRASE1', 'PHRASE2', 'PHRASE3']; // This should come from round data
 
     return (
-      <div className="bg-white rounded-lg shadow-lg p-6">
-        <h2 className="text-2xl font-bold text-quip-navy mb-4">Vote for the Original</h2>
-        <p className="text-gray-600 mb-6">
+      <div className="tile-card shadow-tile p-6">
+        <h2 className="text-2xl font-display font-bold text-quip-navy mb-4">Vote for the Original</h2>
+        <p className="text-quip-teal mb-6">
           Which phrase do you think is the real one?
         </p>
 
@@ -388,10 +388,10 @@ export const PartyGame: React.FC = () => {
             <button
               key={idx}
               onClick={() => setSelectedPhrase(phrase)}
-              className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
+              className={`w-full p-4 rounded-tile border-2 text-left transition-all ${
                 selectedPhrase === phrase
-                  ? 'border-quip-blue bg-quip-blue/10'
-                  : 'border-gray-300 hover:border-quip-blue/50'
+                  ? 'border-quip-orange bg-quip-orange bg-opacity-10'
+                  : 'border-gray-300 hover:border-quip-orange hover:border-opacity-50'
               }`}
             >
               <span className="text-lg font-bold text-quip-navy">{phrase}</span>
@@ -400,7 +400,7 @@ export const PartyGame: React.FC = () => {
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 text-sm text-red-800">
+          <div className="tile-card bg-red-100 border-2 border-red-400 p-3 mb-4 text-sm text-red-800">
             {error}
           </div>
         )}
@@ -408,9 +408,9 @@ export const PartyGame: React.FC = () => {
         <button
           onClick={handleSubmitVote}
           disabled={!selectedPhrase || submitting}
-          className={`w-full font-semibold py-3 px-4 rounded-lg transition-colors ${
+          className={`w-full font-bold py-3 px-4 rounded-tile transition-all ${
             selectedPhrase && !submitting
-              ? 'bg-quip-blue hover:bg-quip-blue/90 text-white'
+              ? 'bg-quip-orange hover:bg-quip-orange-deep text-white hover:shadow-tile-sm'
               : 'bg-gray-400 text-white cursor-not-allowed'
           }`}
         >
@@ -422,10 +422,10 @@ export const PartyGame: React.FC = () => {
 
   const renderWaitingState = () => {
     return (
-      <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+      <div className="tile-card shadow-tile p-8 text-center">
         <div className="text-6xl mb-4">⏳</div>
-        <h2 className="text-2xl font-bold text-quip-navy mb-2">Waiting for Others...</h2>
-        <p className="text-gray-600 mb-4">
+        <h2 className="text-2xl font-display font-bold text-quip-navy mb-2">Waiting for Others...</h2>
+        <p className="text-quip-teal mb-4">
           You've completed this phase! Waiting for other players to finish.
         </p>
         {sessionStatus && (
@@ -439,7 +439,7 @@ export const PartyGame: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen flex-col bg-quip-navy/5">
+      <div className="flex min-h-screen flex-col bg-quip-cream">
         <Header title="Party Game" />
         <div className="flex-grow flex items-center justify-center">
           <span className="text-lg font-semibold text-quip-navy">Loading game...</span>
@@ -450,16 +450,16 @@ export const PartyGame: React.FC = () => {
 
   if (!sessionStatus) {
     return (
-      <div className="flex min-h-screen flex-col bg-quip-navy/5">
+      <div className="flex min-h-screen flex-col bg-quip-cream">
         <Header title="Party Game" />
         <div className="flex-grow flex items-center justify-center p-4">
           <div className="max-w-md w-full space-y-4">
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="tile-card bg-red-100 border-2 border-red-400 p-4">
               <p className="text-sm text-red-800">{error || 'Session not found'}</p>
             </div>
             <button
               onClick={() => navigate('/party')}
-              className="w-full bg-quip-navy hover:bg-quip-navy/90 text-white font-semibold py-3 px-4 rounded-lg"
+              className="w-full bg-quip-navy hover:bg-quip-teal text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm"
             >
               Back to Party Mode
             </button>
@@ -470,7 +470,7 @@ export const PartyGame: React.FC = () => {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-quip-navy/5">
+    <div className="flex min-h-screen flex-col bg-quip-cream">
       <Header title={`Party Game - ${sessionStatus.party_code}`} />
 
       <div className="flex-grow p-4">
@@ -493,7 +493,7 @@ export const PartyGame: React.FC = () => {
           )}
 
           {/* Connection Status */}
-          <div className="text-center text-sm text-gray-500">
+          <div className="text-center text-sm text-quip-teal">
             {wsConnected ? '✅ Connected' : '⚠️ Not connected'}
           </div>
         </div>

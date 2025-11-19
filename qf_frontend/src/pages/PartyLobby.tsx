@@ -129,7 +129,7 @@ export const PartyLobby: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen flex-col bg-quip-navy/5">
+      <div className="flex min-h-screen flex-col bg-quip-cream">
         <Header title="Party Lobby" />
         <div className="flex-grow flex items-center justify-center">
           <span className="text-lg font-semibold text-quip-navy">Loading lobby...</span>
@@ -140,16 +140,16 @@ export const PartyLobby: React.FC = () => {
 
   if (error || !sessionStatus) {
     return (
-      <div className="flex min-h-screen flex-col bg-quip-navy/5">
+      <div className="flex min-h-screen flex-col bg-quip-cream">
         <Header title="Party Lobby" />
         <div className="flex-grow flex items-center justify-center p-4">
           <div className="max-w-md w-full space-y-4">
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="tile-card bg-red-100 border-2 border-red-400 p-4">
               <p className="text-sm text-red-800">{error || 'Session not found'}</p>
             </div>
             <button
               onClick={() => navigate('/party')}
-              className="w-full bg-quip-navy hover:bg-quip-navy/90 text-white font-semibold py-3 px-4 rounded-lg"
+              className="w-full bg-quip-navy hover:bg-quip-teal text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm"
             >
               Back to Party Mode
             </button>
@@ -160,61 +160,61 @@ export const PartyLobby: React.FC = () => {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-quip-navy/5">
+    <div className="flex min-h-screen flex-col bg-quip-cream">
       <Header title="Party Lobby" />
 
       <div className="flex-grow flex items-center justify-center p-4">
         <div className="max-w-2xl w-full space-y-6">
           {/* Party Code Display */}
-          <div className="bg-white rounded-lg shadow-lg p-6 text-center">
-            <h2 className="text-sm font-semibold text-gray-600 uppercase mb-2">Party Code</h2>
+          <div className="tile-card shadow-tile p-6 text-center bg-quip-orange bg-opacity-5 border-2 border-quip-orange">
+            <h2 className="text-sm font-semibold text-quip-teal uppercase mb-2">Party Code</h2>
             <div
               onClick={handleCopyCode}
-              className="text-5xl font-bold font-mono text-quip-blue tracking-widest cursor-pointer hover:text-quip-blue/80 transition-colors"
+              className="text-5xl font-bold font-mono text-quip-orange-deep tracking-widest cursor-pointer hover:text-quip-orange transition-colors"
               title="Click to copy"
             >
               {sessionStatus.party_code}
             </div>
-            <p className="text-sm text-gray-500 mt-2">Click to copy code</p>
+            <p className="text-sm text-quip-teal mt-2">Click to copy code</p>
           </div>
 
           {/* WebSocket Status */}
           {wsError && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-800">
+            <div className="tile-card bg-yellow-100 border-2 border-yellow-400 p-3 text-sm text-yellow-800">
               Connection issue: {wsError}. Updates may be delayed.
             </div>
           )}
 
           {/* Session Info */}
-          <div className="bg-white rounded-lg shadow p-4">
+          <div className="tile-card shadow-tile-sm p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Players Ready</p>
-                <p className="text-2xl font-bold text-quip-navy">
+                <p className="text-sm text-quip-teal">Players Ready</p>
+                <p className="text-2xl font-display font-bold text-quip-navy">
                   {readyCount} / {totalCount}
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-sm text-gray-600">Minimum Required</p>
-                <p className="text-2xl font-bold text-quip-navy">{minPlayers}</p>
+                <p className="text-sm text-quip-teal">Minimum Required</p>
+                <p className="text-2xl font-display font-bold text-quip-navy">{minPlayers}</p>
               </div>
             </div>
           </div>
 
           {/* Player List */}
-          <div className="bg-white rounded-lg shadow p-4">
-            <h3 className="text-lg font-bold text-quip-navy mb-4">Players</h3>
+          <div className="tile-card shadow-tile p-4">
+            <h3 className="text-lg font-display font-bold text-quip-navy mb-4">Players</h3>
             <div className="space-y-2">
               {sessionStatus.participants.map((participant: PartyParticipant) => (
                 <div
                   key={participant.participant_id}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                  className="flex items-center justify-between p-3 bg-quip-cream rounded-tile"
                 >
                   <div className="flex items-center gap-3">
                     <div
                       className={`w-3 h-3 rounded-full ${
                         participant.status === 'READY'
-                          ? 'bg-green-500'
+                          ? 'bg-quip-turquoise'
                           : 'bg-gray-300'
                       }`}
                       title={participant.status === 'READY' ? 'Ready' : 'Not ready'}
@@ -223,18 +223,18 @@ export const PartyLobby: React.FC = () => {
                       {participant.username}
                     </span>
                     {participant.is_host && (
-                      <span className="px-2 py-1 text-xs font-semibold text-yellow-800 bg-yellow-100 rounded">
+                      <span className="px-2 py-1 text-xs font-semibold text-quip-orange-deep bg-quip-orange bg-opacity-20 rounded-tile">
                         HOST
                       </span>
                     )}
                     {participant.player_id === player?.player_id && (
-                      <span className="px-2 py-1 text-xs font-semibold text-blue-800 bg-blue-100 rounded">
+                      <span className="px-2 py-1 text-xs font-semibold text-quip-turquoise bg-quip-turquoise bg-opacity-20 rounded-tile">
                         YOU
                       </span>
                     )}
                   </div>
-                  <span className={`text-sm font-medium ${
-                    participant.status === 'READY' ? 'text-green-600' : 'text-gray-500'
+                  <span className={`text-sm font-semibold ${
+                    participant.status === 'READY' ? 'text-quip-turquoise' : 'text-gray-500'
                   }`}>
                     {participant.status === 'READY' ? 'Ready' : 'Waiting...'}
                   </span>
@@ -250,10 +250,10 @@ export const PartyLobby: React.FC = () => {
               <button
                 onClick={handleToggleReady}
                 disabled={isReady}
-                className={`w-full font-semibold py-3 px-4 rounded-lg transition-colors ${
+                className={`w-full font-bold py-3 px-4 rounded-tile transition-all ${
                   isReady
-                    ? 'bg-green-500 text-white cursor-not-allowed'
-                    : 'bg-quip-green hover:bg-quip-green/90 text-white'
+                    ? 'bg-quip-turquoise text-white cursor-not-allowed'
+                    : 'bg-quip-turquoise hover:bg-quip-teal text-white hover:shadow-tile-sm'
                 }`}
               >
                 {isReady ? '✓ Ready!' : 'Mark Ready'}
@@ -265,9 +265,9 @@ export const PartyLobby: React.FC = () => {
               <button
                 onClick={handleStartParty}
                 disabled={!canStart || isStarting}
-                className={`w-full font-semibold py-3 px-4 rounded-lg transition-colors ${
+                className={`w-full font-bold py-3 px-4 rounded-tile transition-all ${
                   canStart && !isStarting
-                    ? 'bg-quip-blue hover:bg-quip-blue/90 text-white'
+                    ? 'bg-quip-orange hover:bg-quip-orange-deep text-white hover:shadow-tile-sm'
                     : 'bg-gray-400 text-white cursor-not-allowed'
                 }`}
               >
@@ -276,7 +276,7 @@ export const PartyLobby: React.FC = () => {
             )}
 
             {!canStart && isHost && (
-              <p className="text-sm text-center text-gray-600">
+              <p className="text-sm text-center text-quip-teal">
                 Need at least {minPlayers} players ready to start
               </p>
             )}
@@ -284,14 +284,14 @@ export const PartyLobby: React.FC = () => {
             {/* Leave Button */}
             <button
               onClick={handleLeave}
-              className="w-full bg-gray-200 hover:bg-gray-300 text-quip-navy font-semibold py-3 px-4 rounded-lg transition-colors"
+              className="w-full bg-gray-200 hover:bg-gray-300 text-quip-navy font-semibold py-3 px-4 rounded-tile transition-colors"
             >
               Leave Party
             </button>
           </div>
 
           {/* Connection Status Indicator */}
-          <div className="text-center text-sm text-gray-500">
+          <div className="text-center text-sm text-quip-teal">
             {wsConnecting && '🔄 Connecting to live updates...'}
             {wsConnected && '✅ Connected'}
             {!wsConnecting && !wsConnected && '⚠️ Not connected'}

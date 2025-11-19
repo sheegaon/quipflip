@@ -643,15 +643,15 @@ export const Dashboard: React.FC = () => {
         </div>
 
         {/* Party Mode */}
-        <div className="tile-card md:p-6 p-4 mt-6 shuffle-enter bg-gradient-to-r from-purple-500 to-pink-500">
+        <div className="tile-card md:p-6 p-4 mt-6 shuffle-enter bg-quip-orange bg-opacity-10 border-2 border-quip-orange">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="text-white">
-              <h2 className="text-2xl font-display font-bold mb-2">🎉 Party Mode</h2>
-              <p className="text-purple-100">Play with 3-8 friends in a coordinated multiplayer match!</p>
+            <div>
+              <h2 className="text-2xl font-display font-bold text-quip-navy mb-2">🎉 Party Mode</h2>
+              <p className="text-quip-teal">Play with 3-8 friends in a coordinated multiplayer match!</p>
             </div>
             <button
               onClick={() => navigate('/party')}
-              className="w-full md:w-auto bg-white hover:bg-gray-100 text-purple-600 font-bold py-3 px-8 rounded-tile transition-all hover:shadow-tile-sm"
+              className="w-full md:w-auto bg-quip-orange hover:bg-quip-orange-deep text-white font-bold py-3 px-8 rounded-tile transition-all hover:shadow-tile-sm"
             >
               Enter Party Mode
             </button>
