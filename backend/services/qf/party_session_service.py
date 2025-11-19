@@ -311,7 +311,7 @@ class PartySessionService:
 
         # Check if player is already in another active session
         active_session = await self.get_active_session_for_player(player_id)
-        if active_session and active_session.session_id != session_id:
+        if active_session:
             raise AlreadyInAnotherSessionError(
                 "Player is already participating in another active party session"
             )
