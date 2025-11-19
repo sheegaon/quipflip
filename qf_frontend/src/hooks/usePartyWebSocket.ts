@@ -6,6 +6,7 @@ import type {
   PartyWebSocketMessage,
   PhaseTransitionPayload,
   PlayerJoinedPayload,
+  PlayerLeftPayload,
   PlayerReadyPayload,
   ProgressUpdatePayload,
   SessionCompletedPayload,
@@ -124,7 +125,7 @@ export function usePartyWebSocket(
             message: PartyMessageByType<'phase_transition'>
           ): PhaseTransitionPayload;
           function getPayload(message: PartyMessageByType<'player_joined'>): PlayerJoinedPayload;
-          function getPayload(message: PartyMessageByType<'player_left'>): PlayerJoinedPayload;
+          function getPayload(message: PartyMessageByType<'player_left'>): PlayerLeftPayload;
           function getPayload(message: PartyMessageByType<'player_ready'>): PlayerReadyPayload;
           function getPayload(message: PartyMessageByType<'progress_update'>): ProgressUpdatePayload;
           function getPayload(message: PartyMessageByType<'session_started'>): SessionStartedPayload;
