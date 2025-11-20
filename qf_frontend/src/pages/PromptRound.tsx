@@ -53,6 +53,28 @@ export const PromptRound: React.FC = () => {
     <PartyRoundModal sessionId={partyState.sessionId} currentStep="prompt" />
   ) : null;
 
+  const beginPartyCopyRound = useCallback(async () => {
+    if (!partyState.isPartyMode || nextRoundAttemptedRef.current) {
+      return;
+    }
+
+    setNextRoundError(null);
+    setIsStartingNextRound(true);
+    nextRoundAttemptedRef.current = true;
+
+    try {
+      await startCopyRound();
+      partyActions.setCurrentStep('copy');
+      navigate('/copy', { replace: true });
+    } catch (err) {
+      const message = extractErrorMessage(err) || 'Unable to start the impostor round.';
+      setNextRoundError(message);
+      nextRoundAttemptedRef.current = false;
+    } finally {
+      setIsStartingNextRound(false);
+    }
+  }, [navigate, partyActions, partyState.isPartyMode, startCopyRound]);
+
   useEffect(() => {
     if (partyState.isPartyMode) {
       partyActions.setCurrentStep('prompt');
@@ -158,28 +180,6 @@ export const PromptRound: React.FC = () => {
       setIsSubmittingFeedback(false);
     }
   };
-
-  const beginPartyCopyRound = useCallback(async () => {
-    if (!partyState.isPartyMode || nextRoundAttemptedRef.current) {
-      return;
-    }
-
-    setNextRoundError(null);
-    setIsStartingNextRound(true);
-    nextRoundAttemptedRef.current = true;
-
-    try {
-      await startCopyRound();
-      partyActions.setCurrentStep('copy');
-      navigate('/copy', { replace: true });
-    } catch (err) {
-      const message = extractErrorMessage(err) || 'Unable to start the impostor round.';
-      setNextRoundError(message);
-      nextRoundAttemptedRef.current = false;
-    } finally {
-      setIsStartingNextRound(false);
-    }
-  }, [navigate, partyActions, partyState.isPartyMode, startCopyRound]);
 
   const handleHomeNavigation = () => {
     if (partyState.isPartyMode) {
