@@ -141,13 +141,16 @@ def build_party_prompt_generation(prompt_text: str) -> str:
     return f"""Generate a creative, short phrase that responds to the following prompt.
 
 **Prompt: "{prompt_text}"**
-
+""" + """
 Rules:
-- 2-30 characters total
+- 1-15 characters per word
+- 2-5 words, 4-100 characters in total
 - Letters and spaces only
+- Each word must pass dictionary validation
 - Make it clever, funny, or creative
-- Should directly relate to the prompt
-- Keep it concise and memorable
+- Should directly complete the prompt sentence
+- Words which are 4 or more letters long, except common words: [{common_words}], are known as *significant words*
+- Do NOT use or lightly modify (e.g., pluralize) any significant words from the prompt
 
 Generate ONE phrase that best responds to the prompt. Do not include quotes or explanation, just the phrase itself."""
 
