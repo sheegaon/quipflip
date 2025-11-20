@@ -16,6 +16,5 @@ export const isAiPlayer = (player?: AiDetectable | null): boolean => {
     return true;
   }
 
-  const email = player.email?.toLowerCase();
-  return Boolean(email && email.endsWith(AI_EMAIL_DOMAIN));
+  return player.email?.toLowerCase().endsWith(AI_EMAIL_DOMAIN) ?? false;
 };
