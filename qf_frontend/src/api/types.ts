@@ -968,6 +968,7 @@ export interface StartPartyCopyResponse {
   prompt_round_id: string;
   expires_at: string;
   cost: number;
+  status?: string;
   session_progress: {
     your_copies_submitted: number;
     copies_required: number;

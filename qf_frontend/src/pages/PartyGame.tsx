@@ -94,7 +94,7 @@ export const PartyGame: React.FC = () => {
               expires_at: roundData.expires_at,
               cost: roundData.cost,
               status: 'active',
-              discount_active: roundData.discount_active,
+              discount_active: false,
             }
           });
           navigate('/copy', { replace: true });
