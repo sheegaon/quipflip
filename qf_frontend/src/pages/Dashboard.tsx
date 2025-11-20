@@ -554,20 +554,26 @@ export const Dashboard: React.FC = () => {
       
       // Navigate to the party session
       navigate(`/party/${result.session_id}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       dashboardLogger.error('❌ Failed to create party:', error);
       
+      // Type guard for error objects with properties
+      const isErrorWithStatus = (err: unknown): err is { status?: number; isServerError?: boolean; isNetworkError?: boolean; message?: string } => {
+        return typeof err === 'object' && err !== null;
+      };
+      
       // Handle specific error types
-      if (error?.isServerError || error?.status === 500) {
+      if (isErrorWithStatus(error) && (error.isServerError || error.status === 500)) {
         setPartyCreationError('Server error - please try again in a moment');
-      } else if (error?.status === 401) {
+      } else if (isErrorWithStatus(error) && error.status === 401) {
         setPartyCreationError('Please log in to create a party');
-      } else if (error?.status === 429) {
+      } else if (isErrorWithStatus(error) && error.status === 429) {
         setPartyCreationError('Too many requests - please wait before trying again');
-      } else if (error?.isNetworkError) {
+      } else if (isErrorWithStatus(error) && error.isNetworkError) {
         setPartyCreationError('Network error - please check your connection');
       } else {
-        setPartyCreationError(error?.message || 'Failed to create party - please try again');
+        const errorMessage = isErrorWithStatus(error) && error.message ? error.message : 'Failed to create party - please try again';
+        setPartyCreationError(errorMessage);
       }
     } finally {
       setCreatingParty(false);

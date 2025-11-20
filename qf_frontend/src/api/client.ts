@@ -775,29 +775,32 @@ export const apiClient = {
         timeout: 10000 // 10 second timeout for party creation
       });
       return data;
-    } catch (error: any) {
+    } catch (error) {
+      // Type the error as AxiosError or unknown for proper error handling
+      const axiosError = error as AxiosError<ApiError>;
+      
       // Add more detailed error logging for party creation
-      if (error?.response?.status === 500) {
+      if (axiosError?.response?.status === 500) {
         console.error('Party creation failed with server error:', {
-          status: error.response.status,
-          statusText: error.response.statusText,
-          data: error.response.data,
-          message: error.message
+          status: axiosError.response.status,
+          statusText: axiosError.response.statusText,
+          data: axiosError.response.data,
+          message: axiosError.message
         });
         
         // For 500 errors, provide a user-friendly message
         throw {
-          ...error,
+          ...axiosError,
           message: 'Server error creating party. Please try again in a moment.',
           isServerError: true
         };
       }
       
       console.error('Party creation failed:', {
-        status: error?.response?.status,
-        statusText: error?.response?.statusText,
-        data: error?.response?.data,
-        message: error?.message
+        status: axiosError?.response?.status,
+        statusText: axiosError?.response?.statusText,
+        data: axiosError?.response?.data,
+        message: axiosError?.message
       });
       
       throw error;
