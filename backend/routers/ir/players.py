@@ -11,11 +11,12 @@ from backend.database import get_db
 from backend.dependencies import get_current_player, enforce_guest_creation_rate_limit
 from backend.models.ir.player import IRPlayer
 from backend.schemas.auth import (
-    RegisterRequest,
+    AuthTokenResponse,
     LoginRequest,
-    UsernameLoginRequest,
-    RefreshRequest,
     LogoutRequest,
+    RefreshRequest,
+    RegisterRequest,
+    UsernameLoginRequest,
 )
 from backend.schemas.player import (
     PlayerBalance,
