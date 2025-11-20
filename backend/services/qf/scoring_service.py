@@ -783,12 +783,14 @@ class ScoringService:
     async def _compute_role_based_weekly_leaderboards(self) -> dict[str, list[dict]]:
         """Calculate weekly leaderboards for all three roles plus gross earnings concurrently."""
         window_start = datetime.now(UTC) - timedelta(days=7)
-        tasks = [self._compute_role_leaderboard(role, window_start) for role in LEADERBOARD_ROLES]
-        tasks.append(self._compute_gross_earnings_leaderboard(window_start))
-        results = await asyncio.gather(*tasks)
+        leaderboards: dict[str, list[dict]] = {}
 
-        leaderboards = dict(zip(LEADERBOARD_ROLES, results[:-1]))
-        leaderboards["gross_earnings"] = results[-1]
+        # Run leaderboard queries sequentially to avoid concurrent session operations
+        for role in LEADERBOARD_ROLES:
+            leaderboards[role] = await self._compute_role_leaderboard(role, window_start)
+
+        leaderboards["gross_earnings"] = await self._compute_gross_earnings_leaderboard(window_start)
+
         return leaderboards
 
     async def get_alltime_leaderboard_snapshot(
@@ -860,12 +862,14 @@ class ScoringService:
 
     async def _compute_role_based_alltime_leaderboards(self) -> dict[str, list[dict]]:
         """Calculate all-time leaderboards for all three roles plus gross earnings concurrently."""
-        tasks = [self._compute_role_leaderboard(role, start_date=None) for role in LEADERBOARD_ROLES]
-        tasks.append(self._compute_gross_earnings_leaderboard(start_date=None))
-        results = await asyncio.gather(*tasks)
+        leaderboards: dict[str, list[dict]] = {}
 
-        leaderboards = dict(zip(LEADERBOARD_ROLES, results[:-1]))
-        leaderboards["gross_earnings"] = results[-1]
+        # Run leaderboard queries sequentially to avoid concurrent session operations
+        for role in LEADERBOARD_ROLES:
+            leaderboards[role] = await self._compute_role_leaderboard(role, start_date=None)
+
+        leaderboards["gross_earnings"] = await self._compute_gross_earnings_leaderboard(start_date=None)
+
         return leaderboards
 
     async def _compute_gross_earnings_leaderboard(self, start_date: datetime | None = None) -> list[dict]:
