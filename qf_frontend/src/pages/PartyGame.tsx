@@ -14,7 +14,9 @@ export const PartyGame: React.FC = () => {
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
   const { actions: gameActions, state: gameState } = useGame();
-  const { actions: partyActions, state: partyState } = usePartyMode();
+  const { actions: partyActions } = usePartyMode();
+  const { startPromptRound, startCopyRound, startVoteRound } = gameActions;
+  const { startPartyMode, setCurrentStep, endPartyMode } = partyActions;
   const [isStarting, setIsStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,7 +35,7 @@ export const PartyGame: React.FC = () => {
         const phase = status.current_phase.toLowerCase();
 
         if (phase === 'results' || status.status === 'COMPLETED') {
-          partyActions.endPartyMode();
+          endPartyMode();
           navigate(`/party/results/${sessionId}`);
           return;
         }
@@ -45,12 +47,12 @@ export const PartyGame: React.FC = () => {
         };
 
         const step = phaseToStepMap[phase] ?? 'prompt';
-        partyActions.startPartyMode(sessionId, step);
-        partyActions.setCurrentStep(step);
+        startPartyMode(sessionId, step);
+        setCurrentStep(step);
 
         if (step === 'copy') {
           if (gameState.activeRound?.round_type !== 'copy') {
-            await gameActions.startCopyRound();
+            await startCopyRound();
           }
           navigate('/copy', { replace: true });
           return;
@@ -58,7 +60,7 @@ export const PartyGame: React.FC = () => {
 
         if (step === 'vote') {
           if (gameState.activeRound?.round_type !== 'vote') {
-            await gameActions.startVoteRound();
+            await startVoteRound();
           }
           navigate('/vote', { replace: true });
           return;
@@ -66,7 +68,7 @@ export const PartyGame: React.FC = () => {
 
         // Default to prompt round
         if (gameState.activeRound?.round_type !== 'prompt') {
-          await gameActions.startPromptRound();
+          await startPromptRound();
         }
 
         navigate('/prompt', { replace: true });
@@ -79,7 +81,17 @@ export const PartyGame: React.FC = () => {
     };
 
     void beginPartyFlow();
-  }, [gameActions, gameState.activeRound?.round_type, navigate, partyActions, partyState.currentStep, sessionId]);
+  }, [
+    gameState.activeRound?.round_type,
+    navigate,
+    sessionId,
+    startCopyRound,
+    startPromptRound,
+    startVoteRound,
+    startPartyMode,
+    setCurrentStep,
+    endPartyMode,
+  ]);
 
   if (error) {
     return (

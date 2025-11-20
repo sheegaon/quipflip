@@ -159,6 +159,7 @@ export const CopyRound: React.FC = () => {
   const { activeRound, roundAvailability, copyRoundHints, player } = state;
   const { flagCopyRound, refreshDashboard, fetchCopyHints, startVoteRound } = actions;
   const { state: partyState, actions: partyActions } = usePartyMode();
+  const { setCurrentStep, endPartyMode } = partyActions;
   const navigate = useNavigate();
   const [phrase, setPhrase] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -201,9 +202,9 @@ export const CopyRound: React.FC = () => {
 
   useEffect(() => {
     if (partyState.isPartyMode) {
-      partyActions.setCurrentStep('copy');
+      setCurrentStep('copy');
     }
-  }, [partyActions, partyState.isPartyMode]);
+  }, [partyState.isPartyMode, setCurrentStep]);
 
   useEffect(() => {
     setShowHints(false);
@@ -278,7 +279,7 @@ export const CopyRound: React.FC = () => {
 
     try {
       await startVoteRound();
-      partyActions.setCurrentStep('vote');
+      setCurrentStep('vote');
       navigate('/vote', { replace: true });
     } catch (err) {
       const message = extractErrorMessage(err) || 'Unable to start the vote round.';
@@ -287,7 +288,7 @@ export const CopyRound: React.FC = () => {
     } finally {
       setIsStartingNextRound(false);
     }
-  }, [navigate, partyActions, partyState.isPartyMode, startVoteRound]);
+  }, [navigate, partyState.isPartyMode, setCurrentStep, startVoteRound]);
 
   const partyOverlay = partyState.isPartyMode && partyState.sessionId ? (
     <PartyRoundModal sessionId={partyState.sessionId} currentStep="copy" />
@@ -295,7 +296,7 @@ export const CopyRound: React.FC = () => {
 
   const handleHomeNavigation = () => {
     if (partyState.isPartyMode) {
-      partyActions.endPartyMode();
+      endPartyMode();
       navigate('/party');
     } else {
       navigate('/dashboard');

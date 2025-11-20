@@ -29,6 +29,7 @@ export const PromptRound: React.FC = () => {
   const { activeRound, roundAvailability } = state;
   const { refreshDashboard, startCopyRound } = actions;
   const { state: partyState, actions: partyActions } = usePartyMode();
+  const { setCurrentStep, endPartyMode } = partyActions;
   const navigate = useNavigate();
   const [phrase, setPhrase] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -60,7 +61,7 @@ export const PromptRound: React.FC = () => {
 
     try {
       await startCopyRound();
-      partyActions.setCurrentStep('copy');
+      setCurrentStep('copy');
       navigate('/copy', { replace: true });
     } catch (err) {
       const message = extractErrorMessage(err) || 'Unable to start the impostor round.';
@@ -69,7 +70,7 @@ export const PromptRound: React.FC = () => {
     } finally {
       setIsStartingNextRound(false);
     }
-  }, [navigate, partyActions, partyState.isPartyMode, startCopyRound]);
+  }, [navigate, partyState.isPartyMode, setCurrentStep, startCopyRound]);
 
   const partyOverlay = partyState.isPartyMode && partyState.sessionId ? (
     <PartyRoundModal sessionId={partyState.sessionId} currentStep="prompt" />
@@ -77,9 +78,9 @@ export const PromptRound: React.FC = () => {
 
   useEffect(() => {
     if (partyState.isPartyMode) {
-      partyActions.setCurrentStep('prompt');
+      setCurrentStep('prompt');
     }
-  }, [partyActions, partyState.isPartyMode]);
+  }, [partyState.isPartyMode, setCurrentStep]);
 
   useEffect(() => {
     if (!roundData) {
@@ -183,7 +184,7 @@ export const PromptRound: React.FC = () => {
 
   const handleHomeNavigation = () => {
     if (partyState.isPartyMode) {
-      partyActions.endPartyMode();
+      endPartyMode();
       navigate('/party');
     } else {
       navigate('/dashboard');
