@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePartyMode } from '../contexts/PartyModeContext';
 import apiClient, { extractErrorMessage } from '../api/client';
+import type { StartPartyCopyResponse, StartPartyVoteResponse } from '../api/types';
 
 type RoundType = 'prompt' | 'copy' | 'vote';
 
@@ -63,14 +64,24 @@ export function usePartyRoundCoordinator() {
             attemptedRef.current = true;
 
             // Define transition mappings
-            const transitions: Record<
-                RoundType,
-                {
-                    next: 'copy' | 'vote' | 'results';
-                    endpoint?: (sessionId: string) => Promise<any>;
-                    path: string;
-                }
-            > = {
+            type TransitionConfig =
+                | {
+                      next: 'copy';
+                      endpoint: (sessionId: string) => Promise<StartPartyCopyResponse>;
+                      path: string;
+                  }
+                | {
+                      next: 'vote';
+                      endpoint: (sessionId: string) => Promise<StartPartyVoteResponse>;
+                      path: string;
+                  }
+                | {
+                      next: 'results';
+                      endpoint?: undefined;
+                      path: string;
+                  };
+
+            const transitions: Record<RoundType, TransitionConfig> = {
                 prompt: {
                     next: 'copy',
                     endpoint: apiClient.startPartyCopyRound,
@@ -88,7 +99,7 @@ export function usePartyRoundCoordinator() {
                 },
             };
 
-            const transition = transitions[currentRound];
+            const transition: TransitionConfig = transitions[currentRound];
 
             try {
                 // Special case: vote → results (no round to start, just navigate and end party mode)
@@ -97,11 +108,6 @@ export function usePartyRoundCoordinator() {
                     navigate(transition.path, { replace: true });
                     setState({ isTransitioning: false, error: null });
                     return;
-                }
-
-                // Start next round via party-specific endpoint
-                if (!transition.endpoint) {
-                    throw new Error(`No endpoint defined for ${currentRound} → ${transition.next} transition`);
                 }
 
                 await transition.endpoint(partyState.sessionId);

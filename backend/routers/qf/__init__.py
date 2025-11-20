@@ -6,7 +6,6 @@ from backend.routers.qf import (
     feedback,
     notifications,
     online_users,
-    party,
     phrasesets,
     player,
     prompt_feedback,
@@ -28,4 +27,3 @@ router.include_router(admin.router, tags=["admin"])
 router.include_router(feedback.router, tags=["feedback"])
 router.include_router(online_users.router, prefix="/users", tags=["online_users"])
 router.include_router(notifications.router, tags=["notifications"])
-router.include_router(party.router, prefix="/party", tags=["party"])

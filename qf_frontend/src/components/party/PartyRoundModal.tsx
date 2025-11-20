@@ -1,8 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { useGame } from '../../contexts/GameContext';
+import React, { useState } from 'react';
 import { usePartyMode } from '../../contexts/PartyModeContext';
 import { usePartyWebSocket } from '../../hooks/usePartyWebSocket';
-import apiClient from '../../api/client';
 import { PartyIcon } from '../icons/NavigationIcons';
 import { PartyStep } from '../../contexts/PartyModeContext';
 
@@ -18,47 +16,9 @@ const phaseOrder: { id: PartyStep; label: string }[] = [
 ];
 
 export const PartyRoundModal: React.FC<PartyRoundModalProps> = ({ sessionId, currentStep }) => {
-  const { state: gameState } = useGame();
-  const { state: partyState, actions: partyActions } = usePartyMode();
+  const { state: partyState } = usePartyMode();
   const [isOpen, setIsOpen] = useState(true);
-  const [isFetchingFallback, setIsFetchingFallback] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Fallback fetch if context is empty (shouldn't happen in normal flow)
-  useEffect(() => {
-    if (!partyState.yourProgress && sessionId) {
-      setIsFetchingFallback(true);
-      const fetchStatus = async () => {
-        try {
-          const status = await apiClient.getPartySessionStatus(sessionId);
-          // Update context with fetched data
-          const participant = status.participants.find((p) => p.player_id === gameState.player?.player_id);
-          if (participant) {
-            partyActions.updateYourProgress({
-              prompts_submitted: participant.prompts_submitted,
-              copies_submitted: participant.copies_submitted,
-              votes_submitted: participant.votes_submitted,
-            });
-          }
-
-          if (status.progress) {
-            partyActions.updateSessionProgress({
-              players_ready_for_next_phase: status.progress.players_ready_for_next_phase,
-              total_players: status.progress.total_players,
-            });
-          }
-
-          setError(null);
-        } catch (err) {
-          console.error('Failed to fetch session status:', err);
-          setError('Unable to load party status.');
-        } finally {
-          setIsFetchingFallback(false);
-        }
-      };
-      void fetchStatus();
-    }
-  }, [partyState.yourProgress, sessionId, gameState.player?.player_id, partyActions]);
+  const isProgressMissing = !partyState.yourProgress || !partyState.sessionConfig;
 
   // WebSocket updates will update context automatically via submission responses
   // This hook just listens for phase transitions
@@ -165,14 +125,6 @@ export const PartyRoundModal: React.FC<PartyRoundModalProps> = ({ sessionId, cur
             </span>
           </div>
 
-          {error && (
-            <p className="text-sm text-red-600 mb-2">{error}</p>
-          )}
-
-          {isFetchingFallback && (
-            <p className="text-sm text-quip-teal mb-2">Loading party status...</p>
-          )}
-
           <div className="space-y-2 text-sm">
             <div className="flex items-center justify-between">
               <span className="text-quip-navy">Quips:</span>
@@ -192,6 +144,11 @@ export const PartyRoundModal: React.FC<PartyRoundModalProps> = ({ sessionId, cur
                 {votes_submitted} / {votes_required}
               </span>
             </div>
+            {isProgressMissing && (
+              <p className="text-xs text-quip-navy/70">
+                Party progress will appear once the next round response includes party context.
+              </p>
+            )}
           </div>
         </div>
       </div>
