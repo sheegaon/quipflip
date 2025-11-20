@@ -176,6 +176,7 @@ export const CopyRound: React.FC = () => {
   const [showHints, setShowHints] = useState(false);
   const [isEarlyImpostorPlayer, setIsEarlyImpostorPlayer] = useState(false);
   const autoFetchTriggeredRef = useRef(false);
+  const hintAbortControllerRef = useRef<AbortController | null>(null);
   const promptRevealRequestRef = useRef<string | null>(null);
 
   // Use party mode hooks for transitions and navigation
@@ -275,6 +276,13 @@ export const CopyRound: React.FC = () => {
     <PartyRoundModal sessionId={partyState.sessionId} currentStep="copy" />
   ) : null;
 
+  const cancelHintRequest = useCallback(() => {
+    if (hintAbortControllerRef.current) {
+      hintAbortControllerRef.current.abort();
+      hintAbortControllerRef.current = null;
+    }
+  }, []);
+
   const handleFetchHints = useCallback(async () => {
     if (!roundData || isFetchingHints || isExpired) {
       return;
@@ -283,12 +291,22 @@ export const CopyRound: React.FC = () => {
     setIsFetchingHints(true);
     setHintError(null);
 
+    const controller = new AbortController();
+    hintAbortControllerRef.current = controller;
+
     try {
-      await fetchCopyHints(roundData.round_id);
+      await fetchCopyHints(roundData.round_id, controller.signal);
       setShowHints(true);
     } catch (err) {
+      if (controller.signal.aborted) {
+        copyRoundLogger.debug('Hint request cancelled before completion');
+        return;
+      }
       setHintError(extractErrorMessage(err) || 'Unable to fetch AI hints. Please try again soon.');
     } finally {
+      if (hintAbortControllerRef.current === controller) {
+        hintAbortControllerRef.current = null;
+      }
       setIsFetchingHints(false);
     }
   }, [fetchCopyHints, isExpired, isFetchingHints, roundData]);
@@ -324,8 +342,9 @@ export const CopyRound: React.FC = () => {
   useEffect(() => {
     return () => {
       promptRevealRequestRef.current = null;
+      cancelHintRequest();
     };
-  }, []);
+  }, [cancelHintRequest]);
 
   // Redirect if already submitted
   useEffect(() => {
@@ -371,6 +390,7 @@ export const CopyRound: React.FC = () => {
     e.preventDefault();
     if (!roundData || isSubmitting || !isPhraseValid) return;
 
+    cancelHintRequest();
     setIsSubmitting(true);
     setError(null);
     setFlagResult(null);

@@ -83,8 +83,17 @@ export interface LeaderboardEntry {
   value: number;
 }
 
+export interface DashboardPlayerSummary {
+  player_id: string;
+  username: string;
+  wallet: number;
+  vault: number;
+  daily_bonus_available: boolean;
+  created_at: string;
+}
+
 export interface DashboardData {
-  player: IRPlayer;
+  player: DashboardPlayerSummary;
   active_session: {
     set_id: string;
     word: string;
@@ -100,13 +109,14 @@ export interface DashboardData {
 
 // API Request types
 export interface RegisterRequest {
-  username: string;
   email: string;
   password: string;
+  username?: string;
 }
 
 export interface LoginRequest {
-  username: string;
+  username?: string;
+  email?: string;
   password: string;
 }
 
@@ -137,7 +147,15 @@ export interface ValidateBackronymResponse {
 export interface AuthResponse {
   access_token: string;
   refresh_token: string;
-  player: IRPlayer;
+  token_type?: string;
+  expires_in?: number;
+  player_id: string;
+  username: string;
+  wallet?: number;
+  vault?: number;
+  email?: string;
+  password?: string;
+  message?: string;
 }
 
 export interface StartSessionResponse {
@@ -148,9 +166,21 @@ export interface StartSessionResponse {
 }
 
 export interface BalanceResponse {
+  player_id: string;
+  username: string;
+  email: string | null;
   wallet: number;
   vault: number;
+  starting_balance: number;
   daily_bonus_available: boolean;
+  daily_bonus_amount: number;
+  last_login_date: string | null;
+  created_at: string;
+  outstanding_prompts: number;
+  is_guest: boolean;
+  is_admin?: boolean;
+  locked_until: string | null;
+  flag_dismissal_streak?: number;
 }
 
 export interface ClaimBonusResponse {

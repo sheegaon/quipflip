@@ -49,7 +49,7 @@ interface GameActions {
   claimPhrasesetPrize: (phrasesetId: string) => Promise<void>;
   flagCopyRound: (roundId: string) => Promise<FlagCopyRoundResponse>;
   abandonRound: (roundId: string) => Promise<AbandonRoundResponse>;
-  fetchCopyHints: (roundId: string) => Promise<string[]>;
+  fetchCopyHints: (roundId: string, signal?: AbortSignal) => Promise<string[]>;
   updateActiveRound: (roundData: ActiveRound) => void;
 }
 
@@ -597,7 +597,7 @@ export const GameProvider: React.FC<{
     }
   }, [isAuthenticated, triggerPoll, onDashboardTrigger]);
 
-  const fetchCopyHints = useCallback(async (roundId: string): Promise<string[]> => {
+  const fetchCopyHints = useCallback(async (roundId: string, signal?: AbortSignal): Promise<string[]> => {
     if (!roundId) {
       return [];
     }
@@ -610,7 +610,7 @@ export const GameProvider: React.FC<{
     gameContextLogger.debug('?? Fetching AI copy hints for round', { roundId });
 
     try {
-      const response = await apiClient.getCopyHints(roundId);
+      const response = await apiClient.getCopyHints(roundId, signal);
       copyHintsRoundRef.current = roundId;
       setCopyRoundHints(response.hints);
       setError(null);
