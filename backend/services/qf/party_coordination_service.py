@@ -726,7 +726,7 @@ class PartyCoordinationService:
                             continue
 
                         # Generate phrase for prompt
-                        phrase = await ai_service.generate_party_prompt(prompt.prompt_text)
+                        phrase = await ai_service.generate_prompt_response(prompt.prompt_text)
 
                         # Submit prompt round
                         round_obj, party_round_id = await self.start_party_prompt_round(
@@ -783,11 +783,7 @@ class PartyCoordinationService:
                         existing_copy = existing_copy_result.scalar_one_or_none()
 
                         # Generate copy phrase
-                        copy_phrase = await ai_service.generate_party_copy(
-                            original_phrase=prompt_round.submitted_phrase,
-                            prompt_text=prompt_round.prompt_text,
-                            other_copy_phrase=existing_copy,
-                        )
+                        copy_phrase = await ai_service.generate_and_cache_copy_phrases(prompt_round)
 
                         # Submit copy round
                         round_obj, party_round_id = await self.start_party_copy_round(
@@ -835,17 +831,8 @@ class PartyCoordinationService:
                             continue
 
                         # Generate vote
-                        phrases = [
-                            phraseset.original_phrase,
-                            phraseset.copy_phrase_1,
-                            phraseset.copy_phrase_2,
-                        ]
                         seed = int(UUID(participant.player_id))
-                        chosen_phrase = await ai_service.generate_party_vote(
-                            prompt_text=phraseset.prompt_text,
-                            phrases=phrases,
-                            seed=seed,
-                        )
+                        chosen_phrase = await ai_service.generate_vote_choice(phraseset, seed)
 
                         # Submit vote round
                         round_obj, party_round_id = await self.start_party_vote_round(

@@ -157,7 +157,7 @@ const completionReducer = (state: CompletionState, action: CompletionAction): Co
 export const CopyRound: React.FC = () => {
   const { state, actions } = useGame();
   const { activeRound, roundAvailability, copyRoundHints, player } = state;
-  const { flagCopyRound, refreshDashboard, fetchCopyHints, startVoteRound } = actions;
+  const { flagCopyRound, refreshDashboard, fetchCopyHints } = actions;
   const { state: partyState, actions: partyActions } = usePartyMode();
   const { setCurrentStep, endPartyMode } = partyActions;
   const navigate = useNavigate();
@@ -278,7 +278,25 @@ export const CopyRound: React.FC = () => {
     nextRoundAttemptedRef.current = true;
 
     try {
-      await startVoteRound();
+      if (!partyState.sessionId) {
+        throw new Error('Missing party session ID');
+      }
+
+      const roundData = await apiClient.startPartyVoteRound(partyState.sessionId);
+      actions.updateActiveRound({
+        round_type: 'vote',
+        round_id: roundData.round_id,
+        expires_at: roundData.expires_at,
+        state: {
+          round_id: roundData.round_id,
+          phraseset_id: roundData.phraseset_id,
+          prompt_text: roundData.prompt_text,
+          phrases: roundData.phrases,
+          expires_at: roundData.expires_at,
+          status: 'active',
+        }
+      });
+
       setCurrentStep('vote');
       navigate('/vote', { replace: true });
     } catch (err) {
@@ -288,7 +306,7 @@ export const CopyRound: React.FC = () => {
     } finally {
       setIsStartingNextRound(false);
     }
-  }, [navigate, partyState.isPartyMode, setCurrentStep, startVoteRound]);
+  }, [navigate, partyState.isPartyMode, partyState.sessionId, setCurrentStep, actions]);
 
   const partyOverlay = partyState.isPartyMode && partyState.sessionId ? (
     <PartyRoundModal sessionId={partyState.sessionId} currentStep="copy" />
@@ -744,199 +762,199 @@ export const CopyRound: React.FC = () => {
       {partyOverlay}
       <div className="min-h-screen bg-gradient-to-br from-quip-turquoise to-quip-teal flex items-center justify-center p-4 bg-pattern">
         <div className="max-w-2xl w-full tile-card p-8 slide-up-enter">
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <CopyRoundIcon className="w-8 h-8" aria-hidden="true" />
-            <h1 className="text-3xl font-display font-bold text-quip-navy">Impostor Round</h1>
+          <div className="text-center mb-8">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <CopyRoundIcon className="w-8 h-8" aria-hidden="true" />
+              <h1 className="text-3xl font-display font-bold text-quip-navy">Impostor Round</h1>
+            </div>
+            <p className="text-quip-teal">Submit a similar phrase</p>
           </div>
-          <p className="text-quip-teal">Submit a similar phrase</p>
-        </div>
 
-        {/* Timer */}
-        <div className="flex justify-center mb-6">
-          <Timer expiresAt={roundData.expires_at} />
-        </div>
-
-        {/* Instructions */}
-        <div className="bg-quip-orange bg-opacity-10 border-2 border-quip-orange rounded-tile p-4 mb-6">
-          <p className="text-sm text-quip-navy">
-            <strong>💡 Your goal:</strong> You don't know the prompt!
-            <br />
-            Write a phrase that <em>could have been the original</em> and might trick voters.
-            <br />
-            <strong>Do:</strong> stay close in meaning.
-            <br />
-            <strong>Don't:</strong> repeat the original or try to guess the exact prompt.
-          </p>
-        </div>
-
-        {/* Original Phrase */}
-        <div className="bg-quip-turquoise bg-opacity-5 border-2 border-quip-turquoise rounded-tile p-6 mb-6 relative">
-          <button
-            type="button"
-            onClick={handleOpenFlagConfirm}
-            disabled={isSubmitting || isFlagging}
-            className="absolute top-3 right-3 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-quip-orange shadow-tile-sm transition hover:scale-105 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-quip-orange disabled:cursor-not-allowed disabled:opacity-50"
-            title="Flag this phrase"
-            aria-label="Flag this phrase"
-          >
-            <span className="sr-only">Flag this phrase</span>
-            <FlagIcon className="h-5 w-5 pointer-events-none" aria-hidden="true" />
-          </button>
-          <p className="text-sm text-quip-teal mb-2 text-center font-medium">The original answer was:</p>
-          <p className="text-3xl text-center font-display font-bold text-quip-turquoise">
-            {roundData.original_phrase}
-          </p>
-        </div>
-
-        {/* Error Message */}
-        {(error || flagError) && (
-          <div className="mb-4 space-y-1 rounded border border-red-400 bg-red-100 p-4 text-red-700">
-            {error && <p>{error}</p>}
-            {flagError && <p>{flagError}</p>}
+          {/* Timer */}
+          <div className="flex justify-center mb-6">
+            <Timer expiresAt={roundData.expires_at} />
           </div>
-        )}
 
-        {/* AI Hints */}
-        {roundData && (
-          <div className="mb-4 rounded-tile border border-quip-turquoise/30 bg-white/80 p-4 shadow-tile-xs">
-            {copyRoundHints && copyRoundHints.length > 0 ? (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setShowHints((prev) => !prev)}
-                  className="flex w-full items-center justify-between rounded-tile border border-quip-turquoise/40 bg-quip-turquoise/10 px-3 py-2 font-semibold text-quip-teal transition hover:bg-quip-turquoise/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-quip-turquoise"
-                >
-                  <span>{showHints ? 'Hide AI Hints' : 'Show AI Hints'}</span>
-                  <span className="text-sm text-quip-navy">{copyRoundHints.length} suggestions</span>
-                </button>
-                {showHints && (
-                  <div className="mt-3 space-y-3">
-                    <p className="text-xs uppercase tracking-wide text-quip-teal/80">
-                      Mix and modify - make it your own!
-                    </p>
-                    <ul className="space-y-2">
-                      {copyRoundHints.map((hint, index) => (
-                        <li key={`${hint}-${index}`} className="w-full">
-                          <button
-                            type="button"
-                            onClick={() => handleHintClick(hint)}
-                            disabled={isSubmitting || isFlagging || isExpired}
-                            className="w-full text-left flex items-start gap-2 rounded-tile border border-quip-turquoise/30 bg-white px-3 py-2 text-quip-navy shadow-inner transition hover:bg-quip-turquoise/10 hover:border-quip-turquoise/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-quip-turquoise disabled:cursor-not-allowed disabled:opacity-60"
-                          >
-                            <span className="font-semibold text-quip-turquoise shrink-0">Hint {index + 1}:</span>
-                            <span className="break-words">{hint}</span>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  onClick={handleFetchHints}
-                  disabled={isFetchingHints || isSubmitting || isFlagging || isExpired}
-                  className="w-full rounded-tile border border-quip-turquoise bg-white px-4 py-2 font-semibold text-quip-turquoise transition hover:bg-quip-turquoise hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {isFetchingHints ? 'Contacting AI...' : 'Get AI Hints'}
-                </button>
-                {hintError && <p className="mt-2 text-sm text-red-600">{hintError}</p>}
-                <p className="mt-2 text-xs text-quip-teal">
-                  You will get three ideas that passed quick AI checks. Use them as inspiration and tweak them to match your style. Hints may take up to one minute to generate.
-                </p>
-              </>
-            )}
-          </div>
-        )}
-
-        {/* Input Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <input
-              type="text"
-              value={phrase}
-              onChange={(e) => setPhrase(e.target.value)}
-              placeholder="Enter your phrase"
-              className="tutorial-copy-input w-full px-4 py-3 text-lg border-2 border-quip-teal rounded-tile focus:outline-none focus:ring-2 focus:ring-quip-turquoise"
-              disabled={isExpired || isSubmitting || isFlagging}
-              maxLength={100}
-            />
-            <p className="text-sm text-quip-teal mt-1">
-              2-5 words (4-100 characters), A-Z and spaces only, no proper nouns
+          {/* Instructions */}
+          <div className="bg-quip-orange bg-opacity-10 border-2 border-quip-orange rounded-tile p-4 mb-6">
+            <p className="text-sm text-quip-navy">
+              <strong>💡 Your goal:</strong> You don't know the prompt!
+              <br />
+              Write a phrase that <em>could have been the original</em> and might trick voters.
+              <br />
+              <strong>Do:</strong> stay close in meaning.
+              <br />
+              <strong>Don't:</strong> repeat the original or try to guess the exact prompt.
             </p>
           </div>
 
-          <button
-            type="submit"
-            disabled={isExpired || isSubmitting || isFlagging || !isPhraseValid}
-            className="w-full bg-quip-turquoise hover:bg-quip-teal disabled:bg-gray-400 text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm text-lg"
-          >
-            {isExpired ? "Time's Up" : isSubmitting ? loadingMessages.submitting : 'Submit Phrase'}
-          </button>
-        </form>
+          {/* Original Phrase */}
+          <div className="bg-quip-turquoise bg-opacity-5 border-2 border-quip-turquoise rounded-tile p-6 mb-6 relative">
+            <button
+              type="button"
+              onClick={handleOpenFlagConfirm}
+              disabled={isSubmitting || isFlagging}
+              className="absolute top-3 right-3 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-quip-orange shadow-tile-sm transition hover:scale-105 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-quip-orange disabled:cursor-not-allowed disabled:opacity-50"
+              title="Flag this phrase"
+              aria-label="Flag this phrase"
+            >
+              <span className="sr-only">Flag this phrase</span>
+              <FlagIcon className="h-5 w-5 pointer-events-none" aria-hidden="true" />
+            </button>
+            <p className="text-sm text-quip-teal mb-2 text-center font-medium">The original answer was:</p>
+            <p className="text-3xl text-center font-display font-bold text-quip-turquoise">
+              {roundData.original_phrase}
+            </p>
+          </div>
 
-        {showFlagConfirm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-quip-navy/60 p-4">
-            <div className="w-full max-w-md rounded-tile bg-white p-6 shadow-tile-lg">
-              <h3 className="text-xl font-display font-bold text-quip-navy mb-2">Flag this phrase?</h3>
-              <p className="text-quip-teal">
-                Are you sure you want to mark this phrase as “offensive, inappropriate, or nonsensical”? This will abandon the round
-                and we'll review the phrase.
+          {/* Error Message */}
+          {(error || flagError) && (
+            <div className="mb-4 space-y-1 rounded border border-red-400 bg-red-100 p-4 text-red-700">
+              {error && <p>{error}</p>}
+              {flagError && <p>{flagError}</p>}
+            </div>
+          )}
+
+          {/* AI Hints */}
+          {roundData && (
+            <div className="mb-4 rounded-tile border border-quip-turquoise/30 bg-white/80 p-4 shadow-tile-xs">
+              {copyRoundHints && copyRoundHints.length > 0 ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setShowHints((prev) => !prev)}
+                    className="flex w-full items-center justify-between rounded-tile border border-quip-turquoise/40 bg-quip-turquoise/10 px-3 py-2 font-semibold text-quip-teal transition hover:bg-quip-turquoise/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-quip-turquoise"
+                  >
+                    <span>{showHints ? 'Hide AI Hints' : 'Show AI Hints'}</span>
+                    <span className="text-sm text-quip-navy">{copyRoundHints.length} suggestions</span>
+                  </button>
+                  {showHints && (
+                    <div className="mt-3 space-y-3">
+                      <p className="text-xs uppercase tracking-wide text-quip-teal/80">
+                        Mix and modify - make it your own!
+                      </p>
+                      <ul className="space-y-2">
+                        {copyRoundHints.map((hint, index) => (
+                          <li key={`${hint}-${index}`} className="w-full">
+                            <button
+                              type="button"
+                              onClick={() => handleHintClick(hint)}
+                              disabled={isSubmitting || isFlagging || isExpired}
+                              className="w-full text-left flex items-start gap-2 rounded-tile border border-quip-turquoise/30 bg-white px-3 py-2 text-quip-navy shadow-inner transition hover:bg-quip-turquoise/10 hover:border-quip-turquoise/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-quip-turquoise disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              <span className="font-semibold text-quip-turquoise shrink-0">Hint {index + 1}:</span>
+                              <span className="break-words">{hint}</span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleFetchHints}
+                    disabled={isFetchingHints || isSubmitting || isFlagging || isExpired}
+                    className="w-full rounded-tile border border-quip-turquoise bg-white px-4 py-2 font-semibold text-quip-turquoise transition hover:bg-quip-turquoise hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isFetchingHints ? 'Contacting AI...' : 'Get AI Hints'}
+                  </button>
+                  {hintError && <p className="mt-2 text-sm text-red-600">{hintError}</p>}
+                  <p className="mt-2 text-xs text-quip-teal">
+                    You will get three ideas that passed quick AI checks. Use them as inspiration and tweak them to match your style. Hints may take up to one minute to generate.
+                  </p>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Input Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <input
+                type="text"
+                value={phrase}
+                onChange={(e) => setPhrase(e.target.value)}
+                placeholder="Enter your phrase"
+                className="tutorial-copy-input w-full px-4 py-3 text-lg border-2 border-quip-teal rounded-tile focus:outline-none focus:ring-2 focus:ring-quip-turquoise"
+                disabled={isExpired || isSubmitting || isFlagging}
+                maxLength={100}
+              />
+              <p className="text-sm text-quip-teal mt-1">
+                2-5 words (4-100 characters), A-Z and spaces only, no proper nouns
               </p>
-              <div className="mt-6 flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={handleCancelFlag}
-                  className="rounded-tile border-2 border-quip-navy px-4 py-2 font-semibold text-quip-navy transition hover:bg-quip-navy hover:text-white"
-                  disabled={isFlagging}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleConfirmFlag}
-                  disabled={isFlagging}
-                  className="rounded-tile bg-quip-orange px-4 py-2 font-semibold text-white shadow-tile-sm transition hover:bg-quip-orange/90 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {isFlagging ? 'Flagging...' : 'Yes, flag it'}
-                </button>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isExpired || isSubmitting || isFlagging || !isPhraseValid}
+              className="w-full bg-quip-turquoise hover:bg-quip-teal disabled:bg-gray-400 text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm text-lg"
+            >
+              {isExpired ? "Time's Up" : isSubmitting ? loadingMessages.submitting : 'Submit Phrase'}
+            </button>
+          </form>
+
+          {showFlagConfirm && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-quip-navy/60 p-4">
+              <div className="w-full max-w-md rounded-tile bg-white p-6 shadow-tile-lg">
+                <h3 className="text-xl font-display font-bold text-quip-navy mb-2">Flag this phrase?</h3>
+                <p className="text-quip-teal">
+                  Are you sure you want to mark this phrase as “offensive, inappropriate, or nonsensical”? This will abandon the round
+                  and we'll review the phrase.
+                </p>
+                <div className="mt-6 flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={handleCancelFlag}
+                    className="rounded-tile border-2 border-quip-navy px-4 py-2 font-semibold text-quip-navy transition hover:bg-quip-navy hover:text-white"
+                    disabled={isFlagging}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmFlag}
+                    disabled={isFlagging}
+                    className="rounded-tile bg-quip-orange px-4 py-2 font-semibold text-white shadow-tile-sm transition hover:bg-quip-orange/90 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isFlagging ? 'Flagging...' : 'Yes, flag it'}
+                  </button>
+                </div>
               </div>
             </div>
+          )}
+
+          {/* Home Button */}
+          <button
+            onClick={handleHomeNavigation}
+            disabled={isSubmitting}
+            className="w-full mt-4 flex items-center justify-center gap-2 text-quip-teal hover:text-quip-turquoise disabled:opacity-50 disabled:cursor-not-allowed py-2 font-medium transition-colors"
+            title={isSubmitting ? "Please wait for submission to complete" : partyState.isPartyMode ? "Leave Party Mode" : "Back to Dashboard"}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            </svg>
+            <span>{partyState.isPartyMode ? 'Exit Party Mode' : 'Back to Dashboard'}</span>
+          </button>
+
+          {/* Info */}
+          <div className="mt-6 p-4 bg-quip-turquoise bg-opacity-5 rounded-tile">
+            <p className="text-sm text-quip-teal">
+              <strong className="text-quip-navy">Cost:</strong> <CurrencyDisplay amount={roundData.cost} iconClassName="w-3 h-3" textClassName="text-sm" />
+              {roundData.discount_active && (
+                <span className="text-quip-turquoise font-semibold"> (10% discount!)</span>
+              )}
+            </p>
+            <p className="text-sm text-quip-teal mt-1">
+              If you don't submit, <CurrencyDisplay amount={roundData.cost - abandonedPenalty} iconClassName="w-3 h-3" textClassName="text-sm" /> will be refunded (<CurrencyDisplay amount={abandonedPenalty} iconClassName="w-3 h-3" textClassName="text-sm" /> penalty)
+            </p>
           </div>
-        )}
-
-        {/* Home Button */}
-        <button
-          onClick={handleHomeNavigation}
-          disabled={isSubmitting}
-          className="w-full mt-4 flex items-center justify-center gap-2 text-quip-teal hover:text-quip-turquoise disabled:opacity-50 disabled:cursor-not-allowed py-2 font-medium transition-colors"
-          title={isSubmitting ? "Please wait for submission to complete" : partyState.isPartyMode ? "Leave Party Mode" : "Back to Dashboard"}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-          </svg>
-          <span>{partyState.isPartyMode ? 'Exit Party Mode' : 'Back to Dashboard'}</span>
-        </button>
-
-        {/* Info */}
-        <div className="mt-6 p-4 bg-quip-turquoise bg-opacity-5 rounded-tile">
-          <p className="text-sm text-quip-teal">
-            <strong className="text-quip-navy">Cost:</strong> <CurrencyDisplay amount={roundData.cost} iconClassName="w-3 h-3" textClassName="text-sm" />
-            {roundData.discount_active && (
-              <span className="text-quip-turquoise font-semibold"> (10% discount!)</span>
-            )}
-          </p>
-          <p className="text-sm text-quip-teal mt-1">
-            If you don't submit, <CurrencyDisplay amount={roundData.cost - abandonedPenalty} iconClassName="w-3 h-3" textClassName="text-sm" /> will be refunded (<CurrencyDisplay amount={abandonedPenalty} iconClassName="w-3 h-3" textClassName="text-sm" /> penalty)
-          </p>
         </div>
-      </div>
 
-      {secondCopyModal}
-    </div>
+        {secondCopyModal}
+      </div>
     </>
   );
 };

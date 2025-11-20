@@ -27,7 +27,7 @@ const isCanceledRequest = (error: unknown): boolean => {
 export const PromptRound: React.FC = () => {
   const { state, actions } = useGame();
   const { activeRound, roundAvailability } = state;
-  const { refreshDashboard, startCopyRound } = actions;
+  const { refreshDashboard } = actions;
   const { state: partyState, actions: partyActions } = usePartyMode();
   const { setCurrentStep, endPartyMode } = partyActions;
   const navigate = useNavigate();
@@ -60,7 +60,26 @@ export const PromptRound: React.FC = () => {
     nextRoundAttemptedRef.current = true;
 
     try {
-      await startCopyRound();
+      if (!partyState.sessionId) {
+        throw new Error('Missing party session ID');
+      }
+
+      const roundData = await apiClient.startPartyCopyRound(partyState.sessionId);
+      actions.updateActiveRound({
+        round_type: 'copy',
+        round_id: roundData.round_id,
+        expires_at: roundData.expires_at,
+        state: {
+          round_id: roundData.round_id,
+          original_phrase: roundData.original_phrase,
+          prompt_round_id: roundData.prompt_round_id,
+          expires_at: roundData.expires_at,
+          cost: roundData.cost,
+          status: 'active',
+          discount_active: false,
+        }
+      });
+
       setCurrentStep('copy');
       navigate('/copy', { replace: true });
     } catch (err) {
@@ -70,7 +89,7 @@ export const PromptRound: React.FC = () => {
     } finally {
       setIsStartingNextRound(false);
     }
-  }, [navigate, partyState.isPartyMode, setCurrentStep, startCopyRound]);
+  }, [navigate, partyState.isPartyMode, partyState.sessionId, setCurrentStep, actions]);
 
   const partyOverlay = partyState.isPartyMode && partyState.sessionId ? (
     <PartyRoundModal sessionId={partyState.sessionId} currentStep="prompt" />
@@ -306,96 +325,96 @@ export const PromptRound: React.FC = () => {
       {partyOverlay}
       <div className="min-h-screen bg-gradient-to-br from-quip-navy to-quip-teal flex items-center justify-center p-4 bg-pattern">
         <div className="max-w-2xl w-full tile-card p-8 slide-up-enter">
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <TrackingIcon className="w-8 h-8" />
-            <h1 className="text-3xl font-display font-bold text-quip-navy">Quip Round</h1>
+          <div className="text-center mb-8">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <TrackingIcon className="w-8 h-8" />
+              <h1 className="text-3xl font-display font-bold text-quip-navy">Quip Round</h1>
+            </div>
+            <p className="text-quip-teal">Write an original quip for the prompt</p>
           </div>
-          <p className="text-quip-teal">Write an original quip for the prompt</p>
-        </div>
 
-        {/* Timer */}
-        <div className="flex justify-center mb-6">
-          <Timer expiresAt={roundData.expires_at} />
-        </div>
-
-        {/* Instructions */}
-        <div className="bg-quip-orange bg-opacity-10 border-2 border-quip-orange rounded-tile p-4 mb-6">
-          <p className="text-sm text-quip-navy">
-            <strong>💡 Tip:</strong> Type a short phrase that completes the sentence.
-          </p>
-        </div>
-
-        {/* Prompt */}
-        <div className="bg-quip-navy bg-opacity-5 border-2 border-quip-navy rounded-tile p-6 py-8 mb-6 relative min-h-[120px] flex items-center">
-          <p className="text-xl md:text-2xl text-center font-display font-semibold text-quip-navy flex-1 pr-12">
-            {roundData.prompt_text}
-          </p>
-
-          {/* Feedback Icons */}
-          <div className="absolute top-1 md:top-2 right-1 md:right-3 flex gap-1 md:gap-1.5">
-            <ThumbFeedbackButton
-              type="like"
-              isActive={feedbackType === 'like'}
-              onClick={() => handleFeedback('like')}
-              disabled={isSubmittingFeedback || roundData.status === 'submitted'}
-            />
-            <ThumbFeedbackButton
-              type="dislike"
-              isActive={feedbackType === 'dislike'}
-              onClick={() => handleFeedback('dislike')}
-              disabled={isSubmittingFeedback || roundData.status === 'submitted'}
-            />
+          {/* Timer */}
+          <div className="flex justify-center mb-6">
+            <Timer expiresAt={roundData.expires_at} />
           </div>
-        </div>
 
-        {/* Error Message */}
-        {error && (
-          <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
-            {error}
-          </div>
-        )}
-
-        {/* Input Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <input
-              type="text"
-              value={phrase}
-              onChange={(e) => setPhrase(e.target.value)}
-              placeholder="Enter your phrase"
-              className="tutorial-prompt-input w-full px-4 py-3 text-lg border-2 border-quip-teal rounded-tile focus:outline-none focus:ring-2 focus:ring-quip-turquoise"
-              disabled={isExpired || isSubmitting}
-              maxLength={100}
-            />
-            <p className="text-sm text-quip-teal mt-1">
-              2-5 words (4-100 characters), A-Z and spaces only, must not repeat prompt, no proper nouns
+          {/* Instructions */}
+          <div className="bg-quip-orange bg-opacity-10 border-2 border-quip-orange rounded-tile p-4 mb-6">
+            <p className="text-sm text-quip-navy">
+              <strong>💡 Tip:</strong> Type a short phrase that completes the sentence.
             </p>
           </div>
 
+          {/* Prompt */}
+          <div className="bg-quip-navy bg-opacity-5 border-2 border-quip-navy rounded-tile p-6 py-8 mb-6 relative min-h-[120px] flex items-center">
+            <p className="text-xl md:text-2xl text-center font-display font-semibold text-quip-navy flex-1 pr-12">
+              {roundData.prompt_text}
+            </p>
+
+            {/* Feedback Icons */}
+            <div className="absolute top-1 md:top-2 right-1 md:right-3 flex gap-1 md:gap-1.5">
+              <ThumbFeedbackButton
+                type="like"
+                isActive={feedbackType === 'like'}
+                onClick={() => handleFeedback('like')}
+                disabled={isSubmittingFeedback || roundData.status === 'submitted'}
+              />
+              <ThumbFeedbackButton
+                type="dislike"
+                isActive={feedbackType === 'dislike'}
+                onClick={() => handleFeedback('dislike')}
+                disabled={isSubmittingFeedback || roundData.status === 'submitted'}
+              />
+            </div>
+          </div>
+
+          {/* Error Message */}
+          {error && (
+            <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+              {error}
+            </div>
+          )}
+
+          {/* Input Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <input
+                type="text"
+                value={phrase}
+                onChange={(e) => setPhrase(e.target.value)}
+                placeholder="Enter your phrase"
+                className="tutorial-prompt-input w-full px-4 py-3 text-lg border-2 border-quip-teal rounded-tile focus:outline-none focus:ring-2 focus:ring-quip-turquoise"
+                disabled={isExpired || isSubmitting}
+                maxLength={100}
+              />
+              <p className="text-sm text-quip-teal mt-1">
+                2-5 words (4-100 characters), A-Z and spaces only, must not repeat prompt, no proper nouns
+              </p>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isExpired || isSubmitting || !isPhraseValid}
+              className="w-full bg-quip-navy hover:bg-quip-teal disabled:bg-gray-400 text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm text-lg"
+            >
+              {isExpired ? "Time's Up" : isSubmitting ? loadingMessages.submitting : 'Submit Phrase'}
+            </button>
+          </form>
+
+          {/* Home Button */}
           <button
-            type="submit"
-            disabled={isExpired || isSubmitting || !isPhraseValid}
-            className="w-full bg-quip-navy hover:bg-quip-teal disabled:bg-gray-400 text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm text-lg"
+            onClick={handleHomeNavigation}
+            disabled={isSubmitting}
+            className="w-full mt-4 flex items-center justify-center gap-2 text-quip-teal hover:text-quip-turquoise disabled:opacity-50 disabled:cursor-not-allowed py-2 font-medium transition-colors"
+            title={isSubmitting ? "Please wait for submission to complete" : partyState.isPartyMode ? "Leave Party Mode" : "Back to Dashboard"}
           >
-            {isExpired ? "Time's Up" : isSubmitting ? loadingMessages.submitting : 'Submit Phrase'}
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            </svg>
+            <span>{partyState.isPartyMode ? 'Exit Party Mode' : 'Back to Dashboard'}</span>
           </button>
-        </form>
 
-        {/* Home Button */}
-        <button
-          onClick={handleHomeNavigation}
-          disabled={isSubmitting}
-          className="w-full mt-4 flex items-center justify-center gap-2 text-quip-teal hover:text-quip-turquoise disabled:opacity-50 disabled:cursor-not-allowed py-2 font-medium transition-colors"
-          title={isSubmitting ? "Please wait for submission to complete" : partyState.isPartyMode ? "Leave Party Mode" : "Back to Dashboard"}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-          </svg>
-          <span>{partyState.isPartyMode ? 'Exit Party Mode' : 'Back to Dashboard'}</span>
-        </button>
-
-        {/* Info */}
+          {/* Info */}
           <div className="mt-6 p-4 bg-quip-navy bg-opacity-5 rounded-tile">
             <p className="text-sm text-quip-teal">
               <strong className="text-quip-navy">Cost:</strong> <CurrencyDisplay amount={roundData.cost} iconClassName="w-3 h-3" textClassName="text-sm" /> (<CurrencyDisplay amount={roundData.cost - abandonedPenalty} iconClassName="w-3 h-3" textClassName="text-sm" /> refunded if you don't submit in time)
