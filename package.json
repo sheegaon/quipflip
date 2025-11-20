@@ -1,4 +1,7 @@
 {
+  "scripts": {
+    "build": "npm --prefix qf_frontend run build && npm --prefix ir_frontend run build"
+  },
   "devDependencies": {
     "@playwright/test": "^1.56.1",
     "@types/node": "^24.9.1",
