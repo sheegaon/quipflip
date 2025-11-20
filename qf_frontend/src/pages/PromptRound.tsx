@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import apiClient, { extractErrorMessage } from '../api/client';
@@ -12,6 +12,8 @@ import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
 import type { PromptState } from '../api/types';
 import { promptRoundLogger } from '../utils/logger';
 import { TrackingIcon } from '../components/icons/NavigationIcons';
+import { usePartyMode } from '../contexts/PartyModeContext';
+import PartyRoundModal from '../components/party/PartyRoundModal';
 
 const isCanceledRequest = (error: unknown): boolean => {
   if (!error || typeof error !== 'object') {
@@ -25,7 +27,8 @@ const isCanceledRequest = (error: unknown): boolean => {
 export const PromptRound: React.FC = () => {
   const { state, actions } = useGame();
   const { activeRound, roundAvailability } = state;
-  const { refreshDashboard } = actions;
+  const { refreshDashboard, startCopyRound } = actions;
+  const { state: partyState, actions: partyActions } = usePartyMode();
   const navigate = useNavigate();
   const [phrase, setPhrase] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -34,6 +37,9 @@ export const PromptRound: React.FC = () => {
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
+  const [nextRoundError, setNextRoundError] = useState<string | null>(null);
+  const [isStartingNextRound, setIsStartingNextRound] = useState(false);
+  const nextRoundAttemptedRef = useRef(false);
 
   const { isPhraseValid, trimmedPhrase } = usePhraseValidation(phrase);
 
@@ -42,6 +48,38 @@ export const PromptRound: React.FC = () => {
   // Get dynamic penalty from config or use default
   const abandonedPenalty = roundAvailability?.abandoned_penalty || 5;
   const { isExpired } = useTimer(roundData?.expires_at || null);
+
+  const beginPartyCopyRound = useCallback(async () => {
+    if (!partyState.isPartyMode || nextRoundAttemptedRef.current) {
+      return;
+    }
+
+    setNextRoundError(null);
+    setIsStartingNextRound(true);
+    nextRoundAttemptedRef.current = true;
+
+    try {
+      await startCopyRound();
+      partyActions.setCurrentStep('copy');
+      navigate('/copy', { replace: true });
+    } catch (err) {
+      const message = extractErrorMessage(err) || 'Unable to start the impostor round.';
+      setNextRoundError(message);
+      nextRoundAttemptedRef.current = false;
+    } finally {
+      setIsStartingNextRound(false);
+    }
+  }, [navigate, partyActions, partyState.isPartyMode, startCopyRound]);
+
+  const partyOverlay = partyState.isPartyMode && partyState.sessionId ? (
+    <PartyRoundModal sessionId={partyState.sessionId} currentStep="prompt" />
+  ) : null;
+
+  useEffect(() => {
+    if (partyState.isPartyMode) {
+      partyActions.setCurrentStep('prompt');
+    }
+  }, [partyActions, partyState.isPartyMode]);
 
   useEffect(() => {
     if (!roundData) {
@@ -83,9 +121,19 @@ export const PromptRound: React.FC = () => {
   // Redirect if already submitted
   useEffect(() => {
     if (roundData?.status === 'submitted') {
-      navigate('/dashboard');
+      if (partyState.isPartyMode) {
+        navigate('/copy');
+      } else {
+        navigate('/dashboard');
+      }
     }
-  }, [roundData?.status, navigate]);
+  }, [partyState.isPartyMode, roundData?.status, navigate]);
+
+  useEffect(() => {
+    if (successMessage && partyState.isPartyMode) {
+      void beginPartyCopyRound();
+    }
+  }, [beginPartyCopyRound, partyState.isPartyMode, successMessage]);
 
   // Redirect if no active prompt round - but NOT during the submission process
   useEffect(() => {
@@ -97,12 +145,15 @@ export const PromptRound: React.FC = () => {
 
       // Add a small delay to prevent race conditions during navigation
       const timeoutId = setTimeout(() => {
-        navigate('/dashboard');
+        const fallbackPath = partyState.isPartyMode && partyState.sessionId
+          ? `/party/game/${partyState.sessionId}`
+          : '/dashboard';
+        navigate(fallbackPath);
       }, 100);
 
       return () => clearTimeout(timeoutId);
     }
-  }, [activeRound, navigate, successMessage]);
+  }, [activeRound, navigate, partyState.isPartyMode, partyState.sessionId, successMessage]);
 
   const handleFeedback = async (type: 'like' | 'dislike') => {
     if (!roundData || isSubmittingFeedback) return;
@@ -127,6 +178,15 @@ export const PromptRound: React.FC = () => {
       promptRoundLogger.error('Failed to submit feedback', err);
     } finally {
       setIsSubmittingFeedback(false);
+    }
+  };
+
+  const handleHomeNavigation = () => {
+    if (partyState.isPartyMode) {
+      partyActions.endPartyMode();
+      navigate('/party');
+    } else {
+      navigate('/dashboard');
     }
   };
 
@@ -174,8 +234,10 @@ export const PromptRound: React.FC = () => {
 
       // Navigate after delay - dashboard should now show no active round
       setTimeout(() => {
-        promptRoundLogger.debug('Navigating back to dashboard after prompt submission');
-        navigate('/dashboard');
+        if (!partyState.isPartyMode) {
+          promptRoundLogger.debug('Navigating back to dashboard after prompt submission');
+          navigate('/dashboard');
+        }
       }, 2000);
     } catch (err) {
       const message = extractErrorMessage(err) || 'Unable to submit your phrase. Please check your connection and try again.';
@@ -189,32 +251,60 @@ export const PromptRound: React.FC = () => {
   // Show success state
   if (successMessage) {
     return (
-      <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center p-4">
-        <div className="tile-card max-w-md w-full p-8 text-center flip-enter">
-          <div className="flex justify-center mb-4">
-            <TrackingIcon className="w-24 h-24" />
+      <>
+        {partyOverlay}
+        <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center p-4">
+          <div className="tile-card max-w-md w-full p-8 text-center flip-enter space-y-2">
+            <div className="flex justify-center mb-4">
+              <TrackingIcon className="w-24 h-24" />
+            </div>
+            <h2 className="text-2xl font-display font-bold text-quip-turquoise mb-2 success-message">
+              {successMessage}
+            </h2>
+            <p className="text-lg text-quip-teal mb-4">{feedbackMessage}</p>
+            <p className="text-sm text-quip-teal">
+              {partyState.isPartyMode ? 'Starting the impostor round...' : 'Returning to dashboard...'}
+            </p>
+            {isStartingNextRound && partyState.isPartyMode && (
+              <p className="text-xs text-quip-teal">Loading the next round now...</p>
+            )}
+            {nextRoundError && (
+              <div className="mt-2 text-sm text-red-600">
+                {nextRoundError}
+                <button
+                  type="button"
+                  onClick={() => {
+                    nextRoundAttemptedRef.current = false;
+                    void beginPartyCopyRound();
+                  }}
+                  className="ml-2 underline text-quip-orange hover:text-quip-orange-deep"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
           </div>
-          <h2 className="text-2xl font-display font-bold text-quip-turquoise mb-2 success-message">
-            {successMessage}
-          </h2>
-          <p className="text-lg text-quip-teal mb-4">{feedbackMessage}</p>
-          <p className="text-sm text-quip-teal">Returning to dashboard...</p>
         </div>
-      </div>
+      </>
     );
   }
 
   if (!roundData) {
     return (
-      <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center">
-        <LoadingSpinner isLoading={true} message={loadingMessages.starting} />
-      </div>
+      <>
+        {partyOverlay}
+        <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center">
+          <LoadingSpinner isLoading={true} message={loadingMessages.starting} />
+        </div>
+      </>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-quip-navy to-quip-teal flex items-center justify-center p-4 bg-pattern">
-      <div className="max-w-2xl w-full tile-card p-8 slide-up-enter">
+    <>
+      {partyOverlay}
+      <div className="min-h-screen bg-gradient-to-br from-quip-navy to-quip-teal flex items-center justify-center p-4 bg-pattern">
+        <div className="max-w-2xl w-full tile-card p-8 slide-up-enter">
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-2 mb-2">
             <TrackingIcon className="w-8 h-8" />
@@ -293,25 +383,26 @@ export const PromptRound: React.FC = () => {
 
         {/* Home Button */}
         <button
-          onClick={() => navigate('/dashboard')}
+          onClick={handleHomeNavigation}
           disabled={isSubmitting}
           className="w-full mt-4 flex items-center justify-center gap-2 text-quip-teal hover:text-quip-turquoise disabled:opacity-50 disabled:cursor-not-allowed py-2 font-medium transition-colors"
-          title={isSubmitting ? "Please wait for submission to complete" : "Back to Dashboard"}
+          title={isSubmitting ? "Please wait for submission to complete" : partyState.isPartyMode ? "Leave Party Mode" : "Back to Dashboard"}
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
           </svg>
-          <span>Back to Dashboard</span>
+          <span>{partyState.isPartyMode ? 'Exit Party Mode' : 'Back to Dashboard'}</span>
         </button>
 
         {/* Info */}
-        <div className="mt-6 p-4 bg-quip-navy bg-opacity-5 rounded-tile">
-          <p className="text-sm text-quip-teal">
-            <strong className="text-quip-navy">Cost:</strong> <CurrencyDisplay amount={roundData.cost} iconClassName="w-3 h-3" textClassName="text-sm" /> (<CurrencyDisplay amount={roundData.cost - abandonedPenalty} iconClassName="w-3 h-3" textClassName="text-sm" /> refunded if you don't submit in time)
-          </p>
+          <div className="mt-6 p-4 bg-quip-navy bg-opacity-5 rounded-tile">
+            <p className="text-sm text-quip-teal">
+              <strong className="text-quip-navy">Cost:</strong> <CurrencyDisplay amount={roundData.cost} iconClassName="w-3 h-3" textClassName="text-sm" /> (<CurrencyDisplay amount={roundData.cost - abandonedPenalty} iconClassName="w-3 h-3" textClassName="text-sm" /> refunded if you don't submit in time)
+            </p>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 
