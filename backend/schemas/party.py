@@ -156,7 +156,13 @@ class StartPartyRoundResponse(BaseSchema):
     round_type: str
     expires_at: datetime
     cost: int
+    prompt_text: Optional[str] = None
+    original_phrase: Optional[str] = None
+    phraseset_id: Optional[str] = None
+    phrases: Optional[List[str]] = None
+    status: Optional[str] = None
     session_progress: Dict
+    party_context: Optional[Dict] = None
 
 
 class SubmitPartyRoundResponse(BaseSchema):

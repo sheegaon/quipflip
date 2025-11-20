@@ -142,8 +142,24 @@ export const PartyModeProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const updateFromPartyContext = useCallback((context: PartyContext) => {
     setState((prev) => {
+      const nextSessionConfig: SessionConfig = prev.sessionConfig
+        ? {
+            ...prev.sessionConfig,
+            prompts_per_player: context.your_progress.prompts_required,
+            copies_per_player: context.your_progress.copies_required,
+            votes_per_player: context.your_progress.votes_required,
+          }
+        : {
+            prompts_per_player: context.your_progress.prompts_required,
+            copies_per_player: context.your_progress.copies_required,
+            votes_per_player: context.your_progress.votes_required,
+            min_players: 0,
+            max_players: 0,
+          };
+
       const nextState: PartyModeState = {
         ...prev,
+        sessionConfig: nextSessionConfig,
         yourProgress: {
           prompts_submitted: context.your_progress.prompts_submitted,
           copies_submitted: context.your_progress.copies_submitted,
