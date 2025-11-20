@@ -769,8 +769,39 @@ export const apiClient = {
     request: CreatePartySessionRequest = {},
     signal?: AbortSignal,
   ): Promise<CreatePartySessionResponse> {
-    const { data } = await api.post<CreatePartySessionResponse>('/party/create', request, { signal });
-    return data;
+    try {
+      const { data } = await api.post<CreatePartySessionResponse>('/party/create', request, { 
+        signal,
+        timeout: 10000 // 10 second timeout for party creation
+      });
+      return data;
+    } catch (error: any) {
+      // Add more detailed error logging for party creation
+      if (error?.response?.status === 500) {
+        console.error('Party creation failed with server error:', {
+          status: error.response.status,
+          statusText: error.response.statusText,
+          data: error.response.data,
+          message: error.message
+        });
+        
+        // For 500 errors, provide a user-friendly message
+        throw {
+          ...error,
+          message: 'Server error creating party. Please try again in a moment.',
+          isServerError: true
+        };
+      }
+      
+      console.error('Party creation failed:', {
+        status: error?.response?.status,
+        statusText: error?.response?.statusText,
+        data: error?.response?.data,
+        message: error?.message
+      });
+      
+      throw error;
+    }
   },
 
   async listActiveParties(

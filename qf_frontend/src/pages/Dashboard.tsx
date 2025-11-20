@@ -50,6 +50,8 @@ export const Dashboard: React.FC = () => {
   const [showTutorialWelcome, setShowTutorialWelcome] = useState(false);
   const roundExpiryTimeoutRef = useRef<number | null>(null);
   const roundExpiryIntervalRef = useRef<number | null>(null);
+  const [partyCreationError, setPartyCreationError] = useState<string | null>(null);
+  const [creatingParty, setCreatingParty] = useState(false);
 
   const isPromptDisabled = useMemo(
     () => mode === 'live' && (!roundAvailability?.can_prompt || startingRound === 'prompt'),
@@ -532,6 +534,46 @@ export const Dashboard: React.FC = () => {
     }
   };
 
+  const handleCreateParty = async () => {
+    if (creatingParty) {
+      dashboardLogger.debug('Ignoring party create button click - already creating party');
+      return;
+    }
+
+    setCreatingParty(true);
+    setPartyCreationError(null);
+    
+    try {
+      dashboardLogger.info('Creating new party session...');
+      const result = await apiClient.createPartySession();
+      
+      dashboardLogger.info('✅ Party created successfully:', {
+        sessionId: result.session_id,
+        partyCode: result.party_code
+      });
+      
+      // Navigate to the party session
+      navigate(`/party/${result.session_id}`);
+    } catch (error) {
+      dashboardLogger.error('❌ Failed to create party:', error);
+      
+      // Handle specific error types
+      if (error?.isServerError || error?.status === 500) {
+        setPartyCreationError('Server error - please try again in a moment');
+      } else if (error?.status === 401) {
+        setPartyCreationError('Please log in to create a party');
+      } else if (error?.status === 429) {
+        setPartyCreationError('Too many requests - please wait before trying again');
+      } else if (error?.isNetworkError) {
+        setPartyCreationError('Network error - please check your connection');
+      } else {
+        setPartyCreationError(error?.message || 'Failed to create party - please try again');
+      }
+    } finally {
+      setCreatingParty(false);
+    }
+  };
+
   if (!player) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
@@ -602,12 +644,17 @@ export const Dashboard: React.FC = () => {
               <p className="text-quip-teal">Play with 6-9 players in a coordinated multiplayer match!</p>
             </div>
             <button
-              onClick={() => navigate('/party')}
+              onClick={handleCreateParty}
               className="w-full md:w-auto bg-quip-orange hover:bg-quip-orange-deep text-white font-bold py-3 px-8 rounded-tile transition-all hover:shadow-tile-sm"
             >
               Enter Party Mode
             </button>
           </div>
+          {partyCreationError && (
+            <div className="mt-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-tile">
+              <span>{partyCreationError}</span>
+            </div>
+          )}
         </div>
 
         {/* Round Selection */}
