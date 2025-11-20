@@ -9,6 +9,8 @@ import type {
   SubmitVoteRequest,
   ValidateBackronymRequest,
   ValidateBackronymResponse,
+  AuthResponse,
+  DashboardPlayerSummary,
 } from '../api/types';
 import { authAPI, playerAPI, gameAPI } from '../api/client';
 import { setActiveSetId, setPlayerId, clearGameStorage } from '../utils/gameKeys';
@@ -23,6 +25,30 @@ import {
 import { createLogger } from '../utils/logger';
 
 const gameContextLogger = createLogger('IRGameContext');
+
+const mapAuthResponseToPlayer = (auth: AuthResponse): IRPlayer => ({
+  player_id: auth.player_id,
+  username: auth.username,
+  email: auth.email ?? null,
+  wallet: auth.wallet ?? 0,
+  vault: auth.vault ?? 0,
+  is_guest: Boolean(auth.password),
+  daily_bonus_available: false,
+  created_at: new Date().toISOString(),
+  last_login_date: null,
+});
+
+const mapDashboardPlayer = (summary: DashboardPlayerSummary): IRPlayer => ({
+  player_id: summary.player_id,
+  username: summary.username,
+  email: null,
+  wallet: summary.wallet,
+  vault: summary.vault,
+  is_guest: false,
+  daily_bonus_available: summary.daily_bonus_available,
+  created_at: summary.created_at,
+  last_login_date: null,
+});
 
 interface IRGameState {
   isAuthenticated: boolean;
@@ -169,19 +195,20 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
       setLoading(true);
       setError(null);
       const response = await authAPI.createGuest();
+      const playerFromAuth = mapAuthResponseToPlayer(response);
       setState((prev) => ({
         ...prev,
         isAuthenticated: true,
-        player: response.player,
+        player: playerFromAuth,
         loading: false,
         sessionState: SessionState.RETURNING_USER,
       }));
-      setPlayerId(response.player.player_id);
-      setStoredUsername(response.player.username);
+      setPlayerId(playerFromAuth.player_id);
+      setStoredUsername(playerFromAuth.username);
 
       // Associate visitor with new account
       if (state.visitorId) {
-        associateVisitorWithPlayer(state.visitorId, response.player.username);
+        associateVisitorWithPlayer(state.visitorId, playerFromAuth.username);
       }
     } catch (err: unknown) {
       const errorMessage = getActionErrorMessage('login-guest', err);
@@ -196,15 +223,16 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
       setLoading(true);
       setError(null);
       const response = await authAPI.login({ username, password });
+      const playerFromAuth = mapAuthResponseToPlayer(response);
       setState((prev) => ({
         ...prev,
         isAuthenticated: true,
-        player: response.player,
+        player: playerFromAuth,
         loading: false,
         sessionState: SessionState.RETURNING_USER,
       }));
-      setPlayerId(response.player.player_id);
-      setStoredUsername(response.player.username);
+      setPlayerId(playerFromAuth.player_id);
+      setStoredUsername(playerFromAuth.username);
     } catch (err: unknown) {
       const errorMessage = getActionErrorMessage('login', err);
       setError(errorMessage);
@@ -218,19 +246,20 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
       setLoading(true);
       setError(null);
       const response = await authAPI.register({ username, email, password });
+      const playerFromAuth = mapAuthResponseToPlayer(response);
       setState((prev) => ({
         ...prev,
         isAuthenticated: true,
-        player: response.player,
+        player: playerFromAuth,
         loading: false,
         sessionState: SessionState.RETURNING_USER,
       }));
-      setPlayerId(response.player.player_id);
-      setStoredUsername(response.player.username);
+      setPlayerId(playerFromAuth.player_id);
+      setStoredUsername(playerFromAuth.username);
 
       // Associate visitor with new account
       if (state.visitorId) {
-        associateVisitorWithPlayer(state.visitorId, response.player.username);
+        associateVisitorWithPlayer(state.visitorId, playerFromAuth.username);
       }
     } catch (err: unknown) {
       const errorMessage = getActionErrorMessage('register', err);
@@ -268,11 +297,16 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
       setLoading(true);
       setError(null);
       const response = await authAPI.upgradeGuest({ username, email, password });
+      const playerFromAuth = mapAuthResponseToPlayer(response);
       setState((prev) => ({
         ...prev,
-        player: response.player,
+        isAuthenticated: true,
+        player: playerFromAuth,
         loading: false,
+        sessionState: SessionState.RETURNING_USER,
       }));
+      setPlayerId(playerFromAuth.player_id);
+      setStoredUsername(playerFromAuth.username);
     } catch (err: unknown) {
       const errorMessage = getActionErrorMessage('upgrade-account', err);
       setError(errorMessage);
@@ -409,7 +443,7 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
 
       setState((prev) => ({
         ...prev,
-        player: dashboard.player,
+        player: mapDashboardPlayer(dashboard.player),
         pendingResults: dashboard.pending_results,
         activeSet,
         hasSubmittedEntry: dashboard.active_session?.has_submitted_entry || false,

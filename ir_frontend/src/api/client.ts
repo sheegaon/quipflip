@@ -74,81 +74,42 @@ irClient.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    // If we get a 401 and haven't already tried to refresh
-    // AND the request is not already an auth endpoint (prevent infinite loops)
-    if (
-      error.response?.status === 401 &&
-      originalRequest &&
-      !originalRequest._retry &&
-      originalRequest.url !== '/auth/login' &&
-      originalRequest.url !== '/auth/refresh' &&
-      originalRequest.url !== '/auth/logout'
-    ) {
-      // Only attempt refresh if we have evidence of a previous login
-      const hasStoredUsername = getStoredUsername();
+  // IR backend does not expose a refresh endpoint; clear any cached session and surface the error
+  if (error.response?.status === 401) {
+    clearStoredUsername();
+  }
 
-      if (hasStoredUsername) {
-        if (isRefreshing) {
-          // Queue the request while refresh is in progress
-          return new Promise((resolve, reject) => {
-            failedQueue.push({ resolve, reject });
-          })
-            .then(() => irClient(originalRequest))
-            .catch((err) => Promise.reject(err));
-        }
-
-        originalRequest._retry = true;
-        isRefreshing = true;
-
-        try {
-          // Try to refresh the token
-          await irClient.post('/auth/refresh');
-          processQueue(null);
-
-          // Retry the original request
-          return irClient(originalRequest);
-        } catch (refreshError) {
-          // Refresh failed, clear stale credentials
-          processQueue(refreshError);
-          clearStoredUsername();
-          return Promise.reject(refreshError);
-        } finally {
-          isRefreshing = false;
-        }
-      }
-    }
-
-    return Promise.reject(error);
+  return Promise.reject(error);
   }
 );
 
 // Authentication API
 export const authAPI = {
   register: async (data: RegisterRequest): Promise<AuthResponse> => {
-    const response = await irClient.post<AuthResponse>('/auth/register', data);
+    const response = await irClient.post<AuthResponse>('/players', data);
     return response.data;
   },
 
   login: async (data: LoginRequest): Promise<AuthResponse> => {
-    const response = await irClient.post<AuthResponse>('/auth/login', data);
+    const response = await irClient.post<AuthResponse>('/players/login', data);
     return response.data;
   },
 
   createGuest: async (): Promise<AuthResponse> => {
-    const response = await irClient.post<AuthResponse>('/auth/guest');
+    const response = await irClient.post<AuthResponse>('/players/guest');
     return response.data;
   },
 
   logout: async (): Promise<void> => {
-    await irClient.post('/auth/logout');
+    await irClient.post('/players/logout');
   },
 
   refresh: async (): Promise<void> => {
-    await irClient.post('/auth/refresh');
+    await irClient.post('/players/refresh');
   },
 
   upgradeGuest: async (data: UpgradeGuestRequest): Promise<AuthResponse> => {
-    const response = await irClient.post<AuthResponse>('/auth/upgrade', data);
+    const response = await irClient.post<AuthResponse>('/players/upgrade', data);
     return response.data;
   },
 };
@@ -156,22 +117,22 @@ export const authAPI = {
 // Player API
 export const playerAPI = {
   getBalance: async (): Promise<BalanceResponse> => {
-    const response = await irClient.get<BalanceResponse>('/player/balance');
+    const response = await irClient.get<BalanceResponse>('/players/balance');
     return response.data;
   },
 
   getDashboard: async (): Promise<DashboardData> => {
-    const response = await irClient.get<DashboardData>('/player/dashboard');
+    const response = await irClient.get<DashboardData>('/players/dashboard');
     return response.data;
   },
 
   claimDailyBonus: async (): Promise<ClaimBonusResponse> => {
-    const response = await irClient.post<ClaimBonusResponse>('/player/claim-daily-bonus');
+    const response = await irClient.post<ClaimBonusResponse>('/players/claim-daily-bonus');
     return response.data;
   },
 
   getStatistics: async (): Promise<PlayerStats> => {
-    const response = await irClient.get<PlayerStats>('/player/statistics');
+    const response = await irClient.get<PlayerStats>('/stats/player/statistics');
     return response.data;
   },
 };
@@ -179,30 +140,30 @@ export const playerAPI = {
 // Game API
 export const gameAPI = {
   startSession: async (): Promise<StartSessionResponse> => {
-    const response = await irClient.post<StartSessionResponse>('/start');
+    const response = await irClient.post<StartSessionResponse>('/game/start');
     return response.data;
   },
 
   submitBackronym: async (setId: string, data: SubmitBackronymRequest): Promise<void> => {
-    await irClient.post(`/sets/${setId}/submit`, data);
+    await irClient.post(`/game/sets/${setId}/submit`, data);
   },
 
   validateBackronym: async (setId: string, data: ValidateBackronymRequest): Promise<ValidateBackronymResponse> => {
-    const response = await irClient.post<ValidateBackronymResponse>(`/sets/${setId}/validate`, data);
+    const response = await irClient.post<ValidateBackronymResponse>(`/game/sets/${setId}/validate`, data);
     return response.data;
   },
 
   getSetStatus: async (setId: string): Promise<SetStatusResponse> => {
-    const response = await irClient.get<SetStatusResponse>(`/sets/${setId}/status`);
+    const response = await irClient.get<SetStatusResponse>(`/game/sets/${setId}/status`);
     return response.data;
   },
 
   submitVote: async (setId: string, data: SubmitVoteRequest): Promise<void> => {
-    await irClient.post(`/sets/${setId}/vote`, data);
+    await irClient.post(`/game/sets/${setId}/vote`, data);
   },
 
   getResults: async (setId: string): Promise<ResultsResponse> => {
-    const response = await irClient.get<ResultsResponse>(`/sets/${setId}/results`);
+    const response = await irClient.get<ResultsResponse>(`/game/sets/${setId}/results`);
     return response.data;
   },
 };
@@ -234,12 +195,12 @@ export const tutorialAPI = {
 // Leaderboard API
 export const leaderboardAPI = {
   getCreatorLeaderboard: async (): Promise<LeaderboardEntry[]> => {
-    const response = await irClient.get<LeaderboardEntry[]>('/leaderboards/creators');
+    const response = await irClient.get<LeaderboardEntry[]>('/leaderboard/leaderboards/creators');
     return response.data;
   },
 
   getVoterLeaderboard: async (): Promise<LeaderboardEntry[]> => {
-    const response = await irClient.get<LeaderboardEntry[]>('/leaderboards/voters');
+    const response = await irClient.get<LeaderboardEntry[]>('/leaderboard/leaderboards/voters');
     return response.data;
   },
 };

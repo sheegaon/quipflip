@@ -2,7 +2,7 @@
 import logging
 from datetime import datetime, timedelta, UTC
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.utils import ensure_utc
@@ -10,7 +10,13 @@ from backend.config import get_settings
 from backend.database import get_db
 from backend.dependencies import get_current_player, enforce_guest_creation_rate_limit
 from backend.models.ir.player import IRPlayer
-from backend.schemas.auth import RegisterRequest
+from backend.schemas.auth import (
+    RegisterRequest,
+    LoginRequest,
+    UsernameLoginRequest,
+    RefreshRequest,
+    LogoutRequest,
+)
 from backend.schemas.player import (
     PlayerBalance,
     ClaimDailyBonusResponse,
@@ -19,11 +25,13 @@ from backend.schemas.player import (
     UpgradeGuestRequest,
     UpgradeGuestResponse,
 )
+from backend.routers.ir.schemas import IRDashboardResponse, IRDashboardPlayerSummary
 from backend.services import AuthService, AuthError
 from backend.utils.model_registry import GameType
 from backend.services.ir import PlayerService
 from backend.utils.cookies import (
     clear_auth_cookies,
+    clear_refresh_cookie,
     set_access_token_cookie,
     set_refresh_cookie,
 )
@@ -176,6 +184,97 @@ async def upgrade_guest_account(
     )
 
 
+@router.post("/login", response_model=AuthTokenResponse)
+async def login_player(
+    request: UsernameLoginRequest | LoginRequest,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+):
+    """Authenticate an IR player via email/password and issue JWT tokens."""
+
+    auth_service = AuthService(db, GameType.IR)
+    try:
+        if isinstance(request, LoginRequest):
+            player = await auth_service.authenticate_player(request.email, request.password)
+        else:
+            player = await auth_service.authenticate_player_by_username(
+                request.username, request.password
+            )
+    except AuthError as exc:
+        raise HTTPException(status_code=401, detail=str(exc)) from exc
+
+    access_token, refresh_token, expires_in = await auth_service.issue_tokens(player)
+    set_access_token_cookie(response, access_token)
+    set_refresh_cookie(response, refresh_token, expires_days=settings.refresh_token_exp_days)
+
+    return AuthTokenResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        token_type="bearer",
+        expires_in=expires_in,
+        player_id=player.player_id,
+        username=player.username,
+    )
+
+
+@router.post("/refresh", response_model=AuthTokenResponse)
+async def refresh_tokens(
+    request: RefreshRequest,
+    response: Response,
+    refresh_cookie: str | None = Cookie(
+        default=None, alias=settings.refresh_token_cookie_name
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """Refresh IR authentication tokens and rotate cookies."""
+
+    refresh_token = request.refresh_token or refresh_cookie
+
+    if not refresh_token:
+        raise HTTPException(status_code=401, detail="missing_refresh_token")
+
+    auth_service = AuthService(db, GameType.IR)
+    try:
+        player = await auth_service.refresh_tokens(refresh_token)
+    except AuthError as exc:
+        raise HTTPException(status_code=401, detail=str(exc)) from exc
+
+    access_token, new_refresh_token, expires_in = await auth_service.issue_tokens(player)
+    set_access_token_cookie(response, access_token)
+    set_refresh_cookie(response, new_refresh_token, expires_days=settings.refresh_token_exp_days)
+
+    return AuthTokenResponse(
+        access_token=access_token,
+        refresh_token=new_refresh_token,
+        token_type="bearer",
+        expires_in=expires_in,
+        player_id=player.player_id,
+        username=player.username,
+    )
+
+
+@router.post("/logout", status_code=204)
+async def logout_player(
+    request: LogoutRequest,
+    response: Response,
+    refresh_cookie: str | None = Cookie(
+        default=None, alias=settings.refresh_token_cookie_name
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """Invalidate an IR refresh token and clear auth cookies."""
+
+    token = request.refresh_token or refresh_cookie
+    if token:
+        auth_service = AuthService(db, game_type=GameType.IR)
+        await auth_service.revoke_refresh_token(token)
+
+    clear_auth_cookies(response)
+    clear_refresh_cookie(response)
+    response.status_code = 204
+    return None
+
+
 @router.get("/me", response_model=PlayerBalance)
 async def get_current_player_info(
     player: IRPlayer = Depends(get_current_player),
@@ -220,6 +319,31 @@ async def get_player_balance(
     """Return IR player wallet/vault balances using shared schema pattern."""
     # Reuse the same logic as get_current_player_info for consistency
     return await get_current_player_info(player, db)
+
+
+@router.get("/dashboard", response_model=IRDashboardResponse)
+async def get_player_dashboard(
+    player: IRPlayer = Depends(get_current_player),
+):
+    """Return a lightweight dashboard summary for IR players."""
+
+    player_summary = IRDashboardPlayerSummary(
+        player_id=str(player.player_id),
+        username=player.username,
+        wallet=player.wallet,
+        vault=player.vault,
+        daily_bonus_available=False,
+        created_at=ensure_utc(player.created_at),
+    )
+
+    return IRDashboardResponse(
+        player=player_summary,
+        active_session=None,
+        pending_results=[],
+        wallet=player.wallet,
+        vault=player.vault,
+        daily_bonus_available=False,
+    )
 
 
 @router.post("/claim-daily-bonus", response_model=ClaimDailyBonusResponse)
