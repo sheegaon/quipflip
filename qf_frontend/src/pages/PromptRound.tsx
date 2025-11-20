@@ -9,7 +9,7 @@ import { ThumbFeedbackButton } from '../components/ThumbFeedbackButton';
 import { useTimer } from '../hooks/useTimer';
 import { usePhraseValidation } from '../hooks/usePhraseValidation';
 import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
-import type { PromptState } from '../api/types';
+import type { PromptState, SubmitPhraseResponse } from '../api/types';
 import { promptRoundLogger } from '../utils/logger';
 import { TrackingIcon } from '../components/icons/NavigationIcons';
 import { usePartyMode } from '../contexts/PartyModeContext';
@@ -187,7 +187,15 @@ export const PromptRound: React.FC = () => {
       promptRoundLogger.debug('Submitting prompt round phrase', {
         roundId: roundData.round_id,
       });
-      await apiClient.submitPhrase(roundData.round_id, trimmedPhrase);
+      const response: SubmitPhraseResponse = await apiClient.submitPhrase(roundData.round_id, trimmedPhrase);
+
+      // Update party context if present
+      if (response.party_context && partyState.isPartyMode) {
+        partyActions.updateFromPartyContext(response.party_context);
+        promptRoundLogger.debug('Updated party context after submission', {
+          yourProgress: response.party_context.your_progress,
+        });
+      }
 
       // Show success messages first to prevent navigation race condition
       const heading = getRandomMessage('promptSubmitted');

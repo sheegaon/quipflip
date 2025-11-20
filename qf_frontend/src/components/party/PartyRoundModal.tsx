@@ -1,8 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useGame } from '../../contexts/GameContext';
+import { usePartyMode } from '../../contexts/PartyModeContext';
 import { usePartyWebSocket } from '../../hooks/usePartyWebSocket';
 import apiClient from '../../api/client';
-import type { PartySessionStatusResponse } from '../../api/types';
 import { PartyIcon } from '../icons/NavigationIcons';
 import { PartyStep } from '../../contexts/PartyModeContext';
 
@@ -19,64 +19,72 @@ const phaseOrder: { id: PartyStep; label: string }[] = [
 
 export const PartyRoundModal: React.FC<PartyRoundModalProps> = ({ sessionId, currentStep }) => {
   const { state: gameState } = useGame();
-  const [sessionStatus, setSessionStatus] = useState<PartySessionStatusResponse | null>(null);
+  const { state: partyState, actions: partyActions } = usePartyMode();
   const [isOpen, setIsOpen] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isFetchingFallback, setIsFetchingFallback] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadStatus = useCallback(async () => {
-    if (!sessionId) return;
-
-    setIsLoading(true);
-    try {
-      const status = await apiClient.getPartySessionStatus(sessionId);
-      setSessionStatus(status);
-      setError(null);
-    } catch (err) {
-      console.error('Failed to load party session status', err);
-      setError('Unable to refresh party status right now.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [sessionId]);
-
+  // Fallback fetch if context is empty (shouldn't happen in normal flow)
   useEffect(() => {
-    void loadStatus();
-  }, [loadStatus]);
+    if (!partyState.yourProgress && sessionId) {
+      setIsFetchingFallback(true);
+      const fetchStatus = async () => {
+        try {
+          const status = await apiClient.getPartySessionStatus(sessionId);
+          // Update context with fetched data
+          const participant = status.participants.find((p) => p.player_id === gameState.player?.player_id);
+          if (participant) {
+            partyActions.updateYourProgress({
+              prompts_submitted: participant.prompts_submitted,
+              copies_submitted: participant.copies_submitted,
+              votes_submitted: participant.votes_submitted,
+            });
+          }
 
-  const handleSessionUpdate = useCallback(
-    (payload: unknown) => {
-      const maybeStatus = payload as Partial<PartySessionStatusResponse>;
-      const hasParticipants = Array.isArray(maybeStatus.participants);
-      const hasProgress =
-        typeof maybeStatus.progress === 'object' && maybeStatus.progress !== null;
-      const hasPhase = typeof maybeStatus.current_phase === 'string';
+          if (status.progress) {
+            partyActions.updateSessionProgress({
+              players_ready_for_next_phase: status.progress.players_ready_for_next_phase,
+              total_players: status.progress.total_players,
+            });
+          }
 
-      if (hasParticipants && hasProgress && hasPhase) {
-        setSessionStatus(maybeStatus as PartySessionStatusResponse);
-        setError(null);
-        return;
-      }
+          setError(null);
+        } catch (err) {
+          console.error('Failed to fetch session status:', err);
+          setError('Unable to load party status.');
+        } finally {
+          setIsFetchingFallback(false);
+        }
+      };
+      void fetchStatus();
+    }
+  }, [partyState.yourProgress, sessionId, gameState.player?.player_id, partyActions]);
 
-      void loadStatus();
-    },
-    [loadStatus]
-  );
-
+  // WebSocket updates will update context automatically via submission responses
+  // This hook just listens for phase transitions
   usePartyWebSocket({
     sessionId,
-    onProgressUpdate: () => void loadStatus(),
-    onPhaseTransition: () => void loadStatus(),
-    onSessionUpdate: handleSessionUpdate,
+    onProgressUpdate: () => {
+      // Context is already updated by submission response
+    },
+    onPhaseTransition: () => {
+      // Phase transition handled elsewhere
+    },
+    onSessionUpdate: () => {
+      // Session updates handled via context
+    },
   });
 
-  const currentPlayer = useMemo(() => {
-    if (!sessionStatus || !gameState.player?.player_id) return null;
-    return sessionStatus.participants.find((p) => p.player_id === gameState.player?.player_id) ?? null;
-  }, [sessionStatus, gameState.player?.player_id]);
+  // Derive values from context instead of local state
+  const prompts_submitted = partyState.yourProgress?.prompts_submitted ?? 0;
+  const prompts_required = partyState.sessionConfig?.prompts_per_player ?? 0;
+  const copies_submitted = partyState.yourProgress?.copies_submitted ?? 0;
+  const copies_required = partyState.sessionConfig?.copies_per_player ?? 0;
+  const votes_submitted = partyState.yourProgress?.votes_submitted ?? 0;
+  const votes_required = partyState.sessionConfig?.votes_per_player ?? 0;
 
-  const playersReady = sessionStatus?.progress.players_ready_for_next_phase ?? 0;
-  const totalPlayers = sessionStatus?.progress.total_players ?? 0;
+  const playersReady = partyState.sessionProgress?.players_ready_for_next_phase ?? 0;
+  const totalPlayers = partyState.sessionProgress?.total_players ?? 0;
 
   if (!isOpen) {
     return (
@@ -161,27 +169,27 @@ export const PartyRoundModal: React.FC<PartyRoundModalProps> = ({ sessionId, cur
             <p className="text-sm text-red-600 mb-2">{error}</p>
           )}
 
-          {isLoading && (
-            <p className="text-sm text-quip-teal mb-2">Refreshing party status...</p>
+          {isFetchingFallback && (
+            <p className="text-sm text-quip-teal mb-2">Loading party status...</p>
           )}
 
           <div className="space-y-2 text-sm">
             <div className="flex items-center justify-between">
               <span className="text-quip-navy">Quips:</span>
               <span className="font-bold text-quip-navy">
-                {currentPlayer?.prompts_submitted ?? 0} / {currentPlayer?.prompts_required ?? 0}
+                {prompts_submitted} / {prompts_required}
               </span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-quip-navy">Impostors:</span>
               <span className="font-bold text-quip-navy">
-                {currentPlayer?.copies_submitted ?? 0} / {currentPlayer?.copies_required ?? 0}
+                {copies_submitted} / {copies_required}
               </span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-quip-navy">Votes:</span>
               <span className="font-bold text-quip-navy">
-                {currentPlayer?.votes_submitted ?? 0} / {currentPlayer?.votes_required ?? 0}
+                {votes_submitted} / {votes_required}
               </span>
             </div>
           </div>

@@ -6,6 +6,7 @@ import { PartyIcon } from '../components/icons/NavigationIcons';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { loadingMessages } from '../utils/brandedMessages';
 import apiClient, { extractErrorMessage } from '../api/client';
+import type { StartPartyPromptResponse, StartPartyCopyResponse, StartPartyVoteResponse } from '../api/types';
 
 /**
  * Party Game controller - kicks off party mode using the standard round flows.
@@ -51,13 +52,19 @@ export const PartyGame: React.FC = () => {
 
         const step = phaseToStepMap[phase] ?? 'prompt';
 
-        // Initialize party mode
+        // Initialize party mode (will store session config from first round)
         startPartyMode(sessionId, step);
         setCurrentStep(step);
 
         // Start the appropriate round using PARTY-SPECIFIC endpoints
         if (step === 'prompt') {
-          const roundData = await apiClient.startPartyPromptRound(sessionId);
+          const roundData = await apiClient.startPartyPromptRound(sessionId) as StartPartyPromptResponse;
+
+          // Update party context from response
+          if (roundData.party_context) {
+            partyActions.updateFromPartyContext(roundData.party_context);
+          }
+
           gameActions.updateActiveRound({
             round_type: 'prompt',
             round_id: roundData.round_id,
@@ -72,7 +79,13 @@ export const PartyGame: React.FC = () => {
           });
           navigate('/prompt', { replace: true });
         } else if (step === 'copy') {
-          const roundData = await apiClient.startPartyCopyRound(sessionId);
+          const roundData = await apiClient.startPartyCopyRound(sessionId) as StartPartyCopyResponse;
+
+          // Update party context from response
+          if (roundData.party_context) {
+            partyActions.updateFromPartyContext(roundData.party_context);
+          }
+
           gameActions.updateActiveRound({
             round_type: 'copy',
             round_id: roundData.round_id,
@@ -89,7 +102,13 @@ export const PartyGame: React.FC = () => {
           });
           navigate('/copy', { replace: true });
         } else if (step === 'vote') {
-          const roundData = await apiClient.startPartyVoteRound(sessionId);
+          const roundData = await apiClient.startPartyVoteRound(sessionId) as StartPartyVoteResponse;
+
+          // Update party context from response
+          if (roundData.party_context) {
+            partyActions.updateFromPartyContext(roundData.party_context);
+          }
+
           gameActions.updateActiveRound({
             round_type: 'vote',
             round_id: roundData.round_id,

@@ -117,6 +117,14 @@ export const VoteRound: React.FC = () => {
       });
       const result = await apiClient.submitVote(roundData.phraseset_id, phrase);
 
+      // Update party context if present
+      if (result.party_context && partyState.isPartyMode) {
+        partyActions.updateFromPartyContext(result.party_context);
+        voteRoundLogger.debug('Updated party context after vote submission', {
+          yourProgress: result.party_context.your_progress,
+        });
+      }
+
       const heading = result.correct ? getRandomMessage('voteCorrectHeading') : getRandomMessage('voteIncorrectHeading');
       setHeadingMessage(heading);
       const feedback = result.correct ? getRandomMessage('voteCorrect') : getRandomMessage('voteIncorrect');
