@@ -51,6 +51,15 @@ else:
 
 logger.debug(f"Connect args: {connect_args}")
 
+# Configure pool sizing to avoid exhausting limited database connections (e.g., on Heroku)
+pool_size = max(1, settings.db_pool_size)
+max_overflow = max(0, settings.db_max_overflow)
+
+if settings.environment == "production":
+    # Keep production connection usage conservative to stay within hobby-tier limits
+    pool_size = min(pool_size, 2)
+    max_overflow = min(max_overflow, 2)
+
 # Create async engine
 try:
     engine = create_async_engine(
@@ -61,6 +70,8 @@ try:
         # Add connection pool settings for debugging
         pool_pre_ping=True,  # Verify connections before use
         pool_recycle=3600,   # Recycle connections every hour
+        pool_size=pool_size,
+        max_overflow=max_overflow,
     )
     logger.debug("Database engine created successfully")
 except Exception as e:
