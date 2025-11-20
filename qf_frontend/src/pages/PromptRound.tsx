@@ -14,6 +14,8 @@ import { promptRoundLogger } from '../utils/logger';
 import { TrackingIcon } from '../components/icons/NavigationIcons';
 import { usePartyMode } from '../contexts/PartyModeContext';
 import PartyRoundModal from '../components/party/PartyRoundModal';
+import { usePartyRoundCoordinator } from '../hooks/usePartyRoundCoordinator';
+import { usePartyNavigation } from '../hooks/usePartyNavigation';
 
 const isCanceledRequest = (error: unknown): boolean => {
   if (!error || typeof error !== 'object') {
@@ -38,9 +40,9 @@ export const PromptRound: React.FC = () => {
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
-  const [nextRoundError, setNextRoundError] = useState<string | null>(null);
-  const [isStartingNextRound, setIsStartingNextRound] = useState(false);
-  const nextRoundAttemptedRef = useRef(false);
+
+  const { transitionToNextRound, isTransitioning: isStartingNextRound, error: nextRoundError } = usePartyRoundCoordinator();
+  const { navigateHome, isInPartyMode } = usePartyNavigation();
 
   const { isPhraseValid, trimmedPhrase } = usePhraseValidation(phrase);
 
@@ -50,46 +52,7 @@ export const PromptRound: React.FC = () => {
   const abandonedPenalty = roundAvailability?.abandoned_penalty || 5;
   const { isExpired } = useTimer(roundData?.expires_at || null);
 
-  const beginPartyCopyRound = useCallback(async () => {
-    if (!partyState.isPartyMode || nextRoundAttemptedRef.current) {
-      return;
-    }
 
-    setNextRoundError(null);
-    setIsStartingNextRound(true);
-    nextRoundAttemptedRef.current = true;
-
-    try {
-      if (!partyState.sessionId) {
-        throw new Error('Missing party session ID');
-      }
-
-      const roundData = await apiClient.startPartyCopyRound(partyState.sessionId);
-      actions.updateActiveRound({
-        round_type: 'copy',
-        round_id: roundData.round_id,
-        expires_at: roundData.expires_at,
-        state: {
-          round_id: roundData.round_id,
-          original_phrase: roundData.original_phrase,
-          prompt_round_id: roundData.prompt_round_id,
-          expires_at: roundData.expires_at,
-          cost: roundData.cost,
-          status: 'active',
-          discount_active: false,
-        }
-      });
-
-      setCurrentStep('copy');
-      navigate('/copy', { replace: true });
-    } catch (err) {
-      const message = extractErrorMessage(err) || 'Unable to start the impostor round.';
-      setNextRoundError(message);
-      nextRoundAttemptedRef.current = false;
-    } finally {
-      setIsStartingNextRound(false);
-    }
-  }, [navigate, partyState.isPartyMode, partyState.sessionId, setCurrentStep, actions]);
 
   const partyOverlay = partyState.isPartyMode && partyState.sessionId ? (
     <PartyRoundModal sessionId={partyState.sessionId} currentStep="prompt" />
@@ -150,10 +113,12 @@ export const PromptRound: React.FC = () => {
   }, [partyState.isPartyMode, roundData?.status, navigate]);
 
   useEffect(() => {
-    if (successMessage && partyState.isPartyMode) {
-      void beginPartyCopyRound();
+    if (successMessage && isInPartyMode) {
+      transitionToNextRound('prompt').catch(err => {
+        console.error('Failed to transition to copy round:', err);
+      });
     }
-  }, [beginPartyCopyRound, partyState.isPartyMode, successMessage]);
+  }, [successMessage, isInPartyMode, transitionToNextRound]);
 
   // Redirect if no active prompt round - but NOT during the submission process
   useEffect(() => {
@@ -201,14 +166,7 @@ export const PromptRound: React.FC = () => {
     }
   };
 
-  const handleHomeNavigation = () => {
-    if (partyState.isPartyMode) {
-      endPartyMode();
-      navigate('/party');
-    } else {
-      navigate('/dashboard');
-    }
-  };
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -283,9 +241,9 @@ export const PromptRound: React.FC = () => {
             </h2>
             <p className="text-lg text-quip-teal mb-4">{feedbackMessage}</p>
             <p className="text-sm text-quip-teal">
-              {partyState.isPartyMode ? 'Starting the impostor round...' : 'Returning to dashboard...'}
+              {isInPartyMode ? 'Starting the impostor round...' : 'Returning to dashboard...'}
             </p>
-            {isStartingNextRound && partyState.isPartyMode && (
+            {isStartingNextRound && isInPartyMode && (
               <p className="text-xs text-quip-teal">Loading the next round now...</p>
             )}
             {nextRoundError && (
@@ -293,10 +251,7 @@ export const PromptRound: React.FC = () => {
                 {nextRoundError}
                 <button
                   type="button"
-                  onClick={() => {
-                    nextRoundAttemptedRef.current = false;
-                    void beginPartyCopyRound();
-                  }}
+                  onClick={() => transitionToNextRound('prompt')}
                   className="ml-2 underline text-quip-orange hover:text-quip-orange-deep"
                 >
                   Retry
@@ -403,15 +358,15 @@ export const PromptRound: React.FC = () => {
 
           {/* Home Button */}
           <button
-            onClick={handleHomeNavigation}
+            onClick={navigateHome}
             disabled={isSubmitting}
             className="w-full mt-4 flex items-center justify-center gap-2 text-quip-teal hover:text-quip-turquoise disabled:opacity-50 disabled:cursor-not-allowed py-2 font-medium transition-colors"
-            title={isSubmitting ? "Please wait for submission to complete" : partyState.isPartyMode ? "Leave Party Mode" : "Back to Dashboard"}
+            title={isSubmitting ? "Please wait for submission to complete" : isInPartyMode ? "Leave Party Mode" : "Back to Dashboard"}
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
             </svg>
-            <span>{partyState.isPartyMode ? 'Exit Party Mode' : 'Back to Dashboard'}</span>
+            <span>{isInPartyMode ? 'Exit Party Mode' : 'Back to Dashboard'}</span>
           </button>
 
           {/* Info */}
