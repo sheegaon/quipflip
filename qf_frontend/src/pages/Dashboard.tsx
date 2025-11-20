@@ -554,7 +554,7 @@ export const Dashboard: React.FC = () => {
       
       // Navigate to the party session
       navigate(`/party/${result.session_id}`);
-    } catch (error) {
+    } catch (error: any) {
       dashboardLogger.error('❌ Failed to create party:', error);
       
       // Handle specific error types
