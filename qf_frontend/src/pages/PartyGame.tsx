@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { usePartyMode } from '../contexts/PartyModeContext';
@@ -18,9 +18,11 @@ export const PartyGame: React.FC = () => {
   const { state: partyState, actions: partyActions } = usePartyMode();
   // Remove usage of normal round starters
   // const { startPromptRound, startCopyRound, startVoteRound } = gameActions;
-  const { startPartyMode, setCurrentStep } = partyActions;
+  const { startPartyMode, setCurrentStep, endPartyMode, updateFromPartyContext } = partyActions;
+  const { updateActiveRound } = gameActions;
   const [isStarting, setIsStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const initialSessionConfigRef = useRef(partyState.sessionConfig);
 
   useEffect(() => {
     if (!sessionId) {
@@ -37,7 +39,7 @@ export const PartyGame: React.FC = () => {
         const phase = status.current_phase.toLowerCase();
 
         if (phase === 'results' || status.status === 'COMPLETED') {
-          partyActions.endPartyMode();
+          endPartyMode();
           navigate(`/party/results/${sessionId}`);
           return;
         }
@@ -49,7 +51,7 @@ export const PartyGame: React.FC = () => {
         };
 
         const step = phaseToStepMap[phase] ?? 'prompt';
-        startPartyMode(sessionId, step, partyState.sessionConfig ?? undefined);
+        startPartyMode(sessionId, step, initialSessionConfigRef.current ?? undefined);
         setCurrentStep(step);
 
         if (step === 'prompt') {
@@ -57,10 +59,10 @@ export const PartyGame: React.FC = () => {
           const partyContext = roundData.party_context;
 
           if (partyContext) {
-            partyActions.updateFromPartyContext(partyContext);
+            updateFromPartyContext(partyContext);
           }
 
-          gameActions.updateActiveRound({
+          updateActiveRound({
             round_type: 'prompt',
             round_id: roundData.round_id,
             expires_at: roundData.expires_at,
@@ -78,10 +80,10 @@ export const PartyGame: React.FC = () => {
           const partyContext = roundData.party_context;
 
           if (partyContext) {
-            partyActions.updateFromPartyContext(partyContext);
+            updateFromPartyContext(partyContext);
           }
 
-          gameActions.updateActiveRound({
+          updateActiveRound({
             round_type: 'copy',
             round_id: roundData.round_id,
             expires_at: roundData.expires_at,
@@ -101,10 +103,10 @@ export const PartyGame: React.FC = () => {
           const partyContext = roundData.party_context;
 
           if (partyContext) {
-            partyActions.updateFromPartyContext(partyContext);
+            updateFromPartyContext(partyContext);
           }
 
-          gameActions.updateActiveRound({
+          updateActiveRound({
             round_type: 'vote',
             round_id: roundData.round_id,
             expires_at: roundData.expires_at,
@@ -133,9 +135,9 @@ export const PartyGame: React.FC = () => {
     sessionId,
     startPartyMode,
     setCurrentStep,
-    gameActions,
-    partyState.sessionConfig,
-    partyActions,
+    endPartyMode,
+    updateFromPartyContext,
+    updateActiveRound,
   ]);
 
   if (error) {
