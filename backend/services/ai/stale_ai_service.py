@@ -319,7 +319,7 @@ class StaleAIService:
                         )
                         continue
 
-                    seed = int(UUID(stale_voter.player_id))
+                    seed = stale_voter.player_id.int
                     chosen_phrase = await self.ai_service.generate_vote_choice(phraseset, seed)
 
                     await vote_service.submit_system_vote(

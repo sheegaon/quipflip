@@ -908,7 +908,7 @@ class AIService:
             for phraseset in filtered_phrasesets:
                 try:
                     # Generate AI vote choice
-                    seed = int(UUID(ai_voter_player.player_id))
+                    seed = ai_voter_player.player_id.int
                     chosen_phrase = await self.generate_vote_choice(phraseset, seed)
 
                     # Use VoteService for centralized voting logic
