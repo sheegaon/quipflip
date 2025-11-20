@@ -15,6 +15,8 @@ class Settings(BaseSettings):
 
     # Database
     database_url: str = SQLITE_LOCAL_URL
+    db_pool_size: int = 5
+    db_max_overflow: int = 10
 
     # Redis (optional, falls back to in-memory)
     redis_url: str = ""
