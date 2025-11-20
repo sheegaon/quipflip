@@ -6,7 +6,7 @@ import { PartyIcon } from '../components/icons/NavigationIcons';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { loadingMessages } from '../utils/brandedMessages';
 import apiClient, { extractErrorMessage } from '../api/client';
-import type { StartPartyPromptResponse } from '../api/types';
+import type { StartPartyCopyResponse, StartPartyPromptResponse, StartPartyVoteResponse } from '../api/types';
 
 /**
  * Party Game controller - kicks off party mode using the standard round flows.
@@ -33,39 +33,92 @@ export const PartyGame: React.FC = () => {
       setError(null);
 
       try {
-        const roundData = await apiClient.startPartyPromptRound(sessionId) as StartPartyPromptResponse;
+        const status = await apiClient.getPartySessionStatus(sessionId);
+        const phase = status.current_phase.toLowerCase();
 
-        const partyContext = roundData.party_context;
-
-        // Initialize party mode with configuration from the response
-        if (partyContext) {
-          startPartyMode(sessionId, 'prompt', {
-            prompts_per_player: partyContext.your_progress.prompts_required,
-            copies_per_player: partyContext.your_progress.copies_required,
-            votes_per_player: partyContext.your_progress.votes_required,
-            min_players: 0,
-            max_players: 0,
-          });
-          setCurrentStep('prompt');
-          partyActions.updateFromPartyContext(partyContext);
-        } else {
-          startPartyMode(sessionId, 'prompt', partyState.sessionConfig ?? undefined);
-          setCurrentStep('prompt');
+        if (phase === 'results' || status.status === 'COMPLETED') {
+          partyActions.endPartyMode();
+          navigate(`/party/results/${sessionId}`);
+          return;
         }
 
-        gameActions.updateActiveRound({
-          round_type: 'prompt',
-          round_id: roundData.round_id,
-          expires_at: roundData.expires_at,
-          state: {
-            round_id: roundData.round_id,
-            prompt_text: roundData.prompt_text,
-            expires_at: roundData.expires_at,
-            cost: roundData.cost,
-            status: 'active',
+        const phaseToStepMap: Record<string, 'prompt' | 'copy' | 'vote'> = {
+          prompt: 'prompt',
+          copy: 'copy',
+          vote: 'vote',
+        };
+
+        const step = phaseToStepMap[phase] ?? 'prompt';
+        startPartyMode(sessionId, step, partyState.sessionConfig ?? undefined);
+        setCurrentStep(step);
+
+        if (step === 'prompt') {
+          const roundData = await apiClient.startPartyPromptRound(sessionId) as StartPartyPromptResponse;
+          const partyContext = roundData.party_context;
+
+          if (partyContext) {
+            partyActions.updateFromPartyContext(partyContext);
           }
-        });
-        navigate('/prompt', { replace: true });
+
+          gameActions.updateActiveRound({
+            round_type: 'prompt',
+            round_id: roundData.round_id,
+            expires_at: roundData.expires_at,
+            state: {
+              round_id: roundData.round_id,
+              prompt_text: roundData.prompt_text,
+              expires_at: roundData.expires_at,
+              cost: roundData.cost,
+              status: 'active',
+            }
+          });
+          navigate('/prompt', { replace: true });
+        } else if (step === 'copy') {
+          const roundData = await apiClient.startPartyCopyRound(sessionId) as StartPartyCopyResponse;
+          const partyContext = roundData.party_context;
+
+          if (partyContext) {
+            partyActions.updateFromPartyContext(partyContext);
+          }
+
+          gameActions.updateActiveRound({
+            round_type: 'copy',
+            round_id: roundData.round_id,
+            expires_at: roundData.expires_at,
+            state: {
+              round_id: roundData.round_id,
+              original_phrase: roundData.original_phrase,
+              prompt_round_id: roundData.prompt_round_id,
+              expires_at: roundData.expires_at,
+              cost: roundData.cost,
+              status: 'active',
+              discount_active: roundData.discount_active,
+            }
+          });
+          navigate('/copy', { replace: true });
+        } else if (step === 'vote') {
+          const roundData = await apiClient.startPartyVoteRound(sessionId) as StartPartyVoteResponse;
+          const partyContext = roundData.party_context;
+
+          if (partyContext) {
+            partyActions.updateFromPartyContext(partyContext);
+          }
+
+          gameActions.updateActiveRound({
+            round_type: 'vote',
+            round_id: roundData.round_id,
+            expires_at: roundData.expires_at,
+            state: {
+              round_id: roundData.round_id,
+              phraseset_id: roundData.phraseset_id,
+              prompt_text: roundData.prompt_text,
+              phrases: roundData.phrases,
+              expires_at: roundData.expires_at,
+              status: 'active',
+            }
+          });
+          navigate('/vote', { replace: true });
+        }
       } catch (err) {
         const message = extractErrorMessage(err) || 'Failed to start party round.';
         setError(message);
@@ -81,8 +134,8 @@ export const PartyGame: React.FC = () => {
     startPartyMode,
     setCurrentStep,
     gameActions,
-    partyActions,
     partyState.sessionConfig,
+    partyActions,
   ]);
 
   if (error) {
