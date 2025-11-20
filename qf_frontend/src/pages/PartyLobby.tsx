@@ -176,7 +176,7 @@ export const PartyLobby: React.FC = () => {
 
     setIsPinging(true);
     try {
-      await apiClient.pingPartySession(sessionId);
+      await apiClient.pingParty(sessionId);
       setNotification('Ping sent to everyone in your party.');
       setTimeout(() => setNotification(null), 4000);
     } catch (err) {

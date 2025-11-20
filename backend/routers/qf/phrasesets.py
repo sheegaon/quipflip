@@ -28,53 +28,102 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.post("/{phraseset_id}/vote", response_model=VoteResponse)
+@router.post("/{phraseset_id}/vote", response_model=VoteResponse | dict)
 async def submit_vote(
     phraseset_id: UUID = Path(...),
     request: VoteRequest = ...,
     player: QFPlayer = Depends(enforce_vote_rate_limit),
     db: AsyncSession = Depends(get_db),
 ):
-    """Submit vote for a phraseset."""
-    transaction_service = TransactionService(db)
-    vote_service = VoteService(db)
+    """
+    Submit vote for a phraseset.
 
-    # Get player's active vote round
-    if not player.active_round_id:
-        raise HTTPException(status_code=400, detail="No active vote round")
+    Automatically detects if this is a party phraseset and routes accordingly.
+    """
+    from backend.services.qf.party_coordination_service import PartyCoordinationService
+    from backend.models.qf.party_phraseset import PartyPhraseset
+    from sqlalchemy import select
 
-    round = await db.get(Round, player.active_round_id)
-    if not round or round.round_type != "vote":
-        raise HTTPException(status_code=400, detail="Not in a vote round")
+    # Check if this phraseset is part of a party session
+    party_phraseset_result = await db.execute(
+        select(PartyPhraseset).where(PartyPhraseset.phraseset_id == phraseset_id)
+    )
+    party_phraseset = party_phraseset_result.scalar_one_or_none()
 
-    if round.phraseset_id != phraseset_id:
-        raise HTTPException(status_code=400, detail="Phraseset does not match active round")
+    if party_phraseset:
+        # PARTY MODE: Find the player's vote round
+        logger.info(f"Submitting party vote for phraseset {phraseset_id}")
 
-    # Get phraseset
-    phraseset = await db.get(Phraseset, phraseset_id)
-    if not phraseset:
-        raise HTTPException(status_code=404, detail="Phraseset not found")
+        # Get the player's active vote round for this phraseset
+        vote_round_result = await db.execute(
+            select(Round)
+            .where(Round.player_id == player.player_id)
+            .where(Round.round_type == 'vote')
+            .where(Round.phraseset_id == phraseset_id)
+            .where(Round.status == 'active')
+        )
+        vote_round = vote_round_result.scalar_one_or_none()
+        if not vote_round:
+            raise HTTPException(status_code=404, detail="No active vote round found for this phraseset")
 
-    try:
-        vote = await vote_service.submit_vote(
-            round, phraseset, request.phrase, player, transaction_service
+        # Use party coordination service
+        coordination_service = PartyCoordinationService(db)
+        transaction_service = TransactionService(db)
+        result = await coordination_service.submit_party_vote(
+            session_id=party_phraseset.session_id,
+            player=player,
+            round_id=vote_round.round_id,
+            phraseset_id=phraseset_id,
+            phrase=request.phrase,
+            transaction_service=transaction_service
         )
 
-        return VoteResponse(
-            correct=vote.correct,
-            payout=vote.payout,
-            original_phrase=phraseset.original_phrase,
-            your_choice=vote.voted_phrase,
-        )
-    except RoundExpiredError as e:
-        raise HTTPException(status_code=400, detail={"error": "expired", "message": str(e)})
-    except AlreadyVotedError as e:
-        raise HTTPException(status_code=400, detail={"error": "already_voted", "message": str(e)})
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        logger.error(f"Error submitting vote: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        return {
+            **result,
+            "party_session_id": str(party_phraseset.session_id),
+        }
+
+    else:
+        # NORMAL MODE: Use regular service
+        transaction_service = TransactionService(db)
+        vote_service = VoteService(db)
+
+        # Get player's active vote round
+        if not player.active_round_id:
+            raise HTTPException(status_code=400, detail="No active vote round")
+
+        round = await db.get(Round, player.active_round_id)
+        if not round or round.round_type != "vote":
+            raise HTTPException(status_code=400, detail="Not in a vote round")
+
+        if round.phraseset_id != phraseset_id:
+            raise HTTPException(status_code=400, detail="Phraseset does not match active round")
+
+        # Get phraseset
+        phraseset = await db.get(Phraseset, phraseset_id)
+        if not phraseset:
+            raise HTTPException(status_code=404, detail="Phraseset not found")
+
+        try:
+            vote = await vote_service.submit_vote(
+                round, phraseset, request.phrase, player, transaction_service
+            )
+
+            return VoteResponse(
+                correct=vote.correct,
+                payout=vote.payout,
+                original_phrase=phraseset.original_phrase,
+                your_choice=vote.voted_phrase,
+            )
+        except RoundExpiredError as e:
+            raise HTTPException(status_code=400, detail={"error": "expired", "message": str(e)})
+        except AlreadyVotedError as e:
+            raise HTTPException(status_code=400, detail={"error": "already_voted", "message": str(e)})
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        except Exception as e:
+            logger.error(f"Error submitting vote: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/{phraseset_id}/details", response_model=PhrasesetDetails)

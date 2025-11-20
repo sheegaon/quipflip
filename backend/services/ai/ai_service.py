@@ -256,7 +256,59 @@ class AIService:
         )
         return result.scalars().first()
 
-    async def generate_and_cache_phrases(self, prompt_round: Round) -> QFAIPhraseCache:
+    async def generate_prompt_response(self, prompt_text: str) -> str:
+        """
+        Generate a creative phrase for a prompt round.
+
+        Args:
+            prompt_text: The prompt to respond to
+
+        Returns:
+            Generated phrase
+
+        Raises:
+            AICopyError: If generation fails
+        """
+        from backend.services.ai.prompt_builder import build_party_prompt_generation
+
+        try:
+            # Build prompt for phrase generation
+            ai_prompt = build_party_prompt_generation(prompt_text)
+            common_words = await self.get_common_words()
+            if not isinstance(common_words, (list, tuple)):
+                logger.warning(f"common_words is not iterable: {type(common_words)}, using empty list")
+                common_words = []
+
+            common_words = [word for word in common_words if len(word) > 3]
+            ai_prompt = ai_prompt.format(common_words=", ".join(common_words))
+
+            # Generate using configured provider
+            if self.provider == "openai":
+                response_text = await openai_generate_copy(
+                    prompt=ai_prompt, model=self.ai_model, timeout=self.settings.ai_timeout_seconds)
+            else:  # gemini
+                response_text = await gemini_generate_copy(
+                    prompt=ai_prompt, model=self.ai_model, timeout=self.settings.ai_timeout_seconds)
+
+            # Clean up response
+            phrase = response_text.strip().upper()
+
+            # Validate length
+            if len(phrase) < 4:
+                logger.error(f"AI phrase too short: {len(phrase)} chars, minimum is 4")
+                raise AICopyError(f"Generated phrase too short: {len(phrase)} chars (minimum 4)")
+            elif len(phrase) > 100:
+                logger.warning(f"AI phrase too long: {len(phrase)} chars, truncating to 100")
+                phrase = phrase[:100]
+
+            logger.info(f"AI ({self.provider}) generated party prompt phrase: {phrase}")
+            return phrase
+
+        except Exception as e:
+            logger.error(f"Failed to generate prompt phrase: {e}")
+            raise AICopyError(f"Prompt generation failed: {str(e)}") from e
+
+    async def generate_and_cache_copy_phrases(self, prompt_round: Round) -> QFAIPhraseCache:
         """
         Generate and cache multiple validated copy phrases for a prompt round.
 
@@ -460,7 +512,7 @@ class AIService:
             logger.warning(f"Could not acquire lock for AI phrase revalidation of {prompt_round.round_id=}")
             return None
 
-        return await self.generate_and_cache_phrases(prompt_round)
+        return await self.generate_and_cache_copy_phrases(prompt_round)
 
     async def generate_copy_phrase(self, original_phrase: str, prompt_round: Round) -> str:
         """
@@ -480,7 +532,7 @@ class AIService:
             AICopyError: If generation or validation fails
         """
         # Get or generate phrase cache
-        cache = await self.generate_and_cache_phrases(prompt_round)
+        cache = await self.generate_and_cache_copy_phrases(prompt_round)
 
         # Select random phrase from cache
         if not cache.validated_phrases or len(cache.validated_phrases) == 0:
@@ -489,7 +541,7 @@ class AIService:
             # Delete empty cache and regenerate
             await self.db.delete(cache)
             await self.db.flush()
-            cache = await self.generate_and_cache_phrases(prompt_round)
+            cache = await self.generate_and_cache_copy_phrases(prompt_round)
 
         # Select random phrase
         selected_phrase = random.choice(cache.validated_phrases)
@@ -531,7 +583,7 @@ class AIService:
             raise AICopyError("Cannot generate hints before the original phrase is submitted")
 
         # Get or generate phrase cache
-        cache = await self.generate_and_cache_phrases(prompt_round)
+        cache = await self.generate_and_cache_copy_phrases(prompt_round)
 
         # Mark cache as used for hints
         cache.used_for_hints = True
@@ -602,7 +654,7 @@ class AIService:
 
             return chosen_phrase
 
-    async def _has_ai_attempted_prompt_recently(self, prompt_round_id: str, lookback_hours: int = 6) -> bool:
+    async def _has_ai_attempted_prompt_round_recently(self, prompt_round_id: str, lookback_hours: int = 6) -> bool:
         """
         Check if AI has already attempted to generate a copy for this prompt.
 
@@ -1005,174 +1057,6 @@ class AIService:
         except Exception as e:
             logger.error(f"Failed to generate backronym vote for {word}: {e}")
             raise AIVoteError(f"Backronym vote generation failed: {str(e)}") from e
-
-    async def generate_party_prompt(self, prompt_text: str) -> str:
-        """
-        Generate a creative phrase for a Party Mode prompt round.
-
-        Args:
-            prompt_text: The prompt to respond to
-
-        Returns:
-            Generated phrase (2-30 characters)
-
-        Raises:
-            AICopyError: If generation fails
-        """
-        from backend.services.ai.prompt_builder import build_party_prompt_generation
-
-        try:
-            # Build prompt for phrase generation
-            ai_prompt = build_party_prompt_generation(prompt_text)
-
-            # Generate using configured provider
-            if self.provider == "openai":
-                response_text = await openai_generate_copy(
-                    prompt=ai_prompt, model=self.ai_model, timeout=self.settings.ai_timeout_seconds)
-            else:  # gemini
-                response_text = await gemini_generate_copy(
-                    prompt=ai_prompt, model=self.ai_model, timeout=self.settings.ai_timeout_seconds)
-
-            # Clean up response
-            phrase = response_text.strip().upper()
-
-            # Validate length
-            if len(phrase) < 2 or len(phrase) > 30:
-                logger.warning(f"AI phrase length out of range: {len(phrase)} chars, truncating")
-                phrase = phrase[:30] if len(phrase) > 30 else "AI PHRASE"
-
-            logger.info(f"AI ({self.provider}) generated party prompt phrase: {phrase}")
-            return phrase
-
-        except Exception as e:
-            logger.error(f"Failed to generate party prompt phrase: {e}")
-            raise AICopyError(f"Party prompt generation failed: {str(e)}") from e
-
-    async def generate_party_copy(
-        self,
-        original_phrase: str,
-        prompt_text: str,
-        other_copy_phrase: str | None = None,
-    ) -> str:
-        """
-        Generate a copy phrase for Party Mode.
-
-        Reuses the existing copy generation logic but without caching
-        since Party Mode rounds are one-time events.
-
-        Args:
-            original_phrase: The original phrase to copy
-            prompt_text: The prompt that generated the original phrase
-            other_copy_phrase: Optional existing copy to avoid
-
-        Returns:
-            Generated and validated copy phrase
-
-        Raises:
-            AICopyError: If generation or validation fails
-        """
-        # Build prompt and get common words
-        ai_prompt = build_copy_prompt(original_phrase, other_copy_phrase)
-        common_words = await self.get_common_words()
-        if not isinstance(common_words, (list, tuple)):
-            logger.warning(f"common_words is not iterable: {type(common_words)}, using empty list")
-            common_words = []
-
-        common_words = [word for word in common_words if len(word) > 3]
-        ai_prompt = ai_prompt.format(common_words=", ".join(common_words))
-
-        async with MetricsTracker(
-                self.metrics_service,
-                operation_type="party_copy_generation",
-                provider=self.provider,
-                model=self.ai_model,
-        ) as tracker:
-            try:
-                # Generate using configured provider
-                if self.provider == "openai":
-                    test_phrases = await openai_generate_copy(
-                        prompt=ai_prompt, model=self.ai_model, timeout=self.settings.ai_timeout_seconds)
-                else:  # gemini
-                    test_phrases = await gemini_generate_copy(
-                        prompt=ai_prompt, model=self.ai_model, timeout=self.settings.ai_timeout_seconds)
-                test_phrases = test_phrases.split(";")
-            except Exception as e:
-                logger.error(f"Failed to generate AI copy: {e}")
-                tracker.set_result("", success=False, response_length=0, validation_passed=False)
-                raise AICopyError(f"Failed to generate AI copy: {e}")
-
-            # Validate phrases
-            for phrase in test_phrases:
-                phrase = phrase.strip()
-                is_valid, error_message = await self.phrase_validator.validate_copy(
-                    phrase,
-                    original_phrase,
-                    other_copy_phrase,
-                    prompt_text,
-                )
-                if is_valid:
-                    tracker.set_result(
-                        phrase,
-                        success=True,
-                        response_length=len(phrase),
-                        validation_passed=True,
-                    )
-                    logger.info(f"AI ({self.provider}) generated party copy: {phrase}")
-                    return phrase
-
-            # No valid phrases found
-            tracker.set_result("", success=False, response_length=0, validation_passed=False)
-            raise AICopyError(f"AI generated no valid copy phrases for {original_phrase=}")
-
-    async def generate_party_vote(self, prompt_text: str, phrases: list[str], seed: int) -> str:
-        """
-        Generate a vote choice for Party Mode.
-
-        Args:
-            prompt_text: The prompt text
-            phrases: List of phrase options to choose from
-            seed: Random seed for reproducibility
-
-        Returns:
-            The chosen phrase (one of the phrases in the list)
-
-        Raises:
-            AIVoteError: If vote generation fails
-        """
-        from backend.services.ai.vote_helper import generate_vote_choice
-
-        # Shuffle phrases for randomness
-        import random
-        shuffled_phrases = phrases.copy()
-        random.shuffle(shuffled_phrases)
-
-        async with MetricsTracker(
-                self.metrics_service,
-                operation_type="party_vote_generation",
-                provider=self.provider,
-                model=self.ai_model,
-        ) as tracker:
-            # Generate vote choice
-            choice_index = await generate_vote_choice(
-                prompt_text=prompt_text,
-                phrases=shuffled_phrases,
-                seed=seed,
-                provider=self.provider,
-                model=self.ai_model,
-                timeout=self.settings.ai_timeout_seconds,
-            )
-
-            chosen_phrase = shuffled_phrases[choice_index]
-
-            # Track the vote
-            tracker.set_result(
-                chosen_phrase,
-                success=True,
-                response_length=len(str(choice_index)),
-            )
-
-            logger.info(f"AI ({self.provider}) voted for party mode: '{chosen_phrase}'")
-            return chosen_phrase
 
     async def run_ir_backup_cycle(self) -> None:
         """

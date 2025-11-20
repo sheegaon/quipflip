@@ -107,3 +107,27 @@ export const usePartyMode = (): PartyModeContextValue => {
   }
   return context;
 };
+
+/**
+ * Check if currently in party mode (convenience hook).
+ */
+export const useIsInPartyMode = (): boolean => {
+  const { state } = usePartyMode();
+  return state.isPartyMode;
+};
+
+/**
+ * Get current party session ID (or null if not in party mode).
+ */
+export const usePartySessionId = (): string | null => {
+  const { state } = usePartyMode();
+  return state.sessionId;
+};
+
+/**
+ * Get current party step (or null if not in party mode).
+ */
+export const usePartyStep = (): PartyStep | null => {
+  const { state } = usePartyMode();
+  return state.currentStep;
+};

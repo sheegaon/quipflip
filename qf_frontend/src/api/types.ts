@@ -911,55 +911,61 @@ export interface StartPartySessionResponse {
 export type PartySessionStatusResponse = PartySession;
 
 // Party Round Response - Discriminated Union based on round_type
+export interface StartPartyPromptResponse {
+  round_type: 'prompt';
+  round_id: string;
+  party_round_id: string;
+  prompt_text: string;
+  expires_at: string;
+  cost: number;
+  session_progress: {
+    your_prompts_submitted: number;
+    prompts_required: number;
+    players_done: number;
+    total_players: number;
+  };
+}
+
+export interface StartPartyCopyResponse {
+  round_type: 'copy';
+  round_id: string;
+  party_round_id: string;
+  original_phrase: string;
+  prompt_round_id: string;
+  expires_at: string;
+  cost: number;
+  discount_active: boolean;
+  is_second_copy: boolean;
+  from_party: boolean;
+  session_progress: {
+    your_copies_submitted: number;
+    copies_required: number;
+    players_done: number;
+    total_players: number;
+  };
+}
+
+export interface StartPartyVoteResponse {
+  round_type: 'vote';
+  round_id: string;
+  party_round_id: string;
+  phraseset_id: string;
+  prompt_text: string;
+  phrases: string[];
+  expires_at: string;
+  from_party: boolean;
+  session_progress: {
+    your_votes_submitted: number;
+    votes_required: number;
+    players_done: number;
+    total_players: number;
+  };
+}
+
 export type StartPartyRoundResponse =
-  | {
-      round_type: 'prompt';
-      round_id: string;
-      party_round_id: string;
-      prompt_text: string;
-      expires_at: string;
-      cost: number;
-      session_progress: {
-        your_prompts_submitted: number;
-        prompts_required: number;
-        players_done: number;
-        total_players: number;
-      };
-    }
-  | {
-      round_type: 'copy';
-      round_id: string;
-      party_round_id: string;
-      original_phrase: string;
-      prompt_round_id: string;
-      expires_at: string;
-      cost: number;
-      discount_active: boolean;
-      is_second_copy: boolean;
-      from_party: boolean;
-      session_progress: {
-        your_copies_submitted: number;
-        copies_required: number;
-        players_done: number;
-        total_players: number;
-      };
-    }
-  | {
-      round_type: 'vote';
-      round_id: string;
-      party_round_id: string;
-      phraseset_id: string;
-      prompt_text: string;
-      phrases: string[];
-      expires_at: string;
-      from_party: boolean;
-      session_progress: {
-        your_votes_submitted: number;
-        votes_required: number;
-        players_done: number;
-        total_players: number;
-      };
-    };
+  | StartPartyPromptResponse
+  | StartPartyCopyResponse
+  | StartPartyVoteResponse;
 
 export interface SubmitPartyRoundRequest {
   phrase: string;
@@ -1084,38 +1090,38 @@ type WebsocketPayload<TBase, TPayload> =
 
 export type PartyWebSocketMessage =
   | WebsocketPayload<
-      { type: 'player_joined'; session_id: string; timestamp: string },
-      PlayerJoinedPayload
-    >
+    { type: 'player_joined'; session_id: string; timestamp: string },
+    PlayerJoinedPayload
+  >
   | WebsocketPayload<
-      { type: 'player_left'; session_id: string; timestamp: string },
-      PlayerLeftPayload
-    >
+    { type: 'player_left'; session_id: string; timestamp: string },
+    PlayerLeftPayload
+  >
   | WebsocketPayload<
-      { type: 'player_ready'; session_id: string; timestamp: string },
-      PlayerReadyPayload
-    >
+    { type: 'player_ready'; session_id: string; timestamp: string },
+    PlayerReadyPayload
+  >
   | WebsocketPayload<
-      { type: 'session_started'; session_id: string; timestamp: string },
-      SessionStartedPayload
-    >
+    { type: 'session_started'; session_id: string; timestamp: string },
+    SessionStartedPayload
+  >
   | WebsocketPayload<
-      { type: 'phase_transition'; session_id: string; timestamp: string },
-      PhaseTransitionPayload
-    >
+    { type: 'phase_transition'; session_id: string; timestamp: string },
+    PhaseTransitionPayload
+  >
   | WebsocketPayload<
-      { type: 'progress_update'; session_id: string; timestamp: string },
-      ProgressUpdatePayload
-    >
+    { type: 'progress_update'; session_id: string; timestamp: string },
+    ProgressUpdatePayload
+  >
   | WebsocketPayload<
-      { type: 'session_completed'; session_id: string; timestamp: string },
-      SessionCompletedPayload
-    >
+    { type: 'session_completed'; session_id: string; timestamp: string },
+    SessionCompletedPayload
+  >
   | WebsocketPayload<
-      { type: 'session_update'; session_id: string; timestamp: string },
-      SessionUpdatePayload
-    >
+    { type: 'session_update'; session_id: string; timestamp: string },
+    SessionUpdatePayload
+  >
   | WebsocketPayload<
-      { type: 'host_ping'; session_id: string; timestamp: string },
-      HostPingPayload
-    >;
+    { type: 'host_ping'; session_id: string; timestamp: string },
+    HostPingPayload
+  >;

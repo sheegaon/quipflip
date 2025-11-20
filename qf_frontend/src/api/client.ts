@@ -67,7 +67,9 @@ import type {
   MarkReadyResponse,
   StartPartySessionResponse,
   PartySessionStatusResponse,
-  StartPartyRoundResponse,
+  StartPartyPromptResponse,
+  StartPartyCopyResponse,
+  StartPartyVoteResponse,
   SubmitPartyRoundResponse,
   PartyResultsResponse,
   PartyListResponse,
@@ -102,7 +104,7 @@ const extractErrorMessage = (error: unknown, action?: string): string => {
   if (action) {
     return getActionErrorMessage(action, error);
   }
-  
+
   const contextualError = getContextualErrorMessage(error);
   return contextualError.message;
 };
@@ -810,14 +812,6 @@ export const apiClient = {
     return data;
   },
 
-  async pingPartySession(
-    sessionId: string,
-    signal?: AbortSignal,
-  ): Promise<PartyPingResponse> {
-    const { data } = await api.post<PartyPingResponse>(`/party/${sessionId}/ping`, {}, { signal });
-    return data;
-  },
-
   async startPartySession(
     sessionId: string,
     signal?: AbortSignal,
@@ -845,38 +839,46 @@ export const apiClient = {
   async startPartyPromptRound(
     sessionId: string,
     signal?: AbortSignal,
-  ): Promise<StartPartyRoundResponse> {
-    const { data } = await api.post<StartPartyRoundResponse>(`/party/${sessionId}/rounds/prompt`, {}, { signal });
+  ): Promise<StartPartyPromptResponse> {
+    const { data } = await api.post<StartPartyPromptResponse>(
+      `/party/${sessionId}/rounds/prompt`,
+      {},
+      { signal }
+    );
     return data;
   },
 
   async startPartyCopyRound(
     sessionId: string,
     signal?: AbortSignal,
-  ): Promise<StartPartyRoundResponse> {
-    const { data } = await api.post<StartPartyRoundResponse>(`/party/${sessionId}/rounds/copy`, {}, { signal });
+  ): Promise<StartPartyCopyResponse> {
+    const { data } = await api.post<StartPartyCopyResponse>(
+      `/party/${sessionId}/rounds/copy`,
+      {},
+      { signal }
+    );
     return data;
   },
 
   async startPartyVoteRound(
     sessionId: string,
     signal?: AbortSignal,
-  ): Promise<StartPartyRoundResponse> {
-    const { data } = await api.post<StartPartyRoundResponse>(`/party/${sessionId}/rounds/vote`, {}, { signal });
+  ): Promise<StartPartyVoteResponse> {
+    const { data } = await api.post<StartPartyVoteResponse>(
+      `/party/${sessionId}/rounds/vote`,
+      {},
+      { signal }
+    );
     return data;
   },
 
   async submitPartyRound(
     sessionId: string,
     roundId: string,
-    phrase: string,
+    payload: { phrase?: string; vote?: string },
     signal?: AbortSignal,
   ): Promise<SubmitPartyRoundResponse> {
-    const { data } = await api.post<SubmitPartyRoundResponse>(
-      `/party/${sessionId}/rounds/${roundId}/submit`,
-      { phrase },
-      { signal }
-    );
+    const { data } = await api.post<SubmitPartyRoundResponse>(`/party/${sessionId}/rounds/${roundId}/submit`, payload, { signal });
     return data;
   },
 
@@ -885,6 +887,14 @@ export const apiClient = {
     signal?: AbortSignal,
   ): Promise<PartyResultsResponse> {
     const { data } = await api.get<PartyResultsResponse>(`/party/${sessionId}/results`, { signal });
+    return data;
+  },
+
+  async pingParty(
+    sessionId: string,
+    signal?: AbortSignal,
+  ): Promise<PartyPingResponse> {
+    const { data } = await api.post<PartyPingResponse>(`/party/${sessionId}/ping`, {}, { signal });
     return data;
   },
 };

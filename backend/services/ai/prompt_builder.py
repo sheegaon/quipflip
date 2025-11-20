@@ -22,14 +22,14 @@ def build_copy_prompt(original_phrase: str, existing_copy_phrase: str = None) ->
     base_prompt = f"""Create 5 phrases meaning roughly the same thing as the original phrase.
 
 **Original phrase: "{original_phrase}"**
-""" + """
+
 Rules:
 - 1-15 characters per word
 - 2-5 words per phrase, 4-100 characters per phrase
 - Letters and spaces only
 - Each word must pass dictionary validation
 - Each phrase should be similar enough to be believable as the original
-- Words which are 4 or more letters long, except common words: [{common_words}], are known as *significant words*
+- Words which are 4 or more letters long, except common words: [{{common_words}}], are known as *significant words*
 - Do NOT use the same significant word in more than two phrases"""
 
     if existing_copy_phrase:
@@ -143,11 +143,14 @@ def build_party_prompt_generation(prompt_text: str) -> str:
 **Prompt: "{prompt_text}"**
 
 Rules:
-- 2-30 characters total
+- 1-15 characters per word
+- 2-5 words, 4-100 characters in total
 - Letters and spaces only
+- Each word must pass dictionary validation
 - Make it clever, funny, or creative
-- Should directly relate to the prompt
-- Keep it concise and memorable
+- Should directly complete the prompt sentence
+- Words which are 4 or more letters long, except common words: [{{common_words}}], are known as *significant words*
+- Do NOT use or lightly modify (e.g., pluralize) any significant words from the prompt
 
 Generate ONE phrase that best responds to the prompt. Do not include quotes or explanation, just the phrase itself."""
 

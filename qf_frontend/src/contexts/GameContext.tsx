@@ -50,6 +50,7 @@ interface GameActions {
   flagCopyRound: (roundId: string) => Promise<FlagCopyRoundResponse>;
   abandonRound: (roundId: string) => Promise<AbandonRoundResponse>;
   fetchCopyHints: (roundId: string) => Promise<string[]>;
+  updateActiveRound: (roundData: ActiveRound) => void;
 }
 
 interface GameContextType {
@@ -59,17 +60,17 @@ interface GameContextType {
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
 
-export const GameProvider: React.FC<{ 
+export const GameProvider: React.FC<{
   children: React.ReactNode;
   onPendingResultsChange?: (results: PendingResult[]) => void;
   onDashboardTrigger?: () => void;
 }> = ({ children, onPendingResultsChange, onDashboardTrigger }) => {
   // Navigation hook - use directly since we're inside Router
   const navigate = useNavigate();
-  
+
   // Smart polling hook
   const { startPoll, stopPoll, triggerPoll } = useSmartPolling();
-  
+
   // State
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [username, setUsername] = useState<string | null>(null);
@@ -174,7 +175,7 @@ export const GameProvider: React.FC<{
               setIsAuthenticated(false);
             }
           }
-} else if (result.state === SessionState.RETURNING_VISITOR) {
+        } else if (result.state === SessionState.RETURNING_VISITOR) {
           // Returning visitor with no valid session - don't auto-create guest
           gameContextLogger.debug('👋 Returning visitor without valid session, showing landing page');
         }
@@ -227,519 +228,524 @@ export const GameProvider: React.FC<{
 
   // Create stable actions object using useCallback for all methods
   const startSession = useCallback((nextUsername: string) => {
-      gameContextLogger.debug('🎯 GameContext startSession called:', { username: nextUsername });
+    gameContextLogger.debug('🎯 GameContext startSession called:', { username: nextUsername });
 
-      apiClient.setSession(nextUsername);
-      setUsername(nextUsername);
-      setIsAuthenticated(true);
-      setSessionState(SessionState.RETURNING_USER);
+    apiClient.setSession(nextUsername);
+    setUsername(nextUsername);
+    setIsAuthenticated(true);
+    setSessionState(SessionState.RETURNING_USER);
 
-      // Associate visitor ID with newly created/logged in account
-      if (visitorId) {
-        associateVisitorWithPlayer(visitorId, nextUsername);
-      }
+    // Associate visitor ID with newly created/logged in account
+    if (visitorId) {
+      associateVisitorWithPlayer(visitorId, nextUsername);
+    }
 
-      // Session started, authentication state will trigger dashboard load
-      gameContextLogger.debug('✅ Session started, authentication state will trigger dashboard load');
+    // Session started, authentication state will trigger dashboard load
+    gameContextLogger.debug('✅ Session started, authentication state will trigger dashboard load');
   }, [visitorId]);
 
   const logout = useCallback(async () => {
-      gameContextLogger.debug('🚪 GameContext logout called');
+    gameContextLogger.debug('🚪 GameContext logout called');
 
-      try {
-        await apiClient.logout();
-      } catch (err) {
-        gameContextLogger.warn('⚠️ Failed to logout cleanly:', err);
-      } finally {
-        // Stop all polling
-        stopPoll('dashboard');
-        stopPoll('balance');
+    try {
+      await apiClient.logout();
+    } catch (err) {
+      gameContextLogger.warn('⚠️ Failed to logout cleanly:', err);
+    } finally {
+      // Stop all polling
+      stopPoll('dashboard');
+      stopPoll('balance');
 
-        apiClient.clearSession();
-        setIsAuthenticated(false);
-        setUsername(null);
-        setPlayer(null);
-        setActiveRound(null);
-        setPendingResults([]);
-        setPhrasesetSummary(null);
-        setUnclaimedResults([]);
-        setRoundAvailability(null);
-        setCopyRoundHints(null);
-        copyHintsRoundRef.current = null;
-        setLoading(false);
-        setError(null);
+      apiClient.clearSession();
+      setIsAuthenticated(false);
+      setUsername(null);
+      setPlayer(null);
+      setActiveRound(null);
+      setPendingResults([]);
+      setPhrasesetSummary(null);
+      setUnclaimedResults([]);
+      setRoundAvailability(null);
+      setCopyRoundHints(null);
+      copyHintsRoundRef.current = null;
+      setLoading(false);
+      setError(null);
 
-        // Clear guest credentials on logout
-        localStorage.removeItem(GUEST_CREDENTIALS_KEY);
+      // Clear guest credentials on logout
+      localStorage.removeItem(GUEST_CREDENTIALS_KEY);
 
-        // After logout, user is a returning visitor (visitor ID persists)
-        setSessionState(visitorId ? SessionState.RETURNING_VISITOR : SessionState.NEW);
-      }
+      // After logout, user is a returning visitor (visitor ID persists)
+      setSessionState(visitorId ? SessionState.RETURNING_VISITOR : SessionState.NEW);
+    }
   }, [stopPoll, visitorId]);
 
   const refreshDashboard = useCallback(async (signal?: AbortSignal) => {
-      const storedUsername = apiClient.getStoredUsername();
-      if (!storedUsername) {
-        gameContextLogger.debug('⏭️ Skipping dashboard refresh: no active session detected');
+    const storedUsername = apiClient.getStoredUsername();
+    if (!storedUsername) {
+      gameContextLogger.debug('⏭️ Skipping dashboard refresh: no active session detected');
+      return;
+    }
+
+    try {
+      const data = await apiClient.getDashboardData(signal);
+      gameContextLogger.debug('✅ Dashboard data received successfully:', {
+        playerWallet: data.player?.wallet,
+        playerVault: data.player?.vault,
+        currentRound: data.current_round ? {
+          id: data.current_round.round_id,
+          type: data.current_round.round_type,
+          status: data.current_round.state?.status
+        } : 'null',
+        pendingResultsCount: data.pending_results?.length || 0,
+        unclaimedResultsCount: data.unclaimed_results?.length || 0
+      });
+
+      // Update all dashboard state at once
+      setPlayer(data.player);
+      if (data.player.username && data.player.username !== username) {
+        gameContextLogger.debug('👤 Username mismatch, updating session:', {
+          stored: username,
+          received: data.player.username
+        });
+        apiClient.setSession(data.player.username);
+        setUsername(data.player.username);
+      }
+
+      // Handle active round properly - if it's submitted, expired, or abandoned, clear it
+      if (data.current_round) {
+        const roundState = data.current_round.state;
+        const roundStatus = roundState?.status;
+
+        // Only show active rounds; clear completed/expired/abandoned rounds
+        if (roundStatus === 'active') {
+          gameContextLogger.debug('✅ Setting active round:', {
+            roundId: data.current_round.round_id,
+            roundType: data.current_round.round_type,
+            status: roundStatus
+          });
+          setActiveRound(data.current_round);
+        } else {
+          gameContextLogger.debug(`🚫 Round status is ${roundStatus}, clearing active round`);
+          setActiveRound(null);
+        }
+      } else {
+        gameContextLogger.debug('⭕ No current round from API, clearing active round');
+        setActiveRound(null);
+      }
+
+      // De-duplicate pending results using a composite unique key
+      // For each result, create a unique key based on phraseset_id + round_id
+      const getResultKey = (result: PendingResult) => {
+        if (result.role === 'prompt' && result.prompt_round_id) {
+          return `${result.phraseset_id}-prompt-${result.prompt_round_id}`;
+        } else if (result.role === 'copy' && result.copy_round_id) {
+          return `${result.phraseset_id}-copy-${result.copy_round_id}`;
+        }
+        // Fallback for results without round IDs (shouldn't happen with new schema)
+        return `${result.phraseset_id}-${result.role}`;
+      };
+
+      const deduplicatedResults = data.pending_results.filter((result, index, self) =>
+        index === self.findIndex((r) => getResultKey(r) === getResultKey(result))
+      );
+
+      if (deduplicatedResults.length !== data.pending_results.length) {
+        gameContextLogger.debug('🔄 Removed duplicate pending results:', {
+          original: data.pending_results.length,
+          deduplicated: deduplicatedResults.length
+        });
+      }
+
+      setPendingResults(deduplicatedResults);
+      setPhrasesetSummary(data.phraseset_summary);
+      setUnclaimedResults(data.unclaimed_results);
+      setRoundAvailability(data.round_availability);
+      setError(null);
+
+    } catch (err) {
+      if (err instanceof Error && err.name === 'CanceledError') {
         return;
       }
 
-      try {
-        const data = await apiClient.getDashboardData(signal);
-        gameContextLogger.debug('✅ Dashboard data received successfully:', {
-          playerWallet: data.player?.wallet,
-          playerVault: data.player?.vault,
-          currentRound: data.current_round ? {
-            id: data.current_round.round_id,
-            type: data.current_round.round_type,
-            status: data.current_round.state?.status
-          } : 'null',
-          pendingResultsCount: data.pending_results?.length || 0,
-          unclaimedResultsCount: data.unclaimed_results?.length || 0
-        });
+      gameContextLogger.error('❌ Dashboard refresh failed:', err);
+      const errorMessage = getActionErrorMessage('load-dashboard', err);
+      setError(errorMessage);
 
-        // Update all dashboard state at once
-        setPlayer(data.player);
-        if (data.player.username && data.player.username !== username) {
-          gameContextLogger.debug('👤 Username mismatch, updating session:', {
-            stored: username,
-            received: data.player.username
-          });
-          apiClient.setSession(data.player.username);
-          setUsername(data.player.username);
-        }
-
-        // Handle active round properly - if it's submitted, expired, or abandoned, clear it
-        if (data.current_round) {
-          const roundState = data.current_round.state;
-          const roundStatus = roundState?.status;
-
-          // Only show active rounds; clear completed/expired/abandoned rounds
-          if (roundStatus === 'active') {
-            gameContextLogger.debug('✅ Setting active round:', {
-              roundId: data.current_round.round_id,
-              roundType: data.current_round.round_type,
-              status: roundStatus
-            });
-            setActiveRound(data.current_round);
-          } else {
-            gameContextLogger.debug(`🚫 Round status is ${roundStatus}, clearing active round`);
-            setActiveRound(null);
-          }
-        } else {
-          gameContextLogger.debug('⭕ No current round from API, clearing active round');
-          setActiveRound(null);
-        }
-
-        // De-duplicate pending results using a composite unique key
-        // For each result, create a unique key based on phraseset_id + round_id
-        const getResultKey = (result: PendingResult) => {
-          if (result.role === 'prompt' && result.prompt_round_id) {
-            return `${result.phraseset_id}-prompt-${result.prompt_round_id}`;
-          } else if (result.role === 'copy' && result.copy_round_id) {
-            return `${result.phraseset_id}-copy-${result.copy_round_id}`;
-          }
-          // Fallback for results without round IDs (shouldn't happen with new schema)
-          return `${result.phraseset_id}-${result.role}`;
-        };
-
-        const deduplicatedResults = data.pending_results.filter((result, index, self) =>
-          index === self.findIndex((r) => getResultKey(r) === getResultKey(result))
-        );
-
-        if (deduplicatedResults.length !== data.pending_results.length) {
-          gameContextLogger.debug('🔄 Removed duplicate pending results:', {
-            original: data.pending_results.length,
-            deduplicated: deduplicatedResults.length
-          });
-        }
-
-        setPendingResults(deduplicatedResults);
-        setPhrasesetSummary(data.phraseset_summary);
-        setUnclaimedResults(data.unclaimed_results);
-        setRoundAvailability(data.round_availability);
-        setError(null);
-        
-      } catch (err) {
-        if (err instanceof Error && err.name === 'CanceledError') {
-          return;
-        }
-
-        gameContextLogger.error('❌ Dashboard refresh failed:', err);
-        const errorMessage = getActionErrorMessage('load-dashboard', err);
-        setError(errorMessage);
-
-        // Handle auth errors
-        if (errorMessage.toLowerCase().includes('session') || errorMessage.toLowerCase().includes('login')) {
-          gameContextLogger.warn('🚪 Auth error detected, logging out');
-          logout();
-        }
+      // Handle auth errors
+      if (errorMessage.toLowerCase().includes('session') || errorMessage.toLowerCase().includes('login')) {
+        gameContextLogger.warn('🚪 Auth error detected, logging out');
+        logout();
       }
+    }
   }, [username, logout]);
 
   const refreshBalance = useCallback(async (signal?: AbortSignal) => {
-      const storedUsername = apiClient.getStoredUsername();
-      if (!storedUsername) {
-        gameContextLogger.debug('⏭️ Skipping wallet and vault refresh: no active session detected');
+    const storedUsername = apiClient.getStoredUsername();
+    if (!storedUsername) {
+      gameContextLogger.debug('⏭️ Skipping wallet and vault refresh: no active session detected');
+      return;
+    }
+
+    gameContextLogger.debug('💰 GameContext refreshBalance called');
+
+    try {
+      gameContextLogger.debug('📞 Calling apiClient.getBalance...');
+      const data = await apiClient.getBalance(signal);
+      gameContextLogger.debug('✅ Wallet and vault data received:', {
+        wallet: data.wallet,
+        vault: data.vault,
+        username: data.username
+      });
+
+      setPlayer(data);
+      if (data.username && data.username !== username) {
+        gameContextLogger.debug('👤 Username mismatch in player data, updating session:', {
+          stored: username,
+          received: data.username
+        });
+        apiClient.setSession(data.username);
+        setUsername(data.username);
+      }
+      setError(null);
+    } catch (err) {
+      if (err instanceof Error && err.name === 'CanceledError') {
+        gameContextLogger.debug('⏹️ Wallet and vault refresh canceled');
         return;
       }
 
-      gameContextLogger.debug('💰 GameContext refreshBalance called');
+      gameContextLogger.error('❌ Wallet and vault refresh failed:', err);
+      const errorMessage = getActionErrorMessage('refresh-balance', err);
 
-      try {
-        gameContextLogger.debug('📞 Calling apiClient.getBalance...');
-        const data = await apiClient.getBalance(signal);
-        gameContextLogger.debug('✅ Wallet and vault data received:', {
-          wallet: data.wallet,
-          vault: data.vault,
-          username: data.username
-        });
-
-        setPlayer(data);
-        if (data.username && data.username !== username) {
-          gameContextLogger.debug('👤 Username mismatch in player data, updating session:', {
-            stored: username,
-            received: data.username
-          });
-          apiClient.setSession(data.username);
-          setUsername(data.username);
-        }
-        setError(null);
-      } catch (err) {
-        if (err instanceof Error && err.name === 'CanceledError') {
-          gameContextLogger.debug('⏹️ Wallet and vault refresh canceled');
-          return;
-        }
-
-        gameContextLogger.error('❌ Wallet and vault refresh failed:', err);
-        const errorMessage = getActionErrorMessage('refresh-balance', err);
-
-        // Only show player data refresh errors if they're auth-related
-        if (errorMessage.toLowerCase().includes('session') || errorMessage.toLowerCase().includes('login')) {
-          setError(errorMessage);
-          logout();
-        }
+      // Only show player data refresh errors if they're auth-related
+      if (errorMessage.toLowerCase().includes('session') || errorMessage.toLowerCase().includes('login')) {
+        setError(errorMessage);
+        logout();
       }
+    }
   }, [isAuthenticated, username, logout]);
 
   const claimBonus = useCallback(async () => {
-      gameContextLogger.debug('🎯 GameContext claimBonus called');
-      
-      // Check token directly instead of relying on stale state      // Ensure authentication state is correct
-      if (!isAuthenticated) {
-        gameContextLogger.debug('🔄 Setting authenticated to true after token check');
-        setIsAuthenticated(true);
+    gameContextLogger.debug('🎯 GameContext claimBonus called');
+
+    // Check token directly instead of relying on stale state      // Ensure authentication state is correct
+    if (!isAuthenticated) {
+      gameContextLogger.debug('🔄 Setting authenticated to true after token check');
+      setIsAuthenticated(true);
+    }
+
+    try {
+      gameContextLogger.debug('🔄 Setting loading to true');
+      setLoading(true);
+      gameContextLogger.debug('📞 Calling apiClient.claimDailyBonus()...');
+      await apiClient.claimDailyBonus();
+      gameContextLogger.debug('✅ Claim bonus API call successful');
+
+      // Trigger immediate dashboard refresh
+      gameContextLogger.debug('🔄 Triggering dashboard refresh after bonus claim');
+      triggerPoll('dashboard');
+
+      if (onDashboardTrigger) {
+        gameContextLogger.debug('🔄 Calling external dashboard trigger');
+        onDashboardTrigger();
       }
 
-      try {
-        gameContextLogger.debug('🔄 Setting loading to true');
-        setLoading(true);
-        gameContextLogger.debug('📞 Calling apiClient.claimDailyBonus()...');
-        await apiClient.claimDailyBonus();
-        gameContextLogger.debug('✅ Claim bonus API call successful');
-        
-        // Trigger immediate dashboard refresh
-        gameContextLogger.debug('🔄 Triggering dashboard refresh after bonus claim');
-        triggerPoll('dashboard');
-        
-        if (onDashboardTrigger) {
-          gameContextLogger.debug('🔄 Calling external dashboard trigger');
-          onDashboardTrigger();
-        }
-        
-        setError(null);
-        gameContextLogger.debug('✅ Claim bonus completed successfully');
-      } catch (err) {
-        gameContextLogger.error('❌ Claim bonus failed:', err);
-        const message = getActionErrorMessage('claim-bonus', err);
-        gameContextLogger.debug('📝 Setting error message:', message);
-        setError(message);
+      setError(null);
+      gameContextLogger.debug('✅ Claim bonus completed successfully');
+    } catch (err) {
+      gameContextLogger.error('❌ Claim bonus failed:', err);
+      const message = getActionErrorMessage('claim-bonus', err);
+      gameContextLogger.debug('📝 Setting error message:', message);
+      setError(message);
 
-        // Handle auth errors
-        if (message.toLowerCase().includes('session') || message.toLowerCase().includes('login')) {
-          gameContextLogger.warn('🚪 Auth error in claim bonus, logging out');
-          logout();
-        }
-
-        throw err;
-      } finally {
-        gameContextLogger.debug('🔄 Setting loading to false');
-        setLoading(false);
+      // Handle auth errors
+      if (message.toLowerCase().includes('session') || message.toLowerCase().includes('login')) {
+        gameContextLogger.warn('🚪 Auth error in claim bonus, logging out');
+        logout();
       }
+
+      throw err;
+    } finally {
+      gameContextLogger.debug('🔄 Setting loading to false');
+      setLoading(false);
+    }
   }, [isAuthenticated, triggerPoll, logout, onDashboardTrigger]);
 
   const clearError = useCallback(() => {
-      gameContextLogger.debug('🧹 Clearing game context error');
-      setError(null);
+    gameContextLogger.debug('🧹 Clearing game context error');
+    setError(null);
   }, []);
 
   const navigateAfterDelay = useCallback((path: string, delay: number = 1500) => {
-      gameContextLogger.debug('🧭 Navigating after delay:', { path, delay });
-      setTimeout(() => {
-        gameContextLogger.debug('🧭 Executing delayed navigation to:', path);
-        navigate(path);
-      }, delay);
+    gameContextLogger.debug('🧭 Navigating after delay:', { path, delay });
+    setTimeout(() => {
+      gameContextLogger.debug('🧭 Executing delayed navigation to:', path);
+      navigate(path);
+    }, delay);
   }, [navigate]);
 
   const startPromptRound = useCallback(async () => {
-      gameContextLogger.debug('🎯 GameContext startPromptRound called');      if (!isAuthenticated) {
-        gameContextLogger.debug('🔄 Setting authenticated to true after token check');
-        setIsAuthenticated(true);
+    gameContextLogger.debug('🎯 GameContext startPromptRound called'); if (!isAuthenticated) {
+      gameContextLogger.debug('🔄 Setting authenticated to true after token check');
+      setIsAuthenticated(true);
+    }
+
+    try {
+      gameContextLogger.debug('🔄 Setting loading to true');
+      setLoading(true);
+      setError(null);
+      gameContextLogger.debug('📞 Calling apiClient.startPromptRound()...');
+      const response = await apiClient.startPromptRound();
+      gameContextLogger.debug('✅ Start prompt round API call successful:', {
+        roundId: response.round_id,
+        expiresAt: response.expires_at,
+        promptText: response.prompt_text,
+        cost: response.cost
+      });
+
+      const newActiveRound = {
+        round_type: 'prompt' as const,
+        round_id: response.round_id,
+        expires_at: response.expires_at,
+        state: {
+          round_id: response.round_id,
+          prompt_text: response.prompt_text,
+          expires_at: response.expires_at,
+          cost: response.cost,
+          status: 'active' as const,
+        },
+      };
+
+      setActiveRound(newActiveRound);
+      setCopyRoundHints(null);
+      copyHintsRoundRef.current = null;
+      gameContextLogger.debug('🔄 Triggering dashboard refresh after starting prompt round');
+      triggerPoll('dashboard');
+
+      if (onDashboardTrigger) {
+        gameContextLogger.debug('🔄 Calling external dashboard trigger');
+        onDashboardTrigger();
       }
 
-      try {
-        gameContextLogger.debug('🔄 Setting loading to true');
-        setLoading(true);
-        setError(null);
-        gameContextLogger.debug('📞 Calling apiClient.startPromptRound()...');
-        const response = await apiClient.startPromptRound();
-        gameContextLogger.debug('✅ Start prompt round API call successful:', {
-          roundId: response.round_id,
-          expiresAt: response.expires_at,
-          promptText: response.prompt_text,
-          cost: response.cost
-        });
-        
-        const newActiveRound = {
-          round_type: 'prompt' as const,
-          round_id: response.round_id,
-          expires_at: response.expires_at,
-          state: {
-            round_id: response.round_id,
-            prompt_text: response.prompt_text,
-            expires_at: response.expires_at,
-            cost: response.cost,
-            status: 'active' as const,
-          },
-        };
-        
-        setActiveRound(newActiveRound);
-        setCopyRoundHints(null);
-        copyHintsRoundRef.current = null;
-        gameContextLogger.debug('🔄 Triggering dashboard refresh after starting prompt round');
-        triggerPoll('dashboard');
-        
-        if (onDashboardTrigger) {
-          gameContextLogger.debug('🔄 Calling external dashboard trigger');
-          onDashboardTrigger();
-        }
-        
-        gameContextLogger.debug('✅ Start prompt round completed successfully');
-      } catch (err) {
-        gameContextLogger.error('❌ Start prompt round failed:', err);
-        const errorMessage = getActionErrorMessage('start-prompt', err);
-        gameContextLogger.debug('📝 Setting error message:', errorMessage);
-        setError(errorMessage);
-        throw err;
-      } finally {
-        gameContextLogger.debug('🔄 Setting loading to false');
-        setLoading(false);
-      }
+      gameContextLogger.debug('✅ Start prompt round completed successfully');
+    } catch (err) {
+      gameContextLogger.error('❌ Start prompt round failed:', err);
+      const errorMessage = getActionErrorMessage('start-prompt', err);
+      gameContextLogger.debug('📝 Setting error message:', errorMessage);
+      setError(errorMessage);
+      throw err;
+    } finally {
+      gameContextLogger.debug('🔄 Setting loading to false');
+      setLoading(false);
+    }
   }, [isAuthenticated, triggerPoll, onDashboardTrigger]);
 
   const startCopyRound = useCallback(async () => {
-      gameContextLogger.debug('🎯 GameContext startCopyRound called');      if (!isAuthenticated) {
-        gameContextLogger.debug('🔄 Setting authenticated to true after token check');
-        setIsAuthenticated(true);
+    gameContextLogger.debug('🎯 GameContext startCopyRound called'); if (!isAuthenticated) {
+      gameContextLogger.debug('🔄 Setting authenticated to true after token check');
+      setIsAuthenticated(true);
+    }
+
+    try {
+      gameContextLogger.debug('🔄 Setting loading to true');
+      setLoading(true);
+      setError(null);
+      gameContextLogger.debug('📞 Calling apiClient.startCopyRound()...');
+      const response = await apiClient.startCopyRound();
+      gameContextLogger.debug('✅ Start copy round API call successful:', {
+        roundId: response.round_id,
+        expiresAt: response.expires_at,
+        originalPhrase: response.original_phrase,
+        cost: response.cost,
+        discountActive: response.discount_active
+      });
+
+      const newActiveRound = {
+        round_type: 'copy' as const,
+        round_id: response.round_id,
+        expires_at: response.expires_at,
+        state: {
+          round_id: response.round_id,
+          original_phrase: response.original_phrase,
+          expires_at: response.expires_at,
+          cost: response.cost,
+          discount_active: response.discount_active,
+          prompt_round_id: response.prompt_round_id,
+          status: 'active' as const,
+        },
+      };
+
+      setActiveRound(newActiveRound);
+      setCopyRoundHints(null);
+      copyHintsRoundRef.current = null;
+      gameContextLogger.debug('🔄 Triggering dashboard refresh after starting copy round');
+      triggerPoll('dashboard');
+
+      if (onDashboardTrigger) {
+        gameContextLogger.debug('🔄 Calling external dashboard trigger');
+        onDashboardTrigger();
       }
 
-      try {
-        gameContextLogger.debug('🔄 Setting loading to true');
-        setLoading(true);
-        setError(null);
-        gameContextLogger.debug('📞 Calling apiClient.startCopyRound()...');
-        const response = await apiClient.startCopyRound();
-        gameContextLogger.debug('✅ Start copy round API call successful:', {
-          roundId: response.round_id,
-          expiresAt: response.expires_at,
-          originalPhrase: response.original_phrase,
-          cost: response.cost,
-          discountActive: response.discount_active
-        });
-        
-        const newActiveRound = {
-          round_type: 'copy' as const,
-          round_id: response.round_id,
-          expires_at: response.expires_at,
-          state: {
-            round_id: response.round_id,
-            original_phrase: response.original_phrase,
-            expires_at: response.expires_at,
-            cost: response.cost,
-            discount_active: response.discount_active,
-            prompt_round_id: response.prompt_round_id,
-            status: 'active' as const,
-          },
-        };
-        
-        setActiveRound(newActiveRound);
-        setCopyRoundHints(null);
-        copyHintsRoundRef.current = null;
-        gameContextLogger.debug('🔄 Triggering dashboard refresh after starting copy round');
-        triggerPoll('dashboard');
-        
-        if (onDashboardTrigger) {
-          gameContextLogger.debug('🔄 Calling external dashboard trigger');
-          onDashboardTrigger();
-        }
-        
-        gameContextLogger.debug('✅ Start copy round completed successfully');
-      } catch (err) {
-        gameContextLogger.error('❌ Start copy round failed:', err);
-        const errorMessage = getActionErrorMessage('start-copy', err);
-        gameContextLogger.debug('📝 Setting error message:', errorMessage);
-        setError(errorMessage);
-        throw err;
-      } finally {
-        gameContextLogger.debug('🔄 Setting loading to false');
-        setLoading(false);
-      }
+      gameContextLogger.debug('✅ Start copy round completed successfully');
+    } catch (err) {
+      gameContextLogger.error('❌ Start copy round failed:', err);
+      const errorMessage = getActionErrorMessage('start-copy', err);
+      gameContextLogger.debug('📝 Setting error message:', errorMessage);
+      setError(errorMessage);
+      throw err;
+    } finally {
+      gameContextLogger.debug('🔄 Setting loading to false');
+      setLoading(false);
+    }
   }, [isAuthenticated, triggerPoll, onDashboardTrigger]);
 
   const fetchCopyHints = useCallback(async (roundId: string): Promise<string[]> => {
-      if (!roundId) {
-        return [];
-      }
+    if (!roundId) {
+      return [];
+    }
 
-      if (copyHintsRoundRef.current === roundId && copyRoundHints) {
-        gameContextLogger.debug('?? Returning cached copy hints', { roundId });
-        return copyRoundHints;
-      }
+    if (copyHintsRoundRef.current === roundId && copyRoundHints) {
+      gameContextLogger.debug('?? Returning cached copy hints', { roundId });
+      return copyRoundHints;
+    }
 
-      gameContextLogger.debug('?? Fetching AI copy hints for round', { roundId });
+    gameContextLogger.debug('?? Fetching AI copy hints for round', { roundId });
 
-      try {
-        const response = await apiClient.getCopyHints(roundId);
-        copyHintsRoundRef.current = roundId;
-        setCopyRoundHints(response.hints);
-        setError(null);
-        gameContextLogger.debug('? Copy hints fetched successfully', { count: response.hints?.length ?? 0 });
-        return response.hints;
-      } catch (err) {
-        gameContextLogger.error('? Fetch copy hints failed:', err);
-        const errorMessage = getActionErrorMessage('fetch-copy-hints', err);
-        setError(errorMessage);
-        throw err;
-      }
+    try {
+      const response = await apiClient.getCopyHints(roundId);
+      copyHintsRoundRef.current = roundId;
+      setCopyRoundHints(response.hints);
+      setError(null);
+      gameContextLogger.debug('? Copy hints fetched successfully', { count: response.hints?.length ?? 0 });
+      return response.hints;
+    } catch (err) {
+      gameContextLogger.error('? Fetch copy hints failed:', err);
+      const errorMessage = getActionErrorMessage('fetch-copy-hints', err);
+      setError(errorMessage);
+      throw err;
+    }
   }, [copyRoundHints, setError]);
 
   const flagCopyRound = useCallback(async (roundId: string): Promise<FlagCopyRoundResponse> => {
-      gameContextLogger.debug('🚩 GameContext flagCopyRound called', { roundId });      try {
-        gameContextLogger.debug('📞 Calling apiClient.flagCopyRound()...', { roundId });
-        const response = await apiClient.flagCopyRound(roundId);
-        gameContextLogger.info('✅ Copy round flagged successfully', { roundId, flagId: response.flag_id });
-        await refreshDashboard();
-        return response;
-      } catch (err) {
-        gameContextLogger.error('❌ Failed to flag copy round:', err);
-        throw err;
-      }
+    gameContextLogger.debug('🚩 GameContext flagCopyRound called', { roundId }); try {
+      gameContextLogger.debug('📞 Calling apiClient.flagCopyRound()...', { roundId });
+      const response = await apiClient.flagCopyRound(roundId);
+      gameContextLogger.info('✅ Copy round flagged successfully', { roundId, flagId: response.flag_id });
+      await refreshDashboard();
+      return response;
+    } catch (err) {
+      gameContextLogger.error('❌ Failed to flag copy round:', err);
+      throw err;
+    }
   }, [refreshDashboard]);
 
   const abandonRound = useCallback(async (roundId: string): Promise<AbandonRoundResponse> => {
-      gameContextLogger.debug('🛑 GameContext abandonRound called', { roundId });      try {
-        gameContextLogger.debug('📞 Calling apiClient.abandonRound()...', { roundId });
-        const response = await apiClient.abandonRound(roundId);
-        gameContextLogger.info('✅ Round abandoned successfully', {
-          roundId,
-          refundAmount: response.refund_amount,
-          penaltyKept: response.penalty_kept,
-        });
-        await refreshDashboard();
-        return response;
-      } catch (err) {
-        gameContextLogger.error('❌ Failed to abandon round:', err);
-        throw err;
-      }
+    gameContextLogger.debug('🛑 GameContext abandonRound called', { roundId }); try {
+      gameContextLogger.debug('📞 Calling apiClient.abandonRound()...', { roundId });
+      const response = await apiClient.abandonRound(roundId);
+      gameContextLogger.info('✅ Round abandoned successfully', {
+        roundId,
+        refundAmount: response.refund_amount,
+        penaltyKept: response.penalty_kept,
+      });
+      await refreshDashboard();
+      return response;
+    } catch (err) {
+      gameContextLogger.error('❌ Failed to abandon round:', err);
+      throw err;
+    }
   }, [refreshDashboard]);
 
   const startVoteRound = useCallback(async () => {
-      gameContextLogger.debug('🎯 GameContext startVoteRound called');      if (!isAuthenticated) {
-        gameContextLogger.debug('🔄 Setting authenticated to true after token check');
-        setIsAuthenticated(true);
+    gameContextLogger.debug('🎯 GameContext startVoteRound called'); if (!isAuthenticated) {
+      gameContextLogger.debug('🔄 Setting authenticated to true after token check');
+      setIsAuthenticated(true);
+    }
+
+    try {
+      gameContextLogger.debug('🔄 Setting loading to true');
+      setLoading(true);
+      setError(null);
+      gameContextLogger.debug('📞 Calling apiClient.startVoteRound()...');
+      const response = await apiClient.startVoteRound();
+      gameContextLogger.debug('✅ Start vote round API call successful:', {
+        roundId: response.round_id,
+        expiresAt: response.expires_at,
+        phrasesetId: response.phraseset_id,
+        promptText: response.prompt_text,
+        phrases: response.phrases
+      });
+
+      const newActiveRound = {
+        round_type: 'vote' as const,
+        round_id: response.round_id,
+        expires_at: response.expires_at,
+        state: {
+          round_id: response.round_id,
+          phraseset_id: response.phraseset_id,
+          prompt_text: response.prompt_text,
+          phrases: response.phrases,
+          expires_at: response.expires_at,
+          status: 'active' as const,
+        },
+      };
+
+      setActiveRound(newActiveRound);
+      setCopyRoundHints(null);
+      copyHintsRoundRef.current = null;
+      gameContextLogger.debug('🔄 Triggering dashboard refresh after starting vote round');
+      triggerPoll('dashboard');
+
+      if (onDashboardTrigger) {
+        gameContextLogger.debug('🔄 Calling external dashboard trigger');
+        onDashboardTrigger();
       }
 
-      try {
-        gameContextLogger.debug('🔄 Setting loading to true');
-        setLoading(true);
-        setError(null);
-        gameContextLogger.debug('📞 Calling apiClient.startVoteRound()...');
-        const response = await apiClient.startVoteRound();
-        gameContextLogger.debug('✅ Start vote round API call successful:', {
-          roundId: response.round_id,
-          expiresAt: response.expires_at,
-          phrasesetId: response.phraseset_id,
-          promptText: response.prompt_text,
-          phrases: response.phrases
-        });
-        
-        const newActiveRound = {
-          round_type: 'vote' as const,
-          round_id: response.round_id,
-          expires_at: response.expires_at,
-          state: {
-            round_id: response.round_id,
-            phraseset_id: response.phraseset_id,
-            prompt_text: response.prompt_text,
-            phrases: response.phrases,
-            expires_at: response.expires_at,
-            status: 'active' as const,
-          },
-        };
-        
-        setActiveRound(newActiveRound);
-        setCopyRoundHints(null);
-        copyHintsRoundRef.current = null;
-        gameContextLogger.debug('🔄 Triggering dashboard refresh after starting vote round');
-        triggerPoll('dashboard');
-        
-        if (onDashboardTrigger) {
-          gameContextLogger.debug('🔄 Calling external dashboard trigger');
-          onDashboardTrigger();
-        }
-        
-        gameContextLogger.debug('✅ Start vote round completed successfully');
-      } catch (err) {
-        gameContextLogger.error('❌ Start vote round failed:', err);
-        const errorMessage = getActionErrorMessage('start-vote', err);
-        gameContextLogger.debug('📝 Setting error message:', errorMessage);
-        setError(errorMessage);
-        throw err;
-      } finally {
-        gameContextLogger.debug('🔄 Setting loading to false');
-        setLoading(false);
-      }
+      gameContextLogger.debug('✅ Start vote round completed successfully');
+    } catch (err) {
+      gameContextLogger.error('❌ Start vote round failed:', err);
+      const errorMessage = getActionErrorMessage('start-vote', err);
+      gameContextLogger.debug('📝 Setting error message:', errorMessage);
+      setError(errorMessage);
+      throw err;
+    } finally {
+      gameContextLogger.debug('🔄 Setting loading to false');
+      setLoading(false);
+    }
   }, [isAuthenticated, triggerPoll, onDashboardTrigger]);
 
   const claimPhrasesetPrize = useCallback(async (phrasesetId: string) => {
-      gameContextLogger.debug('🎯 GameContext claimPhrasesetPrize called:', { phrasesetId });      if (!isAuthenticated) {
-        gameContextLogger.debug('🔄 Setting authenticated to true after token check');
-        setIsAuthenticated(true);
+    gameContextLogger.debug('🎯 GameContext claimPhrasesetPrize called:', { phrasesetId }); if (!isAuthenticated) {
+      gameContextLogger.debug('🔄 Setting authenticated to true after token check');
+      setIsAuthenticated(true);
+    }
+
+    try {
+      gameContextLogger.debug('📞 Calling apiClient.claimPhrasesetPrize...');
+      await apiClient.claimPhrasesetPrize(phrasesetId);
+      gameContextLogger.debug('✅ Claim phraseset prize API call successful');
+
+      gameContextLogger.debug('🔄 Triggering dashboard refresh after claiming phraseset prize');
+      triggerPoll('dashboard');
+
+      if (onDashboardTrigger) {
+        gameContextLogger.debug('🔄 Calling external dashboard trigger');
+        onDashboardTrigger();
       }
 
-      try {
-        gameContextLogger.debug('📞 Calling apiClient.claimPhrasesetPrize...');
-        await apiClient.claimPhrasesetPrize(phrasesetId);
-        gameContextLogger.debug('✅ Claim phraseset prize API call successful');
-        
-        gameContextLogger.debug('🔄 Triggering dashboard refresh after claiming phraseset prize');
-        triggerPoll('dashboard');
-        
-        if (onDashboardTrigger) {
-          gameContextLogger.debug('🔄 Calling external dashboard trigger');
-          onDashboardTrigger();
-        }
-        
-        setError(null);
-        gameContextLogger.debug('✅ Claim phraseset prize completed successfully');
-      } catch (err) {
-        gameContextLogger.error('❌ Claim phraseset prize failed:', err);
-        const errorMessage = getActionErrorMessage('claim-prize', err);
-        gameContextLogger.debug('📝 Setting error message:', errorMessage);
-        setError(errorMessage);
-        throw err;
-      }
+      setError(null);
+      gameContextLogger.debug('✅ Claim phraseset prize completed successfully');
+    } catch (err) {
+      gameContextLogger.error('❌ Claim phraseset prize failed:', err);
+      const errorMessage = getActionErrorMessage('claim-prize', err);
+      gameContextLogger.debug('📝 Setting error message:', errorMessage);
+      setError(errorMessage);
+      throw err;
+    }
   }, [isAuthenticated, triggerPoll, onDashboardTrigger]);
+
+  const updateActiveRound = useCallback((roundData: ActiveRound) => {
+    gameContextLogger.debug('🔄 Updating active round manually:', roundData);
+    setActiveRound(roundData);
+  }, []);
 
   // Set up smart polling when authenticated
   useEffect(() => {
@@ -845,6 +851,7 @@ export const GameProvider: React.FC<{
     abandonRound,
     startVoteRound,
     claimPhrasesetPrize,
+    updateActiveRound,
   };
 
   const value: GameContextType = {
@@ -860,7 +867,7 @@ export const useGame = (): GameContextType => {
   const context = useContext(GameContext);
   if (!context) {
     throw new Error('useGame must be used within a GameProvider');
-    }
+  }
   return context;
 };
 

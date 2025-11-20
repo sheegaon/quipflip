@@ -13,9 +13,10 @@ import apiClient, { extractErrorMessage } from '../api/client';
 export const PartyGame: React.FC = () => {
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
-  const { actions: gameActions, state: gameState } = useGame();
+  const { actions: gameActions } = useGame();
   const { actions: partyActions } = usePartyMode();
-  const { startPromptRound, startCopyRound, startVoteRound } = gameActions;
+  // Remove usage of normal round starters
+  // const { startPromptRound, startCopyRound, startVoteRound } = gameActions;
   const { startPartyMode, setCurrentStep, endPartyMode } = partyActions;
   const [isStarting, setIsStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,12 +35,14 @@ export const PartyGame: React.FC = () => {
         const status = await apiClient.getPartySessionStatus(sessionId);
         const phase = status.current_phase.toLowerCase();
 
+        // Check if already completed
         if (phase === 'results' || status.status === 'COMPLETED') {
           endPartyMode();
           navigate(`/party/results/${sessionId}`);
           return;
         }
 
+        // Map server phase to client step
         const phaseToStepMap: Record<string, 'prompt' | 'copy' | 'vote'> = {
           prompt: 'prompt',
           copy: 'copy',
@@ -47,31 +50,61 @@ export const PartyGame: React.FC = () => {
         };
 
         const step = phaseToStepMap[phase] ?? 'prompt';
+
+        // Initialize party mode
         startPartyMode(sessionId, step);
         setCurrentStep(step);
 
-        if (step === 'copy') {
-          if (gameState.activeRound?.round_type !== 'copy') {
-            await startCopyRound();
-          }
+        // Start the appropriate round using PARTY-SPECIFIC endpoints
+        if (step === 'prompt') {
+          const roundData = await apiClient.startPartyPromptRound(sessionId);
+          gameActions.updateActiveRound({
+            round_type: 'prompt',
+            round_id: roundData.round_id,
+            expires_at: roundData.expires_at,
+            state: {
+              round_id: roundData.round_id,
+              prompt_text: roundData.prompt_text,
+              expires_at: roundData.expires_at,
+              cost: roundData.cost,
+              status: 'active',
+            }
+          });
+          navigate('/prompt', { replace: true });
+        } else if (step === 'copy') {
+          const roundData = await apiClient.startPartyCopyRound(sessionId);
+          gameActions.updateActiveRound({
+            round_type: 'copy',
+            round_id: roundData.round_id,
+            expires_at: roundData.expires_at,
+            state: {
+              round_id: roundData.round_id,
+              original_phrase: roundData.original_phrase,
+              prompt_round_id: roundData.prompt_round_id,
+              expires_at: roundData.expires_at,
+              cost: roundData.cost,
+              status: 'active',
+              discount_active: false,
+            }
+          });
           navigate('/copy', { replace: true });
-          return;
-        }
-
-        if (step === 'vote') {
-          if (gameState.activeRound?.round_type !== 'vote') {
-            await startVoteRound();
-          }
+        } else if (step === 'vote') {
+          const roundData = await apiClient.startPartyVoteRound(sessionId);
+          gameActions.updateActiveRound({
+            round_type: 'vote',
+            round_id: roundData.round_id,
+            expires_at: roundData.expires_at,
+            state: {
+              round_id: roundData.round_id,
+              phraseset_id: roundData.phraseset_id,
+              prompt_text: roundData.prompt_text,
+              phrases: roundData.phrases,
+              expires_at: roundData.expires_at,
+              status: 'active',
+            }
+          });
           navigate('/vote', { replace: true });
-          return;
         }
-
-        // Default to prompt round
-        if (gameState.activeRound?.round_type !== 'prompt') {
-          await startPromptRound();
-        }
-
-        navigate('/prompt', { replace: true });
       } catch (err) {
         const message = extractErrorMessage(err) || 'Failed to start party round.';
         setError(message);
@@ -82,15 +115,12 @@ export const PartyGame: React.FC = () => {
 
     void beginPartyFlow();
   }, [
-    gameState.activeRound?.round_type,
     navigate,
     sessionId,
-    startCopyRound,
-    startPromptRound,
-    startVoteRound,
     startPartyMode,
     setCurrentStep,
     endPartyMode,
+    gameActions
   ]);
 
   if (error) {
