@@ -125,6 +125,7 @@ const OnlineUsers: React.FC = () => {
           }
 
           // Fall back to polling if WebSocket closes unexpectedly
+          // But only if we haven't already started polling and component is still mounted
           if (!pollingInterval) {
             startPolling();
           }
@@ -139,7 +140,8 @@ const OnlineUsers: React.FC = () => {
 
     // Fallback polling mechanism for when WebSocket fails
     const startPolling = () => {
-      if (pollingInterval) return; // Already polling
+      // Don't start polling if we already have an interval running
+      if (pollingInterval) return;
 
       setError('Using polling mode (WebSocket unavailable)');
       setLoading(false);
@@ -174,7 +176,9 @@ const OnlineUsers: React.FC = () => {
 
     // Cleanup on unmount or auth change
     return () => {
-      // Clear polling interval
+      console.log('OnlineUsers cleanup - clearing intervals and connections');
+      
+      // Clear polling interval - this is the key fix
       if (pollingInterval) {
         clearInterval(pollingInterval);
         pollingInterval = null;
@@ -188,9 +192,14 @@ const OnlineUsers: React.FC = () => {
 
       // Close WebSocket connection
       if (wsRef.current) {
-        wsRef.current.close();
+        wsRef.current.close(1000, 'Component unmounting'); // Clean close with reason
         wsRef.current = null;
       }
+
+      // Reset connection state
+      setConnected(false);
+      setLoading(false);
+      setError(null);
     };
   }, [state.isAuthenticated]); // Key: depend on auth state
 

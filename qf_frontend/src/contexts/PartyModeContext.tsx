@@ -8,8 +8,6 @@ interface SessionConfig {
   prompts_per_player: number;
   copies_per_player: number;
   votes_per_player: number;
-  min_players: number;
-  max_players: number;
 }
 
 interface PartyModeState {
@@ -153,8 +151,6 @@ export const PartyModeProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             prompts_per_player: context.your_progress.prompts_required,
             copies_per_player: context.your_progress.copies_required,
             votes_per_player: context.your_progress.votes_required,
-            min_players: 0,
-            max_players: 0,
           };
 
       const nextState: PartyModeState = {

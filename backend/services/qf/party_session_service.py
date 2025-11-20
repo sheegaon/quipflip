@@ -229,8 +229,6 @@ class PartySessionService:
         Returns:
             List[Dict]: List of party session summaries
         """
-        from backend.schemas.party import PartyListItemResponse
-
         # Subquery to get participant counts for all sessions
         participant_counts = (
             select(
@@ -267,15 +265,15 @@ class PartySessionService:
         result = await self.db.execute(stmt)
 
         parties = [
-            PartyListItemResponse(
-                session_id=str(session.session_id),
-                host_username=session.host_username or "Unknown",
-                participant_count=session.participant_count,
-                min_players=session.min_players,
-                max_players=session.max_players,
-                created_at=session.created_at,
-                is_full=False,  # Already filtered by the query
-            )
+            {
+                'session_id': str(session.session_id),
+                'host_username': session.host_username or "Unknown",
+                'participant_count': session.participant_count,
+                'min_players': session.min_players,
+                'max_players': session.max_players,
+                'created_at': session.created_at,
+                'is_full': False,  # Already filtered by the query
+            }
             for session in result.all()
         ]
 

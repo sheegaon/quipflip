@@ -834,7 +834,7 @@ class PartyCoordinationService:
                             continue
 
                         # Generate vote
-                        seed = int(UUID(participant.player_id))
+                        seed = participant.player_id.int
                         chosen_phrase = await ai_service.generate_vote_choice(phraseset, seed)
 
                         # Submit vote round
