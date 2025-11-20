@@ -395,11 +395,11 @@ export const PromptRound: React.FC = () => {
         </button>
 
         {/* Info */}
-          <div className="mt-6 p-4 bg-quip-navy bg-opacity-5 rounded-tile">
-            <p className="text-sm text-quip-teal">
-              <strong className="text-quip-navy">Cost:</strong> <CurrencyDisplay amount={roundData.cost} iconClassName="w-3 h-3" textClassName="text-sm" /> (<CurrencyDisplay amount={roundData.cost - abandonedPenalty} iconClassName="w-3 h-3" textClassName="text-sm" /> refunded if you don't submit in time)
-            </p>
-          </div>
+        <div className="mt-6 p-4 bg-quip-navy bg-opacity-5 rounded-tile">
+          <p className="text-sm text-quip-teal">
+            <strong className="text-quip-navy">Cost:</strong> <CurrencyDisplay amount={roundData.cost} iconClassName="w-3 h-3" textClassName="text-sm" /> (<CurrencyDisplay amount={roundData.cost - abandonedPenalty} iconClassName="w-3 h-3" textClassName="text-sm" /> refunded if you don't submit in time)
+          </p>
+        </div>
         </div>
       </div>
     </>
