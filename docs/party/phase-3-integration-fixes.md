@@ -21,6 +21,12 @@ This is the critical integration phase that connects the backend (Phase 1) with 
 4. ✅ Remove manual progress tracking attempts
 5. ✅ Test end-to-end party mode flow
 
+## Current Implementation Snapshot
+
+- API client exposes `startPartyPromptRound`, `startPartyCopyRound`, and `startPartyVoteRound` that call `/party/{sessionId}/rounds/{roundType}` to align with backend routing (`qf_frontend/src/api/client.ts`).
+- `PartyGame.tsx` initializes party mode with the session phase and kicks off the correct party round using those methods before navigating players into Prompt/Copy/Vote flows (`qf_frontend/src/pages/PartyGame.tsx`).
+- Round pages keep using the unified `/rounds/{round_id}/submit` endpoint so party submissions automatically update counters through backend detection (`qf_frontend/src/pages/PromptRound.tsx`).
+
 ---
 
 ## Implementation Steps

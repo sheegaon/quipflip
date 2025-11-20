@@ -20,6 +20,12 @@ This phase fixes the most critical issue: normal round endpoints don't know abou
 4. ✅ Add database link from Round to PartyRound for fast lookups
 5. ✅ Test both normal and party mode submissions
 
+## Current Implementation Snapshot
+
+- `Round.party_round_id` is present for fast party lookups (`backend/models/qf/round.py`).
+- `POST /qf/rounds/{round_id}/submit` routes party rounds through `PartyCoordinationService`, returning `party_session_id` and `party_round_id` when a party link exists (`backend/routers/qf/rounds.py`).
+- Party start endpoints for prompt/copy/vote live under `/qf/party/{session_id}/rounds/*` and include session progress fields to keep the UI in sync (`backend/routers/qf/party.py`).
+
 ---
 
 ## Implementation Steps

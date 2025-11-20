@@ -26,6 +26,12 @@ This phase consolidates all that logic into 2-3 reusable hooks.
 4. ✅ Update all 3 round pages to use new hooks
 5. ✅ Remove ~250 lines of duplicate code
 
+## Current Implementation Snapshot
+
+- Shared hooks now live in `qf_frontend/src/hooks/usePartyRoundCoordinator.ts` and `qf_frontend/src/hooks/usePartyNavigation.ts`, providing centralized transition and navigation logic.
+- Prompt, Copy, and Vote round pages import these hooks to drive auto-advancement and party-aware home/results routing instead of duplicating logic (`qf_frontend/src/pages/PromptRound.tsx`, `CopyRound.tsx`, `VoteRound.tsx`).
+- Party overlays remain reusable (e.g., `PartyRoundModal`) and receive session IDs from the PartyMode context rather than bespoke fetches.
+
 ---
 
 ## Implementation Steps

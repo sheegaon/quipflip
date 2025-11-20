@@ -161,7 +161,7 @@ export const CopyRound: React.FC = () => {
   const { activeRound, roundAvailability, copyRoundHints, player } = state;
   const { flagCopyRound, refreshDashboard, fetchCopyHints } = actions;
   const { state: partyState, actions: partyActions } = usePartyMode();
-  const { setCurrentStep, endPartyMode } = partyActions;
+  const { setCurrentStep } = partyActions;
   const navigate = useNavigate();
   const [phrase, setPhrase] = useState('');
   const [error, setError] = useState<string | null>(null);

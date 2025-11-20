@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import apiClient, { extractErrorMessage } from '../api/client';
@@ -31,7 +31,7 @@ export const PromptRound: React.FC = () => {
   const { activeRound, roundAvailability } = state;
   const { refreshDashboard } = actions;
   const { state: partyState, actions: partyActions } = usePartyMode();
-  const { setCurrentStep, endPartyMode } = partyActions;
+  const { setCurrentStep } = partyActions;
   const navigate = useNavigate();
   const [phrase, setPhrase] = useState('');
   const [error, setError] = useState<string | null>(null);
