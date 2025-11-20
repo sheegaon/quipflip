@@ -34,18 +34,34 @@ export const PartyRoundModal: React.FC<PartyRoundModalProps> = ({ sessionId, cur
           // Update context with fetched data
           const participant = status.participants.find((p) => p.player_id === gameState.player?.player_id);
           if (participant) {
-            partyActions.updateYourProgress({
-              prompts_submitted: participant.prompts_submitted,
-              copies_submitted: participant.copies_submitted,
-              votes_submitted: participant.votes_submitted,
-            });
-          }
+            const config = {
+              prompts_per_player: participant.prompts_required,
+              copies_per_player: participant.copies_required,
+              votes_per_player: participant.votes_required,
+              min_players: status.min_players,
+              max_players: status.max_players,
+            };
 
-          if (status.progress) {
-            partyActions.updateSessionProgress({
-              players_ready_for_next_phase: status.progress.players_ready_for_next_phase,
-              total_players: status.progress.total_players,
-            });
+            partyActions.startPartyMode(sessionId, currentStep, config);
+
+            const partyContext = {
+              session_id: status.session_id,
+              current_phase: status.current_phase,
+              your_progress: {
+                prompts_submitted: participant.prompts_submitted,
+                prompts_required: participant.prompts_required,
+                copies_submitted: participant.copies_submitted,
+                copies_required: participant.copies_required,
+                votes_submitted: participant.votes_submitted,
+                votes_required: participant.votes_required,
+              },
+              session_progress: {
+                players_ready_for_next_phase: status.progress?.players_ready_for_next_phase ?? 0,
+                total_players: status.progress?.total_players ?? status.participants.length,
+              },
+            };
+
+            partyActions.updateFromPartyContext(partyContext);
           }
 
           setError(null);
@@ -58,7 +74,7 @@ export const PartyRoundModal: React.FC<PartyRoundModalProps> = ({ sessionId, cur
       };
       void fetchStatus();
     }
-  }, [partyState.yourProgress, sessionId, gameState.player?.player_id, partyActions]);
+  }, [partyState.yourProgress, sessionId, gameState.player?.player_id, partyActions, currentStep]);
 
   // WebSocket updates will update context automatically via submission responses
   // This hook just listens for phase transitions

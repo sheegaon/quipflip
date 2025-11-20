@@ -52,8 +52,19 @@ export const PartyGame: React.FC = () => {
 
         const step = phaseToStepMap[phase] ?? 'prompt';
 
+        const participantConfig = status.participants[0];
+        const sessionConfig = participantConfig
+          ? {
+              min_players: status.min_players,
+              max_players: status.max_players,
+              prompts_per_player: participantConfig.prompts_required,
+              copies_per_player: participantConfig.copies_required,
+              votes_per_player: participantConfig.votes_required,
+            }
+          : undefined;
+
         // Initialize party mode (will store session config from first round)
-        startPartyMode(sessionId, step);
+        startPartyMode(sessionId, step, sessionConfig);
         setCurrentStep(step);
 
         // Start the appropriate round using PARTY-SPECIFIC endpoints
