@@ -351,14 +351,40 @@ export interface StartVoteResponse {
   expires_at: string;
 }
 
+/**
+ * Party context included in round responses when in party mode.
+ * Contains player progress and session progress information.
+ */
+export interface PartyContext {
+  session_id: string;
+  current_phase: string;
+  your_progress: {
+    prompts_submitted: number;
+    prompts_required: number;
+    copies_submitted: number;
+    copies_required: number;
+    votes_submitted: number;
+    votes_required: number;
+  };
+  session_progress: {
+    players_ready_for_next_phase: number;
+    total_players: number;
+  };
+}
+
 export interface SubmitPhraseResponse {
   success: boolean;
   phrase: string;
+  round_type?: 'prompt' | 'copy';
   // Second copy eligibility (for copy rounds only)
   eligible_for_second_copy?: boolean;
   second_copy_cost?: number;
   prompt_round_id?: string;
   original_phrase?: string;
+  // Party-specific fields (present when in party mode)
+  party_session_id?: string;
+  party_round_id?: string;
+  party_context?: PartyContext;
 }
 
 export interface HintResponse {
@@ -370,6 +396,9 @@ export interface VoteResponse {
   payout: number;
   original_phrase: string;
   your_choice: string;
+  // Party-specific fields
+  party_session_id?: string;
+  party_context?: PartyContext;
 }
 
 export interface VoteResult {
@@ -918,12 +947,14 @@ export interface StartPartyPromptResponse {
   prompt_text: string;
   expires_at: string;
   cost: number;
+  status?: string;
   session_progress: {
     your_prompts_submitted: number;
     prompts_required: number;
     players_done: number;
     total_players: number;
   };
+  party_context?: PartyContext;
 }
 
 export interface StartPartyCopyResponse {
@@ -943,6 +974,7 @@ export interface StartPartyCopyResponse {
     players_done: number;
     total_players: number;
   };
+  party_context?: PartyContext;
 }
 
 export interface StartPartyVoteResponse {
@@ -953,6 +985,7 @@ export interface StartPartyVoteResponse {
   prompt_text: string;
   phrases: string[];
   expires_at: string;
+  cost?: number;
   from_party: boolean;
   session_progress: {
     your_votes_submitted: number;
@@ -960,6 +993,7 @@ export interface StartPartyVoteResponse {
     players_done: number;
     total_players: number;
   };
+  party_context?: PartyContext;
 }
 
 export type StartPartyRoundResponse =

@@ -1,18 +1,48 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import type { PartyContext } from '../api/types';
 
 export type PartyStep = 'prompt' | 'copy' | 'vote';
+
+interface SessionConfig {
+  prompts_per_player: number;
+  copies_per_player: number;
+  votes_per_player: number;
+  min_players: number;
+  max_players: number;
+}
 
 interface PartyModeState {
   isPartyMode: boolean;
   sessionId: string | null;
   currentStep: PartyStep | null;
+
+  // Session configuration (set once at start, doesn't change)
+  sessionConfig: SessionConfig | null;
+
+  // Player's individual progress (updated on each submission)
+  yourProgress: {
+    prompts_submitted: number;
+    copies_submitted: number;
+    votes_submitted: number;
+  } | null;
+
+  // Overall session progress (updated via API responses or WebSocket)
+  sessionProgress: {
+    players_ready_for_next_phase: number;
+    total_players: number;
+  } | null;
 }
 
 interface PartyModeActions {
-  startPartyMode: (sessionId: string, initialStep?: PartyStep) => void;
+  startPartyMode: (sessionId: string, initialStep?: PartyStep, config?: SessionConfig) => void;
   endPartyMode: () => void;
   setCurrentStep: (step: PartyStep) => void;
+
+  // Update progress from API responses
+  updateYourProgress: (progress: PartyModeState['yourProgress']) => void;
+  updateSessionProgress: (progress: PartyModeState['sessionProgress']) => void;
+  updateFromPartyContext: (context: PartyContext) => void;
 }
 
 interface PartyModeContextValue {
@@ -26,6 +56,9 @@ const defaultState: PartyModeState = {
   isPartyMode: false,
   sessionId: null,
   currentStep: null,
+  sessionConfig: null,
+  yourProgress: null,
+  sessionProgress: null,
 };
 
 const PartyModeContext = createContext<PartyModeContextValue | undefined>(undefined);
@@ -54,13 +87,14 @@ const persistState = (state: PartyModeState) => {
 export const PartyModeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, setState] = useState<PartyModeState>(() => loadInitialState());
 
-  const startPartyMode = useCallback((sessionId: string, initialStep: PartyStep = 'prompt') => {
+  const startPartyMode = useCallback((sessionId: string, initialStep: PartyStep = 'prompt', config?: SessionConfig) => {
     setState((prev) => {
       const nextState: PartyModeState = {
         ...prev,
         isPartyMode: true,
         sessionId,
         currentStep: initialStep,
+        sessionConfig: config || prev.sessionConfig,
       };
       persistState(nextState);
       return nextState;
@@ -84,14 +118,71 @@ export const PartyModeProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     });
   }, []);
 
+  const updateYourProgress = useCallback((progress: PartyModeState['yourProgress']) => {
+    setState((prev) => {
+      const nextState: PartyModeState = {
+        ...prev,
+        yourProgress: progress,
+      };
+      persistState(nextState);
+      return nextState;
+    });
+  }, []);
+
+  const updateSessionProgress = useCallback((progress: PartyModeState['sessionProgress']) => {
+    setState((prev) => {
+      const nextState: PartyModeState = {
+        ...prev,
+        sessionProgress: progress,
+      };
+      persistState(nextState);
+      return nextState;
+    });
+  }, []);
+
+  const updateFromPartyContext = useCallback((context: PartyContext) => {
+    setState((prev) => {
+      const nextSessionConfig: SessionConfig = prev.sessionConfig
+        ? {
+            ...prev.sessionConfig,
+            prompts_per_player: context.your_progress.prompts_required,
+            copies_per_player: context.your_progress.copies_required,
+            votes_per_player: context.your_progress.votes_required,
+          }
+        : {
+            prompts_per_player: context.your_progress.prompts_required,
+            copies_per_player: context.your_progress.copies_required,
+            votes_per_player: context.your_progress.votes_required,
+            min_players: 0,
+            max_players: 0,
+          };
+
+      const nextState: PartyModeState = {
+        ...prev,
+        sessionConfig: nextSessionConfig,
+        yourProgress: {
+          prompts_submitted: context.your_progress.prompts_submitted,
+          copies_submitted: context.your_progress.copies_submitted,
+          votes_submitted: context.your_progress.votes_submitted,
+        },
+        sessionProgress: context.session_progress,
+      };
+      persistState(nextState);
+      return nextState;
+    });
+  }, []);
+
   const value = useMemo<PartyModeContextValue>(() => ({
     state,
     actions: {
       startPartyMode,
       endPartyMode,
       setCurrentStep,
+      updateYourProgress,
+      updateSessionProgress,
+      updateFromPartyContext,
     },
-  }), [state, startPartyMode, endPartyMode, setCurrentStep]);
+  }), [state, startPartyMode, endPartyMode, setCurrentStep, updateYourProgress, updateSessionProgress, updateFromPartyContext]);
 
   return (
     <PartyModeContext.Provider value={value}>

@@ -658,6 +658,12 @@ async def start_party_prompt_round(
         # Get session progress
         party_service = PartySessionService(db)
         participant = await party_service.get_participant(session_id, player.player_id)
+        session = await party_service.get_session_by_id(session_id)
+        all_participants = await party_service.get_participants(session_id)
+        active_participants = [p for p in all_participants if p.status == 'ACTIVE']
+
+        # Count players ready for next phase (all active players who have submitted their prompts)
+        players_ready = sum(1 for p in active_participants if p.prompts_submitted >= session.prompts_per_player)
 
         return StartPartyRoundResponse(
             round_id=str(round_obj.round_id),
@@ -665,9 +671,29 @@ async def start_party_prompt_round(
             round_type='prompt',
             expires_at=round_obj.expires_at,
             cost=round_obj.cost,
+            prompt_text=round_obj.prompt_text,
+            status=round_obj.status,
             session_progress={
                 'your_prompts_submitted': participant.prompts_submitted,
-                'prompts_required': (await party_service.get_session_by_id(session_id)).prompts_per_player,
+                'prompts_required': session.prompts_per_player,
+                'players_done': players_ready,
+                'total_players': len(active_participants),
+            },
+            party_context={
+                'session_id': str(session_id),
+                'current_phase': session.current_phase,
+                'your_progress': {
+                    'prompts_submitted': participant.prompts_submitted,
+                    'prompts_required': session.prompts_per_player,
+                    'copies_submitted': participant.copies_submitted,
+                    'copies_required': session.copies_per_player,
+                    'votes_submitted': participant.votes_submitted,
+                    'votes_required': session.votes_per_player,
+                },
+                'session_progress': {
+                    'players_ready_for_next_phase': players_ready,
+                    'total_players': len(active_participants),
+                },
             },
         )
 
@@ -717,6 +743,11 @@ async def start_party_copy_round(
         party_service = PartySessionService(db)
         participant = await party_service.get_participant(session_id, player.player_id)
         session = await party_service.get_session_by_id(session_id)
+        all_participants = await party_service.get_participants(session_id)
+        active_participants = [p for p in all_participants if p.status == 'ACTIVE']
+
+        # Count players ready for next phase (all active players who have submitted their copies)
+        players_ready = sum(1 for p in active_participants if p.copies_submitted >= session.copies_per_player)
 
         return StartPartyRoundResponse(
             round_id=str(round_obj.round_id),
@@ -724,9 +755,29 @@ async def start_party_copy_round(
             round_type='copy',
             expires_at=round_obj.expires_at,
             cost=round_obj.cost,
+            original_phrase=round_obj.original_phrase,
+            status=round_obj.status,
             session_progress={
                 'your_copies_submitted': participant.copies_submitted,
                 'copies_required': session.copies_per_player,
+                'players_done': players_ready,
+                'total_players': len(active_participants),
+            },
+            party_context={
+                'session_id': str(session_id),
+                'current_phase': session.current_phase,
+                'your_progress': {
+                    'prompts_submitted': participant.prompts_submitted,
+                    'prompts_required': session.prompts_per_player,
+                    'copies_submitted': participant.copies_submitted,
+                    'copies_required': session.copies_per_player,
+                    'votes_submitted': participant.votes_submitted,
+                    'votes_required': session.votes_per_player,
+                },
+                'session_progress': {
+                    'players_ready_for_next_phase': players_ready,
+                    'total_players': len(active_participants),
+                },
             },
         )
 
@@ -778,6 +829,11 @@ async def start_party_vote_round(
         party_service = PartySessionService(db)
         participant = await party_service.get_participant(session_id, player.player_id)
         session = await party_service.get_session_by_id(session_id)
+        all_participants = await party_service.get_participants(session_id)
+        active_participants = [p for p in all_participants if p.status == 'ACTIVE']
+
+        # Count players ready for next phase (all active players who have submitted their votes)
+        players_ready = sum(1 for p in active_participants if p.votes_submitted >= session.votes_per_player)
 
         return StartPartyRoundResponse(
             round_id=str(round_obj.round_id),
@@ -785,9 +841,31 @@ async def start_party_vote_round(
             round_type='vote',
             expires_at=round_obj.expires_at,
             cost=settings.vote_cost,
+            phraseset_id=round_obj.phraseset_id,
+            prompt_text=round_obj.prompt_text,
+            phrases=round_obj.phrases,
+            status=round_obj.status,
             session_progress={
                 'your_votes_submitted': participant.votes_submitted,
                 'votes_required': session.votes_per_player,
+                'players_done': players_ready,
+                'total_players': len(active_participants),
+            },
+            party_context={
+                'session_id': str(session_id),
+                'current_phase': session.current_phase,
+                'your_progress': {
+                    'prompts_submitted': participant.prompts_submitted,
+                    'prompts_required': session.prompts_per_player,
+                    'copies_submitted': participant.copies_submitted,
+                    'copies_required': session.copies_per_player,
+                    'votes_submitted': participant.votes_submitted,
+                    'votes_required': session.votes_per_player,
+                },
+                'session_progress': {
+                    'players_ready_for_next_phase': players_ready,
+                    'total_players': len(active_participants),
+                },
             },
         )
 

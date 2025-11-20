@@ -6,6 +6,7 @@ from backend.database import get_db
 from backend.dependencies import get_current_player
 from backend.models.qf.player import QFPlayer
 from backend.models.qf.round import Round
+from backend.models.qf.party_round import PartyRound
 from backend.schemas.round import (
     StartPromptRoundResponse,
     StartCopyRoundResponse,
@@ -19,7 +20,7 @@ from backend.schemas.round import (
 )
 from backend.schemas.hint import HintResponse
 from backend.services import TransactionService
-from backend.services.qf import PlayerService, RoundService, VoteService, QueueService
+from backend.services.qf import PlayerService, RoundService, VoteService, QueueService, PartySessionService
 from backend.services.ai.ai_service import AICopyError
 from backend.config import get_settings
 from backend.utils import ensure_utc
@@ -255,11 +256,44 @@ async def submit_phrase(
             else:
                 raise HTTPException(status_code=400, detail=f"Invalid round type for submission: {round_obj.round_type}")
 
-            # Enrich response with party metadata
+            # Get updated participant progress for party context
+            party_session_service = PartySessionService(db)
+            participant = await party_session_service.get_participant(party_round.session_id, player.player_id)
+            session = await party_session_service.get_session_by_id(party_round.session_id)
+            all_participants = await party_session_service.get_participants(party_round.session_id)
+            active_participants = [p for p in all_participants if p.status == 'ACTIVE']
+
+            # Determine how many players are ready for next phase based on current phase
+            if session.current_phase == 'PROMPT':
+                players_ready = sum(1 for p in active_participants if p.prompts_submitted >= session.prompts_per_player)
+            elif session.current_phase == 'COPY':
+                players_ready = sum(1 for p in active_participants if p.copies_submitted >= session.copies_per_player)
+            elif session.current_phase == 'VOTE':
+                players_ready = sum(1 for p in active_participants if p.votes_submitted >= session.votes_per_player)
+            else:
+                players_ready = 0
+
+            # Enrich response with party metadata and context
             return {
                 **result,
                 "party_session_id": str(party_round.session_id),
                 "party_round_id": str(party_round.party_round_id),
+                "party_context": {
+                    "session_id": str(party_round.session_id),
+                    "current_phase": session.current_phase,
+                    "your_progress": {
+                        "prompts_submitted": participant.prompts_submitted,
+                        "prompts_required": session.prompts_per_player,
+                        "copies_submitted": participant.copies_submitted,
+                        "copies_required": session.copies_per_player,
+                        "votes_submitted": participant.votes_submitted,
+                        "votes_required": session.votes_per_player,
+                    },
+                    "session_progress": {
+                        "players_ready_for_next_phase": players_ready,
+                        "total_players": len(active_participants),
+                    },
+                },
             }
 
         else:

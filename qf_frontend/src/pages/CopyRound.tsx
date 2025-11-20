@@ -8,7 +8,7 @@ import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { useTimer } from '../hooks/useTimer';
 import { usePhraseValidation } from '../hooks/usePhraseValidation';
 import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
-import type { CopyState, FlagCopyRoundResponse } from '../api/types';
+import type { CopyState, FlagCopyRoundResponse, SubmitPhraseResponse } from '../api/types';
 import { copyRoundLogger } from '../utils/logger';
 import { CopyRoundIcon } from '../components/icons/RoundIcons';
 import { FlagIcon } from '../components/icons/EngagementIcons';
@@ -379,7 +379,15 @@ export const CopyRound: React.FC = () => {
       copyRoundLogger.debug('Submitting impostor round phrase', {
         roundId: roundData.round_id,
       });
-      const response = await apiClient.submitPhrase(roundData.round_id, trimmedPhrase);
+      const response: SubmitPhraseResponse = await apiClient.submitPhrase(roundData.round_id, trimmedPhrase);
+
+      // Update party context if present
+      if (response.party_context && partyState.isPartyMode) {
+        partyActions.updateFromPartyContext(response.party_context);
+        copyRoundLogger.debug('Updated party context after submission', {
+          yourProgress: response.party_context.your_progress,
+        });
+      }
 
       // Show success messages first to prevent navigation race condition
       const heading = getRandomMessage('copySubmitted');
