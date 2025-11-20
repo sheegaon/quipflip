@@ -1071,6 +1071,15 @@ class PartySessionService:
         )
 
         self.db.add(party_round)
+
+        # Update the round record to reference party_round_id for fast lookup
+        round_result = await self.db.execute(
+            select(Round).where(Round.round_id == round_id)
+        )
+        round_obj = round_result.scalar_one_or_none()
+        if round_obj:
+            round_obj.party_round_id = party_round.party_round_id
+
         participant.last_activity_at = datetime.now(UTC)
 
         await self.db.commit()

@@ -192,52 +192,114 @@ async def start_vote_round(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/{round_id}/submit", response_model=SubmitPhraseResponse)
+@router.post("/{round_id}/submit", response_model=SubmitPhraseResponse | dict)
 async def submit_phrase(
     round_id: UUID = Path(...),
     request: SubmitPhraseRequest = ...,
     player: QFPlayer = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
 ):
-    """Submit phrase for prompt or copy round."""
-    transaction_service = TransactionService(db)
-    round_service = RoundService(db)
+    """
+    Submit a phrase for a round.
 
-    # Get round
-    round_object = await db.get(Round, round_id)
-    if not round_object or round_object.player_id != player.player_id:
+    Automatically detects if this is a party round and routes accordingly.
+    Works for both normal and party modes transparently.
+    """
+    from backend.services.qf.party_coordination_service import PartyCoordinationService
+    from backend.models.qf.party_round import PartyRound
+
+    # Get round to determine type and context
+    round_result = await db.execute(
+        select(Round).where(Round.round_id == round_id)
+    )
+    round_obj = round_result.scalar_one_or_none()
+    if not round_obj:
         raise HTTPException(status_code=404, detail="Round not found")
 
-    try:
-        second_copy_info = {}
-        if round_object.round_type == "prompt":
-            round_object = await round_service.submit_prompt_phrase(
-                round_id, request.phrase, player, transaction_service
+    # Check if this is a party round
+    is_party_round = round_obj.party_round_id is not None
+
+    if is_party_round:
+        # PARTY MODE: Use coordination service
+        logger.info(f"Submitting party round {round_id} (party_round_id: {round_obj.party_round_id})")
+
+        # Get party_round to find session_id
+        party_round_result = await db.execute(
+            select(PartyRound).where(PartyRound.party_round_id == round_obj.party_round_id)
+        )
+        party_round = party_round_result.scalar_one_or_none()
+        if not party_round:
+            raise HTTPException(status_code=500, detail="Party round metadata not found")
+
+        # Route to party coordination service based on round type
+        coordination_service = PartyCoordinationService(db)
+        transaction_service = TransactionService(db)
+
+        if round_obj.round_type == 'prompt':
+            result = await coordination_service.submit_party_prompt(
+                session_id=party_round.session_id,
+                player=player,
+                round_id=round_id,
+                phrase=request.phrase,
+                transaction_service=transaction_service
             )
-        elif round_object.round_type == "copy":
-            round_object, second_copy_info = await round_service.submit_copy_phrase(
-                round_id, request.phrase, player, transaction_service
+        elif round_obj.round_type == 'copy':
+            result = await coordination_service.submit_party_copy(
+                session_id=party_round.session_id,
+                player=player,
+                round_id=round_id,
+                phrase=request.phrase,
+                transaction_service=transaction_service
             )
         else:
-            raise HTTPException(status_code=400, detail="Invalid round type for phrase submission")
+            raise HTTPException(status_code=400, detail=f"Invalid round type for submission: {round_obj.round_type}")
 
-        return SubmitPhraseResponse(
-            success=True,
-            phrase=request.phrase.upper(),
-            eligible_for_second_copy=second_copy_info.get("eligible_for_second_copy", False),
-            second_copy_cost=second_copy_info.get("second_copy_cost"),
-            prompt_round_id=second_copy_info.get("prompt_round_id"),
-            original_phrase=second_copy_info.get("original_phrase"),
-        )
-    except InvalidPhraseError as e:
-        raise HTTPException(status_code=400, detail={"error": "invalid_phrase", "message": str(e)})
-    except DuplicatePhraseError as e:
-        raise HTTPException(status_code=400, detail={"error": "duplicate_phrase", "message": str(e)})
-    except RoundExpiredError as e:
-        raise HTTPException(status_code=400, detail={"error": "expired", "message": str(e)})
-    except Exception as e:
-        logger.error(f"Error submitting phrase: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        # Enrich response with party metadata
+        return {
+            **result,
+            "party_session_id": str(party_round.session_id),
+            "party_round_id": str(party_round.party_round_id),
+        }
+
+    else:
+        # NORMAL MODE: Use regular service
+        # Check ownership for normal rounds (party rounds might be different if we allow spectators later, but for now safe)
+        if round_obj.player_id != player.player_id:
+            raise HTTPException(status_code=404, detail="Round not found")
+
+        transaction_service = TransactionService(db)
+        round_service = RoundService(db)
+
+        try:
+            second_copy_info = {}
+            if round_obj.round_type == "prompt":
+                round_obj = await round_service.submit_prompt_phrase(
+                    round_id, request.phrase, player, transaction_service
+                )
+            elif round_obj.round_type == "copy":
+                round_obj, second_copy_info = await round_service.submit_copy_phrase(
+                    round_id, request.phrase, player, transaction_service
+                )
+            else:
+                raise HTTPException(status_code=400, detail="Invalid round type for phrase submission")
+
+            return SubmitPhraseResponse(
+                success=True,
+                phrase=request.phrase.upper(),
+                eligible_for_second_copy=second_copy_info.get("eligible_for_second_copy", False),
+                second_copy_cost=second_copy_info.get("second_copy_cost"),
+                prompt_round_id=second_copy_info.get("prompt_round_id"),
+                original_phrase=second_copy_info.get("original_phrase"),
+            )
+        except InvalidPhraseError as e:
+            raise HTTPException(status_code=400, detail={"error": "invalid_phrase", "message": str(e)})
+        except DuplicatePhraseError as e:
+            raise HTTPException(status_code=400, detail={"error": "duplicate_phrase", "message": str(e)})
+        except RoundExpiredError as e:
+            raise HTTPException(status_code=400, detail={"error": "expired", "message": str(e)})
+        except Exception as e:
+            logger.error(f"Error submitting phrase: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/{round_id}/flag", response_model=FlagCopyRoundResponse)

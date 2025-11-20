@@ -117,6 +117,7 @@ class PartyCoordinationService:
         player: QFPlayer,
         round_id: UUID,
         phrase: str,
+        transaction_service: TransactionService,
     ) -> dict:
         """Submit prompt round within party context.
 
@@ -125,12 +126,15 @@ class PartyCoordinationService:
             player: Player object
             round_id: UUID of the round
             phrase: Submitted phrase
+            transaction_service: Transaction service instance
 
         Returns:
             dict: Result with round data and session status
         """
         # Submit via normal round service
-        result = await self.round_service.submit_prompt_phrase(round_id, phrase, player)
+        result = await self.round_service.submit_prompt_phrase(
+            round_id, phrase, player, transaction_service
+        )
 
         # Increment participant progress counter (only on successful submission)
         participant = await self.party_session_service.increment_participant_progress(
@@ -252,6 +256,7 @@ class PartyCoordinationService:
         player: QFPlayer,
         round_id: UUID,
         phrase: str,
+        transaction_service: TransactionService,
     ) -> dict:
         """Submit copy round within party context.
 
@@ -260,12 +265,15 @@ class PartyCoordinationService:
             player: Player object
             round_id: UUID of the round
             phrase: Submitted phrase
+            transaction_service: Transaction service instance
 
         Returns:
             dict: Result with round data and session status
         """
         # Submit via normal round service
-        result = await self.round_service.submit_copy_phrase(round_id, phrase, player)
+        result = await self.round_service.submit_copy_phrase(
+            round_id, phrase, player, transaction_service
+        )
 
         # Increment participant progress counter (only on successful submission)
         participant = await self.party_session_service.increment_participant_progress(
@@ -399,6 +407,7 @@ class PartyCoordinationService:
         round_id: UUID,
         phraseset_id: UUID,
         phrase: str,
+        transaction_service: TransactionService,
     ) -> dict:
         """Submit vote round within party context.
 
@@ -408,15 +417,25 @@ class PartyCoordinationService:
             round_id: UUID of the round
             phraseset_id: UUID of the phraseset
             phrase: Selected phrase
+            transaction_service: Transaction service instance
 
         Returns:
             dict: Result with vote data and session status
         """
+        # Get objects
+        round_obj = await self.db.get(Round, round_id)
+        phraseset_obj = await self.db.get(Phraseset, phraseset_id)
+
+        if not round_obj or not phraseset_obj:
+            raise ValueError("Round or phraseset not found")
+
         # Submit via normal vote service
         result = await self.vote_service.submit_vote(
+            round=round_obj,
+            phraseset=phraseset_obj,
+            phrase=phrase,
             player=player,
-            phraseset_id=phraseset_id,
-            chosen_phrase=phrase,
+            transaction_service=transaction_service,
         )
 
         # Increment participant progress counter (only on successful submission)

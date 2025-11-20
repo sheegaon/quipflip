@@ -18,6 +18,7 @@ class Round(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False, index=True)
     expires_at = Column(DateTime(timezone=True), nullable=False, index=True)
     cost = Column(Integer, nullable=False)
+    party_round_id = get_uuid_column(nullable=True, index=True)
 
     # Prompt-specific fields (nullable for non-prompt rounds)
     prompt_id = get_uuid_column(ForeignKey("qf_prompts.prompt_id"), nullable=True)
