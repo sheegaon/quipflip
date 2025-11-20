@@ -10,6 +10,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 settings = get_settings()
+parsed_url = None
 
 # Parse URL to examine components
 try:
@@ -51,27 +52,38 @@ else:
 
 logger.debug(f"Connect args: {connect_args}")
 
-# Configure pool sizing to avoid exhausting limited database connections (e.g., on Heroku)
-pool_size = max(1, settings.db_pool_size)
-max_overflow = max(0, settings.db_max_overflow)
+is_sqlite = parsed_url.drivername.startswith("sqlite") if parsed_url else False
 
-if settings.environment == "production":
-    # Keep production connection usage conservative to stay within hobby-tier limits
-    pool_size = min(pool_size, 2)
-    max_overflow = min(max_overflow, 2)
+# Configure pool sizing to avoid exhausting limited database connections (e.g., on Heroku)
+engine_kwargs = {
+    "echo": settings.environment == "development",
+    "future": True,
+    "connect_args": connect_args,
+    "pool_pre_ping": True,  # Verify connections before use
+    "pool_recycle": 3600,   # Recycle connections every hour
+}
+
+if not is_sqlite:
+    pool_size = max(1, settings.db_pool_size)
+    max_overflow = max(0, settings.db_max_overflow)
+
+    if settings.environment == "production":
+        # Keep production connection usage conservative to stay within hobby-tier limits
+        pool_size = min(pool_size, 2)
+        max_overflow = min(max_overflow, 2)
+
+    engine_kwargs.update({
+        "pool_size": pool_size,
+        "max_overflow": max_overflow,
+    })
+else:
+    logger.debug("SQLite detected; using default NullPool without pool sizing arguments")
 
 # Create async engine
 try:
     engine = create_async_engine(
         settings.database_url,
-        echo=settings.environment == "development",
-        future=True,
-        connect_args=connect_args,
-        # Add connection pool settings for debugging
-        pool_pre_ping=True,  # Verify connections before use
-        pool_recycle=3600,   # Recycle connections every hour
-        pool_size=pool_size,
-        max_overflow=max_overflow,
+        **engine_kwargs,
     )
     logger.debug("Database engine created successfully")
 except Exception as e:
