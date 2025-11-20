@@ -35,7 +35,39 @@ export const BetaSurveyModal: React.FC<BetaSurveyModalProps> = ({ isVisible, onD
 
     const fetchStatus = async () => {
       try {
+        // Cache key for this player's survey status
+        const cacheKey = `beta_survey_status_${playerId}`;
+        const now = Date.now();
+        
+        // Check if we have cached data less than 5 minutes old
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          try {
+            const { data, timestamp } = JSON.parse(cached);
+            if (now - timestamp < 300000) { // 5 minutes = 300000ms
+              const dismissed = hasDismissedSurvey(playerId);
+              const completedLocal = hasCompletedSurvey(playerId);
+              const shouldShow = data.eligible && !data.has_submitted && !dismissed && !completedLocal;
+
+              setSurveyStatus(data);
+
+              if (shouldShow) {
+                dashboardLogger.info('[Beta Survey] ✨ SHOWING SURVEY PROMPT ✨ (from cache)');
+              }
+              return; // Use cached data
+            }
+          } catch {
+            // Invalid cache, continue to fetch
+          }
+        }
+
         const status = await apiClient.getBetaSurveyStatus(controller.signal);
+        
+        // Cache the result for 5 minutes
+        localStorage.setItem(cacheKey, JSON.stringify({
+          data: status,
+          timestamp: now
+        }));
 
         const dismissed = hasDismissedSurvey(playerId);
         const completedLocal = hasCompletedSurvey(playerId);

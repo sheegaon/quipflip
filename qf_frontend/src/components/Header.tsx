@@ -53,6 +53,25 @@ export const Header: React.FC = () => {
       if (!player?.player_id) return;
 
       try {
+        // Cache key for this player's survey status
+        const cacheKey = `beta_survey_status_${player.player_id}`;
+        const now = Date.now();
+        
+        // Check if we have cached data less than 5 minutes old
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          try {
+            const { data, timestamp } = JSON.parse(cached);
+            if (now - timestamp < 300000) { // 5 minutes = 300000ms
+              const completedLocal = hasCompletedSurvey(player.player_id);
+              setSurveyCompleted(completedLocal || data.has_submitted);
+              return; // Use cached data
+            }
+          } catch {
+            // Invalid cache, continue to fetch
+          }
+        }
+
         const completedLocal = hasCompletedSurvey(player.player_id);
         if (completedLocal) {
           setSurveyCompleted(true);
@@ -60,6 +79,13 @@ export const Header: React.FC = () => {
         }
 
         const status = await apiClient.getBetaSurveyStatus();
+        
+        // Cache the result for 5 minutes
+        localStorage.setItem(cacheKey, JSON.stringify({
+          data: status,
+          timestamp: now
+        }));
+        
         setSurveyCompleted(status.has_submitted);
       } catch (err) {
         componentLogger.warn('Failed to check survey status:', err);
