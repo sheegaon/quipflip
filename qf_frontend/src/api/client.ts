@@ -841,8 +841,8 @@ export const apiClient = {
     signal?: AbortSignal,
   ): Promise<StartPartyPromptResponse> {
     const { data } = await api.post<StartPartyPromptResponse>(
-      `/party/${sessionId}/start_round`,
-      { round_type: 'prompt' },
+      `/party/${sessionId}/rounds/prompt`,
+      {},
       { signal }
     );
     return data;
@@ -853,8 +853,8 @@ export const apiClient = {
     signal?: AbortSignal,
   ): Promise<StartPartyCopyResponse> {
     const { data } = await api.post<StartPartyCopyResponse>(
-      `/party/${sessionId}/start_round`,
-      { round_type: 'copy' },
+      `/party/${sessionId}/rounds/copy`,
+      {},
       { signal }
     );
     return data;
@@ -865,8 +865,8 @@ export const apiClient = {
     signal?: AbortSignal,
   ): Promise<StartPartyVoteResponse> {
     const { data } = await api.post<StartPartyVoteResponse>(
-      `/party/${sessionId}/start_round`,
-      { round_type: 'vote' },
+      `/party/${sessionId}/rounds/vote`,
+      {},
       { signal }
     );
     return data;

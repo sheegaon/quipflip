@@ -14,6 +14,7 @@ import { VoteRoundIcon } from '../components/icons/RoundIcons';
 import { HomeIcon } from '../components/icons/NavigationIcons';
 import { usePartyMode } from '../contexts/PartyModeContext';
 import PartyRoundModal from '../components/party/PartyRoundModal';
+import { usePartyNavigation } from '../hooks/usePartyNavigation';
 
 export const VoteRound: React.FC = () => {
   const { state, actions } = useGame();
@@ -21,6 +22,7 @@ export const VoteRound: React.FC = () => {
   const { refreshDashboard } = actions;
   const { state: partyState, actions: partyActions } = usePartyMode();
   const navigate = useNavigate();
+  const { navigateHome, navigateToResults, isInPartyMode } = usePartyNavigation();
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [voteResult, setVoteResult] = useState<VoteResponse | null>(null);
@@ -82,13 +84,8 @@ export const VoteRound: React.FC = () => {
   }, [activeRound, headingMessage, navigate, partyActions, partyResultsPath, partyState.isPartyMode, voteResult]);
 
   const navigateAfterVote = useCallback(() => {
-    if (partyState.isPartyMode) {
-      partyActions.endPartyMode();
-      navigate(partyResultsPath);
-    } else {
-      navigate('/dashboard');
-    }
-  }, [navigate, partyActions, partyResultsPath, partyState.isPartyMode]);
+    navigateToResults();
+  }, [navigateToResults]);
 
   const partyOverlay = partyState.isPartyMode && partyState.sessionId ? (
     <PartyRoundModal sessionId={partyState.sessionId} currentStep="vote" />
@@ -353,7 +350,7 @@ export const VoteRound: React.FC = () => {
               className="bg-quip-turquoise hover:bg-quip-teal text-white font-bold py-3 px-8 rounded-tile transition-all hover:shadow-tile-sm flex items-center gap-2"
             >
               <HomeIcon className="h-5 w-5" />
-              <span>{partyState.isPartyMode ? 'View Party Summary' : 'Back to Dashboard'}</span>
+              <span>{isInPartyMode ? 'View Party Summary' : 'Back to Dashboard'}</span>
             </button>
           </div>
         </div>
@@ -433,15 +430,15 @@ export const VoteRound: React.FC = () => {
 
         {/* Home Button */}
         <button
-          onClick={() => navigate('/dashboard')}
+          onClick={navigateHome}
           disabled={isSubmitting}
           className="w-full mt-4 flex items-center justify-center gap-2 text-quip-teal hover:text-quip-turquoise disabled:opacity-50 disabled:cursor-not-allowed py-2 font-medium transition-colors"
-          title={isSubmitting ? "Please wait for submission to complete" : "Back to Dashboard"}
+          title={isSubmitting ? "Please wait for submission to complete" : isInPartyMode ? "Leave Party Mode" : "Back to Dashboard"}
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
           </svg>
-          <span>Back to Dashboard</span>
+          <span>{isInPartyMode ? 'Exit Party Mode' : 'Back to Dashboard'}</span>
         </button>
 
         {/* Info */}
