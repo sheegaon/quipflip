@@ -46,6 +46,27 @@ export const Dashboard: React.FC = () => {
   const [abandonError, setAbandonError] = useState<string | null>(null);
   const [showTutorialWelcome, setShowTutorialWelcome] = useState(false);
   const roundExpiryTimeoutRef = useRef<number | null>(null);
+  const roundExpiryIntervalRef = useRef<number | null>(null);
+
+  const isPromptDisabled = useMemo(
+    () => mode === 'live' && (!roundAvailability?.can_prompt || startingRound === 'prompt'),
+    [mode, roundAvailability?.can_prompt, startingRound]
+  );
+
+  const isCopyDisabled = useMemo(
+    () => mode === 'live' && (!roundAvailability?.can_copy || startingRound === 'copy'),
+    [mode, roundAvailability?.can_copy, startingRound]
+  );
+
+  const isVoteDisabled = useMemo(
+    () => mode === 'live' && (!roundAvailability?.can_vote || startingRound === 'vote'),
+    [mode, roundAvailability?.can_vote, startingRound]
+  );
+
+  const allStartButtonsDisabled = useMemo(
+    () => isPromptDisabled && isCopyDisabled && isVoteDisabled,
+    [isPromptDisabled, isCopyDisabled, isVoteDisabled]
+  );
 
   // Log component mount and key state changes
   useEffect(() => {
@@ -228,6 +249,24 @@ export const Dashboard: React.FC = () => {
     [isAuthenticated, refreshDashboard]
   );
 
+  const clearRoundExpiryInterval = useCallback(() => {
+    if (roundExpiryIntervalRef.current) {
+      clearInterval(roundExpiryIntervalRef.current);
+      roundExpiryIntervalRef.current = null;
+    }
+  }, []);
+
+  const startRoundExpiryInterval = useCallback(() => {
+    if (roundExpiryIntervalRef.current) {
+      return;
+    }
+
+    dashboardLogger.debug('Round expired with all start buttons disabled; starting 1s dashboard refresh interval');
+    roundExpiryIntervalRef.current = window.setInterval(() => {
+      void refreshDashboardAfterCountdown('round:expired-interval');
+    }, 1000);
+  }, [refreshDashboardAfterCountdown]);
+
   // Refresh when page becomes visible (with debouncing)
   const lastVisibilityRefreshRef = useRef<number>(0);
   useEffect(() => {
@@ -302,12 +341,19 @@ export const Dashboard: React.FC = () => {
       clearTimeout(roundExpiryTimeoutRef.current);
     }
 
+    clearRoundExpiryInterval();
+
+    if (allStartButtonsDisabled && activeRound?.round_type) {
+      startRoundExpiryInterval();
+      return;
+    }
+
     const roundTypeLabel = activeRound?.round_type ?? 'unknown';
     roundExpiryTimeoutRef.current = window.setTimeout(() => {
       dashboardLogger.debug('Executing delayed refresh after round expiration');
       void refreshDashboardAfterCountdown(`round:${roundTypeLabel}`);
     }, 6000);
-  }, [activeRound?.round_type, isAuthenticated, refreshDashboardAfterCountdown]);
+  }, [activeRound?.round_type, allStartButtonsDisabled, clearRoundExpiryInterval, isAuthenticated, refreshDashboardAfterCountdown, startRoundExpiryInterval]);
 
   useEffect(() => {
     if (!isAuthenticated && roundExpiryTimeoutRef.current) {
@@ -324,13 +370,20 @@ export const Dashboard: React.FC = () => {
   }, [activeRound]);
 
   useEffect(() => {
+    if (!activeRound || !allStartButtonsDisabled || !isRoundExpired) {
+      clearRoundExpiryInterval();
+    }
+  }, [activeRound, allStartButtonsDisabled, clearRoundExpiryInterval, isRoundExpired]);
+
+  useEffect(() => {
     return () => {
       if (roundExpiryTimeoutRef.current) {
         clearTimeout(roundExpiryTimeoutRef.current);
         roundExpiryTimeoutRef.current = null;
       }
+      clearRoundExpiryInterval();
     };
-  }, []);
+  }, [clearRoundExpiryInterval]);
 
   const handleAbandonRound = useCallback(async () => {
     if (!activeRound?.round_id || !canAbandonRound || isAbandoningRound) {
@@ -591,7 +644,7 @@ export const Dashboard: React.FC = () => {
               </p>
               <button
                 onClick={handleStartPrompt}
-                disabled={mode === 'live' && (!roundAvailability?.can_prompt || startingRound === 'prompt')}
+                disabled={isPromptDisabled}
                 className="w-full bg-quip-navy hover:bg-quip-teal disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm"
               >
                 {startingRound === 'prompt' ? 'Starting Round...' :
@@ -636,7 +689,7 @@ export const Dashboard: React.FC = () => {
               )}
               <button
                 onClick={handleStartCopy}
-                disabled={mode === 'live' && (!roundAvailability?.can_copy || startingRound === 'copy')}
+                disabled={isCopyDisabled}
                 className="w-full bg-quip-turquoise hover:bg-quip-teal disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm"
               >
                 {startingRound === 'copy' ? 'Starting Round...' :
@@ -672,7 +725,7 @@ export const Dashboard: React.FC = () => {
               )}
               <button
                 onClick={handleStartVote}
-                disabled={mode === 'live' && (!roundAvailability?.can_vote || startingRound === 'vote')}
+                disabled={isVoteDisabled}
                 className="w-full bg-quip-orange hover:bg-quip-orange-deep disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm"
               >
                 {startingRound === 'vote' ? 'Starting Round...' :
