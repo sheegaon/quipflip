@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { useTutorial } from '../contexts/TutorialContext';
+import { usePartyMode } from '../contexts/PartyModeContext';
 import apiClient, { extractErrorMessage } from '../api/client';
 import { Timer } from '../components/Timer';
 import { Header } from '../components/Header';
@@ -36,6 +37,8 @@ export const Dashboard: React.FC = () => {
   } = state;
   const { refreshDashboard, clearError, abandonRound } = actions;
   const { startTutorial, skipTutorial } = useTutorial();
+  const { actions: partyActions } = usePartyMode();
+  const { endPartyMode } = partyActions;
   const navigate = useNavigate();
   const location = useLocation();
   const [isRoundExpired, setIsRoundExpired] = useState(false);
@@ -285,9 +288,10 @@ export const Dashboard: React.FC = () => {
 
   const handleContinueRound = useCallback(() => {
     if (activeRoundRoute) {
+      endPartyMode();
       navigate(activeRoundRoute);
     }
-  }, [activeRoundRoute, navigate]);
+  }, [activeRoundRoute, endPartyMode, navigate]);
 
   const handleRoundExpired = useCallback(() => {
     if (!isAuthenticated) {
@@ -380,6 +384,7 @@ export const Dashboard: React.FC = () => {
     setStartingRound('prompt');
     setRoundStartError(null);
     try {
+      endPartyMode();
       if (mode === 'practice') {
         dashboardLogger.debug('Practice mode: navigating directly to practice prompt review');
         navigate('/practice/prompt');
@@ -417,6 +422,7 @@ export const Dashboard: React.FC = () => {
     setStartingRound('copy');
     setRoundStartError(null);
     try {
+      endPartyMode();
       if (mode === 'practice') {
         dashboardLogger.debug('Practice mode: navigating directly to practice copy review');
         navigate('/practice/copy');
@@ -453,6 +459,7 @@ export const Dashboard: React.FC = () => {
     setStartingRound('vote');
     setRoundStartError(null);
     try {
+      endPartyMode();
       if (mode === 'practice') {
         dashboardLogger.debug('Practice mode: navigating directly to practice vote review');
         navigate('/practice/vote');
