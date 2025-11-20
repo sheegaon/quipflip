@@ -76,7 +76,21 @@ async def list_active_parties(
     """
     try:
         party_service = PartySessionService(db)
-        parties = await party_service.list_active_parties()
+        parties_data = await party_service.list_active_parties()
+
+        # Convert dict responses to PartyListItemResponse objects
+        parties = [
+            PartyListItemResponse(
+                session_id=party['session_id'],
+                host_username=party['host_username'],
+                participant_count=party['participant_count'],
+                min_players=party['min_players'],
+                max_players=party['max_players'],
+                created_at=party['created_at'],
+                is_full=party['is_full'],
+            )
+            for party in parties_data
+        ]
 
         return PartyListResponse(
             parties=parties,
