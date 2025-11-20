@@ -637,8 +637,6 @@ Get the weekly leaderboard split by role (prompt, copy, voter), with players ran
         "total_costs": 400,
         "total_earnings": 800,
         "net_earnings": 400,
-        "win_rate": 75.5,
-        "total_rounds": 12,
         "rank": 1,
         "is_current_player": false
       }
@@ -654,8 +652,6 @@ Get the weekly leaderboard split by role (prompt, copy, voter), with players ran
         "total_costs": 300,
         "total_earnings": 450,
         "net_earnings": 150,
-        "win_rate": 66.7,
-        "total_rounds": 9,
         "rank": 1,
         "is_current_player": true
       }
@@ -671,8 +667,6 @@ Get the weekly leaderboard split by role (prompt, copy, voter), with players ran
         "total_costs": 200,
         "total_earnings": 380,
         "net_earnings": 180,
-        "win_rate": 82.0,
-        "total_rounds": 15,
         "rank": 1,
         "is_current_player": false
       }
@@ -683,7 +677,8 @@ Get the weekly leaderboard split by role (prompt, copy, voter), with players ran
       {
         "player_id": "uuid",
         "username": "Top Earner",
-        "total_earnings": 5000,
+        "vault_balance": 5000,
+        "total_rounds": 42,
         "rank": 1,
         "is_current_player": false
       }
@@ -695,9 +690,8 @@ Get the weekly leaderboard split by role (prompt, copy, voter), with players ran
 
 **Notes:**
 - Results are split into four separate leaderboards: three role-specific leaderboards (prompt, copy, voter) and one gross earnings leaderboard.
-- Role leaderboards are sorted by highest `win_rate` (percentage of rounds where earnings exceeded costs). Ties break alphabetically by username.
-- Gross earnings leaderboard ranks players by total earnings across all roles.
-- `win_rate` is a percentage (0-100) representing the proportion of rounds where the player earned more than they spent in that role.
+- Role leaderboards are sorted by win rate but expose cost/earning totals and net earnings for display. Ties break alphabetically by username.
+- Gross earnings leaderboard ranks players by vault balance (all-time total or weekly change).
 - Only the top five players per role are returned by default. If the current player is outside the top five in a given role, their row is appended with `rank: null` and `is_current_player: true`.
 - AI players (identified by email addresses ending in `@quipflip.internal`) are excluded from all leaderboards.
 - The scoring service caches leaderboard calculations in Redis for one hour (`leaderboard:weekly:v4`) and refreshes the cache automatically whenever a phraseset finalizes.
@@ -1972,7 +1966,6 @@ Get list of currently online users (active in last 30 minutes).
       "last_activity": "2025-01-06T12:00:00Z",
       "time_ago": "2m ago",
       "wallet": 4250,
-      "vault": 750,
       "created_at": "2025-01-01T12:00:00Z"
     }
   ],
@@ -1987,7 +1980,6 @@ Get list of currently online users (active in last 30 minutes).
 - `last_activity` (timestamp): ISO 8601 UTC timestamp of last activity
 - `time_ago` (string): Relative time display (e.g., "2m ago", "1h ago")
 - `wallet` (integer): Current spendable Flipcoin balance
-- `vault` (integer): Accumulated long-term Flipcoin balance
 - `created_at` (timestamp): ISO 8601 UTC timestamp when account was created
 
 **Performance Notes:**

@@ -126,10 +126,7 @@ const WeeklyLeaderboard: React.FC<WeeklyLeaderboardProps> = ({
     );
   }
 
-  const filteredLeaders = (grossEarningsLeaderboard?.leaders ?? []).filter((entry) => {
-    const isBot = entry.is_bot || entry.is_ai;
-    return !isBot && entry.vault_balance > 0;
-  });
+  const filteredLeaders = (grossEarningsLeaderboard?.leaders ?? []).filter((entry) => entry.vault_balance > 0);
 
   return (
     <div className="space-y-4">

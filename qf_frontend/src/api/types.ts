@@ -245,8 +245,6 @@ export interface WeeklyLeaderboardEntry {
   total_costs: number;
   total_earnings: number;
   net_earnings: number;
-  win_rate: number;
-  total_rounds: number;
   rank: number | null;
   is_current_player: boolean;
 }
@@ -258,8 +256,6 @@ export interface GrossEarningsLeaderboardEntry {
   total_rounds: number;
   rank: number | null;
   is_current_player: boolean;
-  is_bot?: boolean;
-  is_ai?: boolean;
 }
 
 export interface RoleLeaderboard {
@@ -634,7 +630,7 @@ export interface PromptFeedbackResponse {
 export interface GetPromptFeedbackResponse {
   feedback_type: 'like' | 'dislike' | null;
   feedback_id: string | null;
-  created_at: string | null;
+  last_updated_at: string | null;
 }
 
 export interface RoleStatistics {
@@ -676,6 +672,12 @@ export interface HistoricalTrendPoint {
   rounds_played: number;
 }
 
+export interface BestPerformingPhrase {
+  phrase: string;
+  votes: number;
+  earnings: number;
+}
+
 export interface PlayerStatistics {
   player_id: string;
   username: string;
@@ -687,6 +689,8 @@ export interface PlayerStatistics {
   voter_stats: RoleStatistics;
   earnings: EarningsBreakdown;
   frequency: PlayFrequency;
+  favorite_prompts: string[];
+  best_performing_phrases: BestPerformingPhrase[];
   historical_trends?: HistoricalTrendPoint[];
 }
 
@@ -758,7 +762,6 @@ export interface OnlineUser {
   last_activity: string;
   time_ago: string;
   wallet: number;
-  vault: number;
   created_at: string;
 }
 
@@ -965,9 +968,6 @@ export interface StartPartyCopyResponse {
   prompt_round_id: string;
   expires_at: string;
   cost: number;
-  discount_active: boolean;
-  is_second_copy: boolean;
-  from_party: boolean;
   session_progress: {
     your_copies_submitted: number;
     copies_required: number;
@@ -985,8 +985,6 @@ export interface StartPartyVoteResponse {
   prompt_text: string;
   phrases: string[];
   expires_at: string;
-  cost?: number;
-  from_party: boolean;
   session_progress: {
     your_votes_submitted: number;
     votes_required: number;
