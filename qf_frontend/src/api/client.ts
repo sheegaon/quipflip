@@ -67,7 +67,6 @@ import type {
   MarkReadyResponse,
   StartPartySessionResponse,
   PartySessionStatusResponse,
-  StartPartyRoundResponse,
   StartPartyPromptResponse,
   StartPartyCopyResponse,
   StartPartyVoteResponse,

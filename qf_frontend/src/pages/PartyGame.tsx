@@ -13,7 +13,7 @@ import apiClient, { extractErrorMessage } from '../api/client';
 export const PartyGame: React.FC = () => {
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
-  const { actions: gameActions, state: gameState } = useGame();
+  const { actions: gameActions } = useGame();
   const { actions: partyActions } = usePartyMode();
   // Remove usage of normal round starters
   // const { startPromptRound, startCopyRound, startVoteRound } = gameActions;
