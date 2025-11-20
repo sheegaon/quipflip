@@ -9,6 +9,7 @@ import type { PhrasesetResults, PhrasesetDetails, PhrasesetVoteDetail } from '..
 import { resultsLogger } from '../utils/logger';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { BotIcon, QuestionMarkIcon, ResultsIcon } from '../components/icons/EngagementIcons';
+import { isAiPlayer } from '../utils/ai';
 
 const ITEMS_PER_PAGE = 10;
 const WALLET_VS_VAULT_TITLE = 'Wallet vs. Vault';
@@ -287,7 +288,7 @@ export const Results: React.FC = () => {
       if (contributor.phrase) {
         acc[contributor.phrase] = {
           username: contributor.username,
-          isAi: Boolean(contributor.is_ai),
+          isAi: isAiPlayer(contributor),
         };
       }
       return acc;
@@ -625,7 +626,7 @@ export const Results: React.FC = () => {
                                     >
                                       <div className="flex items-center gap-2 text-sm font-medium text-quip-navy">
                                         <span>{voterDetail.voter_username}</span>
-                                        {voterDetail.is_ai && <BotIcon className="h-3.5 w-3.5" />}
+                                        {isAiPlayer(voterDetail) && <BotIcon className="h-3.5 w-3.5" />}
                                       </div>
                                       <span
                                         className={`text-xs font-semibold ${

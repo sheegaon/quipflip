@@ -502,6 +502,7 @@ export interface PhrasesetContributor {
   username: string;
   is_you: boolean;
   is_ai?: boolean;
+  email?: string;
   phrase?: string | null;
 }
 
@@ -510,6 +511,7 @@ export interface PhrasesetVoteDetail {
   voter_id: string;
   voter_username: string;
   is_ai?: boolean;
+  email?: string;
   voted_phrase: string;
   correct: boolean;
   voted_at: string;

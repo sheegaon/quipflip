@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { FrozenTimer } from './FrozenTimer';
 import { ReviewBackButton } from './ReviewBackButton';
 import { BotIcon } from '../icons/EngagementIcons';
+import { isAiPlayer } from '../../utils/ai';
 import { VoteRoundIcon } from '../icons/RoundIcons';
 import type { PhrasesetVoteDetail } from '../../api/types';
 
@@ -151,7 +152,7 @@ export const VoteRoundReview: React.FC<VoteRoundReviewProps> = ({
                           >
                             <span className="font-semibold text-quip-navy flex items-center gap-1">
                               {vote.voter_username}
-                              {vote.is_ai && <BotIcon className="h-3.5 w-3.5" />}
+                              {isAiPlayer(vote) && <BotIcon className="h-3.5 w-3.5" />}
                             </span>
                             <span className={`text-xs font-semibold ${vote.correct ? 'text-quip-turquoise' : 'text-quip-orange'}`}>
                               {vote.correct ? '✓ Correct' : '✗ Incorrect'}
