@@ -34,6 +34,7 @@ from backend.models.qf import (
 )
 from backend.services.username_service import canonicalize_username
 from backend.services.qf.queue_service import QueueService
+from backend.services.qf.party_session_service import PartySessionService
 
 logger = logging.getLogger(__name__)
 
@@ -516,7 +517,6 @@ class CleanupService:
 
         Returns:
             Number of inactive guest players deleted
-        """
         """
         cutoff_date = datetime.now(UTC) - timedelta(hours=hours_old)
 
