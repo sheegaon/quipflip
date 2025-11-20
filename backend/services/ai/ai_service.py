@@ -294,9 +294,12 @@ class AIService:
             phrase = response_text.strip().upper()
 
             # Validate length
-            if len(phrase) < 4 or len(phrase) > 100:
-                logger.warning(f"AI phrase length out of range: {len(phrase)} chars, truncating")
-                phrase = phrase[:100] if len(phrase) > 100 else phrase
+            if len(phrase) < 4:
+                logger.error(f"AI phrase too short: {len(phrase)} chars, minimum is 4")
+                raise AICopyError(f"Generated phrase too short: {len(phrase)} chars (minimum 4)")
+            elif len(phrase) > 100:
+                logger.warning(f"AI phrase too long: {len(phrase)} chars, truncating to 100")
+                phrase = phrase[:100]
 
             logger.info(f"AI ({self.provider}) generated party prompt phrase: {phrase}")
             return phrase

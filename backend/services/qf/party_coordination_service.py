@@ -783,7 +783,10 @@ class PartyCoordinationService:
                         existing_copy = existing_copy_result.scalar_one_or_none()
 
                         # Generate copy phrase
-                        copy_phrase = await ai_service.generate_and_cache_copy_phrases(prompt_round)
+                        copy_phrase = await ai_service.generate_copy_phrase(
+                            original_phrase=prompt_round.submitted_phrase,
+                            prompt_round=prompt_round
+                        )
 
                         # Submit copy round
                         round_obj, party_round_id = await self.start_party_copy_round(
