@@ -1,3 +1,4 @@
+import React from 'react';
 import type { GrossEarningsLeaderboard, GrossEarningsLeaderboardEntry } from '../../api/types';
 
 interface WeeklyLeaderboardProps {
@@ -9,17 +10,11 @@ interface WeeklyLeaderboardProps {
   error?: string | null;
 }
 
-const currencyFormatter = new Intl.NumberFormat('en-US', {
-  style: 'currency',
-  currency: 'USD',
-  maximumFractionDigits: 0,
-});
-
 const MIN_BAR_PERCENTAGE = 8;
 
 interface LeaderboardEntryDisplayConfig {
   metricLabel: string;
-  metricFormatter: (entry: GrossEarningsLeaderboardEntry) => string;
+  metricFormatter: (entry: GrossEarningsLeaderboardEntry) => string | React.ReactNode;
   metricAccessor: (entry: GrossEarningsLeaderboardEntry) => number;
   detailFormatter: (entry: GrossEarningsLeaderboardEntry) => string;
   emptyMessage: string;
@@ -54,7 +49,6 @@ const GenericLeaderboardList: React.FC<GenericLeaderboardListProps> = ({ leaders
           : 'border border-quip-navy/10 bg-white';
         const rankLabel = entry.rank ? `#${entry.rank}` : '-';
         const formattedMetric = config.metricFormatter(entry);
-        const detailText = config.detailFormatter(entry);
 
         return (
           <div
@@ -67,6 +61,7 @@ const GenericLeaderboardList: React.FC<GenericLeaderboardListProps> = ({ leaders
               <div className="flex items-center gap-2">
                 <span className="text-xs font-semibold uppercase tracking-wide text-quip-navy/60">{rankLabel}</span>
                 <span className="font-display text-base text-quip-navy">{entry.username}</span>
+                <span className="text-xs text-quip-navy/60">{entry.total_rounds} rounds</span>
               </div>
               <div className="text-right">
                 {config.metricLabel && (
@@ -79,8 +74,6 @@ const GenericLeaderboardList: React.FC<GenericLeaderboardListProps> = ({ leaders
             <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-quip-navy/10">
               <div className="h-full bg-quip-teal" style={{ width: `${percent}%` }} aria-hidden="true" />
             </div>
-
-            <p className="mt-1 text-xs text-quip-navy/60">{detailText}</p>
           </div>
         );
       })}
@@ -93,10 +86,19 @@ const GrossEarningsLeaderboardList: React.FC<{ leaders: GrossEarningsLeaderboard
     <GenericLeaderboardList
       leaders={leaders}
       config={{
-        metricLabel: 'Balance',
-        metricFormatter: (entry) => currencyFormatter.format(entry.vault_balance),
+        metricLabel: '', // Remove "Balance" label
+        metricFormatter: (entry) => (
+          <span className="inline-flex items-center gap-1">
+            <img 
+              src="/vault.png" 
+              alt="Vault" 
+              className="w-4 h-4" 
+            />
+            <span className="font-mono text-lg font-semibold text-quip-teal">{entry.vault_balance}</span>
+          </span>
+        ),
         metricAccessor: (entry) => entry.vault_balance,
-        detailFormatter: (entry) => `${entry.total_rounds} rounds`,
+        detailFormatter: () => ``, // Remove unused parameter entirely
         emptyMessage: 'No vault earnings yet—play some rounds to appear on the leaderboard!',
       }}
     />

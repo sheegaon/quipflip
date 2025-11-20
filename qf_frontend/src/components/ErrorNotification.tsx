@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useGame } from '../contexts/GameContext';
 import { getContextualErrorMessage } from '../utils/errorMessages';
 
@@ -23,7 +23,7 @@ export const ErrorNotification: React.FC<ErrorNotificationProps> = ({
   const [isVisible, setIsVisible] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
 
-  const handleDismiss = () => {
+  const handleDismiss = useCallback(() => {
     setIsExiting(true);
     setTimeout(() => {
       if (onDismiss) {
@@ -34,7 +34,7 @@ export const ErrorNotification: React.FC<ErrorNotificationProps> = ({
       setIsVisible(false);
       setIsExiting(false);
     }, 300);
-  };
+  }, [onDismiss, clearError]);
 
   useEffect(() => {
     if (error) {
@@ -52,7 +52,7 @@ export const ErrorNotification: React.FC<ErrorNotificationProps> = ({
     } else {
       setIsVisible(false);
     }
-  }, [error, autoHide, duration]);
+  }, [error, autoHide, duration, handleDismiss]);
 
   if (!error || !isVisible) return null;
 

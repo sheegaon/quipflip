@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 
 interface SuccessNotificationProps {
   message: string;
@@ -22,7 +22,7 @@ export const SuccessNotification: React.FC<SuccessNotificationProps> = ({
   const [isVisible, setIsVisible] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
 
-  const handleDismiss = () => {
+  const handleDismiss = useCallback(() => {
     setIsExiting(true);
     setTimeout(() => {
       if (onDismiss) {
@@ -31,7 +31,7 @@ export const SuccessNotification: React.FC<SuccessNotificationProps> = ({
       setIsVisible(false);
       setIsExiting(false);
     }, 300);
-  };
+  }, [onDismiss]);
 
   useEffect(() => {
     if (message) {
@@ -49,7 +49,7 @@ export const SuccessNotification: React.FC<SuccessNotificationProps> = ({
     } else {
       setIsVisible(false);
     }
-  }, [message, autoHide, duration]);
+  }, [message, autoHide, duration, handleDismiss]);
 
   if (!message || !isVisible) return null;
 
