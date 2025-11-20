@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { usePartyMode } from '../contexts/PartyModeContext';
@@ -17,8 +17,15 @@ export const PartyGame: React.FC = () => {
   const { actions: partyActions, state: partyState } = usePartyMode();
   const [isStarting, setIsStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const hasInitializedRef = useRef(false);
 
   useEffect(() => {
+    if (hasInitializedRef.current) {
+      return;
+    }
+
+    hasInitializedRef.current = true;
+
     if (!sessionId) {
       setError('Session not found');
       return;
@@ -48,7 +55,7 @@ export const PartyGame: React.FC = () => {
     };
 
     void beginPartyFlow();
-  }, [gameActions, gameState.activeRound?.round_type, navigate, partyActions, partyState.currentStep, sessionId]);
+  }, [gameActions, gameState.activeRound?.round_type, hasInitializedRef, navigate, partyActions, partyState.currentStep, sessionId]);
 
   if (error) {
     return (
