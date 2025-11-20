@@ -10,7 +10,7 @@ from backend.config import get_settings
 from backend.database import get_db
 from backend.dependencies import get_current_player, enforce_guest_creation_rate_limit
 from backend.models.ir.player import IRPlayer
-from backend.schemas.auth import RegisterRequest
+from backend.schemas.auth import AuthTokenResponse, RegisterRequest, UsernameLoginRequest
 from backend.schemas.player import (
     PlayerBalance,
     ClaimDailyBonusResponse,
@@ -35,6 +35,39 @@ from backend.utils.passwords import (
 router = APIRouter()
 settings = get_settings()
 logger = logging.getLogger(__name__)
+
+
+@router.post("/login", response_model=AuthTokenResponse)
+async def login(
+    request: UsernameLoginRequest,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+) -> AuthTokenResponse:
+    """Authenticate an IR player and issue tokens."""
+
+    auth_service = AuthService(db, GameType.IR)
+    try:
+        player = await auth_service.authenticate_player_by_username(
+            request.username, request.password
+        )
+    except AuthError as exc:
+        raise HTTPException(status_code=401, detail=str(exc)) from exc
+
+    player.last_login_date = datetime.now(UTC)
+    await db.commit()
+
+    access_token, refresh_token, expires_in = await auth_service.issue_tokens(player)
+    set_access_token_cookie(response, access_token)
+    set_refresh_cookie(response, refresh_token, expires_days=settings.refresh_token_exp_days)
+
+    return AuthTokenResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        expires_in=expires_in,
+        token_type="bearer",
+        player_id=player.player_id,
+        username=player.username,
+    )
 
 
 @router.post("", response_model=CreatePlayerResponse, status_code=201)
