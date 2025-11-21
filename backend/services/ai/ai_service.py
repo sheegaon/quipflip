@@ -872,11 +872,7 @@ class AIService:
                 .limit(self.settings.ai_backup_batch_size)  # Use configured batch size
             )
             
-            # Get or create AI voter player (within transaction)
-            ai_voter_player = await self.get_or_create_ai_player(
-                GameType.QF, email=f"ai_voter_{uuid.uuid4().hex[:4]}{AI_PLAYER_EMAIL_DOMAIN}")
-
-            # Filter out phrasesets with activity after cutoff_time and in which this AI has voted
+            # Filter out phrasesets with activity after cutoff_time
             waiting_phrasesets = list(phraseset_result.scalars().all())
             filtered_phrasesets = []
             for phraseset in waiting_phrasesets:
@@ -886,19 +882,13 @@ class AIService:
                     .where(PhrasesetActivity.created_at > cutoff_time)
                 )
                 if len(activity.scalars().all()) == 0:
-                    voter_activity = await self.db.execute(
-                        select(PhrasesetActivity)
-                        .where(PhrasesetActivity.phraseset_id == phraseset.phraseset_id)
-                        .where(PhrasesetActivity.player_id == ai_voter_player.player_id)
-                    )
-                    if len(voter_activity.scalars().all()) == 0:
-                        filtered_phrasesets.append(phraseset)
+                    filtered_phrasesets.append(phraseset)
 
             stats["phrasesets_checked"] = len(filtered_phrasesets)
             logger.info(
                 f"Found {len(filtered_phrasesets)} phrasesets waiting for AI backup votes: {filtered_phrasesets}")
-            
-            # Initialize services once for all votes (performance improvement)
+
+            # Initialize services once for all votes
             from backend.services import VoteService
             from backend.services import TransactionService
             vote_service = VoteService(self.db)
@@ -907,6 +897,38 @@ class AIService:
             # Process each waiting phraseset
             for phraseset in filtered_phrasesets:
                 try:
+                    # Find an AI voter who has NOT voted on this phraseset
+                    # We look for players with email starting with "ai_voter"
+                    # who do not have a vote record for this phraseset_id
+                    
+                    # Subquery for players who HAVE voted on this phraseset
+                    voted_players_subquery = (
+                        select(Vote.player_id)
+                        .where(Vote.phraseset_id == phraseset.phraseset_id)
+                    )
+                    
+                    # Find available AI voter
+                    from backend.models.qf.player import QFPlayer
+                    available_voter_stmt = (
+                        select(QFPlayer)
+                        .where(QFPlayer.email.like(f"ai_voter_%{AI_PLAYER_EMAIL_DOMAIN}"))
+                        .where(QFPlayer.player_id.not_in(voted_players_subquery))
+                        .limit(1)
+                    )
+                    
+                    result = await self.db.execute(available_voter_stmt)
+                    ai_voter_player = result.scalar_one_or_none()
+                    
+                    if not ai_voter_player:
+                        # Create new AI voter if none available
+                        ai_voter_player = await self.get_or_create_ai_player(
+                            GameType.QF, 
+                            email=f"ai_voter_{uuid.uuid4().hex[:4]}{AI_PLAYER_EMAIL_DOMAIN}"
+                        )
+                        logger.info(f"Created new AI voter {ai_voter_player.username} for phraseset {phraseset.phraseset_id}")
+                    else:
+                        logger.info(f"Reusing AI voter {ai_voter_player.username} for phraseset {phraseset.phraseset_id}")
+
                     # Generate AI vote choice
                     seed = ai_voter_player.player_id.int
                     chosen_phrase = await self.generate_vote_choice(phraseset, seed)
