@@ -738,7 +738,7 @@ class PartyCoordinationService:
                         # Get a random prompt for AI to respond to
                         prompt_result = await self.db.execute(
                             select(Prompt)
-                            .where(Prompt.is_active == True)
+                            .where(Prompt.enabled == True)
                             .order_by(func.random())
                             .limit(1)
                         )
@@ -748,10 +748,10 @@ class PartyCoordinationService:
                             logger.warning(f"🤖 [AI SUBMIT] No prompts available for AI player {participant.player.username}")
                             continue
 
-                        logger.info(f"🤖 [AI SUBMIT] Selected prompt for {participant.player.username}: '{prompt.prompt_text}'")
+                        logger.info(f"🤖 [AI SUBMIT] Selected prompt for {participant.player.username}: '{prompt.text}'")
 
                         # Generate phrase for prompt
-                        phrase = await ai_service.generate_prompt_response(prompt.prompt_text)
+                        phrase = await ai_service.generate_prompt_response(prompt.text)
                         logger.info(f"🤖 [AI SUBMIT] Generated response for {participant.player.username}: '{phrase}'")
 
                         # Submit prompt round
