@@ -43,52 +43,78 @@ const OnlineUsers: React.FC = () => {
   const [pingStatus, setPingStatus] = useState<Record<string, 'idle' | 'sending' | 'sent'>>({});
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reconnectAttemptsRef = useRef(0);
+  const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    // Only start connections if authenticated
-    if (!state.isAuthenticated) {
-      return;
-    }
+    let isMounted = true;
 
-    let wsAttempted = false;
-    let pollingInterval: ReturnType<typeof setInterval> | null = null;
+    const clearReconnectTimer = () => {
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
+    };
 
-    // Try WebSocket first, fall back to polling if it fails
+    const stopPolling = () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
+
+    const startPolling = () => {
+      if (pollingIntervalRef.current) return;
+
+      setError('Using polling mode (WebSocket unavailable)');
+      setLoading(false);
+      fetchOnlineUsers();
+      pollingIntervalRef.current = setInterval(fetchOnlineUsers, 10000);
+    };
+
+    const scheduleReconnect = () => {
+      if (!state.isAuthenticated) return;
+
+      clearReconnectTimer();
+      const attempt = reconnectAttemptsRef.current;
+      const delay = Math.min(30000, 2000 * Math.pow(2, attempt));
+
+      reconnectAttemptsRef.current += 1;
+      reconnectTimerRef.current = setTimeout(() => {
+        connectWebSocket();
+      }, delay);
+    };
+
     const connectWebSocket = async () => {
-      if (wsAttempted) return; // Prevent multiple attempts
-      wsAttempted = true;
+      if (!state.isAuthenticated || wsRef.current) return;
 
       try {
-        // Step 1: Fetch short-lived WebSocket token via REST API (through Vercel proxy)
-        // This endpoint validates HttpOnly cookies and returns a token we can use for WebSocket
         const { token } = await apiClient.getWebsocketToken();
-
-        // Step 2: Construct WebSocket URL for direct connection to Heroku
         const apiUrl = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:8000`;
         const backendWsUrl = import.meta.env.VITE_BACKEND_WS_URL || 'wss://quipflip-c196034288cd.herokuapp.com';
         let wsUrl: string;
 
         if (apiUrl.startsWith('/')) {
-          // Production: use direct Heroku connection (cannot proxy WebSocket through Vercel)
           wsUrl = `${backendWsUrl}/qf/users/online/ws`;
 
         } else {
-          // Development: connect directly to local backend
           wsUrl = apiUrl
             .replace('http://', 'ws://')
             .replace('https://', 'wss://') + '/qf/users/online/ws';
         }
 
-        // Step 3: Add short-lived token as query parameter
         wsUrl += `?token=${encodeURIComponent(token)}`;
 
-        // Create WebSocket connection
         const ws = new WebSocket(wsUrl);
 
         ws.onopen = () => {
+          if (!isMounted) return;
           setConnected(true);
           setError(null);
           setLoading(false);
+          reconnectAttemptsRef.current = 0;
+          clearReconnectTimer();
+          stopPolling();
         };
 
         ws.onmessage = (event) => {
@@ -110,48 +136,35 @@ const OnlineUsers: React.FC = () => {
         };
 
         ws.onerror = () => {
+          if (!isMounted) return;
           setConnected(false);
-          // Fall back to polling if WebSocket fails
-          startPolling();
+          ws.close();
         };
 
         ws.onclose = (event) => {
+          if (!isMounted) return;
+          wsRef.current = null;
           setConnected(false);
 
-          // Check for authentication failure (code 1008 = policy violation)
           if (event.code === 1008) {
             setError('Authentication failed. Please log in again.');
             setLoading(false);
+            stopPolling();
             return;
           }
 
-          // Fall back to polling if WebSocket closes unexpectedly
-          // But only if we haven't already started polling and component is still mounted
-          if (!pollingInterval) {
-            startPolling();
-          }
+          startPolling();
+          scheduleReconnect();
         };
 
         wsRef.current = ws;
       } catch {
+        if (!isMounted) return;
         setConnected(false);
+        wsRef.current = null;
         startPolling();
+        scheduleReconnect();
       }
-    };
-
-    // Fallback polling mechanism for when WebSocket fails
-    const startPolling = () => {
-      // Don't start polling if we already have an interval running
-      if (pollingInterval) return;
-
-      setError('Using polling mode (WebSocket unavailable)');
-      setLoading(false);
-
-      // Fetch initial data
-      fetchOnlineUsers();
-
-      // Set up polling every 10 seconds (more conservative than WebSocket)
-      pollingInterval = setInterval(fetchOnlineUsers, 10000);
     };
 
     const fetchOnlineUsers = async () => {
@@ -172,32 +185,24 @@ const OnlineUsers: React.FC = () => {
       }
     };
 
-    // Start with WebSocket attempt
-    connectWebSocket();
+    if (state.isAuthenticated) {
+      connectWebSocket();
+    }
 
     // Cleanup on unmount or auth change
     return () => {
+      isMounted = false;
       console.log('OnlineUsers cleanup - clearing intervals and connections');
-      
-      // Clear polling interval - this is the key fix
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
-        pollingInterval = null;
-      }
 
-      // Clear any pending reconnect timer
-      if (reconnectTimerRef.current) {
-        clearTimeout(reconnectTimerRef.current);
-        reconnectTimerRef.current = null;
-      }
+      stopPolling();
+      clearReconnectTimer();
+      reconnectAttemptsRef.current = 0;
 
-      // Close WebSocket connection
       if (wsRef.current) {
-        wsRef.current.close(1000, 'Component unmounting'); // Clean close with reason
+        wsRef.current.close(1000, 'Component unmounting');
         wsRef.current = null;
       }
 
-      // Reset connection state
       setConnected(false);
       setLoading(false);
       setError(null);
