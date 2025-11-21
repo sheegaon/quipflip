@@ -284,22 +284,45 @@ class AIService:
 
             # Generate using configured provider
             if self.provider == "openai":
-                response_text = await openai_generate_response(
+                test_phrases = await openai_generate_response(
                     prompt=ai_prompt, model=self.ai_model, timeout=self.settings.ai_timeout_seconds)
             else:  # gemini
-                response_text = await gemini_generate_response(
+                test_phrases = await gemini_generate_response(
                     prompt=ai_prompt, model=self.ai_model, timeout=self.settings.ai_timeout_seconds)
+            test_phrases = test_phrases.split(";")
 
-            # Clean up response
-            phrase = response_text.strip().upper()
+            # Validate all phrases and pick the first valid one
+            validated_phrases = []
+            errors = []
+            for test_phrase in test_phrases:
+                test_phrase = test_phrase.strip()
+                if not test_phrase:
+                    continue
 
-            # Validate length
-            if len(phrase) < 4:
-                logger.error(f"AI phrase too short: {len(phrase)} chars, minimum is 4")
-                raise AICopyError(f"Generated phrase too short: {len(phrase)} chars (minimum 4)")
-            elif len(phrase) > 100:
-                logger.warning(f"AI phrase too long: {len(phrase)} chars, truncating to 100")
-                phrase = phrase[:100]
+                # Validate length
+                if len(test_phrase) < 4:
+                    error_message = "Phrase too short"
+                    errors.append((test_phrase, error_message))
+                    logger.info(f"AI generated invalid prompt phrase '{test_phrase}': {error_message}")
+                    continue
+                elif len(test_phrase) > 100:
+                    error_message = "Phrase too long"
+                    errors.append((test_phrase, error_message))
+                    logger.info(f"AI generated invalid prompt phrase '{test_phrase}': {error_message}")
+                    continue
+
+                is_valid, error_message = await self.phrase_validator.validate_prompt_phrase(
+                    test_phrase, prompt_text)
+                if is_valid:
+                    validated_phrases.append(test_phrase)
+                else:
+                    errors.append((test_phrase, error_message))
+                    logger.info(f"AI generated invalid prompt phrase '{test_phrase}': {error_message}")
+
+            if not validated_phrases:
+                raise AICopyError(f"AI generated no valid phrases for prompt '{prompt_text}': {errors=}")
+
+            phrase = validated_phrases[0]
 
             logger.info(f"AI ({self.provider}) generated party prompt phrase: {phrase}")
             return phrase
