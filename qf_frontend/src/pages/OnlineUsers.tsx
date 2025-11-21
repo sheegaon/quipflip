@@ -345,7 +345,7 @@ const OnlineUsers: React.FC = () => {
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => handlePingUser(user.username)}
-                          disabled={isSelf || status === 'sending'}
+                          disabled={isSelf || status === 'sending' || status === 'sent'}
                           className="text-sm bg-quip-turquoise text-white px-3 py-2 rounded-lg hover:bg-quip-teal transition-colors disabled:bg-gray-300 disabled:text-gray-600 disabled:cursor-not-allowed"
                         >
                           {status === 'sending'
