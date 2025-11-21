@@ -808,9 +808,6 @@ export const CopyRound: React.FC = () => {
           {/* AI Hints */}
           {roundData && (
             <div className="mb-4 rounded-tile border border-quip-turquoise/30 bg-white/80 p-4 shadow-tile-xs">
-              <p className="text-xs text-quip-teal mb-2">
-                Hints are optional — you can submit your own phrase anytime, even while suggestions are loading.
-              </p>
               {copyRoundHints && copyRoundHints.length > 0 ? (
                 <>
                   <button
