@@ -16,10 +16,8 @@ from backend.models.qf.phraseset import Phraseset
 from backend.models.qf.round import Round
 from backend.models.qf.vote import Vote
 from backend.services.ai.ai_service import AIService
-from backend.utils.model_registry import GameType
+from backend.utils.model_registry import GameType, AIPlayerType
 from backend.services import TransactionService
-from backend.services import UsernameService
-from backend.services.ai.ai_service import AI_PLAYER_EMAIL_DOMAIN
 
 
 logger = logging.getLogger(__name__)
@@ -33,63 +31,14 @@ class StaleAIService:
         self.settings = get_settings()
         self.ai_service = AIService(db)
 
-    async def _get_or_create_stale_player(self, email: str, game_type: GameType) -> PlayerBase:
-        """
-        Get or create a stale AI player with the given email.
+    async def _get_or_create_stale_player(
+        self, ai_player_type: AIPlayerType, excluded: List[UUID] | None = None
+    ) -> PlayerBase:
+        """Fetch or create an AI player using the shared AI service helper."""
 
-        Uses the same pattern as AI backup service - creates players with
-        random usernames from the pool to blend in with human players.
-
-        Args:
-            email: Email address for the AI player (e.g., "ai_stale_handler_0@quipflip.internal")
-
-        Returns:
-            The AI player instance
-        """
-        from backend.utils.model_registry import get_player_model
-
-        player_model = get_player_model(game_type)
-
-        # Check if player exists
-        result = await self.db.execute(
-            select(player_model).where(player_model.email == email)
+        return await self.ai_service.get_or_create_ai_player(
+            ai_player_type, excluded=excluded
         )
-        player = result.scalar_one_or_none()
-
-        if player:
-            # Clear stuck active round if any
-            if player.active_round_id:
-                logger.warning(
-                    f"Stale AI player {email} has stuck active round: {player.active_round_id}. Clearing it."
-                )
-                player.active_round_id = None
-                await self.db.flush()
-            return player
-
-        # Create new AI player with random username from pool
-        if game_type == GameType.QF:
-            from backend.services.qf.player_service import PlayerService
-        elif game_type == GameType.IR:
-            from backend.services.ir.player_service import PlayerService
-        else:
-            raise ValueError(f"Unsupported game type: {game_type}")
-        player_service = PlayerService(self.db)
-
-        username_service = UsernameService(self.db, game_type=game_type)
-
-        try:
-            normalized_username, canonical_username = await username_service.generate_unique_username()
-
-            player = await player_service.create_player(
-                username=normalized_username,
-                email=email,
-                password_hash="not-used-for-ai-player",
-            )
-            logger.info(f"Created stale AI player {email} with username {normalized_username}")
-            return player
-        except Exception as exc:
-            logger.error(f"Failed to create stale AI player {email}: {exc}")
-            raise
 
     async def _find_stale_prompts(self) -> List[Round]:
         """
@@ -191,11 +140,17 @@ class StaleAIService:
                             prompt_round.phraseset_status = "active"
                         continue
 
-                    # Select which AI handler to use (0 or 1) based on which slot is empty
-                    # This ensures different players can fill different slots
-                    handler_index = 0 if initial_slot == "copy1" else 1
-                    stale_handler_email = f"ai_stale_handler_{handler_index}{AI_PLAYER_EMAIL_DOMAIN}"
-                    stale_handler = await self._get_or_create_stale_player(stale_handler_email, GameType.QF)
+                    handler_exclusions = [
+                        player_id
+                        for player_id in [
+                            prompt_round.copy1_player_id,
+                            prompt_round.copy2_player_id,
+                        ]
+                        if player_id is not None
+                    ]
+                    stale_handler = await self._get_or_create_stale_player(
+                        AIPlayerType.QF_IMPOSTOR, excluded=handler_exclusions
+                    )
 
                     copy_phrase = await self.ai_service.get_impostor_phrase(prompt_round)
 
@@ -300,21 +255,16 @@ class StaleAIService:
 
                     # Select a different AI voter based on current vote count
                     # This ensures we use different players for each vote
-                    voter_index = phraseset.vote_count % 5  # Rotate through 5 voters
-                    stale_voter_email = f"ai_stale_voter_{voter_index}{AI_PLAYER_EMAIL_DOMAIN}"
-                    stale_voter = await self._get_or_create_stale_player(stale_voter_email, GameType.QF)
-
-                    # Check if this specific voter has already voted (additional safety check)
-                    existing_vote = await self.db.execute(
-                        select(Vote)
-                        .where(Vote.phraseset_id == phraseset.phraseset_id)
-                        .where(Vote.player_id == stale_voter.player_id)
-                    )
-                    if existing_vote.scalar_one_or_none():
-                        logger.info(
-                            f"Voter {stale_voter_email} already voted on phraseset {phraseset.phraseset_id}, skipping"
+                    voted_players_result = await self.db.execute(
+                        select(Vote.player_id).where(
+                            Vote.phraseset_id == phraseset.phraseset_id
                         )
-                        continue
+                    )
+                    voted_player_ids = list(voted_players_result.scalars().all())
+
+                    stale_voter = await self._get_or_create_stale_player(
+                        AIPlayerType.QF_VOTER, excluded=voted_player_ids
+                    )
 
                     seed = stale_voter.player_id.int
                     chosen_phrase = await self.ai_service.generate_vote_choice(phraseset, seed)
