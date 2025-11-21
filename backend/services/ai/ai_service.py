@@ -154,17 +154,15 @@ class AIService:
         else:
             raise ValueError(f"Unsupported {ai_player_type=}")
 
-        if ai_player_type == AIPlayerType.QF_QUIP:
-            target_email = f"ai_quip_%{AI_PLAYER_EMAIL_DOMAIN}"
-        elif ai_player_type == AIPlayerType.QF_IMPOSTOR:
-            target_email = f"ai_impostor_%{AI_PLAYER_EMAIL_DOMAIN}"
-        elif ai_player_type == AIPlayerType.QF_VOTER:
-            target_email = f"ai_voter_%{AI_PLAYER_EMAIL_DOMAIN}"
-        elif ai_player_type == AIPlayerType.QF_PARTY:
-            target_email = f"ai_party_%{AI_PLAYER_EMAIL_DOMAIN}"
-        elif ai_player_type == AIPlayerType.IR_PLAYER:
-            target_email = IR_AI_PLAYER_EMAIL
-        else:
+        email_patterns = {
+            AIPlayerType.QF_QUIP: f"ai_quip_%{AI_PLAYER_EMAIL_DOMAIN}",
+            AIPlayerType.QF_IMPOSTOR: f"ai_impostor_%{AI_PLAYER_EMAIL_DOMAIN}",
+            AIPlayerType.QF_VOTER: f"ai_voter_%{AI_PLAYER_EMAIL_DOMAIN}",
+            AIPlayerType.QF_PARTY: f"ai_party_%{AI_PLAYER_EMAIL_DOMAIN}",
+            AIPlayerType.IR_PLAYER: IR_AI_PLAYER_EMAIL,
+        }
+        target_email = email_patterns.get(ai_player_type)
+        if target_email is None:
             raise ValueError(f"Unsupported {ai_player_type=}")
 
         try:
