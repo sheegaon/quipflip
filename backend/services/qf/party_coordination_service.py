@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_, func, not_
 from typing import Optional, List
 from uuid import UUID
+import asyncio
 import logging
 
 from backend.models.qf.player import QFPlayer
@@ -778,6 +779,9 @@ class PartyCoordinationService:
                             f"🤖 [AI SUBMIT] ✅ AI player {participant.player.username} submitted prompt: '{phrase}'"
                         )
 
+                        # Add delay to prevent lock contention when multiple AI players submit simultaneously
+                        await asyncio.sleep(0.5)
+
                     elif session.current_phase == 'COPY':
                         # Check if AI has submitted all copies
                         if participant.copies_submitted >= session.copies_per_player:
@@ -835,8 +839,11 @@ class PartyCoordinationService:
 
                         stats['copies_submitted'] += 1
                         logger.info(
-                            f"AI player {participant.player.username} submitted copy: {copy_phrase}"
+                            f"🤖 [AI SUBMIT] ✅ AI player {participant.player.username} submitted copy: {copy_phrase}"
                         )
+
+                        # Add delay to prevent lock contention when multiple AI players submit simultaneously
+                        await asyncio.sleep(0.5)
 
                     elif session.current_phase == 'VOTE':
                         # Check if AI has submitted all votes
@@ -884,8 +891,11 @@ class PartyCoordinationService:
 
                         stats['votes_submitted'] += 1
                         logger.info(
-                            f"AI player {participant.player.username} voted for: {chosen_phrase}"
+                            f"🤖 [AI SUBMIT] ✅ AI player {participant.player.username} voted for: {chosen_phrase}"
                         )
+
+                        # Add delay to prevent lock contention when multiple AI players submit simultaneously
+                        await asyncio.sleep(0.5)
 
                 except (AICopyError, AIVoteError) as e:
                     logger.error(f"🤖 [AI SUBMIT] ❌ AI-specific error for {participant.player.username}: {e}")

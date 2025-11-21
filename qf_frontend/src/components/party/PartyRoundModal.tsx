@@ -16,17 +16,21 @@ const phaseOrder: { id: PartyStep; label: string }[] = [
 ];
 
 export const PartyRoundModal: React.FC<PartyRoundModalProps> = ({ sessionId, currentStep }) => {
-  const { state: partyState } = usePartyMode();
+  const { state: partyState, actions: partyActions } = usePartyMode();
   const [isOpen, setIsOpen] = useState(true);
   const isProgressMissing = !partyState.yourProgress || !partyState.sessionConfig;
 
-  // WebSocket updates will update context automatically via submission responses
-  // This hook just listens for phase transitions
+  // WebSocket updates will update context when other players make progress
   usePartyWebSocket({
     sessionId,
     pageContext: 'game',
-    onProgressUpdate: () => {
-      // Context is already updated by submission response
+    onProgressUpdate: (data) => {
+      // Update session progress when we receive WebSocket updates about other players
+      console.log('🔔 [Party Modal] Received progress update via WebSocket:', data);
+      partyActions.updateSessionProgress({
+        players_ready_for_next_phase: data.session_progress.players_done_with_phase,
+        total_players: data.session_progress.total_players,
+      });
     },
     onPhaseTransition: () => {
       // Phase transition handled elsewhere

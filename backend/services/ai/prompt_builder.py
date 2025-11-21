@@ -128,16 +128,20 @@ Generate {count} unique backronym options for {word_upper}:"""
     return prompt
 
 
-def build_party_prompt_generation(prompt_text: str) -> str:
+def build_party_prompt_generation(prompt_text: str, forbidden_words: list=None) -> str:
     """
     Build structured prompt for Party Mode prompt round phrase generation.
 
     Args:
         prompt_text: The prompt to respond to
+        forbidden_words: List of words that must not be used (if any)
 
     Returns:
         A formatted prompt string for AI phrase generation
     """
+    rule = ""
+    if forbidden_words:
+        rule = "\n- Do NOT use any of these forbidden words: " + ", ".join(forbidden_words)
     return f"""Generate a creative, short phrase that responds to the following prompt.
 
 **Prompt: "{prompt_text}"**
@@ -151,7 +155,7 @@ Rules:
 - Should directly complete the prompt sentence
 - Words which are 4 or more letters long, except common words: [{{common_words}}], are known as *significant words*
 - Do NOT use or lightly modify (e.g., pluralize) any significant words from the prompt
-
+{rule}
 Generate ONE phrase that best responds to the prompt. Do not include quotes or explanation, just the phrase itself."""
 
 

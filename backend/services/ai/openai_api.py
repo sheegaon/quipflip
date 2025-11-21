@@ -13,7 +13,7 @@ except ImportError:
     AsyncOpenAI = None  # type: ignore
     OpenAIError = Exception  # type: ignore
 
-__all__ = ["OpenAIError", "generate_copy"]
+__all__ = ["OpenAIError", "generate_response"]
 
 settings = get_settings()
 
@@ -22,13 +22,13 @@ class OpenAIAPIError(RuntimeError):
     """Raised when the OpenAI API cannot be contacted or returns an error."""
 
 
-async def generate_copy(
+async def generate_response(
         prompt: str,
         model: str = "gpt-5-nano",
         timeout: int = 120,
 ) -> str:
     """
-    Generate a copy phrase using OpenAI API.
+    Generate a response using OpenAI API.
 
     Args:
         prompt: Prompt to send to the OpenAI API
@@ -36,7 +36,7 @@ async def generate_copy(
         timeout: Request timeout in seconds
 
     Returns:
-        The generated copy phrase as a string
+        The generated string
 
     Raises:
         OpenAIAPIError: If API key is missing or API call fails
