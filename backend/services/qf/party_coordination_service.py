@@ -1,10 +1,11 @@
 """Party Mode coordination service for managing party-scoped rounds."""
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_, func, not_
-from typing import Optional, List
+from typing import Optional, List, Callable, TypeVar, Any
 from uuid import UUID
 import asyncio
 import logging
+import random
 
 from backend.models.qf.player import QFPlayer
 from backend.models.qf.party_session import PartySession
@@ -31,6 +32,72 @@ from backend.services.ai.ai_service import AI_PLAYER_EMAIL_DOMAIN
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
+
+T = TypeVar('T')
+
+
+async def retry_with_backoff(
+    func: Callable[..., Any],
+    max_retries: int = 3,
+    base_delay: float = 0.5,
+    max_delay: float = 5.0,
+    jitter: bool = True,
+    operation_name: str = "operation",
+) -> Any:
+    """
+    Retry an async function with exponential backoff.
+
+    This is specifically designed to handle lock contention during parallel
+    AI submissions. When multiple AI players try to start rounds simultaneously,
+    transient lock conflicts can occur despite per-player locking.
+
+    Args:
+        func: Async function to retry
+        max_retries: Maximum number of retry attempts (default: 3)
+        base_delay: Initial delay between retries in seconds (default: 0.5s)
+        max_delay: Maximum delay between retries (default: 5s)
+        jitter: Add random jitter to delays to prevent thundering herd (default: True)
+        operation_name: Name for logging purposes
+
+    Returns:
+        Result of the function call
+
+    Raises:
+        The last exception if all retries fail
+    """
+    last_exception = None
+
+    for attempt in range(max_retries + 1):
+        try:
+            return await func()
+        except TimeoutError as e:
+            last_exception = e
+            if attempt < max_retries:
+                # Calculate exponential backoff delay
+                delay = min(base_delay * (2 ** attempt), max_delay)
+
+                # Add jitter to prevent synchronized retries
+                if jitter:
+                    delay = delay * (0.5 + random.random())
+
+                logger.warning(
+                    f"🔄 [RETRY] {operation_name} failed with lock timeout (attempt {attempt + 1}/{max_retries + 1}). "
+                    f"Retrying in {delay:.2f}s... Error: {e}"
+                )
+                await asyncio.sleep(delay)
+            else:
+                logger.error(
+                    f"❌ [RETRY] {operation_name} failed after {max_retries + 1} attempts. Giving up. Error: {e}"
+                )
+                raise
+        except Exception as e:
+            # For non-timeout errors, fail immediately
+            logger.error(f"❌ [RETRY] {operation_name} failed with non-retryable error: {e}")
+            raise
+
+    # Should never reach here, but just in case
+    if last_exception:
+        raise last_exception
 
 
 class PartyCoordinationService:
@@ -712,23 +779,29 @@ class PartyCoordinationService:
             phrase = await ai_service.generate_prompt_response(prompt.text)
             logger.info(f"🤖 [AI SUBMIT] Generated response for {participant.player.username}: '{phrase}'")
 
-            # Submit prompt round
+            # Submit prompt round (with retry logic for lock contention)
             logger.info(f"🤖 [AI SUBMIT] Starting prompt round for {participant.player.username}")
-            round_obj, party_round_id = await self.start_party_prompt_round(
-                session_id=session_id,
-                player=participant.player,
-                transaction_service=transaction_service,
+            round_obj, party_round_id = await retry_with_backoff(
+                func=lambda: self.start_party_prompt_round(
+                    session_id=session_id,
+                    player=participant.player,
+                    transaction_service=transaction_service,
+                ),
+                operation_name=f"start_prompt_round for AI {participant.player.username}",
             )
             logger.info(f"🤖 [AI SUBMIT] Created round {round_obj.round_id} for {participant.player.username}")
 
-            # Submit phrase
+            # Submit phrase (with retry logic for lock contention)
             logger.info(f"🤖 [AI SUBMIT] Submitting phrase for {participant.player.username}")
-            await self.submit_party_prompt(
-                session_id=session_id,
-                player=participant.player,
-                round_id=round_obj.round_id,
-                phrase=phrase,
-                transaction_service=transaction_service,
+            await retry_with_backoff(
+                func=lambda: self.submit_party_prompt(
+                    session_id=session_id,
+                    player=participant.player,
+                    round_id=round_obj.round_id,
+                    phrase=phrase,
+                    transaction_service=transaction_service,
+                ),
+                operation_name=f"submit_prompt for AI {participant.player.username}",
             )
 
             logger.info(f"🤖 [AI SUBMIT] ✅ AI player {participant.player.username} submitted prompt: '{phrase}'")
@@ -797,20 +870,26 @@ class PartyCoordinationService:
                 prompt_round=prompt_round
             )
 
-            # Submit copy round
-            round_obj, party_round_id = await self.start_party_copy_round(
-                session_id=session_id,
-                player=participant.player,
-                transaction_service=transaction_service,
+            # Submit copy round (with retry logic for lock contention)
+            round_obj, party_round_id = await retry_with_backoff(
+                func=lambda: self.start_party_copy_round(
+                    session_id=session_id,
+                    player=participant.player,
+                    transaction_service=transaction_service,
+                ),
+                operation_name=f"start_copy_round for AI {participant.player.username}",
             )
 
-            # Submit copy phrase
-            await self.submit_party_copy(
-                session_id=session_id,
-                player=participant.player,
-                round_id=round_obj.round_id,
-                phrase=copy_phrase,
-                transaction_service=transaction_service,
+            # Submit copy phrase (with retry logic for lock contention)
+            await retry_with_backoff(
+                func=lambda: self.submit_party_copy(
+                    session_id=session_id,
+                    player=participant.player,
+                    round_id=round_obj.round_id,
+                    phrase=copy_phrase,
+                    transaction_service=transaction_service,
+                ),
+                operation_name=f"submit_copy for AI {participant.player.username}",
             )
 
             logger.info(f"🤖 [AI SUBMIT] ✅ AI player {participant.player.username} submitted copy: {copy_phrase}")
@@ -867,21 +946,27 @@ class PartyCoordinationService:
             seed = participant.player_id.int
             chosen_phrase = await ai_service.generate_vote_choice(phraseset, seed)
 
-            # Submit vote round
-            round_obj, party_round_id = await self.start_party_vote_round(
-                session_id=session_id,
-                player=participant.player,
-                transaction_service=transaction_service,
+            # Submit vote round (with retry logic for lock contention)
+            round_obj, party_round_id = await retry_with_backoff(
+                func=lambda: self.start_party_vote_round(
+                    session_id=session_id,
+                    player=participant.player,
+                    transaction_service=transaction_service,
+                ),
+                operation_name=f"start_vote_round for AI {participant.player.username}",
             )
 
-            # Submit vote
-            await self.submit_party_vote(
-                session_id=session_id,
-                player=participant.player,
-                round_id=round_obj.round_id,
-                phraseset_id=phraseset_id,
-                phrase=chosen_phrase,
-                transaction_service=transaction_service,
+            # Submit vote (with retry logic for lock contention)
+            await retry_with_backoff(
+                func=lambda: self.submit_party_vote(
+                    session_id=session_id,
+                    player=participant.player,
+                    round_id=round_obj.round_id,
+                    phraseset_id=phraseset_id,
+                    phrase=chosen_phrase,
+                    transaction_service=transaction_service,
+                ),
+                operation_name=f"submit_vote for AI {participant.player.username}",
             )
 
             logger.info(f"🤖 [AI SUBMIT] ✅ AI player {participant.player.username} voted for: {chosen_phrase}")
