@@ -23,6 +23,7 @@ class PingWebSocketMessage(BaseModel):
     type: str = "ping"
     from_username: str
     timestamp: str  # ISO format datetime
+    join_url: str | None = None
 
 
 class NotificationCreate(BaseModel):

@@ -53,6 +53,7 @@ interface PingToastMessage {
   id: string;
   message: string;
   timestamp: string;
+  joinUrl?: string;
 }
 
 export const NotificationProvider: FC<NotificationProviderProps> = ({
@@ -123,8 +124,11 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
             if (data.type === 'ping') {
               const ping: PingToastMessage = {
                 id: `ping-${++pingIdRef.current}`,
-                message: `${data.from_username} has pinged you`,
+                message: data.join_url
+                  ? `${data.from_username} pinged your party`
+                  : `${data.from_username} has pinged you`,
                 timestamp: data.timestamp,
+                joinUrl: data.join_url,
               };
 
               setPingMessages((prev) => [...prev, ping]);
