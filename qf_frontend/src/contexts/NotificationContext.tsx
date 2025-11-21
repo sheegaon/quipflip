@@ -21,6 +21,7 @@ import {
 } from 'react';
 import { useGame } from './GameContext';
 import apiClient from '../api/client';
+import { NotificationStreamMessage } from '../api/types';
 
 export interface NotificationMessage {
   id: string;
@@ -36,6 +37,8 @@ interface NotificationContextType {
   addNotification: (message: NotificationMessage) => void;
   removeNotification: (id: string) => void;
   clearAll: () => void;
+  pingMessages: PingToastMessage[];
+  removePingMessage: (id: string) => void;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(
@@ -46,12 +49,20 @@ interface NotificationProviderProps {
   children: ReactNode;
 }
 
+interface PingToastMessage {
+  id: string;
+  message: string;
+  timestamp: string;
+}
+
 export const NotificationProvider: FC<NotificationProviderProps> = ({
   children,
 }) => {
   const [notifications, setNotifications] = useState<NotificationMessage[]>([]);
+  const [pingMessages, setPingMessages] = useState<PingToastMessage[]>([]);
   const wsRef = useRef<WebSocket | null>(null);
   const notificationIdRef = useRef(0);
+  const pingIdRef = useRef(0);
   const { state } = useGame();
 
   useEffect(() => {
@@ -93,7 +104,7 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
 
         ws.onmessage = (event) => {
           try {
-            const data = JSON.parse(event.data);
+            const data: NotificationStreamMessage = JSON.parse(event.data);
 
             if (data.type === 'notification') {
               const notification: NotificationMessage = {
@@ -106,6 +117,17 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
               };
 
               setNotifications((prev) => [...prev, notification]);
+              return;
+            }
+
+            if (data.type === 'ping') {
+              const ping: PingToastMessage = {
+                id: `ping-${++pingIdRef.current}`,
+                message: `${data.from_username} has pinged you`,
+                timestamp: data.timestamp,
+              };
+
+              setPingMessages((prev) => [...prev, ping]);
             }
           } catch (err) {
             // Silently ignore malformed messages
@@ -155,6 +177,10 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
     setNotifications([]);
   };
 
+  const removePingMessage = (id: string) => {
+    setPingMessages((prev) => prev.filter((ping) => ping.id !== id));
+  };
+
   return (
     <NotificationContext.Provider
       value={{
@@ -162,6 +188,8 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
         addNotification,
         removeNotification,
         clearAll,
+        pingMessages,
+        removePingMessage,
       }}
     >
       {children}

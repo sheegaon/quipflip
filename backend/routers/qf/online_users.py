@@ -8,7 +8,14 @@ review events.
 """
 from datetime import datetime, UTC, timedelta
 from typing import List, Optional
-from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    WebSocket,
+    WebSocketDisconnect,
+    status,
+)
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 import asyncio
@@ -22,10 +29,20 @@ from backend.models.qf.player import QFPlayer
 from backend.models.qf.round import Round
 from backend.models.qf.phraseset_activity import PhrasesetActivity
 from backend.models.qf.transaction import QFTransaction
-from backend.schemas.online_users import OnlineUser, OnlineUsersResponse
+from backend.schemas.online_users import (
+    OnlineUser,
+    OnlineUsersResponse,
+    PingUserRequest,
+    PingUserResponse,
+)
+from backend.schemas.notification import PingWebSocketMessage
 from backend.services import AuthService
 from backend.utils.model_registry import GameType
-from backend.services.qf import PlayerService
+from backend.services.qf import (
+    NotificationConnectionManager,
+    PlayerService,
+    get_notification_manager,
+)
 from backend.config import get_settings
 from backend.utils.datetime_helpers import ensure_utc
 
@@ -302,6 +319,38 @@ async def get_online_users_endpoint(
         users=online_users,
         total_count=len(online_users),
     )
+
+
+@router.post("/online/ping", response_model=PingUserResponse)
+async def ping_online_user(
+    request: PingUserRequest,
+    player: QFPlayer = Depends(get_current_player),
+    db: AsyncSession = Depends(get_db),
+    connection_manager: NotificationConnectionManager = Depends(
+        get_notification_manager
+    ),
+):
+    """Send a ping notification to another online user."""
+
+    if request.username == player.username:
+        raise HTTPException(status_code=400, detail="Cannot ping yourself")
+
+    player_service = PlayerService(db)
+    target_player = await player_service.get_player_by_username(request.username)
+
+    if not target_player:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    ping_message = PingWebSocketMessage(
+        from_username=player.username,
+        timestamp=datetime.now(UTC).isoformat(),
+    )
+
+    await connection_manager.send_to_player(
+        target_player.player_id, ping_message.model_dump()
+    )
+
+    return PingUserResponse(success=True, message="Ping sent")
 
 
 @router.websocket("/online/ws")

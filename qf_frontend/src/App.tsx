@@ -7,6 +7,7 @@ import { AppProviders } from './contexts/AppProviders';
 import { ErrorNotification } from './components/ErrorNotification';
 import TutorialOverlay from './components/Tutorial/TutorialOverlay';
 import NotificationDisplay from './components/NotificationDisplay';
+import PingNotificationDisplay from './components/PingNotificationDisplay';
 import { trackPageView } from './utils/googleAnalytics';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { AppErrorFallback } from './components/ErrorFallback';
@@ -116,6 +117,7 @@ const AppRoutes: React.FC = () => {
       <OfflineBanner />
       <ErrorNotification />
       <NotificationDisplay />
+      <PingNotificationDisplay />
       <GuestWelcomeOverlay />
       <TutorialOverlay />
       <Routes>
