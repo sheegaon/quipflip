@@ -25,7 +25,6 @@ export const PartyLobby: React.FC = () => {
   const [notification, setNotification] = useState<string | null>(null);
   const [isAddingAI, setIsAddingAI] = useState(false);
   const [isPinging, setIsPinging] = useState(false);
-  const [pingNotice, setPingNotice] = useState<{ host: string; joinUrl: string } | null>(null);
 
   // Check if current player is host
   const isHost = sessionStatus?.participants.find(p => p.player_id === player?.player_id)?.is_host ?? false;
@@ -67,12 +66,6 @@ export const PartyLobby: React.FC = () => {
     loadSessionStatus();
   }, [loadSessionStatus]);
 
-  useEffect(() => {
-    if (!pingNotice) return;
-    const timeout = setTimeout(() => setPingNotice(null), 8000);
-    return () => clearTimeout(timeout);
-  }, [pingNotice]);
-
   // WebSocket handlers
   const {
     connected: wsConnected,
@@ -104,9 +97,6 @@ export const PartyLobby: React.FC = () => {
         setTimeout(() => setNotification(null), 5000); // Clear after 5 seconds
       }
       loadSessionStatus();
-    },
-    onHostPing: (data) => {
-      setPingNotice({ host: data.host_username, joinUrl: data.join_url });
     },
   });
 
@@ -231,29 +221,11 @@ export const PartyLobby: React.FC = () => {
 
         <div className="space-y-6">
           {/* Notification Display */}
-          {(notification || pingNotice) && (
+          {notification && (
             <div className="space-y-3">
-              {notification && (
-                <div className="bg-quip-turquoise bg-opacity-10 border-2 border-quip-turquoise rounded-tile p-4 text-center">
-                  <p className="text-quip-navy font-semibold">{notification}</p>
-                </div>
-              )}
-              {pingNotice && (
-                <div className="bg-white border-2 border-quip-navy rounded-tile p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                  <div>
-                    <p className="text-quip-navy font-semibold">
-                      {pingNotice.host} pinged everyone to come back to the lobby.
-                    </p>
-                    <p className="text-sm text-quip-teal">Tap below to jump back in.</p>
-                  </div>
-                  <button
-                    onClick={() => navigate(pingNotice.joinUrl)}
-                    className="w-full md:w-auto bg-quip-navy text-white font-semibold py-2 px-4 rounded-tile hover:bg-quip-teal transition-colors"
-                  >
-                    Rejoin Lobby
-                  </button>
-                </div>
-              )}
+              <div className="bg-quip-turquoise bg-opacity-10 border-2 border-quip-turquoise rounded-tile p-4 text-center">
+                <p className="text-quip-navy font-semibold">{notification}</p>
+              </div>
             </div>
           )}
 

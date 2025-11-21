@@ -6,6 +6,7 @@ export interface PingWebSocketMessage {
   type: 'ping';
   from_username: string;
   timestamp: string;
+  join_url?: string;
 }
 
 export interface NotificationWebSocketMessage {

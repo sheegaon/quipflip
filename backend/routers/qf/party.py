@@ -1,4 +1,5 @@
 """Party Mode API router."""
+from datetime import UTC, datetime
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, status as http_status
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
@@ -24,8 +25,11 @@ from backend.schemas.party import (
     PartyListItemResponse,
     PartyPingResponse,
 )
+from backend.schemas.notification import PingWebSocketMessage
 from backend.services import TransactionService
 from backend.services.qf import (
+    NotificationConnectionManager,
+    get_notification_manager,
     PartySessionService,
     PartyCoordinationService,
     PartyScoringService,
@@ -430,6 +434,9 @@ async def ping_party_session(
     session_id: UUID,
     player: QFPlayer = Depends(get_current_player),
     db: AsyncSession = Depends(get_db),
+    connection_manager: NotificationConnectionManager = Depends(
+        get_notification_manager
+    ),
 ):
     """Allow the host to ping all players with a lobby reminder."""
 
@@ -444,6 +451,27 @@ async def ping_party_session(
             raise HTTPException(status_code=403, detail="Only the host can ping players")
 
         join_url = f"/party/{session_id}"
+        participants = await party_service.get_participants(session_id)
+
+        ping_message = PingWebSocketMessage(
+            from_username=player.username,
+            timestamp=datetime.now(UTC).isoformat(),
+            join_url=join_url,
+        )
+
+        for party_participant in participants:
+            participant_player = party_participant.player
+
+            if not participant_player or participant_player.player_id == player.player_id:
+                continue
+
+            if PartySessionService._is_ai_player(participant_player):
+                continue
+
+            await connection_manager.send_to_player(
+                participant_player.player_id, ping_message.model_dump()
+            )
+
         await ws_manager.notify_host_ping(
             session_id=session_id,
             host_player_id=player.player_id,
