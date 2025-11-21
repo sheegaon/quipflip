@@ -21,6 +21,7 @@ class AIPlayerType(Enum):
     QF_QUIP = "qf_quip"
     QF_IMPOSTOR = "qf_impostor"
     QF_VOTER = "qf_voter"
+    QF_PARTY = "qf_party"
     IR_PLAYER = "ir_player"
 
 

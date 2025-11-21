@@ -140,7 +140,8 @@ class AIService:
             This method should NOT commit or refresh the session.
         """
         # Instantiate the correct player service and model based on game type
-        if ai_player_type in [AIPlayerType.QF_QUIP, AIPlayerType.QF_IMPOSTOR, AIPlayerType.QF_VOTER]:
+        if (ai_player_type in
+                [AIPlayerType.QF_QUIP, AIPlayerType.QF_IMPOSTOR, AIPlayerType.QF_VOTER, AIPlayerType.QF_PARTY]):
             from backend.models.qf.player import QFPlayer
             from backend.services.qf.player_service import PlayerService
             player_model = QFPlayer
@@ -159,6 +160,8 @@ class AIService:
             target_email = f"ai_impostor_%{AI_PLAYER_EMAIL_DOMAIN}"
         elif ai_player_type == AIPlayerType.QF_VOTER:
             target_email = f"ai_voter_%{AI_PLAYER_EMAIL_DOMAIN}"
+        elif ai_player_type == AIPlayerType.QF_PARTY:
+            target_email = f"ai_party_%{AI_PLAYER_EMAIL_DOMAIN}"
         elif ai_player_type == AIPlayerType.IR_PLAYER:
             target_email = IR_AI_PLAYER_EMAIL
         else:
@@ -832,9 +835,6 @@ class AIService:
         }
 
         try:
-            # Get or create AI copy player (within transaction)
-            ai_copy_player = await self.get_or_create_ai_player(GameType.QF)
-
             # Query for submitted prompt rounds that:
             # 1. Don't have a phraseset yet (still waiting for copies)
             # 2. Are older than the backup delay
@@ -854,79 +854,86 @@ class AIService:
                 .where(Round.round_type == 'prompt')
                 .where(Round.status == 'submitted')
                 .where(Round.created_at <= cutoff_time)
-                .where(Round.player_id != ai_copy_player.player_id)
+                .where(QFPlayer.email.notlike(f"%{AI_PLAYER_EMAIL_DOMAIN}"))  # Exclude AI player
                 .where(PhrasesetActivity.phraseset_id.is_(None))  # Not yet a phraseset
                 .order_by(Round.created_at.asc())  # Process oldest first
-                .limit(self.settings.ai_backup_batch_size)  # Configurable batch size
+                # .limit(self.settings.ai_backup_batch_size)  # Configurable batch size
             )
+
+            waiting_quip_rounds = set(result.scalars().all())
             
-            waiting_prompts = set(result.scalars().all())
-            
-            # Filter out prompts already copied by AI (check separately to avoid complex joins)
-            filtered_prompts = []
-            for prompt_round in waiting_prompts:
+            # Filter out quips already copied by AI (check separately to avoid complex joins)
+            filtered_quip_rounds = []
+            for quip_round in waiting_quip_rounds:
                 ai_copy_result = await self.db.execute(
                     select(Round.round_id)
-                    .where(Round.prompt_round_id == prompt_round.round_id)
+                    .join(QFPlayer, QFPlayer.player_id == Round.player_id)
+                    .where(Round.prompt_round_id == quip_round.round_id)
                     .where(Round.round_type == 'copy')
-                    .where(Round.player_id == ai_copy_player.player_id)
+                    .where(QFPlayer.email.like(f"%{AI_PLAYER_EMAIL_DOMAIN}"))
                 )
                 
-                if ai_copy_result.scalar_one_or_none() is None:
-                    filtered_prompts.append(prompt_round)
-            
+                if ai_copy_result.scalars().first() is None:
+                    filtered_quip_rounds.append(quip_round)
+
             # Filter out prompts that already have a phrase cache with backup copies used
             # (This prevents wasting cached phrases on redundant backup attempts)
-            final_prompts = []
-            for prompt_round in filtered_prompts:
+            final_quip_rounds = []
+            for quip_round in filtered_quip_rounds:
                 # Check if phrase cache exists and has been used for backup
                 cache_result = await self.db.execute(
                     select(QFAIPhraseCache.cache_id)
-                    .where(QFAIPhraseCache.prompt_round_id == prompt_round.round_id)
+                    .where(QFAIPhraseCache.prompt_round_id == quip_round.round_id)
                     .where(QFAIPhraseCache.used_for_backup_copy == True)
                 )
                 cache_exists = cache_result.scalar_one_or_none() is not None
 
                 if not cache_exists:
-                    final_prompts.append(prompt_round)
+                    final_quip_rounds.append(quip_round)
                 else:
                     stats["prompts_filtered_already_attempted"] += 1
-                    logger.info(f"Skipping prompt {prompt_round.round_id} - AI cache already used for backup")
+                    logger.info(f"Skipping quip {quip_round.round_id} - AI cache already used for backup")
+
+                if len(final_quip_rounds) >= self.settings.ai_backup_batch_size:
+                    break  # Limit to batch size
             
-            stats["prompts_checked"] = len(final_prompts)
+            stats["prompts_checked"] = len(final_quip_rounds)
             logger.info(
-                f"Found {len(final_prompts)} prompts waiting for AI backup copies "
+                f"Found {len(final_quip_rounds)} quips waiting for AI fakes "
                 f"(filtered out {stats['prompts_filtered_already_attempted']} already attempted)"
             )
 
             # Process each waiting prompt
-            for prompt_round in final_prompts:
+            for quip_round in final_quip_rounds:
                 try:
                     # Try to claim the prompt in the queue so only one worker (AI or other) processes it
-                    claimed = QueueService.remove_prompt_round_from_queue(prompt_round.round_id)
+                    claimed = QueueService.remove_prompt_round_from_queue(quip_round.round_id)
                     if not claimed:
                         # Someone else claimed or removed it from the queue
-                        logger.info(f"Skipping prompt {prompt_round.round_id} - could not claim from queue")
+                        logger.info(f"Skipping prompt {quip_round.round_id} - could not claim from queue")
                         continue
 
                     # Generate AI copy phrase with proper validation context
-                    copy_phrase = await self.get_impostor_phrase(prompt_round)
+                    copy_phrase = await self.get_impostor_phrase(quip_round)
 
                     # Create copy round for AI player
                     from backend.services import RoundService
                     round_service = RoundService(self.db)
 
+                    # Get or create AI copy player (within transaction)
+                    ai_impostor_player = await self.get_or_create_ai_player(AIPlayerType.QF_IMPOSTOR)
+
                     # Start copy round for AI player
                     copy_round = Round(
                         round_id=uuid.uuid4(),
-                        player_id=ai_copy_player.player_id,
+                        player_id=ai_impostor_player.player_id,
                         round_type='copy',
                         status='submitted',
                         created_at=datetime.now(UTC),
                         expires_at=datetime.now(UTC) + timedelta(minutes=3),  # Standard copy round time
                         cost=0,  # AI doesn't pay
-                        prompt_round_id=prompt_round.round_id,
-                        original_phrase=prompt_round.submitted_phrase,
+                        prompt_round_id=quip_round.round_id,
+                        original_phrase=quip_round.submitted_phrase,
                         copy_phrase=copy_phrase.upper(),
                         system_contribution=0,  # AI contributions are free
                     )
@@ -936,28 +943,28 @@ class AIService:
                     await self.db.flush()
 
                     # Update prompt round copy assignment
-                    if prompt_round.copy1_player_id is None:
-                        prompt_round.copy1_player_id = ai_copy_player.player_id
-                        prompt_round.phraseset_status = "waiting_copy1"
-                    elif prompt_round.copy2_player_id is None:
-                        prompt_round.copy2_player_id = ai_copy_player.player_id
+                    if quip_round.copy1_player_id is None:
+                        quip_round.copy1_player_id = ai_impostor_player.player_id
+                        quip_round.phraseset_status = "waiting_copy1"
+                    elif quip_round.copy2_player_id is None:
+                        quip_round.copy2_player_id = ai_impostor_player.player_id
                         # Check if we now have both copies and can create phraseset
-                        if prompt_round.copy1_player_id is not None:
-                            phraseset = await round_service.create_phraseset_if_ready(prompt_round)
+                        if quip_round.copy1_player_id is not None:
+                            phraseset = await round_service.create_phraseset_if_ready(quip_round)
                             if phraseset:
-                                prompt_round.phraseset_status = "active"
+                                quip_round.phraseset_status = "active"
                     
                     stats["copies_generated"] += 1
 
                 except Exception as e:
-                    logger.error(f"Failed to generate AI copy for prompt {prompt_round.round_id}: {e}")
+                    logger.error(f"Failed to generate AI copy for prompt {quip_round.round_id}: {e}")
                     stats["errors"] += 1
                     # Put the prompt back into the queue so it can be retried later
                     try:
-                        QueueService.add_prompt_round_to_queue(prompt_round.round_id)
-                        logger.info(f"Re-enqueued prompt {prompt_round.round_id} after AI failure")
+                        QueueService.add_prompt_round_to_queue(quip_round.round_id)
+                        logger.info(f"Re-enqueued prompt {quip_round.round_id} after AI failure")
                     except Exception as q_e:
-                        logger.error(f"Failed to re-enqueue prompt {prompt_round.round_id}: {q_e}")
+                        logger.error(f"Failed to re-enqueue prompt {quip_round.round_id}: {q_e}")
                     continue
 
             # Query for phrasesets waiting for votes that:
@@ -1204,7 +1211,7 @@ class AIService:
 
         try:
             # Get or create IR AI player
-            ai_player = await self.get_or_create_ai_player(GameType.IR)
+            ai_player = await self.get_or_create_ai_player(AIPlayerType.IR_PLAYER)
 
             set_service = BackronymSetService(self.db)
 
