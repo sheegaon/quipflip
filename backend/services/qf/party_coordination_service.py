@@ -70,7 +70,7 @@ async def retry_with_backoff(
     for attempt in range(max_retries + 1):
         try:
             return await func()
-        except TimeoutError as e:
+        except (TimeoutError, OperationalError) as e:
             last_exception = e
             if attempt < max_retries:
                 # Calculate exponential backoff delay
