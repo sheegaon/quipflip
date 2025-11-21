@@ -942,7 +942,13 @@ class PartySessionService:
             .where(PartyParticipant.session_id == session_id)
             .order_by(PartyParticipant.joined_at)
         )
-        return list(result.scalars().all())
+        participants = list(result.scalars().all())
+
+        # Ensure player relationships are loaded for each participant
+        for participant in participants:
+            await self.db.refresh(participant, attribute_names=['player'])
+
+        return participants
 
     async def get_session_status(self, session_id: UUID) -> Dict:
         """Get full session status including participants and progress.
