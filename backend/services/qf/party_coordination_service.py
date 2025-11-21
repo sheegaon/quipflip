@@ -6,6 +6,7 @@ from uuid import UUID
 import asyncio
 import logging
 import random
+from sqlalchemy.exc import OperationalError
 
 from backend.models.qf.player import QFPlayer
 from backend.models.qf.party_session import PartySession
@@ -854,21 +855,8 @@ class PartyCoordinationService:
             if not prompt_round:
                 return None
 
-            # Check if there's already a copy
-            existing_copy_result = await self.db.execute(
-                select(Round.copy_phrase)
-                .where(Round.prompt_round_id == prompt_round_id)
-                .where(Round.round_type == 'copy')
-                .where(Round.status == 'submitted')
-                .limit(1)
-            )
-            existing_copy = existing_copy_result.scalar_one_or_none()
-
-            # Generate copy phrase
-            copy_phrase = await ai_service.generate_copy_phrase(
-                original_phrase=prompt_round.submitted_phrase,
-                prompt_round=prompt_round
-            )
+            # Generate impostor phrase
+            copy_phrase = await ai_service.get_impostor_phrase(prompt_round)
 
             # Submit copy round (with retry logic for lock contention)
             round_obj, party_round_id = await retry_with_backoff(

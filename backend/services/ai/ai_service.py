@@ -537,19 +537,18 @@ class AIService:
 
         return await self.generate_and_cache_copy_phrases(prompt_round)
 
-    async def generate_copy_phrase(self, original_phrase: str, prompt_round: Round) -> str:
+    async def get_impostor_phrase(self, prompt_round: Round) -> str:
         """
-        Generate a copy phrase using cached validated phrases.
+        Generate an impostor phrase using cached validated phrases.
 
         This method now uses the phrase cache to avoid redundant AI API calls.
         It selects a random phrase from the cache and removes it from the list.
 
         Args:
-            original_phrase: The original phrase to create a copy of
             prompt_round: The prompt round object to get context and check existing copies
 
         Returns:
-            Generated and validated copy phrase
+            Generated and validated impostor phrase
 
         Raises:
             AICopyError: If generation or validation fails
@@ -575,9 +574,7 @@ class AIService:
         await self.db.flush()
 
         logger.info(
-            f"AI ({self.provider}) {selected_phrase=} for {original_phrase=} "
-            f"({len(cache.validated_phrases)} phrases remaining in cache)"
-        )
+            f"AI ({self.provider}) {selected_phrase=} ({len(cache.validated_phrases)} phrases remaining in cache)")
         return selected_phrase
 
     async def get_hints(self, prompt_round: Round, count: int = 3) -> list[str]:
@@ -811,7 +808,7 @@ class AIService:
                         continue
 
                     # Generate AI copy phrase with proper validation context
-                    copy_phrase = await self.generate_copy_phrase(prompt_round.submitted_phrase, prompt_round)
+                    copy_phrase = await self.get_impostor_phrase(prompt_round)
 
                     # Create copy round for AI player
                     from backend.services import RoundService

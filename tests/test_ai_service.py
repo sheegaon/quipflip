@@ -150,10 +150,7 @@ class TestAICopyGeneration:
         service = AIService(db_session)
         # Mock the phrase validator's validate_copy method to return success for all phrases
         with patch.object(service.phrase_validator, 'validate_copy', return_value=(True, "")):
-            result = await service.generate_copy_phrase(
-                original_phrase="happy birthday",
-                prompt_round=mock_prompt_round,
-            )
+            result = await service.get_impostor_phrase(prompt_round=mock_prompt_round)
 
         # Result should be one of the generated phrases
         assert result in ["joyful celebration", "festive greeting", "happy wishes", "merry occasion", "cheerful day"]
@@ -180,10 +177,7 @@ class TestAICopyGeneration:
             settings.use_phrase_validator_api = False
 
             service = AIService(db_session)
-            result = await service.generate_copy_phrase(
-                original_phrase="happy birthday",
-                prompt_round=mock_prompt_round,
-            )
+            result = await service.get_impostor_phrase(prompt_round=mock_prompt_round)
 
             # Result should be one of the generated phrases
             assert result in ["merry festivity", "joyful party", "happy times", "festive cheer", "celebration day"]
@@ -203,10 +197,7 @@ class TestAICopyGeneration:
         # Mock the phrase validator's validate_copy to return validation failure
         with patch.object(service.phrase_validator, 'validate_copy', return_value=(False, "Invalid characters")):
             with pytest.raises(AICopyError, match="Invalid characters"):
-                await service.generate_copy_phrase(
-                    original_phrase="happy birthday",
-                    prompt_round=mock_prompt_round,
-                )
+                await service.get_impostor_phrase(prompt_round=mock_prompt_round)
 
     @pytest.mark.asyncio
     @patch('backend.services.ai.openai_api.generate_copy')
@@ -220,10 +211,7 @@ class TestAICopyGeneration:
         service = AIService(db_session)
 
         with pytest.raises(AICopyError, match="Failed to generate AI copy"):
-            await service.generate_copy_phrase(
-                original_phrase="happy birthday",
-                prompt_round=mock_prompt_round,
-            )
+            await service.get_impostor_phrase(prompt_round=mock_prompt_round)
 
 
 class TestAIVoting:
@@ -283,10 +271,7 @@ class TestAIMetrics:
         service = AIService(db_session)
         # Mock the phrase validator's validate_copy method to return success
         with patch.object(service.phrase_validator, 'validate_copy', return_value=(True, "")):
-            await service.generate_copy_phrase(
-                original_phrase="happy birthday",
-                prompt_round=mock_prompt_round,
-            )
+            await service.get_impostor_phrase(prompt_round=mock_prompt_round)
 
         # Metrics are flushed during generation, so query them from the database
         result = await db_session.execute(
@@ -315,10 +300,7 @@ class TestAIMetrics:
         # Mock the phrase validator's validate_copy to return validation failure
         with patch.object(service.phrase_validator, 'validate_copy', return_value=(False, "Invalid characters")):
             with pytest.raises(AICopyError):
-                await service.generate_copy_phrase(
-                    original_phrase="happy birthday",
-                    prompt_round=mock_prompt_round,
-                )
+                await service.get_impostor_phrase(prompt_round=mock_prompt_round)
 
         # Check that failure metric was created
         metrics = db_session.new

@@ -197,10 +197,7 @@ class StaleAIService:
                     stale_handler_email = f"ai_stale_handler_{handler_index}{AI_PLAYER_EMAIL_DOMAIN}"
                     stale_handler = await self._get_or_create_stale_player(stale_handler_email, GameType.QF)
 
-                    copy_phrase = await self.ai_service.generate_copy_phrase(
-                        prompt_round.submitted_phrase,
-                        prompt_round,
-                    )
+                    copy_phrase = await self.ai_service.get_impostor_phrase(prompt_round)
 
                     copy_round = Round(
                         round_id=uuid.uuid4(),

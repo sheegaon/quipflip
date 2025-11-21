@@ -124,8 +124,7 @@ ai_service = AIService(db_session)  # db_session: AsyncSession
 ### `generate_copy_phrase`
 
 ```python
-copy = await ai_service.generate_copy_phrase(
-    original_phrase="HAPPY BIRTHDAY",
+copy = await ai_service.get_impostor_phrase(
     prompt_round=prompt_round,  # backend.models.qf.round.Round instance
 )
 ```
