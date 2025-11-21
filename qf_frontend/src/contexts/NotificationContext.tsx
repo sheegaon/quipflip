@@ -64,15 +64,33 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
   const wsRef = useRef<WebSocket | null>(null);
   const notificationIdRef = useRef(0);
   const pingIdRef = useRef(0);
+  const reconnectAttemptsRef = useRef(0);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { state } = useGame();
 
   useEffect(() => {
-    let wsAttempted = false;
+    const clearReconnectTimeout = () => {
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+    };
 
-    // Connect when authenticated
+    const scheduleReconnect = () => {
+      if (!state.isAuthenticated) return;
+
+      clearReconnectTimeout();
+      const attempt = reconnectAttemptsRef.current;
+      const delay = Math.min(30000, 2000 * Math.pow(2, attempt));
+
+      reconnectAttemptsRef.current += 1;
+      reconnectTimeoutRef.current = setTimeout(() => {
+        connectWebSocket();
+      }, delay);
+    };
+
     const connectWebSocket = async () => {
-      if (wsAttempted) return; // Prevent multiple attempts
-      wsAttempted = true;
+      if (!state.isAuthenticated || wsRef.current) return;
 
       try {
         // Step 1: Fetch short-lived WebSocket token via REST API (through Vercel proxy)
@@ -101,6 +119,8 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
 
         ws.onopen = () => {
           console.log('WebSocket connected for notifications');
+          clearReconnectTimeout();
+          reconnectAttemptsRef.current = 0;
         };
 
         ws.onmessage = (event) => {
@@ -145,27 +165,39 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
         };
 
         ws.onclose = () => {
-          // Fail silently - no reconnect attempts
-          console.debug('WebSocket disconnected, no reconnect');
+          console.debug('WebSocket disconnected, attempting reconnect');
+          wsRef.current = null;
+          scheduleReconnect();
         };
 
         wsRef.current = ws;
       } catch (err) {
-        // Fail silently
+        // Fail silently but schedule reconnect so pings continue working
         console.debug('WebSocket connection failed silently:', err);
+        wsRef.current = null;
+        scheduleReconnect();
       }
     };
 
     if (state.isAuthenticated) {
       connectWebSocket();
-    }
-
-    // Cleanup on unmount or logout
-    return () => {
+    } else {
+      clearReconnectTimeout();
+      reconnectAttemptsRef.current = 0;
       if (wsRef.current) {
         wsRef.current.close();
         wsRef.current = null;
       }
+    }
+
+    // Cleanup on unmount or logout
+    return () => {
+      clearReconnectTimeout();
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+      reconnectAttemptsRef.current = 0;
     };
   }, [state.isAuthenticated]);
 
