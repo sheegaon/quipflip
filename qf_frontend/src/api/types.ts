@@ -2,6 +2,11 @@
 
 // Notification types
 export type NotificationType = 'copy_submitted' | 'vote_submitted';
+export interface PingWebSocketMessage {
+  type: 'ping';
+  from_username: string;
+  timestamp: string;
+}
 
 export interface NotificationWebSocketMessage {
   type: 'notification';
@@ -12,6 +17,8 @@ export interface NotificationWebSocketMessage {
   phrase_text: string;
   timestamp: string;
 }
+
+export type NotificationStreamMessage = NotificationWebSocketMessage | PingWebSocketMessage;
 
 export interface Player {
   player_id: string;
@@ -767,6 +774,11 @@ export interface OnlineUser {
 export interface OnlineUsersResponse {
   users: OnlineUser[];
   total_count: number;
+}
+
+export interface PingUserResponse {
+  success: boolean;
+  message: string;
 }
 
 // Admin Configuration

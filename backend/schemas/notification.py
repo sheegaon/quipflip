@@ -17,6 +17,14 @@ class NotificationWebSocketMessage(BaseModel):
     timestamp: str  # ISO format datetime
 
 
+class PingWebSocketMessage(BaseModel):
+    """Lightweight ping message delivered over the notification WebSocket."""
+
+    type: str = "ping"
+    from_username: str
+    timestamp: str  # ISO format datetime
+
+
 class NotificationCreate(BaseModel):
     """Internal schema for creating notifications."""
 

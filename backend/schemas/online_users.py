@@ -30,3 +30,16 @@ class OnlineUsersResponse(BaseModel):
 
     users: List[OnlineUser]
     total_count: int
+
+
+class PingUserRequest(BaseModel):
+    """Payload for pinging a specific online user."""
+
+    username: str
+
+
+class PingUserResponse(BaseModel):
+    """Response after issuing a ping to another user."""
+
+    success: bool
+    message: str

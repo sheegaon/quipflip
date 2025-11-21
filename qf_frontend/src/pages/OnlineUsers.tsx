@@ -40,6 +40,7 @@ const OnlineUsers: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
+  const [pingStatus, setPingStatus] = useState<Record<string, 'idle' | 'sending' | 'sent'>>({});
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -203,6 +204,24 @@ const OnlineUsers: React.FC = () => {
     };
   }, [state.isAuthenticated]); // Key: depend on auth state
 
+  const currentUsername = state.player?.username;
+
+  const handlePingUser = async (username: string) => {
+    setPingStatus((prev) => ({ ...prev, [username]: 'sending' }));
+
+    try {
+      await apiClient.pingOnlineUser(username);
+      setPingStatus((prev) => ({ ...prev, [username]: 'sent' }));
+
+      setTimeout(() => {
+        setPingStatus((prev) => ({ ...prev, [username]: 'idle' }));
+      }, 3000);
+    } catch (err) {
+      console.error('Failed to ping user:', err);
+      setPingStatus((prev) => ({ ...prev, [username]: 'idle' }));
+    }
+  };
+
   // Get action color based on action category (centralized from backend)
   const getActionColor = (category: string): string => {
     const categoryColorMap: Record<string, string> = {
@@ -285,6 +304,8 @@ const OnlineUsers: React.FC = () => {
             <div className="space-y-3">
               {onlineUsers.map((user) => {
                 const accountAgeDays = getAccountAgeDays(user.created_at);
+                const status = pingStatus[user.username] ?? 'idle';
+                const isSelf = currentUsername === user.username;
                 return (
                   <div
                     key={user.username}
@@ -316,9 +337,27 @@ const OnlineUsers: React.FC = () => {
                     </div>
 
                     {/* Online indicator */}
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                      <span className="text-xs text-gray-500 hidden sm:inline">Online</span>
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                        <span className="text-xs text-gray-500 hidden sm:inline">Online</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handlePingUser(user.username)}
+                          disabled={isSelf || status === 'sending'}
+                          className="text-sm bg-quip-turquoise text-white px-3 py-2 rounded-lg hover:bg-quip-teal transition-colors disabled:bg-gray-300 disabled:text-gray-600 disabled:cursor-not-allowed"
+                        >
+                          {status === 'sending'
+                            ? 'Pinging...'
+                            : status === 'sent'
+                              ? 'Pinged!'
+                              : 'Ping'}
+                        </button>
+                        {isSelf && (
+                          <span className="text-xs text-gray-500">You</span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );

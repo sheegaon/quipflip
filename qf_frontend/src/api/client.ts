@@ -60,6 +60,7 @@ import type {
   AdminConfig,
   UpdateAdminConfigResponse,
   OnlineUsersResponse,
+  PingUserResponse,
   WsAuthTokenResponse,
   CreatePartySessionRequest,
   CreatePartySessionResponse,
@@ -670,6 +671,15 @@ export const apiClient = {
 
   async getOnlineUsers(signal?: AbortSignal): Promise<OnlineUsersResponse> {
     const { data } = await api.get<OnlineUsersResponse>('/users/online', { signal });
+    return data;
+  },
+
+  async pingOnlineUser(username: string, signal?: AbortSignal): Promise<PingUserResponse> {
+    const { data } = await api.post<PingUserResponse>(
+      '/users/online/ping',
+      { username },
+      { signal },
+    );
     return data;
   },
 
