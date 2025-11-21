@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../api/client';
+import axios from 'axios';
 import { useSmartPolling, PollConfigs } from '../utils/smartPolling';
 import { getActionErrorMessage } from '../utils/errorMessages';
 import { gameContextLogger } from '../utils/logger';
@@ -617,6 +618,11 @@ export const GameProvider: React.FC<{
       gameContextLogger.debug('? Copy hints fetched successfully', { count: response.hints?.length ?? 0 });
       return response.hints;
     } catch (err) {
+      if (axios.isCancel(err) || signal?.aborted) {
+        gameContextLogger.debug('? Copy hint request canceled');
+        return [];
+      }
+
       gameContextLogger.error('? Fetch copy hints failed:', err);
       const errorMessage = getActionErrorMessage('fetch-copy-hints', err);
       setError(errorMessage);
