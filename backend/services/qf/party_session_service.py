@@ -944,6 +944,34 @@ class PartySessionService:
 
         return False
 
+    async def advance_phase_atomic(self, session_id: UUID) -> Optional[PartySession]:
+        """Advance phase with lock to prevent race conditions.
+
+        This method wraps advance_phase with a distributed lock to ensure
+        only one concurrent caller can advance the phase, even when multiple
+        AI players finish simultaneously.
+
+        Args:
+            session_id: UUID of the session
+
+        Returns:
+            PartySession if phase was advanced, None if already advanced
+
+        Raises:
+            SessionNotFoundError: If session doesn't exist
+        """
+        from backend.utils import lock_client
+
+        lock_name = f"advance_phase:{session_id}"
+        async with lock_client.lock(lock_name, timeout=10):
+            # Double-check if phase can advance (might have been advanced by another caller)
+            if await self.can_advance_phase(session_id):
+                logger.info(f"Advancing phase atomically for session {session_id}")
+                return await self.advance_phase(session_id)
+            else:
+                logger.debug(f"Phase already advanced or not ready for session {session_id}")
+                return None
+
     async def get_participant(
         self,
         session_id: UUID,

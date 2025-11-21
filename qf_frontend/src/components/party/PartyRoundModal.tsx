@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { usePartyMode } from '../../contexts/PartyModeContext';
 import { usePartyWebSocket } from '../../hooks/usePartyWebSocket';
 import { PartyIcon } from '../icons/NavigationIcons';
 import { PartyStep } from '../../contexts/PartyModeContext';
+import apiClient, { extractErrorMessage } from '../../api/client';
 
 interface PartyRoundModalProps {
   sessionId: string;
@@ -16,17 +18,24 @@ const phaseOrder: { id: PartyStep; label: string }[] = [
 ];
 
 export const PartyRoundModal: React.FC<PartyRoundModalProps> = ({ sessionId, currentStep }) => {
-  const { state: partyState } = usePartyMode();
+  const navigate = useNavigate();
+  const { state: partyState, actions: partyActions } = usePartyMode();
   const [isOpen, setIsOpen] = useState(true);
+  const [isLeaving, setIsLeaving] = useState(false);
+  const [leaveError, setLeaveError] = useState<string | null>(null);
   const isProgressMissing = !partyState.yourProgress || !partyState.sessionConfig;
 
-  // WebSocket updates will update context automatically via submission responses
-  // This hook just listens for phase transitions
+  // WebSocket updates will update context when other players make progress
   usePartyWebSocket({
     sessionId,
     pageContext: 'game',
-    onProgressUpdate: () => {
-      // Context is already updated by submission response
+    onProgressUpdate: (data) => {
+      // Update session progress when we receive WebSocket updates about other players
+      console.log('🔔 [Party Modal] Received progress update via WebSocket:', data);
+      partyActions.updateSessionProgress({
+        players_ready_for_next_phase: data.session_progress.players_done_with_phase,
+        total_players: data.session_progress.total_players,
+      });
     },
     onPhaseTransition: () => {
       // Phase transition handled elsewhere
@@ -46,6 +55,40 @@ export const PartyRoundModal: React.FC<PartyRoundModalProps> = ({ sessionId, cur
 
   const playersReady = partyState.sessionProgress?.players_ready_for_next_phase ?? 0;
   const totalPlayers = partyState.sessionProgress?.total_players ?? 0;
+
+  const handleLeaveParty = async () => {
+    if (isLeaving) return;
+
+    setIsLeaving(true);
+    setLeaveError(null);
+
+    try {
+      // Try to leave via API (only works before session starts)
+      try {
+        await apiClient.leavePartySession(sessionId);
+      } catch (apiErr) {
+        // If leave fails (e.g., session already started), just navigate away
+        // The WebSocket will disconnect and the player will be removed from the session
+        const message = extractErrorMessage(apiErr) || '';
+        if (!message.includes('has started')) {
+          throw apiErr;
+        }
+        // If session has started, silently proceed with navigation
+        console.log('Session has started, navigating away without API call');
+      }
+
+      // End party mode in context
+      partyActions.endPartyMode();
+
+      // Navigate to dashboard
+      navigate('/dashboard');
+    } catch (err) {
+      const message = extractErrorMessage(err) || 'Failed to leave party';
+      setLeaveError(message);
+    } finally {
+      setIsLeaving(false);
+    }
+  };
 
   if (!isOpen) {
     return (
@@ -150,6 +193,21 @@ export const PartyRoundModal: React.FC<PartyRoundModalProps> = ({ sessionId, cur
                 Party progress will appear once the next round response includes party context.
               </p>
             )}
+          </div>
+
+          {/* Leave Party Button */}
+          <div className="mt-4 pt-4 border-t border-quip-navy/10">
+            {leaveError && (
+              <p className="text-xs text-red-600 mb-2">{leaveError}</p>
+            )}
+            <button
+              type="button"
+              onClick={handleLeaveParty}
+              disabled={isLeaving}
+              className="w-full bg-red-500 hover:bg-red-600 disabled:bg-gray-400 text-white font-semibold py-2 px-4 rounded-tile transition-colors text-sm"
+            >
+              {isLeaving ? 'Leaving...' : 'Leave Party'}
+            </button>
           </div>
         </div>
       </div>

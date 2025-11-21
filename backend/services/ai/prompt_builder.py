@@ -8,6 +8,35 @@ Gemini and OpenAI AI providers, eliminating code duplication.
 import random
 
 
+def build_party_prompt_generation(prompt_text: str) -> str:
+    """
+    Build structured prompt for Party Mode prompt round phrase generation.
+
+    Args:
+        prompt_text: The prompt to respond to
+        forbidden_words: List of words that must not be used (if any)
+
+    Returns:
+        A formatted prompt string for AI phrase generation
+    """
+    return f"""Generate FIVE (5) creative, short phrases that responds to the following prompt.
+
+**Prompt: "{prompt_text}"**
+
+Rules:
+- 1-15 characters per word
+- 2-5 words per phrase, 4-100 characters per phrase
+- Letters and spaces only
+- Each word must pass dictionary validation
+- Make it clever, funny, or creative
+- Should directly complete the prompt sentence
+- Words which are 4 or more letters long, except common words: [{{common_words}}], are known as *significant words*
+- Do NOT use or lightly modify (e.g., pluralize) any significant words from the prompt
+- Do NOT use the same significant word in more than two phrases
+
+Generate FIVE alternative phrases, separated by semicolons (;):"""
+
+
 def build_copy_prompt(original_phrase: str, existing_copy_phrase: str = None) -> str:
     """
     Build structured prompt for Think Alike gameplay copy generation.
@@ -19,7 +48,7 @@ def build_copy_prompt(original_phrase: str, existing_copy_phrase: str = None) ->
     Returns:
         A formatted prompt string for AI copy generation
     """
-    base_prompt = f"""Create 5 phrases meaning roughly the same thing as the original phrase.
+    base_prompt = f"""Generate FIVE (5) phrases meaning roughly the same thing as the original phrase.
 
 **Original phrase: "{original_phrase}"**
 
@@ -126,33 +155,6 @@ First Option, Second Option, Third Option
 Generate {count} unique backronym options for {word_upper}:"""
 
     return prompt
-
-
-def build_party_prompt_generation(prompt_text: str) -> str:
-    """
-    Build structured prompt for Party Mode prompt round phrase generation.
-
-    Args:
-        prompt_text: The prompt to respond to
-
-    Returns:
-        A formatted prompt string for AI phrase generation
-    """
-    return f"""Generate a creative, short phrase that responds to the following prompt.
-
-**Prompt: "{prompt_text}"**
-
-Rules:
-- 1-15 characters per word
-- 2-5 words, 4-100 characters in total
-- Letters and spaces only
-- Each word must pass dictionary validation
-- Make it clever, funny, or creative
-- Should directly complete the prompt sentence
-- Words which are 4 or more letters long, except common words: [{{common_words}}], are known as *significant words*
-- Do NOT use or lightly modify (e.g., pluralize) any significant words from the prompt
-
-Generate ONE phrase that best responds to the prompt. Do not include quotes or explanation, just the phrase itself."""
 
 
 def build_backronym_vote_prompt(word: str, backronyms: list[str]) -> str:

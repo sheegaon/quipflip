@@ -15,7 +15,7 @@ except ImportError:
     genai = None  # type: ignore
     types = None  # type: ignore
 
-__all__ = ["GeminiError", "generate", "generate_copy"]
+__all__ = ["GeminiError", "generate", "generate_response"]
 
 settings = get_settings()
 
@@ -24,13 +24,13 @@ class GeminiError(RuntimeError):
     """Raised when the Gemini API cannot be contacted or returns an error."""
 
 
-async def generate_copy(
+async def generate_response(
         prompt: str,
         model: str = "gemini-2.5-flash-lite",
         timeout: int = 30,
 ) -> str:
     """
-    Generate a copy phrase using Gemini API.
+    Generate a response using Gemini API.
 
     Args:
         prompt: Prompt to send to the Gemini API
@@ -38,7 +38,7 @@ async def generate_copy(
         timeout: Request timeout in seconds (currently unused, reserved for future)
 
     Returns:
-        The generated copy phrase as a string
+        The generated string
 
     Raises:
         GeminiError: If API key is missing or API call fails
