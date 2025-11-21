@@ -63,7 +63,19 @@ export const PartyRoundModal: React.FC<PartyRoundModalProps> = ({ sessionId, cur
     setLeaveError(null);
 
     try {
-      await apiClient.leavePartySession(sessionId);
+      // Try to leave via API (only works before session starts)
+      try {
+        await apiClient.leavePartySession(sessionId);
+      } catch (apiErr) {
+        // If leave fails (e.g., session already started), just navigate away
+        // The WebSocket will disconnect and the player will be removed from the session
+        const message = extractErrorMessage(apiErr) || '';
+        if (!message.includes('has started')) {
+          throw apiErr;
+        }
+        // If session has started, silently proceed with navigation
+        console.log('Session has started, navigating away without API call');
+      }
 
       // End party mode in context
       partyActions.endPartyMode();
