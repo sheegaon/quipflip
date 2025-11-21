@@ -72,6 +72,7 @@ export const PartyLobby: React.FC = () => {
     connecting: wsConnecting,
   } = usePartyWebSocket({
     sessionId: sessionId ?? '',
+    pageContext: 'lobby',
     onPlayerJoined: (data) => {
       console.log(`${data.username} joined the party!`);
       loadSessionStatus(); // Reload to get updated participant list
