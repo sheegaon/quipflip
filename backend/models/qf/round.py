@@ -1,4 +1,4 @@
-"""Unified round model for prompt, copy, and vote rounds."""
+"""Unified round model for quip (prompt), impostor (copy), and vote rounds."""
 from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Index
 from sqlalchemy.orm import relationship
 import uuid
@@ -13,14 +13,14 @@ class Round(Base):
 
     round_id = get_uuid_column(primary_key=True, default=uuid.uuid4)
     player_id = get_uuid_column(ForeignKey("qf_players.player_id", ondelete="CASCADE"), nullable=False, index=True)
-    round_type = Column(String(20), nullable=False)  # prompt, copy, vote
+    round_type = Column(String(20), nullable=False)  # quip/prompt, impostor/copy, vote
     status = Column(String(20), nullable=False)  # active, submitted, expired, abandoned
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False, index=True)
     expires_at = Column(DateTime(timezone=True), nullable=False, index=True)
     cost = Column(Integer, nullable=False)
     party_round_id = get_uuid_column(nullable=True, index=True)
 
-    # Prompt-specific fields (nullable for non-prompt rounds)
+    # Quip/prompt-specific fields (nullable for non-prompt rounds)
     prompt_id = get_uuid_column(ForeignKey("qf_prompts.prompt_id"), nullable=True)
     prompt_text = Column(String(500), nullable=True)  # Denormalized
     submitted_phrase = Column(String(100), nullable=True)  # Prompt player's phrase
@@ -28,7 +28,7 @@ class Round(Base):
     copy1_player_id = get_uuid_column(ForeignKey("qf_players.player_id", ondelete="CASCADE"), nullable=True, index=True)
     copy2_player_id = get_uuid_column(ForeignKey("qf_players.player_id", ondelete="CASCADE"), nullable=True, index=True)
 
-    # Copy-specific fields (nullable for non-copy rounds)
+    # Impostor/copy-specific fields (nullable for non-copy rounds)
     prompt_round_id = get_uuid_column(ForeignKey("qf_rounds.round_id"), nullable=True, index=True)
     original_phrase = Column(String(100), nullable=True)  # Phrase to copy
     copy_phrase = Column(String(100), nullable=True)  # Copy player's submitted phrase

@@ -306,6 +306,33 @@ This guide documents the Quipflip-specific tables housed under `backend/models/q
 - Relationships: `prompt_round`, `metrics`
 - Note: Stores pre-validated copy phrases for reuse. Generated once per prompt_round, eliminates redundant AI API calls. Backup copies consume phrases (removed from list), hints don't consume phrases (all players get same hints).
 
+### AIQuipCache
+- `cache_id` (UUID, primary key)
+- `prompt_id` (UUID, foreign key to qf_prompts.prompt_id, set null on delete, indexed via prompt_text)
+- `prompt_text` (string, max 500 chars) - prompt the quips answer
+- `generation_provider` (string, max 50 chars) - AI provider used ('openai' or 'gemini')
+- `generation_model` (string, max 100 chars) - specific model identifier
+- `created_at` (timestamp with timezone, default now(), indexed)
+- Indexes: composite `(prompt_text, generation_provider)`
+- Relationships: `phrases`
+- Note: Stores validated quip responses for a quip (prompt) round. Phrases are persisted separately and reused before new provider calls are issued.
+
+### AIQuipPhrase
+- `phrase_id` (UUID, primary key)
+- `cache_id` (UUID, foreign key to qf_ai_quip_cache.cache_id, cascade delete, indexed)
+- `phrase_text` (string, max 100 chars)
+- `created_at` (timestamp with timezone, default now())
+- Relationships: `cache`, `usages`
+- Note: Individual quip options belonging to a quip cache.
+
+### AIQuipPhraseUsage
+- `usage_id` (UUID, primary key)
+- `phrase_id` (UUID, foreign key to qf_ai_quip_phrase.phrase_id, cascade delete, indexed)
+- `prompt_round_id` (UUID, foreign key to rounds.round_id, set null on delete, indexed)
+- `used_at` (timestamp with timezone, default now())
+- Relationships: `phrase`, `prompt_round`
+- Note: Records when a cached quip phrase is consumed. Quips are chosen by least usage count to prioritize unused responses but allow reuse.
+
 ### AIMetric
 - `metric_id` (UUID, primary key)
 - `operation_type` (string, indexed) - 'copy_generation', 'vote_generation', or 'hint_generation'

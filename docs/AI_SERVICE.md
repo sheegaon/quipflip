@@ -22,6 +22,7 @@ Related models and helpers live in other packages:
 ```
 backend/models/qf/ai_metric.py   # ORM model persisted by AIMetricsService
 backend/models/qf/ai_phrase_cache.py  # ORM model storing pre-validated phrases for reuse
+backend/models/qf/ai_quip_cache.py    # ORM models storing validated quip responses and usage logs
 backend/services/queue_service.py  # Used to claim work during backup cycles
 backend/services/round_service.py  # Used to build phrasesets when AI copies arrive
 backend/services/vote_service.py   # Used to submit AI votes with full transaction handling
@@ -47,6 +48,14 @@ backend/services/ir/player_service.py  # IR AI player management
 * `generate_copy_phrase()` randomly selects one phrase from the cache and removes it from the list, ensuring different phrases for multiple AI backup copies.
 * If the cache is depleted (all phrases consumed), it is automatically regenerated.
 * Cache generation is wrapped in `MetricsTracker`, capturing latency, provider, model, success, and validation outcomes in `ai_metrics` with a reference to the `cache_id`.
+
+### Quip generation (prompt responses)
+
+* `AIService.generate_prompt_response(prompt_text, prompt_round_id)` now reuses a cached pool of validated quip responses before calling the provider.
+* The cache lives in `qf_ai_quip_cache` and stores one row per prompt text plus the provider/model used to validate it.
+* Individual quips are stored in `qf_ai_quip_phrase`; when one is returned, a usage row is added to `qf_ai_quip_phrase_usage` linking the quip phrase to the consuming quip round ID.
+* Selection prioritizes quips that have never been used, but allows reuse by ordering by usage count and creation time.
+* Cache generation still validates every provider response with the prompt validator to ensure quips meet the same rules as human submissions.
 
 ### Vote generation
 

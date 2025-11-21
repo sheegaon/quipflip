@@ -757,25 +757,6 @@ class PartyCoordinationService:
 
             logger.info(f"🤖 [AI SUBMIT] {participant.player.username} needs to submit prompt ({participant.prompts_submitted}/{session.prompts_per_player})")
 
-            # Get a random prompt for AI to respond to
-            prompt_result = await self.db.execute(
-                select(Prompt)
-                .where(Prompt.enabled == True)
-                .order_by(func.random())
-                .limit(1)
-            )
-            prompt = prompt_result.scalar_one_or_none()
-
-            if not prompt:
-                logger.warning(f"🤖 [AI SUBMIT] No prompts available for AI player {participant.player.username}")
-                return None
-
-            logger.info(f"🤖 [AI SUBMIT] Selected prompt for {participant.player.username}: '{prompt.text}'")
-
-            # Generate phrase for prompt
-            phrase = await ai_service.generate_prompt_response(prompt.text)
-            logger.info(f"🤖 [AI SUBMIT] Generated response for {participant.player.username}: '{phrase}'")
-
             # Submit prompt round (with retry logic for lock contention)
             logger.info(f"🤖 [AI SUBMIT] Starting prompt round for {participant.player.username}")
             round_obj, party_round_id = await retry_with_backoff(
@@ -787,6 +768,12 @@ class PartyCoordinationService:
                 operation_name=f"start_prompt_round for AI {participant.player.username}",
             )
             logger.info(f"🤖 [AI SUBMIT] Created round {round_obj.round_id} for {participant.player.username}")
+
+            # Generate phrase for prompt based on the actual quip round prompt text
+            phrase = await ai_service.generate_prompt_response(
+                round_obj.prompt_text, round_obj.round_id
+            )
+            logger.info(f"🤖 [AI SUBMIT] Generated response for {participant.player.username}: '{phrase}'")
 
             # Submit phrase (with retry logic for lock contention)
             logger.info(f"🤖 [AI SUBMIT] Submitting phrase for {participant.player.username}")
