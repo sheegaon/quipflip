@@ -424,13 +424,14 @@ class PartySessionService:
 
         Players can leave at any time, including during active games.
         If the host leaves, another participant is automatically promoted.
+        Session is deleted when the last HUMAN player leaves (AI players don't keep session alive).
 
         Args:
             session_id: UUID of the session
             player_id: UUID of the player to remove
 
         Returns:
-            bool: True if session was deleted (was empty), False otherwise
+            bool: True if session was deleted, False otherwise
 
         Raises:
             SessionNotFoundError: If session doesn't exist
@@ -450,15 +451,17 @@ class PartySessionService:
 
             logger.info(f"Player {player_id} left session {session_id}")
 
-            # Check if any participants remain
-            remaining_count = await self._get_participant_count(session_id)
+            # Check if any HUMAN participants remain
+            # Sessions are deleted when there are no human players left, regardless of AI players
+            remaining_human_count = await self._get_human_participant_count(session_id)
 
-            if remaining_count == 0:
-                # Last player left - delete the session
+            if remaining_human_count == 0:
+                # Last human player left - delete the session
+                logger.info(f"No human players remaining in session {session_id}, deleting session")
                 await self._delete_empty_session(session_id)
                 return True
             elif was_host:
-                # Host left but others remain - reassign host
+                # Host left but others remain - reassign host to another human if possible
                 await self._reassign_host(session_id)
 
             return False
@@ -468,23 +471,36 @@ class PartySessionService:
     async def _reassign_host(self, session_id: UUID) -> None:
         """Reassign host to another participant if host leaves.
 
+        Prefers human players over AI players when reassigning host role.
+
         Args:
             session_id: UUID of the session
         """
-        # Get remaining participants
+        # Get remaining participants with player info
         result = await self.db.execute(
-            select(PartyParticipant)
+            select(PartyParticipant, QFPlayer)
+            .join(QFPlayer, PartyParticipant.player_id == QFPlayer.player_id)
             .where(PartyParticipant.session_id == session_id)
             .order_by(PartyParticipant.joined_at)
         )
-        participants = result.scalars().all()
+        participants_data = result.all()
 
-        if participants:
-            # Make first participant the new host
-            new_host = participants[0]
-            new_host.is_host = True
-            await self.db.commit()
-            logger.info(f"Reassigned host to player {new_host.player_id} in session {session_id}")
+        if participants_data:
+            # Prefer human players as new host
+            new_host = None
+            for participant, player in participants_data:
+                if not self._is_ai_player(player):
+                    new_host = participant
+                    break
+
+            # If no human players found, use first AI player
+            if not new_host and participants_data:
+                new_host = participants_data[0][0]
+
+            if new_host:
+                new_host.is_host = True
+                await self.db.commit()
+                logger.info(f"Reassigned host to player {new_host.player_id} in session {session_id}")
 
     async def _get_participant_count(self, session_id: UUID) -> int:
         """Get count of participants in a session.
@@ -925,6 +941,23 @@ class PartySessionService:
         result = await self.db.execute(
             select(func.count(PartyParticipant.participant_id))
             .where(PartyParticipant.session_id == session_id)
+        )
+        return result.scalar() or 0
+
+    async def _get_human_participant_count(self, session_id: UUID) -> int:
+        """Get count of human (non-AI) participants in session.
+
+        Args:
+            session_id: UUID of the session
+
+        Returns:
+            int: Number of human participants
+        """
+        result = await self.db.execute(
+            select(func.count(PartyParticipant.participant_id))
+            .join(QFPlayer, PartyParticipant.player_id == QFPlayer.player_id)
+            .where(PartyParticipant.session_id == session_id)
+            .where(~QFPlayer.email.ilike(f'%{AI_PLAYER_EMAIL_DOMAIN}'))
         )
         return result.scalar() or 0
 
