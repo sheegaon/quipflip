@@ -98,7 +98,7 @@ async def list_active_parties(
         )
 
     except Exception as e:
-        logger.error(f"Error listing parties: {e}")
+        logger.error(f"Error listing parties: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to list parties")
 
 
@@ -358,7 +358,7 @@ async def mark_ready(
     except SessionAlreadyStartedError:
         raise HTTPException(status_code=400, detail="Session has already started")
     except Exception as e:
-        logger.error(f"Error marking ready: {e}")
+        logger.error(f"Error marking ready: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to mark ready")
 
 
@@ -421,7 +421,7 @@ async def add_ai_player_to_session(
     except SessionFullError:
         raise HTTPException(status_code=400, detail="Session is full")
     except Exception as e:
-        logger.error(f"Error adding AI player: {e}")
+        logger.error(f"Error adding AI player: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to add AI player")
 
 
@@ -455,7 +455,7 @@ async def ping_party_session(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error pinging party session {session_id}: {e}")
+        logger.error(f"Error pinging party session {session_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to send ping")
 
 
@@ -507,7 +507,7 @@ async def process_ai_submissions(
     except SessionNotFoundError:
         raise HTTPException(status_code=404, detail="Session not found")
     except Exception as e:
-        logger.error(f"Error processing AI submissions: {e}")
+        logger.error(f"Error processing AI submissions: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to process AI submissions")
 
 
@@ -581,7 +581,7 @@ async def start_party_session(
     except SessionAlreadyStartedError:
         raise HTTPException(status_code=400, detail="Session has already started")
     except Exception as e:
-        logger.error(f"Error starting party session: {e}")
+        logger.error(f"Error starting party session: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to start party session")
 
 
@@ -611,7 +611,7 @@ async def get_party_session_status(
     except SessionNotFoundError:
         raise HTTPException(status_code=404, detail="Session not found")
     except Exception as e:
-        logger.error(f"Error getting session status: {e}")
+        logger.error(f"Error getting session status: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to get session status")
 
 
@@ -656,7 +656,7 @@ async def get_party_results(
     except SessionNotFoundError:
         raise HTTPException(status_code=404, detail="Session not found")
     except Exception as e:
-        logger.error(f"Error getting party results: {e}")
+        logger.error(f"Error getting party results: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to get party results")
 
 
@@ -740,7 +740,7 @@ async def start_party_prompt_round(
     except InsufficientBalanceError:
         raise HTTPException(status_code=400, detail="Insufficient balance")
     except Exception as e:
-        logger.error(f"Error starting party prompt round: {e}")
+        logger.error(f"Error starting party prompt round: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to start prompt round")
 
 
@@ -826,7 +826,7 @@ async def start_party_copy_round(
     except InsufficientBalanceError:
         raise HTTPException(status_code=400, detail="Insufficient balance")
     except Exception as e:
-        logger.error(f"Error starting party copy round: {e}")
+        logger.error(f"Error starting party copy round: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to start copy round")
 
 
@@ -914,7 +914,7 @@ async def start_party_vote_round(
     except InsufficientBalanceError:
         raise HTTPException(status_code=400, detail="Insufficient balance")
     except Exception as e:
-        logger.error(f"Error starting party vote round: {e}")
+        logger.error(f"Error starting party vote round: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to start vote round")
 
 
@@ -957,7 +957,7 @@ async def submit_party_round(
         )
 
     except Exception as e:
-        logger.error(f"Error submitting party round: {e}")
+        logger.error(f"Error submitting party round: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to submit round")
 
 
@@ -1024,7 +1024,7 @@ async def leave_party_session(
     except SessionAlreadyStartedError:
         raise HTTPException(status_code=400, detail="Cannot leave session that has started")
     except Exception as e:
-        logger.error(f"Error leaving party session: {e}")
+        logger.error(f"Error leaving party session: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to leave session")
 
 
@@ -1089,7 +1089,7 @@ async def party_websocket_endpoint(
             except WebSocketDisconnect:
                 pass
             except Exception as e:
-                logger.error(f"Party WebSocket error for player {player_id}: {e}")
+                logger.error(f"Party WebSocket error for player {player_id}: {e}", exc_info=True)
             finally:
                 await ws_manager.disconnect(session_id, player_id, db)
                 logger.info(f"Party WebSocket disconnected for player {player_id}")
