@@ -5,6 +5,7 @@ from typing import Optional, List
 from uuid import UUID
 import asyncio
 import logging
+import re
 
 from backend.models.qf.player import QFPlayer
 from backend.models.qf.party_session import PartySession
@@ -26,7 +27,11 @@ from backend.services.qf.party_session_service import (
 )
 from backend.services.qf.party_websocket_manager import get_party_websocket_manager
 from backend.config import get_settings
-from backend.utils.exceptions import NoPromptsAvailableError, NoPhrasesetsAvailableError
+from backend.utils.exceptions import (
+    InvalidPhraseError,
+    NoPromptsAvailableError,
+    NoPhrasesetsAvailableError,
+)
 from backend.services.ai.ai_service import AI_PLAYER_EMAIL_DOMAIN
 
 logger = logging.getLogger(__name__)
@@ -736,48 +741,61 @@ class PartyCoordinationService:
 
                         logger.info(f"🤖 [AI SUBMIT] {participant.player.username} needs to submit prompt ({participant.prompts_submitted}/{session.prompts_per_player})")
 
-                        # Get a random prompt for AI to respond to
-                        prompt_result = await self.db.execute(
-                            select(Prompt)
-                            .where(Prompt.enabled == True)
-                            .order_by(func.random())
-                            .limit(1)
-                        )
-                        prompt = prompt_result.scalar_one_or_none()
-
-                        if not prompt:
-                            logger.warning(f"🤖 [AI SUBMIT] No prompts available for AI player {participant.player.username}")
-                            continue
-
-                        logger.info(f"🤖 [AI SUBMIT] Selected prompt for {participant.player.username}: '{prompt.text}'")
-
-                        # Generate phrase for prompt
-                        phrase = await ai_service.generate_prompt_response(prompt.text)
-                        logger.info(f"🤖 [AI SUBMIT] Generated response for {participant.player.username}: '{phrase}'")
-
-                        # Submit prompt round
                         logger.info(f"🤖 [AI SUBMIT] Starting prompt round for {participant.player.username}")
                         round_obj, party_round_id = await self.start_party_prompt_round(
                             session_id=session_id,
                             player=participant.player,
                             transaction_service=transaction_service,
                         )
-                        logger.info(f"🤖 [AI SUBMIT] Created round {round_obj.round_id} for {participant.player.username}")
-
-                        # Submit phrase
-                        logger.info(f"🤖 [AI SUBMIT] Submitting phrase for {participant.player.username}")
-                        await self.submit_party_prompt(
-                            session_id=session_id,
-                            player=participant.player,
-                            round_id=round_obj.round_id,
-                            phrase=phrase,
-                            transaction_service=transaction_service,
-                        )
-
-                        stats['prompts_submitted'] += 1
                         logger.info(
-                            f"🤖 [AI SUBMIT] ✅ AI player {participant.player.username} submitted prompt: '{phrase}'"
+                            f"🤖 [AI SUBMIT] Created round {round_obj.round_id} for {participant.player.username} "
+                            f"with prompt '{round_obj.prompt_text}'"
                         )
+
+                        forbidden_words: list[str] = []
+                        max_attempts = 3
+                        for attempt in range(1, max_attempts + 1):
+                            phrase = await ai_service.generate_prompt_response(
+                                round_obj.prompt_text, forbidden_words
+                            )
+                            logger.info(
+                                f"🤖 [AI SUBMIT] Generated response attempt {attempt} for {participant.player.username}: "
+                                f"'{phrase}'"
+                            )
+
+                            try:
+                                logger.info(
+                                    f"🤖 [AI SUBMIT] Submitting phrase for {participant.player.username}"
+                                )
+                                await self.submit_party_prompt(
+                                    session_id=session_id,
+                                    player=participant.player,
+                                    round_id=round_obj.round_id,
+                                    phrase=phrase,
+                                    transaction_service=transaction_service,
+                                )
+
+                                stats['prompts_submitted'] += 1
+                                logger.info(
+                                    f"🤖 [AI SUBMIT] ✅ AI player {participant.player.username} submitted prompt: '{phrase}'"
+                                )
+                                break
+                            except InvalidPhraseError as e:
+                                error_msg = str(e)
+                                match = re.search(r"Word '([^']+)' not in dictionary", error_msg)
+                                if match:
+                                    forbidden_word = match.group(1).upper()
+                                    if forbidden_word not in forbidden_words:
+                                        forbidden_words.append(forbidden_word)
+                                    logger.warning(
+                                        f"🤖 [AI SUBMIT] Forbidden word '{forbidden_word}' detected; retrying with updated constraints"
+                                    )
+                                    continue
+                                raise
+                        else:
+                            raise InvalidPhraseError(
+                                "Exceeded maximum attempts to generate a valid prompt phrase"
+                            )
 
                         # Add delay to prevent lock contention when multiple AI players submit simultaneously
                         await asyncio.sleep(0.5)

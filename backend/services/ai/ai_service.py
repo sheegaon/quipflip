@@ -256,12 +256,13 @@ class AIService:
         )
         return result.scalars().first()
 
-    async def generate_prompt_response(self, prompt_text: str) -> str:
+    async def generate_prompt_response(self, prompt_text: str, forbidden_words: list | None = None) -> str:
         """
         Generate a creative phrase for a prompt round.
 
         Args:
             prompt_text: The prompt to respond to
+            forbidden_words: Words that must be avoided in the generated phrase
 
         Returns:
             Generated phrase
@@ -273,7 +274,7 @@ class AIService:
 
         try:
             # Build prompt for phrase generation
-            ai_prompt = build_party_prompt_generation(prompt_text)
+            ai_prompt = build_party_prompt_generation(prompt_text, forbidden_words)
             common_words = await self.get_common_words()
             if not isinstance(common_words, (list, tuple)):
                 logger.warning(f"common_words is not iterable: {type(common_words)}, using empty list")
