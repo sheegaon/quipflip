@@ -1039,7 +1039,7 @@ class AIService:
                     voted_players = set(voted_players_result.scalars().all())
 
                     # Get available AI voter
-                    ai_voter_player = self.get_or_create_ai_player(
+                    ai_voter_player = await self.get_or_create_ai_player(
                         AIPlayerType.QF_VOTER,
                         excluded=[p.player_id for p in voted_players])
 
