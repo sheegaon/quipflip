@@ -1,6 +1,6 @@
 """Party Mode WebSocket manager for real-time session updates."""
 import logging
-from typing import Dict, List
+from typing import Dict
 from uuid import UUID
 from datetime import datetime, UTC
 from sqlalchemy import select, and_
@@ -117,6 +117,7 @@ class PartyWebSocketManager:
         if session_id_str in self.session_connections:
             player_connection = self.session_connections[session_id_str].get(player_id_str)
             if player_connection:
+                websocket = player_connection.get('websocket')
                 connection_context = connection_context or player_connection.get('context')
                 del self.session_connections[session_id_str][player_id_str]
                 logger.info(f"WebSocket disconnected for player {player_id} in session {session_id}")
@@ -188,7 +189,7 @@ class PartyWebSocketManager:
         disconnected = []
 
         for player_id_str, connection in connections.items():
-            websocket = connection.get('websocket') if isinstance(connection, dict) else None
+            websocket = connection.get('websocket')
 
             if websocket is None:
                 logger.debug(
@@ -246,7 +247,7 @@ class PartyWebSocketManager:
 
         try:
             connection = self.session_connections[session_id_str][player_id_str]
-            websocket = connection.get('websocket') if isinstance(connection, dict) else None
+            websocket = connection.get('websocket')
             if websocket is None:
                 logger.debug(
                     f"Missing websocket for player {player_id} in session {session_id}, removing stale connection"

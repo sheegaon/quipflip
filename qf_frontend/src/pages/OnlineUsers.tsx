@@ -13,6 +13,7 @@ import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { useGame } from '../contexts/GameContext';
 import type { OnlineUser } from '../api/types';
 import apiClient from '../api/client';
+import useExponentialBackoff from '../hooks/useExponentialBackoff';
 
 // Calculate account age in days (rounded up)
 const getAccountAgeDays = (createdAt: string): number => {
@@ -42,19 +43,11 @@ const OnlineUsers: React.FC = () => {
   const [connected, setConnected] = useState(false);
   const [pingStatus, setPingStatus] = useState<Record<string, 'idle' | 'sending' | 'sent'>>({});
   const wsRef = useRef<WebSocket | null>(null);
-  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const reconnectAttemptsRef = useRef(0);
   const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const { schedule, clear, resetAttempts } = useExponentialBackoff();
 
   useEffect(() => {
     let isMounted = true;
-
-    const clearReconnectTimer = () => {
-      if (reconnectTimerRef.current) {
-        clearTimeout(reconnectTimerRef.current);
-        reconnectTimerRef.current = null;
-      }
-    };
 
     const stopPolling = () => {
       if (pollingIntervalRef.current) {
@@ -75,14 +68,9 @@ const OnlineUsers: React.FC = () => {
     const scheduleReconnect = () => {
       if (!state.isAuthenticated) return;
 
-      clearReconnectTimer();
-      const attempt = reconnectAttemptsRef.current;
-      const delay = Math.min(30000, 2000 * Math.pow(2, attempt));
-
-      reconnectAttemptsRef.current += 1;
-      reconnectTimerRef.current = setTimeout(() => {
+      schedule(() => {
         connectWebSocket();
-      }, delay);
+      });
     };
 
     const connectWebSocket = async () => {
@@ -112,8 +100,8 @@ const OnlineUsers: React.FC = () => {
           setConnected(true);
           setError(null);
           setLoading(false);
-          reconnectAttemptsRef.current = 0;
-          clearReconnectTimer();
+          resetAttempts();
+          clear();
           stopPolling();
         };
 
@@ -195,8 +183,8 @@ const OnlineUsers: React.FC = () => {
       console.log('OnlineUsers cleanup - clearing intervals and connections');
 
       stopPolling();
-      clearReconnectTimer();
-      reconnectAttemptsRef.current = 0;
+      clear();
+      resetAttempts();
 
       if (wsRef.current) {
         wsRef.current.close(1000, 'Component unmounting');
@@ -207,7 +195,7 @@ const OnlineUsers: React.FC = () => {
       setLoading(false);
       setError(null);
     };
-  }, [state.isAuthenticated]); // Key: depend on auth state
+  }, [clear, resetAttempts, schedule, state.isAuthenticated]); // Key: depend on auth state
 
   const currentUsername = state.player?.username;
 

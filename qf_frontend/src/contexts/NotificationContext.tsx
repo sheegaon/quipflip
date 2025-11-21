@@ -22,6 +22,7 @@ import {
 import { useGame } from './GameContext';
 import apiClient from '../api/client';
 import { NotificationStreamMessage } from '../api/types';
+import useExponentialBackoff from '../hooks/useExponentialBackoff';
 
 export interface NotificationMessage {
   id: string;
@@ -64,29 +65,16 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
   const wsRef = useRef<WebSocket | null>(null);
   const notificationIdRef = useRef(0);
   const pingIdRef = useRef(0);
-  const reconnectAttemptsRef = useRef(0);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const { schedule, clear, resetAttempts } = useExponentialBackoff();
   const { state } = useGame();
 
   useEffect(() => {
-    const clearReconnectTimeout = () => {
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-        reconnectTimeoutRef.current = null;
-      }
-    };
-
     const scheduleReconnect = () => {
       if (!state.isAuthenticated) return;
 
-      clearReconnectTimeout();
-      const attempt = reconnectAttemptsRef.current;
-      const delay = Math.min(30000, 2000 * Math.pow(2, attempt));
-
-      reconnectAttemptsRef.current += 1;
-      reconnectTimeoutRef.current = setTimeout(() => {
+      schedule(() => {
         connectWebSocket();
-      }, delay);
+      });
     };
 
     const connectWebSocket = async () => {
@@ -119,8 +107,8 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
 
         ws.onopen = () => {
           console.log('WebSocket connected for notifications');
-          clearReconnectTimeout();
-          reconnectAttemptsRef.current = 0;
+          clear();
+          resetAttempts();
         };
 
         ws.onmessage = (event) => {
@@ -182,8 +170,8 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
     if (state.isAuthenticated) {
       connectWebSocket();
     } else {
-      clearReconnectTimeout();
-      reconnectAttemptsRef.current = 0;
+      clear();
+      resetAttempts();
       if (wsRef.current) {
         wsRef.current.close();
         wsRef.current = null;
@@ -192,14 +180,14 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
 
     // Cleanup on unmount or logout
     return () => {
-      clearReconnectTimeout();
+      clear();
       if (wsRef.current) {
         wsRef.current.close();
         wsRef.current = null;
       }
-      reconnectAttemptsRef.current = 0;
+      resetAttempts();
     };
-  }, [state.isAuthenticated]);
+  }, [clear, resetAttempts, schedule, state.isAuthenticated]);
 
   const addNotification = (message: NotificationMessage) => {
     setNotifications((prev) => [...prev, message]);
