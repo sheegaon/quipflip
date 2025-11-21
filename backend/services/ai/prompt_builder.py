@@ -8,13 +8,12 @@ Gemini and OpenAI AI providers, eliminating code duplication.
 import random
 
 
-def build_party_prompt_generation(prompt_text: str) -> str:
+def build_quip_prompt(prompt_text: str) -> str:
     """
     Build structured prompt for Party Mode prompt round phrase generation.
 
     Args:
         prompt_text: The prompt to respond to
-        forbidden_words: List of words that must not be used (if any)
 
     Returns:
         A formatted prompt string for AI phrase generation
@@ -37,20 +36,20 @@ Rules:
 Generate FIVE alternative phrases, separated by semicolons (;):"""
 
 
-def build_copy_prompt(original_phrase: str, existing_copy_phrase: str = None) -> str:
+def build_impostor_prompt(original_quip_phrase: str, existing_impostor_phrase: str = None) -> str:
     """
     Build structured prompt for Think Alike gameplay copy generation.
 
     Args:
-        original_phrase: The original phrase that was submitted for the prompt
-        existing_copy_phrase: Another copy phrase already submitted (if any)
+        original_quip_phrase: The original phrase that was submitted for the prompt
+        existing_impostor_phrase: Another copy phrase already submitted (if any)
 
     Returns:
         A formatted prompt string for AI copy generation
     """
     base_prompt = f"""Generate FIVE (5) phrases meaning roughly the same thing as the original phrase.
 
-**Original phrase: "{original_phrase}"**
+**Original phrase: "{original_quip_phrase}"**
 
 Rules:
 - 1-15 characters per word
@@ -61,9 +60,9 @@ Rules:
 - Words which are 4 or more letters long, except common words: [{{common_words}}], are known as *significant words*
 - Do NOT use the same significant word in more than two phrases"""
 
-    if existing_copy_phrase:
+    if existing_impostor_phrase:
         base_prompt += f"""
-- **IMPORTANT: Another player already submitted this copy: "{existing_copy_phrase}"**"""
+- **IMPORTANT: Another player already submitted this copy: "{existing_impostor_phrase}"**"""
         base_prompt += """
 - Do NOT use or lightly modify (e.g., pluralize) any significant words from either the original phrase or 
   the submitted copy phrase"""
@@ -84,7 +83,7 @@ def build_vote_prompt(prompt_text: str, phrases: list[str], seed: int) -> str:
 
     Args:
         prompt_text: The prompt that the phrases were created for
-        phrases: List of 3 phrases (1 original, 2 copies)
+        phrases: List of 3 phrases (1 original, 2 impostors)
         seed: Seed for randomization to ensure consistent output
 
     Returns:
@@ -94,11 +93,10 @@ def build_vote_prompt(prompt_text: str, phrases: list[str], seed: int) -> str:
     phrases_formatted = "\n".join([f"{i+1}. {phrase}" for i, phrase in enumerate(phrases)])
     considerations = [
         "- The original is often more natural and straightforward",
-        "- Copies may try too hard or be slightly awkward",
+        "- Fakes may try too hard or be slightly awkward",
         "- The original usually best matches the prompt intent",
         "- Look for subtle differences in word choice and phrasing",
-        "- Consider the length and complexity of each phrase",
-        "- Each copy may be riffing off a different idea from the original",
+        "- Each fake may be riffing off a different idea from the original",
     ]
     chosen_considerations = list(set(random.sample(considerations, 4)))  # Shuffle considerations for variety
     chosen_considerations = ''.join([f"\n{c}" for c in chosen_considerations])

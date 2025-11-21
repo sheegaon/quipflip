@@ -1,5 +1,5 @@
 """
-AI Service for automated hint, copy, and vote generation.
+AI Service for automated quip phrase, impostor phrase, and vote generation.
 
 This service provides AI-generated hints, backup copies and votes when human players
 are unavailable, supporting multiple AI providers (OpenAI, Gemini)
@@ -25,8 +25,8 @@ from backend.models.qf.ai_phrase_cache import QFAIPhraseCache
 from backend.models.qf.ai_quip_cache import QFAIQuipCache, QFAIQuipPhrase, QFAIQuipPhraseUsage
 from backend.services.ai.metrics_service import AIMetricsService, MetricsTracker
 from backend.services.qf import QueueService
-from backend.utils.model_registry import GameType
-from .prompt_builder import build_copy_prompt
+from backend.utils.model_registry import GameType, AIPlayerType
+from .prompt_builder import build_impostor_prompt
 from backend.utils.passwords import hash_password
 from backend.services.username_service import UsernameService
 from backend.services.ai.openai_api import generate_response as openai_generate_response
@@ -98,44 +98,36 @@ class AIService:
         2. Fall back to other provider if configured one is unavailable
         3. Default to OpenAI if both are available
         """
-        configured_provider = self.settings.ai_provider.lower()
-        openai_key = self.settings.openai_api_key
-        gemini_key = self.settings.gemini_api_key
-
         # Check if configured provider is available
-        if configured_provider == "openai" and openai_key:
-            logger.debug("Using OpenAI as AI copy provider")
+        if self.settings.ai_provider == "openai" and self.settings.openai_api_key:
+            logger.debug("Using OpenAI as AI provider")
             return "openai"
-        elif configured_provider == "gemini" and gemini_key:
-            logger.debug("Using Gemini as AI copy provider")
+        elif self.settings.ai_provider == "gemini" and self.settings.gemini_api_key:
+            logger.debug("Using Gemini as AI provider")
             return "gemini"
-        elif configured_provider == "none":
+        elif self.settings.ai_provider == "none":
             logger.error("No AI provider configured")
             raise AIServiceError("AI provider set to 'none' - cannot proceed")
 
         # Fallback logic
-        if openai_key:
-            logger.warning(
-                f"Configured provider '{configured_provider}' not available, falling back to OpenAI"
-            )
+        if self.settings.openai_api_key:
+            logger.warning(f"Configured provider '{self.settings.ai_provider}' not available, falling back to OpenAI")
             return "openai"
-        elif gemini_key:
-            logger.warning(
-                f"Configured provider '{configured_provider}' not available, falling back to Gemini"
-            )
+        elif self.settings.gemini_api_key:
+            logger.warning(f"Configured provider '{self.settings.ai_provider}' not available, falling back to Gemini")
             return "gemini"
 
         # No provider available
         logger.error("No AI provider API keys found (OPENAI_API_KEY or GEMINI_API_KEY)")
         raise AIServiceError("No AI provider configured - set OPENAI_API_KEY or GEMINI_API_KEY")
 
-    async def get_or_create_ai_player(self, game_type: GameType, email: str | None = None) -> PlayerBase:
+    async def get_or_create_ai_player(self, ai_player_type: AIPlayerType, excluded: list | None = None) -> PlayerBase:
         """
         Get or create an AI player account for the specified game type.
 
         Args:
-            game_type: The game type (QF or IR) to create the AI player for
-            email: Optional custom email, defaults to game-specific AI email
+            ai_player_type: The type of AI player to create
+            excluded: A list of AI player IDs to exclude
 
         Returns:
             The AI player instance
@@ -147,36 +139,45 @@ class AIService:
             Transaction management is handled by the caller (run_backup_cycle).
             This method should NOT commit or refresh the session.
         """
+        # Instantiate the correct player service and model based on game type
+        if ai_player_type in [AIPlayerType.QF_QUIP, AIPlayerType.QF_IMPOSTOR, AIPlayerType.QF_VOTER]:
+            from backend.models.qf.player import QFPlayer
+            from backend.services.qf.player_service import PlayerService
+            player_model = QFPlayer
+            game_type = GameType.QF
+        elif ai_player_type in [AIPlayerType.IR_PLAYER]:
+            from backend.models.ir.player import IRPlayer
+            from backend.services.ir.player_service import PlayerService
+            player_model = IRPlayer
+            game_type = GameType.IR
+        else:
+            raise ValueError(f"Unsupported {ai_player_type=}")
+
+        if ai_player_type == AIPlayerType.QF_QUIP:
+            target_email = f"ai_quip_%{AI_PLAYER_EMAIL_DOMAIN}"
+        elif ai_player_type == AIPlayerType.QF_IMPOSTOR:
+            target_email = f"ai_impostor_%{AI_PLAYER_EMAIL_DOMAIN}"
+        elif ai_player_type == AIPlayerType.QF_VOTER:
+            target_email = f"ai_voter_%{AI_PLAYER_EMAIL_DOMAIN}"
+        elif ai_player_type == AIPlayerType.IR_PLAYER:
+            target_email = IR_AI_PLAYER_EMAIL
+        else:
+            raise ValueError(f"Unsupported {ai_player_type=}")
+
         try:
-            # Determine target email based on game type
-            if email:
-                target_email = email.strip().lower()
-            elif game_type == GameType.QF:
-                target_email = QF_AI_COPY_PLAYER_EMAIL
-            elif game_type == GameType.IR:
-                target_email = IR_AI_PLAYER_EMAIL
-            else:
-                raise ValueError(f"Unsupported game type: {game_type}")
-
-            # Instantiate the correct player service and model based on game type
-            if game_type == GameType.QF:
-                from backend.models.qf.player import QFPlayer
-                from backend.services.qf.player_service import PlayerService
-                player_model = QFPlayer
-            elif game_type == GameType.IR:
-                from backend.models.ir.player import IRPlayer
-                from backend.services.ir.player_service import PlayerService
-                player_model = IRPlayer
-            else:
-                raise ValueError(f"Unsupported game type: {game_type}")
-
-            # Check if AI player exists using the correct model
+            # Get all AI players using the correct model and type
             result = await self.db.execute(
-                select(player_model).where(player_model.email == target_email)
+                select(player_model)
+                .where(player_model.email.like(target_email))
             )
-            ai_player = result.scalar_one_or_none()
+            ai_players = set(result.scalars().all())
+            if excluded:
+                ai_players = {p for p in ai_players if p.player_id not in excluded}
 
-            if not ai_player:
+            if game_type == GameType.QF:
+                ai_players = {p for p in ai_players if p.wallet > 100}  # Ensure sufficient funds for QF AI players
+
+            if not ai_players:
                 # Create AI player using the correct service
                 player_service = PlayerService(self.db)
                 
@@ -184,21 +185,18 @@ class AIService:
                 username_service = UsernameService(self.db, game_type=game_type)
                 username, canonical = await username_service.generate_unique_username()
 
+                import uuid
+                target_email = target_email.replace('%', uuid.uuid4().hex[:4])
                 ai_player = await player_service.create_player(
                     username=username,
                     email=target_email,
                     password_hash=hash_password("not-used-for-ai-player"),
                 )
-                logger.info(f"Created {game_type.value} AI backup player account: {username}")
+                logger.info(f"Created {game_type.value} AI player account: {username}")
             else:
+                ai_player = random.choice(list(ai_players))
                 # Validate AI player is in good state (QF-specific validations)
                 if game_type == GameType.QF:
-                    if ai_player.wallet < 0:
-                        logger.warning(
-                            f"AI player has negative wallet: {ai_player.wallet}. "
-                            "This may indicate an issue with payout logic."
-                        )
-
                     # Check for stuck active rounds (shouldn't happen, but handle gracefully)
                     if hasattr(ai_player, 'active_round_id') and ai_player.active_round_id:
                         logger.warning(
@@ -242,8 +240,8 @@ class AIService:
 
         return self.common_words
 
-    async def _get_existing_copy_phrase(self, prompt_round_id: UUID | None) -> str | None:
-        """Fetch an existing submitted copy phrase for the prompt round, if any."""
+    async def _get_existing_impostor_phrase(self, prompt_round_id: UUID | None) -> str | None:
+        """Fetch an existing submitted impostor phrase for the quip round, if any."""
         if not prompt_round_id:
             return None
 
@@ -257,7 +255,7 @@ class AIService:
         )
         return result.scalars().first()
 
-    async def generate_prompt_response(self, prompt_text: str, prompt_round_id: UUID) -> str:
+    async def generate_quip_response(self, prompt_text: str, prompt_round_id: UUID) -> str:
         """
         Generate or reuse a creative quip for a quip round, with caching.
 
@@ -296,7 +294,7 @@ class AIService:
 
     async def _get_or_create_quip_cache(self, prompt_text: str) -> QFAIQuipCache:
         """Fetch or build a cache of validated quip responses for a prompt."""
-        from backend.services.ai.prompt_builder import build_party_prompt_generation
+        from backend.services.ai.prompt_builder import build_quip_prompt
         from backend.utils import lock_client
 
         normalized_prompt = prompt_text.strip()
@@ -318,12 +316,10 @@ class AIService:
                 if existing_cache and existing_cache.phrases:
                     return existing_cache
 
-                ai_prompt = build_party_prompt_generation(normalized_prompt)
+                ai_prompt = build_quip_prompt(normalized_prompt)
                 common_words = await self.get_common_words()
                 if not isinstance(common_words, (list, tuple)):
-                    logger.warning(
-                        "common_words is not iterable: %s, using empty list", type(common_words)
-                    )
+                    logger.warning(f"common_words is not iterable: {type(common_words)}, using empty list")
                     common_words = []
 
                 common_words = [word for word in common_words if len(word) > 3]
@@ -349,16 +345,12 @@ class AIService:
                     if len(test_phrase) < 4:
                         error_message = "Phrase too short"
                         errors.append((test_phrase, error_message))
-                        logger.info(
-                            "AI generated invalid prompt phrase '%s': %s", test_phrase, error_message
-                        )
+                        logger.info(f"AI generated invalid prompt phrase '{test_phrase}': {error_message}")
                         continue
                     if len(test_phrase) > 100:
                         error_message = "Phrase too long"
                         errors.append((test_phrase, error_message))
-                        logger.info(
-                            "AI generated invalid prompt phrase '%s': %s", test_phrase, error_message
-                        )
+                        logger.info(f"AI generated invalid prompt phrase '{test_phrase}': {error_message}")
                         continue
 
                     is_valid, error_message = await self.phrase_validator.validate_prompt_phrase(
@@ -368,14 +360,10 @@ class AIService:
                         validated_phrases.append(test_phrase)
                     else:
                         errors.append((test_phrase, error_message))
-                        logger.info(
-                            "AI generated invalid prompt phrase '%s': %s", test_phrase, error_message
-                        )
+                        logger.info(f"AI generated invalid prompt phrase '{test_phrase}': {error_message}")
 
                 if not validated_phrases:
-                    raise AICopyError(
-                        f"AI generated no valid phrases for prompt '{normalized_prompt}': {errors=}"
-                    )
+                    raise AICopyError(f"AI generated no valid phrases for prompt '{normalized_prompt}': {errors=}")
 
                 cache = QFAIQuipCache(
                     prompt_text=normalized_prompt,
@@ -484,10 +472,10 @@ class AIService:
 
                 # Generate new phrases
                 original_phrase = prompt_round.submitted_phrase
-                other_copy_phrase = await self._get_existing_copy_phrase(prompt_round.round_id)
+                other_copy_phrase = await self._get_existing_impostor_phrase(prompt_round.round_id)
 
                 # Build prompt and get common words
-                ai_prompt = build_copy_prompt(original_phrase, other_copy_phrase)
+                ai_prompt = build_impostor_prompt(original_phrase, other_copy_phrase)
                 common_words = await self.get_common_words()
                 if not isinstance(common_words, (list, tuple)):
                     logger.warning(f"common_words is not iterable: {type(common_words)}, using empty list")
@@ -618,7 +606,7 @@ class AIService:
                 if not cache or not cache.validated_phrases:
                     return cache
 
-                other_copy_phrase = await self._get_existing_copy_phrase(prompt_round.round_id)
+                other_copy_phrase = await self._get_existing_impostor_phrase(prompt_round.round_id)
                 valid_phrases: list[str] = []
 
                 for phrase in cache.validated_phrases:
@@ -1035,33 +1023,18 @@ class AIService:
                     # We look for players with email starting with "ai_voter"
                     # who do not have a vote record for this phraseset_id
                     
-                    # Subquery for players who HAVE voted on this phraseset
+                    # Players who HAVE voted on this phraseset
                     voted_players_subquery = (
                         select(Vote.player_id)
                         .where(Vote.phraseset_id == phraseset.phraseset_id)
                     )
-                    
-                    # Find available AI voter
-                    from backend.models.qf.player import QFPlayer
-                    available_voter_stmt = (
-                        select(QFPlayer)
-                        .where(QFPlayer.email.like(f"ai_voter_%{AI_PLAYER_EMAIL_DOMAIN}"))
-                        .where(QFPlayer.player_id.notin_(voted_players_subquery))
-                        .limit(1)
-                    )
-                    
-                    result = await self.db.execute(available_voter_stmt)
-                    ai_voter_player = result.scalar_one_or_none()
-                    
-                    if not ai_voter_player:
-                        # Create new AI voter if none available
-                        ai_voter_player = await self.get_or_create_ai_player(
-                            GameType.QF, 
-                            email=f"ai_voter_{uuid.uuid4().hex[:4]}{AI_PLAYER_EMAIL_DOMAIN}"
-                        )
-                        logger.info(f"Created new AI voter {ai_voter_player.username} for phraseset {phraseset.phraseset_id}")
-                    else:
-                        logger.info(f"Reusing AI voter {ai_voter_player.username} for phraseset {phraseset.phraseset_id}")
+                    voted_players_result = await self.db.execute(voted_players_subquery)
+                    voted_players = set(voted_players_result.scalars().all())
+
+                    # Get available AI voter
+                    ai_voter_player = self.get_or_create_ai_player(
+                        AIPlayerType.QF_VOTER,
+                        excluded=[p.player_id for p in voted_players])
 
                     # Generate AI vote choice
                     seed = ai_voter_player.player_id.int
