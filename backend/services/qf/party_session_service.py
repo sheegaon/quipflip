@@ -1,6 +1,6 @@
 """Party Mode service for managing party sessions."""
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_, or_
+from sqlalchemy import select, func, and_, or_, case
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime, UTC, timedelta
 from typing import Optional, List, Dict
@@ -224,6 +224,7 @@ class PartySessionService:
         Returns only sessions that are:
         - In OPEN status (lobby, not started)
         - Not full (participant_count < max_players)
+        - Have at least one human player (AI players don't count)
         - Ordered by created_at desc (newest first)
 
         Returns:
@@ -239,7 +240,19 @@ class PartySessionService:
             .subquery()
         )
 
-        # A single query to fetch all required data for open, non-full parties
+        # Subquery to count human participants (non-AI) per session
+        human_participant_counts = (
+            select(
+                PartyParticipant.session_id,
+                func.count(PartyParticipant.participant_id).label("human_count"),
+            )
+            .join(QFPlayer, PartyParticipant.player_id == QFPlayer.player_id)
+            .where(~QFPlayer.email.ilike(f'%{AI_PLAYER_EMAIL_DOMAIN}'))
+            .group_by(PartyParticipant.session_id)
+            .subquery()
+        )
+
+        # A single query to fetch all required data for open, non-full parties with human players
         stmt = (
             select(
                 PartySession.session_id,
@@ -254,10 +267,17 @@ class PartySessionService:
                 participant_counts,
                 PartySession.session_id == participant_counts.c.session_id,
             )
+            .outerjoin(
+                human_participant_counts,
+                PartySession.session_id == human_participant_counts.c.session_id,
+            )
             .where(PartySession.status == "OPEN")
             .where(
                 func.coalesce(participant_counts.c.participant_count, 0)
                 < PartySession.max_players
+            )
+            .where(
+                func.coalesce(human_participant_counts.c.human_count, 0) > 0
             )
             .order_by(PartySession.created_at.desc())
         )
@@ -388,10 +408,40 @@ class PartySessionService:
 
         # Get or create AI player
         from backend.services.ai.ai_service import AIService, AI_PLAYER_EMAIL_DOMAIN
-        ai_player = await AIService(self.db).get_or_create_ai_player(
-            game_type=game_type,
-            email=f"ai_party_{uuid.uuid4().hex[:4]}{AI_PLAYER_EMAIL_DOMAIN}",
+        
+        # Try to find an available AI player (pooling)
+        # Find an AI player that is NOT in any active session
+        available_ai_stmt = (
+            select(QFPlayer)
+            .outerjoin(PartyParticipant, QFPlayer.player_id == PartyParticipant.player_id)
+            .outerjoin(PartySession, PartyParticipant.session_id == PartySession.session_id)
+            .where(QFPlayer.email.like(f"ai_party_%{AI_PLAYER_EMAIL_DOMAIN}"))
+            .group_by(QFPlayer.player_id)
+            .having(
+                or_(
+                    func.count(PartySession.session_id) == 0,  # No sessions at all
+                    func.sum(
+                        case(
+                            (PartySession.status.in_(['OPEN', 'IN_PROGRESS']), 1),
+                            else_=0
+                        )
+                    ) == 0  # No active sessions
+                )
+            )
+            .limit(1)
         )
+        
+        result = await self.db.execute(available_ai_stmt)
+        ai_player = result.scalar_one_or_none()
+        
+        if not ai_player:
+            # Create new AI player if none available
+            ai_player = await AIService(self.db).get_or_create_ai_player(
+                game_type=game_type,
+                email=f"ai_party_{uuid.uuid4().hex[:4]}{AI_PLAYER_EMAIL_DOMAIN}",
+            )
+        else:
+            logger.info(f"Reusing pooled AI player {ai_player.player_id} for session {session_id}")
 
         # Create participant
         participant = PartyParticipant(
@@ -424,13 +474,14 @@ class PartySessionService:
 
         Players can leave at any time, including during active games.
         If the host leaves, another participant is automatically promoted.
+        Session is deleted when the last HUMAN player leaves (AI players don't keep session alive).
 
         Args:
             session_id: UUID of the session
             player_id: UUID of the player to remove
 
         Returns:
-            bool: True if session was deleted (was empty), False otherwise
+            bool: True if session was deleted, False otherwise
 
         Raises:
             SessionNotFoundError: If session doesn't exist
@@ -450,15 +501,17 @@ class PartySessionService:
 
             logger.info(f"Player {player_id} left session {session_id}")
 
-            # Check if any participants remain
-            remaining_count = await self._get_participant_count(session_id)
+            # Check if any HUMAN participants remain
+            # Sessions are deleted when there are no human players left, regardless of AI players
+            remaining_human_count = await self._get_human_participant_count(session_id)
 
-            if remaining_count == 0:
-                # Last player left - delete the session
+            if remaining_human_count == 0:
+                # Last human player left - delete the session
+                logger.info(f"No human players remaining in session {session_id}, deleting session")
                 await self._delete_empty_session(session_id)
                 return True
             elif was_host:
-                # Host left but others remain - reassign host
+                # Host left but others remain - reassign host to another human if possible
                 await self._reassign_host(session_id)
 
             return False
@@ -468,23 +521,36 @@ class PartySessionService:
     async def _reassign_host(self, session_id: UUID) -> None:
         """Reassign host to another participant if host leaves.
 
+        Prefers human players over AI players when reassigning host role.
+
         Args:
             session_id: UUID of the session
         """
-        # Get remaining participants
+        # Get remaining participants with player info
         result = await self.db.execute(
-            select(PartyParticipant)
+            select(PartyParticipant, QFPlayer)
+            .join(QFPlayer, PartyParticipant.player_id == QFPlayer.player_id)
             .where(PartyParticipant.session_id == session_id)
             .order_by(PartyParticipant.joined_at)
         )
-        participants = result.scalars().all()
+        participants_data = result.all()
 
-        if participants:
-            # Make first participant the new host
-            new_host = participants[0]
-            new_host.is_host = True
-            await self.db.commit()
-            logger.info(f"Reassigned host to player {new_host.player_id} in session {session_id}")
+        if participants_data:
+            # Prefer human players as new host
+            new_host = None
+            for participant, player in participants_data:
+                if not self._is_ai_player(player):
+                    new_host = participant
+                    break
+
+            # If no human players found, use first AI player
+            if not new_host and participants_data:
+                new_host = participants_data[0][0]
+
+            if new_host:
+                new_host.is_host = True
+                await self.db.commit()
+                logger.info(f"Reassigned host to player {new_host.player_id} in session {session_id}")
 
     async def _get_participant_count(self, session_id: UUID) -> int:
         """Get count of participants in a session.
@@ -928,6 +994,23 @@ class PartySessionService:
         )
         return result.scalar() or 0
 
+    async def _get_human_participant_count(self, session_id: UUID) -> int:
+        """Get count of human (non-AI) participants in session.
+
+        Args:
+            session_id: UUID of the session
+
+        Returns:
+            int: Number of human participants
+        """
+        result = await self.db.execute(
+            select(func.count(PartyParticipant.participant_id))
+            .join(QFPlayer, PartyParticipant.player_id == QFPlayer.player_id)
+            .where(PartyParticipant.session_id == session_id)
+            .where(~QFPlayer.email.ilike(f'%{AI_PLAYER_EMAIL_DOMAIN}'))
+        )
+        return result.scalar() or 0
+
     async def get_participants(self, session_id: UUID) -> List[PartyParticipant]:
         """Get all participants in session.
 
@@ -942,7 +1025,13 @@ class PartySessionService:
             .where(PartyParticipant.session_id == session_id)
             .order_by(PartyParticipant.joined_at)
         )
-        return list(result.scalars().all())
+        participants = list(result.scalars().all())
+
+        # Ensure player relationships are loaded for each participant
+        for participant in participants:
+            await self.db.refresh(participant, attribute_names=['player'])
+
+        return participants
 
     async def get_session_status(self, session_id: UUID) -> Dict:
         """Get full session status including participants and progress.

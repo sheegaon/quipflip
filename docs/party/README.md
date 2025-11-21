@@ -293,6 +293,9 @@ After each phase:
 **Issue**: PartyRoundModal shows stale data
 **Solution**: Check Phase 4 context updates and WebSocket handlers
 
+**Issue**: AI players not submitting prompts/copies/votes
+**Solution**: Verify automatic AI submission triggering is enabled in party coordination service. AI submissions are triggered synchronously when sessions start and when phases transition. See [AI Submission Pattern](./architecture-overview.md#ai-submission-automatic-triggering) for implementation details.
+
 ### Getting Help
 
 - Review [architecture-overview.md](./architecture-overview.md) for system understanding

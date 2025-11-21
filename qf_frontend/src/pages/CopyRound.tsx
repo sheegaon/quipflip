@@ -378,13 +378,14 @@ export const CopyRound: React.FC = () => {
     }
   }, [activeRound, navigate, partyState.isPartyMode, partyState.sessionId, successMessage]);
 
-  useEffect(() => {
-    if (isInPartyMode && successMessage && !awaitingSecondCopyDecision && !secondCopyEligibility) {
-      transitionToNextRound('copy').catch(err => {
-        copyRoundLogger.error('Failed to transition to vote round:', err);
-      });
-    }
-  }, [awaitingSecondCopyDecision, isInPartyMode, secondCopyEligibility, successMessage, transitionToNextRound]);
+  // In party mode, DON'T automatically transition - wait for session phase change
+  // useEffect(() => {
+  //   if (isInPartyMode && successMessage && !awaitingSecondCopyDecision && !secondCopyEligibility) {
+  //     transitionToNextRound('copy').catch(err => {
+  //       copyRoundLogger.error('Failed to transition to vote round:', err);
+  //     });
+  //   }
+  // }, [awaitingSecondCopyDecision, isInPartyMode, secondCopyEligibility, successMessage, transitionToNextRound]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -500,9 +501,11 @@ export const CopyRound: React.FC = () => {
 
       setTimeout(() => {
         if (isInPartyMode) {
-          transitionToNextRound('copy').catch(err => {
-            copyRoundLogger.error('Failed to transition to vote round after flagging:', err);
-          });
+          // In party mode, don't auto-transition after flagging - wait for session phase change
+          copyRoundLogger.debug('Flagged prompt in party mode - waiting for session phase transition');
+          // transitionToNextRound('copy').catch(err => {
+          //   copyRoundLogger.error('Failed to transition to vote round after flagging:', err);
+          // });
         } else {
           copyRoundLogger.debug('Navigating back to dashboard after flagging impostor round');
           navigate('/dashboard');
@@ -551,9 +554,11 @@ export const CopyRound: React.FC = () => {
     dispatchCompletion({ type: 'CLEAR_SECOND_COPY_ELIGIBILITY' });
     setTimeout(() => {
       if (isInPartyMode) {
-        transitionToNextRound('copy').catch(err => {
-          copyRoundLogger.error('Failed to transition to vote round after declining second copy:', err);
-        });
+        // In party mode, don't auto-transition - wait for session phase change
+        copyRoundLogger.debug('Declined second copy in party mode - waiting for session phase transition');
+        // transitionToNextRound('copy').catch(err => {
+        //   copyRoundLogger.error('Failed to transition to vote round after declining second copy:', err);
+        // });
       } else {
         copyRoundLogger.debug('Navigating back to dashboard after declining second copy');
         navigate('/dashboard');

@@ -439,6 +439,79 @@ async def submit_prompt(
 - Progressive enhancement (party features added transparently)
 - Easier testing (single endpoint to test)
 
+### AI Submission Automatic Triggering
+
+**Pattern**: Automatically trigger AI player submissions when sessions start or phases change.
+
+AI players submit prompts/copies/votes automatically using the same endpoints as human players. This ensures AI participation without manual intervention.
+
+**Implementation at Session Start**:
+
+```python
+# backend/routers/qf/party.py
+
+@router.post("/{session_id}/start")
+async def start_party_session(
+    session_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    ...
+):
+    """Start party session and trigger AI submissions for initial phase."""
+
+    # Start session
+    session = await party_service.start_session(session_id, player.player_id)
+
+    # Broadcast to all players
+    await ws_manager.notify_session_started(...)
+
+    # Trigger AI submissions for PROMPT phase (synchronous within request context)
+    try:
+        coordination_service = PartyCoordinationService(db)
+        transaction_service = TransactionService(db)
+        await coordination_service._trigger_ai_submissions_for_new_phase(
+            session_id=session_id,
+            transaction_service=transaction_service,
+        )
+        logger.info(f"AI submissions triggered for session {session_id}")
+    except Exception as e:
+        # Log but don't fail the session start if AI submissions fail
+        logger.error(f"Failed to trigger AI submissions: {e}", exc_info=True)
+
+    return response
+```
+
+**Automatic Phase Transitions**:
+
+AI submissions are also triggered automatically during phase transitions in `PartyCoordinationService`:
+
+```python
+# backend/services/qf/party_coordination_service.py
+
+async def submit_party_prompt(...):
+    # ... submit logic ...
+
+    # Check if all players done with prompts
+    if await self.party_session_service.can_advance_phase(session_id):
+        session = await self.party_session_service.advance_phase(session_id)
+
+        # Broadcast phase transition
+        await self.ws_manager.notify_phase_transition(...)
+
+        # Trigger AI submissions for new phase (COPY)
+        await self._trigger_ai_submissions_for_new_phase(
+            session_id=session_id,
+            transaction_service=transaction_service,
+        )
+```
+
+**Why Synchronous Execution?**
+
+1. **Database Context Safety**: Running within the same request ensures proper async SQLAlchemy context
+2. **Simpler Error Handling**: Errors are caught and logged without complex background task management
+3. **Predictable Behavior**: AI submissions complete before response returns (slightly slower but reliable)
+
+**Alternative Considered**: Background tasks with `asyncio.create_task()` were attempted but cause "greenlet_spawn has not been called" errors because SQLAlchemy's async context isn't properly initialized in detached tasks. Running synchronously within the request is the most reliable approach.
+
 ---
 
 ## Frontend Architecture
