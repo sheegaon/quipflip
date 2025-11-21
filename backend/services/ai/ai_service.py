@@ -912,7 +912,7 @@ class AIService:
                     available_voter_stmt = (
                         select(QFPlayer)
                         .where(QFPlayer.email.like(f"ai_voter_%{AI_PLAYER_EMAIL_DOMAIN}"))
-                        .where(QFPlayer.player_id.not_in(voted_players_subquery))
+                        .where(QFPlayer.player_id.notin_(voted_players_subquery))
                         .limit(1)
                     )
                     
