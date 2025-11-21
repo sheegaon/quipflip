@@ -116,6 +116,8 @@ async def create_party_session(
     try:
         party_service = PartySessionService(db)
 
+        logger.info(f"Creating party session for player {player.player_id} with config: min={request.min_players}, max={request.max_players}, prompts={request.prompts_per_player}, copies={request.copies_per_player}, votes={request.votes_per_player}")
+
         # Create session
         session = await party_service.create_session(
             host_player_id=player.player_id,
@@ -125,6 +127,8 @@ async def create_party_session(
             copies_per_player=request.copies_per_player,
             votes_per_player=request.votes_per_player,
         )
+
+        logger.info(f"Created party session {session.session_id} with code {session.party_code}")
 
         # Get full status
         status_data = await party_service.get_session_status(session.session_id)
@@ -141,8 +145,11 @@ async def create_party_session(
             max_players=status_data['max_players'],
         )
 
+    except HTTPException:
+        # Re-raise HTTP exceptions (e.g., from dependencies)
+        raise
     except Exception as e:
-        logger.error(f"Error creating party session: {e}")
+        logger.error(f"Error creating party session: {type(e).__name__}: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to create party session")
 
 

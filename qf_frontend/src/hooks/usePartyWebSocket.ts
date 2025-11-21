@@ -64,6 +64,7 @@ export function usePartyWebSocket(
   const maxReconnectAttempts = 5;
   const isRateLimitedRef = useRef(false);
   const rateLimitCooldownRef = useRef<NodeJS.Timeout | null>(null);
+  const isAuthorizationErrorRef = useRef(false);
 
   // Store handlers in a ref to prevent reconnection on every render
   // The ref is updated on every render but doesn't trigger the connect callback
@@ -84,6 +85,12 @@ export function usePartyWebSocket(
     // Don't attempt connection if we're rate-limited
     if (isRateLimitedRef.current) {
       console.log('⏸️ WebSocket connection paused due to rate limiting');
+      return;
+    }
+
+    // Don't attempt connection if we have a permanent authorization error
+    if (isAuthorizationErrorRef.current) {
+      console.log('🚫 WebSocket connection blocked: authorization error (session may have ended or player was removed)');
       return;
     }
 
@@ -196,6 +203,13 @@ export function usePartyWebSocket(
         setConnecting(false);
         wsRef.current = null;
 
+        // Don't attempt reconnection if authorization failed
+        if (isAuthorizationErrorRef.current) {
+          console.log('🚫 Not reconnecting due to permanent authorization error');
+          setError('Session is no longer active or you were removed from the party. Please return to party mode.');
+          return;
+        }
+
         // Attempt reconnection if not max attempts and not rate limited
         if (reconnectAttemptsRef.current < maxReconnectAttempts && !isRateLimitedRef.current) {
           // Start with 5 second delay, then exponential backoff up to 60 seconds
@@ -215,6 +229,15 @@ export function usePartyWebSocket(
     } catch (err) {
       console.error('Failed to connect WebSocket:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to connect';
+
+      // Check if this is an authorization error (403 or 401)
+      if (errorMessage.includes('403') || errorMessage.includes('401') || errorMessage.includes('Unauthorized') || errorMessage.includes('Forbidden')) {
+        console.log('🚫 Authorization failed - player may no longer be in this session');
+        isAuthorizationErrorRef.current = true;
+        setError('Session is no longer active or you were removed from the party. Please return to party mode.');
+        setConnecting(false);
+        return;
+      }
 
       // Check if this is a rate limit error
       if (errorMessage.includes('429') || errorMessage.includes('Rate limit')) {
@@ -259,6 +282,7 @@ export function usePartyWebSocket(
     setConnected(false);
     setConnecting(false);
     isRateLimitedRef.current = false;
+    isAuthorizationErrorRef.current = false;
   }, []);
 
   const reconnect = useCallback(() => {
