@@ -960,7 +960,7 @@ class PartySessionService:
         Raises:
             SessionNotFoundError: If session doesn't exist
         """
-        from backend.utils.locks import lock_client
+        from backend.utils import lock_client
 
         lock_name = f"advance_phase:{session_id}"
         async with lock_client.lock(lock_name, timeout=10):

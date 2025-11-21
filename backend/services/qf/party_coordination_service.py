@@ -96,10 +96,6 @@ async def retry_with_backoff(
             logger.error(f"❌ [RETRY] {operation_name} failed with non-retryable error: {e}")
             raise
 
-    # Should never reach here, but just in case
-    if last_exception:
-        raise last_exception
-
 
 class PartyCoordinationService:
     """Service for coordinating party rounds with existing round services."""
