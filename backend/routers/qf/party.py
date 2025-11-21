@@ -254,7 +254,7 @@ async def join_party_session(
     except AlreadyInAnotherSessionError:
         raise HTTPException(status_code=409, detail="already_in_another_session")
     except Exception as e:
-        logger.error(f"Error joining party session: {e}")
+        logger.error(f"Error joining party session: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to join party session")
 
 
@@ -297,7 +297,7 @@ async def join_party_session_by_id(
     except AlreadyInAnotherSessionError:
         raise HTTPException(status_code=409, detail="already_in_another_session")
     except Exception as e:
-        logger.error(f"Error joining party session: {e}")
+        logger.error(f"Error joining party session: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to join party session")
 
 
