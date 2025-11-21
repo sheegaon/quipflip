@@ -152,6 +152,8 @@ async def create_party_session(
     except HTTPException:
         # Re-raise HTTP exceptions (e.g., from dependencies)
         raise
+    except AlreadyInAnotherSessionError:
+        raise HTTPException(status_code=409, detail="already_in_another_session")
     except Exception as e:
         logger.error(f"Error creating party session: {type(e).__name__}: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to create party session")
