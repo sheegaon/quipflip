@@ -411,7 +411,7 @@ class PartySessionService:
                 QFPlayer.email.like(f"ai_party_%{AI_PLAYER_EMAIL_DOMAIN}"))
         )
         active_pool_players = list({row.player_id for row in result.fetchall()})
-        ai_player = AIService(self.db).get_or_create_ai_player(AIPlayerType.QF_PARTY, excluded=active_pool_players)
+        ai_player = await AIService(self.db).get_or_create_ai_player(AIPlayerType.QF_PARTY, excluded=active_pool_players)
 
         # Create participant
         participant = PartyParticipant(
