@@ -224,6 +224,7 @@ class PartySessionService:
         Returns only sessions that are:
         - In OPEN status (lobby, not started)
         - Not full (participant_count < max_players)
+        - Have at least one human player (AI players don't count)
         - Ordered by created_at desc (newest first)
 
         Returns:
@@ -239,7 +240,19 @@ class PartySessionService:
             .subquery()
         )
 
-        # A single query to fetch all required data for open, non-full parties
+        # Subquery to count human participants (non-AI) per session
+        human_participant_counts = (
+            select(
+                PartyParticipant.session_id,
+                func.count(PartyParticipant.participant_id).label("human_count"),
+            )
+            .join(QFPlayer, PartyParticipant.player_id == QFPlayer.player_id)
+            .where(~QFPlayer.email.ilike(f'%{AI_PLAYER_EMAIL_DOMAIN}'))
+            .group_by(PartyParticipant.session_id)
+            .subquery()
+        )
+
+        # A single query to fetch all required data for open, non-full parties with human players
         stmt = (
             select(
                 PartySession.session_id,
@@ -254,10 +267,17 @@ class PartySessionService:
                 participant_counts,
                 PartySession.session_id == participant_counts.c.session_id,
             )
+            .outerjoin(
+                human_participant_counts,
+                PartySession.session_id == human_participant_counts.c.session_id,
+            )
             .where(PartySession.status == "OPEN")
             .where(
                 func.coalesce(participant_counts.c.participant_count, 0)
                 < PartySession.max_players
+            )
+            .where(
+                func.coalesce(human_participant_counts.c.human_count, 0) > 0
             )
             .order_by(PartySession.created_at.desc())
         )
