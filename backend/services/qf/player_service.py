@@ -256,6 +256,7 @@ class PlayerService(PlayerServiceBase):
     async def can_start_copy_round(self, player: QFPlayer) -> tuple[bool, str]:
         """Check if player can start copy round."""
         from backend.services.qf.queue_service import QueueService
+        from backend.services.qf.round_service import RoundService
 
         if player.locked_until and player.locked_until > datetime.now(UTC):
             return False, "player_locked"
@@ -269,8 +270,10 @@ class PlayerService(PlayerServiceBase):
         if player.active_round_id is not None:
             return False, "already_in_round"
 
-        # Check prompts available
-        if not QueueService.has_prompt_rounds_available():
+        # Check prompts available for this player specifically (not just queue length)
+        round_service = RoundService(self.db)
+        available_prompts = await round_service.get_available_prompts_count(player.player_id)
+        if available_prompts <= 0:
             return False, "no_prompts_available"
 
         return True, ""
