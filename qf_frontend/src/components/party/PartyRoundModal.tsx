@@ -24,6 +24,7 @@ export const PartyRoundModal: React.FC<PartyRoundModalProps> = ({ sessionId, cur
   // This hook just listens for phase transitions
   usePartyWebSocket({
     sessionId,
+    pageContext: 'game',
     onProgressUpdate: () => {
       // Context is already updated by submission response
     },

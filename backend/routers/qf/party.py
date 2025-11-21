@@ -1101,8 +1101,10 @@ async def party_websocket_endpoint(
                 logger.warning(f"Player {player_id} attempted to connect to session they're not in")
                 return
 
+            context = websocket.query_params.get("context")
+
             # Connect WebSocket and update connection status
-            await ws_manager.connect(session_id, player_id, websocket, db)
+            await ws_manager.connect(session_id, player_id, websocket, db, context=context)
             logger.info(f"Party WebSocket connected for player {player_id} in session {session_id}")
 
             try:
@@ -1119,7 +1121,7 @@ async def party_websocket_endpoint(
             except Exception as e:
                 logger.error(f"Party WebSocket error for player {player_id}: {e}", exc_info=True)
             finally:
-                await ws_manager.disconnect(session_id, player_id, db)
+                await ws_manager.disconnect(session_id, player_id, db, context=context)
                 logger.info(f"Party WebSocket disconnected for player {player_id}")
 
     except Exception as e:

@@ -16,6 +16,7 @@ import type {
 
 export interface UsePartyWebSocketOptions {
   sessionId: string;
+  pageContext?: 'lobby' | 'game' | 'other';
   onPhaseTransition?: (data: { old_phase: string; new_phase: string; message: string }) => void;
   onPlayerJoined?: (data: { player_id: string; username: string; participant_count: number }) => void;
   onPlayerLeft?: (data: { player_id: string; username: string; participant_count: number }) => void;
@@ -53,6 +54,7 @@ export function usePartyWebSocket(
 ): UsePartyWebSocketReturn {
   const { state } = useGame();
   const { sessionId } = options;
+  const pageContext = options.pageContext ?? 'other';
 
   const [connected, setConnected] = useState(false);
   const [connecting, setConnecting] = useState(false);
@@ -102,7 +104,7 @@ export function usePartyWebSocket(
       const { token } = await apiClient.getWebsocketToken();
 
       // Construct WebSocket URL
-      const wsUrl = `${WS_BASE_URL}/qf/party/${sessionId}/ws?token=${token}`;
+      const wsUrl = `${WS_BASE_URL}/qf/party/${sessionId}/ws?token=${token}&context=${pageContext}`;
 
       console.log('🔌 Connecting to Party WebSocket:', wsUrl);
 
@@ -261,7 +263,7 @@ export function usePartyWebSocket(
 
       setConnecting(false);
     }
-  }, [state.isAuthenticated, sessionId]);
+  }, [state.isAuthenticated, sessionId, pageContext]);
 
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
