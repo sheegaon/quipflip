@@ -131,7 +131,7 @@ The `GameContext` manages global state:
 
 ### Round Pages
 - **PromptRound** - Submit a phrase for a creative prompt with like/dislike feedback
-- **CopyRound** - Submit a similar phrase without seeing the prompt
+- **ImpostorRound** - Submit a similar phrase without seeing the prompt
 - **VoteRound** - Identify the original phrase from three options
 - **Results** - View vote breakdown and collect payouts
 - **PhrasesetTracking** - Browse all phrasesets by role and status with filtering

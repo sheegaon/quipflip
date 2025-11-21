@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { FrozenTimer } from './FrozenTimer';
 import { ReviewBackButton } from './ReviewBackButton';
 import { BotIcon } from '../icons/EngagementIcons';
-import { CopyRoundIcon } from '../icons/RoundIcons';
+import { ImpostorRoundIcon } from '../icons/RoundIcons';
 
-interface CopyRoundReviewProps {
+interface ImpostorRoundReviewProps {
   originalPhrase: string;
   copyPhrase: string;
   playerUsername: string;
@@ -17,7 +17,7 @@ interface CopyRoundReviewProps {
   isPractice?: boolean;
 }
 
-export const CopyRoundReview: React.FC<CopyRoundReviewProps> = ({
+export const ImpostorRoundReview: React.FC<ImpostorRoundReviewProps> = ({
   originalPhrase,
   copyPhrase,
   playerUsername,
@@ -47,7 +47,7 @@ export const CopyRoundReview: React.FC<CopyRoundReviewProps> = ({
       <div className="max-w-2xl w-full tile-card p-8 slide-up-enter">
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-2 mb-2">
-            <CopyRoundIcon className="w-8 h-8" aria-hidden="true" />
+            <ImpostorRoundIcon className="w-8 h-8" aria-hidden="true" />
             <h1 className="text-3xl font-display font-bold text-quip-navy">Copy Round</h1>
           </div>
           <p className="text-quip-teal">Submit a similar phrase</p>

@@ -6,7 +6,7 @@ import { PartyIcon } from '../components/icons/NavigationIcons';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { loadingMessages } from '../utils/brandedMessages';
 import apiClient, { extractErrorMessage } from '../api/client';
-import type { StartPartyCopyResponse, StartPartyPromptResponse, StartPartyVoteResponse } from '../api/types';
+import type { StartPartyImpostorResponse, StartPartyQuipResponse, StartPartyVoteResponse } from '../api/types';
 
 /**
  * Party Game controller - kicks off party mode using the standard round flows.
@@ -17,7 +17,7 @@ export const PartyGame: React.FC = () => {
   const { actions: gameActions } = useGame();
   const { state: partyState, actions: partyActions } = usePartyMode();
   // Remove usage of normal round starters
-  // const { startPromptRound, startCopyRound, startVoteRound } = gameActions;
+  // const { startQuipRound, startImpostorRound, startVoteRound } = gameActions;
   const { startPartyMode, setCurrentStep, endPartyMode, updateFromPartyContext } = partyActions;
   const { updateActiveRound } = gameActions;
   const [isStarting, setIsStarting] = useState(false);
@@ -55,7 +55,7 @@ export const PartyGame: React.FC = () => {
         setCurrentStep(step);
 
         if (step === 'prompt') {
-          const roundData = await apiClient.startPartyPromptRound(sessionId) as StartPartyPromptResponse;
+          const roundData = await apiClient.startPartyQuipRound(sessionId) as StartPartyQuipResponse;
           const partyContext = roundData.party_context;
 
           if (partyContext) {
@@ -76,7 +76,7 @@ export const PartyGame: React.FC = () => {
           });
           navigate('/prompt', { replace: true });
         } else if (step === 'copy') {
-          const roundData = await apiClient.startPartyCopyRound(sessionId) as StartPartyCopyResponse;
+          const roundData = await apiClient.startPartyImpostorRound(sessionId) as StartPartyImpostorResponse;
           const partyContext = roundData.party_context;
 
           if (partyContext) {

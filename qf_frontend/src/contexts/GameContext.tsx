@@ -16,7 +16,7 @@ import type {
   RoundAvailability,
   PhrasesetDashboardSummary,
   UnclaimedResult,
-  FlagCopyRoundResponse,
+  FlagImpostorRoundResponse,
   AbandonRoundResponse,
 } from '../api/types';
 
@@ -29,7 +29,7 @@ interface GameState {
   phrasesetSummary: PhrasesetDashboardSummary | null;
   unclaimedResults: UnclaimedResult[];
   roundAvailability: RoundAvailability | null;
-  copyRoundHints: string[] | null;
+  ipostorRoundHints: string[] | null;
   loading: boolean;
   error: string | null;
   sessionState: SessionState;
@@ -44,11 +44,11 @@ interface GameActions {
   claimBonus: () => Promise<void>;
   clearError: () => void;
   navigateAfterDelay: (path: string, delay?: number) => void;
-  startPromptRound: () => Promise<void>;
-  startCopyRound: () => Promise<void>;
+  startQuipRound: () => Promise<void>;
+  startImpostorRound: () => Promise<void>;
   startVoteRound: () => Promise<void>;
   claimPhrasesetPrize: (phrasesetId: string) => Promise<void>;
-  flagCopyRound: (roundId: string) => Promise<FlagCopyRoundResponse>;
+  flagImpostorRound: (roundId: string) => Promise<FlagImpostorRoundResponse>;
   abandonRound: (roundId: string) => Promise<AbandonRoundResponse>;
   fetchCopyHints: (roundId: string, signal?: AbortSignal) => Promise<string[]>;
   updateActiveRound: (roundData: ActiveRound) => void;
@@ -81,7 +81,7 @@ export const GameProvider: React.FC<{
   const [phrasesetSummary, setPhrasesetSummary] = useState<PhrasesetDashboardSummary | null>(null);
   const [unclaimedResults, setUnclaimedResults] = useState<UnclaimedResult[]>([]);
   const [roundAvailability, setRoundAvailability] = useState<RoundAvailability | null>(null);
-  const [copyRoundHints, setCopyRoundHints] = useState<string[] | null>(null);
+  const [ipostorRoundHints, setImpostorRoundHints] = useState<string[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sessionState, setSessionState] = useState<SessionState>(SessionState.CHECKING);
@@ -215,15 +215,15 @@ export const GameProvider: React.FC<{
   useEffect(() => {
     if (!activeRound || activeRound.round_type !== 'copy') {
       copyHintsRoundRef.current = null;
-      if (copyRoundHints !== null) {
-        setCopyRoundHints(null);
+      if (ipostorRoundHints !== null) {
+        setImpostorRoundHints(null);
       }
       return;
     }
 
-    if (copyHintsRoundRef.current && copyHintsRoundRef.current !== activeRound.round_id && copyRoundHints !== null) {
+    if (copyHintsRoundRef.current && copyHintsRoundRef.current !== activeRound.round_id && ipostorRoundHints !== null) {
       copyHintsRoundRef.current = null;
-      setCopyRoundHints(null);
+      setImpostorRoundHints(null);
     }
   }, [activeRound?.round_id, activeRound?.round_type]);
 
@@ -266,7 +266,7 @@ export const GameProvider: React.FC<{
       setPhrasesetSummary(null);
       setUnclaimedResults([]);
       setRoundAvailability(null);
-      setCopyRoundHints(null);
+      setImpostorRoundHints(null);
       copyHintsRoundRef.current = null;
       setLoading(false);
       setError(null);
@@ -483,8 +483,8 @@ export const GameProvider: React.FC<{
     }, delay);
   }, [navigate]);
 
-  const startPromptRound = useCallback(async () => {
-    gameContextLogger.debug('🎯 GameContext startPromptRound called'); if (!isAuthenticated) {
+  const startQuipRound = useCallback(async () => {
+    gameContextLogger.debug('🎯 GameContext startQuipRound called'); if (!isAuthenticated) {
       gameContextLogger.debug('🔄 Setting authenticated to true after token check');
       setIsAuthenticated(true);
     }
@@ -493,8 +493,8 @@ export const GameProvider: React.FC<{
       gameContextLogger.debug('🔄 Setting loading to true');
       setLoading(true);
       setError(null);
-      gameContextLogger.debug('📞 Calling apiClient.startPromptRound()...');
-      const response = await apiClient.startPromptRound();
+      gameContextLogger.debug('📞 Calling apiClient.startQuipRound()...');
+      const response = await apiClient.startQuipRound();
       gameContextLogger.debug('✅ Start prompt round API call successful:', {
         roundId: response.round_id,
         expiresAt: response.expires_at,
@@ -516,7 +516,7 @@ export const GameProvider: React.FC<{
       };
 
       setActiveRound(newActiveRound);
-      setCopyRoundHints(null);
+      setImpostorRoundHints(null);
       copyHintsRoundRef.current = null;
       gameContextLogger.debug('🔄 Triggering dashboard refresh after starting prompt round');
       triggerPoll('dashboard');
@@ -539,8 +539,8 @@ export const GameProvider: React.FC<{
     }
   }, [isAuthenticated, triggerPoll, onDashboardTrigger]);
 
-  const startCopyRound = useCallback(async () => {
-    gameContextLogger.debug('🎯 GameContext startCopyRound called'); if (!isAuthenticated) {
+  const startImpostorRound = useCallback(async () => {
+    gameContextLogger.debug('🎯 GameContext startImpostorRound called'); if (!isAuthenticated) {
       gameContextLogger.debug('🔄 Setting authenticated to true after token check');
       setIsAuthenticated(true);
     }
@@ -549,8 +549,8 @@ export const GameProvider: React.FC<{
       gameContextLogger.debug('🔄 Setting loading to true');
       setLoading(true);
       setError(null);
-      gameContextLogger.debug('📞 Calling apiClient.startCopyRound()...');
-      const response = await apiClient.startCopyRound();
+      gameContextLogger.debug('📞 Calling apiClient.startImpostorRound()...');
+      const response = await apiClient.startImpostorRound();
       gameContextLogger.debug('✅ Start copy round API call successful:', {
         roundId: response.round_id,
         expiresAt: response.expires_at,
@@ -575,7 +575,7 @@ export const GameProvider: React.FC<{
       };
 
       setActiveRound(newActiveRound);
-      setCopyRoundHints(null);
+      setImpostorRoundHints(null);
       copyHintsRoundRef.current = null;
       gameContextLogger.debug('🔄 Triggering dashboard refresh after starting copy round');
       triggerPoll('dashboard');
@@ -603,17 +603,17 @@ export const GameProvider: React.FC<{
       return [];
     }
 
-    if (copyHintsRoundRef.current === roundId && copyRoundHints) {
+    if (copyHintsRoundRef.current === roundId && ipostorRoundHints) {
       gameContextLogger.debug('?? Returning cached copy hints', { roundId });
-      return copyRoundHints;
+      return ipostorRoundHints;
     }
 
     gameContextLogger.debug('?? Fetching AI copy hints for round', { roundId });
 
     try {
-      const response = await apiClient.getCopyHints(roundId, signal);
+      const response = await apiClient.getImpostorHints(roundId, signal);
       copyHintsRoundRef.current = roundId;
-      setCopyRoundHints(response.hints);
+      setImpostorRoundHints(response.hints);
       setError(null);
       gameContextLogger.debug('? Copy hints fetched successfully', { count: response.hints?.length ?? 0 });
       return response.hints;
@@ -628,12 +628,12 @@ export const GameProvider: React.FC<{
       setError(errorMessage);
       throw err;
     }
-  }, [copyRoundHints, setError]);
+  }, [ipostorRoundHints, setError]);
 
-  const flagCopyRound = useCallback(async (roundId: string): Promise<FlagCopyRoundResponse> => {
-    gameContextLogger.debug('🚩 GameContext flagCopyRound called', { roundId }); try {
-      gameContextLogger.debug('📞 Calling apiClient.flagCopyRound()...', { roundId });
-      const response = await apiClient.flagCopyRound(roundId);
+  const flagImpostorRound = useCallback(async (roundId: string): Promise<FlagImpostorRoundResponse> => {
+    gameContextLogger.debug('🚩 GameContext flagImpostorRound called', { roundId }); try {
+      gameContextLogger.debug('📞 Calling apiClient.flagImpostorRound()...', { roundId });
+      const response = await apiClient.flagImpostorRound(roundId);
       gameContextLogger.info('✅ Copy round flagged successfully', { roundId, flagId: response.flag_id });
       await refreshDashboard();
       return response;
@@ -695,7 +695,7 @@ export const GameProvider: React.FC<{
       };
 
       setActiveRound(newActiveRound);
-      setCopyRoundHints(null);
+      setImpostorRoundHints(null);
       copyHintsRoundRef.current = null;
       gameContextLogger.debug('🔄 Triggering dashboard refresh after starting vote round');
       triggerPoll('dashboard');
@@ -835,7 +835,7 @@ export const GameProvider: React.FC<{
     phrasesetSummary,
     unclaimedResults,
     roundAvailability,
-    copyRoundHints,
+    ipostorRoundHints,
     loading,
     error,
     sessionState,
@@ -850,10 +850,10 @@ export const GameProvider: React.FC<{
     claimBonus,
     clearError,
     navigateAfterDelay,
-    startPromptRound,
-    startCopyRound,
+    startQuipRound,
+    startImpostorRound,
     fetchCopyHints,
-    flagCopyRound,
+    flagImpostorRound,
     abandonRound,
     startVoteRound,
     claimPhrasesetPrize,

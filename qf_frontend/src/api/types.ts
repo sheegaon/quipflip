@@ -153,7 +153,7 @@ export interface ActiveRound {
   state: PromptState | CopyState | VoteState | null;
 }
 
-export interface FlagCopyRoundResponse {
+export interface FlagImpostorRoundResponse {
   flag_id: string;
   refund_amount: number;
   penalty_kept: number;
@@ -334,14 +334,14 @@ export interface RoundDetails {
   cost: number;
 }
 
-export interface StartPromptResponse {
+export interface StartQuipResponse {
   round_id: string;
   prompt_text: string;
   expires_at: string;
   cost: number;
 }
 
-export interface StartCopyResponse {
+export interface StartImpostorResponse {
   round_id: string;
   original_phrase: string;
   prompt_round_id: string;
@@ -955,7 +955,7 @@ export interface StartPartySessionResponse {
 export type PartySessionStatusResponse = PartySession;
 
 // Party Round Response - Discriminated Union based on round_type
-export interface StartPartyPromptResponse {
+export interface StartPartyQuipResponse {
   round_type: 'prompt';
   round_id: string;
   party_round_id: string;
@@ -972,7 +972,7 @@ export interface StartPartyPromptResponse {
   party_context?: PartyContext;
 }
 
-export interface StartPartyCopyResponse {
+export interface StartPartyImpostorResponse {
   round_type: 'copy';
   round_id: string;
   party_round_id: string;
@@ -1012,8 +1012,8 @@ export interface StartPartyVoteResponse {
 }
 
 export type StartPartyRoundResponse =
-  | StartPartyPromptResponse
-  | StartPartyCopyResponse
+  | StartPartyQuipResponse
+  | StartPartyImpostorResponse
   | StartPartyVoteResponse;
 
 export interface SubmitPartyRoundRequest {

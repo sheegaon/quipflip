@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePartyMode } from '../contexts/PartyModeContext';
 import apiClient, { extractErrorMessage } from '../api/client';
-import type { StartPartyCopyResponse, StartPartyVoteResponse } from '../api/types';
+import type { StartPartyImpostorResponse, StartPartyVoteResponse } from '../api/types';
 
 type RoundType = 'prompt' | 'copy' | 'vote';
 
@@ -67,7 +67,7 @@ export function usePartyRoundCoordinator() {
             type TransitionConfig =
                 | {
                       next: 'copy';
-                      endpoint: (sessionId: string) => Promise<StartPartyCopyResponse>;
+                      endpoint: (sessionId: string) => Promise<StartPartyImpostorResponse>;
                       path: string;
                   }
                 | {
@@ -84,7 +84,7 @@ export function usePartyRoundCoordinator() {
             const transitions: Record<RoundType, TransitionConfig> = {
                 prompt: {
                     next: 'copy',
-                    endpoint: apiClient.startPartyCopyRound,
+                    endpoint: apiClient.startPartyImpostorRound,
                     path: '/copy',
                 },
                 copy: {

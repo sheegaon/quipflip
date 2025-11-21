@@ -3,7 +3,7 @@ import { useTutorial } from '../../contexts/TutorialContext';
 import { getTutorialStep, getPreviousStep } from '../../config/tutorialSteps';
 import type { TutorialProgress } from '../../api/types';
 import './TutorialOverlay.css';
-import { CopyRoundIcon, LiveModeIcon, PracticeModeIcon, VoteRoundIcon } from '../icons/RoundIcons';
+import { ImpostorRoundIcon, LiveModeIcon, PracticeModeIcon, VoteRoundIcon } from '../icons/RoundIcons';
 import { ArrowLeftIcon, ArrowRightIcon } from '../icons/ArrowIcons';
 import { FlagIcon } from '../icons/EngagementIcons';
 import {
@@ -21,7 +21,7 @@ interface TutorialOverlayProps {
 }
 
 const tutorialIcons: Record<string, React.ComponentType<React.SVGProps<SVGSVGElement>>> = {
-  copy: CopyRoundIcon,
+  copy: ImpostorRoundIcon,
   vote: VoteRoundIcon,
   live: LiveModeIcon,
   practice: PracticeModeIcon,

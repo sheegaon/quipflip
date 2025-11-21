@@ -37,12 +37,12 @@ import { PageErrorFallback } from './components/ErrorFallback';
 // Lazy load pages with error boundaries
 const Landing = lazy(() => import('./pages/Landing'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
-const PromptRound = lazy(() => import('./pages/PromptRound'));
-const CopyRound = lazy(() => import('./pages/CopyRound'));
+const PromptRound = lazy(() => import('./pages/QuipRound.tsx'));
+const ImpostorRound = lazy(() => import('./pages/ImpostorRound'));
 const VoteRound = lazy(() => import('./pages/VoteRound'));
-const PracticePrompt = lazy(() => import('./pages/PracticePrompt'));
-const PracticeCopy = lazy(() => import('./pages/PracticeCopy'));
-const PracticeCopy2 = lazy(() => import('./pages/PracticeCopy2'));
+const PracticePrompt = lazy(() => import('./pages/PracticeQuip.tsx'));
+const PracticeImpostor = lazy(() => import('./pages/PracticeImpostor'));
+const PracticeImpostor2 = lazy(() => import('./pages/PracticeImpostor2'));
 const PracticeVote = lazy(() => import('./pages/PracticeVote'));
 const Results = lazy(() => import('./pages/Results'));
 const Completed = lazy(() => import('./pages/Completed'));
@@ -136,28 +136,28 @@ const AppRoutes: React.FC = () => {
           element={renderProtectedRoute(<Dashboard />)}
         />
         <Route
-          path="/prompt"
+          path="/quip"
           element={renderProtectedRoute(<PromptRound />)}
         />
         <Route
-          path="/copy"
-          element={renderProtectedRoute(<CopyRound />)}
+          path="/impostor"
+          element={renderProtectedRoute(<ImpostorRound />)}
         />
         <Route
           path="/vote"
           element={renderProtectedRoute(<VoteRound />)}
         />
         <Route
-          path="/practice/prompt"
+          path="/practice/quip"
           element={renderProtectedRoute(<PracticePrompt />)}
         />
         <Route
-          path="/practice/copy"
-          element={renderProtectedRoute(<PracticeCopy />)}
+          path="/practice/impostor"
+          element={renderProtectedRoute(<PracticeImpostor />)}
         />
         <Route
-          path="/practice/copy2"
-          element={renderProtectedRoute(<PracticeCopy2 />)}
+          path="/practice/impostor2"
+          element={renderProtectedRoute(<PracticeImpostor2 />)}
         />
         <Route
           path="/practice/vote"

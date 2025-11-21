@@ -4,13 +4,13 @@ interface RoundIconProps extends React.SVGProps<SVGSVGElement> {
   className?: string;
 }
 
-interface CopyRoundIconProps extends RoundIconProps {
+interface ImpostorRoundIconProps extends RoundIconProps {
   primaryColor?: string;
   accentColor?: string;
   backgroundOpacity?: number;
 }
 
-export const CopyRoundIcon: React.FC<CopyRoundIconProps> = ({
+export const ImpostorRoundIcon: React.FC<ImpostorRoundIconProps> = ({
   className = 'w-8 h-8',
   primaryColor = '#10B4A4',
   accentColor = '#FFF6EE',

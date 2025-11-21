@@ -81,7 +81,7 @@ export const devLog = (component: string, message: string, data?: unknown) => {
 export const dashboardLogger = createLogger('Dashboard');
 export const gameContextLogger = createLogger('GameContext');
 export const promptRoundLogger = createLogger('PromptRound');
-export const copyRoundLogger = createLogger('CopyRound');
+export const ipostorRoundLogger = createLogger('ImpostorRound');
 export const voteRoundLogger = createLogger('VoteRound');
 export const landingLogger = createLogger('Landing');
 export const questsLogger = createLogger('Quests');

@@ -8,9 +8,9 @@ import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { useTimer } from '../hooks/useTimer';
 import { usePhraseValidation } from '../hooks/usePhraseValidation';
 import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
-import type { CopyState, FlagCopyRoundResponse, SubmitPhraseResponse } from '../api/types';
-import { copyRoundLogger } from '../utils/logger';
-import { CopyRoundIcon } from '../components/icons/RoundIcons';
+import type { CopyState, FlagImpostorRoundResponse, SubmitPhraseResponse } from '../api/types';
+import { ipostorRoundLogger } from '../utils/logger';
+import { ImpostorRoundIcon } from '../components/icons/RoundIcons';
 import { FlagIcon } from '../components/icons/EngagementIcons';
 import { usePartyMode } from '../contexts/PartyModeContext';
 import PartyRoundModal from '../components/party/PartyRoundModal';
@@ -31,7 +31,7 @@ const loadHintProgress = (playerId: string): HintProgress => {
       return JSON.parse(stored) as HintProgress;
     }
   } catch (err) {
-    copyRoundLogger.warn('Failed to load impostor hint progress from storage', err);
+    ipostorRoundLogger.warn('Failed to load impostor hint progress from storage', err);
   }
 
   return { roundIds: [] };
@@ -41,14 +41,14 @@ const saveHintProgress = (playerId: string, progress: HintProgress) => {
   try {
     localStorage.setItem(hintProgressKey(playerId), JSON.stringify(progress));
   } catch (err) {
-    copyRoundLogger.warn('Failed to save impostor hint progress to storage', err);
+    ipostorRoundLogger.warn('Failed to save impostor hint progress to storage', err);
   }
 };
 
 type SecondCopyEligibility = {
   eligible: boolean;
   cost: number;
-  promptRoundId: string;
+  quipRoundId: string;
   originalPhrase: string;
 };
 
@@ -156,10 +156,10 @@ const completionReducer = (state: CompletionState, action: CompletionAction): Co
   }
 };
 
-export const CopyRound: React.FC = () => {
+export const ImpostorRound: React.FC = () => {
   const { state, actions } = useGame();
-  const { activeRound, roundAvailability, copyRoundHints, player } = state;
-  const { flagCopyRound, refreshDashboard, fetchCopyHints } = actions;
+  const { activeRound, roundAvailability, ipostorRoundHints, player } = state;
+  const { flagImpostorRound, refreshDashboard, fetchCopyHints } = actions;
   const { state: partyState, actions: partyActions } = usePartyMode();
   const { setCurrentStep } = partyActions;
   const navigate = useNavigate();
@@ -170,7 +170,7 @@ export const CopyRound: React.FC = () => {
   const [showFlagConfirm, setShowFlagConfirm] = useState(false);
   const [isFlagging, setIsFlagging] = useState(false);
   const [flagError, setFlagError] = useState<string | null>(null);
-  const [flagResult, setFlagResult] = useState<FlagCopyRoundResponse | null>(null);
+  const [flagResult, setFlagResult] = useState<FlagImpostorRoundResponse | null>(null);
   const [isFetchingHints, setIsFetchingHints] = useState(false);
   const [hintError, setHintError] = useState<string | null>(null);
   const [showHints, setShowHints] = useState(false);
@@ -218,11 +218,11 @@ export const CopyRound: React.FC = () => {
   }, [roundData?.round_id]);
 
   useEffect(() => {
-    if (copyRoundHints && copyRoundHints.length > 0) {
+    if (ipostorRoundHints && ipostorRoundHints.length > 0) {
       setHintError(null);
       setShowHints(true);
     }
-  }, [copyRoundHints, roundData?.round_id]);
+  }, [ipostorRoundHints, roundData?.round_id]);
 
   useEffect(() => {
     if (!player?.player_id || !roundData?.round_id) {
@@ -241,20 +241,20 @@ export const CopyRound: React.FC = () => {
     setIsEarlyImpostorPlayer(updatedRoundIds.length <= AUTO_HINT_ROUND_LIMIT);
   }, [player?.player_id, roundData?.round_id]);
 
-  const fetchOriginalPrompt = useCallback(async (promptRoundId?: string | null) => {
-    if (!promptRoundId) {
+  const fetchOriginalPrompt = useCallback(async (quipRoundId?: string | null) => {
+    if (!quipRoundId) {
       dispatchCompletion({ type: 'PROMPT_REVEAL_RESET' });
       promptRevealRequestRef.current = null;
       return;
     }
 
-    copyRoundLogger.debug('Fetching prompt reveal information', { promptRoundId });
+    ipostorRoundLogger.debug('Fetching prompt reveal information', { quipRoundId });
     dispatchCompletion({ type: 'PROMPT_REVEAL_REQUESTED' });
-    promptRevealRequestRef.current = promptRoundId;
+    promptRevealRequestRef.current = quipRoundId;
 
     try {
-      const details = await apiClient.getRoundDetails(promptRoundId);
-      if (promptRevealRequestRef.current === promptRoundId) {
+      const details = await apiClient.getRoundDetails(quipRoundId);
+      if (promptRevealRequestRef.current === quipRoundId) {
         if (details.prompt_text) {
           dispatchCompletion({ type: 'PROMPT_REVEAL_SUCCESS', payload: details.prompt_text });
         } else {
@@ -265,10 +265,10 @@ export const CopyRound: React.FC = () => {
         }
       }
     } catch (err) {
-      if (promptRevealRequestRef.current === promptRoundId) {
+      if (promptRevealRequestRef.current === quipRoundId) {
         dispatchCompletion({ type: 'PROMPT_REVEAL_ERROR', payload: 'Unable to reveal the original prompt right now.' });
       }
-      copyRoundLogger.error('Failed to fetch original prompt for reveal', err);
+      ipostorRoundLogger.error('Failed to fetch original prompt for reveal', err);
     }
   }, [dispatchCompletion]);
 
@@ -299,7 +299,7 @@ export const CopyRound: React.FC = () => {
       setShowHints(true);
     } catch (err) {
       if (controller.signal.aborted) {
-        copyRoundLogger.debug('Hint request cancelled before completion');
+        ipostorRoundLogger.debug('Hint request cancelled before completion');
         return;
       }
       setHintError(extractErrorMessage(err) || 'Unable to fetch AI hints. Please try again soon.');
@@ -316,7 +316,7 @@ export const CopyRound: React.FC = () => {
       return;
     }
 
-    if (copyRoundHints && copyRoundHints.length > 0) {
+    if (ipostorRoundHints && ipostorRoundHints.length > 0) {
       setShowHints(true);
       autoFetchTriggeredRef.current = true;
       return;
@@ -325,13 +325,13 @@ export const CopyRound: React.FC = () => {
     autoFetchTriggeredRef.current = true;
     setShowHints(true);
     void handleFetchHints();
-  }, [copyRoundHints, handleFetchHints, isEarlyImpostorPlayer, roundData]);
+  }, [ipostorRoundHints, handleFetchHints, isEarlyImpostorPlayer, roundData]);
 
   useEffect(() => {
     if (!roundData) {
-      copyRoundLogger.debug('Impostor round page mounted without active round');
+      ipostorRoundLogger.debug('Impostor round page mounted without active round');
     } else {
-      copyRoundLogger.debug('Impostor round page mounted', {
+      ipostorRoundLogger.debug('Impostor round page mounted', {
         roundId: roundData.round_id,
         expiresAt: roundData.expires_at,
         status: roundData.status,
@@ -382,7 +382,7 @@ export const CopyRound: React.FC = () => {
   // useEffect(() => {
   //   if (isInPartyMode && successMessage && !awaitingSecondCopyDecision && !secondCopyEligibility) {
   //     transitionToNextRound('copy').catch(err => {
-  //       copyRoundLogger.error('Failed to transition to vote round:', err);
+  //       ipostorRoundLogger.error('Failed to transition to vote round:', err);
   //     });
   //   }
   // }, [awaitingSecondCopyDecision, isInPartyMode, secondCopyEligibility, successMessage, transitionToNextRound]);
@@ -397,7 +397,7 @@ export const CopyRound: React.FC = () => {
     setFlagResult(null);
 
     try {
-      copyRoundLogger.debug('Submitting impostor round phrase', {
+      ipostorRoundLogger.debug('Submitting impostor round phrase', {
         roundId: roundData.round_id,
       });
       const response: SubmitPhraseResponse = await apiClient.submitPhrase(roundData.round_id, trimmedPhrase);
@@ -405,7 +405,7 @@ export const CopyRound: React.FC = () => {
       // Update party context if present
       if (response.party_context && partyState.isPartyMode) {
         partyActions.updateFromPartyContext(response.party_context);
-        copyRoundLogger.debug('Updated party context after submission', {
+        ipostorRoundLogger.debug('Updated party context after submission', {
           yourProgress: response.party_context.your_progress,
         });
       }
@@ -414,13 +414,13 @@ export const CopyRound: React.FC = () => {
       const heading = getRandomMessage('copySubmitted');
       const feedback = getRandomMessage('copySubmittedFeedback');
       dispatchCompletion({ type: 'SET_SUCCESS', payload: { successMessage: heading, feedbackMessage: feedback } });
-      copyRoundLogger.info('Impostor round phrase submitted successfully', {
+      ipostorRoundLogger.info('Impostor round phrase submitted successfully', {
         roundId: roundData.round_id,
         message: heading,
       });
 
-      const promptRoundIdForReveal = roundData.prompt_round_id || response.prompt_round_id || null;
-      void fetchOriginalPrompt(promptRoundIdForReveal);
+      const quipRoundIdForReveal = roundData.prompt_round_id || response.prompt_round_id || null;
+      void fetchOriginalPrompt(quipRoundIdForReveal);
       dispatchCompletion({ type: 'CLEAR_SECOND_COPY_ELIGIBILITY' });
 
       // Check if eligible for second copy
@@ -430,24 +430,24 @@ export const CopyRound: React.FC = () => {
           payload: {
             eligible: true,
             cost: response.second_copy_cost,
-            promptRoundId: response.prompt_round_id,
+            quipRoundId: response.prompt_round_id,
             originalPhrase: response.original_phrase,
           },
         });
-        copyRoundLogger.info('Player eligible for second copy', {
+        ipostorRoundLogger.info('Player eligible for second copy', {
           cost: response.second_copy_cost,
-          promptRoundId: response.prompt_round_id,
+          quipRoundId: response.prompt_round_id,
         });
       }
 
       // Immediately refresh dashboard to clear the active round state
       // This is the proper way to handle normal completion vs timer expiry
       try {
-        copyRoundLogger.debug('Refreshing dashboard immediately after successful submission to clear active round');
+        ipostorRoundLogger.debug('Refreshing dashboard immediately after successful submission to clear active round');
         await refreshDashboard();
-        copyRoundLogger.debug('Dashboard refreshed successfully - active round should now be cleared');
+        ipostorRoundLogger.debug('Dashboard refreshed successfully - active round should now be cleared');
       } catch (refreshErr) {
-        copyRoundLogger.warn('Failed to refresh dashboard after submission:', refreshErr);
+        ipostorRoundLogger.warn('Failed to refresh dashboard after submission:', refreshErr);
         // Continue with navigation even if refresh fails
       }
 
@@ -456,14 +456,14 @@ export const CopyRound: React.FC = () => {
         // Navigate after delay - dashboard should now show no active round
         setTimeout(() => {
           if (!partyState.isPartyMode) {
-            copyRoundLogger.debug('Navigating back to dashboard after fake submission');
+            ipostorRoundLogger.debug('Navigating back to dashboard after fake submission');
             navigate('/dashboard');
           }
         }, 3000);
       }
     } catch (err) {
       const message = extractErrorMessage(err) || 'Unable to submit your phrase. The round may have expired or there may be a connection issue.';
-      copyRoundLogger.error('Failed to submit impostor round phrase', err);
+      ipostorRoundLogger.error('Failed to submit impostor round phrase', err);
       setError(message);
     } finally {
       setIsSubmitting(false);
@@ -486,15 +486,15 @@ export const CopyRound: React.FC = () => {
     setFlagError(null);
 
     try {
-      copyRoundLogger.debug('Flagging impostor round phrase', {
+      ipostorRoundLogger.debug('Flagging impostor round phrase', {
         roundId: roundData.round_id,
       });
-      const response = await flagCopyRound(roundData.round_id);
+      const response = await flagImpostorRound(roundData.round_id);
       setFlagResult(response);
       dispatchCompletion({ type: 'SET_SUCCESS', payload: { successMessage: 'Thanks for looking out!', feedbackMessage: null } });
       dispatchCompletion({ type: 'CLEAR_SECOND_COPY_ELIGIBILITY' });
       setShowFlagConfirm(false);
-      copyRoundLogger.info('Impostor round flagged', {
+      ipostorRoundLogger.info('Impostor round flagged', {
         roundId: roundData.round_id,
         flagId: response.flag_id,
       });
@@ -502,19 +502,19 @@ export const CopyRound: React.FC = () => {
       setTimeout(() => {
         if (isInPartyMode) {
           // In party mode, don't auto-transition after flagging - wait for session phase change
-          copyRoundLogger.debug('Flagged prompt in party mode - waiting for session phase transition');
+          ipostorRoundLogger.debug('Flagged prompt in party mode - waiting for session phase transition');
           // transitionToNextRound('copy').catch(err => {
-          //   copyRoundLogger.error('Failed to transition to vote round after flagging:', err);
+          //   ipostorRoundLogger.error('Failed to transition to vote round after flagging:', err);
           // });
         } else {
-          copyRoundLogger.debug('Navigating back to dashboard after flagging impostor round');
+          ipostorRoundLogger.debug('Navigating back to dashboard after flagging impostor round');
           navigate('/dashboard');
         }
       }, 1500);
     } catch (err) {
       const message = extractErrorMessage(err, 'flag-copy-round') ||
         'Unable to flag this phrase right now. Please try again.';
-      copyRoundLogger.error('Failed to flag impostor round', err);
+      ipostorRoundLogger.error('Failed to flag impostor round', err);
       setFlagError(message);
       setShowFlagConfirm(false);
     } finally {
@@ -529,20 +529,20 @@ export const CopyRound: React.FC = () => {
     setError(null);
 
     try {
-      copyRoundLogger.info('Starting second impostor round', {
-        promptRoundId: secondCopyEligibility.promptRoundId,
+      ipostorRoundLogger.info('Starting second impostor round', {
+        quipRoundId: secondCopyEligibility.quipRoundId,
         cost: secondCopyEligibility.cost,
       });
 
-      await apiClient.startCopyRound(secondCopyEligibility.promptRoundId);
+      await apiClient.startImpostorRound(secondCopyEligibility.quipRoundId);
       await refreshDashboard();
 
-      copyRoundLogger.debug('Second impostor round started, staying on page');
+      ipostorRoundLogger.debug('Second impostor round started, staying on page');
       // Reset states to allow for the new round
       dispatchCompletion({ type: 'RESET' });
     } catch (err) {
       const message = extractErrorMessage(err) || 'Unable to start second impostor round. Please try again.';
-      copyRoundLogger.error('Failed to start second impostor round', err);
+      ipostorRoundLogger.error('Failed to start second impostor round', err);
       setError(message);
     } finally {
       dispatchCompletion({ type: 'START_SECOND_COPY_COMPLETE' });
@@ -550,17 +550,17 @@ export const CopyRound: React.FC = () => {
   };
 
   const handleDeclineSecondCopy = () => {
-    copyRoundLogger.info('Player declined second copy option');
+    ipostorRoundLogger.info('Player declined second copy option');
     dispatchCompletion({ type: 'CLEAR_SECOND_COPY_ELIGIBILITY' });
     setTimeout(() => {
       if (isInPartyMode) {
         // In party mode, don't auto-transition - wait for session phase change
-        copyRoundLogger.debug('Declined second copy in party mode - waiting for session phase transition');
+        ipostorRoundLogger.debug('Declined second copy in party mode - waiting for session phase transition');
         // transitionToNextRound('copy').catch(err => {
-        //   copyRoundLogger.error('Failed to transition to vote round after declining second copy:', err);
+        //   ipostorRoundLogger.error('Failed to transition to vote round after declining second copy:', err);
         // });
       } else {
-        copyRoundLogger.debug('Navigating back to dashboard after declining second copy');
+        ipostorRoundLogger.debug('Navigating back to dashboard after declining second copy');
         navigate('/dashboard');
       }
     }, 3000);
@@ -575,7 +575,7 @@ export const CopyRound: React.FC = () => {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-quip-navy/60 p-4">
       <div className="w-full max-w-lg rounded-tile bg-quip-warm-ivory p-6 shadow-tile-lg text-center space-y-4">
         <div className="flex justify-center">
-          <CopyRoundIcon className="w-14 h-14 text-quip-turquoise" aria-hidden="true" />
+          <ImpostorRoundIcon className="w-14 h-14 text-quip-turquoise" aria-hidden="true" />
         </div>
         <h3 className="text-2xl font-display font-bold text-quip-navy">
           {successMessage || 'Copy submitted!'}
@@ -661,7 +661,7 @@ export const CopyRound: React.FC = () => {
         <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center p-4">
           <div className="tile-card max-w-2xl w-full p-8 text-center flip-enter">
             <div className="flex justify-center mb-4">
-              <CopyRoundIcon className="w-24 h-24" aria-hidden="true" />
+              <ImpostorRoundIcon className="w-24 h-24" aria-hidden="true" />
             </div>
             <h2 className="text-2xl font-display font-bold text-quip-turquoise mb-2 success-message">
               {successMessage}
@@ -754,7 +754,7 @@ export const CopyRound: React.FC = () => {
         <div className="max-w-2xl w-full tile-card p-8 slide-up-enter">
           <div className="text-center mb-8">
             <div className="flex items-center justify-center gap-2 mb-2">
-              <CopyRoundIcon className="w-8 h-8" aria-hidden="true" />
+              <ImpostorRoundIcon className="w-8 h-8" aria-hidden="true" />
               <h1 className="text-3xl font-display font-bold text-quip-navy">Impostor Round</h1>
             </div>
             <p className="text-quip-teal">Submit a similar phrase</p>
@@ -808,7 +808,7 @@ export const CopyRound: React.FC = () => {
           {/* AI Hints */}
           {roundData && (
             <div className="mb-4 rounded-tile border border-quip-turquoise/30 bg-white/80 p-4 shadow-tile-xs">
-              {copyRoundHints && copyRoundHints.length > 0 ? (
+              {ipostorRoundHints && ipostorRoundHints.length > 0 ? (
                 <>
                   <button
                     type="button"
@@ -816,7 +816,7 @@ export const CopyRound: React.FC = () => {
                     className="flex w-full items-center justify-between rounded-tile border border-quip-turquoise/40 bg-quip-turquoise/10 px-3 py-2 font-semibold text-quip-teal transition hover:bg-quip-turquoise/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-quip-turquoise"
                   >
                     <span>{showHints ? 'Hide AI Hints' : 'Show AI Hints'}</span>
-                    <span className="text-sm text-quip-navy">{copyRoundHints.length} suggestions</span>
+                    <span className="text-sm text-quip-navy">{ipostorRoundHints.length} suggestions</span>
                   </button>
                   {showHints && (
                     <div className="mt-3 space-y-3">
@@ -824,7 +824,7 @@ export const CopyRound: React.FC = () => {
                         Mix and modify - make it your own!
                       </p>
                       <ul className="space-y-2">
-                        {copyRoundHints.map((hint, index) => (
+                        {ipostorRoundHints.map((hint, index) => (
                           <li key={`${hint}-${index}`} className="w-full">
                             <button
                               type="button"
@@ -949,4 +949,4 @@ export const CopyRound: React.FC = () => {
   );
 };
 
-export default CopyRound;
+export default ImpostorRound;

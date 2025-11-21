@@ -1,25 +1,23 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CopyRoundReview } from '../components/PhrasesetReview/CopyRoundReview';
-import { usePracticePhrasesetSession } from '../hooks/usePracticePhrasesetSession';
+import { QuipRoundReview } from '../components/PhrasesetReview/QuipRoundReview';
+import { usePracticePhraseset } from '../hooks/usePracticePhraseset';
 
-const PracticeCopy2: React.FC = () => {
+const PracticeQuip: React.FC = () => {
   const navigate = useNavigate();
-  const { phraseset, loading, error, clearSession } = usePracticePhrasesetSession();
+  const { phraseset, loading, error } = usePracticePhraseset();
 
   const handleContinue = () => {
-    clearSession();
     navigate('/dashboard');
   };
 
   const handleBack = () => {
-    clearSession();
     navigate('/dashboard');
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-quip-turquoise to-quip-teal flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-quip-navy to-quip-teal flex items-center justify-center p-4">
         <div className="text-xl text-white">Loading practice round...</div>
       </div>
     );
@@ -28,7 +26,7 @@ const PracticeCopy2: React.FC = () => {
   if (error || !phraseset) {
     const isNoPhrasesets = error?.includes('No phrasesets available');
     return (
-      <div className="min-h-screen bg-gradient-to-br from-quip-turquoise to-quip-teal flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-quip-navy to-quip-teal flex items-center justify-center p-4">
         <div className="tile-card p-8 text-center max-w-md">
           <h2 className="text-2xl font-bold text-quip-navy mb-4">
             {isNoPhrasesets ? 'No Practice Rounds Available' : 'Error'}
@@ -39,11 +37,8 @@ const PracticeCopy2: React.FC = () => {
               : error || 'Failed to load practice round'}
           </p>
           <button
-            onClick={() => {
-              clearSession();
-              navigate('/dashboard');
-            }}
-            className="bg-quip-turquoise hover:bg-quip-teal text-white font-bold py-2 px-6 rounded-tile"
+            onClick={() => navigate('/dashboard')}
+            className="bg-quip-navy hover:bg-quip-teal text-white font-bold py-2 px-6 rounded-tile"
           >
             Return to Dashboard
           </button>
@@ -53,19 +48,16 @@ const PracticeCopy2: React.FC = () => {
   }
 
   const reviewProps = {
+    promptText: phraseset.prompt_text,
     originalPhrase: phraseset.original_phrase,
-    copyPhrase: phraseset.copy_phrase_2,
-    playerUsername: phraseset.copy2_player,
-    isAiPlayer: phraseset.copy2_player_is_ai,
-    copyNumber: 2 as const,
-    roundId: phraseset.phraseset_id,
-    existingHints: phraseset.hints,
+    playerUsername: phraseset.prompt_player,
+    isAiPlayer: phraseset.prompt_player_is_ai,
     onSubmit: handleContinue,
     onBack: handleBack,
     isPractice: true,
   };
 
-  return <CopyRoundReview {...reviewProps} />;
+  return <QuipRoundReview {...reviewProps} />;
 };
 
-export default PracticeCopy2;
+export default PracticeQuip;

@@ -13,7 +13,7 @@ import TutorialWelcome from '../components/Tutorial/TutorialWelcome';
 import BetaSurveyModal from '../components/BetaSurveyModal';
 import { dashboardLogger } from '../utils/logger';
 import { TrackingIcon, PartyIcon } from '../components/icons/NavigationIcons';
-import { CopyRoundIcon, VoteRoundIcon } from '../components/icons/RoundIcons';
+import { ImpostorRoundIcon, VoteRoundIcon } from '../components/icons/RoundIcons';
 import { hasDismissedSurvey, hasCompletedSurvey } from '../utils/betaSurvey';
 
 const formatWaitingCount = (count: number): string => (count > 10 ? 'over 10' : count.toString());
@@ -420,7 +420,7 @@ export const Dashboard: React.FC = () => {
     }
   }, [abandonRound, activeRound, canAbandonRound, isAbandoningRound]);
 
-  const handleStartPrompt = async () => {
+  const handleStartQuip = async () => {
     if (startingRound) {
       dashboardLogger.debug('Ignoring prompt button click - already starting round:', startingRound);
       return;
@@ -442,8 +442,8 @@ export const Dashboard: React.FC = () => {
         dashboardLogger.debug('Practice mode: navigating directly to practice prompt review');
         navigate('/practice/prompt');
       } else {
-        dashboardLogger.debug('Calling actions.startPromptRound()...');
-        await actions.startPromptRound();
+        dashboardLogger.debug('Calling actions.startQuipRound()...');
+        await actions.startQuipRound();
         dashboardLogger.info('✅ Quip round started successfully, navigating to /prompt');
         navigate('/prompt');
       }
@@ -457,7 +457,7 @@ export const Dashboard: React.FC = () => {
     }
   };
 
-  const handleStartCopy = async () => {
+  const handleStartImpostor = async () => {
     if (startingRound) {
       dashboardLogger.debug('Ignoring copy button click - already starting round:', startingRound);
       return;
@@ -480,8 +480,8 @@ export const Dashboard: React.FC = () => {
         dashboardLogger.debug('Practice mode: navigating directly to practice copy review');
         navigate('/practice/copy');
       } else {
-        dashboardLogger.debug('Calling actions.startCopyRound()...');
-        await actions.startCopyRound();
+        dashboardLogger.debug('Calling actions.startImpostorRound()...');
+        await actions.startImpostorRound();
         dashboardLogger.info('✅ Impostor round started successfully, navigating to /copy');
         navigate('/copy');
       }
@@ -655,7 +655,7 @@ export const Dashboard: React.FC = () => {
                 Write an original phrase for a creative prompt
               </p>
               <button
-                onClick={handleStartPrompt}
+                onClick={handleStartQuip}
                 disabled={isPromptDisabled}
                 className="w-full bg-quip-navy hover:bg-quip-teal disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm"
               >
@@ -674,7 +674,7 @@ export const Dashboard: React.FC = () => {
             <div className="tutorial-copy-round border-2 border-quip-turquoise rounded-tile p-4 bg-quip-turquoise bg-opacity-5 hover:bg-opacity-10 transition-all">
               <div className="flex justify-between items-center mb-2">
                 <div className="flex items-center gap-2">
-                  <CopyRoundIcon className="w-8 h-8" aria-hidden="true" />
+                  <ImpostorRoundIcon className="w-8 h-8" aria-hidden="true" />
                   <h3 className="font-display font-semibold text-lg text-quip-turquoise">Impostor Round</h3>
                 </div>
                 <span className="flex items-center gap-2 text-quip-orange-deep font-bold">
@@ -700,7 +700,7 @@ export const Dashboard: React.FC = () => {
                 </p>
               )}
               <button
-                onClick={handleStartCopy}
+                onClick={handleStartImpostor}
                 disabled={isCopyDisabled}
                 className="w-full bg-quip-turquoise hover:bg-quip-teal disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm"
               >

@@ -10,8 +10,8 @@ import type {
   DailyBonusResponse,
   RoundAvailability,
   RoundDetails,
-  StartPromptResponse,
-  StartCopyResponse,
+  StartQuipResponse,
+  StartImpostorResponse,
   StartVoteResponse,
   SubmitPhraseResponse,
   HintResponse,
@@ -46,7 +46,7 @@ import type {
   AdminResetPasswordResponse,
   CreateGuestResponse,
   UpgradeGuestResponse,
-  FlagCopyRoundResponse,
+  FlagImpostorRoundResponse,
   AbandonRoundResponse,
   FlaggedPromptListResponse,
   FlaggedPromptItem,
@@ -68,8 +68,8 @@ import type {
   MarkReadyResponse,
   StartPartySessionResponse,
   PartySessionStatusResponse,
-  StartPartyPromptResponse,
-  StartPartyCopyResponse,
+  StartPartyQuipResponse,
+  StartPartyImpostorResponse,
   StartPartyVoteResponse,
   SubmitPartyRoundResponse,
   PartyResultsResponse,
@@ -491,14 +491,14 @@ export const apiClient = {
     return data;
   },
 
-  async startPromptRound(signal?: AbortSignal): Promise<StartPromptResponse> {
-    const { data } = await api.post('/rounds/prompt', {}, { signal });
+  async startQuipRound(signal?: AbortSignal): Promise<StartQuipResponse> {
+    const { data } = await api.post('/rounds/quip', {}, { signal });
     return data;
   },
 
-  async startCopyRound(promptRoundId?: string, signal?: AbortSignal): Promise<StartCopyResponse> {
-    const params = promptRoundId ? { prompt_round_id: promptRoundId } : {};
-    const { data } = await api.post('/rounds/copy', {}, { signal, params });
+  async startImpostorRound(quipRoundId?: string, signal?: AbortSignal): Promise<StartImpostorResponse> {
+    const params = quipRoundId ? { prompt_round_id: quipRoundId } : {};
+    const { data } = await api.post('/rounds/impostor', {}, { signal, params });
     return data;
   },
 
@@ -512,12 +512,12 @@ export const apiClient = {
     return data;
   },
 
-  async getCopyHints(roundId: string, signal?: AbortSignal): Promise<HintResponse> {
+  async getImpostorHints(roundId: string, signal?: AbortSignal): Promise<HintResponse> {
     const { data } = await api.get(`/rounds/${roundId}/hints`, { signal });
     return data;
   },
 
-  async flagCopyRound(roundId: string, signal?: AbortSignal): Promise<FlagCopyRoundResponse> {
+  async flagImpostorRound(roundId: string, signal?: AbortSignal): Promise<FlagImpostorRoundResponse> {
     const { data } = await api.post(`/rounds/${roundId}/flag`, {}, { signal });
     return data;
   },
@@ -883,21 +883,21 @@ export const apiClient = {
   async startPartyPromptRound(
     sessionId: string,
     signal?: AbortSignal,
-  ): Promise<StartPartyPromptResponse> {
-    const { data } = await api.post<StartPartyPromptResponse>(
-      `/party/${sessionId}/rounds/prompt`,
+  ): Promise<StartPartyQuipResponse> {
+    const { data } = await api.post<StartPartyQuipResponse>(
+      `/party/${sessionId}/rounds/quip`,
       {},
       { signal }
     );
     return data;
   },
 
-  async startPartyCopyRound(
+  async startPartyImpostorRound(
     sessionId: string,
     signal?: AbortSignal,
-  ): Promise<StartPartyCopyResponse> {
-    const { data } = await api.post<StartPartyCopyResponse>(
-      `/party/${sessionId}/rounds/copy`,
+  ): Promise<StartPartyImpostorResponse> {
+    const { data } = await api.post<StartPartyImpostorResponse>(
+      `/party/${sessionId}/rounds/impostor`,
       {},
       { signal }
     );

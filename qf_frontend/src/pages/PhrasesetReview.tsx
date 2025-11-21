@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import { PromptRoundReview } from '../components/PhrasesetReview/PromptRoundReview';
-import { CopyRoundReview } from '../components/PhrasesetReview/CopyRoundReview';
+import { QuipRoundReview } from '../components/PhrasesetReview/QuipRoundReview';
+import { ImpostorRoundReview } from '../components/PhrasesetReview/ImpostorRoundReview';
 import { VoteRoundReview } from '../components/PhrasesetReview/VoteRoundReview';
 import type { PhrasesetDetails } from '../api/types';
 
@@ -127,7 +127,7 @@ export const PhrasesetReview: React.FC = () => {
 
   if (reviewStage === 'prompt') {
     return (
-      <PromptRoundReview
+      <QuipRoundReview
         promptText={phrasesetData.prompt_text}
         originalPhrase={phrasesetData.original_phrase || ''}
         playerUsername={promptContributor?.username || 'Unknown'}
@@ -140,7 +140,7 @@ export const PhrasesetReview: React.FC = () => {
 
   if (reviewStage === 'copy1') {
     return (
-      <CopyRoundReview
+      <ImpostorRoundReview
         key="copy1"
         originalPhrase={phrasesetData.original_phrase || ''}
         copyPhrase={phrasesetData.copy_phrase_1 || ''}
@@ -157,7 +157,7 @@ export const PhrasesetReview: React.FC = () => {
 
   if (reviewStage === 'copy2') {
     return (
-      <CopyRoundReview
+      <ImpostorRoundReview
         key="copy2"
         originalPhrase={phrasesetData.original_phrase || ''}
         copyPhrase={phrasesetData.copy_phrase_2 || ''}

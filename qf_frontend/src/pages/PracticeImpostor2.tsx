@@ -1,23 +1,25 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PromptRoundReview } from '../components/PhrasesetReview/PromptRoundReview';
-import { usePracticePhraseset } from '../hooks/usePracticePhraseset';
+import { ImpostorRoundReview } from '../components/PhrasesetReview/ImpostorRoundReview';
+import { usePracticePhrasesetSession } from '../hooks/usePracticePhrasesetSession';
 
-const PracticePrompt: React.FC = () => {
+const PracticeImpostor2: React.FC = () => {
   const navigate = useNavigate();
-  const { phraseset, loading, error } = usePracticePhraseset();
+  const { phraseset, loading, error, clearSession } = usePracticePhrasesetSession();
 
   const handleContinue = () => {
+    clearSession();
     navigate('/dashboard');
   };
 
   const handleBack = () => {
+    clearSession();
     navigate('/dashboard');
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-quip-navy to-quip-teal flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-quip-turquoise to-quip-teal flex items-center justify-center p-4">
         <div className="text-xl text-white">Loading practice round...</div>
       </div>
     );
@@ -26,7 +28,7 @@ const PracticePrompt: React.FC = () => {
   if (error || !phraseset) {
     const isNoPhrasesets = error?.includes('No phrasesets available');
     return (
-      <div className="min-h-screen bg-gradient-to-br from-quip-navy to-quip-teal flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-quip-turquoise to-quip-teal flex items-center justify-center p-4">
         <div className="tile-card p-8 text-center max-w-md">
           <h2 className="text-2xl font-bold text-quip-navy mb-4">
             {isNoPhrasesets ? 'No Practice Rounds Available' : 'Error'}
@@ -37,8 +39,11 @@ const PracticePrompt: React.FC = () => {
               : error || 'Failed to load practice round'}
           </p>
           <button
-            onClick={() => navigate('/dashboard')}
-            className="bg-quip-navy hover:bg-quip-teal text-white font-bold py-2 px-6 rounded-tile"
+            onClick={() => {
+              clearSession();
+              navigate('/dashboard');
+            }}
+            className="bg-quip-turquoise hover:bg-quip-teal text-white font-bold py-2 px-6 rounded-tile"
           >
             Return to Dashboard
           </button>
@@ -48,16 +53,19 @@ const PracticePrompt: React.FC = () => {
   }
 
   const reviewProps = {
-    promptText: phraseset.prompt_text,
     originalPhrase: phraseset.original_phrase,
-    playerUsername: phraseset.prompt_player,
-    isAiPlayer: phraseset.prompt_player_is_ai,
+    copyPhrase: phraseset.copy_phrase_2,
+    playerUsername: phraseset.copy2_player,
+    isAiPlayer: phraseset.copy2_player_is_ai,
+    copyNumber: 2 as const,
+    roundId: phraseset.phraseset_id,
+    existingHints: phraseset.hints,
     onSubmit: handleContinue,
     onBack: handleBack,
     isPractice: true,
   };
 
-  return <PromptRoundReview {...reviewProps} />;
+  return <ImpostorRoundReview {...reviewProps} />;
 };
 
-export default PracticePrompt;
+export default PracticeImpostor2;

@@ -1,9 +1,9 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CopyRoundReview } from '../components/PhrasesetReview/CopyRoundReview';
+import { ImpostorRoundReview } from '../components/PhrasesetReview/ImpostorRoundReview';
 import { usePracticePhrasesetSession } from '../hooks/usePracticePhrasesetSession';
 
-const PracticeCopy: React.FC = () => {
+const PracticeImpostor: React.FC = () => {
   const navigate = useNavigate();
   const { phraseset, loading, error, clearSession } = usePracticePhrasesetSession();
 
@@ -65,7 +65,7 @@ const PracticeCopy: React.FC = () => {
     isPractice: true,
   };
 
-  return <CopyRoundReview {...reviewProps} />;
+  return <ImpostorRoundReview {...reviewProps} />;
 };
 
-export default PracticeCopy;
+export default PracticeImpostor;

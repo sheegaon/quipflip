@@ -10,7 +10,7 @@ import { useTimer } from '../hooks/useTimer';
 import { usePhraseValidation } from '../hooks/usePhraseValidation';
 import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
 import type { PromptState, SubmitPhraseResponse } from '../api/types';
-import { promptRoundLogger } from '../utils/logger';
+import { quipRoundLogger } from '../utils/logger';
 import { TrackingIcon } from '../components/icons/NavigationIcons';
 import { usePartyMode } from '../contexts/PartyModeContext';
 import PartyRoundModal from '../components/party/PartyRoundModal';
@@ -26,7 +26,7 @@ const isCanceledRequest = (error: unknown): boolean => {
   return maybeError.name === 'AbortError' || maybeError.name === 'CanceledError' || maybeError.code === 'ERR_CANCELED';
 };
 
-export const PromptRound: React.FC = () => {
+export const QuipRound: React.FC = () => {
   const { state, actions } = useGame();
   const { activeRound, roundAvailability } = state;
   const { refreshDashboard } = actions;
@@ -66,9 +66,9 @@ export const PromptRound: React.FC = () => {
 
   useEffect(() => {
     if (!roundData) {
-      promptRoundLogger.debug('Prompt round page mounted without active round');
+      quipRoundLogger.debug('Prompt round page mounted without active round');
     } else {
-      promptRoundLogger.debug('Prompt round page mounted', {
+      quipRoundLogger.debug('Prompt round page mounted', {
         roundId: roundData.round_id,
         expiresAt: roundData.expires_at,
         status: roundData.status,
@@ -85,14 +85,14 @@ export const PromptRound: React.FC = () => {
       try {
         const feedbackResponse = await apiClient.getPromptFeedback(roundData.round_id, controller.signal);
         setFeedbackType(feedbackResponse.feedback_type);
-        promptRoundLogger.debug('Loaded existing prompt feedback', {
+        quipRoundLogger.debug('Loaded existing prompt feedback', {
           roundId: roundData.round_id,
           feedbackType: feedbackResponse.feedback_type,
         });
       } catch (err: unknown) {
         // Feedback not found or aborted is ok
         if (!isCanceledRequest(err)) {
-          promptRoundLogger.warn('Failed to load existing feedback', err);
+          quipRoundLogger.warn('Failed to load existing feedback', err);
         }
       }
     };
@@ -150,7 +150,7 @@ export const PromptRound: React.FC = () => {
 
     try {
       setIsSubmittingFeedback(true);
-      promptRoundLogger.debug('Submitting prompt feedback', {
+      quipRoundLogger.debug('Submitting prompt feedback', {
         roundId: roundData.round_id,
         feedbackType: newFeedbackType,
       });
@@ -158,12 +158,12 @@ export const PromptRound: React.FC = () => {
 
       await apiClient.submitPromptFeedback(roundData.round_id, newFeedbackType);
       setFeedbackType(newFeedbackType);
-      promptRoundLogger.info('Prompt feedback submitted', {
+      quipRoundLogger.info('Prompt feedback submitted', {
         roundId: roundData.round_id,
         feedbackType: newFeedbackType,
       });
     } catch (err) {
-      promptRoundLogger.error('Failed to submit feedback', err);
+      quipRoundLogger.error('Failed to submit feedback', err);
     } finally {
       setIsSubmittingFeedback(false);
     }
@@ -187,7 +187,7 @@ export const PromptRound: React.FC = () => {
     setError(null);
 
     try {
-      promptRoundLogger.debug('Submitting prompt round phrase', {
+      quipRoundLogger.debug('Submitting prompt round phrase', {
         roundId: roundData.round_id,
       });
       const response: SubmitPhraseResponse = await apiClient.submitPhrase(roundData.round_id, trimmedPhrase);
@@ -195,7 +195,7 @@ export const PromptRound: React.FC = () => {
       // Update party context if present
       if (response.party_context && partyState.isPartyMode) {
         partyActions.updateFromPartyContext(response.party_context);
-        promptRoundLogger.debug('Updated party context after submission', {
+        quipRoundLogger.debug('Updated party context after submission', {
           yourProgress: response.party_context.your_progress,
         });
       }
@@ -205,7 +205,7 @@ export const PromptRound: React.FC = () => {
       const feedback = getRandomMessage('promptSubmittedFeedback');
       setSuccessMessage(heading);
       setFeedbackMessage(feedback);
-      promptRoundLogger.info('Prompt round phrase submitted successfully', {
+      quipRoundLogger.info('Prompt round phrase submitted successfully', {
         roundId: roundData.round_id,
         message: heading,
       });
@@ -213,24 +213,24 @@ export const PromptRound: React.FC = () => {
       // Immediately refresh dashboard to clear the active round state
       // This is the proper way to handle normal completion vs timer expiry
       try {
-        promptRoundLogger.debug('Refreshing dashboard immediately after successful submission to clear active round');
+        quipRoundLogger.debug('Refreshing dashboard immediately after successful submission to clear active round');
         await refreshDashboard();
-        promptRoundLogger.debug('Dashboard refreshed successfully - active round should now be cleared');
+        quipRoundLogger.debug('Dashboard refreshed successfully - active round should now be cleared');
       } catch (refreshErr) {
-        promptRoundLogger.warn('Failed to refresh dashboard after submission:', refreshErr);
+        quipRoundLogger.warn('Failed to refresh dashboard after submission:', refreshErr);
         // Continue with navigation even if refresh fails
       }
 
       // Navigate after delay - dashboard should now show no active round
       setTimeout(() => {
         if (!partyState.isPartyMode) {
-          promptRoundLogger.debug('Navigating back to dashboard after prompt submission');
+          quipRoundLogger.debug('Navigating back to dashboard after prompt submission');
           navigate('/dashboard');
         }
       }, 2000);
     } catch (err) {
       const message = extractErrorMessage(err) || 'Unable to submit your phrase. Please check your connection and try again.';
-      promptRoundLogger.error('Failed to submit prompt round phrase', err);
+      quipRoundLogger.error('Failed to submit prompt round phrase', err);
       setError(message);
     } finally {
       setIsSubmitting(false);
@@ -392,4 +392,4 @@ export const PromptRound: React.FC = () => {
   );
 };
 
-export default PromptRound;
+export default QuipRound;

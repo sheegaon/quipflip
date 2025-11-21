@@ -205,8 +205,8 @@ const Statistics: React.FC = () => {
         setData(statisticsData);
         statisticsLogger.info('Player statistics loaded', {
           username: statisticsData?.username,
-          promptRounds: statisticsData?.prompt_stats?.total_rounds,
-          copyRounds: statisticsData?.copy_stats?.total_rounds,
+          quipRounds: statisticsData?.prompt_stats?.total_rounds,
+          ipostorRounds: statisticsData?.copy_stats?.total_rounds,
         });
         requestAnimationFrame(() => {
           setTimeout(() => setChartsReady(true), 100);

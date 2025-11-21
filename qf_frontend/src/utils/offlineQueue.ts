@@ -201,8 +201,8 @@ export const shouldQueueAction = (_method: string, url: string): boolean => {
 export const supportsOptimisticUI = (_method: string, url: string): boolean => {
   // Optimistic UI is good for mutations that are likely to succeed
   const optimisticEndpoints = [
-    '/rounds/prompt',
-    '/rounds/copy',
+    '/rounds/quip',
+    '/rounds/impostor',
     '/rounds/vote',
     '/quests/claim',
   ];
