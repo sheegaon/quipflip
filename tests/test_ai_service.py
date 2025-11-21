@@ -17,7 +17,8 @@ from backend.models.qf.phraseset import Phraseset
 from backend.models import AIMetric, AIPhraseCache
 from backend.models.qf.vote import Vote
 from backend.config import get_settings
-from backend.utils.model_registry import GameType
+from backend.utils.model_registry import GameType, AIPlayerType
+from backend.services.ai.ai_service import AI_PLAYER_EMAIL_DOMAIN
 
 
 @pytest.fixture(autouse=True)
@@ -561,21 +562,30 @@ class TestAIPlayerManagement:
                 'backend.services.username_service.UsernameService.generate_unique_username',
                 new=AsyncMock(return_value=("AI BACKUP", "aibackup")),
             ) as mock_generate,
-            patch('backend.services.qf.player_service.PlayerService.create_player') as mock_create,
+            patch(
+                'backend.services.qf.player_service.PlayerService.create_player',
+                new_callable=AsyncMock,
+            ) as mock_create,
         ):
-            mock_player = QFPlayer(
-                player_id=uuid.uuid4(),
-                username="AI_BACKUP",
-                email="ai_copy_backup@quipflip.internal",
-                wallet=1000,
-                vault=0,
-            )
-            mock_create.return_value = mock_player
+            def create_player_side_effect(*, username, email, password_hash):
+                return QFPlayer(
+                    player_id=uuid.uuid4(),
+                    username=username,
+                    username_canonical="aibackup",
+                    email=email,
+                    password_hash=password_hash,
+                    wallet=1000,
+                    vault=0,
+                )
 
-            player = await service.get_or_create_ai_player(GameType.QF)
+            mock_create.side_effect = create_player_side_effect
 
-            assert player.username == "AI_BACKUP"
-            mock_create.assert_called_once()
+            player = await service.get_or_create_ai_player(AIPlayerType.QF_IMPOSTOR)
+
+            assert player.username == "AI BACKUP"
+            assert player.email.startswith("ai_impostor_")
+            assert player.email.endswith(AI_PLAYER_EMAIL_DOMAIN)
+            mock_create.assert_awaited_once()
 
     @pytest.mark.asyncio
     @patch.dict('os.environ', {'OPENAI_API_KEY': 'sk-test'})
@@ -586,7 +596,7 @@ class TestAIPlayerManagement:
             player_id=uuid.uuid4(),
             username="AI Copy Runner",
             username_canonical="aicopyrunner",
-            email="ai_copy_backup@quipflip.internal",
+            email="ai_impostor_1234@quipflip.internal",
             password_hash="not-used",
             wallet=1000,
             vault=0,
@@ -596,12 +606,15 @@ class TestAIPlayerManagement:
 
         service = AIService(db_session)
 
-        with patch('backend.services.qf.player_service.PlayerService.create_player') as mock_create:
-            player = await service.get_or_create_ai_player(GameType.QF)
+        with patch(
+            'backend.services.qf.player_service.PlayerService.create_player',
+            new_callable=AsyncMock,
+        ) as mock_create:
+            player = await service.get_or_create_ai_player(AIPlayerType.QF_IMPOSTOR)
 
             assert player.username == "AI Copy Runner"
             assert player.player_id == ai_player.player_id
-            mock_create.assert_not_called()
+            mock_create.assert_not_awaited()
 
 
 @dataclass
