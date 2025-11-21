@@ -112,13 +112,16 @@ export const PromptRound: React.FC = () => {
     }
   }, [partyState.isPartyMode, roundData?.status, navigate]);
 
-  useEffect(() => {
-    if (successMessage && isInPartyMode) {
-      transitionToNextRound('prompt').catch(err => {
-        console.error('Failed to transition to copy round:', err);
-      });
-    }
-  }, [successMessage, isInPartyMode, transitionToNextRound]);
+  // In party mode, DON'T automatically transition to the next round
+  // Instead, wait for the session phase to change on the backend
+  // The PartyRoundModal will show progress until everyone is ready
+  // useEffect(() => {
+  //   if (successMessage && isInPartyMode) {
+  //     transitionToNextRound('prompt').catch(err => {
+  //       console.error('Failed to transition to copy round:', err);
+  //     });
+  //   }
+  // }, [successMessage, isInPartyMode, transitionToNextRound]);
 
   // Redirect if no active prompt round - but NOT during the submission process
   useEffect(() => {
