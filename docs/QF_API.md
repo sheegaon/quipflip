@@ -2004,6 +2004,36 @@ Get list of currently online users (active in last 30 minutes).
 - Balance reflects current player's Flipcoin amount
 - Account age (created_at) useful for identifying veteran vs. new players
 
+#### `POST /users/online/ping`
+Send a lightweight "ping" notification to another user from the online users page.
+
+**Purpose:** Allow players to nudge another currently online user.
+
+**Request Body:**
+```json
+{
+  "username": "Prompt Pirate"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Ping sent"
+}
+```
+
+**Errors:**
+- `400 Cannot ping yourself` - The sender and target usernames match
+- `404 User not found` - Target username does not exist
+- `401 Unauthorized` - Not authenticated
+
+**Notes:**
+- Dispatches a `type: "ping"` message over the notifications WebSocket to the target user
+- Uses the sender's username in the payload so the recipient sees who pinged them
+- Self-pings are rejected to avoid noisy no-op events
+
 #### `WebSocket /users/online/ws`
 WebSocket endpoint for real-time online users updates.
 
@@ -2071,9 +2101,20 @@ const ws = new WebSocket(`wss://api.example.com/qf/notifications/ws?token=${toke
 }
 ```
 
+Ping messages share the same connection but use a distinct shape:
+
+```json
+{
+  "type": "ping",
+  "from_username": "Prompt Pirate",
+  "timestamp": "2025-01-15T10:31:00Z"
+}
+```
+
 **Triggers:**
 - `copy_submitted`: Prompt player receives a toast when another human submits a copy on their prompt
 - `vote_submitted`: Prompt and copy players receive a toast when another human votes on their phraseset
+- `ping`: Player receives a toast when another user pings them from the online users list
 
 **Filtering & Rate Limits:**
 - AI players (emails ending with `@quipflip.internal`) are excluded as actors or recipients
