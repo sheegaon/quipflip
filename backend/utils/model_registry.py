@@ -16,6 +16,15 @@ class GameType(Enum):
     IR = "ir"
 
 
+class AIPlayerType(Enum):
+    """Enum for different AI player types."""
+    QF_QUIP = "qf_quip"
+    QF_IMPOSTOR = "qf_impostor"
+    QF_VOTER = "qf_voter"
+    QF_PARTY = "qf_party"
+    IR_PLAYER = "ir_player"
+
+
 def get_player_model(game_type: GameType) -> Type:
     """Get the concrete Player model for a game type."""
     if game_type == GameType.QF:

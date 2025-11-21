@@ -770,9 +770,7 @@ class PartyCoordinationService:
             logger.info(f"🤖 [AI SUBMIT] Created round {round_obj.round_id} for {participant.player.username}")
 
             # Generate phrase for prompt based on the actual quip round prompt text
-            phrase = await ai_service.generate_prompt_response(
-                round_obj.prompt_text, round_obj.round_id
-            )
+            phrase = await ai_service.generate_quip_response(round_obj.prompt_text, round_obj.round_id)
             logger.info(f"🤖 [AI SUBMIT] Generated response for {participant.player.username}: '{phrase}'")
 
             # Submit phrase (with retry logic for lock contention)

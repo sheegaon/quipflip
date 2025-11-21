@@ -1,7 +1,6 @@
 """Party Mode service for managing party sessions."""
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_, or_, case
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy import select, func, and_
 from datetime import datetime, UTC, timedelta
 from typing import Optional, List, Dict
 from uuid import UUID
@@ -16,10 +15,10 @@ from backend.models.qf.party_participant import PartyParticipant
 from backend.models.qf.party_round import PartyRound
 from backend.models.qf.party_phraseset import PartyPhraseset
 from backend.models.qf.round import Round
-from backend.models.qf.phraseset import Phraseset
 from backend.config import get_settings
 from backend.services.ai.ai_service import AI_PLAYER_EMAIL_DOMAIN
 from backend.utils.exceptions import QuipflipException
+from backend.utils.model_registry import GameType, AIPlayerType
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -369,14 +368,12 @@ class PartySessionService:
         self,
         session_id: UUID,
         host_player_id: UUID,
-        game_type: "GameType",
     ) -> PartyParticipant:
         """Add an AI player to the session (host only, lobby only).
 
         Args:
             session_id: UUID of the session
             host_player_id: UUID of the host player (for verification)
-            game_type: Game type for AI player creation
 
         Returns:
             PartyParticipant: Created AI participant
@@ -408,40 +405,13 @@ class PartySessionService:
 
         # Get or create AI player
         from backend.services.ai.ai_service import AIService, AI_PLAYER_EMAIL_DOMAIN
-        
-        # Try to find an available AI player (pooling)
-        # Find an AI player that is NOT in any active session
-        available_ai_stmt = (
-            select(QFPlayer)
-            .outerjoin(PartyParticipant, QFPlayer.player_id == PartyParticipant.player_id)
-            .outerjoin(PartySession, PartyParticipant.session_id == PartySession.session_id)
-            .where(QFPlayer.email.like(f"ai_party_%{AI_PLAYER_EMAIL_DOMAIN}"))
-            .group_by(QFPlayer.player_id)
-            .having(
-                or_(
-                    func.count(PartySession.session_id) == 0,  # No sessions at all
-                    func.sum(
-                        case(
-                            (PartySession.status.in_(['OPEN', 'IN_PROGRESS']), 1),
-                            else_=0
-                        )
-                    ) == 0  # No active sessions
-                )
-            )
-            .limit(1)
+        result = await self.db.execute(
+            select(PartyParticipant.player_id).join(PartySession).where(
+                PartySession.status.in_(['OPEN', 'IN_PROGRESS']),
+                QFPlayer.email.like(f"ai_party_%{AI_PLAYER_EMAIL_DOMAIN}"))
         )
-        
-        result = await self.db.execute(available_ai_stmt)
-        ai_player = result.scalar_one_or_none()
-        
-        if not ai_player:
-            # Create new AI player if none available
-            ai_player = await AIService(self.db).get_or_create_ai_player(
-                game_type=game_type,
-                email=f"ai_party_{uuid.uuid4().hex[:4]}{AI_PLAYER_EMAIL_DOMAIN}",
-            )
-        else:
-            logger.info(f"Reusing pooled AI player {ai_player.player_id} for session {session_id}")
+        active_pool_players = list({row.player_id for row in result.fetchall()})
+        ai_player = await AIService(self.db).get_or_create_ai_player(AIPlayerType.QF_PARTY, excluded=active_pool_players)
 
         # Create participant
         participant = PartyParticipant(
