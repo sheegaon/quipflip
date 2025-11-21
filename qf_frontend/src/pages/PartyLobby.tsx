@@ -301,11 +301,6 @@ export const PartyLobby: React.FC = () => {
                         YOU
                       </span>
                     )}
-                    {participant.is_ai && (
-                      <span className="px-2 py-1 text-xs font-semibold text-quip-navy bg-quip-cream border border-quip-navy rounded-tile">
-                        AI
-                      </span>
-                    )}
                   </div>
                   <span className={`text-sm font-semibold ${
                     participant.status === 'READY' ? 'text-quip-turquoise' : 'text-gray-500'
