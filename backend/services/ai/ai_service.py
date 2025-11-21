@@ -12,7 +12,7 @@ from uuid import UUID
 
 from datetime import datetime, timedelta, UTC
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from backend.config import get_settings
@@ -22,6 +22,7 @@ from backend.models.qf.phraseset import Phraseset
 from backend.models.qf.phraseset_activity import PhrasesetActivity
 from backend.models.qf.vote import Vote
 from backend.models.qf.ai_phrase_cache import QFAIPhraseCache
+from backend.models.qf.ai_quip_cache import QFAIQuipCache, QFAIQuipPhrase, QFAIQuipPhraseUsage
 from backend.services.ai.metrics_service import AIMetricsService, MetricsTracker
 from backend.services.qf import QueueService
 from backend.utils.model_registry import GameType
@@ -256,12 +257,13 @@ class AIService:
         )
         return result.scalars().first()
 
-    async def generate_prompt_response(self, prompt_text: str) -> str:
+    async def generate_prompt_response(self, prompt_text: str, prompt_round_id: UUID) -> str:
         """
-        Generate a creative phrase for a prompt round.
+        Generate or reuse a creative quip for a quip round, with caching.
 
         Args:
             prompt_text: The prompt to respond to
+            prompt_round_id: The quip round ID consuming the cached phrase
 
         Returns:
             Generated phrase
@@ -269,67 +271,179 @@ class AIService:
         Raises:
             AICopyError: If generation fails
         """
-        from backend.services.ai.prompt_builder import build_party_prompt_generation
+        if not prompt_round_id:
+            raise AICopyError("prompt_round_id is required to track cached quip usage")
 
         try:
-            # Build prompt for phrase generation
-            ai_prompt = build_party_prompt_generation(prompt_text)
-            common_words = await self.get_common_words()
-            if not isinstance(common_words, (list, tuple)):
-                logger.warning(f"common_words is not iterable: {type(common_words)}, using empty list")
-                common_words = []
+            cache = await self._get_or_create_quip_cache(prompt_text)
+            phrase = await self._select_cached_quip_phrase(cache)
 
-            common_words = [word for word in common_words if len(word) > 3]
-            ai_prompt = ai_prompt.format(common_words=", ".join(common_words))
+            usage = QFAIQuipPhraseUsage(phrase_id=phrase.phrase_id, prompt_round_id=prompt_round_id)
+            self.db.add(usage)
+            await self.db.flush()
 
-            # Generate using configured provider
-            if self.provider == "openai":
-                test_phrases = await openai_generate_response(
-                    prompt=ai_prompt, model=self.ai_model, timeout=self.settings.ai_timeout_seconds)
-            else:  # gemini
-                test_phrases = await gemini_generate_response(
-                    prompt=ai_prompt, model=self.ai_model, timeout=self.settings.ai_timeout_seconds)
-            test_phrases = test_phrases.split(";")
-
-            # Validate all phrases and pick the first valid one
-            validated_phrases = []
-            errors = []
-            for test_phrase in test_phrases:
-                test_phrase = test_phrase.strip()
-                if not test_phrase:
-                    continue
-
-                # Validate length
-                if len(test_phrase) < 4:
-                    error_message = "Phrase too short"
-                    errors.append((test_phrase, error_message))
-                    logger.info(f"AI generated invalid prompt phrase '{test_phrase}': {error_message}")
-                    continue
-                elif len(test_phrase) > 100:
-                    error_message = "Phrase too long"
-                    errors.append((test_phrase, error_message))
-                    logger.info(f"AI generated invalid prompt phrase '{test_phrase}': {error_message}")
-                    continue
-
-                is_valid, error_message = await self.phrase_validator.validate_prompt_phrase(
-                    test_phrase, prompt_text)
-                if is_valid:
-                    validated_phrases.append(test_phrase)
-                else:
-                    errors.append((test_phrase, error_message))
-                    logger.info(f"AI generated invalid prompt phrase '{test_phrase}': {error_message}")
-
-            if not validated_phrases:
-                raise AICopyError(f"AI generated no valid phrases for prompt '{prompt_text}': {errors=}")
-
-            phrase = validated_phrases[0]
-
-            logger.info(f"AI ({self.provider}) generated party prompt phrase: {phrase}")
-            return phrase
+            logger.info(
+                "AI (%s) provided cached quip phrase for round %s (phrase_id=%s)",
+                self.provider,
+                prompt_round_id,
+                phrase.phrase_id,
+            )
+            return phrase.phrase_text
 
         except Exception as e:
             logger.error(f"Failed to generate prompt phrase: {e}")
             raise AICopyError(f"Prompt generation failed: {str(e)}") from e
+
+    async def _get_or_create_quip_cache(self, prompt_text: str) -> QFAIQuipCache:
+        """Fetch or build a cache of validated quip responses for a prompt."""
+        from backend.services.ai.prompt_builder import build_party_prompt_generation
+        from backend.utils import lock_client
+
+        normalized_prompt = prompt_text.strip()
+        if not normalized_prompt:
+            raise AICopyError("Prompt text is required for quip generation")
+
+        lock_name = f"ai_quip_generation:{normalized_prompt.lower()}"
+
+        try:
+            with lock_client.lock(lock_name, timeout=30):
+                cache_result = await self.db.execute(
+                    select(QFAIQuipCache)
+                    .options(selectinload(QFAIQuipCache.phrases))
+                    .where(QFAIQuipCache.prompt_text == normalized_prompt)
+                    .order_by(QFAIQuipCache.created_at.desc())
+                    .limit(1)
+                )
+                existing_cache = cache_result.scalars().first()
+                if existing_cache and existing_cache.phrases:
+                    return existing_cache
+
+                ai_prompt = build_party_prompt_generation(normalized_prompt)
+                common_words = await self.get_common_words()
+                if not isinstance(common_words, (list, tuple)):
+                    logger.warning(
+                        "common_words is not iterable: %s, using empty list", type(common_words)
+                    )
+                    common_words = []
+
+                common_words = [word for word in common_words if len(word) > 3]
+                ai_prompt = ai_prompt.format(common_words=", ".join(common_words))
+
+                if self.provider == "openai":
+                    test_phrases = await openai_generate_response(
+                        prompt=ai_prompt, model=self.ai_model, timeout=self.settings.ai_timeout_seconds
+                    )
+                else:  # gemini
+                    test_phrases = await gemini_generate_response(
+                        prompt=ai_prompt, model=self.ai_model, timeout=self.settings.ai_timeout_seconds
+                    )
+                test_phrases = test_phrases.split(";")
+
+                validated_phrases = []
+                errors = []
+                for test_phrase in test_phrases:
+                    test_phrase = test_phrase.strip()
+                    if not test_phrase:
+                        continue
+
+                    if len(test_phrase) < 4:
+                        error_message = "Phrase too short"
+                        errors.append((test_phrase, error_message))
+                        logger.info(
+                            "AI generated invalid prompt phrase '%s': %s", test_phrase, error_message
+                        )
+                        continue
+                    if len(test_phrase) > 100:
+                        error_message = "Phrase too long"
+                        errors.append((test_phrase, error_message))
+                        logger.info(
+                            "AI generated invalid prompt phrase '%s': %s", test_phrase, error_message
+                        )
+                        continue
+
+                    is_valid, error_message = await self.phrase_validator.validate_prompt_phrase(
+                        test_phrase, normalized_prompt
+                    )
+                    if is_valid:
+                        validated_phrases.append(test_phrase)
+                    else:
+                        errors.append((test_phrase, error_message))
+                        logger.info(
+                            "AI generated invalid prompt phrase '%s': %s", test_phrase, error_message
+                        )
+
+                if not validated_phrases:
+                    raise AICopyError(
+                        f"AI generated no valid phrases for prompt '{normalized_prompt}': {errors=}"
+                    )
+
+                cache = QFAIQuipCache(
+                    prompt_text=normalized_prompt,
+                    generation_provider=self.provider,
+                    generation_model=self.ai_model,
+                )
+                self.db.add(cache)
+                await self.db.flush()
+
+                for phrase in validated_phrases:
+                    self.db.add(QFAIQuipPhrase(cache_id=cache.cache_id, phrase_text=phrase))
+
+                await self.db.flush()
+                logger.info(
+                    "AI (%s) generated and cached %s quip phrase(s) for prompt '%s'",
+                    self.provider,
+                    len(validated_phrases),
+                    normalized_prompt,
+                )
+                return cache
+
+        except TimeoutError:
+            logger.warning(
+                "Could not acquire lock for AI quip generation of prompt '%s', another process may be handling it",
+                normalized_prompt,
+            )
+            fallback = await self.db.execute(
+                select(QFAIQuipCache)
+                .options(selectinload(QFAIQuipCache.phrases))
+                .where(QFAIQuipCache.prompt_text == normalized_prompt)
+                .order_by(QFAIQuipCache.created_at.desc())
+                .limit(1)
+            )
+            cache = fallback.scalars().first()
+            if cache:
+                return cache
+            raise AICopyError("Quip cache unavailable after lock timeout")
+
+    async def _select_cached_quip_phrase(self, cache: QFAIQuipCache) -> QFAIQuipPhrase:
+        """Pick the least-used cached quip phrase, allowing reuse when needed."""
+        usage_counts = (
+            select(
+                QFAIQuipPhraseUsage.phrase_id,
+                func.count(QFAIQuipPhraseUsage.usage_id).label("use_count"),
+            )
+            .group_by(QFAIQuipPhraseUsage.phrase_id)
+            .subquery()
+        )
+
+        phrase_result = await self.db.execute(
+            select(QFAIQuipPhrase, func.coalesce(usage_counts.c.use_count, 0))
+            .outerjoin(usage_counts, QFAIQuipPhrase.phrase_id == usage_counts.c.phrase_id)
+            .where(QFAIQuipPhrase.cache_id == cache.cache_id)
+            .order_by(func.coalesce(usage_counts.c.use_count, 0).asc(), QFAIQuipPhrase.created_at.asc())
+            .limit(1)
+        )
+        selection = phrase_result.first()
+        if not selection:
+            raise AICopyError("No cached quip phrases available")
+
+        phrase, use_count = selection
+        logger.debug(
+            "Selected cached quip phrase %s with %s prior use(s) for cache %s",
+            phrase.phrase_id,
+            use_count,
+            cache.cache_id,
+        )
+        return phrase
 
     async def generate_and_cache_copy_phrases(self, prompt_round: Round) -> QFAIPhraseCache:
         """

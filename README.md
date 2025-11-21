@@ -5,9 +5,11 @@ A multiplayer phrase association game with flipcoin stakes (the in-game currency
 ## 🎮 Game Overview
 
 Quipflip is a three-phase game where players:
-1. **Prompt** - Submit a phrase for a creative prompt (100f)
-2. **Copy** - Submit a similar phrase without seeing the prompt (50f or 40f with the queue discount)
+1. **Quip (formerly Prompt)** - Submit a phrase for a creative prompt (100f)
+2. **Impostor (formerly Copy)** - Submit a similar phrase without seeing the prompt (50f or 40f with the queue discount)
 3. **Vote** - Identify the original phrase from three options (10f)
+
+> **Terminology refresh:** The codebase is transitioning to "quip round" (prompt role) and "impostor round" (copy role). Older references still appear while the migration proceeds.
 
 Winners split a prize pool based on vote performance. See full game rules below.
 
