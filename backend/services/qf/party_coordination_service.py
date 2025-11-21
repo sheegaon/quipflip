@@ -694,24 +694,30 @@ class PartyCoordinationService:
         try:
             # Get session
             session = await self.party_session_service.get_session_by_id(session_id)
+            logger.info(f"🤖 [AI PROCESS] Session {session_id} - status: {session.status if session else 'NOT_FOUND'}, phase: {session.current_phase if session else 'N/A'}")
+
             if not session or session.status != 'IN_PROGRESS':
-                logger.info(f"Session {session_id} not in progress, skipping AI submissions")
+                logger.info(f"🤖 [AI PROCESS] Session {session_id} not in progress, skipping AI submissions")
                 return stats
 
             # Get all participants
             participants = await self.party_session_service.get_participants(session_id)
+            logger.info(f"🤖 [AI PROCESS] Found {len(participants)} total participants in session {session_id}")
 
             # Filter AI participants (check if email contains AI_PLAYER_EMAIL_DOMAIN)
             ai_participants = []
             for p in participants:
-                if p.player and AI_PLAYER_EMAIL_DOMAIN in p.player.email:
+                player_email = p.player.email if p.player else 'NO_EMAIL'
+                is_ai = p.player and AI_PLAYER_EMAIL_DOMAIN in p.player.email
+                logger.info(f"🤖 [AI PROCESS] Participant {p.participant_id}: email={player_email}, is_ai={is_ai}, prompts={p.prompts_submitted}/{session.prompts_per_player}")
+                if is_ai:
                     ai_participants.append(p)
 
             if not ai_participants:
-                logger.info(f"No AI participants in session {session_id}")
+                logger.info(f"🤖 [AI PROCESS] No AI participants found in session {session_id}")
                 return stats
 
-            logger.info(f"Processing {len(ai_participants)} AI participants for {session.current_phase} phase")
+            logger.info(f"🤖 [AI PROCESS] Processing {len(ai_participants)} AI participants for {session.current_phase} phase")
 
             # Initialize AI service
             ai_service = AIService(self.db)
@@ -719,10 +725,15 @@ class PartyCoordinationService:
             # Process each AI participant based on current phase
             for participant in ai_participants:
                 try:
+                    logger.info(f"🤖 [AI SUBMIT] Processing participant {participant.player.username} for {session.current_phase} phase")
+
                     if session.current_phase == 'PROMPT':
                         # Check if AI has submitted all prompts
                         if participant.prompts_submitted >= session.prompts_per_player:
+                            logger.info(f"🤖 [AI SUBMIT] {participant.player.username} already submitted {participant.prompts_submitted} prompts, skipping")
                             continue
+
+                        logger.info(f"🤖 [AI SUBMIT] {participant.player.username} needs to submit prompt ({participant.prompts_submitted}/{session.prompts_per_player})")
 
                         # Get a random prompt for AI to respond to
                         prompt_result = await self.db.execute(
@@ -734,20 +745,26 @@ class PartyCoordinationService:
                         prompt = prompt_result.scalar_one_or_none()
 
                         if not prompt:
-                            logger.warning("No prompts available for AI")
+                            logger.warning(f"🤖 [AI SUBMIT] No prompts available for AI player {participant.player.username}")
                             continue
+
+                        logger.info(f"🤖 [AI SUBMIT] Selected prompt for {participant.player.username}: '{prompt.prompt_text}'")
 
                         # Generate phrase for prompt
                         phrase = await ai_service.generate_prompt_response(prompt.prompt_text)
+                        logger.info(f"🤖 [AI SUBMIT] Generated response for {participant.player.username}: '{phrase}'")
 
                         # Submit prompt round
+                        logger.info(f"🤖 [AI SUBMIT] Starting prompt round for {participant.player.username}")
                         round_obj, party_round_id = await self.start_party_prompt_round(
                             session_id=session_id,
                             player=participant.player,
                             transaction_service=transaction_service,
                         )
+                        logger.info(f"🤖 [AI SUBMIT] Created round {round_obj.round_id} for {participant.player.username}")
 
                         # Submit phrase
+                        logger.info(f"🤖 [AI SUBMIT] Submitting phrase for {participant.player.username}")
                         await self.submit_party_prompt(
                             session_id=session_id,
                             player=participant.player,
@@ -758,7 +775,7 @@ class PartyCoordinationService:
 
                         stats['prompts_submitted'] += 1
                         logger.info(
-                            f"AI player {participant.player.username} submitted prompt: {phrase}"
+                            f"🤖 [AI SUBMIT] ✅ AI player {participant.player.username} submitted prompt: '{phrase}'"
                         )
 
                     elif session.current_phase == 'COPY':
@@ -871,20 +888,20 @@ class PartyCoordinationService:
                         )
 
                 except (AICopyError, AIVoteError) as e:
-                    logger.error(f"AI submission error for {participant.player.username}: {e}")
+                    logger.error(f"🤖 [AI SUBMIT] ❌ AI-specific error for {participant.player.username}: {e}")
                     stats['errors'] += 1
                 except Exception as e:
                     logger.error(
-                        f"Unexpected error processing AI {participant.player.username}: {e}",
+                        f"🤖 [AI SUBMIT] ❌ Unexpected error processing AI {participant.player.username}: {e}",
                         exc_info=True,
                     )
                     stats['errors'] += 1
 
-            logger.info(f"AI submissions processed for session {session_id}: {stats}")
+            logger.info(f"🤖 [AI PROCESS] ✅ AI submissions processed for session {session_id}: {stats}")
             return stats
 
         except Exception as e:
-            logger.error(f"Error processing AI submissions for session {session_id}: {e}")
+            logger.error(f"🤖 [AI PROCESS] ❌ Fatal error processing AI submissions for session {session_id}: {e}", exc_info=True)
             stats['errors'] += 1
             return stats
 
@@ -903,11 +920,11 @@ class PartyCoordinationService:
             transaction_service: Transaction service for database operations
         """
         try:
-            logger.info(f"Triggering automatic AI submissions for session {session_id}")
+            logger.info(f"🤖 [AI TRIGGER] Starting automatic AI submissions for session {session_id}")
             stats = await self.process_ai_submissions(session_id, transaction_service)
-            logger.info(f"Automatic AI submissions completed for session {session_id}: {stats}")
+            logger.info(f"🤖 [AI TRIGGER] Completed AI submissions for session {session_id}: {stats}")
         except Exception as e:
             logger.error(
-                f"Failed to process automatic AI submissions for session {session_id}: {e}",
+                f"🤖 [AI TRIGGER] Failed to process automatic AI submissions for session {session_id}: {e}",
                 exc_info=True
             )
