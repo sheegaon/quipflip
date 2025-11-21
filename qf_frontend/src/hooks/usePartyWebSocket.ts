@@ -16,6 +16,7 @@ import type {
 
 export interface UsePartyWebSocketOptions {
   sessionId: string;
+  pageContext?: 'lobby' | 'game' | 'other';
   onPhaseTransition?: (data: { old_phase: string; new_phase: string; message: string }) => void;
   onPlayerJoined?: (data: { player_id: string; username: string; participant_count: number }) => void;
   onPlayerLeft?: (data: { player_id: string; username: string; participant_count: number }) => void;
@@ -53,6 +54,7 @@ export function usePartyWebSocket(
 ): UsePartyWebSocketReturn {
   const { state } = useGame();
   const { sessionId } = options;
+  const pageContext = options.pageContext ?? 'other';
 
   const [connected, setConnected] = useState(false);
   const [connecting, setConnecting] = useState(false);
@@ -61,7 +63,6 @@ export function usePartyWebSocket(
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttemptsRef = useRef(0);
-  const maxReconnectAttempts = 5;
   const isRateLimitedRef = useRef(false);
   const rateLimitCooldownRef = useRef<NodeJS.Timeout | null>(null);
   const isAuthorizationErrorRef = useRef(false);
@@ -102,7 +103,7 @@ export function usePartyWebSocket(
       const { token } = await apiClient.getWebsocketToken();
 
       // Construct WebSocket URL
-      const wsUrl = `${WS_BASE_URL}/qf/party/${sessionId}/ws?token=${token}`;
+      const wsUrl = `${WS_BASE_URL}/qf/party/${sessionId}/ws?token=${token}&context=${pageContext}`;
 
       console.log('🔌 Connecting to Party WebSocket:', wsUrl);
 
@@ -115,6 +116,10 @@ export function usePartyWebSocket(
         setConnecting(false);
         setError(null);
         reconnectAttemptsRef.current = 0;
+        if (reconnectTimeoutRef.current) {
+          clearTimeout(reconnectTimeoutRef.current);
+          reconnectTimeoutRef.current = null;
+        }
       };
 
       ws.onmessage = (event) => {
@@ -210,21 +215,8 @@ export function usePartyWebSocket(
           return;
         }
 
-        // Attempt reconnection if not max attempts and not rate limited
-        if (reconnectAttemptsRef.current < maxReconnectAttempts && !isRateLimitedRef.current) {
-          // Start with 5 second delay, then exponential backoff up to 60 seconds
-          const delay = Math.min(5000 * Math.pow(2, reconnectAttemptsRef.current), 60000);
-          console.log(`🔄 Reconnecting in ${delay}ms (attempt ${reconnectAttemptsRef.current + 1}/${maxReconnectAttempts})`);
-
-          reconnectTimeoutRef.current = setTimeout(() => {
-            reconnectAttemptsRef.current++;
-            connect();
-          }, delay);
-        } else if (isRateLimitedRef.current) {
-          console.log('⏸️ Reconnection paused due to rate limiting');
-        } else {
-          setError('Maximum reconnection attempts reached');
-        }
+        // Attempt reconnection if not rate limited or permanently unauthorized
+        scheduleReconnect();
       };
     } catch (err) {
       console.error('Failed to connect WebSocket:', err);
@@ -254,14 +246,35 @@ export function usePartyWebSocket(
           isRateLimitedRef.current = false;
           reconnectAttemptsRef.current = 0; // Reset attempts after cooldown
           setError(null);
+          scheduleReconnect();
         }, 60000);
       } else {
         setError(errorMessage);
+        scheduleReconnect();
       }
 
       setConnecting(false);
     }
-  }, [state.isAuthenticated, sessionId]);
+  }, [state.isAuthenticated, sessionId, pageContext]);
+
+  const scheduleReconnect = () => {
+    if (isRateLimitedRef.current || isAuthorizationErrorRef.current) {
+      return;
+    }
+
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+
+    const attempt = reconnectAttemptsRef.current;
+    const delay = Math.min(30000, 2000 * Math.pow(2, attempt));
+    reconnectAttemptsRef.current += 1;
+
+    reconnectTimeoutRef.current = setTimeout(() => {
+      connect();
+    }, delay);
+  };
 
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
@@ -283,6 +296,7 @@ export function usePartyWebSocket(
     setConnecting(false);
     isRateLimitedRef.current = false;
     isAuthorizationErrorRef.current = false;
+    reconnectAttemptsRef.current = 0;
   }, []);
 
   const reconnect = useCallback(() => {

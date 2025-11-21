@@ -18,8 +18,8 @@ class PartyWebSocketManager:
     """
 
     def __init__(self):
-        # Map session_id (str) → { player_id (str): WebSocket }
-        self.session_connections: Dict[str, Dict[str, "WebSocket"]] = {}
+        # Map session_id (str) → { player_id (str): { 'websocket': WebSocket, 'context': str | None } }
+        self.session_connections: Dict[str, Dict[str, Dict[str, object]]] = {}
 
     async def connect(
         self,
@@ -27,6 +27,7 @@ class PartyWebSocketManager:
         player_id: UUID,
         websocket: "WebSocket",
         db: AsyncSession = None,
+        context: str | None = None,
     ) -> None:
         """Add player's WebSocket connection to a session.
 
@@ -35,6 +36,7 @@ class PartyWebSocketManager:
             player_id: UUID of the player
             websocket: WebSocket connection to add
             db: Optional database session to update connection status
+            context: Optional string describing where the connection originated (e.g., 'lobby')
         """
         await websocket.accept()
 
@@ -45,8 +47,11 @@ class PartyWebSocketManager:
         if session_id_str not in self.session_connections:
             self.session_connections[session_id_str] = {}
 
-        # Store player's connection
-        self.session_connections[session_id_str][player_id_str] = websocket
+        # Store player's connection and context
+        self.session_connections[session_id_str][player_id_str] = {
+            'websocket': websocket,
+            'context': context,
+        }
 
         # Update participant connection status in database
         if db:
@@ -70,13 +75,13 @@ class PartyWebSocketManager:
                 participant.connection_status = 'connected'
                 participant.last_activity_at = datetime.now(UTC)
                 participant.disconnected_at = None
-                if session.status == 'OPEN':
+                if session.status == 'OPEN' and context == 'lobby':
                     participant.status = 'READY'
                     participant.ready_at = datetime.now(UTC)
                 await db.commit()
                 logger.info(f"Updated participant {player_id} to connected status")
 
-                if session.status == 'OPEN':
+                if session.status == 'OPEN' and context == 'lobby':
                     await self.notify_session_update(
                         session_id=session_id,
                         session_status={
@@ -95,6 +100,7 @@ class PartyWebSocketManager:
         session_id: UUID,
         player_id: UUID,
         db: AsyncSession = None,
+        context: str | None = None,
     ) -> None:
         """Remove player's WebSocket connection from a session.
 
@@ -106,8 +112,12 @@ class PartyWebSocketManager:
         session_id_str = str(session_id)
         player_id_str = str(player_id)
 
+        connection_context = context
+
         if session_id_str in self.session_connections:
-            if player_id_str in self.session_connections[session_id_str]:
+            player_connection = self.session_connections[session_id_str].get(player_id_str)
+            if player_connection:
+                connection_context = connection_context or player_connection.get('context')
                 del self.session_connections[session_id_str][player_id_str]
                 logger.info(f"WebSocket disconnected for player {player_id} in session {session_id}")
 
@@ -133,13 +143,13 @@ class PartyWebSocketManager:
                         participant.connection_status = 'disconnected'
                         participant.disconnected_at = datetime.now(UTC)
                         participant.last_activity_at = datetime.now(UTC)
-                        if session.status == 'OPEN':
+                        if session.status == 'OPEN' and connection_context == 'lobby':
                             participant.status = 'JOINED'
                             participant.ready_at = None
                         await db.commit()
                         logger.info(f"Updated participant {player_id} to disconnected status")
 
-                        if session.status == 'OPEN':
+                        if session.status == 'OPEN' and connection_context == 'lobby':
                             await self.notify_session_update(
                                 session_id=session_id,
                                 session_status={
@@ -177,7 +187,15 @@ class PartyWebSocketManager:
 
         disconnected = []
 
-        for player_id_str, websocket in connections.items():
+        for player_id_str, connection in connections.items():
+            websocket = connection.get('websocket') if isinstance(connection, dict) else None
+
+            if websocket is None:
+                logger.debug(
+                    f"No websocket found for player {player_id_str} in session {session_id}, skipping"
+                )
+                disconnected.append(player_id_str)
+                continue
             # Skip excluded player
             if exclude_player_id_str and player_id_str == exclude_player_id_str:
                 continue
@@ -227,7 +245,14 @@ class PartyWebSocketManager:
             return
 
         try:
-            websocket = self.session_connections[session_id_str][player_id_str]
+            connection = self.session_connections[session_id_str][player_id_str]
+            websocket = connection.get('websocket') if isinstance(connection, dict) else None
+            if websocket is None:
+                logger.debug(
+                    f"Missing websocket for player {player_id} in session {session_id}, removing stale connection"
+                )
+                await self.disconnect(session_id, player_id)
+                return
             await websocket.send_json(message)
             logger.debug(f"Sent message to player {player_id} in session {session_id}")
         except Exception as e:
