@@ -7,8 +7,9 @@ Create Date: 2025-03-17 00:00:00.000000
 """
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
+from backend.migrations.util import get_uuid_type
 
 
 # revision identifiers, used by Alembic.
@@ -19,10 +20,12 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    uuid = get_uuid_type()
+
     op.create_table(
         'qf_ai_quip_cache',
-        sa.Column('cache_id', sa.String(length=36), nullable=False),
-        sa.Column('prompt_id', sa.String(length=36), nullable=True),
+        sa.Column('cache_id', uuid, nullable=False),
+        sa.Column('prompt_id', uuid, nullable=True),
         sa.Column('prompt_text', sa.String(length=500), nullable=False),
         sa.Column('generation_provider', sa.String(length=50), nullable=False),
         sa.Column('generation_model', sa.String(length=100), nullable=False),
@@ -34,8 +37,8 @@ def upgrade() -> None:
 
     op.create_table(
         'qf_ai_quip_phrase',
-        sa.Column('phrase_id', sa.String(length=36), nullable=False),
-        sa.Column('cache_id', sa.String(length=36), nullable=False),
+        sa.Column('phrase_id', uuid, nullable=False),
+        sa.Column('cache_id', uuid, nullable=False),
         sa.Column('phrase_text', sa.String(length=100), nullable=False),
         sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
         sa.ForeignKeyConstraint(['cache_id'], ['qf_ai_quip_cache.cache_id'], ondelete='CASCADE'),
@@ -45,9 +48,9 @@ def upgrade() -> None:
 
     op.create_table(
         'qf_ai_quip_phrase_usage',
-        sa.Column('usage_id', sa.String(length=36), nullable=False),
-        sa.Column('phrase_id', sa.String(length=36), nullable=False),
-        sa.Column('prompt_round_id', sa.String(length=36), nullable=True),
+        sa.Column('usage_id', uuid, nullable=False),
+        sa.Column('phrase_id', uuid, nullable=False),
+        sa.Column('prompt_round_id', uuid, nullable=True),
         sa.Column('used_at', sa.DateTime(timezone=True), nullable=False),
         sa.ForeignKeyConstraint(['phrase_id'], ['qf_ai_quip_phrase.phrase_id'], ondelete='CASCADE'),
         sa.ForeignKeyConstraint(['prompt_round_id'], ['qf_rounds.round_id'], ondelete='SET NULL'),
