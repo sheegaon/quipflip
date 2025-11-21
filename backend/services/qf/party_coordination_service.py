@@ -27,6 +27,7 @@ from backend.services.qf.party_session_service import (
     PartyModeError,
 )
 from backend.services.qf.party_websocket_manager import get_party_websocket_manager
+from backend.services.qf.queue_service import QueueService
 from backend.config import get_settings
 from backend.utils.exceptions import NoPromptsAvailableError, NoPhrasesetsAvailableError
 from backend.services.ai.ai_service import AI_PLAYER_EMAIL_DOMAIN
@@ -561,8 +562,8 @@ class PartyCoordinationService:
     ) -> Optional[UUID]:
         """Get eligible prompt round for player to copy.
 
-        Prioritizes party prompts, then falls back to global pool.
-        Excludes:
+        Prioritizes party prompts, then falls back to global pool while filtering out
+        any prompts written by players in the current party. Excludes:
         - Player's own prompts
         - Prompts already copied by this player
         - Prompts player abandoned
@@ -574,7 +575,16 @@ class PartyCoordinationService:
         Returns:
             UUID of eligible prompt round, or None if none available
         """
-        # Get party rounds for this session (PROMPT phase only)
+        # Prompts this player has already copied
+        result = await self.db.execute(
+            select(Round.prompt_round_id)
+            .where(Round.player_id == player_id)
+            .where(Round.round_type == 'copy')
+            .distinct()
+        )
+        already_copied = {row[0] for row in result.all() if row[0]}
+
+        # Party prompts (PROMPT phase only)
         result = await self.db.execute(
             select(PartyRound)
             .where(PartyRound.session_id == session_id)
@@ -584,44 +594,60 @@ class PartyCoordinationService:
         party_prompt_rounds = result.scalars().all()
         party_prompt_round_ids = [pr.round_id for pr in party_prompt_rounds]
 
-        # Get party prompts player hasn't copied yet
         if party_prompt_round_ids:
-            # Get prompts this player has already copied
-            result = await self.db.execute(
-                select(Round.prompt_round_id)
-                .where(Round.player_id == player_id)
-                .where(Round.round_type == 'copy')
-                .where(Round.prompt_round_id.in_(party_prompt_round_ids))
-                .distinct()
-            )
-            already_copied = {row[0] for row in result.all()}
-
-            # Filter eligible party prompts
-            eligible_party_prompts = [
-                pr for pr in party_prompt_rounds
-                if pr.round_id not in already_copied
-            ]
-
-            # Exclude player's own prompts
             result = await self.db.execute(
                 select(Round.round_id, Round.player_id)
-                .where(Round.round_id.in_([pr.round_id for pr in eligible_party_prompts]))
+                .where(Round.round_id.in_(party_prompt_round_ids))
             )
-            prompt_players = {round_id: player_id for round_id, player_id in result.all()}
+            prompt_players = {round_id: prompt_player_id for round_id, prompt_player_id in result.all()}
 
             eligible_party_prompts = [
-                pr for pr in eligible_party_prompts
-                if prompt_players.get(pr.round_id) != player_id
+                pr
+                for pr in party_prompt_rounds
+                if pr.round_id not in already_copied
+                and prompt_players.get(pr.round_id) not in {player_id, None}
             ]
 
             if eligible_party_prompts:
-                # Return first eligible party prompt
                 return eligible_party_prompts[0].round_id
 
-        # Fallback to global pool via queue service
-        # This will handle abandoned prompts, flagged prompts, etc.
-        # For now, return None to signal no party prompts available
-        # The round service will handle global queue assignment
+        # Fallback: reuse prompt rounds from the global queue that are not authored by
+        # anyone currently in the party session.
+        participants = await self.party_session_service.get_participants(session_id)
+        party_player_ids = {p.player_id for p in participants if p.player_id}
+        skipped_prompt_ids: list[UUID] = []
+        queue_length = QueueService.get_prompt_rounds_waiting()
+
+        for _ in range(queue_length):
+            prompt_round_id = QueueService.get_next_prompt_round()
+            if not prompt_round_id:
+                break
+
+            prompt_round = await self.db.get(Round, prompt_round_id)
+            if not prompt_round or prompt_round.round_type != 'prompt':
+                continue
+
+            if prompt_round.player_id in party_player_ids:
+                skipped_prompt_ids.append(prompt_round_id)
+                continue
+
+            if prompt_round.round_id in already_copied:
+                skipped_prompt_ids.append(prompt_round_id)
+                continue
+
+            if prompt_round.status != 'submitted':
+                continue
+
+            # Found an eligible prompt; requeue skipped prompts before returning
+            for skipped_id in skipped_prompt_ids:
+                QueueService.add_prompt_round_to_queue(skipped_id)
+
+            return prompt_round.round_id
+
+        # Requeue any skipped prompts if no eligible option was found
+        for skipped_id in skipped_prompt_ids:
+            QueueService.add_prompt_round_to_queue(skipped_id)
+
         return None
 
     async def _get_eligible_phraseset_for_vote(
