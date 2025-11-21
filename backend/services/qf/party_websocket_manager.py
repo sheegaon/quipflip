@@ -21,6 +21,13 @@ class PartyWebSocketManager:
         # Map session_id (str) → { player_id (str): { 'websocket': WebSocket, 'context': str | None } }
         self.session_connections: Dict[str, Dict[str, Dict[str, object]]] = {}
 
+    @staticmethod
+    def _extract_connection(connection):
+        """Return websocket and optional context regardless of storage format."""
+        if isinstance(connection, dict):
+            return connection.get('websocket'), connection.get('context')
+        return connection, None
+
     async def connect(
         self,
         session_id: UUID,
@@ -117,7 +124,8 @@ class PartyWebSocketManager:
         if session_id_str in self.session_connections:
             player_connection = self.session_connections[session_id_str].get(player_id_str)
             if player_connection:
-                connection_context = connection_context or player_connection.get('context')
+                websocket, stored_context = self._extract_connection(player_connection)
+                connection_context = connection_context or stored_context
                 del self.session_connections[session_id_str][player_id_str]
                 logger.info(f"WebSocket disconnected for player {player_id} in session {session_id}")
 
@@ -188,7 +196,7 @@ class PartyWebSocketManager:
         disconnected = []
 
         for player_id_str, connection in connections.items():
-            websocket = connection.get('websocket') if isinstance(connection, dict) else None
+            websocket, _ = self._extract_connection(connection)
 
             if websocket is None:
                 logger.debug(
@@ -246,7 +254,7 @@ class PartyWebSocketManager:
 
         try:
             connection = self.session_connections[session_id_str][player_id_str]
-            websocket = connection.get('websocket') if isinstance(connection, dict) else None
+            websocket, _ = self._extract_connection(connection)
             if websocket is None:
                 logger.debug(
                     f"Missing websocket for player {player_id} in session {session_id}, removing stale connection"
