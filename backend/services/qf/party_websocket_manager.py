@@ -1,6 +1,6 @@
 """Party Mode WebSocket manager for real-time session updates."""
 import logging
-from typing import Dict, List
+from typing import Dict
 from uuid import UUID
 from datetime import datetime, UTC
 from sqlalchemy import select, and_
@@ -20,13 +20,6 @@ class PartyWebSocketManager:
     def __init__(self):
         # Map session_id (str) → { player_id (str): { 'websocket': WebSocket, 'context': str | None } }
         self.session_connections: Dict[str, Dict[str, Dict[str, object]]] = {}
-
-    @staticmethod
-    def _extract_connection(connection):
-        """Return websocket and optional context regardless of storage format."""
-        if isinstance(connection, dict):
-            return connection.get('websocket'), connection.get('context')
-        return connection, None
 
     async def connect(
         self,
@@ -124,8 +117,8 @@ class PartyWebSocketManager:
         if session_id_str in self.session_connections:
             player_connection = self.session_connections[session_id_str].get(player_id_str)
             if player_connection:
-                websocket, stored_context = self._extract_connection(player_connection)
-                connection_context = connection_context or stored_context
+                websocket = player_connection.get('websocket')
+                connection_context = connection_context or player_connection.get('context')
                 del self.session_connections[session_id_str][player_id_str]
                 logger.info(f"WebSocket disconnected for player {player_id} in session {session_id}")
 
@@ -196,7 +189,7 @@ class PartyWebSocketManager:
         disconnected = []
 
         for player_id_str, connection in connections.items():
-            websocket, _ = self._extract_connection(connection)
+            websocket = connection.get('websocket')
 
             if websocket is None:
                 logger.debug(
@@ -254,7 +247,7 @@ class PartyWebSocketManager:
 
         try:
             connection = self.session_connections[session_id_str][player_id_str]
-            websocket, _ = self._extract_connection(connection)
+            websocket = connection.get('websocket')
             if websocket is None:
                 logger.debug(
                     f"Missing websocket for player {player_id} in session {session_id}, removing stale connection"
