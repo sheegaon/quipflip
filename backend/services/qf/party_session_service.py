@@ -1,7 +1,6 @@
 """Party Mode service for managing party sessions."""
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_, or_, case
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy import select, func, and_
 from datetime import datetime, UTC, timedelta
 from typing import Optional, List, Dict
 from uuid import UUID
@@ -16,7 +15,6 @@ from backend.models.qf.party_participant import PartyParticipant
 from backend.models.qf.party_round import PartyRound
 from backend.models.qf.party_phraseset import PartyPhraseset
 from backend.models.qf.round import Round
-from backend.models.qf.phraseset import Phraseset
 from backend.config import get_settings
 from backend.services.ai.ai_service import AI_PLAYER_EMAIL_DOMAIN
 from backend.utils.exceptions import QuipflipException
@@ -370,14 +368,12 @@ class PartySessionService:
         self,
         session_id: UUID,
         host_player_id: UUID,
-        game_type: GameType,
     ) -> PartyParticipant:
         """Add an AI player to the session (host only, lobby only).
 
         Args:
             session_id: UUID of the session
             host_player_id: UUID of the host player (for verification)
-            game_type: Game type for AI player creation
 
         Returns:
             PartyParticipant: Created AI participant
@@ -409,16 +405,13 @@ class PartySessionService:
 
         # Get or create AI player
         from backend.services.ai.ai_service import AIService, AI_PLAYER_EMAIL_DOMAIN
-        ai_service = AIService(self.db)
-        
-        # Try to find an available AI player (pooling)
         result = await self.db.execute(
             select(PartyParticipant.player_id).join(PartySession).where(
                 PartySession.status.in_(['OPEN', 'IN_PROGRESS']),
                 QFPlayer.email.like(f"ai_party_%{AI_PLAYER_EMAIL_DOMAIN}"))
         )
         active_pool_players = list({row.player_id for row in result.fetchall()})
-        ai_player = ai_service.get_or_create_ai_player(AIPlayerType.QF_PARTY, excluded=active_pool_players)
+        ai_player = AIService(self.db).get_or_create_ai_player(AIPlayerType.QF_PARTY, excluded=active_pool_players)
 
         # Create participant
         participant = PartyParticipant(

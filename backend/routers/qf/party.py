@@ -398,7 +398,6 @@ async def add_ai_player_to_session(
         participant = await party_service.add_ai_player(
             session_id=session_id,
             host_player_id=player.player_id,
-            game_type=GameType.QF,
         )
 
         # Broadcast player joined event
