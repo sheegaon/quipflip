@@ -169,6 +169,12 @@ class PartyCoordinationService:
                 message="All prompts submitted! Time to write copies.",
             )
 
+            # Trigger AI submissions for new phase (COPY)
+            await self._trigger_ai_submissions_for_new_phase(
+                session_id=session_id,
+                transaction_service=transaction_service,
+            )
+
         return {
             'success': True,
             'phrase': phrase,
@@ -316,6 +322,12 @@ class PartyCoordinationService:
                 old_phase='COPY',
                 new_phase=session.current_phase,
                 message="All copies submitted! Time to vote.",
+            )
+
+            # Trigger AI submissions for new phase (VOTE)
+            await self._trigger_ai_submissions_for_new_phase(
+                session_id=session_id,
+                transaction_service=transaction_service,
             )
 
         return {
@@ -739,8 +751,8 @@ class PartyCoordinationService:
                         await self.submit_party_prompt(
                             session_id=session_id,
                             player=participant.player,
+                            round_id=round_obj.round_id,
                             phrase=phrase,
-                            party_round_id=party_round_id,
                             transaction_service=transaction_service,
                         )
 
@@ -792,7 +804,6 @@ class PartyCoordinationService:
                         round_obj, party_round_id = await self.start_party_copy_round(
                             session_id=session_id,
                             player=participant.player,
-                            prompt_round_id=prompt_round_id,
                             transaction_service=transaction_service,
                         )
 
@@ -800,8 +811,8 @@ class PartyCoordinationService:
                         await self.submit_party_copy(
                             session_id=session_id,
                             player=participant.player,
+                            round_id=round_obj.round_id,
                             phrase=copy_phrase,
-                            party_round_id=party_round_id,
                             transaction_service=transaction_service,
                         )
 
@@ -841,7 +852,6 @@ class PartyCoordinationService:
                         round_obj, party_round_id = await self.start_party_vote_round(
                             session_id=session_id,
                             player=participant.player,
-                            phraseset_id=phraseset_id,
                             transaction_service=transaction_service,
                         )
 
@@ -849,8 +859,9 @@ class PartyCoordinationService:
                         await self.submit_party_vote(
                             session_id=session_id,
                             player=participant.player,
+                            round_id=round_obj.round_id,
+                            phraseset_id=phraseset_id,
                             phrase=chosen_phrase,
-                            party_round_id=party_round_id,
                             transaction_service=transaction_service,
                         )
 
@@ -876,3 +887,27 @@ class PartyCoordinationService:
             logger.error(f"Error processing AI submissions for session {session_id}: {e}")
             stats['errors'] += 1
             return stats
+
+    async def _trigger_ai_submissions_for_new_phase(
+        self,
+        session_id: UUID,
+        transaction_service: TransactionService,
+    ) -> None:
+        """Automatically trigger AI submissions when a new phase starts.
+
+        This method is called after phase transitions to ensure AI players
+        submit their prompts/copies/votes automatically without manual intervention.
+
+        Args:
+            session_id: The party session ID
+            transaction_service: Transaction service for database operations
+        """
+        try:
+            logger.info(f"Triggering automatic AI submissions for session {session_id}")
+            stats = await self.process_ai_submissions(session_id, transaction_service)
+            logger.info(f"Automatic AI submissions completed for session {session_id}: {stats}")
+        except Exception as e:
+            logger.error(
+                f"Failed to process automatic AI submissions for session {session_id}: {e}",
+                exc_info=True
+            )

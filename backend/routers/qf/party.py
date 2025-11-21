@@ -550,6 +550,19 @@ async def start_party_session(
             message="Party started! Everyone write your best original phrase.",
         )
 
+        # Trigger AI submissions for initial PROMPT phase (synchronous to avoid async context issues)
+        try:
+            coordination_service = PartyCoordinationService(db)
+            transaction_service = TransactionService(db)
+            await coordination_service._trigger_ai_submissions_for_new_phase(
+                session_id=session_id,
+                transaction_service=transaction_service,
+            )
+            logger.info(f"AI submissions triggered for session {session_id} PROMPT phase")
+        except Exception as e:
+            # Log but don't fail the session start if AI submissions fail
+            logger.error(f"Failed to trigger AI submissions for session {session_id}: {e}", exc_info=True)
+
         return StartPartySessionResponse(
             session_id=status_data['session_id'],
             status=status_data['status'],
@@ -1034,7 +1047,6 @@ async def party_websocket_endpoint(
         token = websocket.cookies.get(settings.access_token_cookie_name)
 
     if not token:
-        await websocket.close(code=http_status.WS_1008_POLICY_VIOLATION, reason="Authentication required")
         logger.warning("Party WebSocket connection attempted without token")
         return
 
@@ -1048,7 +1060,6 @@ async def party_websocket_endpoint(
 
             player_id_str = payload.get("sub")
             if not player_id_str:
-                await websocket.close(code=http_status.WS_1008_POLICY_VIOLATION, reason="Invalid token")
                 logger.warning("Party WebSocket token missing player_id")
                 return
 
@@ -1059,7 +1070,6 @@ async def party_websocket_endpoint(
             participant = await party_service.get_participant(session_id, player_id)
 
             if not participant:
-                await websocket.close(code=http_status.WS_1008_POLICY_VIOLATION, reason="Not in session")
                 logger.warning(f"Player {player_id} attempted to connect to session they're not in")
                 return
 
@@ -1086,4 +1096,3 @@ async def party_websocket_endpoint(
 
     except Exception as e:
         logger.warning(f"Party WebSocket authentication failed: {e}")
-        await websocket.close(code=http_status.WS_1008_POLICY_VIOLATION, reason="Authentication failed")
