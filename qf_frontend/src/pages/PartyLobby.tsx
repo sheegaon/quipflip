@@ -137,13 +137,6 @@ export const PartyLobby: React.FC = () => {
     }
   };
 
-  const handleCopyCode = () => {
-    if (sessionStatus?.party_code) {
-      navigator.clipboard.writeText(sessionStatus.party_code);
-      // Could show a toast notification here
-    }
-  };
-
   const handleAddAI = async () => {
     if (!sessionId) return;
 
@@ -234,13 +227,11 @@ export const PartyLobby: React.FC = () => {
           <div className="tile-card shadow-tile p-6 text-center bg-quip-orange bg-opacity-5 border-2 border-quip-orange">
             <h2 className="text-sm font-semibold text-quip-teal uppercase mb-2">Party Code</h2>
             <div
-              onClick={handleCopyCode}
-              className="text-5xl font-bold font-mono text-quip-orange-deep tracking-widest cursor-pointer hover:text-quip-orange transition-colors"
-              title="Click to copy"
+              className="text-5xl font-bold font-mono text-quip-orange-deep tracking-widest"
             >
               {sessionStatus.party_code}
             </div>
-            <p className="text-sm text-quip-teal mt-2">Click to copy code</p>
+            <p className="text-sm text-quip-teal mt-2">Share this code with friends to join.</p>
           </div>
 
           {/* Session Info */}

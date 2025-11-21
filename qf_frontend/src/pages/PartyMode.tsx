@@ -37,7 +37,16 @@ export const PartyMode: React.FC = () => {
       // Navigate to party lobby
       navigate(`/party/${response.session_id}`);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to create party');
+      if (axios.isAxiosError<{ detail?: string }>(err)) {
+        const detail = err.response?.data?.detail;
+        if (detail === 'already_in_another_session') {
+          setError('You already have an active party. Leave it before creating a new one.');
+        } else {
+          setError(detail || err.message || 'Failed to create party');
+        }
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to create party');
+      }
     } finally {
       setIsCreating(false);
     }

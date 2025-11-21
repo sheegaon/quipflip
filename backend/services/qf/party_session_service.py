@@ -114,6 +114,13 @@ class PartySessionService:
         Raises:
             PartyModeError: If session creation fails
         """
+        # Prevent creating multiple active sessions per player
+        existing_session = await self.get_active_session_for_player(host_player_id)
+        if existing_session:
+            raise AlreadyInAnotherSessionError(
+                f"Player {host_player_id} is already in an active party session"
+            )
+
         # Generate unique party code
         party_code = await self._generate_unique_party_code()
 
