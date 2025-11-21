@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { usePartyMode } from '../../contexts/PartyModeContext';
 import { usePartyWebSocket } from '../../hooks/usePartyWebSocket';
 import { PartyIcon } from '../icons/NavigationIcons';
 import { PartyStep } from '../../contexts/PartyModeContext';
+import apiClient, { extractErrorMessage } from '../../api/client';
 
 interface PartyRoundModalProps {
   sessionId: string;
@@ -16,8 +18,11 @@ const phaseOrder: { id: PartyStep; label: string }[] = [
 ];
 
 export const PartyRoundModal: React.FC<PartyRoundModalProps> = ({ sessionId, currentStep }) => {
+  const navigate = useNavigate();
   const { state: partyState, actions: partyActions } = usePartyMode();
   const [isOpen, setIsOpen] = useState(true);
+  const [isLeaving, setIsLeaving] = useState(false);
+  const [leaveError, setLeaveError] = useState<string | null>(null);
   const isProgressMissing = !partyState.yourProgress || !partyState.sessionConfig;
 
   // WebSocket updates will update context when other players make progress
@@ -50,6 +55,28 @@ export const PartyRoundModal: React.FC<PartyRoundModalProps> = ({ sessionId, cur
 
   const playersReady = partyState.sessionProgress?.players_ready_for_next_phase ?? 0;
   const totalPlayers = partyState.sessionProgress?.total_players ?? 0;
+
+  const handleLeaveParty = async () => {
+    if (isLeaving) return;
+
+    setIsLeaving(true);
+    setLeaveError(null);
+
+    try {
+      await apiClient.leavePartySession(sessionId);
+
+      // End party mode in context
+      partyActions.endPartyMode();
+
+      // Navigate to dashboard
+      navigate('/dashboard');
+    } catch (err) {
+      const message = extractErrorMessage(err) || 'Failed to leave party';
+      setLeaveError(message);
+    } finally {
+      setIsLeaving(false);
+    }
+  };
 
   if (!isOpen) {
     return (
@@ -154,6 +181,21 @@ export const PartyRoundModal: React.FC<PartyRoundModalProps> = ({ sessionId, cur
                 Party progress will appear once the next round response includes party context.
               </p>
             )}
+          </div>
+
+          {/* Leave Party Button */}
+          <div className="mt-4 pt-4 border-t border-quip-navy/10">
+            {leaveError && (
+              <p className="text-xs text-red-600 mb-2">{leaveError}</p>
+            )}
+            <button
+              type="button"
+              onClick={handleLeaveParty}
+              disabled={isLeaving}
+              className="w-full bg-red-500 hover:bg-red-600 disabled:bg-gray-400 text-white font-semibold py-2 px-4 rounded-tile transition-colors text-sm"
+            >
+              {isLeaving ? 'Leaving...' : 'Leave Party'}
+            </button>
           </div>
         </div>
       </div>
