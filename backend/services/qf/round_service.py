@@ -45,9 +45,12 @@ logger = logging.getLogger(__name__)
 class RoundService:
     """Service for managing game rounds."""
 
+    AVAILABLE_PROMPTS_CACHE_TTL_SECONDS = 15
+
     def __init__(self, db: AsyncSession):
         self.db = db
         self.settings = get_settings()
+        self._available_prompts_cache: dict[UUID, tuple[int, datetime]] = {}
         if self.settings.use_phrase_validator_api:
             from backend.services.phrase_validation_client import get_phrase_validation_client
             self.phrase_validator = get_phrase_validation_client()
@@ -1013,13 +1016,34 @@ class RoundService:
         - Flagged prompts
         - Prompts the player abandoned in the last 24 hours (cooldown)
         """
-        cutoff_time = datetime.now(UTC) - timedelta(hours=self.settings.abandoned_prompt_cooldown_hours)
-        
+        now = datetime.now(UTC)
+
+        cached = self._available_prompts_cache.get(player_id)
+        if cached:
+            value, expires_at = cached
+            if now < expires_at:
+                return value
+
+        cutoff_time = now - timedelta(hours=self.settings.abandoned_prompt_cooldown_hours)
+
         result = await self.db.execute(
             PromptQueryBuilder.build_available_prompts_count_query(),
             {"player_id_clean": str(player_id).replace('-', '').lower(), "cutoff_time": cutoff_time})
 
-        return result.scalar() or 0
+        available_count = result.scalar() or 0
+        self._available_prompts_cache[player_id] = (
+            available_count,
+            now + timedelta(seconds=self.AVAILABLE_PROMPTS_CACHE_TTL_SECONDS),
+        )
+
+        return available_count
+
+    def invalidate_available_prompts_cache(self, player_id: UUID | None = None) -> None:
+        """Invalidate cached available prompt counts."""
+        if player_id:
+            self._available_prompts_cache.pop(player_id, None)
+        else:
+            self._available_prompts_cache.clear()
 
     async def ensure_prompt_queue_populated(self) -> bool:
         """
