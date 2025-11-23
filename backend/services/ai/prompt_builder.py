@@ -18,7 +18,7 @@ def build_quip_prompt(prompt_text: str) -> str:
     Returns:
         A formatted prompt string for AI phrase generation
     """
-    return f"""Generate FIVE (5) creative, short phrases that responds to the following prompt.
+    return f"""Generate FIVE (5) creative, short phrases that respond to the following prompt.
 
 **Prompt: "{prompt_text}"**
 
