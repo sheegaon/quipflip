@@ -1,10 +1,14 @@
 """Party Mode WebSocket manager for real-time session updates."""
 import logging
-from typing import Dict
 from uuid import UUID
 from datetime import datetime, UTC
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from backend.services.qf.websocket_notification_service import (
+    WebSocketNotificationService,
+    get_websocket_notification_service,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -17,9 +21,12 @@ class PartyWebSocketManager:
     Each session can have multiple connected players.
     """
 
-    def __init__(self):
-        # Map session_id (str) → { player_id (str): { 'websocket': WebSocket, 'context': str | None } }
-        self.session_connections: Dict[str, Dict[str, Dict[str, object]]] = {}
+    def __init__(self, websocket_service: WebSocketNotificationService | None = None) -> None:
+        self._websocket_service = websocket_service or get_websocket_notification_service()
+
+    @staticmethod
+    def _channel_key(session_id: UUID) -> str:
+        return f"party_session:{session_id}"
 
     async def connect(
         self,
@@ -38,20 +45,9 @@ class PartyWebSocketManager:
             db: Optional database session to update connection status
             context: Optional string describing where the connection originated (e.g., 'lobby')
         """
-        await websocket.accept()
-
-        session_id_str = str(session_id)
         player_id_str = str(player_id)
 
-        # Initialize session dict if needed
-        if session_id_str not in self.session_connections:
-            self.session_connections[session_id_str] = {}
-
-        # Store player's connection and context
-        self.session_connections[session_id_str][player_id_str] = {
-            'websocket': websocket,
-            'context': context,
-        }
+        await self._websocket_service.connect(self._channel_key(session_id), player_id_str, websocket, context=context)
 
         # Update participant connection status in database
         if db:
@@ -90,10 +86,8 @@ class PartyWebSocketManager:
                         }
                     )
 
-        logger.info(
-            f"WebSocket connected for player {player_id} in session {session_id} "
-            f"(total connections in session: {len(self.session_connections[session_id_str])})"
-        )
+        connection_count = self._websocket_service.get_connection_count(self._channel_key(session_id))
+        logger.info(f"WebSocket connected for {player_id=} in {session_id=} ({connection_count=})")
 
     async def disconnect(
         self,
@@ -109,60 +103,58 @@ class PartyWebSocketManager:
             player_id: UUID of the player
             db: Optional database session to update connection status
         """
-        session_id_str = str(session_id)
         player_id_str = str(player_id)
 
         connection_context = context
 
-        if session_id_str in self.session_connections:
-            player_connection = self.session_connections[session_id_str].get(player_id_str)
-            if player_connection:
-                websocket = player_connection.get('websocket')
-                connection_context = connection_context or player_connection.get('context')
-                del self.session_connections[session_id_str][player_id_str]
-                logger.info(f"WebSocket disconnected for player {player_id} in session {session_id}")
+        channel_key = self._channel_key(session_id)
+        connection = await self._websocket_service.disconnect(channel_key, player_id_str)
 
-                # Update participant connection status in database
-                if db:
-                    from backend.models.qf.party_participant import PartyParticipant
-                    from backend.models.qf.party_session import PartySession
+        if not connection:
+            return
 
-                    result = await db.execute(
-                        select(PartyParticipant, PartySession)
-                        .join(PartySession, PartyParticipant.session_id == PartySession.session_id)
-                        .where(
-                            and_(
-                                PartyParticipant.session_id == session_id,
-                                PartyParticipant.player_id == player_id
-                            )
-                        )
+        connection_context = connection_context or connection.context
+        logger.info(f"WebSocket disconnected for player {player_id} in session {session_id}")
+
+        # Update participant connection status in database
+        if db:
+            from backend.models.qf.party_participant import PartyParticipant
+            from backend.models.qf.party_session import PartySession
+
+            result = await db.execute(
+                select(PartyParticipant, PartySession)
+                .join(PartySession, PartyParticipant.session_id == PartySession.session_id)
+                .where(
+                    and_(
+                        PartyParticipant.session_id == session_id,
+                        PartyParticipant.player_id == player_id
                     )
-                    row = result.first()
+                )
+            )
+            row = result.first()
 
-                    if row:
-                        participant, session = row
-                        participant.connection_status = 'disconnected'
-                        participant.disconnected_at = datetime.now(UTC)
-                        participant.last_activity_at = datetime.now(UTC)
-                        if session.status == 'OPEN' and connection_context == 'lobby':
-                            participant.status = 'JOINED'
-                            participant.ready_at = None
-                        await db.commit()
-                        logger.info(f"Updated participant {player_id} to disconnected status")
+            if row:
+                participant, session = row
+                participant.connection_status = 'disconnected'
+                participant.disconnected_at = datetime.now(UTC)
+                participant.last_activity_at = datetime.now(UTC)
+                if session.status == 'OPEN' and connection_context == 'lobby':
+                    participant.status = 'JOINED'
+                    participant.ready_at = None
+                await db.commit()
+                logger.info(f"Updated participant {player_id} to disconnected status")
 
-                        if session.status == 'OPEN' and connection_context == 'lobby':
-                            await self.notify_session_update(
-                                session_id=session_id,
-                                session_status={
-                                    'reason': 'lobby_presence_changed',
-                                    'message': 'player_disconnected'
-                                }
-                            )
+                if session.status == 'OPEN' and connection_context == 'lobby':
+                    await self.notify_session_update(
+                        session_id=session_id,
+                        session_status={
+                            'reason': 'lobby_presence_changed',
+                            'message': 'player_disconnected'
+                        }
+                    )
 
-                # Clean up empty session dict
-                if not self.session_connections[session_id_str]:
-                    del self.session_connections[session_id_str]
-                    logger.info(f"Removed empty session {session_id} from connections")
+        if self._websocket_service.get_connection_count(channel_key) == 0:
+            logger.info(f"Removed empty session {session_id} from connections")
 
     async def broadcast_to_session(
         self,
@@ -177,47 +169,9 @@ class PartyWebSocketManager:
             message: Message dict to send
             exclude_player_id: Optional player ID to exclude from broadcast
         """
-        session_id_str = str(session_id)
-
-        if session_id_str not in self.session_connections:
-            logger.debug(f"Session {session_id} has no connections, skipping broadcast")
-            return
-
-        connections = self.session_connections[session_id_str].copy()
         exclude_player_id_str = str(exclude_player_id) if exclude_player_id else None
 
-        disconnected = []
-
-        for player_id_str, connection in connections.items():
-            websocket = connection.get('websocket')
-
-            if websocket is None:
-                logger.debug(
-                    f"No websocket found for player {player_id_str} in session {session_id}, skipping"
-                )
-                disconnected.append(player_id_str)
-                continue
-            # Skip excluded player
-            if exclude_player_id_str and player_id_str == exclude_player_id_str:
-                continue
-
-            try:
-                await websocket.send_json(message)
-                logger.debug(f"Sent message to player {player_id_str} in session {session_id}")
-            except Exception as e:
-                logger.warning(
-                    f"Failed to send WebSocket to player {player_id_str} in session {session_id}: {e}"
-                )
-                disconnected.append(player_id_str)
-
-        # Clean up disconnected players
-        for player_id_str in disconnected:
-            if player_id_str in self.session_connections.get(session_id_str, {}):
-                del self.session_connections[session_id_str][player_id_str]
-
-        # Clean up empty session
-        if session_id_str in self.session_connections and not self.session_connections[session_id_str]:
-            del self.session_connections[session_id_str]
+        await self._websocket_service.broadcast(self._channel_key(session_id), message, exclude_player_id_str)
 
     async def send_to_player(
         self,
@@ -232,36 +186,7 @@ class PartyWebSocketManager:
             player_id: UUID of the player
             message: Message dict to send
         """
-        session_id_str = str(session_id)
-        player_id_str = str(player_id)
-
-        if session_id_str not in self.session_connections:
-            logger.debug(f"Session {session_id} has no connections, skipping send")
-            return
-
-        if player_id_str not in self.session_connections[session_id_str]:
-            logger.debug(
-                f"Player {player_id} not connected to session {session_id}, skipping send"
-            )
-            return
-
-        try:
-            connection = self.session_connections[session_id_str][player_id_str]
-            websocket = connection.get('websocket')
-            if websocket is None:
-                logger.debug(
-                    f"Missing websocket for player {player_id} in session {session_id}, removing stale connection"
-                )
-                await self.disconnect(session_id, player_id)
-                return
-            await websocket.send_json(message)
-            logger.debug(f"Sent message to player {player_id} in session {session_id}")
-        except Exception as e:
-            logger.warning(
-                f"Failed to send WebSocket to player {player_id} in session {session_id}: {e}"
-            )
-            # Remove disconnected player
-            await self.disconnect(session_id, player_id)
+        await self._websocket_service.send(self._channel_key(session_id), str(player_id), message)
 
     async def notify_phase_transition(
         self,
@@ -512,10 +437,7 @@ class PartyWebSocketManager:
         Returns:
             int: Number of connected players
         """
-        session_id_str = str(session_id)
-        if session_id_str not in self.session_connections:
-            return 0
-        return len(self.session_connections[session_id_str])
+        return self._websocket_service.get_connection_count(self._channel_key(session_id))
 
 
 # Global singleton instance
