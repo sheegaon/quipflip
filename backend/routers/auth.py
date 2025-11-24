@@ -144,12 +144,24 @@ async def refresh_tokens(
 async def logout(
     request: LogoutRequest,
     response: Response,
+    player: PlayerBase = Depends(get_current_player),
     refresh_cookie: str | None = Cookie(
         default=None, alias=settings.refresh_token_cookie_name
     ),
     db: AsyncSession = Depends(get_db),
 ) -> None:
-    """Invalidate the provided refresh token and clear cookies."""
+    """Invalidate the provided refresh token, clean up party sessions, and clear cookies."""
+
+    # Clean up any active party sessions the player is in
+    try:
+        from backend.services.qf.party_session_service import PartySessionService
+        party_service = PartySessionService(db)
+        await party_service.remove_player_from_all_sessions(player.player_id)
+    except Exception as e:
+        # Log but don't fail logout if party cleanup fails
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(f"Failed to clean up party sessions for player {player.player_id}: {e}")
 
     token = request.refresh_token or refresh_cookie
     if token:

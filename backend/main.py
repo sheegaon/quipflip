@@ -286,6 +286,37 @@ async def cleanup_cycle():
         await asyncio.sleep(cleanup_interval)
 
 
+async def party_maintenance_cycle():
+    """
+    Background task for party session maintenance.
+
+    Runs periodically to:
+    - Clean up expired party sessions (older than 24 hours)
+    - Remove stale disconnected participants
+    - Free up database resources
+    """
+    from backend.tasks.party_maintenance import run_party_maintenance
+
+    # Initial startup delay to let other services initialize
+    startup_delay = 90
+    logger.info(f"Party maintenance cycle starting in {startup_delay}s")
+    await asyncio.sleep(startup_delay)
+
+    logger.info("Party maintenance cycle starting main loop")
+
+    # Run party maintenance every hour (3600 seconds)
+    maintenance_interval = 1 * 60 * 60
+
+    while True:
+        try:
+            await run_party_maintenance()
+        except Exception as e:
+            logger.error(f"Party maintenance cycle error: {e}")
+
+        # Wait before next cycle
+        await asyncio.sleep(maintenance_interval)
+
+
 async def ir_backup_cycle():
     """
     Background task to fill stalled Initial Reaction game sets.
@@ -343,6 +374,7 @@ async def lifespan(app_instance: FastAPI):
     ai_backup_task = None
     stale_handler_task = None
     cleanup_task = None
+    party_maintenance_task = None
     ir_backup_task = None
 
     try:
@@ -362,6 +394,12 @@ async def lifespan(app_instance: FastAPI):
         logger.info("Cleanup cycle task started (runs every hour)")
     except Exception as e:
         logger.error(f"Failed to start cleanup cycle: {e}")
+
+    try:
+        party_maintenance_task = asyncio.create_task(party_maintenance_cycle())
+        logger.info("Party maintenance cycle task started (runs every hour)")
+    except Exception as e:
+        logger.error(f"Failed to start party maintenance cycle: {e}")
 
     # try:
     #     ir_backup_task = asyncio.create_task(ir_backup_cycle())
@@ -393,6 +431,13 @@ async def lifespan(app_instance: FastAPI):
                 await cleanup_task
             except asyncio.CancelledError:
                 logger.info("Cleanup cycle task cancelled")
+
+        if party_maintenance_task:
+            party_maintenance_task.cancel()
+            try:
+                await party_maintenance_task
+            except asyncio.CancelledError:
+                logger.info("Party maintenance cycle task cancelled")
 
         if ir_backup_task:
             ir_backup_task.cancel()
