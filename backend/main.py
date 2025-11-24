@@ -1,6 +1,16 @@
 """FastAPI application entry point."""
+import os
+
+# CRITICAL: Force UTC timezone BEFORE any other imports that use time/datetime
+# This must be set before any modules cache timezone information
+os.environ['TZ'] = 'UTC'
+
 import asyncio
 import time
+
+# Reload time module to pick up TZ change
+time.tzset()
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
@@ -86,10 +96,14 @@ sqlalchemy_logger.addHandler(sql_rotating_handler)
 sqlalchemy_logger.setLevel(logging.INFO)
 sqlalchemy_logger.propagate = False  # Prevent propagation to root logger to avoid duplication
 
-# Test that logging is working
+# Test that logging is working and verify timezone is UTC
+from datetime import datetime, UTC
 logger.info("=" * 100)
 logger.info("*" * 36 + " Logging system initialized " + "*" * 36)
 logger.info("=" * 100)
+logger.info(f"Timezone configured: TZ={os.environ.get('TZ', 'NOT SET')}")
+logger.info(f"Current UTC time: {datetime.now(UTC)}")
+logger.info(f"System timezone name: {time.tzname}")
 
 
 class SQLTransactionFilter(logging.Filter):
