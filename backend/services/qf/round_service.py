@@ -173,7 +173,16 @@ class RoundService:
         # Make grace_cutoff timezone-aware if expires_at is naive (SQLite stores naive)
         expires_at_aware = ensure_utc(round_object.expires_at)
         grace_cutoff = expires_at_aware + timedelta(seconds=self.settings.grace_period_seconds)
-        if datetime.now(UTC) > grace_cutoff:
+        now = datetime.now(UTC)
+
+        if now > grace_cutoff:
+            logger.error(
+                f"Round {round_id} expired: expires_at={expires_at_aware}, "
+                f"grace_cutoff={grace_cutoff}, now={now}, "
+                f"grace_period={self.settings.grace_period_seconds}s, "
+                f"round_seconds={self.settings.prompt_round_seconds}s, "
+                f"time_since_creation={(now - ensure_utc(round_object.created_at)).total_seconds():.2f}s"
+            )
             raise RoundExpiredError("Round expired past grace period")
 
         # Validate word against prompt text
@@ -545,7 +554,16 @@ class RoundService:
         # Make grace_cutoff timezone-aware if expires_at is naive (SQLite stores naive)
         expires_at_aware = ensure_utc(round_object.expires_at)
         grace_cutoff = expires_at_aware + timedelta(seconds=self.settings.grace_period_seconds)
-        if datetime.now(UTC) > grace_cutoff:
+        now = datetime.now(UTC)
+
+        if now > grace_cutoff:
+            logger.error(
+                f"Copy round {round_id} expired: expires_at={expires_at_aware}, "
+                f"grace_cutoff={grace_cutoff}, now={now}, "
+                f"grace_period={self.settings.grace_period_seconds}s, "
+                f"round_seconds={self.settings.copy_round_seconds}s, "
+                f"time_since_creation={(now - ensure_utc(round_object.created_at)).total_seconds():.2f}s"
+            )
             raise RoundExpiredError("Round expired past grace period")
 
         # Determine if another copy already exists for duplicate/similarity checks
