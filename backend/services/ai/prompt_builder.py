@@ -47,7 +47,7 @@ def build_impostor_prompt(original_quip_phrase: str, existing_impostor_phrase: s
     Returns:
         A formatted prompt string for AI copy generation
     """
-    base_prompt = f"""Generate FIVE (5) phrases meaning roughly the same thing as the original phrase.
+    base_prompt = f"""Generate FIVE (5) phrases conveying roughly the same concept as the original phrase.
 
 **Original phrase: "{original_quip_phrase}"**
 
