@@ -31,6 +31,7 @@ from backend.services.qf.queue_service import QueueService
 from backend.config import get_settings
 from backend.utils.exceptions import NoPromptsAvailableError, NoPhrasesetsAvailableError
 from backend.services.ai.ai_service import AI_PLAYER_EMAIL_DOMAIN
+from backend.database import AsyncSessionLocal
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -1027,29 +1028,32 @@ class PartyCoordinationService:
 
             logger.info(f"🤖 [AI PROCESS] 🚀 Processing {len(ai_participants)} AI participants IN PARALLEL for {session.current_phase} phase")
 
-            # Initialize AI service
-            ai_service = AIService(self.db)
-
             # Create parallel tasks based on current phase
+            # IMPORTANT: Each task gets its own database session to avoid "Session is already flushing" errors
+            # when multiple coroutines try to flush simultaneously
             submission_tasks = []
+
             if session.current_phase == 'PROMPT':
                 submission_tasks = [
-                    self._process_single_ai_prompt_submission(
-                        session_id, session, participant, ai_service, transaction_service
+                    self._run_ai_submission_with_isolated_session(
+                        self._process_single_ai_prompt_submission,
+                        session_id, session, participant
                     )
                     for participant in ai_participants
                 ]
             elif session.current_phase == 'COPY':
                 submission_tasks = [
-                    self._process_single_ai_copy_submission(
-                        session_id, session, participant, ai_service, transaction_service
+                    self._run_ai_submission_with_isolated_session(
+                        self._process_single_ai_copy_submission,
+                        session_id, session, participant
                     )
                     for participant in ai_participants
                 ]
             elif session.current_phase == 'VOTE':
                 submission_tasks = [
-                    self._process_single_ai_vote_submission(
-                        session_id, session, participant, ai_service, transaction_service
+                    self._run_ai_submission_with_isolated_session(
+                        self._process_single_ai_vote_submission,
+                        session_id, session, participant
                     )
                     for participant in ai_participants
                 ]
@@ -1092,6 +1096,35 @@ class PartyCoordinationService:
             logger.error(f"🤖 [AI PROCESS] ❌ Fatal error processing AI submissions for session {session_id}: {e}", exc_info=True)
             stats['errors'] += 1
             return stats
+
+    async def _run_ai_submission_with_isolated_session(
+        self,
+        submission_func,
+        session_id: UUID,
+        session: PartySession,
+        participant: PartyParticipant,
+    ) -> Optional[str]:
+        """Run an AI submission with its own isolated database session.
+
+        This prevents "Session is already flushing" errors that occur when multiple
+        coroutines try to flush the same session simultaneously during parallel AI submissions.
+
+        Args:
+            submission_func: The async submission function to call
+            session_id: Party session ID
+            session: Party session object
+            participant: AI participant to process
+
+        Returns:
+            Result of the submission function
+        """
+        async with AsyncSessionLocal() as task_db:
+            from backend.services.ai.ai_service import AIService
+            ai_service = AIService(task_db)
+            task_transaction_service = TransactionService(task_db)
+            return await submission_func(
+                session_id, session, participant, ai_service, task_transaction_service
+            )
 
     async def _trigger_ai_submissions_for_new_phase(
         self,
