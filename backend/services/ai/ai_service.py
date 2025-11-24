@@ -36,7 +36,6 @@ logger = logging.getLogger(__name__)
 
 
 AI_PLAYER_EMAIL_DOMAIN = "@quipflip.internal"
-QF_AI_COPY_PLAYER_EMAIL = f"ai_copy{AI_PLAYER_EMAIL_DOMAIN}"
 IR_AI_PLAYER_EMAIL = "ai_backronym_001@initialreaction.internal"
 
 
@@ -78,7 +77,8 @@ class AIService:
             self.phrase_validator = get_phrase_validator()
         self.common_words = None
         self.metrics_service = AIMetricsService(db)
-        self._prompt_completions_cache = None  # Lazy-loaded CSV cache
+        self._prompt_completions_cache = None  # Lazy-loaded CSV cache for quip responses
+        self._impostor_completions_cache = None  # Lazy-loaded CSV cache for impostor phrases
 
         # Determine which provider to use based on config and available API keys
         self.provider = self._determine_provider()
@@ -316,6 +316,92 @@ class AIService:
 
         logger.debug(
             f"Found {len(unused)} unused phrases from CSV for prompt '{normalized_prompt}' "
+            f"({len(available_phrases)} total, {len(used_phrases)} used)"
+        )
+
+        return unused
+
+    def _load_impostor_completions(self) -> dict[str, list[str]]:
+        """
+        Lazy-load pre-cached impostor phrases from CSV file.
+
+        Returns:
+            Dictionary mapping normalized original phrase to list of impostor phrases
+        """
+        if self._impostor_completions_cache is not None:
+            return self._impostor_completions_cache
+
+        import csv
+        from pathlib import Path
+
+        self._impostor_completions_cache = {}
+        csv_path = Path(__file__).parent.parent.parent / "data" / "fakes.csv"
+
+        try:
+            with open(csv_path, 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    original = row.get('original_phrase', '').strip().lower()
+                    if not original:
+                        continue
+
+                    # Collect all copy phrase columns (copy_phrase1 through copy_phrase5)
+                    impostor_phrases = []
+                    for i in range(1, 6):
+                        phrase_key = f'copy_phrase{i}'
+                        if phrase_key in row and row[phrase_key]:
+                            impostor_phrases.append(row[phrase_key].strip())
+
+                    if impostor_phrases:
+                        self._impostor_completions_cache[original] = impostor_phrases
+
+            logger.info(f"Loaded {len(self._impostor_completions_cache)} impostor phrase sets from CSV cache")
+
+        except FileNotFoundError:
+            logger.warning(f"Impostor phrases CSV not found at {csv_path}")
+        except Exception as e:
+            logger.error(f"Failed to load impostor phrases CSV: {e}")
+
+        return self._impostor_completions_cache
+
+    async def _get_unused_csv_impostor_phrases(self, original_phrase: str) -> list[str]:
+        """
+        Get unused impostor phrases from CSV cache for the given original phrase.
+
+        Args:
+            original_phrase: The original phrase to find impostors for
+
+        Returns:
+            List of impostor phrases from CSV that haven't been used yet
+        """
+        csv_cache = self._load_impostor_completions()
+
+        normalized_original = original_phrase.strip().lower()
+
+        # Check if original phrase exists in CSV
+        if normalized_original not in csv_cache:
+            return []
+
+        available_phrases = csv_cache[normalized_original]
+
+        # Query for phrases already used (in QFAIPhraseCache.validated_phrases)
+        result = await self.db.execute(
+            select(QFAIPhraseCache.validated_phrases)
+            .join(Round, Round.round_id == QFAIPhraseCache.prompt_round_id)
+            .where(func.lower(Round.submitted_phrase) == normalized_original)
+        )
+
+        # Flatten all used phrases from all caches for this original phrase
+        used_phrases = set()
+        for cache_phrases in result.scalars().all():
+            if cache_phrases:
+                used_phrases.update(p.lower() for p in cache_phrases)
+
+        # Filter out used phrases
+        unused = [p for p in available_phrases if p.lower() not in used_phrases]
+
+        logger.debug(
+            f"Found {len(unused)} unused impostor phrases from CSV for '{original_phrase}' "
             f"({len(available_phrases)} total, {len(used_phrases)} used)"
         )
 

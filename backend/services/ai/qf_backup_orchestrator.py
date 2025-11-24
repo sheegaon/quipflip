@@ -20,10 +20,9 @@ from backend.models.qf.ai_phrase_cache import QFAIPhraseCache
 from backend.models.qf.ai_metric import QFAIMetric
 from backend.services.qf import QueueService
 from backend.utils.model_registry import AIPlayerType
+from backend.services.ai.ai_service import AI_PLAYER_EMAIL_DOMAIN
 
 logger = logging.getLogger(__name__)
-
-AI_PLAYER_EMAIL_DOMAIN = "@quipflip.internal"
 
 
 class QFBackupOrchestrator:
