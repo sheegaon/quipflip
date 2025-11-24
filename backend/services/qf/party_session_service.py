@@ -1385,13 +1385,14 @@ class PartySessionService:
                         stats['removed_participants'] += 1
 
                     # Mark session as expired
+                    last_updated = session.updated_at or session.created_at
                     session.status = 'EXPIRED'
                     session.updated_at = datetime.now(UTC)
                     stats['expired_in_progress_sessions'] += 1
 
                     logger.info(
                         f"Expired IN_PROGRESS session {session.party_code} "
-                        f"(inactive for {(datetime.now(UTC) - session.updated_at).total_seconds() / 3600:.1f}h)"
+                        f"(inactive for {(datetime.now(UTC) - last_updated).total_seconds() / 3600:.1f}h)"
                     )
                 except Exception as e:
                     logger.error(f"Error expiring IN_PROGRESS session {session.session_id}: {e}")
