@@ -104,7 +104,7 @@ Concretely:
 
     * Prefers prompts created inside this party (`PartyRound` rows) in PROMPT phase, excluding player’s own prompts and ones they already copied.
     * Falls back to the global prompt queue (`QueueService`) but filters out prompts authored by *any* party member, and only uses rounds that are `status='submitted'`.
-  * Calls `round_service.start_copy_round` with the chosen `prompt_round_id`.
+  * Calls `round_service.start_copy_round` with the chosen `prompt_round_id`, explicitly forcing the round service to honor that specific prompt (and requeue it if it originally came from the global queue and becomes unavailable).
   * Links the new copy round into `PartyRound` (`round_type='copy', phase='COPY'`).
 
 * `submit_party_copy(...)`

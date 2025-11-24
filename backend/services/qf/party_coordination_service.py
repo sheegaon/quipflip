@@ -293,7 +293,7 @@ class PartyCoordinationService:
             )
 
         # Get eligible prompts (party-first, then global)
-        eligible_prompt_round_id = await self._get_eligible_prompt_for_copy(
+        eligible_prompt_round_id, prompt_from_queue = await self._get_eligible_prompt_for_copy(
             session_id, player.player_id
         )
 
@@ -301,10 +301,12 @@ class PartyCoordinationService:
             raise NoPromptsAvailableError("No eligible prompts available for copying")
 
         # Start copy round with specific prompt
-        round_obj = await self.round_service.start_copy_round(
+        round_obj, _ = await self.round_service.start_copy_round(
             player=player,
             transaction_service=transaction_service,
             prompt_round_id=eligible_prompt_round_id,
+            force_prompt_round=True,
+            prompt_from_queue=prompt_from_queue,
         )
 
         # Link round to party (without incrementing counter yet)
@@ -560,7 +562,7 @@ class PartyCoordinationService:
         self,
         session_id: UUID,
         player_id: UUID,
-    ) -> Optional[UUID]:
+    ) -> tuple[Optional[UUID], bool]:
         """Get eligible prompt round for player to copy.
 
         Prioritizes party prompts, then falls back to global pool while filtering out
@@ -574,7 +576,7 @@ class PartyCoordinationService:
             player_id: UUID of the player
 
         Returns:
-            UUID of eligible prompt round, or None if none available
+            Tuple of (eligible prompt round ID or None, whether the prompt originated from the global queue)
         """
         # Prompts this player has already copied
         result = await self.db.execute(
@@ -610,7 +612,7 @@ class PartyCoordinationService:
             ]
 
             if eligible_party_prompts:
-                return eligible_party_prompts[0].round_id
+                return eligible_party_prompts[0].round_id, False
 
         # Fallback: reuse prompt rounds from the global queue that are not authored by
         # anyone currently in the party session.
@@ -643,13 +645,13 @@ class PartyCoordinationService:
             for skipped_id in skipped_prompt_ids:
                 QueueService.add_prompt_round_to_queue(skipped_id)
 
-            return prompt_round.round_id
+            return prompt_round.round_id, True
 
         # Requeue any skipped prompts if no eligible option was found
         for skipped_id in skipped_prompt_ids:
             QueueService.add_prompt_round_to_queue(skipped_id)
 
-        return None
+        return None, False
 
     async def _get_eligible_phraseset_for_vote(
         self,
@@ -855,36 +857,32 @@ class PartyCoordinationService:
             if participant.copies_submitted >= session.copies_per_player:
                 return None
 
-            # Get eligible prompt to copy
-            prompt_round_id = await coord._get_eligible_prompt_for_copy(
-                session_id, participant.player_id
-            )
-
-            if not prompt_round_id:
+            # Submit copy round (with retry logic for lock contention)
+            try:
+                round_obj, party_round_id = await retry_with_backoff(
+                    func=lambda: coord.start_party_copy_round(
+                        session_id=session_id,
+                        player=participant.player,
+                        transaction_service=transaction_service,
+                    ),
+                    operation_name=f"start_copy_round for AI {participant.player.username}",
+                )
+            except NoPromptsAvailableError:
                 logger.info(f"No eligible prompts for AI {participant.player.username}")
                 return None
 
-            # Get prompt round details
             prompt_round_result = await coord.db.execute(
-                select(Round).where(Round.round_id == prompt_round_id)
+                select(Round).where(Round.round_id == round_obj.prompt_round_id)
             )
             prompt_round = prompt_round_result.scalar_one_or_none()
-
             if not prompt_round:
+                logger.warning(
+                    f"Prompt round {round_obj.prompt_round_id} not found for AI {participant.player.username}"
+                )
                 return None
 
             # Generate impostor phrase
             copy_phrase = await ai_service.get_impostor_phrase(prompt_round)
-
-            # Submit copy round (with retry logic for lock contention)
-            round_obj, party_round_id = await retry_with_backoff(
-                func=lambda: coord.start_party_copy_round(
-                    session_id=session_id,
-                    player=participant.player,
-                    transaction_service=transaction_service,
-                ),
-                operation_name=f"start_copy_round for AI {participant.player.username}",
-            )
 
             # Submit copy phrase (with retry logic for lock contention)
             await retry_with_backoff(
