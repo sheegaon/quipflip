@@ -434,7 +434,7 @@ class AIService:
         )
         return phrase
 
-    async def generate_and_cache_copy_phrases(self, prompt_round: Round) -> QFAIPhraseCache:
+    async def generate_and_cache_impostor_phrases(self, prompt_round: Round) -> QFAIPhraseCache:
         """
         Generate and cache multiple validated copy phrases for a prompt round.
 
@@ -638,7 +638,7 @@ class AIService:
             logger.warning(f"Could not acquire lock for AI phrase revalidation of {prompt_round.round_id=}")
             return None
 
-        return await self.generate_and_cache_copy_phrases(prompt_round)
+        return await self.generate_and_cache_impostor_phrases(prompt_round)
 
     async def get_impostor_phrase(self, prompt_round: Round) -> str:
         """
@@ -657,7 +657,7 @@ class AIService:
             AICopyError: If generation or validation fails
         """
         # Get or generate phrase cache
-        cache = await self.generate_and_cache_copy_phrases(prompt_round)
+        cache = await self.generate_and_cache_impostor_phrases(prompt_round)
 
         # Select random phrase from cache
         if not cache.validated_phrases or len(cache.validated_phrases) == 0:
@@ -666,7 +666,7 @@ class AIService:
             # Delete empty cache and regenerate
             await self.db.delete(cache)
             await self.db.flush()
-            cache = await self.generate_and_cache_copy_phrases(prompt_round)
+            cache = await self.generate_and_cache_impostor_phrases(prompt_round)
 
         # Select random phrase
         selected_phrase = random.choice(cache.validated_phrases)
@@ -706,7 +706,7 @@ class AIService:
             raise AICopyError("Cannot generate hints before the original phrase is submitted")
 
         # Get or generate phrase cache
-        cache = await self.generate_and_cache_copy_phrases(prompt_round)
+        cache = await self.generate_and_cache_impostor_phrases(prompt_round)
 
         # Mark cache as used for hints
         cache.used_for_hints = True
