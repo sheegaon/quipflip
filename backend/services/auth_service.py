@@ -95,13 +95,6 @@ class AuthService:
 
                 logger.info(f"Created {self.game_type.value} guest player {player.player_id} with email {guest_email}")
 
-                # Initialize game-specific content for new guest
-                if self.game_type == GameType.QF:
-                    from backend.services.qf.quest_service import QuestService
-                    quest_service = QuestService(self.db)
-                    await quest_service.initialize_quests_for_player(player.player_id)
-                    logger.info(f"Initialized starter quests for guest {player.player_id}")
-
                 return player, guest_password
             except ValueError as exc:
                 message = str(exc)
@@ -151,8 +144,13 @@ class AuthService:
             if self.game_type == GameType.QF:
                 from backend.services.qf.quest_service import QuestService
                 quest_service = QuestService(self.db)
-                await quest_service.initialize_quests_for_player(player.player_id)
-                logger.info(f"Initialized starter quests for player {player.player_id}")
+                try:
+                    await quest_service.initialize_quests_for_player(player.player_id)
+                    logger.info(f"Initialized starter quests for player {player.player_id}")
+                except Exception as e:
+                    logger.error(f"Failed to initialize quests for player {player.player_id}: {e}", exc_info=True)
+                    # Don't fail account creation if quest initialization fails
+                    # The backup script will create missing quests later if needed
 
             return player
         except ValueError as exc:
