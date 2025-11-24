@@ -702,6 +702,58 @@ class AIService:
                 original_phrase = prompt_round.submitted_phrase
                 other_copy_phrase = await self._get_existing_impostor_phrase(prompt_round.round_id)
 
+                # Try CSV cache first before calling AI API
+                unused_csv_phrases = await self._get_unused_csv_impostor_phrases(original_phrase)
+                if unused_csv_phrases:
+                    logger.info(f"Found {len(unused_csv_phrases)} unused CSV impostor phrases for '{original_phrase}'")
+
+                    # Validate CSV phrases
+                    validated_phrases = []
+                    errors = []
+                    for test_phrase in unused_csv_phrases:
+                        test_phrase = test_phrase.strip()
+                        if not test_phrase:
+                            continue
+
+                        # Validate with phrase validator
+                        is_valid, error_message = await self.phrase_validator.validate_copy(
+                            test_phrase,
+                            original_phrase,
+                            other_copy_phrase,
+                            prompt_round.prompt_text,
+                        )
+                        if is_valid:
+                            validated_phrases.append(test_phrase)
+                        else:
+                            errors.append((test_phrase, error_message))
+                            logger.debug(f"CSV impostor phrase invalid '{test_phrase}': {error_message}")
+
+                    # If we have at least 3 valid CSV phrases, create cache
+                    if len(validated_phrases) >= 3:
+                        cache = QFAIPhraseCache(
+                            cache_id=cache_id,
+                            prompt_round_id=prompt_round.round_id,
+                            original_phrase=original_phrase,
+                            prompt_text=prompt_round.prompt_text,
+                            validated_phrases=validated_phrases[:5],  # Limit to 5
+                            generation_provider="csv_cache",
+                            generation_model="pre_generated",
+                        )
+                        self.db.add(cache)
+                        await self.db.flush()
+
+                        logger.info(
+                            f"Created impostor cache from CSV with {len(validated_phrases)} validated phrases for '{original_phrase}' "
+                            f"({len(errors)} invalid)"
+                        )
+                        return cache
+
+                    logger.info(
+                        f"No valid CSV impostor phrases found for '{original_phrase}' ({len(errors)} failed validation), "
+                        "falling back to AI generation"
+                    )
+
+                # Fall back to AI generation if no CSV phrases available
                 # Build prompt and get common words
                 ai_prompt = build_impostor_prompt(original_phrase, other_copy_phrase)
                 common_words = await self.get_common_words()
