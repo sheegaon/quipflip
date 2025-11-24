@@ -325,8 +325,11 @@ class AIService:
         """
         Lazy-load pre-cached impostor phrases from CSV file.
 
+        Creates bidirectional mapping where ANY phrase in a row can serve as the original,
+        and all other phrases in that row are valid impostors.
+
         Returns:
-            Dictionary mapping normalized original phrase to list of impostor phrases
+            Dictionary where each phrase maps to the full equivalence set (all 6 phrases)
         """
         if self._impostor_completions_cache is not None:
             return self._impostor_completions_cache
@@ -336,26 +339,35 @@ class AIService:
 
         self._impostor_completions_cache = {}
         csv_path = Path(__file__).parent.parent.parent / "data" / "fakes.csv"
+        equivalence_sets_count = 0
 
         try:
             with open(csv_path, 'r', encoding='utf-8') as f:
                 reader = csv.DictReader(f)
                 for row in reader:
-                    original = row.get('original_phrase', '').strip().lower()
+                    original = row.get('original_phrase', '').strip()
                     if not original:
                         continue
 
-                    # Collect all copy phrase columns (copy_phrase1 through copy_phrase5)
-                    impostor_phrases = []
+                    # Collect all phrases in this equivalence set (original + 5 copies)
+                    all_phrases = [original]
                     for i in range(1, 6):
                         phrase_key = f'copy_phrase{i}'
                         if phrase_key in row and row[phrase_key]:
-                            impostor_phrases.append(row[phrase_key].strip())
+                            all_phrases.append(row[phrase_key].strip())
 
-                    if impostor_phrases:
-                        self._impostor_completions_cache[original] = impostor_phrases
+                    # Create bidirectional mapping: each phrase maps to the FULL set
+                    if len(all_phrases) > 1:
+                        equivalence_sets_count += 1
+                        for phrase in all_phrases:
+                            normalized_phrase = phrase.lower()
+                            # Each phrase maps to all phrases in the set (including itself)
+                            self._impostor_completions_cache[normalized_phrase] = all_phrases
 
-            logger.info(f"Loaded {len(self._impostor_completions_cache)} impostor phrase sets from CSV cache")
+            logger.info(
+                f"Loaded {equivalence_sets_count} equivalence sets "
+                f"({len(self._impostor_completions_cache)} bidirectional mappings) from CSV cache"
+            )
 
         except FileNotFoundError:
             logger.warning(f"Impostor phrases CSV not found at {csv_path}")
@@ -368,6 +380,9 @@ class AIService:
         """
         Get unused impostor phrases from CSV cache for the given original phrase.
 
+        With bidirectional mapping, any phrase in a row can be the "original" and
+        the other phrases in that row are valid impostors.
+
         Args:
             original_phrase: The original phrase to find impostors for
 
@@ -378,31 +393,36 @@ class AIService:
 
         normalized_original = original_phrase.strip().lower()
 
-        # Check if original phrase exists in CSV
+        # Check if original phrase exists in CSV equivalence sets
         if normalized_original not in csv_cache:
             return []
 
-        available_phrases = csv_cache[normalized_original]
+        # Get full equivalence set (all phrases that mean the same thing)
+        equivalence_set = csv_cache[normalized_original]
 
-        # Query for phrases already used (in QFAIPhraseCache.validated_phrases)
+        # Query for phrases already used in ANY cache for ANY phrase in this equivalence set
+        # We need to check all phrases in the set since they're semantically equivalent
         result = await self.db.execute(
             select(QFAIPhraseCache.validated_phrases)
             .join(Round, Round.round_id == QFAIPhraseCache.prompt_round_id)
-            .where(func.lower(Round.submitted_phrase) == normalized_original)
+            .where(func.lower(Round.submitted_phrase).in_([p.lower() for p in equivalence_set]))
         )
 
-        # Flatten all used phrases from all caches for this original phrase
+        # Flatten all used phrases from all caches
         used_phrases = set()
         for cache_phrases in result.scalars().all():
             if cache_phrases:
                 used_phrases.update(p.lower() for p in cache_phrases)
 
-        # Filter out used phrases
-        unused = [p for p in available_phrases if p.lower() not in used_phrases]
+        # Filter out: 1) the submitted phrase itself, 2) already used phrases
+        unused = [
+            p for p in equivalence_set
+            if p.lower() != normalized_original and p.lower() not in used_phrases
+        ]
 
         logger.debug(
             f"Found {len(unused)} unused impostor phrases from CSV for '{original_phrase}' "
-            f"({len(available_phrases)} total, {len(used_phrases)} used)"
+            f"({len(equivalence_set)} in set, {len(used_phrases)} used)"
         )
 
         return unused
