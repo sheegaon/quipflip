@@ -321,6 +321,41 @@ class AIService:
 
         return unused
 
+    def _normalize_phrase_for_lookup(self, phrase: str) -> str:
+        """
+        Normalize a phrase for cache lookup by removing stop words.
+
+        Removes articles, possessives, and demonstratives that don't affect
+        core meaning, allowing "a birthday cake" to match "birthday cake".
+
+        Args:
+            phrase: The phrase to normalize
+
+        Returns:
+            Normalized phrase with stop words removed
+        """
+        # Words to remove (articles, possessives, demonstratives)
+        stop_words = {
+            'a', 'an', 'the',
+            'my', 'your', 'his', 'her', 'its', 'our', 'their',
+            'this', 'that', 'these', 'those'
+        }
+
+        # Convert to lowercase and split into words
+        words = phrase.lower().split()
+
+        # Filter out stop words
+        filtered_words = [w for w in words if w not in stop_words]
+
+        # Rejoin with spaces
+        normalized = ' '.join(filtered_words)
+
+        # If everything was filtered out, return original (lowercase)
+        if not normalized:
+            return phrase.lower()
+
+        return normalized
+
     def _load_impostor_completions(self) -> dict[str, list[str]]:
         """
         Lazy-load pre-cached impostor phrases from CSV file.
@@ -360,7 +395,8 @@ class AIService:
                     if len(all_phrases) > 1:
                         equivalence_sets_count += 1
                         for phrase in all_phrases:
-                            normalized_phrase = phrase.lower()
+                            # Normalize for lookup (remove stop words)
+                            normalized_phrase = self._normalize_phrase_for_lookup(phrase)
                             # Each phrase maps to all phrases in the set (including itself)
                             self._impostor_completions_cache[normalized_phrase] = all_phrases
 
@@ -391,7 +427,8 @@ class AIService:
         """
         csv_cache = self._load_impostor_completions()
 
-        normalized_original = original_phrase.strip().lower()
+        # Normalize for lookup (removes stop words like "a", "the", "my", etc.)
+        normalized_original = self._normalize_phrase_for_lookup(original_phrase)
 
         # Check if original phrase exists in CSV equivalence sets
         if normalized_original not in csv_cache:
@@ -414,10 +451,12 @@ class AIService:
             if cache_phrases:
                 used_phrases.update(p.lower() for p in cache_phrases)
 
-        # Filter out: 1) the submitted phrase itself, 2) already used phrases
+        # Filter out: 1) phrases that normalize to same as submitted, 2) already used phrases
+        # We normalize each candidate to handle variations like "a cake" vs "cake"
         unused = [
             p for p in equivalence_set
-            if p.lower() != normalized_original and p.lower() not in used_phrases
+            if self._normalize_phrase_for_lookup(p) != normalized_original
+            and p.lower() not in used_phrases
         ]
 
         logger.debug(
