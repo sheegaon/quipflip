@@ -17,12 +17,12 @@ async def test_quest_progress_updates_are_persisted(db_session):
     canonical = f"player_{test_id}"
 
     player = QFPlayer(
-        player_id=uuid.uuid4(),
         username=canonical,
         username_canonical=canonical,
         email=f"player_{test_id}@example.com",
         password_hash="hash",
         wallet=0,
+        vault=0,
     )
     db_session.add(player)
     await db_session.commit()

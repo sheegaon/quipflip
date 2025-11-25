@@ -26,6 +26,7 @@ async def test_prize_pool_initialization(db_session):
         email="prompter@test.com",
         password_hash="hash",
         wallet=5000,
+        vault=0,
     )
     player2 = QFPlayer(
         player_id=uuid.uuid4(),
@@ -34,6 +35,7 @@ async def test_prize_pool_initialization(db_session):
         email="copier1@test.com",
         password_hash="hash",
         wallet=5000,
+        vault=0,
     )
     player3 = QFPlayer(
         player_id=uuid.uuid4(),
@@ -42,6 +44,7 @@ async def test_prize_pool_initialization(db_session):
         email="copier2@test.com",
         password_hash="hash",
         wallet=5000,
+        vault=0,
     )
     db_session.add_all([player1, player2, player3])
     await db_session.commit()
@@ -113,6 +116,7 @@ async def test_prize_pool_updates_with_votes(db_session):
         email=f"prompter_{test_id}@test.com",
         password_hash="hash",
         wallet=1000,
+        vault=0,
     )
     player2 = QFPlayer(
         player_id=uuid.uuid4(),
@@ -121,6 +125,7 @@ async def test_prize_pool_updates_with_votes(db_session):
         email=f"copier1_{test_id}@test.com",
         password_hash="hash",
         wallet=1000,
+        vault=0,
     )
     player3 = QFPlayer(
         player_id=uuid.uuid4(),
@@ -129,6 +134,7 @@ async def test_prize_pool_updates_with_votes(db_session):
         email=f"copier2_{test_id}@test.com",
         password_hash="hash",
         wallet=1000,
+        vault=0,
     )
     voter1 = QFPlayer(
         player_id=uuid.uuid4(),
@@ -137,6 +143,7 @@ async def test_prize_pool_updates_with_votes(db_session):
         email=f"voter1_{test_id}@test.com",
         password_hash="hash",
         wallet=1000,
+        vault=0,
     )
     voter2 = QFPlayer(
         player_id=uuid.uuid4(),
@@ -145,6 +152,7 @@ async def test_prize_pool_updates_with_votes(db_session):
         email=f"voter2_{test_id}@test.com",
         password_hash="hash",
         wallet=1000,
+        vault=0,
     )
     db_session.add_all([player1, player2, player3, voter1, voter2])
     await db_session.commit()
@@ -257,6 +265,7 @@ async def test_scoring_uses_dynamic_prize_pool(db_session):
         email=f"prompter_{test_id}@test.com",
         password_hash="hash",
         wallet=1000,
+        vault=0,
     )
     player2 = QFPlayer(
         player_id=uuid.uuid4(),
@@ -265,6 +274,7 @@ async def test_scoring_uses_dynamic_prize_pool(db_session):
         email=f"copier1_{test_id}@test.com",
         password_hash="hash",
         wallet=1000,
+        vault=0,
     )
     player3 = QFPlayer(
         player_id=uuid.uuid4(),
@@ -273,6 +283,7 @@ async def test_scoring_uses_dynamic_prize_pool(db_session):
         email=f"copier2_{test_id}@test.com",
         password_hash="hash",
         wallet=1000,
+        vault=0,
     )
     db_session.add_all([player1, player2, player3])
     await db_session.commit()

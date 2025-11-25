@@ -15,7 +15,7 @@ from backend.services import FlaggedPromptService
 from backend.services import QueueService
 
 
-def _create_player(email_prefix: str, balance: int = 1000) -> QFPlayer:
+def _create_player(email_prefix: str, wallet: int = 1000) -> QFPlayer:
     unique = uuid.uuid4().hex[:8]
     return QFPlayer(
         player_id=uuid.uuid4(),
@@ -23,7 +23,8 @@ def _create_player(email_prefix: str, balance: int = 1000) -> QFPlayer:
         username_canonical=f"{email_prefix}_{unique}",
         email=f"{email_prefix}_{unique}@example.com",
         password_hash="test",
-        wallet=balance,
+        wallet=wallet,
+        vault=0,
     )
 
 

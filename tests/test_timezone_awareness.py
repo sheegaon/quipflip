@@ -192,12 +192,12 @@ class TestDatabaseTimezoneAwareness:
         from backend.utils.datetime_helpers import ensure_utc
 
         player = QFPlayer(
-            player_id=uuid.uuid4(),
             username=f"test_{uuid.uuid4().hex[:8]}",
             username_canonical=f"test_{uuid.uuid4().hex[:8]}",
             email=f"test_{uuid.uuid4().hex[:8]}@test.com",
             password_hash="hash",
             wallet=5000,
+            vault=0,
         )
         db_session.add(player)
         await db_session.commit()
@@ -224,12 +224,12 @@ class TestServiceTimezoneAwareness:
         from backend.utils.datetime_helpers import ensure_utc
 
         player = QFPlayer(
-            player_id=uuid.uuid4(),
             username=f"test_{uuid.uuid4().hex[:8]}",
             username_canonical=f"test_{uuid.uuid4().hex[:8]}",
             email=f"test_{uuid.uuid4().hex[:8]}@test.com",
             password_hash="hash",
             wallet=5000,
+            vault=0,
         )
         db_session.add(player)
         await db_session.commit()
@@ -237,7 +237,6 @@ class TestServiceTimezoneAwareness:
         # Create a prompt first
         from backend.models.qf.prompt import Prompt
         prompt = Prompt(
-            prompt_id=uuid.uuid4(),
             text=f"Test prompt {uuid.uuid4().hex[:6]}",
             category="test",
             enabled=True,
