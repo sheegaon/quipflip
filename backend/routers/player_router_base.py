@@ -101,8 +101,9 @@ class PlayerRouterBase(ABC):
     def _get_create_message(self) -> str:
         """Get the account creation success message."""
         game_name = self.get_game_name()
+        game_clause = f" {game_name}" if game_name else ""
         return (
-            f"{game_name} account created! Your account is ready to play. "
+            f"Player created! Your account is ready to play{game_clause}. "
             "An access token and refresh token have been issued for authentication."
         )
 
