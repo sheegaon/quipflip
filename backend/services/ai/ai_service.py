@@ -621,7 +621,7 @@ class AIService:
                 common_words = [word for word in common_words if len(word) > 3]
                 ai_prompt = ai_prompt.format(common_words=", ".join(common_words))
 
-                test_phrases = self._prompt_ai(ai_prompt)
+                test_phrases = await self._prompt_ai(ai_prompt)
                 test_phrases = test_phrases.split(";")
 
                 validated_phrases = []
@@ -785,7 +785,7 @@ class AIService:
                 prompt_text = build_impostor_prompt(original_phrase, other_copy_phrase)
                 prompt_text = prompt_text.format(common_words=", ".join(common_words))
 
-                response = self._prompt_ai(prompt_text)
+                response = await self._prompt_ai(prompt_text)
 
                 raw_phrases = [p.strip().upper() for p in response.split(";") if p.strip()]
                 unique_phrases: list[str] = []
@@ -1118,7 +1118,7 @@ class AIService:
             prompt = build_backronym_prompt(word_upper, count=1)
 
             # Generate using configured provider
-            response_text = self._prompt_ai(prompt)
+            response_text = await self._prompt_ai(prompt)
 
             # Parse response - should be words separated by spaces
             words = response_text.strip().split()
@@ -1176,7 +1176,7 @@ class AIService:
             prompt = build_backronym_vote_prompt(word_upper, backronym_strs)
 
             # Generate using configured provider
-            response_text = self._prompt_ai(prompt)
+            response_text = await self._prompt_ai(prompt)
 
             # Parse response - should be a number 1-5
             try:
