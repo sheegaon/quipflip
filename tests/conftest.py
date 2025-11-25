@@ -27,8 +27,18 @@ settings = get_settings()
 @pytest.fixture(scope="session", autouse=True)
 def apply_migrations():
     """Apply database migrations against the test database."""
+    # Clean up any existing test database
     if TEST_DB_PATH.exists():
-        TEST_DB_PATH.unlink()
+        try:
+            TEST_DB_PATH.unlink()
+        except PermissionError:
+            # On Windows, if file is in use, wait and retry
+            import time
+            time.sleep(0.1)
+            try:
+                TEST_DB_PATH.unlink()
+            except PermissionError:
+                pass  # Continue anyway, migrations will handle it
 
     alembic_cfg = AlembicConfig(str(BASE_DIR / "alembic.ini"))
     alembic_cfg.set_main_option("sqlalchemy.url", settings.database_url)
@@ -36,8 +46,14 @@ def apply_migrations():
 
     yield
 
+    # Clean up test database after all tests
     if TEST_DB_PATH.exists():
-        TEST_DB_PATH.unlink()
+        try:
+            TEST_DB_PATH.unlink()
+        except PermissionError:
+            # On Windows, database might still be in use
+            # This is okay, it will be cleaned up next run
+            pass
 
 
 @pytest.fixture(scope="session")
@@ -50,18 +66,19 @@ def event_loop():
 
 @pytest.fixture(scope="session")
 async def test_engine():
-    """Create test database engine."""
-    # Use SQLite for tests
+    """Create test database engine using the same database as migrations."""
+    # Use the same database URL as the migrations
     engine = create_async_engine(
-        "sqlite+aiosqlite:///:memory:",
+        settings.database_url,
         echo=False,
+        # Add connection pooling settings to help with cleanup
+        pool_pre_ping=True,
+        pool_recycle=300,
     )
-
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
 
     yield engine
 
+    # Properly dispose of the engine to close all connections
     await engine.dispose()
 
 
@@ -76,7 +93,9 @@ async def db_session(test_engine):
 
     async with async_session() as session:
         yield session
+        # Ensure transaction is rolled back and session is closed
         await session.rollback()
+        await session.close()
 
 
 @pytest.fixture
@@ -93,7 +112,10 @@ async def test_app(test_engine):
             expire_on_commit=False,
         )
         async with async_session() as session:
-            yield session
+            try:
+                yield session
+            finally:
+                await session.close()
 
     app.dependency_overrides[get_db] = override_get_db
     yield app

@@ -44,7 +44,10 @@ jobs:
         python -m pytest tests/test_beta_survey.py -v
         python -m pytest tests/test_cleanup_service.py -v
         python -m pytest tests/test_code_quality_improvements.py -v
+        python -m pytest tests/test_copy_availability_regression.py -v
+        python -m pytest tests/test_daily_bonus.py -v
         python -m pytest tests/test_datetime_helpers.py -v
+        python -m pytest tests/test_game_flow.py -v
         python -m pytest tests/test_party_session_service.py -v
         python -m pytest tests/test_phrase_validation_client.py -v
         python -m pytest tests/test_queue_service.py -v
