@@ -539,7 +539,8 @@ class AIService:
         lock_name = f"ai_quip_generation:{normalized_prompt.lower()}"
 
         try:
-            with lock_client.lock(lock_name, timeout=30):
+            # AI generation can take up to 60s especially under load
+            with lock_client.lock(lock_name, timeout=120):
                 cache_result = await self.db.execute(
                     select(QFAIQuipCache)
                     .options(selectinload(QFAIQuipCache.phrases))
@@ -670,6 +671,10 @@ class AIService:
                             f"quip phrase(s) for prompt '{normalized_prompt}'")
                 return cache
 
+        except asyncio.CancelledError:
+            # Server shutdown or task cancellation - exit immediately
+            logger.info(f"AI quip generation cancelled for prompt '{normalized_prompt}'")
+            raise
         except TimeoutError:
             logger.warning(f"Could not acquire lock for AI quip generation of prompt '{normalized_prompt}', "
                            f"another process may be handling it")
@@ -862,8 +867,13 @@ class AIService:
 
         for lock_attempt in range(lock_retry_attempts):
             try:
-                with lock_client.lock(lock_name, timeout=30):
+                # AI generation can take up to 60s especially under load
+                with lock_client.lock(lock_name, timeout=120):
                     return await _generate_cache()
+            except asyncio.CancelledError:
+                # Server shutdown or task cancellation - exit immediately
+                logger.info(f"AI phrase generation cancelled for prompt round {prompt_round.round_id}")
+                raise
             except TimeoutError:
                 logger.warning(
                     f"Could not acquire lock for AI phrase generation of prompt round {prompt_round.round_id} "
@@ -934,6 +944,10 @@ class AIService:
 
                 await self.db.delete(cache)
                 await self.db.flush()
+        except asyncio.CancelledError:
+            # Server shutdown or task cancellation - exit immediately
+            logger.info(f"AI phrase revalidation cancelled for {prompt_round.round_id=}")
+            raise
         except TimeoutError:
             logger.warning(f"Could not acquire lock for AI phrase revalidation of {prompt_round.round_id=}")
             return None
