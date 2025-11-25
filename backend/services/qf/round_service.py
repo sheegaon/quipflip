@@ -173,9 +173,20 @@ class RoundService:
 
     async def _select_prompt_for_player(self, player: QFPlayer) -> Prompt:
         """Fetch a random prompt the player has not seen yet."""
+        import time
+
+        t0 = time.perf_counter()
         prompt_stmt = PromptQueryBuilder.build_unseen_prompts_query(player.player_id)
+        t1 = time.perf_counter()
+        logger.info(f"[{player.player_id}] build_unseen_prompts_query took {t1-t0:.3f}s")
+
         result = await self.db.execute(prompt_stmt)
+        t2 = time.perf_counter()
+        logger.info(f"[{player.player_id}] db.execute(prompt_stmt) took {t2-t1:.3f}s")
+
         prompt = result.scalar_one_or_none()
+        t3 = time.perf_counter()
+        logger.info(f"[{player.player_id}] scalar_one_or_none() took {t3-t2:.3f}s")
 
         if not prompt:
             logger.debug(f"Player {player.player_id} has seen all available prompts; no unseen prompts remaining")
