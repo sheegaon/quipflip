@@ -239,7 +239,7 @@ class TestGuestVoteLockout:
                 username_canonical=f"prompter_{unique_id}",
                 email=f"prompter_{unique_id}@example.com",
                 password_hash="hash",
-                balance=1000,
+                wallet=1000,
             )
             copier1 = QFPlayer(
                 player_id=uuid.uuid4(),
@@ -247,7 +247,7 @@ class TestGuestVoteLockout:
                 username_canonical=f"copier1_{unique_id}",
                 email=f"copier1_{unique_id}@example.com",
                 password_hash="hash",
-                balance=1000,
+                wallet=1000,
             )
             copier2 = QFPlayer(
                 player_id=uuid.uuid4(),
@@ -255,7 +255,7 @@ class TestGuestVoteLockout:
                 username_canonical=f"copier2_{unique_id}",
                 email=f"copier2_{unique_id}@example.com",
                 password_hash="hash",
-                balance=1000,
+                wallet=1000,
             )
             db_session.add_all([prompter, copier1, copier2])
             await db_session.commit()

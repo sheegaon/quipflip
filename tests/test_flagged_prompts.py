@@ -23,7 +23,7 @@ def _create_player(email_prefix: str, balance: int = 1000) -> QFPlayer:
         username_canonical=f"{email_prefix}_{unique}",
         email=f"{email_prefix}_{unique}@example.com",
         password_hash="test",
-        balance=balance,
+        wallet=balance,
     )
 
 
@@ -52,8 +52,8 @@ async def _start_prompt_and_copy_round(db_session, transaction_service, round_se
 
 @pytest.mark.asyncio
 async def test_flag_copy_round_creates_flag(db_session):
-    prompt_player = _create_player('prompt', balance=2000)
-    copy_player = _create_player('copy', balance=2000)
+    prompt_player = _create_player('prompt', wallet=2000)
+    copy_player = _create_player('copy', wallet=2000)
     db_session.add_all([prompt_player, copy_player])
     await db_session.commit()
 
@@ -90,9 +90,9 @@ async def test_flag_copy_round_creates_flag(db_session):
 
 @pytest.mark.asyncio
 async def test_confirm_flag_refunds_and_locks_prompt_owner(db_session):
-    prompt_player = _create_player('prompt', balance=2000)
-    copy_player = _create_player('copy', balance=2000)
-    admin_player = _create_player('admin', balance=0)
+    prompt_player = _create_player('prompt', wallet=2000)
+    copy_player = _create_player('copy', wallet=2000)
+    admin_player = _create_player('admin', wallet=0)
     db_session.add_all([prompt_player, copy_player, admin_player])
     await db_session.commit()
 
@@ -128,9 +128,9 @@ async def test_confirm_flag_refunds_and_locks_prompt_owner(db_session):
 
 @pytest.mark.asyncio
 async def test_dismiss_flag_increments_reporter_streak_and_requeues(db_session):
-    prompt_player = _create_player('prompt', balance=2000)
-    copy_player = _create_player('copy', balance=2000)
-    admin_player = _create_player('admin', balance=0)
+    prompt_player = _create_player('prompt', wallet=2000)
+    copy_player = _create_player('copy', wallet=2000)
+    admin_player = _create_player('admin', wallet=0)
     db_session.add_all([prompt_player, copy_player, admin_player])
     await db_session.commit()
 

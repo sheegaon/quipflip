@@ -22,7 +22,7 @@ async def test_quest_progress_updates_are_persisted(db_session):
         username_canonical=canonical,
         email=f"player_{test_id}@example.com",
         password_hash="hash",
-        balance=0,
+        wallet=0,
     )
     db_session.add(player)
     await db_session.commit()
