@@ -208,14 +208,11 @@ class PhraseValidationClient:
             phrase2: Second phrase to compare
 
         Returns:
-            Similarity score between 0.0 and 1.0
+            Similarity score between -1.0 and 1.0
         """
         await self._ensure_session()
         url = f"{self.base_url}/similarity"
-        payload = {
-            "phrase1": phrase1,
-            "phrase2": phrase2
-        }
+        payload = {"phrase1": phrase1, "phrase2": phrase2}
 
         try:
             async with self._session.post(url, json=payload) as response:
