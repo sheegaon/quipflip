@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.config import get_settings
 from backend.database import get_db
-from backend.dependencies import get_current_player
+from backend.dependencies import get_current_player, get_optional_player
 from backend.schemas.auth import (
     AuthTokenResponse,
     LoginRequest,
@@ -144,7 +144,7 @@ async def refresh_tokens(
 async def logout(
     request: LogoutRequest,
     response: Response,
-    player: PlayerBase = Depends(get_current_player),
+    player: PlayerBase | None = Depends(get_optional_player),
     refresh_cookie: str | None = Cookie(
         default=None, alias=settings.refresh_token_cookie_name
     ),
@@ -152,20 +152,28 @@ async def logout(
 ) -> None:
     """Invalidate the provided refresh token, clean up party sessions, and clear cookies."""
 
-    # Clean up any active party sessions the player is in
-    try:
-        from backend.services.qf.party_session_service import PartySessionService
-        party_service = PartySessionService(db)
-        await party_service.remove_player_from_all_sessions(player.player_id)
-    except Exception as e:
-        # Log but don't fail logout if party cleanup fails
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.warning(f"Failed to clean up party sessions for player {player.player_id}: {e}")
-
     token = request.refresh_token or refresh_cookie
+    auth_service = AuthService(db, game_type=GameType.QF)
+
+    player_id = player.player_id if player else None
+    if not player_id and token:
+        linked_player = await auth_service.get_player_from_refresh_token(token)
+        if linked_player:
+            player_id = linked_player.player_id
+
+    # Clean up any active party sessions the player is in
+    if player_id:
+        try:
+            from backend.services.qf.party_session_service import PartySessionService
+            party_service = PartySessionService(db)
+            await party_service.remove_player_from_all_sessions(player_id)
+        except Exception as e:
+            # Log but don't fail logout if party cleanup fails
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Failed to clean up party sessions for player {player_id}: {e}")
+
     if token:
-        auth_service = AuthService(db, game_type=GameType.QF)
         await auth_service.revoke_refresh_token(token)
 
     clear_auth_cookies(response)

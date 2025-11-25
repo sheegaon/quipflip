@@ -322,6 +322,21 @@ class AuthService:
         )
         await self.db.commit()
 
+    async def get_player_from_refresh_token(self, raw_token: str) -> PlayerBase | None:
+        """Return the player linked to the given refresh token without rotating it."""
+        if not raw_token:
+            return None
+
+        token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+        result = await self.db.execute(
+            select(self.refresh_token_model).where(self.refresh_token_model.token_hash == token_hash)
+        )
+        refresh_token = result.scalar_one_or_none()
+        if not refresh_token or not refresh_token.is_active():
+            return None
+
+        return await self.player_service.get_player_by_id(refresh_token.player_id)
+
     async def issue_tokens(self, player: PlayerBase, *, rotate_existing: bool = True) -> tuple[str, str, int]:
         if rotate_existing:
             await self.revoke_all_refresh_tokens(player.player_id)
