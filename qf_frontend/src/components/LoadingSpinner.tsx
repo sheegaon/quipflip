@@ -189,20 +189,20 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
 export const useLoadingState = () => {
   const [loadingStates, setLoadingStates] = React.useState<Record<string, LoadingState>>({});
 
-  const setLoading = (key: string, state: LoadingState) => {
+  const setLoading = React.useCallback((key: string, state: LoadingState) => {
     setLoadingStates(prev => ({
       ...prev,
       [key]: state
     }));
-  };
+  }, []);
 
-  const clearLoading = (key: string) => {
+  const clearLoading = React.useCallback((key: string) => {
     setLoadingStates(prev => {
       const newState = { ...prev };
       delete newState[key];
       return newState;
     });
-  };
+  }, []);
 
   const isAnyLoading = Object.values(loadingStates).some(state => state.isLoading);
   const getLoadingState = (key: string) => loadingStates[key];
