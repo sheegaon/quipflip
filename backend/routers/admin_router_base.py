@@ -208,6 +208,8 @@ class AdminRouterBase(ABC):
         if not target_player:
             raise HTTPException(status_code=404, detail="player_not_found")
 
+        return target_player
+
     async def _delete_player_admin(self, request: AdminDeletePlayerRequest, session: AsyncSession
                                    ) -> AdminDeletePlayerResponse:
         """Delete a player account and associated data via admin panel."""
