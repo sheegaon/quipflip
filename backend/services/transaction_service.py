@@ -109,7 +109,7 @@ class TransactionService:
                 await self.db.refresh(transaction)
 
             logger.info(
-                f"TransactionBase created: player={player_id}, amount={amount}, "
+                f"TransactionBase created: {player_id=}, amount={amount}, "
                 f"type={trans_type}, wallet_type={wallet_type}, "
                 f"new_wallet={player.wallet}, new_vault={player.vault}, auto_commit={auto_commit}"
             )
@@ -207,7 +207,7 @@ class TransactionService:
                     await self.db.refresh(vault_txn)
 
                 logger.info(
-                    f"Split payout created: player={player_id}, gross={gross_amount}, cost={cost}, "
+                    f"Split payout created: {player_id=}, gross={gross_amount}, cost={cost}, "
                     f"net={net_earnings}, wallet={wallet_amount}, vault={vault_amount}"
                 )
 

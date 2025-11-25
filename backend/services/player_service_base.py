@@ -331,7 +331,7 @@ class PlayerServiceBase(ABC):
                 await self.db.commit()
                 await self.db.refresh(player)
 
-                logger.info(f"Created guest player {player_id} with email {guest_email}")
+                logger.info(f"Created guest {player_id=} with email {guest_email}")
                 return player, guest_password
 
             except Exception as e:
@@ -428,7 +428,7 @@ class PlayerServiceBase(ABC):
             await self.db.commit()
             await self.db.refresh(player)
 
-            logger.info(f"Created player {player_id} with username {normalized_username} (guest: {is_guest})")
+            logger.info(f"Created {player_id=} with username {normalized_username} (guest: {is_guest})")
             return player
 
         except (ValueError, self.error_class):

@@ -303,7 +303,7 @@ class IRVoteService:
             await self.db.refresh(vote)
 
             logger.info(
-                f"Vote submitted: player {player_id} voted on set {set_id} for entry {chosen_entry_id}"
+                f"Vote submitted: {player_id=} voted on set {set_id} for entry {chosen_entry_id}"
             )
 
             return {

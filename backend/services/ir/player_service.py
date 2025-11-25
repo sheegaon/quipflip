@@ -125,7 +125,7 @@ class PlayerService(PlayerServiceBase):
             await self.db.commit()
             await self.db.refresh(player)
 
-            logger.info(f"Created IR player {player_id} with username {username}")
+            logger.info(f"Created IR {player_id=} with username {username}")
             return player
         except PlayerError:
             raise

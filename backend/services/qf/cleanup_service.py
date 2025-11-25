@@ -494,9 +494,9 @@ class CleanupService:
         """
         deletion_counts = await self._delete_players_by_ids([player_id])
         if deletion_counts:
-            logger.info(f"Anonymized player {player_id} and deleted related data")
+            logger.info(f"Anonymized {player_id=} and deleted related data")
         else:
-            logger.info(f"No records processed for player {player_id}")
+            logger.info(f"No records processed for {player_id=}")
         return deletion_counts
 
     # ===== Inactive Guest Player Cleanup =====

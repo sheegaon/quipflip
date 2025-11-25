@@ -104,7 +104,7 @@ class IRResultViewService:
                 await self.db.refresh(result_view)
 
                 logger.info(
-                    f"Claimed result for player {player_id} on set {set_id}, payout: {payout_amount}"
+                    f"Claimed result for {player_id=} on set {set_id}, payout: {payout_amount}"
                 )
             else:
                 # Already claimed, just update last viewed

@@ -158,7 +158,7 @@ async def logout(
             # Log but don't fail logout if party cleanup fails
             import logging
             logger = logging.getLogger(__name__)
-            logger.warning(f"Failed to clean up party sessions for player {player_id}: {e}")
+            logger.warning(f"Failed to clean up party sessions for {player_id=}: {e}")
 
     if token:
         await auth_service.revoke_refresh_token(token)
