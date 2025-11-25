@@ -4,7 +4,7 @@ import type { PartyContext } from '../api/types';
 
 export type PartyStep = 'prompt' | 'copy' | 'vote';
 
-interface SessionConfig {
+export interface SessionConfig {
   prompts_per_player: number;
   copies_per_player: number;
   votes_per_player: number;

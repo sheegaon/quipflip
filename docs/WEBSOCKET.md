@@ -35,9 +35,9 @@ This document captures the current WebSocket architecture across the Quipflip ba
 
 ### Party Mode
 - **Endpoint:** `GET /qf/party/{sessionId}/ws?context={lobby|game|other}&token=...`
-- **Messages:** session lifecycle events including `phase_transition`, `player_joined`, `player_left`, `player_ready`, `progress_update`, `session_started`, `session_completed`, `session_update`, and `host_ping`.
+- **Messages:** read-only notifications such as `player_joined`, `player_left`, `player_ready`, `progress_update`, `session_started`, `session_completed`, `session_update`, and `host_ping`.
 - **Frontend:**
-  - `usePartyWebSocket` wraps `useWebSocket`, enabling the connection when authenticated and `sessionId` is set.
+  - `usePartyWebSocket` wraps `useWebSocket` for presence and progress notifications only; the actual party flow (starting rounds, switching phases) is driven by REST endpoints and status polling (e.g., `GET /party/{id}/status` followed by `POST /party/{id}/rounds/{phase}`).
   - Connection state (`connected`, `connecting`, `error`) is exposed to party screens for UX feedback.
   - Auth-related close codes (`4000`–`4003`, `4401`, `4403`) stop reconnect attempts and surface a clear error; other failures rely on backoff reconnects from the shared hook.
 

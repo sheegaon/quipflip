@@ -233,6 +233,8 @@ All of the HTTP endpoints for these phases live under:
 - *Starting Party Rounds (Prompt / Copy / Vote)* in `party_api.md`
 - *Session Status & Results* in `party_api.md`
 
+**Frontend flow note:** the in-game UI polls `GET /party/{session_id}/status` to detect phase changes and then calls the appropriate `POST /party/{session_id}/rounds/{phase}` endpoint to start the next round. WebSockets only inform the UI about progress counters; they do not drive phase transitions.
+
 This section focuses on how the **services and models** work together.
 
 ### 3.1 High-level coordination: `PartyCoordinationService`
@@ -443,9 +445,9 @@ The exact AI models, prompts, and metrics are documented in the AI service docs,
 
 ## 6. WebSockets and presence (`PartyWebSocketManager`)
 
-Party Mode uses a dedicated WebSocket channel so clients don’t have to poll for every lobby/phase change.
+Party Mode uses a dedicated WebSocket channel for presence and progress notifications; the gameplay itself (starting rounds, advancing phases) is coordinated through REST endpoints and status polling.
 
-The HTTP side of the WebSocket is documented under *Party WebSocket endpoint* in `party_api.md`. This section focuses on what the manager actually does.
+The HTTP side of the WebSocket is documented under *Party WebSocket endpoint* in `party_api.md`. This section focuses on what the manager actually does on the notification channel.
 
 ### Connect / disconnect
 
@@ -475,10 +477,7 @@ Typical WebSocket events include:
 - `ai_player_added`
 - `results_available`
 
-All of these are just thin wrappers around `PartySessionStatusResponse` and the other schemas defined in `party_data_models_and_schemas.md`. The goal is:
-
-- **One central read model** (`get_session_status`)
-- **One small set of WebSocket envelopes** that carry it to the client
+All of these are just thin wrappers around `PartySessionStatusResponse` and the other schemas defined in `party_data_models_and_schemas.md`. They let the UI update counts or show toasts, but the client still calls REST endpoints to fetch the latest session status and to progress to the next round.
 
 ---
 

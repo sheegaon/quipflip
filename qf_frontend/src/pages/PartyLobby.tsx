@@ -51,8 +51,13 @@ export const PartyLobby: React.FC = () => {
       const status = await apiClient.getPartySessionStatus(sessionId);
       setSessionStatus(status);
 
-      // If session already started, navigate to game
-      if (status.status === 'ACTIVE') {
+      // If the session has progressed past the lobby, navigate to the correct screen via REST status
+      if (status.current_phase === 'RESULTS' || status.status === 'COMPLETED') {
+        navigate(`/party/results/${sessionId}`);
+        return;
+      }
+
+      if (status.status === 'IN_PROGRESS' || status.current_phase !== 'LOBBY') {
         navigate(`/party/game/${sessionId}`);
       }
     } catch (err) {
@@ -65,6 +70,30 @@ export const PartyLobby: React.FC = () => {
   useEffect(() => {
     loadSessionStatus();
   }, [loadSessionStatus]);
+
+  // Poll for session changes so gameplay progresses via REST even without WebSocket
+  useEffect(() => {
+    if (!sessionId) return undefined;
+
+    let timeoutId: number | null = null;
+    let cancelled = false;
+
+    const poll = async () => {
+      await loadSessionStatus();
+      if (!cancelled) {
+        timeoutId = window.setTimeout(poll, 5000);
+      }
+    };
+
+    void poll();
+
+    return () => {
+      cancelled = true;
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, [loadSessionStatus, sessionId]);
 
   // WebSocket handlers
   const {
@@ -85,10 +114,10 @@ export const PartyLobby: React.FC = () => {
       console.log(`${data.username} is ready!`);
       loadSessionStatus();
     },
-    onSessionStarted: (data) => {
-      console.log('Party started!', data);
-      // Navigate to game page
-      navigate(`/party/game/${sessionId}`);
+    onSessionStarted: () => {
+      console.log('Party started notification received');
+      // WebSocket just notifies; REST polling drives navigation
+      void loadSessionStatus();
     },
     onSessionUpdate: (data) => {
       console.log('Session update:', data);
@@ -118,9 +147,11 @@ export const PartyLobby: React.FC = () => {
       }
 
       await apiClient.startPartySession(sessionId);
-      // WebSocket will trigger navigation to game page
+      await loadSessionStatus();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to start party');
+      setIsStarting(false);
+    } finally {
       setIsStarting(false);
     }
   };
