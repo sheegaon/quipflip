@@ -128,7 +128,7 @@ class PhraseValidationClient:
             (is_valid, error_message)
         """
         payload = {"phrase": phrase}
-        logger.info(f"Validating phrase: {phrase}")
+        logger.debug(f"Validating phrase: {phrase}")
         return await self._make_request("/validate", payload)
 
     async def validate_prompt_phrase(self, phrase: str, prompt_text: str | None) -> Tuple[bool, str]:
@@ -173,8 +173,8 @@ class PhraseValidationClient:
             "other_copy_phrase": other_copy_phrase,
             "prompt_text": prompt_text
         }
-        logger.info(f"Validating copy phrase: {phrase} against original: {original_phrase} prompt: {prompt_text} "
-                    f"and other copy: {other_copy_phrase}")
+        logger.debug(f"Validating copy phrase: {phrase} against original: {original_phrase} prompt: {prompt_text} "
+                     f"and other copy: {other_copy_phrase}")
         return await self._make_request("/validate/copy", payload)
 
     async def validate_backronym_words(
@@ -196,7 +196,7 @@ class PhraseValidationClient:
             "words": words,
             "target_letter_count": target_letter_count
         }
-        logger.info(f"Validating backronym words: {words} for target length: {target_letter_count}")
+        logger.debug(f"Validating backronym words: {words} for target length: {target_letter_count}")
         return await self._make_request("/validate/backronym", payload)
 
     async def health_check(self) -> bool:

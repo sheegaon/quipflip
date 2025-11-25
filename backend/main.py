@@ -424,41 +424,36 @@ async def lifespan(app_instance: FastAPI):
     try:
         yield
     finally:
-        # Cancel background tasks on shutdown
+        # Cancel background tasks on shutdown with timeout
+        logger.info("Shutting down background tasks...")
+
+        tasks_to_cancel = []
         if ai_backup_task:
             ai_backup_task.cancel()
-            try:
-                await ai_backup_task
-            except asyncio.CancelledError:
-                logger.info("AI backup cycle task cancelled")
-
+            tasks_to_cancel.append(("AI backup", ai_backup_task))
         if stale_handler_task:
             stale_handler_task.cancel()
-            try:
-                await stale_handler_task
-            except asyncio.CancelledError:
-                logger.info("Stale AI handler task cancelled")
-
+            tasks_to_cancel.append(("Stale AI handler", stale_handler_task))
         if cleanup_task:
             cleanup_task.cancel()
-            try:
-                await cleanup_task
-            except asyncio.CancelledError:
-                logger.info("Cleanup cycle task cancelled")
-
+            tasks_to_cancel.append(("Cleanup", cleanup_task))
         if party_maintenance_task:
             party_maintenance_task.cancel()
-            try:
-                await party_maintenance_task
-            except asyncio.CancelledError:
-                logger.info("Party maintenance cycle task cancelled")
-
+            tasks_to_cancel.append(("Party maintenance", party_maintenance_task))
         if ir_backup_task:
             ir_backup_task.cancel()
+            tasks_to_cancel.append(("IR backup", ir_backup_task))
+
+        # Wait for tasks to cancel with timeout
+        for task_name, task in tasks_to_cancel:
             try:
-                await ir_backup_task
+                await asyncio.wait_for(task, timeout=2.0)
             except asyncio.CancelledError:
-                logger.info("IR backup cycle task cancelled")
+                logger.info(f"{task_name} task cancelled")
+            except asyncio.TimeoutError:
+                logger.warning(f"{task_name} task did not cancel within timeout, forcing shutdown")
+            except Exception as e:
+                logger.error(f"Error cancelling {task_name} task: {e}")
 
         # Cleanup phrase validation client session
         if settings.use_phrase_validator_api:

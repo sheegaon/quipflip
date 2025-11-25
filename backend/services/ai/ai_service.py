@@ -417,11 +417,6 @@ class AIService:
                             # Each phrase maps to all phrases in the set (including itself)
                             self._impostor_completions_cache[normalized_phrase] = all_phrases
 
-            logger.info(
-                f"Loaded {equivalence_sets_count} equivalence sets "
-                f"({len(self._impostor_completions_cache)} bidirectional mappings) from CSV cache"
-            )
-
         except FileNotFoundError:
             logger.warning(f"Impostor phrases CSV not found at {csv_path}")
         except Exception as e:
