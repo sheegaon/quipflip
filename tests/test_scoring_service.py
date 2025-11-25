@@ -41,7 +41,6 @@ async def finalized_phraseset_with_votes(db_session):
         vault=0,
     )
     copier2 = QFPlayer(
-        player_id=uuid.uuid4(),
         username=f"copier2_{test_id}",
         username_canonical=f"copier2_{test_id}",
         email=f"copier2_{test_id}@test.com",
@@ -203,7 +202,6 @@ class TestPayoutCalculation:
         test_id = uuid.uuid4().hex[:8]
 
         prompter = QFPlayer(
-            player_id=uuid.uuid4(),
             username=f"prompter_{test_id}",
             username_canonical=f"prompter_{test_id}",
             email=f"prompter_{test_id}@test.com",

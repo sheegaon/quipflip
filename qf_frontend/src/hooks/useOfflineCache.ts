@@ -171,7 +171,7 @@ export const useOfflineCache = <T>(
         fetchData();
       }
     }
-  }, [key, enabled]); // Only run on key or enabled change
+  }, [key, enabled, fetchData, getCachedData, isCacheStale, isOffline]);
 
   /**
    * Refetch when coming back online
@@ -181,7 +181,7 @@ export const useOfflineCache = <T>(
       console.log('Back online! Refetching stale data...');
       fetchData();
     }
-  }, [isOffline, enabled, data, isStale]); // Dependencies for auto-refetch
+  }, [isOffline, enabled, data, isStale, fetchData]);
 
   /**
    * Manual refetch function

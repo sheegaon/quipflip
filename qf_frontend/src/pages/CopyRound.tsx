@@ -337,7 +337,7 @@ export const CopyRound: React.FC = () => {
         status: roundData.status,
       });
     }
-  }, [roundData?.round_id, roundData?.expires_at, roundData?.status]);
+  }, [roundData]);
 
   useEffect(() => {
     return () => {

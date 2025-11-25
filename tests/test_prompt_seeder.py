@@ -43,7 +43,7 @@ class TestSeasonDetection:
         mock_datetime = MagicMock()
         mock_datetime.now.return_value.month = month
 
-        with patch('backend.services.prompt_seeder.datetime', mock_datetime):
+        with patch('backend.services.qf.prompt_seeder.datetime', mock_datetime):
             result = get_current_season()
             assert result == expected_season
 
@@ -52,7 +52,7 @@ class TestSeasonDetection:
         mock_datetime = MagicMock()
         mock_datetime.now.return_value.month = 12
 
-        with patch('backend.services.prompt_seeder.datetime', mock_datetime):
+        with patch('backend.services.qf.prompt_seeder.datetime', mock_datetime):
             result = get_current_season()
             assert result == "fall"
 
@@ -61,7 +61,7 @@ class TestSeasonDetection:
         mock_datetime = MagicMock()
         mock_datetime.now.return_value.month = 3
 
-        with patch('backend.services.prompt_seeder.datetime', mock_datetime):
+        with patch('backend.services.qf.prompt_seeder.datetime', mock_datetime):
             result = get_current_season()
             assert result == "winter"
 
@@ -70,7 +70,7 @@ class TestSeasonDetection:
         mock_datetime = MagicMock()
         mock_datetime.now.return_value.month = 6
 
-        with patch('backend.services.prompt_seeder.datetime', mock_datetime):
+        with patch('backend.services.qf.prompt_seeder.datetime', mock_datetime):
             result = get_current_season()
             assert result == "spring"
 
@@ -79,7 +79,7 @@ class TestSeasonDetection:
         mock_datetime = MagicMock()
         mock_datetime.now.return_value.month = 9
 
-        with patch('backend.services.prompt_seeder.datetime', mock_datetime):
+        with patch('backend.services.qf.prompt_seeder.datetime', mock_datetime):
             result = get_current_season()
             assert result == "fall"
 
@@ -98,7 +98,7 @@ class TestCSVLoading:
         mock_datetime.now.return_value.month = 7  # Summer
 
         with patch('builtins.open', mock_open(read_data=csv_content)), \
-             patch('backend.services.prompt_seeder.datetime', mock_datetime):
+             patch('backend.services.qf.prompt_seeder.datetime', mock_datetime):
             prompts = load_prompts_from_csv()
 
             assert len(prompts) == 3
@@ -120,7 +120,7 @@ class TestCSVLoading:
         mock_datetime.now.return_value.month = 7  # Summer
 
         with patch('builtins.open', mock_open(read_data=csv_content)), \
-             patch('backend.services.prompt_seeder.datetime', mock_datetime):
+             patch('backend.services.qf.prompt_seeder.datetime', mock_datetime):
             prompts = load_prompts_from_csv()
 
             # Should include: normal, summer (as seasonal), and generic seasonal
@@ -145,7 +145,7 @@ class TestCSVLoading:
         mock_datetime.now.return_value.month = 10  # Fall
 
         with patch('builtins.open', mock_open(read_data=csv_content)), \
-             patch('backend.services.prompt_seeder.datetime', mock_datetime):
+             patch('backend.services.qf.prompt_seeder.datetime', mock_datetime):
             prompts = load_prompts_from_csv()
 
             assert len(prompts) == 1
@@ -161,7 +161,7 @@ class TestCSVLoading:
         mock_datetime.now.return_value.month = 2  # Winter
 
         with patch('builtins.open', mock_open(read_data=csv_content)), \
-             patch('backend.services.prompt_seeder.datetime', mock_datetime):
+             patch('backend.services.qf.prompt_seeder.datetime', mock_datetime):
             prompts = load_prompts_from_csv()
 
             assert len(prompts) == 1
@@ -177,7 +177,7 @@ class TestCSVLoading:
         mock_datetime.now.return_value.month = 5  # Spring
 
         with patch('builtins.open', mock_open(read_data=csv_content)), \
-             patch('backend.services.prompt_seeder.datetime', mock_datetime):
+             patch('backend.services.qf.prompt_seeder.datetime', mock_datetime):
             prompts = load_prompts_from_csv()
 
             assert len(prompts) == 1
@@ -194,7 +194,7 @@ class TestCSVLoading:
             mock_datetime.now.return_value.month = month
 
             with patch('builtins.open', mock_open(read_data=csv_content)), \
-                 patch('backend.services.prompt_seeder.datetime', mock_datetime):
+                 patch('backend.services.qf.prompt_seeder.datetime', mock_datetime):
                 prompts = load_prompts_from_csv()
 
                 assert len(prompts) == 2
@@ -225,7 +225,7 @@ class TestCSVLoading:
         mock_datetime.now.return_value.month = 7
 
         with patch('builtins.open', mock_open(read_data=csv_content)), \
-             patch('backend.services.prompt_seeder.datetime', mock_datetime):
+             patch('backend.services.qf.prompt_seeder.datetime', mock_datetime):
             prompts = load_prompts_from_csv()
 
             assert len(prompts) == 0
@@ -250,7 +250,7 @@ class TestDatabaseSync:
         mock_datetime.now.return_value.month = 7
 
         with patch('builtins.open', mock_open(read_data=csv_content)), \
-             patch('backend.services.prompt_seeder.datetime', mock_datetime):
+             patch('backend.services.qf.prompt_seeder.datetime', mock_datetime):
             # Should not raise any exceptions
             await sync_prompts_with_database()
 
@@ -274,7 +274,7 @@ class TestDatabaseSync:
         mock_datetime.now.return_value.month = 10  # Fall
 
         with patch('builtins.open', mock_open(read_data=csv_content)), \
-             patch('backend.services.prompt_seeder.datetime', mock_datetime):
+             patch('backend.services.qf.prompt_seeder.datetime', mock_datetime):
             # Should complete without errors
             await sync_prompts_with_database()
 
@@ -288,7 +288,7 @@ class TestDatabaseSync:
         mock_datetime.now.return_value.month = 7
 
         with patch('builtins.open', mock_open(read_data=csv_content)), \
-             patch('backend.services.prompt_seeder.datetime', mock_datetime):
+             patch('backend.services.qf.prompt_seeder.datetime', mock_datetime):
             # Run twice - should not raise errors
             await sync_prompts_with_database()
             await sync_prompts_with_database()
@@ -302,7 +302,7 @@ class TestDatabaseSync:
         mock_datetime.now.return_value.month = 7
 
         with patch('builtins.open', mock_open(read_data=csv_content)), \
-             patch('backend.services.prompt_seeder.datetime', mock_datetime):
+             patch('backend.services.qf.prompt_seeder.datetime', mock_datetime):
             # Should complete without errors
             await sync_prompts_with_database()
 
@@ -320,5 +320,5 @@ class TestDatabaseSync:
         mock_datetime.now.return_value.month = 7
 
         with patch('builtins.open', mock_open(read_data=csv_content)), \
-             patch('backend.services.prompt_seeder.datetime', mock_datetime):
+             patch('backend.services.qf.prompt_seeder.datetime', mock_datetime):
             await sync_prompts_with_database()

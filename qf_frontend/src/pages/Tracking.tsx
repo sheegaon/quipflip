@@ -217,7 +217,7 @@ export const Tracking: React.FC = () => {
     } else {
       clearLoading('phrasesets');
     }
-  }, [listLoading]); // Remove setLoading and clearLoading from dependencies
+    }, [clearLoading, listLoading, setLoading]);
 
   useEffect(() => {
     if (detailsLoading) {
@@ -229,7 +229,7 @@ export const Tracking: React.FC = () => {
     } else {
       clearLoading('details');
     }
-  }, [detailsLoading]); // Remove setLoading and clearLoading from dependencies
+    }, [clearLoading, detailsLoading, setLoading]);
 
   const handleSelect = (summary: PhrasesetSummary) => {
     const id = getUniqueIdForSummary(summary);

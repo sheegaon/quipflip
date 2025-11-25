@@ -428,6 +428,9 @@ class TestUsernameRecycling:
                 .where(QFPlayer.player_id == UUID(guest_id))
                 .values(last_login_date=old_login_date)
             )
+            # Persist the guest updates before creating another player to avoid SQLite write locks
+            await db_session.commit()
+            db_session.expire_all()
 
             # Create another player whose canonical username would conflict with the recycled form
             create_response = await client.post(

@@ -36,7 +36,7 @@ class TestRefreshTokenCleanup:
         valid_token = RefreshToken(
             token_id=uuid4(),
             player_id=player.player_id,
-            token_hash="valid_token_hash",
+            token_hash=f"valid_token_hash_{uuid4().hex}",
             expires_at=datetime.now(UTC) + timedelta(days=7),
         )
         db_session.add(valid_token)
@@ -45,7 +45,7 @@ class TestRefreshTokenCleanup:
         orphaned_token = RefreshToken(
             token_id=uuid4(),
             player_id=uuid4(),  # Non-existent player
-            token_hash="orphaned_token_hash",
+            token_hash=f"orphaned_token_hash_{uuid4().hex}",
             expires_at=datetime.now(UTC) + timedelta(days=7),
         )
         db_session.add(orphaned_token)
@@ -58,7 +58,7 @@ class TestRefreshTokenCleanup:
 
         # Verify valid token still exists
         await db_session.refresh(valid_token)
-        assert valid_token.token_hash == "valid_token_hash"
+        assert valid_token.token_hash.startswith("valid_token_hash_")
 
     @pytest.mark.asyncio
     async def test_cleanup_expired_refresh_tokens(self, db_session, player_factory):
@@ -70,7 +70,7 @@ class TestRefreshTokenCleanup:
         expired_token = RefreshToken(
             token_id=uuid4(),
             player_id=player.player_id,
-            token_hash="expired_token_hash",
+            token_hash=f"expired_token_hash_{uuid4().hex}",
             expires_at=datetime.now(UTC) - timedelta(days=1),
         )
         db_session.add(expired_token)
@@ -79,7 +79,7 @@ class TestRefreshTokenCleanup:
         valid_token = RefreshToken(
             token_id=uuid4(),
             player_id=player.player_id,
-            token_hash="valid_token_hash",
+            token_hash=f"valid_token_hash_{uuid4().hex}",
             expires_at=datetime.now(UTC) + timedelta(days=7),
         )
         db_session.add(valid_token)
@@ -92,7 +92,7 @@ class TestRefreshTokenCleanup:
 
         # Verify valid token still exists
         await db_session.refresh(valid_token)
-        assert valid_token.token_hash == "valid_token_hash"
+        assert valid_token.token_hash.startswith("valid_token_hash_")
 
     @pytest.mark.asyncio
     async def test_cleanup_expired_includes_revoked_tokens(self, db_session, player_factory):
@@ -104,7 +104,7 @@ class TestRefreshTokenCleanup:
         revoked_token = RefreshToken(
             token_id=uuid4(),
             player_id=player.player_id,
-            token_hash="revoked_token_hash",
+            token_hash=f"revoked_token_hash_{uuid4().hex}",
             expires_at=datetime.now(UTC) + timedelta(days=7),
             revoked_at=datetime.now(UTC),
         )
@@ -114,7 +114,7 @@ class TestRefreshTokenCleanup:
         valid_token = RefreshToken(
             token_id=uuid4(),
             player_id=player.player_id,
-            token_hash="valid_token_hash",
+            token_hash=f"valid_token_hash_{uuid4().hex}",
             expires_at=datetime.now(UTC) + timedelta(days=7),
             revoked_at=None,
         )
@@ -128,7 +128,7 @@ class TestRefreshTokenCleanup:
 
         # Verify valid token still exists
         await db_session.refresh(valid_token)
-        assert valid_token.token_hash == "valid_token_hash"
+        assert valid_token.token_hash.startswith("valid_token_hash_")
 
     @pytest.mark.asyncio
     async def test_cleanup_old_revoked_tokens(self, db_session, player_factory):
@@ -140,7 +140,7 @@ class TestRefreshTokenCleanup:
         old_revoked_token = RefreshToken(
             token_id=uuid4(),
             player_id=player.player_id,
-            token_hash="old_revoked_token_hash",
+            token_hash=f"old_revoked_token_hash_{uuid4().hex}",
             expires_at=datetime.now(UTC) + timedelta(days=7),
             revoked_at=datetime.now(UTC) - timedelta(days=31),
         )
@@ -150,7 +150,7 @@ class TestRefreshTokenCleanup:
         recent_revoked_token = RefreshToken(
             token_id=uuid4(),
             player_id=player.player_id,
-            token_hash="recent_revoked_token_hash",
+            token_hash=f"recent_revoked_token_hash_{uuid4().hex}",
             expires_at=datetime.now(UTC) + timedelta(days=7),
             revoked_at=datetime.now(UTC) - timedelta(days=15),
         )
@@ -164,7 +164,7 @@ class TestRefreshTokenCleanup:
 
         # Verify recent revoked token still exists
         await db_session.refresh(recent_revoked_token)
-        assert recent_revoked_token.token_hash == "recent_revoked_token_hash"
+        assert recent_revoked_token.token_hash.startswith("recent_revoked_token_hash_")
 
 
 class TestOrphanedRoundsCleanup:
@@ -759,7 +759,7 @@ class TestRunAllCleanupTasks:
         expired_token = RefreshToken(
             token_id=uuid4(),
             player_id=player.player_id,
-            token_hash="expired_token_hash",
+            token_hash=f"expired_token_hash_{uuid4().hex}",
             expires_at=datetime.now(UTC) - timedelta(days=1),
         )
         db_session.add(expired_token)
