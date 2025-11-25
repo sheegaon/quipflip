@@ -794,15 +794,12 @@ class AIService:
                         unique_phrases.append(phrase)
 
                 async with MetricsTracker(
+                    self.metrics_service,
+                    operation_type="copy_generation",
                     provider=self.provider,
                     model=self.ai_model,
-                    ai_type="copy",
-                    attempt=attempt,
-                    max_attempts=max_attempts,
-                    prompt_text=prompt_round.prompt_text,
+                    cache_id=cache_id,
                 ) as tracker:
-                    tracker.set_response_length(sum(len(p) for p in unique_phrases))
-
                     validated_phrases = []
                     errors = []
                     for phrase in unique_phrases:
@@ -812,7 +809,6 @@ class AIService:
                             other_copy_phrase,
                             prompt_round.prompt_text,
                         )
-                        tracker.record_validation_result(is_valid)
                         if is_valid:
                             validated_phrases.append(phrase)
                         else:
