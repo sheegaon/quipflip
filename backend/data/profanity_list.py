@@ -7,39 +7,32 @@ import re
 # Words are stored in lowercase for case-insensitive matching
 PROFANITY_LIST = [
     # Common profanities
-    "fuck", "shit", "ass", "bitch", "damn", "hell", "crap",
-    "dick", "cock", "pussy", "cunt", "bastard", "slut", "whore",
-    "piss", "fag", "faggot", "dyke", "retard", "nigger", "nigga",
-    "twat", "bollocks", "bugger", "wanker", "arsehole", "scum",
-    "tosser", "prick", "minger", "numpty", "badass", "douche",
-    "jackass",
+    "fuck", "shit", "ass", "bitch", "damn", "hell", "crap", "dick", "cock", "pussy", "cunt", "bastard", "slut", "whore",
+    "piss", "fag", "faggot", "dyke", "retard", "nigger", "nigga", "twat", "bollocks", "bugger", "wanker", "arsehole",
+    "scum", "tosser", "prick", "minger", "numpty", "badass", "douche", "jackass",
 
     # Variations and leetspeak
-    "fck", "fuk", "sh1t", "a55", "b1tch", "d1ck", "c0ck",
-    "pu55y", "c0nt", "cnt", "b4stard", "p1ss", "f4g", "f4ggot",
+    "fck", "fuk", "sh1t", "a55", "b1tch", "d1ck", "c0ck", "pu55y", "c0nt", "cnt", "b4stard", "p1ss", "f4g", "f4ggot",
     "r3tard", "n1gger", "n1gga", "tw4t",
 
     # Offensive slurs
-    "chink", "spic", "kike", "wetback", "gook", "beaner",
-    "towelhead", "raghead", "nazi", "hitler",
-    "jihad", "infidel",
+    "chink", "spic", "kike", "wetback", "gook", "beaner", "towelhead", "raghead", "nazi", "hitler", "jihad", "infidel",
 
     # Sexual content
-    "porn", "xxx", "sex", "anal", "penis", "vagina", "tits",
-    "boobs", "cum", "jizz", "orgasm", "masturbate", "rape",
+    "porn", "xxx", "sex", "anal", "penis", "vagina", "tits", "boobs", "cum", "jizz", "orgasm", "masturbate", "rape",
     "slutty", "horny", "bdsm", "fetish",
 
     # Drugs
-    "cocaine", "heroin", "meth", "weed", "marijuana", "drugs",
-    "lsd", "acid", "ecstasy", "pcp", "crack",
+    "cocaine", "heroin", "meth", "weed", "marijuana", "drugs", "lsd", "acid", "ecstasy", "pcp", "crack",
     "opiate", "opioid", "fentanyl", "shrooms", "mdma",
+]
 
-    # Other offensive terms
+VIOLENT_LIST = [
     "kill", "murder", "suicide", "terrorist", "bomb", "weapon", "assault",
 ]
 
 
-def contains_profanity(text: str) -> bool:
+def contains_profanity(text: str, include_violent_list=True) -> bool:
     """
     Check if the given text contains any profanity.
 
@@ -49,6 +42,7 @@ def contains_profanity(text: str) -> bool:
 
     Args:
         text: The text to check
+        include_violent_list: Whether to include violent list in check
 
     Returns:
         True if profanity is found, False otherwise
@@ -68,7 +62,10 @@ def contains_profanity(text: str) -> bool:
     no_spaces = cleaned.replace(" ", "")
 
     # Check each banned word
-    for word in PROFANITY_LIST:
+    banned_list = PROFANITY_LIST
+    if include_violent_list:
+        banned_list += VIOLENT_LIST
+    for word in banned_list:
         # Primary check: word boundaries in the spaced version
         # This handles most cases correctly and avoids false positives
         pattern = r'\b' + re.escape(word) + r'\b'
