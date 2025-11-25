@@ -71,14 +71,16 @@ class PromptQueryBuilder:
 
         base_stmt = select(Prompt).where(Prompt.enabled == True)
 
+        # Return a batch of unseen prompts for random selection in Python
+        # This is MUCH faster than ORDER BY random() in the database
         return (
             base_stmt.outerjoin(
                 seen_prompts_subquery,
                 seen_prompts_subquery.c.prompt_id == Prompt.prompt_id,
             )
             .where(seen_prompts_subquery.c.prompt_id.is_(None))
-            .order_by(func.random())
-            .limit(1)
+            .order_by(Prompt.prompt_id)  # Deterministic ordering for consistent query plans
+            .limit(20)  # Fetch batch for random selection
         )
 
     @staticmethod

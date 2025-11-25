@@ -225,7 +225,11 @@ class PartyCoordinationService:
         )
 
         # Check if all players done with prompts
-        if await self.party_session_service.can_advance_phase(session_id):
+        can_advance = await self.party_session_service.can_advance_phase(session_id)
+        logger.info(f"After prompt submission - can_advance_phase={can_advance} for session {session_id}")
+
+        if can_advance:
+            logger.info(f"Advancing phase for session {session_id} from PROMPT to COPY")
             session = await self.party_session_service.advance_phase(session_id)
 
             # Broadcast phase transition
@@ -241,6 +245,8 @@ class PartyCoordinationService:
                 session_id=session_id,
                 transaction_service=transaction_service,
             )
+        else:
+            logger.info(f"Not advancing phase yet for session {session_id} - waiting for more submissions")
 
         return {
             'success': True,

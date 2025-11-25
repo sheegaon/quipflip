@@ -89,7 +89,6 @@ class RoundService:
         from backend.utils.cache import dashboard_cache
         dashboard_cache.invalidate_player_data(player.player_id)
 
-        logger.debug(f"Started prompt round {round_object.round_id} for player {player.player_id}")
         return round_object
 
     async def _create_prompt_round(
@@ -99,7 +98,6 @@ class RoundService:
         transaction_service: TransactionService,
     ) -> Round:
         """Create a prompt round and commit it in a single transaction."""
-
         await transaction_service.create_transaction(
             player.player_id,
             -self.settings.prompt_cost,
@@ -120,13 +118,19 @@ class RoundService:
         )
 
         self.db.add(round_object)
-        await self.db.flush()
+
+        # Must flush Round before setting FK reference to satisfy foreign key constraint
+        # Only flush the Round object, not the entire session (to minimize lock contention)
+        await self.db.flush([round_object])
 
         player.active_round_id = round_object.round_id
-        await self._increment_prompt_usage(prompt.prompt_id)
 
+        # Flush Player separately to reduce commit contention
+        # This way only Transaction and Prompt updates remain for final commit
+        await self.db.flush([player])
+
+        await self._increment_prompt_usage(prompt.prompt_id)
         await self.db.commit()
-        await self.db.refresh(round_object)
 
         return round_object
 
@@ -144,15 +148,17 @@ class RoundService:
 
     async def _select_prompt_for_player(self, player: QFPlayer) -> Prompt:
         """Fetch a random prompt the player has not seen yet."""
+        import random
+
         prompt_stmt = PromptQueryBuilder.build_unseen_prompts_query(player.player_id)
         result = await self.db.execute(prompt_stmt)
-        prompt = result.scalar_one_or_none()
+        prompts = result.scalars().all()
 
-        if not prompt:
-            logger.debug(f"Player {player.player_id} has seen all available prompts; no unseen prompts remaining")
+        if not prompts:
             raise NoPromptsAvailableError("no_unseen_prompts_available")
 
-        return prompt
+        # Randomly select one prompt from the batch (much faster than ORDER BY random())
+        return random.choice(prompts)
 
     async def submit_prompt_phrase(
             self,

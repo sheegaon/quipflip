@@ -296,8 +296,6 @@ class AIService:
                     if phrases:
                         self._prompt_completions_cache[prompt] = phrases
 
-            logger.info(f"Loaded {len(self._prompt_completions_cache)} prompts from CSV cache")
-
         except FileNotFoundError:
             logger.warning(f"Prompt completions CSV not found at {csv_path}")
         except Exception as e:
@@ -419,11 +417,6 @@ class AIService:
                             # Each phrase maps to all phrases in the set (including itself)
                             self._impostor_completions_cache[normalized_phrase] = all_phrases
 
-            logger.info(
-                f"Loaded {equivalence_sets_count} equivalence sets "
-                f"({len(self._impostor_completions_cache)} bidirectional mappings) from CSV cache"
-            )
-
         except FileNotFoundError:
             logger.warning(f"Impostor phrases CSV not found at {csv_path}")
         except Exception as e:
@@ -539,7 +532,8 @@ class AIService:
         lock_name = f"ai_quip_generation:{normalized_prompt.lower()}"
 
         try:
-            with lock_client.lock(lock_name, timeout=30):
+            # AI generation can take up to 60s especially under load
+            with lock_client.lock(lock_name, timeout=120):
                 cache_result = await self.db.execute(
                     select(QFAIQuipCache)
                     .options(selectinload(QFAIQuipCache.phrases))
@@ -621,7 +615,7 @@ class AIService:
                 common_words = [word for word in common_words if len(word) > 3]
                 ai_prompt = ai_prompt.format(common_words=", ".join(common_words))
 
-                test_phrases = self._prompt_ai(ai_prompt)
+                test_phrases = await self._prompt_ai(ai_prompt)
                 test_phrases = test_phrases.split(";")
 
                 validated_phrases = []
@@ -670,6 +664,10 @@ class AIService:
                             f"quip phrase(s) for prompt '{normalized_prompt}'")
                 return cache
 
+        except asyncio.CancelledError:
+            # Server shutdown or task cancellation - exit immediately
+            logger.info(f"AI quip generation cancelled for prompt '{normalized_prompt}'")
+            raise
         except TimeoutError:
             logger.warning(f"Could not acquire lock for AI quip generation of prompt '{normalized_prompt}', "
                            f"another process may be handling it")
@@ -785,7 +783,7 @@ class AIService:
                 prompt_text = build_impostor_prompt(original_phrase, other_copy_phrase)
                 prompt_text = prompt_text.format(common_words=", ".join(common_words))
 
-                response = self._prompt_ai(prompt_text)
+                response = await self._prompt_ai(prompt_text)
 
                 raw_phrases = [p.strip().upper() for p in response.split(";") if p.strip()]
                 unique_phrases: list[str] = []
@@ -794,15 +792,12 @@ class AIService:
                         unique_phrases.append(phrase)
 
                 async with MetricsTracker(
+                    self.metrics_service,
+                    operation_type="copy_generation",
                     provider=self.provider,
                     model=self.ai_model,
-                    ai_type="copy",
-                    attempt=attempt,
-                    max_attempts=max_attempts,
-                    prompt_text=prompt_round.prompt_text,
+                    cache_id=cache_id,
                 ) as tracker:
-                    tracker.set_response_length(sum(len(p) for p in unique_phrases))
-
                     validated_phrases = []
                     errors = []
                     for phrase in unique_phrases:
@@ -812,7 +807,6 @@ class AIService:
                             other_copy_phrase,
                             prompt_round.prompt_text,
                         )
-                        tracker.record_validation_result(is_valid)
                         if is_valid:
                             validated_phrases.append(phrase)
                         else:
@@ -866,8 +860,13 @@ class AIService:
 
         for lock_attempt in range(lock_retry_attempts):
             try:
-                with lock_client.lock(lock_name, timeout=30):
+                # AI generation can take up to 60s especially under load
+                with lock_client.lock(lock_name, timeout=120):
                     return await _generate_cache()
+            except asyncio.CancelledError:
+                # Server shutdown or task cancellation - exit immediately
+                logger.info(f"AI phrase generation cancelled for prompt round {prompt_round.round_id}")
+                raise
             except TimeoutError:
                 logger.warning(
                     f"Could not acquire lock for AI phrase generation of prompt round {prompt_round.round_id} "
@@ -938,6 +937,10 @@ class AIService:
 
                 await self.db.delete(cache)
                 await self.db.flush()
+        except asyncio.CancelledError:
+            # Server shutdown or task cancellation - exit immediately
+            logger.info(f"AI phrase revalidation cancelled for {prompt_round.round_id=}")
+            raise
         except TimeoutError:
             logger.warning(f"Could not acquire lock for AI phrase revalidation of {prompt_round.round_id=}")
             return None
@@ -1118,7 +1121,7 @@ class AIService:
             prompt = build_backronym_prompt(word_upper, count=1)
 
             # Generate using configured provider
-            response_text = self._prompt_ai(prompt)
+            response_text = await self._prompt_ai(prompt)
 
             # Parse response - should be words separated by spaces
             words = response_text.strip().split()
@@ -1176,7 +1179,7 @@ class AIService:
             prompt = build_backronym_vote_prompt(word_upper, backronym_strs)
 
             # Generate using configured provider
-            response_text = self._prompt_ai(prompt)
+            response_text = await self._prompt_ai(prompt)
 
             # Parse response - should be a number 1-5
             try:

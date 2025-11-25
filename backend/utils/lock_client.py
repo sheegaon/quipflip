@@ -42,13 +42,11 @@ class LockClient:
             acquired = lock.acquire(blocking=True, blocking_timeout=timeout)
             if not acquired:
                 raise TimeoutError(f"Could not acquire lock: {lock_name}")
-            logger.info(f"Acquired redis lock: {lock_name}")
             try:
                 yield
             finally:
                 try:
                     lock.release()
-                    logger.info(f"Released redis lock: {lock_name}")
                 except Exception:
                     pass  # Lock may have expired
         else:
@@ -62,9 +60,7 @@ class LockClient:
             acquired = lock.acquire(blocking=True, timeout=timeout)
             if not acquired:
                 raise TimeoutError(f"Could not acquire lock: {lock_name}")
-            logger.info(f"Acquired memory lock: {lock_name}")
             try:
                 yield
             finally:
                 lock.release()
-                logger.info(f"Released memory lock: {lock_name}")

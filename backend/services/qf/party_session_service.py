@@ -909,15 +909,31 @@ class PartySessionService:
         # Check completion based on phase
         if session.current_phase == 'PROMPT':
             required = session.prompts_per_player
-            return all(p.prompts_submitted >= required for p in participants)
+            result = all(p.prompts_submitted >= required for p in participants)
+            logger.info(
+                f"can_advance_phase(PROMPT): {len(participants)} participants, "
+                f"required={required}, result={result}, "
+                f"progress={[(p.player_id, p.prompts_submitted) for p in participants]}"
+            )
+            return result
 
         elif session.current_phase == 'COPY':
             required = session.copies_per_player
-            return all(p.copies_submitted >= required for p in participants)
+            result = all(p.copies_submitted >= required for p in participants)
+            logger.info(
+                f"can_advance_phase(COPY): {len(participants)} participants, "
+                f"required={required}, result={result}"
+            )
+            return result
 
         elif session.current_phase == 'VOTE':
             required = session.votes_per_player
-            return all(p.votes_submitted >= required for p in participants)
+            result = all(p.votes_submitted >= required for p in participants)
+            logger.info(
+                f"can_advance_phase(VOTE): {len(participants)} participants, "
+                f"required={required}, result={result}"
+            )
+            return result
 
         return False
 
