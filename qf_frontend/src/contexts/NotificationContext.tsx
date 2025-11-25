@@ -18,10 +18,11 @@ import {
   useRef,
   ReactNode,
   FC,
+  useCallback,
 } from 'react';
 import { useGame } from './GameContext';
 import apiClient from '../api/client';
-import { NotificationStreamMessage } from '../api/types';
+import { NotificationStreamMessage, OnlineUser } from '../api/types';
 import useExponentialBackoff from '../hooks/useExponentialBackoff';
 
 export interface NotificationMessage {
@@ -40,6 +41,13 @@ interface NotificationContextType {
   clearAll: () => void;
   pingMessages: PingToastMessage[];
   removePingMessage: (id: string) => void;
+  onlineUsers: OnlineUser[];
+  totalCount: number;
+  loadingOnlineUsers: boolean;
+  onlineUsersError: string | null;
+  onlineUsersConnected: boolean;
+  pingStatus: Record<string, 'idle' | 'sending' | 'sent'>;
+  handlePingUser: (username: string) => Promise<void>;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(
@@ -63,10 +71,54 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
   const [notifications, setNotifications] = useState<NotificationMessage[]>([]);
   const [pingMessages, setPingMessages] = useState<PingToastMessage[]>([]);
   const wsRef = useRef<WebSocket | null>(null);
+  const onlineUsersWsRef = useRef<WebSocket | null>(null);
   const notificationIdRef = useRef(0);
   const pingIdRef = useRef(0);
+  const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { schedule, clear, resetAttempts } = useExponentialBackoff();
+  const {
+    schedule: scheduleOnlineUsers,
+    clear: clearOnlineUsers,
+    resetAttempts: resetOnlineUsersAttempts,
+  } = useExponentialBackoff();
   const { state } = useGame();
+
+  const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [loadingOnlineUsers, setLoadingOnlineUsers] = useState(true);
+  const [onlineUsersError, setOnlineUsersError] = useState<string | null>(null);
+  const [onlineUsersConnected, setOnlineUsersConnected] = useState(false);
+  const [pingStatus, setPingStatus] = useState<Record<string, 'idle' | 'sending' | 'sent'>>({});
+
+  const stopPollingOnlineUsers = useCallback(() => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+  }, []);
+
+  const fetchOnlineUsers = useCallback(async () => {
+    if (!state.isAuthenticated) return;
+
+    try {
+      const data = await apiClient.getOnlineUsers();
+      setOnlineUsers(data.users);
+      setTotalCount(data.total_count);
+      setLoadingOnlineUsers(false);
+      setOnlineUsersError((prev) => (prev && prev.includes('WebSocket unavailable') ? null : prev));
+    } catch (err) {
+      console.error('Failed to fetch online users:', err);
+      setOnlineUsersError((prev) => prev ?? 'Failed to load online users');
+    }
+  }, [state.isAuthenticated]);
+
+  const startPollingOnlineUsers = useCallback(() => {
+    if (pollingIntervalRef.current) return;
+
+    setOnlineUsersError((prev) => prev ?? 'Using polling mode (WebSocket unavailable)');
+    fetchOnlineUsers();
+    pollingIntervalRef.current = setInterval(fetchOnlineUsers, 10000);
+  }, [fetchOnlineUsers]);
 
   useEffect(() => {
     const scheduleReconnect = () => {
@@ -189,6 +241,138 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
     };
   }, [clear, resetAttempts, schedule, state.isAuthenticated]);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    const scheduleReconnect = () => {
+      if (!state.isAuthenticated) return;
+
+      scheduleOnlineUsers(() => {
+        connectWebSocket();
+      });
+    };
+
+    const connectWebSocket = async () => {
+      if (!state.isAuthenticated || onlineUsersWsRef.current) return;
+
+      try {
+        const { token } = await apiClient.getWebsocketToken();
+        const apiUrl = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:8000`;
+        const backendWsUrl = import.meta.env.VITE_BACKEND_WS_URL || 'wss://quipflip-c196034288cd.herokuapp.com';
+        let wsUrl: string;
+
+        if (apiUrl.startsWith('/')) {
+          wsUrl = `${backendWsUrl}/qf/users/online/ws`;
+        } else {
+          wsUrl = apiUrl
+            .replace('http://', 'ws://')
+            .replace('https://', 'wss://') + '/qf/users/online/ws';
+        }
+
+        wsUrl += `?token=${encodeURIComponent(token)}`;
+
+        const ws = new WebSocket(wsUrl);
+
+        ws.onopen = () => {
+          if (!isMounted) return;
+          setOnlineUsersConnected(true);
+          setOnlineUsersError(null);
+          setLoadingOnlineUsers(false);
+          resetOnlineUsersAttempts();
+          clearOnlineUsers();
+          stopPollingOnlineUsers();
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const data: {
+              type: string;
+              users: OnlineUser[];
+              total_count: number;
+              timestamp: string;
+            } = JSON.parse(event.data);
+
+            if (data.type === 'online_users_update') {
+              setOnlineUsers(data.users);
+              setTotalCount(data.total_count);
+            }
+          } catch {
+            // Silently ignore malformed messages
+          }
+        };
+
+        ws.onerror = () => {
+          if (!isMounted) return;
+          setOnlineUsersConnected(false);
+          ws.close();
+        };
+
+        ws.onclose = (event) => {
+          if (!isMounted) return;
+          onlineUsersWsRef.current = null;
+          setOnlineUsersConnected(false);
+
+          if (event.code === 1008) {
+            setOnlineUsersError('Authentication failed. Please log in again.');
+            setLoadingOnlineUsers(false);
+            stopPollingOnlineUsers();
+            return;
+          }
+
+          startPollingOnlineUsers();
+          scheduleReconnect();
+        };
+
+        onlineUsersWsRef.current = ws;
+      } catch {
+        if (!isMounted) return;
+        setOnlineUsersConnected(false);
+        onlineUsersWsRef.current = null;
+        startPollingOnlineUsers();
+        scheduleReconnect();
+      }
+    };
+
+    if (state.isAuthenticated) {
+      connectWebSocket();
+    } else {
+      stopPollingOnlineUsers();
+      clearOnlineUsers();
+      resetOnlineUsersAttempts();
+      setOnlineUsers([]);
+      setTotalCount(0);
+      setPingStatus({});
+      setOnlineUsersConnected(false);
+      setOnlineUsersError(null);
+      setLoadingOnlineUsers(false);
+      if (onlineUsersWsRef.current) {
+        onlineUsersWsRef.current.close(1000, 'User not authenticated');
+        onlineUsersWsRef.current = null;
+      }
+    }
+
+    return () => {
+      isMounted = false;
+      stopPollingOnlineUsers();
+      clearOnlineUsers();
+      resetOnlineUsersAttempts();
+
+      if (onlineUsersWsRef.current) {
+        onlineUsersWsRef.current.close(1000, 'Component unmounting');
+        onlineUsersWsRef.current = null;
+      }
+
+      setOnlineUsersConnected(false);
+    };
+  }, [
+    clearOnlineUsers,
+    resetOnlineUsersAttempts,
+    scheduleOnlineUsers,
+    startPollingOnlineUsers,
+    state.isAuthenticated,
+    stopPollingOnlineUsers,
+  ]);
+
   const addNotification = (message: NotificationMessage) => {
     setNotifications((prev) => [...prev, message]);
   };
@@ -205,6 +389,22 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
     setPingMessages((prev) => prev.filter((ping) => ping.id !== id));
   };
 
+  const handlePingUser = useCallback(async (username: string) => {
+    setPingStatus((prev) => ({ ...prev, [username]: 'sending' }));
+
+    try {
+      await apiClient.pingOnlineUser(username);
+      setPingStatus((prev) => ({ ...prev, [username]: 'sent' }));
+
+      setTimeout(() => {
+        setPingStatus((prev) => ({ ...prev, [username]: 'idle' }));
+      }, 3000);
+    } catch (err) {
+      console.error('Failed to ping user:', err);
+      setPingStatus((prev) => ({ ...prev, [username]: 'idle' }));
+    }
+  }, []);
+
   return (
     <NotificationContext.Provider
       value={{
@@ -214,6 +414,13 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
         clearAll,
         pingMessages,
         removePingMessage,
+        onlineUsers,
+        totalCount,
+        loadingOnlineUsers,
+        onlineUsersError,
+        onlineUsersConnected,
+        pingStatus,
+        handlePingUser,
       }}
     >
       {children}
