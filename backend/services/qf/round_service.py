@@ -85,19 +85,19 @@ class RoundService:
         lock_start = time.perf_counter()
         with lock_client.lock(lock_name, timeout=self.settings.round_lock_timeout_seconds):
             lock_acquired = time.perf_counter()
-            logger.info(f"Lock acquired for {player.player_id} after {lock_acquired - lock_start:.3f}s")
+            logger.info(f"[{player.player_id}] Lock acquired after {lock_acquired - lock_start:.3f}s")
 
             prompt_start = time.perf_counter()
             prompt = await self._select_prompt_for_player(player)
             prompt_end = time.perf_counter()
-            logger.info(f"_select_prompt_for_player took {prompt_end - prompt_start:.3f}s")
+            logger.info(f"[{player.player_id}] _select_prompt_for_player took {prompt_end - prompt_start:.3f}s")
 
             create_start = time.perf_counter()
             round_object = await self._create_prompt_round(player, prompt, transaction_service)
             create_end = time.perf_counter()
-            logger.info(f"_create_prompt_round took {create_end - create_start:.3f}s")
+            logger.info(f"[{player.player_id}] _create_prompt_round took {create_end - create_start:.3f}s")
 
-            logger.info(f"Total lock held time: {create_end - lock_acquired:.3f}s for player {player.player_id}")
+            logger.info(f"[{player.player_id}] Total lock held time: {create_end - lock_acquired:.3f}s")
 
         # Invalidate dashboard cache to ensure fresh data
         from backend.utils.cache import dashboard_cache
