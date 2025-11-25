@@ -817,48 +817,42 @@ class AIService:
                     if phrase not in unique_phrases:
                         unique_phrases.append(phrase)
 
-                tracker = MetricsTracker(
+                async with MetricsTracker(
                     provider=self.provider,
                     model=self.ai_model,
                     ai_type="copy",
                     attempt=attempt,
                     max_attempts=max_attempts,
                     prompt_text=prompt_round.prompt_text,
-                )
-                await tracker.__aenter__()
-                tracker.set_response_length(sum(len(p) for p in unique_phrases))
+                ) as tracker:
+                    tracker.set_response_length(sum(len(p) for p in unique_phrases))
 
-                validated_phrases = []
-                errors = []
-                for phrase in unique_phrases:
-                    is_valid, error_message = await self.phrase_validator.validate_copy(
-                        phrase,
-                        original_phrase,
-                        other_copy_phrase,
-                        prompt_round.prompt_text,
-                    )
-                    tracker.record_validation_result(is_valid)
-                    if is_valid:
-                        validated_phrases.append(phrase)
-                    else:
-                        errors.append((phrase, error_message))
-                        logger.debug(f"AI impostor phrase invalid '{phrase}': {error_message}")
+                    validated_phrases = []
+                    errors = []
+                    for phrase in unique_phrases:
+                        is_valid, error_message = await self.phrase_validator.validate_copy(
+                            phrase,
+                            original_phrase,
+                            other_copy_phrase,
+                            prompt_round.prompt_text,
+                        )
+                        tracker.record_validation_result(is_valid)
+                        if is_valid:
+                            validated_phrases.append(phrase)
+                        else:
+                            errors.append((phrase, error_message))
+                            logger.debug(f"AI impostor phrase invalid '{phrase}': {error_message}")
 
-                if len(validated_phrases) >= 3:
+                    success = len(validated_phrases) >= 3
                     tracker.set_result(
-                        f"{len(validated_phrases)} phrases",
-                        success=True,
-                        response_length=sum(len(p) for p in validated_phrases),
-                        validation_passed=True,
+                        f"{len(validated_phrases)} phrases" if success else "",
+                        success=success,
+                        response_length=sum(len(p) for p in validated_phrases) if success else 0,
+                        validation_passed=success,
                     )
-                    break
 
-                tracker.set_result(
-                    "",
-                    success=False,
-                    response_length=0,
-                    validation_passed=False,
-                )
+                if success:
+                    break
 
                 if attempt == 1 and len(validated_phrases) >= 1 and other_copy_phrase is None:
                     other_copy_phrase = validated_phrases[0]
