@@ -199,6 +199,41 @@ class PhraseValidationClient:
         logger.debug(f"Validating backronym words: {words} for target length: {target_letter_count}")
         return await self._make_request("/validate/backronym", payload)
 
+    async def calculate_similarity(self, phrase1: str, phrase2: str) -> float:
+        """
+        Calculate similarity score between two phrases.
+
+        Args:
+            phrase1: First phrase to compare
+            phrase2: Second phrase to compare
+
+        Returns:
+            Similarity score between -1.0 and 1.0
+        """
+        await self._ensure_session()
+        url = f"{self.base_url}/similarity"
+        payload = {"phrase1": phrase1, "phrase2": phrase2}
+
+        try:
+            async with self._session.post(url, json=payload) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    return data.get("similarity", 0.0)
+                else:
+                    error_text = await response.text()
+                    logger.error(f"Phrase validator similarity API error {response.status}: {error_text}")
+                    return 0.0
+                        
+        except asyncio.TimeoutError:
+            logger.error("Phrase validator similarity API timeout")
+            return 0.0
+        except ClientError as e:
+            logger.error(f"Phrase validator similarity API client error: {e}")
+            return 0.0
+        except Exception as e:
+            logger.error(f"Phrase validator similarity API unexpected error: {e}")
+            return 0.0
+
     async def health_check(self) -> bool:
         """
         Check if the phrase validation service is healthy.
