@@ -1,4 +1,4 @@
-import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import axios, { AxiosError } from 'axios';
 import type {
   AuthResponse,
   RegisterRequest,
@@ -20,7 +20,7 @@ import type {
   TutorialProgress,
   UpdateTutorialProgressResponse,
 } from './types';
-import { getStoredUsername, clearStoredUsername } from '../services/sessionDetection';
+import { clearStoredUsername } from '../services/sessionDetection';
 
 // Base URL - configure based on environment
 const baseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
@@ -35,34 +35,10 @@ export const irClient = axios.create({
   },
 });
 
-// Track if we're currently refreshing to prevent multiple simultaneous refresh attempts
-let isRefreshing = false;
-let failedQueue: Array<{
-  resolve: (value?: unknown) => void;
-  reject: (error?: unknown) => void;
-}> = [];
-
-const processQueue = (error: unknown = null) => {
-  failedQueue.forEach((promise) => {
-    if (error) {
-      promise.reject(error);
-    } else {
-      promise.resolve();
-    }
-  });
-  failedQueue = [];
-};
-
 // Response interceptor for token refresh
 irClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    // Extend config type to include our custom _retry flag
-    interface RetryableConfig extends InternalAxiosRequestConfig {
-      _retry?: boolean;
-    }
-    const originalRequest = (error.config as RetryableConfig | undefined);
-
     // Don't log or process canceled requests - they're intentional
     const isCanceled =
       error.code === 'ERR_CANCELED' ||
@@ -74,13 +50,13 @@ irClient.interceptors.response.use(
       return Promise.reject(error);
     }
 
-  // IR backend does not expose a refresh endpoint; clear any cached session and surface the error
-  if (error.response?.status === 401) {
-    clearStoredUsername();
-  }
+    // IR backend does not expose a refresh endpoint; clear any cached session and surface the error
+    if (error.response?.status === 401) {
+      clearStoredUsername();
+    }
 
-  return Promise.reject(error);
-  }
+    return Promise.reject(error);
+  },
 );
 
 // Authentication API

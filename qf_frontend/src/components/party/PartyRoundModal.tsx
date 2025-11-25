@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePartyMode } from '../../contexts/PartyModeContext';
 import { usePartyWebSocket } from '../../hooks/usePartyWebSocket';
 import { PartyIcon } from '../icons/NavigationIcons';
 import { PartyStep } from '../../contexts/PartyModeContext';
 import apiClient, { extractErrorMessage } from '../../api/client';
+import { usePartyRoundStarter } from '../../hooks/usePartyRoundStarter';
+import { useGame } from '../../contexts/GameContext';
 
 interface PartyRoundModalProps {
   sessionId: string;
@@ -19,29 +21,95 @@ const phaseOrder: { id: PartyStep; label: string }[] = [
 
 export const PartyRoundModal: React.FC<PartyRoundModalProps> = ({ sessionId, currentStep }) => {
   const navigate = useNavigate();
+  const { state: gameState } = useGame();
   const { state: partyState, actions: partyActions } = usePartyMode();
   const [isOpen, setIsOpen] = useState(true);
   const [isLeaving, setIsLeaving] = useState(false);
   const [leaveError, setLeaveError] = useState<string | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const syncInFlightRef = useRef(false);
+  const { startRoundForPhase, endSessionAndShowResults } = usePartyRoundStarter();
   const isProgressMissing = !partyState.yourProgress || !partyState.sessionConfig;
+
+  const syncSessionStatus = useCallback(async () => {
+    if (!sessionId || syncInFlightRef.current) return;
+
+    syncInFlightRef.current = true;
+
+    try {
+      const status = await apiClient.getPartySessionStatus(sessionId);
+      const normalizedPhase = status.current_phase.toLowerCase();
+
+      const selfParticipant = gameState.player
+        ? status.participants.find((participant) => participant.player_id === gameState.player?.player_id)
+        : null;
+
+      if (selfParticipant) {
+        partyActions.updateYourProgress({
+          prompts_submitted: selfParticipant.prompts_submitted,
+          copies_submitted: selfParticipant.copies_submitted,
+          votes_submitted: selfParticipant.votes_submitted,
+        });
+      }
+
+      partyActions.updateSessionProgress({
+        players_ready_for_next_phase: status.progress.players_ready_for_next_phase,
+        total_players: status.progress.total_players,
+      });
+
+      if (normalizedPhase === 'results' || status.status === 'COMPLETED') {
+        endSessionAndShowResults(sessionId);
+        setSyncError(null);
+        return;
+      }
+
+      if (['prompt', 'copy', 'vote'].includes(normalizedPhase) && normalizedPhase !== partyState.currentStep) {
+        await startRoundForPhase(normalizedPhase as PartyStep, { sessionId });
+      }
+
+      setSyncError(null);
+    } catch (err) {
+      setSyncError(extractErrorMessage(err) || 'Unable to sync party progress.');
+    } finally {
+      syncInFlightRef.current = false;
+    }
+  }, [endSessionAndShowResults, gameState.player, partyActions, partyState.currentStep, sessionId, startRoundForPhase]);
+
+  useEffect(() => {
+    let timeoutId: number | null = null;
+    let cancelled = false;
+
+    const poll = async () => {
+      await syncSessionStatus();
+      if (!cancelled) {
+        timeoutId = window.setTimeout(poll, 5000);
+      }
+    };
+
+    void poll();
+
+    return () => {
+      cancelled = true;
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, [syncSessionStatus]);
 
   // WebSocket updates will update context when other players make progress
   usePartyWebSocket({
     sessionId,
     pageContext: 'game',
-    onProgressUpdate: (data) => {
+    onProgressUpdate: () => {
       // Update session progress when we receive WebSocket updates about other players
-      console.log('🔔 [Party Modal] Received progress update via WebSocket:', data);
-      partyActions.updateSessionProgress({
-        players_ready_for_next_phase: data.session_progress.players_done_with_phase,
-        total_players: data.session_progress.total_players,
-      });
+      void syncSessionStatus();
     },
     onPhaseTransition: () => {
       // Phase transition handled elsewhere
     },
     onSessionUpdate: () => {
-      // Session updates handled via context
+      // Session updates handled via REST sync
+      void syncSessionStatus();
     },
   });
 
@@ -74,7 +142,6 @@ export const PartyRoundModal: React.FC<PartyRoundModalProps> = ({ sessionId, cur
           throw apiErr;
         }
         // If session has started, silently proceed with navigation
-        console.log('Session has started, navigating away without API call');
       }
 
       // End party mode in context
@@ -199,6 +266,9 @@ export const PartyRoundModal: React.FC<PartyRoundModalProps> = ({ sessionId, cur
           <div className="mt-4 pt-4 border-t border-quip-navy/10">
             {leaveError && (
               <p className="text-xs text-red-600 mb-2">{leaveError}</p>
+            )}
+            {syncError && (
+              <p className="text-xs text-red-600 mb-2">{syncError}</p>
             )}
             <button
               type="button"

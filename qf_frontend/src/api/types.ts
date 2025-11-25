@@ -871,7 +871,7 @@ export interface PartySession {
   session_id: string;
   party_code: string;
   host_player_id: string;
-  status: 'LOBBY' | 'ACTIVE' | 'COMPLETED';
+  status: 'OPEN' | 'IN_PROGRESS' | 'COMPLETED' | 'ABANDONED';
   current_phase: 'LOBBY' | 'PROMPT' | 'COPY' | 'VOTE' | 'RESULTS';
   min_players: number;
   max_players: number;
