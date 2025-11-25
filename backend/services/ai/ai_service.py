@@ -27,8 +27,6 @@ from backend.utils.model_registry import GameType, AIPlayerType
 from .prompt_builder import build_impostor_prompt
 from backend.utils.passwords import hash_password
 from backend.services.username_service import UsernameService
-from backend.services.ai.openai_api import generate_response as openai_generate_response
-from backend.services.ai.gemini_api import generate_response as gemini_generate_response
 
 logger = logging.getLogger(__name__)
 
@@ -118,6 +116,31 @@ class AIService:
         # No provider available
         logger.error("No AI provider API keys found (OPENAI_API_KEY or GEMINI_API_KEY)")
         raise AIServiceError("No AI provider configured - set OPENAI_API_KEY or GEMINI_API_KEY")
+
+    async def _prompt_ai(self, prompt_text: str) -> str:
+        """Send a prompt to the AI provider and return the response"""
+        logger.info(f"Sending {prompt_text=} to AI provider {self.provider} {self.ai_model}")
+        start_time = datetime.now(UTC)
+        if self.provider == "openai":
+            from backend.services.ai.openai_api import generate_response
+        elif self.provider == "gemini":
+            from backend.services.ai.gemini_api import generate_response
+        else:
+            raise ValueError(f"Unknown AI provider: {self.provider}")
+
+        response = await generate_response(
+            prompt_text,
+            model=self.ai_model,
+            timeout=self.settings.ai_timeout_seconds,
+        )
+
+        elapsed = (datetime.now(UTC) - start_time).total_seconds()
+        logger.info(f"AI provider ({self.provider}) responded {response} in {elapsed:.2f}s")
+
+        if not response or not response.strip():
+            raise AICopyError("AI provider returned empty response")
+
+        return response
 
     async def get_or_create_ai_player(self, ai_player_type: AIPlayerType, excluded: list | None = None) -> PlayerBase:
         """
@@ -334,9 +357,7 @@ class AIService:
         """
         # Words to remove (articles, possessives, demonstratives)
         stop_words = {
-            'a', 'an', 'the',
-            'my', 'your', 'his', 'her', 'its', 'our', 'their',
-            'this', 'that', 'these', 'those'
+            'a', 'an', 'the', 'my', 'your', 'his', 'her', 'its', 'our', 'their', 'this', 'that', 'these', 'those'
         }
 
         # Convert to lowercase and split into words
@@ -456,11 +477,6 @@ class AIService:
             if self._normalize_phrase_for_lookup(p) != normalized_original
             and p.lower() not in used_phrases
         ]
-
-        logger.debug(
-            f"Found {len(unused)} unused impostor phrases from CSV for '{original_phrase}' "
-            f"({len(equivalence_set)} in set, {len(used_phrases)} used)"
-        )
 
         return unused
 
@@ -605,15 +621,7 @@ class AIService:
                 common_words = [word for word in common_words if len(word) > 3]
                 ai_prompt = ai_prompt.format(common_words=", ".join(common_words))
 
-                logger.info(f"Sending {ai_prompt=} to AI provider {self.provider} {self.ai_model}")
-                if self.provider == "openai":
-                    test_phrases = await openai_generate_response(
-                        prompt=ai_prompt, model=self.ai_model, timeout=self.settings.ai_timeout_seconds
-                    )
-                else:  # gemini
-                    test_phrases = await gemini_generate_response(
-                        prompt=ai_prompt, model=self.ai_model, timeout=self.settings.ai_timeout_seconds
-                    )
+                test_phrases = self._prompt_ai(ai_prompt)
                 test_phrases = test_phrases.split(";")
 
                 validated_phrases = []
@@ -770,46 +778,14 @@ class AIService:
             cache_id = uuid_module.uuid4()
             validated_phrases: list[str] = []
             common_words = await self.get_common_words()
-            if not isinstance(common_words, (list, tuple)):
-                logger.warning(f"common_words is not iterable: {type(common_words)}")
-                common_words = []
+            common_words = [word for word in common_words if len(word) > 3]
 
             while attempt < max_attempts:
                 attempt += 1
-                logger.info(
-                    f"AI ({self.provider}) generating impostor phrases for '{original_phrase}' "
-                    f"(attempt {attempt}/{max_attempts}, other_copy_phrase='{other_copy_phrase}')"
-                )
-                prompt_text = build_impostor_prompt(
-                    original_phrase=original_phrase,
-                    prompt_text=prompt_round.prompt_text,
-                    other_copy_phrase=other_copy_phrase,
-                    significant_word_limit=self.settings.significant_word_limit,
-                    common_words=common_words,
-                    generation_rules=self.settings.ai_generation_rules,
-                )
+                prompt_text = build_impostor_prompt(original_phrase, other_copy_phrase)
+                prompt_text = prompt_text.format(common_words=", ".join(common_words))
 
-                start_time = datetime.now(UTC)
-                if self.provider == "openai":
-                    response = await openai_generate_response(
-                        prompt_text,
-                        model=self.ai_model,
-                        timeout=self.settings.ai_timeout_seconds,
-                    )
-                elif self.provider == "gemini":
-                    response = await gemini_generate_response(
-                        prompt_text,
-                        model=self.ai_model,
-                        timeout=self.settings.ai_timeout_seconds,
-                    )
-                else:
-                    raise ValueError(f"Unknown AI provider: {self.provider}")
-
-                elapsed = (datetime.now(UTC) - start_time).total_seconds()
-                logger.info(f"AI provider ({self.provider}) responded in {elapsed:.2f}s")
-
-                if not response or not response.strip():
-                    raise AICopyError("AI provider returned empty response")
+                response = self._prompt_ai(prompt_text)
 
                 raw_phrases = [p.strip().upper() for p in response.split(";") if p.strip()]
                 unique_phrases: list[str] = []
@@ -1142,11 +1118,7 @@ class AIService:
             prompt = build_backronym_prompt(word_upper, count=1)
 
             # Generate using configured provider
-            logger.info(f"Sending {prompt=} to AI provider {self.provider} {self.ai_model}")
-            if self.provider == "openai":
-                response_text = await openai_generate_response(prompt, self.ai_model)
-            else:
-                response_text = await gemini_generate_response(prompt, self.ai_model)
+            response_text = self._prompt_ai(prompt)
 
             # Parse response - should be words separated by spaces
             words = response_text.strip().split()
@@ -1204,11 +1176,7 @@ class AIService:
             prompt = build_backronym_vote_prompt(word_upper, backronym_strs)
 
             # Generate using configured provider
-            logger.info(f"Sending {prompt=} to AI provider {self.provider} {self.ai_model}")
-            if self.provider == "openai":
-                response_text = await openai_generate_response(prompt, self.ai_model)
-            else:
-                response_text = await gemini_generate_response(prompt, self.ai_model)
+            response_text = self._prompt_ai(prompt)
 
             # Parse response - should be a number 1-5
             try:

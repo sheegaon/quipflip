@@ -10,7 +10,7 @@ import random
 
 def build_quip_prompt(prompt_text: str) -> str:
     """
-    Build structured prompt for Party Mode prompt round phrase generation.
+    Build structured prompt for quip round phrase generation.
 
     Args:
         prompt_text: The prompt to respond to
@@ -38,7 +38,7 @@ Generate FIVE alternative phrases, separated by semicolons (;):"""
 
 def build_impostor_prompt(original_quip_phrase: str, existing_impostor_phrase: str = None) -> str:
     """
-    Build structured prompt for Think Alike gameplay copy generation.
+    Build structured prompt for impostor round phrase generation.
 
     Args:
         original_quip_phrase: The original phrase that was submitted for the prompt

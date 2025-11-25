@@ -64,9 +64,7 @@ class QFAIQuipPhraseUsage(Base):
     phrase_id = get_uuid_column(
         ForeignKey("qf_ai_quip_phrase.phrase_id", ondelete="CASCADE"), nullable=False, index=True
     )
-    prompt_round_id = get_uuid_column(
-        ForeignKey("qf_rounds.round_id", ondelete="SET NULL"), nullable=True, index=True
-    )
+    prompt_round_id = get_uuid_column(ForeignKey("qf_rounds.round_id", ondelete="SET NULL"), nullable=True, index=True)
     used_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
 
     phrase = relationship("QFAIQuipPhrase", back_populates="usages")
