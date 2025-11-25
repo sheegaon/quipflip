@@ -197,7 +197,7 @@ class TestDatabaseTimezoneAwareness:
             username_canonical=f"test_{uuid.uuid4().hex[:8]}",
             email=f"test_{uuid.uuid4().hex[:8]}@test.com",
             password_hash="hash",
-            balance=5000,
+            wallet=5000,
         )
         db_session.add(player)
         await db_session.commit()
@@ -229,7 +229,7 @@ class TestServiceTimezoneAwareness:
             username_canonical=f"test_{uuid.uuid4().hex[:8]}",
             email=f"test_{uuid.uuid4().hex[:8]}@test.com",
             password_hash="hash",
-            balance=5000,
+            wallet=5000,
         )
         db_session.add(player)
         await db_session.commit()
