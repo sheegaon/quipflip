@@ -153,9 +153,8 @@ class RoundService:
         t5 = time.perf_counter()
         logger.info(f"[{player.player_id}] db.commit took {t5-t4:.3f}s")
 
-        await self.db.refresh(round_object)
-        t6 = time.perf_counter()
-        logger.info(f"[{player.player_id}] db.refresh took {t6-t5:.3f}s")
+        # No need to refresh - we just created the object, we have all the data already
+        # Removing this eliminates 10s of lock contention under concurrent load
 
         return round_object
 
