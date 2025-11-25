@@ -70,31 +70,7 @@ class QFPlayerRouter(PlayerRouterBase):
 
     async def get_balance(self, player: QFPlayer, db: AsyncSession) -> PlayerBalance:
         """Get player balance and status."""
-        player_service = PlayerService(db)
-
-        # Get daily bonus status
-        bonus_available = await player_service.is_daily_bonus_available(player)
-
-        # Get outstanding prompts count
-        outstanding = await player_service.get_outstanding_prompts_count(player.player_id)
-
-        return PlayerBalance(
-            player_id=player.player_id,
-            username=player.username,
-            email=player.email,
-            wallet=player.wallet,
-            vault=player.vault,
-            starting_balance=settings.starting_balance,
-            daily_bonus_available=bonus_available,
-            daily_bonus_amount=settings.daily_bonus_amount,
-            last_login_date=ensure_utc(player.last_login_date),
-            created_at=player.created_at,
-            outstanding_prompts=outstanding,
-            is_guest=player.is_guest,
-            is_admin=player.is_admin,
-            locked_until=ensure_utc(player.locked_until),
-            flag_dismissal_streak=player.flag_dismissal_streak,
-        )
+        return await _get_player_balance(player, db)
 
     def _add_qf_specific_routes(self):
         """Add QuipFlip-specific routes to the router."""
@@ -235,6 +211,35 @@ class QFPlayerRouter(PlayerRouterBase):
 
 
 # Helper functions for QF-specific endpoints
+async def _get_player_balance(player: QFPlayer, db: AsyncSession) -> PlayerBalance:
+    """Get player balance and status - shared helper function."""
+    player_service = PlayerService(db)
+
+    # Get daily bonus status
+    bonus_available = await player_service.is_daily_bonus_available(player)
+
+    # Get outstanding prompts count
+    outstanding = await player_service.get_outstanding_prompts_count(player.player_id)
+
+    return PlayerBalance(
+        player_id=player.player_id,
+        username=player.username,
+        email=player.email,
+        wallet=player.wallet,
+        vault=player.vault,
+        starting_balance=settings.starting_balance,
+        daily_bonus_available=bonus_available,
+        daily_bonus_amount=settings.daily_bonus_amount,
+        last_login_date=ensure_utc(player.last_login_date),
+        created_at=player.created_at,
+        outstanding_prompts=outstanding,
+        is_guest=player.is_guest,
+        is_admin=player.is_admin,
+        locked_until=ensure_utc(player.locked_until),
+        flag_dismissal_streak=player.flag_dismissal_streak,
+    )
+
+
 async def _get_current_round(player: QFPlayer, db: AsyncSession) -> CurrentRoundResponse:
     """Get player's current active round if any."""
     if not player.active_round_id:
@@ -425,11 +430,8 @@ async def _get_dashboard_data(player: QFPlayer, db: AsyncSession) -> DashboardDa
         phraseset_service = PhrasesetService(db)
 
         try:
-            # Get the QF router instance to reuse the get_balance method
-            qf_router = QFPlayerRouter()
-            
             # Reuse existing endpoint logic by calling the internal functions
-            player_balance = await qf_router.get_balance(player, db)
+            player_balance = await _get_player_balance(player, db)
             current_round = await _get_current_round(player, db)
             pending_results_response = await _get_pending_results_internal(player, db, phraseset_service)
             phraseset_summary = await _get_phraseset_summary_internal(player, db, phraseset_service)
