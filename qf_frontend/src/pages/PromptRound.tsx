@@ -74,7 +74,7 @@ export const PromptRound: React.FC = () => {
         status: roundData.status,
       });
     }
-  }, [roundData?.round_id, roundData?.expires_at, roundData?.status]);
+    }, [roundData, roundData?.round_id, roundData?.expires_at, roundData?.status]);
 
   // Load existing feedback
   useEffect(() => {
@@ -99,7 +99,7 @@ export const PromptRound: React.FC = () => {
     loadFeedback();
 
     return () => controller.abort();
-  }, [roundData?.round_id]);
+    }, [roundData, roundData?.round_id]);
 
   // Redirect if already submitted
   useEffect(() => {

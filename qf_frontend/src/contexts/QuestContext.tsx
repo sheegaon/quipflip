@@ -136,7 +136,7 @@ export const QuestProvider: React.FC<{
     refreshQuests().catch((err) => {
       gameContextLogger.error('❌ Failed to auto-load quests:', err);
     });
-  }, [isAuthenticated]); // Remove refreshQuests from dependency array
+  }, [isAuthenticated, refreshQuests]);
 
   const actions: QuestActions = {
     refreshQuests,
