@@ -37,13 +37,28 @@ def upgrade() -> None:
             "UPDATE party_sessions SET updated_at = created_at WHERE updated_at IS NULL"
         )
     )
-    op.alter_column(
-        "party_sessions",
-        "updated_at",
-        existing_type=sa.DateTime(timezone=True),
-        nullable=False,
-    )
+
+    dialect = op.get_context().dialect.name
+    if dialect == "sqlite":
+        with op.batch_alter_table("party_sessions", schema=None) as batch_op:
+            batch_op.alter_column(
+                "updated_at",
+                existing_type=sa.DateTime(timezone=True),
+                nullable=False,
+            )
+    else:
+        op.alter_column(
+            "party_sessions",
+            "updated_at",
+            existing_type=sa.DateTime(timezone=True),
+            nullable=False,
+        )
 
 
 def downgrade() -> None:
-    op.drop_column("party_sessions", "updated_at")
+    dialect = op.get_context().dialect.name
+    if dialect == "sqlite":
+        with op.batch_alter_table("party_sessions", schema=None) as batch_op:
+            batch_op.drop_column("updated_at")
+    else:
+        op.drop_column("party_sessions", "updated_at")
