@@ -1,19 +1,10 @@
 """Base utilities for SQLAlchemy models."""
-from enum import Enum
 import uuid
 from sqlalchemy import Column, String
-from sqlalchemy.dialects.postgresql import UUID as PGUUID
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import sqltypes, operators
 from sqlalchemy.sql import func
 from sqlalchemy.sql.elements import ClauseElement
-
-
-class RoundStatus(str, Enum):
-    """Round status enumeration for type safety."""
-    ACTIVE = "active"
-    SUBMITTED = "submitted"
-    EXPIRED = "expired"
-    ABANDONED = "abandoned"
 
 
 def get_uuid_column(*args, **kwargs):
@@ -84,7 +75,7 @@ def get_uuid_column(*args, **kwargs):
 
         def load_dialect_impl(self, dialect):
             if dialect.name == "postgresql":
-                return dialect.type_descriptor(PGUUID(as_uuid=True))
+                return dialect.type_descriptor(UUID(as_uuid=True))
             return dialect.type_descriptor(String(36))
 
         @staticmethod

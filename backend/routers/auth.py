@@ -30,11 +30,7 @@ router = APIRouter()
 settings = get_settings()
 
 
-async def _complete_login(
-    player: PlayerBase,
-    response: Response,
-    db: AsyncSession,
-) -> AuthTokenResponse:
+async def _complete_login(player: PlayerBase, response: Response, db: AsyncSession,) -> AuthTokenResponse:
     """Handle post-authentication logic: update last login, issue tokens, set cookies.
 
     This helper function encapsulates the common login success flow shared by
@@ -60,11 +56,7 @@ async def _complete_login(
 
 
 @router.post("/login", response_model=AuthTokenResponse)
-async def login(
-    request: LoginRequest,
-    response: Response,
-    db: AsyncSession = Depends(get_db),
-) -> AuthTokenResponse:
+async def login(request: LoginRequest, response: Response, db: AsyncSession = Depends(get_db),) -> AuthTokenResponse:
     """Authenticate a player via email/password and issue JWT tokens."""
 
     auth_service = AuthService(db, game_type=GameType.QF)
@@ -107,14 +99,9 @@ async def suggest_username(
 
 
 @router.post("/refresh", response_model=AuthTokenResponse)
-async def refresh_tokens(
-    request: RefreshRequest,
-    response: Response,
-    refresh_cookie: str | None = Cookie(
-        default=None, alias=settings.refresh_token_cookie_name
-    ),
-    db: AsyncSession = Depends(get_db),
-) -> AuthTokenResponse:
+async def refresh_tokens(request: RefreshRequest, response: Response,
+                         refresh_cookie: str | None = Cookie(default=None, alias=settings.refresh_token_cookie_name),
+                         db: AsyncSession = Depends(get_db)) -> AuthTokenResponse:
     """Exchange a refresh token for new JWT credentials."""
 
     token = request.refresh_token or refresh_cookie
@@ -171,7 +158,7 @@ async def logout(
             # Log but don't fail logout if party cleanup fails
             import logging
             logger = logging.getLogger(__name__)
-            logger.warning(f"Failed to clean up party sessions for player {player_id}: {e}")
+            logger.warning(f"Failed to clean up party sessions for {player_id=}: {e}")
 
     if token:
         await auth_service.revoke_refresh_token(token)
@@ -207,8 +194,4 @@ async def get_websocket_token(
         expires_seconds=60  # Short-lived: 60 seconds
     )
 
-    return {
-        "token": ws_token,
-        "expires_in": expires_in,
-        "token_type": "bearer"
-    }
+    return {"token": ws_token, "expires_in": expires_in, "token_type": "bearer"}

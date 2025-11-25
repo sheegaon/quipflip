@@ -28,4 +28,5 @@ class SurveyResponseBase(Base):
 
     def __repr__(self) -> str:
         return (
-            f"<{self.__class__.__name__}(response_id={self.response_id}, player_id={self.player_id}, survey_id={self.survey_id})>")
+            f"<{self.__class__.__name__}"
+            f"(response_id={self.response_id}, player_id={self.player_id}, survey_id={self.survey_id})>")

@@ -15,7 +15,8 @@ class SystemConfigBase(Base):
     value_type: Mapped[str] = mapped_column(String(20), nullable=False)  # 'int', 'float', 'string', 'bool'
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     category: Mapped[str | None] = mapped_column(String(50), nullable=True)  # 'economics', 'timing', 'validation', 'ai'
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_by: Mapped[str | None] = mapped_column(String(100), nullable=True)  # player_id
 
     def __repr__(self) -> str:

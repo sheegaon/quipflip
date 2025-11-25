@@ -1,13 +1,10 @@
 """Quest service for managing player quests and achievements."""
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_
-from sqlalchemy.dialects.postgresql import insert as postgres_insert
-from sqlalchemy.dialects.sqlite import insert as sqlite_insert
-from sqlalchemy.exc import IntegrityError
 from uuid import UUID
 import logging
 from datetime import datetime, timedelta, UTC, date
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Type
 
 from backend.models.qf.quest import QFQuest, QuestTemplate, QuestType, QuestStatus, QuestCategory
 from backend.models.qf.player import QFPlayer
@@ -16,7 +13,9 @@ from backend.models.qf.round import Round
 from backend.models.qf.prompt import Prompt
 from backend.models.qf.phraseset import Phraseset
 from backend.models.qf.prompt_feedback import PromptFeedback
+from backend.services.quest_service_base import QuestServiceBase
 from backend.services.transaction_service import TransactionService
+from backend.utils.model_registry import GameType
 
 logger = logging.getLogger(__name__)
 
@@ -146,8 +145,8 @@ QUEST_CONFIGS = {
 }
 
 
-class QuestService:
-    """Service for managing player quests."""
+class QuestService(QuestServiceBase):
+    """Service for managing QuipFlip player quests."""
 
     STARTER_QUEST_TYPES: List[QuestType] = [
         QuestType.HOT_STREAK_5,
@@ -160,198 +159,35 @@ class QuestService:
         QuestType.MILESTONE_COPIES_100,
     ]
 
-    def __init__(self, db: AsyncSession):
-        self.db = db
+    @property
+    def quest_model(self) -> Type[QFQuest]:
+        """Return the QF quest model class."""
+        return QFQuest
 
-    async def initialize_quests_for_player(
-        self, player_id: UUID, *, auto_commit: bool = True
-    ) -> List[QFQuest]:
-        """Ensure all starter quests exist for the player.
+    @property
+    def player_service_class(self) -> Type[Any]:
+        """Return the QF player service class."""
+        from backend.services.qf.player_service import PlayerService
+        return PlayerService
 
-        Args:
-            player_id: Player UUID to align with the starter quest set.
-            auto_commit: When ``True`` (default) the session is committed on
-                success. When ``False`` the caller is responsible for committing
-                and this method will ``flush`` the pending changes instead.
+    @property
+    def game_type(self) -> GameType:
+        """Return the game type for this service."""
+        return GameType.QF
 
-        Returns:
-            A list of quest instances representing the player's starter quests.
-        """
+    @property
+    def quest_configs(self) -> Dict[QuestType, Dict[str, Any]]:
+        """Return the quest configuration mapping for this game."""
+        return QUEST_CONFIGS
 
-        quests: List[QFQuest] = []
-        try:
-            for quest_type in self.STARTER_QUEST_TYPES:
-                try:
-                    quest = await self._create_quest(
-                        player_id, quest_type, check_existing=True
-                    )
-                    quests.append(quest)
-                except Exception:
-                    logger.exception(
-                        f"Failed to ensure quest {quest_type.value} for player {player_id}"
-                    )
+    @property
+    def starter_quest_types(self) -> List[QuestType]:
+        """Return the list of starter quest types for new players."""
+        return self.STARTER_QUEST_TYPES
 
-            if auto_commit:
-                await self.db.commit()
-        except Exception:
-            await self.db.rollback()
-            raise
-        finally:
-            if not auto_commit and getattr(self.db, "in_transaction", lambda: False)():
-                try:
-                    await self.db.flush()
-                except Exception:
-                    logger.exception(
-                        f"Failed to flush quest initialization changes for player {player_id}"
-                    )
-
-        logger.info(
-            f"Ensured starter quests exist for player {player_id} (total={len(self.STARTER_QUEST_TYPES)})"
-        )
-        return quests
-
-    async def create_missing_starter_quests(
-        self,
-        player_id: UUID,
-        missing_quest_types: List[QuestType],
-        *,
-        auto_commit: bool = True,
-    ) -> List[QFQuest]:
-        """Create only the missing starter quests for a player.
-
-        Args:
-            player_id: Player receiving additional starter quests.
-            missing_quest_types: Quest types that are not currently assigned to
-                the player.
-            auto_commit: When ``True`` (default) the session is committed on
-                success. When ``False`` the caller is responsible for committing
-                and the method flushes the pending changes instead.
-
-        Returns:
-            The quests that now exist for the player (newly created or
-            previously present when a race condition is detected).
-        """
-
-        if not missing_quest_types:
-            return []
-
-        quests: List[QFQuest] = []
-        try:
-            for quest_type in missing_quest_types:
-                try:
-                    quests.append(
-                        await self._create_quest(
-                            player_id, quest_type, check_existing=False
-                        )
-                    )
-                except Exception:
-                    logger.exception(
-                        f"Failed to create quest {quest_type.value} for player {player_id}"
-                    )
-
-            if auto_commit:
-                await self.db.commit()
-        except Exception:
-            await self.db.rollback()
-            raise
-        finally:
-            if not auto_commit and getattr(self.db, "in_transaction", lambda: False)():
-                try:
-                    await self.db.flush()
-                except Exception:
-                    logger.exception(
-                        f"Failed to flush missing quest creation for player {player_id}"
-                    )
-
-        logger.info(
-            f"Ensured {len(missing_quest_types)} missing starter quests exist for player {player_id}"
-        )
-        return quests
-
-    async def _create_quest(
-        self,
-        player_id: UUID,
-        quest_type: QuestType,
-        *,
-        check_existing: bool = True,
-    ) -> QFQuest:
-        """Create a new quest for a player, avoiding duplicates via UPSERT."""
-
-        config = QUEST_CONFIGS.get(quest_type)
-        if not config:
-            raise ValueError(f"Unknown quest configuration for type {quest_type}")
-
-        if check_existing:
-            existing_quest = await self._get_existing_quest(player_id, quest_type)
-            if existing_quest:
-                logger.info(
-                    f"Quest {quest_type.value} already exists for player {player_id}"
-                )
-                return existing_quest
-
-        reward_amount = config.get("reward")
-        if reward_amount is None:
-            raise ValueError(
-                f"Quest configuration for {quest_type.value} is missing a reward amount"
-            )
-
-        quest_values = {
-            "player_id": player_id,
-            "quest_type": quest_type.value,
-            "status": QuestStatus.ACTIVE.value,
-            "progress": self._get_initial_progress(quest_type),
-            "reward_amount": reward_amount,
-        }
-
-        bind = self.db.get_bind()
-        dialect_name = (bind.dialect.name if bind is not None else "").lower()
-        if "sqlite" in dialect_name:
-            insert_stmt = sqlite_insert(QFQuest)
-        else:
-            insert_stmt = postgres_insert(QFQuest)
-
-        stmt = insert_stmt.values(**quest_values)
-        if hasattr(stmt, "on_conflict_do_nothing"):
-            stmt = stmt.on_conflict_do_nothing(
-                index_elements=["player_id", "quest_type"]
-            )
-
-        try:
-            result = await self.db.execute(stmt)
-        except IntegrityError as exc:
-            logger.warning(
-                f"Integrity error while creating quest {quest_type.value} for player {player_id}: {exc}"
-            )
-            return await self._get_existing_quest(player_id, quest_type)
-
-        if getattr(result, "rowcount", None) == 1:
-            logger.info(
-                f"Created quest {quest_type.value} for player {player_id}"
-            )
-        else:
-            logger.info(
-                f"Quest {quest_type.value} already existed for player {player_id} (detected via upsert)"
-            )
-
-        quest = await self._get_existing_quest(player_id, quest_type)
-        if quest is None:
-            raise RuntimeError(
-                f"Quest {quest_type.value} for player {player_id} could not be loaded after upsert"
-            )
-        return quest
-
-    async def _get_existing_quest(
-        self, player_id: UUID, quest_type: QuestType
-    ) -> Optional[QFQuest]:
-        existing_result = await self.db.execute(
-            select(QFQuest).where(
-                and_(
-                    QFQuest.player_id == player_id,
-                    QFQuest.quest_type == quest_type.value,
-                )
-            )
-        )
-        return existing_result.scalar_one_or_none()
+    def _string_to_quest_type(self, quest_type_str: str) -> QuestType:
+        """Convert a quest type string back to the QuestType enum."""
+        return QuestType(quest_type_str)
 
     def _get_initial_progress(self, quest_type: QuestType) -> Dict[str, Any]:
         """Get initial progress structure for a quest type."""
@@ -389,133 +225,19 @@ class QuestService:
         else:  # Milestone quests
             return {"current": 0, "target": target}
 
-    async def get_player_quests(
-        self, player_id: UUID, status: Optional[str] = None
-    ) -> List[QFQuest]:
-        """Get all quests for a player, optionally filtered by status."""
-        query = select(QFQuest).where(QFQuest.player_id == player_id)
-
-        if status:
-            query = query.where(QFQuest.status == status)
-
-        query = query.order_by(QFQuest.created_at.desc())
-
-        result = await self.db.execute(query)
-        return list(result.scalars().all())
-
-    async def get_quest_by_id(self, quest_id: UUID) -> Optional[QFQuest]:
-        """Get a quest by ID."""
-        result = await self.db.execute(
-            select(QFQuest).where(QFQuest.quest_id == quest_id)
-        )
-        return result.scalar_one_or_none()
-
-    async def claim_quest_reward(
-        self, quest_id: UUID, player_id: UUID, transaction_service: TransactionService
-    ) -> Dict[str, Any]:
-        """
-        Claim a completed quest reward.
-
-        Returns:
-            Dict with success, quest_type, reward_amount, new_balance
-        """
-        # Get quest with lock
-        result = await self.db.execute(
-            select(QFQuest).where(
-                and_(QFQuest.quest_id == quest_id, QFQuest.player_id == player_id)
-            ).with_for_update()
-        )
-        quest = result.scalar_one_or_none()
-
-        if not quest:
-            raise ValueError("Quest not found")
-
-        if quest.status != QuestStatus.COMPLETED.value:
-            raise ValueError("Quest is not completed")
-
-        if quest.claimed_at is not None:
-            raise ValueError("Quest reward already claimed")
-
-        # Update quest status
-        quest.status = QuestStatus.CLAIMED.value
-        quest.claimed_at = datetime.now(UTC)
-
-        # Create transaction for reward
-        transaction = await transaction_service.create_transaction(
-            player_id=player_id,
-            amount=quest.reward_amount,
-            trans_type=f"quest_reward_{quest.quest_type}",
-            reference_id=quest_id,
-            auto_commit=False,
-            skip_lock=True,
-        )
-
-        await self.db.commit()
-        await self.db.refresh(quest)
-
-        logger.info(
-            f"Quest reward claimed: player={player_id}, quest={quest.quest_type}, "
-            f"reward={quest.reward_amount}, new_wallet={transaction.wallet_balance_after}, new_vault={transaction.vault_balance_after}"
-        )
-
-        # Check if we should auto-create next tier quest
-        quest_type = QuestType(quest.quest_type)
-        config = QUEST_CONFIGS.get(quest_type)
-        if config and "next_tier" in config and config["next_tier"]:
-            await self._create_quest(player_id, config["next_tier"])
-            await self.db.commit()
-            logger.info(f"Created next tier quest {config['next_tier'].value} for player {player_id}")
-
-        return {
-            "success": True,
-            "quest_type": quest.quest_type,
-            "reward_amount": quest.reward_amount,
-            "new_wallet": transaction.wallet_balance_after,
-            "new_vault": transaction.vault_balance_after,
-        }
-
+    # Game-specific quest tracking methods
     async def check_and_update_vote_streak(self, player_id: UUID, vote_correct: bool) -> None:
         """Check and update hot streak quest after a vote."""
-        # Get active hot streak quests
-        result = await self.db.execute(
-            select(QFQuest).where(
-                and_(
-                    QFQuest.player_id == player_id,
-                    QFQuest.status == QuestStatus.ACTIVE.value,
-                    QFQuest.quest_type.in_([
-                        QuestType.HOT_STREAK_5.value,
-                        QuestType.HOT_STREAK_10.value,
-                        QuestType.HOT_STREAK_20.value,
-                    ])
-                )
-            )
-        )
-        quests = list(result.scalars().all())
-
-        for quest in quests:
-            progress = quest.progress
-            config = QUEST_CONFIGS[QuestType(quest.quest_type)]
-
-            if vote_correct:
-                progress["current_streak"] += 1
-                progress["highest_streak"] = max(
-                    progress.get("highest_streak", 0),
-                    progress["current_streak"]
-                )
-
-                # Check if quest completed
-                if progress["current_streak"] >= config["target"]:
-                    quest.status = QuestStatus.COMPLETED.value
-                    quest.completed_at = datetime.now(UTC)
-                    logger.info(f"Quest {quest.quest_type} completed for player {player_id}")
-            else:
-                # Reset streak on incorrect vote
-                progress["current_streak"] = 0
-
-            quest.progress = progress
-            self.db.add(quest)
-
-        await self.db.commit()
+        streak_quest_types = [
+            QuestType.HOT_STREAK_5,
+            QuestType.HOT_STREAK_10,
+            QuestType.HOT_STREAK_20,
+        ]
+        
+        if vote_correct:
+            await self.update_streak_quest(player_id, streak_quest_types, streak_broken=False)
+        else:
+            await self.update_streak_quest(player_id, streak_quest_types, streak_broken=True)
 
     async def check_deceptive_copy(self, phraseset_id: UUID) -> None:
         """Check if any player earned the deceptive copy bonus."""
@@ -702,7 +424,7 @@ class QuestService:
             if progress["rounds_completed"] >= config["target"]:
                 quest.status = QuestStatus.COMPLETED.value
                 quest.completed_at = now
-                logger.info(f"Quest {quest.quest_type} completed for player {player_id}")
+                logger.info(f"Quest {quest.quest_type} completed for {player_id=}")
 
             quest.progress = progress
             self.db.add(quest)
@@ -725,12 +447,6 @@ class QuestService:
 
         if not quest:
             return
-
-        # NOTE: This method still uses COUNT queries because it needs 24-hour sliding windows.
-        # Incremental tracking would require storing all timestamps and filtering them on each call,
-        # which may not be more efficient. Consider caching or periodic background updates if this
-        # becomes a performance bottleneck. For now, we accept the query cost since balanced_player
-        # is checked less frequently than milestone quests (only on round submission).
 
         now = datetime.now(UTC)
         window_start = now - timedelta(hours=24)
@@ -783,7 +499,7 @@ class QuestService:
         if prompts >= 1 and copies >= 2 and votes >= 10:
             quest.status = QuestStatus.COMPLETED.value
             quest.completed_at = now
-            logger.info(f"Balanced player quest completed for player {player_id}")
+            logger.info(f"Balanced player quest completed for {player_id=}")
 
         quest.progress = progress
         self.db.add(quest)
@@ -843,137 +559,29 @@ class QuestService:
         if progress["consecutive_days"] >= 7:
             quest.status = QuestStatus.COMPLETED.value
             quest.completed_at = datetime.now(UTC)
-            logger.info(f"Login streak quest completed for player {player_id}")
+            logger.info(f"Login streak quest completed for {player_id=}")
 
         quest.progress = progress
         self.db.add(quest)
         await self.db.commit()
 
+    # Convenience methods using the base class functionality
     async def increment_feedback_count(self, player_id: UUID) -> None:
         """Track feedback contributions using incremental updates."""
-        # Get active feedback quests
-        quests_result = await self.db.execute(
-            select(QFQuest).where(
-                and_(
-                    QFQuest.player_id == player_id,
-                    QFQuest.status == QuestStatus.ACTIVE.value,
-                    QFQuest.quest_type.in_([
-                        QuestType.FEEDBACK_CONTRIBUTOR_10.value,
-                        QuestType.FEEDBACK_CONTRIBUTOR_50.value,
-                    ])
-                )
-            )
-        )
-        quests = list(quests_result.scalars().all())
-
-        for quest in quests:
-            progress = quest.progress
-            config = QUEST_CONFIGS[QuestType(quest.quest_type)]
-
-            # Increment the counter instead of recounting from database
-            current = progress.get("current", 0)
-            progress["current"] = current + 1
-
-            if progress["current"] >= config["target"]:
-                quest.status = QuestStatus.COMPLETED.value
-                quest.completed_at = datetime.now(UTC)
-                logger.info(f"Quest {quest.quest_type} completed for player {player_id}")
-
-            quest.progress = progress
-            self.db.add(quest)
-
-        await self.db.commit()
+        quest_types = [QuestType.FEEDBACK_CONTRIBUTOR_10, QuestType.FEEDBACK_CONTRIBUTOR_50]
+        await self.increment_progress_counter(player_id, quest_types)
 
     async def check_milestone_votes(self, player_id: UUID) -> None:
         """Check milestone vote quest using incremental tracking."""
-        # Get the active milestone vote quest
-        quest_result = await self.db.execute(
-            select(QFQuest).where(
-                and_(
-                    QFQuest.player_id == player_id,
-                    QFQuest.quest_type == QuestType.MILESTONE_VOTES_100.value,
-                    QFQuest.status == QuestStatus.ACTIVE.value
-                )
-            )
-        )
-        quest = quest_result.scalar_one_or_none()
-
-        if quest:
-            progress = quest.progress
-            config = QUEST_CONFIGS[QuestType.MILESTONE_VOTES_100]
-
-            # Increment the counter instead of recounting from database
-            current = progress.get("current", 0)
-            progress["current"] = current + 1
-
-            if progress["current"] >= config["target"]:
-                quest.status = QuestStatus.COMPLETED.value
-                quest.completed_at = datetime.now(UTC)
-                logger.info(f"Quest {quest.quest_type} completed for player {player_id}")
-
-            quest.progress = progress
-            self.db.add(quest)
-            await self.db.commit()
+        await self.increment_progress_counter(player_id, [QuestType.MILESTONE_VOTES_100])
 
     async def check_milestone_prompts(self, player_id: UUID) -> None:
         """Check milestone prompt quest using incremental tracking."""
-        quest_result = await self.db.execute(
-            select(QFQuest).where(
-                and_(
-                    QFQuest.player_id == player_id,
-                    QFQuest.quest_type == QuestType.MILESTONE_PROMPTS_50.value,
-                    QFQuest.status == QuestStatus.ACTIVE.value
-                )
-            )
-        )
-        quest = quest_result.scalar_one_or_none()
-
-        if quest:
-            progress = quest.progress
-            config = QUEST_CONFIGS[QuestType.MILESTONE_PROMPTS_50]
-
-            # Increment the counter instead of recounting from database
-            current = progress.get("current", 0)
-            progress["current"] = current + 1
-
-            if progress["current"] >= config["target"]:
-                quest.status = QuestStatus.COMPLETED.value
-                quest.completed_at = datetime.now(UTC)
-                logger.info(f"Quest {quest.quest_type} completed for player {player_id}")
-
-            quest.progress = progress
-            self.db.add(quest)
-            await self.db.commit()
+        await self.increment_progress_counter(player_id, [QuestType.MILESTONE_PROMPTS_50])
 
     async def check_milestone_copies(self, player_id: UUID) -> None:
         """Check milestone copy quest using incremental tracking."""
-        quest_result = await self.db.execute(
-            select(QFQuest).where(
-                and_(
-                    QFQuest.player_id == player_id,
-                    QFQuest.quest_type == QuestType.MILESTONE_COPIES_100.value,
-                    QFQuest.status == QuestStatus.ACTIVE.value
-                )
-            )
-        )
-        quest = quest_result.scalar_one_or_none()
-
-        if quest:
-            progress = quest.progress
-            config = QUEST_CONFIGS[QuestType.MILESTONE_COPIES_100]
-
-            # Increment the counter instead of recounting from database
-            current = progress.get("current", 0)
-            progress["current"] = current + 1
-
-            if progress["current"] >= config["target"]:
-                quest.status = QuestStatus.COMPLETED.value
-                quest.completed_at = datetime.now(UTC)
-                logger.info(f"Quest {quest.quest_type} completed for player {player_id}")
-
-            quest.progress = progress
-            self.db.add(quest)
-            await self.db.commit()
+        await self.increment_progress_counter(player_id, [QuestType.MILESTONE_COPIES_100])
 
     async def check_milestone_phraseset_20votes(
         self, player_id: UUID, phraseset_id: UUID, vote_count: int
@@ -1005,43 +613,5 @@ class QuestService:
             self.db.add(quest)
             await self.db.commit()
             logger.info(
-                f"Phraseset 20 votes milestone completed for player {player_id}"
+                f"Phraseset 20 votes milestone completed for {player_id=}"
             )
-
-    async def _check_milestone_quest(
-        self, player_id: UUID, quest_type: QuestType, current_count: int
-    ) -> None:
-        """Generic milestone quest checker."""
-        # Get or create quest
-        result = await self.db.execute(
-            select(QFQuest).where(
-                and_(
-                    QFQuest.player_id == player_id,
-                    QFQuest.quest_type == quest_type.value,
-                    or_(
-                        QFQuest.status == QuestStatus.ACTIVE.value,
-                        QFQuest.status == QuestStatus.COMPLETED.value
-                    )
-                )
-            )
-        )
-        quest = result.scalar_one_or_none()
-
-        if not quest:
-            quest = await self._create_quest(player_id, quest_type)
-
-        if quest.status != QuestStatus.ACTIVE.value:
-            return
-
-        config = QUEST_CONFIGS[quest_type]
-        progress = quest.progress
-        progress["current"] = current_count
-
-        if current_count >= config["target"]:
-            quest.status = QuestStatus.COMPLETED.value
-            quest.completed_at = datetime.now(UTC)
-            logger.info(f"Quest {quest_type.value} completed for player {player_id}")
-
-        quest.progress = progress
-        self.db.add(quest)
-        await self.db.commit()

@@ -1,6 +1,5 @@
 """Base Quest model with common fields and functionality."""
 from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Index, JSON
-from sqlalchemy.orm import relationship
 from enum import Enum
 import uuid
 from datetime import datetime, UTC
@@ -33,9 +32,7 @@ class QuestBase(Base):
     player_id = get_uuid_column(nullable=False, index=True)
     quest_type = Column(String(50), nullable=False, index=True)
     status = Column(String(20), nullable=False, default=QuestStatus.ACTIVE.value, index=True)
-    progress = Column(
-        MutableDict.as_mutable(JSON), nullable=False, default=dict
-    )  # Flexible progress tracking
+    progress = Column(MutableDict.as_mutable(JSON), nullable=False, default=dict)  # Flexible progress tracking
     reward_amount = Column(Integer, nullable=False)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     completed_at = Column(DateTime(timezone=True), nullable=True)

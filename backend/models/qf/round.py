@@ -2,9 +2,19 @@
 from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Index
 from sqlalchemy.orm import relationship
 import uuid
+from enum import Enum
 from datetime import datetime, UTC
+
 from backend.database import Base
 from backend.models.base import get_uuid_column
+
+
+class RoundStatus(str, Enum):
+    """Round status enumeration for type safety."""
+    ACTIVE = "active"
+    SUBMITTED = "submitted"
+    EXPIRED = "expired"
+    ABANDONED = "abandoned"
 
 
 class Round(Base):

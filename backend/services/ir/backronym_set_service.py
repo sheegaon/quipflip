@@ -208,7 +208,7 @@ class BackronymSetService:
             await self.db.refresh(entry)
 
             logger.info(
-                f"Added entry {entry.entry_id} to set {set_id} from player {player_id}"
+                f"Added entry {entry.entry_id} to set {set_id} from {player_id=}"
             )
 
             # Check if we should transition to voting
@@ -334,7 +334,7 @@ class BackronymSetService:
             await self.db.refresh(vote)
 
             logger.debug(
-                f"Added vote {vote.vote_id} to set {set_id} from player {player_id}"
+                f"Added vote {vote.vote_id} to set {set_id} from {player_id=}"
             )
 
             # Check if we should finalize:

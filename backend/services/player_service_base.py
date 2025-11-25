@@ -331,7 +331,7 @@ class PlayerServiceBase(ABC):
                 await self.db.commit()
                 await self.db.refresh(player)
 
-                logger.info(f"Created guest player {player_id} with email {guest_email}")
+                logger.info(f"Created guest {player_id=} with email {guest_email}")
                 return player, guest_password
 
             except Exception as e:
@@ -428,7 +428,7 @@ class PlayerServiceBase(ABC):
             await self.db.commit()
             await self.db.refresh(player)
 
-            logger.info(f"Created player {player_id} with username {normalized_username} (guest: {is_guest})")
+            logger.info(f"Created {player_id=} with username {normalized_username} (guest: {is_guest})")
             return player
 
         except (ValueError, self.error_class):
@@ -440,6 +440,52 @@ class PlayerServiceBase(ABC):
             await self.db.rollback()
             logger.error(f"Error creating player: {e}", exc_info=True)
             raise self.error_class(f"player_creation_failed: {str(e)}") from e
+
+    async def is_daily_bonus_available(self, player: "PlayerBase") -> bool:
+        """Check if daily bonus can be claimed.
+        
+        Base implementation returns False. Games with daily bonus systems
+        should override this method.
+        
+        Args:
+            player: Player to check
+            
+        Returns:
+            bool: True if daily bonus is available
+        """
+        return False
+
+    async def claim_daily_bonus(self, player: "PlayerBase", transaction_service=None) -> int:
+        """Claim daily bonus for player.
+        
+        Base implementation raises NotImplementedError. Games with daily bonus
+        systems should override this method.
+        
+        Args:
+            player: Player claiming bonus
+            transaction_service: Transaction service for recording the bonus
+            
+        Returns:
+            int: Amount of bonus claimed
+            
+        Raises:
+            NotImplementedError: If game doesn't implement daily bonuses
+        """
+        raise NotImplementedError("Daily bonus system not implemented for this game")
+
+    async def get_outstanding_prompts_count(self, player_id: str) -> int:
+        """Get count of outstanding prompts/tasks for player.
+        
+        Base implementation returns 0. Games with prompt/task systems
+        should override this method.
+        
+        Args:
+            player_id: Player UUID
+            
+        Returns:
+            int: Number of outstanding prompts/tasks
+        """
+        return 0
 
     def _should_be_admin(self, email: str) -> bool:
         """Determine if the provided email belongs to an administrator.

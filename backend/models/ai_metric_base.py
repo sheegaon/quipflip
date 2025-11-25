@@ -6,10 +6,7 @@ from sqlalchemy import (
     Float,
     DateTime,
     Boolean,
-    Index,
-    ForeignKey,
 )
-from sqlalchemy.orm import relationship
 import uuid
 from datetime import datetime, UTC
 from backend.database import Base
@@ -39,10 +36,6 @@ class AIMetricBase(Base):
     # Context (optional, for analysis)
     prompt_length = Column(Integer, nullable=True)  # Length of prompt in characters
     response_length = Column(Integer, nullable=True)  # Length of response in characters
-
-    # Operation-specific validation flags
-    validation_passed = Column(Boolean, nullable=True)  # Whether generated content passed validation
-    vote_correct = Column(Boolean, nullable=True)  # Whether AI vote was correct (for analysis)
 
     # Timestamps
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False, index=True)
