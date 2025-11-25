@@ -74,7 +74,7 @@ export const PromptRound: React.FC = () => {
         status: roundData.status,
       });
     }
-    }, [roundData, roundData?.round_id, roundData?.expires_at, roundData?.status]);
+    }, [roundData]);
 
   // Load existing feedback
   useEffect(() => {
