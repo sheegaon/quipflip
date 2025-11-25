@@ -89,9 +89,8 @@ export const PartyRoundModal: React.FC<PartyRoundModalProps> = ({ sessionId, cur
   usePartyWebSocket({
     sessionId,
     pageContext: 'game',
-    onProgressUpdate: (data) => {
+    onProgressUpdate: () => {
       // Update session progress when we receive WebSocket updates about other players
-      console.log('🔔 [Party Modal] Received progress update via WebSocket:', data);
       void syncSessionStatus();
     },
     onPhaseTransition: () => {
@@ -132,7 +131,6 @@ export const PartyRoundModal: React.FC<PartyRoundModalProps> = ({ sessionId, cur
           throw apiErr;
         }
         // If session has started, silently proceed with navigation
-        console.log('Session has started, navigating away without API call');
       }
 
       // End party mode in context
@@ -255,15 +253,15 @@ export const PartyRoundModal: React.FC<PartyRoundModalProps> = ({ sessionId, cur
 
           {/* Leave Party Button */}
           <div className="mt-4 pt-4 border-t border-quip-navy/10">
-          {leaveError && (
-            <p className="text-xs text-red-600 mb-2">{leaveError}</p>
-          )}
-          {syncError && (
-            <p className="text-xs text-red-600 mb-2">{syncError}</p>
-          )}
-          <button
-            type="button"
-            onClick={handleLeaveParty}
+            {leaveError && (
+              <p className="text-xs text-red-600 mb-2">{leaveError}</p>
+            )}
+            {syncError && (
+              <p className="text-xs text-red-600 mb-2">{syncError}</p>
+            )}
+            <button
+              type="button"
+              onClick={handleLeaveParty}
               disabled={isLeaving}
               className="w-full bg-red-500 hover:bg-red-600 disabled:bg-gray-400 text-white font-semibold py-2 px-4 rounded-tile transition-colors text-sm"
             >
