@@ -165,6 +165,9 @@ async def test_copy_not_available_after_already_copied(db_session, player_factor
     )
     await db_session.refresh(player2)
 
+    # Invalidate cache to ensure we get fresh data after the copy submission
+    round_service.invalidate_available_prompts_cache(player2.player_id)
+
     # Check available count again for player2
     available_after = await round_service.get_available_prompts_count(player2.player_id)
 

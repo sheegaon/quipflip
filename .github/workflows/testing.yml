@@ -44,15 +44,25 @@ jobs:
         python -m pytest tests/test_beta_survey.py -v
         python -m pytest tests/test_cleanup_service.py -v
         python -m pytest tests/test_code_quality_improvements.py -v
+        python -m pytest tests/test_copy_availability_regression.py -v
+        python -m pytest tests/test_daily_bonus.py -v
+        python -m pytest tests/test_datetime_helpers.py -v
+        python -m pytest tests/test_game_flow.py -v
+        python -m pytest tests/test_guest_accounts.py -v
         python -m pytest tests/test_party_session_service.py -v
-        python -m pytest tests/test_simple_cache.py -v
+        python -m pytest tests/test_phrase_validation_client.py -v
+        python -m pytest tests/test_profanity_check.py -v
+        python -m pytest tests/test_prompt_seeder.py -v
+        python -m pytest tests/test_quest_progress.py -v
         python -m pytest tests/test_queue_service.py -v
         python -m pytest tests/test_round_service.py -v
-        python -m pytest tests/test_datetime_helpers.py -v
-        python -m pytest tests/test_phrase_validation_client.py -v
         python -m pytest tests/test_scoring_service.py -v
+        python -m pytest tests/test_simple_cache.py -v
         python -m pytest tests/test_statistics_service.py -v
+        python -m pytest tests/test_timezone_awareness.py -v
+        python -m pytest tests/test_tutorial_service.py -v
         python -m pytest tests/test_username_service.py -v
+        python -m pytest tests/test_variable_prize_pool.py -v
         python -m pytest tests/test_vote_service.py -v
 
   frontend-lint:

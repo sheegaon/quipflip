@@ -79,8 +79,9 @@ async def test_insufficient_balance_prevention(db_session, player_factory):
     player_service = PlayerService(db_session)
     player = await player_factory()
 
-    # Set balance to $50 (insufficient for $100 prompt)
-    player.balance = 50
+    # Set wallet to $50 (insufficient for $100 prompt)
+    player.wallet = 50
+    player.vault = 0  # Ensure vault is also set to 0 for total balance of $50
     await db_session.commit()
 
     can_start, reason = await player_service.can_start_prompt_round(player)
@@ -146,7 +147,8 @@ async def test_daily_bonus_logic(db_session, player_factory):
         username_canonical="test_daily_bonus",
         email="test_daily_bonus@example.com",
         password_hash=hash_password("TestPassword123!"),
-        balance=1000,
+        wallet=1000,  # Use wallet instead of balance
+        vault=0,      # Explicitly set vault to 0
         created_at=yesterday_dt,
         last_login_date=yesterday,
     )

@@ -16,7 +16,6 @@ def _base_player(username: str) -> QFPlayer:
 
     now = datetime.now(UTC)
     return QFPlayer(
-        player_id=uuid4(),
         username=username,
         username_canonical=username.lower(),
         email=f"{username}@example.com",
