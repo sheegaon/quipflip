@@ -141,16 +141,20 @@ class RoundService:
 
         self.db.add(round_object)
 
-        # No need to flush - we already have round_id from uuid.uuid4()
-        # Removing flush eliminates lock contention under concurrent load
+        # Must flush Round before setting FK reference to satisfy foreign key constraint
+        # Only flush the Round object, not the entire session (to minimize lock contention)
+        await self.db.flush([round_object])
+        t3 = time.perf_counter()
+        logger.info(f"[{player.player_id}] db.flush([round_object]) took {t3-t2:.3f}s")
+
         player.active_round_id = round_object.round_id
         await self._increment_prompt_usage(prompt.prompt_id)
-        t3 = time.perf_counter()
-        logger.info(f"[{player.player_id}] increment_prompt_usage took {t3-t2:.3f}s")
+        t4 = time.perf_counter()
+        logger.info(f"[{player.player_id}] increment_prompt_usage took {t4-t3:.3f}s")
 
         await self.db.commit()
-        t4 = time.perf_counter()
-        logger.info(f"[{player.player_id}] db.commit took {t4-t3:.3f}s")
+        t5 = time.perf_counter()
+        logger.info(f"[{player.player_id}] db.commit took {t5-t4:.3f}s")
 
         # No need to refresh - we just created the object, we have all the data already
         # Removing this eliminates 10s of lock contention under concurrent load
