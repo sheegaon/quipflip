@@ -9,7 +9,8 @@ import asyncio
 import time
 
 # Reload time module to pick up TZ change
-time.tzset()
+if hasattr(time, "tzset"):
+    time.tzset()
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
