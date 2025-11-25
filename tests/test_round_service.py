@@ -9,7 +9,9 @@ from datetime import datetime, timedelta, UTC
 import uuid
 from unittest.mock import AsyncMock, patch
 from sqlalchemy import select, update
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from backend.models.qf.ai_phrase_cache import QFAIPhraseCache
 from backend.models.qf.player import QFPlayer
 from backend.models.qf.prompt import Prompt
 from backend.models.qf.round import Round
@@ -965,3 +967,67 @@ class TestCopyHints:
         await db_session.refresh(copy_round)
 
         return prompt_round, copy_round, player
+
+
+class TestAIHintBackground:
+    """Ensure background AI hint generation persists results."""
+
+    @pytest.mark.asyncio
+    async def test_generate_ai_hints_background_commits_results(
+        self, test_engine, monkeypatch
+    ):
+        # Use an isolated session factory for the background task
+        test_session = async_sessionmaker(
+            test_engine, class_=AsyncSession, expire_on_commit=False
+        )
+
+        async with test_session() as session:
+            prompt_round = Round(
+                round_id=uuid.uuid4(),
+                player_id=uuid.uuid4(),
+                round_type="prompt",
+                status="submitted",
+                prompt_text="Background hint prompt",
+                submitted_phrase="PROMPT PHRASE",
+                cost=settings.prompt_cost,
+                expires_at=datetime.now(UTC) + timedelta(minutes=5),
+            )
+            session.add(prompt_round)
+            await session.commit()
+
+        # Ensure the background helper uses the in-memory test session
+        from backend.services.qf import round_service_helpers
+        from backend import database
+        import backend.services as services
+
+        monkeypatch.setattr(database, "AsyncSessionLocal", test_session)
+
+        generated_cache_id = uuid.uuid4()
+
+        class DummyAIService:
+            def __init__(self, db_session):
+                self.db = db_session
+
+            async def generate_and_cache_impostor_phrases(self, prompt_round):
+                cache = QFAIPhraseCache(
+                    cache_id=generated_cache_id,
+                    prompt_round_id=prompt_round.round_id,
+                    original_phrase=prompt_round.submitted_phrase,
+                    prompt_text=prompt_round.prompt_text,
+                    validated_phrases=["Hint A", "Hint B", "Hint C"],
+                    generation_provider="test",
+                    generation_model="test",
+                )
+                self.db.add(cache)
+                await self.db.flush()
+                return cache
+
+        monkeypatch.setattr(services, "AIService", DummyAIService)
+
+        await round_service_helpers.generate_ai_hints_background(prompt_round.round_id)
+
+        async with test_session() as session:
+            cached = await session.get(QFAIPhraseCache, generated_cache_id)
+
+            assert cached is not None
+            assert cached.validated_phrases[:3] == ["Hint A", "Hint B", "Hint C"]
