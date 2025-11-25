@@ -226,7 +226,7 @@ export const GameProvider: React.FC<{
       copyHintsRoundRef.current = null;
       setCopyRoundHints(null);
     }
-  }, [activeRound?.round_id, activeRound?.round_type]);
+  }, [activeRound, copyRoundHints]);
 
   // Create stable actions object using useCallback for all methods
   const startSession = useCallback((nextUsername: string) => {
