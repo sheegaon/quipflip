@@ -22,9 +22,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-async def authenticate_websocket(
-    websocket: WebSocket, token: str, auth_service: AuthService
-) -> UUID:
+async def authenticate_websocket(websocket: WebSocket, token: str, auth_service: AuthService) -> UUID:
     """
     Authenticate WebSocket connection using short-lived token.
 
