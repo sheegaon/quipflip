@@ -427,6 +427,7 @@ async def generate_ai_hints_background(prompt_round_id: UUID) -> None:
                 return
 
             await ai_service.generate_and_cache_impostor_phrases(prompt_round)
+            await background_db.commit()
         except AICopyError as exc:
             logger.warning(f"Failed to generate AI hints for {prompt_round_id=}: {exc}", exc_info=True)
         except Exception as exc:  # Catch-all to avoid unhandled background task errors
