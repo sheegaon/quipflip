@@ -99,7 +99,7 @@ export const PromptRound: React.FC = () => {
     loadFeedback();
 
     return () => controller.abort();
-    }, [roundData, roundData?.round_id]);
+    }, [roundData]);
 
   // Redirect if already submitted
   useEffect(() => {
