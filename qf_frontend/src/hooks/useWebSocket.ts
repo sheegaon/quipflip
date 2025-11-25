@@ -106,15 +106,17 @@ const hasEnabledListeners = (entry: ConnectionEntry) => {
   return false;
 };
 
-const notify = <T extends keyof UseWebSocketOptions>(
+const notify = (
   entry: ConnectionEntry,
-  event: T,
-  ...args: Parameters<NonNullable<UseWebSocketOptions[T]>>
+  event: keyof UseWebSocketOptions,
+  ...args: unknown[]
 ) => {
   entry.listeners.forEach((listener) => {
     if (!listener.enabled) return;
-    const handler = listener.ref.current[event] as UseWebSocketOptions[T] | undefined;
-    handler?.(...args);
+    const handler = listener.ref.current[event];
+    if (typeof handler === 'function') {
+      (handler as (...args: unknown[]) => unknown)(...args);
+    }
   });
 };
 
