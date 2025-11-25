@@ -7,13 +7,10 @@
  * This is distinct from phraseset activity tracking, which shows historical phraseset
  * review events on the Phrasesets page.
  */
-import { useState, useEffect, useRef } from 'react';
+import { useGame } from '../contexts/GameContext';
+import { useNotifications } from '../contexts/NotificationContext';
 import { Header } from '../components/Header';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
-import { useGame } from '../contexts/GameContext';
-import type { OnlineUser } from '../api/types';
-import apiClient from '../api/client';
-import useExponentialBackoff from '../hooks/useExponentialBackoff';
 
 // Calculate account age in days (rounded up)
 const getAccountAgeDays = (createdAt: string): number => {
@@ -36,184 +33,16 @@ const getUserInitials = (username: string): string => {
 
 const OnlineUsers: React.FC = () => {
   const { state } = useGame();
-  const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
-  const [totalCount, setTotalCount] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [connected, setConnected] = useState(false);
-  const [pingStatus, setPingStatus] = useState<Record<string, 'idle' | 'sending' | 'sent'>>({});
-  const wsRef = useRef<WebSocket | null>(null);
-  const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const { schedule, clear, resetAttempts } = useExponentialBackoff();
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const stopPolling = () => {
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-        pollingIntervalRef.current = null;
-      }
-    };
-
-    const startPolling = () => {
-      if (pollingIntervalRef.current) return;
-
-      setError('Using polling mode (WebSocket unavailable)');
-      setLoading(false);
-      fetchOnlineUsers();
-      pollingIntervalRef.current = setInterval(fetchOnlineUsers, 10000);
-    };
-
-    const scheduleReconnect = () => {
-      if (!state.isAuthenticated) return;
-
-      schedule(() => {
-        connectWebSocket();
-      });
-    };
-
-    const connectWebSocket = async () => {
-      if (!state.isAuthenticated || wsRef.current) return;
-
-      try {
-        const { token } = await apiClient.getWebsocketToken();
-        const apiUrl = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:8000`;
-        const backendWsUrl = import.meta.env.VITE_BACKEND_WS_URL || 'wss://quipflip-c196034288cd.herokuapp.com';
-        let wsUrl: string;
-
-        if (apiUrl.startsWith('/')) {
-          wsUrl = `${backendWsUrl}/qf/users/online/ws`;
-
-        } else {
-          wsUrl = apiUrl
-            .replace('http://', 'ws://')
-            .replace('https://', 'wss://') + '/qf/users/online/ws';
-        }
-
-        wsUrl += `?token=${encodeURIComponent(token)}`;
-
-        const ws = new WebSocket(wsUrl);
-
-        ws.onopen = () => {
-          if (!isMounted) return;
-          setConnected(true);
-          setError(null);
-          setLoading(false);
-          resetAttempts();
-          clear();
-          stopPolling();
-        };
-
-        ws.onmessage = (event) => {
-          try {
-            const data: {
-              type: string;
-              users: OnlineUser[];
-              total_count: number;
-              timestamp: string;
-            } = JSON.parse(event.data);
-
-            if (data.type === 'online_users_update') {
-              setOnlineUsers(data.users);
-              setTotalCount(data.total_count);
-            }
-          } catch {
-            // Silently ignore malformed messages
-          }
-        };
-
-        ws.onerror = () => {
-          if (!isMounted) return;
-          setConnected(false);
-          ws.close();
-        };
-
-        ws.onclose = (event) => {
-          if (!isMounted) return;
-          wsRef.current = null;
-          setConnected(false);
-
-          if (event.code === 1008) {
-            setError('Authentication failed. Please log in again.');
-            setLoading(false);
-            stopPolling();
-            return;
-          }
-
-          startPolling();
-          scheduleReconnect();
-        };
-
-        wsRef.current = ws;
-      } catch {
-        if (!isMounted) return;
-        setConnected(false);
-        wsRef.current = null;
-        startPolling();
-        scheduleReconnect();
-      }
-    };
-
-    const fetchOnlineUsers = async () => {
-      try {
-        const data = await apiClient.getOnlineUsers();
-        setOnlineUsers(data.users);
-        setTotalCount(data.total_count);
-        
-        // Clear any connection errors if polling is working
-        if (error && error.includes('WebSocket unavailable')) {
-          setError(null);
-        }
-      } catch (err) {
-        console.error('Failed to fetch online users:', err);
-        if (!error) {
-          setError('Failed to load online users');
-        }
-      }
-    };
-
-    if (state.isAuthenticated) {
-      connectWebSocket();
-    }
-
-    // Cleanup on unmount or auth change
-    return () => {
-      isMounted = false;
-      console.log('OnlineUsers cleanup - clearing intervals and connections');
-
-      stopPolling();
-      clear();
-      resetAttempts();
-
-      if (wsRef.current) {
-        wsRef.current.close(1000, 'Component unmounting');
-        wsRef.current = null;
-      }
-
-      setConnected(false);
-      setLoading(false);
-      setError(null);
-    };
-  }, [clear, resetAttempts, schedule, state.isAuthenticated]); // Key: depend on auth state
-
+  const {
+    onlineUsers,
+    totalCount,
+    loadingOnlineUsers,
+    onlineUsersError,
+    onlineUsersConnected,
+    pingStatus,
+    handlePingUser,
+  } = useNotifications();
   const currentUsername = state.player?.username;
-
-  const handlePingUser = async (username: string) => {
-    setPingStatus((prev) => ({ ...prev, [username]: 'sending' }));
-
-    try {
-      await apiClient.pingOnlineUser(username);
-      setPingStatus((prev) => ({ ...prev, [username]: 'sent' }));
-
-      setTimeout(() => {
-        setPingStatus((prev) => ({ ...prev, [username]: 'idle' }));
-      }, 3000);
-    } catch (err) {
-      console.error('Failed to ping user:', err);
-      setPingStatus((prev) => ({ ...prev, [username]: 'idle' }));
-    }
-  };
 
   // Get action color based on action category (centralized from backend)
   const getActionColor = (category: string): string => {
@@ -240,7 +69,7 @@ const OnlineUsers: React.FC = () => {
     return categoryColorMap[category] || 'bg-gray-400';
   };
 
-  if (loading) {
+  if (loadingOnlineUsers) {
     return (
       <div className="min-h-screen bg-quip-cream bg-pattern">
         <Header />
@@ -270,9 +99,11 @@ const OnlineUsers: React.FC = () => {
             <div className="flex items-center gap-2">
               {/* Connection status indicator */}
               <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${connected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+                <div
+                  className={`w-2 h-2 rounded-full ${onlineUsersConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}
+                ></div>
                 <span className="text-sm text-quip-navy">
-                  {connected ? 'Live' : 'Reconnecting...'}
+                  {onlineUsersConnected ? 'Live' : 'Reconnecting...'}
                 </span>
               </div>
             </div>
@@ -280,9 +111,9 @@ const OnlineUsers: React.FC = () => {
         </div>
 
         {/* Error message */}
-        {error && (
+        {onlineUsersError && (
           <div className="tile-card p-4 mb-6 bg-red-50 border border-red-200">
-            <p className="text-red-600">{error}</p>
+            <p className="text-red-600">{onlineUsersError}</p>
           </div>
         )}
 
