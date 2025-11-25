@@ -240,10 +240,11 @@ class PartyCoordinationService:
                 message="All prompts submitted! Time to write copies.",
             )
 
-            # Trigger AI submissions for new phase (COPY)
-            await self._trigger_ai_submissions_for_new_phase(
-                session_id=session_id,
-                transaction_service=transaction_service,
+            # Trigger AI submissions for new phase (COPY) in background
+            # Don't await - let it run async so we can return HTTP response immediately
+            # Note: We'll create a new DB session in the background task
+            asyncio.create_task(
+                self._trigger_ai_submissions_in_background(session_id)
             )
         else:
             logger.info(f"Not advancing phase yet for session {session_id} - waiting for more submissions")
@@ -1162,6 +1163,29 @@ class PartyCoordinationService:
             return await submission_func(
                 session_id, session, participant, ai_service, task_transaction_service,
                 coordination_service=task_coordination
+            )
+
+    async def _trigger_ai_submissions_in_background(self, session_id: UUID) -> None:
+        """Trigger AI submissions in a background task with its own database session.
+
+        This method creates a new database session for the background task so it doesn't
+        interfere with the HTTP request/response cycle.
+
+        Args:
+            session_id: The party session ID
+        """
+        from backend.database import AsyncSessionLocal
+
+        try:
+            async with AsyncSessionLocal() as db:
+                # Create new coordination service with new database session
+                coordination_service = PartyCoordinationService(db)
+                transaction_service = TransactionService(db)
+                await coordination_service._trigger_ai_submissions_for_new_phase(session_id, transaction_service)
+        except Exception as e:
+            logger.error(
+                f"🤖 [AI BACKGROUND] Failed to trigger AI submissions in background for session {session_id}: {e}",
+                exc_info=True
             )
 
     async def _trigger_ai_submissions_for_new_phase(
