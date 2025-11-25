@@ -78,12 +78,26 @@ class RoundService:
         All operations are performed in a single atomic transaction within a distributed lock.
         """
         from backend.utils import lock_client
+        import time
 
         # Acquire lock for the entire transaction
         lock_name = f"start_prompt_round:{player.player_id}"
+        lock_start = time.perf_counter()
         with lock_client.lock(lock_name, timeout=self.settings.round_lock_timeout_seconds):
+            lock_acquired = time.perf_counter()
+            logger.debug(f"Lock acquired for {player.player_id} after {lock_acquired - lock_start:.3f}s")
+
+            prompt_start = time.perf_counter()
             prompt = await self._select_prompt_for_player(player)
+            prompt_end = time.perf_counter()
+            logger.debug(f"_select_prompt_for_player took {prompt_end - prompt_start:.3f}s")
+
+            create_start = time.perf_counter()
             round_object = await self._create_prompt_round(player, prompt, transaction_service)
+            create_end = time.perf_counter()
+            logger.debug(f"_create_prompt_round took {create_end - create_start:.3f}s")
+
+            logger.info(f"Total lock held time: {create_end - lock_acquired:.3f}s for player {player.player_id}")
 
         # Invalidate dashboard cache to ensure fresh data
         from backend.utils.cache import dashboard_cache
