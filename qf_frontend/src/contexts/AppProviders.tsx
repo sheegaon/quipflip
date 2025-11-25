@@ -43,7 +43,7 @@ const ContextBridge: React.FC<{
       count: gameState.pendingResults.length
     });
     resultsActions.setPendingResults(gameState.pendingResults);
-  }, [gameState.pendingResults]); // Remove resultsActions from dependency array
+  }, [gameState.pendingResults]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     refreshStatus({ showLoading: false }).catch((err) => {

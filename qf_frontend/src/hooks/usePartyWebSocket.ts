@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useGame } from '../contexts/GameContext';
-import apiClient from '../api/client';
+import useWebSocket from './useWebSocket';
 import type {
   HostPingPayload,
   PartyWebSocketMessage,
@@ -41,301 +41,131 @@ export interface UsePartyWebSocketReturn {
   reconnect: () => void;
 }
 
-const WS_BASE_URL = import.meta.env.VITE_BACKEND_WS_URL ||
-  (window.location.protocol === 'https:' ? 'wss:' : 'ws:') +
-  '//' + window.location.host.replace(':5173', ':8000');
+const parsePayload = <T extends PartyWebSocketMessage>(message: T) =>
+  (message as { data?: unknown }).data ?? message;
 
-/**
- * Hook for managing Party Mode WebSocket connection.
- * Provides real-time updates for party session events.
- */
 export function usePartyWebSocket(
   options: UsePartyWebSocketOptions
 ): UsePartyWebSocketReturn {
   const { state } = useGame();
-  const { sessionId } = options;
-  const pageContext = options.pageContext ?? 'other';
+  const { sessionId, pageContext = 'other' } = options;
 
   const [connected, setConnected] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const wsRef = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const reconnectAttemptsRef = useRef(0);
-  const isRateLimitedRef = useRef(false);
-  const rateLimitCooldownRef = useRef<NodeJS.Timeout | null>(null);
-  const isAuthorizationErrorRef = useRef(false);
-  const expectedCloseRef = useRef(false);
-
-  // Store handlers in a ref to prevent reconnection on every render
-  // The ref is updated on every render but doesn't trigger the connect callback
   const handlersRef = useRef(options);
-  handlersRef.current = options;
+  useEffect(() => {
+    handlersRef.current = options;
+  }, [options]);
 
-  const connect = useCallback(async () => {
-    if (!state.isAuthenticated || !sessionId) {
-      console.log('❌ Cannot connect WebSocket: not authenticated or no session ID');
-      return;
-    }
+  const enabled = state.isAuthenticated && Boolean(sessionId);
+  const path = useMemo(
+    () => (sessionId ? `/qf/party/${sessionId}/ws?context=${pageContext}` : ''),
+    [pageContext, sessionId]
+  );
 
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      console.log('✅ WebSocket already connected');
-      return;
-    }
-
-    // Don't attempt connection if we're rate-limited
-    if (isRateLimitedRef.current) {
-      console.log('⏸️ WebSocket connection paused due to rate limiting');
-      return;
-    }
-
-    // Don't attempt connection if we have a permanent authorization error
-    if (isAuthorizationErrorRef.current) {
-      console.log('🚫 WebSocket connection blocked: authorization error (session may have ended or player was removed)');
-      return;
-    }
-
-    setConnecting(true);
-    setError(null);
-
+  const handleMessage = useCallback((event: MessageEvent) => {
     try {
-      // Get WebSocket authentication token
-      const { token } = await apiClient.getWebsocketToken();
+      const message = JSON.parse(event.data) as PartyWebSocketMessage;
 
-      // Construct WebSocket URL
-      const wsUrl = `${WS_BASE_URL}/qf/party/${sessionId}/ws?token=${token}&context=${pageContext}`;
-
-      console.log('🔌 Connecting to Party WebSocket:', wsUrl);
-
-      const ws = new WebSocket(wsUrl);
-      wsRef.current = ws;
-
-      ws.onopen = () => {
-        console.log('✅ Party WebSocket connected');
-        setConnected(true);
-        setConnecting(false);
-        setError(null);
-        reconnectAttemptsRef.current = 0;
-        if (reconnectTimeoutRef.current) {
-          clearTimeout(reconnectTimeoutRef.current);
-          reconnectTimeoutRef.current = null;
-        }
-      };
-
-      ws.onmessage = (event) => {
-        try {
-          const message: PartyWebSocketMessage = JSON.parse(event.data);
-          console.log('📨 Party WebSocket message:', message);
-
-          // WebSocket messages may include their payload in a nested "data" field or at the top level.
-          type PartyMessageByType<T extends PartyWebSocketMessage['type']> = Extract<
-            PartyWebSocketMessage,
-            { type: T }
-          >;
-
-          function getPayload(
-            message: PartyMessageByType<'phase_transition'>
-          ): PhaseTransitionPayload;
-          function getPayload(message: PartyMessageByType<'player_joined'>): PlayerJoinedPayload;
-          function getPayload(message: PartyMessageByType<'player_left'>): PlayerLeftPayload;
-          function getPayload(message: PartyMessageByType<'player_ready'>): PlayerReadyPayload;
-          function getPayload(message: PartyMessageByType<'progress_update'>): ProgressUpdatePayload;
-          function getPayload(message: PartyMessageByType<'session_started'>): SessionStartedPayload;
-          function getPayload(message: PartyMessageByType<'session_completed'>): SessionCompletedPayload;
-          function getPayload(message: PartyMessageByType<'session_update'>): SessionUpdatePayload;
-          function getPayload(message: PartyMessageByType<'host_ping'>): HostPingPayload;
-          function getPayload(message: PartyWebSocketMessage) {
-            return message.data ?? message;
-          }
-
-          switch (message.type) {
-            case 'phase_transition':
-              handlersRef.current.onPhaseTransition?.(getPayload(message));
-              break;
-
-            case 'player_joined':
-              handlersRef.current.onPlayerJoined?.(getPayload(message));
-              break;
-
-            case 'player_left':
-              handlersRef.current.onPlayerLeft?.(getPayload(message));
-              break;
-
-            case 'player_ready':
-              handlersRef.current.onPlayerReady?.(getPayload(message));
-              break;
-
-            case 'progress_update':
-              handlersRef.current.onProgressUpdate?.(getPayload(message));
-              break;
-
-            case 'session_started':
-              handlersRef.current.onSessionStarted?.(getPayload(message));
-              break;
-
-            case 'session_completed':
-              handlersRef.current.onSessionCompleted?.(getPayload(message));
-              break;
-
-            case 'session_update':
-              handlersRef.current.onSessionUpdate?.(getPayload(message));
-              break;
-
-            case 'host_ping':
-              handlersRef.current.onHostPing?.(getPayload(message));
-              break;
-
-            default: {
-              // Exhaustiveness check - TypeScript will error if we miss a case
-              const _exhaustiveCheck: never = message;
-              console.warn('Unknown Party WebSocket message type:', _exhaustiveCheck);
-              break;
-            }
-          }
-        } catch (err) {
-          console.error('Error parsing WebSocket message:', err);
-        }
-      };
-
-      ws.onerror = (event) => {
-        console.error('❌ Party WebSocket error:', event);
-        setError('WebSocket connection error');
-      };
-
-      ws.onclose = (event) => {
-        console.log('🔌 Party WebSocket disconnected', event.code, event.reason);
-        setConnected(false);
-        setConnecting(false);
-        wsRef.current = null;
-
-        if (expectedCloseRef.current) {
-          expectedCloseRef.current = false;
-          return;
-        }
-
-        const authCloseCodes = new Set([4000, 4001, 4002, 4003, 4401, 4403]);
-        if (authCloseCodes.has(event.code)) {
-          isAuthorizationErrorRef.current = true;
-          setError(event.reason || 'Session is no longer active or you were removed from the party. Please return to party mode.');
-          return;
-        }
-
-        // Don't attempt reconnection if authorization failed
-        if (isAuthorizationErrorRef.current) {
-          console.log('🚫 Not reconnecting due to permanent authorization error');
-          setError('Session is no longer active or you were removed from the party. Please return to party mode.');
-          return;
-        }
-
-        // Attempt reconnection if not rate limited or permanently unauthorized
-        scheduleReconnect();
-      };
+      switch (message.type) {
+        case 'phase_transition':
+          handlersRef.current.onPhaseTransition?.(parsePayload<PartyWebSocketMessage>(message) as PhaseTransitionPayload);
+          break;
+        case 'player_joined':
+          handlersRef.current.onPlayerJoined?.(parsePayload<PartyWebSocketMessage>(message) as PlayerJoinedPayload);
+          break;
+        case 'player_left':
+          handlersRef.current.onPlayerLeft?.(parsePayload<PartyWebSocketMessage>(message) as PlayerLeftPayload);
+          break;
+        case 'player_ready':
+          handlersRef.current.onPlayerReady?.(parsePayload<PartyWebSocketMessage>(message) as PlayerReadyPayload);
+          break;
+        case 'progress_update':
+          handlersRef.current.onProgressUpdate?.(parsePayload<PartyWebSocketMessage>(message) as ProgressUpdatePayload);
+          break;
+        case 'session_started':
+          handlersRef.current.onSessionStarted?.(parsePayload<PartyWebSocketMessage>(message) as SessionStartedPayload);
+          break;
+        case 'session_completed':
+          handlersRef.current.onSessionCompleted?.(parsePayload<PartyWebSocketMessage>(message) as SessionCompletedPayload);
+          break;
+        case 'session_update':
+          handlersRef.current.onSessionUpdate?.(parsePayload<PartyWebSocketMessage>(message) as SessionUpdatePayload);
+          break;
+        case 'host_ping':
+          handlersRef.current.onHostPing?.(parsePayload<PartyWebSocketMessage>(message) as HostPingPayload);
+          break;
+        default:
+          console.warn('Unknown Party WebSocket message type:', message);
+      }
     } catch (err) {
-      console.error('Failed to connect WebSocket:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to connect';
-
-      // Check if this is an authorization error (403 or 401)
-      if (errorMessage.includes('403') || errorMessage.includes('401') || errorMessage.includes('Unauthorized') || errorMessage.includes('Forbidden')) {
-        console.log('🚫 Authorization failed - player may no longer be in this session');
-        isAuthorizationErrorRef.current = true;
-        setError('Session is no longer active or you were removed from the party. Please return to party mode.');
-        setConnecting(false);
-        return;
-      }
-
-      // Check if this is a rate limit error
-      if (errorMessage.includes('429') || errorMessage.includes('Rate limit')) {
-        console.log('⏸️ Rate limited - pausing reconnection for 60 seconds');
-        isRateLimitedRef.current = true;
-        setError('Rate limited. Retrying in 60 seconds...');
-
-        // Clear rate limit flag after 60 seconds
-        if (rateLimitCooldownRef.current) {
-          clearTimeout(rateLimitCooldownRef.current);
-        }
-        rateLimitCooldownRef.current = setTimeout(() => {
-          console.log('✅ Rate limit cooldown complete');
-          isRateLimitedRef.current = false;
-          reconnectAttemptsRef.current = 0; // Reset attempts after cooldown
-          setError(null);
-          scheduleReconnect();
-        }, 60000);
-      } else {
-        setError(errorMessage);
-        scheduleReconnect();
-      }
-
-      setConnecting(false);
+      console.error('Error parsing WebSocket message:', err);
     }
-  }, [state.isAuthenticated, sessionId, pageContext]);
-
-  const scheduleReconnect = () => {
-    if (isRateLimitedRef.current || isAuthorizationErrorRef.current) {
-      return;
-    }
-
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-      reconnectTimeoutRef.current = null;
-    }
-
-    const attempt = reconnectAttemptsRef.current;
-    const delay = Math.min(30000, 2000 * Math.pow(2, attempt));
-    reconnectAttemptsRef.current += 1;
-
-    reconnectTimeoutRef.current = setTimeout(() => {
-      connect();
-    }, delay);
-  };
-
-  const disconnect = useCallback(() => {
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-      reconnectTimeoutRef.current = null;
-    }
-
-    if (rateLimitCooldownRef.current) {
-      clearTimeout(rateLimitCooldownRef.current);
-      rateLimitCooldownRef.current = null;
-    }
-
-    expectedCloseRef.current = true;
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
-    } else {
-      expectedCloseRef.current = false;
-    }
-
-    setConnected(false);
-    setConnecting(false);
-    isRateLimitedRef.current = false;
-    isAuthorizationErrorRef.current = false;
-    reconnectAttemptsRef.current = 0;
   }, []);
 
-  const reconnect = useCallback(() => {
-    disconnect();
-    reconnectAttemptsRef.current = 0;
-    connect();
-  }, [connect, disconnect]);
+  const handleClose = useCallback(
+    (event: CloseEvent) => {
+      setConnected(false);
+      setConnecting(false);
 
-  // Auto-connect when authenticated and session ID is available
-  useEffect(() => {
-    if (state.isAuthenticated && sessionId) {
-      connect();
+      const authCloseCodes = new Set([4000, 4001, 4002, 4003, 4401, 4403]);
+      if (authCloseCodes.has(event.code)) {
+        setError(event.reason || 'Session is no longer active or you were removed from the party. Please return to party mode.');
+        return false;
+      }
+
+      return true;
+    },
+    []
+  );
+
+  const handleConnectError = useCallback((err: unknown) => {
+    setConnecting(false);
+    const message = err instanceof Error ? err.message : 'Failed to connect';
+
+    if (message.includes('403') || message.includes('401') || message.includes('Unauthorized') || message.includes('Forbidden')) {
+      setError('Session is no longer active or you were removed from the party. Please return to party mode.');
+      return false;
     }
 
-    return () => {
-      disconnect();
-    };
-  }, [state.isAuthenticated, sessionId, connect, disconnect]);
+    if (message.includes('429') || message.includes('Rate limit')) {
+      setError('Rate limited. Retrying...');
+    } else {
+      setError(message);
+    }
 
-  return {
-    connected,
-    connecting,
-    error,
-    reconnect,
-  };
+    return true;
+  }, []);
+
+  const { reconnect } = useWebSocket({
+    path,
+    enabled,
+    onBeforeConnect: () => {
+      setConnecting(true);
+      setError(null);
+    },
+    onOpen: () => {
+      setConnected(true);
+      setConnecting(false);
+      setError(null);
+    },
+    onMessage: handleMessage,
+    onError: () => {
+      setError('WebSocket connection error');
+    },
+    onClose: handleClose,
+    onConnectError: handleConnectError,
+  });
+
+  useEffect(() => {
+    if (!enabled) {
+      setConnected(false);
+      setConnecting(false);
+      setError(null);
+    }
+  }, [enabled]);
+
+  return { connected, connecting, error, reconnect };
 }

@@ -14,15 +14,18 @@ import {
   createContext,
   useContext,
   useState,
-  useEffect,
   useRef,
   ReactNode,
   FC,
+  useCallback,
+  useEffect,
 } from 'react';
 import { useGame } from './GameContext';
+import { usePartyMode } from './PartyModeContext';
 import apiClient from '../api/client';
-import { NotificationStreamMessage } from '../api/types';
-import useExponentialBackoff from '../hooks/useExponentialBackoff';
+import { NotificationStreamMessage, OnlineUser } from '../api/types';
+import useWebSocket from '../hooks/useWebSocket';
+import { usePartyWebSocket } from '../hooks/usePartyWebSocket';
 
 export interface NotificationMessage {
   id: string;
@@ -40,6 +43,13 @@ interface NotificationContextType {
   clearAll: () => void;
   pingMessages: PingToastMessage[];
   removePingMessage: (id: string) => void;
+  onlineUsers: OnlineUser[];
+  totalCount: number;
+  loadingOnlineUsers: boolean;
+  onlineUsersError: string | null;
+  onlineUsersConnected: boolean;
+  pingStatus: Record<string, 'idle' | 'sending' | 'sent'>;
+  handlePingUser: (username: string) => Promise<void>;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(
@@ -62,132 +72,188 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
 }) => {
   const [notifications, setNotifications] = useState<NotificationMessage[]>([]);
   const [pingMessages, setPingMessages] = useState<PingToastMessage[]>([]);
-  const wsRef = useRef<WebSocket | null>(null);
   const notificationIdRef = useRef(0);
   const pingIdRef = useRef(0);
-  const { schedule, clear, resetAttempts } = useExponentialBackoff();
+  const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { state } = useGame();
+  const { state: partyState } = usePartyMode();
+
+  const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [loadingOnlineUsers, setLoadingOnlineUsers] = useState(true);
+  const [onlineUsersError, setOnlineUsersError] = useState<string | null>(null);
+  const [onlineUsersConnected, setOnlineUsersConnected] = useState(false);
+  const [pingStatus, setPingStatus] = useState<Record<string, 'idle' | 'sending' | 'sent'>>({});
+  const pingResetTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  const clearPingTimeouts = useCallback(() => {
+    pingResetTimeoutsRef.current.forEach(clearTimeout);
+    pingResetTimeoutsRef.current = [];
+  }, []);
+
+  const stopPollingOnlineUsers = useCallback(() => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+  }, []);
+
+  const fetchOnlineUsers = useCallback(async () => {
+    if (!state.isAuthenticated) return;
+
+    try {
+      const data = await apiClient.getOnlineUsers();
+      setOnlineUsers(data.users);
+      setTotalCount(data.total_count);
+      setLoadingOnlineUsers(false);
+      setOnlineUsersError((prev) => (prev && prev.includes('WebSocket unavailable') ? null : prev));
+    } catch (err) {
+      console.error('Failed to fetch online users:', err);
+      setOnlineUsersError((prev) => prev ?? 'Failed to load online users');
+    }
+  }, [state.isAuthenticated]);
+
+  const startPollingOnlineUsers = useCallback(() => {
+    if (pollingIntervalRef.current) return;
+
+    setOnlineUsersError((prev) => prev ?? 'Using polling mode (WebSocket unavailable)');
+    fetchOnlineUsers();
+    pollingIntervalRef.current = setInterval(fetchOnlineUsers, 10000);
+  }, [fetchOnlineUsers]);
+
+  const handleNotificationMessage = useCallback((event: MessageEvent) => {
+    try {
+      const data: NotificationStreamMessage = JSON.parse(event.data);
+
+      if (data.type === 'notification') {
+        const notification: NotificationMessage = {
+          id: `notification-${++notificationIdRef.current}`,
+          actor_username: data.actor_username,
+          action: data.action,
+          recipient_role: data.recipient_role,
+          phrase_text: data.phrase_text,
+          timestamp: data.timestamp,
+        };
+
+        setNotifications((prev) => [...prev, notification]);
+        return;
+      }
+
+      if (data.type === 'ping') {
+        const ping: PingToastMessage = {
+          id: `ping-${++pingIdRef.current}`,
+          message: data.join_url
+            ? `${data.from_username} pinged your party`
+            : `${data.from_username} has pinged you`,
+          timestamp: data.timestamp,
+          joinUrl: data.join_url,
+        };
+
+        setPingMessages((prev) => [...prev, ping]);
+      }
+    } catch (err) {
+      // Silently ignore malformed messages
+      console.error('Failed to parse notification message:', err);
+    }
+  }, []);
+
+  useWebSocket({
+    path: '/qf/notifications/ws',
+    enabled: state.isAuthenticated,
+    onMessage: handleNotificationMessage,
+    onError: () => {
+      console.debug('WebSocket error, connection failed silently');
+    },
+    onConnectError: () => {
+      console.debug('WebSocket connection failed silently');
+    },
+  });
+
+  const handleOnlineUsersOpen = useCallback(() => {
+    setOnlineUsersConnected(true);
+    setOnlineUsersError(null);
+    setLoadingOnlineUsers(false);
+    stopPollingOnlineUsers();
+  }, [stopPollingOnlineUsers]);
+
+  const handleOnlineUsersMessage = useCallback((event: MessageEvent) => {
+    try {
+      const data: {
+        type: string;
+        users: OnlineUser[];
+        total_count: number;
+        timestamp: string;
+      } = JSON.parse(event.data);
+
+      if (data.type === 'online_users_update') {
+        setOnlineUsers(data.users);
+        setTotalCount(data.total_count);
+      }
+    } catch {
+      // Silently ignore malformed messages
+    }
+  }, []);
+
+  const handleOnlineUsersError = useCallback(
+    (_event: Event, socket: WebSocket) => {
+      setOnlineUsersConnected(false);
+      socket.close();
+    },
+    []
+  );
+
+  const handleOnlineUsersClose = useCallback(
+    (event: CloseEvent) => {
+      setOnlineUsersConnected(false);
+
+      if (event.code === 1008) {
+        setOnlineUsersError('Authentication failed. Please log in again.');
+        setLoadingOnlineUsers(false);
+        stopPollingOnlineUsers();
+        return false;
+      }
+
+      startPollingOnlineUsers();
+      return true;
+    },
+    [startPollingOnlineUsers, stopPollingOnlineUsers]
+  );
+
+  const handleOnlineUsersConnectError = useCallback(() => {
+    setOnlineUsersConnected(false);
+    startPollingOnlineUsers();
+    return true;
+  }, [startPollingOnlineUsers]);
+
+  useWebSocket({
+    path: '/qf/users/online/ws',
+    enabled: state.isAuthenticated,
+    onOpen: handleOnlineUsersOpen,
+    onMessage: handleOnlineUsersMessage,
+    onError: handleOnlineUsersError,
+    onClose: handleOnlineUsersClose,
+    onConnectError: handleOnlineUsersConnectError,
+  });
 
   useEffect(() => {
-    const scheduleReconnect = () => {
-      if (!state.isAuthenticated) return;
-
-      schedule(() => {
-        connectWebSocket();
-      });
-    };
-
-    const connectWebSocket = async () => {
-      if (!state.isAuthenticated || wsRef.current) return;
-
-      try {
-        // Step 1: Fetch short-lived WebSocket token via REST API (through Vercel proxy)
-        const { token } = await apiClient.getWebsocketToken();
-
-        // Step 2: Construct WebSocket URL for direct connection to Heroku
-        const apiUrl = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:8000`;
-        const backendWsUrl = import.meta.env.VITE_BACKEND_WS_URL || 'wss://quipflip-c196034288cd.herokuapp.com';
-        let wsUrl: string;
-
-        if (apiUrl.startsWith('/')) {
-          // Production: use direct Heroku connection (cannot proxy WebSocket through Vercel)
-          wsUrl = `${backendWsUrl}/qf/notifications/ws`;
-        } else {
-          // Development: connect directly to local backend
-          wsUrl = apiUrl
-            .replace('http://', 'ws://')
-            .replace('https://', 'wss://') + '/qf/notifications/ws';
-        }
-
-        // Step 3: Add short-lived token as query parameter
-        wsUrl += `?token=${encodeURIComponent(token)}`;
-
-        // Create WebSocket connection
-        const ws = new WebSocket(wsUrl);
-
-        ws.onopen = () => {
-          console.log('WebSocket connected for notifications');
-          clear();
-          resetAttempts();
-        };
-
-        ws.onmessage = (event) => {
-          try {
-            const data: NotificationStreamMessage = JSON.parse(event.data);
-
-            if (data.type === 'notification') {
-              const notification: NotificationMessage = {
-                id: `notification-${++notificationIdRef.current}`,
-                actor_username: data.actor_username,
-                action: data.action,
-                recipient_role: data.recipient_role,
-                phrase_text: data.phrase_text,
-                timestamp: data.timestamp,
-              };
-
-              setNotifications((prev) => [...prev, notification]);
-              return;
-            }
-
-            if (data.type === 'ping') {
-              const ping: PingToastMessage = {
-                id: `ping-${++pingIdRef.current}`,
-                message: data.join_url
-                  ? `${data.from_username} pinged your party`
-                  : `${data.from_username} has pinged you`,
-                timestamp: data.timestamp,
-                joinUrl: data.join_url,
-              };
-
-              setPingMessages((prev) => [...prev, ping]);
-            }
-          } catch (err) {
-            // Silently ignore malformed messages
-            console.error('Failed to parse notification message:', err);
-          }
-        };
-
-        ws.onerror = () => {
-          // Fail silently - no error message to user
-          console.debug('WebSocket error, connection failed silently');
-        };
-
-        ws.onclose = () => {
-          console.debug('WebSocket disconnected, attempting reconnect');
-          wsRef.current = null;
-          scheduleReconnect();
-        };
-
-        wsRef.current = ws;
-      } catch (err) {
-        // Fail silently but schedule reconnect so pings continue working
-        console.debug('WebSocket connection failed silently:', err);
-        wsRef.current = null;
-        scheduleReconnect();
-      }
-    };
-
-    if (state.isAuthenticated) {
-      connectWebSocket();
-    } else {
-      clear();
-      resetAttempts();
-      if (wsRef.current) {
-        wsRef.current.close();
-        wsRef.current = null;
-      }
+    if (!state.isAuthenticated) {
+      stopPollingOnlineUsers();
+      clearPingTimeouts();
+      setOnlineUsers([]);
+      setTotalCount(0);
+      setPingStatus({});
+      setOnlineUsersConnected(false);
+      setOnlineUsersError(null);
+      setLoadingOnlineUsers(false);
     }
+  }, [state.isAuthenticated, stopPollingOnlineUsers, clearPingTimeouts]);
 
-    // Cleanup on unmount or logout
-    return () => {
-      clear();
-      if (wsRef.current) {
-        wsRef.current.close();
-        wsRef.current = null;
-      }
-      resetAttempts();
-    };
-  }, [clear, resetAttempts, schedule, state.isAuthenticated]);
+  usePartyWebSocket({
+    sessionId: partyState.sessionId ?? '',
+    pageContext: 'other',
+  });
+
+
 
   const addNotification = (message: NotificationMessage) => {
     setNotifications((prev) => [...prev, message]);
@@ -205,6 +271,30 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
     setPingMessages((prev) => prev.filter((ping) => ping.id !== id));
   };
 
+  const handlePingUser = useCallback(async (username: string) => {
+    setPingStatus((prev) => ({ ...prev, [username]: 'sending' }));
+
+    try {
+      await apiClient.pingOnlineUser(username);
+      setPingStatus((prev) => ({ ...prev, [username]: 'sent' }));
+
+      const timeoutId = setTimeout(() => {
+        setPingStatus((prev) => ({ ...prev, [username]: 'idle' }));
+      }, 3000);
+      pingResetTimeoutsRef.current.push(timeoutId);
+    } catch (err) {
+      console.error('Failed to ping user:', err);
+      setPingStatus((prev) => ({ ...prev, [username]: 'idle' }));
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      stopPollingOnlineUsers();
+      clearPingTimeouts();
+    };
+  }, [stopPollingOnlineUsers, clearPingTimeouts]);
+
   return (
     <NotificationContext.Provider
       value={{
@@ -214,6 +304,13 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
         clearAll,
         pingMessages,
         removePingMessage,
+        onlineUsers,
+        totalCount,
+        loadingOnlineUsers,
+        onlineUsersError,
+        onlineUsersConnected,
+        pingStatus,
+        handlePingUser,
       }}
     >
       {children}
