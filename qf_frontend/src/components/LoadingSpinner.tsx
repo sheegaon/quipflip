@@ -113,7 +113,7 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
         {/* Spinner */}
         <div
           className={`${sizeClasses[size]} ${getSpinnerColor()} animate-spin`}
-          style={{ animationDirection: 'reverse' }}
+          style={{ animationDirection: 'normal' }}
         >
           <svg
             className="w-full h-full"

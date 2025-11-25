@@ -78,32 +78,17 @@ class RoundService:
         All operations are performed in a single atomic transaction within a distributed lock.
         """
         from backend.utils import lock_client
-        import time
 
         # Acquire lock for the entire transaction
         lock_name = f"start_prompt_round:{player.player_id}"
-        lock_start = time.perf_counter()
         with lock_client.lock(lock_name, timeout=self.settings.round_lock_timeout_seconds):
-            lock_acquired = time.perf_counter()
-            logger.info(f"[{player.player_id}] Lock acquired after {lock_acquired - lock_start:.3f}s")
-
-            prompt_start = time.perf_counter()
             prompt = await self._select_prompt_for_player(player)
-            prompt_end = time.perf_counter()
-            logger.info(f"[{player.player_id}] _select_prompt_for_player took {prompt_end - prompt_start:.3f}s")
-
-            create_start = time.perf_counter()
             round_object = await self._create_prompt_round(player, prompt, transaction_service)
-            create_end = time.perf_counter()
-            logger.info(f"[{player.player_id}] _create_prompt_round took {create_end - create_start:.3f}s")
-
-            logger.info(f"[{player.player_id}] Total lock held time: {create_end - lock_acquired:.3f}s")
 
         # Invalidate dashboard cache to ensure fresh data
         from backend.utils.cache import dashboard_cache
         dashboard_cache.invalidate_player_data(player.player_id)
 
-        logger.debug(f"Started prompt round {round_object.round_id} for player {player.player_id}")
         return round_object
 
     async def _create_prompt_round(
@@ -113,9 +98,6 @@ class RoundService:
         transaction_service: TransactionService,
     ) -> Round:
         """Create a prompt round and commit it in a single transaction."""
-        import time
-
-        t0 = time.perf_counter()
         await transaction_service.create_transaction(
             player.player_id,
             -self.settings.prompt_cost,
@@ -123,8 +105,6 @@ class RoundService:
             auto_commit=False,
             skip_lock=True,
         )
-        t1 = time.perf_counter()
-        logger.info(f"[{player.player_id}] create_transaction took {t1-t0:.3f}s")
 
         round_object = Round(
             round_id=uuid.uuid4(),
@@ -136,35 +116,21 @@ class RoundService:
             prompt_id=prompt.prompt_id,
             prompt_text=prompt.text,
         )
-        t2 = time.perf_counter()
-        logger.info(f"[{player.player_id}] Round object creation took {t2-t1:.3f}s")
 
         self.db.add(round_object)
 
         # Must flush Round before setting FK reference to satisfy foreign key constraint
         # Only flush the Round object, not the entire session (to minimize lock contention)
         await self.db.flush([round_object])
-        t3 = time.perf_counter()
-        logger.info(f"[{player.player_id}] db.flush([round_object]) took {t3-t2:.3f}s")
 
         player.active_round_id = round_object.round_id
 
         # Flush Player separately to reduce commit contention
         # This way only Transaction and Prompt updates remain for final commit
         await self.db.flush([player])
-        t4 = time.perf_counter()
-        logger.info(f"[{player.player_id}] db.flush([player]) took {t4-t3:.3f}s")
 
         await self._increment_prompt_usage(prompt.prompt_id)
-        t5 = time.perf_counter()
-        logger.info(f"[{player.player_id}] increment_prompt_usage took {t5-t4:.3f}s")
-
         await self.db.commit()
-        t6 = time.perf_counter()
-        logger.info(f"[{player.player_id}] db.commit took {t6-t5:.3f}s")
-
-        # No need to refresh - we just created the object, we have all the data already
-        # Removing this eliminates 10s of lock contention under concurrent load
 
         return round_object
 
@@ -182,33 +148,17 @@ class RoundService:
 
     async def _select_prompt_for_player(self, player: QFPlayer) -> Prompt:
         """Fetch a random prompt the player has not seen yet."""
-        import time
         import random
 
-        t0 = time.perf_counter()
         prompt_stmt = PromptQueryBuilder.build_unseen_prompts_query(player.player_id)
-        t1 = time.perf_counter()
-        logger.info(f"[{player.player_id}] build_unseen_prompts_query took {t1-t0:.3f}s")
-
         result = await self.db.execute(prompt_stmt)
-        t2 = time.perf_counter()
-        logger.info(f"[{player.player_id}] db.execute(prompt_stmt) took {t2-t1:.3f}s")
-
-        # Fetch all available prompts from the batch (up to 20)
         prompts = result.scalars().all()
-        t3 = time.perf_counter()
-        logger.info(f"[{player.player_id}] scalars().all() returned {len(prompts)} prompts in {t3-t2:.3f}s")
 
         if not prompts:
-            logger.debug(f"Player {player.player_id} has seen all available prompts; no unseen prompts remaining")
             raise NoPromptsAvailableError("no_unseen_prompts_available")
 
         # Randomly select one prompt from the batch (much faster than ORDER BY random())
-        prompt = random.choice(prompts)
-        t4 = time.perf_counter()
-        logger.info(f"[{player.player_id}] random.choice() took {t4-t3:.3f}s")
-
-        return prompt
+        return random.choice(prompts)
 
     async def submit_prompt_phrase(
             self,

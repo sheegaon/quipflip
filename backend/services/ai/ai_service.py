@@ -296,8 +296,6 @@ class AIService:
                     if phrases:
                         self._prompt_completions_cache[prompt] = phrases
 
-            logger.info(f"Loaded {len(self._prompt_completions_cache)} prompts from CSV cache")
-
         except FileNotFoundError:
             logger.warning(f"Prompt completions CSV not found at {csv_path}")
         except Exception as e:

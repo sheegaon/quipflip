@@ -146,7 +146,6 @@ class PhraseValidationClient:
             "phrase": phrase,
             "prompt_text": prompt_text
         }
-        logger.info(f"Validating prompt phrase: {phrase} against prompt text: {prompt_text}")
         return await self._make_request("/validate/prompt", payload)
 
     async def validate_copy(
