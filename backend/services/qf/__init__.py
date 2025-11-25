@@ -16,6 +16,10 @@ from backend.services.qf.party_session_service import PartySessionService
 from backend.services.qf.party_coordination_service import PartyCoordinationService
 from backend.services.qf.party_scoring_service import PartyScoringService
 from backend.services.qf.party_websocket_manager import PartyWebSocketManager, get_party_websocket_manager
+from backend.services.qf.websocket_notification_service import (
+    WebSocketNotificationService,
+    get_websocket_notification_service,
+)
 
 __all__ = [
     "get_phrase_validator",
@@ -37,4 +41,6 @@ __all__ = [
     "PartyScoringService",
     "PartyWebSocketManager",
     "get_party_websocket_manager",
+    "WebSocketNotificationService",
+    "get_websocket_notification_service",
 ]

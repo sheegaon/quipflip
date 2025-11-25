@@ -8,7 +8,6 @@ Handles:
 - Rate limiting (max 10 notifications per player per minute)
 """
 
-import json
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional
@@ -23,6 +22,10 @@ from backend.models.qf.player import QFPlayer
 from backend.models.qf.round import Round
 from backend.schemas.notification import NotificationWebSocketMessage
 from backend.services.ai.ai_service import AI_PLAYER_EMAIL_DOMAIN
+from backend.services.qf.websocket_notification_service import (
+    WebSocketNotificationService,
+    get_websocket_notification_service,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -382,20 +385,32 @@ class NotificationConnectionManager:
     Stores per-player WebSocket connections.
     """
 
-    def __init__(self):
-        # Map player_id (UUID) → WebSocket connection
-        self.active_connections: Dict[str, "WebSocket"] = {}
+    def __init__(
+        self, websocket_service: WebSocketNotificationService | None = None
+    ) -> None:
+        self._websocket_service = (
+            websocket_service or get_websocket_notification_service()
+        )
+
+    @staticmethod
+    def _channel_for_player(player_id: str) -> str:
+        return f"player:{player_id}"
 
     async def connect(self, player_id: str, websocket: "WebSocket") -> None:
         """Add player's WebSocket connection."""
-        await websocket.accept()
-        self.active_connections[str(player_id)] = websocket
+        player_id_str = str(player_id)
+        await self._websocket_service.connect(
+            self._channel_for_player(player_id_str), player_id_str, websocket
+        )
         logger.info(f"WebSocket connected for player {player_id}")
 
     async def disconnect(self, player_id: str) -> None:
         """Remove player's WebSocket connection."""
-        if str(player_id) in self.active_connections:
-            del self.active_connections[str(player_id)]
+        player_id_str = str(player_id)
+        connection = await self._websocket_service.disconnect(
+            self._channel_for_player(player_id_str), player_id_str
+        )
+        if connection:
             logger.info(f"WebSocket disconnected for player {player_id}")
 
     async def send_to_player(self, player_id: UUID, message: dict) -> None:
@@ -405,19 +420,9 @@ class NotificationConnectionManager:
         Fails silently if player not connected or connection fails.
         """
         player_id_str = str(player_id)
-
-        if player_id_str not in self.active_connections:
-            logger.debug(f"Player {player_id} not connected, skipping WebSocket send")
-            return
-
-        try:
-            websocket = self.active_connections[player_id_str]
-            await websocket.send_json(message)
-            logger.debug(f"Sent notification to player {player_id} via WebSocket")
-        except Exception as e:
-            logger.warning(f"Failed to send WebSocket to player {player_id}: {e}")
-            # Fail silently - remove connection
-            await self.disconnect(player_id_str)
+        await self._websocket_service.send(
+            self._channel_for_player(player_id_str), player_id_str, message
+        )
 
 
 # Global singleton instance

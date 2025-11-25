@@ -31,6 +31,7 @@ from backend.services.qf.queue_service import QueueService
 from backend.config import get_settings
 from backend.utils.exceptions import NoPromptsAvailableError, NoPhrasesetsAvailableError
 from backend.services.ai.ai_service import AI_PLAYER_EMAIL_DOMAIN
+from backend.database import AsyncSessionLocal
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -292,7 +293,7 @@ class PartyCoordinationService:
             )
 
         # Get eligible prompts (party-first, then global)
-        eligible_prompt_round_id = await self._get_eligible_prompt_for_copy(
+        eligible_prompt_round_id, prompt_from_queue = await self._get_eligible_prompt_for_copy(
             session_id, player.player_id
         )
 
@@ -300,10 +301,12 @@ class PartyCoordinationService:
             raise NoPromptsAvailableError("No eligible prompts available for copying")
 
         # Start copy round with specific prompt
-        round_obj = await self.round_service.start_copy_round(
+        round_obj, _ = await self.round_service.start_copy_round(
             player=player,
             transaction_service=transaction_service,
             prompt_round_id=eligible_prompt_round_id,
+            force_prompt_round=True,
+            prompt_from_queue=prompt_from_queue,
         )
 
         # Link round to party (without incrementing counter yet)
@@ -559,7 +562,7 @@ class PartyCoordinationService:
         self,
         session_id: UUID,
         player_id: UUID,
-    ) -> Optional[UUID]:
+    ) -> tuple[Optional[UUID], bool]:
         """Get eligible prompt round for player to copy.
 
         Prioritizes party prompts, then falls back to global pool while filtering out
@@ -573,7 +576,7 @@ class PartyCoordinationService:
             player_id: UUID of the player
 
         Returns:
-            UUID of eligible prompt round, or None if none available
+            Tuple of (eligible prompt round ID or None, whether the prompt originated from the global queue)
         """
         # Prompts this player has already copied
         result = await self.db.execute(
@@ -609,7 +612,7 @@ class PartyCoordinationService:
             ]
 
             if eligible_party_prompts:
-                return eligible_party_prompts[0].round_id
+                return eligible_party_prompts[0].round_id, False
 
         # Fallback: reuse prompt rounds from the global queue that are not authored by
         # anyone currently in the party session.
@@ -642,13 +645,13 @@ class PartyCoordinationService:
             for skipped_id in skipped_prompt_ids:
                 QueueService.add_prompt_round_to_queue(skipped_id)
 
-            return prompt_round.round_id
+            return prompt_round.round_id, True
 
         # Requeue any skipped prompts if no eligible option was found
         for skipped_id in skipped_prompt_ids:
             QueueService.add_prompt_round_to_queue(skipped_id)
 
-        return None
+        return None, False
 
     async def _get_eligible_phraseset_for_vote(
         self,
@@ -762,6 +765,7 @@ class PartyCoordinationService:
         participant: PartyParticipant,
         ai_service,
         transaction_service: TransactionService,
+        coordination_service: Optional['PartyCoordinationService'] = None,
     ) -> Optional[str]:
         """Process a single AI prompt submission.
 
@@ -771,11 +775,15 @@ class PartyCoordinationService:
             participant: AI participant to process
             ai_service: AI service instance
             transaction_service: Transaction service
+            coordination_service: Optional isolated coordination service for DB isolation
 
         Returns:
             Submitted phrase if successful, None if skipped or failed
         """
         try:
+            # Use provided coordination service or fall back to self
+            coord = coordination_service or self
+
             # Check if AI has submitted all prompts
             if participant.prompts_submitted >= session.prompts_per_player:
                 logger.info(f"🤖 [AI SUBMIT] {participant.player.username} already submitted {participant.prompts_submitted} prompts, skipping")
@@ -786,7 +794,7 @@ class PartyCoordinationService:
             # Submit prompt round (with retry logic for lock contention)
             logger.info(f"🤖 [AI SUBMIT] Starting prompt round for {participant.player.username}")
             round_obj, party_round_id = await retry_with_backoff(
-                func=lambda: self.start_party_prompt_round(
+                func=lambda: coord.start_party_prompt_round(
                     session_id=session_id,
                     player=participant.player,
                     transaction_service=transaction_service,
@@ -802,7 +810,7 @@ class PartyCoordinationService:
             # Submit phrase (with retry logic for lock contention)
             logger.info(f"🤖 [AI SUBMIT] Submitting phrase for {participant.player.username}")
             await retry_with_backoff(
-                func=lambda: self.submit_party_prompt(
+                func=lambda: coord.submit_party_prompt(
                     session_id=session_id,
                     player=participant.player,
                     round_id=round_obj.round_id,
@@ -826,6 +834,7 @@ class PartyCoordinationService:
         participant: PartyParticipant,
         ai_service,
         transaction_service: TransactionService,
+        coordination_service: Optional['PartyCoordinationService'] = None,
     ) -> Optional[str]:
         """Process a single AI copy submission.
 
@@ -835,49 +844,49 @@ class PartyCoordinationService:
             participant: AI participant to process
             ai_service: AI service instance
             transaction_service: Transaction service
+            coordination_service: Optional isolated coordination service for DB isolation
 
         Returns:
             Submitted copy phrase if successful, None if skipped or failed
         """
         try:
+            # Use provided coordination service or fall back to self
+            coord = coordination_service or self
+
             # Check if AI has submitted all copies
             if participant.copies_submitted >= session.copies_per_player:
                 return None
 
-            # Get eligible prompt to copy
-            prompt_round_id = await self._get_eligible_prompt_for_copy(
-                session_id, participant.player_id
-            )
-
-            if not prompt_round_id:
+            # Submit copy round (with retry logic for lock contention)
+            try:
+                round_obj, party_round_id = await retry_with_backoff(
+                    func=lambda: coord.start_party_copy_round(
+                        session_id=session_id,
+                        player=participant.player,
+                        transaction_service=transaction_service,
+                    ),
+                    operation_name=f"start_copy_round for AI {participant.player.username}",
+                )
+            except NoPromptsAvailableError:
                 logger.info(f"No eligible prompts for AI {participant.player.username}")
                 return None
 
-            # Get prompt round details
-            prompt_round_result = await self.db.execute(
-                select(Round).where(Round.round_id == prompt_round_id)
+            prompt_round_result = await coord.db.execute(
+                select(Round).where(Round.round_id == round_obj.prompt_round_id)
             )
             prompt_round = prompt_round_result.scalar_one_or_none()
-
             if not prompt_round:
+                logger.warning(
+                    f"Prompt round {round_obj.prompt_round_id} not found for AI {participant.player.username}"
+                )
                 return None
 
             # Generate impostor phrase
             copy_phrase = await ai_service.get_impostor_phrase(prompt_round)
 
-            # Submit copy round (with retry logic for lock contention)
-            round_obj, party_round_id = await retry_with_backoff(
-                func=lambda: self.start_party_copy_round(
-                    session_id=session_id,
-                    player=participant.player,
-                    transaction_service=transaction_service,
-                ),
-                operation_name=f"start_copy_round for AI {participant.player.username}",
-            )
-
             # Submit copy phrase (with retry logic for lock contention)
             await retry_with_backoff(
-                func=lambda: self.submit_party_copy(
+                func=lambda: coord.submit_party_copy(
                     session_id=session_id,
                     player=participant.player,
                     round_id=round_obj.round_id,
@@ -901,6 +910,7 @@ class PartyCoordinationService:
         participant: PartyParticipant,
         ai_service,
         transaction_service: TransactionService,
+        coordination_service: Optional['PartyCoordinationService'] = None,
     ) -> Optional[str]:
         """Process a single AI vote submission.
 
@@ -910,17 +920,21 @@ class PartyCoordinationService:
             participant: AI participant to process
             ai_service: AI service instance
             transaction_service: Transaction service
+            coordination_service: Optional isolated coordination service for DB isolation
 
         Returns:
             Chosen phrase if successful, None if skipped or failed
         """
         try:
+            # Use provided coordination service or fall back to self
+            coord = coordination_service or self
+
             # Check if AI has submitted all votes
             if participant.votes_submitted >= session.votes_per_player:
                 return None
 
             # Get eligible phraseset to vote on
-            phraseset_id = await self._get_eligible_phraseset_for_vote(
+            phraseset_id = await coord._get_eligible_phraseset_for_vote(
                 session_id, participant.player_id
             )
 
@@ -929,7 +943,7 @@ class PartyCoordinationService:
                 return None
 
             # Get phraseset details
-            phraseset_result = await self.db.execute(
+            phraseset_result = await coord.db.execute(
                 select(Phraseset).where(Phraseset.phraseset_id == phraseset_id)
             )
             phraseset = phraseset_result.scalar_one_or_none()
@@ -943,7 +957,7 @@ class PartyCoordinationService:
 
             # Submit vote round (with retry logic for lock contention)
             round_obj, party_round_id = await retry_with_backoff(
-                func=lambda: self.start_party_vote_round(
+                func=lambda: coord.start_party_vote_round(
                     session_id=session_id,
                     player=participant.player,
                     transaction_service=transaction_service,
@@ -953,7 +967,7 @@ class PartyCoordinationService:
 
             # Submit vote (with retry logic for lock contention)
             await retry_with_backoff(
-                func=lambda: self.submit_party_vote(
+                func=lambda: coord.submit_party_vote(
                     session_id=session_id,
                     player=participant.player,
                     round_id=round_obj.round_id,
@@ -1027,29 +1041,32 @@ class PartyCoordinationService:
 
             logger.info(f"🤖 [AI PROCESS] 🚀 Processing {len(ai_participants)} AI participants IN PARALLEL for {session.current_phase} phase")
 
-            # Initialize AI service
-            ai_service = AIService(self.db)
-
             # Create parallel tasks based on current phase
+            # IMPORTANT: Each task gets its own database session to avoid "Session is already flushing" errors
+            # when multiple coroutines try to flush simultaneously
             submission_tasks = []
+
             if session.current_phase == 'PROMPT':
                 submission_tasks = [
-                    self._process_single_ai_prompt_submission(
-                        session_id, session, participant, ai_service, transaction_service
+                    self._run_ai_submission_with_isolated_session(
+                        self._process_single_ai_prompt_submission,
+                        session_id, session, participant
                     )
                     for participant in ai_participants
                 ]
             elif session.current_phase == 'COPY':
                 submission_tasks = [
-                    self._process_single_ai_copy_submission(
-                        session_id, session, participant, ai_service, transaction_service
+                    self._run_ai_submission_with_isolated_session(
+                        self._process_single_ai_copy_submission,
+                        session_id, session, participant
                     )
                     for participant in ai_participants
                 ]
             elif session.current_phase == 'VOTE':
                 submission_tasks = [
-                    self._process_single_ai_vote_submission(
-                        session_id, session, participant, ai_service, transaction_service
+                    self._run_ai_submission_with_isolated_session(
+                        self._process_single_ai_vote_submission,
+                        session_id, session, participant
                     )
                     for participant in ai_participants
                 ]
@@ -1092,6 +1109,54 @@ class PartyCoordinationService:
             logger.error(f"🤖 [AI PROCESS] ❌ Fatal error processing AI submissions for session {session_id}: {e}", exc_info=True)
             stats['errors'] += 1
             return stats
+
+    async def _run_ai_submission_with_isolated_session(
+        self,
+        submission_func,
+        session_id: UUID,
+        session: PartySession,
+        participant: PartyParticipant,
+    ) -> Optional[str]:
+        """Run an AI submission with its own isolated database session.
+
+        This prevents "Session is already flushing" errors that occur when multiple
+        coroutines try to flush the same session simultaneously during parallel AI submissions.
+
+        The key is that ALL services (RoundService, TransactionService, AIService, etc.)
+        must use the same isolated session to avoid cross-session conflicts.
+
+        Args:
+            submission_func: The async submission function to call
+            session_id: Party session ID
+            session: Party session object
+            participant: AI participant to process
+
+        Returns:
+            Result of the submission function
+        """
+        async with AsyncSessionLocal() as task_db:
+            # Create fresh service instances with the isolated session
+            # This ensures all operations within the submission use the same session
+            from backend.services.ai.ai_service import AIService
+
+            task_round_service = RoundService(task_db)
+            task_vote_service = VoteService(task_db)
+            task_party_session_service = PartySessionService(task_db)
+            task_transaction_service = TransactionService(task_db)
+            ai_service = AIService(task_db)
+
+            # Create a temporary coordination service with isolated services
+            task_coordination = PartyCoordinationService(
+                db=task_db,
+                party_session_service=task_party_session_service,
+                round_service=task_round_service,
+                vote_service=task_vote_service,
+            )
+
+            return await submission_func(
+                session_id, session, participant, ai_service, task_transaction_service,
+                coordination_service=task_coordination
+            )
 
     async def _trigger_ai_submissions_for_new_phase(
         self,

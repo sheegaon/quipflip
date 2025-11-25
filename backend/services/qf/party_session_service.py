@@ -1253,3 +1253,204 @@ class PartySessionService:
 
         logger.info(f"Linked phraseset {phraseset_id} to session {session_id}")
         return party_phraseset
+
+    async def remove_player_from_all_sessions(self, player_id: UUID) -> int:
+        """Remove a player from all active party sessions.
+
+        Called during logout to clean up stale sessions. This prevents the player
+        from being blocked from creating/joining new parties.
+
+        Args:
+            player_id: UUID of the player to remove
+
+        Returns:
+            int: Number of sessions the player was removed from
+        """
+        # Find all active participants for this player
+        result = await self.db.execute(
+            select(PartyParticipant.participant_id, PartyParticipant.session_id)
+            .join(PartySession, PartySession.session_id == PartyParticipant.session_id)
+            .where(PartyParticipant.player_id == player_id)
+            .where(PartySession.status.in_(['OPEN', 'IN_PROGRESS']))
+        )
+
+        participants = result.fetchall()
+        session_count = 0
+
+        for participant_id, session_id in participants:
+            try:
+                # Try to leave the session gracefully
+                await self.leave_session(session_id, player_id)
+                session_count += 1
+            except Exception as e:
+                logger.warning(
+                    f"Error removing player {player_id} from session {session_id}: {e}"
+                )
+                # Even if graceful leave fails, delete the participant record
+                try:
+                    delete_stmt = (
+                        select(PartyParticipant)
+                        .where(PartyParticipant.participant_id == participant_id)
+                    )
+                    result = await self.db.execute(delete_stmt)
+                    participant_to_delete = result.scalar_one_or_none()
+                    if participant_to_delete:
+                        await self.db.delete(participant_to_delete)
+                    await self.db.commit()
+                    session_count += 1
+                except Exception as delete_error:
+                    logger.error(
+                        f"Failed to delete participant {participant_id}: {delete_error}"
+                    )
+
+        if session_count > 0:
+            logger.info(f"Removed player {player_id} from {session_count} party session(s)")
+
+        return session_count
+
+    async def cleanup_expired_sessions(
+        self, max_session_age_hours: int = 24
+    ) -> dict[str, int]:
+        """Clean up stale/expired party sessions.
+
+        Removes sessions that:
+        - Are in OPEN status and haven't been started for too long
+        - Are in IN_PROGRESS status and haven't been updated for too long
+
+        Args:
+            max_session_age_hours: Maximum age in hours before session is considered stale
+                                  (default 24 hours)
+
+        Returns:
+            dict with counts of cleaned sessions by status
+        """
+        cutoff_time = datetime.now(UTC) - timedelta(hours=max_session_age_hours)
+        stats = {
+            'expired_open_sessions': 0,
+            'expired_in_progress_sessions': 0,
+            'removed_participants': 0,
+        }
+
+        try:
+            # Clean up OPEN sessions that have been waiting too long
+            result = await self.db.execute(
+                select(PartySession)
+                .where(PartySession.status == 'OPEN')
+                .where(PartySession.created_at < cutoff_time)
+            )
+            open_sessions = result.scalars().all()
+
+            for session in open_sessions:
+                try:
+                    # Remove all participants from the session
+                    part_result = await self.db.execute(
+                        select(PartyParticipant)
+                        .where(PartyParticipant.session_id == session.session_id)
+                    )
+                    participants = part_result.scalars().all()
+                    for participant in participants:
+                        await self.db.delete(participant)
+                        stats['removed_participants'] += 1
+
+                    # Mark session as expired
+                    session.status = 'EXPIRED'
+                    session.updated_at = datetime.now(UTC)
+                    stats['expired_open_sessions'] += 1
+
+                    logger.info(
+                        f"Expired OPEN session {session.party_code} "
+                        f"(created {(datetime.now(UTC) - session.created_at).total_seconds() / 3600:.1f}h ago)"
+                    )
+                except Exception as e:
+                    logger.error(f"Error expiring OPEN session {session.session_id}: {e}")
+
+            # Clean up IN_PROGRESS sessions that have been stalled too long
+            result = await self.db.execute(
+                select(PartySession)
+                .where(PartySession.status == 'IN_PROGRESS')
+                .where(PartySession.updated_at < cutoff_time)
+            )
+            in_progress_sessions = result.scalars().all()
+
+            for session in in_progress_sessions:
+                try:
+                    # Remove all participants from the session
+                    part_result = await self.db.execute(
+                        select(PartyParticipant)
+                        .where(PartyParticipant.session_id == session.session_id)
+                    )
+                    participants = part_result.scalars().all()
+                    for participant in participants:
+                        await self.db.delete(participant)
+                        stats['removed_participants'] += 1
+
+                    # Mark session as expired
+                    last_updated = session.updated_at or session.created_at
+                    session.status = 'EXPIRED'
+                    session.updated_at = datetime.now(UTC)
+                    stats['expired_in_progress_sessions'] += 1
+
+                    logger.info(
+                        f"Expired IN_PROGRESS session {session.party_code} "
+                        f"(inactive for {(datetime.now(UTC) - last_updated).total_seconds() / 3600:.1f}h)"
+                    )
+                except Exception as e:
+                    logger.error(f"Error expiring IN_PROGRESS session {session.session_id}: {e}")
+
+            # Commit all changes
+            await self.db.commit()
+
+            total_expired = stats['expired_open_sessions'] + stats['expired_in_progress_sessions']
+            if total_expired > 0:
+                logger.info(
+                    f"Party session cleanup completed: "
+                    f"{stats['expired_open_sessions']} OPEN, "
+                    f"{stats['expired_in_progress_sessions']} IN_PROGRESS, "
+                    f"{stats['removed_participants']} participants removed"
+                )
+
+        except Exception as e:
+            logger.error(f"Error during session cleanup: {e}", exc_info=True)
+            await self.db.rollback()
+
+        return stats
+
+    async def cleanup_disconnected_participants(
+        self, inactive_minutes: int = 30
+    ) -> int:
+        """Remove participants who have been disconnected for too long.
+
+        Args:
+            inactive_minutes: Minutes of inactivity before removal (default 30 minutes)
+
+        Returns:
+            int: Number of participants removed
+        """
+        cutoff_time = datetime.now(UTC) - timedelta(minutes=inactive_minutes)
+        removed_count = 0
+
+        try:
+            result = await self.db.execute(
+                select(PartyParticipant)
+                .where(PartyParticipant.connection_status == 'disconnected')
+                .where(PartyParticipant.disconnected_at < cutoff_time)
+            )
+
+            participants = result.scalars().all()
+            for participant in participants:
+                try:
+                    await self.db.delete(participant)
+                    removed_count += 1
+                except Exception as e:
+                    logger.error(f"Error removing participant {participant.participant_id}: {e}")
+
+            await self.db.commit()
+
+            if removed_count > 0:
+                logger.info(f"Cleaned up {removed_count} stale disconnected participants")
+
+        except Exception as e:
+            logger.error(f"Error during disconnected participant cleanup: {e}", exc_info=True)
+            await self.db.rollback()
+
+        return removed_count

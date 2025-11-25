@@ -122,6 +122,21 @@ async def get_current_player(
     return player
 
 
+async def get_optional_player(
+    request: Request,
+    authorization: str | None = Header(default=None, alias="Authorization"),
+    db: AsyncSession = Depends(get_db),
+    game_type: GameType = GameType.QF,
+) -> PlayerBase | None:
+    """Return the current player if available, otherwise None for auth failures."""
+    try:
+        return await get_current_player(request, authorization, db, game_type)
+    except HTTPException as exc:
+        if exc.status_code == 401:
+            return None
+        raise
+
+
 async def enforce_vote_rate_limit(
     player: PlayerBase = Depends(get_current_player),
 ) -> PlayerBase:

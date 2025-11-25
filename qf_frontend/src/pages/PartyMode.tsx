@@ -10,7 +10,8 @@ import type { PartyListItem } from '../api/types';
  * Party Mode entry page - Create or Join a party session
  */
 export const PartyMode: React.FC = () => {
-  const { state } = useGame();
+  const { state, actions } = useGame();
+  const { setGlobalError } = actions;
   const { player } = state;
   const navigate = useNavigate();
   const [parties, setParties] = useState<PartyListItem[]>([]);
@@ -39,13 +40,16 @@ export const PartyMode: React.FC = () => {
     } catch (err: unknown) {
       if (axios.isAxiosError<{ detail?: string }>(err)) {
         const detail = err.response?.data?.detail;
-        if (detail === 'already_in_another_session') {
-          setError('You already have an active party. Leave it before creating a new one.');
-        } else {
-          setError(detail || err.message || 'Failed to create party');
-        }
+        const message =
+          detail === 'already_in_another_session'
+            ? 'You already have an active party. Leave it before creating a new one.'
+            : detail || err.message || 'Failed to create party';
+        setError(message);
+        setGlobalError(message);
       } else {
-        setError(err instanceof Error ? err.message : 'Failed to create party');
+        const message = err instanceof Error ? err.message : 'Failed to create party';
+        setError(message);
+        setGlobalError(message);
       }
     } finally {
       setIsCreating(false);
@@ -80,13 +84,16 @@ export const PartyMode: React.FC = () => {
     } catch (err: unknown) {
       if (axios.isAxiosError<{ detail?: string }>(err)) {
         const detail = err.response?.data?.detail;
-        if (detail === 'already_in_another_session') {
-          setError('You are already in another party. Leave it before joining a new one.');
-        } else {
-          setError(detail || err.message || 'Failed to join party');
-        }
+        const message =
+          detail === 'already_in_another_session'
+            ? 'You are already in another party. Leave it before joining a new one.'
+            : detail || err.message || 'Failed to join party';
+        setError(message);
+        setGlobalError(message);
       } else {
-        setError(err instanceof Error ? err.message : 'Failed to join party');
+        const message = err instanceof Error ? err.message : 'Failed to join party';
+        setError(message);
+        setGlobalError(message);
       }
     } finally {
       setJoiningSessionId(null);

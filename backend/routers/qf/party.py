@@ -1077,6 +1077,7 @@ async def party_websocket_endpoint(
 
     if not token:
         logger.warning("Party WebSocket connection attempted without token")
+        await websocket.close(code=4001, reason="No authentication token")
         return
 
     # Validate token and get player
@@ -1090,6 +1091,7 @@ async def party_websocket_endpoint(
             player_id_str = payload.get("sub")
             if not player_id_str:
                 logger.warning("Party WebSocket token missing player_id")
+                await websocket.close(code=4002, reason="Invalid token")
                 return
 
             player_id = UUID(player_id_str)
@@ -1100,6 +1102,7 @@ async def party_websocket_endpoint(
 
             if not participant:
                 logger.warning(f"Player {player_id} attempted to connect to session they're not in")
+                await websocket.close(code=4003, reason="Not a participant in this session")
                 return
 
             context = websocket.query_params.get("context")
@@ -1127,3 +1130,7 @@ async def party_websocket_endpoint(
 
     except Exception as e:
         logger.warning(f"Party WebSocket authentication failed: {e}")
+        try:
+            await websocket.close(code=4000, reason="Authentication failed")
+        except Exception:
+            pass  # Connection may already be closed

@@ -52,6 +52,7 @@ interface GameActions {
   abandonRound: (roundId: string) => Promise<AbandonRoundResponse>;
   fetchCopyHints: (roundId: string, signal?: AbortSignal) => Promise<string[]>;
   updateActiveRound: (roundData: ActiveRound) => void;
+  setGlobalError: (message: string) => void;
 }
 
 interface GameContextType {
@@ -475,6 +476,11 @@ export const GameProvider: React.FC<{
     setError(null);
   }, []);
 
+  const setGlobalError = useCallback((message: string) => {
+    gameContextLogger.debug('🚨 Setting global error message:', message);
+    setError(message);
+  }, []);
+
   const navigateAfterDelay = useCallback((path: string, delay: number = 1500) => {
     gameContextLogger.debug('🧭 Navigating after delay:', { path, delay });
     setTimeout(() => {
@@ -849,6 +855,7 @@ export const GameProvider: React.FC<{
     refreshBalance,
     claimBonus,
     clearError,
+    setGlobalError,
     navigateAfterDelay,
     startPromptRound,
     startCopyRound,
@@ -876,4 +883,3 @@ export const useGame = (): GameContextType => {
   }
   return context;
 };
-

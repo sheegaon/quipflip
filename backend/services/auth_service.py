@@ -95,13 +95,6 @@ class AuthService:
 
                 logger.info(f"Created {self.game_type.value} guest player {player.player_id} with email {guest_email}")
 
-                # Initialize game-specific content for new guest
-                if self.game_type == GameType.QF:
-                    from backend.services.qf.quest_service import QuestService
-                    quest_service = QuestService(self.db)
-                    await quest_service.initialize_quests_for_player(player.player_id)
-                    logger.info(f"Initialized starter quests for guest {player.player_id}")
-
                 return player, guest_password
             except ValueError as exc:
                 message = str(exc)
@@ -151,8 +144,13 @@ class AuthService:
             if self.game_type == GameType.QF:
                 from backend.services.qf.quest_service import QuestService
                 quest_service = QuestService(self.db)
-                await quest_service.initialize_quests_for_player(player.player_id)
-                logger.info(f"Initialized starter quests for player {player.player_id}")
+                try:
+                    await quest_service.initialize_quests_for_player(player.player_id)
+                    logger.info(f"Initialized starter quests for player {player.player_id}")
+                except Exception as e:
+                    logger.error(f"Failed to initialize quests for player {player.player_id}: {e}", exc_info=True)
+                    # Don't fail account creation if quest initialization fails
+                    # The backup script will create missing quests later if needed
 
             return player
         except ValueError as exc:
@@ -323,6 +321,21 @@ class AuthService:
             .values(revoked_at=datetime.now(UTC))
         )
         await self.db.commit()
+
+    async def get_player_from_refresh_token(self, raw_token: str) -> PlayerBase | None:
+        """Return the player linked to the given refresh token without rotating it."""
+        if not raw_token:
+            return None
+
+        token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+        result = await self.db.execute(
+            select(self.refresh_token_model).where(self.refresh_token_model.token_hash == token_hash)
+        )
+        refresh_token = result.scalar_one_or_none()
+        if not refresh_token or not refresh_token.is_active():
+            return None
+
+        return await self.player_service.get_player_by_id(refresh_token.player_id)
 
     async def issue_tokens(self, player: PlayerBase, *, rotate_existing: bool = True) -> tuple[str, str, int]:
         if rotate_existing:

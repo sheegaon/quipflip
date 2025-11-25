@@ -173,7 +173,16 @@ class RoundService:
         # Make grace_cutoff timezone-aware if expires_at is naive (SQLite stores naive)
         expires_at_aware = ensure_utc(round_object.expires_at)
         grace_cutoff = expires_at_aware + timedelta(seconds=self.settings.grace_period_seconds)
-        if datetime.now(UTC) > grace_cutoff:
+        now = datetime.now(UTC)
+
+        if now > grace_cutoff:
+            logger.error(
+                f"Round {round_id} expired: expires_at={expires_at_aware}, "
+                f"grace_cutoff={grace_cutoff}, now={now}, "
+                f"grace_period={self.settings.grace_period_seconds}s, "
+                f"round_seconds={self.settings.prompt_round_seconds}s, "
+                f"time_since_creation={(now - ensure_utc(round_object.created_at)).total_seconds():.2f}s"
+            )
             raise RoundExpiredError("Round expired past grace period")
 
         # Validate word against prompt text
@@ -225,8 +234,15 @@ class RoundService:
         logger.debug(f"Submitted phrase for prompt round {round_id}: {phrase}")
         return round_object
 
-    async def start_copy_round(self, player: QFPlayer, transaction_service: TransactionService, 
-                               prompt_round_id: Optional[UUID] = None) -> tuple[Optional[Round], bool]:
+    async def start_copy_round(
+        self,
+        player: QFPlayer,
+        transaction_service: TransactionService,
+        prompt_round_id: Optional[UUID] = None,
+        *,
+        force_prompt_round: bool = False,
+        prompt_from_queue: bool = False,
+    ) -> tuple[Optional[Round], bool]:
         """
         Start a copy round.
 
@@ -243,9 +259,12 @@ class RoundService:
         Returns:
             Tuple of (Round object, is_second_copy flag)
         """
-        logger.debug(f"{player.player_id=} attempting to start copy round (second_copy={prompt_round_id is not None})")
+        logger.debug(
+            f"{player.player_id=} attempting to start copy round (second_copy="
+            f"{prompt_round_id is not None and not force_prompt_round}, forced={force_prompt_round})"
+        )
 
-        is_second_copy = prompt_round_id is not None
+        is_second_copy = prompt_round_id is not None and not force_prompt_round
 
         if is_second_copy:
             # Second copy: use the provided prompt_round_id
@@ -290,13 +309,18 @@ class RoundService:
 
             logger.debug(f"Starting second copy for prompt {prompt_round_id}, cost={copy_cost}")
         else:
-            # First copy: normal flow
-            queue_populated = await self.ensure_prompt_queue_populated()
-            logger.debug(f"{queue_populated=}, queue length: {QueueService.get_prompt_rounds_waiting()}")
+            # First copy: either use provided prompt (party mode) or pull from queue
+            if prompt_round_id and force_prompt_round:
+                prompt_round = await self._get_specific_prompt_round_for_copy(
+                    player, prompt_round_id, prompt_from_queue
+                )
+            else:
+                queue_populated = await self.ensure_prompt_queue_populated()
+                logger.debug(f"{queue_populated=}, queue length: {QueueService.get_prompt_rounds_waiting()}")
 
-            prompt_round = await self._get_next_valid_prompt_round(
-                player, self.settings.copy_round_max_attempts
-            )
+                prompt_round = await self._get_next_valid_prompt_round(
+                    player, self.settings.copy_round_max_attempts
+                )
 
             copy_cost, is_discounted, system_contribution = self._calculate_copy_round_cost()
 
@@ -481,6 +505,51 @@ class RoundService:
             "Could not find a valid prompt after multiple attempts"
         )
 
+    async def _get_specific_prompt_round_for_copy(
+        self,
+        player: QFPlayer,
+        prompt_round_id: UUID,
+        prompt_from_queue: bool,
+    ) -> Round:
+        """
+        Retrieve and lock a specific prompt round chosen outside the queue.
+
+        Args:
+            player: Player requesting the copy round
+            prompt_round_id: Prompt round to lock
+            prompt_from_queue: Whether the prompt originated from the global queue
+        """
+        prompt_round = await self.db.get(Round, prompt_round_id)
+        if not prompt_round or prompt_round.round_type != "prompt":
+            if prompt_from_queue:
+                QueueService.add_prompt_round_to_queue(prompt_round_id)
+            raise NoPromptsAvailableError("Prompt not available")
+
+        if prompt_round.status != "submitted":
+            if prompt_from_queue:
+                QueueService.add_prompt_round_to_queue(prompt_round_id)
+            raise NoPromptsAvailableError("Prompt no longer available")
+
+        if prompt_round.phraseset_status in {"flagged_pending", "flagged_removed"}:
+            logger.debug(f"{prompt_round_id=} is flagged, skipping forced copy assignment")
+            if prompt_from_queue:
+                QueueService.add_prompt_round_to_queue(prompt_round_id)
+            raise NoPromptsAvailableError("Prompt not available")
+
+        locked_prompt_round = await self._lock_prompt_round_for_update(prompt_round_id)
+        if not locked_prompt_round:
+            if prompt_from_queue:
+                QueueService.add_prompt_round_to_queue(prompt_round_id)
+            raise NoPromptsAvailableError("Prompt unavailable")
+
+        should_skip, should_requeue = await self._should_skip_prompt_round(player, locked_prompt_round)
+        if should_skip:
+            if prompt_from_queue or should_requeue:
+                QueueService.add_prompt_round_to_queue(prompt_round_id)
+            raise NoPromptsAvailableError("Prompt not eligible")
+
+        return locked_prompt_round
+
     @staticmethod
     async def _pop_prompt_batch(limit: int) -> list[UUID]:
         """Pop the next batch of prompt IDs from the queue."""
@@ -545,7 +614,16 @@ class RoundService:
         # Make grace_cutoff timezone-aware if expires_at is naive (SQLite stores naive)
         expires_at_aware = ensure_utc(round_object.expires_at)
         grace_cutoff = expires_at_aware + timedelta(seconds=self.settings.grace_period_seconds)
-        if datetime.now(UTC) > grace_cutoff:
+        now = datetime.now(UTC)
+
+        if now > grace_cutoff:
+            logger.error(
+                f"Copy round {round_id} expired: expires_at={expires_at_aware}, "
+                f"grace_cutoff={grace_cutoff}, now={now}, "
+                f"grace_period={self.settings.grace_period_seconds}s, "
+                f"round_seconds={self.settings.copy_round_seconds}s, "
+                f"time_since_creation={(now - ensure_utc(round_object.created_at)).total_seconds():.2f}s"
+            )
             raise RoundExpiredError("Round expired past grace period")
 
         # Determine if another copy already exists for duplicate/similarity checks

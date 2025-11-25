@@ -1,6 +1,16 @@
 """FastAPI application entry point."""
+import os
+
+# CRITICAL: Force UTC timezone BEFORE any other imports that use time/datetime
+# This must be set before any modules cache timezone information
+os.environ['TZ'] = 'UTC'
+
 import asyncio
 import time
+
+# Reload time module to pick up TZ change
+time.tzset()
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
@@ -86,10 +96,14 @@ sqlalchemy_logger.addHandler(sql_rotating_handler)
 sqlalchemy_logger.setLevel(logging.INFO)
 sqlalchemy_logger.propagate = False  # Prevent propagation to root logger to avoid duplication
 
-# Test that logging is working
+# Test that logging is working and verify timezone is UTC
+from datetime import datetime, UTC
 logger.info("=" * 100)
 logger.info("*" * 36 + " Logging system initialized " + "*" * 36)
 logger.info("=" * 100)
+logger.info(f"Timezone configured: TZ={os.environ.get('TZ', 'NOT SET')}")
+logger.info(f"Current UTC time: {datetime.now(UTC)}")
+logger.info(f"System timezone name: {time.tzname}")
 
 
 class SQLTransactionFilter(logging.Filter):
@@ -286,6 +300,37 @@ async def cleanup_cycle():
         await asyncio.sleep(cleanup_interval)
 
 
+async def party_maintenance_cycle():
+    """
+    Background task for party session maintenance.
+
+    Runs periodically to:
+    - Clean up expired party sessions (older than 24 hours)
+    - Remove stale disconnected participants
+    - Free up database resources
+    """
+    from backend.tasks.party_maintenance import run_party_maintenance
+
+    # Initial startup delay to let other services initialize
+    startup_delay = 90
+    logger.info(f"Party maintenance cycle starting in {startup_delay}s")
+    await asyncio.sleep(startup_delay)
+
+    logger.info("Party maintenance cycle starting main loop")
+
+    # Run party maintenance every hour (3600 seconds)
+    maintenance_interval = 1 * 60 * 60
+
+    while True:
+        try:
+            await run_party_maintenance()
+        except Exception as e:
+            logger.error(f"Party maintenance cycle error: {e}")
+
+        # Wait before next cycle
+        await asyncio.sleep(maintenance_interval)
+
+
 async def ir_backup_cycle():
     """
     Background task to fill stalled Initial Reaction game sets.
@@ -343,6 +388,7 @@ async def lifespan(app_instance: FastAPI):
     ai_backup_task = None
     stale_handler_task = None
     cleanup_task = None
+    party_maintenance_task = None
     ir_backup_task = None
 
     try:
@@ -362,6 +408,12 @@ async def lifespan(app_instance: FastAPI):
         logger.info("Cleanup cycle task started (runs every hour)")
     except Exception as e:
         logger.error(f"Failed to start cleanup cycle: {e}")
+
+    try:
+        party_maintenance_task = asyncio.create_task(party_maintenance_cycle())
+        logger.info("Party maintenance cycle task started (runs every hour)")
+    except Exception as e:
+        logger.error(f"Failed to start party maintenance cycle: {e}")
 
     # try:
     #     ir_backup_task = asyncio.create_task(ir_backup_cycle())
@@ -393,6 +445,13 @@ async def lifespan(app_instance: FastAPI):
                 await cleanup_task
             except asyncio.CancelledError:
                 logger.info("Cleanup cycle task cancelled")
+
+        if party_maintenance_task:
+            party_maintenance_task.cancel()
+            try:
+                await party_maintenance_task
+            except asyncio.CancelledError:
+                logger.info("Party maintenance cycle task cancelled")
 
         if ir_backup_task:
             ir_backup_task.cancel()

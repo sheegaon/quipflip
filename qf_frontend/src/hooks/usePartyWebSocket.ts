@@ -66,6 +66,7 @@ export function usePartyWebSocket(
   const isRateLimitedRef = useRef(false);
   const rateLimitCooldownRef = useRef<NodeJS.Timeout | null>(null);
   const isAuthorizationErrorRef = useRef(false);
+  const expectedCloseRef = useRef(false);
 
   // Store handlers in a ref to prevent reconnection on every render
   // The ref is updated on every render but doesn't trigger the connect callback
@@ -202,11 +203,23 @@ export function usePartyWebSocket(
         setError('WebSocket connection error');
       };
 
-      ws.onclose = () => {
-        console.log('🔌 Party WebSocket disconnected');
+      ws.onclose = (event) => {
+        console.log('🔌 Party WebSocket disconnected', event.code, event.reason);
         setConnected(false);
         setConnecting(false);
         wsRef.current = null;
+
+        if (expectedCloseRef.current) {
+          expectedCloseRef.current = false;
+          return;
+        }
+
+        const authCloseCodes = new Set([4000, 4001, 4002, 4003, 4401, 4403]);
+        if (authCloseCodes.has(event.code)) {
+          isAuthorizationErrorRef.current = true;
+          setError(event.reason || 'Session is no longer active or you were removed from the party. Please return to party mode.');
+          return;
+        }
 
         // Don't attempt reconnection if authorization failed
         if (isAuthorizationErrorRef.current) {
@@ -287,9 +300,12 @@ export function usePartyWebSocket(
       rateLimitCooldownRef.current = null;
     }
 
+    expectedCloseRef.current = true;
     if (wsRef.current) {
       wsRef.current.close();
       wsRef.current = null;
+    } else {
+      expectedCloseRef.current = false;
     }
 
     setConnected(false);

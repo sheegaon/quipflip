@@ -88,7 +88,7 @@ async def create_player(
 ):
     """Create a new player account and return credentials."""
 
-    auth_service = AuthService(db)
+    auth_service = AuthService(db, game_type=GameType.QF)
     try:
         player = await auth_service.register_player(
             email=request.email,

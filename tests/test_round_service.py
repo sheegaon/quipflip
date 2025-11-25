@@ -457,6 +457,37 @@ class TestCopyRoundCreation:
         await db_session.refresh(player_with_balance)
         assert player_with_balance.wallet == initial_balance - settings.copy_cost_normal
 
+    @pytest.mark.asyncio
+    async def test_start_copy_round_forced_prompt(self, db_session, player_with_balance, test_prompt):
+        """Party mode should be able to force a specific prompt without triggering second-copy logic."""
+        round_service = RoundService(db_session)
+        transaction_service = TransactionService(db_session)
+
+        prompt_round = Round(
+            round_id=uuid.uuid4(),
+            player_id=uuid.uuid4(),
+            round_type="prompt",
+            status="submitted",
+            prompt_id=test_prompt.prompt_id,
+            prompt_text=test_prompt.text,
+            submitted_phrase="CELEBRATION",
+            cost=settings.prompt_cost,
+            expires_at=datetime.now(UTC) + timedelta(minutes=3),
+        )
+        db_session.add(prompt_round)
+        await db_session.commit()
+
+        copy_round, is_second_copy = await round_service.start_copy_round(
+            player_with_balance,
+            transaction_service,
+            prompt_round_id=prompt_round.round_id,
+            force_prompt_round=True,
+        )
+
+        assert not is_second_copy
+        assert copy_round.prompt_round_id == prompt_round.round_id
+        assert copy_round.original_phrase == "CELEBRATION"
+
 
 class TestAbandonRound:
     """Tests for abandoning active rounds."""
