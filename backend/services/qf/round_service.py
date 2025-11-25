@@ -148,13 +148,20 @@ class RoundService:
         logger.info(f"[{player.player_id}] db.flush([round_object]) took {t3-t2:.3f}s")
 
         player.active_round_id = round_object.round_id
-        await self._increment_prompt_usage(prompt.prompt_id)
+
+        # Flush Player separately to reduce commit contention
+        # This way only Transaction and Prompt updates remain for final commit
+        await self.db.flush([player])
         t4 = time.perf_counter()
-        logger.info(f"[{player.player_id}] increment_prompt_usage took {t4-t3:.3f}s")
+        logger.info(f"[{player.player_id}] db.flush([player]) took {t4-t3:.3f}s")
+
+        await self._increment_prompt_usage(prompt.prompt_id)
+        t5 = time.perf_counter()
+        logger.info(f"[{player.player_id}] increment_prompt_usage took {t5-t4:.3f}s")
 
         await self.db.commit()
-        t5 = time.perf_counter()
-        logger.info(f"[{player.player_id}] db.commit took {t5-t4:.3f}s")
+        t6 = time.perf_counter()
+        logger.info(f"[{player.player_id}] db.commit took {t6-t5:.3f}s")
 
         # No need to refresh - we just created the object, we have all the data already
         # Removing this eliminates 10s of lock contention under concurrent load
