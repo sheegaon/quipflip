@@ -113,7 +113,9 @@ class RoundService:
         transaction_service: TransactionService,
     ) -> Round:
         """Create a prompt round and commit it in a single transaction."""
+        import time
 
+        t0 = time.perf_counter()
         await transaction_service.create_transaction(
             player.player_id,
             -self.settings.prompt_cost,
@@ -121,6 +123,8 @@ class RoundService:
             auto_commit=False,
             skip_lock=True,
         )
+        t1 = time.perf_counter()
+        logger.info(f"[{player.player_id}] create_transaction took {t1-t0:.3f}s")
 
         round_object = Round(
             round_id=uuid.uuid4(),
@@ -132,15 +136,26 @@ class RoundService:
             prompt_id=prompt.prompt_id,
             prompt_text=prompt.text,
         )
+        t2 = time.perf_counter()
+        logger.info(f"[{player.player_id}] Round object creation took {t2-t1:.3f}s")
 
         self.db.add(round_object)
         await self.db.flush()
+        t3 = time.perf_counter()
+        logger.info(f"[{player.player_id}] db.flush took {t3-t2:.3f}s")
 
         player.active_round_id = round_object.round_id
         await self._increment_prompt_usage(prompt.prompt_id)
+        t4 = time.perf_counter()
+        logger.info(f"[{player.player_id}] increment_prompt_usage took {t4-t3:.3f}s")
 
         await self.db.commit()
+        t5 = time.perf_counter()
+        logger.info(f"[{player.player_id}] db.commit took {t5-t4:.3f}s")
+
         await self.db.refresh(round_object)
+        t6 = time.perf_counter()
+        logger.info(f"[{player.player_id}] db.refresh took {t6-t5:.3f}s")
 
         return round_object
 
