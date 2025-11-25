@@ -65,8 +65,12 @@ class PhraseValidationClient:
         try:
             async with self._session.post(url, json=payload) as response:
                 if response.status == 200:
-                    data = await response.json()
-                    return data.get("is_valid", False), data.get("error", "")
+                    try:
+                        data = await response.json()
+                        return data.get("is_valid", False), data.get("error", "")
+                    except aiohttp.ContentTypeError:
+                        logger.error(f"Phrase validator API for {endpoint} returned non-JSON response.")
+                        return False, "Validation service returned an invalid response."
                 else:
                     error_text = await response.text()
                     logger.error(f"Phrase validator API error {response.status}: {error_text}")
