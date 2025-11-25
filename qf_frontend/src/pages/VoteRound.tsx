@@ -102,7 +102,7 @@ export const VoteRound: React.FC = () => {
         prompt: roundData.prompt_text,
       });
     }
-  }, [roundData?.round_id, roundData?.expires_at, roundData?.status, roundData?.prompt_text]);
+    }, [roundData]);
 
   const handleVote = async (phrase: string) => {
     if (!roundData || isSubmitting) return;

@@ -423,7 +423,7 @@ export const GameProvider: React.FC<{
         logout();
       }
     }
-  }, [isAuthenticated, username, logout]);
+  }, [username, logout]);
 
   const claimBonus = useCallback(async () => {
     gameContextLogger.debug('🎯 GameContext claimBonus called');

@@ -393,7 +393,7 @@ export const ResultsProvider: React.FC<{
       }));
       throw err;
     }
-  }, []); // No dependencies to prevent infinite loop
+  }, [resultsState.phrasesetResults]);
 
   const getStatistics = useCallback(async (signal?: AbortSignal) => {
     gameContextLogger.debug('📊 ResultsContext getStatistics called');
