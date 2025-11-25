@@ -217,28 +217,6 @@ async def get_game_config(
     )
 
 
-@router.post("/validate-password", response_model=ValidatePasswordResponse, deprecated=True)
-async def validate_admin_password(
-    request: ValidatePasswordRequest,
-    player: Annotated[QFPlayer, Depends(get_admin_player)]
-) -> ValidatePasswordResponse:
-    """
-    [DEPRECATED] This endpoint is deprecated and will be removed.
-    Admin authentication is now handled via email-based authorization.
-    If you're seeing this, the user has admin access (or the request would have failed).
-
-    Args:
-        request: Password validation request (ignored)
-        player: Current authenticated player (must be admin)
-
-    Returns:
-        ValidatePasswordResponse with valid=True (always, since admin access is already validated)
-    """
-    # Since the user made it past get_admin_player, they are an admin
-    # Return True for backward compatibility
-    return ValidatePasswordResponse(valid=True)
-
-
 @router.get("/players/search", response_model=AdminPlayerSummary)
 async def search_player(
     player: Annotated[QFPlayer, Depends(get_admin_player)],

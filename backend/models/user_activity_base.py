@@ -1,4 +1,4 @@
-"""Base UserActivity model with common fields and functionality."""
+"""Base UserActivity model with common fields and functionality for "Who's Online" feature."""
 from datetime import datetime, UTC
 from uuid import UUID
 from sqlalchemy import DateTime, String, Text, Index
@@ -27,4 +27,5 @@ class UserActivityBase(Base):
     )
 
     def __repr__(self):
-        return f"<{self.__class__.__name__}(player_id={self.player_id}, username={self.username}, last_activity={self.last_activity})>"
+        return (f"<{self.__class__.__name__}"
+                f"(player_id={self.player_id}, username={self.username}, last_activity={self.last_activity})>")

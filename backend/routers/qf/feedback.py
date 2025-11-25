@@ -20,7 +20,7 @@ from backend.schemas.feedback import (
     SurveyResponseList,
     SurveyResponseRecord,
 )
-from backend.models.base import RoundStatus
+from backend.models.qf.round import RoundStatus
 
 logger = logging.getLogger(__name__)
 
