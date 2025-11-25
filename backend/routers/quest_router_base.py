@@ -46,10 +46,7 @@ class QuestRouterBase(ABC):
         """Set up all common quest management routes."""
         
         @self.router.get("", response_model=QuestListResponse)
-        async def get_player_quests(
-            player=Depends(get_current_player),
-            db: AsyncSession = Depends(get_db),
-        ):
+        async def get_player_quests(player=Depends(get_current_player), db: AsyncSession = Depends(get_db)):
             """Get all quests for the current player."""
             return await self._get_player_quests(player, db)
 

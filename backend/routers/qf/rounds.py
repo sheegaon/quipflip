@@ -2,11 +2,14 @@
 from fastapi import APIRouter, Depends, HTTPException, Path
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from uuid import UUID
+import random
+import logging
+
 from backend.database import get_db
 from backend.dependencies import get_current_player
 from backend.models.qf.player import QFPlayer
 from backend.models.qf.round import Round
-from backend.models.qf.party_round import PartyRound
 from backend.schemas.round import (
     StartPromptRoundResponse,
     StartCopyRoundResponse,
@@ -26,7 +29,6 @@ from backend.config import get_settings
 from backend.utils import ensure_utc
 from backend.utils.exceptions import (
     InsufficientBalanceError,
-    AlreadyInRoundError,
     InvalidPhraseError,
     DuplicatePhraseError,
     RoundExpiredError,
@@ -34,10 +36,6 @@ from backend.utils.exceptions import (
     NoPhrasesetsAvailableError,
     NoPromptsAvailableError,
 )
-from datetime import datetime, UTC
-from uuid import UUID
-import random
-import logging
 
 logger = logging.getLogger(__name__)
 settings = get_settings()

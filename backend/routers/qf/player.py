@@ -51,7 +51,7 @@ settings = get_settings()
 
 
 class QFPlayerRouter(PlayerRouterBase):
-    """QuipFlip player router with game-specific endpoints."""
+    """Quipflip player router with game-specific endpoints."""
 
     def __init__(self):
         """Initialize the QF player router."""

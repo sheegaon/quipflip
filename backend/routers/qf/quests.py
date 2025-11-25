@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class QFQuestRouter(QuestRouterBase):
-    """QuipFlip quest router with game-specific functionality."""
+    """Quipflip quest router with game-specific functionality."""
 
     def __init__(self):
         """Initialize the QF quest router."""
