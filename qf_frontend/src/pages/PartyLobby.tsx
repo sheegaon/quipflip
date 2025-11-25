@@ -70,11 +70,24 @@ export const PartyLobby: React.FC = () => {
   useEffect(() => {
     if (!sessionId) return undefined;
 
-    const intervalId = window.setInterval(() => {
-      void loadSessionStatus();
-    }, 5000);
+    let timeoutId: number | null = null;
+    let cancelled = false;
 
-    return () => window.clearInterval(intervalId);
+    const poll = async () => {
+      await loadSessionStatus();
+      if (!cancelled) {
+        timeoutId = window.setTimeout(poll, 5000);
+      }
+    };
+
+    void poll();
+
+    return () => {
+      cancelled = true;
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+    };
   }, [loadSessionStatus, sessionId]);
 
   // WebSocket handlers

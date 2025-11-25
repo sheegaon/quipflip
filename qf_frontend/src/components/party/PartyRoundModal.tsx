@@ -76,13 +76,24 @@ export const PartyRoundModal: React.FC<PartyRoundModalProps> = ({ sessionId, cur
   }, [endSessionAndShowResults, gameState.player, partyActions, partyState.currentStep, sessionId, startRoundForPhase]);
 
   useEffect(() => {
-    void syncSessionStatus();
+    let timeoutId: number | null = null;
+    let cancelled = false;
 
-    const intervalId = window.setInterval(() => {
-      void syncSessionStatus();
-    }, 5000);
+    const poll = async () => {
+      await syncSessionStatus();
+      if (!cancelled) {
+        timeoutId = window.setTimeout(poll, 5000);
+      }
+    };
 
-    return () => window.clearInterval(intervalId);
+    void poll();
+
+    return () => {
+      cancelled = true;
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+    };
   }, [syncSessionStatus]);
 
   // WebSocket updates will update context when other players make progress

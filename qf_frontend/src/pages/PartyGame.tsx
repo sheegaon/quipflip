@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useGame } from '../contexts/GameContext';
 import { usePartyMode } from '../contexts/PartyModeContext';
 import { PartyIcon } from '../components/icons/NavigationIcons';
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -14,7 +13,6 @@ import { usePartyRoundStarter } from '../hooks/usePartyRoundStarter';
 export const PartyGame: React.FC = () => {
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
-  const { actions: gameActions } = useGame();
   const { state: partyState, actions: partyActions } = usePartyMode();
   // Remove usage of normal round starters
   // const { startPromptRound, startCopyRound, startVoteRound } = gameActions;
