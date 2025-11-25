@@ -145,13 +145,9 @@ class AdminRouterBase(ABC):
             return await self._delete_player_admin(request, session)
 
         @self.router.post("/players/reset-password", response_model=AdminResetPasswordResponse)
-        async def reset_player_password(
-            request: AdminPlayerRequest,
-            session: Annotated[AsyncSession, Depends(get_db)],
-            player=Depends(self.admin_player_dependency),
-        ):
+        async def reset_player_password(request: AdminPlayerRequest, session: Annotated[AsyncSession, Depends(get_db)]):
             """Admin endpoint to reset a user's password."""
-            return await self._reset_player_password(request, player, session)
+            return await self._reset_player_password(request, session)
 
         @self.router.patch("/config", response_model=UpdateConfigResponse)
         async def update_config(
@@ -226,12 +222,8 @@ class AdminRouterBase(ABC):
             deletion_counts=deletion_counts,
         )
 
-    async def _reset_player_password(
-        self,
-        request: AdminPlayerRequest,
-        player: Any,
-        session: AsyncSession,
-    ) -> AdminResetPasswordResponse:
+    async def _reset_player_password(self, request: AdminPlayerRequest, session: AsyncSession
+                                     ) -> AdminResetPasswordResponse:
         """Admin endpoint to reset a user's password."""
         target_player = await self._get_target_player(request, session)
 
@@ -245,12 +237,6 @@ class AdminRouterBase(ABC):
         # Revoke all refresh tokens to force re-login
         auth_service = AuthService(session, game_type=self.game_type)
         await auth_service.revoke_all_refresh_tokens(target_player.player_id)
-
-        # Log the action
-        logger.info(
-            f"Admin {player.username} ({player.player_id}) reset password for "
-            f"{self.game_type} {target_player.username=} ({target_player.player_id})"
-        )
 
         return AdminResetPasswordResponse(
             player_id=target_player.player_id,
