@@ -186,7 +186,7 @@ This structure is what backs `GET /party/{session_id}/results`.
   * `notify_phase_transition` for PROMPT→COPY→VOTE→RESULTS.
   * `notify_player_progress` used by `PartyCoordinationService` to send per-player progress and session summary on each submission.
 
-The HTTP routes call into the services, and **the services call `PartyWebSocketManager`** so that the frontend can treat the WebSocket as a read-only feed of lobby and progress events.
+The HTTP routes call into the services, and **the services call `PartyWebSocketManager`** so that the frontend can treat the WebSocket as a read-only feed of lobby and progress events. Gameplay transitions (starting rounds, advancing phases) still go through REST endpoints; WebSockets just keep everyone informed about who has acted and overall progress.
 
 ---
 
@@ -254,6 +254,7 @@ Putting it all together, a typical match looks like this:
 8. **Session status polling**
 
    * `GET /party/{session_id}/status` calls `PartySessionService.get_session_status` to return a snapshot that mirrors what you’re seeing on WebSockets (participants, phase, quotas, progress).
+   * Frontend game screens poll this endpoint to detect `PROMPT → COPY → VOTE → RESULTS` transitions and then start the matching round via REST; WebSocket updates remain notification-only.
 
 ### 3.3 Results + teardown
 

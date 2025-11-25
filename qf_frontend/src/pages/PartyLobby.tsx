@@ -51,7 +51,7 @@ export const PartyLobby: React.FC = () => {
       const status = await apiClient.getPartySessionStatus(sessionId);
       setSessionStatus(status);
 
-      // If session already started, navigate to game
+      // If session already started, navigate to game via REST status (not WebSocket-only)
       if (status.status === 'ACTIVE') {
         navigate(`/party/game/${sessionId}`);
       }
@@ -65,6 +65,17 @@ export const PartyLobby: React.FC = () => {
   useEffect(() => {
     loadSessionStatus();
   }, [loadSessionStatus]);
+
+  // Poll for session changes so gameplay progresses via REST even without WebSocket
+  useEffect(() => {
+    if (!sessionId) return undefined;
+
+    const intervalId = window.setInterval(() => {
+      void loadSessionStatus();
+    }, 5000);
+
+    return () => window.clearInterval(intervalId);
+  }, [loadSessionStatus, sessionId]);
 
   // WebSocket handlers
   const {
@@ -85,10 +96,10 @@ export const PartyLobby: React.FC = () => {
       console.log(`${data.username} is ready!`);
       loadSessionStatus();
     },
-    onSessionStarted: (data) => {
-      console.log('Party started!', data);
-      // Navigate to game page
-      navigate(`/party/game/${sessionId}`);
+    onSessionStarted: () => {
+      console.log('Party started notification received');
+      // WebSocket just notifies; REST polling drives navigation
+      void loadSessionStatus();
     },
     onSessionUpdate: (data) => {
       console.log('Session update:', data);

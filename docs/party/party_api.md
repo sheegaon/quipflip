@@ -679,10 +679,11 @@ While the actual payload shapes are defined in `PartyWebSocketManager`, this rou
 * `notify_player_left` – when someone leaves in lobby.
 * `notify_player_ready` – when someone toggles ready.
 * `notify_session_started` – when host starts the session.
-* `notify_host_ping` – when host uses the `/ping` endpoint. 
+* `notify_host_ping` – when host uses the `/ping` endpoint.
 
 The client should:
 
 * Treat this WS as **read-only** (no meaningful messages sent from client).
 * Subscribe once when entering a party session page.
 * Update lobby UI, progress meters, etc. based on incoming messages.
+* Continue to use REST endpoints for all gameplay transitions (starting rounds, advancing phases) and poll `/party/{session_id}/status` as needed so that the game flow is not gated on WebSocket delivery.
