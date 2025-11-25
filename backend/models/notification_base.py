@@ -28,4 +28,5 @@ class NotificationBase(Base):
     created_at = Column(DateTime(timezone=True), default=get_current_utc, nullable=False)
 
     def __repr__(self) -> str:
-        return f"<{self.__class__.__name__}(id={self.notification_id}, type={self.notification_type}, player={self.player_id})>"
+        return (f"<{self.__class__.__name__}"
+                f"(id={self.notification_id}, type={self.notification_type}, player={self.player_id})>")

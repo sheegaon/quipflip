@@ -83,7 +83,7 @@ class SimpleCache:
             self._cache.pop(key, None)
 
         if keys_to_delete:
-            logger.debug(f"Invalidated {len(keys_to_delete)} cache entries for player {player_id}")
+            logger.debug(f"Invalidated {len(keys_to_delete)} cache entries for {player_id=}")
 
 
 # Global cache instance

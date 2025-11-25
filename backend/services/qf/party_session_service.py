@@ -1233,7 +1233,7 @@ class PartySessionService:
         await self.db.refresh(participant)
 
         logger.info(
-            f"Incremented {round_type} progress for player {player_id} in session {session_id} "
+            f"Incremented {round_type} progress for {player_id=} in session {session_id} "
             f"(now {participant.prompts_submitted}/{participant.copies_submitted}/{participant.votes_submitted})"
         )
         return participant
@@ -1300,7 +1300,7 @@ class PartySessionService:
                 session_count += 1
             except Exception as e:
                 logger.warning(
-                    f"Error removing player {player_id} from session {session_id}: {e}"
+                    f"Error removing {player_id=} from session {session_id}: {e}"
                 )
                 # Even if graceful leave fails, delete the participant record
                 try:
@@ -1320,7 +1320,7 @@ class PartySessionService:
                     )
 
         if session_count > 0:
-            logger.info(f"Removed player {player_id} from {session_count} party session(s)")
+            logger.info(f"Removed {player_id=} from {session_count} party session(s)")
 
         return session_count
 

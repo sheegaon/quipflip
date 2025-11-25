@@ -76,7 +76,7 @@ class TutorialService:
         await self.db.refresh(player)
 
         logger.info(
-            f"Updated tutorial progress for player {player_id} to {progress}"
+            f"Updated tutorial progress for {player_id=} to {progress}"
         )
 
         return self._create_tutorial_status(player)
@@ -94,6 +94,6 @@ class TutorialService:
         await self.db.commit()
         await self.db.refresh(player)
 
-        logger.info(f"Reset tutorial for player {player_id}")
+        logger.info(f"Reset tutorial for {player_id=}")
 
         return self._create_tutorial_status(player)

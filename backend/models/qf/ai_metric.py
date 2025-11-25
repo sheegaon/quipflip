@@ -1,6 +1,6 @@
 """AI metrics model for tracking AI usage, costs, and performance."""
 
-from sqlalchemy import Index, ForeignKey
+from sqlalchemy import Column, Boolean, Index, ForeignKey
 from sqlalchemy.orm import relationship
 from backend.models.ai_metric_base import AIMetricBase
 from backend.models.base import get_uuid_column
@@ -21,6 +21,10 @@ class QFAIMetric(AIMetricBase):
         nullable=True,
         index=True,
     )
+
+    # Operation-specific validation flags
+    validation_passed = Column(Boolean, nullable=True)  # Whether generated content passed validation
+    vote_correct = Column(Boolean, nullable=True)  # Whether AI vote was correct (for analysis)
 
     # Relationships
     phrase_cache = relationship("QFAIPhraseCache", foreign_keys=[cache_id], backref="metrics")

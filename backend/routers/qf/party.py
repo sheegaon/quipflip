@@ -1109,7 +1109,7 @@ async def party_websocket_endpoint(
 
             # Connect WebSocket and update connection status
             await ws_manager.connect(session_id, player_id, websocket, db, context=context)
-            logger.info(f"Party WebSocket connected for player {player_id} in session {session_id}")
+            logger.info(f"Party WebSocket connected for {player_id=} in session {session_id}")
 
             try:
                 # Keep connection alive
@@ -1123,10 +1123,10 @@ async def party_websocket_endpoint(
             except WebSocketDisconnect:
                 pass
             except Exception as e:
-                logger.error(f"Party WebSocket error for player {player_id}: {e}", exc_info=True)
+                logger.error(f"Party WebSocket error for {player_id=}: {e}", exc_info=True)
             finally:
                 await ws_manager.disconnect(session_id, player_id, db, context=context)
-                logger.info(f"Party WebSocket disconnected for player {player_id}")
+                logger.info(f"Party WebSocket disconnected for {player_id=}")
 
     except Exception as e:
         logger.warning(f"Party WebSocket authentication failed: {e}")

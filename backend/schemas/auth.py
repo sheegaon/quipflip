@@ -2,7 +2,7 @@
 from typing import Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field, constr
+from pydantic import BaseModel, constr
 
 
 UsernameStr = constr(min_length=3, max_length=80)

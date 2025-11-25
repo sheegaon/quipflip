@@ -1,108 +1,34 @@
 """Admin routes for administrative operations."""
-from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, constr
+from fastapi import Depends, HTTPException, Query
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import datetime
 from uuid import UUID
-from backend.utils.passwords import generate_temporary_password
 import logging
+from typing import Annotated, Optional, Type
+
 from backend.config import get_settings
 from backend.database import get_db
 from backend.dependencies import get_admin_player
 from backend.models.qf.player import QFPlayer
-from backend.services import SystemConfigService, AuthService, TransactionService, GameType
+from backend.services import SystemConfigService, TransactionService, GameType
 from backend.services.qf import (
     get_phrase_validator,
     PlayerService,
     CleanupService,
     FlaggedPromptService,
 )
-from backend.schemas.auth import EmailLike
 from backend.schemas.flagged_prompt import (
     FlaggedPromptListResponse,
     FlaggedPromptItem,
     ResolveFlaggedPromptRequest,
 )
-from typing import Annotated, Optional, Any
+from backend.routers.admin_router_base import AdminRouterBase
 
-router = APIRouter(prefix="/admin", tags=["admin"])
-
-
-class ValidatePasswordRequest(BaseModel):
-    """Request model for admin password validation."""
-    password: str
-
-
-class ValidatePasswordResponse(BaseModel):
-    """Response model for admin password validation."""
-    valid: bool
-
-
-class AdminPlayerSummary(BaseModel):
-    """Summary information for a player returned in admin search."""
-
-    player_id: UUID
-    username: str
-    email: EmailLike
-    wallet: int
-    created_at: datetime
-    outstanding_prompts: int
-
-
-class AdminDeletePlayerRequest(BaseModel):
-    """Request model for deleting a player via admin panel."""
-
-    player_id: Optional[UUID] = None
-    email: Optional[EmailLike] = None
-    username: Optional[str] = None
-    confirmation: constr(pattern=r"^DELETE$", min_length=6, max_length=6)
-
-
-class AdminDeletePlayerResponse(BaseModel):
-    """Response after deleting a player from admin panel."""
-
-    deleted_player_id: UUID
-    deleted_username: str
-    deleted_email: EmailLike
-    deletion_counts: dict[str, int]
-
-
-class TestPhraseValidationRequest(BaseModel):
-    """Request model for testing phrase validation."""
-    phrase: str
-    validation_type: str  # "basic", "prompt", or "copy"
-    prompt_text: Optional[str] = None
-    original_phrase: Optional[str] = None
-    other_copy_phrase: Optional[str] = None
-
-
-class TestPhraseValidationResponse(BaseModel):
-    """Response model for phrase validation testing."""
-    is_valid: bool
-    error_message: Optional[str] = None
-
-    # Basic validation details
-    word_count: int
-    phrase_length: int
-    words: list[str]
-
-    # Similarity scores (when applicable)
-    prompt_relevance_score: Optional[float] = None
-    similarity_to_original: Optional[float] = None
-    similarity_to_other_copy: Optional[float] = None
-
-    # Thresholds from config
-    prompt_relevance_threshold: Optional[float] = None
-    similarity_threshold: Optional[float] = None
-
-    # Detailed validation checks
-    format_check_passed: bool
-    dictionary_check_passed: bool
-    word_conflicts: list[str] = []
+logger = logging.getLogger(__name__)
 
 
 class GameConfigResponse(BaseModel):
-    """Response model for game configuration."""
+    """Response model for QuipFlip game configuration."""
     # Game Constants
     starting_balance: int
     daily_bonus_amount: int
@@ -150,224 +76,44 @@ class GameConfigResponse(BaseModel):
     ai_stale_check_interval_hours: int
 
 
-@router.get("/config", response_model=GameConfigResponse)
-async def get_game_config(
-    player: Annotated[QFPlayer, Depends(get_admin_player)],
-    session: Annotated[AsyncSession, Depends(get_db)]
-) -> GameConfigResponse:
-    """
-    Get current game configuration values (from database overrides or environment defaults).
-
-    Args:
-        player: Current authenticated player (required to access this endpoint)
-        session: Database session
-
-    Returns:
-        GameConfigResponse with all configuration values
-    """
-    service = SystemConfigService(session)
-    config = await service.get_all_config()
-
-    return GameConfigResponse(
-        # Game Constants
-        starting_balance=config.get("starting_balance", 5000),
-        daily_bonus_amount=config.get("daily_bonus_amount", 100),
-        prompt_cost=config.get("prompt_cost", 100),
-        copy_cost_normal=config.get("copy_cost_normal", 50),
-        copy_cost_discount=config.get("copy_cost_discount", 40),
-        vote_cost=config.get("vote_cost", 10),
-        vote_payout_correct=config.get("vote_payout_correct", 20),
-        abandoned_penalty=config.get("abandoned_penalty", 5),
-        prize_pool_base=config.get("prize_pool_base", 200),
-        max_outstanding_quips=config.get("max_outstanding_quips", 10),
-        copy_discount_threshold=config.get("copy_discount_threshold", 10),
-
-        # Timing
-        prompt_round_seconds=config.get("prompt_round_seconds", 180),
-        copy_round_seconds=config.get("copy_round_seconds", 180),
-        vote_round_seconds=config.get("vote_round_seconds", 60),
-        grace_period_seconds=config.get("grace_period_seconds", 5),
-
-        # Vote finalization
-        vote_max_votes=config.get("vote_max_votes", 20),
-        vote_closing_threshold=config.get("vote_closing_threshold", 5),
-        vote_closing_window_minutes=config.get("vote_closing_window_minutes", 1),
-        vote_minimum_threshold=config.get("vote_minimum_threshold", 3),
-        vote_minimum_window_minutes=config.get("vote_minimum_window_minutes", 10),
-
-        # Phrase Validation
-        phrase_min_words=config.get("phrase_min_words", 2),
-        phrase_max_words=config.get("phrase_max_words", 5),
-        phrase_max_length=config.get("phrase_max_length", 100),
-        phrase_min_char_per_word=config.get("phrase_min_char_per_word", 2),
-        phrase_max_char_per_word=config.get("phrase_max_char_per_word", 15),
-        significant_word_min_length=config.get("significant_word_min_length", 4),
-
-        # AI Service
-        ai_provider=config.get("ai_provider", "openai"),
-        ai_openai_model=config.get("ai_openai_model", "gpt-5-nano"),
-        ai_gemini_model=config.get("ai_gemini_model", "gemini-2.5-flash-lite"),
-        ai_timeout_seconds=config.get("ai_timeout_seconds", 30),
-        ai_backup_delay_minutes=config.get("ai_backup_delay_minutes", 15),
-        ai_backup_batch_size=config.get("ai_backup_batch_size", 3),
-        ai_backup_sleep_minutes=config.get("ai_backup_sleep_minutes", 30),
-        ai_stale_handler_enabled=config.get("ai_stale_handler_enabled", True),
-        ai_stale_threshold_days=config.get("ai_stale_threshold_days", 2),
-        ai_stale_check_interval_hours=config.get("ai_stale_check_interval_hours", 6),
-    )
+class TestPhraseValidationRequest(BaseModel):
+    """Request model for testing phrase validation."""
+    phrase: str
+    validation_type: str  # "basic", "prompt", or "copy"
+    prompt_text: Optional[str] = None
+    original_phrase: Optional[str] = None
+    other_copy_phrase: Optional[str] = None
 
 
-@router.post("/validate-password", response_model=ValidatePasswordResponse, deprecated=True)
-async def validate_admin_password(
-    request: ValidatePasswordRequest,
-    player: Annotated[QFPlayer, Depends(get_admin_player)]
-) -> ValidatePasswordResponse:
-    """
-    [DEPRECATED] This endpoint is deprecated and will be removed.
-    Admin authentication is now handled via email-based authorization.
-    If you're seeing this, the user has admin access (or the request would have failed).
+class TestPhraseValidationResponse(BaseModel):
+    """Response model for phrase validation testing."""
+    is_valid: bool
+    error_message: Optional[str] = None
 
-    Args:
-        request: Password validation request (ignored)
-        player: Current authenticated player (must be admin)
+    # Basic validation details
+    word_count: int
+    phrase_length: int
+    words: list[str]
 
-    Returns:
-        ValidatePasswordResponse with valid=True (always, since admin access is already validated)
-    """
-    # Since the user made it past get_admin_player, they are an admin
-    # Return True for backward compatibility
-    return ValidatePasswordResponse(valid=True)
+    # Similarity scores (when applicable)
+    prompt_relevance_score: Optional[float] = None
+    similarity_to_original: Optional[float] = None
+    similarity_to_other_copy: Optional[float] = None
 
+    # Thresholds from config
+    prompt_relevance_threshold: Optional[float] = None
+    similarity_threshold: Optional[float] = None
 
-@router.get("/players/search", response_model=AdminPlayerSummary)
-async def search_player(
-    player: Annotated[QFPlayer, Depends(get_admin_player)],
-    session: Annotated[AsyncSession, Depends(get_db)],
-    email: Optional[EmailLike] = Query(None),
-    username: Optional[str] = Query(None),
-) -> AdminPlayerSummary:
-    """Search for a player by email or username."""
-
-    if not email and not username:
-        raise HTTPException(status_code=400, detail="missing_identifier")
-
-    player_service = PlayerService(session)
-    target_player: QFPlayer | None = None
-
-    if email:
-        target_player = await player_service.get_player_by_email(email)
-    elif username:
-        target_player = await player_service.get_player_by_username(username)
-
-    if not target_player:
-        raise HTTPException(status_code=404, detail="player_not_found")
-
-    outstanding = await player_service.get_outstanding_prompts_count(target_player.player_id)
-
-    return AdminPlayerSummary(
-        player_id=target_player.player_id,
-        username=target_player.username,
-        email=target_player.email,
-        wallet=target_player.wallet,
-        created_at=target_player.created_at,
-        outstanding_prompts=outstanding,
-    )
+    # Detailed validation checks
+    format_check_passed: bool
+    dictionary_check_passed: bool
+    word_conflicts: list[str] = []
 
 
-@router.delete("/players", response_model=AdminDeletePlayerResponse)
-async def delete_player_admin(
-    request: AdminDeletePlayerRequest,
-    player: Annotated[QFPlayer, Depends(get_admin_player)],
-    session: Annotated[AsyncSession, Depends(get_db)]
-) -> AdminDeletePlayerResponse:
-    """Delete a player account and associated data via admin panel."""
-
-    identifier = request.player_id or request.email or request.username
-    if not identifier:
-        raise HTTPException(status_code=400, detail="missing_identifier")
-
-    player_service = PlayerService(session)
-    target_player: QFPlayer | None = None
-
-    if request.player_id:
-        target_player = await player_service.get_player_by_id(request.player_id)
-    elif request.email:
-        target_player = await player_service.get_player_by_email(request.email)
-    elif request.username:
-        target_player = await player_service.get_player_by_username(request.username)
-
-    if not target_player:
-        raise HTTPException(status_code=404, detail="player_not_found")
-
-    cleanup_service = CleanupService(session)
-    deletion_counts = await cleanup_service.delete_player(target_player.player_id)
-
-    return AdminDeletePlayerResponse(
-        deleted_player_id=target_player.player_id,
-        deleted_username=target_player.username,
-        deleted_email=target_player.email,
-        deletion_counts=deletion_counts,
-    )
-
-
-@router.get("/flags", response_model=FlaggedPromptListResponse)
-async def list_flagged_prompts(
-    player: Annotated[QFPlayer, Depends(get_admin_player)],
-    session: Annotated[AsyncSession, Depends(get_db)],
-    status: Optional[str] = Query("pending"),
-) -> FlaggedPromptListResponse:
-    """Retrieve flagged prompt phrases for review."""
-
-    normalized_status = status if status not in {None, "all", ""} else None
-    service = FlaggedPromptService(session)
-    records = await service.list_flags(normalized_status)
-
-    flags = [FlaggedPromptItem.from_record(record) for record in records]
-
-    return FlaggedPromptListResponse(flags=flags)
-
-
-@router.post("/flags/{flag_id}/resolve", response_model=FlaggedPromptItem)
-async def resolve_flagged_prompt(
-    flag_id: UUID,
-    request: ResolveFlaggedPromptRequest,
-    player: Annotated[QFPlayer, Depends(get_admin_player)],
-    session: Annotated[AsyncSession, Depends(get_db)],
-) -> FlaggedPromptItem:
-    """Resolve a flagged prompt by confirming or dismissing it."""
-
-    service = FlaggedPromptService(session)
-    transaction_service = TransactionService(session)
-
-    try:
-        record = await service.resolve_flag(flag_id, request.action, player, transaction_service)
-    except ValueError as exc:
-        detail = str(exc)
-        if detail in {"flag_already_resolved", "invalid_action"}:
-            raise HTTPException(status_code=400, detail=detail) from exc
-        raise
-
-    if not record:
-        raise HTTPException(status_code=404, detail="flag_not_found")
-
-    return FlaggedPromptItem.from_record(record)
-
-
-@router.post("/test-phrase-validation", response_model=TestPhraseValidationResponse)
-async def test_phrase_validation(
-    request: TestPhraseValidationRequest,
-    player: Annotated[QFPlayer, Depends(get_admin_player)]
+async def _test_phrase_validation(
+        request: TestPhraseValidationRequest, player: QFPlayer
 ) -> TestPhraseValidationResponse:
-    """
-    Test phrase validation for admin testing purposes.
-
-    Args:
-        request: Phrase validation test request
-        player: Current authenticated player (required to access this endpoint)
-
-    Returns:
-        Detailed validation results including similarity scores
-    """
+    """Test phrase validation for admin testing purposes."""
     settings = get_settings()
     validator = get_phrase_validator()
 
@@ -457,149 +203,144 @@ async def test_phrase_validation(
     )
 
 
-class UpdateConfigRequest(BaseModel):
-    """Request model for updating configuration."""
-    key: str
-    value: Any
+class QFAdminRouter(AdminRouterBase):
+    """Quipflip admin router with game-specific administrative functionality."""
 
+    def __init__(self):
+        """Initialize the QF admin router."""
+        super().__init__(GameType.QF)
+        self._add_qf_specific_routes()
 
-class UpdateConfigResponse(BaseModel):
-    """Response model for configuration update."""
-    success: bool
-    key: str
-    value: Any
-    message: Optional[str] = None
+    @property
+    def player_service_class(self) -> Type[PlayerService]:
+        """Return the QF player service class."""
+        return PlayerService
 
+    @property
+    def cleanup_service_class(self) -> Type[CleanupService]:
+        """Return the QF cleanup service class."""
+        return CleanupService
 
-class AdminResetPasswordRequest(BaseModel):
-    """Request model for admin password reset."""
-    player_id: Optional[UUID] = None
-    email: Optional[EmailLike] = None
-    username: Optional[str] = None
+    @property
+    def admin_player_dependency(self):
+        """Return the QF admin player dependency."""
+        return get_admin_player
 
+    def get_game_config_response_model(self) -> Type[GameConfigResponse]:
+        """Return the QF game config response model."""
+        return GameConfigResponse
 
-class AdminResetPasswordResponse(BaseModel):
-    """Response model for admin password reset."""
-    player_id: UUID
-    username: str
-    email: EmailLike
-    generated_password: str
-    message: str
-
-
-@router.patch("/config", response_model=UpdateConfigResponse)
-async def update_config(
-    request: UpdateConfigRequest,
-    player: Annotated[QFPlayer, Depends(get_admin_player)],
-    session: Annotated[AsyncSession, Depends(get_db)]
-) -> UpdateConfigResponse:
-    """
-    Update a configuration value.
-
-    Args:
-        request: Configuration update request
-        player: Current authenticated player (required to access this endpoint)
-        session: Database session
-
-    Returns:
-        UpdateConfigResponse with the updated value
-
-    Raises:
-        HTTPException: If configuration key is invalid or value is out of range
-    """
-    try:
+    async def get_game_config(self, player: QFPlayer, session: AsyncSession) -> GameConfigResponse:
+        """Get QuipFlip-specific configuration."""
         service = SystemConfigService(session)
+        config = await service.get_all_config()
 
-        # Update the configuration
-        config_entry = await service.set_config_value(
-            request.key,
-            request.value,
-            updated_by=str(player.player_id)
+        return GameConfigResponse(
+            # Game Constants
+            starting_balance=config.get("starting_balance", 5000),
+            daily_bonus_amount=config.get("daily_bonus_amount", 100),
+            prompt_cost=config.get("prompt_cost", 100),
+            copy_cost_normal=config.get("copy_cost_normal", 50),
+            copy_cost_discount=config.get("copy_cost_discount", 40),
+            vote_cost=config.get("vote_cost", 10),
+            vote_payout_correct=config.get("vote_payout_correct", 20),
+            abandoned_penalty=config.get("abandoned_penalty", 5),
+            prize_pool_base=config.get("prize_pool_base", 200),
+            max_outstanding_quips=config.get("max_outstanding_quips", 10),
+            copy_discount_threshold=config.get("copy_discount_threshold", 10),
+
+            # Timing
+            prompt_round_seconds=config.get("prompt_round_seconds", 180),
+            copy_round_seconds=config.get("copy_round_seconds", 180),
+            vote_round_seconds=config.get("vote_round_seconds", 60),
+            grace_period_seconds=config.get("grace_period_seconds", 5),
+
+            # Vote finalization
+            vote_max_votes=config.get("vote_max_votes", 20),
+            vote_closing_threshold=config.get("vote_closing_threshold", 5),
+            vote_closing_window_minutes=config.get("vote_closing_window_minutes", 1),
+            vote_minimum_threshold=config.get("vote_minimum_threshold", 3),
+            vote_minimum_window_minutes=config.get("vote_minimum_window_minutes", 10),
+
+            # Phrase Validation
+            phrase_min_words=config.get("phrase_min_words", 2),
+            phrase_max_words=config.get("phrase_max_words", 5),
+            phrase_max_length=config.get("phrase_max_length", 100),
+            phrase_min_char_per_word=config.get("phrase_min_char_per_word", 2),
+            phrase_max_char_per_word=config.get("phrase_max_char_per_word", 15),
+            significant_word_min_length=config.get("significant_word_min_length", 4),
+
+            # AI Service
+            ai_provider=config.get("ai_provider", "openai"),
+            ai_openai_model=config.get("ai_openai_model", "gpt-5-nano"),
+            ai_gemini_model=config.get("ai_gemini_model", "gemini-2.5-flash-lite"),
+            ai_timeout_seconds=config.get("ai_timeout_seconds", 30),
+            ai_backup_delay_minutes=config.get("ai_backup_delay_minutes", 15),
+            ai_backup_batch_size=config.get("ai_backup_batch_size", 3),
+            ai_backup_sleep_minutes=config.get("ai_backup_sleep_minutes", 30),
+            ai_stale_handler_enabled=config.get("ai_stale_handler_enabled", True),
+            ai_stale_threshold_days=config.get("ai_stale_threshold_days", 2),
+            ai_stale_check_interval_hours=config.get("ai_stale_check_interval_hours", 6),
         )
 
-        # Get the deserialized value to return
-        deserialized_value = service._deserialize_value(
-            config_entry.value,
-            config_entry.value_type
-        )
+    def _add_qf_specific_routes(self):
+        """Add QuipFlip-specific admin routes."""
 
-        return UpdateConfigResponse(
-            success=True,
-            key=request.key,
-            value=deserialized_value,
-            message=f"Configuration '{request.key}' updated successfully"
-        )
+        @self.router.get("/config", response_model=GameConfigResponse)
+        async def get_config(
+            player: Annotated[QFPlayer, Depends(get_admin_player)],
+            session: Annotated[AsyncSession, Depends(get_db)]
+        ):
+            """Get current QuipFlip game configuration values."""
+            return await self.get_game_config(player, session)
 
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to update configuration: {str(e)}")
+        @self.router.get("/flags", response_model=FlaggedPromptListResponse)
+        async def list_flagged_prompts(
+            player: Annotated[QFPlayer, Depends(get_admin_player)],
+            session: Annotated[AsyncSession, Depends(get_db)],
+            status: Optional[str] = Query("pending"),
+        ):
+            """Retrieve flagged prompt phrases for review."""
+            normalized_status = status if status not in {None, "all", ""} else None
+            service = FlaggedPromptService(session)
+            records = await service.list_flags(normalized_status)
+
+            flags = [FlaggedPromptItem.from_record(record) for record in records]
+            return FlaggedPromptListResponse(flags=flags)
+
+        @self.router.post("/flags/{flag_id}/resolve", response_model=FlaggedPromptItem)
+        async def resolve_flagged_prompt(
+            flag_id: UUID,
+            request: ResolveFlaggedPromptRequest,
+            player: Annotated[QFPlayer, Depends(get_admin_player)],
+            session: Annotated[AsyncSession, Depends(get_db)],
+        ):
+            """Resolve a flagged prompt by confirming or dismissing it."""
+            service = FlaggedPromptService(session)
+            transaction_service = TransactionService(session)
+
+            try:
+                record = await service.resolve_flag(flag_id, request.action, player, transaction_service)
+            except ValueError as exc:
+                detail = str(exc)
+                if detail in {"flag_already_resolved", "invalid_action"}:
+                    raise HTTPException(status_code=400, detail=detail) from exc
+                raise
+
+            if not record:
+                raise HTTPException(status_code=404, detail="flag_not_found")
+
+            return FlaggedPromptItem.from_record(record)
+
+        @self.router.post("/test-phrase-validation", response_model=TestPhraseValidationResponse)
+        async def test_phrase_validation(
+            request: TestPhraseValidationRequest,
+            player: Annotated[QFPlayer, Depends(get_admin_player)]
+        ):
+            """Test phrase validation for admin testing purposes."""
+            return await _test_phrase_validation(request, player)
 
 
-logger = logging.getLogger(__name__)
-
-
-@router.post("/players/reset-password", response_model=AdminResetPasswordResponse)
-async def reset_player_password(
-    request: AdminResetPasswordRequest,
-    player: Annotated[QFPlayer, Depends(get_admin_player)],
-    session: Annotated[AsyncSession, Depends(get_db)]
-) -> AdminResetPasswordResponse:
-    """
-    Admin endpoint to reset a user's password.
-
-    Generates an 8-character alphanumeric password and updates the target player's account.
-    All refresh tokens are revoked to force re-login with the new password.
-
-    Args:
-        request: Reset password request with player identifier
-        player: Current authenticated admin player
-        session: Database session
-
-    Returns:
-        AdminResetPasswordResponse with player info and generated password
-
-    Raises:
-        HTTPException: If no identifier provided or player not found
-    """
-    # Validate at least one identifier is provided
-    identifier = request.player_id or request.email or request.username
-    if not identifier:
-        raise HTTPException(status_code=400, detail="missing_identifier")
-
-    # Find target player
-    player_service = PlayerService(session)
-    target_player: QFPlayer | None = None
-
-    if request.player_id:
-        target_player = await player_service.get_player_by_id(request.player_id)
-    elif request.email:
-        target_player = await player_service.get_player_by_email(request.email)
-    elif request.username:
-        target_player = await player_service.get_player_by_username(request.username)
-
-    if not target_player:
-        raise HTTPException(status_code=404, detail="player_not_found")
-
-    # Generate temporary password
-    generated_password = generate_temporary_password(length=8)
-
-    # Update password
-    await player_service.update_password(target_player, generated_password)
-
-    # Revoke all refresh tokens to force re-login
-    auth_service = AuthService(session, game_type=GameType.QF)
-    await auth_service.revoke_all_refresh_tokens(target_player.player_id)
-
-    # Log the action
-    logger.info(
-        f"Admin {player.username} ({player.player_id}) reset password for player {target_player.username} ({target_player.player_id})"
-    )
-
-    return AdminResetPasswordResponse(
-        player_id=target_player.player_id,
-        username=target_player.username,
-        email=target_player.email,
-        generated_password=generated_password,
-        message=f"Password reset successfully for {target_player.username}"
-    )
+# Create and expose the router instance
+qf_admin_router = QFAdminRouter()
+router = qf_admin_router.router

@@ -402,7 +402,7 @@ class NotificationConnectionManager:
         await self._websocket_service.connect(
             self._channel_for_player(player_id_str), player_id_str, websocket
         )
-        logger.info(f"WebSocket connected for player {player_id}")
+        logger.info(f"WebSocket connected for {player_id=}")
 
     async def disconnect(self, player_id: str) -> None:
         """Remove player's WebSocket connection."""
@@ -411,7 +411,7 @@ class NotificationConnectionManager:
             self._channel_for_player(player_id_str), player_id_str
         )
         if connection:
-            logger.info(f"WebSocket disconnected for player {player_id}")
+            logger.info(f"WebSocket disconnected for {player_id=}")
 
     async def send_to_player(self, player_id: UUID, message: dict) -> None:
         """

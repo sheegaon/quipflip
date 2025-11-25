@@ -114,7 +114,7 @@ class PartyWebSocketManager:
             return
 
         connection_context = connection_context or connection.context
-        logger.info(f"WebSocket disconnected for player {player_id} in session {session_id}")
+        logger.info(f"WebSocket disconnected for {player_id=} in session {session_id}")
 
         # Update participant connection status in database
         if db:

@@ -1,8 +1,4 @@
-"""User activity model for "Who's Online" feature.
-
-This is distinct from PhrasesetActivity model, which logs historical phraseset
-review events and lifecycle information.
-"""
+"""User activity model for "Who's Online" feature."""
 from sqlalchemy import Index
 from backend.models.user_activity_base import UserActivityBase
 

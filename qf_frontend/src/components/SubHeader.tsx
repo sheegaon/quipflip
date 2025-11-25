@@ -5,7 +5,7 @@ import { useHeaderIndicators } from '../hooks/useHeaderIndicators';
 import { useTutorial } from '../contexts/TutorialContext';
 import { TreasureChestIcon } from './TreasureChestIcon';
 import { CopyRoundIcon } from './icons/RoundIcons';
-import { LeaderboardIcon, LobbyIcon, SettingsIcon, TrackingIcon } from './icons/NavigationIcons';
+import { LeaderboardIcon, LobbyIcon, TrackingIcon } from './icons/NavigationIcons';
 import { QuestionMarkIcon, ResultsIcon, ReviewIcon } from './icons/EngagementIcons';
 
 export const SubHeader: React.FC = () => {
@@ -51,7 +51,7 @@ export const SubHeader: React.FC = () => {
 
   // Determine if tutorial should be shown
   // Always show for guests, show for logged-in users only if not completed
-  const showQuestionMarkIcon = player.is_guest || tutorialStatus?.tutorial_completed === false;
+  const showQuestionMarkIcon = player.is_guest || tutorialStatus?.tutorial_completed === false || isFirstDay;
 
   return (
     <div className="bg-quip-warm-ivory shadow-tile-sm relative z-40">
@@ -145,18 +145,6 @@ export const SubHeader: React.FC = () => {
               aria-label="Start or resume tutorial"
             >
               <QuestionMarkIcon className="w-7 h-7 md:w-8 md:h-8 transition-transform group-hover:scale-110" />
-            </button>
-          )}
-
-          {/* Settings icon - Only shown for guest players */}
-          {player.is_guest && (
-            <button
-              onClick={() => navigate('/settings')}
-              className="group"
-              title="Account settings"
-              aria-label="Account settings"
-            >
-              <SettingsIcon className="w-7 h-7 md:w-8 md:h-8 transition-transform group-hover:scale-110" />
             </button>
           )}
 

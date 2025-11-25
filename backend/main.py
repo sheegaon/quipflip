@@ -7,9 +7,16 @@ os.environ['TZ'] = 'UTC'
 
 import asyncio
 import time
+import sys
 
 # Reload time module to pick up TZ change
-time.tzset()
+if hasattr(time, "tzset"):
+    time.tzset()
+
+# Ensure console streams can emit Unicode (emoji) on Windows
+for stream in (sys.stdout, sys.stderr):
+    if hasattr(stream, "reconfigure"):
+        stream.reconfigure(encoding="utf-8", errors="backslashreplace")
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -17,7 +24,6 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 import logging
 from logging.handlers import RotatingFileHandler
-import os
 from pathlib import Path
 from contextlib import asynccontextmanager
 
@@ -43,11 +49,21 @@ print(f"SQL logging to: {sql_log_file.absolute()}")
 print(f"API requests logging to: {api_log_file.absolute()}")
 
 # Create rotating file handler for general logs (1MB max size, keep 5 backup files)
-rotating_handler = RotatingFileHandler(log_file, maxBytes=1024 * 1024, backupCount=5)  # 1 MB
+rotating_handler = RotatingFileHandler(
+    log_file,
+    maxBytes=1024 * 1024,
+    backupCount=5,
+    encoding='utf-8',
+)  # 1 MB
 rotating_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
 
 # Create rotating file handler for SQL logs (1MB max size, keep 5 backup files)
-sql_rotating_handler = RotatingFileHandler(sql_log_file, maxBytes=1024 * 1024, backupCount=5)  # 1 MB
+sql_rotating_handler = RotatingFileHandler(
+    sql_log_file,
+    maxBytes=1024 * 1024,
+    backupCount=5,
+    encoding='utf-8',
+)  # 1 MB
 sql_rotating_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
 
 # Create rotating file handler for API request logs (2MB max size, keep 15 backup files)

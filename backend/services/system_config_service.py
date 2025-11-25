@@ -320,7 +320,7 @@ class SystemConfigService:
 
         if config_entry:
             # Convert string value to appropriate type
-            return self._deserialize_value(config_entry.value, config_entry.value_type)
+            return self.deserialize_value(config_entry.value, config_entry.value_type)
 
         # Fall back to environment settings
         settings = get_settings()
@@ -415,12 +415,12 @@ class SystemConfigService:
 
         for config_entry in db_configs:
             if config_entry.key in self.CONFIG_SCHEMA:
-                config_dict[config_entry.key] = self._deserialize_value(
+                config_dict[config_entry.key] = self.deserialize_value(
                     config_entry.value,
                     config_entry.value_type
                 )
             elif config_entry.key == legacy_sleep_key:
-                legacy_value = self._deserialize_value(
+                legacy_value = self.deserialize_value(
                     config_entry.value,
                     config_entry.value_type,
                 )
@@ -490,7 +490,7 @@ class SystemConfigService:
         return str(value)
 
     @staticmethod
-    def _deserialize_value(value: str, value_type: str) -> Any:
+    def deserialize_value(value: str, value_type: str) -> Any:
         """Convert a string value from database to proper Python type."""
         if value_type == "int":
             return int(value)

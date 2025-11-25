@@ -22,9 +22,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-async def authenticate_websocket(
-    websocket: WebSocket, token: str, auth_service: AuthService
-) -> UUID:
+async def authenticate_websocket(websocket: WebSocket, token: str, auth_service: AuthService) -> UUID:
     """
     Authenticate WebSocket connection using short-lived token.
 
@@ -84,7 +82,7 @@ async def websocket_endpoint(
     try:
         # Authenticate using token
         player_id = await authenticate_websocket(websocket, token, auth_service)
-        logger.info(f"WebSocket authenticated for player {player_id}")
+        logger.info(f"WebSocket authenticated for {player_id=}")
 
         # Add connection to manager
         await connection_manager.connect(str(player_id), websocket)
@@ -96,11 +94,11 @@ async def websocket_endpoint(
                 # Wait for message from client (shouldn't happen, but keeps connection alive)
                 data = await websocket.receive_text()
                 # Ignore client messages - this is a server-push-only endpoint
-                logger.debug(f"Ignored client message for player {player_id}: {data}")
+                logger.debug(f"Ignored client message for {player_id=}: {data}")
         except WebSocketDisconnect:
-            logger.info(f"WebSocket disconnected for player {player_id}")
+            logger.info(f"WebSocket disconnected for {player_id=}")
         except Exception as e:
-            logger.error(f"WebSocket error for player {player_id}: {e}")
+            logger.error(f"WebSocket error for {player_id=}: {e}")
         finally:
             await connection_manager.disconnect(str(player_id))
 
