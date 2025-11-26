@@ -710,6 +710,60 @@ export type TutorialProgress =
   | 'rounds_guide'
   | 'completed';
 
+// MemeMint-specific round types
+export interface MemeDetails {
+  meme_id: string;
+  image_url: string;
+  title?: string;
+  alt_text?: string;
+}
+
+export interface MemeCaptionOption {
+  caption_id: string;
+  text: string;
+  author?: string;
+  is_original?: boolean;
+  riff_on_caption_id?: string | null;
+}
+
+export interface MemeVoteRound {
+  round_id: string;
+  expires_at: string | null;
+  meme: MemeDetails;
+  captions: MemeCaptionOption[];
+  free_captions_remaining?: number;
+  has_submitted_caption?: boolean;
+}
+
+export interface MemeVoteResult {
+  round_id: string;
+  selected_caption_id: string;
+  payout: number;
+  wallet?: number;
+  vault?: number;
+  meme?: MemeDetails;
+  captions?: MemeCaptionOption[];
+  winning_caption_id?: string | null;
+  has_submitted_caption?: boolean;
+}
+
+export type MemeCaptionType = 'original' | 'riff';
+
+export interface MemeCaptionSubmission {
+  round_id: string;
+  caption_text: string;
+  caption_type: MemeCaptionType;
+  parent_caption_id?: string | null;
+}
+
+export interface MemeCaptionResponse {
+  round_id: string;
+  caption_id: string;
+  wallet?: number;
+  vault?: number;
+  free_captions_remaining?: number;
+}
+
 export interface TutorialStatus {
   tutorial_completed: boolean;
   tutorial_progress: TutorialProgress;
