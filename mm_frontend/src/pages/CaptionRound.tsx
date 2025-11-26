@@ -48,20 +48,18 @@ export const CaptionRound: React.FC = () => {
     );
   }
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!captionText.trim() || isSubmitting) return;
+
     setIsSubmitting(true);
-    setError(null);
-    setSuccessMessage(null);
-
-    const request: MemeCaptionSubmission = {
-      round_id: round.round_id,
-      caption_text: captionText.trim(),
-      caption_type: captionType,
-      parent_caption_id: captionType === 'riff' ? parentCaptionId : null,
-    };
-
     try {
+      const request: MemeCaptionSubmission = {
+        round_id: round.round_id,
+        text: captionText.trim(),
+        kind: captionType,
+        parent_caption_id: parentCaptionId || null,
+      };
       await apiClient.submitMemeCaption(request);
       setSuccessMessage('Caption submitted!');
       navigate('/game/results', { state: { round, voteResult: locationState.voteResult } });

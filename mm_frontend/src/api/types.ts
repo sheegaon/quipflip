@@ -476,17 +476,6 @@ export interface VoteRoundState {
   cost: number;
 }
 
-export interface CaptionSubmissionState {
-  round_id: string;
-  image_id: string;
-  image_url: string;
-  thumbnail_url?: string | null;
-  attribution_text?: string | null;
-  expires_at: string;
-  cost: number;
-  used_free_slot: boolean;
-}
-
 export interface VoteResult {
   success: boolean;
   chosen_caption_id: string;
@@ -508,7 +497,7 @@ export interface DashboardData {
   player: Player;
   round_availability: RoundAvailability;
   current_vote_round?: VoteRoundState | null;
-  current_caption_round?: CaptionSubmissionState | null;
+  current_caption_round?: CaptionSubmissionResult | null;
 }
 
 // Legacy MemeMint types - kept for backward compatibility during transition
@@ -724,7 +713,7 @@ export interface DashboardData {
   player: Player;
   round_availability: RoundAvailability;
   current_vote_round?: VoteRoundState | null;
-  current_caption_round?: CaptionSubmissionState | null;
+  current_caption_round?: CaptionSubmissionResult | null;
 }
 
 export interface ApiError {
@@ -831,6 +820,18 @@ export type TutorialProgress =
   | 'vote_round'
   | 'rounds_guide'
   | 'completed';
+
+export interface TutorialStatus {
+  progress: TutorialProgress;
+  completed: boolean;
+  last_updated: string | null;
+}
+
+export interface UpdateTutorialProgressResponse {
+  progress: TutorialProgress;
+  completed: boolean;
+  message: string;
+}
 
 // Quest system types
 export type QuestStatus = 'active' | 'completed' | 'claimed';

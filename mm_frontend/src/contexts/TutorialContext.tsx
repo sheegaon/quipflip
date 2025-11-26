@@ -67,7 +67,7 @@ export const TutorialProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const currentStep = useMemo<TutorialProgress | null>(() => {
     if (!status) return null;
-    const progress = status.tutorial_progress;
+    const progress = status.progress;
     if (progress === 'not_started' || progress === 'completed') {
       return null;
     }
@@ -75,7 +75,7 @@ export const TutorialProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [status]);
 
   const isActive = useMemo(
-    () => Boolean(status && !status.tutorial_completed && status.tutorial_progress !== 'not_started'),
+    () => Boolean(status && !status.completed && status.progress !== 'not_started'),
     [status],
   );
 
@@ -89,10 +89,10 @@ export const TutorialProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (!status) {
       return 'inactive';
     }
-    if (status.tutorial_completed) {
+    if (status.completed) {
       return 'completed';
     }
-    if (status.tutorial_progress === 'not_started') {
+    if (status.progress === 'not_started') {
       return 'inactive';
     }
     return 'active';
@@ -155,7 +155,11 @@ export const TutorialProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       try {
         tutorialLogger.debug('Updating tutorial progress', { progress });
         const response = await apiClient.updateTutorialProgress(progress);
-        setStatus(response.tutorial_status);
+        setStatus({
+          progress: response.progress,
+          completed: response.completed,
+          last_updated: new Date().toISOString(),
+        });
         setError(null);
       } catch (err: unknown) {
         const message = getActionErrorMessage('update-tutorial-progress', err);
@@ -180,11 +184,11 @@ export const TutorialProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const advanceStep = useCallback(
     async (stepId?: TutorialProgress) => {
-      const nextStep = stepId ?? (status ? getNextStep(status.tutorial_progress) ?? undefined : undefined);
+      const nextStep = stepId ?? (status ? getNextStep(status.progress) ?? undefined : undefined);
 
       if (!nextStep) {
         tutorialLogger.debug('No next tutorial step available', {
-          current: status?.tutorial_progress ?? 'none',
+          current: status?.progress ?? 'none',
         });
         return;
       }

@@ -62,7 +62,6 @@ import type {
   OnlineUsersResponse,
   PingUserResponse,
   WsAuthTokenResponse,
-  CaptionSubmissionState,
   VoteRoundState,
   VoteResult,
   MemeVoteRound,

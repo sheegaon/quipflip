@@ -51,7 +51,7 @@ export const SubHeader: React.FC = () => {
 
   // Determine if tutorial should be shown
   // Always show for guests, show for logged-in users only if not completed
-  const showQuestionMarkIcon = player.is_guest || tutorialStatus?.tutorial_completed === false || isFirstDay;
+  const showQuestionMarkIcon = player.is_guest || tutorialStatus?.completed === false || isFirstDay;
 
   return (
     <div className="bg-quip-warm-ivory shadow-tile-sm relative z-40">
