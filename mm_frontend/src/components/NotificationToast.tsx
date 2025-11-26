@@ -40,7 +40,7 @@ const NotificationToast: FC<NotificationToastProps> = ({
   };
 
   const handleTrackingClick = () => {
-    navigate('/tracking');
+    navigate('/game/history');
     handleManualDismiss();
   };
 
@@ -74,7 +74,7 @@ const NotificationToast: FC<NotificationToastProps> = ({
             className="mt-2 flex items-center gap-1 text-white/90 hover:text-white text-xs transition-colors"
           >
             <TrackingIcon className="w-4 h-4 flex-shrink-0" />
-            <span className="underline">Visit tracking page</span>
+            <span className="underline">Visit history page</span>
           </button>
         </div>
 

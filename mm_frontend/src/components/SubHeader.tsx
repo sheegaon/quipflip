@@ -6,7 +6,7 @@ import { useTutorial } from '../contexts/TutorialContext';
 import { TreasureChestIcon } from './TreasureChestIcon';
 import { CopyRoundIcon } from './icons/RoundIcons';
 import { LeaderboardIcon, LobbyIcon, TrackingIcon } from './icons/NavigationIcons';
-import { QuestionMarkIcon, ResultsIcon, ReviewIcon } from './icons/EngagementIcons';
+import { QuestionMarkIcon, ResultsIcon } from './icons/EngagementIcons';
 
 export const SubHeader: React.FC = () => {
   const { actions } = useGame();
@@ -38,7 +38,7 @@ export const SubHeader: React.FC = () => {
     }
 
     // Navigate to results page (results will be marked as viewed on page load)
-    navigate('/results');
+    navigate('/game/results');
   };
 
   const goToLeaderboard = React.useCallback(() => {
@@ -61,7 +61,7 @@ export const SubHeader: React.FC = () => {
           {showInProgressIndicator && (
             <button
               type="button"
-              onClick={() => navigate('/tracking')}
+              onClick={() => navigate('/game/history')}
               className="flex items-center gap-2 rounded-full bg-quip-cream px-1 md:px-3 py-1 text-xs font-semibold text-quip-navy transition-colors hover:bg-quip-teal-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-quip-teal"
               title={inProgressLabel}
               aria-label={inProgressLabel}
@@ -99,18 +99,6 @@ export const SubHeader: React.FC = () => {
                 className={`h-5 w-5 md:h-7 md:w-7 ${unviewedCount > 0 ? 'trophy-pulse' : ''}`}
                 variant={unviewedCount > 0 ? 'orange' : 'teal'}
               />
-            </button>
-          )}
-
-          {/* Completed rounds icon - Hidden on first day */}
-          {!isFirstDay && (
-            <button
-              onClick={() => navigate('/completed')}
-              className="group tutorial-completed-icon"
-              title="View completed rounds"
-              aria-label="View completed rounds"
-            >
-              <ReviewIcon className="w-7 h-7 md:w-8 md:h-8 transition-transform group-hover:scale-110" />
             </button>
           )}
 

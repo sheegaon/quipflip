@@ -9,7 +9,7 @@ import { ThumbFeedbackButton } from '../components/ThumbFeedbackButton';
 import { useTimer } from '../hooks/useTimer';
 import { usePhraseValidation } from '../hooks/usePhraseValidation';
 import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
-import type { PromptState, SubmitPhraseResponse } from '../api/types';
+import type { PromptState } from '../api/types';
 import { promptRoundLogger } from '../utils/logger';
 import { TrackingIcon } from '../components/icons/NavigationIcons';
 import { usePartyNavigation } from '../hooks/usePartyNavigation';
@@ -36,7 +36,7 @@ export const PromptRound: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
 
-  const { navigateHome, isInPartyMode } = usePartyNavigation();
+  const { navigateHome } = usePartyNavigation();
 
   const { isPhraseValid, trimmedPhrase } = usePhraseValidation(phrase);
 
@@ -167,7 +167,7 @@ export const PromptRound: React.FC = () => {
       promptRoundLogger.debug('Submitting prompt round phrase', {
         roundId: roundData.round_id,
       });
-      const response: SubmitPhraseResponse = await apiClient.submitPhrase(roundData.round_id, trimmedPhrase);
+      await apiClient.submitPhrase(roundData.round_id, trimmedPhrase);
 
       // Show success messages first to prevent navigation race condition
       const heading = getRandomMessage('promptSubmitted');

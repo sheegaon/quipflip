@@ -64,7 +64,7 @@ export const CaptionRound: React.FC = () => {
     try {
       await apiClient.submitMemeCaption(request);
       setSuccessMessage('Caption submitted!');
-      navigate('/results', { state: { round, voteResult: locationState.voteResult } });
+      navigate('/game/results', { state: { round, voteResult: locationState.voteResult } });
     } catch (err) {
       setError(extractErrorMessage(err) || 'Unable to submit caption right now.');
     } finally {
@@ -160,7 +160,7 @@ export const CaptionRound: React.FC = () => {
               </div>
               <div className="flex gap-3">
                 <button
-                  onClick={() => navigate('/results', { state: { round, voteResult: locationState.voteResult } })}
+                  onClick={() => navigate('/game/results', { state: { round, voteResult: locationState.voteResult } })}
                   className="border-2 border-quip-navy text-quip-navy font-semibold px-4 py-2 rounded-tile"
                 >
                   Skip

@@ -160,8 +160,8 @@ export const CopyRound: React.FC = () => {
   const { flagCopyRound, refreshDashboard, fetchCopyHints } = actions;
   const partyState = { isPartyMode: false, sessionId: null as string | null };
   const partyActions = {
-    setCurrentStep: (_step: unknown) => {},
-    updateFromPartyContext: (_context: unknown) => {},
+    setCurrentStep: () => {},
+    updateFromPartyContext: () => {},
   };
   const { setCurrentStep } = partyActions;
   const navigate = useNavigate();
@@ -350,7 +350,7 @@ export const CopyRound: React.FC = () => {
   useEffect(() => {
     if (roundData?.status === 'submitted') {
       if (partyState.isPartyMode) {
-        navigate('/vote');
+        navigate('/game/vote');
       } else {
         navigate('/dashboard');
       }

@@ -37,12 +37,10 @@ import { PageErrorFallback } from './components/ErrorFallback';
 // Lazy load pages with error boundaries
 const Landing = lazy(() => import('./pages/Landing'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
-const PromptRound = lazy(() => import('./pages/PromptRound'));
-const CopyRound = lazy(() => import('./pages/CopyRound'));
 const VoteRound = lazy(() => import('./pages/VoteRound'));
 const CaptionRound = lazy(() => import('./pages/CaptionRound'));
 const Results = lazy(() => import('./pages/Results'));
-const Tracking = lazy(() => import('./pages/Tracking'));
+const GameHistory = lazy(() => import('./pages/GameHistory'));
 const Quests = lazy(() => import('./pages/Quests'));
 const Statistics = lazy(() => import('./pages/Statistics'));
 const Leaderboard = lazy(() => import('./pages/Leaderboard'));
@@ -51,7 +49,6 @@ const Settings = lazy(() => import('./pages/Settings'));
 const Admin = lazy(() => import('./pages/Admin'));
 const AdminFlagged = lazy(() => import('./pages/AdminFlagged'));
 const BetaSurveyPage = lazy(() => import('./pages/BetaSurveyPage'));
-const Completed = lazy(() => import('./pages/Completed'));
 
 // Protected Route wrapper
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -128,20 +125,20 @@ const AppRoutes: React.FC = () => {
           element={renderProtectedRoute(<Dashboard />)}
         />
         <Route
-          path="/vote"
+          path="/game/vote"
           element={renderProtectedRoute(<VoteRound />)}
         />
         <Route
-          path="/caption"
+          path="/game/caption"
           element={renderProtectedRoute(<CaptionRound />)}
         />
         <Route
-          path="/results"
+          path="/game/results"
           element={renderProtectedRoute(<Results />)}
         />
         <Route
-          path="/tracking"
-          element={renderProtectedRoute(<Tracking />)}
+          path="/game/history"
+          element={renderProtectedRoute(<GameHistory />)}
         />
         <Route
           path="/quests"
@@ -174,10 +171,6 @@ const AppRoutes: React.FC = () => {
         <Route
           path="/admin/flags"
           element={renderProtectedRoute(<AdminFlagged />)}
-        />
-        <Route
-          path="/completed"
-          element={renderProtectedRoute(<Completed />)}
         />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

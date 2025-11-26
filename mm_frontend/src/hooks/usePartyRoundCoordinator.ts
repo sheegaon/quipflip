@@ -1,7 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
 
-type RoundType = 'prompt' | 'copy' | 'vote';
-
 interface TransitionState {
     isTransitioning: boolean;
     error: string | null;
@@ -28,7 +26,7 @@ export function usePartyRoundCoordinator() {
      * @throws Error if transition fails (after all retries)
      */
     const transitionToNextRound = useCallback(
-        async (currentRound: RoundType): Promise<void> => {
+        async (): Promise<void> => {
             // Guard: Prevent duplicate attempts
             if (attemptedRef.current) {
                 console.warn('Transition already in progress, skipping duplicate call');
@@ -41,7 +39,7 @@ export function usePartyRoundCoordinator() {
             try {
                 setState({ isTransitioning: false, error: null });
                 attemptedRef.current = false; // Reset for next transition
-            } catch (err) {
+            } catch {
                 const message = 'Unable to transition to the next round.';
 
                 setState({ isTransitioning: false, error: message });

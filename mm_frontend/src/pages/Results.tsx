@@ -72,7 +72,7 @@ export const Results: React.FC = () => {
             <div className="flex flex-wrap gap-3 pt-2">
               {canSubmitCaption && (
                 <button
-                  onClick={() => navigate('/caption', { state: { round, voteResult } })}
+                  onClick={() => navigate('/game/caption', { state: { round, voteResult } })}
                   className="bg-quip-teal hover:bg-quip-turquoise text-white font-semibold px-4 py-2 rounded-tile"
                 >
                   Add your caption
