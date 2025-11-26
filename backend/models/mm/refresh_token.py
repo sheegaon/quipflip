@@ -12,7 +12,7 @@ class MMRefreshToken(RefreshTokenBase):
     __tablename__ = "mm_refresh_tokens"
 
     player_id = get_uuid_column(
-        ForeignKey("mm_players.player_id", ondelete="CASCADE"), nullable=False, index=True
+        ForeignKey("mm_players.player_id", ondelete="CASCADE"), nullable=False
     )
 
     player = relationship("MMPlayer", back_populates="refresh_tokens")
