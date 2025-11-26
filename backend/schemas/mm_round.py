@@ -38,11 +38,15 @@ class SubmitVoteRequest(BaseModel):
 
 class SubmitCaptionRequest(BaseModel):
     """Submit caption request."""
-    text: str = Field(..., min_length=1, max_length=240, description="Caption text")
-    kind: Literal["original", "riff"] = Field(default="original", description="Caption type")
+    round_id: UUID = Field(..., description="Round ID from vote round")
+    caption_text: str = Field(..., min_length=1, max_length=240, description="Caption text", alias="text")
+    caption_type: Literal["original", "riff"] = Field(default="original", description="Caption type", alias="kind")
     parent_caption_id: UUID | None = Field(default=None, description="Parent caption ID for riffs")
 
-    @field_validator('text')
+    class Config:
+        populate_by_name = True  # Allow both field name and alias
+
+    @field_validator('caption_text')
     @classmethod
     def text_must_be_valid(cls, v: str) -> str:
         """Validate caption text."""
@@ -56,10 +60,10 @@ class SubmitCaptionRequest(BaseModel):
     @classmethod
     def validate_riff_parent(cls, v: UUID | None, info) -> UUID | None:
         """Validate parent_caption_id is provided for riffs."""
-        kind = info.data.get('kind')
-        if kind == 'riff' and v is None:
+        caption_type = info.data.get('caption_type')
+        if caption_type == 'riff' and v is None:
             raise ValueError('parent_caption_id is required for riff captions')
-        if kind == 'original' and v is not None:
+        if caption_type == 'original' and v is not None:
             raise ValueError('parent_caption_id should not be provided for original captions')
         return v
 

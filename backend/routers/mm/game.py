@@ -164,31 +164,22 @@ async def submit_caption(
     """
     transaction_service = TransactionService(db, GameType.MM)
     caption_service = MMCaptionService(db)
+    game_service = MMGameService(db)
 
-    # For now, we'll need to select a random active image
-    # In the future, this might come from a "caption round" flow
-    from sqlalchemy import select, func
-    from backend.models.mm.image import MMImage
+    # Get the round to determine which image to caption
+    round_obj = await game_service.get_round(request.round_id, player.player_id)
+    if not round_obj:
+        raise HTTPException(status_code=404, detail="Round not found")
 
-    # Get random active image
-    stmt = (
-        select(MMImage)
-        .where(MMImage.status == 'active')
-        .order_by(func.random())
-        .limit(1)
-    )
-    result = await db.execute(stmt)
-    image = result.scalar_one_or_none()
-
-    if not image:
-        raise HTTPException(status_code=400, detail="No images available for caption submission")
+    # Get the image from the round
+    image_id = round_obj.image_id
 
     try:
         result = await caption_service.submit_caption(
             player,
-            image.image_id,
-            request.text,
-            request.kind,
+            image_id,
+            request.caption_text,
+            request.caption_type,
             request.parent_caption_id,
             transaction_service
         )

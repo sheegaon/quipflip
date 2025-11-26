@@ -446,6 +446,12 @@ Economy:
 
   * Fraction of caption earnings routed to vault vs wallets.
 
+Validation:
+
+* `mm_riff_similarity_threshold` (float, default `0.7`)
+
+  * Maximum cosine similarity allowed between riff caption and parent caption. Riffs with similarity >= threshold are rejected as too similar.
+
 Quality / lifecycle:
 
 * `mm_min_quality_score_active` (float, optional)

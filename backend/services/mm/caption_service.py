@@ -16,6 +16,7 @@ from backend.services.transaction_service import TransactionService
 from backend.services.mm.system_config_service import MMSystemConfigService
 from backend.services.mm.daily_state_service import MMPlayerDailyStateService
 from backend.services.mm.scoring_service import MMScoringService
+from backend.services.phrase_validator import get_phrase_validator
 from backend.utils import lock_client
 from backend.utils.exceptions import InsufficientBalanceError
 
@@ -72,6 +73,7 @@ class MMCaptionService:
                 raise ValueError(f"Image {image_id} not found or inactive")
 
             # Validate parent caption if riff
+            parent = None
             if kind == 'riff':
                 if not parent_caption_id:
                     raise ValueError("Parent caption ID required for riff captions")
@@ -81,6 +83,11 @@ class MMCaptionService:
                     raise ValueError(
                         f"Invalid parent caption {parent_caption_id} for image {image_id}"
                     )
+
+                # Validate riff similarity
+                is_valid, error = await self._validate_riff_caption(text, parent)
+                if not is_valid:
+                    raise ValueError(error)
 
             # Check if caption text is duplicate (basic check)
             await self._check_duplicate_caption(image_id, text)
@@ -198,6 +205,53 @@ class MMCaptionService:
 
         if existing:
             raise ValueError("This caption already exists for this image")
+
+    async def _validate_riff_caption(
+        self,
+        text: str,
+        parent_caption: MMCaption
+    ) -> tuple[bool, str]:
+        """Validate riff caption similarity to parent.
+
+        Riffs should be different enough from parent to be interesting,
+        but still related (enforced by parent reference).
+
+        Args:
+            text: Riff caption text
+            parent_caption: Parent caption object
+
+        Returns:
+            (is_valid, error_message)
+        """
+        validator = get_phrase_validator()
+
+        # Check basic format (length, characters)
+        text_stripped = text.strip()
+        if not text_stripped:
+            return False, "Caption cannot be empty"
+        if len(text_stripped) > 240:
+            return False, "Caption must be 240 characters or less"
+
+        # Check exact duplicate
+        if text_stripped.lower() == parent_caption.text.strip().lower():
+            return False, "Riff cannot be identical to parent caption"
+
+        # Check similarity (use same threshold as QuipFlip copy phrases)
+        similarity = validator.calculate_similarity(text, parent_caption.text)
+
+        # Get threshold from config (default 0.7 like QuipFlip)
+        threshold = await self.config_service.get_config_value(
+            "mm_riff_similarity_threshold",
+            default=0.7
+        )
+
+        if similarity >= threshold:
+            return False, (
+                f"Riff too similar to parent caption "
+                f"(similarity: {similarity:.2f}, threshold: {threshold})"
+            )
+
+        return True, ""
 
     async def get_caption(self, caption_id: UUID) -> MMCaption | None:
         """Get a caption by ID.
