@@ -405,8 +405,6 @@ export const Header: React.FC = () => {
         </div>
       </div>
     </div>
-    {/* Conditionally render SubHeader on dashboard */}
-    {location.pathname === '/dashboard' && <SubHeader />}
     </>
   );
 };
