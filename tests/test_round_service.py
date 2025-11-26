@@ -17,11 +17,11 @@ from backend.models.qf.prompt import Prompt
 from backend.models.qf.round import Round
 from backend.models.qf.phraseset import Phraseset
 from backend.models.qf.player_abandoned_prompt import PlayerAbandonedPrompt
-from backend.services import RoundService
+from backend.services import QFRoundService
 from backend.services import AIService
 from backend.services import TransactionService
-from backend.services import QueueService
-from backend.services import VoteService
+from backend.services import QFQueueService
+from backend.services import QFVoteService
 from backend.utils.exceptions import (
     RoundExpiredError,
     InvalidPhraseError,
@@ -34,7 +34,7 @@ settings = get_settings()
 
 def drain_prompt_queue():
     """Utility helper to clear the in-memory prompt queue between tests."""
-    while QueueService.get_next_prompt_round():
+    while QFQueueService.get_next_prompt_round():
         continue
 
 
@@ -77,7 +77,7 @@ class TestPromptRoundCreation:
     @pytest.mark.asyncio
     async def test_start_prompt_round_success(self, db_session, player_with_balance, test_prompt):
         """Should successfully create a prompt round and deduct balance."""
-        round_service = RoundService(db_session)
+        round_service = QFRoundService(db_session)
         transaction_service = TransactionService(db_session)
 
         initial_balance = player_with_balance.wallet
@@ -103,7 +103,7 @@ class TestPromptRoundCreation:
     @pytest.mark.asyncio
     async def test_start_prompt_round_sets_active_round(self, db_session, player_with_balance, test_prompt):
         """Should set player's active_round_id."""
-        round_service = RoundService(db_session)
+        round_service = QFRoundService(db_session)
         transaction_service = TransactionService(db_session)
 
         round_obj = await round_service.start_prompt_round(
@@ -117,7 +117,7 @@ class TestPromptRoundCreation:
     @pytest.mark.asyncio
     async def test_start_prompt_round_creates_expiration(self, db_session, player_with_balance, test_prompt):
         """Should set correct expiration time."""
-        round_service = RoundService(db_session)
+        round_service = QFRoundService(db_session)
         transaction_service = TransactionService(db_session)
 
         before_time = datetime.now(UTC)
@@ -145,7 +145,7 @@ class TestPromptRoundCreation:
         player_with_balance,
     ):
         """Should not repeat prompts seen in prompt, copy, or vote rounds."""
-        round_service = RoundService(db_session)
+        round_service = QFRoundService(db_session)
         transaction_service = TransactionService(db_session)
 
         # Disable any existing prompts to control the pool for this test
@@ -294,7 +294,7 @@ class TestPromptRoundCreation:
         player_with_balance,
     ):
         """Should raise an error when no unseen prompts remain."""
-        round_service = RoundService(db_session)
+        round_service = QFRoundService(db_session)
         transaction_service = TransactionService(db_session)
 
         await db_session.execute(update(Prompt).values(enabled=False))
@@ -340,7 +340,7 @@ class TestPromptSubmission:
     @pytest.mark.asyncio
     async def test_submit_prompt_phrase_success(self, db_session, player_with_balance, test_prompt):
         """Should successfully submit a valid prompt phrase."""
-        round_service = RoundService(db_session)
+        round_service = QFRoundService(db_session)
         transaction_service = TransactionService(db_session)
 
         # Start round
@@ -367,7 +367,7 @@ class TestPromptSubmission:
     @pytest.mark.asyncio
     async def test_submit_prompt_phrase_invalid_format(self, db_session, player_with_balance, test_prompt):
         """Should reject invalid phrase formats."""
-        round_service = RoundService(db_session)
+        round_service = QFRoundService(db_session)
         transaction_service = TransactionService(db_session)
 
         round_obj = await round_service.start_prompt_round(
@@ -387,7 +387,7 @@ class TestPromptSubmission:
     @pytest.mark.asyncio
     async def test_submit_prompt_phrase_expired_round(self, db_session, player_with_balance, test_prompt):
         """Should reject submission to expired round."""
-        round_service = RoundService(db_session)
+        round_service = QFRoundService(db_session)
         transaction_service = TransactionService(db_session)
 
         # Create an expired round manually
@@ -419,7 +419,7 @@ class TestCopyRoundCreation:
     @pytest.mark.asyncio
     async def test_start_copy_round_success(self, db_session, player_with_balance, test_prompt):
         """Should successfully create a copy round."""
-        round_service = RoundService(db_session)
+        round_service = QFRoundService(db_session)
         transaction_service = TransactionService(db_session)
 
         # Create a submitted prompt round first
@@ -441,7 +441,7 @@ class TestCopyRoundCreation:
 
         # Start copy round
         drain_prompt_queue()
-        QueueService.add_prompt_round_to_queue(prompt_round.round_id)
+        QFQueueService.add_prompt_round_to_queue(prompt_round.round_id)
 
         copy_round, _ = await round_service.start_copy_round(
             player_with_balance,
@@ -462,7 +462,7 @@ class TestCopyRoundCreation:
     @pytest.mark.asyncio
     async def test_start_copy_round_forced_prompt(self, db_session, player_with_balance, test_prompt):
         """Party mode should be able to force a specific prompt without triggering second-copy logic."""
-        round_service = RoundService(db_session)
+        round_service = QFRoundService(db_session)
         transaction_service = TransactionService(db_session)
 
         prompt_round = Round(
@@ -497,7 +497,7 @@ class TestAbandonRound:
     @pytest.mark.asyncio
     async def test_abandon_prompt_round(self, db_session, player_with_balance, test_prompt):
         """Prompt players should receive a partial refund and clear active round state."""
-        round_service = RoundService(db_session)
+        round_service = QFRoundService(db_session)
         transaction_service = TransactionService(db_session)
 
         # Start a prompt round to set up the abandonment scenario
@@ -526,7 +526,7 @@ class TestAbandonRound:
     @pytest.mark.asyncio
     async def test_abandon_copy_round_returns_prompt(self, db_session, player_with_balance, test_prompt):
         """Abandoning a copy round should refund, requeue, and track the abandonment."""
-        round_service = RoundService(db_session)
+        round_service = QFRoundService(db_session)
         transaction_service = TransactionService(db_session)
 
         # Create a submitted prompt round owned by a different player
@@ -557,7 +557,7 @@ class TestAbandonRound:
         await db_session.commit()
 
         drain_prompt_queue()
-        QueueService.add_prompt_round_to_queue(prompt_round.round_id)
+        QFQueueService.add_prompt_round_to_queue(prompt_round.round_id)
 
         copy_round, _ = await round_service.start_copy_round(
             player_with_balance,
@@ -584,7 +584,7 @@ class TestAbandonRound:
         assert player_with_balance.wallet == balance_after_charge + refund_amount
 
         # Prompt should be re-queued for other players
-        assert QueueService.remove_prompt_round_from_queue(prompt_round.round_id) is True
+        assert QFQueueService.remove_prompt_round_from_queue(prompt_round.round_id) is True
 
         # Player abandonment cooldown should be tracked
         result = await db_session.execute(
@@ -598,8 +598,8 @@ class TestAbandonRound:
     @pytest.mark.asyncio
     async def test_abandon_vote_round(self, db_session, player_with_balance):
         """Vote rounds should be abandonable with partial refund and cleared state."""
-        round_service = RoundService(db_session)
-        vote_service = VoteService(db_session)
+        round_service = QFRoundService(db_session)
+        vote_service = QFVoteService(db_session)
         transaction_service = TransactionService(db_session)
 
         # Create other players involved in the phraseset
@@ -713,7 +713,7 @@ class TestPhrasesetCreation:
     @pytest.mark.asyncio
     async def test_create_phraseset_with_two_copies(self, db_session):
         """Should create phraseset when two copy rounds are submitted."""
-        round_service = RoundService(db_session)
+        round_service = QFRoundService(db_session)
 
         # Create players
         test_id = uuid.uuid4().hex[:8]
@@ -810,7 +810,7 @@ class TestPhrasesetCreation:
     @pytest.mark.asyncio
     async def test_create_phraseset_not_ready(self, db_session):
         """Should return None if only one copy is available."""
-        round_service = RoundService(db_session)
+        round_service = QFRoundService(db_session)
 
         test_id = uuid.uuid4().hex[:8]
         prompter = QFPlayer(
@@ -865,7 +865,7 @@ class TestRoundExpiration:
         db_session.add(expired_round)
         await db_session.commit()
 
-        round_service = RoundService(db_session)
+        round_service = QFRoundService(db_session)
 
         # Verify the round is considered expired
         result = await db_session.execute(

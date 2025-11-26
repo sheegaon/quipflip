@@ -195,9 +195,9 @@ async def get_websocket_token(
         try:
             detected_player = await get_current_player(
                 request=request,
+                game_type=game_type,
                 authorization=authorization,
                 db=db,
-                game_type=game_type,
             )
             detected_game = game_type
             break

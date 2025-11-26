@@ -117,13 +117,13 @@ class StaleAIService:
         }
 
         try:
-            from backend.services.qf.round_service import RoundService
+            from backend.services.qf.round_service import QFRoundService
 
             # Find stale content first (don't need player IDs for queries anymore)
             stale_prompts = await self._find_stale_prompts()
             stats["stale_prompts_found"] = len(stale_prompts)
 
-            round_service = RoundService(self.db)
+            round_service = QFRoundService(self.db)
 
             # Process each stale prompt with a different AI player for each copy slot
             for prompt_round in stale_prompts:
@@ -228,8 +228,8 @@ class StaleAIService:
 
                     # Re-enqueue the prompt so it can be retried later
                     try:
-                        from backend.services.qf.queue_service import QueueService
-                        QueueService.add_prompt_round_to_queue(prompt_round.round_id)
+                        from backend.services.qf.queue_service import QFQueueService
+                        QFQueueService.add_prompt_round_to_queue(prompt_round.round_id)
                         logger.info(f"Re-enqueued prompt {prompt_round.round_id} after stale AI failure")
                     except Exception as queue_exc:
                         logger.error(f"Failed to re-enqueue prompt {prompt_round.round_id}: {queue_exc}")
@@ -238,8 +238,8 @@ class StaleAIService:
             stale_phrasesets = await self._find_stale_phrasesets()
             stats["stale_phrasesets_found"] = len(stale_phrasesets)
 
-            from backend.services.qf.vote_service import VoteService
-            vote_service = VoteService(self.db)
+            from backend.services.qf.vote_service import QFVoteService
+            vote_service = QFVoteService(self.db)
             transaction_service = TransactionService(self.db, game_type=GameType.QF)
 
             # Process each stale phraseset with a different AI voter

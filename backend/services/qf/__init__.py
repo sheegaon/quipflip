@@ -1,15 +1,15 @@
 """Quipflip (QF) Services module."""
 from backend.services.phrase_validator import get_phrase_validator
-from backend.services.qf.queue_service import QueueService
-from backend.services.qf.player_service import PlayerService
-from backend.services.qf.scoring_service import ScoringService
-from backend.services.qf.cleanup_service import CleanupService
+from backend.services.qf.queue_service import QFQueueService
+from backend.services.qf.player_service import QFPlayerService
+from backend.services.qf.scoring_service import QFScoringService
+from backend.services.qf.cleanup_service import QFCleanupService
 from backend.services.qf.flagged_prompt_service import FlaggedPromptService
-from backend.services.qf.vote_service import VoteService
+from backend.services.qf.vote_service import QFVoteService
 from backend.services.qf.phraseset_service import PhrasesetService
 from backend.services.qf.phraseset_activity_service import ActivityService
 from backend.services.qf.quest_service import QuestService, QUEST_CONFIGS
-from backend.services.qf.round_service import RoundService
+from backend.services.qf.round_service import QFRoundService
 from backend.services.qf.notification_service import (
     NotificationService, NotificationConnectionManager, get_notification_manager)
 from backend.services.qf.party_session_service import PartySessionService
@@ -23,15 +23,16 @@ from backend.services.qf.websocket_notification_service import (
 
 __all__ = [
     "get_phrase_validator",
-    "QueueService",
-    "PlayerService",
-    "ScoringService",
+    "QFQueueService",
+    "QFPlayerService",
+    "QFScoringService",
     "NotificationService",
     "NotificationConnectionManager",
     "get_notification_manager",
-    "CleanupService",
+    "QFCleanupService",
+    "QFRoundService",
     "FlaggedPromptService",
-    "VoteService",
+    "QFVoteService",
     "PhrasesetService",
     "ActivityService",
     "QuestService",

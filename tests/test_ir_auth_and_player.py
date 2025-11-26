@@ -1,7 +1,7 @@
 """Tests for IR authentication and player services."""
 import pytest
 import uuid
-from backend.services import IRAuthService
+from backend.services import AuthService
 from backend.services import IRPlayerService
 from backend.utils.passwords import hash_password, verify_password
 from backend.services import UsernameService
@@ -143,7 +143,7 @@ async def test_ir_duplicate_email_prevention(db_session):
 @pytest.mark.asyncio
 async def test_ir_auth_registration(db_session):
     """Test registering through auth service."""
-    auth_service = IRAuthService(db_session)
+    auth_service = AuthService(db_session)
 
     username = f"player{uuid.uuid4().hex[:8]}"
     email = f"authtest{uuid.uuid4().hex[:8]}@example.com"
@@ -164,7 +164,7 @@ async def test_ir_auth_registration(db_session):
 @pytest.mark.asyncio
 async def test_ir_auth_login(db_session):
     """Test login through auth service."""
-    auth_service = IRAuthService(db_session)
+    auth_service = AuthService(db_session)
 
     username = f"player{uuid.uuid4().hex[:8]}"
     email = f"login{uuid.uuid4().hex[:8]}@example.com"
@@ -190,7 +190,7 @@ async def test_ir_auth_login(db_session):
 @pytest.mark.asyncio
 async def test_ir_auth_invalid_login(db_session):
     """Test that invalid login fails."""
-    auth_service = IRAuthService(db_session)
+    auth_service = AuthService(db_session)
 
     # Try to login with non-existent username
     with pytest.raises(Exception):  # Should raise IRAuthError
@@ -203,7 +203,7 @@ async def test_ir_auth_invalid_login(db_session):
 @pytest.mark.asyncio
 async def test_ir_auth_wrong_password(db_session):
     """Test that wrong password fails."""
-    auth_service = IRAuthService(db_session)
+    auth_service = AuthService(db_session)
 
     username = f"player{uuid.uuid4().hex[:8]}"
     email = f"wrongpwd{uuid.uuid4().hex[:8]}@example.com"
@@ -227,7 +227,7 @@ async def test_ir_auth_wrong_password(db_session):
 @pytest.mark.asyncio
 async def test_ir_auth_refresh_token(db_session):
     """Test refresh token generation and verification."""
-    auth_service = IRAuthService(db_session)
+    auth_service = AuthService(db_session)
 
     username = f"player{uuid.uuid4().hex[:8]}"
     email = f"refresh{uuid.uuid4().hex[:8]}@example.com"
@@ -254,7 +254,7 @@ async def test_ir_auth_refresh_token(db_session):
 @pytest.mark.asyncio
 async def test_ir_auth_verify_access_token(db_session):
     """Test verifying access tokens."""
-    auth_service = IRAuthService(db_session)
+    auth_service = AuthService(db_session)
 
     username = f"player{uuid.uuid4().hex[:8]}"
     email = f"verify{uuid.uuid4().hex[:8]}@example.com"
@@ -276,7 +276,7 @@ async def test_ir_auth_verify_access_token(db_session):
 @pytest.mark.asyncio
 async def test_ir_invalid_token_verification(db_session):
     """Test that invalid tokens are rejected."""
-    auth_service = IRAuthService(db_session)
+    auth_service = AuthService(db_session)
 
     invalid_token = "invalid.token.here"
 

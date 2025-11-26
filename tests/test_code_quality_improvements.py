@@ -13,8 +13,8 @@ import pytest
 from datetime import datetime, UTC, timedelta
 import uuid
 
-from backend.services import VoteService
-from backend.services import RoundService
+from backend.services import QFVoteService
+from backend.services import QFRoundService
 from backend.services import TransactionService
 from backend.services import PhraseValidationClient
 from backend.utils.datetime_helpers import ensure_utc
@@ -130,7 +130,7 @@ class TestSystemVote:
         await db_session.commit()
 
         # Submit correct vote
-        vote_service = VoteService(db_session)
+        vote_service = QFVoteService(db_session)
         transaction_service = TransactionService(db_session)
 
         initial_balance = ai_player.balance
@@ -211,7 +211,7 @@ class TestSystemVote:
         await db_session.commit()
 
         # Submit incorrect vote
-        vote_service = VoteService(db_session)
+        vote_service = QFVoteService(db_session)
         transaction_service = TransactionService(db_session)
 
         initial_balance = ai_player.balance
@@ -291,7 +291,7 @@ class TestSystemVote:
         db_session.add(phraseset)
         await db_session.commit()
 
-        vote_service = VoteService(db_session)
+        vote_service = QFVoteService(db_session)
         transaction_service = TransactionService(db_session)
 
         # First vote succeeds
@@ -318,7 +318,7 @@ class TestDenormalizedFieldValidation:
     @pytest.mark.asyncio
     async def test_create_phraseset_validates_prompt_text(self, db_session, player_factory):
         """Should reject phraseset creation if prompt_text missing."""
-        round_service = RoundService(db_session)
+        round_service = QFRoundService(db_session)
         player = await player_factory()
 
         # Create prompt round without prompt_text
@@ -357,7 +357,7 @@ class TestDenormalizedFieldValidation:
     @pytest.mark.asyncio
     async def test_create_phraseset_validates_copy_phrases(self, db_session, player_factory):
         """Should reject phraseset creation if copy_phrase missing."""
-        round_service = RoundService(db_session)
+        round_service = QFRoundService(db_session)
         player = await player_factory()
 
         # Create prompt round

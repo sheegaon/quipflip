@@ -60,7 +60,8 @@ class MMVoteService:
         lock_name = f"submit_vote:{round_obj.round_id}"
         with lock_client.lock(lock_name, timeout=10):
             # Verify caption was in the round
-            if caption_id not in round_obj.caption_ids_shown:
+            caption_id_str = str(caption_id)
+            if caption_id_str not in round_obj.caption_ids_shown:
                 raise ValueError(f"Caption {caption_id} was not shown in this round")
 
             # Load caption with author relationship

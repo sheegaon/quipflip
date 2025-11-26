@@ -28,7 +28,7 @@ async def test_create_player(test_app):
     assert "refresh_token" in data
     assert "username" in data
     settings = get_settings()
-    assert data["wallet"] == settings.starting_balance
+    assert data["wallet"] == settings.qf_starting_wallet
     assert data["vault"] == 0
     assert "message" in data
     assert data["username"]

@@ -1,10 +1,9 @@
-"""Game API router for Meme Mint - vote and caption rounds."""
+"""Rounds API router for Meme Mint - vote and caption rounds."""
 
 import logging
-from functools import partial
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Path
+from fastapi import APIRouter, Depends, HTTPException, Path, Request, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.database import get_db
@@ -39,14 +38,21 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# Use Meme Mint authentication instead of the default (QF)
-get_mm_player = partial(get_current_player, game_type=GameType.MM)
+
+# Use Meme Mint authentication
+async def get_mm_player(
+        request: Request,
+        authorization: str | None = Header(default=None, alias="Authorization"),
+        db: AsyncSession = Depends(get_db),
+):
+    # Wrapper keeps dependency async so FastAPI awaits it (partial would not)
+    return await get_current_player(request=request, game_type=GameType.MM, authorization=authorization, db=db)
 
 
 @router.post("/vote", response_model=StartVoteRoundResponse)
 async def start_vote_round(
-    player: MMPlayer = Depends(get_mm_player),
-    db: AsyncSession = Depends(get_db),
+        player: MMPlayer = Depends(get_mm_player),
+        db: AsyncSession = Depends(get_db),
 ):
     """Start a vote round.
 
@@ -66,8 +72,10 @@ async def start_vote_round(
         from sqlalchemy import select
         from backend.models.mm.caption import MMCaption
 
+        caption_ids = [UUID(str(cid)) for cid in round_obj.caption_ids_shown]
+
         stmt = select(MMCaption).where(
-            MMCaption.caption_id.in_(round_obj.caption_ids_shown)
+            MMCaption.caption_id.in_(caption_ids)
         )
         result = await db.execute(stmt)
         captions_map = {c.caption_id: c for c in result.scalars().all()}
@@ -78,7 +86,7 @@ async def start_vote_round(
                 'caption_id': str(cid),
                 'text': captions_map[cid].text,
             }
-            for cid in round_obj.caption_ids_shown
+            for cid in caption_ids
             if cid in captions_map
         ]
 
@@ -107,10 +115,10 @@ async def start_vote_round(
 
 @router.post("/vote/{round_id}/submit", response_model=SubmitVoteResponse)
 async def submit_vote(
-    round_id: UUID = Path(...),
-    request: SubmitVoteRequest = ...,
-    player: MMPlayer = Depends(get_mm_player),
-    db: AsyncSession = Depends(get_db),
+        round_id: UUID = Path(...),
+        request: SubmitVoteRequest = ...,
+        player: MMPlayer = Depends(get_mm_player),
+        db: AsyncSession = Depends(get_db),
 ):
     """Submit a vote for a caption in a vote round.
 
@@ -159,9 +167,9 @@ async def submit_vote(
 
 @router.post("/caption", response_model=SubmitCaptionResponse)
 async def submit_caption(
-    request: SubmitCaptionRequest = ...,
-    player: MMPlayer = Depends(get_mm_player),
-    db: AsyncSession = Depends(get_db),
+        request: SubmitCaptionRequest = ...,
+        player: MMPlayer = Depends(get_mm_player),
+        db: AsyncSession = Depends(get_db),
 ):
     """Submit a caption for an image.
 
@@ -208,8 +216,8 @@ async def submit_caption(
 
 @router.get("/rounds/available", response_model=RoundAvailability)
 async def get_round_availability(
-    player: MMPlayer = Depends(get_mm_player),
-    db: AsyncSession = Depends(get_db),
+        player: MMPlayer = Depends(get_mm_player),
+        db: AsyncSession = Depends(get_db),
 ):
     """Get current round availability and game constants."""
     config_service = MMSystemConfigService(db)
@@ -232,7 +240,7 @@ async def get_round_availability(
     # Simple checks for now
     can_vote = player.wallet >= round_entry_cost
     can_submit_caption = (
-        free_captions_remaining > 0 or player.wallet >= caption_submission_cost
+            free_captions_remaining > 0 or player.wallet >= caption_submission_cost
     )
 
     return RoundAvailability(
@@ -248,9 +256,9 @@ async def get_round_availability(
 
 @router.get("/rounds/{round_id}", response_model=RoundDetails)
 async def get_round_details(
-    round_id: UUID = Path(...),
-    player: MMPlayer = Depends(get_mm_player),
-    db: AsyncSession = Depends(get_db),
+        round_id: UUID = Path(...),
+        player: MMPlayer = Depends(get_mm_player),
+        db: AsyncSession = Depends(get_db),
 ):
     """Get details for a specific round."""
     game_service = MMGameService(db)
@@ -263,8 +271,10 @@ async def get_round_details(
     from sqlalchemy import select
     from backend.models.mm.caption import MMCaption
 
+    caption_ids = [UUID(str(cid)) for cid in round_obj.caption_ids_shown]
+
     stmt = select(MMCaption).where(
-        MMCaption.caption_id.in_(round_obj.caption_ids_shown)
+        MMCaption.caption_id.in_(caption_ids)
     )
     result = await db.execute(stmt)
     captions_map = {c.caption_id: c for c in result.scalars().all()}
@@ -274,7 +284,7 @@ async def get_round_details(
             'caption_id': str(cid),
             'text': captions_map[cid].text,
         }
-        for cid in round_obj.caption_ids_shown
+        for cid in caption_ids
         if cid in captions_map
     ]
 

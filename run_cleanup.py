@@ -20,7 +20,7 @@ import asyncio
 import sys
 import argparse
 from backend.database import AsyncSessionLocal
-from backend.services import CleanupService
+from backend.services import QFCleanupService
 
 
 async def run_cleanup(
@@ -46,7 +46,7 @@ async def run_cleanup(
     """
     async with AsyncSessionLocal() as session:
         try:
-            cleanup_service = CleanupService(session)
+            cleanup_service = QFCleanupService(session)
 
             # Determine which tasks to run
             run_all = not (test_players_only or orphaned_rounds_only or tokens_only)

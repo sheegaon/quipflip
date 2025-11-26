@@ -32,7 +32,7 @@ async def _get_player_balance(player, db: AsyncSession) -> PlayerBalance:
     config_service = MMSystemConfigService(db)
     daily_bonus_service = MMDailyBonusService(db, config_service)
     starting_balance = await config_service.get_config_value(
-        "mm_starting_wallet_override", default=settings.starting_balance
+        "mm_starting_wallet_override", default=settings.mm_starting_wallet
     )
     daily_bonus_amount = await config_service.get_config_value(
         "mm_daily_bonus_amount", default=settings.daily_bonus_amount

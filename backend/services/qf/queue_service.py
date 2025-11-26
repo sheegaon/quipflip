@@ -13,7 +13,7 @@ PROMPT_QUEUE = "queue:prompts"
 PHRASESET_QUEUE = "queue:phrasesets"
 
 
-class QueueService:
+class QFQueueService:
     """Service for managing game queues."""
 
     @staticmethod
@@ -111,7 +111,7 @@ class QueueService:
     @staticmethod
     def is_copy_discount_active() -> bool:
         """Check if copy discount should be applied."""
-        waiting = QueueService.get_prompt_rounds_waiting()
+        waiting = QFQueueService.get_prompt_rounds_waiting()
         active = waiting > settings.copy_discount_threshold
         if active:
             logger.info(f"Copy discount active: {waiting} quips waiting")
@@ -122,7 +122,7 @@ class QueueService:
         """Get current copy cost (with discount if applicable)."""
         return (
             settings.copy_cost_discount
-            if QueueService.is_copy_discount_active()
+            if QFQueueService.is_copy_discount_active()
             else settings.copy_cost_normal
         )
 
@@ -140,9 +140,9 @@ class QueueService:
     @staticmethod
     def has_prompt_rounds_available() -> bool:
         """Check if prompt rounds available for copy rounds."""
-        return QueueService.get_prompt_rounds_waiting() > 0
+        return QFQueueService.get_prompt_rounds_waiting() > 0
 
     @staticmethod
     def has_phrasesets_available() -> bool:
         """Check if phrasesets available for voting."""
-        return QueueService.get_phrasesets_waiting() > 0
+        return QFQueueService.get_phrasesets_waiting() > 0

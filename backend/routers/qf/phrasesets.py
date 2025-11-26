@@ -17,7 +17,7 @@ from backend.schemas.phraseset import (
     PracticePhraseset,
 )
 from backend.services import TransactionService
-from backend.services.qf import VoteService, PhrasesetService
+from backend.services.qf import QFVoteService, PhrasesetService
 from backend.utils.exceptions import RoundExpiredError, AlreadyVotedError
 from backend.utils import ensure_utc
 from uuid import UUID
@@ -86,7 +86,7 @@ async def submit_vote(
     else:
         # NORMAL MODE: Use regular service
         transaction_service = TransactionService(db)
-        vote_service = VoteService(db)
+        vote_service = QFVoteService(db)
 
         # Get player's active vote round
         if not player.active_round_id:
@@ -154,7 +154,7 @@ async def get_phraseset_results(
 ):
     """Get voting results for a phraseset (triggers prize collection on first view)."""
     transaction_service = TransactionService(db)
-    vote_service = VoteService(db)
+    vote_service = QFVoteService(db)
 
     try:
         results = await vote_service.get_phraseset_results(

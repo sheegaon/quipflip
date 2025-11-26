@@ -37,14 +37,14 @@ from backend.services.tutorial_service import TutorialService
 from backend.utils import ensure_utc
 from backend.config import get_settings
 from backend.routers.player_router_base import PlayerRouterBase
-from backend.services.qf.player_service import PlayerService
-from backend.services.qf.round_service import RoundService
+from backend.services.qf.player_service import QFPlayerService
+from backend.services.qf.round_service import QFRoundService
 from backend.services.qf.phraseset_service import PhrasesetService
-from backend.services.qf.statistics_service import StatisticsService
-from backend.services.qf.scoring_service import ScoringService, LEADERBOARD_ROLES
-from backend.services.qf.vote_service import VoteService
-from backend.services.qf.cleanup_service import CleanupService
-from backend.services.qf.queue_service import QueueService
+from backend.services.qf.statistics_service import QFStatisticsService
+from backend.services.qf.scoring_service import QFScoringService, LEADERBOARD_ROLES
+from backend.services.qf.vote_service import QFVoteService
+from backend.services.qf.cleanup_service import QFCleanupService
+from backend.services.qf.queue_service import QFQueueService
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -61,12 +61,12 @@ class QFPlayerRouter(PlayerRouterBase):
     @property
     def player_service_class(self):
         """Return the QF player service class."""
-        return PlayerService
+        return QFPlayerService
 
     @property
     def cleanup_service_class(self):
         """Return the QF cleanup service class."""
-        return CleanupService
+        return QFCleanupService
 
     async def get_balance(self, player: QFPlayer, db: AsyncSession) -> PlayerBalance:
         """Get player balance and status."""
@@ -155,7 +155,7 @@ class QFPlayerRouter(PlayerRouterBase):
             db: AsyncSession = Depends(get_db),
         ):
             """Get comprehensive player statistics including win rates and earnings."""
-            stats_service = StatisticsService(db)
+            stats_service = QFStatisticsService(db)
             stats = await stats_service.get_player_statistics(player.player_id)
             return stats
 
@@ -213,7 +213,7 @@ class QFPlayerRouter(PlayerRouterBase):
 # Helper functions for QF-specific endpoints
 async def _get_player_balance(player: QFPlayer, db: AsyncSession) -> PlayerBalance:
     """Get player balance and status - shared helper function."""
-    player_service = PlayerService(db)
+    player_service = QFPlayerService(db)
 
     # Get daily bonus status
     bonus_available = await player_service.is_daily_bonus_available(player)
@@ -227,7 +227,7 @@ async def _get_player_balance(player: QFPlayer, db: AsyncSession) -> PlayerBalan
         email=player.email,
         wallet=player.wallet,
         vault=player.vault,
-        starting_balance=settings.starting_balance,
+        starting_balance=settings.qf_starting_wallet,
         daily_bonus_available=bonus_available,
         daily_bonus_amount=settings.daily_bonus_amount,
         last_login_date=ensure_utc(player.last_login_date),
@@ -286,7 +286,7 @@ async def _get_current_round(player: QFPlayer, db: AsyncSession) -> CurrentRound
     grace_cutoff = expires_at_utc + timedelta(seconds=settings.grace_period_seconds)
 
     if datetime.now(UTC) > grace_cutoff:
-        round_service = RoundService(db)
+        round_service = QFRoundService(db)
         transaction_service = TransactionService(db)
         await round_service.handle_timeout(round.round_id, transaction_service)
         await db.refresh(player)
@@ -442,9 +442,9 @@ async def _get_dashboard_data(player: QFPlayer, db: AsyncSession) -> DashboardDa
 
         # Round availability needs services
         try:
-            player_service = PlayerService(db)
-            round_service = RoundService(db)
-            vote_service = VoteService(db)
+            player_service = QFPlayerService(db)
+            round_service = QFRoundService(db)
+            vote_service = QFVoteService(db)
 
             prompts_waiting = await round_service.get_available_prompts_count(player.player_id)
             phrasesets_waiting = await vote_service.count_available_phrasesets_for_player(player.player_id)
@@ -472,8 +472,8 @@ async def _get_dashboard_data(player: QFPlayer, db: AsyncSession) -> DashboardDa
                 can_vote=can_vote,
                 prompts_waiting=prompts_waiting,
                 phrasesets_waiting=phrasesets_waiting,
-                copy_discount_active=QueueService.is_copy_discount_active(),
-                copy_cost=QueueService.get_copy_cost(),
+                copy_discount_active=QFQueueService.is_copy_discount_active(),
+                copy_cost=QFQueueService.get_copy_cost(),
                 current_round_id=player.active_round_id,
                 # Game constants from config
                 prompt_cost=settings.prompt_cost,
@@ -508,7 +508,7 @@ async def _get_dashboard_data(player: QFPlayer, db: AsyncSession) -> DashboardDa
 
 async def _get_leaderboard_data(player: QFPlayer, db: AsyncSession, period: str) -> LeaderboardResponse:
     """Get leaderboard data for the specified period."""
-    scoring_service = ScoringService(db)
+    scoring_service = QFScoringService(db)
     
     if period == "weekly":
         role_data, generated_at = await scoring_service.get_weekly_leaderboard_for_player(

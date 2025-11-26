@@ -22,7 +22,7 @@ class PlayerError(PlayerServiceError):
     """Raised when IR player service fails."""
 
 
-class PlayerService(PlayerServiceBase):
+class IRPlayerService(PlayerServiceBase):
     """Service for managing IR player accounts and wallets."""
 
     @property

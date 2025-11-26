@@ -1,8 +1,8 @@
 """Initial Reaction (IR) game services."""
 
-from backend.services.ir.player_service import PlayerService, PlayerError
+from backend.services.ir.player_service import IRPlayerService, PlayerError
 
 __all__ = [
-    "PlayerService",
+    "IRPlayerService",
     "PlayerError",
 ]

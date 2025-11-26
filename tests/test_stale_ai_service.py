@@ -109,8 +109,8 @@ class TestFindStalePrompts:
         settings = get_settings()
 
         # Create a player for the prompt
-        from backend.services import PlayerService
-        player_service = PlayerService(db_session)
+        from backend.services import QFPlayerService
+        player_service = QFPlayerService(db_session)
         player = await player_service.create_player(
             username="test_user",
             email="test@example.com",
@@ -142,8 +142,8 @@ class TestFindStalePrompts:
     async def test_exclude_recent_prompts(self, db_session, stale_ai_service):
         """Should exclude prompts newer than the stale threshold."""
         # Create a player
-        from backend.services import PlayerService
-        player_service = PlayerService(db_session)
+        from backend.services import QFPlayerService
+        player_service = QFPlayerService(db_session)
         player = await player_service.create_player(
             username="test_user2",
             email="test2@example.com",
@@ -174,8 +174,8 @@ class TestFindStalePrompts:
     @pytest.mark.asyncio
     async def test_exclude_prompts_with_phraseset(self, db_session, stale_ai_service):
         """Should exclude prompts that already have a phraseset."""
-        from backend.services import PlayerService
-        player_service = PlayerService(db_session)
+        from backend.services import QFPlayerService
+        player_service = QFPlayerService(db_session)
         player = await player_service.create_player(
             username="test_user3",
             email="test3@example.com",
@@ -221,8 +221,8 @@ class TestFindStalePrompts:
     @pytest.mark.asyncio
     async def test_exclude_prompts_already_copied_by_stale_ai(self, db_session, stale_ai_service):
         """Should exclude prompts already copied by stale AI (no N+1 query)."""
-        from backend.services import PlayerService
-        player_service = PlayerService(db_session)
+        from backend.services import QFPlayerService
+        player_service = QFPlayerService(db_session)
         player = await player_service.create_player(
             username="test_user4",
             email="test4@example.com",
@@ -414,8 +414,8 @@ class TestStaleAICycleIntegration:
     @pytest.mark.asyncio
     async def test_cycle_processes_stale_prompts(self, db_session, stale_ai_service):
         """Should process stale prompts and generate copies."""
-        from backend.services import PlayerService
-        player_service = PlayerService(db_session)
+        from backend.services import QFPlayerService
+        player_service = QFPlayerService(db_session)
         player = await player_service.create_player(
             username="cycle_test_user",
             email="cycle_test@example.com",
@@ -453,8 +453,8 @@ class TestStaleAICycleIntegration:
     @pytest.mark.asyncio
     async def test_cycle_handles_errors_gracefully(self, db_session, stale_ai_service):
         """Should handle errors without crashing the cycle."""
-        from backend.services import PlayerService
-        player_service = PlayerService(db_session)
+        from backend.services import QFPlayerService
+        player_service = QFPlayerService(db_session)
         player = await player_service.create_player(
             username="error_test_user",
             email="error_test@example.com",
@@ -496,8 +496,8 @@ class TestMetricsTracking:
     @pytest.mark.asyncio
     async def test_metrics_recorded_on_success(self, db_session, stale_ai_service):
         """Should record metrics when copy generation succeeds."""
-        from backend.services import PlayerService
-        player_service = PlayerService(db_session)
+        from backend.services import QFPlayerService
+        player_service = QFPlayerService(db_session)
         player = await player_service.create_player(
             username="metrics_test_user",
             email="metrics_test@example.com",
@@ -543,8 +543,8 @@ class TestMetricsTracking:
     @pytest.mark.asyncio
     async def test_metrics_recorded_on_failure(self, db_session, stale_ai_service):
         """Should record metrics when copy generation fails."""
-        from backend.services import PlayerService
-        player_service = PlayerService(db_session)
+        from backend.services import QFPlayerService
+        player_service = QFPlayerService(db_session)
         player = await player_service.create_player(
             username="fail_metrics_user",
             email="fail_metrics@example.com",

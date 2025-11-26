@@ -10,9 +10,9 @@ from backend.config import get_settings
 from backend.models.qf.player import QFPlayer
 from backend.models.qf.round import Round
 from backend.models.qf.phraseset import Phraseset
-from backend.services import PlayerService
+from backend.services import QFPlayerService
 from backend.services import TransactionService
-from backend.services import VoteService
+from backend.services import QFVoteService
 
 
 settings = get_settings()
@@ -40,12 +40,12 @@ class TestGuestOutstandingRoundsLimit:
             # This tests the logic without needing to create full phrasesets
             from unittest.mock import AsyncMock, patch
 
-            with patch.object(PlayerService, 'get_outstanding_prompts_count', new_callable=AsyncMock) as mock_count:
+            with patch.object(QFPlayerService, 'get_outstanding_prompts_count', new_callable=AsyncMock) as mock_count:
                 # Set mock to return the guest limit for outstanding prompts
                 mock_count.return_value = settings.guest_max_outstanding_quips
 
                 # Try to start a round (should fail for guest at the configured limit)
-                player_service = PlayerService(db_session)
+                player_service = QFPlayerService(db_session)
                 can_start, error = await player_service.can_start_prompt_round(player)
                 assert not can_start
                 assert error == "max_outstanding_quips"
@@ -80,7 +80,7 @@ class TestGuestOutstandingRoundsLimit:
             assert not player.is_guest
 
             # Check that can_start_prompt_round uses settings.max_outstanding_quips (10) for regular players
-            player_service = PlayerService(db_session)
+            player_service = QFPlayerService(db_session)
 
             # Artificially create 9 outstanding prompts by directly manipulating the count
             # (We can't actually create 9 real rounds easily in tests)
@@ -125,7 +125,7 @@ class TestGuestVoteLockout:
             assert player.vote_lockout_until > datetime.now(UTC)
 
             # Verify player cannot start a vote round
-            player_service = PlayerService(db_session)
+            player_service = QFPlayerService(db_session)
             can_start, error = await player_service.can_start_vote_round(player)
             assert not can_start
             assert error == "vote_lockout_active"
@@ -163,7 +163,7 @@ class TestGuestVoteLockout:
             assert player.vote_lockout_until < datetime.now(UTC)
 
             # Refresh lockout state and ensure it was cleared
-            player_service = PlayerService(db_session)
+            player_service = QFPlayerService(db_session)
             cleared = await player_service.refresh_vote_lockout_state(player)
             assert cleared
             can_start, error = await player_service.can_start_vote_round(player)
@@ -208,7 +208,7 @@ class TestGuestVoteLockout:
             await db_session.refresh(player)
 
             # Regular player should still be able to start vote round (lockout logic only applies to guests)
-            player_service = PlayerService(db_session)
+            player_service = QFPlayerService(db_session)
             can_start, error = await player_service.can_start_vote_round(player)
 
             # Should be able to start (or fail for other reasons, but NOT vote_lockout_active)
@@ -340,7 +340,7 @@ class TestGuestVoteLockout:
             vote_round = await db_session.get(Round, vote_round.round_id)
             phraseset = await db_session.get(Phraseset, phraseset.phraseset_id)
 
-            vote_service = VoteService(db_session)
+            vote_service = QFVoteService(db_session)
             transaction_service = TransactionService(db_session)
 
             await vote_service.submit_vote(

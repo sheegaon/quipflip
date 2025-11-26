@@ -4,7 +4,7 @@ import uuid
 from backend.services import IRPlayerService
 from backend.services import IRBackronymSetService
 from backend.services import IRVoteService
-from backend.services import IRTransactionService
+from backend.services import TransactionService
 from backend.services import IRScoringService
 from backend.services import IRWordService
 from backend.utils.passwords import hash_password
@@ -58,7 +58,7 @@ async def test_ir_create_backronym_set(db_session, ir_player_factory):
 async def test_ir_submit_backronym_entry(db_session, ir_player_factory):
     """Test submitting a backronym entry."""
     set_service = IRBackronymSetService(db_session)
-    transaction_service = IRTransactionService(db_session)
+    transaction_service = TransactionService(db_session)
     word_service = IRWordService(db_session)
 
     player = await ir_player_factory()
@@ -272,10 +272,10 @@ async def test_ir_non_participant_vote_cap(db_session, ir_player_factory):
 @pytest.mark.asyncio
 async def test_ir_player_insufficient_balance(db_session, ir_player_factory):
     """Test that player cannot debit more than their balance."""
-    from backend.services import IRTransactionService
+    from backend.services import TransactionService
 
     player = await ir_player_factory()
-    transaction_service = IRTransactionService(db_session)
+    transaction_service = TransactionService(db_session)
 
     # Set balance to less than entry cost
     player.wallet = 50

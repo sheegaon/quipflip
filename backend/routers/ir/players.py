@@ -29,7 +29,7 @@ from backend.schemas.player import (
 from backend.routers.ir.schemas import IRDashboardResponse, IRDashboardPlayerSummary
 from backend.services import AuthService, AuthError
 from backend.utils.model_registry import GameType
-from backend.services.ir import PlayerService
+from backend.services.ir import IRPlayerService
 from backend.utils.cookies import (
     clear_auth_cookies,
     clear_refresh_cookie,
@@ -282,7 +282,7 @@ async def get_current_player_info(
     db: AsyncSession = Depends(get_db),
 ) -> PlayerBalance:
     """Get current authenticated IR player information using shared schema."""
-    player_service = PlayerService(db)
+    player_service = IRPlayerService(db)
     
     # Check if daily bonus is available (IR may not have this feature, but keeping consistent)
     # For now, we'll assume IR doesn't have daily bonus - services can override this
@@ -369,7 +369,7 @@ async def get_player(
 ) -> PlayerBalance:
     """Get IR player information by ID using shared schema."""
 
-    player_service = PlayerService(db)
+    player_service = IRPlayerService(db)
     player = await player_service.get_player_by_id(player_id)
     if not player:
         raise HTTPException(status_code=404, detail="Player not found")

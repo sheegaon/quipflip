@@ -10,7 +10,7 @@ from backend.models.qf.player import QFPlayer
 from backend.models.qf.round import Round
 from backend.models.qf.phraseset import Phraseset
 from backend.models.qf.vote import Vote
-from backend.services import ScoringService
+from backend.services import QFScoringService
 from backend.config import get_settings
 
 settings = get_settings()
@@ -155,7 +155,7 @@ class TestPayoutCalculation:
     async def test_calculate_payouts_basic(self, db_session, finalized_phraseset_with_votes):
         """Should calculate payouts based on vote distribution."""
         phraseset = finalized_phraseset_with_votes["phraseset"]
-        scoring_service = ScoringService(db_session)
+        scoring_service = QFScoringService(db_session)
 
         payouts = await scoring_service.calculate_payouts(phraseset)
 
@@ -181,7 +181,7 @@ class TestPayoutCalculation:
     async def test_payouts_proportional_to_votes(self, db_session, finalized_phraseset_with_votes):
         """Should award more to phrases with more incorrect votes."""
         phraseset = finalized_phraseset_with_votes["phraseset"]
-        scoring_service = ScoringService(db_session)
+        scoring_service = QFScoringService(db_session)
 
         payouts = await scoring_service.calculate_payouts(phraseset)
 
@@ -244,7 +244,7 @@ class TestPayoutCalculation:
         db_session.add(phraseset)
         await db_session.commit()
 
-        scoring_service = ScoringService(db_session)
+        scoring_service = QFScoringService(db_session)
         payouts = await scoring_service.calculate_payouts(phraseset)
 
         # With no votes, should split evenly or use default distribution

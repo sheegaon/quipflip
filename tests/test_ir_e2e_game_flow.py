@@ -1,7 +1,7 @@
 """End-to-end tests for complete IR game flows."""
 import pytest
 import uuid
-from backend.services import IRAuthService
+from backend.services import AuthService
 from backend.services import IRBackronymSetService
 from backend.services import IRVoteService
 from backend.services import IRWordService
@@ -13,7 +13,7 @@ from backend.services import IRStatisticsService
 async def test_ir_complete_game_flow(db_session):
     """Test complete IR game flow from start to finish."""
     # Services
-    auth_service = IRAuthService(db_session)
+    auth_service = AuthService(db_session)
     set_service = IRBackronymSetService(db_session)
     vote_service = IRVoteService(db_session)
     word_service = IRWordService(db_session)
@@ -104,7 +104,7 @@ async def test_ir_complete_game_flow(db_session):
 @pytest.mark.asyncio
 async def test_ir_guest_player_flow(db_session):
     """Test IR game flow with guest player."""
-    auth_service = IRAuthService(db_session)
+    auth_service = AuthService(db_session)
     set_service = IRBackronymSetService(db_session)
     word_service = IRWordService(db_session)
 
@@ -149,7 +149,7 @@ async def test_ir_daily_bonus_flow(db_session):
     from backend.services import IRDailyBonusService
     from datetime import timedelta
 
-    auth_service = IRAuthService(db_session)
+    auth_service = AuthService(db_session)
     bonus_service = IRDailyBonusService(db_session)
 
     # 1. Register player
@@ -199,7 +199,7 @@ async def test_ir_daily_bonus_flow(db_session):
 @pytest.mark.asyncio
 async def test_ir_self_vote_prevention(db_session):
     """Test that players cannot vote for their own entries."""
-    auth_service = IRAuthService(db_session)
+    auth_service = AuthService(db_session)
     set_service = IRBackronymSetService(db_session)
     vote_service = IRVoteService(db_session)
     word_service = IRWordService(db_session)
@@ -240,11 +240,11 @@ async def test_ir_insufficient_balance_blocking(db_session):
     """Test that players with insufficient balance cannot enter."""
     from sqlalchemy import update
     from backend.models.ir.player import IRPlayer
-    from backend.services import IRTransactionService
+    from backend.services import TransactionService
 
-    auth_service = IRAuthService(db_session)
+    auth_service = AuthService(db_session)
     set_service = IRBackronymSetService(db_session)
-    transaction_service = IRTransactionService(db_session)
+    transaction_service = TransactionService(db_session)
 
     # 1. Create player
     player, _ = await auth_service.register(

@@ -291,7 +291,7 @@ async def cleanup_cycle():
     - Old revoked tokens
     """
     from backend.database import AsyncSessionLocal
-    from backend.services.qf.cleanup_service import CleanupService
+    from backend.services.qf.cleanup_service import QFCleanupService
 
     # Initial startup delay
     startup_delay = 120
@@ -306,7 +306,7 @@ async def cleanup_cycle():
     while True:
         try:
             async with AsyncSessionLocal() as db:
-                cleanup_service = CleanupService(db)
+                cleanup_service = QFCleanupService(db)
                 await cleanup_service.run_all_cleanup_tasks()
 
         except Exception as e:

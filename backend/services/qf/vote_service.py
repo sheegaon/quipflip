@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 
-class VoteService:
+class QFVoteService:
     """Service for managing voting."""
 
     _finalization_lock: asyncio.Lock | None = None
@@ -885,8 +885,8 @@ class VoteService:
             auto_commit: If True, commits the changes. If False, caller is responsible for commit.
         """
         # Calculate payouts
-        from backend.services.qf import ScoringService
-        scoring_service = ScoringService(self.db)
+        from backend.services.qf import QFScoringService
+        scoring_service = QFScoringService(self.db)
         payouts = await scoring_service.calculate_payouts(phraseset)
 
         # Get round costs for split payout calculation - fetch all in one query
@@ -1065,8 +1065,8 @@ class VoteService:
             role = "vote"
             phrase = vote.voted_phrase
 
-        from backend.services.qf import ScoringService
-        scoring_service = ScoringService(self.db)
+        from backend.services.qf import QFScoringService
+        scoring_service = QFScoringService(self.db)
         payouts = await scoring_service.calculate_payouts(phraseset)
 
         # Get player payout

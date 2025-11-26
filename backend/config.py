@@ -58,8 +58,9 @@ class Settings(BaseSettings):
     ir_rapid_voting_timer_minutes: int = 2  # Rapid mode: minutes for voting phase before AI fills votes
     ir_standard_voting_timer_minutes: int = 30  # Standard mode: minutes for voting phase before AI fills votes
 
-    # Game Constants (all values in whole flipcoins)
-    starting_balance: int = 5000
+    # Game Constants (all values in whole flipcoins/memecoins)
+    qf_starting_wallet: int = 5000
+    mm_starting_wallet: int = 500
     daily_bonus_amount: int = 100
     prompt_cost: int = 100
     copy_cost_normal: int = 50

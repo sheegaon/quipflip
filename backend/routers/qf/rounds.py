@@ -1,5 +1,5 @@
 """Rounds API router."""
-from fastapi import APIRouter, Depends, HTTPException, Path
+from fastapi import APIRouter, Depends, HTTPException, Path, Request, Header
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
@@ -22,8 +22,8 @@ from backend.schemas.round import (
     AbandonRoundResponse,
 )
 from backend.schemas.hint import HintResponse
-from backend.services import TransactionService
-from backend.services.qf import PlayerService, RoundService, VoteService, QueueService, PartySessionService
+from backend.services import TransactionService, GameType
+from backend.services.qf import QFPlayerService, QFRoundService, QFVoteService, QFQueueService, PartySessionService
 from backend.services.ai.ai_service import AICopyError
 from backend.config import get_settings
 from backend.utils import ensure_utc
@@ -41,6 +41,16 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 router = APIRouter()
+
+
+# Use Quipflip authentication
+async def get_qf_player(
+        request: Request,
+        authorization: str | None = Header(default=None, alias="Authorization"),
+        db: AsyncSession = Depends(get_db),
+):
+    # Wrapper keeps dependency async so FastAPI awaits it (partial would not)
+    return await get_current_player(request=request, game_type=GameType.QF, authorization=authorization, db=db)
 
 
 async def _player_can_view_prompt_round(
@@ -67,13 +77,13 @@ async def _player_can_view_prompt_round(
 
 @router.post("/prompt", response_model=StartPromptRoundResponse)
 async def start_prompt_round(
-    player: QFPlayer = Depends(get_current_player),
+    player: QFPlayer = Depends(get_qf_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Start a prompt round."""
-    player_service = PlayerService(db)
+    player_service = QFPlayerService(db)
     transaction_service = TransactionService(db)
-    round_service = RoundService(db)
+    round_service = QFRoundService(db)
 
     # Check if can start
     can_start, error = await player_service.can_start_prompt_round(player)
@@ -103,15 +113,15 @@ async def start_prompt_round(
 @router.post("/copy", response_model=StartCopyRoundResponse)
 async def start_copy_round(
     prompt_round_id: UUID | None = None,
-    player: QFPlayer = Depends(get_current_player),
+    player: QFPlayer = Depends(get_qf_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Start a copy round. If prompt_round_id is provided, start a second copy for that prompt."""
     logger.info(f"[API /rounds/copy] Request from player {player.player_id}, second_copy={prompt_round_id is not None}")
 
-    player_service = PlayerService(db)
+    player_service = QFPlayerService(db)
     transaction_service = TransactionService(db)
-    round_service = RoundService(db)
+    round_service = QFRoundService(db)
 
     # Ensure prompt queue is populated from database before checking availability (for first copy)
     if not prompt_round_id:
@@ -143,7 +153,7 @@ async def start_copy_round(
             prompt_round_id=round_object.prompt_round_id,
             expires_at=ensure_utc(round_object.expires_at),
             cost=round_object.cost,
-            discount_active=QueueService.is_copy_discount_active() if not is_second_copy else False,
+            discount_active=QFQueueService.is_copy_discount_active() if not is_second_copy else False,
             is_second_copy=is_second_copy,
         )
     except NoPromptsAvailableError as e:
@@ -156,13 +166,13 @@ async def start_copy_round(
 
 @router.post("/vote", response_model=StartVoteRoundResponse)
 async def start_vote_round(
-    player: QFPlayer = Depends(get_current_player),
+    player: QFPlayer = Depends(get_qf_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Start a vote round."""
-    player_service = PlayerService(db)
+    player_service = QFPlayerService(db)
     transaction_service = TransactionService(db)
-    vote_service = VoteService(db)
+    vote_service = QFVoteService(db)
 
     # Check if can start
     await player_service.refresh_vote_lockout_state(player)
@@ -195,7 +205,7 @@ async def start_vote_round(
 async def submit_phrase(
     round_id: UUID = Path(...),
     request: SubmitPhraseRequest = ...,
-    player: QFPlayer = Depends(get_current_player),
+    player: QFPlayer = Depends(get_qf_player),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -301,7 +311,7 @@ async def submit_phrase(
                 raise HTTPException(status_code=404, detail="Round not found")
 
             transaction_service = TransactionService(db)
-            round_service = RoundService(db)
+            round_service = QFRoundService(db)
 
             second_copy_info = {}
             if round_obj.round_type == "prompt":
@@ -337,13 +347,13 @@ async def submit_phrase(
 @router.post("/{round_id}/flag", response_model=FlagCopyRoundResponse)
 async def flag_copy_round(
     round_id: UUID = Path(...),
-    player: QFPlayer = Depends(get_current_player),
+    player: QFPlayer = Depends(get_qf_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Flag an active copy round and trigger administrative review."""
 
     transaction_service = TransactionService(db)
-    round_service = RoundService(db)
+    round_service = QFRoundService(db)
 
     try:
         flag = await round_service.flag_copy_round(round_id, player, transaction_service)
@@ -370,13 +380,13 @@ async def flag_copy_round(
 @router.post("/{round_id}/abandon", response_model=AbandonRoundResponse)
 async def abandon_round(
     round_id: UUID = Path(...),
-    player: QFPlayer = Depends(get_current_player),
+    player: QFPlayer = Depends(get_qf_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Abandon an active prompt, copy, or vote round."""
 
     transaction_service = TransactionService(db)
-    round_service = RoundService(db)
+    round_service = QFRoundService(db)
 
     try:
         round_object, refund_amount, penalty_kept = await round_service.abandon_round(
@@ -403,13 +413,13 @@ async def abandon_round(
 
 @router.get("/available", response_model=RoundAvailability)
 async def get_rounds_available(
-    player: QFPlayer = Depends(get_current_player),
+    player: QFPlayer = Depends(get_qf_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Get which round types are currently available."""
-    player_service = PlayerService(db)
-    round_service = RoundService(db)
-    vote_service = VoteService(db)
+    player_service = QFPlayerService(db)
+    round_service = QFRoundService(db)
+    vote_service = QFVoteService(db)
 
     # Get prompts waiting count excluding player's own prompts
     prompts_waiting = await round_service.get_available_prompts_count(player.player_id)
@@ -440,8 +450,8 @@ async def get_rounds_available(
         can_vote=can_vote,
         prompts_waiting=prompts_waiting,
         phrasesets_waiting=phrasesets_waiting,
-        copy_discount_active=QueueService.is_copy_discount_active(),
-        copy_cost=QueueService.get_copy_cost(),
+        copy_discount_active=QFQueueService.is_copy_discount_active(),
+        copy_cost=QFQueueService.get_copy_cost(),
         current_round_id=player.active_round_id,
         # Game constants from config
         prompt_cost=settings.prompt_cost,
@@ -454,7 +464,7 @@ async def get_rounds_available(
 @router.get("/{round_id}/hints", response_model=HintResponse)
 async def get_copy_round_hints(
     round_id: UUID = Path(...),
-    player: QFPlayer = Depends(get_current_player),
+    player: QFPlayer = Depends(get_qf_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Return AI-generated hints for an active copy round.
@@ -472,7 +482,7 @@ async def get_copy_round_hints(
     if round_object.status != "active":
         raise HTTPException(status_code=400, detail="Hints are only available for active copy rounds")
 
-    round_service = RoundService(db)
+    round_service = QFRoundService(db)
     transaction_service = TransactionService(db)
 
     try:
@@ -506,7 +516,7 @@ async def get_copy_round_hints(
 @router.get("/{round_id}", response_model=RoundDetails)
 async def get_round_details(
     round_id: UUID = Path(...),
-    player: QFPlayer = Depends(get_current_player),
+    player: QFPlayer = Depends(get_qf_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Get round details."""

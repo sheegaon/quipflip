@@ -15,7 +15,7 @@ from backend.models.qf.flagged_prompt import FlaggedPrompt
 from backend.models.qf.phraseset import Phraseset
 from backend.models.qf.player_abandoned_prompt import PlayerAbandonedPrompt
 from backend.services.transaction_service import TransactionService
-from backend.services.qf.queue_service import QueueService
+from backend.services.qf.queue_service import QFQueueService
 from backend.services.qf.phraseset_activity_service import ActivityService
 from backend.config import get_settings
 from backend.utils import ensure_utc
@@ -42,7 +42,7 @@ from backend.services.qf.round_service_helpers import (
 logger = logging.getLogger(__name__)
 
 
-class RoundService:
+class QFRoundService:
     """Service for managing game rounds."""
 
     AVAILABLE_PROMPTS_CACHE_TTL_SECONDS = 15
@@ -205,7 +205,7 @@ class RoundService:
         player.active_round_id = None
 
         # Add to queue
-        QueueService.add_prompt_round_to_queue(round_object.round_id)
+        QFQueueService.add_prompt_round_to_queue(round_object.round_id)
 
         await self.activity_service.record_activity(
             activity_type="prompt_submitted",
@@ -307,7 +307,7 @@ class RoundService:
 
             # Remove prompt from queue since this player is taking the second copy slot
             # (prevents other players from being matched with this prompt)
-            removed = QueueService.remove_prompt_round_from_queue(prompt_round_id)
+            removed = QFQueueService.remove_prompt_round_from_queue(prompt_round_id)
             if removed:
                 logger.debug(f"Removed prompt {prompt_round_id} from queue for second copy")
             else:
@@ -322,7 +322,7 @@ class RoundService:
                 )
             else:
                 queue_populated = await self.ensure_prompt_queue_populated()
-                logger.debug(f"{queue_populated=}, queue length: {QueueService.get_prompt_rounds_waiting()}")
+                logger.debug(f"{queue_populated=}, queue length: {QFQueueService.get_prompt_rounds_waiting()}")
 
                 prompt_round = await self._get_next_valid_prompt_round(
                     player, self.settings.copy_round_max_attempts
@@ -347,7 +347,7 @@ class RoundService:
 
     def _calculate_copy_round_cost(self) -> tuple[int, bool, int]:
         """Return copy round cost, discount flag, and system contribution."""
-        return CostCalculationHelper.calculate_copy_round_cost(self.settings, QueueService)
+        return CostCalculationHelper.calculate_copy_round_cost(self.settings, QFQueueService)
 
     async def _create_copy_round(
         self,
@@ -436,11 +436,11 @@ class RoundService:
                     if not candidate_prompt_round_ids:
                         logger.error(
                             f"No new prompts available after rehydration. Queue length: "
-                            f"{QueueService.get_prompt_rounds_waiting()}, already tried {len(tried_prompt_ids)} "
+                            f"{QFQueueService.get_prompt_rounds_waiting()}, already tried {len(tried_prompt_ids)} "
                             f"unique prompts")
                         # Requeue everything we tried before raising
                         for tried_prompt_id in tried_prompt_ids:
-                            QueueService.add_prompt_round_to_queue(tried_prompt_id)
+                            QFQueueService.add_prompt_round_to_queue(tried_prompt_id)
                         raise NoPromptsAvailableError("No prompts available")
 
                 await self._prefetch_prompt_rounds(
@@ -491,21 +491,21 @@ class RoundService:
             # Success! Requeue remaining candidates and all tried prompts (except the one we're using)
             tried_prompt_ids.discard(prompt_round_id)  # Don't requeue the one we're using
             for remaining_prompt_round_id in candidate_prompt_round_ids:
-                QueueService.add_prompt_round_to_queue(remaining_prompt_round_id)
+                QFQueueService.add_prompt_round_to_queue(remaining_prompt_round_id)
             for tried_prompt_id in tried_prompt_ids:
-                QueueService.add_prompt_round_to_queue(tried_prompt_id)
+                QFQueueService.add_prompt_round_to_queue(tried_prompt_id)
 
             return locked_prompt_round
 
         # Failed to find a valid prompt - requeue everything we tried
         for remaining_prompt_round_id in candidate_prompt_round_ids:
-            QueueService.add_prompt_round_to_queue(remaining_prompt_round_id)
+            QFQueueService.add_prompt_round_to_queue(remaining_prompt_round_id)
         for tried_prompt_id in tried_prompt_ids:
-            QueueService.add_prompt_round_to_queue(tried_prompt_id)
+            QFQueueService.add_prompt_round_to_queue(tried_prompt_id)
 
         logger.error(
             f"Could not find valid prompt for player {player.player_id} after {max_attempts} attempts. "
-            f"{QueueService.get_prompt_rounds_waiting()=}, tried {len(tried_prompt_ids)} unique prompts, {stale_count=}"
+            f"{QFQueueService.get_prompt_rounds_waiting()=}, tried {len(tried_prompt_ids)} unique prompts, {stale_count=}"
         )
         raise NoPromptsAvailableError(
             "Could not find a valid prompt after multiple attempts"
@@ -528,30 +528,30 @@ class RoundService:
         prompt_round = await self.db.get(Round, prompt_round_id)
         if not prompt_round or prompt_round.round_type != "prompt":
             if prompt_from_queue:
-                QueueService.add_prompt_round_to_queue(prompt_round_id)
+                QFQueueService.add_prompt_round_to_queue(prompt_round_id)
             raise NoPromptsAvailableError("Prompt not available")
 
         if prompt_round.status != "submitted":
             if prompt_from_queue:
-                QueueService.add_prompt_round_to_queue(prompt_round_id)
+                QFQueueService.add_prompt_round_to_queue(prompt_round_id)
             raise NoPromptsAvailableError("Prompt no longer available")
 
         if prompt_round.phraseset_status in {"flagged_pending", "flagged_removed"}:
             logger.debug(f"{prompt_round_id=} is flagged, skipping forced copy assignment")
             if prompt_from_queue:
-                QueueService.add_prompt_round_to_queue(prompt_round_id)
+                QFQueueService.add_prompt_round_to_queue(prompt_round_id)
             raise NoPromptsAvailableError("Prompt not available")
 
         locked_prompt_round = await self._lock_prompt_round_for_update(prompt_round_id)
         if not locked_prompt_round:
             if prompt_from_queue:
-                QueueService.add_prompt_round_to_queue(prompt_round_id)
+                QFQueueService.add_prompt_round_to_queue(prompt_round_id)
             raise NoPromptsAvailableError("Prompt unavailable")
 
         should_skip, should_requeue = await self._should_skip_prompt_round(player, locked_prompt_round)
         if should_skip:
             if prompt_from_queue or should_requeue:
-                QueueService.add_prompt_round_to_queue(prompt_round_id)
+                QFQueueService.add_prompt_round_to_queue(prompt_round_id)
             raise NoPromptsAvailableError("Prompt not eligible")
 
         return locked_prompt_round
@@ -560,7 +560,7 @@ class RoundService:
     async def _pop_prompt_batch(limit: int) -> list[UUID]:
         """Pop the next batch of prompt IDs from the queue."""
 
-        return QueueService.get_next_prompt_round_batch(limit)
+        return QFQueueService.get_next_prompt_round_batch(limit)
 
     async def _prefetch_prompt_rounds(self, prompt_ids: list[UUID], prefetched_rounds: dict[UUID, Round]) -> None:
         """Load prompt rounds for the provided IDs, updating the cache."""
@@ -692,7 +692,7 @@ class RoundService:
 
             if prompt_round.copy2_player_id is None:
                 # Ensure prompt stays available for a second copy
-                QueueService.add_prompt_round_to_queue(prompt_round.round_id)
+                QFQueueService.add_prompt_round_to_queue(prompt_round.round_id)
 
         await self.db.flush()
 
@@ -881,7 +881,7 @@ class RoundService:
                 round_object.phraseset_status = "abandoned"
             elif round_object.round_type == "copy":
                 if round_object.prompt_round_id:
-                    QueueService.add_prompt_round_to_queue(round_object.prompt_round_id)
+                    QFQueueService.add_prompt_round_to_queue(round_object.prompt_round_id)
 
                     abandonment = PlayerAbandonedPrompt(
                         id=uuid.uuid4(),
@@ -937,7 +937,7 @@ class RoundService:
             raise ValueError("Prompt round not found for flag")
 
         # Remove prompt from queue so no additional copy rounds are assigned
-        queue_removed = QueueService.remove_prompt_round_from_queue(prompt_round.round_id)
+        queue_removed = QFQueueService.remove_prompt_round_from_queue(prompt_round.round_id)
         previous_status = prompt_round.phraseset_status
         prompt_round.phraseset_status = "flagged_pending"
 
@@ -1034,7 +1034,7 @@ class RoundService:
         self.db.add(phraseset)
         await self.db.flush()
 
-        QueueService.add_phraseset_to_queue(phraseset.phraseset_id)
+        QFQueueService.add_phraseset_to_queue(phraseset.phraseset_id)
 
         return phraseset
 
@@ -1072,7 +1072,7 @@ class RoundService:
 
         elif round_object.round_type == "copy":
             await RoundTimeoutHelper.handle_copy_timeout(
-                self.db, round_object, self.settings, transaction_service, QueueService)
+                self.db, round_object, self.settings, transaction_service, QFQueueService)
 
         elif round_object.round_type == "vote":
             await RoundTimeoutHelper.handle_vote_timeout(round_object, self.settings, transaction_service)
@@ -1136,7 +1136,7 @@ class RoundService:
         Returns:
             True if queue has items after running, False otherwise.
         """
-        if QueueService.get_prompt_rounds_waiting() > 0:
+        if QFQueueService.get_prompt_rounds_waiting() > 0:
             return True
 
         return await self._rehydrate_prompt_queue() > 0
@@ -1154,7 +1154,7 @@ class RoundService:
         logger.debug("Attempting to acquire rehydration lock")
         with lock_client.lock("rehydrate_prompt_queue", timeout=5):
             # Another worker might have already filled the queue while we were waiting.
-            current_queue_length = QueueService.get_prompt_rounds_waiting()
+            current_queue_length = QFQueueService.get_prompt_rounds_waiting()
             if current_queue_length > 0:
                 logger.debug(f"Queue already populated by another worker ({current_queue_length=})")
                 return 0
@@ -1169,7 +1169,7 @@ class RoundService:
                 return 0
 
             for prompt_round_id in prompt_ids:
-                QueueService.add_prompt_round_to_queue(prompt_round_id)
+                QFQueueService.add_prompt_round_to_queue(prompt_round_id)
 
             logger.debug(f"Successfully rehydrated prompt queue with {len(prompt_ids)} prompts from database")
             return len(prompt_ids)

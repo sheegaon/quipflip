@@ -18,7 +18,7 @@ from backend.models.qf.phraseset_activity import PhrasesetActivity
 from backend.models.qf.vote import Vote
 from backend.models.qf.ai_phrase_cache import QFAIPhraseCache
 from backend.models.qf.ai_metric import QFAIMetric
-from backend.services.qf import QueueService
+from backend.services.qf import QFQueueService
 from backend.utils.model_registry import AIPlayerType
 from backend.services.ai.ai_service import AI_PLAYER_EMAIL_DOMAIN
 
@@ -168,7 +168,7 @@ class QFBackupOrchestrator:
             for quip_round in final_quip_rounds:
                 try:
                     # Try to claim the prompt in the queue so only one worker (AI or other) processes it
-                    claimed = QueueService.remove_prompt_round_from_queue(quip_round.round_id)
+                    claimed = QFQueueService.remove_prompt_round_from_queue(quip_round.round_id)
                     if not claimed:
                         # Someone else claimed or removed it from the queue
                         logger.info(f"Skipping prompt {quip_round.round_id} - could not claim from queue")
@@ -178,8 +178,8 @@ class QFBackupOrchestrator:
                     copy_phrase = await self.ai_service.get_impostor_phrase(quip_round)
 
                     # Create copy round for AI player
-                    from backend.services import RoundService
-                    round_service = RoundService(self.db)
+                    from backend.services import QFRoundService
+                    round_service = QFRoundService(self.db)
 
                     # Get or create AI copy player (within transaction)
                     ai_impostor_player = await self.ai_service.get_or_create_ai_player(AIPlayerType.QF_IMPOSTOR)
@@ -222,7 +222,7 @@ class QFBackupOrchestrator:
                     stats["errors"] += 1
                     # Put the prompt back into the queue so it can be retried later
                     try:
-                        QueueService.add_prompt_round_to_queue(quip_round.round_id)
+                        QFQueueService.add_prompt_round_to_queue(quip_round.round_id)
                         logger.info(f"Re-enqueued prompt {quip_round.round_id} after AI failure")
                     except Exception as q_e:
                         logger.error(f"Failed to re-enqueue prompt {quip_round.round_id}: {q_e}")
@@ -279,9 +279,9 @@ class QFBackupOrchestrator:
                 f"Found {len(filtered_phrasesets)} phrasesets waiting for AI backup votes: {filtered_phrasesets}")
 
             # Initialize services once for all votes
-            from backend.services import VoteService
+            from backend.services import QFVoteService
             from backend.services import TransactionService
-            vote_service = VoteService(self.db)
+            vote_service = QFVoteService(self.db)
             transaction_service = TransactionService(self.db)
 
             # Process each waiting phraseset

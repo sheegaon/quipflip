@@ -15,7 +15,7 @@ from backend.models.qf.result_view import QFResultView
 from backend.models.qf.round import Round
 from backend.models.qf.vote import Vote
 from backend.services.qf.phraseset_activity_service import ActivityService
-from backend.services.qf.scoring_service import ScoringService
+from backend.services.qf.scoring_service import QFScoringService
 from backend.services.qf.helpers import upsert_result_view
 from backend.services.ai.ai_service import AI_PLAYER_EMAIL_DOMAIN
 
@@ -28,7 +28,7 @@ class PhrasesetService:
     def __init__(self, db: AsyncSession):
         self.db = db
         self.activity_service = ActivityService(db)
-        self.scoring_service = ScoringService(db)
+        self.scoring_service = QFScoringService(db)
         # Request-scoped cache to avoid re-querying _build_contributions multiple times
         # within a single request (e.g., dashboard endpoint calls it 3x)
         self._contributions_cache: dict[UUID, list[dict]] = {}

@@ -15,9 +15,9 @@ from backend.models.qf.round import Round
 from backend.models.qf.phraseset import Phraseset
 from backend.models.qf.vote import Vote
 from backend.models.qf.result_view import QFResultView
-from backend.services import VoteService
+from backend.services import QFVoteService
 from backend.services import TransactionService
-from backend.services import ScoringService
+from backend.services import QFScoringService
 from backend.config import get_settings
 from backend.utils.exceptions import InvalidPhraseError
 
@@ -145,7 +145,7 @@ class TestVoteSubmission:
         phraseset = test_phraseset_with_players["phraseset"]
         voter = test_phraseset_with_players["voter"]
 
-        vote_service = VoteService(db_session)
+        vote_service = QFVoteService(db_session)
         transaction_service = TransactionService(db_session)
 
         initial_balance = voter.wallet + voter.vault
@@ -183,7 +183,7 @@ class TestVoteSubmission:
         phraseset = test_phraseset_with_players["phraseset"]
         voter = test_phraseset_with_players["voter"]
 
-        vote_service = VoteService(db_session)
+        vote_service = QFVoteService(db_session)
         transaction_service = TransactionService(db_session)
 
         initial_balance = voter.wallet
@@ -225,7 +225,7 @@ class TestVoteValidation:
         phraseset = test_phraseset_with_players["phraseset"]
         prompter = test_phraseset_with_players["prompter"]
 
-        vote_service = VoteService(db_session)
+        vote_service = QFVoteService(db_session)
         transaction_service = TransactionService(db_session)
 
         # Prompter tries to vote on their own phraseset
@@ -243,7 +243,7 @@ class TestVoteValidation:
         phraseset = test_phraseset_with_players["phraseset"]
         voter = test_phraseset_with_players["voter"]
 
-        vote_service = VoteService(db_session)
+        vote_service = QFVoteService(db_session)
         transaction_service = TransactionService(db_session)
 
         # Try to vote for invalid phrase
@@ -261,7 +261,7 @@ class TestVoteValidation:
         phraseset = test_phraseset_with_players["phraseset"]
         voter = test_phraseset_with_players["voter"]
 
-        vote_service = VoteService(db_session)
+        vote_service = QFVoteService(db_session)
         transaction_service = TransactionService(db_session)
 
         # Submit first vote
@@ -297,7 +297,7 @@ class TestPhrasesetStatusTransitions:
     async def test_multiple_votes_tracked(self, db_session, test_phraseset_with_players):
         """Should correctly track multiple votes."""
         phraseset = test_phraseset_with_players["phraseset"]
-        vote_service = VoteService(db_session)
+        vote_service = QFVoteService(db_session)
         transaction_service = TransactionService(db_session)
 
         # Create additional voters
@@ -340,7 +340,7 @@ class TestVoteBalanceAccounting:
         phraseset = test_phraseset_with_players["phraseset"]
         voter = test_phraseset_with_players["voter"]
 
-        vote_service = VoteService(db_session)
+        vote_service = QFVoteService(db_session)
         transaction_service = TransactionService(db_session)
 
         initial_balance = voter.wallet
@@ -361,7 +361,7 @@ class TestVoteBalanceAccounting:
         phraseset = test_phraseset_with_players["phraseset"]
         voter = test_phraseset_with_players["voter"]
 
-        vote_service = VoteService(db_session)
+        vote_service = QFVoteService(db_session)
         transaction_service = TransactionService(db_session)
 
         initial_balance = voter.wallet + voter.vault
@@ -381,7 +381,7 @@ class TestVoteBalanceAccounting:
     async def test_prize_pool_grows_with_incorrect_votes(self, db_session, test_phraseset_with_players):
         """Should grow prize pool when voters are wrong."""
         phraseset = test_phraseset_with_players["phraseset"]
-        vote_service = VoteService(db_session)
+        vote_service = QFVoteService(db_session)
         transaction_service = TransactionService(db_session)
 
         initial_pool = phraseset.total_pool
@@ -440,7 +440,7 @@ class TestPhrasesetResults:
         db_session.add(vote)
         await db_session.commit()
 
-        vote_service = VoteService(db_session)
+        vote_service = QFVoteService(db_session)
         transaction_service = TransactionService(db_session)
 
         results = await vote_service.get_phraseset_results(
@@ -475,7 +475,7 @@ class TestPhrasesetResults:
         db_session.add(vote)
         await db_session.commit()
 
-        vote_service = VoteService(db_session)
+        vote_service = QFVoteService(db_session)
         transaction_service = TransactionService(db_session)
 
         results = await vote_service.get_phraseset_results(
@@ -502,7 +502,7 @@ class TestPhrasesetResults:
         phraseset.finalized_at = datetime.now(UTC)
         phraseset.vote_count = 0
 
-        scoring_service = ScoringService(db_session)
+        scoring_service = QFScoringService(db_session)
         payouts = await scoring_service.calculate_payouts(phraseset)
         prompter_payout = payouts["original"]["payout"]
 
@@ -516,7 +516,7 @@ class TestPhrasesetResults:
         db_session.add(preexisting_view)
         await db_session.commit()
 
-        vote_service = VoteService(db_session)
+        vote_service = QFVoteService(db_session)
         transaction_service = TransactionService(db_session)
 
         results = await vote_service.get_phraseset_results(
@@ -554,7 +554,7 @@ class TestGuestVoteLockoutFlow:
         incorrect_phrases = [phraseset.copy_phrase_1, phraseset.copy_phrase_2]
         original_phrase = phraseset.original_phrase
 
-        vote_service = VoteService(db_session)
+        vote_service = QFVoteService(db_session)
         transaction_service = TransactionService(db_session)
 
         async def submit_guest_vote(phrase: str) -> QFPlayer:

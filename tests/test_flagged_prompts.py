@@ -9,10 +9,10 @@ from backend.models.qf.player import QFPlayer
 from backend.models.qf.prompt import Prompt
 from backend.models.qf.round import Round
 from backend.models.qf.flagged_prompt import FlaggedPrompt
-from backend.services import RoundService
+from backend.services import QFRoundService
 from backend.services import TransactionService
 from backend.services import FlaggedPromptService
-from backend.services import QueueService
+from backend.services import QFQueueService
 
 
 def _create_player(email_prefix: str, wallet: int = 1000) -> QFPlayer:
@@ -30,7 +30,7 @@ def _create_player(email_prefix: str, wallet: int = 1000) -> QFPlayer:
 
 async def _start_prompt_and_copy_round(db_session, transaction_service, round_service, prompt_player, copy_player) -> tuple[Round, Round]:
     # Ensure queue is empty to avoid cross-test contamination
-    while QueueService.get_next_prompt_round():
+    while QFQueueService.get_next_prompt_round():
         pass
 
     prompt = Prompt(
@@ -59,7 +59,7 @@ async def test_flag_copy_round_creates_flag(db_session):
     await db_session.commit()
 
     transaction_service = TransactionService(db_session)
-    round_service = RoundService(db_session)
+    round_service = QFRoundService(db_session)
 
     prompt_round, copy_round = await _start_prompt_and_copy_round(
         db_session, transaction_service, round_service, prompt_player, copy_player
@@ -98,7 +98,7 @@ async def test_confirm_flag_refunds_and_locks_prompt_owner(db_session):
     await db_session.commit()
 
     transaction_service = TransactionService(db_session)
-    round_service = RoundService(db_session)
+    round_service = QFRoundService(db_session)
     flag_service = FlaggedPromptService(db_session)
 
     prompt_round, copy_round = await _start_prompt_and_copy_round(
@@ -136,7 +136,7 @@ async def test_dismiss_flag_increments_reporter_streak_and_requeues(db_session):
     await db_session.commit()
 
     transaction_service = TransactionService(db_session)
-    round_service = RoundService(db_session)
+    round_service = QFRoundService(db_session)
     flag_service = FlaggedPromptService(db_session)
 
     prompt_round, copy_round = await _start_prompt_and_copy_round(
@@ -164,5 +164,5 @@ async def test_dismiss_flag_increments_reporter_streak_and_requeues(db_session):
     assert refreshed_prompt_round.phraseset_status in (None, 'waiting_copies')
 
     # Prompt should be back in queue for another copy player
-    assert QueueService.get_prompt_rounds_waiting() > 0
+    assert QFQueueService.get_prompt_rounds_waiting() > 0
 

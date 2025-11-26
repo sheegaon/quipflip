@@ -31,6 +31,10 @@ class PlayerServiceError(RuntimeError):
     """Base exception for player service errors."""
 
 
+class PlayerError(PlayerServiceError):
+    """Raised when player service fails."""
+
+
 class PlayerServiceBase(ABC):
     """Base service for managing player accounts."""
 
@@ -493,7 +497,7 @@ class PlayerServiceBase(ABC):
         Default implementation returns False. Subclasses should override
         if they have admin logic.
         """
-        return False
+        return self.settings.is_admin_email(email)
 
     def get_guest_domain(self) -> str:
         """Get the domain for guest email addresses."""
@@ -505,7 +509,7 @@ class PlayerServiceBase(ABC):
 
     def _get_initial_balance(self) -> int:
         """Get the initial balance for new players."""
-        return self.settings.starting_balance
+        return 0
 
     async def _handle_integrity_error(self, exc: IntegrityError, operation: str = "operation"):
         """Handle common integrity errors with consistent error messages."""
