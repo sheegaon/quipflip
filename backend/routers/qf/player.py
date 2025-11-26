@@ -74,10 +74,12 @@ class QFPlayerRouter(PlayerRouterBase):
 
     def _add_qf_specific_routes(self):
         """Add QuipFlip-specific routes to the router."""
+        
+        player_dependency = self._current_player_dependency()
 
         @self.router.get("/current-round", response_model=CurrentRoundResponse)
         async def get_current_round(
-            player: QFPlayer = Depends(get_current_player),
+            player: QFPlayer = Depends(player_dependency),
             db: AsyncSession = Depends(get_db),
         ):
             """Get player's current active round if any."""
@@ -85,7 +87,7 @@ class QFPlayerRouter(PlayerRouterBase):
 
         @self.router.get("/pending-results", response_model=PendingResultsResponse)
         async def get_pending_results(
-            player: QFPlayer = Depends(get_current_player),
+            player: QFPlayer = Depends(player_dependency),
             db: AsyncSession = Depends(get_db),
         ):
             """Get list of finalized phrasesets where player was contributor."""
@@ -100,7 +102,7 @@ class QFPlayerRouter(PlayerRouterBase):
             status: str = Query("all"),
             limit: int = Query(50, ge=1, le=100),
             offset: int = Query(0, ge=0),
-            player: QFPlayer = Depends(get_current_player),
+            player: QFPlayer = Depends(player_dependency),
             db: AsyncSession = Depends(get_db),
         ):
             """Return paginated list of phrasesets for the current player."""
@@ -124,7 +126,7 @@ class QFPlayerRouter(PlayerRouterBase):
             response_model=PhrasesetDashboardSummary,
         )
         async def get_phraseset_summary(
-            player: QFPlayer = Depends(get_current_player),
+            player: QFPlayer = Depends(player_dependency),
             db: AsyncSession = Depends(get_db),
         ):
             """Return dashboard summary of phrasesets for the player."""
@@ -135,7 +137,7 @@ class QFPlayerRouter(PlayerRouterBase):
             response_model=UnclaimedResultsResponse,
         )
         async def get_unclaimed_results(
-            player: QFPlayer = Depends(get_current_player),
+            player: QFPlayer = Depends(player_dependency),
             db: AsyncSession = Depends(get_db),
         ):
             """Return finalized phrasesets with unclaimed payouts."""
@@ -143,7 +145,7 @@ class QFPlayerRouter(PlayerRouterBase):
 
         @self.router.get("/dashboard", response_model=DashboardDataResponse)
         async def get_dashboard_data(
-            player: QFPlayer = Depends(get_current_player),
+            player: QFPlayer = Depends(player_dependency),
             db: AsyncSession = Depends(get_db),
         ):
             """Get all dashboard data in a single batched request for optimal performance."""
@@ -151,7 +153,7 @@ class QFPlayerRouter(PlayerRouterBase):
 
         @self.router.get("/statistics", response_model=PlayerStatistics)
         async def get_player_statistics(
-            player: QFPlayer = Depends(get_current_player),
+            player: QFPlayer = Depends(player_dependency),
             db: AsyncSession = Depends(get_db),
         ):
             """Get comprehensive player statistics including win rates and earnings."""
@@ -161,7 +163,7 @@ class QFPlayerRouter(PlayerRouterBase):
 
         @self.router.get("/statistics/weekly-leaderboard", response_model=LeaderboardResponse)
         async def get_weekly_leaderboard(
-            player: QFPlayer = Depends(get_current_player),
+            player: QFPlayer = Depends(player_dependency),
             db: AsyncSession = Depends(get_db),
         ):
             """Return weekly leaderboards for all three roles plus gross earnings highlighting the current player."""
@@ -169,7 +171,7 @@ class QFPlayerRouter(PlayerRouterBase):
 
         @self.router.get("/statistics/alltime-leaderboard", response_model=LeaderboardResponse)
         async def get_alltime_leaderboard(
-            player: QFPlayer = Depends(get_current_player),
+            player: QFPlayer = Depends(player_dependency),
             db: AsyncSession = Depends(get_db),
         ):
             """Return all-time leaderboards for all three roles plus gross earnings highlighting the current player."""
@@ -177,7 +179,7 @@ class QFPlayerRouter(PlayerRouterBase):
 
         @self.router.get("/tutorial/status", response_model=TutorialStatus)
         async def get_tutorial_status(
-            player: QFPlayer = Depends(get_current_player),
+            player: QFPlayer = Depends(player_dependency),
             db: AsyncSession = Depends(get_db),
         ):
             """Get tutorial status for the current player."""
@@ -187,7 +189,7 @@ class QFPlayerRouter(PlayerRouterBase):
         @self.router.post("/tutorial/progress", response_model=UpdateTutorialProgressResponse)
         async def update_tutorial_progress(
             request: UpdateTutorialProgressRequest,
-            player: QFPlayer = Depends(get_current_player),
+            player: QFPlayer = Depends(player_dependency),
             db: AsyncSession = Depends(get_db),
         ):
             """Update tutorial progress for the current player."""
@@ -202,7 +204,7 @@ class QFPlayerRouter(PlayerRouterBase):
 
         @self.router.post("/tutorial/reset", response_model=TutorialStatus)
         async def reset_tutorial(
-            player: QFPlayer = Depends(get_current_player),
+            player: QFPlayer = Depends(player_dependency),
             db: AsyncSession = Depends(get_db),
         ):
             """Reset tutorial progress for the current player."""
