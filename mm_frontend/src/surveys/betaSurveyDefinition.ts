@@ -88,7 +88,7 @@ export const betaSurveyDefinition: SurveyDefinition = {
         {
           id: 'q6',
           type: 'scale',
-          title: 'How fair did the Flipcoin costs and payouts feel?',
+          title: 'How fair did the memecoin costs and payouts feel?',
           required: true,
           options: [
             { value: 1, label: '1️⃣ Very unfair' },
@@ -101,7 +101,7 @@ export const betaSurveyDefinition: SurveyDefinition = {
         {
           id: 'q7',
           type: 'single',
-          title: 'Did you run out of Flipcoins or feel pressured by entry costs?',
+          title: 'Did you run out of memecoins or feel pressured by entry costs?',
           options: [
             { value: 'never', label: 'Never' },
             { value: 'sometimes', label: 'Sometimes' },

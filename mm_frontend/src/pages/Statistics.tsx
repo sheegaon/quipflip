@@ -324,7 +324,7 @@ const Statistics: React.FC = () => {
                 <ul className="list-disc list-inside text-quip-navy text-sm space-y-1 mb-3">
                   <li>Save your progress permanently</li>
                   <li>Access your account from any device</li>
-                  <li>Never lose your Flipcoins and stats</li>
+                  <li>Never lose your memecoins and stats</li>
                   <li>Get higher rate limits for smoother gameplay</li>
                 </ul>
               </div>

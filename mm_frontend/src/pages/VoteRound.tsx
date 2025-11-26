@@ -211,7 +211,7 @@ export const VoteRound: React.FC = () => {
                 </>
               ) : (
                 <>
-                  <span className="text-quip-navy font-display font-bold text-xl">No flipcoins earned</span>
+                  <span className="text-quip-navy font-display font-bold text-xl">No memecoins earned</span>
                 </>
               )}
             </div>

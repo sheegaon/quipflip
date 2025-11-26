@@ -736,7 +736,7 @@ const Admin: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="tile-card p-6">
               <h2 className="text-xl font-display font-bold text-quip-navy mb-4 flex items-center gap-2">
-                <img src="/flipcoin.png" alt="" className="w-6 h-6" />
+                <img src="/memecoin.png" alt="" className="w-6 h-6" />
                 Player Balances
               </h2>
               <div className="space-y-2">
@@ -744,7 +744,7 @@ const Admin: React.FC = () => {
                   label="Starting Balance"
                   value={config.starting_balance}
                   configKey="starting_balance"
-                  unit="flipcoins"
+                  unit="memecoins"
                   description="Initial balance for new players"
                   type="number"
                   min={1000}
@@ -756,7 +756,7 @@ const Admin: React.FC = () => {
                   label="Daily Bonus Amount"
                   value={config.daily_bonus_amount}
                   configKey="daily_bonus_amount"
-                  unit="flipcoins"
+                  unit="memecoins"
                   description="Daily login bonus reward"
                   type="number"
                   min={50}
@@ -777,7 +777,7 @@ const Admin: React.FC = () => {
                   label="Prompt Cost"
                   value={config.prompt_cost}
                   configKey="prompt_cost"
-                  unit="flipcoins"
+                  unit="memecoins"
                   description="Cost to start a prompt round"
                   type="number"
                   min={50}
@@ -789,7 +789,7 @@ const Admin: React.FC = () => {
                   label="Copy Cost (Normal)"
                   value={config.copy_cost_normal}
                   configKey="copy_cost_normal"
-                  unit="flipcoins"
+                  unit="memecoins"
                   description="Standard cost to start a copy round"
                   type="number"
                   min={25}
@@ -801,7 +801,7 @@ const Admin: React.FC = () => {
                   label="Copy Cost (Discount)"
                   value={config.copy_cost_discount}
                   configKey="copy_cost_discount"
-                  unit="flipcoins"
+                  unit="memecoins"
                   description="Discounted cost when many prompts waiting"
                 
                   type="number"
@@ -827,7 +827,7 @@ const Admin: React.FC = () => {
                   label="Vote Cost"
                   value={config.vote_cost}
                   configKey="vote_cost"
-                  unit="flipcoins"
+                  unit="memecoins"
                   description="Cost to start a vote round"
                 
                   type="number"
@@ -849,7 +849,7 @@ const Admin: React.FC = () => {
                   label="Vote Payout (Correct)"
                   value={config.vote_payout_correct}
                   configKey="vote_payout_correct"
-                  unit="flipcoins"
+                  unit="memecoins"
                   description="Reward for voting correctly"
                 
                   type="number"
@@ -862,7 +862,7 @@ const Admin: React.FC = () => {
                   label="Prize Pool Base"
                   value={config.prize_pool_base}
                   configKey="prize_pool_base"
-                  unit="flipcoins"
+                  unit="memecoins"
                   description="Base prize pool for phrasesets"
                 
                   type="number"
@@ -875,7 +875,7 @@ const Admin: React.FC = () => {
                   label="Abandoned Penalty"
                   value={config.abandoned_penalty}
                   configKey="abandoned_penalty"
-                  unit="flipcoins"
+                  unit="memecoins"
                   description="Penalty for abandoned rounds"
                 
                   type="number"

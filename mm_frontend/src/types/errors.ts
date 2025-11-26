@@ -134,7 +134,7 @@ export function getErrorMessage(error: unknown, fallback = 'An unexpected error 
  * Map of API error codes to user-friendly messages.
  */
 export const ERROR_MESSAGES: Record<ApiErrorCode, string> = {
-  insufficient_balance: "You don't have enough Flipcoins for this action.",
+  insufficient_balance: "You don't have enough memecoins for this action.",
   already_in_round: "You're already in an active round. Complete it first.",
   expired: "This round has expired. Please start a new one.",
   already_voted: "You've already voted on this phraseset.",
