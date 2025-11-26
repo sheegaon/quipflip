@@ -154,7 +154,7 @@ const processQueue = (error: unknown = null) => {
 const performTokenRefresh = async (): Promise<void> => {
   try {
     // Call refresh endpoint - cookies are sent/received automatically
-    await api.post('/auth/refresh', {});
+    await authApi.post('/auth/refresh', {});
     logApi('POST', '/auth/refresh', 'success', 'Token refreshed via cookie');
   } catch (error) {
     logApi('POST', '/auth/refresh', 'error', 'Token refresh failed');
