@@ -105,6 +105,8 @@ async def get_current_player(
         from backend.services.qf.player_service import PlayerService
     elif game_type == GameType.IR:
         from backend.services.ir.player_service import PlayerService
+    elif game_type == GameType.MM:
+        from backend.services.mm.player_service import MMPlayerService as PlayerService
     else:
         raise ValueError(f"Unsupported game type: {game_type}")
     player_service = PlayerService(db)
