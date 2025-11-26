@@ -68,6 +68,19 @@ export const VoteRound: React.FC = () => {
     navigate('/game/results', { state: { round, voteResult: result } });
   };
 
+  const handlePlayAgain = async () => {
+    setError(null);
+    setResult(null);
+    setRound(null);
+    
+    try {
+      const newRound = await actions.startVoteRound();
+      setRound(newRound);
+    } catch (err) {
+      setError(extractErrorMessage(err) || 'Unable to start a new vote round. Please try again.');
+    }
+  };
+
   if (!round) {
     return (
       <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center">
@@ -115,7 +128,7 @@ export const VoteRound: React.FC = () => {
                 </button>
                 */}
                 <button
-                  onClick={() => navigate('/dashboard')}
+                  onClick={handlePlayAgain}
                   className="border-2 border-quip-navy text-quip-navy font-semibold px-4 py-2 rounded-tile"
                 >
                   Play again
