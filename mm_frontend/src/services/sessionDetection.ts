@@ -170,7 +170,7 @@ export function getSessionMessage(sessionState: SessionState, username?: string)
     case SessionState.RETURNING_VISITOR:
       return 'Welcome back! Ready to play?';
     case SessionState.NEW:
-      return 'Welcome to QuipFlip!';
+      return 'Welcome to MemeMint!';
     case SessionState.CHECKING:
       return 'Loading...';
     default:

@@ -130,7 +130,7 @@ export const BetaSurveyModal: React.FC<BetaSurveyModalProps> = ({ isVisible, onD
           Share your beta feedback
         </h2>
         <p className="text-quip-navy">
-          We&apos;d love to hear how Quipflip feels after ten rounds. Take a short survey to help us tune the beta experience.
+          We&apos;d love to hear how MemeMint feels after ten rounds. Take a short survey to help us tune the beta experience.
         </p>
         {surveyStatus && (
           <p className="text-sm text-quip-teal">

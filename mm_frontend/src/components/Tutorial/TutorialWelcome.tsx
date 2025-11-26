@@ -63,7 +63,7 @@ const TutorialWelcome: React.FC<TutorialWelcomeProps> = ({ onStart, onSkip }) =>
         </button>
 
         <div className="tutorial-welcome-content">
-          <h1 className="tutorial-welcome-title">Welcome to Quipflip!</h1>
+          <h1 className="tutorial-welcome-title">Welcome to MemeMint!</h1>
 
           {player?.username && (
             <p className="tutorial-welcome-username">
@@ -72,7 +72,7 @@ const TutorialWelcome: React.FC<TutorialWelcomeProps> = ({ onStart, onSkip }) =>
           )}
 
           <p className="tutorial-welcome-description">
-            Quipflip is a creative word game where you:
+            MemeMint is a creative caption contest game where you:
           </p>
 
           <ul className="tutorial-welcome-features">

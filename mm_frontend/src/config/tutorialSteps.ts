@@ -17,8 +17,8 @@ export const TUTORIAL_STEPS: Record<TutorialProgress, TutorialStep | null> = {
 
   welcome: {
     id: 'welcome',
-    title: 'Welcome to Quipflip!',
-    message: `Quipflip is a creative word game where you:
+    title: 'Welcome to MemeMint!',
+    message: `MemeMint is a creative caption contest game where you:
 
 • Quip: write the original answer to a prompt
 • Impostor: fake the original answer so it blends in

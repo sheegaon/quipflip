@@ -76,7 +76,7 @@ const GuestLogoutWarning: React.FC<GuestLogoutWarningProps> = ({
             <div className="text-sm opacity-95">
               <p className="font-semibold mb-2">To log back in later:</p>
               <ol className="list-decimal pl-5 space-y-1">
-                <li>Visit the Quipflip login page and choose the &quot;Returning Player&quot; option.</li>
+                <li>Visit the MemeMint login page and choose the &quot;Returning Player&quot; option.</li>
                 <li>Enter the username or email and password shown above.</li>
                 <li>Continue playing—your progress and coins stay with your guest account.</li>
               </ol>

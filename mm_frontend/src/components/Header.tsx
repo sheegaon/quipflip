@@ -228,7 +228,7 @@ export const Header: React.FC = () => {
               title={logoTitle}
               aria-label={logoTitle}
             >
-              <img src="/menu.png" alt="Quipflip" className="md:h-10 h-8 w-auto" />
+              <img src="/menu.png" alt="MemeMint" className="md:h-10 h-8 w-auto" />
             </button>
 
             {/* Dropdown Menu */}

@@ -85,7 +85,7 @@ const GuestWelcomeOverlay: React.FC = () => {
 
         <div className="guest-welcome-content">
           <div className="flex justify-center mb-4">
-            <img src="/mememint_logo.png" alt="Quipflip Logo" className="h-16" />
+            <img src="/mememint_logo.png" alt="MemeMint Logo" className="h-16" />
           </div>
 
           <h2 className="guest-welcome-title">How To Play</h2>

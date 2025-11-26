@@ -195,7 +195,7 @@ export const Landing: React.FC = () => {
         <div className="flex justify-center mb-4">
           <img
             src="/mememint_logo.png"
-            alt="Quipflip"
+            alt="MemeMint"
             className="h-auto w-auto"
           />
         </div>

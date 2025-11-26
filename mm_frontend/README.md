@@ -1,6 +1,6 @@
-# Quipflip Frontend
+# MemeMint Frontend
 
-React + TypeScript frontend for the Quipflip phrase association game.
+React + TypeScript frontend for the MemeMint caption contest game.
 
 ## Tech Stack
 
