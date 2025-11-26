@@ -12,8 +12,6 @@ import type { CopyState, FlagCopyRoundResponse, SubmitPhraseResponse } from '../
 import { copyRoundLogger } from '../utils/logger';
 import { CopyRoundIcon } from '../components/icons/RoundIcons';
 import { FlagIcon } from '../components/icons/EngagementIcons';
-import { usePartyMode } from '../contexts/PartyModeContext';
-import PartyRoundModal from '../components/party/PartyRoundModal';
 import { usePartyRoundCoordinator } from '../hooks/usePartyRoundCoordinator';
 import { usePartyNavigation } from '../hooks/usePartyNavigation';
 
@@ -160,7 +158,11 @@ export const CopyRound: React.FC = () => {
   const { state, actions } = useGame();
   const { activeRound, roundAvailability, copyRoundHints, player } = state;
   const { flagCopyRound, refreshDashboard, fetchCopyHints } = actions;
-  const { state: partyState, actions: partyActions } = usePartyMode();
+  const partyState = { isPartyMode: false, sessionId: null as string | null };
+  const partyActions = {
+    setCurrentStep: (_step: unknown) => {},
+    updateFromPartyContext: (_context: unknown) => {},
+  };
   const { setCurrentStep } = partyActions;
   const navigate = useNavigate();
   const [phrase, setPhrase] = useState('');
@@ -272,9 +274,7 @@ export const CopyRound: React.FC = () => {
     }
   }, [dispatchCompletion]);
 
-  const partyOverlay = partyState.isPartyMode && partyState.sessionId ? (
-    <PartyRoundModal sessionId={partyState.sessionId} currentStep="copy" />
-  ) : null;
+  const partyOverlay = null;
 
   const cancelHintRequest = useCallback(() => {
     if (hintAbortControllerRef.current) {

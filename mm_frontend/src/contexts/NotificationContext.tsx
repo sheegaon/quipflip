@@ -21,11 +21,9 @@ import {
   useEffect,
 } from 'react';
 import { useGame } from './GameContext';
-import { usePartyMode } from './PartyModeContext';
 import apiClient from '../api/client';
 import { NotificationStreamMessage, OnlineUser } from '../api/types';
 import useWebSocket from '../hooks/useWebSocket';
-import { usePartyWebSocket } from '../hooks/usePartyWebSocket';
 
 export interface NotificationMessage {
   id: string;
@@ -76,7 +74,6 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
   const pingIdRef = useRef(0);
   const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { state } = useGame();
-  const { state: partyState } = usePartyMode();
 
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -247,13 +244,6 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
       setLoadingOnlineUsers(false);
     }
   }, [state.isAuthenticated, stopPollingOnlineUsers, clearPingTimeouts]);
-
-  usePartyWebSocket({
-    sessionId: partyState.sessionId ?? '',
-    pageContext: 'other',
-  });
-
-
 
   const addNotification = (message: NotificationMessage) => {
     setNotifications((prev) => [...prev, message]);

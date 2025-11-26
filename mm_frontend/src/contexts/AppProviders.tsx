@@ -9,7 +9,6 @@ import { NotificationProvider } from './NotificationContext';
 import { gameContextLogger } from '../utils/logger';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { PageErrorFallback } from '../components/ErrorFallback';
-import { PartyModeProvider } from './PartyModeContext';
 
 // Helper component to reduce ErrorBoundary boilerplate
 const ContextErrorBoundary: React.FC<{ children: React.ReactNode; contextName: string }> = ({ children, contextName }) => (
@@ -114,18 +113,16 @@ export const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children
       <NetworkProvider>
         <TutorialProvider>
           <ContextErrorBoundary contextName="GameProvider">
-            <PartyModeProvider>
-              <GameProvider
+            <GameProvider
+              onDashboardTrigger={handleDashboardTrigger}
+            >
+              <InnerProviders
                 onDashboardTrigger={handleDashboardTrigger}
+                dashboardRefreshToken={dashboardRefreshToken}
               >
-                <InnerProviders
-                  onDashboardTrigger={handleDashboardTrigger}
-                  dashboardRefreshToken={dashboardRefreshToken}
-                >
-                  {children}
-                </InnerProviders>
-              </GameProvider>
-            </PartyModeProvider>
+                {children}
+              </InnerProviders>
+            </GameProvider>
           </ContextErrorBoundary>
         </TutorialProvider>
       </NetworkProvider>
