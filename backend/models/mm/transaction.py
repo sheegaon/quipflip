@@ -12,7 +12,7 @@ class MMTransaction(TransactionBase):
     __tablename__ = "mm_transactions"
 
     player_id = get_uuid_column(
-        ForeignKey("mm_players.player_id", ondelete="CASCADE"), nullable=False, index=True
+        ForeignKey("mm_players.player_id", ondelete="CASCADE"), nullable=False
     )
 
     player = relationship("MMPlayer", back_populates="transactions")
