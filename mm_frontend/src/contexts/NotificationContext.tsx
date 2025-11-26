@@ -68,6 +68,9 @@ interface PingToastMessage {
 export const NotificationProvider: FC<NotificationProviderProps> = ({
   children,
 }) => {
+  const notificationsEnabled = import.meta.env.VITE_ENABLE_NOTIFICATIONS === 'true';
+  const onlineUsersEnabled = import.meta.env.VITE_ENABLE_ONLINE_USERS === 'true';
+
   const [notifications, setNotifications] = useState<NotificationMessage[]>([]);
   const [pingMessages, setPingMessages] = useState<PingToastMessage[]>([]);
   const notificationIdRef = useRef(0);
@@ -96,7 +99,10 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
   }, []);
 
   const fetchOnlineUsers = useCallback(async () => {
-    if (!state.isAuthenticated) return;
+    if (!state.isAuthenticated || !onlineUsersEnabled) {
+      setLoadingOnlineUsers(false);
+      return;
+    }
 
     try {
       const data = await apiClient.getOnlineUsers();
@@ -111,7 +117,7 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
   }, [state.isAuthenticated]);
 
   const startPollingOnlineUsers = useCallback(() => {
-    if (pollingIntervalRef.current) return;
+    if (pollingIntervalRef.current || !onlineUsersEnabled) return;
 
     setOnlineUsersError((prev) => prev ?? 'Using polling mode (WebSocket unavailable)');
     fetchOnlineUsers();
@@ -156,7 +162,7 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
 
   useWebSocket({
     path: '/mm/notifications/ws',
-    enabled: state.isAuthenticated,
+    enabled: state.isAuthenticated && notificationsEnabled,
     onMessage: handleNotificationMessage,
     onError: () => {
       console.debug('WebSocket error, connection failed silently');
@@ -224,7 +230,7 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
 
   useWebSocket({
     path: '/mm/users/online/ws',
-    enabled: state.isAuthenticated,
+    enabled: state.isAuthenticated && onlineUsersEnabled,
     onOpen: handleOnlineUsersOpen,
     onMessage: handleOnlineUsersMessage,
     onError: handleOnlineUsersError,
@@ -233,17 +239,22 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
   });
 
   useEffect(() => {
-    if (!state.isAuthenticated) {
+    if (!state.isAuthenticated || !onlineUsersEnabled) {
       stopPollingOnlineUsers();
       clearPingTimeouts();
       setOnlineUsers([]);
       setTotalCount(0);
       setPingStatus({});
       setOnlineUsersConnected(false);
-      setOnlineUsersError(null);
       setLoadingOnlineUsers(false);
+      setOnlineUsersError(onlineUsersEnabled ? null : 'Online users are disabled');
     }
-  }, [state.isAuthenticated, stopPollingOnlineUsers, clearPingTimeouts]);
+  }, [
+    state.isAuthenticated,
+    stopPollingOnlineUsers,
+    clearPingTimeouts,
+    onlineUsersEnabled,
+  ]);
 
   const addNotification = (message: NotificationMessage) => {
     setNotifications((prev) => [...prev, message]);

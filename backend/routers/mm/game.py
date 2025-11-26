@@ -1,9 +1,11 @@
 """Game API router for Meme Mint - vote and caption rounds."""
 
 import logging
+from functools import partial
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, HTTPException, Path
 from sqlalchemy.ext.asyncio import AsyncSession
-from uuid import UUID
 
 from backend.database import get_db
 from backend.dependencies import get_current_player
@@ -37,10 +39,13 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+# Use Meme Mint authentication instead of the default (QF)
+get_mm_player = partial(get_current_player, game_type=GameType.MM)
+
 
 @router.post("/vote", response_model=StartVoteRoundResponse)
 async def start_vote_round(
-    player: MMPlayer = Depends(get_current_player),
+    player: MMPlayer = Depends(get_mm_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Start a vote round.
@@ -104,7 +109,7 @@ async def start_vote_round(
 async def submit_vote(
     round_id: UUID = Path(...),
     request: SubmitVoteRequest = ...,
-    player: MMPlayer = Depends(get_current_player),
+    player: MMPlayer = Depends(get_mm_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Submit a vote for a caption in a vote round.
@@ -155,7 +160,7 @@ async def submit_vote(
 @router.post("/caption", response_model=SubmitCaptionResponse)
 async def submit_caption(
     request: SubmitCaptionRequest = ...,
-    player: MMPlayer = Depends(get_current_player),
+    player: MMPlayer = Depends(get_mm_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Submit a caption for an image.
@@ -203,7 +208,7 @@ async def submit_caption(
 
 @router.get("/rounds/available", response_model=RoundAvailability)
 async def get_round_availability(
-    player: MMPlayer = Depends(get_current_player),
+    player: MMPlayer = Depends(get_mm_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Get current round availability and game constants."""
@@ -244,7 +249,7 @@ async def get_round_availability(
 @router.get("/rounds/{round_id}", response_model=RoundDetails)
 async def get_round_details(
     round_id: UUID = Path(...),
-    player: MMPlayer = Depends(get_current_player),
+    player: MMPlayer = Depends(get_mm_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Get details for a specific round."""

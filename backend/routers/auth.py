@@ -1,7 +1,7 @@
 """Authentication endpoints."""
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Response
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.config import get_settings
@@ -171,7 +171,8 @@ async def logout(
 
 @router.get("/ws-token")
 async def get_websocket_token(
-    player: PlayerBase = Depends(get_current_player),
+    request: Request,
+    authorization: str | None = Header(default=None, alias="Authorization"),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Generate a short-lived token for WebSocket authentication.
@@ -186,11 +187,31 @@ async def get_websocket_token(
     3. Frontend uses token for direct WebSocket connection to Heroku
     4. Short lifetime limits security risk if token is exposed
     """
-    auth_service = AuthService(db, game_type=GameType.QF)
+    # Detect the authenticated player across all supported games
+    detected_player: PlayerBase | None = None
+    detected_game: GameType | None = None
+
+    for game_type in (GameType.QF, GameType.IR, GameType.MM):
+        try:
+            detected_player = await get_current_player(
+                request=request,
+                authorization=authorization,
+                db=db,
+                game_type=game_type,
+            )
+            detected_game = game_type
+            break
+        except HTTPException:
+            continue
+
+    if not detected_player or not detected_game:
+        raise HTTPException(status_code=401, detail="invalid_token")
+
+    auth_service = AuthService(db, game_type=detected_game)
 
     # Generate a short-lived access token (60 seconds) for WebSocket auth
     ws_token, expires_in = auth_service.create_short_lived_token(
-        player=player,
+        player=detected_player,
         expires_seconds=60  # Short-lived: 60 seconds
     )
 
