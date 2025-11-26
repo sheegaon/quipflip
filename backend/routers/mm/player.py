@@ -19,7 +19,8 @@ from backend.services.mm import (
     MMCleanupService,
 )
 from backend.utils import ensure_utc
-from backend.schemas.mm_player import MMDailyStateResponse, MMConfigResponse
+from backend.schemas.mm_player import MMDailyStateResponse, MMConfigResponse, MMDashboardDataResponse
+from backend.schemas.mm_round import RoundAvailability
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -139,6 +140,85 @@ class MMPlayerRouter(PlayerRouterBase):
                     "mm_daily_bonus_amount", default=settings.daily_bonus_amount
                 ),
             )
+
+        @self.router.get("/dashboard", response_model=MMDashboardDataResponse)
+        async def get_dashboard_data(
+            player=Depends(player_dependency),
+            db: AsyncSession = Depends(get_db),
+        ):
+            """Get all dashboard data in a single batched request for optimal performance."""
+            return await _get_dashboard_data(player, db)
+
+
+async def _get_dashboard_data(player, db: AsyncSession) -> MMDashboardDataResponse:
+    """Get all dashboard data in a single batched request for optimal performance."""
+    from backend.utils.cache import dashboard_cache
+
+    try:
+        # Check cache first
+        cache_key = f"mm_dashboard:{player.player_id}"
+        cached_data = dashboard_cache.get(cache_key)
+        if cached_data:
+            logger.info(f"Returning cached MM dashboard data for player {player.player_id}")
+            return cached_data
+
+        logger.info(f"Generating fresh MM dashboard data for player {player.player_id}")
+
+        # Get player balance
+        player_balance = await _get_player_balance(player, db)
+
+        # Get round availability
+        from backend.services.mm import MMGameService
+
+        game_service = MMGameService(db)
+        config_service = MMSystemConfigService(db)
+        daily_state_service = MMPlayerDailyStateService(db, config_service)
+        daily_bonus_service = MMDailyBonusService(db, config_service)
+
+        # Get round availability info
+        round_entry_cost = await config_service.get_config_value("mm_round_entry_cost", default=5)
+        caption_submission_cost = await config_service.get_config_value("mm_caption_submission_cost", default=10)
+        free_captions_remaining = await daily_state_service.get_remaining_free_captions(player.player_id)
+        daily_bonus_available = await daily_bonus_service.is_bonus_available(player.player_id)
+
+        # Check if player can start rounds
+        can_vote = player.wallet >= round_entry_cost
+        can_submit_caption = (
+            free_captions_remaining > 0 or player.wallet >= caption_submission_cost
+        )
+
+        round_availability = RoundAvailability(
+            can_vote=can_vote,
+            can_submit_caption=can_submit_caption,
+            current_round_id=None,  # MM doesn't track active rounds on player
+            round_entry_cost=round_entry_cost,
+            caption_submission_cost=caption_submission_cost,
+            free_captions_remaining=free_captions_remaining,
+            daily_bonus_available=daily_bonus_available,
+        )
+
+        # Current rounds - MM doesn't track active rounds on player model like QF does
+        # Players can start new rounds anytime if they have funds
+        current_vote_round = None
+        current_caption_round = None
+
+        dashboard_data = MMDashboardDataResponse(
+            player=player_balance,
+            round_availability=round_availability,
+            current_vote_round=current_vote_round,
+            current_caption_round=current_caption_round,
+        )
+
+        # Cache the response for 10 seconds (shorter TTL for dashboard since it changes frequently)
+        dashboard_cache.set(cache_key, dashboard_data, ttl=10.0)
+
+        return dashboard_data
+    except HTTPException:
+        # Re-raise HTTPException to pass through
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error in MM dashboard endpoint for {player.player_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to load dashboard")
 
 
 mm_player_router = MMPlayerRouter()

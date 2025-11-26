@@ -4,6 +4,7 @@ from datetime import datetime
 from uuid import UUID
 from backend.schemas.base import BaseSchema
 from backend.schemas.player import PlayerBalance
+from backend.schemas.mm_round import RoundAvailability, StartVoteRoundResponse, StartCaptionRoundResponse
 
 
 class MMPlayerBalance(PlayerBalance):
@@ -69,3 +70,16 @@ class MMLeaderboardResponse(BaseModel):
     has_more: bool
     # Current player's position if not in current page
     current_player_rank: int | None = None
+
+
+class MMDashboardDataResponse(BaseSchema):
+    """Batched dashboard data - all info needed for dashboard in one call."""
+    # Player balance and info
+    player: PlayerBalance
+
+    # Round availability status
+    round_availability: RoundAvailability
+
+    # Current active rounds (if any)
+    current_vote_round: StartVoteRoundResponse | None = None
+    current_caption_round: StartCaptionRoundResponse | None = None
