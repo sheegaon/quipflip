@@ -3,6 +3,7 @@
 # =============================================================================
 qf_frontend/
 ir_frontend/
+mm_frontend/
 
 # =============================================================================
 # TESTS & DEVELOPMENT
@@ -79,3 +80,15 @@ ENV/
 .env
 .env.*
 *secret*.json
+
+# =============================================================================
+# IMAGE FILES (served from GitHub in production)
+# =============================================================================
+backend/data/mm_images/
+backend/data/qf_images/
+backend/data/ir_images/
+backend/data/*.png
+backend/data/*.jpg
+backend/data/*.jpeg
+backend/data/*.gif
+backend/data/*.webp

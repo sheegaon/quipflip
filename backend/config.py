@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     # Application
     frontend_url: str = "https://quipflip.xyz"
     phrase_validator_url: str = "https://quipflip-pvw-f508f6eb7783.herokuapp.com"
+    github_images_base_url: str = "https://raw.githubusercontent.com/sheegaon/quipflip/main/backend/data"
+    serve_images_from_github: bool = True  # Set to False for local development
     environment: str = "development"
     secret_key: str = "dev-secret-key-change-in-production"
     jwt_algorithm: str = "HS256"  # Use HS256 for symmetric signing
