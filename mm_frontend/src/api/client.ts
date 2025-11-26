@@ -560,7 +560,7 @@ export const apiClient = {
 
   // MemeMint round endpoints
   async getMemeMintRoundAvailability(signal?: AbortSignal): Promise<RoundAvailability> {
-    const { data } = await api.get('/rounds/availability', { signal });
+    const { data } = await api.get('/rounds/available', { signal });
     return data;
   },
 
