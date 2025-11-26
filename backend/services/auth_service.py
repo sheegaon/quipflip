@@ -44,19 +44,17 @@ class AuthService:
 
         # Instantiate the correct player service and refresh token model based on game type
         if game_type == GameType.QF:
-            from backend.services.qf.player_service import PlayerService
-            from backend.models.qf.refresh_token import QFRefreshToken
-            self.refresh_token_model = QFRefreshToken
+            from backend.services.qf.player_service import QFPlayerService as PlayerService
+            from backend.models.qf.refresh_token import QFRefreshToken as RefreshToken
         elif game_type == GameType.IR:
-            from backend.services.ir.player_service import PlayerService
-            from backend.models.ir.refresh_token import IRRefreshToken
-            self.refresh_token_model = IRRefreshToken
+            from backend.services.ir.player_service import IRPlayerService as PlayerService
+            from backend.models.ir.refresh_token import IRRefreshToken as RefreshToken
         elif game_type == GameType.MM:
             from backend.services.mm.player_service import MMPlayerService as PlayerService
-            from backend.models.mm.refresh_token import MMRefreshToken
-            self.refresh_token_model = MMRefreshToken
+            from backend.models.mm.refresh_token import MMRefreshToken as RefreshToken
         else:
             raise ValueError(f"Unsupported game type: {game_type}")
+        self.refresh_token_model = RefreshToken
         self.player_service = PlayerService(db)
 
     # ------------------------------------------------------------------

@@ -62,10 +62,10 @@ async def _enforce_rate_limit(scope: str, identifier: str | None, limit: int) ->
 
 
 async def get_current_player(
-    request: Request,
-    authorization: str | None = Header(default=None, alias="Authorization"),
-    db: AsyncSession = Depends(get_db),
-    game_type: GameType = GameType.QF
+        request: Request,
+        game_type: GameType,
+        authorization: str | None = Header(default=None, alias="Authorization"),
+        db: AsyncSession = Depends(get_db),
 ) -> PlayerBase:
     """Resolve the current authenticated player via JWT access token.
 
@@ -102,9 +102,9 @@ async def get_current_player(
 
     # Instantiate the correct player service based on game type
     if game_type == GameType.QF:
-        from backend.services.qf.player_service import PlayerService
+        from backend.services.qf.player_service import QFPlayerService as PlayerService
     elif game_type == GameType.IR:
-        from backend.services.ir.player_service import PlayerService
+        from backend.services.ir.player_service import IRPlayerService as PlayerService
     elif game_type == GameType.MM:
         from backend.services.mm.player_service import MMPlayerService as PlayerService
     else:
@@ -125,14 +125,14 @@ async def get_current_player(
 
 
 async def get_optional_player(
-    request: Request,
-    authorization: str | None = Header(default=None, alias="Authorization"),
-    db: AsyncSession = Depends(get_db),
-    game_type: GameType = GameType.QF,
+        request: Request,
+        game_type: GameType,
+        authorization: str | None = Header(default=None, alias="Authorization"),
+        db: AsyncSession = Depends(get_db),
 ) -> PlayerBase | None:
     """Return the current player if available, otherwise None for auth failures."""
     try:
-        return await get_current_player(request, authorization, db, game_type)
+        return await get_current_player(request, game_type, authorization, db)
     except HTTPException as exc:
         if exc.status_code == 401:
             return None

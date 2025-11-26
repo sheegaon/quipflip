@@ -40,7 +40,7 @@ from backend.services import AuthService
 from backend.utils.model_registry import GameType
 from backend.services.qf import (
     NotificationConnectionManager,
-    PlayerService,
+    QFPlayerService,
     get_notification_manager,
 )
 from backend.config import get_settings
@@ -83,8 +83,8 @@ async def authenticate_websocket(websocket: WebSocket) -> Optional[QFPlayer]:
             player_id = UUID(player_id_str)
 
             # Use QF player service since this is a QF endpoint
-            from backend.services.qf.player_service import PlayerService
-            player_service = PlayerService(db)
+            from backend.services.qf.player_service import QFPlayerService
+            player_service = QFPlayerService(db)
             
             player = await player_service.get_player_by_id(player_id)
 
@@ -335,7 +335,7 @@ async def ping_online_user(
     if request.username == player.username:
         raise HTTPException(status_code=400, detail="Cannot ping yourself")
 
-    player_service = PlayerService(db)
+    player_service = QFPlayerService(db)
     target_player = await player_service.get_player_by_username(request.username)
 
     if not target_player:

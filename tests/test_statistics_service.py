@@ -8,7 +8,7 @@ from backend.models.qf.round import Round
 from backend.models.qf.phraseset import Phraseset
 from backend.models.qf.vote import Vote
 from backend.models.qf.transaction import QFTransaction
-from backend.services import StatisticsService
+from backend.services import QFStatisticsService
 
 
 def _base_player(username: str) -> QFPlayer:
@@ -35,7 +35,7 @@ async def test_get_player_statistics_new_player(db_session):
     await db_session.commit()
 
     # Get statistics
-    stats_service = StatisticsService(db_session)
+    stats_service = QFStatisticsService(db_session)
     stats = await stats_service.get_player_statistics(player.player_id)
 
     # Verify basic info
@@ -154,7 +154,7 @@ async def test_get_player_statistics_with_rounds(db_session):
     await db_session.commit()
 
     # Get statistics
-    stats_service = StatisticsService(db_session)
+    stats_service = QFStatisticsService(db_session)
     stats = await stats_service.get_player_statistics(player.player_id)
 
     # Verify round counts
@@ -240,7 +240,7 @@ async def test_get_player_statistics_win_rate(db_session):
     await db_session.commit()
 
     # Get statistics
-    stats_service = StatisticsService(db_session)
+    stats_service = QFStatisticsService(db_session)
     stats = await stats_service.get_player_statistics(player.player_id)
 
     # Win rate should be 2/3 = 66.67%
@@ -253,7 +253,7 @@ async def test_get_player_statistics_win_rate(db_session):
 @pytest.mark.asyncio
 async def test_get_player_statistics_nonexistent_player(db_session):
     """Test statistics for a nonexistent player."""
-    stats_service = StatisticsService(db_session)
+    stats_service = QFStatisticsService(db_session)
 
     with pytest.raises(ValueError, match="Player not found"):
         await stats_service.get_player_statistics(uuid4())

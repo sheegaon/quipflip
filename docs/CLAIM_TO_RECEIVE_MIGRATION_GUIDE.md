@@ -392,7 +392,7 @@ Since we're changing when payouts are distributed, we need to handle existing fi
 ```python
 # Migration: Backfill ResultView entries for existing finalized phrasesets
 from backend.models import Phraseset, Round, ResultView
-from backend.services import ScoringService
+from backend.services import QFScoringService
 from datetime import datetime, UTC
 from uuid import uuid4
 
@@ -406,7 +406,7 @@ async def backfill_result_views(db):
     )
     phrasesets = result.scalars().all()
 
-    scoring_service = ScoringService(db)
+    scoring_service = QFScoringService(db)
 
     for phraseset in phrasesets:
         # Get contributors

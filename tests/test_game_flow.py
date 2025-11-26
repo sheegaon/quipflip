@@ -2,7 +2,7 @@
 import pytest
 import uuid
 from backend.models.qf.prompt import Prompt
-from backend.services import RoundService
+from backend.services import QFRoundService
 from backend.services import TransactionService
 
 
@@ -10,7 +10,7 @@ from backend.services import TransactionService
 async def test_prompt_round_lifecycle(db_session, player_factory):
     """Test prompt round from start to submission."""
     # Create player and services
-    round_service = RoundService(db_session)
+    round_service = QFRoundService(db_session)
     transaction_service = TransactionService(db_session)
 
     player = await player_factory()
@@ -49,10 +49,10 @@ async def test_prompt_round_lifecycle(db_session, player_factory):
 @pytest.mark.asyncio
 async def test_one_round_at_a_time_enforcement(db_session, player_factory):
     """Test player can only have one active round."""
-    from backend.services import PlayerService
+    from backend.services import QFPlayerService
 
-    player_service = PlayerService(db_session)
-    round_service = RoundService(db_session)
+    player_service = QFPlayerService(db_session)
+    round_service = QFRoundService(db_session)
     transaction_service = TransactionService(db_session)
 
     player = await player_factory()
@@ -74,9 +74,9 @@ async def test_one_round_at_a_time_enforcement(db_session, player_factory):
 @pytest.mark.asyncio
 async def test_insufficient_balance_prevention(db_session, player_factory):
     """Test player cannot start round without sufficient balance."""
-    from backend.services import PlayerService
+    from backend.services import QFPlayerService
 
-    player_service = PlayerService(db_session)
+    player_service = QFPlayerService(db_session)
     player = await player_factory()
 
     # Set wallet to $50 (insufficient for $100 prompt)
@@ -92,7 +92,7 @@ async def test_insufficient_balance_prevention(db_session, player_factory):
 @pytest.mark.asyncio
 async def test_transaction_ledger_tracking(db_session, player_factory):
     """Test all transactions are recorded with wallet_balance_after."""
-    round_service = RoundService(db_session)
+    round_service = QFRoundService(db_session)
     transaction_service = TransactionService(db_session)
 
     player = await player_factory()
@@ -124,9 +124,9 @@ async def test_daily_bonus_logic(db_session, player_factory):
     """Test daily bonus availability and claiming."""
     from datetime import date, timedelta, datetime, UTC
     from backend.models.qf.player import QFPlayer as PlayerModel
-    from backend.services import PlayerService
+    from backend.services import QFPlayerService
 
-    player_service = PlayerService(db_session)
+    player_service = QFPlayerService(db_session)
     transaction_service = TransactionService(db_session)
 
     # Test 1: Bonus not available on creation day
@@ -173,9 +173,9 @@ async def test_daily_bonus_logic(db_session, player_factory):
 @pytest.mark.asyncio
 async def test_cannot_copy_own_prompt(db_session, player_factory):
     """Test that players cannot copy their own prompts."""
-    from backend.services import QueueService
+    from backend.services import QFQueueService
 
-    round_service = RoundService(db_session)
+    round_service = QFRoundService(db_session)
     transaction_service = TransactionService(db_session)
 
     player = await player_factory()
@@ -202,7 +202,7 @@ async def test_cannot_copy_own_prompt(db_session, player_factory):
     await db_session.refresh(player)
 
     # Prompt should now be in queue
-    prompts_before = QueueService.get_prompt_rounds_waiting()
+    prompts_before = QFQueueService.get_prompt_rounds_waiting()
     assert prompts_before >= 1
 
     initial_balance = player.balance

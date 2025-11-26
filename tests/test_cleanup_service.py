@@ -5,7 +5,7 @@ from datetime import datetime, UTC, timedelta
 from uuid import uuid4
 from sqlalchemy import select
 
-from backend.services import CleanupService
+from backend.services import QFCleanupService
 from backend.models import (
     Player,
     Round,
@@ -29,7 +29,7 @@ class TestRefreshTokenCleanup:
     @pytest.mark.asyncio
     async def test_cleanup_orphaned_refresh_tokens(self, db_session, player_factory):
         """Should remove tokens referencing non-existent players."""
-        cleanup_service = CleanupService(db_session)
+        cleanup_service = QFCleanupService(db_session)
 
         # Create a valid player with token
         player = await player_factory()
@@ -63,7 +63,7 @@ class TestRefreshTokenCleanup:
     @pytest.mark.asyncio
     async def test_cleanup_expired_refresh_tokens(self, db_session, player_factory):
         """Should remove expired refresh tokens."""
-        cleanup_service = CleanupService(db_session)
+        cleanup_service = QFCleanupService(db_session)
         player = await player_factory()
 
         # Create expired token
@@ -97,7 +97,7 @@ class TestRefreshTokenCleanup:
     @pytest.mark.asyncio
     async def test_cleanup_expired_includes_revoked_tokens(self, db_session, player_factory):
         """Should remove expired tokens including revoked ones."""
-        cleanup_service = CleanupService(db_session)
+        cleanup_service = QFCleanupService(db_session)
         player = await player_factory()
 
         # Create revoked token (still valid expiry but revoked)
@@ -133,7 +133,7 @@ class TestRefreshTokenCleanup:
     @pytest.mark.asyncio
     async def test_cleanup_old_revoked_tokens(self, db_session, player_factory):
         """Should remove revoked tokens older than specified days."""
-        cleanup_service = CleanupService(db_session)
+        cleanup_service = QFCleanupService(db_session)
         player = await player_factory()
 
         # Create old revoked token
@@ -173,7 +173,7 @@ class TestOrphanedRoundsCleanup:
     @pytest.mark.asyncio
     async def test_count_orphaned_rounds(self, db_session, player_factory):
         """Should count orphaned rounds correctly."""
-        cleanup_service = CleanupService(db_session)
+        cleanup_service = QFCleanupService(db_session)
         player = await player_factory()
 
         # Create valid round
@@ -213,7 +213,7 @@ class TestOrphanedRoundsCleanup:
     @pytest.mark.asyncio
     async def test_cleanup_orphaned_rounds(self, db_session, player_factory):
         """Should remove orphaned rounds."""
-        cleanup_service = CleanupService(db_session)
+        cleanup_service = QFCleanupService(db_session)
         player = await player_factory()
 
         # Count existing orphaned rounds before adding ours
@@ -261,7 +261,7 @@ class TestTestPlayerCleanup:
     @pytest.mark.asyncio
     async def test_get_test_players_identifies_patterns(self, db_session):
         """Should identify test players by username and email patterns."""
-        cleanup_service = CleanupService(db_session)
+        cleanup_service = QFCleanupService(db_session)
 
         # Create test players matching patterns
         test_players_data = [
@@ -304,7 +304,7 @@ class TestTestPlayerCleanup:
     @pytest.mark.asyncio
     async def test_cleanup_test_players_dry_run(self, db_session):
         """Should return count without deleting in dry run mode."""
-        cleanup_service = CleanupService(db_session)
+        cleanup_service = QFCleanupService(db_session)
 
         # Create test player with unique identifier to avoid conflicts
         unique_id = uuid4().hex[:8]
@@ -331,7 +331,7 @@ class TestTestPlayerCleanup:
     @pytest.mark.asyncio
     async def test_cleanup_test_players_deletes_related_data(self, db_session, player_factory):
         """Should delete test players and all related data."""
-        cleanup_service = CleanupService(db_session)
+        cleanup_service = QFCleanupService(db_session)
 
         # Count existing test players
         initial_test_players = await cleanup_service.get_test_players()
@@ -386,7 +386,7 @@ class TestInactiveGuestCleanup:
     @pytest.mark.asyncio
     async def test_cleanup_inactive_guest_players(self, db_session):
         """Should remove old guest accounts with no activity (no rounds, no phraseset activities)."""
-        cleanup_service = CleanupService(db_session)
+        cleanup_service = QFCleanupService(db_session)
 
         # Create old inactive guest (hasn't logged in for > 7 days, no activity)
         old_guest = Player(
@@ -436,7 +436,7 @@ class TestInactiveGuestCleanup:
     @pytest.mark.asyncio
     async def test_cleanup_preserves_active_guests(self, db_session):
         """Should not remove old guests who have played rounds."""
-        cleanup_service = CleanupService(db_session)
+        cleanup_service = QFCleanupService(db_session)
 
         # Create old guest with rounds (hasn't logged in for > 7 days)
         active_guest = Player(
@@ -478,7 +478,7 @@ class TestInactiveGuestCleanup:
     @pytest.mark.asyncio
     async def test_cleanup_preserves_guests_with_phraseset_activity(self, db_session):
         """Should not remove old guests who have phraseset activity."""
-        cleanup_service = CleanupService(db_session)
+        cleanup_service = QFCleanupService(db_session)
 
         # Create old guest with phraseset activity (hasn't logged in for > 7 days)
         active_guest = Player(
@@ -532,7 +532,7 @@ class TestInactiveGuestCleanup:
     @pytest.mark.asyncio
     async def test_cleanup_preserves_new_guests_with_null_login(self, db_session):
         """Should not delete newly-created guests with NULL last_login_date."""
-        cleanup_service = CleanupService(db_session)
+        cleanup_service = QFCleanupService(db_session)
 
         # Create newly-created guest with NULL last_login_date (should NOT be deleted)
         new_guest = Player(
@@ -586,7 +586,7 @@ class TestRecycleGuestUsernames:
     @pytest.mark.asyncio
     async def test_recycle_inactive_guest_usernames(self, db_session):
         """Should append X suffix to inactive guest usernames."""
-        cleanup_service = CleanupService(db_session)
+        cleanup_service = QFCleanupService(db_session)
 
         # Create inactive guest (> 30 days since login)
         inactive_guest = Player(
@@ -614,7 +614,7 @@ class TestRecycleGuestUsernames:
     @pytest.mark.asyncio
     async def test_recycle_avoids_duplicate_suffixes(self, db_session):
         """Should not recycle usernames that already have X suffix."""
-        cleanup_service = CleanupService(db_session)
+        cleanup_service = QFCleanupService(db_session)
 
         # Create inactive guest with X suffix already
         recycled_guest = Player(
@@ -642,7 +642,7 @@ class TestRecycleGuestUsernames:
     @pytest.mark.asyncio
     async def test_recycle_handles_conflicts_with_numeric_suffix(self, db_session):
         """Should add numeric suffixes to avoid conflicts."""
-        cleanup_service = CleanupService(db_session)
+        cleanup_service = QFCleanupService(db_session)
 
         # Create existing player with "UniqueName X" canonical
         existing_player = Player(
@@ -687,7 +687,7 @@ class TestDeletePlayer:
     @pytest.mark.asyncio
     async def test_delete_player_removes_all_related_data(self, db_session, player_factory):
         """Should delete player and all associated records."""
-        cleanup_service = CleanupService(db_session)
+        cleanup_service = QFCleanupService(db_session)
 
         # Create player
         player = await player_factory()
@@ -735,7 +735,7 @@ class TestDeletePlayer:
     @pytest.mark.asyncio
     async def test_delete_nonexistent_player(self, db_session):
         """Should handle deletion of non-existent player gracefully."""
-        cleanup_service = CleanupService(db_session)
+        cleanup_service = QFCleanupService(db_session)
 
         # Try to delete non-existent player
         result = await cleanup_service.delete_player(uuid4())
@@ -750,7 +750,7 @@ class TestRunAllCleanupTasks:
     @pytest.mark.asyncio
     async def test_run_all_cleanup_tasks(self, db_session, player_factory):
         """Should run all cleanup tasks and return combined results."""
-        cleanup_service = CleanupService(db_session)
+        cleanup_service = QFCleanupService(db_session)
 
         # Create some data to clean up
         player = await player_factory()
@@ -810,23 +810,23 @@ class TestRecycledSuffixDetection:
 
     def test_detects_single_x_suffix(self):
         """Should detect ' X' suffix."""
-        assert CleanupService._has_recycled_suffix("Username X") is True
+        assert QFCleanupService._has_recycled_suffix("Username X") is True
 
     def test_detects_numeric_x_suffix(self):
         """Should detect ' X#' suffix."""
-        assert CleanupService._has_recycled_suffix("Username X2") is True
-        assert CleanupService._has_recycled_suffix("Username X42") is True
+        assert QFCleanupService._has_recycled_suffix("Username X2") is True
+        assert QFCleanupService._has_recycled_suffix("Username X42") is True
 
     def test_rejects_non_suffixed_usernames(self):
         """Should return False for usernames without X suffix."""
-        assert CleanupService._has_recycled_suffix("Username") is False
-        assert CleanupService._has_recycled_suffix("UserX") is False  # No space
-        assert CleanupService._has_recycled_suffix("X Username") is False  # X at start
+        assert QFCleanupService._has_recycled_suffix("Username") is False
+        assert QFCleanupService._has_recycled_suffix("UserX") is False  # No space
+        assert QFCleanupService._has_recycled_suffix("X Username") is False  # X at start
 
     def test_handles_none_username(self):
         """Should handle None username."""
-        assert CleanupService._has_recycled_suffix(None) is False
+        assert QFCleanupService._has_recycled_suffix(None) is False
 
     def test_handles_empty_username(self):
         """Should handle empty username."""
-        assert CleanupService._has_recycled_suffix("") is False
+        assert QFCleanupService._has_recycled_suffix("") is False

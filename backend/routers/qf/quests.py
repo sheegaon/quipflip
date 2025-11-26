@@ -1,9 +1,7 @@
 """Quest API router for QuipFlip."""
-from fastapi import APIRouter
 import logging
 from typing import Type, Any
 
-from backend.models.qf.player import QFPlayer
 from backend.models.qf.quest import QuestType
 from backend.routers.quest_router_base import QuestRouterBase
 from backend.services.qf.quest_service import QuestService, QUEST_CONFIGS
@@ -34,6 +32,6 @@ class QFQuestRouter(QuestRouterBase):
         return QuestType(quest_type_str)
 
 
-# Create and expose the router instance
+# Create the router instance
 qf_quest_router = QFQuestRouter()
 router = qf_quest_router.router

@@ -7,13 +7,13 @@ import asyncio
 import sys
 import argparse
 from backend.database import AsyncSessionLocal
-from backend.services import CleanupService
+from backend.services import QFCleanupService
 
 
 async def list_test_players():
     """List all test players without deleting."""
     async with AsyncSessionLocal() as session:
-        cleanup_service = CleanupService(session)
+        cleanup_service = QFCleanupService(session)
         test_players = await cleanup_service.get_test_players()
 
         if not test_players:
@@ -35,7 +35,7 @@ async def cleanup_test_data(dry_run: bool = False, verbose: bool = False):
     """
     async with AsyncSessionLocal() as session:
         try:
-            cleanup_service = CleanupService(session)
+            cleanup_service = QFCleanupService(session)
 
             # Find test players first
             test_players = await cleanup_service.get_test_players()

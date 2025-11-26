@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from typing import Type, Any, List
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.database import get_db
@@ -30,6 +30,18 @@ class QuestRouterBase(ABC):
         self.router = APIRouter()
         self._setup_common_routes()
 
+    def _current_player_dependency(self):
+        """Return a dependency that resolves the current player for this game."""
+
+        async def _resolver(
+            request: Request,
+            authorization: str | None = Header(default=None, alias="Authorization"),
+            db: AsyncSession = Depends(get_db),
+        ):
+            return await get_current_player(request, self.game_type, authorization, db)
+
+        return _resolver
+
     @property
     @abstractmethod
     def quest_service_class(self) -> Type[Any]:
@@ -45,14 +57,16 @@ class QuestRouterBase(ABC):
     def _setup_common_routes(self):
         """Set up all common quest management routes."""
         
+        player_dependency = self._current_player_dependency()
+
         @self.router.get("", response_model=QuestListResponse)
-        async def get_player_quests(player=Depends(get_current_player), db: AsyncSession = Depends(get_db)):
+        async def get_player_quests(player=Depends(player_dependency), db: AsyncSession = Depends(get_db)):
             """Get all quests for the current player."""
             return await self._get_player_quests(player, db)
 
         @self.router.get("/active", response_model=List[QuestResponse])
         async def get_active_quests(
-            player=Depends(get_current_player),
+            player=Depends(player_dependency),
             db: AsyncSession = Depends(get_db),
         ):
             """Get only active quests for the current player."""
@@ -60,7 +74,7 @@ class QuestRouterBase(ABC):
 
         @self.router.get("/claimable", response_model=List[QuestResponse])
         async def get_claimable_quests(
-            player=Depends(get_current_player),
+            player=Depends(player_dependency),
             db: AsyncSession = Depends(get_db),
         ):
             """Get completed but unclaimed quests for the current player."""
@@ -69,7 +83,7 @@ class QuestRouterBase(ABC):
         @self.router.get("/{quest_id}", response_model=QuestResponse)
         async def get_quest(
             quest_id: UUID,
-            player=Depends(get_current_player),
+            player=Depends(player_dependency),
             db: AsyncSession = Depends(get_db),
         ):
             """Get a single quest by ID."""
@@ -78,7 +92,7 @@ class QuestRouterBase(ABC):
         @self.router.post("/{quest_id}/claim", response_model=ClaimQuestRewardResponse)
         async def claim_quest_reward(
             quest_id: UUID,
-            player=Depends(get_current_player),
+            player=Depends(player_dependency),
             db: AsyncSession = Depends(get_db),
         ):
             """Claim a completed quest reward."""

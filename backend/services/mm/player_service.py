@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.config import get_settings
 from backend.models.mm.player import MMPlayer
 from backend.services.mm.system_config_service import MMSystemConfigService
-from backend.services.player_service_base import PlayerServiceBase, PlayerServiceError
+from backend.services.player_service_base import PlayerServiceBase, PlayerError
 from backend.services.username_service import (
     UsernameService,
     canonicalize_username,
@@ -20,10 +20,6 @@ from backend.utils.model_registry import GameType
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
-
-
-class MMPlayerError(PlayerServiceError):
-    """Raised when Meme Mint player service fails."""
 
 
 class MMPlayerService(PlayerServiceBase):
@@ -39,17 +35,15 @@ class MMPlayerService(PlayerServiceBase):
 
     @property
     def error_class(self):
-        return MMPlayerError
+        return PlayerError
 
     @property
     def game_type(self) -> GameType:
         return GameType.MM
 
-    def _should_be_admin(self, email: str) -> bool:
-        return settings.is_admin_email(email)
-
-    def get_guest_domain(self) -> str:
-        return "mememint.app"
+    def _get_initial_balance(self) -> int:
+        """Get the initial balance for new QF players."""
+        return settings.mm_starting_wallet
 
     async def create_player(self, *, username: str, email: str, password_hash: str) -> MMPlayer:
         """Create new Meme Mint player with configured starting balance."""
@@ -58,17 +52,13 @@ class MMPlayerService(PlayerServiceBase):
         if not canonical_username:
             raise ValueError("invalid_username")
 
-        starting_balance = await self.config_service.get_config_value(
-            "mm_starting_wallet_override", default=settings.starting_balance
-        )
-
         player = MMPlayer(
             player_id=uuid.uuid4(),
             username=normalized_username,
             username_canonical=canonical_username,
             email=email.strip().lower(),
             password_hash=password_hash,
-            wallet=starting_balance,
+            wallet=settings.mm_starting_wallet,
             vault=0,
             last_login_date=datetime.now(UTC),
             is_admin=self._should_be_admin(email),
@@ -77,6 +67,7 @@ class MMPlayerService(PlayerServiceBase):
         try:
             await self.db.commit()
             await self.db.refresh(player)
+            logger.info(f"Created player: {player.player_id} {player.username=} {player.wallet=} {player.vault=}")
             return player
         except IntegrityError as exc:
             await self._handle_integrity_error(exc, "create")

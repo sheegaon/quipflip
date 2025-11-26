@@ -167,8 +167,8 @@ class QuestService(QuestServiceBase):
     @property
     def player_service_class(self) -> Type[Any]:
         """Return the QF player service class."""
-        from backend.services.qf.player_service import PlayerService
-        return PlayerService
+        from backend.services.qf.player_service import QFPlayerService
+        return QFPlayerService
 
     @property
     def game_type(self) -> GameType:

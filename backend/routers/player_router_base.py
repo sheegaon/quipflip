@@ -86,7 +86,7 @@ class PlayerRouterBase(ABC):
             authorization: str | None = Header(default=None, alias="Authorization"),
             db: AsyncSession = Depends(get_db),
         ):
-            return await get_current_player(request, authorization, db, self.game_type)
+            return await get_current_player(request, self.game_type, authorization, db)
 
         return _resolver
 
@@ -108,6 +108,8 @@ class PlayerRouterBase(ABC):
             return "Quipflip"
         elif self.game_type == GameType.IR:
             return "Initial Reaction"
+        elif self.game_type == GameType.MM:
+            return "MemeMint"
         return str(self.game_type)
 
     def _get_create_message(self) -> str:

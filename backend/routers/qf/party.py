@@ -1,6 +1,6 @@
 """Party Mode API router."""
 from datetime import UTC, datetime
-from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, status as http_status
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, status as http_status, Request, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 import logging
@@ -64,9 +64,19 @@ router = APIRouter()
 ws_manager = get_party_websocket_manager()
 
 
+# Use Quipflip authentication
+async def get_qf_player(
+        request: Request,
+        authorization: str | None = Header(default=None, alias="Authorization"),
+        db: AsyncSession = Depends(get_db),
+):
+    # Wrapper keeps dependency async so FastAPI awaits it (partial would not)
+    return await get_current_player(request=request, game_type=GameType.QF, authorization=authorization, db=db)
+
+
 @router.get("/list", response_model=PartyListResponse)
 async def list_active_parties(
-    player: QFPlayer = Depends(get_current_player),
+    player: QFPlayer = Depends(get_qf_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Get list of all joinable party sessions.
@@ -109,7 +119,7 @@ async def list_active_parties(
 @router.post("/create", response_model=CreatePartySessionResponse)
 async def create_party_session(
     request: CreatePartySessionRequest,
-    player: QFPlayer = Depends(get_current_player),
+    player: QFPlayer = Depends(get_qf_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new party session.
@@ -219,7 +229,7 @@ async def _handle_party_join(
 @router.post("/join", response_model=JoinPartySessionResponse)
 async def join_party_session(
     request: JoinPartySessionRequest,
-    player: QFPlayer = Depends(get_current_player),
+    player: QFPlayer = Depends(get_qf_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Join an existing party session by code.
@@ -267,7 +277,7 @@ async def join_party_session(
 @router.post("/{session_id}/join", response_model=JoinPartySessionResponse)
 async def join_party_session_by_id(
     session_id: UUID,
-    player: QFPlayer = Depends(get_current_player),
+    player: QFPlayer = Depends(get_qf_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Join an existing party session by session ID.
@@ -310,7 +320,7 @@ async def join_party_session_by_id(
 @router.post("/{session_id}/ready", response_model=MarkReadyResponse)
 async def mark_ready(
     session_id: UUID,
-    player: QFPlayer = Depends(get_current_player),
+    player: QFPlayer = Depends(get_qf_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Mark player as ready in lobby.
@@ -371,7 +381,7 @@ async def mark_ready(
 @router.post("/{session_id}/add-ai", response_model=AddAIPlayerResponse)
 async def add_ai_player_to_session(
     session_id: UUID,
-    player: QFPlayer = Depends(get_current_player),
+    player: QFPlayer = Depends(get_qf_player),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -433,7 +443,7 @@ async def add_ai_player_to_session(
 @router.post("/{session_id}/ping", response_model=PartyPingResponse)
 async def ping_party_session(
     session_id: UUID,
-    player: QFPlayer = Depends(get_current_player),
+    player: QFPlayer = Depends(get_qf_player),
     db: AsyncSession = Depends(get_db),
     connection_manager: NotificationConnectionManager = Depends(
         get_notification_manager
@@ -491,7 +501,7 @@ async def ping_party_session(
 @router.post("/{session_id}/process-ai")
 async def process_ai_submissions(
     session_id: UUID,
-    player: QFPlayer = Depends(get_current_player),
+    player: QFPlayer = Depends(get_qf_player),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -543,7 +553,7 @@ async def process_ai_submissions(
 @router.post("/{session_id}/start", response_model=StartPartySessionResponse)
 async def start_party_session(
     session_id: UUID,
-    player: QFPlayer = Depends(get_current_player),
+    player: QFPlayer = Depends(get_qf_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Start the party session (host only).
@@ -617,7 +627,7 @@ async def start_party_session(
 @router.get("/{session_id}/status", response_model=PartySessionStatusResponse)
 async def get_party_session_status(
     session_id: UUID,
-    player: QFPlayer = Depends(get_current_player),
+    player: QFPlayer = Depends(get_qf_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Get current party session status.
@@ -647,7 +657,7 @@ async def get_party_session_status(
 @router.get("/{session_id}/results", response_model=PartyResultsResponse)
 async def get_party_results(
     session_id: UUID,
-    player: QFPlayer = Depends(get_current_player),
+    player: QFPlayer = Depends(get_qf_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Get party match results.
@@ -692,7 +702,7 @@ async def get_party_results(
 @router.post("/{session_id}/rounds/prompt", response_model=StartPartyRoundResponse)
 async def start_party_prompt_round(
     session_id: UUID,
-    player: QFPlayer = Depends(get_current_player),
+    player: QFPlayer = Depends(get_qf_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Start a prompt round within party context.
@@ -776,7 +786,7 @@ async def start_party_prompt_round(
 @router.post("/{session_id}/rounds/copy", response_model=StartPartyRoundResponse)
 async def start_party_copy_round(
     session_id: UUID,
-    player: QFPlayer = Depends(get_current_player),
+    player: QFPlayer = Depends(get_qf_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Start a copy round within party context.
@@ -862,7 +872,7 @@ async def start_party_copy_round(
 @router.post("/{session_id}/rounds/vote", response_model=StartPartyRoundResponse)
 async def start_party_vote_round(
     session_id: UUID,
-    player: QFPlayer = Depends(get_current_player),
+    player: QFPlayer = Depends(get_qf_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Start a vote round within party context.
@@ -952,7 +962,7 @@ async def submit_party_round(
     session_id: UUID,
     round_id: UUID,
     request: SubmitPartyRoundRequest,
-    player: QFPlayer = Depends(get_current_player),
+    player: QFPlayer = Depends(get_qf_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Submit a party round (prompt, copy, or vote).
@@ -993,7 +1003,7 @@ async def submit_party_round(
 @router.post("/{session_id}/leave")
 async def leave_party_session(
     session_id: UUID,
-    player: QFPlayer = Depends(get_current_player),
+    player: QFPlayer = Depends(get_qf_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Leave a party session (lobby only).

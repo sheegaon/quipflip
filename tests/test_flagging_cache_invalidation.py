@@ -1,8 +1,8 @@
 """Test cache invalidation when flagging prompts to ensure dashboard shows accurate counts."""
 import pytest
-from backend.services import RoundService
+from backend.services import QFRoundService
 from backend.services import TransactionService
-from backend.services import PlayerService
+from backend.services import QFPlayerService
 from backend.utils.cache import dashboard_cache
 from backend.config import get_settings
 
@@ -40,7 +40,7 @@ async def test_prompts_waiting_count_after_flagging(db_session, player_factory):
     await db_session.commit()
 
     # Services
-    round_service = RoundService(db_session)
+    round_service = QFRoundService(db_session)
     transaction_service_a = TransactionService(db_session)
     transaction_service_b = TransactionService(db_session)
 
@@ -130,10 +130,10 @@ async def test_dashboard_endpoint_shows_correct_count_after_flagging(
     await db_session.commit()
 
     # Services
-    round_service = RoundService(db_session)
+    round_service = QFRoundService(db_session)
     transaction_service_a = TransactionService(db_session)
     transaction_service_b = TransactionService(db_session)
-    player_service = PlayerService(db_session)
+    player_service = QFPlayerService(db_session)
 
     # Clear cache
     dashboard_cache.clear()
@@ -208,7 +208,7 @@ async def test_abandoned_prompt_not_counted_in_available(db_session, player_fact
     await db_session.commit()
 
     # Services
-    round_service = RoundService(db_session)
+    round_service = QFRoundService(db_session)
     transaction_service_a = TransactionService(db_session)
     transaction_service_b = TransactionService(db_session)
 

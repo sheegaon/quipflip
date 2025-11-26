@@ -4,10 +4,10 @@ from backend.models.qf.player import QFPlayer
 from backend.models.qf.round import Round
 from backend.models.qf.phraseset import Phraseset
 from backend.models.qf.vote import Vote
-from backend.services import RoundService
-from backend.services import VoteService
+from backend.services import QFRoundService
+from backend.services import QFVoteService
 from backend.services import TransactionService
-from backend.services import ScoringService
+from backend.services import QFScoringService
 from backend.config import get_settings
 import uuid
 from datetime import datetime, timedelta, UTC
@@ -90,7 +90,7 @@ async def test_prize_pool_initialization(db_session):
     await db_session.commit()
 
     # Create phraseset using round service
-    round_service = RoundService(db_session)
+    round_service = QFRoundService(db_session)
     phraseset = await round_service.create_phraseset_if_ready(prompt_round)
 
     assert phraseset is not None, "Phraseset should be created"
@@ -215,7 +215,7 @@ async def test_prize_pool_updates_with_votes(db_session):
     db_session.add(phraseset)
     await db_session.commit()
 
-    vote_service = VoteService(db_session)
+    vote_service = QFVoteService(db_session)
     transaction_service = TransactionService(db_session)
 
     initial_pool = phraseset.total_pool
@@ -391,7 +391,7 @@ async def test_scoring_uses_dynamic_prize_pool(db_session):
     await db_session.commit()
 
     # Calculate payouts
-    scoring_service = ScoringService(db_session)
+    scoring_service = QFScoringService(db_session)
     payouts = await scoring_service.calculate_payouts(phraseset)
 
     # Verify payouts are calculated from dynamic pool

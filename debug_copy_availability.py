@@ -6,9 +6,9 @@ This script checks the database state and round availability logic.
 
 import asyncio
 from backend.database import AsyncSessionLocal
-from backend.services import RoundService
-from backend.services import PlayerService
-from sqlalchemy import func, select, text
+from backend.services import QFRoundService
+from backend.services import QFPlayerService
+from sqlalchemy import text
 from datetime import datetime, timezone
 
 
@@ -25,8 +25,8 @@ async def debug_copy_availability():
 
     # Get database session using AsyncSessionLocal
     async with AsyncSessionLocal() as db:
-        round_service = RoundService(db)
-        player_service = PlayerService(db)
+        round_service = QFRoundService(db)
+        player_service = QFPlayerService(db)
 
         try:
             print_section("DATABASE STATE")

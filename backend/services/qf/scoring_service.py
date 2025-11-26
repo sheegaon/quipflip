@@ -215,7 +215,7 @@ def _placeholder_player_id(phraseset_id: UUID, role: str) -> UUID:
     return uuid5(PLACEHOLDER_PLAYER_NAMESPACE, f"{phraseset_id}:{role}")
 
 
-class ScoringService:
+class QFScoringService:
     """Service for calculating scores and payouts."""
 
     def __init__(self, db: AsyncSession):

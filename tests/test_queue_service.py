@@ -17,7 +17,7 @@ import pytest
 from unittest.mock import patch
 from uuid import UUID, uuid4
 
-from backend.services import QueueService, PROMPT_QUEUE, PHRASESET_QUEUE
+from backend.services import QFQueueService, PROMPT_QUEUE, PHRASESET_QUEUE
 from backend.config import get_settings
 
 
@@ -52,7 +52,7 @@ class TestPromptQueueOperations:
         """Should add prompt round to queue and log new length."""
         mock_queue_client.length.return_value = 5
 
-        QueueService.add_prompt_round_to_queue(sample_prompt_round_id)
+        QFQueueService.add_prompt_round_to_queue(sample_prompt_round_id)
 
         mock_queue_client.push.assert_called_once_with(
             PROMPT_QUEUE, {"prompt_round_id": str(sample_prompt_round_id)}
@@ -64,7 +64,7 @@ class TestPromptQueueOperations:
         mock_queue_client.length.return_value = 3
         mock_queue_client.pop.return_value = {"prompt_round_id": str(sample_prompt_round_id)}
 
-        result = QueueService.get_next_prompt_round()
+        result = QFQueueService.get_next_prompt_round()
 
         assert isinstance(result, UUID)
         assert result == sample_prompt_round_id
@@ -76,7 +76,7 @@ class TestPromptQueueOperations:
         mock_queue_client.length.return_value = 0
         mock_queue_client.pop.return_value = None
 
-        result = QueueService.get_next_prompt_round()
+        result = QFQueueService.get_next_prompt_round()
 
         assert result is None
         mock_queue_client.pop.assert_called_once_with(PROMPT_QUEUE)
@@ -87,7 +87,7 @@ class TestPromptQueueOperations:
         """Should remove specific prompt round from queue."""
         mock_queue_client.remove.return_value = True
 
-        result = QueueService.remove_prompt_round_from_queue(sample_prompt_round_id)
+        result = QFQueueService.remove_prompt_round_from_queue(sample_prompt_round_id)
 
         assert result is True
         mock_queue_client.remove.assert_called_once_with(
@@ -100,7 +100,7 @@ class TestPromptQueueOperations:
         """Should return False when prompt round not in queue."""
         mock_queue_client.remove.return_value = False
 
-        result = QueueService.remove_prompt_round_from_queue(sample_prompt_round_id)
+        result = QFQueueService.remove_prompt_round_from_queue(sample_prompt_round_id)
 
         assert result is False
         mock_queue_client.remove.assert_called_once()
@@ -109,7 +109,7 @@ class TestPromptQueueOperations:
         """Should return count of prompt rounds waiting."""
         mock_queue_client.length.return_value = 7
 
-        result = QueueService.get_prompt_rounds_waiting()
+        result = QFQueueService.get_prompt_rounds_waiting()
 
         assert result == 7
         mock_queue_client.length.assert_called_once_with(PROMPT_QUEUE)
@@ -118,7 +118,7 @@ class TestPromptQueueOperations:
         """Should return True when prompt rounds are available."""
         mock_queue_client.length.return_value = 5
 
-        result = QueueService.has_prompt_rounds_available()
+        result = QFQueueService.has_prompt_rounds_available()
 
         assert result is True
 
@@ -126,7 +126,7 @@ class TestPromptQueueOperations:
         """Should return False when no prompt rounds available."""
         mock_queue_client.length.return_value = 0
 
-        result = QueueService.has_prompt_rounds_available()
+        result = QFQueueService.has_prompt_rounds_available()
 
         assert result is False
 
@@ -139,7 +139,7 @@ class TestCopyDiscountLogic:
         settings = get_settings()
         mock_queue_client.length.return_value = settings.copy_discount_threshold + 1
 
-        result = QueueService.is_copy_discount_active()
+        result = QFQueueService.is_copy_discount_active()
 
         assert result is True
 
@@ -148,7 +148,7 @@ class TestCopyDiscountLogic:
         settings = get_settings()
         mock_queue_client.length.return_value = settings.copy_discount_threshold
 
-        result = QueueService.is_copy_discount_active()
+        result = QFQueueService.is_copy_discount_active()
 
         assert result is False
 
@@ -157,7 +157,7 @@ class TestCopyDiscountLogic:
         settings = get_settings()
         mock_queue_client.length.return_value = settings.copy_discount_threshold - 1
 
-        result = QueueService.is_copy_discount_active()
+        result = QFQueueService.is_copy_discount_active()
 
         assert result is False
 
@@ -165,7 +165,7 @@ class TestCopyDiscountLogic:
         """Should not activate discount with empty queue."""
         mock_queue_client.length.return_value = 0
 
-        result = QueueService.is_copy_discount_active()
+        result = QFQueueService.is_copy_discount_active()
 
         assert result is False
 
@@ -174,7 +174,7 @@ class TestCopyDiscountLogic:
         settings = get_settings()
         mock_queue_client.length.return_value = settings.copy_discount_threshold + 5
 
-        result = QueueService.get_copy_cost()
+        result = QFQueueService.get_copy_cost()
 
         assert result == settings.copy_cost_discount
 
@@ -183,7 +183,7 @@ class TestCopyDiscountLogic:
         settings = get_settings()
         mock_queue_client.length.return_value = settings.copy_discount_threshold - 1
 
-        result = QueueService.get_copy_cost()
+        result = QFQueueService.get_copy_cost()
 
         assert result == settings.copy_cost_normal
 
@@ -192,7 +192,7 @@ class TestCopyDiscountLogic:
         settings = get_settings()
         mock_queue_client.length.return_value = settings.copy_discount_threshold
 
-        result = QueueService.get_copy_cost()
+        result = QFQueueService.get_copy_cost()
 
         assert result == settings.copy_cost_normal
 
@@ -202,7 +202,7 @@ class TestPhrasesetQueueOperations:
 
     def test_add_phraseset_to_queue(self, mock_queue_client, sample_phraseset_id):
         """Should add phraseset to voting queue."""
-        QueueService.add_phraseset_to_queue(sample_phraseset_id)
+        QFQueueService.add_phraseset_to_queue(sample_phraseset_id)
 
         mock_queue_client.push.assert_called_once_with(
             PHRASESET_QUEUE, {"phraseset_id": str(sample_phraseset_id)}
@@ -212,7 +212,7 @@ class TestPhrasesetQueueOperations:
         """Should return count of phrasesets waiting for votes."""
         mock_queue_client.length.return_value = 12
 
-        result = QueueService.get_phrasesets_waiting()
+        result = QFQueueService.get_phrasesets_waiting()
 
         assert result == 12
         mock_queue_client.length.assert_called_once_with(PHRASESET_QUEUE)
@@ -221,7 +221,7 @@ class TestPhrasesetQueueOperations:
         """Should return True when phrasesets are available."""
         mock_queue_client.length.return_value = 3
 
-        result = QueueService.has_phrasesets_available()
+        result = QFQueueService.has_phrasesets_available()
 
         assert result is True
 
@@ -229,7 +229,7 @@ class TestPhrasesetQueueOperations:
         """Should return False when no phrasesets available."""
         mock_queue_client.length.return_value = 0
 
-        result = QueueService.has_phrasesets_available()
+        result = QFQueueService.has_phrasesets_available()
 
         assert result is False
 
@@ -243,7 +243,7 @@ class TestQueueIntegration:
 
         # Simulate adding three prompts
         for prompt_id in prompt_ids:
-            QueueService.add_prompt_round_to_queue(prompt_id)
+            QFQueueService.add_prompt_round_to_queue(prompt_id)
 
         # Verify all three were pushed
         assert mock_queue_client.push.call_count == 3
@@ -251,7 +251,7 @@ class TestQueueIntegration:
         # Simulate retrieving in FIFO order
         for i, prompt_id in enumerate(prompt_ids):
             mock_queue_client.pop.return_value = {"prompt_round_id": str(prompt_id)}
-            result = QueueService.get_next_prompt_round()
+            result = QFQueueService.get_next_prompt_round()
             assert result == prompt_id
 
     def test_discount_threshold_transition(self, mock_queue_client):
@@ -260,25 +260,25 @@ class TestQueueIntegration:
 
         # Below threshold - no discount
         mock_queue_client.length.return_value = settings.copy_discount_threshold - 1
-        assert QueueService.is_copy_discount_active() is False
-        assert QueueService.get_copy_cost() == settings.copy_cost_normal
+        assert QFQueueService.is_copy_discount_active() is False
+        assert QFQueueService.get_copy_cost() == settings.copy_cost_normal
 
         # At threshold - no discount
         mock_queue_client.length.return_value = settings.copy_discount_threshold
-        assert QueueService.is_copy_discount_active() is False
-        assert QueueService.get_copy_cost() == settings.copy_cost_normal
+        assert QFQueueService.is_copy_discount_active() is False
+        assert QFQueueService.get_copy_cost() == settings.copy_cost_normal
 
         # Above threshold - discount active
         mock_queue_client.length.return_value = settings.copy_discount_threshold + 1
-        assert QueueService.is_copy_discount_active() is True
-        assert QueueService.get_copy_cost() == settings.copy_cost_discount
+        assert QFQueueService.is_copy_discount_active() is True
+        assert QFQueueService.get_copy_cost() == settings.copy_cost_discount
 
     def test_remove_specific_prompt_from_full_queue(self, mock_queue_client, sample_prompt_round_id):
         """Should remove specific prompt even when queue has multiple items."""
         mock_queue_client.length.return_value = 15
         mock_queue_client.remove.return_value = True
 
-        result = QueueService.remove_prompt_round_from_queue(sample_prompt_round_id)
+        result = QFQueueService.remove_prompt_round_from_queue(sample_prompt_round_id)
 
         assert result is True
         mock_queue_client.remove.assert_called_once_with(
@@ -288,8 +288,8 @@ class TestQueueIntegration:
     def test_both_queues_independent(self, mock_queue_client, sample_prompt_round_id, sample_phraseset_id):
         """Should manage prompt and phraseset queues independently."""
         # Add to both queues
-        QueueService.add_prompt_round_to_queue(sample_prompt_round_id)
-        QueueService.add_phraseset_to_queue(sample_phraseset_id)
+        QFQueueService.add_prompt_round_to_queue(sample_prompt_round_id)
+        QFQueueService.add_phraseset_to_queue(sample_phraseset_id)
 
         # Verify separate queue names used
         calls = mock_queue_client.push.call_args_list
@@ -301,12 +301,12 @@ class TestQueueIntegration:
         """Should handle empty queues correctly in initial state."""
         mock_queue_client.length.return_value = 0
 
-        assert QueueService.get_prompt_rounds_waiting() == 0
-        assert QueueService.get_phrasesets_waiting() == 0
-        assert QueueService.has_prompt_rounds_available() is False
-        assert QueueService.has_phrasesets_available() is False
-        assert QueueService.get_next_prompt_round() is None
-        assert QueueService.is_copy_discount_active() is False
+        assert QFQueueService.get_prompt_rounds_waiting() == 0
+        assert QFQueueService.get_phrasesets_waiting() == 0
+        assert QFQueueService.has_prompt_rounds_available() is False
+        assert QFQueueService.has_phrasesets_available() is False
+        assert QFQueueService.get_next_prompt_round() is None
+        assert QFQueueService.is_copy_discount_active() is False
 
 
 class TestEdgeCases:
@@ -315,8 +315,8 @@ class TestEdgeCases:
     def test_multiple_identical_prompt_ids(self, mock_queue_client, sample_prompt_round_id):
         """Should handle adding same prompt ID multiple times."""
         # In practice this shouldn't happen, but testing the behavior
-        QueueService.add_prompt_round_to_queue(sample_prompt_round_id)
-        QueueService.add_prompt_round_to_queue(sample_prompt_round_id)
+        QFQueueService.add_prompt_round_to_queue(sample_prompt_round_id)
+        QFQueueService.add_prompt_round_to_queue(sample_prompt_round_id)
 
         assert mock_queue_client.push.call_count == 2
 
@@ -324,7 +324,7 @@ class TestEdgeCases:
         """Should handle removing from empty queue gracefully."""
         mock_queue_client.remove.return_value = False
 
-        result = QueueService.remove_prompt_round_from_queue(sample_prompt_round_id)
+        result = QFQueueService.remove_prompt_round_from_queue(sample_prompt_round_id)
 
         assert result is False
 
@@ -332,14 +332,14 @@ class TestEdgeCases:
         """Should handle large queue counts correctly."""
         mock_queue_client.length.return_value = 999
 
-        assert QueueService.get_prompt_rounds_waiting() == 999
-        assert QueueService.is_copy_discount_active() is True
+        assert QFQueueService.get_prompt_rounds_waiting() == 999
+        assert QFQueueService.is_copy_discount_active() is True
 
     def test_uuid_string_conversion_consistency(self, mock_queue_client):
         """Should maintain UUID string conversion consistency."""
         original_uuid = uuid4()
 
-        QueueService.add_prompt_round_to_queue(original_uuid)
+        QFQueueService.add_prompt_round_to_queue(original_uuid)
 
         # Verify UUID was converted to string for storage
         call_args = mock_queue_client.push.call_args[0][1]
@@ -351,7 +351,7 @@ class TestEdgeCases:
         test_uuid = uuid4()
         mock_queue_client.pop.return_value = {"prompt_round_id": str(test_uuid)}
 
-        result = QueueService.get_next_prompt_round()
+        result = QFQueueService.get_next_prompt_round()
 
         assert isinstance(result, UUID)
         assert result == test_uuid

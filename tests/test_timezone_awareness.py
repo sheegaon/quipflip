@@ -28,8 +28,8 @@ from backend.models.qf.round import Round
 from backend.models.qf.phraseset import Phraseset
 from backend.models.qf.vote import Vote
 from backend.models.qf.transaction import QFTransaction
-from backend.services import RoundService
-from backend.services import VoteService
+from backend.services import QFRoundService
+from backend.services import QFVoteService
 from backend.services import TransactionService
 from sqlalchemy import select
 
@@ -244,7 +244,7 @@ class TestServiceTimezoneAwareness:
         db_session.add(prompt)
         await db_session.commit()
 
-        round_service = RoundService(db_session)
+        round_service = QFRoundService(db_session)
         transaction_service = TransactionService(db_session)
 
         round_obj = await round_service.start_prompt_round(

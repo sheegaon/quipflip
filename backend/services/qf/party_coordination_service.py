@@ -17,8 +17,8 @@ from backend.models.qf.round import Round
 from backend.models.qf.phraseset import Phraseset
 from backend.models.qf.prompt import Prompt
 from backend.services.transaction_service import TransactionService
-from backend.services.qf.round_service import RoundService
-from backend.services.qf.vote_service import VoteService
+from backend.services.qf.round_service import QFRoundService
+from backend.services.qf.vote_service import QFVoteService
 from backend.services.qf.party_session_service import (
     PartySessionService,
     SessionNotFoundError,
@@ -27,7 +27,7 @@ from backend.services.qf.party_session_service import (
     PartyModeError,
 )
 from backend.services.qf.party_websocket_manager import get_party_websocket_manager
-from backend.services.qf.queue_service import QueueService
+from backend.services.qf.queue_service import QFQueueService
 from backend.config import get_settings
 from backend.utils.exceptions import NoPromptsAvailableError, NoPhrasesetsAvailableError
 from backend.services.ai.ai_service import AI_PLAYER_EMAIL_DOMAIN
@@ -106,14 +106,14 @@ class PartyCoordinationService:
         self,
         db: AsyncSession,
         party_session_service: Optional[PartySessionService] = None,
-        round_service: Optional[RoundService] = None,
-        vote_service: Optional[VoteService] = None,
+        round_service: Optional[QFRoundService] = None,
+        vote_service: Optional[QFVoteService] = None,
     ):
         self.db = db
         self.settings = get_settings()
         self.party_session_service = party_session_service or PartySessionService(db)
-        self.round_service = round_service or RoundService(db)
-        self.vote_service = vote_service or VoteService(db)
+        self.round_service = round_service or QFRoundService(db)
+        self.vote_service = vote_service or QFVoteService(db)
         self.ws_manager = get_party_websocket_manager()
 
     async def start_party_prompt_round(
@@ -625,10 +625,10 @@ class PartyCoordinationService:
         participants = await self.party_session_service.get_participants(session_id)
         party_player_ids = {p.player_id for p in participants if p.player_id}
         skipped_prompt_ids: list[UUID] = []
-        queue_length = QueueService.get_prompt_rounds_waiting()
+        queue_length = QFQueueService.get_prompt_rounds_waiting()
 
         for _ in range(queue_length):
-            prompt_round_id = QueueService.get_next_prompt_round()
+            prompt_round_id = QFQueueService.get_next_prompt_round()
             if not prompt_round_id:
                 break
 
@@ -649,13 +649,13 @@ class PartyCoordinationService:
 
             # Found an eligible prompt; requeue skipped prompts before returning
             for skipped_id in skipped_prompt_ids:
-                QueueService.add_prompt_round_to_queue(skipped_id)
+                QFQueueService.add_prompt_round_to_queue(skipped_id)
 
             return prompt_round.round_id, True
 
         # Requeue any skipped prompts if no eligible option was found
         for skipped_id in skipped_prompt_ids:
-            QueueService.add_prompt_round_to_queue(skipped_id)
+            QFQueueService.add_prompt_round_to_queue(skipped_id)
 
         return None, False
 
@@ -1145,8 +1145,8 @@ class PartyCoordinationService:
             # This ensures all operations within the submission use the same session
             from backend.services.ai.ai_service import AIService
 
-            task_round_service = RoundService(task_db)
-            task_vote_service = VoteService(task_db)
+            task_round_service = QFRoundService(task_db)
+            task_vote_service = QFVoteService(task_db)
             task_party_session_service = PartySessionService(task_db)
             task_transaction_service = TransactionService(task_db)
             ai_service = AIService(task_db)

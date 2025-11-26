@@ -12,7 +12,7 @@ from sqlalchemy.orm import aliased
 from backend.models.qf.flagged_prompt import FlaggedPrompt
 from backend.models.qf.player import QFPlayer
 from backend.models.qf.round import Round
-from backend.services.qf.queue_service import QueueService
+from backend.services.qf.queue_service import QFQueueService
 from backend.services.transaction_service import TransactionService
 from backend.config import get_settings
 
@@ -105,7 +105,7 @@ class FlaggedPromptService:
             # Ensure prompt never returns to queue
             if prompt_round:
                 prompt_round.phraseset_status = "flagged_removed"
-                QueueService.remove_prompt_round_from_queue(prompt_round.round_id)
+                QFQueueService.remove_prompt_round_from_queue(prompt_round.round_id)
 
             if reporter and flag.penalty_kept > 0:
                 await transaction_service.create_transaction(
@@ -146,7 +146,7 @@ class FlaggedPromptService:
                         needs_queue = True
 
                 if needs_queue:
-                    QueueService.add_prompt_round_to_queue(prompt_round.round_id)
+                    QFQueueService.add_prompt_round_to_queue(prompt_round.round_id)
 
         else:
             raise ValueError("invalid_action")

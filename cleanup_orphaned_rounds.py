@@ -9,7 +9,7 @@ import asyncio
 import sys
 import argparse
 from backend.database import AsyncSessionLocal
-from backend.services import CleanupService
+from backend.services import QFCleanupService
 
 
 async def show_orphaned_examples(limit: int = 10):
@@ -52,7 +52,7 @@ async def cleanup_orphaned_rounds(dry_run: bool = False, verbose: bool = False):
     """
     async with AsyncSessionLocal() as session:
         try:
-            cleanup_service = CleanupService(session)
+            cleanup_service = QFCleanupService(session)
 
             # Count orphaned rounds
             orphaned_count, by_type = await cleanup_service.count_orphaned_rounds()

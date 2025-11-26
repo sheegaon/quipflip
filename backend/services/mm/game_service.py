@@ -8,6 +8,7 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql import or_
 
 from backend.models.mm.image import MMImage
 from backend.models.mm.caption import MMCaption
@@ -37,6 +38,21 @@ class MMGameService:
         self.settings = get_settings()
         self.config_service = MMSystemConfigService(db)
         self.scoring_service = MMScoringService(db)
+        self._has_seeded_placeholder = False
+
+    async def _seed_placeholder_content(self) -> None:
+        """Seed Meme Mint data for non-production environments when empty."""
+        if self.settings.environment == "production":
+            return
+
+        # Avoid repeated imports/seed calls within the same request
+        if self._has_seeded_placeholder:
+            return
+
+        from backend.data.seed_mm_data import seed_data as seed_mm_data
+
+        await seed_mm_data(self.db)
+        self._has_seeded_placeholder = True
 
     async def start_vote_round(
         self,
@@ -72,17 +88,31 @@ class MMGameService:
                     f"Insufficient balance. Need {entry_cost}, have {player.wallet}"
                 )
 
-            # Select image with enough unseen captions
+            # Select image with enough unseen captions; if empty in non-prod, seed placeholders and retry once
             image = await self._select_image_for_vote(player.player_id, captions_per_round)
+            if not image:
+                await self._seed_placeholder_content()
+                image = await self._select_image_for_vote(player.player_id, captions_per_round)
+
             if not image:
                 raise NoContentAvailableError("No images available with enough unseen captions")
 
-            # Select captions using weighted random
-            captions = await self._select_captions_for_round(
-                image.image_id,
-                player.player_id,
-                captions_per_round
-            )
+            # Select captions using weighted random. If insufficient, seed and retry once.
+            try:
+                captions = await self._select_captions_for_round(
+                    image.image_id,
+                    player.player_id,
+                    captions_per_round
+                )
+            except NoContentAvailableError:
+                await self._seed_placeholder_content()
+                # Re-select image in case new content was added
+                image = await self._select_image_for_vote(player.player_id, captions_per_round) or image
+                captions = await self._select_captions_for_round(
+                    image.image_id,
+                    player.player_id,
+                    captions_per_round
+                )
 
             # Charge entry cost
             await transaction_service.create_transaction(
@@ -98,7 +128,8 @@ class MMGameService:
                 round_id=uuid4(),
                 player_id=player.player_id,
                 image_id=image.image_id,
-                caption_ids_shown=[c.caption_id for c in captions],
+                # Store UUIDs as strings to satisfy JSON serialization
+                caption_ids_shown=[str(c.caption_id) for c in captions],
                 entry_cost=entry_cost,
                 created_at=datetime.now(UTC),
             )
@@ -148,7 +179,8 @@ class MMGameService:
             )
             .where(
                 MMCaption.status == 'active',
-                MMCaption.author_player_id != player_id,  # Never show player their own captions
+                # Allow system/anonymous captions (NULL author) while excluding the player's own
+                or_(MMCaption.author_player_id.is_(None), MMCaption.author_player_id != player_id),
                 MMCaptionSeen.player_id.is_(None)  # Not seen
             )
             .group_by(MMCaption.image_id)
@@ -203,7 +235,8 @@ class MMGameService:
             .where(
                 MMCaption.image_id == image_id,
                 MMCaption.status == 'active',
-                MMCaption.author_player_id != player_id,
+                # Allow captions without an author while excluding the player's own
+                or_(MMCaption.author_player_id.is_(None), MMCaption.author_player_id != player_id),
                 MMCaptionSeen.player_id.is_(None)
             )
         )
@@ -217,9 +250,30 @@ class MMGameService:
                 f"Need {count}, have {len(candidates)}"
             )
 
-        # Weighted random selection by quality_score
-        weights = [caption.quality_score for caption in candidates]
-        selected = random.choices(candidates, weights=weights, k=count)
+        # Weighted random selection by quality_score, without replacement
+        weights = [caption.quality_score or 0 for caption in candidates]
+        selected: list[MMCaption] = []
+        available = list(candidates)
+
+        for _ in range(count):
+            if not available:
+                break
+
+            total_weight = sum(weights)
+            if total_weight <= 0:
+                idx = random.randrange(len(available))
+            else:
+                pick = random.uniform(0, total_weight)
+                cumulative = 0.0
+                idx = 0
+                for i, w in enumerate(weights):
+                    cumulative += w
+                    if pick <= cumulative:
+                        idx = i
+                        break
+
+            selected.append(available.pop(idx))
+            weights.pop(idx)
 
         logger.debug(
             f"Selected {count} captions for image {image_id} using weighted random. "

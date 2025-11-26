@@ -164,12 +164,12 @@ class AIService:
         if (ai_player_type in
                 [AIPlayerType.QF_QUIP, AIPlayerType.QF_IMPOSTOR, AIPlayerType.QF_VOTER, AIPlayerType.QF_PARTY]):
             from backend.models.qf.player import QFPlayer
-            from backend.services.qf.player_service import PlayerService
+            from backend.services.qf.player_service import QFPlayerService as PlayerService
             player_model = QFPlayer
             game_type = GameType.QF
         elif ai_player_type in [AIPlayerType.IR_PLAYER]:
             from backend.models.ir.player import IRPlayer
-            from backend.services.ir.player_service import PlayerService
+            from backend.services.ir.player_service import IRPlayerService as PlayerService
             player_model = IRPlayer
             game_type = GameType.IR
         else:

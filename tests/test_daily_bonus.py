@@ -15,7 +15,7 @@ from sqlalchemy import select, update
 
 from backend.models.qf.player import QFPlayer
 from backend.models.qf.daily_bonus import QFDailyBonus
-from backend.services import PlayerService
+from backend.services import QFPlayerService
 from backend.services import TransactionService
 from backend.config import get_settings
 
@@ -179,7 +179,7 @@ async def test_daily_bonus_uses_dailybonus_table_not_last_login(db_session):
     await db_session.refresh(player)
 
     # Check bonus availability using PlayerService
-    player_service = PlayerService(db_session)
+    player_service = QFPlayerService(db_session)
     is_available = await player_service.is_daily_bonus_available(player)
 
     # Should be available because DailyBonus table has no entry for today
@@ -230,7 +230,7 @@ async def test_claim_daily_bonus_makes_it_unavailable(test_app, db_session):
         claim_data = claim_response.json()
         assert claim_data["success"] is True
         assert claim_data["amount"] == settings.daily_bonus_amount
-        assert claim_data["new_wallet"] == settings.starting_balance + settings.daily_bonus_amount
+        assert claim_data["new_wallet"] == settings.qf_starting_wallet + settings.daily_bonus_amount
         assert claim_data["new_vault"] == 0
 
         # Verify bonus is now unavailable
@@ -399,7 +399,7 @@ async def test_bonus_available_next_day_after_claiming(test_app, db_session):
     await db_session.commit()
 
     # Check that bonus is available today
-    player_service = PlayerService(db_session)
+    player_service = QFPlayerService(db_session)
     is_available = await player_service.is_daily_bonus_available(player)
     assert is_available is True
 

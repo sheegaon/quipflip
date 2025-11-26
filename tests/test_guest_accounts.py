@@ -235,7 +235,7 @@ class TestGuestCleanup:
 
     async def test_cleanup_inactive_guest_players(self, test_app, db_session):
         """Test that inactive guest players are cleaned up after specified days."""
-        from backend.services import CleanupService
+        from backend.services import QFCleanupService
         from datetime import timedelta, UTC, datetime
 
         async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test/qf") as client:
@@ -257,7 +257,7 @@ class TestGuestCleanup:
             await db_session.commit()
 
             # Run cleanup
-            cleanup_service = CleanupService(db_session)
+            cleanup_service = QFCleanupService(db_session)
             deleted_count = await cleanup_service.cleanup_inactive_guest_players(hours_old=168)
 
             # Verify the guest was deleted
@@ -273,8 +273,8 @@ class TestGuestCleanup:
 
     async def test_cleanup_does_not_delete_active_guests(self, test_app, db_session):
         """Test that guests who have played rounds are not deleted."""
-        from backend.services import CleanupService
-        from backend.services import RoundService
+        from backend.services import QFCleanupService
+        from backend.services import QFRoundService
         from datetime import timedelta, UTC, datetime
         from sqlalchemy import update
 
@@ -293,7 +293,7 @@ class TestGuestCleanup:
             )
             player = player_result.scalar_one()
 
-            round_service = RoundService(db_session)
+            round_service = QFRoundService(db_session)
             # This will create a round, showing the guest has been active
             try:
                 await round_service.start_prompt_round(player)
@@ -311,7 +311,7 @@ class TestGuestCleanup:
             await db_session.commit()
 
             # Run cleanup
-            cleanup_service = CleanupService(db_session)
+            cleanup_service = QFCleanupService(db_session)
             deleted_count = await cleanup_service.cleanup_inactive_guest_players(hours_old=168)
 
             # Verify the guest was NOT deleted (because they have rounds)
@@ -327,7 +327,7 @@ class TestGuestCleanup:
 
     async def test_cleanup_does_not_delete_recent_guests(self, test_app, db_session):
         """Test that recent inactive guests are not deleted."""
-        from backend.services import CleanupService
+        from backend.services import QFCleanupService
 
         async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test/qf") as client:
             # Create a guest account
@@ -337,7 +337,7 @@ class TestGuestCleanup:
             guest_id = guest_data["player_id"]
 
             # Run cleanup (guest is brand new, should not be deleted)
-            cleanup_service = CleanupService(db_session)
+            cleanup_service = QFCleanupService(db_session)
             deleted_count = await cleanup_service.cleanup_inactive_guest_players(hours_old=168)
 
             # Verify the guest was NOT deleted
@@ -355,7 +355,7 @@ class TestUsernameRecycling:
 
     async def test_recycle_inactive_guest_usernames(self, test_app, db_session):
         """Test that inactive guest usernames are recycled after 30+ days."""
-        from backend.services import CleanupService
+        from backend.services import QFCleanupService
         from datetime import timedelta, UTC, datetime
         from uuid import UUID
         from sqlalchemy import select, update
@@ -386,7 +386,7 @@ class TestUsernameRecycling:
             db_session.expire_all()
 
             # Run username recycling
-            cleanup_service = CleanupService(db_session)
+            cleanup_service = QFCleanupService(db_session)
             recycled_count = await cleanup_service.recycle_inactive_guest_usernames(days_old=30)
 
             # Verify count
@@ -402,7 +402,7 @@ class TestUsernameRecycling:
 
     async def test_recycle_handles_canonical_conflicts(self, test_app, db_session):
         """Test recycling retries when canonical username conflicts exist."""
-        from backend.services import CleanupService
+        from backend.services import QFCleanupService
         from datetime import timedelta, UTC, datetime
         from uuid import UUID
         from sqlalchemy import select, update
@@ -455,7 +455,7 @@ class TestUsernameRecycling:
             await db_session.commit()
             db_session.expire_all()
 
-            cleanup_service = CleanupService(db_session)
+            cleanup_service = QFCleanupService(db_session)
             recycled_count = await cleanup_service.recycle_inactive_guest_usernames(days_old=30)
 
             assert recycled_count == 1
@@ -469,7 +469,7 @@ class TestUsernameRecycling:
 
     async def test_username_recycling_does_not_affect_recent_logins(self, test_app, db_session):
         """Test that guests who logged in recently are not recycled."""
-        from backend.services import CleanupService
+        from backend.services import QFCleanupService
         from datetime import timedelta, UTC, datetime
         from uuid import UUID
         from sqlalchemy import select, update
@@ -499,7 +499,7 @@ class TestUsernameRecycling:
             db_session.expire_all()
 
             # Run username recycling
-            cleanup_service = CleanupService(db_session)
+            cleanup_service = QFCleanupService(db_session)
             recycled_count = await cleanup_service.recycle_inactive_guest_usernames(days_old=30)
 
             # Verify no recycling occurred
@@ -514,7 +514,7 @@ class TestUsernameRecycling:
 
     async def test_username_recycling_does_not_affect_upgraded_accounts(self, test_app, db_session):
         """Test that upgraded accounts (is_guest=False) are not recycled."""
-        from backend.services import CleanupService
+        from backend.services import QFCleanupService
         from datetime import timedelta, UTC, datetime
         from uuid import UUID
         from sqlalchemy import select, update
@@ -555,7 +555,7 @@ class TestUsernameRecycling:
             await db_session.commit()
 
             # Run username recycling
-            cleanup_service = CleanupService(db_session)
+            cleanup_service = QFCleanupService(db_session)
             recycled_count = await cleanup_service.recycle_inactive_guest_usernames(days_old=30)
 
             # Verify no recycling occurred (upgraded accounts should not be recycled)
@@ -568,7 +568,7 @@ class TestUsernameRecycling:
 
     async def test_username_recycling_is_idempotent(self, test_app, db_session):
         """Test that running username recycling multiple times doesn't double-append."""
-        from backend.services import CleanupService
+        from backend.services import QFCleanupService
         from datetime import timedelta, UTC, datetime
         from uuid import UUID
         from sqlalchemy import select, update
@@ -590,7 +590,7 @@ class TestUsernameRecycling:
             await db_session.commit()
 
             # Run username recycling first time
-            cleanup_service = CleanupService(db_session)
+            cleanup_service = QFCleanupService(db_session)
             first_count = await cleanup_service.recycle_inactive_guest_usernames(days_old=30)
             assert first_count == 1
 

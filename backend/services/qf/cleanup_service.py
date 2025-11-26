@@ -33,13 +33,13 @@ from backend.models.qf import (
     QFQuest,
 )
 from backend.services.username_service import canonicalize_username
-from backend.services.qf.queue_service import QueueService
+from backend.services.qf.queue_service import QFQueueService
 from backend.services.qf.party_session_service import PartySessionService
 
 logger = logging.getLogger(__name__)
 
 
-class CleanupService:
+class QFCleanupService:
     """Service for periodic database cleanup tasks."""
 
     # Test player identification patterns derived from test scripts
@@ -274,7 +274,7 @@ class CleanupService:
 
         # Remove deleted prompt rounds from queue
         if orphaned_prompt_ids:
-            removed_from_queue = QueueService.remove_prompt_rounds_from_queue(orphaned_prompt_ids)
+            removed_from_queue = QFQueueService.remove_prompt_rounds_from_queue(orphaned_prompt_ids)
             logger.info(f"Removed {removed_from_queue} orphaned prompt rounds from queue")
 
         return deleted_count
@@ -447,7 +447,7 @@ class CleanupService:
 
         # Remove deleted prompt rounds from queue (after commit to ensure consistency)
         if prompt_round_ids:
-            removed_from_queue = QueueService.remove_prompt_rounds_from_queue(prompt_round_ids)
+            removed_from_queue = QFQueueService.remove_prompt_rounds_from_queue(prompt_round_ids)
             deletion_counts['queue_cleanup'] = removed_from_queue
             logger.info(f"Removed {removed_from_queue} prompt rounds from queue after player deletion")
 

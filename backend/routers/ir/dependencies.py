@@ -6,7 +6,7 @@ from backend.database import get_db
 from backend.models.ir.player import IRPlayer
 from backend.services import AuthService, AuthError
 from backend.utils.model_registry import GameType
-from backend.services.ir import PlayerService
+from backend.services.ir import IRPlayerService
 
 
 async def get_current_player(
@@ -41,7 +41,7 @@ async def get_current_player(
         raise HTTPException(status_code=401, detail=str(e)) from e
 
     # Use IR player service since this is IR dependencies
-    player_service = PlayerService(db)
+    player_service = IRPlayerService(db)
     player = await player_service.get_player_by_id(player_id)
     if not player:
         raise HTTPException(status_code=401, detail="Player not found")

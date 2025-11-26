@@ -17,25 +17,19 @@ from backend.utils.exceptions import (
     UsernameTakenError,
     InvalidUsernameError,
 )
-from backend.utils.passwords import hash_password
-from backend.services.player_service_base import PlayerServiceBase, PlayerServiceError
+from backend.services.player_service_base import PlayerServiceBase, PlayerError
 from backend.services.username_service import (
     UsernameService,
     canonicalize_username,
     normalize_username,
     is_username_input_valid,
-    is_username_profanity_free,
 )
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
 
-class PlayerError(PlayerServiceError):
-    """Raised when QF player service fails."""
-
-
-class PlayerService(PlayerServiceBase):
+class QFPlayerService(PlayerServiceBase):
     """Service for managing players."""
 
     @property
@@ -54,17 +48,9 @@ class PlayerService(PlayerServiceBase):
         from backend.utils.model_registry import GameType
         return GameType.QF
 
-    def get_guest_domain(self) -> str:
-        """Get the domain for QF guest email addresses."""
-        return "quipflip.xyz"
-
     def _get_initial_balance(self) -> int:
         """Get the initial balance for new QF players."""
-        return settings.starting_balance
-
-    def _should_be_admin(self, email: str | None) -> bool:
-        """Determine if the provided email belongs to an administrator."""
-        return settings.is_admin_email(email)
+        return settings.qf_starting_wallet
 
     async def get_player_by_id(self, player_id: UUID) -> QFPlayer | None:
         """Get player by ID."""
@@ -82,14 +68,8 @@ class PlayerService(PlayerServiceBase):
         player = await username_service.find_player_by_username(username)
         return self.apply_admin_status(player)
 
-    async def create_player(
-        self,
-        *,
-        username: str,
-        email: str,
-        password_hash: str,
-    ) -> QFPlayer:
-        """Create new player using explicit credentials."""
+    async def create_player(self, *, username: str, email: str, password_hash: str) -> QFPlayer:
+        """Create new Quipflip player using explicit credentials."""
 
         normalized_username = normalize_username(username)
         canonical_username = canonicalize_username(normalized_username)
@@ -102,7 +82,7 @@ class PlayerService(PlayerServiceBase):
             username_canonical=canonical_username,
             email=email.strip().lower(),
             password_hash=password_hash,
-            wallet=settings.starting_balance,
+            wallet=settings.qf_starting_wallet,
             vault=0,
             last_login_date=datetime.now(UTC),  # Track creation login time with precision
             is_admin=self._should_be_admin(email),
@@ -111,9 +91,7 @@ class PlayerService(PlayerServiceBase):
         try:
             await self.db.commit()
             await self.db.refresh(player)
-            logger.info(
-                f"Created player: {player.player_id} username={player.username} wallet={player.wallet} vault={player.vault}"
-            )
+            logger.info(f"Created player: {player.player_id} {player.username=} {player.wallet=} {player.vault=}")
             return player
         except IntegrityError as exc:
             await self._handle_integrity_error(exc, "create")
@@ -255,14 +233,14 @@ class PlayerService(PlayerServiceBase):
 
     async def can_start_copy_round(self, player: QFPlayer) -> tuple[bool, str]:
         """Check if player can start copy round."""
-        from backend.services.qf.queue_service import QueueService
-        from backend.services.qf.round_service import RoundService
+        from backend.services.qf.queue_service import QFQueueService
+        from backend.services.qf.round_service import QFRoundService
 
         if player.locked_until and player.locked_until > datetime.now(UTC):
             return False, "player_locked"
 
         # Check wallet (spendable balance) against current copy cost
-        copy_cost = QueueService.get_copy_cost()
+        copy_cost = QFQueueService.get_copy_cost()
         if player.wallet < copy_cost:
             return False, "insufficient_balance"
 
@@ -271,7 +249,7 @@ class PlayerService(PlayerServiceBase):
             return False, "already_in_round"
 
         # Check prompts available for this player specifically (not just queue length)
-        round_service = RoundService(self.db)
+        round_service = QFRoundService(self.db)
         available_prompts = await round_service.get_available_prompts_count(player.player_id)
         if available_prompts <= 0:
             return False, "no_prompts_available"
@@ -300,7 +278,7 @@ class PlayerService(PlayerServiceBase):
         available_count: int | None = None,
     ) -> tuple[bool, str]:
         """Check if player can start vote round."""
-        from backend.services.qf.queue_service import QueueService
+        from backend.services.qf.queue_service import QFQueueService
         from datetime import datetime, UTC
 
         # Check if guest is locked out from voting
@@ -326,8 +304,7 @@ class PlayerService(PlayerServiceBase):
             if available_count == 0:
                 return False, "no_phrasesets_available"
         else:
-            if not QueueService.has_phrasesets_available():
+            if not QFQueueService.has_phrasesets_available():
                 return False, "no_phrasesets_available"
 
         return True, ""
-

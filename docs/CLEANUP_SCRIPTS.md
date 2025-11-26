@@ -116,10 +116,10 @@ The `backend/services/cleanup_service.py` module provides the following methods:
 
 ```python
 from backend.database import AsyncSessionLocal
-from backend.services import CleanupService
+from backend.services import QFCleanupService
 
 async with AsyncSessionLocal() as session:
-    cleanup_service = CleanupService(session)
+    cleanup_service = QFCleanupService(session)
 
     # Run all safe cleanup tasks
     results = await cleanup_service.run_all_cleanup_tasks()

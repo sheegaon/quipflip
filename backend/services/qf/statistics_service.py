@@ -22,7 +22,7 @@ from backend.schemas.player import (
 logger = logging.getLogger(__name__)
 
 
-class StatisticsService:
+class QFStatisticsService:
     """Service for calculating comprehensive player statistics."""
 
     def __init__(self, db: AsyncSession):

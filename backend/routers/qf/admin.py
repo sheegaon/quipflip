@@ -13,8 +13,8 @@ from backend.models.qf.player import QFPlayer
 from backend.services import SystemConfigService, TransactionService, GameType
 from backend.services.qf import (
     get_phrase_validator,
-    PlayerService,
-    CleanupService,
+    QFPlayerService,
+    QFCleanupService,
     FlaggedPromptService,
 )
 from backend.schemas.flagged_prompt import (
@@ -212,14 +212,14 @@ class QFAdminRouter(AdminRouterBase):
         self._add_qf_specific_routes()
 
     @property
-    def player_service_class(self) -> Type[PlayerService]:
+    def player_service_class(self) -> Type[QFPlayerService]:
         """Return the QF player service class."""
-        return PlayerService
+        return QFPlayerService
 
     @property
-    def cleanup_service_class(self) -> Type[CleanupService]:
+    def cleanup_service_class(self) -> Type[QFCleanupService]:
         """Return the QF cleanup service class."""
-        return CleanupService
+        return QFCleanupService
 
     @property
     def admin_player_dependency(self):

@@ -5,7 +5,7 @@ import logging
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Header
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,12 +21,23 @@ from backend.schemas.feedback import (
     SurveyResponseRecord,
 )
 from backend.models.qf.round import RoundStatus
+from backend.services import GameType
 
 logger = logging.getLogger(__name__)
 
 SURVEY_ID = "beta_oct_2025"
 
 router = APIRouter(prefix="/feedback")
+
+
+# Use Quipflip authentication
+async def get_qf_player(
+        request: Request,
+        authorization: str | None = Header(default=None, alias="Authorization"),
+        db: AsyncSession = Depends(get_db),
+):
+    # Wrapper keeps dependency async so FastAPI awaits it (partial would not)
+    return await get_current_player(request=request, game_type=GameType.QF, authorization=authorization, db=db)
 
 
 def _normalize_answer_value(value: Any) -> Any:
@@ -40,7 +51,7 @@ def _normalize_answer_value(value: Any) -> Any:
 @router.post("/beta-survey", response_model=SurveySubmissionResponse)
 async def submit_beta_survey(
     submission: SurveySubmission,
-    player=Depends(get_current_player),
+    player=Depends(get_qf_player),
     db: AsyncSession = Depends(get_db),
 ) -> SurveySubmissionResponse:
     """Persist a beta survey submission for the authenticated player."""
@@ -81,7 +92,7 @@ async def submit_beta_survey(
 
 @router.get("/beta-survey", response_model=SurveyResponseList)
 async def list_beta_survey_submissions(
-    player=Depends(get_current_player),
+    player=Depends(get_qf_player),
     db: AsyncSession = Depends(get_db),
 ) -> SurveyResponseList:
     """Return the last 100 beta survey submissions (admin only)."""
@@ -111,7 +122,7 @@ async def list_beta_survey_submissions(
 
 @router.get("/beta-survey/status", response_model=SurveyStatusResponse)
 async def get_beta_survey_status(
-    player=Depends(get_current_player),
+    player=Depends(get_qf_player),
     db: AsyncSession = Depends(get_db),
 ) -> SurveyStatusResponse:
     """Return eligibility + completion status for the beta survey."""

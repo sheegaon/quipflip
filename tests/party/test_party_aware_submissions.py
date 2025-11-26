@@ -4,14 +4,14 @@ from backend.models.qf.round import Round
 from backend.models.qf.party_round import PartyRound
 from backend.services.qf.party_coordination_service import PartyCoordinationService
 from backend.services.qf.party_session_service import PartySessionService
-from backend.services.qf.round_service import RoundService
+from backend.services.qf.round_service import QFRoundService
 from backend.services import TransactionService
 
 @pytest.mark.asyncio
 async def test_normal_submission_without_party_context(db_session, player_factory):
     """Verify normal submissions still work when not in party mode."""
     player = await player_factory()
-    round_service = RoundService(db_session)
+    round_service = QFRoundService(db_session)
     transaction_service = TransactionService(db_session)
 
     # Seed prompts
