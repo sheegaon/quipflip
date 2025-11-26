@@ -1,5 +1,4 @@
 """Quest API router for QuipFlip."""
-from fastapi import APIRouter
 import logging
 from typing import Type, Any
 
@@ -9,8 +8,6 @@ from backend.services.qf.quest_service import QuestService, QUEST_CONFIGS
 from backend.utils.model_registry import GameType
 
 logger = logging.getLogger(__name__)
-
-router = APIRouter()
 
 
 class QFQuestRouter(QuestRouterBase):
@@ -33,3 +30,8 @@ class QFQuestRouter(QuestRouterBase):
     def _string_to_quest_type(self, quest_type_str: str) -> QuestType:
         """Convert a quest type string back to the QuestType enum."""
         return QuestType(quest_type_str)
+
+
+# Create the router instance
+qf_quest_router = QFQuestRouter()
+router = qf_quest_router.router
