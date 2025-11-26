@@ -201,7 +201,7 @@ export const Landing: React.FC = () => {
         </div>
 
         <p className="text-center text-quip-navy text-lg font-medium mb-4">
-          Write a quip. Fake a quip. Guess the original.
+          Meme Mint: pay in, vote on 5 captions, earn MemeCoins.
         </p>
 
         <div className="mb-6 border-t border-gray-200" aria-hidden="true"></div>
@@ -317,9 +317,9 @@ export const Landing: React.FC = () => {
 
         <div className="mt-8 text-center text-sm text-quip-navy">
           <p className="font-display font-semibold mb-2">How to Play:</p>
-          <p className="text-quip-teal">1. Write an original answer to a prompt</p>
-          <p className="text-quip-teal">2. Write a fake answer that could have been the original</p>
-          <p className="text-quip-teal">3. Guess which answer was written first</p>
+          <p className="text-quip-teal">1. Pay the entry fee and see 1 image with 5 captions</p>
+          <p className="text-quip-teal">2. Vote for your favorite caption to pick a winner</p>
+          <p className="text-quip-teal">3. Winning authors get paid, then submit your own caption</p>
         </div>
       </div>
     </div>
