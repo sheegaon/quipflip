@@ -55,6 +55,11 @@ def load_seed_captions() -> dict[str, list[str]]:
         reader = csv.DictReader(f)
         for row in reader:
             image_file = row['image_file']
+
+            # Skip commented rows
+            if image_file.startswith('#'):
+                continue
+
             # Collect all seed_caption columns
             captions = []
             for i in range(1, 100):  # Support up to 99 captions
@@ -82,7 +87,7 @@ def find_image_files() -> list[Path]:
         return []
 
     image_files = []
-    for file_path in IMAGES_DIR.iterdir():
+    for file_path in sorted(IMAGES_DIR.iterdir()):
         if file_path.is_file() and file_path.suffix.lower() in IMAGE_EXTENSIONS:
             image_files.append(file_path)
 

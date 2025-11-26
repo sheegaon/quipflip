@@ -7,7 +7,7 @@ This directory contains the image management system for Meme Mint.
 ```
 backend/data/
 ├── mm_images/           # Image files (.jpg, .jpeg, .png, .gif, .webp)
-│   └── image1.jpeg      # Example image
+│   └── image001.png     # Example image
 ├── mm_seed_captions.csv # Seed captions for each image
 └── import_mm_images.py  # Import script
 ```
@@ -30,7 +30,7 @@ Edit `mm_seed_captions.csv` and add a row for your image:
 
 ```csv
 image_file,seed_caption1,seed_caption2,seed_caption3,seed_caption4,seed_caption5
-your_image.jpg,"First caption","Second caption","Third caption","Fourth caption","Fifth caption"
+your_image.png,"First caption","Second caption","Third caption","Fourth caption","Fifth caption"
 ```
 
 **Notes:**
