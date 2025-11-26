@@ -74,6 +74,7 @@ import type {
 // Base URL - configure based on environment
 const baseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
 const API_BASE_URL = /\/mm($|\/)/.test(baseUrl) ? baseUrl : `${baseUrl}/mm`;
+const AUTH_BASE_URL = baseUrl; // Auth endpoints are at root level, shared across games
 
 // Helper for dev logging
 const isDev = import.meta.env.DEV;
@@ -113,6 +114,16 @@ const api = axios.create({
   },
   withCredentials: true,
   timeout: 150000, // 150 seconds (2.5 minutes) timeout for hint generation
+});
+
+// Separate axios instance for auth endpoints (at root level, not /mm)
+const authApi = axios.create({
+  baseURL: AUTH_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  withCredentials: true,
+  timeout: 150000,
 });
 
 // Export axios instance for direct use (e.g., replaying queued requests)
@@ -364,7 +375,7 @@ export const apiClient = {
     payload: { email: string; password: string },
     signal?: AbortSignal,
   ): Promise<AuthTokenResponse> {
-    const { data } = await api.post<AuthTokenResponse>('/auth/login', payload, { signal });
+    const { data } = await authApi.post<AuthTokenResponse>('/auth/login', payload, { signal });
     return data;
   },
 
@@ -372,27 +383,27 @@ export const apiClient = {
     payload: { username: string; password: string },
     signal?: AbortSignal,
   ): Promise<AuthTokenResponse> {
-    const { data } = await api.post<AuthTokenResponse>('/auth/login/username', payload, { signal });
+    const { data } = await authApi.post<AuthTokenResponse>('/auth/login/username', payload, { signal });
     return data;
   },
 
   async suggestUsername(signal?: AbortSignal): Promise<SuggestUsernameResponse> {
-    const { data } = await api.get<SuggestUsernameResponse>('/auth/suggest-username', { signal });
+    const { data } = await authApi.get<SuggestUsernameResponse>('/auth/suggest-username', { signal });
     return data;
   },
 
   async refreshToken(signal?: AbortSignal): Promise<AuthTokenResponse> {
-    const { data } = await api.post('/auth/refresh', {}, { signal });
+    const { data } = await authApi.post('/auth/refresh', {}, { signal });
     return data;
   },
 
   async logout(signal?: AbortSignal): Promise<void> {
-    await api.post('/auth/logout', {}, { signal });
+    await authApi.post('/auth/logout', {}, { signal });
     clearStoredCredentials();
   },
 
   async getWebsocketToken(signal?: AbortSignal): Promise<WsAuthTokenResponse> {
-    const { data } = await api.get<WsAuthTokenResponse>('/auth/ws-token', { signal });
+    const { data } = await authApi.get<WsAuthTokenResponse>('/auth/ws-token', { signal });
     return data;
   },
 
