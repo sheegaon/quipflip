@@ -36,7 +36,7 @@ const statusOptions: { value: StatusFilter; label: string }[] = [
   { value: 'abandoned', label: 'Abandoned' },
 ];
 
-export const Tracking: React.FC = () => {
+export const GameHistory: React.FC = () => {
   const { state: gameState } = useGame();
   const { state: resultsState, actions: resultsActions } = useResults();
   const { phrasesetSummary } = gameState;
@@ -71,7 +71,7 @@ export const Tracking: React.FC = () => {
   }, [refreshPhrasesetDetails]);
 
   useEffect(() => {
-    trackingLogger.debug('Tracking page mounted');
+    trackingLogger.debug('Game history page mounted');
   }, []);
 
   const params = useMemo(() => ({
@@ -274,7 +274,7 @@ export const Tracking: React.FC = () => {
 
       <div className="max-w-6xl mx-auto px-4 py-8">
         <div className="mb-6">
-          <h1 className="text-3xl font-display font-bold text-quip-navy">Round Tracking</h1>
+          <h1 className="text-3xl font-display font-bold text-quip-navy">Game History</h1>
           <p className="text-quip-teal mt-2">
             Keep an eye on your in-progress rounds, review voting status, and celebrate finalized quipsets.
           </p>
@@ -401,4 +401,4 @@ export const Tracking: React.FC = () => {
   );
 };
 
-export default Tracking;
+export default GameHistory;

@@ -14,13 +14,12 @@ import {
   HomeIcon,
   LeaderboardIcon,
   LobbyIcon,
-  PartyIcon,
   SettingsIcon,
   StatisticsIcon,
   SurveyIcon,
   TrackingIcon,
 } from './icons/NavigationIcons';
-import { QuestionMarkIcon, ResultsIcon, ReviewIcon } from './icons/EngagementIcons';
+import { QuestionMarkIcon, ResultsIcon } from './icons/EngagementIcons';
 import { hasCompletedSurvey } from '../utils/betaSurvey';
 import { apiClient } from '../api/client';
 import { componentLogger } from '../utils/logger';
@@ -246,13 +245,6 @@ export const Header: React.FC = () => {
                     <span className="font-semibold">Dashboard</span>
                   </button>
                   <button
-                    onClick={() => handleNavigate('/party')}
-                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
-                  >
-                    <PartyIcon className="h-5 w-5" />
-                    <span className="font-semibold">Party Mode</span>
-                  </button>
-                  <button
                     onClick={() => handleNavigate('/statistics')}
                     className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
                   >
@@ -267,7 +259,7 @@ export const Header: React.FC = () => {
                     <span className="font-semibold">Leaderboard</span>
                   </button>
                   <button
-                    onClick={() => handleNavigate('/results')}
+                    onClick={() => handleNavigate('/game/results')}
                     className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
                   >
                     <ResultsIcon
@@ -277,18 +269,11 @@ export const Header: React.FC = () => {
                     <span className="font-semibold">Results</span>
                   </button>
                   <button
-                    onClick={() => handleNavigate('/tracking')}
+                    onClick={() => handleNavigate('/game/history')}
                     className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
                   >
                     <TrackingIcon className="h-5 w-5" />
-                    <span className="font-semibold">Tracking</span>
-                  </button>
-                  <button
-                    onClick={() => handleNavigate('/completed')}
-                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
-                  >
-                    <ReviewIcon className="h-5 w-5" />
-                    <span className="font-semibold">Review</span>
+                    <span className="font-semibold">History</span>
                   </button>
                   <button
                     onClick={() => handleNavigate('/quests')}

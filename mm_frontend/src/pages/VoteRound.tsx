@@ -64,11 +64,11 @@ export const VoteRound: React.FC = () => {
 
   const goToCaption = () => {
     if (!round) return;
-    navigate('/caption', { state: { round, voteResult: result } });
+    navigate('/game/caption', { state: { round, voteResult: result } });
   };
 
   const goToResults = () => {
-    navigate('/results', { state: { round, voteResult: result } });
+    navigate('/game/results', { state: { round, voteResult: result } });
   };
 
   if (!round) {

@@ -14,8 +14,6 @@ export const Dashboard: React.FC = () => {
   const {
     player,
     roundAvailability,
-    error: contextError,
-    isAuthenticated,
   } = state;
   const { refreshDashboard, startVoteRound } = actions;
 
@@ -37,7 +35,7 @@ export const Dashboard: React.FC = () => {
 
     try {
       const round = await startVoteRound();
-      navigate('/vote', { state: { round } });
+      navigate('/game/vote', { state: { round } });
     } catch (err) {
       setError(extractErrorMessage(err) || 'Unable to start a round right now.');
     } finally {
@@ -45,7 +43,7 @@ export const Dashboard: React.FC = () => {
     }
   };
 
-  const freeCaptionsRemaining = (player as any)?.free_captions_remaining as number | undefined;
+  const freeCaptionsRemaining = roundAvailability?.free_captions_remaining;
 
   return (
     <div className="min-h-screen bg-quip-cream bg-pattern">
