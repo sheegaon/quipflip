@@ -1,40 +1,23 @@
-import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
-import { useTutorial } from '../contexts/TutorialContext';
-import apiClient, { extractErrorMessage } from '../api/client';
-import { useGame } from '../contexts/GameContext';
+import { extractErrorMessage } from '../api/client';
 import { Header } from '../components/Header';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { UpgradeGuestAccount } from '../components/UpgradeGuestAccount';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import type { MemeVoteRound } from '../api/types';
 
 export const Dashboard: React.FC = () => {
   const { state, actions } = useGame();
+  const navigate = useNavigate();
 
-  // Load mode from localStorage, defaulting to 'live'
-  const [mode, setMode] = useState<'live' | 'practice'>(() => {
-    const savedMode = localStorage.getItem('quipflip_game_mode');
-    dashboardLogger.debug('Loading mode from localStorage:', { savedMode });
-    const initialMode = (savedMode === 'practice' || savedMode === 'live') ? savedMode : 'live';
-    dashboardLogger.debug('Initial mode set to:', { initialMode });
-    return initialMode;
-  });
   const {
     player,
-    activeRound,
     roundAvailability,
     error: contextError,
     isAuthenticated,
   } = state;
-  const { refreshDashboard, clearError, abandonRound } = actions;
-  const { startTutorial, skipTutorial } = useTutorial();
-  const endPartyMode = () => {};
-  const navigate = useNavigate();
-  const { state, actions } = useGame();
-  const { player } = state;
-  const { refreshDashboard } = actions;
+  const { refreshDashboard, startVoteRound } = actions;
 
   const [isStartingRound, setIsStartingRound] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +36,7 @@ export const Dashboard: React.FC = () => {
     setError(null);
 
     try {
-      const round: MemeVoteRound = await apiClient.startMemeVoteRound();
+      const round = await startVoteRound();
       navigate('/vote', { state: { round } });
     } catch (err) {
       setError(extractErrorMessage(err) || 'Unable to start a round right now.');
