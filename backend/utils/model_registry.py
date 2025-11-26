@@ -14,6 +14,7 @@ class GameType(Enum):
     """Enum for different game types."""
     QF = "qf"
     IR = "ir"
+    MM = "mm"
 
 
 class AIPlayerType(Enum):
@@ -33,6 +34,9 @@ def get_player_model(game_type: GameType) -> Type:
     elif game_type == GameType.IR:
         from backend.models.ir.player import IRPlayer
         return IRPlayer
+    elif game_type == GameType.MM:
+        from backend.models.mm.player import MMPlayer
+        return MMPlayer
     else:
         raise ValueError(f"Unsupported game type: {game_type}")
 
@@ -45,6 +49,9 @@ def get_refresh_token_model(game_type: GameType) -> Type:
     elif game_type == GameType.IR:
         from backend.models.ir.refresh_token import IRRefreshToken
         return IRRefreshToken
+    elif game_type == GameType.MM:
+        from backend.models.mm.refresh_token import MMRefreshToken
+        return MMRefreshToken
     else:
         raise ValueError(f"Unsupported game type: {game_type}")
 
@@ -57,6 +64,9 @@ def get_transaction_model(game_type: GameType) -> Type:
     elif game_type == GameType.IR:
         from backend.models.ir.transaction import IRTransaction
         return IRTransaction
+    elif game_type == GameType.MM:
+        from backend.models.mm.transaction import MMTransaction
+        return MMTransaction
     else:
         raise ValueError(f"Unsupported game type: {game_type}")
 
@@ -81,5 +91,8 @@ def get_system_config_model(game_type: GameType) -> Type:
     elif game_type == GameType.IR:
         from backend.models.ir.system_config import IRSystemConfig
         return IRSystemConfig
+    elif game_type == GameType.MM:
+        from backend.models.mm.system_config import MMSystemConfig
+        return MMSystemConfig
     else:
         raise ValueError(f"Unsupported game type: {game_type}")

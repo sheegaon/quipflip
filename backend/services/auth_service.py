@@ -51,6 +51,10 @@ class AuthService:
             from backend.services.ir.player_service import PlayerService
             from backend.models.ir.refresh_token import IRRefreshToken
             self.refresh_token_model = IRRefreshToken
+        elif game_type == GameType.MM:
+            from backend.services.mm.player_service import MMPlayerService as PlayerService
+            from backend.models.mm.refresh_token import MMRefreshToken
+            self.refresh_token_model = MMRefreshToken
         else:
             raise ValueError(f"Unsupported game type: {game_type}")
         self.player_service = PlayerService(db)

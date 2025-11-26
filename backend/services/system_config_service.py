@@ -303,7 +303,7 @@ class SystemConfigService:
         self.game_type = game_type
         self.config_model = get_system_config_model(game_type)
 
-    async def get_config_value(self, key: str) -> Optional[Any]:
+    async def get_config_value(self, key: str, default: Optional[Any] = None) -> Optional[Any]:
         """
         Get a configuration value from the database, falling back to environment settings.
 
@@ -324,7 +324,7 @@ class SystemConfigService:
 
         # Fall back to environment settings
         settings = get_settings()
-        return getattr(settings, key, None)
+        return getattr(settings, key, default)
 
     async def set_config_value(
         self,
