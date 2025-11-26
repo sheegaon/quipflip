@@ -599,11 +599,13 @@ export const GameProvider: React.FC<{
   const submitVote = useCallback(
     async (roundId: string, captionId: string, signal?: AbortSignal): Promise<VoteResult> => {
       const voteResult = await apiClient.submitMemeMintVote(roundId, captionId, signal);
+      // Refresh balance immediately to update header, then refresh other data
+      await refreshBalance(signal);
       await refreshRoundAvailability(signal);
       await refreshDashboard(signal);
       return voteResult;
     },
-    [refreshDashboard, refreshRoundAvailability],
+    [refreshBalance, refreshDashboard, refreshRoundAvailability],
   );
 
   const submitCaption = useCallback(
@@ -624,11 +626,13 @@ export const GameProvider: React.FC<{
       };
 
       const captionResult = await apiClient.submitMemeMintCaption(captionPayload, signal);
+      // Refresh balance immediately to update header, then refresh other data
+      await refreshBalance(signal);
       await refreshRoundAvailability(signal);
       await refreshDashboard(signal);
       return captionResult;
     },
-    [currentVoteRound?.round_id, refreshDashboard, refreshRoundAvailability],
+    [currentVoteRound?.round_id, refreshBalance, refreshDashboard, refreshRoundAvailability],
   );
 
   const updateActiveRound = useCallback((roundData: ActiveRound) => {

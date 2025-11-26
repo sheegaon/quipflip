@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
-import { Header } from '../components/Header';
 import apiClient, { extractErrorMessage } from '../api/client';
 import { TrackingIcon } from '../components/icons/NavigationIcons';
 import { VoteRoundIcon } from '../components/icons/RoundIcons';
@@ -10,6 +9,7 @@ import { adminLogger } from '../utils/logger';
 import type { AdminPlayerSummary } from '../api/types';
 import { formatDateTimeInUserZone } from '../utils/datetime';
 import { PHRASE_VALIDATION_BOUNDS, PHRASE_VALIDATION_LIMITS } from '../config/phraseValidation';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 
 const getErrorDetail = (error: unknown): string | undefined => {
   if (!error || typeof error !== 'object') {
@@ -373,39 +373,33 @@ const Admin: React.FC = () => {
     }
   };
 
-  if (!player) {
+  if (loading) {
     return (
-      <div className="min-h-screen bg-quip-cream bg-pattern">
-        <Header />
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center">Loading...</div>
-        </div>
+      <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center">
+        <LoadingSpinner isLoading message="Loading admin panel..." />
       </div>
     );
   }
 
-  if (loading) {
+  if (error) {
     return (
       <div className="min-h-screen bg-quip-cream bg-pattern">
-        <Header />
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center py-12">
-            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-quip-orange border-r-transparent"></div>
-            <p className="mt-4 text-quip-navy font-display">Loading admin panel...</p>
+        <div className="max-w-4xl mx-auto px-4 py-8">
+          <div className="tile-card p-6 bg-red-50 border border-red-200">
+            <p className="text-red-600">Error: {error}</p>
           </div>
         </div>
       </div>
     );
   }
 
-  if (error || !config) {
+  if (!player?.is_admin) {
     return (
       <div className="min-h-screen bg-quip-cream bg-pattern">
-        <Header />
-        <div className="container mx-auto px-4 py-8 max-w-4xl">
-          <div className="tile-card p-8">
-            <h1 className="text-2xl font-display font-bold text-quip-navy mb-4">Admin Panel</h1>
-            <div className="text-red-600">{error || 'Failed to load configuration'}</div>
+        <div className="flex items-center justify-center py-16">
+          <div className="rounded-tile border border-quip-orange/40 bg-white/80 p-6 text-center text-quip-teal">
+            <p className="text-lg font-semibold text-quip-navy">Admin access required</p>
+            <p className="mt-2 text-sm">You do not have permission to access the admin panel.</p>
           </div>
         </div>
       </div>
@@ -414,10 +408,9 @@ const Admin: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-quip-cream bg-pattern">
-      <Header />
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
+      <div className="container mx-auto max-w-4xl px-4 py-8">
         {/* Header */}
-        <div className="tile-card p-6 mb-6 border-2 border-quip-orange">
+        <div className="tile-card mb-8 p-6">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-display font-bold text-quip-navy">Admin Panel</h1>

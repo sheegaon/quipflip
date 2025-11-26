@@ -23,21 +23,31 @@ export const VoteRound: React.FC = () => {
   const [result, setResult] = useState<VoteResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingRound, setIsLoadingRound] = useState(false);
 
   const voteCost = roundAvailability?.round_entry_cost ?? 5;
 
   // recover round when arriving without navigation state
   useEffect(() => {
-    if (round) return;
+    if (round || isLoadingRound) return;
 
+    setIsLoadingRound(true);
     const controller = new AbortController();
+    
     actions
       .startVoteRound(controller.signal)
       .then(setRound)
-      .catch((err) => setError(extractErrorMessage(err) || 'Unable to start a vote round.'));
+      .catch((err) => {
+        console.error('Failed to start vote round:', err);
+        setError(extractErrorMessage(err) || 'Unable to start a vote round.');
+      })
+      .finally(() => setIsLoadingRound(false));
 
-    return () => controller.abort();
-  }, [actions, round]);
+    return () => {
+      controller.abort();
+      setIsLoadingRound(false);
+    };
+  }, []); // Remove actions and round from dependencies to prevent infinite loop
 
   const selectedCaption = useMemo(() => {
     if (!round || !result) return null;
