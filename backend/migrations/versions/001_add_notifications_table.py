@@ -1,9 +1,8 @@
-"""Add notifications table
+"""Add notifications table.
 
 Revision ID: 001_add_notifications
 Revises: 8c3d123b7f18
 Create Date: 2025-01-15 10:00:00.000000
-
 """
 from collections.abc import Sequence
 from typing import Any
@@ -13,8 +12,8 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = '001_add_notifications'
-down_revision = '8c3d123b7f18'
+revision: str = "001_add_notifications"
+down_revision: str | None = "8c3d123b7f18"
 branch_labels: Sequence[str] | None = None
 depends_on: Sequence[str] | None = None
 

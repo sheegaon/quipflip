@@ -3,7 +3,7 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Type, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Response, Cookie
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response, Cookie
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.database import get_db
@@ -78,6 +78,18 @@ class PlayerRouterBase(ABC):
         self.router = APIRouter()
         self._setup_common_routes()
 
+    def _current_player_dependency(self):
+        """Return a dependency that resolves the current player for this game."""
+
+        async def _resolver(
+            request: Request,
+            authorization: str | None = Header(default=None, alias="Authorization"),
+            db: AsyncSession = Depends(get_db),
+        ):
+            return await get_current_player(request, authorization, db, self.game_type)
+
+        return _resolver
+
     @property
     @abstractmethod
     def player_service_class(self) -> Type[Any]:
@@ -128,11 +140,13 @@ class PlayerRouterBase(ABC):
             """Create a guest account with auto-generated credentials."""
             return await self._create_guest_player(response, db)
 
+        player_dependency = self._current_player_dependency()
+
         @self.router.post("/upgrade", response_model=UpgradeGuestResponse)
         async def upgrade_guest_account(
             request: UpgradeGuestRequest,
             response: Response,
-            player=Depends(get_current_player),
+            player=Depends(player_dependency),
             db: AsyncSession = Depends(get_db),
         ):
             """Upgrade a guest account to a full account."""
@@ -175,7 +189,7 @@ class PlayerRouterBase(ABC):
         async def change_password(
             request: ChangePasswordRequest,
             response: Response,
-            player=Depends(get_current_player),
+            player=Depends(player_dependency),
             db: AsyncSession = Depends(get_db),
         ):
             """Allow the current player to change their password."""
@@ -184,7 +198,7 @@ class PlayerRouterBase(ABC):
         @self.router.patch("/email", response_model=UpdateEmailResponse)
         async def update_email(
             request: UpdateEmailRequest,
-            player=Depends(get_current_player),
+            player=Depends(player_dependency),
             db: AsyncSession = Depends(get_db),
         ):
             """Allow the current player to update their email address."""
@@ -193,7 +207,7 @@ class PlayerRouterBase(ABC):
         @self.router.patch("/username", response_model=ChangeUsernameResponse)
         async def change_username(
             request: ChangeUsernameRequest,
-            player=Depends(get_current_player),
+            player=Depends(player_dependency),
             db: AsyncSession = Depends(get_db),
         ):
             """Allow the current player to change their username."""
@@ -203,7 +217,7 @@ class PlayerRouterBase(ABC):
         async def delete_account(
             request: DeleteAccountRequest,
             response: Response,
-            player=Depends(get_current_player),
+            player=Depends(player_dependency),
             db: AsyncSession = Depends(get_db),
         ):
             """Delete the current player's account and related data."""
@@ -211,7 +225,7 @@ class PlayerRouterBase(ABC):
 
         @self.router.get("/me", response_model=PlayerBalance)
         async def get_current_player_info(
-            player=Depends(get_current_player),
+            player=Depends(player_dependency),
             db: AsyncSession = Depends(get_db),
         ):
             """Get current authenticated player information using shared schema."""
@@ -219,7 +233,7 @@ class PlayerRouterBase(ABC):
 
         @self.router.get("/balance", response_model=PlayerBalance)
         async def get_balance(
-            player=Depends(get_current_player),
+            player=Depends(player_dependency),
             db: AsyncSession = Depends(get_db),
         ):
             """Get player balance and status."""
@@ -227,7 +241,7 @@ class PlayerRouterBase(ABC):
 
         @self.router.post("/claim-daily-bonus", response_model=ClaimDailyBonusResponse)
         async def claim_daily_bonus(
-            player=Depends(get_current_player),
+            player=Depends(player_dependency),
             db: AsyncSession = Depends(get_db),
         ):
             """Claim daily login bonus."""
@@ -559,7 +573,7 @@ class PlayerRouterBase(ABC):
         from backend.utils.exceptions import DailyBonusNotAvailableError
         
         player_service = self.player_service_class(db)
-        transaction_service = TransactionService(db)
+        transaction_service = TransactionService(db, game_type=self.game_type)
 
         try:
             amount = await player_service.claim_daily_bonus(player, transaction_service)

@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="256" height="256" viewBox="0 0 256 256">
+  <!-- Background: warm ivory -->
+  <rect width="256" height="256" fill="#FFF9F2"/>
+
+  <!-- Reusable quill shape -->
+  <defs>
+    <g id="quill">
+      <!-- Feather body -->
+      <path d="M10 60
+               C 25 35, 45 20, 70 15
+               C 55 35, 40 55, 28 80
+               C 24 88, 20 100, 18 110"
+            fill="none"
+            stroke="#10B4A4"
+            stroke-width="4"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            opacity="0.35" />
+      <!-- Center vein -->
+      <path d="M18 110 L 32 40"
+            fill="none"
+            stroke="#0A5852"
+            stroke-width="2"
+            stroke-linecap="round"
+            opacity="0.35" />
+      <!-- Small cut lines -->
+      <path d="M32 52 L 44 46
+               M28 62 L 40 58
+               M24 72 L 36 70"
+            fill="none"
+            stroke="#10B4A4"
+            stroke-width="2"
+            stroke-linecap="round"
+            opacity="0.25" />
+    </g>
+  </defs>
+
+  <!-- Scatter quills around the tile -->
+  <use href="#quill" x="20"  y="20"  />
+  <use href="#quill" x="130" y="10"  transform="rotate(18 130 10)" />
+  <use href="#quill" x="40"  y="130" transform="rotate(-22 40 130)" />
+  <use href="#quill" x="150" y="140" transform="rotate(12 150 140)" />
+
+  <!-- Soft accent dots in quip colors -->
+  <g opacity="0.18">
+    <circle cx="210" cy="40"  r="10" fill="#FF9A3D"/>
+    <circle cx="60"  cy="210" r="8"  fill="#10B4A4"/>
+    <circle cx="200" cy="200" r="9"  fill="#0A5852"/>
+    <circle cx="40"  cy="40"  r="7"  fill="#FF9A3D"/>
+  </g>
+</svg>

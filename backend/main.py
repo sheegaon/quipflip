@@ -30,7 +30,7 @@ from contextlib import asynccontextmanager
 from backend.config import get_settings
 from backend.version import APP_VERSION
 from backend.services.qf.prompt_seeder import sync_prompts_with_database
-from backend.routers import qf, ir, auth, health
+from backend.routers import qf, ir, mm, auth, health
 from backend.middleware.deduplication import deduplication_middleware
 from backend.middleware.online_user_tracking import online_user_tracking_middleware
 
@@ -637,6 +637,7 @@ app.middleware("http")(online_user_tracking_middleware)
 # Import and register routers
 app.include_router(qf.router)
 app.include_router(ir.router)
+app.include_router(mm.router)
 app.include_router(auth.router)
 app.include_router(health.router)
 

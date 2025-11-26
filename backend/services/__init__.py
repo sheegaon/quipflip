@@ -54,6 +54,15 @@ IRAuthService = AuthService
 # TransactionService works for both games via game_type parameter
 IRTransactionService = TransactionService
 
+# MM (Meme Mint) services
+from backend.services.mm.player_service import MMPlayerService, MMPlayerError
+from backend.services.mm.daily_bonus_service import MMDailyBonusService, MMDailyBonusError
+from backend.services.mm.daily_state_service import MMPlayerDailyStateService
+from backend.services.mm.system_config_service import MMSystemConfigService
+from backend.services.mm.cleanup_service import MMCleanupService
+MMAuthService = AuthService
+MMTransactionService = TransactionService
+
 __all__ = [
     # Core services
     'AuthService',
@@ -112,4 +121,15 @@ __all__ = [
     'IRTransactionService',
     'IRDailyBonusService',
     'IRDailyBonusError',
+
+    # MM services
+    'MMPlayerService',
+    'MMPlayerError',
+    'MMAuthService',
+    'MMTransactionService',
+    'MMDailyBonusService',
+    'MMDailyBonusError',
+    'MMPlayerDailyStateService',
+    'MMSystemConfigService',
+    'MMCleanupService',
 ]
