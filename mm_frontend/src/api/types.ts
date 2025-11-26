@@ -262,7 +262,7 @@ export interface WeeklyLeaderboardEntry {
 export interface GrossEarningsLeaderboardEntry {
   player_id: string;
   username: string;
-  vault_balance: number;  // Total vault balance (all-time) or vault balance change (weekly)
+  vault_balance: number; // Total vault balance (all-time) or vault balance change (weekly)
   total_rounds: number;
   rank: number | null;
   is_current_player: boolean;
@@ -313,6 +313,8 @@ export interface RoundAvailability {
   round_entry_cost: number;
   caption_submission_cost: number;
   free_captions_remaining: number;
+  current_round_id?: string | null;
+  daily_bonus_available: boolean;
   // Legacy fields kept optional during transition
   can_prompt?: boolean;
   can_copy?: boolean;
@@ -320,7 +322,6 @@ export interface RoundAvailability {
   phrasesets_waiting?: number;
   copy_discount_active?: boolean;
   copy_cost?: number;
-  current_round_id?: string | null;
   prompt_cost?: number;
   vote_cost?: number;
   vote_payout_correct?: number;
@@ -329,13 +330,18 @@ export interface RoundAvailability {
 
 export interface RoundDetails {
   round_id: string;
-  type: string;
+  type: 'vote' | 'caption_submission';
   status: string;
   expires_at: string;
-  prompt_text?: string | null;
-  original_phrase?: string | null;
-  submitted_phrase?: string | null;
+  image_id: string;
+  image_url: string;
   cost: number;
+  // For vote rounds
+  captions?: Caption[];
+  chosen_caption_id?: string | null;
+  // For caption submission rounds
+  submitted_caption_id?: string | null;
+  submitted_caption_text?: string | null;
 }
 
 export interface StartPromptResponse {
@@ -445,33 +451,38 @@ export interface PhrasesetResults {
   second_copy_contribution: number;
 }
 
-// MemeMint types
+// MemeMint types - Updated to match backend schemas
 export interface MemeImage {
   image_id: string;
   image_url: string;
-  thumbnail_url?: string;
-  attribution_text?: string;
+  thumbnail_url?: string | null;
+  attribution_text?: string | null;
 }
 
 export interface Caption {
   caption_id: string;
   text: string;
-  kind: 'original' | 'riff';
-  parent_caption_id?: string;
+  // Note: Backend doesn't include kind/parent_caption_id in caption list responses
 }
 
 export interface VoteRoundState {
   round_id: string;
-  image: MemeImage;
+  image_id: string;
+  image_url: string;
+  thumbnail_url?: string | null;
+  attribution_text?: string | null;
   captions: Caption[];
   expires_at: string;
   cost: number;
-  free_captions_remaining?: number;
-  has_submitted_caption?: boolean;
 }
 
 export interface CaptionSubmissionState {
-  image: MemeImage;
+  round_id: string;
+  image_id: string;
+  image_url: string;
+  thumbnail_url?: string | null;
+  attribution_text?: string | null;
+  expires_at: string;
   cost: number;
   used_free_slot: boolean;
 }
@@ -480,8 +491,78 @@ export interface VoteResult {
   success: boolean;
   chosen_caption_id: string;
   payout: number;
+  correct: boolean;
   new_wallet: number;
   new_vault: number;
+}
+
+export interface CaptionSubmissionResult {
+  success: boolean;
+  caption_id: string;
+  cost: number;
+  used_free_slot: boolean;
+  new_wallet: number;
+}
+
+export interface DashboardData {
+  player: Player;
+  round_availability: RoundAvailability;
+  current_vote_round?: VoteRoundState | null;
+  current_caption_round?: CaptionSubmissionState | null;
+}
+
+// Legacy MemeMint types - kept for backward compatibility during transition
+export interface MemeDetails {
+  meme_id: string;
+  image_url: string;
+  title?: string;
+  alt_text?: string;
+}
+
+export interface MemeCaptionOption {
+  caption_id: string;
+  text: string;
+  author?: string;
+  is_original?: boolean;
+  riff_on_caption_id?: string | null;
+}
+
+export interface MemeVoteRound {
+  round_id: string;
+  expires_at: string | null;
+  meme: MemeDetails;
+  captions: MemeCaptionOption[];
+  free_captions_remaining?: number;
+  has_submitted_caption?: boolean;
+}
+
+export interface MemeVoteResult {
+  round_id: string;
+  selected_caption_id: string;
+  payout: number;
+  wallet?: number;
+  vault?: number;
+  meme?: MemeDetails;
+  captions?: MemeCaptionOption[];
+  winning_caption_id?: string | null;
+  has_submitted_caption?: boolean;
+}
+
+export type MemeCaptionType = 'original' | 'riff';
+
+export interface MemeCaptionSubmission {
+  round_id: string;
+  text: string;
+  kind: MemeCaptionType;
+  parent_caption_id?: string | null;
+}
+
+export interface MemeCaptionResponse {
+  success: boolean;
+  caption_id: string;
+  cost: number;
+  used_free_slot: boolean;
+  new_wallet: number;
 }
 
 export type PhrasesetStatus =
@@ -750,72 +831,6 @@ export type TutorialProgress =
   | 'vote_round'
   | 'rounds_guide'
   | 'completed';
-
-// MemeMint-specific round types
-export interface MemeDetails {
-  meme_id: string;
-  image_url: string;
-  title?: string;
-  alt_text?: string;
-}
-
-export interface MemeCaptionOption {
-  caption_id: string;
-  text: string;
-  author?: string;
-  is_original?: boolean;
-  riff_on_caption_id?: string | null;
-}
-
-export interface MemeVoteRound {
-  round_id: string;
-  expires_at: string | null;
-  meme: MemeDetails;
-  captions: MemeCaptionOption[];
-  free_captions_remaining?: number;
-  has_submitted_caption?: boolean;
-}
-
-export interface MemeVoteResult {
-  round_id: string;
-  selected_caption_id: string;
-  payout: number;
-  wallet?: number;
-  vault?: number;
-  meme?: MemeDetails;
-  captions?: MemeCaptionOption[];
-  winning_caption_id?: string | null;
-  has_submitted_caption?: boolean;
-}
-
-export type MemeCaptionType = 'original' | 'riff';
-
-export interface MemeCaptionSubmission {
-  round_id: string;
-  caption_text: string;
-  caption_type: MemeCaptionType;
-  parent_caption_id?: string | null;
-}
-
-export interface MemeCaptionResponse {
-  round_id: string;
-  caption_id: string;
-  wallet?: number;
-  vault?: number;
-  free_captions_remaining?: number;
-}
-
-export interface TutorialStatus {
-  tutorial_completed: boolean;
-  tutorial_progress: TutorialProgress;
-  tutorial_started_at: string | null;
-  tutorial_completed_at: string | null;
-}
-
-export interface UpdateTutorialProgressResponse {
-  success: boolean;
-  tutorial_status: TutorialStatus;
-}
 
 // Quest system types
 export type QuestStatus = 'active' | 'completed' | 'claimed';
