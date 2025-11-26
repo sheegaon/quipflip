@@ -409,7 +409,7 @@ export interface VoteResponse {
   party_context?: PartyContext;
 }
 
-export interface VoteResult {
+export interface PhrasesetVoteResult {
   phrase: string;
   vote_count: number;
   is_original: boolean;
@@ -418,7 +418,7 @@ export interface VoteResult {
 
 export interface PhrasesetResults {
   prompt_text: string;
-  votes: VoteResult[];
+  votes: PhrasesetVoteResult[];
   your_phrase: string;
   your_role: string;
   original_phrase?: string;
@@ -439,6 +439,43 @@ export interface PhrasesetResults {
   vote_payout_correct: number;
   system_contribution: number;
   second_copy_contribution: number;
+}
+
+// MemeMint types
+export interface MemeImage {
+  image_id: string;
+  image_url: string;
+  thumbnail_url?: string;
+  attribution_text?: string;
+}
+
+export interface Caption {
+  caption_id: string;
+  text: string;
+  kind: 'original' | 'riff';
+  parent_caption_id?: string;
+}
+
+export interface VoteRoundState {
+  round_id: string;
+  image: MemeImage;
+  captions: Caption[];
+  expires_at: string;
+  cost: number;
+}
+
+export interface CaptionSubmissionState {
+  image: MemeImage;
+  cost: number;
+  used_free_slot: boolean;
+}
+
+export interface VoteResult {
+  success: boolean;
+  chosen_caption_id: string;
+  payout: number;
+  new_wallet: number;
+  new_vault: number;
 }
 
 export type PhrasesetStatus =
