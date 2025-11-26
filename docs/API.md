@@ -4,6 +4,7 @@ The backend now mirrors the code split between shared infrastructure and game-sp
 
 - [Quipflip (QF) API](QF_API.md) – endpoints mounted under `/qf/*` and implemented in `backend/routers/qf`.
 - [Initial Reaction (IR) API](IR_API.md) – endpoints mounted under `/ir/*` and implemented in `backend/routers/ir`.
+- [Meme Mint (MM) API](MM_API.md) – endpoints mounted under `/mm/*` and implemented in `backend/routers/mm`.
 
 ## Shared Endpoints
 
