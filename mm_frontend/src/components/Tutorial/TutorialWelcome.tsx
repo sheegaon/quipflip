@@ -86,7 +86,7 @@ const TutorialWelcome: React.FC<TutorialWelcomeProps> = ({ onStart, onSkip }) =>
               <strong>Guess:</strong> Pick which answer you think was written first
             </li>
             <li>
-              <strong>Earn Flipcoins:</strong> Clever quips and convincing fakes earn you more!
+              <strong>Earn MemeCoins:</strong> Clever quips and convincing fakes earn you more!
             </li>
           </ul>
 

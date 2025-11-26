@@ -139,7 +139,7 @@ export const UpgradeGuestAccount: React.FC<UpgradeGuestAccountProps> = ({ classN
           <ul className="list-disc list-inside text-quip-navy mb-4 space-y-1">
             <li>Save your progress permanently</li>
             <li>Access your account from any device</li>
-            <li>Never lose your Flipcoins and stats</li>
+            <li>Never lose your MemeCoins and stats</li>
             <li>Get higher rate limits for smoother gameplay</li>
           </ul>
           {upgradeError && <p className="text-red-600 mb-3">{upgradeError}</p>}

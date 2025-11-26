@@ -24,7 +24,7 @@ export const TUTORIAL_STEPS: Record<TutorialProgress, TutorialStep | null> = {
 • Impostor: fake the original answer so it blends in
 • Guess: pick which answer was written first
 
-We will take a quick tour so you know how to play and earn Flipcoins.`,
+We will take a quick tour so you know how to play and earn MemeCoins.`,
     position: 'bottom',
     nextStep: 'dashboard',
     showSkip: true,
@@ -96,7 +96,7 @@ If you are stuck, you can tap a suggested phrase and tweak it.`,
 • One is the original answer
 • Two are impostor fakes
 
-Tap the one you think was written first. If you guess the original correctly you earn Flipcoins. After you vote, you will see which phrase was the original and how everyone voted.`,
+Tap the one you think was written first. If you guess the original correctly you earn MemeCoins. After you vote, you will see which phrase was the original and how everyone voted.`,
     target: '.tutorial-vote-options',
     position: 'top',
     // The tutorial will resume after you finish your first guess.
@@ -114,7 +114,7 @@ To get comfortable with the game, try Practice Mode:
 
 • Use the mode toggle at the bottom of the screen to switch between Practice and Live
 • Practice Mode lets you play rounds without worrying about your main balance
-• Live Mode lets you earn and lose Flipcoins in real games
+• Live Mode lets you earn and lose MemeCoins in real games
 
 Experiment in Practice, then switch to Live Mode when you feel confident. You can always return to Practice to refine your strategy.`,
     target: 'div.fixed.bottom-5',

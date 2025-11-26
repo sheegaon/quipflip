@@ -6,13 +6,13 @@ _Working title: Meme Mint_
 
 ## 1. Overview
 
-This game is an asynchronous meme-caption battler built on the existing Crowdcraft / Flipcoin economy.
+This game is an asynchronous meme-caption battler built on the existing Crowdcraft / MemeCoin economy.
 
 Core loop per round:
 
 1. System picks **one image** and **5 captions** for that image.
 2. Player **pays an entry fee**, sees the image + 5 captions, and **votes for their favorite**.
-3. The **authors of the winning caption** (riff + parent, or original) get paid in coins.
+3. The **authors of the winning caption** (riff + parent, or original) get paid in MemeCoins.
 4. The system may pay additional **voter bonuses**.
 5. After voting, player can optionally **submit a new caption** for that image (original or riff).
 6. Images and captions are replayable indefinitely; bad captions are retired over time.
@@ -48,15 +48,15 @@ Stats (for selection + lifecycle):
 
 Economy stats (per caption):
 
-- `lifetime_earnings_gross` — total coins “earned” by this caption before vault split.
-- `lifetime_to_wallet` — total coins actually credited to wallets for this caption.
-- `lifetime_to_vault` — total “burned” coins attributed to this caption (for leaderboards).
+- `lifetime_earnings_gross` — total MemeCoins “earned” by this caption before vault split.
+- `lifetime_to_wallet` — total MemeCoins actually credited to wallets for this caption.
+- `lifetime_to_vault` — total “burned” MemeCoins attributed to this caption (for leaderboards).
 
 ### 2.3 Player
 
 - `player_id`
-- `wallet_balance` — spendable Flipcoins.
-- `vault_contribution` — cumulative coins burned in the vault attributable to this player.
+- `wallet_balance` — spendable MemeCoins.
+- `vault_contribution` — cumulative MemeCoins burned in the vault attributable to this player.
 - `created_at`
 - Daily state:
   - `has_claimed_daily_bonus_today` (UTC)
@@ -73,18 +73,18 @@ Per-image per-player state:
 
 ### 3.1 Currency and balances
 
-- Currency: **Flipcoins** (`FC`), same as the rest of the ecosystem.
+- Currency: **MemeCoins** (`MC`), same as the rest of the ecosystem.
 - Every player has:
-  - **Wallet** — spendable FC.
-  - **Vault contribution** — *non-spendable* cumulative amount of FC burned on their behalf for leaderboards.
+  - **Wallet** — spendable MC.
+  - **Vault contribution** — *non-spendable* cumulative amount of MC burned on their behalf for leaderboards.
 
 The **vault** itself is a global sink. Coins sent to vault are removed from circulation but still counted in per-player `vault_contribution`.
 
 ### 3.2 Starting balance and daily bonus
 
-- **Starting wallet balance**: `STARTING_BALANCE = 500 FC`.
+- **Starting wallet balance**: `STARTING_BALANCE = 500 MC`.
 - **Daily bonus**:
-  - `DAILY_BONUS_AMOUNT = 100 FC`.
+  - `DAILY_BONUS_AMOUNT = 100 MC`.
   - Can be claimed **once per UTC day** by non-guest accounts.
   - **Not available on day 1**:  
     - If `now_utc.date() == floor(player.created_at_utc).date()`, they are **ineligible** to claim the daily bonus.
@@ -97,7 +97,7 @@ The **vault** itself is a global sink. Coins sent to vault are removed from circ
 - Only applies to **caption submissions** (Section 5).
 - Typical flow:
   - On first caption submission of the UTC day:
-    - If `free_captions_remaining_today > 0`, cost = `0 FC`, then decrement.
+    - If `free_captions_remaining_today > 0`, cost = `0 MC`, then decrement.
   - Subsequent submissions that day pay normal caption submission fee.
 
 ---
@@ -109,7 +109,7 @@ Each **round** is an `(image, player)` interaction.
 Parameters:
 
 - `CAPTIONS_PER_ROUND = 5`
-- `ROUND_ENTRY_COST = 5 FC`
+- `ROUND_ENTRY_COST = 5 MC`
 
 ### 4.1 Image selection
 
