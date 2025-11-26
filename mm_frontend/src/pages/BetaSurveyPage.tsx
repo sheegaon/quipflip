@@ -1,7 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient, { extractErrorMessage } from '../api/client';
-import { Header } from '../components/Header';
 import { useGame } from '../contexts/GameContext';
 import type { SurveyQuestion, CompoundSurveyQuestion } from '../types/survey';
 import { markSurveyCompleted } from '../utils/betaSurvey';
@@ -214,9 +213,8 @@ const BetaSurveyPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-quip-cream bg-pattern">
-      <Header />
-      <div className="container mx-auto px-4 py-8">
-        <div className="tile-card p-6 md:p-10 max-w-4xl mx-auto">
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        <div className="tile-card p-8">
           <header className="mb-8">
             <h1 className="text-3xl font-display font-bold text-quip-navy">
               {betaSurveyDefinition.title}

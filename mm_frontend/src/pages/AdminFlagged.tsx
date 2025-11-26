@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
-import { Header } from '../components/Header';
 import apiClient, { extractErrorMessage } from '../api/client';
 import type { FlaggedPromptItem } from '../api/types';
 import { formatDateTimeInUserZone } from '../utils/datetime';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 
 type FlagStatusFilter = 'pending' | 'confirmed' | 'dismissed' | 'all';
 
@@ -85,9 +85,8 @@ const AdminFlagged: React.FC = () => {
 
   if (!player) {
     return (
-      <div className="min-h-screen bg-quip-cream bg-pattern">
-        <Header />
-        <div className="flex items-center justify-center py-16 text-quip-teal">Loading...</div>
+      <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center">
+        <LoadingSpinner isLoading message="Loading flagged content..." />
       </div>
     );
   }
@@ -95,7 +94,6 @@ const AdminFlagged: React.FC = () => {
   if (!player.is_admin) {
     return (
       <div className="min-h-screen bg-quip-cream bg-pattern">
-        <Header />
         <div className="flex items-center justify-center py-16">
           <div className="rounded-tile border border-quip-orange/40 bg-white/80 p-6 text-center text-quip-teal">
             <p className="text-lg font-semibold text-quip-navy">Admin access required</p>
@@ -106,9 +104,28 @@ const AdminFlagged: React.FC = () => {
     );
   }
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center">
+        <LoadingSpinner isLoading message="Loading flagged content..." />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-quip-cream bg-pattern">
+        <div className="max-w-4xl mx-auto px-4 py-8">
+          <div className="tile-card p-6 bg-red-50 border border-red-200">
+            <p className="text-red-600">Error: {error}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-quip-cream bg-pattern">
-      <Header />
       <div className="container mx-auto max-w-5xl px-4 py-8">
         <div className="tile-card mb-6 flex flex-col gap-4 border-2 border-quip-orange p-6 sm:flex-row sm:items-center sm:justify-between">
           <div>

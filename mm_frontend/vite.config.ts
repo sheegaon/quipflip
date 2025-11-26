@@ -13,7 +13,9 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:8000',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '/qf'),
+        // Remove the incorrect rewrite that was changing /api to /qf
+        // MM API endpoints start with /mm, so /api/mm/* should proxy to /mm/*
+        rewrite: (path) => path.replace(/^\/api/, ''),
       },
     },
   },

@@ -62,13 +62,13 @@ import type {
   OnlineUsersResponse,
   PingUserResponse,
   WsAuthTokenResponse,
-  CaptionSubmissionState,
   VoteRoundState,
   VoteResult,
   MemeVoteRound,
   MemeVoteResult,
   MemeCaptionSubmission,
   MemeCaptionResponse,
+  CaptionSubmissionResult,
 } from './types';
 
 // Base URL - configure based on environment
@@ -519,17 +519,16 @@ export const apiClient = {
       round_id: data.round_id,
       expires_at: data.expires_at,
       meme: {
-        meme_id: data.image.image_id,
-        image_url: data.image.image_url,
-        alt_text: data.image.attribution_text,
+        meme_id: data.image_id,
+        image_url: data.image_url,
+        alt_text: data.attribution_text || undefined,
       },
       captions: data.captions.map((caption) => ({
         caption_id: caption.caption_id,
         text: caption.text,
-        is_original: caption.kind === 'original',
-        riff_on_caption_id: caption.parent_caption_id ?? null,
+        is_original: true, // Backend doesn't provide this info in vote round
+        riff_on_caption_id: null, // Backend doesn't provide this info in vote round
       })),
-      free_captions_remaining: data.free_captions_remaining,
     };
   },
 
@@ -546,6 +545,46 @@ export const apiClient = {
 
   async submitMemeCaption(request: MemeCaptionSubmission, signal?: AbortSignal): Promise<MemeCaptionResponse> {
     const { data } = await api.post('/rounds/caption', request, { signal });
+    return data;
+  },
+
+  // MemeMint round endpoints - Updated to match backend implementation
+  async getMemeMintRoundAvailability(signal?: AbortSignal): Promise<RoundAvailability> {
+    const { data } = await api.get('/rounds/available', { signal });
+    return data;
+  },
+
+  async getMemeMintRoundDetails(roundId: string, signal?: AbortSignal): Promise<RoundDetails> {
+    const { data } = await api.get(`/rounds/${roundId}`, { signal });
+    return data;
+  },
+
+  async startMemeMintVoteRound(signal?: AbortSignal): Promise<VoteRoundState> {
+    const { data } = await api.post('/rounds/vote', {}, { signal });
+    return data;
+  },
+
+  async submitMemeMintVote(
+    roundId: string,
+    captionId: string,
+    signal?: AbortSignal,
+  ): Promise<VoteResult> {
+    const { data } = await api.post(`/rounds/vote/${roundId}/submit`, { caption_id: captionId }, { signal });
+    return data;
+  },
+
+  async submitMemeMintCaption(
+    payload: { round_id: string; text: string; kind?: 'original' | 'riff'; parent_caption_id?: string | null },
+    signal?: AbortSignal,
+  ): Promise<CaptionSubmissionResult> {
+    // Transform payload to match backend schema field names
+    const backendPayload = {
+      round_id: payload.round_id,
+      caption_text: payload.text,  // Backend expects 'caption_text', not 'text'
+      caption_type: payload.kind || 'original',  // Backend expects 'caption_type', not 'kind'
+      parent_caption_id: payload.parent_caption_id || null,
+    };
+    const { data } = await api.post('/rounds/caption', backendPayload, { signal });
     return data;
   },
 
@@ -566,39 +605,6 @@ export const apiClient = {
 
   async abandonRound(roundId: string, signal?: AbortSignal): Promise<AbandonRoundResponse> {
     const { data } = await api.post(`/rounds/${roundId}/abandon`, {}, { signal });
-    return data;
-  },
-
-  // MemeMint round endpoints
-  async getMemeMintRoundAvailability(signal?: AbortSignal): Promise<RoundAvailability> {
-    const { data } = await api.get('/rounds/available', { signal });
-    return data;
-  },
-
-  async getMemeMintRoundDetails(roundId: string, signal?: AbortSignal): Promise<VoteRoundState> {
-    const { data } = await api.get(`/rounds/vote/${roundId}`, { signal });
-    return data;
-  },
-
-  async startMemeMintVoteRound(signal?: AbortSignal): Promise<VoteRoundState> {
-    const { data } = await api.post('/rounds/vote', {}, { signal });
-    return data;
-  },
-
-  async submitMemeMintVote(
-    roundId: string,
-    captionId: string,
-    signal?: AbortSignal,
-  ): Promise<VoteResult> {
-    const { data } = await api.post(`/rounds/vote/${roundId}/submit`, { caption_id: captionId }, { signal });
-    return data;
-  },
-
-  async submitCaption(
-    payload: { text: string; parent_caption_id?: string },
-    signal?: AbortSignal,
-  ): Promise<CaptionSubmissionState> {
-    const { data } = await api.post('/rounds/caption', payload, { signal });
     return data;
   },
 

@@ -10,7 +10,6 @@ import { buildPhrasesetListKey } from '../utils/gameKeys';
 import { PhrasesetList } from '../components/PhrasesetList';
 import { PhrasesetDetails } from '../components/PhrasesetDetails';
 import { Pagination } from '../components/Pagination';
-import { Header } from '../components/Header';
 import { useResults } from '../contexts/ResultsContext';
 import { trackingLogger } from '../utils/logger';
 import { getUniqueIdForSummary } from '../utils/phrasesetHelpers';
@@ -270,8 +269,6 @@ export const GameHistory: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-quip-cream bg-pattern">
-      <Header />
-
       <div className="max-w-6xl mx-auto px-4 py-8">
         <div className="mb-6">
           <h1 className="text-3xl font-display font-bold text-quip-navy">Game History</h1>

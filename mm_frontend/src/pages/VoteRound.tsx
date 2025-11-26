@@ -2,9 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { extractErrorMessage } from '../api/client';
 import { useGame } from '../contexts/GameContext';
-import { Timer } from '../components/Timer';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import type { MemeVoteResult, VoteRoundState, VoteResult, MemeCaptionOption } from '../api/types';
+import type { MemeVoteResult, VoteRoundState, VoteResult, Caption } from '../api/types';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 
 interface VoteLocationState {
@@ -16,7 +15,7 @@ export const VoteRound: React.FC = () => {
   const navigate = useNavigate();
   const locationState = (useLocation().state as VoteLocationState) || {};
   const {
-    state: { currentVoteRound },
+    state: { currentVoteRound, roundAvailability },
     actions,
   } = useGame();
 
@@ -24,26 +23,38 @@ export const VoteRound: React.FC = () => {
   const [result, setResult] = useState<VoteResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingRound, setIsLoadingRound] = useState(false);
+
+  const voteCost = roundAvailability?.round_entry_cost ?? 5;
 
   // recover round when arriving without navigation state
   useEffect(() => {
-    if (round) return;
+    if (round || isLoadingRound) return;
 
+    setIsLoadingRound(true);
     const controller = new AbortController();
+
     actions
       .startVoteRound(controller.signal)
       .then(setRound)
-      .catch((err) => setError(extractErrorMessage(err) || 'Unable to start a vote round.'));
+      .catch((err) => {
+        console.error('Failed to start vote round:', err);
+        setError(extractErrorMessage(err) || 'Unable to start a vote round.');
+      })
+      .finally(() => setIsLoadingRound(false));
 
-    return () => controller.abort();
-  }, [actions, round]);
+    return () => {
+      controller.abort();
+      setIsLoadingRound(false);
+    };
+  }, [actions, isLoadingRound, round]);
 
   const selectedCaption = useMemo(() => {
     if (!round || !result) return null;
     return round.captions.find((c) => c.caption_id === result.chosen_caption_id) ?? null;
   }, [result, round]);
 
-  const handleVote = async (caption: MemeCaptionOption) => {
+  const handleVote = async (caption: Caption) => {
     if (!round || isSubmitting) return;
     setIsSubmitting(true);
     setError(null);
@@ -63,8 +74,17 @@ export const VoteRound: React.FC = () => {
     navigate('/game/caption', { state: { round, voteResult: result } });
   };
 
-  const goToResults = () => {
-    navigate('/game/results', { state: { round, voteResult: result } });
+  const handlePlayAgain = async () => {
+    setError(null);
+    setResult(null);
+    setRound(null);
+    
+    try {
+      const newRound = await actions.startVoteRound();
+      setRound(newRound);
+    } catch (err) {
+      setError(extractErrorMessage(err) || 'Unable to start a new vote round. Please try again.');
+    }
   };
 
   if (!round) {
@@ -81,8 +101,8 @@ export const VoteRound: React.FC = () => {
         <div className="max-w-4xl w-full tile-card p-6 md:p-10">
           <div className="flex flex-col md:flex-row gap-6 md:items-start">
             <img
-              src={round.image.image_url}
-              alt={round.image.attribution_text || 'Meme image'}
+              src={round.image_url}
+              alt={round.attribution_text || 'Meme image'}
               className="w-full md:w-1/2 rounded-tile border-2 border-quip-navy"
             />
             <div className="flex-1 space-y-4">
@@ -105,14 +125,16 @@ export const VoteRound: React.FC = () => {
                 >
                   Add your caption
                 </button>
+                {/* TODO: Enable when round results feature is implemented
                 <button
                   onClick={goToResults}
                   className="bg-quip-orange hover:bg-quip-orange-deep text-white font-semibold px-4 py-2 rounded-tile"
                 >
                   See round results
                 </button>
+                */}
                 <button
-                  onClick={() => navigate('/dashboard')}
+                  onClick={handlePlayAgain}
                   className="border-2 border-quip-navy text-quip-navy font-semibold px-4 py-2 rounded-tile"
                 >
                   Play again
@@ -129,40 +151,61 @@ export const VoteRound: React.FC = () => {
     <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center p-4">
       <div className="max-w-5xl w-full tile-card p-6 md:p-10">
         <div className="flex flex-col md:flex-row gap-6 md:items-start">
-          <img
-            src={round.image.image_url}
-            alt={round.image.attribution_text || 'Meme image'}
-            className="w-full md:w-1/2 rounded-tile border-2 border-quip-navy"
-          />
-          <div className="flex-1">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <p className="text-sm text-quip-teal uppercase tracking-wide">Vote for your favorite</p>
-                <h1 className="text-3xl font-display font-bold text-quip-navy">Which caption wins?</h1>
-              </div>
-              {round.expires_at && <Timer expiresAt={round.expires_at} />}
+          <div className="w-full md:w-1/2">
+            <img
+              src={round.image_url}
+              alt={round.attribution_text || 'Meme image'}
+              className="w-full rounded-tile border-2 border-quip-navy max-h-96 object-contain bg-white"
+            />
+          </div>
+
+          {/* Voting Interface */}
+          <div className="flex-1 space-y-6">
+            <div>
+              <p className="text-sm text-quip-teal uppercase tracking-wide">Vote Round</p>
+              <h1 className="text-3xl font-display font-bold text-quip-navy">Choose the best caption</h1>
+              <p className="text-quip-teal">Select your favorite caption for this image</p>
             </div>
 
             {error && (
-              <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+              <div className="p-4 bg-red-100 border border-red-400 text-red-700 rounded-tile">
                 {error}
               </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {round.captions.map((caption) => (
+            {/* Caption Options */}
+            <div className="space-y-3">
+              {round.captions.map((caption, index) => (
                 <button
                   key={caption.caption_id}
                   onClick={() => handleVote(caption)}
                   disabled={isSubmitting}
-                  className="text-left bg-white border-2 border-quip-orange hover:border-quip-orange-deep rounded-tile p-4 shadow-tile-sm hover:shadow-tile transition-all disabled:opacity-60"
+                  className="w-full text-left p-4 rounded-tile border-2 border-quip-navy hover:border-quip-teal hover:bg-quip-teal hover:bg-opacity-5 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
                 >
-                  <p className="text-lg font-display text-quip-navy">{caption.text}</p>
-                  {caption.parent_caption_id && (
-                    <p className="text-xs text-quip-teal mt-2">riff</p>
-                  )}
+                  <div className="flex items-start gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-quip-navy text-white text-sm flex items-center justify-center font-semibold">
+                      {String.fromCharCode(65 + index)}
+                    </span>
+                    <div className="flex-1">
+                      <p className="text-quip-navy font-medium">{caption.text}</p>
+                    </div>
+                  </div>
                 </button>
               ))}
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-between pt-4 border-t border-quip-navy border-opacity-20">
+              <div className="text-sm text-quip-teal flex items-center gap-2">
+                <span>Cost:</span>
+                <CurrencyDisplay amount={voteCost} />
+              </div>
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="border-2 border-quip-navy text-quip-navy font-semibold px-4 py-2 rounded-tile hover:bg-quip-navy hover:text-white transition-colors"
+              >
+                Back to Dashboard
+              </button>
             </div>
           </div>
         </div>

@@ -134,7 +134,7 @@ class MMPlayerRouter(PlayerRouterBase):
                     "mm_free_captions_per_day", default=0
                 ),
                 house_rake_vault_pct=await config_service.get_config_value(
-                    "mm_house_rake_vault_pct", default=0.3
+                    "mm_house_rake_vault_pct", default=0.5
                 ),
                 daily_bonus_amount=await config_service.get_config_value(
                     "mm_daily_bonus_amount", default=settings.daily_bonus_amount

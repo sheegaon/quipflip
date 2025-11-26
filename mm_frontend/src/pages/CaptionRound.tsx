@@ -1,36 +1,37 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import apiClient, { extractErrorMessage } from '../api/client';
+import { useGame } from '../contexts/GameContext';
+import { extractErrorMessage } from '../api/client';
 import type {
-  MemeCaptionOption,
-  MemeCaptionSubmission,
-  MemeVoteResult,
-  MemeVoteRound,
+  VoteRoundState,
+  VoteResult,
+  Caption,
 } from '../api/types';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 
 interface CaptionLocationState {
-  round?: MemeVoteRound;
-  voteResult?: MemeVoteResult | null;
+  round?: VoteRoundState;
+  voteResult?: VoteResult | null;
 }
 
 export const CaptionRound: React.FC = () => {
   const navigate = useNavigate();
   const locationState = (useLocation().state as CaptionLocationState) || {};
-  const round = locationState.round;
+  const { actions, state } = useGame();
+  
+  // Get round from location state or from GameContext current vote round
+  const round = locationState.round || state.currentVoteRound;
 
   const [captionText, setCaptionText] = useState('');
   const [captionType, setCaptionType] = useState<'original' | 'riff'>('original');
-  const [parentCaptionId, setParentCaptionId] = useState<string | null>(null);
+  const [parentCaptionId, setParentCaptionId] = useState<string | undefined>(undefined);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const freeCaptionAvailable = useMemo(() => {
-    return (round?.free_captions_remaining ?? 0) > 0;
-  }, [round?.free_captions_remaining]);
-
-  const captionCost = freeCaptionAvailable ? 0 : 10;
+  // Get caption cost from round availability
+  const freeCaptionAvailable = (state.roundAvailability?.free_captions_remaining ?? 0) > 0;
+  const captionCost = freeCaptionAvailable ? 0 : (state.roundAvailability?.caption_submission_cost ?? 10);
 
   if (!round) {
     return (
@@ -48,23 +49,26 @@ export const CaptionRound: React.FC = () => {
     );
   }
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!captionText.trim() || isSubmitting) return;
+
     setIsSubmitting(true);
     setError(null);
-    setSuccessMessage(null);
-
-    const request: MemeCaptionSubmission = {
-      round_id: round.round_id,
-      caption_text: captionText.trim(),
-      caption_type: captionType,
-      parent_caption_id: captionType === 'riff' ? parentCaptionId : null,
-    };
-
+    
     try {
-      await apiClient.submitMemeCaption(request);
+      const payload = {
+        text: captionText.trim(),
+        parent_caption_id: captionType === 'riff' ? parentCaptionId : undefined,
+      };
+      
+      await actions.submitCaption(payload);
       setSuccessMessage('Caption submitted!');
-      navigate('/game/results', { state: { round, voteResult: locationState.voteResult } });
+      
+      // Navigate to results or dashboard
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 1500);
     } catch (err) {
       setError(extractErrorMessage(err) || 'Unable to submit caption right now.');
     } finally {
@@ -77,9 +81,9 @@ export const CaptionRound: React.FC = () => {
       <div className="max-w-5xl w-full tile-card p-6 md:p-10">
         <div className="flex flex-col md:flex-row gap-6 md:items-start">
           <img
-            src={round.meme.image_url}
-            alt={round.meme.alt_text || 'Meme image'}
-            className="w-full md:w-1/2 rounded-tile border-2 border-quip-navy"
+            src={round.image_url}
+            alt={round.attribution_text || 'Meme image'}
+            className="w-full md:w-1/2 rounded-tile border-2 border-quip-navy max-h-96 object-contain bg-white"
           />
           <div className="flex-1 space-y-4">
             <div>
@@ -139,11 +143,11 @@ export const CaptionRound: React.FC = () => {
                 <select
                   id="parent-select"
                   value={parentCaptionId ?? ''}
-                  onChange={(e) => setParentCaptionId(e.target.value || null)}
+                  onChange={(e) => setParentCaptionId(e.target.value || undefined)}
                   className="w-full border-2 border-quip-navy rounded-tile p-3"
                 >
                   <option value="">Select a caption</option>
-                  {round.captions.map((caption: MemeCaptionOption) => (
+                  {round.captions.map((caption: Caption) => (
                     <option key={caption.caption_id} value={caption.caption_id}>
                       {caption.text}
                     </option>
@@ -160,7 +164,7 @@ export const CaptionRound: React.FC = () => {
               </div>
               <div className="flex gap-3">
                 <button
-                  onClick={() => navigate('/game/results', { state: { round, voteResult: locationState.voteResult } })}
+                  onClick={() => navigate('/dashboard')}
                   className="border-2 border-quip-navy text-quip-navy font-semibold px-4 py-2 rounded-tile"
                 >
                   Skip

@@ -201,7 +201,7 @@ export const Landing: React.FC = () => {
         </div>
 
         <p className="text-center text-quip-navy text-lg font-medium mb-4">
-          Meme Mint: pay in, vote on 5 captions, earn MemeCoins.
+          Explore funny memes and write new ones!
         </p>
 
         <div className="mb-6 border-t border-gray-200" aria-hidden="true"></div>

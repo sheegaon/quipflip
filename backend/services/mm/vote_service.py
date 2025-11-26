@@ -13,10 +13,17 @@ from backend.models.mm.vote_round import MMVoteRound
 from backend.services.transaction_service import TransactionService
 from backend.services.mm.system_config_service import MMSystemConfigService
 from backend.services.mm.scoring_service import MMScoringService
-from backend.utils.exceptions import RoundNotFoundError, RoundExpiredError
 from backend.utils import lock_client
 
 logger = logging.getLogger(__name__)
+
+# Special UUID for system/seeded content - must match the one used in seeding
+SYSTEM_PLAYER_ID = UUID("00000000-0000-0000-0000-000000000001")
+
+
+def _is_system_generated_caption(caption: MMCaption) -> bool:
+    """Check if a caption is system/seeded content that should not receive payouts."""
+    return caption.author_player_id == SYSTEM_PLAYER_ID or caption.author_player_id is None
 
 
 class MMVoteService:
@@ -57,6 +64,20 @@ class MMVoteService:
             RoundNotFoundError: Round not found or already completed
             ValueError: Invalid caption selection
         """
+        # Validate inputs to prevent None player_id issues
+        if not round_obj.player_id:
+            logger.error(f"Round {round_obj.round_id} has no player_id")
+            raise ValueError("Invalid round: missing player_id")
+
+        if not player or not player.player_id:
+            logger.error(f"Invalid player object: {player}")
+            raise ValueError("Invalid player object")
+
+        # Ensure the round belongs to the voting player
+        if round_obj.player_id != player.player_id:
+            logger.error(f"Player {player.player_id} trying to vote on round {round_obj.round_id} owned by {round_obj.player_id}")
+            raise ValueError("Cannot vote on another player's round")
+
         lock_name = f"submit_vote:{round_obj.round_id}"
         with lock_client.lock(lock_name, timeout=10):
             # Verify caption was in the round
@@ -71,6 +92,15 @@ class MMVoteService:
 
             if not caption:
                 raise ValueError(f"Caption {caption_id} not found")
+            
+            # Check if this is a system-generated caption (allow these but skip payouts)
+            is_system_caption = _is_system_generated_caption(caption)
+            
+            # Only validate author_player_id for non-system captions
+            if not is_system_caption and not caption.author_player_id:
+                logger.error(f"Caption {caption_id} has no author_player_id. "
+                             f"{caption.text=}, {caption.image_id=}, {caption.created_at=}, {caption.status=}")
+                raise ValueError(f"Invalid caption: missing author (caption_id: {caption_id})")
 
             # Update round
             round_obj.chosen_caption_id = caption_id
@@ -80,30 +110,37 @@ class MMVoteService:
             caption.picks += 1
             await self.scoring_service.update_caption_quality_score(caption)
 
-            # Get config values
-            house_rake_vault_pct = await self.config_service.get_config_value(
-                "mm_house_rake_vault_pct", default=0.3
-            )
+            # Skip payouts for system-generated captions
+            if not is_system_caption:
+                # Get config values
+                house_rake_vault_pct = await self.config_service.get_config_value(
+                    "mm_house_rake_vault_pct", default=0.3)
 
-            # Calculate and distribute payouts to caption author(s)
-            payout_info = await self._distribute_caption_payouts(
-                caption,
-                round_obj.entry_cost,
-                house_rake_vault_pct,
-                transaction_service
-            )
+                # Calculate and distribute payouts to caption author(s)
+                payout_info = await self._distribute_caption_payouts(
+                    caption,
+                    round_obj.entry_cost,
+                    house_rake_vault_pct,
+                    transaction_service
+                )
 
-            # Check and award first vote bonus
-            first_vote_bonus_awarded = await self._check_first_vote_bonus(
-                caption,
-                round_obj,
-                transaction_service
-            )
+                # Check and award first vote bonus
+                first_vote_bonus_awarded = await self._check_first_vote_bonus(
+                    caption,
+                    round_obj,
+                    transaction_service
+                )
 
-            # Update round with payout info
-            round_obj.payout_to_wallet = payout_info['total_wallet']
-            round_obj.payout_to_vault = payout_info['total_vault']
-            round_obj.first_vote_bonus_applied = first_vote_bonus_awarded
+                # Update round with payout info
+                round_obj.payout_to_wallet = payout_info['total_wallet']
+                round_obj.payout_to_vault = payout_info['total_vault']
+                round_obj.first_vote_bonus_applied = first_vote_bonus_awarded
+            else:
+                payout_info = {
+                    'total_wallet': 0,
+                    'total_vault': 0
+                }
+                first_vote_bonus_awarded = False
 
             await self.db.commit()
             await self.db.refresh(player)
@@ -143,7 +180,15 @@ class MMVoteService:
 
         Returns:
             Dictionary with payout breakdown
+
+        Raises:
+            ValueError: If caption has no author or invalid author_player_id
         """
+        # Validate caption has a valid author
+        if not caption.author_player_id:
+            logger.error(f"Caption {caption.caption_id} has no author_player_id - cannot distribute payouts")
+            raise ValueError("Invalid caption: missing author_player_id")
+
         # Simple payout: return the entry cost to caption author(s)
         # This makes voting revenue-neutral for now
         gross_payout = entry_cost
@@ -215,6 +260,9 @@ class MMVoteService:
                         skip_lock=True,
                         wallet_type="vault"
                     )
+            else:
+                logger.warning(f"Riff caption {caption.caption_id} references parent {caption.parent_caption_id} "
+                               f"but parent not found or has no author")
 
         return {
             'total_gross': payout_breakdown['total_gross'],
@@ -246,13 +294,17 @@ class MMVoteService:
             return False
 
         # This is the first vote! Award bonus to the voter
-        bonus_amount = await self.config_service.get_config_value(
-            "mm_first_vote_bonus_amount", default=10
-        )
+        bonus_amount = await self.config_service.get_config_value("mm_first_vote_bonus_amount", default=10)
 
         if bonus_amount > 0:
+            # Use round_obj.player_id since the player who created the round is the one voting
+            # Add validation to ensure player_id is not None
+            if not round_obj.player_id:
+                logger.error(f"Round {round_obj.round_id} has no player_id - cannot award first vote bonus")
+                return False
+
             await transaction_service.create_transaction(
-                round_obj.player_id,
+                round_obj.player_id,  # This should be the voting player's ID
                 bonus_amount,
                 "mm_first_vote_bonus",
                 reference_id=round_obj.round_id,

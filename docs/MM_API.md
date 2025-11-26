@@ -153,7 +153,7 @@ Submit a caption for the image associated with a prior vote round. The first cap
 
 Returns `400` for validation errors, insufficient balance, or missing rounds.
 
-### `GET /rounds/rounds/available`
+### `GET /rounds/available`
 Report whether the player can start a vote round or submit a caption, along with current cost settings, remaining free captions, and bonus availability.
 
 **Response:**
@@ -169,12 +169,29 @@ Report whether the player can start a vote round or submit a caption, along with
 }
 ```
 
-### `GET /rounds/rounds/{round_id}`
+### `GET /rounds/{round_id}`
 Retrieve details for a previously started round owned by the requesting player. Returns image metadata, captions shown, chosen caption (if already submitted), and status (`active` or `completed`).
+
+**Response:**
+```json
+{
+  "round_id": "3f8f4f7a-5f8b-4f6e-9a66-6b7a2f2c9c1f",
+  "type": "vote",
+  "status": "active",
+  "expires_at": "2024-01-01T12:00:00Z",
+  "image_id": "2c5f3c8d-1a2b-4c3d-8e9f-0a1b2c3d4e5f",
+  "image_url": "https://.../mm_images/example.png",
+  "cost": 5,
+  "captions": [
+    { "caption_id": "...", "text": "Sample caption" }
+  ],
+  "chosen_caption_id": null
+}
+```
 
 ---
 
-## Image Endpoint
+## Image Endpoint (`/mm/images` prefix)
 
 ### `GET /images/{filename}`
 Serve a Meme Mint image. In production the endpoint issues a `302` redirect to the GitHub-hosted asset with caching headers; in local development it serves the file directly from `backend/data/mm_images`. Requests with path traversal patterns return `400`, and missing files return `404`.

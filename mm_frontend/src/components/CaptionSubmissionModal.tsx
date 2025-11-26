@@ -52,19 +52,19 @@ export const CaptionSubmissionModal: React.FC<CaptionSubmissionModalProps> = ({
     return null;
   }, [captionText, captionType, parentCaptionId]);
 
-  const handleSubmit = async () => {
-    if (!captionText.trim() || isSubmitting || validationError) return;
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!captionText.trim() || isSubmitting) return;
+
     setIsSubmitting(true);
-    setError(null);
-
-    const request: MemeCaptionSubmission = {
-      round_id: round.round_id,
-      caption_text: captionText.trim(),
-      caption_type: captionType,
-      parent_caption_id: captionType === 'riff' ? parentCaptionId : null,
-    };
-
     try {
+      const request: MemeCaptionSubmission = {
+        round_id: round.round_id,
+        text: captionText.trim(),
+        kind: captionType,
+        parent_caption_id: parentCaptionId || null,
+      };
+
       await apiClient.submitMemeCaption(request);
       // Close modal and reset form
       setCaptionText('');

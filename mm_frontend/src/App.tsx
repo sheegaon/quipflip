@@ -5,6 +5,8 @@ import { SpeedInsights } from '@vercel/speed-insights/react';
 import { useGame } from './contexts/GameContext';
 import { AppProviders } from './contexts/AppProviders';
 import { ErrorNotification } from './components/ErrorNotification';
+import { Header } from './components/Header';
+import { SubHeader } from './components/SubHeader';
 import TutorialOverlay from './components/Tutorial/TutorialOverlay';
 import NotificationDisplay from './components/NotificationDisplay';
 import PingNotificationDisplay from './components/PingNotificationDisplay';
@@ -81,6 +83,19 @@ const renderWithSuspense = (element: React.ReactNode) => (
 const renderProtectedRoute = (element: React.ReactNode) =>
   renderWithSuspense(<ProtectedRoute>{element}</ProtectedRoute>);
 
+// Game Layout wrapper that includes Header and SubHeader
+const GameLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  return (
+    <>
+      <Header />
+      <SubHeader />
+      <div className="min-h-screen bg-quip-cream bg-pattern">
+        {children}
+      </div>
+    </>
+  );
+};
+
 // App Routes
 const AppRoutes: React.FC = () => {
   const { state } = useGame();
@@ -122,55 +137,107 @@ const AppRoutes: React.FC = () => {
         />
         <Route
           path="/dashboard"
-          element={renderProtectedRoute(<Dashboard />)}
+          element={renderProtectedRoute(
+            <GameLayout>
+              <Dashboard />
+            </GameLayout>
+          )}
         />
         <Route
           path="/game/vote"
-          element={renderProtectedRoute(<VoteRound />)}
+          element={renderProtectedRoute(
+            <GameLayout>
+              <VoteRound />
+            </GameLayout>
+          )}
         />
         <Route
           path="/game/caption"
-          element={renderProtectedRoute(<CaptionRound />)}
+          element={renderProtectedRoute(
+            <GameLayout>
+              <CaptionRound />
+            </GameLayout>
+          )}
         />
         <Route
           path="/game/results"
-          element={renderProtectedRoute(<Results />)}
+          element={renderProtectedRoute(
+            <GameLayout>
+              <Results />
+            </GameLayout>
+          )}
         />
         <Route
           path="/game/history"
-          element={renderProtectedRoute(<GameHistory />)}
+          element={renderProtectedRoute(
+            <GameLayout>
+              <GameHistory />
+            </GameLayout>
+          )}
         />
         <Route
           path="/quests"
-          element={renderProtectedRoute(<Quests />)}
+          element={renderProtectedRoute(
+            <GameLayout>
+              <Quests />
+            </GameLayout>
+          )}
         />
         <Route
           path="/statistics"
-          element={renderProtectedRoute(<Statistics />)}
+          element={renderProtectedRoute(
+            <GameLayout>
+              <Statistics />
+            </GameLayout>
+          )}
         />
         <Route
           path="/leaderboard"
-          element={renderProtectedRoute(<Leaderboard />)}
+          element={renderProtectedRoute(
+            <GameLayout>
+              <Leaderboard />
+            </GameLayout>
+          )}
         />
         <Route
           path="/online-users"
-          element={renderProtectedRoute(<OnlineUsers />)}
+          element={renderProtectedRoute(
+            <GameLayout>
+              <OnlineUsers />
+            </GameLayout>
+          )}
         />
         <Route
           path="/settings"
-          element={renderProtectedRoute(<Settings />)}
+          element={renderProtectedRoute(
+            <GameLayout>
+              <Settings />
+            </GameLayout>
+          )}
         />
         <Route
           path="/survey/beta"
-          element={renderProtectedRoute(<BetaSurveyPage />)}
+          element={renderProtectedRoute(
+            <GameLayout>
+              <BetaSurveyPage />
+            </GameLayout>
+          )}
         />
         <Route
           path="/admin"
-          element={renderProtectedRoute(<Admin />)}
+          element={renderProtectedRoute(
+            <GameLayout>
+              <Admin />
+            </GameLayout>
+          )}
         />
         <Route
           path="/admin/flags"
-          element={renderProtectedRoute(<AdminFlagged />)}
+          element={renderProtectedRoute(
+            <GameLayout>
+              <AdminFlagged />
+            </GameLayout>
+          )}
         />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

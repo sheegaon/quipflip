@@ -4,7 +4,7 @@ import asyncio
 import logging
 from pathlib import Path
 from datetime import datetime, UTC
-from uuid import uuid4
+from uuid import uuid4, UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
@@ -18,6 +18,9 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 settings = get_settings()
+
+# Special UUID for system/seeded content - this will be consistent across all environments
+SYSTEM_PLAYER_ID = UUID("00000000-0000-0000-0000-000000000001")
 
 
 IMAGES_DIR = Path(__file__).parent / "mm_images"
@@ -182,7 +185,7 @@ async def seed_data(db: AsyncSession):
             caption = MMCaption(
                 caption_id=uuid4(),
                 image_id=image_id,
-                author_player_id=None,  # System/AI-generated caption
+                author_player_id=SYSTEM_PLAYER_ID,  # System/AI-generated caption
                 kind="original",
                 parent_caption_id=None,
                 text=GENERIC_CAPTIONS[(caption_count + i) % len(GENERIC_CAPTIONS)],

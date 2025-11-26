@@ -6,7 +6,6 @@ import { useTutorial } from '../contexts/TutorialContext';
 import { useHeaderIndicators } from '../hooks/useHeaderIndicators';
 import { useNetwork } from '../contexts/NetworkContext';
 import { BalanceFlipper } from './BalanceFlipper';
-import { SubHeader } from './SubHeader';
 import { TreasureChestIcon } from './TreasureChestIcon';
 import { ArrowLeftIcon } from './icons/ArrowIcons';
 import {
@@ -192,7 +191,7 @@ export const Header: React.FC = () => {
 
   // Determine if tutorial should be shown in menu
   // Always show for guests, show for logged-in users only if not completed
-  const showTutorialInMenu = player.is_guest || !tutorialStatus?.tutorial_completed;
+  const showTutorialInMenu = player.is_guest || !tutorialStatus?.completed;
 
   return (
     <>
@@ -405,8 +404,6 @@ export const Header: React.FC = () => {
         </div>
       </div>
     </div>
-    {/* Conditionally render SubHeader on dashboard */}
-    {location.pathname === '/dashboard' && <SubHeader />}
     </>
   );
 };
