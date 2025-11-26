@@ -577,7 +577,14 @@ export const apiClient = {
     payload: { round_id: string; text: string; kind?: 'original' | 'riff'; parent_caption_id?: string | null },
     signal?: AbortSignal,
   ): Promise<CaptionSubmissionResult> {
-    const { data } = await api.post('/rounds/caption', payload, { signal });
+    // Transform payload to match backend schema field names
+    const backendPayload = {
+      round_id: payload.round_id,
+      caption_text: payload.text,  // Backend expects 'caption_text', not 'text'
+      caption_type: payload.kind || 'original',  // Backend expects 'caption_type', not 'kind'
+      parent_caption_id: payload.parent_caption_id || null,
+    };
+    const { data } = await api.post('/rounds/caption', backendPayload, { signal });
     return data;
   },
 
