@@ -8,7 +8,7 @@ interface CurrencyDisplayProps {
 }
 
 /**
- * Displays currency amounts with the flipcoin icon instead of $.
+ * Displays currency amounts with the MemeCoin icon instead of $.
  * Provides consistent currency branding throughout the application.
  *
  * @param amount - The numeric currency value to display
@@ -27,7 +27,7 @@ export const CurrencyDisplay: React.FC<CurrencyDisplayProps> = ({
       {showIcon && (
         <img
           src="/flipcoin.png"
-          alt="Flipcoins"
+          alt="MemeCoins"
           className={iconClassName}
         />
       )}

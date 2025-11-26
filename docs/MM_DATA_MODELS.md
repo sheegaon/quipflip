@@ -134,15 +134,15 @@ Represents a single caption tied to one image, with lifecycle stats and economy 
 
 * `lifetime_earnings_gross` (integer, default 0, not null)
 
-  * Total coins “earned” by this caption before wallet/vault split.
+  * Total MemeCoins “earned” by this caption before wallet/vault split.
 
 * `lifetime_to_wallet` (integer, default 0, not null)
 
-  * Total coins credited to all players’ **wallets** due to this caption.
+  * Total MemeCoins credited to all players’ **wallets** due to this caption.
 
 * `lifetime_to_vault` (integer, default 0, not null)
 
-  * Total coins contributed to the **vault** that are attributed to this caption.
+  * Total MemeCoins contributed to the **vault** that are attributed to this caption.
 
 * **Indexes:**
 
@@ -192,13 +192,13 @@ Economy snapshot for this round:
 
 * `entry_cost` (integer, not null)
 
-  * Flipcoins charged to `wallet` for entering this round (copied from config at time of creation).
+  * MemeCoins charged to `wallet` for entering this round (copied from config at time of creation).
 * `payout_to_wallet` (integer, default 0, not null)
 
-  * Total net coins credited to this player’s wallet as a result of this round (voter bonuses, etc.).
+  * Total net MemeCoins credited to this player’s wallet as a result of this round (voter bonuses, etc.).
 * `payout_to_vault` (integer, default 0, not null)
 
-  * Total coins sent to this player’s vault attributable to this round (if any).
+  * Total MemeCoins sent to this player’s vault attributable to this round (if any).
 
 Flags and lifecycle:
 
@@ -418,7 +418,7 @@ If you share payouts between original and riff caption:
 
 * **Conventions:**
 
-  * `wallet_type = 'wallet'` for spendable coins.
+  * `wallet_type = 'wallet'` for spendable MemeCoins.
   * `wallet_type = 'vault'` for vault contributions.
   * `reference_id` should point to the logically closest entity (round or caption) for auditability.
 
@@ -462,7 +462,7 @@ Misc:
 
 * `mm_starting_wallet_override` (int, optional)
 
-  * If set, service layer can override default `PlayerBase.wallet` for Meme Mint–only registrations (e.g. 500 FC).
+  * If set, service layer can override default `PlayerBase.wallet` for Meme Mint–only registrations (e.g. 500 MC).
 * `mm_daily_bonus_amount` (int, optional)
 
   * If the meme-mint daily bonus differs from global default; otherwise reuse existing key.
@@ -478,7 +478,7 @@ All config rows should set:
 
 * `PlayerBase.wallet` and `PlayerBase.vault` are used exactly as in other games:
 
-  * Wallet = spendable MM Flipcoins.
+  * Wallet = spendable MemeCoins within Meme Mint.
   * Vault = global sink used for ecosystem-wide leaderboards.
 * Starting balances and daily bonuses for Meme Mint are configured via `SystemConfigBase` and implemented in the service layer; the schema does not change.
 * Per-player free caption quota is tracked in `mm_player_daily_state` (this doc), not in the base player record.
