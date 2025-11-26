@@ -514,19 +514,40 @@ export const apiClient = {
     return data;
   },
 
-  // MemeMint endpoints
+  // MemeMint endpoints (legacy aliases for compatibility)
   async startMemeVoteRound(signal?: AbortSignal): Promise<MemeVoteRound> {
-    const { data } = await api.post('/mm/rounds/vote', {}, { signal });
-    return data;
+    const data = await this.startMemeMintVoteRound(signal);
+    return {
+      round_id: data.round_id,
+      expires_at: data.expires_at,
+      meme: {
+        meme_id: data.image.image_id,
+        image_url: data.image.image_url,
+        alt_text: data.image.attribution_text,
+      },
+      captions: data.captions.map((caption) => ({
+        caption_id: caption.caption_id,
+        text: caption.text,
+        is_original: caption.kind === 'original',
+        riff_on_caption_id: caption.parent_caption_id ?? null,
+      })),
+      free_captions_remaining: data.free_captions_remaining,
+    };
   },
 
   async submitMemeVote(roundId: string, captionId: string, signal?: AbortSignal): Promise<MemeVoteResult> {
-    const { data } = await api.post(`/mm/rounds/vote/${roundId}`, { caption_id: captionId }, { signal });
-    return data;
+    const data = await this.submitMemeMintVote(roundId, captionId, signal);
+    return {
+      round_id: roundId,
+      selected_caption_id: data.chosen_caption_id,
+      payout: data.payout,
+      wallet: data.new_wallet,
+      vault: data.new_vault,
+    };
   },
 
   async submitMemeCaption(request: MemeCaptionSubmission, signal?: AbortSignal): Promise<MemeCaptionResponse> {
-    const { data } = await api.post('/mm/rounds/caption', request, { signal });
+    const { data } = await api.post('/rounds/caption', request, { signal });
     return data;
   },
 
@@ -552,12 +573,12 @@ export const apiClient = {
 
   // MemeMint round endpoints
   async getMemeMintRoundAvailability(signal?: AbortSignal): Promise<RoundAvailability> {
-    const { data } = await api.get('/rounds/available', { signal });
+    const { data } = await api.get('/rounds/availability', { signal });
     return data;
   },
 
   async getMemeMintRoundDetails(roundId: string, signal?: AbortSignal): Promise<VoteRoundState> {
-    const { data } = await api.get(`/rounds/${roundId}`, { signal });
+    const { data } = await api.get(`/rounds/vote/${roundId}`, { signal });
     return data;
   },
 

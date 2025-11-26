@@ -308,19 +308,23 @@ export interface PracticePhraseset {
 }
 
 export interface RoundAvailability {
-  can_prompt: boolean;
-  can_copy: boolean;
   can_vote: boolean;
-  prompts_waiting: number;
-  phrasesets_waiting: number;
-  copy_discount_active: boolean;
-  copy_cost: number;
-  current_round_id: string | null;
-  // Game constants from config
-  prompt_cost: number;
-  vote_cost: number;
-  vote_payout_correct: number;
-  abandoned_penalty: number;
+  can_submit_caption: boolean;
+  round_entry_cost: number;
+  caption_submission_cost: number;
+  free_captions_remaining: number;
+  // Legacy fields kept optional during transition
+  can_prompt?: boolean;
+  can_copy?: boolean;
+  prompts_waiting?: number;
+  phrasesets_waiting?: number;
+  copy_discount_active?: boolean;
+  copy_cost?: number;
+  current_round_id?: string | null;
+  prompt_cost?: number;
+  vote_cost?: number;
+  vote_payout_correct?: number;
+  abandoned_penalty?: number;
 }
 
 export interface RoundDetails {
@@ -635,11 +639,9 @@ export interface UnclaimedResultsResponse {
 
 export interface DashboardData {
   player: Player;
-  current_round: ActiveRound;
-  pending_results: PendingResult[];
-  phraseset_summary: PhrasesetDashboardSummary;
-  unclaimed_results: UnclaimedResult[];
   round_availability: RoundAvailability;
+  current_vote_round?: VoteRoundState | null;
+  current_caption_round?: CaptionSubmissionState | null;
 }
 
 export interface ApiError {

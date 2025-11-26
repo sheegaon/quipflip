@@ -1,80 +1,50 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import apiClient, { extractErrorMessage } from '../api/client';
+import { extractErrorMessage } from '../api/client';
 import { useGame } from '../contexts/GameContext';
 import { Timer } from '../components/Timer';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import type { MemeCaptionOption, MemeVoteResult, MemeVoteRound } from '../api/types';
+import type { MemeVoteResult, VoteRoundState, VoteResult, MemeCaptionOption } from '../api/types';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
-import { PhraseRecapCard } from '../components/PhraseRecapCard';
 import { useTimer } from '../hooks/useTimer';
-import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
-import type { VoteResponse, VoteState, PhrasesetDetails } from '../api/types';
-import { voteRoundLogger } from '../utils/logger';
-import { VoteRoundIcon } from '../components/icons/RoundIcons';
-import { HomeIcon } from '../components/icons/NavigationIcons';
-import { usePartyNavigation } from '../hooks/usePartyNavigation';
+import { loadingMessages } from '../utils/brandedMessages';
 
 interface VoteLocationState {
-  round?: MemeVoteRound;
+  round?: VoteRoundState;
+  voteResult?: MemeVoteResult | null;
 }
 
 export const VoteRound: React.FC = () => {
-  const { state, actions } = useGame();
-  const { activeRound, roundAvailability } = state;
-  const { refreshDashboard } = actions;
-  const partyState = { isPartyMode: false, sessionId: null as string | null };
-  const partyActions = {
-    endPartyMode: () => {},
-    setCurrentStep: (_step: unknown) => {},
-    updateFromPartyContext: (_context: unknown) => {},
-  };
   const navigate = useNavigate();
-  const location = useLocation();
-  const { state: gameState, actions } = useGame();
-  const { refreshDashboard } = actions;
-  const locationState = (location.state as VoteLocationState) || {};
+  const locationState = (useLocation().state as VoteLocationState) || {};
+  const {
+    state: { currentVoteRound },
+    actions,
+  } = useGame();
 
-  const [round, setRound] = useState<MemeVoteRound | null>(locationState.round ?? null);
+  const [round, setRound] = useState<VoteRoundState | null>(locationState.round ?? currentVoteRound ?? null);
+  const [result, setResult] = useState<VoteResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [result, setResult] = useState<MemeVoteResult | null>(null);
 
-  const partyResultsPath = '/party/results';
+  const { message: loadingMessage } = useTimer(loadingMessages);
 
-  // Get dynamic values from config or use defaults
-  const voteCost = roundAvailability?.vote_cost || 10;
-  const votePayoutCorrect = roundAvailability?.vote_payout_correct || 20;
-  const netGain = votePayoutCorrect - voteCost;
-
-  // Redirect if already submitted
+  // recover round when arriving without navigation state
   useEffect(() => {
-    if (roundData?.status === 'submitted') {
-      if (partyState.isPartyMode) {
-        partyActions.endPartyMode();
-        navigate(partyResultsPath);
-      } else {
-        navigate('/dashboard');
-      }
-    }
-  }, [navigate, partyActions, partyResultsPath, partyState.isPartyMode, roundData?.status]);
+    if (round) return;
 
-  // Redirect if no active vote round - but NOT during the submission process
-  useEffect(() => {
-    if (!activeRound || activeRound.round_type !== 'vote') {
-      // Don't start a new round if we're showing heading message or vote result
-      if (headingMessage || voteResult) {
-        return;
-      }
-  useEffect(() => {
-    if (!round && gameState.activeRound && (gameState.activeRound.state as any)?.meme) {
-      setRound(gameState.activeRound.state as unknown as MemeVoteRound);
-    }
-  }, [gameState.activeRound, round]);
+    const controller = new AbortController();
+    actions
+      .startVoteRound(controller.signal)
+      .then(setRound)
+      .catch((err) => setError(extractErrorMessage(err) || 'Unable to start a vote round.'));
+
+    return () => controller.abort();
+  }, [actions, round]);
 
   const selectedCaption = useMemo(() => {
     if (!round || !result) return null;
-    return round.captions.find((c) => c.caption_id === result.selected_caption_id) ?? null;
+    return round.captions.find((c) => c.caption_id === result.chosen_caption_id) ?? null;
   }, [result, round]);
 
   const handleVote = async (caption: MemeCaptionOption) => {
@@ -82,82 +52,9 @@ export const VoteRound: React.FC = () => {
     setIsSubmitting(true);
     setError(null);
     try {
-      const voteResult = await apiClient.submitMemeVote(round.round_id, caption.caption_id);
+      const voteResult = await actions.submitVote(round.round_id, caption.caption_id);
       setResult(voteResult);
-      await refreshDashboard();
-      return () => clearTimeout(timeoutId);
-    }
-  }, [activeRound, headingMessage, navigate, partyActions, partyResultsPath, partyState.isPartyMode, voteResult]);
-
-  const navigateAfterVote = useCallback(() => {
-    navigateToResults();
-  }, [navigateToResults]);
-
-  const partyOverlay = null;
-
-  useEffect(() => {
-    if (!roundData) {
-      voteRoundLogger.debug('Vote round page mounted without active round');
-    } else {
-      voteRoundLogger.debug('Vote round page mounted', {
-        roundId: roundData.round_id,
-        expiresAt: roundData.expires_at,
-        status: roundData.status,
-        prompt: roundData.prompt_text,
-      });
-    }
-    }, [roundData]);
-
-  const handleVote = async (phrase: string) => {
-    if (!roundData || isSubmitting) return;
-
-    try {
-      setIsSubmitting(true);
-      setError(null);
-      voteRoundLogger.debug('Submitting vote', {
-        roundId: roundData.round_id,
-        phrasesetId: roundData.phraseset_id,
-        choice: phrase,
-      });
-      const result = await apiClient.submitVote(roundData.phraseset_id, phrase);
-
-      // Update party context if present
-      if (result.party_context && partyState.isPartyMode) {
-        partyActions.updateFromPartyContext(result.party_context);
-        voteRoundLogger.debug('Updated party context after vote submission', {
-          yourProgress: result.party_context.your_progress,
-        });
-      }
-
-      const heading = result.correct ? getRandomMessage('voteCorrectHeading') : getRandomMessage('voteIncorrectHeading');
-      setHeadingMessage(heading);
-      const feedback = result.correct ? getRandomMessage('voteCorrect') : getRandomMessage('voteIncorrect');
-      setFeedbackMessage(feedback);
-      setVoteResult(result);
-      voteRoundLogger.info('Vote submitted', {
-        roundId: roundData.round_id,
-        correct: result.correct,
-      });
-
-      // Refresh dashboard to clear the active round state
-      try {
-        voteRoundLogger.debug('Refreshing dashboard after vote submission');
-        await refreshDashboard();
-        voteRoundLogger.debug('Dashboard refreshed successfully after vote');
-      } catch (refreshErr) {
-        voteRoundLogger.warn('Failed to refresh dashboard after vote:', refreshErr);
-      }
-
-      // Fetch phraseset details to show vote information
-      try {
-        setLoadingDetails(true);
-        const details = await apiClient.getPhrasesetDetails(roundData.phraseset_id);
-        setPhrasesetDetails(details);
-      } catch (detailsErr) {
-        voteRoundLogger.warn('Failed to fetch phraseset details:', detailsErr);
-      } finally {
-        setLoadingDetails(false);
-      }
+      await actions.refreshDashboard();
     } catch (err) {
       setError(extractErrorMessage(err) || 'Unable to submit your vote. Please try again.');
     } finally {
@@ -177,7 +74,7 @@ export const VoteRound: React.FC = () => {
   if (!round) {
     return (
       <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center">
-        <LoadingSpinner isLoading message="Loading your meme..." />
+        <LoadingSpinner isLoading message={loadingMessage ?? 'Loading your meme...'} />
       </div>
     );
   }
@@ -188,8 +85,8 @@ export const VoteRound: React.FC = () => {
         <div className="max-w-4xl w-full tile-card p-6 md:p-10">
           <div className="flex flex-col md:flex-row gap-6 md:items-start">
             <img
-              src={round.meme.image_url}
-              alt={round.meme.alt_text || 'Meme image'}
+              src={round.image.image_url}
+              alt={round.image.attribution_text || 'Meme image'}
               className="w-full md:w-1/2 rounded-tile border-2 border-quip-navy"
             />
             <div className="flex-1 space-y-4">
@@ -237,8 +134,8 @@ export const VoteRound: React.FC = () => {
       <div className="max-w-5xl w-full tile-card p-6 md:p-10">
         <div className="flex flex-col md:flex-row gap-6 md:items-start">
           <img
-            src={round.meme.image_url}
-            alt={round.meme.alt_text || 'Meme image'}
+            src={round.image.image_url}
+            alt={round.image.attribution_text || 'Meme image'}
             className="w-full md:w-1/2 rounded-tile border-2 border-quip-navy"
           />
           <div className="flex-1">
@@ -265,8 +162,8 @@ export const VoteRound: React.FC = () => {
                   className="text-left bg-white border-2 border-quip-orange hover:border-quip-orange-deep rounded-tile p-4 shadow-tile-sm hover:shadow-tile transition-all disabled:opacity-60"
                 >
                   <p className="text-lg font-display text-quip-navy">{caption.text}</p>
-                  {caption.author && (
-                    <p className="text-xs text-quip-teal mt-2">by {caption.author}</p>
+                  {caption.parent_caption_id && (
+                    <p className="text-xs text-quip-teal mt-2">riff</p>
                   )}
                 </button>
               ))}
