@@ -33,7 +33,7 @@ export const VoteRound: React.FC = () => {
 
     setIsLoadingRound(true);
     const controller = new AbortController();
-    
+
     actions
       .startVoteRound(controller.signal)
       .then(setRound)
@@ -47,7 +47,7 @@ export const VoteRound: React.FC = () => {
       controller.abort();
       setIsLoadingRound(false);
     };
-  }, []); // Remove actions and round from dependencies to prevent infinite loop
+  }, [actions, isLoadingRound, round]);
 
   const selectedCaption = useMemo(() => {
     if (!round || !result) return null;
@@ -72,10 +72,6 @@ export const VoteRound: React.FC = () => {
   const goToCaption = () => {
     if (!round) return;
     navigate('/game/caption', { state: { round, voteResult: result } });
-  };
-
-  const goToResults = () => {
-    navigate('/game/results', { state: { round, voteResult: result } });
   };
 
   const handlePlayAgain = async () => {

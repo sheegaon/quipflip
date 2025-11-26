@@ -114,7 +114,7 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
       console.error('Failed to fetch online users:', err);
       setOnlineUsersError((prev) => prev ?? 'Failed to load online users');
     }
-  }, [state.isAuthenticated]);
+  }, [onlineUsersEnabled, state.isAuthenticated]);
 
   const startPollingOnlineUsers = useCallback(() => {
     if (pollingIntervalRef.current || !onlineUsersEnabled) return;
@@ -122,7 +122,7 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
     setOnlineUsersError((prev) => prev ?? 'Using polling mode (WebSocket unavailable)');
     fetchOnlineUsers();
     pollingIntervalRef.current = setInterval(fetchOnlineUsers, 10000);
-  }, [fetchOnlineUsers]);
+  }, [fetchOnlineUsers, onlineUsersEnabled]);
 
   const handleNotificationMessage = useCallback((event: MessageEvent) => {
     try {

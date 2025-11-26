@@ -406,6 +406,14 @@ const Admin: React.FC = () => {
     );
   }
 
+  if (!config) {
+    return (
+      <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center">
+        <LoadingSpinner isLoading message="Loading configuration..." />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-quip-cream bg-pattern">
       <div className="container mx-auto max-w-4xl px-4 py-8">

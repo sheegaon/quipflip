@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { extractErrorMessage } from '../api/client';
@@ -24,7 +24,7 @@ export const CaptionRound: React.FC = () => {
 
   const [captionText, setCaptionText] = useState('');
   const [captionType, setCaptionType] = useState<'original' | 'riff'>('original');
-  const [parentCaptionId, setParentCaptionId] = useState<string | null>(null);
+  const [parentCaptionId, setParentCaptionId] = useState<string | undefined>(undefined);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -143,7 +143,7 @@ export const CaptionRound: React.FC = () => {
                 <select
                   id="parent-select"
                   value={parentCaptionId ?? ''}
-                  onChange={(e) => setParentCaptionId(e.target.value || null)}
+                  onChange={(e) => setParentCaptionId(e.target.value || undefined)}
                   className="w-full border-2 border-quip-navy rounded-tile p-3"
                 >
                   <option value="">Select a caption</option>
