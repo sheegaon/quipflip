@@ -51,16 +51,17 @@ async def get_image(filename: str):
     # Local development: serve from disk
     image_path = IMAGES_DIR / filename
 
-    if not image_path.exists() or not image_path.is_file():
-        logger.warning(f"Image not found: {filename}")
-        raise HTTPException(status_code=404, detail="Image not found")
-
-    # Verify the file is within the images directory (additional security)
+    # Verify the file is within the images directory (additional security) -- BEFORE any filesystem access
     try:
-        image_path.resolve().relative_to(IMAGES_DIR.resolve())
+        image_path_resolved = image_path.resolve()
+        image_path_resolved.relative_to(IMAGES_DIR.resolve())
     except ValueError:
         logger.error(f"Attempted directory traversal: {filename}")
         raise HTTPException(status_code=400, detail="Invalid filename")
+
+    if not image_path.exists() or not image_path.is_file():
+        logger.warning(f"Image not found: {filename}")
+        raise HTTPException(status_code=404, detail="Image not found")
 
     # Determine media type based on extension
     suffix = image_path.suffix.lower()
