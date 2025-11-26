@@ -19,7 +19,7 @@ class MMImage(Base):
     thumbnail_url = Column(String(500), nullable=True)
     attribution_text = Column(String(255), nullable=True)
     tags = Column(JSON, nullable=True)
-    status = Column(String(20), default="active", nullable=False, index=True)
+    status = Column(String(20), default="active", nullable=False)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     created_by_player_id = get_uuid_column(
         ForeignKey("mm_players.player_id", ondelete="SET NULL"), nullable=True
