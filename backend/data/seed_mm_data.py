@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+from pathlib import Path
 from datetime import datetime, UTC
 from uuid import uuid4
 
@@ -19,13 +20,16 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 
-# Placeholder image URLs (these can be replaced with real images later)
-PLACEHOLDER_IMAGES = [
+IMAGES_DIR = Path(__file__).parent / "mm_images"
+IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
+
+# Legacy remote placeholders kept as a fallback when local images are missing
+REMOTE_PLACEHOLDER_IMAGES = [
     {
-        "source_url": "/api/mm/images/image1.jpeg",
-        "thumbnail_url": None,
-        "attribution_text": "Test Image 1",
-        "tags": ["office", "meeting", "professional"],
+        "source_url": "https://picsum.photos/seed/mm1/800/600",
+        "thumbnail_url": "https://picsum.photos/seed/mm1/200/150",
+        "attribution_text": "Random image from Lorem Picsum",
+        "tags": ["random", "mixed"],
     },
     {
         "source_url": "https://picsum.photos/seed/mm2/800/600",
@@ -44,42 +48,6 @@ PLACEHOLDER_IMAGES = [
         "thumbnail_url": "https://picsum.photos/seed/mm4/200/150",
         "attribution_text": "Random image from Lorem Picsum",
         "tags": ["random", "animals"],
-    },
-    {
-        "source_url": "https://picsum.photos/seed/mm5/800/600",
-        "thumbnail_url": "https://picsum.photos/seed/mm5/200/150",
-        "attribution_text": "Random image from Lorem Picsum",
-        "tags": ["random", "technology"],
-    },
-    {
-        "source_url": "https://picsum.photos/seed/mm6/800/600",
-        "thumbnail_url": "https://picsum.photos/seed/mm6/200/150",
-        "attribution_text": "Random image from Lorem Picsum",
-        "tags": ["random", "food"],
-    },
-    {
-        "source_url": "https://picsum.photos/seed/mm7/800/600",
-        "thumbnail_url": "https://picsum.photos/seed/mm7/200/150",
-        "attribution_text": "Random image from Lorem Picsum",
-        "tags": ["random", "architecture"],
-    },
-    {
-        "source_url": "https://picsum.photos/seed/mm8/800/600",
-        "thumbnail_url": "https://picsum.photos/seed/mm8/200/150",
-        "attribution_text": "Random image from Lorem Picsum",
-        "tags": ["random", "abstract"],
-    },
-    {
-        "source_url": "https://picsum.photos/seed/mm9/800/600",
-        "thumbnail_url": "https://picsum.photos/seed/mm9/200/150",
-        "attribution_text": "Random image from Lorem Picsum",
-        "tags": ["random", "people"],
-    },
-    {
-        "source_url": "https://picsum.photos/seed/mm10/800/600",
-        "thumbnail_url": "https://picsum.photos/seed/mm10/200/150",
-        "attribution_text": "Random image from Lorem Picsum",
-        "tags": ["random", "sports"],
     },
 ]
 
@@ -119,6 +87,36 @@ GENERIC_CAPTIONS = [
 ]
 
 
+def build_placeholder_images() -> list[dict]:
+    """Create placeholder image records from the local mm_images directory.
+
+    Falls back to remote placeholders if the directory is missing or empty.
+    """
+
+    if not IMAGES_DIR.exists():
+        logger.warning("Local image directory not found; using remote placeholders.")
+        return REMOTE_PLACEHOLDER_IMAGES
+
+    placeholder_images = []
+
+    for path in sorted(IMAGES_DIR.iterdir()):
+        if not path.is_file() or path.suffix.lower() not in IMAGE_EXTENSIONS:
+            continue
+
+        placeholder_images.append({
+            "source_url": f"/api/mm/images/{path.name}",
+            "thumbnail_url": None,
+            "attribution_text": f"Image {path.stem}",
+            "tags": [],
+        })
+
+    if not placeholder_images:
+        logger.warning("No valid images found locally; using remote placeholders.")
+        return REMOTE_PLACEHOLDER_IMAGES
+
+    return placeholder_images
+
+
 async def seed_data(db: AsyncSession):
     """Seed the database with test images and captions."""
 
@@ -134,7 +132,7 @@ async def seed_data(db: AsyncSession):
 
     # Create or get images
     image_ids = []
-    for img_data in PLACEHOLDER_IMAGES:
+    for img_data in build_placeholder_images():
         # Check if image already exists by source_url
         stmt = select(MMImage).where(MMImage.source_url == img_data["source_url"])
         result = await db.execute(stmt)
