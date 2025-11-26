@@ -217,7 +217,7 @@ class PlayerRouterBase(ABC):
         async def delete_account(
             request: DeleteAccountRequest,
             response: Response,
-            player=Depends(get_current_player),
+            player=Depends(player_dependency),
             db: AsyncSession = Depends(get_db),
         ):
             """Delete the current player's account and related data."""
