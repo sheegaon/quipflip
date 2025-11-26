@@ -19,7 +19,7 @@ from backend.services.mm import (
     MMCleanupService,
 )
 from backend.utils import ensure_utc
-from backend.routers.mm.schemas import MMDailyStateResponse, MMConfigResponse
+from backend.schemas.mm_player import MMDailyStateResponse, MMConfigResponse
 
 logger = logging.getLogger(__name__)
 settings = get_settings()

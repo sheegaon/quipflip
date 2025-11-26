@@ -5,6 +5,10 @@ from backend.services.mm.daily_bonus_service import MMDailyBonusService, MMDaily
 from backend.services.mm.system_config_service import MMSystemConfigService
 from backend.services.mm.daily_state_service import MMPlayerDailyStateService
 from backend.services.mm.cleanup_service import MMCleanupService
+from backend.services.mm.scoring_service import MMScoringService
+from backend.services.mm.game_service import MMGameService
+from backend.services.mm.vote_service import MMVoteService
+from backend.services.mm.caption_service import MMCaptionService
 
 __all__ = [
     "MMPlayerService",
@@ -14,4 +18,8 @@ __all__ = [
     "MMSystemConfigService",
     "MMPlayerDailyStateService",
     "MMCleanupService",
+    "MMScoringService",
+    "MMGameService",
+    "MMVoteService",
+    "MMCaptionService",
 ]
