@@ -1,9 +1,10 @@
 import React from 'react';
+import type { PhrasesetDetails as PhrasesetDetailsType, PhrasesetSummary } from '../api/types';
 
 // Placeholder component - will be replaced with MM caption details view
 export const PhrasesetDetails: React.FC<{
-  phraseset: any;
-  summary: any;
+  phraseset: PhrasesetDetailsType | null;
+  summary: PhrasesetSummary;
 }> = () => {
   return (
     <div className="p-6 text-center text-quip-teal">
