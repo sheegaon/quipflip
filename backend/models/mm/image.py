@@ -2,7 +2,7 @@
 import uuid
 from datetime import datetime, UTC
 
-from sqlalchemy import Column, String, DateTime, JSON, ForeignKey, Index
+from sqlalchemy import Column, String, DateTime, JSON, ForeignKey
 from sqlalchemy.orm import relationship
 
 from backend.database import Base
@@ -19,7 +19,7 @@ class MMImage(Base):
     thumbnail_url = Column(String(500), nullable=True)
     attribution_text = Column(String(255), nullable=True)
     tags = Column(JSON, nullable=True)
-    status = Column(String(20), default="active", nullable=False)
+    status = Column(String(20), default="active", nullable=False, index=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     created_by_player_id = get_uuid_column(
         ForeignKey("mm_players.player_id", ondelete="SET NULL"), nullable=True
@@ -29,10 +29,6 @@ class MMImage(Base):
     captions = relationship("MMCaption", back_populates="image", cascade="all, delete-orphan")
     vote_rounds = relationship("MMVoteRound", back_populates="image", cascade="all, delete-orphan")
     created_by = relationship("MMPlayer", foreign_keys=[created_by_player_id])
-
-    __table_args__ = (
-        Index("ix_mm_images_status", "status"),
-    )
 
     def __repr__(self) -> str:
         return f"<MMImage(image_id={self.image_id}, status={self.status})>"
