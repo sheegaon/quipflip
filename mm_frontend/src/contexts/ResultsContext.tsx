@@ -10,6 +10,8 @@ import type {
   PhrasesetDetails as PhrasesetDetailsType,
   PhrasesetResults,
   PlayerStatistics,
+  VoteRoundState,
+  MemeVoteResult,
 } from '../api/types';
 
 type PlayerPhrasesetParams = PhrasesetListKeyParams;
@@ -46,6 +48,8 @@ interface StatisticsData {
 interface ResultsState {
   pendingResults: PendingResult[];
   viewedResultIds: Set<string>;
+  memeRounds: Record<string, VoteRoundState>;
+  memeVoteResults: Record<string, MemeVoteResult>;
   playerPhrasesets: Record<string, PhrasesetListCacheEntry>;
   phrasesetDetails: Record<string, PhrasesetDetailsCacheEntry>;
   phrasesetResults: Record<string, PhrasesetResultsCacheEntry>;
@@ -72,6 +76,10 @@ interface ResultsActions {
   markResultsViewed: (phrasesetIds: string[]) => void;
   clearResultsCache: () => void;
   setPendingResults: (results: PendingResult[]) => void;
+  cacheMemeRound: (round: VoteRoundState) => void;
+  cacheMemeVoteResult: (roundId: string, result: MemeVoteResult) => void;
+  getCachedMemeRound: (roundId: string) => VoteRoundState | null;
+  getCachedMemeVoteResult: (roundId: string) => MemeVoteResult | null;
 }
 
 interface ResultsContextType {
@@ -112,6 +120,8 @@ export const ResultsProvider: React.FC<{
     return {
       pendingResults: [],
       viewedResultIds: initialViewedResultIds,
+      memeRounds: {},
+      memeVoteResults: {},
       playerPhrasesets: {},
       phrasesetDetails: {},
       phrasesetResults: {},
@@ -501,6 +511,36 @@ export const ResultsProvider: React.FC<{
     }));
   }, []);
 
+  const cacheMemeRound = useCallback((round: VoteRoundState) => {
+    setResultsState(prev => ({
+      ...prev,
+      memeRounds: {
+        ...prev.memeRounds,
+        [round.round_id]: round,
+      },
+    }));
+  }, []);
+
+  const cacheMemeVoteResult = useCallback((roundId: string, result: MemeVoteResult) => {
+    setResultsState(prev => ({
+      ...prev,
+      memeVoteResults: {
+        ...prev.memeVoteResults,
+        [roundId]: result,
+      },
+    }));
+  }, []);
+
+  const getCachedMemeRound = useCallback(
+    (roundId: string): VoteRoundState | null => resultsState.memeRounds[roundId] ?? null,
+    [resultsState.memeRounds],
+  );
+
+  const getCachedMemeVoteResult = useCallback(
+    (roundId: string): MemeVoteResult | null => resultsState.memeVoteResults[roundId] ?? null,
+    [resultsState.memeVoteResults],
+  );
+
   // Clear cache when user logs out
   useEffect(() => {
     if (!isAuthenticated) {
@@ -508,6 +548,8 @@ export const ResultsProvider: React.FC<{
         ...prev,
         pendingResults: [],
         viewedResultIds: new Set(),
+        memeRounds: {},
+        memeVoteResults: {},
         playerPhrasesets: {},
         phrasesetDetails: {},
         phrasesetResults: {},
@@ -527,6 +569,10 @@ export const ResultsProvider: React.FC<{
     markResultsViewed,
     clearResultsCache,
     setPendingResults,
+    cacheMemeRound,
+    cacheMemeVoteResult,
+    getCachedMemeRound,
+    getCachedMemeVoteResult,
   };
 
   const value: ResultsContextType = {

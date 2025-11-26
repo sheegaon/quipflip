@@ -46,11 +46,10 @@ interface GameActions {
   logout: () => Promise<void>;
   refreshDashboard: (signal?: AbortSignal) => Promise<void>;
   refreshBalance: (signal?: AbortSignal) => Promise<void>;
+  refreshRoundAvailability: (signal?: AbortSignal) => Promise<void>;
   claimBonus: () => Promise<void>;
   clearError: () => void;
   navigateAfterDelay: (path: string, delay?: number) => void;
-  startPromptRound: () => Promise<void>;
-  startCopyRound: () => Promise<void>;
   startVoteRound: (signal?: AbortSignal) => Promise<VoteRoundState>;
   submitVote: (roundId: string, captionId: string, signal?: AbortSignal) => Promise<VoteResult>;
   submitCaption: (
@@ -269,6 +268,7 @@ export const GameProvider: React.FC<{
       // Stop all polling
       stopPoll('dashboard');
       stopPoll('balance');
+      stopPoll('round-availability');
 
       apiClient.clearSession();
       setIsAuthenticated(false);
@@ -382,12 +382,7 @@ export const GameProvider: React.FC<{
       if (data.round_availability) {
         setRoundAvailability(data.round_availability);
       } else {
-        try {
-          const availability = await apiClient.getMemeMintRoundAvailability(signal);
-          setRoundAvailability(availability);
-        } catch (availabilityErr) {
-          gameContextLogger.warn('Failed to refresh round availability', availabilityErr);
-        }
+        refreshRoundAvailability(signal);
       }
       setError(null);
 
@@ -406,7 +401,7 @@ export const GameProvider: React.FC<{
         logout();
       }
     }
-  }, [username, logout]);
+  }, [username, logout, refreshRoundAvailability]);
 
   const refreshBalance = useCallback(async (signal?: AbortSignal) => {
     const storedUsername = apiClient.getStoredUsername();
@@ -517,120 +512,24 @@ export const GameProvider: React.FC<{
     }, delay);
   }, [navigate]);
 
-  const startPromptRound = useCallback(async () => {
-    gameContextLogger.debug('🎯 GameContext startPromptRound called'); if (!isAuthenticated) {
-      gameContextLogger.debug('🔄 Setting authenticated to true after token check');
-      setIsAuthenticated(true);
+  const refreshRoundAvailability = useCallback(async (signal?: AbortSignal) => {
+    const storedUsername = apiClient.getStoredUsername();
+    if (!storedUsername) {
+      setRoundAvailability(null);
+      return;
     }
 
     try {
-      gameContextLogger.debug('🔄 Setting loading to true');
-      setLoading(true);
-      setError(null);
-      gameContextLogger.debug('📞 Calling apiClient.startPromptRound()...');
-      const response = await apiClient.startPromptRound();
-      gameContextLogger.debug('✅ Start prompt round API call successful:', {
-        roundId: response.round_id,
-        expiresAt: response.expires_at,
-        promptText: response.prompt_text,
-        cost: response.cost
-      });
-
-      const newActiveRound = {
-        round_type: 'prompt' as const,
-        round_id: response.round_id,
-        expires_at: response.expires_at,
-        state: {
-          round_id: response.round_id,
-          prompt_text: response.prompt_text,
-          expires_at: response.expires_at,
-          cost: response.cost,
-          status: 'active' as const,
-        },
-      };
-
-      setActiveRound(newActiveRound);
-      setCopyRoundHints(null);
-      copyHintsRoundRef.current = null;
-      gameContextLogger.debug('🔄 Triggering dashboard refresh after starting prompt round');
-      triggerPoll('dashboard');
-
-      if (onDashboardTrigger) {
-        gameContextLogger.debug('🔄 Calling external dashboard trigger');
-        onDashboardTrigger();
+      const availability = await apiClient.getMemeMintRoundAvailability(signal);
+      setRoundAvailability(availability);
+    } catch (err) {
+      if (axios.isCancel(err) || signal?.aborted) {
+        return;
       }
 
-      gameContextLogger.debug('✅ Start prompt round completed successfully');
-    } catch (err) {
-      gameContextLogger.error('❌ Start prompt round failed:', err);
-      const errorMessage = getActionErrorMessage('start-prompt', err);
-      gameContextLogger.debug('📝 Setting error message:', errorMessage);
-      setError(errorMessage);
-      throw err;
-    } finally {
-      gameContextLogger.debug('🔄 Setting loading to false');
-      setLoading(false);
+      gameContextLogger.warn('⚠️ Failed to refresh round availability', err);
     }
-  }, [isAuthenticated, triggerPoll, onDashboardTrigger]);
-
-  const startCopyRound = useCallback(async () => {
-    gameContextLogger.debug('🎯 GameContext startCopyRound called'); if (!isAuthenticated) {
-      gameContextLogger.debug('🔄 Setting authenticated to true after token check');
-      setIsAuthenticated(true);
-    }
-
-    try {
-      gameContextLogger.debug('🔄 Setting loading to true');
-      setLoading(true);
-      setError(null);
-      gameContextLogger.debug('📞 Calling apiClient.startCopyRound()...');
-      const response = await apiClient.startCopyRound();
-      gameContextLogger.debug('✅ Start copy round API call successful:', {
-        roundId: response.round_id,
-        expiresAt: response.expires_at,
-        originalPhrase: response.original_phrase,
-        cost: response.cost,
-        discountActive: response.discount_active
-      });
-
-      const newActiveRound = {
-        round_type: 'copy' as const,
-        round_id: response.round_id,
-        expires_at: response.expires_at,
-        state: {
-          round_id: response.round_id,
-          original_phrase: response.original_phrase,
-          expires_at: response.expires_at,
-          cost: response.cost,
-          discount_active: response.discount_active,
-          prompt_round_id: response.prompt_round_id,
-          status: 'active' as const,
-        },
-      };
-
-      setActiveRound(newActiveRound);
-      setCopyRoundHints(null);
-      copyHintsRoundRef.current = null;
-      gameContextLogger.debug('🔄 Triggering dashboard refresh after starting copy round');
-      triggerPoll('dashboard');
-
-      if (onDashboardTrigger) {
-        gameContextLogger.debug('🔄 Calling external dashboard trigger');
-        onDashboardTrigger();
-      }
-
-      gameContextLogger.debug('✅ Start copy round completed successfully');
-    } catch (err) {
-      gameContextLogger.error('❌ Start copy round failed:', err);
-      const errorMessage = getActionErrorMessage('start-copy', err);
-      gameContextLogger.debug('📝 Setting error message:', errorMessage);
-      setError(errorMessage);
-      throw err;
-    } finally {
-      gameContextLogger.debug('🔄 Setting loading to false');
-      setLoading(false);
-    }
-  }, [isAuthenticated, triggerPoll, onDashboardTrigger]);
+  }, []);
 
   const fetchCopyHints = useCallback(async (roundId: string, signal?: AbortSignal): Promise<string[]> => {
     if (!roundId) {
@@ -703,6 +602,7 @@ export const GameProvider: React.FC<{
         setError(null);
         const response = await apiClient.startMemeMintVoteRound(signal);
         setCurrentVoteRound(response);
+        await refreshRoundAvailability(signal);
         gameContextLogger.debug('✅ Start vote round API call successful:', {
           roundId: response.round_id,
           expiresAt: response.expires_at,
@@ -718,7 +618,7 @@ export const GameProvider: React.FC<{
         setLoading(false);
       }
     },
-    [],
+    [refreshRoundAvailability],
   );
 
   const claimPhrasesetPrize = useCallback(async (phrasesetId: string) => {
@@ -754,10 +654,11 @@ export const GameProvider: React.FC<{
   const submitVote = useCallback(
     async (roundId: string, captionId: string, signal?: AbortSignal): Promise<VoteResult> => {
       const voteResult = await apiClient.submitMemeMintVote(roundId, captionId, signal);
+      await refreshRoundAvailability(signal);
       await refreshDashboard(signal);
       return voteResult;
     },
-    [refreshDashboard],
+    [refreshDashboard, refreshRoundAvailability],
   );
 
   const submitCaption = useCallback(
@@ -766,10 +667,11 @@ export const GameProvider: React.FC<{
       signal?: AbortSignal,
     ): Promise<CaptionSubmissionState> => {
       const captionState = await apiClient.submitCaption(payload, signal);
+      await refreshRoundAvailability(signal);
       await refreshDashboard(signal);
       return captionState;
     },
-    [refreshDashboard],
+    [refreshDashboard, refreshRoundAvailability],
   );
 
   const updateActiveRound = useCallback((roundData: ActiveRound) => {
@@ -783,6 +685,7 @@ export const GameProvider: React.FC<{
       gameContextLogger.debug('🛑 Stopping all polling due to unauthenticated state');
       stopPoll('dashboard');
       stopPoll('balance');
+      stopPoll('round-availability');
       return;
     }
 
@@ -797,13 +700,19 @@ export const GameProvider: React.FC<{
       await refreshBalance();
     });
 
+    // Keep MemeMint availability fresh for the dashboard CTA
+    startPoll(PollConfigs.ROUND_AVAILABILITY, async () => {
+      await refreshRoundAvailability();
+    });
+
     // Cleanup function
     return () => {
       gameContextLogger.debug('🛑 Cleaning up polling on unmount');
       stopPoll('dashboard');
       stopPoll('balance');
+      stopPoll('round-availability');
     };
-  }, [isAuthenticated, startPoll, stopPoll, refreshDashboard, refreshBalance]);
+  }, [isAuthenticated, startPoll, stopPoll, refreshDashboard, refreshBalance, refreshRoundAvailability]);
 
   // Initial dashboard load - only once when authenticated changes
   const hasInitialLoadRef = useRef(false);
@@ -873,12 +782,11 @@ export const GameProvider: React.FC<{
     logout,
     refreshDashboard,
     refreshBalance,
+    refreshRoundAvailability,
     claimBonus,
     clearError,
     setGlobalError,
     navigateAfterDelay,
-    startPromptRound,
-    startCopyRound,
     fetchCopyHints,
     flagCopyRound,
     abandonRound,
