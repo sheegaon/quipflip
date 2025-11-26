@@ -65,6 +65,23 @@ import type {
   CaptionSubmissionState,
   VoteRoundState,
   VoteResult,
+  CreatePartySessionRequest,
+  CreatePartySessionResponse,
+  JoinPartySessionResponse,
+  MarkReadyResponse,
+  StartPartySessionResponse,
+  PartySessionStatusResponse,
+  StartPartyPromptResponse,
+  StartPartyCopyResponse,
+  StartPartyVoteResponse,
+  SubmitPartyRoundResponse,
+  PartyResultsResponse,
+  PartyListResponse,
+  PartyPingResponse,
+  MemeVoteRound,
+  MemeVoteResult,
+  MemeCaptionSubmission,
+  MemeCaptionResponse,
 } from './types';
 
 // Base URL - configure based on environment
@@ -494,6 +511,22 @@ export const apiClient = {
 
   async startVoteRound(signal?: AbortSignal): Promise<StartVoteResponse> {
     const { data } = await api.post('/rounds/vote', {}, { signal });
+    return data;
+  },
+
+  // MemeMint endpoints
+  async startMemeVoteRound(signal?: AbortSignal): Promise<MemeVoteRound> {
+    const { data } = await api.post('/mm/rounds/vote', {}, { signal });
+    return data;
+  },
+
+  async submitMemeVote(roundId: string, captionId: string, signal?: AbortSignal): Promise<MemeVoteResult> {
+    const { data } = await api.post(`/mm/rounds/vote/${roundId}`, { caption_id: captionId }, { signal });
+    return data;
+  },
+
+  async submitMemeCaption(request: MemeCaptionSubmission, signal?: AbortSignal): Promise<MemeCaptionResponse> {
+    const { data } = await api.post('/mm/rounds/caption', request, { signal });
     return data;
   },
 

@@ -1,9 +1,10 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { useGame } from '../contexts/GameContext';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import apiClient, { extractErrorMessage } from '../api/client';
+import { useGame } from '../contexts/GameContext';
 import { Timer } from '../components/Timer';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import type { MemeCaptionOption, MemeVoteResult, MemeVoteRound } from '../api/types';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { PhraseRecapCard } from '../components/PhraseRecapCard';
 import { useTimer } from '../hooks/useTimer';
@@ -13,6 +14,10 @@ import { voteRoundLogger } from '../utils/logger';
 import { VoteRoundIcon } from '../components/icons/RoundIcons';
 import { HomeIcon } from '../components/icons/NavigationIcons';
 import { usePartyNavigation } from '../hooks/usePartyNavigation';
+
+interface VoteLocationState {
+  round?: MemeVoteRound;
+}
 
 export const VoteRound: React.FC = () => {
   const { state, actions } = useGame();
@@ -25,18 +30,15 @@ export const VoteRound: React.FC = () => {
     updateFromPartyContext: (_context: unknown) => {},
   };
   const navigate = useNavigate();
-  const { navigateHome, navigateToResults, isInPartyMode } = usePartyNavigation();
+  const location = useLocation();
+  const { state: gameState, actions } = useGame();
+  const { refreshDashboard } = actions;
+  const locationState = (location.state as VoteLocationState) || {};
+
+  const [round, setRound] = useState<MemeVoteRound | null>(locationState.round ?? null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [voteResult, setVoteResult] = useState<VoteResponse | null>(null);
-  const [headingMessage, setHeadingMessage] = useState<string | null>(null);
-  const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
-  const [phrasesetDetails, setPhrasesetDetails] = useState<PhrasesetDetails | null>(null);
-  const [loadingDetails, setLoadingDetails] = useState(false);
-  const [showDetails, setShowDetails] = useState(false);
-
-  const roundData = activeRound?.round_type === 'vote' ? activeRound.state as VoteState : null;
-  const { isExpired } = useTimer(roundData?.expires_at || null);
+  const [result, setResult] = useState<MemeVoteResult | null>(null);
 
   const partyResultsPath = '/party/results';
 
@@ -64,18 +66,25 @@ export const VoteRound: React.FC = () => {
       if (headingMessage || voteResult) {
         return;
       }
+  useEffect(() => {
+    if (!round && gameState.activeRound && (gameState.activeRound.state as any)?.meme) {
+      setRound(gameState.activeRound.state as unknown as MemeVoteRound);
+    }
+  }, [gameState.activeRound, round]);
 
-      // Add a small delay to prevent race conditions during navigation
-      const timeoutId = setTimeout(() => {
-        // Redirect to dashboard instead of starting new rounds
-        if (partyState.isPartyMode) {
-          partyActions.endPartyMode();
-          navigate(partyResultsPath);
-        } else {
-          navigate('/dashboard');
-        }
-      }, 100);
+  const selectedCaption = useMemo(() => {
+    if (!round || !result) return null;
+    return round.captions.find((c) => c.caption_id === result.selected_caption_id) ?? null;
+  }, [result, round]);
 
+  const handleVote = async (caption: MemeCaptionOption) => {
+    if (!round || isSubmitting) return;
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      const voteResult = await apiClient.submitMemeVote(round.round_id, caption.caption_id);
+      setResult(voteResult);
+      await refreshDashboard();
       return () => clearTimeout(timeoutId);
     }
   }, [activeRound, headingMessage, navigate, partyActions, partyResultsPath, partyState.isPartyMode, voteResult]);
@@ -150,309 +159,122 @@ export const VoteRound: React.FC = () => {
         setLoadingDetails(false);
       }
     } catch (err) {
-      const message = extractErrorMessage(err) || 'Unable to submit your vote. The round may have expired or someone else may have already voted.';
-      voteRoundLogger.error('Failed to submit vote', err);
-      setError(message);
+      setError(extractErrorMessage(err) || 'Unable to submit your vote. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleDismiss = () => {
-    voteRoundLogger.debug('Dismissing vote results');
-    navigateAfterVote();
+  const goToCaption = () => {
+    if (!round) return;
+    navigate('/caption', { state: { round, voteResult: result } });
   };
 
-  // Show vote result (check this first, before checking roundData)
-  if (voteResult) {
-    const voteCount = phrasesetDetails?.vote_count || 0;
-    const votes = phrasesetDetails?.votes || [];
-    const isFirstVoter = voteCount === 1;
+  const goToResults = () => {
+    navigate('/results', { state: { round, voteResult: result } });
+  };
 
+  if (!round) {
     return (
-      <>
-        {partyOverlay}
-        <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center p-4">
-          <div className="max-w-3xl w-full tile-card p-8 flip-enter">
-          {/* Header with icon and result */}
-          <div className="text-center mb-8">
-            <div className="flex justify-center mb-4">
-              <VoteRoundIcon
-                className={`w-32 h-32 ${voteResult.correct ? '' : 'opacity-60'}`}
-                aria-hidden="true"
-              />
-            </div>
-
-            {/* Large Check/X-mark indicator */}
-            <div className="flex justify-center mb-4">
-              <div className={`inline-flex items-center justify-center w-24 h-24 rounded-full border-4 ${voteResult.correct ? 'bg-quip-turquoise border-quip-turquoise text-white' : 'bg-quip-orange border-quip-orange text-white'} shadow-tile`}>
-                <span className="text-7xl font-bold leading-none" style={{ marginTop: '-4px' }}>
-                  {voteResult.correct ? '✓' : '✗'}
-                </span>
-              </div>
-            </div>
-
-            {/* Main result message */}
-            <h2 className={`text-5xl font-display font-bold mb-6 success-message ${voteResult.correct ? 'text-quip-turquoise' : 'text-quip-orange'}`}>
-              {headingMessage}
-            </h2>
-
-            {/* Payout/Cost info - PROMINENT */}
-            <div className={`inline-flex items-center gap-2 px-6 py-4 rounded-tile mb-8 ${voteResult.payout > 0 ? 'bg-quip-turquoise bg-opacity-20 border-2 border-quip-turquoise' : 'bg-quip-orange bg-opacity-10 border-2 border-quip-orange'}`}>
-              {voteResult.payout > 0 ? (
-                <>
-                  <span className="text-quip-navy font-display font-bold text-xl">You earned:</span>
-                  <CurrencyDisplay amount={voteResult.payout} iconClassName="w-7 h-7" textClassName="text-2xl font-bold text-quip-turquoise" />
-                </>
-              ) : (
-                <>
-                  <span className="text-quip-navy font-display font-bold text-xl">No memecoins earned</span>
-                </>
-              )}
-            </div>
-
-            {/* Simple feedback message */}
-            <p className="text-lg text-quip-teal mb-6">
-              {feedbackMessage}
-            </p>
-          </div>
-
-          {/* Collapsible Details Section */}
-          <div className="mb-6">
-            <button
-              onClick={() => setShowDetails(!showDetails)}
-              className="w-full flex items-center justify-between p-4 bg-quip-navy bg-opacity-5 hover:bg-opacity-10 border-2 border-quip-navy rounded-tile transition-all mb-2"
-            >
-              <span className="font-display font-bold text-lg text-quip-navy">
-                View Details
-              </span>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className={`h-6 w-6 text-quip-navy transition-transform ${showDetails ? 'rotate-180' : ''}`}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-
-            {/* Expandable content */}
-            {showDetails && (
-              <div className="space-y-4 slide-up-enter">
-                {/* The Reveal - Show all phrases with attributions */}
-                <div className="bg-quip-navy bg-opacity-5 border-2 border-quip-navy rounded-tile p-6">
-                  <h3 className="font-display font-bold text-xl text-quip-navy mb-4 text-center">
-                    The Reveal
-                  </h3>
-
-                  {loadingDetails ? (
-                    <div className="text-center py-6">
-                      <LoadingSpinner isLoading={true} message="Loading details..." />
-                    </div>
-                  ) : phrasesetDetails ? (
-                    <div className="space-y-3">
-                      {/* Map through all three phrases and show their authors */}
-                      {[
-                        phrasesetDetails.original_phrase,
-                        phrasesetDetails.copy_phrase_1,
-                        phrasesetDetails.copy_phrase_2
-                      ].filter((phrase): phrase is string => phrase !== null).map((phrase) => {
-                        const isOriginal = phrase === voteResult.original_phrase;
-                        const isYourChoice = phrase === voteResult.your_choice;
-                        const contributor = phrasesetDetails.contributors.find(c => c.phrase === phrase);
-
-                        return (
-                          <PhraseRecapCard
-                            key={phrase}
-                            phrase={phrase}
-                            isOriginal={isOriginal}
-                            isYourChoice={isYourChoice}
-                            isCorrectChoice={voteResult.correct}
-                            contributor={contributor}
-                          />
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    // Fallback if phrasesetDetails isn't loaded yet
-                    <div className="space-y-2">
-                      <p className="text-lg text-quip-navy mb-2">
-                        The original phrase was: <strong className="text-quip-turquoise">{voteResult.original_phrase}</strong>
-                      </p>
-                      <p className="text-lg text-quip-teal">
-                        You chose: <strong className={voteResult.correct ? 'text-quip-turquoise' : 'text-quip-orange'}>{voteResult.your_choice}</strong>
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Vote information section */}
-                {phrasesetDetails && (
-                  <>
-                    {/* First voter encouragement */}
-                    {isFirstVoter && (
-                      <div className="bg-quip-orange bg-opacity-10 border-2 border-quip-orange rounded-tile p-4 text-center">
-                        <p className="text-quip-navy font-display font-semibold mb-2">
-                          You're the first to vote on this one!
-                        </p>
-                        <p className="text-quip-teal text-sm mb-3">
-                          Come back later to see how others voted. You can check in on this round anytime from Round Tracking.
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Vote details for multiple voters */}
-                    {!isFirstVoter && votes.length > 0 && (
-                      <div className="bg-quip-navy bg-opacity-5 border-2 border-quip-navy rounded-tile p-4">
-                        <h3 className="font-display font-bold text-lg text-quip-navy mb-3 text-center">
-                          Voting Results ({voteCount} vote{voteCount !== 1 ? 's' : ''} so far)
-                        </h3>
-                        <div className="space-y-2">
-                          {votes.map((vote) => (
-                            <div
-                              key={vote.vote_id}
-                              className={`flex items-center justify-between p-3 rounded-tile ${vote.correct ? 'bg-quip-turquoise bg-opacity-10 border border-quip-turquoise' : 'bg-quip-orange bg-opacity-10 border border-quip-orange'}`}
-                            >
-                              <div className="flex items-center gap-3">
-                                <span className="font-semibold text-quip-navy">
-                                  {vote.voter_username}
-                                </span>
-                                <span className="text-sm text-quip-teal">
-                                  voted for: <strong>{vote.voted_phrase}</strong>
-                                </span>
-                              </div>
-                              <span className={`text-sm font-semibold ${vote.correct ? 'text-quip-turquoise' : 'text-quip-orange'}`}>
-                                {vote.correct ? '✓ Correct' : '✗ Incorrect'}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Round Tracking Button - Only visible in dropdown */}
-                    <div className="text-center pt-2">
-                      <Link
-                        to="/tracking"
-                        className="inline-block bg-quip-orange hover:bg-quip-orange-deep text-white font-semibold py-3 px-6 rounded-tile transition-colors"
-                      >
-                        Go to Round Tracking →
-                      </Link>
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Back to Dashboard button - ALWAYS VISIBLE */}
-          <div className="flex justify-center">
-            <button
-              onClick={handleDismiss}
-              className="bg-quip-turquoise hover:bg-quip-teal text-white font-bold py-3 px-8 rounded-tile transition-all hover:shadow-tile-sm flex items-center gap-2"
-            >
-              <HomeIcon className="h-5 w-5" />
-              <span>{isInPartyMode ? 'View Party Summary' : 'Back to Dashboard'}</span>
-            </button>
-          </div>
-        </div>
+      <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center">
+        <LoadingSpinner isLoading message="Loading your meme..." />
       </div>
-      </>
     );
   }
 
-  // If no roundData and no vote result, show loading
-  if (!roundData) {
+  if (result) {
     return (
-      <>
-        {partyOverlay}
-        <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center">
-          <LoadingSpinner isLoading={true} message={loadingMessages.starting} />
+      <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center p-4">
+        <div className="max-w-4xl w-full tile-card p-6 md:p-10">
+          <div className="flex flex-col md:flex-row gap-6 md:items-start">
+            <img
+              src={round.meme.image_url}
+              alt={round.meme.alt_text || 'Meme image'}
+              className="w-full md:w-1/2 rounded-tile border-2 border-quip-navy"
+            />
+            <div className="flex-1 space-y-4">
+              <p className="text-sm text-quip-teal uppercase tracking-wide">Your vote is in!</p>
+              <h1 className="text-3xl font-display font-bold text-quip-navy">Thanks for playing</h1>
+              {selectedCaption && (
+                <div className="p-4 border-2 border-quip-teal rounded-tile bg-white">
+                  <p className="text-sm text-quip-teal mb-1">You chose</p>
+                  <p className="text-xl font-display text-quip-navy">{selectedCaption.text}</p>
+                </div>
+              )}
+              <div className="p-4 border-2 border-quip-orange rounded-tile bg-white inline-flex gap-2 items-center">
+                <span className="text-quip-navy font-semibold">Payout</span>
+                <CurrencyDisplay amount={result.payout} />
+              </div>
+              <div className="flex flex-wrap gap-3 pt-2">
+                <button
+                  onClick={goToCaption}
+                  className="bg-quip-teal hover:bg-quip-turquoise text-white font-semibold px-4 py-2 rounded-tile"
+                >
+                  Add your caption
+                </button>
+                <button
+                  onClick={goToResults}
+                  className="bg-quip-orange hover:bg-quip-orange-deep text-white font-semibold px-4 py-2 rounded-tile"
+                >
+                  See round results
+                </button>
+                <button
+                  onClick={() => navigate('/dashboard')}
+                  className="border-2 border-quip-navy text-quip-navy font-semibold px-4 py-2 rounded-tile"
+                >
+                  Play again
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-      </>
+      </div>
     );
   }
 
   return (
-    <>
-      {partyOverlay}
-      <div className="min-h-screen bg-gradient-to-br from-quip-orange to-quip-orange-deep flex items-center justify-center p-4 bg-pattern">
-        <div className="max-w-2xl w-full tile-card p-8 slide-up-enter">
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <VoteRoundIcon className="w-8 h-8" aria-hidden="true" />
-            <h1 className="text-3xl font-display font-bold text-quip-navy">Guess the Original</h1>
+    <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center p-4">
+      <div className="max-w-5xl w-full tile-card p-6 md:p-10">
+        <div className="flex flex-col md:flex-row gap-6 md:items-start">
+          <img
+            src={round.meme.image_url}
+            alt={round.meme.alt_text || 'Meme image'}
+            className="w-full md:w-1/2 rounded-tile border-2 border-quip-navy"
+          />
+          <div className="flex-1">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-sm text-quip-teal uppercase tracking-wide">Vote for your favorite</p>
+                <h1 className="text-3xl font-display font-bold text-quip-navy">Which caption wins?</h1>
+              </div>
+              {round.expires_at && <Timer expiresAt={round.expires_at} />}
+            </div>
+
+            {error && (
+              <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+                {error}
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {round.captions.map((caption) => (
+                <button
+                  key={caption.caption_id}
+                  onClick={() => handleVote(caption)}
+                  disabled={isSubmitting}
+                  className="text-left bg-white border-2 border-quip-orange hover:border-quip-orange-deep rounded-tile p-4 shadow-tile-sm hover:shadow-tile transition-all disabled:opacity-60"
+                >
+                  <p className="text-lg font-display text-quip-navy">{caption.text}</p>
+                  {caption.author && (
+                    <p className="text-xs text-quip-teal mt-2">by {caption.author}</p>
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
-          <p className="text-quip-teal">One is the original answer. Two are fakes. Tap the one you think came first.</p>
-        </div>
-
-        {/* Timer */}
-        <div className="flex justify-center mb-6">
-          <Timer expiresAt={roundData.expires_at} />
-        </div>
-
-        {/* Prompt */}
-        <div className="bg-quip-orange bg-opacity-5 border-2 border-quip-orange rounded-tile p-6 mb-6">
-          <p className="text-sm text-quip-teal mb-2 text-center font-medium">Prompt:</p>
-          <p className="text-2xl text-center font-display font-semibold text-quip-orange-deep">
-            {roundData.prompt_text}
-          </p>
-        </div>
-
-        {/* Error Message */}
-        {error && (
-          <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
-            {error}
-          </div>
-        )}
-
-        {/* Phrase Choices */}
-        <div className="tutorial-vote-options space-y-4 mb-6">
-          <p className="text-center text-quip-navy font-display font-semibold mb-4 text-lg">
-            Which phrase was written first?
-          </p>
-          {roundData.phrases.map((phrase, idx) => (
-            <button
-              key={phrase}
-              onClick={() => handleVote(phrase)}
-              disabled={isExpired || isSubmitting}
-              className="w-full bg-quip-orange hover:bg-quip-orange-deep disabled:bg-gray-400 text-white font-bold py-4 px-6 rounded-tile transition-all hover:shadow-tile-sm text-xl shuffle-enter"
-              style={{ animationDelay: `${idx * 0.1}s` }}
-            >
-              {phrase}
-            </button>
-          ))}
-        </div>
-
-        {isExpired && (
-          <div className="text-center text-quip-orange-deep font-semibold">
-            Time's up! Refund of <CurrencyDisplay amount={voteCost - (roundAvailability?.abandoned_penalty || 5)} iconClassName="w-4 h-4" textClassName="font-semibold" /> applied ({roundAvailability?.abandoned_penalty || 5} FC penalty)
-          </div>
-        )}
-
-        {/* Home Button */}
-        <button
-          onClick={navigateHome}
-          disabled={isSubmitting}
-          className="w-full mt-4 flex items-center justify-center gap-2 text-quip-teal hover:text-quip-turquoise disabled:opacity-50 disabled:cursor-not-allowed py-2 font-medium transition-colors"
-          title={isSubmitting ? "Please wait for submission to complete" : isInPartyMode ? "Leave Party Mode" : "Back to Dashboard"}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-          </svg>
-          <span>{isInPartyMode ? 'Exit Party Mode' : 'Back to Dashboard'}</span>
-        </button>
-
-        {/* Info */}
-        <div className="mt-6 p-4 bg-quip-orange bg-opacity-5 rounded-tile">
-          <p className="text-sm text-quip-teal inline-flex items-center flex-wrap gap-1">
-            <strong className="text-quip-navy">Cost:</strong> <CurrencyDisplay amount={voteCost} iconClassName="w-3 h-3" textClassName="text-sm" /> • <strong className="text-quip-navy">Correct answer:</strong> +<CurrencyDisplay amount={votePayoutCorrect} iconClassName="w-3 h-3" textClassName="text-sm" /> (+<CurrencyDisplay amount={netGain} iconClassName="w-3 h-3" textClassName="text-sm" /> net)
-          </p>
         </div>
       </div>
     </div>
-    </>
   );
 };
 
