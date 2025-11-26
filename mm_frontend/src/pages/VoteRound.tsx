@@ -74,10 +74,6 @@ export const VoteRound: React.FC = () => {
     navigate('/game/caption', { state: { round, voteResult: result } });
   };
 
-  const goToResults = () => {
-    navigate('/game/results', { state: { round, voteResult: result } });
-  };
-
   const handlePlayAgain = async () => {
     setError(null);
     setResult(null);

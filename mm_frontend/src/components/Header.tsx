@@ -6,7 +6,6 @@ import { useTutorial } from '../contexts/TutorialContext';
 import { useHeaderIndicators } from '../hooks/useHeaderIndicators';
 import { useNetwork } from '../contexts/NetworkContext';
 import { BalanceFlipper } from './BalanceFlipper';
-import { SubHeader } from './SubHeader';
 import { TreasureChestIcon } from './TreasureChestIcon';
 import { ArrowLeftIcon } from './icons/ArrowIcons';
 import {
