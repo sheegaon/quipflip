@@ -466,6 +466,8 @@ export interface VoteRoundState {
   captions: Caption[];
   expires_at: string;
   cost: number;
+  free_captions_remaining?: number;
+  has_submitted_caption?: boolean;
 }
 
 export interface CaptionSubmissionState {

@@ -294,6 +294,25 @@ export const GameProvider: React.FC<{
     }
   }, [stopPoll, visitorId]);
 
+  const refreshRoundAvailability = useCallback(async (signal?: AbortSignal) => {
+    const storedUsername = apiClient.getStoredUsername();
+    if (!storedUsername) {
+      setRoundAvailability(null);
+      return;
+    }
+
+    try {
+      const availability = await apiClient.getMemeMintRoundAvailability(signal);
+      setRoundAvailability(availability);
+    } catch (err) {
+      if (axios.isCancel(err) || signal?.aborted) {
+        return;
+      }
+
+      gameContextLogger.warn('⚠️ Failed to refresh round availability', err);
+    }
+  }, []);
+
   const refreshDashboard = useCallback(async (signal?: AbortSignal) => {
     const storedUsername = apiClient.getStoredUsername();
     if (!storedUsername) {
@@ -306,13 +325,8 @@ export const GameProvider: React.FC<{
       gameContextLogger.debug('✅ Dashboard data received successfully:', {
         playerWallet: data.player?.wallet,
         playerVault: data.player?.vault,
-        currentRound: data.current_round ? {
-          id: data.current_round.round_id,
-          type: data.current_round.round_type,
-          status: data.current_round.state?.status
-        } : 'null',
-        pendingResultsCount: data.pending_results?.length || 0,
-        unclaimedResultsCount: data.unclaimed_results?.length || 0
+        hasVoteRound: !!data.current_vote_round,
+        hasCaptionRound: !!data.current_caption_round,
       });
 
       // Update all dashboard state at once
@@ -328,56 +342,6 @@ export const GameProvider: React.FC<{
 
       setCurrentVoteRound(data.current_vote_round ?? null);
       setCurrentCaptionRound(data.current_caption_round ?? null);
-
-      // Handle active round properly - if it's submitted, expired, or abandoned, clear it
-      if (data.current_round) {
-        const roundState = data.current_round.state;
-        const roundStatus = roundState?.status;
-
-        // Only show active rounds; clear completed/expired/abandoned rounds
-        if (roundStatus === 'active') {
-          gameContextLogger.debug('✅ Setting active round:', {
-            roundId: data.current_round.round_id,
-            roundType: data.current_round.round_type,
-            status: roundStatus
-          });
-          setActiveRound(data.current_round);
-        } else {
-          gameContextLogger.debug(`🚫 Round status is ${roundStatus}, clearing active round`);
-          setActiveRound(null);
-        }
-      } else {
-        gameContextLogger.debug('⭕ No current round from API, clearing active round');
-        setActiveRound(null);
-      }
-
-      // De-duplicate pending results using a composite unique key
-      // For each result, create a unique key based on phraseset_id + round_id
-      const getResultKey = (result: PendingResult) => {
-        if (result.role === 'prompt' && result.prompt_round_id) {
-          return `${result.phraseset_id}-prompt-${result.prompt_round_id}`;
-        } else if (result.role === 'copy' && result.copy_round_id) {
-          return `${result.phraseset_id}-copy-${result.copy_round_id}`;
-        }
-        // Fallback for results without round IDs (shouldn't happen with new schema)
-        return `${result.phraseset_id}-${result.role}`;
-      };
-
-      const pendingList = data.pending_results ?? [];
-      const deduplicatedResults = pendingList.filter((result, index, self) =>
-        index === self.findIndex((r) => getResultKey(r) === getResultKey(result))
-      );
-
-      if (deduplicatedResults.length !== data.pending_results.length) {
-        gameContextLogger.debug('🔄 Removed duplicate pending results:', {
-          original: data.pending_results.length,
-          deduplicated: deduplicatedResults.length
-        });
-      }
-
-      setPendingResults(deduplicatedResults);
-      setPhrasesetSummary(data.phraseset_summary ?? null);
-      setUnclaimedResults(data.unclaimed_results ?? []);
 
       if (data.round_availability) {
         setRoundAvailability(data.round_availability);
@@ -511,25 +475,6 @@ export const GameProvider: React.FC<{
       navigate(path);
     }, delay);
   }, [navigate]);
-
-  const refreshRoundAvailability = useCallback(async (signal?: AbortSignal) => {
-    const storedUsername = apiClient.getStoredUsername();
-    if (!storedUsername) {
-      setRoundAvailability(null);
-      return;
-    }
-
-    try {
-      const availability = await apiClient.getMemeMintRoundAvailability(signal);
-      setRoundAvailability(availability);
-    } catch (err) {
-      if (axios.isCancel(err) || signal?.aborted) {
-        return;
-      }
-
-      gameContextLogger.warn('⚠️ Failed to refresh round availability', err);
-    }
-  }, []);
 
   const fetchCopyHints = useCallback(async (roundId: string, signal?: AbortSignal): Promise<string[]> => {
     if (!roundId) {

@@ -47,7 +47,7 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-quip-cream bg-pattern">
-      <Header showBalance />
+      <Header />
       <div className="max-w-4xl mx-auto px-4 pb-12">
         <div className="tile-card p-6 md:p-8 mt-6">
           <div className="flex items-center justify-between mb-6">

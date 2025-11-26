@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import type { MemeVoteResult, MemeVoteRound } from '../api/types';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
+import { CaptionSubmissionModal } from '../components/CaptionSubmissionModal';
 
 interface ResultsLocationState {
   round?: MemeVoteRound;
@@ -12,10 +13,11 @@ interface ResultsLocationState {
 export const Results: React.FC = () => {
   const navigate = useNavigate();
   const { state: gameState } = useGame();
-  const { player } = gameState;
+  const { player, roundAvailability } = gameState;
   const locationState = (useLocation().state as ResultsLocationState) || {};
   const round = locationState.round;
   const voteResult = locationState.voteResult;
+  const [isCaptionModalOpen, setIsCaptionModalOpen] = useState(false);
 
   const selectedCaption = round && voteResult
     ? round.captions.find((c) => c.caption_id === voteResult.selected_caption_id)
@@ -72,7 +74,7 @@ export const Results: React.FC = () => {
             <div className="flex flex-wrap gap-3 pt-2">
               {canSubmitCaption && (
                 <button
-                  onClick={() => navigate('/game/caption', { state: { round, voteResult } })}
+                  onClick={() => setIsCaptionModalOpen(true)}
                   className="bg-quip-teal hover:bg-quip-turquoise text-white font-semibold px-4 py-2 rounded-tile"
                 >
                   Add your caption
@@ -88,6 +90,16 @@ export const Results: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Caption Submission Modal */}
+      {canSubmitCaption && round && (
+        <CaptionSubmissionModal
+          isOpen={isCaptionModalOpen}
+          onClose={() => setIsCaptionModalOpen(false)}
+          round={round}
+          freeCaptionsRemaining={roundAvailability?.free_captions_remaining}
+        />
+      )}
     </div>
   );
 };

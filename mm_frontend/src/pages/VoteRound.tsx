@@ -6,8 +6,6 @@ import { Timer } from '../components/Timer';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import type { MemeVoteResult, VoteRoundState, VoteResult, MemeCaptionOption } from '../api/types';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
-import { useTimer } from '../hooks/useTimer';
-import { loadingMessages } from '../utils/brandedMessages';
 
 interface VoteLocationState {
   round?: VoteRoundState;
@@ -26,8 +24,6 @@ export const VoteRound: React.FC = () => {
   const [result, setResult] = useState<VoteResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const { message: loadingMessage } = useTimer(loadingMessages);
 
   // recover round when arriving without navigation state
   useEffect(() => {
@@ -74,7 +70,7 @@ export const VoteRound: React.FC = () => {
   if (!round) {
     return (
       <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center">
-        <LoadingSpinner isLoading message={loadingMessage ?? 'Loading your meme...'} />
+        <LoadingSpinner isLoading message="Loading your meme..." />
       </div>
     );
   }
