@@ -72,21 +72,21 @@ const TutorialWelcome: React.FC<TutorialWelcomeProps> = ({ onStart, onSkip }) =>
           )}
 
           <p className="tutorial-welcome-description">
-            MemeMint is a creative caption contest game where you:
+            MemeMint is an asynchronous meme-caption battler where you:
           </p>
 
           <ul className="tutorial-welcome-features">
             <li>
-              <strong>Quip:</strong> Write the original answer to a fill-in-the-blank prompt
+              <strong>Vote:</strong> Pay an entry fee to choose the best caption out of five for each meme image
             </li>
             <li>
-              <strong>Impostor:</strong> Fake the original answer so it blends in with the real one
+              <strong>Caption:</strong> Add your own original caption or riff on someone else's after you vote
             </li>
             <li>
-              <strong>Guess:</strong> Pick which answer you think was written first
+              <strong>Earn MemeCoins:</strong> Winning captions get paid, and voters can earn bonuses
             </li>
             <li>
-              <strong>Earn memecoins:</strong> Clever quips and convincing fakes earn you more!
+              <strong>Replay:</strong> Images and captions stay in circulation so you can refine and compete again
             </li>
           </ul>
 
