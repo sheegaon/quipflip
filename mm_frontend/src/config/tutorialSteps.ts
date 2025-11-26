@@ -18,13 +18,13 @@ export const TUTORIAL_STEPS: Record<TutorialProgress, TutorialStep | null> = {
   welcome: {
     id: 'welcome',
     title: 'Welcome to MemeMint!',
-    message: `MemeMint is a creative caption contest game where you:
+    message: `MemeMint is an asynchronous meme-caption battler:
 
-• Quip: write the original answer to a prompt
-• Impostor: fake the original answer so it blends in
-• Guess: pick which answer was written first
+• Pay an entry fee, see one image and five captions, and vote for your favorite
+• Winning caption authors get paid in MemeCoins, and voters may earn bonuses
+• After voting, you can add your own caption (original or riff) for future rounds
 
-We will take a quick tour so you know how to play and earn memecoins.`,
+We will take a quick tour so you know how to play and earn MemeCoins.`,
     position: 'bottom',
     nextStep: 'dashboard',
     showSkip: true,
@@ -36,12 +36,11 @@ We will take a quick tour so you know how to play and earn memecoins.`,
     title: 'Your Dashboard',
     message: `This is your main hub. From here you can:
 
-• See your balance and claim your daily bonus
-• Continue active rounds and check results
-• Start new rounds as Quip, Impostor, or Guess
-• Switch between Practice Mode and Live Mode using the toggle at the bottom
+• See your wallet balance and claim the 100 MC daily bonus (after day one)
+• Join a round for 5 MC to vote on five captions for a single image
+• Review finished rounds and track your MemeCoin earnings
 
-Next we will look at a Quip Round, where you write the original answer.`,
+Next we will look at how you add a caption after you vote.`,
     target: '.tutorial-dashboard',
     position: 'top',
     nextStep: 'prompt_round',
@@ -51,14 +50,14 @@ Next we will look at a Quip Round, where you write the original answer.`,
 
   prompt_round: {
     id: 'prompt_round',
-    title: 'Quip Round: Write the Original',
-    message: `In a Quip Round you see a fill-in-the-blank style prompt and write the original answer.
+    title: 'Write Your Caption',
+    message: `After you vote, you can submit a caption for the meme.
 
-• Keep it short and punchy (around 2–5 words)
-• Make it something a normal person might say
+• Keep it short and natural — a quick 2–5 word idea that fits the image
 • Avoid private info or proper names
+• You can post an original caption or riff on one you saw
 
-Later, other players will only see your answer (not the prompt) in Impostor Rounds and try to write fakes that look like your original.`,
+Your caption will appear in future rounds for other players to vote on.`,
     target: '.tutorial-prompt-input',
     position: 'top',
     // The tutorial will pause while you complete your first Quip Round.
@@ -69,17 +68,14 @@ Later, other players will only see your answer (not the prompt) in Impostor Roun
 
   copy_round: {
     id: 'copy_round',
-    title: 'Impostor Round: Fake the Original',
-    message: `In an Impostor Round you do not see the original prompt. You only see another player's answer.
+    title: 'Riffing on Captions',
+    message: `You can also riff on an existing caption instead of starting from scratch.
 
-Your job is to write a phrase that could have been the original and might trick voters.
+• Stay close to the parent caption while putting your own spin on it
+• Keep it brief and readable — just a few words that fit the image
+• Do not copy the caption exactly or go off-topic
 
-• Do: stay close in meaning, 2–5 words, and keep it natural
-• Do: make it sound like a reasonable answer to some prompt
-• Do not: repeat the original word for word
-• Do not: go totally off-topic or try to guess the hidden prompt literally
-
-If you are stuck, you can tap a suggested phrase and tweak it.`,
+If your riff wins a round, both you and the parent caption's author earn MemeCoins.`,
     target: '.tutorial-copy-input',
     position: 'top',
     // The tutorial will resume after you submit your first impostor phrase.
@@ -90,13 +86,14 @@ If you are stuck, you can tap a suggested phrase and tweak it.`,
 
   vote_round: {
     id: 'vote_round',
-    title: 'Guess the Original (Vote Round)',
-    message: `In a Guess Round you see three phrases:
+    title: 'Vote and Earn',
+    message: `Each round shows you one image and five captions from other players.
 
-• One is the original answer
-• Two are impostor fakes
+• Pay the 5 MC entry fee, then pick your favorite caption
+• The winning caption earns MemeCoins for its author (and parent if it is a riff)
+• The system can also award voter bonuses
 
-Tap the one you think was written first. If you guess the original correctly you earn memecoins. After you vote, you will see which phrase was the original and how everyone voted.`,
+After you vote, you can see the results and decide whether to submit your own caption.`,
     target: '.tutorial-vote-options',
     position: 'top',
     // The tutorial will resume after you finish your first guess.
@@ -107,16 +104,14 @@ Tap the one you think was written first. If you guess the original correctly you
 
   rounds_guide: {
     id: 'rounds_guide',
-    title: 'Practice Makes Perfect!',
+    title: 'Keep Playing for Rewards',
     message: `You are ready to play on your own.
 
-To get comfortable with the game, try Practice Mode:
+• Claim your daily bonus to keep your wallet stocked
+• Enter rounds to vote on captions and keep earning
+• Submit originals or riffs so your captions can win future rounds
 
-• Use the mode toggle at the bottom of the screen to switch between Practice and Live
-• Practice Mode lets you play rounds without worrying about your main balance
-• Live Mode lets you earn and lose memecoins in real games
-
-Experiment in Practice, then switch to Live Mode when you feel confident. You can always return to Practice to refine your strategy.`,
+Images and captions are replayable, so you can refine your ideas and climb the leaderboard over time.`,
     target: 'div.fixed.bottom-5',
     position: 'top',
     // No nextStep - this is the final tutorial screen, shows "End Tutorial" button
