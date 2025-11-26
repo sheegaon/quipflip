@@ -86,7 +86,7 @@ class MMSystemConfigService(SystemConfigService):
         "mm_captions_per_round": 5,
         "mm_free_captions_per_day": 1,
         "mm_caption_submission_cost": 10,
-        "mm_house_rake_vault_pct": 0.3,
+        "mm_house_rake_vault_pct": 0.5,
         "mm_daily_bonus_amount": 100,
     }
 

@@ -137,9 +137,7 @@ async def submit_vote(
     if round_obj.chosen_caption_id:
         raise HTTPException(status_code=400, detail="Vote already submitted for this round")
 
-    # Check expiration
-    if game_service.check_round_expired(round_obj):
-        raise HTTPException(status_code=400, detail="Round expired past grace period")
+    # Expiration check removed - rounds never expire
 
     try:
         result = await vote_service.submit_vote(

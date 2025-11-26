@@ -106,12 +106,14 @@ export const VoteRound: React.FC = () => {
                 >
                   Add your caption
                 </button>
+                {/* TODO: Enable when round results feature is implemented
                 <button
                   onClick={goToResults}
                   className="bg-quip-orange hover:bg-quip-orange-deep text-white font-semibold px-4 py-2 rounded-tile"
                 >
                   See round results
                 </button>
+                */}
                 <button
                   onClick={() => navigate('/dashboard')}
                   className="border-2 border-quip-navy text-quip-navy font-semibold px-4 py-2 rounded-tile"

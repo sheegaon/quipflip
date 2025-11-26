@@ -17,6 +17,14 @@ from backend.utils import lock_client
 
 logger = logging.getLogger(__name__)
 
+# Special UUID for system/seeded content - must match the one used in seeding
+SYSTEM_PLAYER_ID = UUID("00000000-0000-0000-0000-000000000001")
+
+
+def _is_system_generated_caption(caption: MMCaption) -> bool:
+    """Check if a caption is system/seeded content that should not receive payouts."""
+    return caption.author_player_id == SYSTEM_PLAYER_ID or caption.author_player_id is None
+
 
 class MMVoteService:
     """Service for processing votes and distributing payouts."""
@@ -85,11 +93,13 @@ class MMVoteService:
             if not caption:
                 raise ValueError(f"Caption {caption_id} not found")
             
-            # Validate caption has an author
-            if not caption.author_player_id:
+            # Check if this is a system-generated caption (allow these but skip payouts)
+            is_system_caption = _is_system_generated_caption(caption)
+            
+            # Only validate author_player_id for non-system captions
+            if not is_system_caption and not caption.author_player_id:
                 logger.error(f"Caption {caption_id} has no author_player_id. "
-                             f"{caption.text=}, {caption.image_id=}, {caption.created_at=}, {caption.status=}"
-                )
+                             f"{caption.text=}, {caption.image_id=}, {caption.created_at=}, {caption.status=}")
                 raise ValueError(f"Invalid caption: missing author (caption_id: {caption_id})")
 
             # Update round
@@ -100,28 +110,37 @@ class MMVoteService:
             caption.picks += 1
             await self.scoring_service.update_caption_quality_score(caption)
 
-            # Get config values
-            house_rake_vault_pct = await self.config_service.get_config_value("mm_house_rake_vault_pct", default=0.3)
+            # Skip payouts for system-generated captions
+            if not is_system_caption:
+                # Get config values
+                house_rake_vault_pct = await self.config_service.get_config_value(
+                    "mm_house_rake_vault_pct", default=0.3)
 
-            # Calculate and distribute payouts to caption author(s)
-            payout_info = await self._distribute_caption_payouts(
-                caption,
-                round_obj.entry_cost,
-                house_rake_vault_pct,
-                transaction_service
-            )
+                # Calculate and distribute payouts to caption author(s)
+                payout_info = await self._distribute_caption_payouts(
+                    caption,
+                    round_obj.entry_cost,
+                    house_rake_vault_pct,
+                    transaction_service
+                )
 
-            # Check and award first vote bonus
-            first_vote_bonus_awarded = await self._check_first_vote_bonus(
-                caption,
-                round_obj,
-                transaction_service
-            )
+                # Check and award first vote bonus
+                first_vote_bonus_awarded = await self._check_first_vote_bonus(
+                    caption,
+                    round_obj,
+                    transaction_service
+                )
 
-            # Update round with payout info
-            round_obj.payout_to_wallet = payout_info['total_wallet']
-            round_obj.payout_to_vault = payout_info['total_vault']
-            round_obj.first_vote_bonus_applied = first_vote_bonus_awarded
+                # Update round with payout info
+                round_obj.payout_to_wallet = payout_info['total_wallet']
+                round_obj.payout_to_vault = payout_info['total_vault']
+                round_obj.first_vote_bonus_applied = first_vote_bonus_awarded
+            else:
+                payout_info = {
+                    'total_wallet': 0,
+                    'total_vault': 0
+                }
+                first_vote_bonus_awarded = False
 
             await self.db.commit()
             await self.db.refresh(player)
@@ -242,7 +261,8 @@ class MMVoteService:
                         wallet_type="vault"
                     )
             else:
-                logger.warning(f"Riff caption {caption.caption_id} references parent {caption.parent_caption_id} but parent not found or has no author")
+                logger.warning(f"Riff caption {caption.caption_id} references parent {caption.parent_caption_id} "
+                               f"but parent not found or has no author")
 
         return {
             'total_gross': payout_breakdown['total_gross'],

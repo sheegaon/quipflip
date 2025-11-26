@@ -442,7 +442,7 @@ Economy:
 * `mm_caption_submission_cost` (int, default maybe `10`)
 
   * Wallet cost for caption submissions beyond free quota.
-* `mm_house_rake_vault_pct` (float, default e.g. `0.3`)
+* `mm_house_rake_vault_pct` (float, default e.g. `0.5`)
 
   * Fraction of caption earnings routed to vault vs wallets.
 
