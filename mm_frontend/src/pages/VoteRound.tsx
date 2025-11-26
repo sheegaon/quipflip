@@ -12,15 +12,18 @@ import type { VoteResponse, VoteState, PhrasesetDetails } from '../api/types';
 import { voteRoundLogger } from '../utils/logger';
 import { VoteRoundIcon } from '../components/icons/RoundIcons';
 import { HomeIcon } from '../components/icons/NavigationIcons';
-import { usePartyMode } from '../contexts/PartyModeContext';
-import PartyRoundModal from '../components/party/PartyRoundModal';
 import { usePartyNavigation } from '../hooks/usePartyNavigation';
 
 export const VoteRound: React.FC = () => {
   const { state, actions } = useGame();
   const { activeRound, roundAvailability } = state;
   const { refreshDashboard } = actions;
-  const { state: partyState, actions: partyActions } = usePartyMode();
+  const partyState = { isPartyMode: false, sessionId: null as string | null };
+  const partyActions = {
+    endPartyMode: () => {},
+    setCurrentStep: (_step: unknown) => {},
+    updateFromPartyContext: (_context: unknown) => {},
+  };
   const navigate = useNavigate();
   const { navigateHome, navigateToResults, isInPartyMode } = usePartyNavigation();
   const [error, setError] = useState<string | null>(null);
@@ -35,13 +38,7 @@ export const VoteRound: React.FC = () => {
   const roundData = activeRound?.round_type === 'vote' ? activeRound.state as VoteState : null;
   const { isExpired } = useTimer(roundData?.expires_at || null);
 
-  useEffect(() => {
-    if (partyState.isPartyMode) {
-      partyActions.setCurrentStep('vote');
-    }
-  }, [partyActions, partyState.isPartyMode]);
-
-  const partyResultsPath = partyState.sessionId ? `/party/results/${partyState.sessionId}` : '/party/results';
+  const partyResultsPath = '/party/results';
 
   // Get dynamic values from config or use defaults
   const voteCost = roundAvailability?.vote_cost || 10;
@@ -87,9 +84,7 @@ export const VoteRound: React.FC = () => {
     navigateToResults();
   }, [navigateToResults]);
 
-  const partyOverlay = partyState.isPartyMode && partyState.sessionId ? (
-    <PartyRoundModal sessionId={partyState.sessionId} currentStep="vote" />
-  ) : null;
+  const partyOverlay = null;
 
   useEffect(() => {
     if (!roundData) {

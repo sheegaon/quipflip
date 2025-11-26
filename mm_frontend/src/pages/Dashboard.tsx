@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { useTutorial } from '../contexts/TutorialContext';
-import { usePartyMode } from '../contexts/PartyModeContext';
 import apiClient, { extractErrorMessage } from '../api/client';
 import { Timer } from '../components/Timer';
 import { Header } from '../components/Header';
@@ -37,8 +36,7 @@ export const Dashboard: React.FC = () => {
   } = state;
   const { refreshDashboard, clearError, abandonRound } = actions;
   const { startTutorial, skipTutorial } = useTutorial();
-  const { actions: partyActions } = usePartyMode();
-  const { endPartyMode } = partyActions;
+  const endPartyMode = () => {};
   const navigate = useNavigate();
   const location = useLocation();
   const [isRoundExpired, setIsRoundExpired] = useState(false);

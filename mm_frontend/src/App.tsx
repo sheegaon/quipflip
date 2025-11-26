@@ -40,13 +40,7 @@ const Dashboard = lazy(() => import('./pages/Dashboard'));
 const PromptRound = lazy(() => import('./pages/PromptRound'));
 const CopyRound = lazy(() => import('./pages/CopyRound'));
 const VoteRound = lazy(() => import('./pages/VoteRound'));
-const PracticePrompt = lazy(() => import('./pages/PracticePrompt'));
-const PracticeCopy = lazy(() => import('./pages/PracticeCopy'));
-const PracticeCopy2 = lazy(() => import('./pages/PracticeCopy2'));
-const PracticeVote = lazy(() => import('./pages/PracticeVote'));
 const Results = lazy(() => import('./pages/Results'));
-const Completed = lazy(() => import('./pages/Completed'));
-const PhrasesetReview = lazy(() => import('./pages/PhrasesetReview'));
 const Tracking = lazy(() => import('./pages/Tracking'));
 const Quests = lazy(() => import('./pages/Quests'));
 const Statistics = lazy(() => import('./pages/Statistics'));
@@ -56,10 +50,6 @@ const Settings = lazy(() => import('./pages/Settings'));
 const Admin = lazy(() => import('./pages/Admin'));
 const AdminFlagged = lazy(() => import('./pages/AdminFlagged'));
 const BetaSurveyPage = lazy(() => import('./pages/BetaSurveyPage'));
-const PartyMode = lazy(() => import('./pages/PartyMode'));
-const PartyLobby = lazy(() => import('./pages/PartyLobby'));
-const PartyGame = lazy(() => import('./pages/PartyGame'));
-const PartyResults = lazy(() => import('./pages/PartyResults'));
 
 // Protected Route wrapper
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -148,32 +138,8 @@ const AppRoutes: React.FC = () => {
           element={renderProtectedRoute(<VoteRound />)}
         />
         <Route
-          path="/practice/prompt"
-          element={renderProtectedRoute(<PracticePrompt />)}
-        />
-        <Route
-          path="/practice/copy"
-          element={renderProtectedRoute(<PracticeCopy />)}
-        />
-        <Route
-          path="/practice/copy2"
-          element={renderProtectedRoute(<PracticeCopy2 />)}
-        />
-        <Route
-          path="/practice/vote"
-          element={renderProtectedRoute(<PracticeVote />)}
-        />
-        <Route
           path="/results"
           element={renderProtectedRoute(<Results />)}
-        />
-        <Route
-          path="/completed"
-          element={renderProtectedRoute(<Completed />)}
-        />
-        <Route
-          path="/phraseset/:phrasesetId/review"
-          element={renderProtectedRoute(<PhrasesetReview />)}
         />
         <Route
           path="/tracking"
@@ -202,22 +168,6 @@ const AppRoutes: React.FC = () => {
         <Route
           path="/survey/beta"
           element={renderProtectedRoute(<BetaSurveyPage />)}
-        />
-        <Route
-          path="/party"
-          element={renderProtectedRoute(<PartyMode />)}
-        />
-        <Route
-          path="/party/:sessionId"
-          element={renderProtectedRoute(<PartyLobby />)}
-        />
-        <Route
-          path="/party/game/:sessionId"
-          element={renderProtectedRoute(<PartyGame />)}
-        />
-        <Route
-          path="/party/results/:sessionId"
-          element={renderProtectedRoute(<PartyResults />)}
         />
         <Route
           path="/admin"
