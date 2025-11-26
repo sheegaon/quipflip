@@ -212,7 +212,7 @@ async def submit_caption(
         raise HTTPException(status_code=500, detail="Failed to submit caption")
 
 
-@router.get("/rounds/available", response_model=RoundAvailability)
+@router.get("/available", response_model=RoundAvailability)
 async def get_round_availability(
         player: MMPlayer = Depends(get_mm_player),
         db: AsyncSession = Depends(get_db),
@@ -252,7 +252,7 @@ async def get_round_availability(
     )
 
 
-@router.get("/rounds/{round_id}", response_model=RoundDetails)
+@router.get("/{round_id}", response_model=RoundDetails)
 async def get_round_details(
         round_id: UUID = Path(...),
         player: MMPlayer = Depends(get_mm_player),
