@@ -158,7 +158,7 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
   }, []);
 
   useWebSocket({
-    path: '/qf/notifications/ws',
+    path: '/mm/notifications/ws',
     enabled: state.isAuthenticated,
     onMessage: handleNotificationMessage,
     onError: () => {
@@ -226,7 +226,7 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
   }, [startPollingOnlineUsers]);
 
   useWebSocket({
-    path: '/qf/users/online/ws',
+    path: '/mm/users/online/ws',
     enabled: state.isAuthenticated,
     onOpen: handleOnlineUsersOpen,
     onMessage: handleOnlineUsersMessage,
