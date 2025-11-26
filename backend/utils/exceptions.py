@@ -66,6 +66,11 @@ class NoPhrasesetsAvailableError(QuipflipException):
     pass
 
 
+class NoContentAvailableError(QuipflipException):
+    """No content (images/captions) available for the requested operation."""
+    pass
+
+
 class AlreadyVotedError(QuipflipException):
     """Player has already voted on this phraseset."""
     pass
