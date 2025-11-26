@@ -90,23 +90,32 @@ const GuestWelcomeOverlay: React.FC = () => {
 
           <h2 className="guest-welcome-title">How To Play</h2>
 
-          <ul className="guest-welcome-list">
+          <ol className="guest-welcome-list">
             <li>
-              <strong>Quip:</strong> Write the original answer to a fill-in-the-blank prompt
+              <strong>See an image + captions:</strong> We show you one image with five captions to
+              read.
             </li>
             <li>
-              <strong>Impostor:</strong> Fake the original answer so it blends in with the real one
+              <strong>Vote:</strong> Pay the entry fee, view the image with five captions, and pick
+              your favorite.
             </li>
             <li>
-              <strong>Guess:</strong> Pick which answer you think was written first
+              <strong>Win + bonuses:</strong> The authors of the winning caption (riff + parent, or
+              original) get paid in MemeCoins. The system may also pay voter bonuses.
             </li>
-          </ul>
+            <li>
+              <strong>Add your own:</strong> After voting, submit a new caption (original or riff)
+              for the image.
+            </li>
+            <li>
+              <strong>Replayable:</strong> Images and captions cycle indefinitely; weak captions are
+              retired over time.
+            </li>
+          </ol>
 
           <div className="guest-welcome-example">
-            <strong>Example:</strong> In a Quip Round, you might answer "The best pizza topping is
-            ______" with "peppers and mushrooms." In the Impostor Round (fake the original), other
-            players will try to write similar answers without seeing the prompt. Guessers then try
-            to pick which answer was the original.
+            <strong>Example:</strong> You'll see a meme image along with five captions. Choose your
+            favorite, then add your own caption for that image (either an original or a riff).
           </div>
 
           <hr className="guest-welcome-divider" />
