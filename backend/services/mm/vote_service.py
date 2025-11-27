@@ -355,7 +355,7 @@ class MMVoteService:
         there is a unique leader in global pick count that matches the player's
         selection. Counts are evaluated before this vote's mutations.
         """
-        if len([count for count in pre_vote_counts.values() if count > 0]) < 3:
+        if sum(1 for count in pre_vote_counts.values() if count > 0) < 3:
             return False
 
         max_count = max(pre_vote_counts.values(), default=0)
