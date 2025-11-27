@@ -47,7 +47,7 @@ export const VoteRound: React.FC = () => {
       controller.abort();
       setIsLoadingRound(false);
     };
-  }, [actions, isLoadingRound, round]);
+  }, [actions, round]);
 
   const selectedCaption = useMemo(() => {
     if (!round || !result) return null;
@@ -77,13 +77,16 @@ export const VoteRound: React.FC = () => {
   const handlePlayAgain = async () => {
     setError(null);
     setResult(null);
+    setIsLoadingRound(true);
     setRound(null);
-    
+
     try {
       const newRound = await actions.startVoteRound();
       setRound(newRound);
     } catch (err) {
       setError(extractErrorMessage(err) || 'Unable to start a new vote round. Please try again.');
+    } finally {
+      setIsLoadingRound(false);
     }
   };
 

@@ -122,7 +122,7 @@ class Settings(BaseSettings):
     ai_stale_check_interval_hours: int = 6 # Interval between stale content sweeps
 
     # Round service tuning
-    round_lock_timeout_seconds: int = 10  # Shared timeout for distributed locks in round flows
+    round_lock_timeout_seconds: int = 30  # Shared timeout for distributed locks in round flows
     copy_round_max_attempts: int = 10  # Attempts to find a valid prompt when starting copy rounds
 
     @field_validator("admin_emails", mode="before")

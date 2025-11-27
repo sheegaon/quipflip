@@ -192,6 +192,28 @@ async def initialize_missing_player_quests():
         raise
 
 
+async def import_meme_mint_images():
+    """Import Meme Mint images and seed captions on startup.
+
+    This runs on every startup to:
+    - Create image records for any new images in backend/data/mm_images/
+    - Create caption records from mm_seed_captions.csv
+    - Update existing records if data has changed
+    """
+    from backend.data.import_mm_images import import_images
+    from backend.database import AsyncSessionLocal
+
+    try:
+        logger.info("Importing Meme Mint images and seed captions...")
+        async with AsyncSessionLocal() as db:
+            await import_images(db)
+        logger.info("Meme Mint image import completed successfully")
+    except Exception as e:
+        logger.error(f"Failed to import Meme Mint images: {e}")
+        # Don't raise - allow server to start even if image import fails
+        # (images may be loaded on-demand)
+
+
 async def ai_backup_cycle():
     """
     Background task to run AI backup cycles.
@@ -399,6 +421,9 @@ async def lifespan(app_instance: FastAPI):
 
     # Initialize quests for any players who don't have them yet
     await initialize_missing_player_quests()
+
+    # Import Meme Mint images and seed captions
+    await import_meme_mint_images()
 
     # Start background tasks
     ai_backup_task = None

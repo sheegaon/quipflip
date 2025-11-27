@@ -37,11 +37,13 @@ class SubmitVoteRequest(BaseModel):
 
 
 class SubmitCaptionRequest(BaseModel):
-    """Submit caption request."""
+    """Submit caption request.
+
+    The backend automatically determines whether the caption is a riff or original
+    based on cosine similarity analysis against the 5 captions shown in the round.
+    """
     round_id: UUID = Field(..., description="Round ID from vote round")
     caption_text: str = Field(..., min_length=1, max_length=240, description="Caption text", alias="text")
-    caption_type: Literal["original", "riff"] = Field(default="original", description="Caption type", alias="kind")
-    parent_caption_id: UUID | None = Field(default=None, description="Parent caption ID for riffs")
 
     class Config:
         populate_by_name = True  # Allow both field name and alias
@@ -54,17 +56,6 @@ class SubmitCaptionRequest(BaseModel):
         v = re.sub(r'\s+', ' ', v.strip())
         if not v:
             raise ValueError('Caption text cannot be empty')
-        return v
-
-    @field_validator('parent_caption_id')
-    @classmethod
-    def validate_riff_parent(cls, v: UUID | None, info) -> UUID | None:
-        """Validate parent_caption_id is provided for riffs."""
-        caption_type = info.data.get('caption_type')
-        if caption_type == 'riff' and v is None:
-            raise ValueError('parent_caption_id is required for riff captions')
-        if caption_type == 'original' and v is not None:
-            raise ValueError('parent_caption_id should not be provided for original captions')
         return v
 
 

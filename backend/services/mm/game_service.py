@@ -137,9 +137,8 @@ class MMGameService:
             self.db.add(round_obj)
             await self.db.flush([round_obj])
 
-            # Mark captions as seen and increment shows
-            await self._mark_captions_as_seen(player.player_id, image.image_id, captions)
-            await self._increment_caption_shows(captions)
+            # NOTE: shows and seen_captions are now updated AFTER vote submission
+            # (moved to vote_service.submit_vote() per MM_GAME_RULES.md Section 4.4)
 
             await self.db.commit()
 
@@ -314,8 +313,16 @@ class MMGameService:
         """
         for caption in captions:
             caption.shows += 1
-            await self.scoring_service.update_caption_quality_score(caption)
+            # Update quality score but don't flush yet - we'll batch flush all changes
+            caption.quality_score = self.scoring_service.calculate_quality_score(
+                caption.picks, caption.shows
+            )
+            logger.debug(
+                f"Updated quality score for caption {caption.caption_id}: "
+                f"{caption.quality_score:.3f} ({caption.picks}/{caption.shows})"
+            )
 
+        # Single batch flush for all updated captions
         await self.db.flush()
 
     async def get_round(self, round_id: UUID, player_id: UUID) -> Optional[MMVoteRound]:
