@@ -109,18 +109,9 @@ class MMVoteService:
             # Increment caption picks and update quality score
             caption.picks += 1
             await self.scoring_service.update_caption_quality_score(caption)
-
-            min_shows = await self.config_service.get_config_value(
-                "mm_retire_after_shows", default=5
+            await self.scoring_service.check_and_retire_caption(
+                caption, self.config_service
             )
-            min_quality = await self.config_service.get_config_value(
-                "mm_min_quality_score_active", default=0.05
-            )
-
-            if self.scoring_service.should_retire_caption(
-                caption, min_shows, min_quality
-            ):
-                caption.status = 'retired'
 
             # Skip payouts for system-generated captions
             if not is_system_caption:

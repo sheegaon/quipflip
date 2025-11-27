@@ -71,6 +71,25 @@ class MMScoringService:
         return caption.picks == 0 or (caption.quality_score or 0) < min_quality_score
 
     @staticmethod
+    async def check_and_retire_caption(
+        caption: MMCaption,
+        config_service
+    ) -> None:
+        """Check if a caption meets retirement criteria and update its status."""
+        min_shows = await config_service.get_config_value(
+            "mm_retire_after_shows", default=5
+        )
+        min_quality = await config_service.get_config_value(
+            "mm_min_quality_score_active", default=0.05
+        )
+
+        if MMScoringService.should_retire_caption(caption, min_shows, min_quality):
+            caption.status = 'retired'
+            logger.info(
+                f"Retired caption {caption.caption_id} due to low performance."
+            )
+
+    @staticmethod
     def calculate_riff_split(
         total_payout: int,
         is_riff: bool
