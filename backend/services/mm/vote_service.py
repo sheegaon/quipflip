@@ -359,8 +359,6 @@ class MMVoteService:
             return False
 
         max_count = max(pre_vote_counts.values(), default=0)
-        if max_count <= 0:
-            return False
 
         leaders = [cid for cid, count in pre_vote_counts.items() if count == max_count]
         if len(leaders) != 1:
@@ -369,8 +367,14 @@ class MMVoteService:
         if leaders[0] != chosen_caption_id:
             return False
 
-        wallet_amount = 2
-        vault_amount = 1
+        wallet_amount = await self.config_service.get_config_value(
+            "mm_lcf_bonus_wallet",
+            default=2,
+        )
+        vault_amount = await self.config_service.get_config_value(
+            "mm_lcf_bonus_vault",
+            default=1,
+        )
 
         await transaction_service.create_transaction(
             round_obj.player_id,
