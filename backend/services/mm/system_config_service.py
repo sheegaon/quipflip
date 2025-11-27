@@ -79,6 +79,27 @@ class MMSystemConfigService(SystemConfigService):
             "min": 0,
             "max": 10000,
         },
+        "mm_lcf_bonus_wallet": {
+            "type": "int",
+            "category": "economics",
+            "description": "Wallet payout for local crowd favorite bonus",
+            "min": 0,
+            "max": 10000,
+        },
+        "mm_lcf_bonus_vault": {
+            "type": "int",
+            "category": "economics",
+            "description": "Vault payout for local crowd favorite bonus",
+            "min": 0,
+            "max": 10000,
+        },
+        "mm_first_vote_bonus_amount": {
+            "type": "int",
+            "category": "economics",
+            "description": "Wallet bonus for first vote on a caption",
+            "min": 0,
+            "max": 10000,
+        },
     }
 
     DEFAULTS = {
@@ -88,6 +109,11 @@ class MMSystemConfigService(SystemConfigService):
         "mm_caption_submission_cost": 10,
         "mm_house_rake_vault_pct": 0.5,
         "mm_daily_bonus_amount": 100,
+        "mm_lcf_bonus_wallet": 2,
+        "mm_lcf_bonus_vault": 1,
+        "mm_first_vote_bonus_amount": 2,
+        "mm_retire_after_shows": 5,
+        "mm_min_quality_score_active": 0.05,
     }
 
     def __init__(self, session, game_type: GameType = GameType.MM):

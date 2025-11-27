@@ -7,14 +7,13 @@ This is distinct from phraseset_activity schemas, which handle historical
 phraseset review events.
 """
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict
 from typing import List
 
+from backend.schemas.base import BaseSchema
 
-class OnlineUser(BaseModel):
+
+class OnlineUser(BaseSchema):
     """Schema for a single online user in the "Who's Online" page."""
-
-    model_config = ConfigDict(from_attributes=True)
 
     username: str
     last_action: str
@@ -25,20 +24,20 @@ class OnlineUser(BaseModel):
     created_at: datetime
 
 
-class OnlineUsersResponse(BaseModel):
+class OnlineUsersResponse(BaseSchema):
     """Response schema for online users list in the "Who's Online" feature."""
 
     users: List[OnlineUser]
     total_count: int
 
 
-class PingUserRequest(BaseModel):
+class PingUserRequest(BaseSchema):
     """Payload for pinging a specific online user."""
 
     username: str
 
 
-class PingUserResponse(BaseModel):
+class PingUserResponse(BaseSchema):
     """Response after issuing a ping to another user."""
 
     success: bool

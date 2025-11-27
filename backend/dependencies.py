@@ -140,18 +140,23 @@ async def get_optional_player(
 
 
 async def enforce_vote_rate_limit(
-    player: PlayerBase = Depends(get_current_player),
+    request: Request,
+    game_type: GameType,
+    authorization: str | None = Header(default=None, alias="Authorization"),
+    db: AsyncSession = Depends(get_db),
 ) -> PlayerBase:
     """Enforce tighter limits on vote submissions and return the authenticated player.
 
-    This dependency leverages get_current_player to authenticate the user and then
-    applies a stricter rate limit based on the player's ID. This approach:
-    - Eliminates duplication of authentication logic
+    This dependency authenticates the user and applies a stricter rate limit
+    based on the player's ID. This approach:
     - Ensures consistent behavior with get_current_player
     - Uses player_id for rate limiting (stable across sessions)
     - Automatically handles authentication errors via get_current_player
     - Returns the player to avoid redundant get_current_player calls in endpoints
     """
+    # Get authenticated player
+    player = await get_current_player(request, game_type, authorization, db)
+
     # Apply stricter vote rate limits for guest accounts
     limit = GUEST_VOTE_RATE_LIMIT if player.is_guest else VOTE_RATE_LIMIT
     await _enforce_rate_limit("vote_submit", str(player.player_id), limit)

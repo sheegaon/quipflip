@@ -2,7 +2,7 @@
 import logging
 from datetime import datetime, timedelta, UTC
 
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Response
+from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.utils import ensure_utc

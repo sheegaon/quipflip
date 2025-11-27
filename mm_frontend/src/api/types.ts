@@ -542,8 +542,8 @@ export type MemeCaptionType = 'original' | 'riff';
 export interface MemeCaptionSubmission {
   round_id: string;
   text: string;
-  kind: MemeCaptionType;
-  parent_caption_id?: string | null;
+  // kind and parent_caption_id are determined algorithmically by the backend
+  // based on cosine similarity analysis
 }
 
 export interface MemeCaptionResponse {

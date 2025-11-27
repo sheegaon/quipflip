@@ -98,7 +98,7 @@ class QFPlayerRouter(PlayerRouterBase):
             response_model=PhrasesetListResponse,
         )
         async def list_player_phrasesets(
-            role: str = Query("all", regex="^(all|prompt|copy|vote)$"),
+            role: str = Query("all", pattern="^(all|prompt|copy|vote)$"),
             status: str = Query("all"),
             limit: int = Query(50, ge=1, le=100),
             offset: int = Query(0, ge=0),

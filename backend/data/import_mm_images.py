@@ -60,13 +60,13 @@ def load_seed_captions() -> dict[str, list[str]]:
             if image_file.startswith('#'):
                 continue
 
-            # Collect all seed_caption columns
+            # Collect all seed_caption columns (skip empty values)
             captions = []
             for i in range(1, 100):  # Support up to 99 captions
                 col_name = f'seed_caption{i}'
-                if col_name in row and row[col_name]:
-                    captions.append(row[col_name])
-                else:
+                if col_name in row and row[col_name].strip():  # Skip empty or whitespace-only values
+                    captions.append(row[col_name].strip())
+                elif captions:  # Stop only after we've found at least one caption
                     break
 
             if captions:

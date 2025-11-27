@@ -37,32 +37,34 @@ class MMCaptionService:
         player: MMPlayer,
         image_id: UUID,
         text: str,
-        kind: Literal["original", "riff"],
-        parent_caption_id: UUID | None,
+        shown_captions: list[MMCaption],
         transaction_service: TransactionService
     ) -> dict:
         """Submit a caption for an image.
 
+        The backend automatically determines if the caption is a riff or original
+        based on cosine similarity analysis of the shown captions.
+
         This method:
-        1. Validates the caption text and parent (if riff)
-        2. Checks free caption quota
-        3. Charges submission fee if needed
-        4. Creates caption and submission log
-        5. Initializes quality score
+        1. Detects riffs algorithmically using cosine similarity
+        2. Validates the caption text
+        3. Checks free caption quota
+        4. Charges submission fee if needed
+        5. Creates caption and submission log
+        6. Initializes quality score
 
         Args:
             player: Player submitting caption
             image_id: Image ID
             text: Caption text
-            kind: "original" or "riff"
-            parent_caption_id: Parent caption ID (required for riffs)
+            shown_captions: List of captions shown in the round (for riff detection)
             transaction_service: Transaction service
 
         Returns:
             Dictionary with submission results
 
         Raises:
-            ValueError: Invalid caption or parent
+            ValueError: Invalid caption
             InsufficientBalanceError: Player cannot afford submission fee
         """
         lock_name = f"submit_caption:{player.player_id}"
@@ -72,22 +74,10 @@ class MMCaptionService:
             if not image or image.status != 'active':
                 raise ValueError(f"Image {image_id} not found or inactive")
 
-            # Validate parent caption if riff
-            parent = None
-            if kind == 'riff':
-                if not parent_caption_id:
-                    raise ValueError("Parent caption ID required for riff captions")
-
-                parent = await self.db.get(MMCaption, parent_caption_id)
-                if not parent or parent.image_id != image_id:
-                    raise ValueError(
-                        f"Invalid parent caption {parent_caption_id} for image {image_id}"
-                    )
-
-                # Validate riff similarity
-                is_valid, error = await self._validate_riff_caption(text, parent)
-                if not is_valid:
-                    raise ValueError(error)
+            # Detect riff or original using cosine similarity
+            kind, parent_caption_id = await self._detect_riff_or_original(
+                text, shown_captions
+            )
 
             # Check if caption text is duplicate (basic check)
             await self._check_duplicate_caption(image_id, text)
@@ -205,6 +195,63 @@ class MMCaptionService:
 
         if existing:
             raise ValueError("This caption already exists for this image")
+
+    async def _detect_riff_or_original(
+        self,
+        text: str,
+        shown_captions: list[MMCaption]
+    ) -> tuple[Literal["original", "riff"], UUID | None]:
+        """Detect if a new caption is a riff or original using cosine similarity.
+
+        Based on MM_GAME_RULES.md Section 5.2:
+        - Compute cosine similarity between new caption and each shown caption
+        - If max similarity > SIM_THRESHOLD (0.5), classify as riff with the caption
+          having highest similarity as parent
+        - Otherwise, classify as original
+
+        Args:
+            text: New caption text
+            shown_captions: List of 5 captions shown in the round
+
+        Returns:
+            Tuple of (kind, parent_caption_id)
+            - kind: "original" or "riff"
+            - parent_caption_id: UUID if riff, None if original
+        """
+        if not shown_captions:
+            # No captions to compare against, treat as original
+            return "original", None
+
+        # Get the phrase validator (uses sentence transformers for similarity)
+        validator = get_phrase_validator()
+
+        # Calculate cosine similarity to each shown caption
+        similarities = []
+        for caption in shown_captions:
+            similarity = validator.calculate_similarity(text, caption.text)
+            similarities.append((similarity, caption))
+
+        # Find max similarity
+        max_similarity, most_similar_caption = max(
+            similarities, key=lambda x: x[0]
+        )
+
+        # Get SIM_THRESHOLD from config (default 0.5 per game rules)
+        sim_threshold = await self.config_service.get_config_value(
+            "mm_riff_similarity_threshold",
+            default=0.5
+        )
+
+        logger.debug(
+            f"Riff detection: text='{text[:50]}...', "
+            f"max_sim={max_similarity:.3f}, threshold={sim_threshold}"
+        )
+
+        # Classify based on threshold
+        if max_similarity > sim_threshold:
+            return "riff", most_similar_caption.caption_id
+        else:
+            return "original", None
 
     async def _validate_riff_caption(
         self,

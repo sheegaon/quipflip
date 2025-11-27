@@ -5,31 +5,32 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from backend.schemas.base import BaseSchema
+from pydantic import Field
 
 
-class SurveyAnswer(BaseModel):
+class SurveyAnswer(BaseSchema):
     """Individual answer payload."""
 
     question_id: str = Field(..., min_length=1)
     value: Any
 
 
-class SurveySubmission(BaseModel):
+class SurveySubmission(BaseSchema):
     """Survey submission payload from the frontend."""
 
     survey_id: str = Field(..., min_length=1)
     answers: list[SurveyAnswer]
 
 
-class SurveySubmissionResponse(BaseModel):
+class SurveySubmissionResponse(BaseSchema):
     """Response returned after handling survey submission."""
 
     status: str
     message: str
 
 
-class SurveyStatusResponse(BaseModel):
+class SurveyStatusResponse(BaseSchema):
     """Survey eligibility + completion state for the current player."""
 
     eligible: bool
@@ -37,7 +38,7 @@ class SurveyStatusResponse(BaseModel):
     total_rounds: int
 
 
-class SurveyResponseRecord(BaseModel):
+class SurveyResponseRecord(BaseSchema):
     """Representation of a stored survey response."""
 
     response_id: UUID
@@ -47,7 +48,7 @@ class SurveyResponseRecord(BaseModel):
     created_at: datetime
 
 
-class SurveyResponseList(BaseModel):
+class SurveyResponseList(BaseSchema):
     """Envelope for admin survey list endpoint."""
 
     submissions: list[SurveyResponseRecord]

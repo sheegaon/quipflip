@@ -848,29 +848,52 @@ export const GameProvider: React.FC<{
     visitorId,
   };
 
-  const actions: GameActions = {
-    startSession,
-    logout,
-    refreshDashboard,
-    refreshBalance,
-    claimBonus,
-    clearError,
-    setGlobalError,
-    navigateAfterDelay,
-    startPromptRound,
-    startCopyRound,
-    fetchCopyHints,
-    flagCopyRound,
-    abandonRound,
-    startVoteRound,
-    claimPhrasesetPrize,
-    updateActiveRound,
-  };
+  const actions: GameActions = React.useMemo(
+    () => ({
+      startSession,
+      logout,
+      refreshDashboard,
+      refreshBalance,
+      claimBonus,
+      clearError,
+      setGlobalError,
+      navigateAfterDelay,
+      startPromptRound,
+      startCopyRound,
+      fetchCopyHints,
+      flagCopyRound,
+      abandonRound,
+      startVoteRound,
+      claimPhrasesetPrize,
+      updateActiveRound,
+    }),
+    [
+      startSession,
+      logout,
+      refreshDashboard,
+      refreshBalance,
+      claimBonus,
+      clearError,
+      setGlobalError,
+      navigateAfterDelay,
+      startPromptRound,
+      startCopyRound,
+      fetchCopyHints,
+      flagCopyRound,
+      abandonRound,
+      startVoteRound,
+      claimPhrasesetPrize,
+      updateActiveRound,
+    ],
+  );
 
-  const value: GameContextType = {
-    state,
-    actions,
-  };
+  const value: GameContextType = React.useMemo(
+    () => ({
+      state,
+      actions,
+    }),
+    [state, actions],
+  );
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>;
 };

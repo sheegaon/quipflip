@@ -171,13 +171,18 @@ async def submit_caption(
 ):
     """Submit a caption for an image.
 
+    The backend automatically determines if the caption is a riff or original
+    based on cosine similarity analysis against the 5 captions shown in the round.
     First caption per day is free, subsequent captions cost 10 FC (default).
     """
+    from sqlalchemy import select
+    from backend.models.mm.caption import MMCaption
+
     transaction_service = TransactionService(db, GameType.MM)
     caption_service = MMCaptionService(db)
     game_service = MMGameService(db)
 
-    # Get the round to determine which image to caption
+    # Get the round to determine which image to caption and get the shown captions
     round_obj = await game_service.get_round(request.round_id, player.player_id)
     if not round_obj:
         raise HTTPException(status_code=404, detail="Round not found")
@@ -185,13 +190,18 @@ async def submit_caption(
     # Get the image from the round
     image_id = round_obj.image_id
 
+    # Load the captions that were shown in this round for riff detection
+    caption_ids = [UUID(str(cid)) for cid in round_obj.caption_ids_shown]
+    stmt = select(MMCaption).where(MMCaption.caption_id.in_(caption_ids))
+    result = await db.execute(stmt)
+    shown_captions = result.scalars().all()
+
     try:
         result = await caption_service.submit_caption(
             player,
             image_id,
             request.caption_text,
-            request.caption_type,
-            request.parent_caption_id,
+            shown_captions,  # Pass captions for algorithmic riff detection
             transaction_service
         )
 

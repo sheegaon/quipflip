@@ -2,7 +2,7 @@
 import logging
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.config import get_settings
@@ -23,6 +23,7 @@ from backend.schemas.backronym import (
     ValidateBackronymRequest,
     ValidateBackronymResponse,
 )
+from backend.services.auth_service import GameType
 from backend.services.ir.backronym_set_service import BackronymSetService
 from backend.services.ir.result_view_service import IRResultViewService
 from backend.services.ir.scoring_service import IRScoringService
@@ -35,6 +36,36 @@ router = APIRouter()
 settings = get_settings()
 
 
+# IR-specific wrapper for get_current_player
+async def get_ir_player(
+    request: Request,
+    authorization: str | None = Header(default=None, alias="Authorization"),
+    db: AsyncSession = Depends(get_db),
+) -> IRPlayer:
+    """Get current IR player."""
+    return await get_current_player(
+        request=request,
+        game_type=GameType.IR,
+        authorization=authorization,
+        db=db
+    )
+
+
+# IR-specific wrapper for enforce_vote_rate_limit
+async def enforce_ir_vote_rate_limit(
+    request: Request,
+    authorization: str | None = Header(default=None, alias="Authorization"),
+    db: AsyncSession = Depends(get_db),
+) -> IRPlayer:
+    """Enforce vote rate limits for IR game."""
+    return await enforce_vote_rate_limit(
+        request=request,
+        game_type=GameType.IR,
+        authorization=authorization,
+        db=db
+    )
+
+
 def _format_datetime(dt: datetime | None) -> str | None:
     """Ensure datetime responses include UTC timezone info."""
 
@@ -45,7 +76,7 @@ def _format_datetime(dt: datetime | None) -> str | None:
 @router.post("/start", response_model=StartGameResponse)
 async def start_game(
     _: StartGameRequest | None = None,
-    player: IRPlayer = Depends(get_current_player),
+    player: IRPlayer = Depends(get_ir_player),
     db: AsyncSession = Depends(get_db),
 ) -> StartGameResponse:
     """Start a new backronym battle or join an existing one."""
@@ -95,7 +126,7 @@ async def start_game(
 async def submit_backronym(
     set_id: str,
     request: SubmitBackronymRequest,
-    player: IRPlayer = Depends(get_current_player),
+    player: IRPlayer = Depends(get_ir_player),
     db: AsyncSession = Depends(get_db),
 ) -> SubmitBackronymResponse:
     """Submit a backronym entry to a set."""
@@ -136,7 +167,7 @@ async def submit_backronym(
 async def validate_backronym(
     set_id: str,
     request: ValidateBackronymRequest,
-    _: IRPlayer = Depends(get_current_player),
+    _: IRPlayer = Depends(get_ir_player),
     db: AsyncSession = Depends(get_db),
 ) -> ValidateBackronymResponse:
     """Validate backronym words using the backend validator service."""
@@ -172,7 +203,7 @@ async def validate_backronym(
 @router.get("/sets/{set_id}/status", response_model=SetStatusResponse)
 async def get_set_status(
     set_id: str,
-    player: IRPlayer = Depends(get_current_player),
+    player: IRPlayer = Depends(get_ir_player),
     db: AsyncSession = Depends(get_db),
 ) -> SetStatusResponse:
     """Get current status of a backronym set."""
@@ -227,7 +258,7 @@ async def get_set_status(
 async def submit_vote(
     set_id: str,
     request: SubmitVoteRequest,
-    player: IRPlayer = Depends(enforce_vote_rate_limit),
+    player: IRPlayer = Depends(enforce_ir_vote_rate_limit),
     db: AsyncSession = Depends(get_db),
 ) -> SubmitVoteResponse:
     """Submit a vote on a backronym entry."""
@@ -272,7 +303,7 @@ async def submit_vote(
 @router.get("/sets/{set_id}/results", response_model=ResultsResponse)
 async def get_results(
     set_id: str,
-    player: IRPlayer = Depends(get_current_player),
+    player: IRPlayer = Depends(get_ir_player),
     db: AsyncSession = Depends(get_db),
 ) -> ResultsResponse:
     """Get finalized results for a set with full details."""

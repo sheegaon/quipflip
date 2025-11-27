@@ -26,34 +26,6 @@ SYSTEM_PLAYER_ID = UUID("00000000-0000-0000-0000-000000000001")
 IMAGES_DIR = Path(__file__).parent / "mm_images"
 IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
 
-# Legacy remote placeholders kept as a fallback when local images are missing
-REMOTE_PLACEHOLDER_IMAGES = [
-    {
-        "source_url": "https://picsum.photos/seed/mm1/800/600",
-        "thumbnail_url": "https://picsum.photos/seed/mm1/200/150",
-        "attribution_text": "Random image from Lorem Picsum",
-        "tags": ["random", "mixed"],
-    },
-    {
-        "source_url": "https://picsum.photos/seed/mm2/800/600",
-        "thumbnail_url": "https://picsum.photos/seed/mm2/200/150",
-        "attribution_text": "Random image from Lorem Picsum",
-        "tags": ["random", "nature"],
-    },
-    {
-        "source_url": "https://picsum.photos/seed/mm3/800/600",
-        "thumbnail_url": "https://picsum.photos/seed/mm3/200/150",
-        "attribution_text": "Random image from Lorem Picsum",
-        "tags": ["random", "urban"],
-    },
-    {
-        "source_url": "https://picsum.photos/seed/mm4/800/600",
-        "thumbnail_url": "https://picsum.photos/seed/mm4/200/150",
-        "attribution_text": "Random image from Lorem Picsum",
-        "tags": ["random", "animals"],
-    },
-]
-
 
 # Generic captions that can work with any image
 GENERIC_CAPTIONS = [
@@ -93,12 +65,14 @@ GENERIC_CAPTIONS = [
 def build_placeholder_images() -> list[dict]:
     """Create placeholder image records from the local mm_images directory.
 
-    Falls back to remote placeholders if the directory is missing or empty.
+    Only uses local images - no fallback to remote placeholders.
     """
 
     if not IMAGES_DIR.exists():
-        logger.warning("Local image directory not found; using remote placeholders.")
-        return REMOTE_PLACEHOLDER_IMAGES
+        raise FileNotFoundError(
+            f"Local image directory not found at {IMAGES_DIR}. "
+            "Please ensure backend/data/mm_images/ exists with image files."
+        )
 
     placeholder_images = []
 
@@ -114,8 +88,10 @@ def build_placeholder_images() -> list[dict]:
         })
 
     if not placeholder_images:
-        logger.warning("No valid images found locally; using remote placeholders.")
-        return REMOTE_PLACEHOLDER_IMAGES
+        raise FileNotFoundError(
+            f"No valid image files found in {IMAGES_DIR}. "
+            f"Supported formats: {', '.join(IMAGE_EXTENSIONS)}"
+        )
 
     return placeholder_images
 

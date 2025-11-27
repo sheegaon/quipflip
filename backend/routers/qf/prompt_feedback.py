@@ -1,5 +1,5 @@
 """Prompt feedback API router."""
-from fastapi import APIRouter, Depends, HTTPException, Path
+from fastapi import APIRouter, Depends, Header, HTTPException, Path, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from backend.database import get_db
@@ -12,6 +12,7 @@ from backend.schemas.prompt_feedback import (
     PromptFeedbackResponse,
     GetPromptFeedbackResponse,
 )
+from backend.services.auth_service import GameType
 from uuid import UUID, uuid4
 from datetime import datetime, UTC
 import logging
@@ -21,11 +22,26 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+# QF-specific wrapper for get_current_player
+async def get_qf_player(
+    request: Request,
+    authorization: str | None = Header(default=None, alias="Authorization"),
+    db: AsyncSession = Depends(get_db),
+) -> QFPlayer:
+    """Get current QF player."""
+    return await get_current_player(
+        request=request,
+        game_type=GameType.QF,
+        authorization=authorization,
+        db=db
+    )
+
+
 @router.post("/{round_id}/feedback", response_model=PromptFeedbackResponse)
 async def submit_prompt_feedback(
     round_id: UUID = Path(...),
     request: SubmitPromptFeedbackRequest = ...,
-    player: QFPlayer = Depends(get_current_player),
+    player: QFPlayer = Depends(get_qf_player),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -104,7 +120,7 @@ async def submit_prompt_feedback(
 @router.get("/{round_id}/feedback", response_model=GetPromptFeedbackResponse)
 async def get_prompt_feedback(
     round_id: UUID = Path(...),
-    player: QFPlayer = Depends(get_current_player),
+    player: QFPlayer = Depends(get_qf_player),
     db: AsyncSession = Depends(get_db),
 ):
     """
