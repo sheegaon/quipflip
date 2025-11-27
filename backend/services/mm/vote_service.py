@@ -335,7 +335,7 @@ class MMVoteService:
             return False
 
         # This is the first vote! Award bonus to the voter
-        bonus_amount = await self.config_service.get_config_value("mm_first_vote_bonus_amount", default=10)
+        bonus_amount = await self.config_service.get_config_value("mm_first_vote_bonus_amount", default=2)
 
         if bonus_amount > 0:
             # Use round_obj.player_id since the player who created the round is the one voting

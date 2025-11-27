@@ -93,6 +93,13 @@ class MMSystemConfigService(SystemConfigService):
             "min": 0,
             "max": 10000,
         },
+        "mm_first_vote_bonus_amount": {
+            "type": "int",
+            "category": "economics",
+            "description": "Wallet bonus for first vote on a caption",
+            "min": 0,
+            "max": 10000,
+        },
     }
 
     DEFAULTS = {
@@ -104,6 +111,7 @@ class MMSystemConfigService(SystemConfigService):
         "mm_daily_bonus_amount": 100,
         "mm_lcf_bonus_wallet": 2,
         "mm_lcf_bonus_vault": 1,
+        "mm_first_vote_bonus_amount": 2,
     }
 
     def __init__(self, session, game_type: GameType = GameType.MM):
