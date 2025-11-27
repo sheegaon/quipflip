@@ -399,8 +399,18 @@ class MMVoteService:
                 f"{caption.quality_score:.3f} ({caption.picks}/{caption.shows})"
             )
 
-        # Mark all captions as seen by this player
+        # Mark all captions as seen by this player, avoiding duplicate inserts
+        existing_seen_stmt = select(MMCaptionSeen.caption_id).where(
+            MMCaptionSeen.player_id == player_id,
+            MMCaptionSeen.caption_id.in_(caption_ids),
+        )
+        existing_seen = await self.db.execute(existing_seen_stmt)
+        already_seen_ids = set(existing_seen.scalars().all())
+
         for caption in captions:
+            if caption.caption_id in already_seen_ids:
+                continue
+
             seen_record = MMCaptionSeen(
                 player_id=player_id,
                 caption_id=caption.caption_id,
