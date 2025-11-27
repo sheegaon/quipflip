@@ -47,6 +47,30 @@ class MMScoringService:
         )
 
     @staticmethod
+    def should_retire_caption(
+        caption: MMCaption,
+        min_shows_before_retirement: int,
+        min_quality_score: float,
+    ) -> bool:
+        """Determine whether a caption should be retired based on performance.
+
+        Args:
+            caption: Caption to evaluate
+            min_shows_before_retirement: Minimum shows required before retirement is considered
+            min_quality_score: Quality score threshold for retirement
+
+        Returns:
+            True if the caption meets retirement criteria, otherwise False.
+        """
+        if caption.status != 'active':
+            return False
+
+        if caption.shows < min_shows_before_retirement:
+            return False
+
+        return caption.picks == 0 or (caption.quality_score or 0) < min_quality_score
+
+    @staticmethod
     def calculate_riff_split(
         total_payout: int,
         is_riff: bool

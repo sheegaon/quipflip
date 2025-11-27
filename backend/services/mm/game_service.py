@@ -311,12 +311,24 @@ class MMGameService:
         Args:
             captions: List of captions to increment
         """
+        min_shows = await self.config_service.get_config_value(
+            "mm_retire_after_shows", default=5
+        )
+        min_quality = await self.config_service.get_config_value(
+            "mm_min_quality_score_active", default=0.05
+        )
+
         for caption in captions:
             caption.shows += 1
             # Update quality score but don't flush yet - we'll batch flush all changes
             caption.quality_score = self.scoring_service.calculate_quality_score(
                 caption.picks, caption.shows
             )
+
+            if self.scoring_service.should_retire_caption(
+                caption, min_shows, min_quality
+            ):
+                caption.status = 'retired'
             logger.debug(
                 f"Updated quality score for caption {caption.caption_id}: "
                 f"{caption.quality_score:.3f} ({caption.picks}/{caption.shows})"
