@@ -84,60 +84,77 @@ class MMScoringService:
     @staticmethod
     def calculate_wallet_vault_split(
         gross_payout: int,
-        entry_cost: int,
-        vault_pct: float
+        current_lifetime_earnings: int,
+        threshold: int = 100,
+        post_threshold_vault_pct: float = 0.5
     ) -> tuple[int, int]:
-        """Calculate wallet/vault split based on house rake percentage.
+        """Calculate wallet/vault split based on caption's lifetime earnings.
+
+        Per MM_GAME_RULES.md Section 6:
+        - First 100 MC of lifetime earnings -> 100% to wallet
+        - After 100 MC threshold -> 50% to wallet, 50% to vault
 
         The vault is a global sink for ecosystem-wide leaderboards.
         Players' vault contributions accumulate but are not spendable.
 
-        Logic:
-        - If gross_payout <= entry_cost (loss or break-even):
-          - Everything goes to wallet (full refund of remaining value)
-          - Nothing to vault
-        - If gross_payout > entry_cost (profit):
-          - Net profit = gross_payout - entry_cost
-          - vault_amount = int(net_profit * vault_pct)
-          - wallet_amount = gross_payout - vault_amount
-
         Args:
-            gross_payout: Total payout before split
-            entry_cost: Original cost to enter (for calculating net profit)
-            vault_pct: Percentage of net profit to vault (e.g., 0.3 for 30%)
+            gross_payout: Amount to distribute in this transaction
+            current_lifetime_earnings: Caption's lifetime_earnings_gross BEFORE this payout
+            threshold: Lifetime earnings threshold (default 100 MC per rules)
+            post_threshold_vault_pct: Vault percentage after threshold (default 0.5 = 50%)
 
         Returns:
             Tuple of (wallet_amount, vault_amount)
+
+        Example:
+            Caption has earned 80 MC lifetime, receives 30 MC payout:
+            - 20 MC goes to wallet (fills to 100 MC threshold)
+            - 10 MC split: 5 to wallet, 5 to vault (above threshold)
+            - Total: 25 MC wallet, 5 MC vault
         """
-        net_profit = gross_payout - entry_cost
+        # Calculate how much room is left before hitting the threshold
+        room_to_threshold = max(0, threshold - current_lifetime_earnings)
 
-        if net_profit <= 0:
-            # Loss or break-even: everything to wallet
-            return gross_payout, 0
+        # Amount below threshold goes 100% to wallet
+        wallet_part = min(gross_payout, room_to_threshold)
 
-        # Profit: split the net profit
-        vault_amount = int(net_profit * vault_pct)
-        wallet_amount = gross_payout - vault_amount
+        # Amount above threshold is split according to post_threshold_vault_pct
+        amount_above_threshold = max(0, gross_payout - room_to_threshold)
 
-        return wallet_amount, vault_amount
+        if amount_above_threshold > 0:
+            # Split the amount above threshold
+            wallet_part += int(amount_above_threshold * (1 - post_threshold_vault_pct))
+            vault_part = gross_payout - wallet_part
+        else:
+            vault_part = 0
+
+        return wallet_part, vault_part
 
     def calculate_caption_payout(
         self,
         gross_payout: int,
-        entry_cost: int,
+        author_lifetime_earnings: int,
+        parent_lifetime_earnings: int,
         is_riff: bool,
-        vault_pct: float
+        threshold: int = 100,
+        post_threshold_vault_pct: float = 0.5
     ) -> dict:
         """Calculate complete payout breakdown for a caption.
 
         This combines riff splitting and wallet/vault splitting to produce
         the final distribution of funds.
 
+        Per MM_GAME_RULES.md Section 6:
+        - First 100 MC of each caption's lifetime earnings -> 100% to wallet
+        - After threshold -> 50% wallet, 50% vault
+
         Args:
             gross_payout: Total payout earned by caption
-            entry_cost: Original entry cost (for net profit calculation)
+            author_lifetime_earnings: Author caption's current lifetime_earnings_gross
+            parent_lifetime_earnings: Parent caption's current lifetime_earnings_gross (if riff)
             is_riff: Whether this is a riff caption
-            vault_pct: Vault percentage from config (e.g., 0.3)
+            threshold: Lifetime earnings threshold (default 100 MC)
+            post_threshold_vault_pct: Vault % after threshold (default 0.5)
 
         Returns:
             Dictionary with payout breakdown:
@@ -154,14 +171,20 @@ class MMScoringService:
         # First, split between author and parent (if riff)
         author_gross, parent_gross = self.calculate_riff_split(gross_payout, is_riff)
 
-        # Then, split each portion between wallet and vault
+        # Then, split each portion between wallet and vault based on lifetime earnings
         author_wallet, author_vault = self.calculate_wallet_vault_split(
-            author_gross, entry_cost, vault_pct
+            author_gross,
+            author_lifetime_earnings,
+            threshold,
+            post_threshold_vault_pct
         )
 
         if parent_gross > 0:
             parent_wallet, parent_vault = self.calculate_wallet_vault_split(
-                parent_gross, 0, vault_pct  # Parent has no entry cost
+                parent_gross,
+                parent_lifetime_earnings,
+                threshold,
+                post_threshold_vault_pct
             )
         else:
             parent_wallet, parent_vault = 0, 0

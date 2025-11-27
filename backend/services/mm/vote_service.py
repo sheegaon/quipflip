@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.models.mm.caption import MMCaption
+from backend.models.mm.caption_seen import MMCaptionSeen
 from backend.models.mm.player import MMPlayer
 from backend.models.mm.vote_round import MMVoteRound
 from backend.services.transaction_service import TransactionService
@@ -106,6 +107,10 @@ class MMVoteService:
             round_obj.chosen_caption_id = caption_id
             round_obj.result_finalized_at = datetime.now(UTC)
 
+            # Per MM_GAME_RULES.md Section 4.4: Increment shows for all 5 captions
+            # and mark them as seen AFTER vote (not during round start)
+            await self._increment_caption_shows_and_mark_seen(round_obj, player.player_id)
+
             # Increment caption picks and update quality score
             caption.picks += 1
             await self.scoring_service.update_caption_quality_score(caption)
@@ -169,8 +174,10 @@ class MMVoteService:
     ) -> dict:
         """Distribute payouts to caption author and parent (if riff).
 
-        For the MVP, we'll use a simple payout of the entry_cost.
-        In the future, this could be based on accumulated pool, vote counts, etc.
+        Per MM_GAME_RULES.md Section 4.5-4.6:
+        - Base payout = entry_cost (from voter)
+        - Writer bonus = entry_cost * WRITER_BONUS_MULTIPLIER (minted by system)
+        - Total gross payout = entry_cost * (1 + WRITER_BONUS_MULTIPLIER)
 
         Args:
             caption: Chosen caption
@@ -189,17 +196,35 @@ class MMVoteService:
             logger.error(f"Caption {caption.caption_id} has no author_player_id - cannot distribute payouts")
             raise ValueError("Invalid caption: missing author_player_id")
 
-        # Simple payout: return the entry cost to caption author(s)
-        # This makes voting revenue-neutral for now
-        gross_payout = entry_cost
+        # Get writer bonus multiplier from config (default 3 per game rules)
+        writer_bonus_multiplier = await self.config_service.get_config_value(
+            "mm_writer_bonus_multiplier", default=3
+        )
 
-        # Calculate split
+        # Calculate total payout: base (from entry cost) + bonus (minted)
+        # Example: entry_cost=5, multiplier=3 -> gross_payout = 5 + (5*3) = 20 MC
+        base_payout = entry_cost
+        writer_bonus = entry_cost * writer_bonus_multiplier
+        gross_payout = base_payout + writer_bonus
+
+        # Get current lifetime earnings BEFORE this payout (for threshold calculation)
+        author_lifetime_earnings = caption.lifetime_earnings_gross
+        parent_lifetime_earnings = 0
+        parent_caption = None
+
+        # If riff, load parent caption for lifetime earnings
         is_riff = caption.kind == 'riff'
+        if is_riff and caption.parent_caption_id:
+            parent_caption = await self.db.get(MMCaption, caption.parent_caption_id)
+            if parent_caption:
+                parent_lifetime_earnings = parent_caption.lifetime_earnings_gross
+
+        # Calculate split (per MM_GAME_RULES.md Section 6)
         payout_breakdown = self.scoring_service.calculate_caption_payout(
             gross_payout,
-            0,  # Caption author has no entry cost
-            is_riff,
-            house_rake_vault_pct
+            author_lifetime_earnings,
+            parent_lifetime_earnings,
+            is_riff
         )
 
         # Update caption earnings tracking
@@ -230,39 +255,37 @@ class MMVoteService:
                 wallet_type="vault"
             )
 
-        # Pay parent author (if riff)
-        if is_riff and caption.parent_caption_id:
-            parent_caption = await self.db.get(MMCaption, caption.parent_caption_id)
-            if parent_caption and parent_caption.author_player_id:
-                # Update parent caption earnings
-                parent_caption.lifetime_earnings_gross += payout_breakdown['parent_gross']
-                parent_caption.lifetime_to_wallet += payout_breakdown['parent_wallet']
-                parent_caption.lifetime_to_vault += payout_breakdown['parent_vault']
+        # Pay parent author (if riff) - reuse parent_caption loaded earlier
+        if is_riff and parent_caption and parent_caption.author_player_id:
+            # Update parent caption earnings
+            parent_caption.lifetime_earnings_gross += payout_breakdown['parent_gross']
+            parent_caption.lifetime_to_wallet += payout_breakdown['parent_wallet']
+            parent_caption.lifetime_to_vault += payout_breakdown['parent_vault']
 
-                if payout_breakdown['parent_wallet'] > 0:
-                    await transaction_service.create_transaction(
-                        parent_caption.author_player_id,
-                        payout_breakdown['parent_wallet'],
-                        "mm_caption_payout_wallet",
-                        reference_id=parent_caption.caption_id,
-                        auto_commit=False,
-                        skip_lock=True,
-                        wallet_type="wallet"
-                    )
+            if payout_breakdown['parent_wallet'] > 0:
+                await transaction_service.create_transaction(
+                    parent_caption.author_player_id,
+                    payout_breakdown['parent_wallet'],
+                    "mm_caption_payout_wallet",
+                    reference_id=parent_caption.caption_id,
+                    auto_commit=False,
+                    skip_lock=True,
+                    wallet_type="wallet"
+                )
 
-                if payout_breakdown['parent_vault'] > 0:
-                    await transaction_service.create_transaction(
-                        parent_caption.author_player_id,
-                        payout_breakdown['parent_vault'],
-                        "mm_caption_payout_vault",
-                        reference_id=parent_caption.caption_id,
-                        auto_commit=False,
-                        skip_lock=True,
-                        wallet_type="vault"
-                    )
-            else:
-                logger.warning(f"Riff caption {caption.caption_id} references parent {caption.parent_caption_id} "
-                               f"but parent not found or has no author")
+            if payout_breakdown['parent_vault'] > 0:
+                await transaction_service.create_transaction(
+                    parent_caption.author_player_id,
+                    payout_breakdown['parent_vault'],
+                    "mm_caption_payout_vault",
+                    reference_id=parent_caption.caption_id,
+                    auto_commit=False,
+                    skip_lock=True,
+                    wallet_type="vault"
+                )
+        elif is_riff and caption.parent_caption_id:
+            logger.warning(f"Riff caption {caption.caption_id} references parent {caption.parent_caption_id} "
+                           f"but parent not found or has no author")
 
         return {
             'total_gross': payout_breakdown['total_gross'],
@@ -323,3 +346,46 @@ class MMVoteService:
             return True
 
         return False
+
+    async def _increment_caption_shows_and_mark_seen(
+        self,
+        round_obj: MMVoteRound,
+        player_id: UUID
+    ) -> None:
+        """Increment shows for all captions in round and mark as seen.
+
+        Per MM_GAME_RULES.md Section 4.4, this happens AFTER vote submission,
+        not during round start.
+
+        Args:
+            round_obj: The vote round
+            player_id: Player who voted
+        """
+        # Load all captions shown in this round
+        caption_ids = [UUID(str(cid)) for cid in round_obj.caption_ids_shown]
+        stmt = select(MMCaption).where(MMCaption.caption_id.in_(caption_ids))
+        result = await self.db.execute(stmt)
+        captions = list(result.scalars().all())
+
+        # Increment shows counter and update quality scores
+        for caption in captions:
+            caption.shows += 1
+            caption.quality_score = self.scoring_service.calculate_quality_score(
+                caption.picks, caption.shows
+            )
+            logger.debug(
+                f"Updated shows for caption {caption.caption_id}: "
+                f"{caption.quality_score:.3f} ({caption.picks}/{caption.shows})"
+            )
+
+        # Mark all captions as seen by this player
+        for caption in captions:
+            seen_record = MMCaptionSeen(
+                player_id=player_id,
+                caption_id=caption.caption_id,
+                image_id=round_obj.image_id,
+                first_seen_at=datetime.now(UTC),
+            )
+            self.db.add(seen_record)
+
+        await self.db.flush()
