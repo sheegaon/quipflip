@@ -1,5 +1,5 @@
 """Phrasesets API router."""
-from fastapi import APIRouter, Depends, HTTPException, Path
+from fastapi import APIRouter, Depends, Header, HTTPException, Path, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from backend.database import get_db
 from backend.dependencies import get_current_player, enforce_vote_rate_limit
@@ -18,6 +18,7 @@ from backend.schemas.phraseset import (
 )
 from backend.services import TransactionService
 from backend.services.qf import QFVoteService, PhrasesetService
+from backend.services.auth_service import GameType
 from backend.utils.exceptions import RoundExpiredError, AlreadyVotedError
 from backend.utils import ensure_utc
 from uuid import UUID
@@ -28,11 +29,41 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+# QF-specific wrapper for enforce_vote_rate_limit
+async def enforce_qf_vote_rate_limit(
+    request: Request,
+    authorization: str | None = Header(default=None, alias="Authorization"),
+    db: AsyncSession = Depends(get_db),
+) -> QFPlayer:
+    """Enforce vote rate limits for QF game."""
+    return await enforce_vote_rate_limit(
+        request=request,
+        game_type=GameType.QF,
+        authorization=authorization,
+        db=db
+    )
+
+
+# QF-specific wrapper for get_current_player
+async def get_qf_player(
+    request: Request,
+    authorization: str | None = Header(default=None, alias="Authorization"),
+    db: AsyncSession = Depends(get_db),
+) -> QFPlayer:
+    """Get current QF player."""
+    return await get_current_player(
+        request=request,
+        game_type=GameType.QF,
+        authorization=authorization,
+        db=db
+    )
+
+
 @router.post("/{phraseset_id}/vote", response_model=VoteResponse | dict)
 async def submit_vote(
     phraseset_id: UUID = Path(...),
     request: VoteRequest = ...,
-    player: QFPlayer = Depends(enforce_vote_rate_limit),
+    player: QFPlayer = Depends(enforce_qf_vote_rate_limit),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -129,7 +160,7 @@ async def submit_vote(
 @router.get("/{phraseset_id}/details", response_model=PhrasesetDetails)
 async def get_phraseset_details(
     phraseset_id: UUID = Path(...),
-    player: QFPlayer = Depends(get_current_player),
+    player: QFPlayer = Depends(get_qf_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Return full details for a phraseset contribution."""
@@ -149,7 +180,7 @@ async def get_phraseset_details(
 @router.get("/{phraseset_id}/results", response_model=PhraseSetResults)
 async def get_phraseset_results(
     phraseset_id: UUID = Path(...),
-    player: QFPlayer = Depends(get_current_player),
+    player: QFPlayer = Depends(get_qf_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Get voting results for a phraseset (triggers prize collection on first view)."""
@@ -176,7 +207,7 @@ async def get_phraseset_results(
 @router.post("/{phraseset_id}/claim", response_model=ClaimPrizeResponse)
 async def claim_phraseset_prize(
     phraseset_id: UUID = Path(...),
-    player: QFPlayer = Depends(get_current_player),
+    player: QFPlayer = Depends(get_qf_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Explicitly mark a phraseset prize as claimed."""
@@ -199,7 +230,7 @@ async def claim_phraseset_prize(
 @router.get("/{phraseset_id}/history", response_model=PhrasesetHistory)
 async def get_phraseset_history(
     phraseset_id: UUID = Path(...),
-    player: QFPlayer = Depends(get_current_player),
+    player: QFPlayer = Depends(get_qf_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Get the complete event timeline for a phraseset.
@@ -233,7 +264,7 @@ async def get_phraseset_history(
 async def get_completed_phrasesets(
     limit: int = 10,
     offset: int = 0,
-    player: QFPlayer = Depends(get_current_player),
+    player: QFPlayer = Depends(get_qf_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Get a paginated list of all completed phrasesets.
@@ -253,7 +284,7 @@ async def get_completed_phrasesets(
 @router.get("/{phraseset_id}/public-details", response_model=PhrasesetDetails)
 async def get_public_phraseset_details(
     phraseset_id: UUID = Path(...),
-    player: QFPlayer = Depends(get_current_player),
+    player: QFPlayer = Depends(get_qf_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Return full details for a COMPLETED phraseset (public access for review)."""
@@ -272,7 +303,7 @@ async def get_public_phraseset_details(
 
 @router.get("/practice/random", response_model=PracticePhraseset)
 async def get_random_practice_phraseset(
-    player: QFPlayer = Depends(get_current_player),
+    player: QFPlayer = Depends(get_qf_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Get a random completed phraseset for practice mode.

@@ -11,7 +11,9 @@ from typing import List, Optional
 from fastapi import (
     APIRouter,
     Depends,
+    Header,
     HTTPException,
+    Request,
     WebSocket,
     WebSocketDisconnect,
     status,
@@ -51,6 +53,21 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 settings = get_settings()
+
+
+# QF-specific wrapper for get_current_player
+async def get_qf_player(
+    request: Request,
+    authorization: str | None = Header(default=None, alias="Authorization"),
+    db: AsyncSession = Depends(get_db),
+) -> QFPlayer:
+    """Get current QF player."""
+    return await get_current_player(
+        request=request,
+        game_type=GameType.QF,
+        authorization=authorization,
+        db=db
+    )
 
 
 async def authenticate_websocket(websocket: WebSocket) -> Optional[QFPlayer]:
@@ -309,7 +326,7 @@ async def get_online_users(db: AsyncSession) -> List[OnlineUser]:
 
 @router.get("/online", response_model=OnlineUsersResponse)
 async def get_online_users_endpoint(
-    player: QFPlayer = Depends(get_current_player),
+    player: QFPlayer = Depends(get_qf_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Get list of currently online users (last 30 minutes)."""
@@ -324,7 +341,7 @@ async def get_online_users_endpoint(
 @router.post("/online/ping", response_model=PingUserResponse)
 async def ping_online_user(
     request: PingUserRequest,
-    player: QFPlayer = Depends(get_current_player),
+    player: QFPlayer = Depends(get_qf_player),
     db: AsyncSession = Depends(get_db),
     connection_manager: NotificationConnectionManager = Depends(
         get_notification_manager
