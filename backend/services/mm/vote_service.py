@@ -86,14 +86,22 @@ class MMVoteService:
             if caption_id_str not in round_obj.caption_ids_shown:
                 raise ValueError(f"Caption {caption_id} was not shown in this round")
 
-            # Load caption with author relationship
-            stmt = select(MMCaption).where(MMCaption.caption_id == caption_id)
+            # Load all captions shown in the round (including chosen caption)
+            caption_ids = [UUID(str(cid)) for cid in round_obj.caption_ids_shown]
+            stmt = select(MMCaption).where(MMCaption.caption_id.in_(caption_ids))
             result = await self.db.execute(stmt)
-            caption = result.scalar_one_or_none()
+            captions = result.scalars().all()
+
+            captions_by_id = {cap.caption_id: cap for cap in captions}
+            caption = captions_by_id.get(caption_id)
 
             if not caption:
                 raise ValueError(f"Caption {caption_id} not found")
-            
+
+            if len(captions_by_id) != len(caption_ids):
+                missing_ids = set(caption_ids) - set(captions_by_id.keys())
+                logger.warning(f"Some captions from round {round_obj.round_id} were not found: {missing_ids}")
+
             # Check if this is a system-generated caption (allow these but skip payouts)
             is_system_caption = _is_system_generated_caption(caption)
             
@@ -102,6 +110,15 @@ class MMVoteService:
                 logger.error(f"Caption {caption_id} has no author_player_id. "
                              f"{caption.text=}, {caption.image_id=}, {caption.created_at=}, {caption.status=}")
                 raise ValueError(f"Invalid caption: missing author (caption_id: {caption_id})")
+
+            # Apply local crowd favorite bonus before mutating vote counts
+            pre_vote_counts = {cap_id: cap.picks for cap_id, cap in captions_by_id.items()}
+            local_crowd_favorite_awarded = await self._maybe_apply_local_crowd_favorite_bonus(
+                round_obj,
+                caption_id,
+                pre_vote_counts,
+                transaction_service
+            )
 
             # Update round
             round_obj.chosen_caption_id = caption_id
@@ -161,6 +178,7 @@ class MMVoteService:
                 'payout_wallet': payout_info['total_wallet'],
                 'payout_vault': payout_info['total_vault'],
                 'first_vote_bonus': first_vote_bonus_awarded,
+                'local_crowd_favorite_bonus': local_crowd_favorite_awarded,
                 'new_wallet': player.wallet,
                 'new_vault': player.vault,
             }
@@ -389,3 +407,64 @@ class MMVoteService:
             self.db.add(seen_record)
 
         await self.db.flush()
+
+    async def _maybe_apply_local_crowd_favorite_bonus(
+        self,
+        round_obj: MMVoteRound,
+        chosen_caption_id: UUID,
+        pre_vote_counts: dict[UUID, int],
+        transaction_service: TransactionService
+    ) -> bool:
+        """Award the local crowd favorite bonus when applicable.
+
+        The bonus triggers if at least three captions have been picked before and
+        there is a unique leader in global pick count that matches the player's
+        selection. Counts are evaluated before this vote's mutations.
+        """
+        if sum(1 for count in pre_vote_counts.values() if count > 0) < 3:
+            return False
+
+        max_count = max(pre_vote_counts.values(), default=0)
+
+        leaders = [cid for cid, count in pre_vote_counts.items() if count == max_count]
+        if len(leaders) != 1:
+            return False
+
+        if leaders[0] != chosen_caption_id:
+            return False
+
+        wallet_amount = await self.config_service.get_config_value(
+            "mm_lcf_bonus_wallet",
+            default=2,
+        )
+        vault_amount = await self.config_service.get_config_value(
+            "mm_lcf_bonus_vault",
+            default=1,
+        )
+
+        await transaction_service.create_transaction(
+            round_obj.player_id,
+            wallet_amount,
+            "mm_local_crowd_favorite_bonus",
+            reference_id=round_obj.round_id,
+            auto_commit=False,
+            skip_lock=True,
+            wallet_type="wallet"
+        )
+
+        await transaction_service.create_transaction(
+            round_obj.player_id,
+            vault_amount,
+            "mm_local_crowd_favorite_bonus",
+            reference_id=round_obj.round_id,
+            auto_commit=False,
+            skip_lock=True,
+            wallet_type="vault"
+        )
+
+        logger.info(
+            f"Local crowd favorite bonus awarded for round {round_obj.round_id}: "
+            f"{wallet_amount}w+{vault_amount}v to player {round_obj.player_id}"
+        )
+
+        return True
