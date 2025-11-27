@@ -167,7 +167,7 @@ async def submit_backronym(
 async def validate_backronym(
     set_id: str,
     request: ValidateBackronymRequest,
-    _: IRPlayer = Depends(get_current_player),
+    _: IRPlayer = Depends(get_ir_player),
     db: AsyncSession = Depends(get_db),
 ) -> ValidateBackronymResponse:
     """Validate backronym words using the backend validator service."""
