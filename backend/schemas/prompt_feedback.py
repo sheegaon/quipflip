@@ -1,12 +1,12 @@
 """Prompt feedback Pydantic schemas."""
-from pydantic import BaseModel, Field
-from backend.schemas.base import ConfigDict
+from pydantic import Field
+from backend.schemas.base import BaseSchema
 from datetime import datetime
 from uuid import UUID
 from typing import Literal
 
 
-class SubmitPromptFeedbackRequest(BaseModel):
+class SubmitPromptFeedbackRequest(BaseSchema):
     """Request to submit feedback on a prompt."""
     feedback_type: Literal['like', 'dislike'] = Field(
         ...,
@@ -14,16 +14,15 @@ class SubmitPromptFeedbackRequest(BaseModel):
     )
 
 
-class PromptFeedbackResponse(BaseModel):
+class PromptFeedbackResponse(BaseSchema):
     """Response after submitting feedback."""
     success: bool
     feedback_type: Literal['like', 'dislike']
     message: str = "Feedback submitted successfully"
 
 
-class GetPromptFeedbackResponse(BaseModel):
+class GetPromptFeedbackResponse(BaseSchema):
     """Response when retrieving feedback for a round."""
-    model_config = ConfigDict(from_attributes=True)
     feedback_type: Literal['like', 'dislike'] | None
     feedback_id: UUID | None = None
     last_updated_at: datetime | None = None

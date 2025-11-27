@@ -1,5 +1,5 @@
 """Base schemas with common configuration."""
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, model_serializer
 from datetime import datetime, UTC
 
 
@@ -22,8 +22,20 @@ class BaseSchema(BaseModel):
 
     model_config = ConfigDict(
         from_attributes=True,
-        # Use custom JSON serializers for datetimes
-        json_encoders={
-            datetime: serialize_datetime_utc,
-        }
     )
+
+    @model_serializer(mode="wrap")
+    def serialize_model(self, handler):
+        """Serialize model values with custom datetime handling."""
+
+        def _convert(value):
+            if isinstance(value, datetime):
+                return serialize_datetime_utc(value)
+            if isinstance(value, list):
+                return [_convert(item) for item in value]
+            if isinstance(value, dict):
+                return {key: _convert(item) for key, item in value.items()}
+            return value
+
+        data = handler(self)
+        return {key: _convert(value) for key, value in data.items()}

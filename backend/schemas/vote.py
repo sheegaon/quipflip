@@ -1,13 +1,11 @@
 """Vote-related Pydantic schemas."""
-from pydantic import BaseModel
-from backend.schemas.base import ConfigDict
+from backend.schemas.base import BaseSchema
 from datetime import datetime
 from uuid import UUID
 
 
-class VoteDetail(BaseModel):
+class VoteDetail(BaseSchema):
     """Vote detail."""
-    model_config = ConfigDict(from_attributes=True)
     vote_id: UUID
     player_id: UUID
     voted_word: str

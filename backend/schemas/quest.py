@@ -1,11 +1,11 @@
 """Quest-related Pydantic schemas."""
-from pydantic import BaseModel
+from backend.schemas.base import BaseSchema, ConfigDict
 from datetime import datetime
 from typing import Optional, Any, Dict
 from uuid import UUID
 
 
-class QuestProgress(BaseModel):
+class QuestProgress(BaseSchema):
     """Quest progress data."""
     current: int = 0
     target: int
@@ -26,11 +26,10 @@ class QuestProgress(BaseModel):
     phraseset_id: Optional[str] = None
     vote_count: Optional[int] = None
 
-    class Config:
-        extra = "allow"  # Allow additional fields from JSON
+    model_config = ConfigDict(from_attributes=True, extra="allow")  # Allow additional fields from JSON
 
 
-class QuestResponse(BaseModel):
+class QuestResponse(BaseSchema):
     """Quest response schema."""
     quest_id: UUID
     quest_type: str
@@ -49,11 +48,7 @@ class QuestResponse(BaseModel):
     progress_current: int
     progress_target: int
 
-    class Config:
-        from_attributes = True
-
-
-class ClaimQuestRewardResponse(BaseModel):
+class ClaimQuestRewardResponse(BaseSchema):
     """Response after claiming a quest reward."""
     success: bool
     quest_type: str
@@ -62,7 +57,7 @@ class ClaimQuestRewardResponse(BaseModel):
     new_vault: int
 
 
-class QuestListResponse(BaseModel):
+class QuestListResponse(BaseSchema):
     """List of quests response."""
     quests: list[QuestResponse]
     total_count: int

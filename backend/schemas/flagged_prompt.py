@@ -5,13 +5,13 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Literal, Optional
 from uuid import UUID
 
-from pydantic import BaseModel
+from backend.schemas.base import BaseSchema
 
 if TYPE_CHECKING:  # pragma: no cover - for typing only
     from backend.services import FlaggedPromptRecord
 
 
-class FlaggedPromptItem(BaseModel):
+class FlaggedPromptItem(BaseSchema):
     """Single flagged prompt record."""
 
     flag_id: UUID
@@ -62,13 +62,13 @@ class FlaggedPromptItem(BaseModel):
         )
 
 
-class FlaggedPromptListResponse(BaseModel):
+class FlaggedPromptListResponse(BaseSchema):
     """List response for flagged prompts."""
 
     flags: list[FlaggedPromptItem]
 
 
-class ResolveFlaggedPromptRequest(BaseModel):
+class ResolveFlaggedPromptRequest(BaseSchema):
     """Resolution action payload for flagged prompts."""
 
     action: Literal["confirm", "dismiss"]

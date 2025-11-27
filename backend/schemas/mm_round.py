@@ -1,5 +1,5 @@
 """Meme Mint round-related Pydantic schemas."""
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from datetime import datetime
 from typing import Literal
 from uuid import UUID
@@ -45,8 +45,7 @@ class SubmitCaptionRequest(BaseModel):
     round_id: UUID = Field(..., description="Round ID from vote round")
     caption_text: str = Field(..., min_length=1, max_length=240, description="Caption text", alias="text")
 
-    class Config:
-        populate_by_name = True  # Allow both field name and alias
+    model_config = ConfigDict(populate_by_name=True)  # Allow both field name and alias
 
     @field_validator('caption_text')
     @classmethod
