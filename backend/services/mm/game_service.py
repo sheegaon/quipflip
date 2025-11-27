@@ -317,6 +317,10 @@ class MMGameService:
             caption.quality_score = self.scoring_service.calculate_quality_score(
                 caption.picks, caption.shows
             )
+
+            await self.scoring_service.check_and_retire_caption(
+                caption, self.config_service
+            )
             logger.debug(
                 f"Updated quality score for caption {caption.caption_id}: "
                 f"{caption.quality_score:.3f} ({caption.picks}/{caption.shows})"

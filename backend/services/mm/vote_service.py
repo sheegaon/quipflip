@@ -131,6 +131,9 @@ class MMVoteService:
             # Increment caption picks and update quality score
             caption.picks += 1
             await self.scoring_service.update_caption_quality_score(caption)
+            await self.scoring_service.check_and_retire_caption(
+                caption, self.config_service
+            )
 
             # Skip payouts for system-generated captions
             if not is_system_caption:

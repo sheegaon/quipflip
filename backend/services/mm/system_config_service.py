@@ -112,6 +112,8 @@ class MMSystemConfigService(SystemConfigService):
         "mm_lcf_bonus_wallet": 2,
         "mm_lcf_bonus_vault": 1,
         "mm_first_vote_bonus_amount": 2,
+        "mm_retire_after_shows": 5,
+        "mm_min_quality_score_active": 0.05,
     }
 
     def __init__(self, session, game_type: GameType = GameType.MM):
