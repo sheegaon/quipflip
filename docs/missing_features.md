@@ -124,7 +124,7 @@
   This feature is completely missing from vote_service.py.
 
   ---
-  🟡 ISSUE #5: First Vote Bonus Amount Wrong
+  ✅ ISSUE #5: First Vote Bonus Amount Wrong
 
   Location: backend/services/mm/vote_service.py:297
 
@@ -133,10 +133,10 @@
 
   Implementation:
   bonus_amount = await self.config_service.get_config_value(
-      "mm_first_vote_bonus_amount", default=10
+      "mm_first_vote_bonus_amount", default=2
   )
 
-  Default is 10 MC instead of 2 MC (5× higher than intended).
+  Default now matches rules at 2 MC minted to the voter’s wallet.
 
   ---
   🟡 ISSUE #6: Caption Submission Cost Wrong
