@@ -79,6 +79,13 @@ class MMSystemConfigService(SystemConfigService):
             "min": 0,
             "max": 10000,
         },
+        "mm_first_vote_bonus_amount": {
+            "type": "int",
+            "category": "economics",
+            "description": "Wallet bonus for first vote on a caption",
+            "min": 0,
+            "max": 10000,
+        },
     }
 
     DEFAULTS = {
@@ -88,6 +95,7 @@ class MMSystemConfigService(SystemConfigService):
         "mm_caption_submission_cost": 10,
         "mm_house_rake_vault_pct": 0.5,
         "mm_daily_bonus_amount": 100,
+        "mm_first_vote_bonus_amount": 2,
     }
 
     def __init__(self, session, game_type: GameType = GameType.MM):
