@@ -1,22 +1,101 @@
-image_file,seed_caption1,seed_caption2,seed_caption3,seed_caption4,seed_caption5
-image001.png,"When you finally understand the assignment","Me pretending to be productive","That moment when everything clicks","Monday mood","Living my best life"
-image002.png,"This is fine","Big mood energy","Plot twist: it gets worse","My therapist needs to see this","Nobody asked but here we are"
-image003.png,"The accuracy is unsettling","We've all been here","Why is this so relatable","This hits different","I felt that"
-image004.png,"Every single time","Tell me I'm wrong","This is the way","Outstanding move","Well yes, but actually no"
-image005.png,"I see this as an absolute win","Professionals have standards","Sometimes genius is... it's almost frightening","Carefully, he's a hero","Because that's what heroes do"
-image006.png,"I don't think the system works","So uncivilized","You get what you deserve","Reality is often disappointing","I'm something of a scientist myself"
-image007.png,"When you finally understand the assignment","Me pretending to be productive","That moment when everything clicks","Monday mood","Living my best life"
-image008.png,"This is fine","Big mood energy","Plot twist: it gets worse","My therapist needs to see this","Nobody asked but here we are"
-image009.png,"The accuracy is unsettling","We've all been here","Why is this so relatable","This hits different","I felt that"
-image010.png,"Every single time","Tell me I'm wrong","This is the way","Outstanding move","Well yes, but actually no"
-image011.png,"I see this as an absolute win","Professionals have standards","Sometimes genius is... it's almost frightening","Carefully, he's a hero","Because that's what heroes do"
-image012.png,"I don't think the system works","So uncivilized","You get what you deserve","Reality is often disappointing","I'm something of a scientist myself"
-image013.png,"When you finally understand the assignment","Me pretending to be productive","That moment when everything clicks","Monday mood","Living my best life"
-image014.png,"This is fine","Big mood energy","Plot twist: it gets worse","My therapist needs to see this","Nobody asked but here we are"
-image015.png,"The accuracy is unsettling","We've all been here","Why is this so relatable","This hits different","I felt that"
-image016.png,"Every single time","Tell me I'm wrong","This is the way","Outstanding move","Well yes, but actually no"
-image017.png,"I see this as an absolute win","Professionals have standards","Sometimes genius is... it's almost frightening","Carefully, he's a hero","Because that's what heroes do"
-image018.png,"I don't think the system works","So uncivilized","You get what you deserve","Reality is often disappointing","I'm something of a scientist myself"
-image019.png,"When you finally understand the assignment","Me pretending to be productive","That moment when everything clicks","Monday mood","Living my best life"
-image020.png,"This is fine","Big mood energy","Plot twist: it gets worse","My therapist needs to see this","Nobody asked but here we are"
-image021.png,"The accuracy is unsettling","We've all been here","Why is this so relatable","This hits different","I felt that"
+image_file,seed_caption1,seed_caption2,seed_caption3,seed_caption4,seed_caption5,seed_caption6,seed_caption7,seed_caption8,seed_caption9,seed_caption10
+image001.png,Me pretending to be productive,That moment when everything clicks,Monday mood,Living my best life,This is fine,,,,,
+image002.png,That moment when everything clicks,Monday mood,Living my best life,This is fine,Big mood energy,Plot twist: it gets worse,,,,
+image003.png,Monday mood,Living my best life,This is fine,Big mood energy,Plot twist: it gets worse,My therapist needs to see this,Nobody asked but here we are,,,
+image004.png,Living my best life,This is fine,Big mood energy,Plot twist: it gets worse,My therapist needs to see this,Nobody asked but here we are,The accuracy is unsettling,We've all been here,,
+image005.png,This is fine,Big mood energy,Plot twist: it gets worse,My therapist needs to see this,Nobody asked but here we are,The accuracy is unsettling,We've all been here,Why is this so relatable,This hits different,
+image006.png,Big mood energy,Plot twist: it gets worse,My therapist needs to see this,Nobody asked but here we are,The accuracy is unsettling,We've all been here,Why is this so relatable,This hits different,I felt that,Every single time
+image007.png,Plot twist: it gets worse,My therapist needs to see this,Nobody asked but here we are,The accuracy is unsettling,We've all been here,,,,,
+image008.png,My therapist needs to see this,Nobody asked but here we are,The accuracy is unsettling,We've all been here,Why is this so relatable,This hits different,,,,
+image009.png,Nobody asked but here we are,The accuracy is unsettling,We've all been here,Why is this so relatable,This hits different,I felt that,Every single time,,,
+image010.png,The accuracy is unsettling,We've all been here,Why is this so relatable,This hits different,I felt that,Every single time,Tell me I'm wrong,This is the way,,
+image011.png,We've all been here,Why is this so relatable,This hits different,I felt that,Every single time,Tell me I'm wrong,This is the way,Outstanding move,"Well yes, but actually no",
+image012.png,Why is this so relatable,This hits different,I felt that,Every single time,Tell me I'm wrong,This is the way,Outstanding move,"Well yes, but actually no",I see this as an absolute win,Professionals have standards
+image013.png,This hits different,I felt that,Every single time,Tell me I'm wrong,This is the way,,,,,
+image014.png,I felt that,Every single time,Tell me I'm wrong,This is the way,Outstanding move,"Well yes, but actually no",,,,
+image015.png,Every single time,Tell me I'm wrong,This is the way,Outstanding move,"Well yes, but actually no",I see this as an absolute win,Professionals have standards,,,
+image016.png,Tell me I'm wrong,This is the way,Outstanding move,"Well yes, but actually no",I see this as an absolute win,Professionals have standards,Sometimes genius is... it's almost frightening,"Carefully, he's a hero",,
+image017.png,This is the way,Outstanding move,"Well yes, but actually no",I see this as an absolute win,Professionals have standards,Sometimes genius is... it's almost frightening,"Carefully, he's a hero",Because that's what heroes do,I don't think the system works,
+image018.png,Outstanding move,"Well yes, but actually no",I see this as an absolute win,Professionals have standards,Sometimes genius is... it's almost frightening,"Carefully, he's a hero",Because that's what heroes do,I don't think the system works,So uncivilized,You get what you deserve
+image019.png,"Well yes, but actually no",I see this as an absolute win,Professionals have standards,Sometimes genius is... it's almost frightening,"Carefully, he's a hero",,,,,
+image020.png,I see this as an absolute win,Professionals have standards,Sometimes genius is... it's almost frightening,"Carefully, he's a hero",Because that's what heroes do,I don't think the system works,,,,
+image021.png,Professionals have standards,Sometimes genius is... it's almost frightening,"Carefully, he's a hero",Because that's what heroes do,I don't think the system works,So uncivilized,You get what you deserve,,,
+image022.png,Sometimes genius is... it's almost frightening,"Carefully, he's a hero",Because that's what heroes do,I don't think the system works,So uncivilized,You get what you deserve,Reality is often disappointing,I'm something of a scientist myself,,
+image023.png,"Carefully, he's a hero",Because that's what heroes do,I don't think the system works,So uncivilized,You get what you deserve,Reality is often disappointing,I'm something of a scientist myself,When you finally understand the assignment,Me pretending to be productive,
+image024.png,Because that's what heroes do,I don't think the system works,So uncivilized,You get what you deserve,Reality is often disappointing,I'm something of a scientist myself,When you finally understand the assignment,Me pretending to be productive,That moment when everything clicks,Monday mood
+image025.png,I don't think the system works,So uncivilized,You get what you deserve,Reality is often disappointing,I'm something of a scientist myself,,,,,
+image026.png,So uncivilized,You get what you deserve,Reality is often disappointing,I'm something of a scientist myself,When you finally understand the assignment,Me pretending to be productive,,,,
+image027.png,You get what you deserve,Reality is often disappointing,I'm something of a scientist myself,When you finally understand the assignment,Me pretending to be productive,That moment when everything clicks,Monday mood,,,
+image028.png,Reality is often disappointing,I'm something of a scientist myself,When you finally understand the assignment,Me pretending to be productive,That moment when everything clicks,Monday mood,Living my best life,This is fine,,
+image029.png,I'm something of a scientist myself,When you finally understand the assignment,Me pretending to be productive,That moment when everything clicks,Monday mood,Living my best life,This is fine,Big mood energy,Plot twist: it gets worse,
+image030.png,When you finally understand the assignment,Me pretending to be productive,That moment when everything clicks,Monday mood,Living my best life,This is fine,Big mood energy,Plot twist: it gets worse,My therapist needs to see this,Nobody asked but here we are
+image031.png,Me pretending to be productive,That moment when everything clicks,Monday mood,Living my best life,This is fine,,,,,
+image032.png,That moment when everything clicks,Monday mood,Living my best life,This is fine,Big mood energy,Plot twist: it gets worse,,,,
+image033.png,Monday mood,Living my best life,This is fine,Big mood energy,Plot twist: it gets worse,My therapist needs to see this,Nobody asked but here we are,,,
+image034.png,Living my best life,This is fine,Big mood energy,Plot twist: it gets worse,My therapist needs to see this,Nobody asked but here we are,The accuracy is unsettling,We've all been here,,
+image035.png,This is fine,Big mood energy,Plot twist: it gets worse,My therapist needs to see this,Nobody asked but here we are,The accuracy is unsettling,We've all been here,Why is this so relatable,This hits different,
+image036.png,Big mood energy,Plot twist: it gets worse,My therapist needs to see this,Nobody asked but here we are,The accuracy is unsettling,We've all been here,Why is this so relatable,This hits different,I felt that,Every single time
+image037.png,Plot twist: it gets worse,My therapist needs to see this,Nobody asked but here we are,The accuracy is unsettling,We've all been here,,,,,
+image038.png,My therapist needs to see this,Nobody asked but here we are,The accuracy is unsettling,We've all been here,Why is this so relatable,This hits different,,,,
+image039.png,Nobody asked but here we are,The accuracy is unsettling,We've all been here,Why is this so relatable,This hits different,I felt that,Every single time,,,
+image040.png,The accuracy is unsettling,We've all been here,Why is this so relatable,This hits different,I felt that,Every single time,Tell me I'm wrong,This is the way,,
+image041.png,We've all been here,Why is this so relatable,This hits different,I felt that,Every single time,Tell me I'm wrong,This is the way,Outstanding move,"Well yes, but actually no",
+image042.png,Why is this so relatable,This hits different,I felt that,Every single time,Tell me I'm wrong,This is the way,Outstanding move,"Well yes, but actually no",I see this as an absolute win,Professionals have standards
+image043.png,This hits different,I felt that,Every single time,Tell me I'm wrong,This is the way,,,,,
+image044.png,I felt that,Every single time,Tell me I'm wrong,This is the way,Outstanding move,"Well yes, but actually no",,,,
+image045.png,Every single time,Tell me I'm wrong,This is the way,Outstanding move,"Well yes, but actually no",I see this as an absolute win,Professionals have standards,,,
+image046.png,Tell me I'm wrong,This is the way,Outstanding move,"Well yes, but actually no",I see this as an absolute win,Professionals have standards,Sometimes genius is... it's almost frightening,"Carefully, he's a hero",,
+image047.png,This is the way,Outstanding move,"Well yes, but actually no",I see this as an absolute win,Professionals have standards,Sometimes genius is... it's almost frightening,"Carefully, he's a hero",Because that's what heroes do,I don't think the system works,
+image048.png,Outstanding move,"Well yes, but actually no",I see this as an absolute win,Professionals have standards,Sometimes genius is... it's almost frightening,"Carefully, he's a hero",Because that's what heroes do,I don't think the system works,So uncivilized,You get what you deserve
+image049.png,"Well yes, but actually no",I see this as an absolute win,Professionals have standards,Sometimes genius is... it's almost frightening,"Carefully, he's a hero",,,,,
+image050.png,I see this as an absolute win,Professionals have standards,Sometimes genius is... it's almost frightening,"Carefully, he's a hero",Because that's what heroes do,I don't think the system works,,,,
+image051.png,Professionals have standards,Sometimes genius is... it's almost frightening,"Carefully, he's a hero",Because that's what heroes do,I don't think the system works,So uncivilized,You get what you deserve,,,
+image052.png,Sometimes genius is... it's almost frightening,"Carefully, he's a hero",Because that's what heroes do,I don't think the system works,So uncivilized,You get what you deserve,Reality is often disappointing,I'm something of a scientist myself,,
+image053.png,"Carefully, he's a hero",Because that's what heroes do,I don't think the system works,So uncivilized,You get what you deserve,Reality is often disappointing,I'm something of a scientist myself,When you finally understand the assignment,Me pretending to be productive,
+image054.png,Because that's what heroes do,I don't think the system works,So uncivilized,You get what you deserve,Reality is often disappointing,I'm something of a scientist myself,When you finally understand the assignment,Me pretending to be productive,That moment when everything clicks,Monday mood
+image055.png,I don't think the system works,So uncivilized,You get what you deserve,Reality is often disappointing,I'm something of a scientist myself,,,,,
+image056.png,So uncivilized,You get what you deserve,Reality is often disappointing,I'm something of a scientist myself,When you finally understand the assignment,Me pretending to be productive,,,,
+image057.png,You get what you deserve,Reality is often disappointing,I'm something of a scientist myself,When you finally understand the assignment,Me pretending to be productive,That moment when everything clicks,Monday mood,,,
+image058.png,Reality is often disappointing,I'm something of a scientist myself,When you finally understand the assignment,Me pretending to be productive,That moment when everything clicks,Monday mood,Living my best life,This is fine,,
+image059.png,I'm something of a scientist myself,When you finally understand the assignment,Me pretending to be productive,That moment when everything clicks,Monday mood,Living my best life,This is fine,Big mood energy,Plot twist: it gets worse,
+image060.png,When you finally understand the assignment,Me pretending to be productive,That moment when everything clicks,Monday mood,Living my best life,This is fine,Big mood energy,Plot twist: it gets worse,My therapist needs to see this,Nobody asked but here we are
+image061.png,Me pretending to be productive,That moment when everything clicks,Monday mood,Living my best life,This is fine,,,,,
+image062.png,That moment when everything clicks,Monday mood,Living my best life,This is fine,Big mood energy,Plot twist: it gets worse,,,,
+image063.png,Monday mood,Living my best life,This is fine,Big mood energy,Plot twist: it gets worse,My therapist needs to see this,Nobody asked but here we are,,,
+image064.png,Living my best life,This is fine,Big mood energy,Plot twist: it gets worse,My therapist needs to see this,Nobody asked but here we are,The accuracy is unsettling,We've all been here,,
+image065.png,This is fine,Big mood energy,Plot twist: it gets worse,My therapist needs to see this,Nobody asked but here we are,The accuracy is unsettling,We've all been here,Why is this so relatable,This hits different,
+image066.png,Big mood energy,Plot twist: it gets worse,My therapist needs to see this,Nobody asked but here we are,The accuracy is unsettling,We've all been here,Why is this so relatable,This hits different,I felt that,Every single time
+image067.png,Plot twist: it gets worse,My therapist needs to see this,Nobody asked but here we are,The accuracy is unsettling,We've all been here,,,,,
+image068.png,My therapist needs to see this,Nobody asked but here we are,The accuracy is unsettling,We've all been here,Why is this so relatable,This hits different,,,,
+image069.png,Nobody asked but here we are,The accuracy is unsettling,We've all been here,Why is this so relatable,This hits different,I felt that,Every single time,,,
+image070.png,The accuracy is unsettling,We've all been here,Why is this so relatable,This hits different,I felt that,Every single time,Tell me I'm wrong,This is the way,,
+image071.png,We've all been here,Why is this so relatable,This hits different,I felt that,Every single time,Tell me I'm wrong,This is the way,Outstanding move,"Well yes, but actually no",
+image072.png,Why is this so relatable,This hits different,I felt that,Every single time,Tell me I'm wrong,This is the way,Outstanding move,"Well yes, but actually no",I see this as an absolute win,Professionals have standards
+image073.png,This hits different,I felt that,Every single time,Tell me I'm wrong,This is the way,,,,,
+image074.png,I felt that,Every single time,Tell me I'm wrong,This is the way,Outstanding move,"Well yes, but actually no",,,,
+image075.png,Every single time,Tell me I'm wrong,This is the way,Outstanding move,"Well yes, but actually no",I see this as an absolute win,Professionals have standards,,,
+image076.png,Tell me I'm wrong,This is the way,Outstanding move,"Well yes, but actually no",I see this as an absolute win,Professionals have standards,Sometimes genius is... it's almost frightening,"Carefully, he's a hero",,
+image077.png,This is the way,Outstanding move,"Well yes, but actually no",I see this as an absolute win,Professionals have standards,Sometimes genius is... it's almost frightening,"Carefully, he's a hero",Because that's what heroes do,I don't think the system works,
+image078.png,Outstanding move,"Well yes, but actually no",I see this as an absolute win,Professionals have standards,Sometimes genius is... it's almost frightening,"Carefully, he's a hero",Because that's what heroes do,I don't think the system works,So uncivilized,You get what you deserve
+image079.png,"Well yes, but actually no",I see this as an absolute win,Professionals have standards,Sometimes genius is... it's almost frightening,"Carefully, he's a hero",,,,,
+image080.png,I see this as an absolute win,Professionals have standards,Sometimes genius is... it's almost frightening,"Carefully, he's a hero",Because that's what heroes do,I don't think the system works,,,,
+image081.png,Professionals have standards,Sometimes genius is... it's almost frightening,"Carefully, he's a hero",Because that's what heroes do,I don't think the system works,So uncivilized,You get what you deserve,,,
+image082.png,Sometimes genius is... it's almost frightening,"Carefully, he's a hero",Because that's what heroes do,I don't think the system works,So uncivilized,You get what you deserve,Reality is often disappointing,I'm something of a scientist myself,,
+image083.png,"Carefully, he's a hero",Because that's what heroes do,I don't think the system works,So uncivilized,You get what you deserve,Reality is often disappointing,I'm something of a scientist myself,When you finally understand the assignment,Me pretending to be productive,
+image084.png,Because that's what heroes do,I don't think the system works,So uncivilized,You get what you deserve,Reality is often disappointing,I'm something of a scientist myself,When you finally understand the assignment,Me pretending to be productive,That moment when everything clicks,Monday mood
+image085.png,I don't think the system works,So uncivilized,You get what you deserve,Reality is often disappointing,I'm something of a scientist myself,,,,,
+image086.png,So uncivilized,You get what you deserve,Reality is often disappointing,I'm something of a scientist myself,When you finally understand the assignment,Me pretending to be productive,,,,
+image087.png,You get what you deserve,Reality is often disappointing,I'm something of a scientist myself,When you finally understand the assignment,Me pretending to be productive,That moment when everything clicks,Monday mood,,,
+image088.png,Reality is often disappointing,I'm something of a scientist myself,When you finally understand the assignment,Me pretending to be productive,That moment when everything clicks,Monday mood,Living my best life,This is fine,,
+image089.png,I'm something of a scientist myself,When you finally understand the assignment,Me pretending to be productive,That moment when everything clicks,Monday mood,Living my best life,This is fine,Big mood energy,Plot twist: it gets worse,
+image090.png,When you finally understand the assignment,Me pretending to be productive,That moment when everything clicks,Monday mood,Living my best life,This is fine,Big mood energy,Plot twist: it gets worse,My therapist needs to see this,Nobody asked but here we are
+image091.png,Me pretending to be productive,That moment when everything clicks,Monday mood,Living my best life,This is fine,,,,,
+image092.png,That moment when everything clicks,Monday mood,Living my best life,This is fine,Big mood energy,Plot twist: it gets worse,,,,
+image093.png,Monday mood,Living my best life,This is fine,Big mood energy,Plot twist: it gets worse,My therapist needs to see this,Nobody asked but here we are,,,
+image094.png,Living my best life,This is fine,Big mood energy,Plot twist: it gets worse,My therapist needs to see this,Nobody asked but here we are,The accuracy is unsettling,We've all been here,,
+image095.png,This is fine,Big mood energy,Plot twist: it gets worse,My therapist needs to see this,Nobody asked but here we are,The accuracy is unsettling,We've all been here,Why is this so relatable,This hits different,
+image096.png,Big mood energy,Plot twist: it gets worse,My therapist needs to see this,Nobody asked but here we are,The accuracy is unsettling,We've all been here,Why is this so relatable,This hits different,I felt that,Every single time
+image097.png,Plot twist: it gets worse,My therapist needs to see this,Nobody asked but here we are,The accuracy is unsettling,We've all been here,,,,,
+image098.png,My therapist needs to see this,Nobody asked but here we are,The accuracy is unsettling,We've all been here,Why is this so relatable,This hits different,,,,
+image099.png,Nobody asked but here we are,The accuracy is unsettling,We've all been here,Why is this so relatable,This hits different,I felt that,Every single time,,,
+image100.png,The accuracy is unsettling,We've all been here,Why is this so relatable,This hits different,I felt that,Every single time,Tell me I'm wrong,This is the way,,
