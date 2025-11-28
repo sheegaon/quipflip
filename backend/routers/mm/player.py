@@ -185,7 +185,7 @@ class MMPlayerRouter(PlayerRouterBase):
             db: AsyncSession = Depends(get_db),
         ):
             """Get tutorial status for the current Meme Mint player."""
-            tutorial_service = TutorialService(db)
+            tutorial_service = TutorialService(db, GameType.MM)
             return await tutorial_service.get_tutorial_status(player.player_id)
 
         @self.router.post("/tutorial/progress", response_model=UpdateTutorialProgressResponse)
@@ -195,7 +195,7 @@ class MMPlayerRouter(PlayerRouterBase):
             db: AsyncSession = Depends(get_db),
         ):
             """Update tutorial progress for the current Meme Mint player."""
-            tutorial_service = TutorialService(db)
+            tutorial_service = TutorialService(db, GameType.MM)
             tutorial_status = await tutorial_service.update_tutorial_progress(
                 player.player_id, request.progress
             )
@@ -210,7 +210,7 @@ class MMPlayerRouter(PlayerRouterBase):
             db: AsyncSession = Depends(get_db),
         ):
             """Reset tutorial progress for the current Meme Mint player."""
-            tutorial_service = TutorialService(db)
+            tutorial_service = TutorialService(db, GameType.MM)
             return await tutorial_service.reset_tutorial(player.player_id)
 
 
