@@ -107,7 +107,7 @@ export const CaptionRound: React.FC = () => {
                 maxLength={240}
                 value={captionText}
                 onChange={(e) => setCaptionText(e.target.value)}
-                className="w-full border-2 border-quip-navy rounded-tile p-3 focus:outline-none focus:ring-2 focus:ring-quip-teal"
+                className="tutorial-prompt-input tutorial-copy-input w-full border-2 border-quip-navy rounded-tile p-3 focus:outline-none focus:ring-2 focus:ring-quip-teal"
                 rows={4}
                 placeholder="Share your original idea or riff on an existing caption"
               />
