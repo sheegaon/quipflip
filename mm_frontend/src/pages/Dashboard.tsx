@@ -46,13 +46,11 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto px-4 pb-12 pt-4">
+      {player?.is_guest && <UpgradeGuestAccount className="mb-4" />}
       <div className="tile-card p-6 md:p-8">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <p className="text-sm text-quip-teal uppercase tracking-wide">Welcome back</p>
-            <h1 className="text-3xl font-display font-bold text-quip-navy">MemeMint Arcade</h1>
-          </div>
-          {player?.is_guest && <UpgradeGuestAccount />}
+        <div className="mb-6">
+          <p className="text-sm text-quip-teal uppercase tracking-wide">Welcome back</p>
+          <h1 className="text-3xl font-display font-bold text-quip-navy">MemeMint Arcade</h1>
         </div>
 
         {loading ? (
@@ -61,7 +59,7 @@ export const Dashboard: React.FC = () => {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               <div className="border-2 border-quip-navy rounded-tile p-4 bg-white">
                 <p className="text-sm text-quip-teal">Wallet</p>
                 <div className="text-2xl font-display font-bold text-quip-navy flex items-center gap-2">
@@ -72,15 +70,6 @@ export const Dashboard: React.FC = () => {
                 <p className="text-sm text-quip-teal">Free captions left today</p>
                 <p className="text-2xl font-display font-bold text-quip-navy">
                   {freeCaptionsRemaining ?? '—'}
-                </p>
-              </div>
-              <div className="border-2 border-quip-orange rounded-tile p-4 bg-white">
-                <p className="text-sm text-quip-teal">Daily bonus</p>
-                <p className="text-lg font-display font-semibold text-quip-navy">
-                  {player?.daily_bonus_available ? 'Ready to claim' : 'Claimed'}
-                </p>
-                <p className="text-sm text-quip-teal">
-                  <CurrencyDisplay amount={player?.daily_bonus_amount || 0} /> available
                 </p>
               </div>
             </div>
