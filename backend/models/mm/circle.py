@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
+import uuid
 from sqlalchemy import String, Text, Boolean, Integer, DateTime, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from backend.database import Base
@@ -15,7 +16,7 @@ class MMCircle(Base):
     """MemeMint Circle - persistent social group"""
     __tablename__ = "mm_circles"
 
-    circle_id: Mapped[str] = get_uuid_column(primary_key=True)
+    circle_id: Mapped[str] = get_uuid_column(primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_by_player_id: Mapped[str] = get_uuid_column(

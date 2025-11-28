@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
+import uuid
 from sqlalchemy import String, DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from backend.database import Base
@@ -17,7 +18,7 @@ class MMCircleJoinRequest(Base):
         UniqueConstraint("circle_id", "player_id", name="uq_mm_circle_join_request"),
     )
 
-    request_id: Mapped[str] = get_uuid_column(primary_key=True)
+    request_id: Mapped[str] = get_uuid_column(primary_key=True, default=uuid.uuid4)
     circle_id: Mapped[str] = get_uuid_column(
         ForeignKey("mm_circles.circle_id", ondelete="CASCADE"),
         nullable=False,
