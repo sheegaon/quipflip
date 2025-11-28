@@ -8,7 +8,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.config import get_settings
 from backend.database import get_db
 from backend.routers.player_router_base import PlayerRouterBase
-from backend.schemas.player import ClaimDailyBonusResponse, PlayerBalance
+from backend.schemas.player import (
+    ClaimDailyBonusResponse,
+    PlayerBalance,
+    LeaderboardResponse,
+    RoleLeaderboard,
+    GrossEarningsLeaderboard,
+    WeeklyLeaderboardEntry,
+    GrossEarningsLeaderboardEntry,
+)
 from backend.services import GameType
 from backend.services.mm import (
     MMDailyBonusError,
@@ -17,10 +25,12 @@ from backend.services.mm import (
     MMPlayerService,
     MMSystemConfigService,
     MMCleanupService,
+    MMLeaderboardService,
 )
 from backend.utils import ensure_utc
 from backend.schemas.mm_player import MMDailyStateResponse, MMConfigResponse, MMDashboardDataResponse
 from backend.schemas.mm_round import RoundAvailability
+from backend.services.qf.scoring_service import LEADERBOARD_ROLES
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -149,6 +159,22 @@ class MMPlayerRouter(PlayerRouterBase):
             """Get all dashboard data in a single batched request for optimal performance."""
             return await _get_dashboard_data(player, db)
 
+        @self.router.get("/statistics/weekly-leaderboard", response_model=LeaderboardResponse)
+        async def get_weekly_leaderboard(
+            player=Depends(player_dependency),
+            db: AsyncSession = Depends(get_db),
+        ):
+            """Return weekly leaderboards for Meme Mint players."""
+            return await _get_leaderboard_data(player, db, "weekly")
+
+        @self.router.get("/statistics/alltime-leaderboard", response_model=LeaderboardResponse)
+        async def get_alltime_leaderboard(
+            player=Depends(player_dependency),
+            db: AsyncSession = Depends(get_db),
+        ):
+            """Return all-time leaderboards for Meme Mint players."""
+            return await _get_leaderboard_data(player, db, "alltime")
+
 
 async def _get_dashboard_data(player, db: AsyncSession) -> MMDashboardDataResponse:
     """Get all dashboard data in a single batched request for optimal performance."""
@@ -219,6 +245,41 @@ async def _get_dashboard_data(player, db: AsyncSession) -> MMDashboardDataRespon
     except Exception as e:
         logger.error(f"Unexpected error in MM dashboard endpoint for {player.player_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to load dashboard")
+
+
+async def _get_leaderboard_data(player, db: AsyncSession, period: str) -> LeaderboardResponse:
+    """Get leaderboard data for the specified period."""
+
+    leaderboard_service = MMLeaderboardService(db)
+
+    if period == "weekly":
+        role_data, generated_at = await leaderboard_service.get_weekly_leaderboard_for_player(
+            player.player_id,
+            player.username,
+        )
+    else:
+        role_data, generated_at = await leaderboard_service.get_alltime_leaderboard_for_player(
+            player.player_id,
+            player.username,
+        )
+
+    leader_lists = {
+        role: [WeeklyLeaderboardEntry(**entry) for entry in role_data.get(role, [])]
+        for role in LEADERBOARD_ROLES
+    }
+
+    gross_earnings_leaders = [
+        GrossEarningsLeaderboardEntry(**entry)
+        for entry in role_data.get("gross_earnings", [])
+    ]
+
+    return LeaderboardResponse(
+        prompt_leaderboard=RoleLeaderboard(role="prompt", leaders=leader_lists["prompt"]),
+        copy_leaderboard=RoleLeaderboard(role="copy", leaders=leader_lists["copy"]),
+        voter_leaderboard=RoleLeaderboard(role="voter", leaders=leader_lists["voter"]),
+        gross_earnings_leaderboard=GrossEarningsLeaderboard(leaders=gross_earnings_leaders),
+        generated_at=generated_at,
+    )
 
 
 mm_player_router = MMPlayerRouter()

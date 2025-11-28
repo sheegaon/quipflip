@@ -9,6 +9,7 @@ from backend.services.mm.scoring_service import MMScoringService
 from backend.services.mm.game_service import MMGameService
 from backend.services.mm.vote_service import MMVoteService
 from backend.services.mm.caption_service import MMCaptionService
+from backend.services.mm.leaderboard_service import MMLeaderboardService
 
 __all__ = [
     "MMPlayerService",
@@ -22,4 +23,5 @@ __all__ = [
     "MMGameService",
     "MMVoteService",
     "MMCaptionService",
+    "MMLeaderboardService",
 ]
