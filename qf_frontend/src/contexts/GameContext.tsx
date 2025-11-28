@@ -24,6 +24,7 @@ interface GameState {
   isAuthenticated: boolean;
   username: string | null;
   player: Player | null;
+  showNewUserWelcome: boolean;
   activeRound: ActiveRound | null;
   pendingResults: PendingResult[];
   phrasesetSummary: PhrasesetDashboardSummary | null;
@@ -37,7 +38,8 @@ interface GameState {
 }
 
 interface GameActions {
-  startSession: (username: string) => void;
+  startSession: (username: string, options?: { isNewPlayer?: boolean }) => void;
+  dismissNewUserWelcome: () => void;
   logout: () => Promise<void>;
   refreshDashboard: (signal?: AbortSignal) => Promise<void>;
   refreshBalance: (signal?: AbortSignal) => Promise<void>;
@@ -77,6 +79,7 @@ export const GameProvider: React.FC<{
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [username, setUsername] = useState<string | null>(null);
   const [player, setPlayer] = useState<Player | null>(null);
+  const [showNewUserWelcome, setShowNewUserWelcome] = useState(false);
   const [activeRound, setActiveRound] = useState<ActiveRound | null>(null);
   const [pendingResults, setPendingResults] = useState<PendingResult[]>([]);
   const [phrasesetSummary, setPhrasesetSummary] = useState<PhrasesetDashboardSummary | null>(null);
@@ -154,6 +157,7 @@ export const GameProvider: React.FC<{
             setUsername(guestResponse.username);
             setIsAuthenticated(true);
             setSessionState(SessionState.RETURNING_USER);
+            setShowNewUserWelcome(true);
 
             // Associate visitor with guest account
             if (result.visitorId) {
@@ -229,12 +233,13 @@ export const GameProvider: React.FC<{
   }, [activeRound, copyRoundHints]);
 
   // Create stable actions object using useCallback for all methods
-  const startSession = useCallback((nextUsername: string) => {
+  const startSession = useCallback((nextUsername: string, options?: { isNewPlayer?: boolean }) => {
     gameContextLogger.debug('🎯 GameContext startSession called:', { username: nextUsername });
 
     apiClient.setSession(nextUsername);
     setUsername(nextUsername);
     setIsAuthenticated(true);
+    setShowNewUserWelcome(Boolean(options?.isNewPlayer));
     setSessionState(SessionState.RETURNING_USER);
 
     // Associate visitor ID with newly created/logged in account
@@ -267,6 +272,7 @@ export const GameProvider: React.FC<{
       setPhrasesetSummary(null);
       setUnclaimedResults([]);
       setRoundAvailability(null);
+      setShowNewUserWelcome(false);
       setCopyRoundHints(null);
       copyHintsRoundRef.current = null;
       setLoading(false);
@@ -279,6 +285,10 @@ export const GameProvider: React.FC<{
       setSessionState(visitorId ? SessionState.RETURNING_VISITOR : SessionState.NEW);
     }
   }, [stopPoll, visitorId]);
+
+  const dismissNewUserWelcome = useCallback(() => {
+    setShowNewUserWelcome(false);
+  }, []);
 
   const refreshDashboard = useCallback(async (signal?: AbortSignal) => {
     const storedUsername = apiClient.getStoredUsername();
@@ -836,6 +846,7 @@ export const GameProvider: React.FC<{
     isAuthenticated,
     username,
     player,
+    showNewUserWelcome,
     activeRound,
     pendingResults,
     phrasesetSummary,
@@ -851,6 +862,7 @@ export const GameProvider: React.FC<{
   const actions: GameActions = React.useMemo(
     () => ({
       startSession,
+      dismissNewUserWelcome,
       logout,
       refreshDashboard,
       refreshBalance,
@@ -869,6 +881,7 @@ export const GameProvider: React.FC<{
     }),
     [
       startSession,
+      dismissNewUserWelcome,
       logout,
       refreshDashboard,
       refreshBalance,
