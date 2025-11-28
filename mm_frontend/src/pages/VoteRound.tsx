@@ -188,7 +188,7 @@ export const VoteRound: React.FC = () => {
             )}
 
             {/* Caption Options */}
-            <div className="space-y-3">
+            <div className="tutorial-vote-options space-y-3">
               {round.captions.map((caption, index) => (
                 <button
                   key={caption.caption_id}
