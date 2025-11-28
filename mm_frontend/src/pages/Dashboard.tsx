@@ -49,7 +49,6 @@ export const Dashboard: React.FC = () => {
       {player?.is_guest && <UpgradeGuestAccount className="mb-4" />}
       <div className="tile-card p-6 md:p-8">
         <div className="mb-6">
-          <p className="text-sm text-quip-teal uppercase tracking-wide">Welcome back</p>
           <h1 className="text-3xl font-display font-bold text-quip-navy">MemeMint Arcade</h1>
         </div>
 
@@ -82,9 +81,8 @@ export const Dashboard: React.FC = () => {
 
             <div className="rounded-tile border-2 border-quip-orange bg-gradient-to-r from-quip-orange to-quip-orange-deep text-white p-8 text-center">
               <h2 className="text-2xl font-display font-bold mb-2">Browse Memes & Play</h2>
-              <p className="text-lg mb-4">Start a vote round to see a fresh meme and pick your favorite caption.</p>
+              <p className="text-lg mb-4">View a fresh meme and pick your favorite caption.</p>
               <div className="flex items-center justify-center gap-2 mb-6 text-lg">
-                <span>Entry cost:</span>
                 <CurrencyDisplay amount={roundAvailability?.round_entry_cost ?? 5} iconClassName="w-5 h-5" textClassName="font-bold text-lg" />
               </div>
               <button
@@ -92,7 +90,7 @@ export const Dashboard: React.FC = () => {
                 disabled={isStartingRound}
                 className="bg-white text-quip-orange font-bold py-3 px-8 rounded-tile shadow-tile hover:shadow-tile-sm transition-colors disabled:opacity-70"
               >
-                {isStartingRound ? 'Preparing your round...' : 'Start Game'}
+                {isStartingRound ? 'Preparing your meme...' : 'Start'}
               </button>
             </div>
           </>
