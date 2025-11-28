@@ -59,6 +59,11 @@ export const UpgradeGuestAccount: React.FC<UpgradeGuestAccountProps> = ({ classN
       return;
     }
 
+    if (!upgradeForm.confirmPassword) {
+      setUpgradeError('Please confirm your password to upgrade.');
+      return;
+    }
+
     if (upgradeForm.password !== upgradeForm.confirmPassword) {
       setUpgradeError('Passwords do not match.');
       return;
@@ -86,6 +91,42 @@ export const UpgradeGuestAccount: React.FC<UpgradeGuestAccountProps> = ({ classN
         setUpgradeError(extractErrorMessage(err) || 'Failed to upgrade account');
       }
       dashboardLogger.error('Failed to upgrade guest account', err);
+    } finally {
+      setUpgradeLoading(false);
+    }
+  };
+
+  const handleLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setUpgradeError(null);
+    setUpgradeSuccess(null);
+
+    if (!emailPattern.test(upgradeForm.email)) {
+      setUpgradeError('Please enter a valid email address.');
+      return;
+    }
+
+    if (!upgradeForm.password) {
+      setUpgradeError('Please enter your password.');
+      return;
+    }
+
+    try {
+      setUpgradeLoading(true);
+      dashboardLogger.info('Logging into existing account');
+
+      const response = await apiClient.login({
+        email: upgradeForm.email.trim(),
+        password: upgradeForm.password,
+      });
+
+      dashboardLogger.info('Login from upgrade modal successful');
+      actions.startSession(response.username);
+      await actions.refreshBalance();
+      navigate('/dashboard');
+    } catch (err: unknown) {
+      setUpgradeError(extractErrorMessage(err) || 'Failed to log in');
+      dashboardLogger.error('Failed to log in from upgrade modal', err);
     } finally {
       setUpgradeLoading(false);
     }
@@ -181,11 +222,18 @@ export const UpgradeGuestAccount: React.FC<UpgradeGuestAccountProps> = ({ classN
                   placeholder="Re-enter password"
                   disabled={upgradeLoading}
                   minLength={8}
-                  required
                 />
               </div>
             </div>
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={handleLoginSubmit}
+                disabled={upgradeLoading}
+                className="bg-white border-2 border-quip-navy text-quip-navy hover:bg-quip-navy hover:text-white disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-300 font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm"
+              >
+                {upgradeLoading ? 'Logging in...' : 'Login'}
+              </button>
               <button
                 type="submit"
                 disabled={upgradeLoading}
