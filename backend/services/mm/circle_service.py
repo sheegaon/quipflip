@@ -560,6 +560,34 @@ class MMCircleService:
         return list(result.scalars().all())
 
     @staticmethod
+    async def get_pending_join_requests_for_player(
+        session: AsyncSession,
+        player_id: str
+    ) -> list[MMCircleJoinRequest]:
+        """
+        Get all pending join requests created by a specific player.
+
+        Args:
+            session: Database session
+            player_id: Player ID
+
+        Returns:
+            List of pending MMCircleJoinRequest instances for the player
+        """
+        query = (
+            select(MMCircleJoinRequest)
+            .where(
+                and_(
+                    MMCircleJoinRequest.player_id == player_id,
+                    MMCircleJoinRequest.status == "pending"
+                )
+            )
+            .order_by(MMCircleJoinRequest.requested_at.asc())
+        )
+        result = await session.execute(query)
+        return list(result.scalars().all())
+
+    @staticmethod
     async def get_circle_members(
         session: AsyncSession,
         circle_id: str
