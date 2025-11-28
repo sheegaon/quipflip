@@ -97,7 +97,7 @@ class MMCaptionService:
             else:
                 # Charge submission fee
                 cost = await self.config_service.get_config_value(
-                    "mm_caption_submission_cost", default=10
+                    "mm_caption_submission_cost", default=100
                 )
 
                 if player.wallet < cost:
