@@ -567,12 +567,11 @@ export const apiClient = {
     payload: { round_id: string; text: string; kind?: 'original' | 'riff'; parent_caption_id?: string | null },
     signal?: AbortSignal,
   ): Promise<CaptionSubmissionResult> {
-    // Transform payload to match backend schema field names
+    // Backend only expects round_id and text (caption_text)
+    // The backend automatically determines if a caption is a riff based on similarity analysis
     const backendPayload = {
       round_id: payload.round_id,
-      caption_text: payload.text,  // Backend expects 'caption_text', not 'text'
-      caption_type: payload.kind || 'original',  // Backend expects 'caption_type', not 'kind'
-      parent_caption_id: payload.parent_caption_id || null,
+      text: payload.text,  // Backend accepts 'text' as alias for 'caption_text'
     };
     const { data } = await api.post('/rounds/caption', backendPayload, { signal });
     return data;

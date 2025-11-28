@@ -5,7 +5,6 @@ import { extractErrorMessage } from '../api/client';
 import type {
   VoteRoundState,
   VoteResult,
-  Caption,
 } from '../api/types';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 
@@ -23,8 +22,6 @@ export const CaptionRound: React.FC = () => {
   const round = locationState.round || state.currentVoteRound;
 
   const [captionText, setCaptionText] = useState('');
-  const [captionType, setCaptionType] = useState<'original' | 'riff'>('original');
-  const [parentCaptionId, setParentCaptionId] = useState<string | undefined>(undefined);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -49,30 +46,44 @@ export const CaptionRound: React.FC = () => {
     );
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!captionText.trim() || isSubmitting) return;
+  const handleSubmit = async () => {
+    console.log('🔘 Submit button clicked', {
+      captionText,
+      isSubmitting,
+      hasRound: !!round,
+      currentVoteRound: state.currentVoteRound?.round_id
+    });
+
+    if (!captionText.trim() || isSubmitting) {
+      console.log('⏭️ Submit blocked', { isEmpty: !captionText.trim(), isSubmitting });
+      return;
+    }
 
     setIsSubmitting(true);
     setError(null);
-    
+
     try {
       const payload = {
+        round_id: round.round_id,
         text: captionText.trim(),
-        parent_caption_id: captionType === 'riff' ? parentCaptionId : undefined,
       };
-      
-      await actions.submitCaption(payload);
+
+      console.log('📤 Submitting caption...', payload);
+      const result = await actions.submitCaption(payload);
+      console.log('✅ Caption submitted successfully', result);
+
       setSuccessMessage('Caption submitted!');
-      
+
       // Navigate to results or dashboard
       setTimeout(() => {
         navigate('/dashboard');
       }, 1500);
     } catch (err) {
+      console.error('❌ Caption submission failed:', err);
       setError(extractErrorMessage(err) || 'Unable to submit caption right now.');
     } finally {
       setIsSubmitting(false);
+      console.log('🔓 isSubmitting set to false');
     }
   };
 
@@ -109,52 +120,10 @@ export const CaptionRound: React.FC = () => {
                 onChange={(e) => setCaptionText(e.target.value)}
                 className="w-full border-2 border-quip-navy rounded-tile p-3 focus:outline-none focus:ring-2 focus:ring-quip-teal"
                 rows={4}
-                placeholder="Share your original idea or riff on an existing caption"
+                placeholder="Write your caption for this image"
               />
               <div className="text-right text-sm text-quip-teal mt-1">{captionText.length}/240</div>
             </div>
-
-            <div className="flex items-center gap-4">
-              <label className="flex items-center gap-2">
-                <input
-                  type="radio"
-                  name="caption-type"
-                  checked={captionType === 'original'}
-                  onChange={() => setCaptionType('original')}
-                />
-                <span>Original</span>
-              </label>
-              <label className="flex items-center gap-2">
-                <input
-                  type="radio"
-                  name="caption-type"
-                  checked={captionType === 'riff'}
-                  onChange={() => setCaptionType('riff')}
-                />
-                <span>Riff on existing</span>
-              </label>
-            </div>
-
-            {captionType === 'riff' && (
-              <div>
-                <label className="block text-sm text-quip-teal mb-2" htmlFor="parent-select">
-                  Choose a caption to riff on
-                </label>
-                <select
-                  id="parent-select"
-                  value={parentCaptionId ?? ''}
-                  onChange={(e) => setParentCaptionId(e.target.value || undefined)}
-                  className="w-full border-2 border-quip-navy rounded-tile p-3"
-                >
-                  <option value="">Select a caption</option>
-                  {round.captions.map((caption: Caption) => (
-                    <option key={caption.caption_id} value={caption.caption_id}>
-                      {caption.text}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
 
             <div className="flex items-center justify-between">
               <div className="text-sm text-quip-teal flex items-center gap-2">
@@ -171,7 +140,7 @@ export const CaptionRound: React.FC = () => {
                 </button>
                 <button
                   onClick={handleSubmit}
-                  disabled={isSubmitting || !captionText.trim() || (captionType === 'riff' && !parentCaptionId)}
+                  disabled={isSubmitting || !captionText.trim()}
                   className="bg-quip-orange hover:bg-quip-orange-deep text-white font-semibold px-4 py-2 rounded-tile disabled:opacity-60"
                 >
                   {isSubmitting ? 'Submitting...' : 'Submit Caption'}

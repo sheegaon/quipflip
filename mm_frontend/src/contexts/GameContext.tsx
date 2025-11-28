@@ -55,7 +55,7 @@ interface GameActions {
   startVoteRound: (signal?: AbortSignal) => Promise<VoteRoundState>;
   submitVote: (roundId: string, captionId: string, signal?: AbortSignal) => Promise<VoteResult>;
   submitCaption: (
-    payload: { text: string; parent_caption_id?: string },
+    payload: { round_id: string; text: string; parent_caption_id?: string },
     signal?: AbortSignal,
   ) => Promise<CaptionSubmissionResult>;
   claimPhrasesetPrize: (phrasesetId: string) => Promise<void>;
@@ -622,19 +622,14 @@ export const GameProvider: React.FC<{
 
   const submitCaption = useCallback(
     async (
-      payload: { text: string; parent_caption_id?: string },
+      payload: { round_id: string; text: string; parent_caption_id?: string },
       signal?: AbortSignal,
     ): Promise<CaptionSubmissionResult> => {
-      // MemeMint caption submission requires a round_id from the current vote round
-      if (!currentVoteRound?.round_id) {
-        throw new Error('No active vote round found. Please start a vote round first.');
-      }
-
       const captionPayload = {
-        round_id: currentVoteRound.round_id,
+        round_id: payload.round_id,
         text: payload.text,
-        kind: payload.parent_caption_id ? ('riff' as const) : ('original' as const),
-        parent_caption_id: payload.parent_caption_id || null,
+        // Note: Backend automatically determines if caption is a riff based on similarity analysis
+        // No need to send kind or parent_caption_id
       };
 
       const captionResult = await apiClient.submitMemeMintCaption(captionPayload, signal);
@@ -644,7 +639,7 @@ export const GameProvider: React.FC<{
       await refreshDashboard(signal);
       return captionResult;
     },
-    [currentVoteRound?.round_id, refreshBalance, refreshDashboard, refreshRoundAvailability],
+    [refreshBalance, refreshDashboard, refreshRoundAvailability],
   );
 
   const updateActiveRound = useCallback((roundData: ActiveRound) => {
