@@ -547,6 +547,8 @@ export const GameProvider: React.FC<{
         setError(null);
         const response = await apiClient.startMemeMintVoteRound(signal);
         setCurrentVoteRound(response);
+        // Refresh balance to show updated wallet after entry cost deduction
+        await refreshBalance(signal);
         await refreshRoundAvailability(signal);
         gameContextLogger.debug('✅ Start vote round API call successful:', {
           roundId: response.round_id,
@@ -563,7 +565,7 @@ export const GameProvider: React.FC<{
         setLoading(false);
       }
     },
-    [refreshRoundAvailability],
+    [refreshBalance, refreshRoundAvailability],
   );
 
   const claimPhrasesetPrize = useCallback(async (phrasesetId: string) => {

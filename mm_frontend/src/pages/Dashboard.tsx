@@ -82,7 +82,11 @@ export const Dashboard: React.FC = () => {
 
             <div className="rounded-tile border-2 border-quip-orange bg-gradient-to-r from-quip-orange to-quip-orange-deep text-white p-8 text-center">
               <h2 className="text-2xl font-display font-bold mb-2">Browse Memes & Play</h2>
-              <p className="text-lg mb-6">Start a vote round to see a fresh meme and pick your favorite caption.</p>
+              <p className="text-lg mb-4">Start a vote round to see a fresh meme and pick your favorite caption.</p>
+              <div className="flex items-center justify-center gap-2 mb-6 text-lg">
+                <span>Entry cost:</span>
+                <CurrencyDisplay amount={roundAvailability?.round_entry_cost ?? 5} iconClassName="w-5 h-5" textClassName="font-bold text-lg" />
+              </div>
               <button
                 onClick={handleStartVote}
                 disabled={isStartingRound}

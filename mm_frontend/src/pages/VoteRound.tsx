@@ -27,7 +27,7 @@ export const VoteRound: React.FC = () => {
   const [isLoadingRound, setIsLoadingRound] = useState(false);
 
   const voteCost = roundAvailability?.round_entry_cost ?? 5;
-  const captionCost = roundAvailability?.caption_submission_cost ?? 10;
+  const captionCost = roundAvailability?.caption_submission_cost ?? 100;
 
   // recover round when arriving without navigation state
   useEffect(() => {
@@ -209,11 +209,7 @@ export const VoteRound: React.FC = () => {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex items-center justify-between pt-4 border-t border-quip-navy border-opacity-20">
-              <div className="text-sm text-quip-teal flex items-center gap-2">
-                <span>Cost:</span>
-                <CurrencyDisplay amount={voteCost} />
-              </div>
+            <div className="flex justify-end pt-4 border-t border-quip-navy border-opacity-20">
               <button
                 onClick={() => navigate('/dashboard')}
                 className="border-2 border-quip-navy text-quip-navy font-semibold px-4 py-2 rounded-tile hover:bg-quip-navy hover:text-white transition-colors flex items-center gap-2"
