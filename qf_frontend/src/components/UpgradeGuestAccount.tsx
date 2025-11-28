@@ -122,6 +122,8 @@ export const UpgradeGuestAccount: React.FC<UpgradeGuestAccountProps> = ({ classN
 
       dashboardLogger.info('Login from upgrade modal successful');
       actions.startSession(response.username);
+      setUpgradeSuccess('Logged in successfully! Redirecting...');
+      setUpgradeForm({ email: '', password: '', confirmPassword: '' });
       await actions.refreshBalance();
       navigate('/dashboard');
     } catch (err: unknown) {
