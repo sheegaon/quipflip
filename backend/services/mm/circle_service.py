@@ -183,7 +183,7 @@ class MMCircleService:
             .distinct()
         )
         result = await session.execute(circle_mates_query)
-        return {row[0] for row in result.all()}
+        return {str(row[0]) for row in result.all()}
 
     @staticmethod
     async def is_circle_mate(

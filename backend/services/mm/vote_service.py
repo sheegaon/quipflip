@@ -146,7 +146,8 @@ class MMVoteService:
                     caption,
                     round_obj.entry_cost,
                     house_rake_vault_pct,
-                    transaction_service
+                    transaction_service,
+                    voter_player_id=player.player_id  # Pass voter ID for Circle-mate checking
                 )
 
                 # Check and award first vote bonus
@@ -191,7 +192,8 @@ class MMVoteService:
         caption: MMCaption,
         entry_cost: int,
         house_rake_vault_pct: float,
-        transaction_service: TransactionService
+        transaction_service: TransactionService,
+        voter_player_id: UUID = None
     ) -> dict:
         """Distribute payouts to caption author and parent (if riff).
 
@@ -200,11 +202,16 @@ class MMVoteService:
         - Writer bonus = entry_cost * WRITER_BONUS_MULTIPLIER (minted by system)
         - Total gross payout = entry_cost * (1 + WRITER_BONUS_MULTIPLIER)
 
+        Per MM_CIRCLES.md Section 6:
+        - System bonus is suppressed when voter is a Circle-mate of the author
+        - Base payout is always given
+
         Args:
             caption: Chosen caption
             entry_cost: Entry cost paid by voter
             house_rake_vault_pct: Vault percentage from config
             transaction_service: Transaction service
+            voter_player_id: ID of the voting player (for Circle-mate bonus suppression)
 
         Returns:
             Dictionary with payout breakdown
@@ -212,33 +219,70 @@ class MMVoteService:
         Raises:
             ValueError: If caption has no author or invalid author_player_id
         """
+        from backend.services.mm.circle_service import MMCircleService
+
         # Validate caption has a valid author
         if not caption.author_player_id:
             logger.error(f"Caption {caption.caption_id} has no author_player_id - cannot distribute payouts")
             raise ValueError("Invalid caption: missing author_player_id")
+
+        # Get Circle-mates of voter for bonus suppression
+        circle_mates = set()
+        if voter_player_id:
+            circle_mates = await MMCircleService.get_circle_mates(self.db, str(voter_player_id))
 
         # Get writer bonus multiplier from config (default 3 per game rules)
         writer_bonus_multiplier = await self.config_service.get_config_value(
             "mm_writer_bonus_multiplier", default=3
         )
 
-        # Calculate total payout: base (from entry cost) + bonus (minted)
-        # Example: entry_cost=5, multiplier=3 -> gross_payout = 5 + (5*3) = 20 MC
+        # Check if caption author is a Circle-mate of voter
+        author_is_circle_mate = str(caption.author_player_id) in circle_mates
+
+        # Calculate base payout (always given) and writer bonus (suppressed for Circle-mates)
+        # Example: entry_cost=5, multiplier=3
+        # - For non-Circle-mate: gross = 5 + (5*3) = 20 MC
+        # - For Circle-mate: gross = 5 + 0 = 5 MC (bonus suppressed)
         base_payout = entry_cost
-        writer_bonus = entry_cost * writer_bonus_multiplier
-        gross_payout = base_payout + writer_bonus
+        author_writer_bonus = 0 if author_is_circle_mate else (entry_cost * writer_bonus_multiplier)
+
+        if author_is_circle_mate:
+            logger.info(
+                f"System bonus suppressed for caption {caption.caption_id} author "
+                f"{caption.author_player_id} (Circle-mate of voter {voter_player_id})"
+            )
+
+        # For riffs, check parent author separately
+        parent_writer_bonus = 0
+        parent_caption = None
+        is_riff = caption.kind == 'riff'
+
+        if is_riff and caption.parent_caption_id:
+            parent_caption = await self.db.get(MMCaption, caption.parent_caption_id)
+            if parent_caption and parent_caption.author_player_id:
+                parent_is_circle_mate = str(parent_caption.author_player_id) in circle_mates
+                parent_writer_bonus = 0 if parent_is_circle_mate else (entry_cost * writer_bonus_multiplier)
+
+                if parent_is_circle_mate:
+                    logger.info(
+                        f"System bonus suppressed for parent caption {parent_caption.caption_id} author "
+                        f"{parent_caption.author_player_id} (Circle-mate of voter {voter_player_id})"
+                    )
+
+        # Calculate total gross payout with bonuses (may be suppressed)
+        if is_riff:
+            # For riffs: split base payout + each author gets their own writer bonus
+            gross_payout = base_payout + author_writer_bonus + parent_writer_bonus
+        else:
+            gross_payout = base_payout + author_writer_bonus
 
         # Get current lifetime earnings BEFORE this payout (for threshold calculation)
         author_lifetime_earnings = caption.lifetime_earnings_gross
         parent_lifetime_earnings = 0
-        parent_caption = None
 
-        # If riff, load parent caption for lifetime earnings
-        is_riff = caption.kind == 'riff'
-        if is_riff and caption.parent_caption_id:
-            parent_caption = await self.db.get(MMCaption, caption.parent_caption_id)
-            if parent_caption:
-                parent_lifetime_earnings = parent_caption.lifetime_earnings_gross
+        # If riff, get parent lifetime earnings (parent_caption already loaded above)
+        if is_riff and parent_caption:
+            parent_lifetime_earnings = parent_caption.lifetime_earnings_gross
 
         # Calculate split (per MM_GAME_RULES.md Section 6)
         payout_breakdown = self.scoring_service.calculate_caption_payout(
