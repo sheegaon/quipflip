@@ -72,7 +72,7 @@ export const Landing: React.FC = () => {
 
       landingLogger.info('Player created successfully, starting session', { username: response.username });
       if (isMountedRef.current) {
-        startSession(response.username);
+        startSession(response.username, { isNewPlayer: true });
         navigate('/dashboard');
       }
     } catch (err) {
@@ -171,7 +171,7 @@ export const Landing: React.FC = () => {
       }));
 
       if (isMountedRef.current) {
-        startSession(response.username);
+        startSession(response.username, { isNewPlayer: true });
         navigate('/dashboard');
       }
     } catch (err) {

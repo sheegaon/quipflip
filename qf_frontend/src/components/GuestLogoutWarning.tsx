@@ -1,5 +1,5 @@
 import React from 'react';
-import './GuestWelcomeOverlay.css';
+import './NewUserWelcomeOverlay.css';
 
 interface GuestLogoutWarningProps {
   isVisible: boolean;
