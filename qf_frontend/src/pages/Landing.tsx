@@ -129,11 +129,11 @@ export const Landing: React.FC = () => {
         });
       }
 
-        landingLogger.info('Login successful, starting session', { username: response.username });
-        if (isMountedRef.current) {
-          startSession(response.username);
-          navigate('/dashboard');
-        }
+      landingLogger.info('Login successful, starting session', { username: response.username });
+      if (isMountedRef.current) {
+        startSession(response.username);
+        navigate('/dashboard');
+      }
     } catch (err) {
       const message = extractErrorMessage(err) || 'Login failed. Please check your email/username and password, or create a new account.';
       landingLogger.error('Login failed', err);
