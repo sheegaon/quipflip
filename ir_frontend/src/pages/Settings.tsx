@@ -26,7 +26,7 @@ const formatDateTime = (dateString?: string | null) => {
 };
 
 const Settings: React.FC = () => {
-  const { player, logout, upgradeGuest, refreshDashboard } = useIRGame();
+  const { player, logout, upgradeGuest, refreshDashboard, login } = useIRGame();
   const navigate = useNavigate();
 
   const [error, setError] = useState<string | null>(null);
@@ -176,6 +176,44 @@ const Settings: React.FC = () => {
       } else {
         setUpgradeError(getErrorMessage(err, 'Failed to upgrade account'));
       }
+    } finally {
+      setUpgradeLoading(false);
+    }
+  };
+
+  const handleLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setUpgradeError(null);
+    setUpgradeSuccess(null);
+
+    const identifier = upgradeForm.username.trim() || upgradeForm.email.trim();
+
+    if (!identifier) {
+      setUpgradeError('Please enter your username or email.');
+      return;
+    }
+
+    if (!upgradeForm.username.trim() && upgradeForm.email && !emailPattern.test(upgradeForm.email)) {
+      setUpgradeError('Please enter a valid email address.');
+      return;
+    }
+
+    if (!upgradeForm.password) {
+      setUpgradeError('Please enter your password.');
+      return;
+    }
+
+    try {
+      setUpgradeLoading(true);
+
+      await login(identifier, upgradeForm.password);
+      setUpgradeSuccess('Logged in successfully! Redirecting...');
+      setUpgradeForm({ username: '', email: '', password: '', confirmPassword: '' });
+
+      await refreshDashboard();
+      navigate('/dashboard');
+    } catch (err: unknown) {
+      setUpgradeError(getErrorMessage(err, 'Unable to log in with these credentials.'));
     } finally {
       setUpgradeLoading(false);
     }
@@ -434,10 +472,17 @@ const Settings: React.FC = () => {
                   placeholder="Re-enter password"
                   disabled={upgradeLoading}
                   minLength={8}
-                  required
                 />
               </div>
-              <div className="md:col-span-4 flex justify-end">
+              <div className="md:col-span-4 flex flex-wrap justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={handleLoginSubmit}
+                  disabled={upgradeLoading}
+                  className="bg-white border-2 border-ir-navy text-ir-navy hover:bg-ir-navy hover:text-white disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-300 font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm"
+                >
+                  {upgradeLoading ? 'Logging in...' : 'Login'}
+                </button>
                 <button
                   type="submit"
                   disabled={upgradeLoading}
