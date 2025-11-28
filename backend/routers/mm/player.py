@@ -16,6 +16,9 @@ from backend.schemas.player import (
     GrossEarningsLeaderboard,
     WeeklyLeaderboardEntry,
     GrossEarningsLeaderboardEntry,
+    TutorialStatus,
+    UpdateTutorialProgressRequest,
+    UpdateTutorialProgressResponse,
 )
 from backend.services import GameType
 from backend.services.mm import (
@@ -27,6 +30,7 @@ from backend.services.mm import (
     MMCleanupService,
     MMLeaderboardService,
 )
+from backend.services.tutorial_service import TutorialService
 from backend.utils import ensure_utc
 from backend.schemas.mm_player import MMDailyStateResponse, MMConfigResponse, MMDashboardDataResponse
 from backend.schemas.mm_round import RoundAvailability
@@ -174,6 +178,40 @@ class MMPlayerRouter(PlayerRouterBase):
         ):
             """Return all-time leaderboards for Meme Mint players."""
             return await _get_leaderboard_data(player, db, "alltime")
+
+        @self.router.get("/tutorial/status", response_model=TutorialStatus)
+        async def get_tutorial_status(
+            player=Depends(player_dependency),
+            db: AsyncSession = Depends(get_db),
+        ):
+            """Get tutorial status for the current Meme Mint player."""
+            tutorial_service = TutorialService(db)
+            return await tutorial_service.get_tutorial_status(player.player_id)
+
+        @self.router.post("/tutorial/progress", response_model=UpdateTutorialProgressResponse)
+        async def update_tutorial_progress(
+            request: UpdateTutorialProgressRequest,
+            player=Depends(player_dependency),
+            db: AsyncSession = Depends(get_db),
+        ):
+            """Update tutorial progress for the current Meme Mint player."""
+            tutorial_service = TutorialService(db)
+            tutorial_status = await tutorial_service.update_tutorial_progress(
+                player.player_id, request.progress
+            )
+            return UpdateTutorialProgressResponse(
+                success=True,
+                tutorial_status=tutorial_status,
+            )
+
+        @self.router.post("/tutorial/reset", response_model=TutorialStatus)
+        async def reset_tutorial(
+            player=Depends(player_dependency),
+            db: AsyncSession = Depends(get_db),
+        ):
+            """Reset tutorial progress for the current Meme Mint player."""
+            tutorial_service = TutorialService(db)
+            return await tutorial_service.reset_tutorial(player.player_id)
 
 
 async def _get_dashboard_data(player, db: AsyncSession) -> MMDashboardDataResponse:
