@@ -1,57 +1,42 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
-import { GUEST_CREDENTIALS_KEY, GUEST_CREDENTIALS_SHOWN_KEY } from '../utils/storageKeys';
+import { GUEST_CREDENTIALS_KEY } from '../utils/storageKeys';
 import { LeaderboardIcon } from './icons/NavigationIcons';
-import './GuestWelcomeOverlay.css';
+import './NewUserWelcomeOverlay.css';
 
-const GuestWelcomeOverlay: React.FC = () => {
+const NewUserWelcomeOverlay: React.FC = () => {
   const { state, actions } = useGame();
-  const { player } = state;
-  const { logout } = actions;
+  const { player, showNewUserWelcome } = state;
+  const { logout, dismissNewUserWelcome } = actions;
   const navigate = useNavigate();
 
   const [isVisible, setIsVisible] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
-    // Only show for guest users
-    if (!player?.is_guest) {
+    if (showNewUserWelcome && player) {
+      setIsVisible(true);
+    } else {
       setIsVisible(false);
-      return;
     }
-
-    // Check if we've already shown the overlay for this session
-    const hasShown = sessionStorage.getItem(GUEST_CREDENTIALS_SHOWN_KEY);
-    if (hasShown) {
-      return;
-    }
-
-    // Show the welcome overlay for all guest users who haven't seen it this session
-    setIsVisible(true);
-  }, [player?.is_guest]);
+  }, [showNewUserWelcome, player]);
 
   const handleDismiss = () => {
-    // Mark as shown for this session
-    sessionStorage.setItem(GUEST_CREDENTIALS_SHOWN_KEY, 'true');
-
-    // Don't clear credentials - allow guest to remain logged in
     setIsVisible(false);
+    dismissNewUserWelcome();
   };
 
   const handleLoginClick = async (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
+    if (!player?.is_guest) return;
+
     try {
       setIsLoggingOut(true);
-
-      // Mark as shown to prevent re-display
-      sessionStorage.setItem(GUEST_CREDENTIALS_SHOWN_KEY, 'true');
-
-      // Clean up credentials
       localStorage.removeItem(GUEST_CREDENTIALS_KEY);
 
-      // Logout and navigate to landing
       await logout();
+      dismissNewUserWelcome();
       navigate('/');
     } catch (error) {
       console.error('Failed to logout:', error);
@@ -59,7 +44,7 @@ const GuestWelcomeOverlay: React.FC = () => {
     }
   };
 
-  if (!isVisible || !player?.is_guest) {
+  if (!isVisible || !player) {
     return null;
   }
 
@@ -111,23 +96,32 @@ const GuestWelcomeOverlay: React.FC = () => {
 
           <hr className="guest-welcome-divider" />
 
-          <div className="guest-welcome-login-prompt">
-            <LeaderboardIcon className="h-14 w-14" />
-            <p>
-              <a
-                href="#"
-                onClick={handleLoginClick}
-                className="guest-welcome-login-link"
-              >
-                {isLoggingOut ? 'Logging out...' : 'Log in or create a free account'}
-              </a>{' '}
-              to link your stats.
-            </p>
-          </div>
+          {player.is_guest ? (
+            <div className="guest-welcome-login-prompt">
+              <LeaderboardIcon className="h-14 w-14" />
+              <p>
+                <a
+                  href="#"
+                  onClick={handleLoginClick}
+                  className="guest-welcome-login-link"
+                >
+                  {isLoggingOut ? 'Logging out...' : 'Log in or create a free account'}
+                </a>{' '}
+                to link your stats.
+              </p>
+            </div>
+          ) : (
+            <div className="guest-welcome-login-prompt">
+              <LeaderboardIcon className="h-14 w-14" />
+              <p className="text-center">
+                You&apos;re all set! Head to your dashboard to start playing and track your stats.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 };
 
-export default GuestWelcomeOverlay;
+export default NewUserWelcomeOverlay;

@@ -12,7 +12,7 @@ import { trackPageView } from './utils/googleAnalytics';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { AppErrorFallback } from './components/ErrorFallback';
 import { OfflineBanner } from './components/OfflineBanner';
-import GuestWelcomeOverlay from './components/GuestWelcomeOverlay';
+import NewUserWelcomeOverlay from './components/NewUserWelcomeOverlay';
 
 // Suppress some logging messages
 if (typeof window !== 'undefined') {
@@ -118,7 +118,7 @@ const AppRoutes: React.FC = () => {
       <ErrorNotification />
       <NotificationDisplay />
       <PingNotificationDisplay />
-      <GuestWelcomeOverlay />
+      <NewUserWelcomeOverlay />
       <TutorialOverlay />
       <Routes>
         <Route
