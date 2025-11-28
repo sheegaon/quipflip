@@ -5,6 +5,7 @@ import { useGame } from '../contexts/GameContext';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import type { MemeVoteResult, VoteRoundState, VoteResult, Caption } from '../api/types';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
+import { HomeIcon } from '../components/icons/NavigationIcons';
 
 interface VoteLocationState {
   round?: VoteRoundState;
@@ -26,6 +27,7 @@ export const VoteRound: React.FC = () => {
   const [isLoadingRound, setIsLoadingRound] = useState(false);
 
   const voteCost = roundAvailability?.round_entry_cost ?? 5;
+  const captionCost = roundAvailability?.caption_submission_cost ?? 100;
 
   // recover round when arriving without navigation state
   useEffect(() => {
@@ -124,9 +126,10 @@ export const VoteRound: React.FC = () => {
               <div className="flex flex-wrap gap-3 pt-2">
                 <button
                   onClick={goToCaption}
-                  className="bg-quip-teal hover:bg-quip-turquoise text-white font-semibold px-4 py-2 rounded-tile"
+                  className="bg-quip-teal hover:bg-quip-turquoise text-white font-semibold px-4 py-2 rounded-tile flex items-center gap-2"
                 >
-                  Add your caption
+                  <span>Add your caption</span>
+                  <CurrencyDisplay amount={captionCost} iconClassName="w-4 h-4" textClassName="font-semibold" />
                 </button>
                 {/* TODO: Enable when round results feature is implemented
                 <button
@@ -138,9 +141,17 @@ export const VoteRound: React.FC = () => {
                 */}
                 <button
                   onClick={handlePlayAgain}
-                  className="border-2 border-quip-navy text-quip-navy font-semibold px-4 py-2 rounded-tile"
+                  className="border-2 border-quip-navy text-quip-navy font-semibold px-4 py-2 rounded-tile hover:bg-quip-navy hover:text-white transition-colors flex items-center gap-2"
                 >
-                  Play again
+                  <span>Play again</span>
+                  <CurrencyDisplay amount={voteCost} iconClassName="w-4 h-4" textClassName="font-semibold" />
+                </button>
+                <button
+                  onClick={() => navigate('/dashboard')}
+                  className="border-2 border-quip-navy text-quip-navy font-semibold px-4 py-2 rounded-tile hover:bg-quip-navy hover:text-white transition-colors flex items-center gap-2"
+                >
+                  <HomeIcon className="w-4 h-4" />
+                  <span>Back to Dashboard</span>
                 </button>
               </div>
             </div>
@@ -198,16 +209,13 @@ export const VoteRound: React.FC = () => {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex items-center justify-between pt-4 border-t border-quip-navy border-opacity-20">
-              <div className="text-sm text-quip-teal flex items-center gap-2">
-                <span>Cost:</span>
-                <CurrencyDisplay amount={voteCost} />
-              </div>
+            <div className="flex justify-end pt-4 border-t border-quip-navy border-opacity-20">
               <button
                 onClick={() => navigate('/dashboard')}
-                className="border-2 border-quip-navy text-quip-navy font-semibold px-4 py-2 rounded-tile hover:bg-quip-navy hover:text-white transition-colors"
+                className="border-2 border-quip-navy text-quip-navy font-semibold px-4 py-2 rounded-tile hover:bg-quip-navy hover:text-white transition-colors flex items-center gap-2"
               >
-                Back to Dashboard
+                <HomeIcon className="w-4 h-4" />
+                <span>Back to Dashboard</span>
               </button>
             </div>
           </div>

@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useGame } from '../contexts/GameContext';
 import { useQuests } from '../contexts/QuestContext';
-import { Header } from '../components/Header';
 import { QuestCard } from '../components/QuestCard';
 import { SuccessNotification } from '../components/SuccessNotification';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
@@ -140,8 +139,6 @@ export const Quests: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-quip-cream bg-pattern">
-      <Header />
-      
       <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="mb-6">
           <h1 className="text-3xl font-display font-bold text-quip-navy">Rewards & Quests</h1>

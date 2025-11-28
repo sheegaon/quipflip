@@ -128,7 +128,7 @@ class MMPlayerRouter(PlayerRouterBase):
                     "mm_captions_per_round", default=5
                 ),
                 caption_submission_cost=await config_service.get_config_value(
-                    "mm_caption_submission_cost", default=10
+                    "mm_caption_submission_cost", default=100
                 ),
                 free_captions_per_day=await config_service.get_config_value(
                     "mm_free_captions_per_day", default=0
@@ -177,7 +177,7 @@ async def _get_dashboard_data(player, db: AsyncSession) -> MMDashboardDataRespon
 
         # Get round availability info
         round_entry_cost = await config_service.get_config_value("mm_round_entry_cost", default=5)
-        caption_submission_cost = await config_service.get_config_value("mm_caption_submission_cost", default=10)
+        caption_submission_cost = await config_service.get_config_value("mm_caption_submission_cost", default=100)
         free_captions_remaining = await daily_state_service.get_remaining_free_captions(player.player_id)
         daily_bonus_available = await daily_bonus_service.is_bonus_available(player.player_id)
 

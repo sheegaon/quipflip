@@ -234,7 +234,7 @@ async def get_round_availability(
     # Get config values
     round_entry_cost = await config_service.get_config_value("mm_round_entry_cost", default=5)
     caption_submission_cost = await config_service.get_config_value(
-        "mm_caption_submission_cost", default=10
+        "mm_caption_submission_cost", default=100
     )
     free_captions_remaining = await daily_state_service.get_remaining_free_captions(
         player.player_id

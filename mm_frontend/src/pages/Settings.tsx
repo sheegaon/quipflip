@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { useTutorial } from '../contexts/TutorialContext';
-import { Header } from '../components/Header';
 import apiClient, { extractErrorMessage } from '../api/client';
 import { settingsLogger } from '../utils/logger';
 import { formatDateInUserZone, formatDateTimeInUserZone } from '../utils/datetime';
@@ -81,7 +80,6 @@ const Settings: React.FC = () => {
   if (!player) {
     return (
       <div className="min-h-screen bg-quip-cream bg-pattern">
-        <Header />
         <div className="container mx-auto px-4 py-8">
           <div className="text-center">Loading...</div>
         </div>
@@ -272,7 +270,6 @@ const Settings: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-quip-cream bg-pattern">
-      <Header />
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         {/* Header */}
         <div className="tile-card p-6 mb-6">
