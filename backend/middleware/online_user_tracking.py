@@ -28,6 +28,8 @@ ACTION_MAP = {
     # Player paths (from most specific to least specific)
     "/player/statistics/weekly-leaderboard": {"name": "Weekly Leaderboard", "category": "stats"},
     "/player/statistics/alltime-leaderboard": {"name": "All-Time Leaderboard", "category": "stats"},
+    "/mm/player/statistics/weekly-leaderboard": {"name": "Weekly Leaderboard", "category": "stats"},
+    "/mm/player/statistics/alltime-leaderboard": {"name": "All-Time Leaderboard", "category": "stats"},
     "/player/statistics": {"name": "Statistics", "category": "stats"},
     "/player/leaderboard": {"name": "Leaderboard", "category": "stats"},
     "/player/dashboard": {"name": "Dashboard", "category": "navigation"},
