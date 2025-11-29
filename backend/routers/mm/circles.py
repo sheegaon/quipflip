@@ -65,10 +65,10 @@ async def create_circle(
 
         # Build response with contextual fields
         circle_response = CircleResponse(
-            circle_id=UUID(circle.circle_id),
+            circle_id=UUID(str(circle.circle_id)),
             name=circle.name,
             description=circle.description,
-            created_by_player_id=UUID(circle.created_by_player_id),
+            created_by_player_id=UUID(str(circle.created_by_player_id)),
             created_at=circle.created_at,
             updated_at=circle.updated_at,
             member_count=circle.member_count,
@@ -108,16 +108,16 @@ async def list_circles(
 
         # Get player's Circle memberships and pending requests
         player_circles = await MMCircleService.get_player_circles(db, str(player.player_id))
-        player_circle_ids = {UUID(c.circle_id) for c in player_circles}
+        player_circle_ids = {UUID(str(c.circle_id)) for c in player_circles}
 
         # Get pending join requests for this player
         pending_requests = await MMCircleService.get_pending_join_requests_for_player(db, str(player.player_id))
-        pending_circle_ids = {UUID(req.circle_id) for req in pending_requests}
+        pending_circle_ids = {UUID(str(req.circle_id)) for req in pending_requests}
 
         # Build responses with contextual fields
         circle_responses = []
         for circle in circles[offset:offset + limit]:
-            circle_id_uuid = UUID(circle.circle_id)
+            circle_id_uuid = UUID(str(circle.circle_id))
             is_member = circle_id_uuid in player_circle_ids
 
             # Check if player is admin
@@ -125,7 +125,7 @@ async def list_circles(
             if is_member:
                 members = await MMCircleService.get_circle_members(db, str(circle.circle_id))
                 for member in members:
-                    if UUID(member.player_id) == player.player_id and member.role == "admin":
+                    if UUID(str(member.player_id)) == player.player_id and member.role == "admin":
                         is_admin = True
                         break
 
@@ -133,7 +133,7 @@ async def list_circles(
                 circle_id=circle_id_uuid,
                 name=circle.name,
                 description=circle.description,
-                created_by_player_id=UUID(circle.created_by_player_id),
+                created_by_player_id=UUID(str(circle.created_by_player_id)),
                 created_at=circle.created_at,
                 updated_at=circle.updated_at,
                 member_count=circle.member_count,
@@ -168,18 +168,18 @@ async def get_circle(
 
         # Check if player is a member
         members = await MMCircleService.get_circle_members(db, str(circle_id))
-        is_member = any(UUID(m.player_id) == player.player_id for m in members)
-        is_admin = any(UUID(m.player_id) == player.player_id and m.role == "admin" for m in members)
+        is_member = any(UUID(str(m.player_id)) == player.player_id for m in members)
+        is_admin = any(UUID(str(m.player_id)) == player.player_id and m.role == "admin" for m in members)
 
         # Check for pending join request
         pending_requests = await MMCircleService.get_pending_join_requests_for_player(db, str(player.player_id))
-        has_pending_request = any(UUID(req.circle_id) == circle_id for req in pending_requests)
+        has_pending_request = any(UUID(str(req.circle_id)) == circle_id for req in pending_requests)
 
         return CircleResponse(
-            circle_id=UUID(circle.circle_id),
+            circle_id=UUID(str(circle.circle_id)),
             name=circle.name,
             description=circle.description,
-            created_by_player_id=UUID(circle.created_by_player_id),
+            created_by_player_id=UUID(str(circle.created_by_player_id)),
             created_at=circle.created_at,
             updated_at=circle.updated_at,
             member_count=circle.member_count,
@@ -214,7 +214,7 @@ async def join_circle(
 
         # Check if already a member
         members = await MMCircleService.get_circle_members(db, str(circle_id))
-        if any(UUID(m.player_id) == player.player_id for m in members):
+        if any(UUID(str(m.player_id)) == player.player_id for m in members):
             return JoinCircleResponse(
                 success=False,
                 message="Already a member of this Circle",
@@ -229,7 +229,7 @@ async def join_circle(
 
         return JoinCircleResponse(
             success=True,
-            request_id=UUID(join_request.request_id),
+            request_id=UUID(str(join_request.request_id)),
             message="Join request submitted successfully",
         )
 
@@ -253,7 +253,7 @@ async def approve_join_request(
     try:
         # Check if player is admin
         members = await MMCircleService.get_circle_members(db, str(circle_id))
-        is_admin = any(UUID(m.player_id) == player.player_id and m.role == "admin" for m in members)
+        is_admin = any(UUID(str(m.player_id)) == player.player_id and m.role == "admin" for m in members)
 
         if not is_admin:
             raise HTTPException(status_code=403, detail="Only Circle admins can approve join requests")
@@ -291,7 +291,7 @@ async def deny_join_request(
     try:
         # Check if player is admin
         members = await MMCircleService.get_circle_members(db, str(circle_id))
-        is_admin = any(UUID(m.player_id) == player.player_id and m.role == "admin" for m in members)
+        is_admin = any(UUID(str(m.player_id)) == player.player_id and m.role == "admin" for m in members)
 
         if not is_admin:
             raise HTTPException(status_code=403, detail="Only Circle admins can deny join requests")
@@ -332,7 +332,7 @@ async def add_member(
     try:
         # Check if player is admin
         members = await MMCircleService.get_circle_members(db, str(circle_id))
-        is_admin = any(UUID(m.player_id) == player.player_id and m.role == "admin" for m in members)
+        is_admin = any(UUID(str(m.player_id)) == player.player_id and m.role == "admin" for m in members)
 
         if not is_admin:
             raise HTTPException(status_code=403, detail="Only Circle admins can add members directly")
@@ -370,7 +370,7 @@ async def remove_member(
     try:
         # Check if player is admin
         members = await MMCircleService.get_circle_members(db, str(circle_id))
-        is_admin = any(UUID(m.player_id) == player.player_id and m.role == "admin" for m in members)
+        is_admin = any(UUID(str(m.player_id)) == player.player_id and m.role == "admin" for m in members)
 
         if not is_admin:
             raise HTTPException(status_code=403, detail="Only Circle admins can remove members")
@@ -446,17 +446,17 @@ async def get_circle_members(
         from sqlalchemy import select
         from backend.models.mm.player import MMPlayer as MMPlayerModel
 
-        player_ids = [UUID(m.player_id) for m in members]
+        player_ids = [UUID(str(m.player_id)) for m in members]
         stmt = select(MMPlayerModel).where(MMPlayerModel.player_id.in_(player_ids))
         result = await db.execute(stmt)
         players_map = {p.player_id: p for p in result.scalars().all()}
 
         member_responses = []
         for member in members:
-            player_obj = players_map.get(UUID(member.player_id))
+            player_obj = players_map.get(UUID(str(member.player_id)))
             if player_obj:
                 member_responses.append(CircleMemberResponse(
-                    player_id=UUID(member.player_id),
+                    player_id=UUID(str(member.player_id)),
                     username=player_obj.username,
                     role=member.role,
                     joined_at=member.joined_at,
@@ -484,7 +484,7 @@ async def get_join_requests(
     try:
         # Check if player is admin
         members = await MMCircleService.get_circle_members(db, str(circle_id))
-        is_admin = any(UUID(m.player_id) == player.player_id and m.role == "admin" for m in members)
+        is_admin = any(UUID(str(m.player_id)) == player.player_id and m.role == "admin" for m in members)
 
         if not is_admin:
             raise HTTPException(status_code=403, detail="Only Circle admins can view join requests")
@@ -495,7 +495,7 @@ async def get_join_requests(
         from sqlalchemy import select
         from backend.models.mm.player import MMPlayer as MMPlayerModel
 
-        player_ids = [UUID(req.player_id) for req in join_requests]
+        player_ids = [UUID(str(req.player_id)) for req in join_requests]
         if player_ids:
             stmt = select(MMPlayerModel).where(MMPlayerModel.player_id.in_(player_ids))
             result = await db.execute(stmt)
@@ -505,16 +505,16 @@ async def get_join_requests(
 
         request_responses = []
         for req in join_requests:
-            player_obj = players_map.get(UUID(req.player_id))
+            player_obj = players_map.get(UUID(str(req.player_id)))
             if player_obj:
                 request_responses.append(CircleJoinRequestResponse(
-                    request_id=UUID(req.request_id),
-                    player_id=UUID(req.player_id),
+                    request_id=UUID(str(req.request_id)),
+                    player_id=UUID(str(req.player_id)),
                     username=player_obj.username,
                     requested_at=req.requested_at,
                     status=req.status,
                     resolved_at=req.resolved_at,
-                    resolved_by_player_id=UUID(req.resolved_by_player_id) if req.resolved_by_player_id else None,
+                    resolved_by_player_id=UUID(str(req.resolved_by_player_id)) if req.resolved_by_player_id else None,
                 ))
 
         return CircleJoinRequestsResponse(
