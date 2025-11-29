@@ -79,7 +79,7 @@ export const Dashboard: React.FC = () => {
               </div>
             )}
 
-            <div className="rounded-tile border-2 border-quip-orange bg-gradient-to-r from-quip-orange to-quip-orange-deep text-white p-8 text-center">
+            <div className="rounded-tile border-2 border-quip-orange bg-gradient-to-r from-quip-orange to-quip-orange-deep text-white p-8 text-center mb-4">
               <h2 className="text-2xl font-display font-bold mb-2">Browse Memes & Play</h2>
               <p className="text-lg mb-4">View a fresh meme and pick your favorite caption.</p>
               <div className="flex items-center justify-center gap-2 mb-6 text-lg">
@@ -91,6 +91,17 @@ export const Dashboard: React.FC = () => {
                 className="bg-white text-quip-orange font-bold py-3 px-8 rounded-tile shadow-tile hover:shadow-tile-sm transition-colors disabled:opacity-70"
               >
                 {isStartingRound ? 'Preparing your meme...' : 'Start'}
+              </button>
+            </div>
+
+            <div className="rounded-tile border-2 border-quip-teal bg-gradient-to-r from-quip-teal to-quip-teal-deep text-white p-6 text-center">
+              <h2 className="text-xl font-display font-bold mb-2">Circles</h2>
+              <p className="mb-4">Join or create Circles to play with friends!</p>
+              <button
+                onClick={() => navigate('/circles')}
+                className="bg-white text-quip-teal font-bold py-2 px-6 rounded-tile shadow-tile hover:shadow-tile-sm transition-colors"
+              >
+                Browse Circles
               </button>
             </div>
           </>
