@@ -44,21 +44,7 @@ cp /path/to/your/image.png backend/data/mm_images/
 
 Supported formats: `.jpg`, `.jpeg`, `.png`, `.gif`, `.webp`
 
-### 2. Add Seed Captions
-
-Edit `mm_seed_captions.csv` and add a row for your image:
-
-```csv
-image_file,seed_caption1,seed_caption2,seed_caption3,seed_caption4,seed_caption5
-your_image.png,"First caption","Second caption","Third caption","Fourth caption","Fifth caption"
-```
-
-**Notes:**
-- You can add more than 5 captions by adding columns: `seed_caption6`, `seed_caption7`, etc.
-- Captions should be quoted if they contain commas
-- Lines starting with `#` are treated as comments and ignored
-
-### 3. Run Import Script
+### 2. Run Import Script
 
 ```bash
 PYTHONPATH=/Users/tfish/PycharmProjects/quipflip .venv/bin/python backend/data/import_mm_images.py
@@ -71,7 +57,7 @@ The script will:
 - ✅ Skip images and captions that already exist
 - ✅ Set image URLs to `/api/mm/images/{filename}`
 
-### 4. Commit to GitHub
+### 3. Commit to GitHub
 
 For production deployment, commit the images to GitHub:
 

@@ -177,8 +177,7 @@ export const VoteRound: React.FC = () => {
           <div className="flex-1 space-y-6">
             <div>
               <p className="text-sm text-quip-teal uppercase tracking-wide">Vote Round</p>
-              <h1 className="text-3xl font-display font-bold text-quip-navy">Choose the best caption</h1>
-              <p className="text-quip-teal">Select your favorite caption for this image</p>
+              <h1 className="text-3xl font-display font-bold text-quip-navy">Choose your favorite caption</h1>
             </div>
 
             {error && (
@@ -206,17 +205,6 @@ export const VoteRound: React.FC = () => {
                   </div>
                 </button>
               ))}
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex justify-end pt-4 border-t border-quip-navy border-opacity-20">
-              <button
-                onClick={() => navigate('/dashboard')}
-                className="border-2 border-quip-navy text-quip-navy font-semibold px-4 py-2 rounded-tile hover:bg-quip-navy hover:text-white transition-colors flex items-center gap-2"
-              >
-                <HomeIcon className="w-4 h-4" />
-                <span>Back to Dashboard</span>
-              </button>
             </div>
           </div>
         </div>
