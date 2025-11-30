@@ -57,10 +57,9 @@ async def create_circle(
     try:
         circle = await MMCircleService.create_circle(
             db,
+            player_id=str(player.player_id),
             name=circle_request.name,
-            created_by_player_id=str(player.player_id),
             description=circle_request.description,
-            is_public=circle_request.is_public,
         )
 
         # Build response with contextual fields
