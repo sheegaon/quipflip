@@ -63,11 +63,15 @@ const createBackoff = (baseDelay = 2000, maxDelay = 30000): BackoffController =>
 const buildWebSocketUrl = async (path: string, signal?: AbortSignal) => {
   const { token } = await apiClient.getWebsocketToken(signal);
   const apiUrl = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:8000`;
+  const normalizedApiUrl = apiUrl.replace(/\/$/, '');
+  const rootApiUrl = normalizedApiUrl.replace(/\/mm($|\/)/, '');
   const backendWsUrl = import.meta.env.VITE_BACKEND_WS_URL || 'wss://quipflip-c196034288cd.herokuapp.com';
 
-  const base = apiUrl.startsWith('/')
+  const targetBase = path.startsWith('/qf/') ? rootApiUrl : normalizedApiUrl;
+
+  const base = targetBase.startsWith('/')
     ? `${backendWsUrl}${path}`
-    : apiUrl.replace('http://', 'ws://').replace('https://', 'wss://') + path;
+    : targetBase.replace('http://', 'ws://').replace('https://', 'wss://') + path;
 
   const url = new URL(base, window.location.href);
   url.searchParams.set('token', token);
