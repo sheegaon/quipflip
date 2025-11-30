@@ -758,7 +758,8 @@ export const apiClient = {
   },
 
   async getOnlineUsers(signal?: AbortSignal): Promise<OnlineUsersResponse> {
-    const { data } = await api.get<OnlineUsersResponse>(`${QF_API_BASE_URL}/users/online`, {
+    const { data } = await api.get<OnlineUsersResponse>('/qf/users/online', {
+      baseURL: ROOT_API_URL,
       signal,
     });
     return data;
@@ -766,9 +767,12 @@ export const apiClient = {
 
   async pingOnlineUser(username: string, signal?: AbortSignal): Promise<PingUserResponse> {
     const { data } = await api.post<PingUserResponse>(
-      `${QF_API_BASE_URL}/users/online/ping`,
+      '/qf/users/online/ping',
       { username },
-      { signal },
+      {
+        baseURL: ROOT_API_URL,
+        signal,
+      },
     );
     return data;
   },
