@@ -380,6 +380,7 @@ async def remove_member(
             db,
             circle_id=str(circle_id),
             player_id=str(player_id),
+            removed_by_player_id=str(player.player_id),
         )
 
         return RemoveMemberResponse(
