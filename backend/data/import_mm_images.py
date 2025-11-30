@@ -108,7 +108,6 @@ async def import_images(db: AsyncSession):
         existing_image = result.scalar_one_or_none()
 
         if existing_image:
-            logger.info(f"Image already exists: {filename}")
             image_id = existing_image.image_id
         else:
             # Create new image record
@@ -136,7 +135,6 @@ async def import_images(db: AsyncSession):
         for caption_text in SEED_CAPTIONS:
             # Skip if caption already exists
             if caption_text in existing_caption_texts:
-                logger.debug(f"Caption already exists for {filename}: {caption_text[:50]}...")
                 continue
 
             # Create caption
@@ -159,10 +157,11 @@ async def import_images(db: AsyncSession):
             )
             db.add(caption)
             captions_created += 1
-            logger.debug(f"Created caption for {filename}: {caption_text[:50]}...")
+            logger.info(f"Created caption for {filename}: {caption_text[:50]}...")
 
         await db.flush()
-        logger.info(f"Added {captions_created} captions for {filename}")
+        if captions_created > 0:
+            logger.info(f"Added {captions_created} captions for {filename}")
 
     # Commit all changes
     await db.commit()
