@@ -1,14 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
+import { useTutorial } from '../contexts/TutorialContext';
 import { extractErrorMessage } from '../api/client';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { UpgradeGuestAccount } from '../components/UpgradeGuestAccount';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import TutorialWelcome from '../components/Tutorial/TutorialWelcome';
 
 export const Dashboard: React.FC = () => {
   const { state, actions } = useGame();
+  const { startTutorial, skipTutorial } = useTutorial();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const {
     player,
@@ -19,6 +23,7 @@ export const Dashboard: React.FC = () => {
   const [isStartingRound, setIsStartingRound] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showTutorialWelcome, setShowTutorialWelcome] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -26,6 +31,16 @@ export const Dashboard: React.FC = () => {
     refreshDashboard(controller.signal).finally(() => setLoading(false));
     return () => controller.abort();
   }, [refreshDashboard]);
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    if (searchParams.get('startTutorial') === 'true') {
+      setShowTutorialWelcome(true);
+      searchParams.delete('startTutorial');
+      const newSearch = searchParams.toString();
+      navigate(`/dashboard${newSearch ? `?${newSearch}` : ''}`, { replace: true });
+    }
+  }, [location.search, navigate]);
 
   const handleStartVote = async () => {
     if (isStartingRound) return;
@@ -42,12 +57,28 @@ export const Dashboard: React.FC = () => {
     }
   };
 
+  const handleStartTutorial = async () => {
+    setShowTutorialWelcome(false);
+    await startTutorial();
+  };
+
+  const handleSkipTutorial = async () => {
+    setShowTutorialWelcome(false);
+    await skipTutorial();
+  };
+
   const freeCaptionsRemaining = roundAvailability?.free_captions_remaining;
 
   return (
     <div className="max-w-4xl mx-auto px-4 pb-12 pt-4">
+      {showTutorialWelcome && (
+        <TutorialWelcome
+          onStart={handleStartTutorial}
+          onSkip={handleSkipTutorial}
+        />
+      )}
       {player?.is_guest && <UpgradeGuestAccount className="mb-4" />}
-      <div className="tile-card p-6 md:p-8">
+      <div className="tile-card p-6 md:p-8 tutorial-dashboard">
         <div className="mb-6">
           <h1 className="text-3xl font-display font-bold text-quip-navy">MemeMint Arcade</h1>
         </div>
