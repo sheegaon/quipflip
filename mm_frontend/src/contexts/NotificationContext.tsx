@@ -68,8 +68,8 @@ interface PingToastMessage {
 export const NotificationProvider: FC<NotificationProviderProps> = ({
   children,
 }) => {
-  const notificationsEnabled = import.meta.env.VITE_ENABLE_NOTIFICATIONS === 'true';
-  const onlineUsersEnabled = import.meta.env.VITE_ENABLE_ONLINE_USERS === 'true';
+  const notificationsEnabled = import.meta.env.VITE_ENABLE_NOTIFICATIONS !== 'false';
+  const onlineUsersEnabled = import.meta.env.VITE_ENABLE_ONLINE_USERS !== 'false';
 
   const [notifications, setNotifications] = useState<NotificationMessage[]>([]);
   const [pingMessages, setPingMessages] = useState<PingToastMessage[]>([]);
@@ -161,7 +161,7 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
   }, []);
 
   useWebSocket({
-    path: '/mm/notifications/ws',
+    path: '/notifications/ws',
     enabled: state.isAuthenticated && notificationsEnabled,
     onMessage: handleNotificationMessage,
     onError: () => {
@@ -229,7 +229,7 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
   }, [startPollingOnlineUsers]);
 
   useWebSocket({
-    path: '/mm/users/online/ws',
+    path: '/users/online/ws',
     enabled: state.isAuthenticated && onlineUsersEnabled,
     onOpen: handleOnlineUsersOpen,
     onMessage: handleOnlineUsersMessage,
