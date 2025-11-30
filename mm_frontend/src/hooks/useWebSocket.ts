@@ -64,7 +64,7 @@ const buildWebSocketUrl = async (path: string, signal?: AbortSignal) => {
   const { token } = await apiClient.getWebsocketToken(signal);
   const apiUrl = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:8000`;
   const normalizedApiUrl = apiUrl.replace(/\/$/, '');
-  const rootApiUrl = normalizedApiUrl.replace(/\/mm($|\/)/, '');
+  const rootApiUrl = normalizedApiUrl.replace(/\/mm($|\/)/, '').replace(/\/qf($|\/)/, '');
   const backendWsUrl = import.meta.env.VITE_BACKEND_WS_URL || 'wss://quipflip-c196034288cd.herokuapp.com';
 
   const targetBase = path.startsWith('/qf/') ? rootApiUrl : normalizedApiUrl;
