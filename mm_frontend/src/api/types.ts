@@ -462,6 +462,13 @@ export interface MemeImage {
 export interface Caption {
   caption_id: string;
   text: string;
+  author_username?: string | null;
+  is_ai?: boolean;
+  is_bot?: boolean;
+  is_system?: boolean;
+  is_seed_caption?: boolean;
+  is_circle_member?: boolean;
+  in_circle?: boolean;
   // Note: Backend doesn't include kind/parent_caption_id in caption list responses
 }
 

@@ -50,8 +50,8 @@ jobs:
         python -m pytest tests/test_datetime_helpers.py -v
         python -m pytest tests/test_game_flow.py -v
         python -m pytest tests/test_guest_accounts.py -v
-        python -m pytest backend/tests/test_mm_caption_retirement.py -v
-        python -m pytest backend/tests/test_mm_riff_validation.py -v
+        python -m pytest tests/test_mm_caption_retirement.py -v
+        python -m pytest tests/test_mm_riff_validation.py -v
         python -m pytest tests/test_party_session_service.py -v
         python -m pytest tests/test_phrase_validation_client.py -v
         python -m pytest tests/test_profanity_check.py -v

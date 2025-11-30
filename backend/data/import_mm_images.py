@@ -36,44 +36,28 @@ IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
 
 # Paths
 IMAGES_DIR = Path(__file__).parent / 'mm_images'
-CAPTIONS_CSV = Path(__file__).parent / 'mm_seed_captions.csv'
-
-
-def load_seed_captions() -> dict[str, list[str]]:
-    """Load seed captions from CSV file.
-
-    Returns:
-        Dictionary mapping image filename to list of seed captions
-    """
-    captions_map = {}
-
-    if not CAPTIONS_CSV.exists():
-        logger.warning(f"Captions CSV not found: {CAPTIONS_CSV}")
-        return captions_map
-
-    with open(CAPTIONS_CSV, 'r', encoding='utf-8') as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            image_file = row['image_file']
-
-            # Skip commented rows
-            if image_file.startswith('#'):
-                continue
-
-            # Collect all seed_caption columns (skip empty values)
-            captions = []
-            for i in range(1, 100):  # Support up to 99 captions
-                col_name = f'seed_caption{i}'
-                if col_name in row and row[col_name].strip():  # Skip empty or whitespace-only values
-                    captions.append(row[col_name].strip())
-                elif captions:  # Stop only after we've found at least one caption
-                    break
-
-            if captions:
-                captions_map[image_file] = captions
-                logger.info(f"Loaded {len(captions)} seed captions for {image_file}")
-
-    return captions_map
+SEED_CAPTIONS = [
+    "This seemed like a good idea in the planning phase.",
+    "I’m not saying it’s wrong—I’m saying it’s impressive you committed.",
+    "We need to talk about what you think is ‘normal.’",
+    "Technically, it worked. Emotionally, it didn’t.",
+    "I’d like to unsubscribe from today.",
+    "Same energy, different disaster.",
+    "I have questions, and none of them are kind.",
+    "I’m fine. My face is simply telling the truth.",
+    "I don’t remember approving this update.",
+    "Let’s circle back after I stop regretting everything.",
+    "I’m not mad. I’m taking notes.",
+    "Nothing prepared me for the confidence.",
+    "This was not covered in the tutorial.",
+    "We’re all going to pretend this makes sense, huh?",
+    "Great—now it’s my problem.",
+    "I’m choosing silence because the alternatives are illegal.",
+    "I’m going to need a smaller reality.",
+    "Please don’t make this a ‘learning moment.’",
+    "I can explain. I just won’t.",
+    "This is why we can’t have nice things.",
+]
 
 
 def find_image_files() -> list[Path]:
@@ -101,9 +85,6 @@ async def import_images(db: AsyncSession):
     Args:
         db: Database session
     """
-    # Load seed captions
-    seed_captions = load_seed_captions()
-
     # Find image files
     image_files = find_image_files()
 
@@ -127,7 +108,6 @@ async def import_images(db: AsyncSession):
         existing_image = result.scalar_one_or_none()
 
         if existing_image:
-            logger.info(f"Image already exists: {filename}")
             image_id = existing_image.image_id
         else:
             # Create new image record
@@ -147,53 +127,46 @@ async def import_images(db: AsyncSession):
             images_created += 1
             logger.info(f"Created image: {filename} (ID: {image_id})")
 
-        # Add seed captions if available
-        if filename in seed_captions:
-            # Check existing captions for this image
-            stmt = select(MMCaption).where(MMCaption.image_id == image_id)
-            result = await db.execute(stmt)
-            existing_caption_texts = {c.text for c in result.scalars().all()}
+        # Check existing captions for this image
+        stmt = select(MMCaption).where(MMCaption.image_id == image_id)
+        result = await db.execute(stmt)
+        existing_caption_texts = {c.text for c in result.scalars().all()}
 
-            for caption_text in seed_captions[filename]:
-                # Skip if caption already exists
-                if caption_text in existing_caption_texts:
-                    logger.debug(f"Caption already exists for {filename}: {caption_text[:50]}...")
-                    continue
+        for caption_text in SEED_CAPTIONS:
+            # Skip if caption already exists
+            if caption_text in existing_caption_texts:
+                continue
 
-                # Create caption
-                caption = MMCaption(
-                    caption_id=uuid4(),
-                    image_id=image_id,
-                    author_player_id=None,  # System/seed caption
-                    kind="original",
-                    parent_caption_id=None,
-                    text=caption_text,
-                    status="active",
-                    created_at=datetime.now(UTC),
-                    shows=0,
-                    picks=0,
-                    first_vote_awarded=False,
-                    quality_score=0.25,  # Initial score: (0+1)/(0+3) = 0.333... we'll use 0.25
-                    lifetime_earnings_gross=0,
-                    lifetime_to_wallet=0,
-                    lifetime_to_vault=0,
-                )
-                db.add(caption)
-                captions_created += 1
-                logger.debug(f"Created caption for {filename}: {caption_text[:50]}...")
+            # Create caption
+            caption = MMCaption(
+                caption_id=uuid4(),
+                image_id=image_id,
+                author_player_id=None,  # System/seed caption
+                kind="original",
+                parent_caption_id=None,
+                text=caption_text,
+                status="active",
+                created_at=datetime.now(UTC),
+                shows=0,
+                picks=0,
+                first_vote_awarded=False,
+                quality_score=0.1,
+                lifetime_earnings_gross=0,
+                lifetime_to_wallet=0,
+                lifetime_to_vault=0,
+            )
+            db.add(caption)
+            captions_created += 1
+            logger.info(f"Created caption for {filename}: {caption_text[:50]}...")
 
-            await db.flush()
+        await db.flush()
+        if captions_created > 0:
             logger.info(f"Added {captions_created} captions for {filename}")
 
     # Commit all changes
     await db.commit()
 
-    logger.info(f"""
-Import complete:
-  - Images created: {images_created}
-  - Captions created: {captions_created}
-  - Total images in directory: {len(image_files)}
-    """)
+    logger.info(f"Import complete: {images_created=} {captions_created=} {len(image_files)=}")
 
 
 async def main():
