@@ -340,6 +340,7 @@ async def add_member(
             db,
             circle_id=str(circle_id),
             player_id=str(add_request.player_id),
+            added_by_player_id=str(player.player_id),
         )
 
         return AddMemberResponse(
@@ -378,6 +379,7 @@ async def remove_member(
             db,
             circle_id=str(circle_id),
             player_id=str(player_id),
+            removed_by_player_id=str(player.player_id),
         )
 
         return RemoveMemberResponse(
@@ -411,6 +413,7 @@ async def leave_circle(
             db,
             circle_id=str(circle_id),
             player_id=str(player.player_id),
+            removed_by_player_id=str(player.player_id),
         )
 
         return LeaveCircleResponse(
