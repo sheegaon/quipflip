@@ -86,15 +86,12 @@ import type {
 
 // Base URL - configure based on environment
 const baseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
-const normalizedBaseUrl = baseUrl.replace(/\/$/, '');
-const hasMmSuffix = /\/mm($|\/)/.test(normalizedBaseUrl);
-const ROOT_API_URL = hasMmSuffix
-  ? normalizedBaseUrl.replace(/\/mm($|\/)/, '')
-  : normalizedBaseUrl;
-const API_BASE_URL = hasMmSuffix ? normalizedBaseUrl : `${normalizedBaseUrl}/mm`;
-const QF_API_BASE_URL = /\/qf($|\/)/.test(normalizedBaseUrl)
-  ? normalizedBaseUrl
-  : `${ROOT_API_URL}/qf`;
+const ROOT_API_URL = baseUrl
+  .replace(/\/mm($|\/)/, '')
+  .replace(/\/qf($|\/)/, '');
+
+const API_BASE_URL = `${ROOT_API_URL}/mm`;
+const QF_API_BASE_URL = `${ROOT_API_URL}/qf`;
 
 // Helper for dev logging
 const isDev = import.meta.env.DEV;
