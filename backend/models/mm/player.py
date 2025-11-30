@@ -29,3 +29,17 @@ class MMPlayer(PlayerBase):
     daily_states = relationship(
         "MMPlayerDailyState", back_populates="player", cascade="all, delete-orphan"
     )
+    created_circles = relationship(
+        "MMCircle",
+        foreign_keys="MMCircle.created_by_player_id",
+        back_populates="created_by"
+    )
+    circle_memberships = relationship(
+        "MMCircleMember",
+        back_populates="player"
+    )
+    circle_join_requests = relationship(
+        "MMCircleJoinRequest",
+        foreign_keys="MMCircleJoinRequest.player_id",
+        back_populates="player"
+    )

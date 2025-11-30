@@ -6,7 +6,7 @@ from datetime import datetime, UTC, timedelta
 from typing import Optional
 from uuid import UUID, uuid4
 
-from sqlalchemy import select, func, and_
+from sqlalchemy import Integer, select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import or_
 
@@ -156,6 +156,8 @@ class MMGameService:
     ) -> Optional[MMImage]:
         """Select an image that has at least captions_per_round unseen captions.
 
+        Prioritizes images with Circle-mate content when available.
+
         Args:
             player_id: Player ID
             captions_per_round: Minimum number of captions needed
@@ -163,11 +165,23 @@ class MMGameService:
         Returns:
             Selected image or None if no eligible images
         """
-        # Subquery: count unseen active captions per image
+        from backend.services.mm.circle_service import MMCircleService
+
+        # Get Circle-mates for this player
+        circle_mates = await MMCircleService.get_circle_mates(self.db, str(player_id))
+        circle_mate_ids = circle_mates or []
+
+        # Subquery: count unseen active captions per image, always tracking Circle content
         unseen_captions_subq = (
             select(
                 MMCaption.image_id,
-                func.count(MMCaption.caption_id).label('unseen_count')
+                func.count(MMCaption.caption_id).label('unseen_count'),
+                func.sum(
+                    func.cast(
+                        MMCaption.author_player_id.in_(circle_mate_ids),
+                        type_=Integer
+                    )
+                ).label('circle_caption_count')
             )
             .outerjoin(
                 MMCaptionSeen,
@@ -187,13 +201,35 @@ class MMGameService:
             .subquery()
         )
 
-        # Select random image from eligible images
+        if circle_mates:
+            # Try Circle-participating images first
+            circle_images_stmt = (
+                select(MMImage)
+                .join(unseen_captions_subq, unseen_captions_subq.c.image_id == MMImage.image_id)
+                .where(
+                    MMImage.status == 'active',
+                    unseen_captions_subq.c.circle_caption_count > 0  # At least 1 Circle caption
+                )
+                .order_by(func.random())
+                .limit(10)  # Get 10 candidates for better randomness
+            )
+
+            result = await self.db.execute(circle_images_stmt)
+            circle_images = result.scalars().all()
+
+            if circle_images:
+                logger.debug(f"Found {len(circle_images)} Circle-participating images for player {player_id}")
+                return random.choice(circle_images)
+
+            logger.debug(f"No Circle-participating images found, falling back to global selection")
+
+        # Global fallback: Select random image from all eligible images
         stmt = (
             select(MMImage)
             .join(unseen_captions_subq, unseen_captions_subq.c.image_id == MMImage.image_id)
             .where(MMImage.status == 'active')
             .order_by(func.random())
-            .limit(10)  # Get 10 candidates for better randomness
+            .limit(10)
         )
 
         result = await self.db.execute(stmt)
@@ -202,7 +238,6 @@ class MMGameService:
         if not images:
             return None
 
-        # Randomly select one from candidates (more efficient than ORDER BY random())
         return random.choice(images)
 
     async def _select_captions_for_round(
@@ -213,6 +248,8 @@ class MMGameService:
     ) -> list[MMCaption]:
         """Select captions using weighted random by quality_score.
 
+        Prioritizes Circle captions when available (Circle-first selection).
+
         Args:
             image_id: Image to select captions for
             player_id: Player ID (to exclude seen captions)
@@ -221,6 +258,11 @@ class MMGameService:
         Returns:
             List of selected captions
         """
+        from backend.services.mm.circle_service import MMCircleService
+
+        # Get Circle-mates for this player
+        circle_mates = await MMCircleService.get_circle_mates(self.db, str(player_id))
+
         # Get candidate captions
         stmt = (
             select(MMCaption)
@@ -241,18 +283,80 @@ class MMGameService:
         )
 
         result = await self.db.execute(stmt)
-        candidates = result.scalars().all()
+        all_candidates = result.scalars().all()
 
-        if len(candidates) < count:
+        if len(all_candidates) < count:
             raise NoContentAvailableError(
                 f"Not enough unseen captions for image {image_id}. "
-                f"Need {count}, have {len(candidates)}"
+                f"Need {count}, have {len(all_candidates)}"
             )
 
-        # Weighted random selection by quality_score, without replacement
-        weights = [caption.quality_score or 0 for caption in candidates]
+        # Partition into Circle vs Global captions
+        circle_captions: list[MMCaption] = []
+        global_captions: list[MMCaption] = []
+
+        for caption in all_candidates:
+            if caption.author_player_id and caption.author_player_id in circle_mates:
+                circle_captions.append(caption)
+            else:
+                global_captions.append(caption)
+
+        # Fill slots based on Circle caption availability
+        selected_captions: list[MMCaption] = []
+        circle_count = len(circle_captions)
+
+        if circle_count >= count:
+            # Case A: >= 5 Circle captions available - select all from Circle pool
+            selected_captions = self._weighted_random_sample(circle_captions, count)
+            logger.debug(
+                f"Selected all {count} captions from Circle pool "
+                f"({circle_count} Circle captions available)"
+            )
+        elif circle_count > 0:
+            # Case B: 0 < k < 5 Circle captions - show all Circle + fill with Global
+            selected_captions.extend(circle_captions)  # Add all Circle captions
+            remaining = count - circle_count
+            selected_captions.extend(
+                self._weighted_random_sample(global_captions, remaining)
+            )
+            logger.debug(
+                f"Selected {circle_count} Circle captions + {remaining} Global captions"
+            )
+        else:
+            # Case C: 0 Circle captions - standard global selection
+            selected_captions = self._weighted_random_sample(global_captions, count)
+            logger.debug(
+                f"Selected {count} captions from Global pool (no Circle captions)"
+            )
+
+        logger.debug(
+            f"Final selection for image {image_id}: "
+            f"Quality scores: {[f'{c.quality_score:.3f}' for c in selected_captions]}"
+        )
+
+        return selected_captions
+
+    def _weighted_random_sample(
+        self,
+        captions: list[MMCaption],
+        count: int
+    ) -> list[MMCaption]:
+        """Select captions using quality-weighted random sampling.
+
+        Args:
+            captions: Pool of captions to select from
+            count: Number of captions to select
+
+        Returns:
+            List of selected captions
+        """
+        if len(captions) <= count:
+            return captions
+
+        # Calculate weights
+        weights = [caption.quality_score or 0 for caption in captions]
         selected: list[MMCaption] = []
-        available = list(candidates)
+        available = list(captions)
 
         for _ in range(count):
             if not available:
@@ -273,11 +377,6 @@ class MMGameService:
 
             selected.append(available.pop(idx))
             weights.pop(idx)
-
-        logger.debug(
-            f"Selected {count} captions for image {image_id} using weighted random. "
-            f"Quality scores: {[f'{c.quality_score:.3f}' for c in selected]}"
-        )
 
         return selected
 

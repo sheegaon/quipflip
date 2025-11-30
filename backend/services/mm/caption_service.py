@@ -176,6 +176,8 @@ class MMCaptionService:
         Raises:
             ValueError: If duplicate caption exists
         """
+        from sqlalchemy import func
+
         # Normalize text for comparison
         normalized_text = text.strip().lower()
 
@@ -189,7 +191,6 @@ class MMCaptionService:
             .limit(1)
         )
 
-        from sqlalchemy import func
         result = await self.db.execute(stmt)
         existing = result.scalar_one_or_none()
 

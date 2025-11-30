@@ -13,6 +13,7 @@ import {
   HomeIcon,
   LeaderboardIcon,
   LobbyIcon,
+  PartyIcon,
   SettingsIcon,
   StatisticsIcon,
   SurveyIcon,
@@ -287,6 +288,13 @@ export const Header: React.FC = () => {
                   >
                     <LobbyIcon className="h-5 w-5" />
                     <span className="font-semibold">Lobby</span>
+                  </button>
+                  <button
+                    onClick={() => handleNavigate('/circles')}
+                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
+                  >
+                    <PartyIcon className="h-5 w-5" />
+                    <span className="font-semibold">Circles</span>
                   </button>
                   {showTutorialInMenu && (
                     <button

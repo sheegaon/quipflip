@@ -1285,3 +1285,100 @@ export type PartyWebSocketMessage =
     { type: 'host_ping'; session_id: string; timestamp: string },
     HostPingPayload
   >;
+
+// ===== CIRCLE TYPES =====
+
+export interface CircleMember {
+  player_id: string;
+  username: string;
+  role: 'admin' | 'member';
+  joined_at: string;
+}
+
+export interface CircleJoinRequest {
+  request_id: string;
+  player_id: string;
+  username: string;
+  requested_at: string;
+  status: 'pending' | 'approved' | 'denied';
+  resolved_at?: string | null;
+  resolved_by_player_id?: string | null;
+}
+
+export interface Circle {
+  circle_id: string;
+  name: string;
+  description?: string | null;
+  created_by_player_id: string;
+  created_at: string;
+  updated_at: string;
+  member_count: number;
+  is_public: boolean;
+  status: 'active' | 'archived';
+  // Contextual fields based on requesting player
+  is_member: boolean;
+  is_admin: boolean;
+  has_pending_request: boolean;
+}
+
+export interface CircleListResponse {
+  circles: Circle[];
+  total_count: number;
+}
+
+export interface CircleMembersResponse {
+  members: CircleMember[];
+  total_count: number;
+}
+
+export interface CircleJoinRequestsResponse {
+  join_requests: CircleJoinRequest[];
+  total_count: number;
+}
+
+export interface CreateCircleRequest {
+  name: string;
+  description?: string;
+  is_public?: boolean;
+}
+
+export interface CreateCircleResponse {
+  success: boolean;
+  circle: Circle;
+  message: string;
+}
+
+export interface JoinCircleResponse {
+  success: boolean;
+  request_id?: string | null;
+  message: string;
+}
+
+export interface ApproveJoinRequestResponse {
+  success: boolean;
+  message: string;
+}
+
+export interface DenyJoinRequestResponse {
+  success: boolean;
+  message: string;
+}
+
+export interface AddMemberRequest {
+  player_id: string;
+}
+
+export interface AddMemberResponse {
+  success: boolean;
+  message: string;
+}
+
+export interface RemoveMemberResponse {
+  success: boolean;
+  message: string;
+}
+
+export interface LeaveCircleResponse {
+  success: boolean;
+  message: string;
+}

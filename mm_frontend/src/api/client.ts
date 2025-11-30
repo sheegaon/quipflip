@@ -69,6 +69,19 @@ import type {
   MemeCaptionSubmission,
   MemeCaptionResponse,
   CaptionSubmissionResult,
+  Circle,
+  CircleListResponse,
+  CircleMembersResponse,
+  CircleJoinRequestsResponse,
+  CreateCircleRequest,
+  CreateCircleResponse,
+  JoinCircleResponse,
+  ApproveJoinRequestResponse,
+  DenyJoinRequestResponse,
+  AddMemberRequest,
+  AddMemberResponse,
+  RemoveMemberResponse,
+  LeaveCircleResponse,
 } from './types';
 
 // Base URL - configure based on environment
@@ -567,12 +580,11 @@ export const apiClient = {
     payload: { round_id: string; text: string; kind?: 'original' | 'riff'; parent_caption_id?: string | null },
     signal?: AbortSignal,
   ): Promise<CaptionSubmissionResult> {
-    // Transform payload to match backend schema field names
+    // Backend only expects round_id and text (caption_text)
+    // The backend automatically determines if a caption is a riff based on similarity analysis
     const backendPayload = {
       round_id: payload.round_id,
-      caption_text: payload.text,  // Backend expects 'caption_text', not 'text'
-      caption_type: payload.kind || 'original',  // Backend expects 'caption_type', not 'kind'
-      parent_caption_id: payload.parent_caption_id || null,
+      text: payload.text,  // Backend accepts 'text' as alias for 'caption_text'
     };
     const { data } = await api.post('/rounds/caption', backendPayload, { signal });
     return data;
@@ -845,6 +857,118 @@ export const apiClient = {
     return data;
   },
 
+
+  // ===== CIRCLE ENDPOINTS =====
+
+  async listCircles(
+    params: { limit?: number; offset?: number } = {},
+    signal?: AbortSignal,
+  ): Promise<CircleListResponse> {
+    const { data } = await api.get<CircleListResponse>('/circles', {
+      params,
+      signal,
+    });
+    return data;
+  },
+
+  async getCircle(circleId: string, signal?: AbortSignal): Promise<Circle> {
+    const { data } = await api.get<Circle>(`/circles/${circleId}`, { signal });
+    return data;
+  },
+
+  async createCircle(
+    payload: CreateCircleRequest,
+    signal?: AbortSignal,
+  ): Promise<CreateCircleResponse> {
+    const { data} = await api.post<CreateCircleResponse>('/circles', payload, { signal });
+    return data;
+  },
+
+  async joinCircle(circleId: string, signal?: AbortSignal): Promise<JoinCircleResponse> {
+    const { data } = await api.post<JoinCircleResponse>(
+      `/circles/${circleId}/join`,
+      {},
+      { signal },
+    );
+    return data;
+  },
+
+  async leaveCircle(circleId: string, signal?: AbortSignal): Promise<LeaveCircleResponse> {
+    const { data } = await api.delete<LeaveCircleResponse>(`/circles/${circleId}/leave`, { signal });
+    return data;
+  },
+
+  async getCircleMembers(
+    circleId: string,
+    signal?: AbortSignal,
+  ): Promise<CircleMembersResponse> {
+    const { data } = await api.get<CircleMembersResponse>(`/circles/${circleId}/members`, {
+      signal,
+    });
+    return data;
+  },
+
+  async addCircleMember(
+    circleId: string,
+    payload: AddMemberRequest,
+    signal?: AbortSignal,
+  ): Promise<AddMemberResponse> {
+    const { data } = await api.post<AddMemberResponse>(
+      `/circles/${circleId}/members`,
+      payload,
+      { signal },
+    );
+    return data;
+  },
+
+  async removeCircleMember(
+    circleId: string,
+    playerId: string,
+    signal?: AbortSignal,
+  ): Promise<RemoveMemberResponse> {
+    const { data } = await api.delete<RemoveMemberResponse>(
+      `/circles/${circleId}/members/${playerId}`,
+      { signal },
+    );
+    return data;
+  },
+
+  async getCircleJoinRequests(
+    circleId: string,
+    signal?: AbortSignal,
+  ): Promise<CircleJoinRequestsResponse> {
+    const { data } = await api.get<CircleJoinRequestsResponse>(
+      `/circles/${circleId}/join-requests`,
+      { signal },
+    );
+    return data;
+  },
+
+  async approveJoinRequest(
+    circleId: string,
+    requestId: string,
+    signal?: AbortSignal,
+  ): Promise<ApproveJoinRequestResponse> {
+    const { data } = await api.post<ApproveJoinRequestResponse>(
+      `/circles/${circleId}/join-requests/${requestId}/approve`,
+      {},
+      { signal },
+    );
+    return data;
+  },
+
+  async denyJoinRequest(
+    circleId: string,
+    requestId: string,
+    signal?: AbortSignal,
+  ): Promise<DenyJoinRequestResponse> {
+    const { data } = await api.post<DenyJoinRequestResponse>(
+      `/circles/${circleId}/join-requests/${requestId}/deny`,
+      {},
+      { signal },
+    );
+    return data;
+  },
 };
 
 export default apiClient;
