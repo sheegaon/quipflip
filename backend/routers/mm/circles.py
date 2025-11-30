@@ -245,17 +245,10 @@ async def approve_join_request(
 ):
     """Approve a join request (admin only)."""
     try:
-        # Check if player is admin
-        members = await MMCircleService.get_circle_members(db, str(circle_id))
-        is_admin = any(UUID(str(m.player_id)) == player.player_id and m.role == "admin" for m in members)
-
-        if not is_admin:
-            raise HTTPException(status_code=403, detail="Only Circle admins can approve join requests")
-
         await MMCircleService.approve_join_request(
             db,
             request_id=str(request_id),
-            approved_by_player_id=str(player.player_id),
+            admin_player_id=str(player.player_id),
         )
 
         return ApproveJoinRequestResponse(
@@ -283,17 +276,10 @@ async def deny_join_request(
 ):
     """Deny a join request (admin only)."""
     try:
-        # Check if player is admin
-        members = await MMCircleService.get_circle_members(db, str(circle_id))
-        is_admin = any(UUID(str(m.player_id)) == player.player_id and m.role == "admin" for m in members)
-
-        if not is_admin:
-            raise HTTPException(status_code=403, detail="Only Circle admins can deny join requests")
-
         await MMCircleService.deny_join_request(
             db,
             request_id=str(request_id),
-            denied_by_player_id=str(player.player_id),
+            admin_player_id=str(player.player_id),
         )
 
         return DenyJoinRequestResponse(
@@ -324,13 +310,6 @@ async def add_member(
     Skips the join request process.
     """
     try:
-        # Check if player is admin
-        members = await MMCircleService.get_circle_members(db, str(circle_id))
-        is_admin = any(UUID(str(m.player_id)) == player.player_id and m.role == "admin" for m in members)
-
-        if not is_admin:
-            raise HTTPException(status_code=403, detail="Only Circle admins can add members directly")
-
         await MMCircleService.add_member(
             db,
             circle_id=str(circle_id),
@@ -363,13 +342,6 @@ async def remove_member(
 ):
     """Remove a member from the Circle (admin only)."""
     try:
-        # Check if player is admin
-        members = await MMCircleService.get_circle_members(db, str(circle_id))
-        is_admin = any(UUID(str(m.player_id)) == player.player_id and m.role == "admin" for m in members)
-
-        if not is_admin:
-            raise HTTPException(status_code=403, detail="Only Circle admins can remove members")
-
         await MMCircleService.remove_member(
             db,
             circle_id=str(circle_id),
