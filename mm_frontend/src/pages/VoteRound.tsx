@@ -121,24 +121,25 @@ export const VoteRound: React.FC = () => {
               alt={round.attribution_text || 'Meme image'}
               className="w-full rounded-tile border-2 border-quip-navy max-h-96 object-contain bg-white"
             />
+            {hasVoted && result && (
+              <div className="mt-4 text-center">
+                <p className="text-sm text-quip-teal uppercase tracking-wide">Payout</p>
+                <div className="text-2xl font-bold text-quip-navy flex items-center justify-center gap-2">
+                  <CurrencyDisplay amount={result.payout} iconClassName="w-6 h-6" textClassName="text-2xl" />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Voting Interface */}
           <div className="flex-1 space-y-6">
             <div>
-              <p className="text-sm text-quip-teal uppercase tracking-wide">Vote Round</p>
               <h1 className="text-3xl font-display font-bold text-quip-navy">Choose your favorite caption</h1>
             </div>
 
             {error && (
               <div className="p-4 bg-red-100 border border-red-400 text-red-700 rounded-tile">
                 {error}
-              </div>
-            )}
-
-            {hasVoted && (
-              <div className="p-3 bg-white border-2 border-quip-teal rounded-tile text-quip-navy">
-                <p className="text-sm font-semibold">Your vote is in! You can add your own caption or play again below.</p>
               </div>
             )}
 
@@ -163,25 +164,27 @@ export const VoteRound: React.FC = () => {
                     </span>
                     <div className="flex-1 space-y-2">
                       <p className="text-quip-navy font-medium">{caption.text}</p>
-                      <div className="flex items-center gap-2 text-sm text-quip-navy/80">
-                        <span className="font-semibold">{caption.author_username ?? 'Mint Mixer'}</span>
-                        <div className="flex items-center gap-1 text-quip-navy">
-                          {isBotAuthor(caption) && <BotIcon className="h-4 w-4" />}
-                          {isCircleAuthor(caption) && <PartyIcon className="h-4 w-4" />}
+                      {hasVoted && (
+                        <div className="flex items-center gap-2 text-sm text-quip-navy/80">
+                          <span className="font-semibold">{caption.author_username ?? 'Mint Mixer'}</span>
+                          <div className="flex items-center gap-1 text-quip-navy">
+                            {isBotAuthor(caption) && <BotIcon className="h-4 w-4" />}
+                            {isCircleAuthor(caption) && <PartyIcon className="h-4 w-4" />}
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   </div>
                 </button>
               ))}
             </div>
 
+            {hasVoted && (
+                <p className="text-sm font-semibold text-quip-navy">Add your own caption or play again below.</p>
+            )}
+
             {hasVoted && result && (
               <div className="space-y-4 pt-4">
-                <div className="p-4 border-2 border-quip-orange rounded-tile bg-white inline-flex gap-2 items-center">
-                  <span className="text-quip-navy font-semibold">Payout</span>
-                  <CurrencyDisplay amount={result.payout} />
-                </div>
                 <div className="flex flex-wrap gap-3">
                   <button
                     onClick={goToCaption}
