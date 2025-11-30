@@ -25,7 +25,7 @@ import logging
 from uuid import UUID
 
 from backend.database import get_db, AsyncSessionLocal
-from backend.dependencies import get_current_player
+from backend.dependencies import get_current_player, get_optional_player
 from backend.models.qf.user_activity import QFUserActivity
 from backend.models.qf.player import QFPlayer
 from backend.models.qf.round import Round
@@ -67,6 +67,20 @@ async def get_qf_player(
         game_type=GameType.QF,
         authorization=authorization,
         db=db
+    )
+
+
+async def get_optional_qf_player(
+    request: Request,
+    authorization: str | None = Header(default=None, alias="Authorization"),
+    db: AsyncSession = Depends(get_db),
+) -> QFPlayer | None:
+    """Attempt to resolve the current QF player, but allow unauthenticated access."""
+    return await get_optional_player(
+        request=request,
+        game_type=GameType.QF,
+        authorization=authorization,
+        db=db,
     )
 
 
@@ -326,7 +340,7 @@ async def get_online_users(db: AsyncSession) -> List[OnlineUser]:
 
 @router.get("/online", response_model=OnlineUsersResponse)
 async def get_online_users_endpoint(
-    player: QFPlayer = Depends(get_qf_player),
+    player: QFPlayer | None = Depends(get_optional_qf_player),
     db: AsyncSession = Depends(get_db),
 ):
     """Get list of currently online users (last 30 minutes)."""
