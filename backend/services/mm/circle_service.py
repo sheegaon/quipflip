@@ -141,6 +141,28 @@ class MMCircleService:
         return list(result.scalars().all())
 
     @staticmethod
+    async def get_player_circle_memberships(
+        session: AsyncSession,
+        player_id: str,
+    ) -> list[MMCircleMember]:
+        """
+        Get all Circle membership records for a player.
+
+        Args:
+            session: Database session
+            player_id: Player ID
+
+        Returns:
+            List of MMCircleMember instances for the player
+        """
+        query = (
+            select(MMCircleMember)
+            .where(MMCircleMember.player_id == player_id)
+        )
+        result = await session.execute(query)
+        return list(result.scalars().all())
+
+    @staticmethod
     async def get_circle_mates(
         session: AsyncSession,
         player_id: str

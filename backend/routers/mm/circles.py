@@ -106,8 +106,9 @@ async def list_circles(
         circles = await MMCircleService.list_all_circles(db)
 
         # Get player's Circle memberships and pending requests
-        player_circles = await MMCircleService.get_player_circles(db, str(player.player_id))
-        player_circle_ids = {UUID(str(c.circle_id)) for c in player_circles}
+        player_memberships = await MMCircleService.get_player_circle_memberships(db, str(player.player_id))
+        player_membership_roles = {UUID(str(m.circle_id)): m.role for m in player_memberships}
+        player_circle_ids = set(player_membership_roles.keys())
 
         # Get pending join requests for this player
         pending_requests = await MMCircleService.get_pending_join_requests_for_player(db, str(player.player_id))
@@ -120,13 +121,7 @@ async def list_circles(
             is_member = circle_id_uuid in player_circle_ids
 
             # Check if player is admin
-            is_admin = False
-            if is_member:
-                members = await MMCircleService.get_circle_members(db, str(circle.circle_id))
-                for member in members:
-                    if UUID(str(member.player_id)) == player.player_id and member.role == "admin":
-                        is_admin = True
-                        break
+            is_admin = player_membership_roles.get(circle_id_uuid) == "admin"
 
             circle_responses.append(CircleResponse(
                 circle_id=circle_id_uuid,
@@ -444,18 +439,9 @@ async def get_circle_members(
 
         members = await MMCircleService.get_circle_members(db, str(circle_id))
 
-        # Load player details for each member
-        from sqlalchemy import select
-        from backend.models.mm.player import MMPlayer as MMPlayerModel
-
-        player_ids = [UUID(str(m.player_id)) for m in members]
-        stmt = select(MMPlayerModel).where(MMPlayerModel.player_id.in_(player_ids))
-        result = await db.execute(stmt)
-        players_map = {p.player_id: p for p in result.scalars().all()}
-
         member_responses = []
         for member in members:
-            player_obj = players_map.get(UUID(str(member.player_id)))
+            player_obj = member.player
             if player_obj:
                 member_responses.append(CircleMemberResponse(
                     player_id=UUID(str(member.player_id)),
@@ -493,21 +479,9 @@ async def get_join_requests(
 
         join_requests = await MMCircleService.get_pending_join_requests(db, str(circle_id))
 
-        # Load player details for each request
-        from sqlalchemy import select
-        from backend.models.mm.player import MMPlayer as MMPlayerModel
-
-        player_ids = [UUID(str(req.player_id)) for req in join_requests]
-        if player_ids:
-            stmt = select(MMPlayerModel).where(MMPlayerModel.player_id.in_(player_ids))
-            result = await db.execute(stmt)
-            players_map = {p.player_id: p for p in result.scalars().all()}
-        else:
-            players_map = {}
-
         request_responses = []
         for req in join_requests:
-            player_obj = players_map.get(UUID(str(req.player_id)))
+            player_obj = req.player
             if player_obj:
                 request_responses.append(CircleJoinRequestResponse(
                     request_id=UUID(str(req.request_id)),

@@ -6,7 +6,7 @@ from datetime import datetime, UTC, timedelta
 from typing import Optional
 from uuid import UUID, uuid4
 
-from sqlalchemy import select, func, and_
+from sqlalchemy import Integer, select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import or_
 
@@ -169,39 +169,39 @@ class MMGameService:
 
         # Get Circle-mates for this player
         circle_mates = await MMCircleService.get_circle_mates(self.db, str(player_id))
+        circle_mate_ids = circle_mates or []
 
-        # Subquery: count unseen active captions per image, tracking Circle content
-        if circle_mates:
-            # With Circle-mates: count total unseen AND circle captions separately
-            unseen_captions_subq = (
-                select(
-                    MMCaption.image_id,
-                    func.count(MMCaption.caption_id).label('unseen_count'),
-                    func.sum(
-                        func.cast(
-                            MMCaption.author_player_id.in_(circle_mates),
-                            type_=func.Integer
-                        )
-                    ).label('circle_caption_count')
-                )
-                .outerjoin(
-                    MMCaptionSeen,
-                    and_(
-                        MMCaptionSeen.caption_id == MMCaption.caption_id,
-                        MMCaptionSeen.player_id == player_id
+        # Subquery: count unseen active captions per image, always tracking Circle content
+        unseen_captions_subq = (
+            select(
+                MMCaption.image_id,
+                func.count(MMCaption.caption_id).label('unseen_count'),
+                func.sum(
+                    func.cast(
+                        MMCaption.author_player_id.in_(circle_mate_ids),
+                        type_=Integer
                     )
-                )
-                .where(
-                    MMCaption.status == 'active',
-                    # Allow system/anonymous captions (NULL author) while excluding the player's own
-                    or_(MMCaption.author_player_id.is_(None), MMCaption.author_player_id != player_id),
-                    MMCaptionSeen.player_id.is_(None)  # Not seen
-                )
-                .group_by(MMCaption.image_id)
-                .having(func.count(MMCaption.caption_id) >= captions_per_round)
-                .subquery()
+                ).label('circle_caption_count')
             )
+            .outerjoin(
+                MMCaptionSeen,
+                and_(
+                    MMCaptionSeen.caption_id == MMCaption.caption_id,
+                    MMCaptionSeen.player_id == player_id
+                )
+            )
+            .where(
+                MMCaption.status == 'active',
+                # Allow system/anonymous captions (NULL author) while excluding the player's own
+                or_(MMCaption.author_player_id.is_(None), MMCaption.author_player_id != player_id),
+                MMCaptionSeen.player_id.is_(None)  # Not seen
+            )
+            .group_by(MMCaption.image_id)
+            .having(func.count(MMCaption.caption_id) >= captions_per_round)
+            .subquery()
+        )
 
+        if circle_mates:
             # Try Circle-participating images first
             circle_images_stmt = (
                 select(MMImage)
@@ -222,29 +222,6 @@ class MMGameService:
                 return random.choice(circle_images)
 
             logger.debug(f"No Circle-participating images found, falling back to global selection")
-        else:
-            # No Circle-mates: standard selection
-            unseen_captions_subq = (
-                select(
-                    MMCaption.image_id,
-                    func.count(MMCaption.caption_id).label('unseen_count')
-                )
-                .outerjoin(
-                    MMCaptionSeen,
-                    and_(
-                        MMCaptionSeen.caption_id == MMCaption.caption_id,
-                        MMCaptionSeen.player_id == player_id
-                    )
-                )
-                .where(
-                    MMCaption.status == 'active',
-                    or_(MMCaption.author_player_id.is_(None), MMCaption.author_player_id != player_id),
-                    MMCaptionSeen.player_id.is_(None)
-                )
-                .group_by(MMCaption.image_id)
-                .having(func.count(MMCaption.caption_id) >= captions_per_round)
-                .subquery()
-            )
 
         # Global fallback: Select random image from all eligible images
         stmt = (
