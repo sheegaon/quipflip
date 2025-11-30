@@ -255,7 +255,7 @@ async def approve_join_request(
         await MMCircleService.approve_join_request(
             db,
             request_id=str(request_id),
-            approved_by_player_id=str(player.player_id),
+            admin_player_id=str(player.player_id),
         )
 
         return ApproveJoinRequestResponse(
