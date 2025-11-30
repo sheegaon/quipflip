@@ -138,7 +138,7 @@ export const VoteRound: React.FC = () => {
 
             {hasVoted && (
               <div className="p-3 bg-white border-2 border-quip-teal rounded-tile text-quip-navy">
-                <p className="text-sm font-semibold">Your vote is in! Pick another caption or play again below.</p>
+                <p className="text-sm font-semibold">Your vote is in! You can add your own caption or play again below.</p>
               </div>
             )}
 
