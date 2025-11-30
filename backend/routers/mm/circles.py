@@ -341,6 +341,7 @@ async def add_member(
             db,
             circle_id=str(circle_id),
             player_id=str(add_request.player_id),
+            added_by_player_id=str(player.player_id),
         )
 
         return AddMemberResponse(
