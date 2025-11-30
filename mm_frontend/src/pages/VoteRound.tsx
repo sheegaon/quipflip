@@ -59,7 +59,7 @@ export const VoteRound: React.FC = () => {
         caption.is_ai ||
         caption.is_system ||
         caption.is_seed_caption ||
-        (!caption.author_username && caption.author_username !== ''),
+        caption.author_username == null,
     );
   };
 
