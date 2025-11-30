@@ -65,8 +65,8 @@ def upgrade() -> None:
             name=op.f("fk_mm_circle_members_player_id_mm_players"),
             ondelete="CASCADE",
         ),
-        sa.PrimaryKeyConstraint("circle_id", "player_id", name=op.f("pk_mm_circle_members")),
-        sa.UniqueConstraint("circle_id", "player_id", name="uq_mm_circle_member"),
+        sa.PrimaryKeyConstraint("circle_id", "player_id", name=op.f("pk_mm_circle_members"))
+
     )
     op.create_index(op.f("ix_mm_circle_members_player_id"), "mm_circle_members", ["player_id"], unique=False)
 
