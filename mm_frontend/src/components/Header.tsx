@@ -17,7 +17,6 @@ import {
   SettingsIcon,
   StatisticsIcon,
   SurveyIcon,
-  TrackingIcon,
 } from './icons/NavigationIcons';
 import { QuestionMarkIcon, ResultsIcon } from './icons/EngagementIcons';
 import { hasCompletedSurvey } from '../utils/betaSurvey';
@@ -267,13 +266,6 @@ export const Header: React.FC = () => {
                       variant={unviewedCount > 0 ? 'orange' : 'teal'}
                     />
                     <span className="font-semibold">Results</span>
-                  </button>
-                  <button
-                    onClick={() => handleNavigate('/game/history')}
-                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
-                  >
-                    <TrackingIcon className="h-5 w-5" />
-                    <span className="font-semibold">History</span>
                   </button>
                   <button
                     onClick={() => handleNavigate('/quests')}
