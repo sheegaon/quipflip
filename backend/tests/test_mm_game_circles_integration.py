@@ -3,6 +3,7 @@
 import pytest
 from datetime import datetime, UTC
 from uuid import uuid4
+from sqlalchemy import delete
 
 from backend.models.mm.player import MMPlayer
 from backend.models.mm.image import MMImage
@@ -115,6 +116,7 @@ async def setup_circle_test_data(db_session):
             image_id=image_with_circle.image_id,
             text=f"Circle caption {i}",
             author_player_id=player2.player_id,
+            kind="caption",
             status="active",
             quality_score=0.5 + (i * 0.1),
             created_at=datetime.now(UTC)
@@ -129,6 +131,7 @@ async def setup_circle_test_data(db_session):
             image_id=image_with_circle.image_id,
             text=f"Global caption on circle image {i}",
             author_player_id=player3.player_id,
+            kind="caption",
             status="active",
             quality_score=0.5 + (i * 0.1),
             created_at=datetime.now(UTC)
@@ -144,6 +147,7 @@ async def setup_circle_test_data(db_session):
             image_id=image_global.image_id,
             text=f"Global caption {i}",
             author_player_id=player3.player_id,
+            kind="caption",
             status="active",
             quality_score=0.5 + (i * 0.1),
             created_at=datetime.now(UTC)
@@ -153,7 +157,7 @@ async def setup_circle_test_data(db_session):
 
     await db_session.commit()
 
-    return {
+    test_data = {
         "player1": player1,
         "player2": player2,
         "player3": player3,
@@ -164,6 +168,19 @@ async def setup_circle_test_data(db_session):
         "global_captions_on_circle_image": global_captions_on_circle_image,
         "global_captions": global_captions,
     }
+
+    yield test_data
+
+    # Cleanup: Delete test circle after test completes
+    # Cascade deletion will automatically remove members and join requests
+    try:
+        await db_session.execute(
+            delete(MMCircle).where(MMCircle.circle_id == circle.circle_id)
+        )
+        await db_session.commit()
+    except Exception:
+        # Circle may have already been deleted by the test
+        await db_session.rollback()
 
 
 @pytest.mark.asyncio

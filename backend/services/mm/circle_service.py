@@ -310,6 +310,8 @@ class MMCircleService:
         """
         Remove a member from a Circle (admin action or self-leave).
 
+        If an admin removes themselves, the entire Circle is deleted.
+
         Args:
             session: Database session
             circle_id: Circle ID
@@ -338,7 +340,29 @@ class MMCircleService:
         if not is_self and not is_admin:
             raise PermissionError("Only Circle admins or the member themselves can remove membership")
 
-        # Remove member
+        # Check if the member being removed is an admin
+        member_check = await session.execute(
+            select(MMCircleMember).where(
+                and_(
+                    MMCircleMember.circle_id == circle_id,
+                    MMCircleMember.player_id == player_id
+                )
+            )
+        )
+        member = member_check.scalar_one_or_none()
+
+        if not member:
+            raise ValueError("Member not found")
+
+        # If an admin is leaving themselves, delete the entire Circle
+        if member.role == "admin" and is_self:
+            await session.execute(
+                delete(MMCircle).where(MMCircle.circle_id == circle_id)
+            )
+            await session.commit()
+            return
+
+        # Remove member (non-admin or admin removing someone else)
         result = await session.execute(
             delete(MMCircleMember).where(
                 and_(
