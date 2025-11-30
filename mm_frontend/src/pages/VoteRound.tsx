@@ -5,7 +5,6 @@ import { useGame } from '../contexts/GameContext';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import type { MemeVoteResult, VoteRoundState, VoteResult, Caption } from '../api/types';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
-import { HomeIcon } from '../components/icons/NavigationIcons';
 
 interface VoteLocationState {
   round?: VoteRoundState;
@@ -145,13 +144,6 @@ export const VoteRound: React.FC = () => {
                 >
                   <span>Play again</span>
                   <CurrencyDisplay amount={voteCost} iconClassName="w-4 h-4" textClassName="font-semibold" />
-                </button>
-                <button
-                  onClick={() => navigate('/dashboard')}
-                  className="border-2 border-quip-navy text-quip-navy font-semibold px-4 py-2 rounded-tile hover:bg-quip-navy hover:text-white transition-colors flex items-center gap-2"
-                >
-                  <HomeIcon className="w-4 h-4" />
-                  <span>Back to Dashboard</span>
                 </button>
               </div>
             </div>
