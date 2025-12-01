@@ -399,17 +399,17 @@ async def test_system_bonus_awarded_for_non_circle_mates(db_session, setup_circl
 
     # Entry cost = 5 MC
     # Base payout = 5 MC
-    # Writer bonus = 5 * 2 = 10 MC (AWARDED for non-Circle-mate)
-    # Total gross = 15 MC
-    # House rake = 15 * 0.3 = 4.5 MC
-    # Net to author = 15 - 4.5 = 10.5 MC
+    # Writer bonus = 5 * 3 = 15 MC (AWARDED for non-Circle-mate)
+    # Total gross = 20 MC
+    # House rake = 20 * 0.3 = 6 MC
+    # Net to author = 20 - 6 = 14 MC
 
     payout_info = result.get("payout_info", {})
     total_gross = payout_info.get("total_gross", 0)
 
-    # Total gross should be 15 (base + 2x bonus)
-    assert total_gross == 15, (
-        f"Expected total_gross=15 (base + bonus) for non-Circle-mate, got {total_gross}"
+    # Total gross should be 20 (base + 3x bonus)
+    assert total_gross == 20, (
+        f"Expected total_gross=20 (base + bonus) for non-Circle-mate, got {total_gross}"
     )
 
 
@@ -538,8 +538,8 @@ async def test_riff_parent_bonus_suppression_independent(db_session, setup_circl
     # - Riff author (player2, Circle-mate): base only, NO bonus
     # - Parent author (player3, non-Circle): base + bonus
     # Base = 5 MC each
-    # Bonus = 10 MC (only for parent)
-    # Total gross = 5 + 0 + 5 + 10 = 20 MC
+    # Bonus = 15 MC (only for parent)
+    # Total gross = 5 + 0 + 5 + 15 = 25 MC
 
     total_gross = payout_info.get("total_gross", 0)
     author_gross = payout_info.get("author_gross", 0)
@@ -550,12 +550,12 @@ async def test_riff_parent_bonus_suppression_independent(db_session, setup_circl
         f"Expected riff author gross=5 (Circle-mate, bonus suppressed), got {author_gross}"
     )
 
-    # Parent author should get 15 MC (base + bonus, not Circle-mate)
-    assert parent_gross == 15, (
-        f"Expected parent author gross=15 (non-Circle, bonus awarded), got {parent_gross}"
+    # Parent author should get 20 MC (base + bonus, not Circle-mate)
+    assert parent_gross == 20, (
+        f"Expected parent author gross=20 (non-Circle, bonus awarded), got {parent_gross}"
     )
 
-    # Total should be 20 MC
-    assert total_gross == 20, (
-        f"Expected total_gross=20 (5 + 15), got {total_gross}"
+    # Total should be 25 MC
+    assert total_gross == 25, (
+        f"Expected total_gross=25 (5 + 20), got {total_gross}"
     )
