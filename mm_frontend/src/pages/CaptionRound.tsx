@@ -7,6 +7,7 @@ import type {
   VoteResult,
 } from '../api/types';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
+import { ShareIcon } from '../components/icons/EngagementIcons';
 
 interface CaptionLocationState {
   round?: VoteRoundState;
@@ -27,6 +28,8 @@ export const CaptionRound: React.FC = () => {
   const [isStartingRound, setIsStartingRound] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [shareStatus, setShareStatus] = useState<string | null>(null);
+  const [isSharing, setIsSharing] = useState(false);
 
   // Get caption cost from round availability
   const freeCaptionAvailable = (state.roundAvailability?.free_captions_remaining ?? 0) > 0;
@@ -65,6 +68,7 @@ export const CaptionRound: React.FC = () => {
     setIsSubmitting(true);
     setError(null);
     setSuccessMessage(null);
+    setShareStatus(null);
 
     try {
       const payload = {
@@ -84,6 +88,57 @@ export const CaptionRound: React.FC = () => {
     } finally {
       setIsSubmitting(false);
       console.log('🔓 isSubmitting set to false');
+    }
+  };
+
+  const handleShare = async () => {
+    if (!round || !captionText.trim()) {
+      return;
+    }
+
+    setIsSharing(true);
+    setShareStatus(null);
+
+    try {
+      const response = await fetch(round.image_url);
+      const blob = await response.blob();
+      const extension = blob.type.split('/')[1] || 'jpeg';
+      const file = new File([blob], `quipflip-caption.${extension}`, { type: blob.type || 'image/jpeg' });
+
+      const caption = captionText.trim();
+      const textParts = [
+        caption,
+        '',
+        round.attribution_text ? `Image: ${round.attribution_text}` : null,
+        'Created with QuipFlip',
+        round.image_url,
+      ].filter(Boolean);
+      const shareText = textParts.join('\n');
+
+      const shareData: ShareData = {
+        title: 'My QuipFlip caption',
+        text: shareText,
+        url: round.image_url,
+      };
+
+      if (navigator.canShare?.({ files: [file] })) {
+        shareData.files = [file];
+      }
+
+      if (navigator.share) {
+        await navigator.share(shareData);
+        setShareStatus('Opened your sharing options.');
+      } else if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareText);
+        setShareStatus('Copied caption and image link for sharing.');
+      } else {
+        setShareStatus('Sharing not supported in this browser.');
+      }
+    } catch (err) {
+      console.error('Failed to share caption', err);
+      setShareStatus('Unable to share right now. Try again in a moment.');
+    } finally {
+      setIsSharing(false);
     }
   };
 
@@ -171,14 +226,25 @@ export const CaptionRound: React.FC = () => {
               </div>
               <div className="flex gap-3">
                 {hasSubmitted ? (
-                  <button
-                    onClick={handlePlayAgain}
-                    disabled={isStartingRound}
-                    className="border-2 border-quip-navy text-quip-navy font-semibold px-4 py-2 rounded-tile hover:bg-quip-navy hover:text-white transition-colors flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
-                  >
-                    <span>Play again</span>
-                    <CurrencyDisplay amount={voteCost} iconClassName="w-4 h-4" textClassName="font-semibold" />
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleShare}
+                      disabled={isSharing}
+                      className="h-12 w-12 inline-flex items-center justify-center rounded-full bg-quip-orange text-white shadow-tile-sm transition hover:bg-quip-orange-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-quip-orange disabled:opacity-60 disabled:cursor-not-allowed"
+                      aria-label="Share caption"
+                    >
+                      <ShareIcon className="h-6 w-6" />
+                    </button>
+                    <button
+                      onClick={handlePlayAgain}
+                      disabled={isStartingRound}
+                      className="border-2 border-quip-navy text-quip-navy font-semibold px-4 py-2 rounded-tile hover:bg-quip-navy hover:text-white transition-colors flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      <span>Play again</span>
+                      <CurrencyDisplay amount={voteCost} iconClassName="w-4 h-4" textClassName="font-semibold" />
+                    </button>
+                  </>
                 ) : (
                   <button
                     onClick={handleSubmit}
@@ -191,6 +257,12 @@ export const CaptionRound: React.FC = () => {
                 )}
               </div>
             </div>
+
+            {shareStatus && (
+              <div className="text-sm text-quip-teal" role="status">
+                {shareStatus}
+              </div>
+            )}
           </div>
         </div>
       </div>
