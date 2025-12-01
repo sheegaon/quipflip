@@ -1,7 +1,7 @@
 """Add phrase embedding cache table.
 
 Revision ID: 1a2b3c4d5e6f
-Revises: b2c3d4e5f8a9
+Revises: b2c3d4e5f6a7
 Create Date: 2025-12-01 00:00:00.000000
 
 """
