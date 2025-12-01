@@ -104,10 +104,10 @@ class RoundDetails(BaseSchema):
     status: str
     expires_at: datetime
     image_id: UUID
-  image_url: str
-  cost: int
-  # For vote rounds
-  captions: list[VoteRoundCaption] | None = None
+    image_url: str
+    cost: int
+    # For vote rounds
+    captions: list[VoteRoundCaption] | None = None
     chosen_caption_id: UUID | None = None
     # For caption submission rounds
     submitted_caption_id: UUID | None = None
