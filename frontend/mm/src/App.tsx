@@ -10,7 +10,7 @@ import { SubHeader } from './components/SubHeader';
 import TutorialOverlay from './components/Tutorial/TutorialOverlay';
 import NotificationDisplay from './components/NotificationDisplay';
 import PingNotificationDisplay from './components/PingNotificationDisplay';
-import { trackPageView } from './utils/googleAnalytics';
+import { trackPageView } from '@crowdcraft/utils/googleAnalytics.ts';
 import { ErrorBoundary } from '@crowdcraft/components/ErrorBoundary.tsx';
 import { AppErrorFallback } from '@crowdcraft/components/ErrorFallback.tsx';
 import { OfflineBanner } from './components/OfflineBanner';

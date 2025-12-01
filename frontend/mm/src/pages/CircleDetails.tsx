@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import apiClient, { extractErrorMessage } from '../api/client';
 import type { Circle, CircleMember, CircleJoinRequest } from '../api/types';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import { formatDateTimeInUserZone } from '../utils/datetime';
+import { formatDateTimeInUserZone } from '@crowdcraft/utils/datetime.ts';
 
 export const CircleDetails: React.FC = () => {
   const { circleId } = useParams<{ circleId: string }>();

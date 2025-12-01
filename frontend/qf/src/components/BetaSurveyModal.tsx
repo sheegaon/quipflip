@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import apiClient from '../api/client';
 import type { BetaSurveyStatusResponse } from '../api/types';
-import { hasDismissedSurvey, markSurveyDismissed, hasCompletedSurvey } from '../utils/betaSurvey';
+import { hasDismissedSurvey, markSurveyDismissed, hasCompletedSurvey } from '@crowdcraft/utils/betaSurvey.ts';
 import { getErrorMessage } from '../types/errors';
 import { dashboardLogger } from '@crowdcraft/utils/logger.ts';
 

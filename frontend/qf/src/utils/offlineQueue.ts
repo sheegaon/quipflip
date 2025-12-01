@@ -1,4 +1,4 @@
-import { networkLogger } from './logger';
+import { networkLogger } from '@crowdcraft/utils/logger.ts';
 
 export interface OfflineAction {
   id: string;

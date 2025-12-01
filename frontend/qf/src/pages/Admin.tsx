@@ -8,7 +8,7 @@ import { VoteRoundIcon } from '@crowdcraft/components/icons/RoundIcons.tsx';
 import { EditableConfigField } from '../components/EditableConfigField';
 import { adminLogger } from '@crowdcraft/utils/logger.ts';
 import type { AdminPlayerSummary } from '../api/types';
-import { formatDateTimeInUserZone } from '../utils/datetime';
+import { formatDateTimeInUserZone } from '@crowdcraft/utils/datetime.ts';
 import { PHRASE_VALIDATION_BOUNDS, PHRASE_VALIDATION_LIMITS } from '../config/phraseValidation';
 
 const getErrorDetail = (error: unknown): string | undefined => {

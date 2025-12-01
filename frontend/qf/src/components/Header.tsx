@@ -21,7 +21,7 @@ import {
   TrackingIcon,
 } from '@crowdcraft/components/icons/NavigationIcons.tsx';
 import { QuestionMarkIcon, ResultsIcon, ReviewIcon } from '@crowdcraft/components/icons/EngagementIcons.tsx';
-import { hasCompletedSurvey } from '../utils/betaSurvey';
+import { hasCompletedSurvey } from '@crowdcraft/utils/betaSurvey.ts';
 import { apiClient } from '../api/client';
 import { componentLogger } from '@crowdcraft/utils/logger.ts';
 import GuestLogoutWarning from '@crowdcraft/components/GuestLogoutWarning.tsx';
@@ -128,7 +128,7 @@ export const Header: React.FC = () => {
 
     if (typeof window !== 'undefined') {
       try {
-        const stored = window.localStorage.getItem('quipflip_guest_credentials');
+        const stored = window.localStorage.getItem('crowdcraft_guest_credentials');
         if (stored) {
           const parsed = JSON.parse(stored) as { email?: string; password?: string };
           if (parsed.email) {

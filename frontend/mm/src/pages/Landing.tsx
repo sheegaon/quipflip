@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import apiClient, { extractErrorMessage } from '../api/client';
 import { landingLogger } from '@crowdcraft/utils/logger.ts';
-import { GUEST_CREDENTIALS_KEY } from '../utils/storageKeys';
+import { GUEST_CREDENTIALS_KEY } from '@crowdcraft/utils/storageKeys.ts';
 
 export const Landing: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);

@@ -9,7 +9,7 @@ import type { PhrasesetResults, PhrasesetDetails, PhrasesetVoteDetail } from '..
 import { resultsLogger } from '@crowdcraft/utils/logger.ts';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { BotIcon, QuestionMarkIcon, ResultsIcon } from '@crowdcraft/components/icons/EngagementIcons.tsx';
-import { isAiPlayer } from '../utils/ai';
+import { isAiPlayer } from '@crowdcraft/utils/ai.ts';
 
 const ITEMS_PER_PAGE = 10;
 const WALLET_VS_VAULT_TITLE = 'Wallet vs. Vault';

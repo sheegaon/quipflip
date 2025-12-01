@@ -9,7 +9,7 @@
  */
 import React from 'react';
 import type { PhrasesetActivityEntry } from '../api/types';
-import { formatDateTimeInUserZone } from '../utils/datetime';
+import { formatDateTimeInUserZone } from '@crowdcraft/utils/datetime.ts';
 
 interface ActivityTimelineProps {
   activities: PhrasesetActivityEntry[];

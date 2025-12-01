@@ -6,7 +6,7 @@ import { SuccessNotification } from '../components/SuccessNotification';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import type { Quest } from '../api/types';
 import { questsLogger } from '@crowdcraft/utils/logger.ts';
-import { isSameDay } from '../utils/date';
+import { isSameDay } from '@crowdcraft/utils/date.ts';
 import { QuestClaimableIcon, QuestOverviewIcon } from '@crowdcraft/components/icons/QuestIcons.tsx';
 import { StateEmptyIcon, StateErrorIcon, StateFilterEmptyIcon, StateLoadingIcon } from '@crowdcraft/components/icons/StateIcons.tsx';
 

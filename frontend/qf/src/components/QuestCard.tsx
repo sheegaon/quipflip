@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Quest, QuestCategory, QuestStatus } from '../api/types';
 import { QuestProgressBar } from './QuestProgressBar';
 import { CurrencyDisplay } from './CurrencyDisplay';
-import { formatDateInUserZone } from '../utils/datetime';
+import { formatDateInUserZone } from '@crowdcraft/utils/datetime.ts';
 import {
   QuestActivityIcon,
   QuestMilestoneIcon,

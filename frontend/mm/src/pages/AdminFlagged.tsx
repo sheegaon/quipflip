@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import apiClient, { extractErrorMessage } from '../api/client';
 import type { FlaggedPromptItem } from '../api/types';
-import { formatDateTimeInUserZone } from '../utils/datetime';
+import { formatDateTimeInUserZone } from '@crowdcraft/utils/datetime.ts';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 

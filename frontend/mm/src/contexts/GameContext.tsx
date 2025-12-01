@@ -8,7 +8,7 @@ import { getActionErrorMessage } from '../utils/errorMessages';
 import { gameContextLogger } from '@crowdcraft/utils/logger.ts';
 import { detectUserSession, associateVisitorWithPlayer } from '../services/sessionDetection';
 import { SessionState } from '../types/session';
-import { GUEST_CREDENTIALS_KEY } from '../utils/storageKeys';
+import { GUEST_CREDENTIALS_KEY } from '@crowdcraft/utils/storageKeys.ts';
 import type {
   Player,
   ActiveRound,

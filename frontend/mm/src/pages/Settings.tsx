@@ -4,7 +4,7 @@ import { useGame } from '../contexts/GameContext';
 import { useTutorial } from '../contexts/TutorialContext';
 import apiClient, { extractErrorMessage } from '../api/client';
 import { settingsLogger } from '@crowdcraft/utils/logger.ts';
-import { formatDateInUserZone, formatDateTimeInUserZone } from '../utils/datetime';
+import { formatDateInUserZone, formatDateTimeInUserZone } from '@crowdcraft/utils/datetime.ts';
 
 const getErrorDetail = (error: unknown): string | undefined => {
   if (!error || typeof error !== 'object') {
