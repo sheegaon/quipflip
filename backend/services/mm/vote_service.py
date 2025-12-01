@@ -252,7 +252,7 @@ class MMVoteService:
 
         # Get writer bonus multiplier from config (default 3 per game rules)
         writer_bonus_multiplier = await self.config_service.get_config_value(
-            "mm_writer_bonus_multiplier", default=2
+            "mm_writer_bonus_multiplier", default=3
         )
 
         # Check if caption author is a Circle-mate of voter
