@@ -9,6 +9,7 @@ with configurable fallback behavior and comprehensive metrics tracking.
 import logging
 import asyncio
 import random
+import inspect
 from uuid import UUID
 
 from datetime import datetime, UTC
@@ -244,7 +245,10 @@ class AIService:
         """
         if self.common_words is None:
             try:
-                result = await self.phrase_validator.common_words()
+                result = self.phrase_validator.common_words()
+
+                if inspect.isawaitable(result):
+                    result = await result
 
                 # Handle different return types from phrase validator
                 if isinstance(result, (list, tuple)):
