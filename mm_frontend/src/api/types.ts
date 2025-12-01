@@ -487,6 +487,7 @@ export interface VoteResult {
   success: boolean;
   chosen_caption_id: string;
   payout: number;
+  refund_amount?: number;
   correct: boolean;
   new_wallet: number;
   new_vault: number;

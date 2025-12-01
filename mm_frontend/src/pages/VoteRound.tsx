@@ -116,6 +116,9 @@ export const VoteRound: React.FC = () => {
     navigate('/dashboard');
   };
 
+  const payoutAmount = result ? result.refund_amount ?? result.payout : 0;
+  const payoutLabel = result?.refund_amount != null ? 'Refund' : 'Payout';
+
   if (!round) {
     return (
       <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center">
@@ -147,9 +150,9 @@ export const VoteRound: React.FC = () => {
             />
             {hasVoted && result && (
               <div className="mt-4 text-center">
-                <p className="text-sm text-quip-teal uppercase tracking-wide">Payout</p>
+                <p className="text-sm text-quip-teal uppercase tracking-wide">{payoutLabel}</p>
                 <div className="text-2xl font-bold text-quip-navy flex items-center justify-center gap-2">
-                  <CurrencyDisplay amount={result.payout} iconClassName="w-6 h-6" textClassName="text-2xl" />
+                  <CurrencyDisplay amount={payoutAmount} iconClassName="w-6 h-6" textClassName="text-2xl" />
                 </div>
               </div>
             )}
