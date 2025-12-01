@@ -1,6 +1,7 @@
 """Caption service for handling caption submissions in Meme Mint."""
 
 import logging
+from difflib import SequenceMatcher
 from datetime import datetime, UTC
 from typing import Literal
 from uuid import UUID, uuid4
@@ -287,16 +288,26 @@ class MMCaptionService:
         # Check similarity (use same threshold as QuipFlip copy phrases)
         similarity = await validator.calculate_similarity(text, parent_caption.text)
 
+        # Also check raw text similarity to catch near-duplicates even if embeddings
+        # are not available or are too lenient.
+        text_similarity = SequenceMatcher(
+            None,
+            text_stripped.lower(),
+            parent_caption.text.strip().lower(),
+        ).ratio()
+
+        combined_similarity = max(similarity, text_similarity)
+
         # Get threshold from config (default 0.7 like QuipFlip)
         threshold = await self.config_service.get_config_value(
             "mm_riff_similarity_threshold",
             default=0.7
         )
 
-        if similarity >= threshold:
+        if combined_similarity >= threshold:
             return False, (
                 f"Riff too similar to parent caption "
-                f"(similarity: {similarity:.2f}, threshold: {threshold})"
+                f"(similarity: {combined_similarity:.2f}, threshold: {threshold})"
             )
 
         return True, ""
