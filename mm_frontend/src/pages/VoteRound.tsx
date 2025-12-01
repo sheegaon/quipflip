@@ -28,7 +28,8 @@ export const VoteRound: React.FC = () => {
   const [isLoadingRound, setIsLoadingRound] = useState(false);
 
   const voteCost = roundAvailability?.round_entry_cost ?? 5;
-  const captionCost = roundAvailability?.caption_submission_cost ?? 100;
+  const freeCaptionAvailable = (roundAvailability?.free_captions_remaining ?? 0) > 0;
+  const captionCost = freeCaptionAvailable ? 0 : (roundAvailability?.caption_submission_cost ?? 100);
   const hasVoted = Boolean(result);
 
   // recover round when arriving without navigation state

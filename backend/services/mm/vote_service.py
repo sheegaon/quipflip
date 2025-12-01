@@ -95,6 +95,10 @@ class MMVoteService:
             captions_by_id = {cap.caption_id: cap for cap in captions}
             caption = captions_by_id.get(caption_id)
 
+            all_captions_are_system = all(
+                _is_system_generated_caption(cap) for cap in captions_by_id.values()
+            )
+
             if not caption:
                 raise ValueError(f"Caption {caption_id} not found")
 
@@ -167,6 +171,20 @@ class MMVoteService:
                     'total_vault': 0
                 }
                 first_vote_bonus_awarded = False
+
+            # Refund entry if the round only showed system-generated captions
+            if all_captions_are_system:
+                await transaction_service.create_transaction(
+                    player.player_id,
+                    round_obj.entry_cost,
+                    "mm_round_entry_refund",
+                    reference_id=round_obj.round_id,
+                    auto_commit=False,
+                )
+                logger.info(
+                    "Refunded entry cost for all-system caption round",
+                    extra={"round_id": round_obj.round_id, "player_id": player.player_id}
+                )
 
             await self.db.commit()
             await self.db.refresh(player)

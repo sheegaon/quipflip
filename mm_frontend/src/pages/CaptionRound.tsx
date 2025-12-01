@@ -64,6 +64,7 @@ export const CaptionRound: React.FC = () => {
 
     setIsSubmitting(true);
     setError(null);
+    setSuccessMessage(null);
 
     try {
       const payload = {
