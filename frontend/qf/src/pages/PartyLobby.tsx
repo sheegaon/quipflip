@@ -4,8 +4,8 @@ import { useGame } from '../contexts/GameContext';
 import { usePartyWebSocket } from '../hooks/usePartyWebSocket';
 import apiClient from '../api/client';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import { PartyIcon } from '../components/icons/NavigationIcons';
-import { BotIcon } from '../components/icons/EngagementIcons';
+import { PartyIcon } from '../../../crowdcraft/src/components/icons/NavigationIcons.tsx';
+import { BotIcon } from '../../../crowdcraft/src/components/icons/EngagementIcons.tsx';
 import { loadingMessages } from '../utils/brandedMessages';
 import type { PartySessionStatusResponse, PartyParticipant } from '../api/types';
 

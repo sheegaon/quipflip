@@ -1,5 +1,5 @@
 import React from 'react';
-import type { GrossEarningsLeaderboard, GrossEarningsLeaderboardEntry } from '../../api/types';
+import type { GrossEarningsLeaderboard, GrossEarningsLeaderboardEntry } from '../../../../qf/src/api/types.ts';
 
 interface WeeklyLeaderboardProps {
   promptLeaderboard?: null;

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { usePartyMode } from '../contexts/PartyModeContext';
-import { PartyIcon } from '../components/icons/NavigationIcons';
+import { PartyIcon } from '../../../crowdcraft/src/components/icons/NavigationIcons.tsx';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { loadingMessages } from '../utils/brandedMessages';
 import apiClient, { extractErrorMessage } from '../api/client';

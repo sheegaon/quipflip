@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { FrozenTimer } from './FrozenTimer';
 import { ThumbFeedbackButton } from '../ThumbFeedbackButton';
 import { ReviewBackButton } from './ReviewBackButton';
-import { BotIcon } from '../icons/EngagementIcons';
-import { TrackingIcon } from '../icons/NavigationIcons';
+import { BotIcon } from '../../../../crowdcraft/src/components/icons/EngagementIcons.tsx';
+import { TrackingIcon } from '../../../../crowdcraft/src/components/icons/NavigationIcons.tsx';
 
 interface PromptRoundReviewProps {
   promptText: string;

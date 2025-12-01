@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LiveModeIcon, PracticeModeIcon } from './icons/RoundIcons';
+import { LiveModeIcon, PracticeModeIcon } from '../../../crowdcraft/src/components/icons/RoundIcons.tsx';
 
 interface ModeToggleProps {
   mode: 'live' | 'practice';

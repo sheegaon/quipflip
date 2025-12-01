@@ -3,9 +3,9 @@ import { useTutorial } from '../../contexts/TutorialContext';
 import { getTutorialStep, getPreviousStep } from '../../config/tutorialSteps';
 import type { TutorialProgress } from '../../api/types';
 import './TutorialOverlay.css';
-import { CopyRoundIcon, LiveModeIcon, PracticeModeIcon, VoteRoundIcon } from '../icons/RoundIcons';
-import { ArrowLeftIcon, ArrowRightIcon } from '../icons/ArrowIcons';
-import { FlagIcon } from '../icons/EngagementIcons';
+import { CopyRoundIcon, LiveModeIcon, PracticeModeIcon, VoteRoundIcon } from '../../../../crowdcraft/src/components/icons/RoundIcons.tsx';
+import { ArrowLeftIcon, ArrowRightIcon } from '../../../../crowdcraft/src/components/icons/ArrowIcons.tsx';
+import { FlagIcon } from '../../../../crowdcraft/src/components/icons/EngagementIcons.tsx';
 import {
   QuestActivityIcon,
   QuestClaimableIcon,
@@ -13,8 +13,8 @@ import {
   QuestOverviewIcon,
   QuestQualityIcon,
   QuestStreakIcon,
-} from '../icons/QuestIcons';
-import { StateEmptyIcon, StateErrorIcon, StateFilterEmptyIcon, StateLoadingIcon } from '../icons/StateIcons';
+} from '../../../../crowdcraft/src/components/icons/QuestIcons.tsx';
+import { StateEmptyIcon, StateErrorIcon, StateFilterEmptyIcon, StateLoadingIcon } from '../../../../crowdcraft/src/components/icons/StateIcons.tsx';
 
 interface TutorialOverlayProps {
   onComplete?: () => void;

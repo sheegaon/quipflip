@@ -7,7 +7,7 @@ import type {
   VoteResult,
 } from '../api/types';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
-import { ShareIcon } from '../components/icons/EngagementIcons';
+import { ShareIcon } from '../../../crowdcraft/src/components/icons/EngagementIcons.tsx';
 
 interface CaptionLocationState {
   round?: VoteRoundState;

@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { FrozenTimer } from './FrozenTimer';
 import { ReviewBackButton } from './ReviewBackButton';
-import { BotIcon } from '../icons/EngagementIcons';
-import { CopyRoundIcon } from '../icons/RoundIcons';
+import { BotIcon } from '../../../../crowdcraft/src/components/icons/EngagementIcons.tsx';
+import { CopyRoundIcon } from '../../../../crowdcraft/src/components/icons/RoundIcons.tsx';
 
 interface CopyRoundReviewProps {
   originalPhrase: string;

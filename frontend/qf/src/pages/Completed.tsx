@@ -4,8 +4,8 @@ import { Header } from '../components/Header';
 import { apiClient } from '../api/client';
 import type { CompletedPhrasesetItem } from '../api/types';
 import { InlineLoadingSpinner } from '../components/LoadingSpinner';
-import { ReviewIcon } from '../components/icons/EngagementIcons';
-import { ArrowLeftIcon, ArrowRightIcon } from '../components/icons/ArrowIcons';
+import { ReviewIcon } from '../../../crowdcraft/src/components/icons/EngagementIcons.tsx';
+import { ArrowLeftIcon, ArrowRightIcon } from '../../../crowdcraft/src/components/icons/ArrowIcons.tsx';
 import { getErrorMessage, isError } from '../types/errors';
 
 type SortField = 'vote_count' | 'total_pool' | 'created_at' | 'finalized_at';

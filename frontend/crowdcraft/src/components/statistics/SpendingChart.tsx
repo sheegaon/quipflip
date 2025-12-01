@@ -1,10 +1,10 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, PieLabelRenderProps } from 'recharts';
-import type { EarningsBreakdown } from '../../api/types';
+import type { EarningsBreakdown } from '../../../../qf/src/api/types.ts';
 import {
   statisticsChartContainerStyle,
   statisticsChartPlaceholderStyle,
   statisticsResponsiveContainerProps,
-} from './chartSizing';
+} from './chartSizing.ts';
 
 interface SpendingChartProps {
   earnings: EarningsBreakdown;

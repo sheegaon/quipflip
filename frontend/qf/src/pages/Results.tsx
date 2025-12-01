@@ -8,7 +8,7 @@ import { loadingMessages } from '../utils/brandedMessages';
 import type { PhrasesetResults, PhrasesetDetails, PhrasesetVoteDetail } from '../api/types';
 import { resultsLogger } from '../utils/logger';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
-import { BotIcon, QuestionMarkIcon, ResultsIcon } from '../components/icons/EngagementIcons';
+import { BotIcon, QuestionMarkIcon, ResultsIcon } from '../../../crowdcraft/src/components/icons/EngagementIcons.tsx';
 import { isAiPlayer } from '../utils/ai';
 
 const ITEMS_PER_PAGE = 10;

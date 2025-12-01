@@ -11,7 +11,7 @@ import { usePhraseValidation } from '../hooks/usePhraseValidation';
 import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
 import type { PromptState } from '../api/types';
 import { promptRoundLogger } from '../utils/logger';
-import { TrackingIcon } from '../components/icons/NavigationIcons';
+import { TrackingIcon } from '../../../crowdcraft/src/components/icons/NavigationIcons.tsx';
 import { usePartyNavigation } from '../hooks/usePartyNavigation';
 
 const isCanceledRequest = (error: unknown): boolean => {

@@ -1,5 +1,5 @@
-import type { PlayFrequency } from '../../api/types';
-import { formatDateInUserZone } from '../../utils/datetime';
+import type { PlayFrequency } from '../../../../qf/src/api/types.ts';
+import { formatDateInUserZone } from '../../../../qf/src/utils/datetime.ts';
 
 interface FrequencyChartProps {
   frequency: PlayFrequency;

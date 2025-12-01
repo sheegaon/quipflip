@@ -12,8 +12,8 @@ import { UpgradeGuestAccount } from '../components/UpgradeGuestAccount';
 import TutorialWelcome from '../components/Tutorial/TutorialWelcome';
 import BetaSurveyModal from '../components/BetaSurveyModal';
 import { dashboardLogger } from '../utils/logger';
-import { TrackingIcon } from '../components/icons/NavigationIcons';
-import { CopyRoundIcon, VoteRoundIcon } from '../components/icons/RoundIcons';
+import { TrackingIcon } from '../../../crowdcraft/src/components/icons/NavigationIcons.tsx';
+import { CopyRoundIcon, VoteRoundIcon } from '../../../crowdcraft/src/components/icons/RoundIcons.tsx';
 import { hasDismissedSurvey, hasCompletedSurvey } from '../utils/betaSurvey';
 
 const formatWaitingCount = (count: number): string => (count > 10 ? 'over 10' : count.toString());

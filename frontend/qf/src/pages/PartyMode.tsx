@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import apiClient from '../api/client';
-import { PartyIcon } from '../components/icons/NavigationIcons';
+import { PartyIcon } from '../../../crowdcraft/src/components/icons/NavigationIcons.tsx';
 import type { PartyListItem } from '../api/types';
 
 /**

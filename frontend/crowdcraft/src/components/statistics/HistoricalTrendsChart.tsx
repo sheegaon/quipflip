@@ -10,13 +10,13 @@ import {
   Area,
   Line,
 } from 'recharts';
-import type { HistoricalTrendPoint } from '../../api/types';
+import type { HistoricalTrendPoint } from '../../../../qf/src/api/types.ts';
 import {
   STATISTICS_CHART_MIN_WIDTH,
   statisticsChartContainerStyle,
   statisticsChartPlaceholderStyle,
   statisticsResponsiveContainerProps,
-} from './chartSizing';
+} from './chartSizing.ts';
 
 const HISTORICAL_TRENDS_ASPECT = 3 / 4;
 const HISTORICAL_TRENDS_MAX_HEIGHT = 450;

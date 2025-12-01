@@ -5,8 +5,8 @@ import { useGame } from '../contexts/GameContext';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import type { MemeVoteResult, VoteRoundState, VoteResult, Caption } from '../api/types';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
-import { BotIcon } from '../components/icons/EngagementIcons';
-import { PartyIcon } from '../components/icons/NavigationIcons';
+import { BotIcon } from '../../../crowdcraft/src/components/icons/EngagementIcons.tsx';
+import { PartyIcon } from '../../../crowdcraft/src/components/icons/NavigationIcons.tsx';
 
 interface VoteLocationState {
   round?: VoteRoundState;

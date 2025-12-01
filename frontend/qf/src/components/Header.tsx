@@ -8,7 +8,7 @@ import { useNetwork } from '../contexts/NetworkContext';
 import { BalanceFlipper } from './BalanceFlipper';
 import { SubHeader } from './SubHeader';
 import { TreasureChestIcon } from './TreasureChestIcon';
-import { ArrowLeftIcon } from './icons/ArrowIcons';
+import { ArrowLeftIcon } from '../../../crowdcraft/src/components/icons/ArrowIcons';
 import {
   AdminIcon,
   HomeIcon,
@@ -19,8 +19,8 @@ import {
   StatisticsIcon,
   SurveyIcon,
   TrackingIcon,
-} from './icons/NavigationIcons';
-import { QuestionMarkIcon, ResultsIcon, ReviewIcon } from './icons/EngagementIcons';
+} from '../../../crowdcraft/src/components/icons/NavigationIcons.tsx';
+import { QuestionMarkIcon, ResultsIcon, ReviewIcon } from '../../../crowdcraft/src/components/icons/EngagementIcons.tsx';
 import { hasCompletedSurvey } from '../utils/betaSurvey';
 import { apiClient } from '../api/client';
 import { componentLogger } from '../utils/logger';

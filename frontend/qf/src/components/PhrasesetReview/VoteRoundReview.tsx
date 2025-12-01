@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { FrozenTimer } from './FrozenTimer';
 import { ReviewBackButton } from './ReviewBackButton';
-import { BotIcon } from '../icons/EngagementIcons';
+import { BotIcon } from '../../../../crowdcraft/src/components/icons/EngagementIcons.tsx';
 import { isAiPlayer } from '../../utils/ai';
-import { VoteRoundIcon } from '../icons/RoundIcons';
+import { VoteRoundIcon } from '../../../../crowdcraft/src/components/icons/RoundIcons.tsx';
 import type { PhrasesetVoteDetail } from '../../api/types';
 
 interface VoteRoundReviewProps {
