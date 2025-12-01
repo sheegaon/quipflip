@@ -264,10 +264,17 @@ class PhraseValidator:
     def _remove_common_endings(self, word: str) -> str:
         """Remove common English word endings for basic stemming."""
         endings = ['ING', 'ED', 'S', 'ES', 'LY', 'ER', 'EST', 'ION', 'TION', 'NESS', 'MENT', 'FUL', 'ABLE', 'IBLE']
-        for ending in endings:
-            if word.endswith(ending) and len(word) > len(ending) + 2 and word[:-len(ending)] in self.dictionary:
-                return self._remove_common_endings(word[:-len(ending)])
-        return word
+        stemmed_word = word
+        while True:
+            original_word = stemmed_word
+            for ending in endings:
+                if stemmed_word.endswith(ending) and len(stemmed_word) > len(ending) + 2 and stemmed_word[:-len(ending)] in self.dictionary:
+                    stemmed_word = stemmed_word[:-len(ending)]
+                    break  # Restart the inner loop with the new stem
+            if stemmed_word == original_word:
+                # No ending was stripped in a full pass, so we're done
+                break
+        return stemmed_word
 
     def _are_words_too_similar(self, word1: str, word2: str) -> bool:
         """Determine if two words are too similar based on sequence matching."""
