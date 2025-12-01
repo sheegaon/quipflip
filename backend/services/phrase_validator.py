@@ -143,10 +143,7 @@ class PhraseValidator:
             )
 
             similarity = self._cosine_similarity(embedding1, embedding2)
-            logger.debug(
-                f"Similarity between '{phrase1_normalized}' and "
-                f"'{phrase2_normalized}': {similarity:.4f}"
-            )
+            logger.info(f"Similarity between '{phrase1_normalized}' and '{phrase2_normalized}': {similarity:.4f}")
             return float(similarity)
         except OpenAIAPIError as exc:
             logger.error(f"OpenAI similarity check failed: {exc}")
