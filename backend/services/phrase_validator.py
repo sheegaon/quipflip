@@ -279,7 +279,7 @@ class PhraseValidator:
             return True
 
         ratio = SequenceMatcher(None, stem1, stem2).ratio()
-        return ratio >= self.settings.stem_similarity_threshold
+        return ratio >= self.settings.word_similarity_threshold
 
     def _check_significant_word_conflicts(self, phrase: str, comparisons: dict[str, str | None]) -> tuple[bool, str]:
         """Ensure phrase does not reuse or closely match significant words."""
