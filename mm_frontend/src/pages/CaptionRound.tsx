@@ -104,10 +104,12 @@ export const CaptionRound: React.FC = () => {
   };
 
   const handleAbandonRound = async () => {
-    try {
-      await actions.refreshDashboard();
-    } catch (err) {
-      console.warn('Failed to refresh dashboard before abandoning caption round', err);
+    if (round) {
+      try {
+        await actions.abandonRound(round.round_id);
+      } catch (err) {
+        console.warn('Failed to abandon caption round', err);
+      }
     }
 
     navigate('/dashboard');
