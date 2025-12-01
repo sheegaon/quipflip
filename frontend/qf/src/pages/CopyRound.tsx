@@ -5,7 +5,7 @@ import apiClient, { extractErrorMessage } from '../api/client';
 import { Timer } from '../components/Timer';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
-import { useTimer } from '../hooks/useTimer';
+import { useTimer } from '@crowdcraft/hooks/useTimer.ts';
 import { usePhraseValidation } from '../hooks/usePhraseValidation';
 import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
 import type { CopyState, FlagCopyRoundResponse, SubmitPhraseResponse } from '../api/types';

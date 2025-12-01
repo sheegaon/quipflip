@@ -8,7 +8,7 @@ import { EditableConfigField } from '../components/EditableConfigField';
 import { adminLogger } from '@crowdcraft/utils/logger.ts';
 import type { AdminPlayerSummary } from '../api/types';
 import { formatDateTimeInUserZone } from '@crowdcraft/utils/datetime.ts';
-import { PHRASE_VALIDATION_BOUNDS, PHRASE_VALIDATION_LIMITS } from '../config/phraseValidation';
+import { PHRASE_VALIDATION_BOUNDS, PHRASE_VALIDATION_LIMITS } from '@crowdcraft/config/phraseValidation.ts';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 
 const getErrorDetail = (error: unknown): string | undefined => {

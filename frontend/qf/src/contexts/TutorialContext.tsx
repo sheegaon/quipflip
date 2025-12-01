@@ -11,7 +11,7 @@ import apiClient from '../api/client';
 import { getActionErrorMessage } from '../utils/errorMessages';
 import { tutorialLogger } from '@crowdcraft/utils/logger.ts';
 import type { TutorialProgress, TutorialStatus } from '../api/types';
-import { getNextStep } from '../config/tutorialSteps';
+import { getNextStep } from '@crowdcraft/config/tutorialSteps.ts';
 
 const isAbortError = (error: unknown): boolean => {
   if (!error || typeof error !== 'object') {

@@ -6,7 +6,7 @@ import { Timer } from '../components/Timer';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { ThumbFeedbackButton } from '../components/ThumbFeedbackButton';
-import { useTimer } from '../hooks/useTimer';
+import { useTimer } from '@crowdcraft/hooks/useTimer.ts';
 import { usePhraseValidation } from '../hooks/usePhraseValidation';
 import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
 import type { PromptState, SubmitPhraseResponse } from '../api/types';

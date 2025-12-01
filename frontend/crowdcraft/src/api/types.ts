@@ -262,7 +262,7 @@ export interface WeeklyLeaderboardEntry {
 export interface GrossEarningsLeaderboardEntry {
   player_id: string;
   username: string;
-  vault_balance: number;  // Total vault balance (all-time) or vault balance change (weekly)
+  vault_balance: number; // Total vault balance (all-time) or vault balance change (weekly)
   total_rounds: number;
   rank: number | null;
   is_current_player: boolean;
@@ -308,30 +308,40 @@ export interface PracticePhraseset {
 }
 
 export interface RoundAvailability {
-  can_prompt: boolean;
-  can_copy: boolean;
   can_vote: boolean;
-  prompts_waiting: number;
-  phrasesets_waiting: number;
-  copy_discount_active: boolean;
-  copy_cost: number;
-  current_round_id: string | null;
-  // Game constants from config
-  prompt_cost: number;
-  vote_cost: number;
-  vote_payout_correct: number;
-  abandoned_penalty: number;
+  can_submit_caption: boolean;
+  round_entry_cost: number;
+  caption_submission_cost: number;
+  free_captions_remaining: number;
+  current_round_id?: string | null;
+  daily_bonus_available: boolean;
+  // Legacy fields kept optional during transition
+  can_prompt?: boolean;
+  can_copy?: boolean;
+  prompts_waiting?: number;
+  phrasesets_waiting?: number;
+  copy_discount_active?: boolean;
+  copy_cost?: number;
+  prompt_cost?: number;
+  vote_cost?: number;
+  vote_payout_correct?: number;
+  abandoned_penalty?: number;
 }
 
 export interface RoundDetails {
   round_id: string;
-  type: string;
+  type: 'vote' | 'caption_submission';
   status: string;
   expires_at: string;
-  prompt_text?: string | null;
-  original_phrase?: string | null;
-  submitted_phrase?: string | null;
+  image_id: string;
+  image_url: string;
   cost: number;
+  // For vote rounds
+  captions?: Caption[];
+  chosen_caption_id?: string | null;
+  // For caption submission rounds
+  submitted_caption_id?: string | null;
+  submitted_caption_text?: string | null;
 }
 
 export interface StartPromptResponse {
@@ -409,7 +419,7 @@ export interface VoteResponse {
   party_context?: PartyContext;
 }
 
-export interface VoteResult {
+export interface PhrasesetVoteResult {
   phrase: string;
   vote_count: number;
   is_original: boolean;
@@ -418,7 +428,7 @@ export interface VoteResult {
 
 export interface PhrasesetResults {
   prompt_text: string;
-  votes: VoteResult[];
+  votes: PhrasesetVoteResult[];
   your_phrase: string;
   your_role: string;
   original_phrase?: string;
@@ -439,6 +449,117 @@ export interface PhrasesetResults {
   vote_payout_correct: number;
   system_contribution: number;
   second_copy_contribution: number;
+}
+
+// MemeMint types - Updated to match backend schemas
+export interface MemeImage {
+  image_id: string;
+  image_url: string;
+  thumbnail_url?: string | null;
+  attribution_text?: string | null;
+}
+
+export interface Caption {
+  caption_id: string;
+  text: string;
+  author_username?: string | null;
+  is_ai?: boolean;
+  is_bot?: boolean;
+  is_system?: boolean;
+  is_seed_caption?: boolean;
+  is_circle_member?: boolean;
+  in_circle?: boolean;
+  // Note: Backend doesn't include kind/parent_caption_id in caption list responses
+}
+
+export interface VoteRoundState {
+  round_id: string;
+  image_id: string;
+  image_url: string;
+  thumbnail_url?: string | null;
+  attribution_text?: string | null;
+  captions: Caption[];
+  expires_at: string;
+  cost: number;
+}
+
+export interface VoteResult {
+  success: boolean;
+  chosen_caption_id: string;
+  payout: number;
+  refund_amount?: number;
+  correct: boolean;
+  new_wallet: number;
+  new_vault: number;
+}
+
+export interface CaptionSubmissionResult {
+  success: boolean;
+  caption_id: string;
+  cost: number;
+  used_free_slot: boolean;
+  new_wallet: number;
+}
+
+export interface DashboardData {
+  player: Player;
+  round_availability: RoundAvailability;
+  current_vote_round?: VoteRoundState | null;
+  current_caption_round?: CaptionSubmissionResult | null;
+}
+
+// Legacy MemeMint types - kept for backward compatibility during transition
+export interface MemeDetails {
+  meme_id: string;
+  image_url: string;
+  title?: string;
+  alt_text?: string;
+}
+
+export interface MemeCaptionOption {
+  caption_id: string;
+  text: string;
+  author?: string;
+  is_original?: boolean;
+  riff_on_caption_id?: string | null;
+}
+
+export interface MemeVoteRound {
+  round_id: string;
+  expires_at: string | null;
+  meme: MemeDetails;
+  captions: MemeCaptionOption[];
+  free_captions_remaining?: number;
+  has_submitted_caption?: boolean;
+}
+
+export interface MemeVoteResult {
+  round_id: string;
+  selected_caption_id: string;
+  payout: number;
+  wallet?: number;
+  vault?: number;
+  meme?: MemeDetails;
+  captions?: MemeCaptionOption[];
+  winning_caption_id?: string | null;
+  has_submitted_caption?: boolean;
+}
+
+export type MemeCaptionType = 'original' | 'riff';
+
+export interface MemeCaptionSubmission {
+  round_id: string;
+  text: string;
+  // kind and parent_caption_id are determined algorithmically by the backend
+  // based on cosine similarity analysis
+}
+
+export interface MemeCaptionResponse {
+  success: boolean;
+  caption_id: string;
+  cost: number;
+  used_free_slot: boolean;
+  new_wallet: number;
 }
 
 export type PhrasesetStatus =
@@ -596,15 +717,6 @@ export interface UnclaimedResultsResponse {
   total_unclaimed_amount: number;
 }
 
-export interface DashboardData {
-  player: Player;
-  current_round: ActiveRound;
-  pending_results: PendingResult[];
-  phraseset_summary: PhrasesetDashboardSummary;
-  unclaimed_results: UnclaimedResult[];
-  round_availability: RoundAvailability;
-}
-
 export interface ApiError {
   detail: string;
 }
@@ -711,15 +823,15 @@ export type TutorialProgress =
   | 'completed';
 
 export interface TutorialStatus {
-  tutorial_completed: boolean;
-  tutorial_progress: TutorialProgress;
-  tutorial_started_at: string | null;
-  tutorial_completed_at: string | null;
+  progress: TutorialProgress;
+  completed: boolean;
+  last_updated: string | null;
 }
 
 export interface UpdateTutorialProgressResponse {
-  success: boolean;
-  tutorial_status: TutorialStatus;
+  progress: TutorialProgress;
+  completed: boolean;
+  message: string;
 }
 
 // Quest system types
@@ -1174,3 +1286,100 @@ export type PartyWebSocketMessage =
     { type: 'host_ping'; session_id: string; timestamp: string },
     HostPingPayload
   >;
+
+// ===== CIRCLE TYPES =====
+
+export interface CircleMember {
+  player_id: string;
+  username: string;
+  role: 'admin' | 'member';
+  joined_at: string;
+}
+
+export interface CircleJoinRequest {
+  request_id: string;
+  player_id: string;
+  username: string;
+  requested_at: string;
+  status: 'pending' | 'approved' | 'denied';
+  resolved_at?: string | null;
+  resolved_by_player_id?: string | null;
+}
+
+export interface Circle {
+  circle_id: string;
+  name: string;
+  description?: string | null;
+  created_by_player_id: string;
+  created_at: string;
+  updated_at: string;
+  member_count: number;
+  is_public: boolean;
+  status: 'active' | 'archived';
+  // Contextual fields based on requesting player
+  is_member: boolean;
+  is_admin: boolean;
+  has_pending_request: boolean;
+}
+
+export interface CircleListResponse {
+  circles: Circle[];
+  total_count: number;
+}
+
+export interface CircleMembersResponse {
+  members: CircleMember[];
+  total_count: number;
+}
+
+export interface CircleJoinRequestsResponse {
+  join_requests: CircleJoinRequest[];
+  total_count: number;
+}
+
+export interface CreateCircleRequest {
+  name: string;
+  description?: string;
+  is_public?: boolean;
+}
+
+export interface CreateCircleResponse {
+  success: boolean;
+  circle: Circle;
+  message: string;
+}
+
+export interface JoinCircleResponse {
+  success: boolean;
+  request_id?: string | null;
+  message: string;
+}
+
+export interface ApproveJoinRequestResponse {
+  success: boolean;
+  message: string;
+}
+
+export interface DenyJoinRequestResponse {
+  success: boolean;
+  message: string;
+}
+
+export interface AddMemberRequest {
+  player_id: string;
+}
+
+export interface AddMemberResponse {
+  success: boolean;
+  message: string;
+}
+
+export interface RemoveMemberResponse {
+  success: boolean;
+  message: string;
+}
+
+export interface LeaveCircleResponse {
+  success: boolean;
+  message: string;
+}

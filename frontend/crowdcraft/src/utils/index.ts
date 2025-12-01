@@ -6,6 +6,7 @@ export * from './errorMessages';
 export * from './errorReporting';
 export * from './googleAnalytics'
 export * from './logger';
-export * from './storageKeys.ts';
-export * from './visitorId.ts';
+export * from './offlineQueue';
+export * from './storageKeys';
+export * from './visitorId';
 export { default as createLogger } from './logger';

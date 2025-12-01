@@ -1,8 +1,9 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useNetworkStatus, getConnectionQuality } from '@crowdcraft/hooks/useNetworkStatus.ts';
-import { offlineQueue, type OfflineAction } from '@crowdcraft/utils/offlineQueue.ts';
-import { irClient } from '../api/client';
-import { networkLogger } from '@crowdcraft/utils/logger.ts';
+import { offlineQueue, type OfflineAction } from '../utils';
+import { axiosInstance } from '../api/client';
+import { networkLogger } from '../utils';
 
 interface AxiosLikeError {
   response?: {
@@ -78,7 +79,7 @@ export const NetworkProvider: React.FC<{ children: React.ReactNode }> = ({ child
       try {
         // Attempt to replay the action using Axios instance
         // This ensures we use the correct baseURL and credentials (withCredentials: true)
-        await irClient.request({
+        await axiosInstance.request({
           method: action.method,
           url: action.url,
           data: action.data,
@@ -140,7 +141,6 @@ export const NetworkProvider: React.FC<{ children: React.ReactNode }> = ({ child
 /**
  * Hook to access network context
  */
-// eslint-disable-next-line react-refresh/only-export-components
 export const useNetwork = (): NetworkContextType => {
   const context = useContext(NetworkContext);
   if (!context) {

@@ -24,7 +24,7 @@ import { useGame } from './GameContext';
 import { usePartyMode } from './PartyModeContext';
 import apiClient from '../api/client';
 import { NotificationStreamMessage, OnlineUser } from '../api/types';
-import useWebSocket from '../hooks/useWebSocket';
+import useWebSocket from '@crowdcraft/hooks/useWebSocket.ts';
 import { usePartyWebSocket } from '../hooks/usePartyWebSocket';
 
 export interface NotificationMessage {

@@ -11,6 +11,18 @@ export * from './components/icons/RoundIcons';
 export * from './components/icons/StateIcons';
 export * from './components/icons/TreasureChestIcon';
 
+// Config
+export * from './config/phraseValidation'
+export * from './config/tutorialSteps'
+
+// Hooks
+export * from './hooks/useExponentialBackoff'
+export * from './hooks/useNetworkStatus'
+export * from './hooks/useOfflineCache'
+export * from './hooks/usePhraseValidation'
+export * from './hooks/useTimer'
+export * from './hooks/useWebSocket'
+
 // Statistics Components - using default exports
 export { default as EarningsChart } from './components/statistics/EarningsChart';
 export { default as FrequencyChart } from './components/statistics/FrequencyChart';
