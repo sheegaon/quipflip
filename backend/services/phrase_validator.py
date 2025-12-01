@@ -143,7 +143,7 @@ class PhraseValidator:
             )
 
             similarity = self._cosine_similarity(embedding1, embedding2)
-            logger.debug(
+            logger.info(
                 "Similarity between '%s' and '%s': %.4f",
                 phrase1_normalized,
                 phrase2_normalized,
