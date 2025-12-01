@@ -87,7 +87,7 @@ export const CaptionRound: React.FC = () => {
     }
   };
 
-  const handlePlayAgain = useCallback(async () => {
+  const handlePlayAgain = async () => {
     console.log('🔄 Play again clicked');
     setError(null);
     setIsStartingRound(true);
@@ -101,7 +101,7 @@ export const CaptionRound: React.FC = () => {
     } finally {
       setIsStartingRound(false);
     }
-  }, [actions, navigate]);
+  };
 
   return (
     <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center p-4">
