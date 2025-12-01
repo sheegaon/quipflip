@@ -12,11 +12,8 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test.db"
 # Disable the phrase validator API for tests (use local validation instead)
 os.environ["USE_PHRASE_VALIDATOR_API"] = "false"
-# Disable sentence transformers for tests (use lightweight similarity instead)
-os.environ["USE_SENTENCE_TRANSFORMERS"] = "false"
 
 from backend.config import get_settings
-from backend.database import Base
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent

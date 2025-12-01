@@ -22,8 +22,8 @@ class Settings(BaseSettings):
     redis_url: str = ""
 
     # Application
-    frontend_url: str = "https://quipflip.xyz"
-    phrase_validator_url: str = "https://quipflip-pvw-f508f6eb7783.herokuapp.com"
+    qf_frontend_url: str = "https://quipflip.xyz"
+    mm_frontend_url: str = "https://meme-mint-game.vercel.app"
     github_images_base_url: str = "https://raw.githubusercontent.com/sheegaon/quipflip/main/backend/data"
     serve_images_from_github: bool = True  # Set to False for local development
     environment: str = "development"
@@ -90,11 +90,11 @@ class Settings(BaseSettings):
     vote_minimum_threshold: int = 3  # Minimum votes to start timeout window
     vote_minimum_window_minutes: int = 60  # Minimum vote window duration
     vote_closing_threshold: int = 5  # Votes needed to enter closing window
-    vote_closing_window_minutes: int = 10  # Closing window duration
+    vote_closing_window_minutes: int = 5  # Closing window duration
     vote_finalization_refresh_interval_seconds: int = 30  # Throttle for in-request finalization checks
 
     # Phrase Validation
-    use_phrase_validator_api: bool = True
+    use_phrase_validator_api: bool = False
     phrase_min_words: int = 2
     phrase_max_words: int = 5
     phrase_max_length: int = 100
@@ -103,6 +103,7 @@ class Settings(BaseSettings):
     significant_word_min_length: int = 4
 
     # Similarity Checking
+    embedding_model = 'text-embedding-3-small'  # OpenAI embedding model for similarity checks
     prompt_relevance_threshold: float = 0.0  # Cosine similarity threshold for prompt relevance
     similarity_threshold: float = 0.8  # Cosine similarity threshold for rejecting similar phrases
     word_similarity_threshold: float = 0.8  # Minimum ratio for considering words too similar

@@ -635,7 +635,8 @@ allowed_origins = os.getenv("ALLOWED_ORIGINS", "").split(",")
 if not allowed_origins or allowed_origins == [""]:
     # Default origins for development + production fallback
     allowed_origins = [
-        settings.frontend_url,                # Your production frontend
+        settings.qf_frontend_url,             # Your production frontend for Quipflip
+        settings.mm_frontend_url,             # Your production frontend for Meme Mint
         "http://localhost:5173",              # Vite dev server
         "http://localhost:5174",              # Vite dev server #2
         f"http://{get_local_ip()}:5173/",     # Alternative dev server
