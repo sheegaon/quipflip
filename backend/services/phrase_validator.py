@@ -144,17 +144,15 @@ class PhraseValidator:
 
             similarity = self._cosine_similarity(embedding1, embedding2)
             logger.debug(
-                "Similarity between '%s' and '%s': %.4f",
-                phrase1_normalized,
-                phrase2_normalized,
-                similarity,
+                f"Similarity between '{phrase1_normalized}' and "
+                f"'{phrase2_normalized}': {similarity:.4f}"
             )
             return float(similarity)
         except OpenAIAPIError as exc:
-            logger.error("OpenAI similarity check failed: %s", exc)
+            logger.error(f"OpenAI similarity check failed: {exc}")
             return 0.0
         except Exception as exc:
-            logger.error("Unexpected error calculating similarity: %s", exc)
+            logger.error(f"Unexpected error calculating similarity: {exc}")
             return 0.0
 
     async def _get_or_create_embedding(
@@ -167,6 +165,10 @@ class PhraseValidator:
             embedding = await self._get_cached_embedding(phrase_normalized, session)
 
             if embedding is None:
+                logger.info(
+                    f"Requesting OpenAI embedding for phrase '{phrase_normalized}' "
+                    f"using model {self.settings.embedding_model}"
+                )
                 embedding = await generate_embedding(
                     phrase_normalized,
                     model=self.settings.embedding_model,
