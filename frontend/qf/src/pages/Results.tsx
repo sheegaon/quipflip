@@ -3,7 +3,7 @@ import { useGame } from '../contexts/GameContext';
 import { useResults } from '../contexts/ResultsContext';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Header } from '../components/Header';
-import { Pagination } from '../components/Pagination';
+import { Pagination } from '../../../crowdcraft/src/components/Pagination.tsx';
 import { loadingMessages } from '../utils/brandedMessages';
 import type { PhrasesetResults, PhrasesetDetails, PhrasesetVoteDetail } from '../api/types';
 import { resultsLogger } from '../utils/logger';

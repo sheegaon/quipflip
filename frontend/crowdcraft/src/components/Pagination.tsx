@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeftIcon, ArrowRightIcon } from '../../../crowdcraft/src/components/icons/ArrowIcons.tsx';
+import { ArrowLeftIcon, ArrowRightIcon } from './icons/ArrowIcons.tsx';
 
 interface PaginationProps {
   currentPage: number;

@@ -6,7 +6,7 @@ import { useTutorial } from '../contexts/TutorialContext';
 import { useHeaderIndicators } from '../hooks/useHeaderIndicators';
 import { useNetwork } from '../contexts/NetworkContext';
 import { BalanceFlipper } from '../../../crowdcraft/src/components/BalanceFlipper.tsx';
-import { TreasureChestIcon } from './TreasureChestIcon';
+import { TreasureChestIcon } from '../../../crowdcraft/src/components/icons/TreasureChestIcon.tsx';
 import { ArrowLeftIcon } from '../../../crowdcraft/src/components/icons/ArrowIcons.tsx';
 import {
   AdminIcon,

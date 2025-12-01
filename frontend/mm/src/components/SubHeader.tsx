@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { useHeaderIndicators } from '../hooks/useHeaderIndicators';
 import { useTutorial } from '../contexts/TutorialContext';
-import { TreasureChestIcon } from './TreasureChestIcon';
+import { TreasureChestIcon } from '../../../crowdcraft/src/components/icons/TreasureChestIcon.tsx';
 import { CopyRoundIcon } from '../../../crowdcraft/src/components/icons/RoundIcons.tsx';
 import { LeaderboardIcon, LobbyIcon, TrackingIcon } from '../../../crowdcraft/src/components/icons/NavigationIcons.tsx';
 import { QuestionMarkIcon, ResultsIcon } from '../../../crowdcraft/src/components/icons/EngagementIcons.tsx';
