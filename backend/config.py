@@ -103,7 +103,7 @@ class Settings(BaseSettings):
     significant_word_min_length: int = 4
 
     # Similarity Checking
-    embedding_model = 'text-embedding-3-small'  # OpenAI embedding model for similarity checks
+    embedding_model: str = 'text-embedding-3-small'  # OpenAI embedding model for similarity checks
     prompt_relevance_threshold: float = 0.0  # Cosine similarity threshold for prompt relevance
     similarity_threshold: float = 0.8  # Cosine similarity threshold for rejecting similar phrases
     word_similarity_threshold: float = 0.8  # Minimum ratio for considering words too similar

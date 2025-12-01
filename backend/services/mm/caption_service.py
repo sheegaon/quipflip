@@ -229,7 +229,7 @@ class MMCaptionService:
         # Calculate cosine similarity to each shown caption
         similarities = []
         for caption in shown_captions:
-            similarity = validator.calculate_similarity(text, caption.text)
+            similarity = await validator.calculate_similarity(text, caption.text)
             similarities.append((similarity, caption))
 
         # Find max similarity
@@ -285,7 +285,7 @@ class MMCaptionService:
             return False, "Riff cannot be identical to parent caption"
 
         # Check similarity (use same threshold as QuipFlip copy phrases)
-        similarity = validator.calculate_similarity(text, parent_caption.text)
+        similarity = await validator.calculate_similarity(text, parent_caption.text)
 
         # Get threshold from config (default 0.7 like QuipFlip)
         threshold = await self.config_service.get_config_value(
