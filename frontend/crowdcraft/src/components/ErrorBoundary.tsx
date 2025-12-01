@@ -1,5 +1,5 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { ErrorFallback, type ErrorFallbackProps } from './ErrorFallback';
+import { ErrorFallback, type ErrorFallbackProps } from './ErrorFallback.tsx';
 import { logErrorToService, type ErrorReportContext } from '../utils/errorReporting';
 
 interface ErrorBoundaryState {
