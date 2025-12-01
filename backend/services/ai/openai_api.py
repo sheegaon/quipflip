@@ -13,7 +13,7 @@ except ImportError:
     AsyncOpenAI = None  # type: ignore
     OpenAIError = Exception  # type: ignore
 
-__all__ = ["OpenAIError", "generate_response", "generate_embedding"]
+__all__ = ["OpenAIError", "OpenAIAPIError", "generate_response", "generate_embedding"]
 
 settings = get_settings()
 
