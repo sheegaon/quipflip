@@ -1,11 +1,28 @@
 {
-  "name": "crowdcraft-frontend",
+  "name": "@quipflip/crowdcraft-components",
   "private": true,
   "version": "1.0.0",
   "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./components/*": {
+      "import": "./dist/components/*.js",
+      "types": "./dist/components/*.d.ts"
+    },
+    "./icons/*": {
+      "import": "./dist/components/icons/*.js",
+      "types": "./dist/components/icons/*.d.ts"
+    }
+  },
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc && vite build --mode lib",
+    "build:lib": "tsc && vite build --mode lib",
     "lint": "eslint .",
     "preview": "vite preview"
   },
