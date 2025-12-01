@@ -6,7 +6,7 @@ import { ResultsProvider, useResults } from './ResultsContext';
 import { NetworkProvider } from './NetworkContext';
 import { NavigationHistoryProvider } from './NavigationHistoryContext';
 import { NotificationProvider } from './NotificationContext';
-import { gameContextLogger } from '../utils/logger';
+import { gameContextLogger } from '@crowdcraft/utils/logger.ts';
 import { ErrorBoundary } from '@crowdcraft/components/ErrorBoundary.tsx';
 import { PageErrorFallback } from '@crowdcraft/components/ErrorFallback.tsx';
 import { PartyModeProvider } from './PartyModeContext';

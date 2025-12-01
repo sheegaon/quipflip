@@ -10,7 +10,7 @@ import { useTimer } from '../hooks/useTimer';
 import { usePhraseValidation } from '../hooks/usePhraseValidation';
 import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
 import type { PromptState, SubmitPhraseResponse } from '../api/types';
-import { promptRoundLogger } from '../utils/logger';
+import { promptRoundLogger } from '@crowdcraft/utils/logger.ts';
 import { TrackingIcon } from '@crowdcraft/components/icons/NavigationIcons.tsx';
 import { usePartyMode } from '../contexts/PartyModeContext';
 import PartyRoundModal from '../components/party/PartyRoundModal';

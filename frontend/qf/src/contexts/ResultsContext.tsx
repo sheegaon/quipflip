@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import apiClient from '../api/client';
 import { getActionErrorMessage } from '../utils/errorMessages';
-import { gameContextLogger } from '../utils/logger';
+import { gameContextLogger } from '@crowdcraft/utils/logger.ts';
 import { buildPhrasesetListKey, type PhrasesetListKeyParams } from '../utils/gameKeys';
 import type {
   PendingResult,

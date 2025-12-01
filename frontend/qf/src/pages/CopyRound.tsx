@@ -9,7 +9,7 @@ import { useTimer } from '../hooks/useTimer';
 import { usePhraseValidation } from '../hooks/usePhraseValidation';
 import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
 import type { CopyState, FlagCopyRoundResponse, SubmitPhraseResponse } from '../api/types';
-import { copyRoundLogger } from '../utils/logger';
+import { copyRoundLogger } from '@crowdcraft/utils/logger.ts';
 import { CopyRoundIcon } from '@crowdcraft/components/icons/RoundIcons.tsx';
 import { FlagIcon } from '@crowdcraft/components/icons/EngagementIcons.tsx';
 import { usePartyMode } from '../contexts/PartyModeContext';

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { useTutorial } from '../contexts/TutorialContext';
 import apiClient, { extractErrorMessage } from '../api/client';
-import { settingsLogger } from '../utils/logger';
+import { settingsLogger } from '@crowdcraft/utils/logger.ts';
 import { formatDateInUserZone, formatDateTimeInUserZone } from '../utils/datetime';
 
 const getErrorDetail = (error: unknown): string | undefined => {

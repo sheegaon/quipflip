@@ -5,7 +5,7 @@ import { QuestCard } from '../components/QuestCard';
 import { SuccessNotification } from '../components/SuccessNotification';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import type { Quest } from '../api/types';
-import { questsLogger } from '../utils/logger';
+import { questsLogger } from '@crowdcraft/utils/logger.ts';
 import { isSameDay } from '../utils/date';
 import { QuestClaimableIcon, QuestOverviewIcon } from '@crowdcraft/components/icons/QuestIcons.tsx';
 import { StateEmptyIcon, StateErrorIcon, StateFilterEmptyIcon, StateLoadingIcon } from '@crowdcraft/components/icons/StateIcons.tsx';

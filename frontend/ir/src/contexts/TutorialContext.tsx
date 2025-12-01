@@ -8,7 +8,7 @@ import React, {
 } from 'react';
 import { tutorialAPI } from '../api/client';
 import type { TutorialProgress, TutorialStatus } from '../api/types';
-import { tutorialLogger } from '../utils/logger';
+import { tutorialLogger } from '@crowdcraft/utils/logger.ts';
 import { getNextStep } from '../config/tutorialSteps';
 import { getErrorMessage } from '../utils/errorHelpers';
 import { getStoredUsername } from '../services/sessionDetection';

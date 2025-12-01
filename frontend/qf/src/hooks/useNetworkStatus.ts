@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { networkLogger } from '../utils/logger';
+import { networkLogger } from '@crowdcraft/utils/logger.ts';
 
 type NavigatorConnection = EventTarget & {
   type?: string;

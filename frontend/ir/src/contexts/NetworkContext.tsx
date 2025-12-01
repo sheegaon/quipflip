@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { useNetworkStatus, getConnectionQuality } from '../hooks/useNetworkStatus';
 import { offlineQueue, type OfflineAction } from '../utils/offlineQueue';
 import { irClient } from '../api/client';
-import { networkLogger } from '../utils/logger';
+import { networkLogger } from '@crowdcraft/utils/logger.ts';
 
 interface AxiosLikeError {
   response?: {

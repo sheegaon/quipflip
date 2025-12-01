@@ -6,7 +6,7 @@
 import { apiClient } from '../api/client';
 import { getOrCreateVisitorId, getVisitorId } from '../utils/visitorId';
 import { SessionState, SessionDetectionResult } from '../types/session';
-import { createLogger } from '../utils/logger';
+import { createLogger } from '@crowdcraft/utils/logger.ts';
 
 interface ErrorWithStatus {
   name?: string;

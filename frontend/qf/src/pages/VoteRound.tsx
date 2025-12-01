@@ -9,7 +9,7 @@ import { PhraseRecapCard } from '../components/PhraseRecapCard';
 import { useTimer } from '../hooks/useTimer';
 import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
 import type { VoteResponse, VoteState, PhrasesetDetails } from '../api/types';
-import { voteRoundLogger } from '../utils/logger';
+import { voteRoundLogger } from '@crowdcraft/utils/logger.ts';
 import { VoteRoundIcon } from '@crowdcraft/components/icons/RoundIcons.tsx';
 import { HomeIcon } from '@crowdcraft/components/icons/NavigationIcons.tsx';
 import { usePartyMode } from '../contexts/PartyModeContext';

@@ -9,7 +9,7 @@ import React, {
 } from 'react';
 import apiClient from '../api/client';
 import { getActionErrorMessage } from '../utils/errorMessages';
-import { tutorialLogger } from '../utils/logger';
+import { tutorialLogger } from '@crowdcraft/utils/logger.ts';
 import type { TutorialProgress, TutorialStatus } from '../api/types';
 import { getNextStep } from '../config/tutorialSteps';
 

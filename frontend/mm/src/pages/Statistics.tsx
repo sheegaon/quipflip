@@ -9,7 +9,7 @@ import EarningsChart from '@crowdcraft/components/statistics/EarningsChart';
 import SpendingChart from '@crowdcraft/components/statistics/SpendingChart';
 import FrequencyChart from '@crowdcraft/components/statistics/FrequencyChart';
 import HistoricalTrendsChart from '@crowdcraft/components/statistics/HistoricalTrendsChart';
-import { statisticsLogger } from '../utils/logger';
+import { statisticsLogger } from '@crowdcraft/utils/logger.ts';
 import { hasCompletedSurvey } from '../utils/betaSurvey';
 import type { BetaSurveyStatusResponse } from '../api/types';
 import { APP_VERSION } from '../version';

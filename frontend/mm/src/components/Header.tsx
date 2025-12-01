@@ -21,7 +21,7 @@ import {
 import { QuestionMarkIcon, ResultsIcon } from '@crowdcraft/components/icons/EngagementIcons.tsx';
 import { hasCompletedSurvey } from '../utils/betaSurvey';
 import { apiClient } from '../api/client';
-import { componentLogger } from '../utils/logger';
+import { componentLogger } from '@crowdcraft/utils/logger.ts';
 import GuestLogoutWarning from '@crowdcraft/components/GuestLogoutWarning.tsx';
 
 export const Header: React.FC = () => {
