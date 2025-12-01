@@ -108,14 +108,16 @@ export const CaptionRound: React.FC = () => {
         throw new Error('Unable to retrieve image for sharing');
       }
       const blob = await response.blob();
-      const extension = blob.type.split('/')[1] || 'jpeg';
-      const file = new File([blob], `quipflip-caption.${extension}`, { type: blob.type || 'image/jpeg' });
+      const mimeType = blob.type || 'image/jpeg';
+      const extension = mimeType.split('/')[1] || 'jpeg';
+      const file = new File([blob], `mememint-caption.${extension}`, { type: mimeType });
 
       const shareText = [
         caption,
         '',
         round.attribution_text ? `Image: ${round.attribution_text}` : null,
-        `Play QuipFlip: ${homeUrl}`,
+        `Image link: ${round.image_url}`,
+        `Play MemeMint: ${homeUrl}`,
       ]
         .filter(Boolean)
         .join('\n');
@@ -125,18 +127,19 @@ export const CaptionRound: React.FC = () => {
         '',
         round.attribution_text ? `Image: ${round.attribution_text}` : null,
         `Image link: ${round.image_url}`,
-        `Play QuipFlip: ${homeUrl}`,
+        `Play MemeMint: ${homeUrl}`,
       ]
         .filter(Boolean)
         .join('\n');
 
       const shareData: ShareData = {
-        title: 'My QuipFlip caption',
+        title: 'My MemeMint caption',
         text: shareText,
         url: homeUrl,
       };
 
-      if (navigator.canShare?.({ files: [file], text: shareText, url: homeUrl, title: 'My QuipFlip caption' })) {
+      const canShareFile = navigator.canShare?.({ files: [file] }) ?? false;
+      if (canShareFile) {
         shareData.files = [file];
       }
 
