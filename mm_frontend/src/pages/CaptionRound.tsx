@@ -153,6 +153,13 @@ export const CaptionRound: React.FC = () => {
         setShareStatus('Sharing not supported in this browser.');
       }
     } catch (err) {
+      // Avoid showing an error when the user intentionally cancels the native share dialog
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        console.info('Share cancelled by user');
+        setShareStatus(null);
+        return;
+      }
+
       console.error('Failed to share caption', err);
       setShareStatus('Unable to share right now. Try again in a moment.');
     } finally {
