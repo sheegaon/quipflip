@@ -8,8 +8,8 @@ import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import type { Quest } from '../api/types';
 import { questsLogger } from '../utils/logger';
 import { isSameDay } from '../utils/date';
-import { QuestClaimableIcon, QuestOverviewIcon } from '../../../crowdcraft/src/components/icons/QuestIcons.tsx';
-import { StateEmptyIcon, StateErrorIcon, StateFilterEmptyIcon, StateLoadingIcon } from '../../../crowdcraft/src/components/icons/StateIcons.tsx';
+import { QuestClaimableIcon, QuestOverviewIcon } from '@crowdcraft/components/icons/QuestIcons.tsx';
+import { StateEmptyIcon, StateErrorIcon, StateFilterEmptyIcon, StateLoadingIcon } from '@crowdcraft/components/icons/StateIcons.tsx';
 
 // Quest categories for filtering
 const QUEST_CATEGORIES = ['all', 'streak', 'quality', 'activity', 'milestone'] as const;

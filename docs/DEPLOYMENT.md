@@ -6,8 +6,9 @@ This guide covers the production deployment setup for the multi-game QuipFlip ba
 
 - **Backend (multi-game)**: Single FastAPI service on Heroku (`https://quipflip-c196034288cd.herokuapp.com`) hosting both Quipflip (`/qf/*`) and Initial Reaction (`/ir/*`) APIs.
 - **Frontends**: Two Vercel projects in this repo
-  - `qf_frontend` → Quipflip web client
-  - `ir_frontend` → Initial Reaction web client
+  - `frontend/qf` → Quipflip web client
+  - `frontend/ir` → Initial Reaction web client
+  - `frontend/mm` → MemeMint web client
 - **API proxy**: Vercel rewrites `/api/*` to the shared backend for same-origin REST calls
   - HttpOnly cookies work seamlessly
   - Maximum iOS Safari compatibility
@@ -88,7 +89,7 @@ CORS is configured with:
 
 ### Shared proxy setup
 
-Both Vercel projects (`qf_frontend` and `ir_frontend`) ship with a `vercel.json` that rewrites `/api/:path*` to the Heroku backend. This keeps REST requests same-origin so HttpOnly cookies work across both games.
+Both Vercel projects (`frontend/qf` and `frontend/ir`) ship with a `vercel.json` that rewrites `/api/:path*` to the Heroku backend. This keeps REST requests same-origin so HttpOnly cookies work across both games.
 
 ```json
 {
@@ -105,7 +106,7 @@ Both Vercel projects (`qf_frontend` and `ir_frontend`) ship with a `vercel.json`
 }
 ```
 
-### Quipflip frontend (`qf_frontend`)
+### Quipflip frontend (`frontend/qf`)
 
 - **Environment variable**: `VITE_API_URL=/api` → client appends `/qf` automatically (requests land at `/api/qf/*`).
 - **Build settings** (Vercel):
@@ -115,7 +116,7 @@ Both Vercel projects (`qf_frontend` and `ir_frontend`) ship with a `vercel.json`
   - Install Command: `npm install`
 - **WebSocket**: Uses REST token exchange then connects directly to `wss://quipflip-c196034288cd.herokuapp.com/qf/users/online/ws?token=...`.
 
-### Initial Reaction frontend (`ir_frontend`)
+### Initial Reaction frontend (`frontend/ir`)
 
 - **Environment variable**: `VITE_API_URL=/api/ir` (includes game prefix so axios base URL resolves to `/api/ir/*`).
 - **Build settings** (Vercel):
@@ -246,12 +247,12 @@ The Quipflip Online Users page demonstrates real-time WebSocket functionality wi
 pytest
 
 # Quipflip frontend build test
-cd qf_frontend
+cd frontend/qf
 npm run build
 npm run preview
 
 # Initial Reaction frontend build test
-cd ../ir_frontend
+cd ../frontend/ir
 npm run build
 npm run preview
 ```
@@ -303,7 +304,7 @@ heroku logs --tail --app quipflip-c196034288cd
 
 ### Frontend Build Status
 
-- Check each Vercel project (`qf_frontend`, `ir_frontend`) for deployment status
+- Check each Vercel project (`frontend/qf`, `frontend/ir`) for deployment status
 - View deployment logs for build errors
 - Test Quipflip at https://quipflip.xyz and Initial Reaction at its Vercel deployment URL
 

@@ -1,10 +1,20 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import packageJson from './package.json'
+
+const projectRoot = fileURLToPath(new URL('.', import.meta.url))
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    alias: {
+      '@': resolve(projectRoot, 'src'),
+      '@crowdcraft': resolve(projectRoot, '../crowdcraft/src'),
+    },
+  },
   define: {
     __APP_VERSION__: JSON.stringify(packageJson.version),
   },

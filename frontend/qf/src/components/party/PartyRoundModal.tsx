@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePartyMode } from '../../contexts/PartyModeContext';
 import { usePartyWebSocket } from '../../hooks/usePartyWebSocket';
-import { CircleIcon } from '../../../../crowdcraft/src/components/icons/NavigationIcons.tsx';
+import { CircleIcon } from '@crowdcraft/components/icons/NavigationIcons.tsx';
 import { PartyStep } from '../../contexts/PartyModeContext';
 import apiClient, { extractErrorMessage } from '../../api/client';
 import { usePartyRoundStarter } from '../../hooks/usePartyRoundStarter';

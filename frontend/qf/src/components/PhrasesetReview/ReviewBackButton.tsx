@@ -1,5 +1,5 @@
 import React from 'react';
-import { HomeIcon } from '../../../../crowdcraft/src/components/icons/NavigationIcons.tsx';
+import { HomeIcon } from '@crowdcraft/components/icons/NavigationIcons.tsx';
 
 interface ReviewBackButtonProps {
   onClick: () => void;

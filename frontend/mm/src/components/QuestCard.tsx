@@ -9,7 +9,7 @@ import {
   QuestOverviewIcon,
   QuestQualityIcon,
   QuestStreakIcon,
-} from '../../../crowdcraft/src/components/icons/QuestIcons.tsx';
+} from '@crowdcraft/components/icons/QuestIcons.tsx';
 
 interface QuestCardProps {
   quest: Quest;

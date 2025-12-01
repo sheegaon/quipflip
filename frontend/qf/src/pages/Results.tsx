@@ -3,12 +3,12 @@ import { useGame } from '../contexts/GameContext';
 import { useResults } from '../contexts/ResultsContext';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Header } from '../components/Header';
-import { Pagination } from '../../../crowdcraft/src/components/Pagination.tsx';
+import { Pagination } from '@crowdcraft/components/Pagination.tsx';
 import { loadingMessages } from '../utils/brandedMessages';
 import type { PhrasesetResults, PhrasesetDetails, PhrasesetVoteDetail } from '../api/types';
 import { resultsLogger } from '../utils/logger';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
-import { BotIcon, QuestionMarkIcon, ResultsIcon } from '../../../crowdcraft/src/components/icons/EngagementIcons.tsx';
+import { BotIcon, QuestionMarkIcon, ResultsIcon } from '@crowdcraft/components/icons/EngagementIcons.tsx';
 import { isAiPlayer } from '../utils/ai';
 
 const ITEMS_PER_PAGE = 10;

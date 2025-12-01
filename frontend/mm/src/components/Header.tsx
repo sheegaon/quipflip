@@ -5,9 +5,9 @@ import { useNavigationHistory } from '../contexts/NavigationHistoryContext';
 import { useTutorial } from '../contexts/TutorialContext';
 import { useHeaderIndicators } from '../hooks/useHeaderIndicators';
 import { useNetwork } from '../contexts/NetworkContext';
-import { BalanceFlipper } from '../../../crowdcraft/src/components/BalanceFlipper.tsx';
-import { TreasureChestIcon } from '../../../crowdcraft/src/components/icons/TreasureChestIcon.tsx';
-import { ArrowLeftIcon } from '../../../crowdcraft/src/components/icons/ArrowIcons.tsx';
+import { BalanceFlipper } from '@crowdcraft/components/BalanceFlipper.tsx';
+import { TreasureChestIcon } from '@crowdcraft/components/icons/TreasureChestIcon.tsx';
+import { ArrowLeftIcon } from '@crowdcraft/components/icons/ArrowIcons.tsx';
 import {
   AdminIcon,
   HomeIcon,
@@ -17,8 +17,8 @@ import {
   SettingsIcon,
   StatisticsIcon,
   SurveyIcon,
-} from '../../../crowdcraft/src/components/icons/NavigationIcons.tsx';
-import { QuestionMarkIcon, ResultsIcon } from '../../../crowdcraft/src/components/icons/EngagementIcons.tsx';
+} from '@crowdcraft/components/icons/NavigationIcons.tsx';
+import { QuestionMarkIcon, ResultsIcon } from '@crowdcraft/components/icons/EngagementIcons.tsx';
 import { hasCompletedSurvey } from '../utils/betaSurvey';
 import { apiClient } from '../api/client';
 import { componentLogger } from '../utils/logger';

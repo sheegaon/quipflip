@@ -9,7 +9,7 @@ import { useGame } from '../contexts/GameContext';
 import { buildPhrasesetListKey } from '../utils/gameKeys';
 import { PhrasesetList } from '../components/PhrasesetList';
 import { PhrasesetDetails } from '../components/PhrasesetDetails';
-import { Pagination } from '../../../crowdcraft/src/components/Pagination.tsx';
+import { Pagination } from '@crowdcraft/components/Pagination.tsx';
 import { Header } from '../components/Header';
 import { useResults } from '../contexts/ResultsContext';
 import { trackingLogger } from '../utils/logger';
