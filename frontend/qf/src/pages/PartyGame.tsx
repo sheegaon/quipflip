@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { usePartyMode } from '../contexts/PartyModeContext';
-import { PartyIcon } from '../../../crowdcraft/src/components/icons/NavigationIcons.tsx';
+import { CircleIcon } from '../../../crowdcraft/src/components/icons/NavigationIcons.tsx';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { loadingMessages } from '../utils/brandedMessages';
 import apiClient, { extractErrorMessage } from '../api/client';
@@ -84,7 +84,7 @@ export const PartyGame: React.FC = () => {
       <div className="min-h-screen bg-gradient-to-br from-ccl-orange to-ccl-turquoise flex items-center justify-center p-4 bg-pattern">
         <div className="max-w-md w-full tile-card p-8 slide-up-enter text-center space-y-4">
           <div className="flex justify-center mb-4">
-            <PartyIcon className="w-16 h-16" />
+            <CircleIcon className="w-16 h-16" />
           </div>
           <h2 className="text-2xl font-display font-bold text-ccl-navy mb-2">Session Not Found</h2>
           <div className="tile-card bg-red-100 border-2 border-red-400 p-4">

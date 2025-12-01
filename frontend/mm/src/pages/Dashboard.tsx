@@ -7,7 +7,7 @@ import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { UpgradeGuestAccount } from '../components/UpgradeGuestAccount';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import TutorialWelcome from '../components/Tutorial/TutorialWelcome';
-import { PartyIcon } from '../../../crowdcraft/src/components/icons/NavigationIcons.tsx';
+import { CircleIcon } from '../../../crowdcraft/src/components/icons/NavigationIcons.tsx';
 
 export const Dashboard: React.FC = () => {
   const { state, actions } = useGame();
@@ -128,7 +128,7 @@ export const Dashboard: React.FC = () => {
 
             <div className="rounded-tile border-2 border-ccl-teal bg-gradient-to-r from-ccl-teal to-ccl-teal-deep text-white p-6 text-center">
               <div className="flex items-center justify-center gap-2 mb-2">
-                <PartyIcon className="w-8 h-8" primaryColor="#FFFFFF" accentColor="#FF9A3D" backgroundOpacity={0.2} />
+                <CircleIcon className="w-8 h-8" primaryColor="#FFFFFF" accentColor="#FF9A3D" backgroundOpacity={0.2} />
                 <h2 className="text-xl font-display font-bold">Circles</h2>
               </div>
               <p className="mb-4">Join or create Circles to play with friends!</p>

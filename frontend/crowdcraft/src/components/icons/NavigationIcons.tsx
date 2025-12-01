@@ -208,13 +208,13 @@ export const TrackingIcon: React.FC<TrackingIconProps> = ({
   </svg>
 );
 
-interface PartyIconProps extends SimpleIconProps {
+interface CircleIconProps extends SimpleIconProps {
   primaryColor?: string;
   accentColor?: string;
   backgroundOpacity?: number;
 }
 
-export const PartyIcon: React.FC<PartyIconProps> = ({
+export const CircleIcon: React.FC<CircleIconProps> = ({
   className = 'h-5 w-5',
   primaryColor = '#10B4A4',
   accentColor = '#FF9A3D',

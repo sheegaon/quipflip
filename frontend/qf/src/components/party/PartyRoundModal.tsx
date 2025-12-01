@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePartyMode } from '../../contexts/PartyModeContext';
 import { usePartyWebSocket } from '../../hooks/usePartyWebSocket';
-import { PartyIcon } from '../../../../crowdcraft/src/components/icons/NavigationIcons.tsx';
+import { CircleIcon } from '../../../../crowdcraft/src/components/icons/NavigationIcons.tsx';
 import { PartyStep } from '../../contexts/PartyModeContext';
 import apiClient, { extractErrorMessage } from '../../api/client';
 import { usePartyRoundStarter } from '../../hooks/usePartyRoundStarter';
@@ -182,7 +182,7 @@ export const PartyRoundModal: React.FC<PartyRoundModalProps> = ({ sessionId, cur
         </button>
 
         <div className="flex items-center gap-3 mb-4">
-          <PartyIcon className="w-8 h-8" />
+          <CircleIcon className="w-8 h-8" />
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-ccl-teal">Party Mode</p>
             <h3 className="text-2xl font-display font-bold text-ccl-navy">Quip · Impostor · Vote</h3>

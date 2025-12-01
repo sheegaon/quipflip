@@ -6,7 +6,7 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import type { MemeVoteResult, VoteRoundState, VoteResult, Caption } from '../api/types';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { BotIcon } from '../../../crowdcraft/src/components/icons/EngagementIcons.tsx';
-import { PartyIcon } from '../../../crowdcraft/src/components/icons/NavigationIcons.tsx';
+import { CircleIcon } from '../../../crowdcraft/src/components/icons/NavigationIcons.tsx';
 
 interface VoteLocationState {
   round?: VoteRoundState;
@@ -196,7 +196,7 @@ export const VoteRound: React.FC = () => {
                           <span className="font-semibold">{caption.author_username ?? 'Mint Mixer'}</span>
                           <div className="flex items-center gap-1 text-ccl-navy">
                             {isBotAuthor(caption) && <BotIcon className="h-4 w-4" />}
-                            {isCircleAuthor(caption) && <PartyIcon className="h-4 w-4" />}
+                            {isCircleAuthor(caption) && <CircleIcon className="h-4 w-4" />}
                           </div>
                         </div>
                       )}

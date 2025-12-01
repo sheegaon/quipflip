@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import apiClient from '../api/client';
-import { PartyIcon } from '../../../crowdcraft/src/components/icons/NavigationIcons.tsx';
+import { CircleIcon } from '../../../crowdcraft/src/components/icons/NavigationIcons.tsx';
 import type { PartyListItem } from '../api/types';
 
 /**
@@ -118,7 +118,7 @@ export const PartyMode: React.FC = () => {
         {/* Header */}
         <div className="text-center mb-2">
           <div className="flex items-center justify-center gap-2 mb-2">
-            <PartyIcon className="w-12 h-12" />
+            <CircleIcon className="w-12 h-12" />
             <h1 className="text-3xl font-display font-bold text-ccl-navy">Party Mode</h1>
           </div>
           <p className="text-ccl-teal">Play with 6-9 players!</p>

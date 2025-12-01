@@ -4,7 +4,7 @@ import { useGame } from '../contexts/GameContext';
 import { usePartyWebSocket } from '../hooks/usePartyWebSocket';
 import apiClient from '../api/client';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import { PartyIcon } from '../../../crowdcraft/src/components/icons/NavigationIcons.tsx';
+import { CircleIcon } from '../../../crowdcraft/src/components/icons/NavigationIcons.tsx';
 import { BotIcon } from '../../../crowdcraft/src/components/icons/EngagementIcons.tsx';
 import { loadingMessages } from '../utils/brandedMessages';
 import type { PartySessionStatusResponse, PartyParticipant } from '../api/types';
@@ -215,7 +215,7 @@ export const PartyLobby: React.FC = () => {
       <div className="min-h-screen bg-gradient-to-br from-ccl-orange to-ccl-turquoise flex items-center justify-center p-4 bg-pattern">
         <div className="max-w-md w-full tile-card p-8 slide-up-enter text-center space-y-4">
           <div className="flex justify-center mb-4">
-            <PartyIcon className="w-16 h-16" />
+            <CircleIcon className="w-16 h-16" />
           </div>
           <h2 className="text-2xl font-display font-bold text-ccl-navy mb-2">Session Not Found</h2>
           <div className="tile-card bg-red-100 border-2 border-red-400 p-4">
@@ -238,7 +238,7 @@ export const PartyLobby: React.FC = () => {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-2 mb-2">
-            <PartyIcon className="w-8 h-8" />
+            <CircleIcon className="w-8 h-8" />
             <h1 className="text-3xl font-display font-bold text-ccl-navy">Party Lobby</h1>
           </div>
           <p className="text-ccl-teal">Players are marked ready whenever they're in this lobby.</p>
