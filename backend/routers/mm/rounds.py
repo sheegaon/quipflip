@@ -81,14 +81,17 @@ async def start_vote_round(
         captions_map = {c.caption_id: c for c in result.scalars().all()}
 
         # Preserve order from caption_ids_shown
-        captions = [
-            {
+        captions = []
+        for cid in caption_ids:
+            caption = captions_map.get(cid)
+            if not caption:
+                continue
+
+            captions.append({
                 'caption_id': str(cid),
-                'text': captions_map[cid].text,
-            }
-            for cid in caption_ids
-            if cid in captions_map
-        ]
+                'text': caption.text,
+                'author_username': caption.author.username if caption.author else None,
+            })
 
         return StartVoteRoundResponse(
             round_id=round_obj.round_id,
@@ -287,14 +290,17 @@ async def get_round_details(
     result = await db.execute(stmt)
     captions_map = {c.caption_id: c for c in result.scalars().all()}
 
-    captions = [
-        {
+    captions = []
+    for cid in caption_ids:
+        caption = captions_map.get(cid)
+        if not caption:
+            continue
+
+        captions.append({
             'caption_id': str(cid),
-            'text': captions_map[cid].text,
-        }
-        for cid in caption_ids
-        if cid in captions_map
-    ]
+            'text': caption.text,
+            'author_username': caption.author.username if caption.author else None,
+        })
 
     return RoundDetails(
         round_id=round_obj.round_id,

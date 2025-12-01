@@ -23,12 +23,15 @@ export const CaptionRound: React.FC = () => {
 
   const [captionText, setCaptionText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasSubmitted, setHasSubmitted] = useState(false);
+  const [isStartingRound, setIsStartingRound] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Get caption cost from round availability
   const freeCaptionAvailable = (state.roundAvailability?.free_captions_remaining ?? 0) > 0;
   const captionCost = freeCaptionAvailable ? 0 : (state.roundAvailability?.caption_submission_cost ?? 10);
+  const voteCost = state.roundAvailability?.round_entry_cost ?? 5;
 
   if (!round) {
     return (
@@ -73,17 +76,29 @@ export const CaptionRound: React.FC = () => {
       console.log('✅ Caption submitted successfully', result);
 
       setSuccessMessage('Caption submitted!');
-
-      // Navigate to results or dashboard
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 1500);
+      setHasSubmitted(true);
     } catch (err) {
       console.error('❌ Caption submission failed:', err);
       setError(extractErrorMessage(err) || 'Unable to submit caption right now.');
     } finally {
       setIsSubmitting(false);
       console.log('🔓 isSubmitting set to false');
+    }
+  };
+
+  const handlePlayAgain = async () => {
+    console.log('🔄 Play again clicked');
+    setError(null);
+    setIsStartingRound(true);
+
+    try {
+      const newRound = await actions.startVoteRound();
+      navigate('/game/vote', { state: { round: newRound } });
+    } catch (err) {
+      console.error('❌ Failed to start new round from caption page:', err);
+      setError(extractErrorMessage(err) || 'Unable to start a new round. Please try again.');
+    } finally {
+      setIsStartingRound(false);
     }
   };
 
@@ -118,6 +133,7 @@ export const CaptionRound: React.FC = () => {
                 maxLength={240}
                 value={captionText}
                 onChange={(e) => setCaptionText(e.target.value)}
+                disabled={hasSubmitted || isSubmitting}
                 className="tutorial-prompt-input tutorial-copy-input w-full border-2 border-quip-navy rounded-tile p-3 focus:outline-none focus:ring-2 focus:ring-quip-teal"
                 rows={4}
                 placeholder="Write your caption for this image"
@@ -127,24 +143,28 @@ export const CaptionRound: React.FC = () => {
 
             <div className="flex items-center justify-between">
               <div className="text-sm text-quip-teal flex items-center gap-2">
-                <span>Cost</span>
-                <CurrencyDisplay amount={captionCost} />
                 {freeCaptionAvailable && <span className="text-quip-teal font-semibold">Free caption available</span>}
               </div>
               <div className="flex gap-3">
-                <button
-                  onClick={() => navigate('/dashboard')}
-                  className="border-2 border-quip-navy text-quip-navy font-semibold px-4 py-2 rounded-tile"
-                >
-                  Skip
-                </button>
-                <button
-                  onClick={handleSubmit}
-                  disabled={isSubmitting || !captionText.trim()}
-                  className="bg-quip-orange hover:bg-quip-orange-deep text-white font-semibold px-4 py-2 rounded-tile disabled:opacity-60"
-                >
-                  {isSubmitting ? 'Submitting...' : 'Submit Caption'}
-                </button>
+                {hasSubmitted ? (
+                  <button
+                    onClick={handlePlayAgain}
+                    disabled={isStartingRound}
+                    className="border-2 border-quip-navy text-quip-navy font-semibold px-4 py-2 rounded-tile hover:bg-quip-navy hover:text-white transition-colors flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    <span>Play again</span>
+                    <CurrencyDisplay amount={voteCost} iconClassName="w-4 h-4" textClassName="font-semibold" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleSubmit}
+                    disabled={isSubmitting || !captionText.trim()}
+                    className="bg-quip-orange hover:bg-quip-orange-deep text-white font-semibold px-4 py-2 rounded-tile disabled:opacity-60 flex items-center gap-2"
+                  >
+                    <span>{isSubmitting ? 'Submitting...' : 'Submit Caption'}</span>
+                    <CurrencyDisplay amount={captionCost} iconClassName="w-4 h-4" textClassName="font-semibold" />
+                  </button>
+                )}
               </div>
             </div>
           </div>
