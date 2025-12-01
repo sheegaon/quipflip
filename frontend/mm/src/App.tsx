@@ -14,7 +14,7 @@ import { trackPageView } from './utils/googleAnalytics';
 import { ErrorBoundary } from '@crowdcraft/components/ErrorBoundary.tsx';
 import { AppErrorFallback } from '@crowdcraft/components/ErrorFallback.tsx';
 import { OfflineBanner } from './components/OfflineBanner';
-import NewUserWelcomeOverlay from '@crowdcraft/components/NewUserWelcomeOverlay.tsx';
+import NewUserWelcomeOverlay from './components/NewUserWelcomeOverlay';
 
 // Suppress some logging messages
 if (typeof window !== 'undefined') {
