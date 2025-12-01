@@ -247,37 +247,27 @@ const Statistics: React.FC = () => {
     };
   }, []);
 
+  let content: JSX.Element;
+
   if (loading) {
-    return (
-      <div className="min-h-screen bg-quip-cream bg-pattern">
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center py-12">
-            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-quip-orange border-r-transparent"></div>
-            <p className="mt-4 text-quip-navy font-display">Loading your statistics...</p>
-          </div>
-        </div>
+    content = (
+      <div className="text-center py-12">
+        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-quip-orange border-r-transparent"></div>
+        <p className="mt-4 text-quip-navy font-display">Loading your statistics...</p>
       </div>
     );
-  }
-
-  if (error || !data) {
-    return (
-      <div className="min-h-screen bg-quip-cream bg-pattern">
-        <div className="container mx-auto px-4 py-8">
-          <div className="tile-card p-8">
-            <h1 className="text-2xl font-display font-bold text-quip-navy mb-4">Statistics</h1>
-            <div className="text-red-600">{error || 'Failed to load statistics'}</div>
-          </div>
-        </div>
+  } else if (error || !data) {
+    content = (
+      <div className="tile-card p-8">
+        <h1 className="text-2xl font-display font-bold text-quip-navy mb-4">Statistics</h1>
+        <div className="text-red-600">{error || 'Failed to load statistics'}</div>
       </div>
     );
-  }
+  } else {
+    const surveyCompleted = player?.player_id ? hasCompletedSurvey(player.player_id) : false;
 
-  const surveyCompleted = player?.player_id ? hasCompletedSurvey(player.player_id) : false;
-
-  return (
-    <div className="min-h-screen bg-quip-cream bg-pattern">
-      <div className="container mx-auto px-4 py-8">
+    content = (
+      <>
         {surveyStatus?.eligible && !surveyStatus.has_submitted && !surveyCompleted && (
           <div className="tile-card mb-6 border-2 border-quip-teal bg-quip-teal/10 p-6">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -436,8 +426,13 @@ const Statistics: React.FC = () => {
         <div className="mt-10 text-center text-xs text-quip-navy/60" aria-live="polite">
           Quipflip version {gameStatus?.version || APP_VERSION}
         </div>
+      </>
+    );
+  }
 
-      </div>
+  return (
+    <div className="min-h-screen bg-quip-cream bg-pattern">
+      <div className="container mx-auto px-4 py-8">{content}</div>
     </div>
   );
 };
