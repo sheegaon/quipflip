@@ -95,6 +95,7 @@ class Settings(BaseSettings):
 
     # Phrase Validation
     use_phrase_validator_api: bool = False
+    phrase_validator_url: str = "http://localhost:8001"  # Remote phrase validator base URL
     phrase_min_words: int = 2
     phrase_max_words: int = 5
     phrase_max_length: int = 100

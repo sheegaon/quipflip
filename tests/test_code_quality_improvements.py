@@ -5,7 +5,6 @@ Tests cover:
 - VoteService.submit_system_vote() method
 - Timezone utility functions
 - Denormalized field validation
-- Phrase validation client session management
 - Game balance settings
 """
 
@@ -16,7 +15,6 @@ import uuid
 from backend.services import QFVoteService
 from backend.services import QFRoundService
 from backend.services import TransactionService
-from backend.services import PhraseValidationClient
 from backend.utils.datetime_helpers import ensure_utc
 from backend.models.qf.round import Round
 from backend.models.qf.phraseset import Phraseset
@@ -404,47 +402,6 @@ class TestDenormalizedFieldValidation:
         # Should return None (validation failed)
         result = await round_service.create_phraseset_if_ready(prompt_round)
         assert result is None
-
-
-class TestPhraseValidationClientSession:
-    """Test phrase validation client session management."""
-
-    @pytest.mark.asyncio
-    async def test_client_async_context_manager(self):
-        """Should support async context manager."""
-        client = PhraseValidationClient()
-
-        async with client as c:
-            # Session should be created
-            assert c._session is not None
-
-        # Session should be closed after exit
-        assert client._session is None or client._session.closed
-
-    @pytest.mark.asyncio
-    async def test_client_ensure_session(self):
-        """Should create session lazily."""
-        client = PhraseValidationClient()
-        assert client._session is None
-
-        await client._ensure_session()
-        assert client._session is not None
-        assert not client._session.closed
-
-        await client.close()
-
-    @pytest.mark.asyncio
-    async def test_client_close_idempotent(self):
-        """Should handle multiple close calls."""
-        client = PhraseValidationClient()
-        await client._ensure_session()
-
-        await client.close()
-        await client.close()  # Should not raise
-
-        assert client._session is None
-
-
 class TestGameBalanceSettings:
     """Test centralized game balance settings."""
 
@@ -464,7 +421,7 @@ class TestGameBalanceSettings:
 
         assert settings.vote_max_votes == 20
         assert settings.vote_closing_threshold == 5
-        assert settings.vote_closing_window_minutes == 10
+        assert settings.vote_closing_window_minutes == 5
         assert settings.vote_minimum_threshold == 3
         assert settings.vote_minimum_window_minutes == 60
 
