@@ -466,11 +466,11 @@ async def test_circle_mate_relationship_is_bidirectional(db_session):
     await db_session.commit()
 
     # Check both directions
-    a_mates = await MMCircleService.get_circle_mates(db_session, str(player_a.player_id))
-    b_mates = await MMCircleService.get_circle_mates(db_session, str(player_b.player_id))
+    a_mates = await MMCircleService.get_circle_mates(db_session, player_a.player_id)
+    b_mates = await MMCircleService.get_circle_mates(db_session, player_b.player_id)
 
-    assert str(player_b.player_id) in a_mates, "Player B should be in Player A's Circle-mates"
-    assert str(player_a.player_id) in b_mates, "Player A should be in Player B's Circle-mates"
+    assert player_b.player_id in a_mates, "Player B should be in Player A's Circle-mates"
+    assert player_a.player_id in b_mates, "Player A should be in Player B's Circle-mates"
 
     # Check is_circle_mate utility
     assert await MMCircleService.is_circle_mate(
