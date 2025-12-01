@@ -1,6 +1,6 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, PieLabelRenderProps } from 'recharts';
 import { useState, useEffect, useRef } from 'react';
-import type { EarningsBreakdown } from '../../../../qf/src/api/types';
+import type { EarningsBreakdown } from '../../api/types';
 import {
   statisticsChartContainerStyle,
   statisticsChartPlaceholderStyle,

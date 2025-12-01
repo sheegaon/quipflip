@@ -1,5 +1,5 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, PieLabelRenderProps } from 'recharts';
-import type { EarningsBreakdown } from '../../../../qf/src/api/types.ts';
+import type { EarningsBreakdown } from '../../api/types.ts';
 import {
   statisticsChartContainerStyle,
   statisticsChartPlaceholderStyle,

@@ -10,7 +10,7 @@ import {
   Area,
   Line,
 } from 'recharts';
-import type { HistoricalTrendPoint } from '../../../../qf/src/api/types.ts';
+import type { HistoricalTrendPoint } from '../../api/types.ts';
 import {
   STATISTICS_CHART_MIN_WIDTH,
   statisticsChartContainerStyle,
