@@ -1,9 +1,5 @@
 # Meme Mint Caption Game — Dev Game Rules
 
-_Working title: Meme Mint_
-
----
-
 ## 1. Overview
 
 This game is an asynchronous meme-caption battler built on the existing Crowdcraft / MemeCoin economy.

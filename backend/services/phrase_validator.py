@@ -124,11 +124,7 @@ class PhraseValidator:
         if norm1 == 0 or norm2 == 0:
             return 0.0
 
-        similarity = dot_product / (norm1 * norm2)
-
-        # Clamp at zero so cosine similarity remains in the expected 0-1 range
-        # for phrase comparisons (we treat opposite vectors as unrelated).
-        return max(0.0, similarity)
+        return dot_product / (norm1 * norm2)
 
     async def calculate_similarity(self, phrase1: str, phrase2: str) -> float:
         """Calculate similarity between two phrases using OpenAI embeddings with caching."""
