@@ -38,13 +38,13 @@ export const PartyResults: React.FC = () => {
   const getRankColor = (rank: number) => {
     switch (rank) {
       case 1:
-        return 'bg-quip-orange text-white';
+        return 'bg-ccl-orange text-white';
       case 2:
         return 'bg-gray-400 text-white';
       case 3:
         return 'bg-quest-milestone text-white';
       default:
-        return 'bg-gray-200 text-quip-navy';
+        return 'bg-gray-200 text-ccl-navy';
     }
   };
 
@@ -89,10 +89,10 @@ export const PartyResults: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen flex-col bg-quip-cream">
+      <div className="flex min-h-screen flex-col bg-ccl-cream">
         <Header />
         <div className="flex-grow flex items-center justify-center">
-          <span className="text-lg font-semibold text-quip-navy">Loading results...</span>
+          <span className="text-lg font-semibold text-ccl-navy">Loading results...</span>
         </div>
       </div>
     );
@@ -100,7 +100,7 @@ export const PartyResults: React.FC = () => {
 
   if (error || !results) {
     return (
-      <div className="flex min-h-screen flex-col bg-quip-cream">
+      <div className="flex min-h-screen flex-col bg-ccl-cream">
         <Header />
         <div className="flex-grow flex items-center justify-center p-4">
           <div className="max-w-md w-full space-y-4">
@@ -109,7 +109,7 @@ export const PartyResults: React.FC = () => {
             </div>
             <button
               onClick={() => navigate('/party')}
-              className="w-full bg-quip-navy hover:bg-quip-teal text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm"
+              className="w-full bg-ccl-navy hover:bg-ccl-teal text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm"
             >
               Back to Party Mode
             </button>
@@ -122,31 +122,31 @@ export const PartyResults: React.FC = () => {
   const currentPlayerStats = results.rankings.find(r => r.player_id === player?.player_id);
 
   return (
-    <div className="flex min-h-screen flex-col bg-quip-cream">
+    <div className="flex min-h-screen flex-col bg-ccl-cream">
       <Header />
 
       <div className="flex-grow p-4">
         <div className="max-w-4xl mx-auto space-y-6">
           {/* Header */}
           <div className="text-center py-6">
-            <h1 className="text-4xl font-display font-bold text-quip-navy mb-2">🎉 Party Results 🎉</h1>
-            <p className="text-lg text-quip-teal">Party Code: {results.party_code}</p>
+            <h1 className="text-4xl font-display font-bold text-ccl-navy mb-2">🎉 Party Results 🎉</h1>
+            <p className="text-lg text-ccl-teal">Party Code: {results.party_code}</p>
           </div>
 
           {/* Awards Section */}
           {Object.keys(results.awards).length > 0 && (
             <div className="tile-card shadow-tile p-6">
-              <h2 className="text-2xl font-display font-bold text-quip-navy mb-4">🏆 Awards</h2>
+              <h2 className="text-2xl font-display font-bold text-ccl-navy mb-4">🏆 Awards</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {Object.entries(results.awards).map(([awardType, award]: [string, PartyAward]) => (
                   <div
                     key={awardType}
-                    className="tile-card bg-quip-orange bg-opacity-10 border-2 border-quip-orange p-4 text-center"
+                    className="tile-card bg-ccl-orange bg-opacity-10 border-2 border-ccl-orange p-4 text-center"
                   >
                     <div className="text-4xl mb-2">{getAwardIcon(awardType)}</div>
-                    <h3 className="font-display font-bold text-quip-navy mb-1">{getAwardTitle(awardType)}</h3>
-                    <p className="text-lg font-semibold text-quip-orange-deep">{award.username}</p>
-                    <p className="text-sm text-quip-teal">Score: {award.metric_value}</p>
+                    <h3 className="font-display font-bold text-ccl-navy mb-1">{getAwardTitle(awardType)}</h3>
+                    <p className="text-lg font-semibold text-ccl-orange-deep">{award.username}</p>
+                    <p className="text-sm text-ccl-teal">Score: {award.metric_value}</p>
                   </div>
                 ))}
               </div>
@@ -155,7 +155,7 @@ export const PartyResults: React.FC = () => {
 
           {/* Your Stats */}
           {currentPlayerStats && (
-            <div className="tile-card shadow-tile bg-quip-turquoise text-white p-6">
+            <div className="tile-card shadow-tile bg-ccl-turquoise text-white p-6">
               <h2 className="text-2xl font-display font-bold mb-4">Your Performance</h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="text-center">
@@ -182,17 +182,17 @@ export const PartyResults: React.FC = () => {
 
           {/* Rankings Table */}
           <div className="tile-card shadow-tile p-6">
-            <h2 className="text-2xl font-display font-bold text-quip-navy mb-4">Final Rankings</h2>
+            <h2 className="text-2xl font-display font-bold text-ccl-navy mb-4">Final Rankings</h2>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b-2 border-quip-orange">
-                    <th className="text-left py-3 px-4 font-display text-quip-navy">Rank</th>
-                    <th className="text-left py-3 px-4 font-display text-quip-navy">Player</th>
-                    <th className="text-right py-3 px-4 font-display text-quip-navy">Net Coins</th>
-                    <th className="text-right py-3 px-4 font-display text-quip-navy">Earned</th>
-                    <th className="text-right py-3 px-4 font-display text-quip-navy">Spent</th>
-                    <th className="text-right py-3 px-4 font-display text-quip-navy">Accuracy</th>
+                  <tr className="border-b-2 border-ccl-orange">
+                    <th className="text-left py-3 px-4 font-display text-ccl-navy">Rank</th>
+                    <th className="text-left py-3 px-4 font-display text-ccl-navy">Player</th>
+                    <th className="text-right py-3 px-4 font-display text-ccl-navy">Net Coins</th>
+                    <th className="text-right py-3 px-4 font-display text-ccl-navy">Earned</th>
+                    <th className="text-right py-3 px-4 font-display text-ccl-navy">Spent</th>
+                    <th className="text-right py-3 px-4 font-display text-ccl-navy">Accuracy</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -202,7 +202,7 @@ export const PartyResults: React.FC = () => {
                       <tr
                         key={playerStat.player_id}
                         className={`border-b border-gray-100 ${
-                          isCurrentPlayer ? 'bg-quip-turquoise bg-opacity-10 font-semibold' : ''
+                          isCurrentPlayer ? 'bg-ccl-turquoise bg-opacity-10 font-semibold' : ''
                         }`}
                       >
                         <td className="py-3 px-4">
@@ -210,22 +210,22 @@ export const PartyResults: React.FC = () => {
                             {playerStat.rank <= 3 ? getRankIcon(playerStat.rank) : playerStat.rank}
                           </div>
                         </td>
-                        <td className="py-3 px-4 text-quip-navy">
+                        <td className="py-3 px-4 text-ccl-navy">
                           {playerStat.username}
                           {isCurrentPlayer && (
-                            <span className="ml-2 px-2 py-1 text-xs font-semibold text-quip-turquoise bg-quip-turquoise bg-opacity-20 rounded-tile">
+                            <span className="ml-2 px-2 py-1 text-xs font-semibold text-ccl-turquoise bg-ccl-turquoise bg-opacity-20 rounded-tile">
                               YOU
                             </span>
                           )}
                         </td>
                         <td className={`py-3 px-4 text-right font-bold ${
-                          playerStat.net >= 0 ? 'text-quip-turquoise' : 'text-quest-quality'
+                          playerStat.net >= 0 ? 'text-ccl-turquoise' : 'text-quest-quality'
                         }`}>
                           {playerStat.net >= 0 ? '+' : ''}{playerStat.net}
                         </td>
-                        <td className="py-3 px-4 text-right text-quip-turquoise">{playerStat.earned}</td>
+                        <td className="py-3 px-4 text-right text-ccl-turquoise">{playerStat.earned}</td>
                         <td className="py-3 px-4 text-right text-quest-quality">{playerStat.spent}</td>
-                        <td className="py-3 px-4 text-right text-quip-navy">{playerStat.vote_accuracy}%</td>
+                        <td className="py-3 px-4 text-right text-ccl-navy">{playerStat.vote_accuracy}%</td>
                       </tr>
                     );
                   })}
@@ -237,19 +237,19 @@ export const PartyResults: React.FC = () => {
           {/* Phrasesets Summary */}
           {results.phrasesets_summary.length > 0 && (
             <div className="tile-card shadow-tile p-6">
-              <h2 className="text-2xl font-display font-bold text-quip-navy mb-4">Phrasesets</h2>
+              <h2 className="text-2xl font-display font-bold text-ccl-navy mb-4">Phrasesets</h2>
               <div className="space-y-4">
                 {results.phrasesets_summary.map((ps) => (
-                  <div key={ps.phraseset_id} className="tile-card border-2 border-quip-turquoise p-4">
+                  <div key={ps.phraseset_id} className="tile-card border-2 border-ccl-turquoise p-4">
                     <div className="flex items-center justify-between mb-2">
-                      <p className="text-sm font-semibold text-quip-teal">{ps.prompt_text}</p>
+                      <p className="text-sm font-semibold text-ccl-teal">{ps.prompt_text}</p>
                       <span className="text-sm text-gray-500">{ps.vote_count} votes</span>
                     </div>
-                    <p className="text-xl font-display font-bold text-quip-orange-deep mb-2">{ps.original_phrase}</p>
+                    <p className="text-xl font-display font-bold text-ccl-orange-deep mb-2">{ps.original_phrase}</p>
                     <div className="flex items-center justify-between text-sm">
-                      <p className="text-quip-teal">by {ps.original_player}</p>
+                      <p className="text-ccl-teal">by {ps.original_player}</p>
                       <p className={`font-semibold ${
-                        ps.most_votes === 'original' ? 'text-quip-turquoise' : 'text-quest-quality'
+                        ps.most_votes === 'original' ? 'text-ccl-turquoise' : 'text-quest-quality'
                       }`}>
                         {ps.most_votes === 'original' ? '✓ Original won' : '✗ Copy won'}
                       </p>
@@ -264,13 +264,13 @@ export const PartyResults: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <button
               onClick={() => navigate('/party')}
-              className="bg-quip-orange hover:bg-quip-orange-deep text-white font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm"
+              className="bg-ccl-orange hover:bg-ccl-orange-deep text-white font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm"
             >
               Play Again
             </button>
             <button
               onClick={() => navigate('/dashboard')}
-              className="bg-gray-200 hover:bg-gray-300 text-quip-navy font-bold py-3 px-6 rounded-tile transition-all"
+              className="bg-gray-200 hover:bg-gray-300 text-ccl-navy font-bold py-3 px-6 rounded-tile transition-all"
             >
               Return to Dashboard
             </button>

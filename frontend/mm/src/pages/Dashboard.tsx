@@ -81,7 +81,7 @@ export const Dashboard: React.FC = () => {
       {player?.is_guest && <UpgradeGuestAccount className="mb-4" />}
       <div className="tile-card p-6 md:p-8 tutorial-dashboard">
         <div className="mb-6">
-          <h1 className="text-3xl font-display font-bold text-quip-navy">MemeMint Arcade</h1>
+          <h1 className="text-3xl font-display font-bold text-ccl-navy">MemeMint Arcade</h1>
         </div>
 
         {loading ? (
@@ -91,15 +91,15 @@ export const Dashboard: React.FC = () => {
         ) : (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-              <div className="border-2 border-quip-navy rounded-tile p-4 bg-white">
-                <p className="text-sm text-quip-teal">Wallet</p>
-                <div className="text-2xl font-display font-bold text-quip-navy flex items-center gap-2">
+              <div className="border-2 border-ccl-navy rounded-tile p-4 bg-white">
+                <p className="text-sm text-ccl-teal">Wallet</p>
+                <div className="text-2xl font-display font-bold text-ccl-navy flex items-center gap-2">
                   <CurrencyDisplay amount={player?.wallet || 0} />
                 </div>
               </div>
-              <div className="border-2 border-quip-teal rounded-tile p-4 bg-white">
-                <p className="text-sm text-quip-teal">Free captions left today</p>
-                <p className="text-2xl font-display font-bold text-quip-navy">
+              <div className="border-2 border-ccl-teal rounded-tile p-4 bg-white">
+                <p className="text-sm text-ccl-teal">Free captions left today</p>
+                <p className="text-2xl font-display font-bold text-ccl-navy">
                   {freeCaptionsRemaining ?? '—'}
                 </p>
               </div>
@@ -111,7 +111,7 @@ export const Dashboard: React.FC = () => {
               </div>
             )}
 
-            <div className="rounded-tile border-2 border-quip-orange bg-gradient-to-r from-quip-orange to-quip-orange-deep text-white p-8 text-center mb-4">
+            <div className="rounded-tile border-2 border-ccl-orange bg-gradient-to-r from-ccl-orange to-ccl-orange-deep text-white p-8 text-center mb-4">
               <h2 className="text-2xl font-display font-bold mb-2">Browse Memes & Play</h2>
               <p className="text-lg mb-4">View a fresh meme and pick your favorite caption.</p>
               <div className="flex items-center justify-center gap-2 mb-6 text-lg">
@@ -120,13 +120,13 @@ export const Dashboard: React.FC = () => {
               <button
                 onClick={handleStartVote}
                 disabled={isStartingRound}
-                className="bg-white text-quip-orange font-bold py-3 px-8 rounded-tile shadow-tile hover:shadow-tile-sm transition-colors disabled:opacity-70"
+                className="bg-white text-ccl-orange font-bold py-3 px-8 rounded-tile shadow-tile hover:shadow-tile-sm transition-colors disabled:opacity-70"
               >
                 {isStartingRound ? 'Preparing your meme...' : 'Start'}
               </button>
             </div>
 
-            <div className="rounded-tile border-2 border-quip-teal bg-gradient-to-r from-quip-teal to-quip-teal-deep text-white p-6 text-center">
+            <div className="rounded-tile border-2 border-ccl-teal bg-gradient-to-r from-ccl-teal to-ccl-teal-deep text-white p-6 text-center">
               <div className="flex items-center justify-center gap-2 mb-2">
                 <PartyIcon className="w-8 h-8" primaryColor="#FFFFFF" accentColor="#FF9A3D" backgroundOpacity={0.2} />
                 <h2 className="text-xl font-display font-bold">Circles</h2>
@@ -134,7 +134,7 @@ export const Dashboard: React.FC = () => {
               <p className="mb-4">Join or create Circles to play with friends!</p>
               <button
                 onClick={() => navigate('/circles')}
-                className="bg-white text-quip-teal font-bold py-2 px-6 rounded-tile shadow-tile hover:shadow-tile-sm transition-colors"
+                className="bg-white text-ccl-teal font-bold py-2 px-6 rounded-tile shadow-tile hover:shadow-tile-sm transition-colors"
               >
                 Browse Circles
               </button>

@@ -162,7 +162,7 @@ export const PartyRoundModal: React.FC<PartyRoundModalProps> = ({ sessionId, cur
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-4 right-4 z-30 rounded-full bg-quip-orange text-white px-4 py-2 shadow-tile hover:bg-quip-orange-deep"
+        className="fixed bottom-4 right-4 z-30 rounded-full bg-ccl-orange text-white px-4 py-2 shadow-tile hover:bg-ccl-orange-deep"
       >
         Show Party Status
       </button>
@@ -170,12 +170,12 @@ export const PartyRoundModal: React.FC<PartyRoundModalProps> = ({ sessionId, cur
   }
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-quip-navy/40 p-4">
-      <div className="w-full max-w-xl rounded-tile bg-quip-warm-ivory p-6 shadow-tile-lg relative">
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-ccl-navy/40 p-4">
+      <div className="w-full max-w-xl rounded-tile bg-ccl-warm-ivory p-6 shadow-tile-lg relative">
         <button
           type="button"
           onClick={() => setIsOpen(false)}
-          className="absolute top-4 right-4 text-quip-teal hover:text-quip-turquoise"
+          className="absolute top-4 right-4 text-ccl-teal hover:text-ccl-turquoise"
           aria-label="Close party status"
         >
           ✕
@@ -184,8 +184,8 @@ export const PartyRoundModal: React.FC<PartyRoundModalProps> = ({ sessionId, cur
         <div className="flex items-center gap-3 mb-4">
           <PartyIcon className="w-8 h-8" />
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-quip-teal">Party Mode</p>
-            <h3 className="text-2xl font-display font-bold text-quip-navy">Quip · Impostor · Vote</h3>
+            <p className="text-xs font-semibold uppercase tracking-wide text-ccl-teal">Party Mode</p>
+            <h3 className="text-2xl font-display font-bold text-ccl-navy">Quip · Impostor · Vote</h3>
           </div>
         </div>
 
@@ -201,16 +201,16 @@ export const PartyRoundModal: React.FC<PartyRoundModalProps> = ({ sessionId, cur
                     <div
                       className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
                         isActive
-                          ? 'bg-quip-orange text-white'
+                          ? 'bg-ccl-orange text-white'
                           : isComplete
-                            ? 'bg-quip-turquoise text-white'
+                            ? 'bg-ccl-turquoise text-white'
                             : 'bg-gray-300 text-gray-600'
                       }`}
                     >
                       {isComplete ? '✓' : idx + 1}
                     </div>
                     <span
-                      className={`text-xs mt-1 font-semibold ${isActive ? 'text-quip-orange-deep' : 'text-quip-teal'}`}
+                      className={`text-xs mt-1 font-semibold ${isActive ? 'text-ccl-orange-deep' : 'text-ccl-teal'}`}
                     >
                       {phase.label}
                     </span>
@@ -218,7 +218,7 @@ export const PartyRoundModal: React.FC<PartyRoundModalProps> = ({ sessionId, cur
                   {idx < phaseOrder.length - 1 && (
                     <div
                       className={`flex-1 h-1 mx-1 ${
-                        isComplete ? 'bg-quip-turquoise' : 'bg-gray-300'
+                        isComplete ? 'bg-ccl-turquoise' : 'bg-gray-300'
                       }`}
                     />
                   )}
@@ -230,40 +230,40 @@ export const PartyRoundModal: React.FC<PartyRoundModalProps> = ({ sessionId, cur
 
         <div className="tile-card p-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-semibold text-quip-teal">Your Progress</span>
-            <span className="text-sm font-semibold text-quip-teal">
+            <span className="text-sm font-semibold text-ccl-teal">Your Progress</span>
+            <span className="text-sm font-semibold text-ccl-teal">
               {playersReady} / {totalPlayers} players ready
             </span>
           </div>
 
           <div className="space-y-2 text-sm">
             <div className="flex items-center justify-between">
-              <span className="text-quip-navy">Quips:</span>
-              <span className="font-bold text-quip-navy">
+              <span className="text-ccl-navy">Quips:</span>
+              <span className="font-bold text-ccl-navy">
                 {prompts_submitted} / {prompts_required}
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-quip-navy">Impostors:</span>
-              <span className="font-bold text-quip-navy">
+              <span className="text-ccl-navy">Impostors:</span>
+              <span className="font-bold text-ccl-navy">
                 {copies_submitted} / {copies_required}
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-quip-navy">Votes:</span>
-              <span className="font-bold text-quip-navy">
+              <span className="text-ccl-navy">Votes:</span>
+              <span className="font-bold text-ccl-navy">
                 {votes_submitted} / {votes_required}
               </span>
             </div>
             {isProgressMissing && (
-              <p className="text-xs text-quip-navy/70">
+              <p className="text-xs text-ccl-navy/70">
                 Party progress will appear once the next round response includes party context.
               </p>
             )}
           </div>
 
           {/* Leave Party Button */}
-          <div className="mt-4 pt-4 border-t border-quip-navy/10">
+          <div className="mt-4 pt-4 border-t border-ccl-navy/10">
             {leaveError && (
               <p className="text-xs text-red-600 mb-2">{leaveError}</p>
             )}

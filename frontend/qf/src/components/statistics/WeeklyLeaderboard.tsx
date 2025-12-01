@@ -28,7 +28,7 @@ interface GenericLeaderboardListProps {
 const GenericLeaderboardList: React.FC<GenericLeaderboardListProps> = ({ leaders, config }) => {
   if (leaders.length === 0) {
     return (
-      <div className="rounded-tile border border-quip-navy/10 bg-white p-6 text-center text-sm text-quip-navy/70">
+      <div className="rounded-tile border border-ccl-navy/10 bg-white p-6 text-center text-sm text-ccl-navy/70">
         {config.emptyMessage}
       </div>
     );
@@ -45,8 +45,8 @@ const GenericLeaderboardList: React.FC<GenericLeaderboardListProps> = ({ leaders
         const metricValue = config.metricAccessor(entry);
         const percent = Math.max(MIN_BAR_PERCENTAGE, Math.round((metricValue / maxValue) * 100));
         const highlightClasses = entry.is_current_player
-          ? 'border-2 border-quip-orange bg-quip-orange/10 shadow-md'
-          : 'border border-quip-navy/10 bg-white';
+          ? 'border-2 border-ccl-orange bg-ccl-orange/10 shadow-md'
+          : 'border border-ccl-navy/10 bg-white';
         const rankLabel = entry.rank ? `#${entry.rank}` : '-';
         const formattedMetric = config.metricFormatter(entry);
 
@@ -59,20 +59,20 @@ const GenericLeaderboardList: React.FC<GenericLeaderboardListProps> = ({ leaders
           >
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold uppercase tracking-wide text-quip-navy/60">{rankLabel}</span>
-                <span className="font-display text-base text-quip-navy">{entry.username}</span>
-                <span className="text-xs text-quip-navy/60">{entry.total_rounds} rounds</span>
+                <span className="text-xs font-semibold uppercase tracking-wide text-ccl-navy/60">{rankLabel}</span>
+                <span className="font-display text-base text-ccl-navy">{entry.username}</span>
+                <span className="text-xs text-ccl-navy/60">{entry.total_rounds} rounds</span>
               </div>
               <div className="text-right">
                 {config.metricLabel && (
-                  <span className="block text-[11px] uppercase tracking-wide text-quip-navy/50">{config.metricLabel}</span>
+                  <span className="block text-[11px] uppercase tracking-wide text-ccl-navy/50">{config.metricLabel}</span>
                 )}
-                <div className="font-mono text-lg font-semibold text-quip-teal leading-tight">{formattedMetric}</div>
+                <div className="font-mono text-lg font-semibold text-ccl-teal leading-tight">{formattedMetric}</div>
               </div>
             </div>
 
-            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-quip-navy/10">
-              <div className="h-full bg-quip-teal" style={{ width: `${percent}%` }} aria-hidden="true" />
+            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-ccl-navy/10">
+              <div className="h-full bg-ccl-teal" style={{ width: `${percent}%` }} aria-hidden="true" />
             </div>
           </div>
         );
@@ -94,7 +94,7 @@ const GrossEarningsLeaderboardList: React.FC<{ leaders: GrossEarningsLeaderboard
               alt="Vault" 
               className="w-4 h-4" 
             />
-            <span className="font-mono text-lg font-semibold text-quip-teal">{entry.vault_balance}</span>
+            <span className="font-mono text-lg font-semibold text-ccl-teal">{entry.vault_balance}</span>
           </span>
         ),
         metricAccessor: (entry) => entry.vault_balance,
@@ -113,7 +113,7 @@ const WeeklyLeaderboard: React.FC<WeeklyLeaderboardProps> = ({
   if (loading) {
     return (
       <div className="w-full h-64 flex items-center justify-center" role="status" aria-live="polite">
-        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-quip-orange border-r-transparent" />
+        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-ccl-orange border-r-transparent" />
         <span className="sr-only">Loading weekly leaderboard…</span>
       </div>
     );

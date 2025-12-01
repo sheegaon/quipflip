@@ -8,7 +8,7 @@ export const PhrasesetList: React.FC<{
   onSelect: (item: PhrasesetSummary) => void;
 }> = () => {
   return (
-    <div className="p-6 text-center text-quip-teal">
+    <div className="p-6 text-center text-ccl-teal">
       Caption tracking coming soon
     </div>
   );

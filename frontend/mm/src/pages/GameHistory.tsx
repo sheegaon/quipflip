@@ -268,11 +268,11 @@ export const GameHistory: React.FC = () => {
   const detailsLoadingState = getLoadingState('details');
 
   return (
-    <div className="min-h-screen bg-quip-cream bg-pattern">
+    <div className="min-h-screen bg-ccl-cream bg-pattern">
       <div className="max-w-6xl mx-auto px-4 py-8">
         <div className="mb-6">
-          <h1 className="text-3xl font-display font-bold text-quip-navy">Game History</h1>
-          <p className="text-quip-teal mt-2">
+          <h1 className="text-3xl font-display font-bold text-ccl-navy">Game History</h1>
+          <p className="text-ccl-teal mt-2">
             Keep an eye on your in-progress rounds, review voting status, and celebrate finalized quipsets.
           </p>
         </div>
@@ -281,29 +281,29 @@ export const GameHistory: React.FC = () => {
           <div className="lg:col-span-2 space-y-6">
             <div className="tile-card p-4">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="font-display font-bold text-lg text-quip-navy">Your Activity</h2>
+                <h2 className="font-display font-bold text-lg text-ccl-navy">Your Activity</h2>
                 <button
                   onClick={() => setInfoExpanded((prev) => !prev)}
-                  className="text-sm text-quip-teal hover:text-quip-turquoise"
+                  className="text-sm text-ccl-teal hover:text-ccl-turquoise"
                 >
                   {infoExpanded ? 'Hide Info' : 'What is this?'}
                 </button>
               </div>
 
               {infoExpanded && (
-                <div className="bg-quip-turquoise bg-opacity-10 border-2 border-quip-turquoise rounded-tile p-3 mb-4 text-sm text-quip-teal">
+                <div className="bg-ccl-turquoise bg-opacity-10 border-2 border-ccl-turquoise rounded-tile p-3 mb-4 text-sm text-ccl-teal">
                   Track every quipset you've touched. Use the filters to drill into specific roles or statuses.
                 </div>
               )}
 
               <div className="grid grid-cols-2 gap-3 mb-4">
-                <div className="bg-quip-navy bg-opacity-5 border-2 border-quip-navy rounded-tile p-3 text-center">
-                  <p className="text-xs text-quip-teal uppercase tracking-wide">Rounds Meeting Criteria</p>
-                  <p className="text-2xl font-display font-bold text-quip-navy">{totalTracked}</p>
+                <div className="bg-ccl-navy bg-opacity-5 border-2 border-ccl-navy rounded-tile p-3 text-center">
+                  <p className="text-xs text-ccl-teal uppercase tracking-wide">Rounds Meeting Criteria</p>
+                  <p className="text-2xl font-display font-bold text-ccl-navy">{totalTracked}</p>
                 </div>
-                <div className="bg-quip-orange bg-opacity-10 border-2 border-quip-orange rounded-tile p-3 text-center">
-                  <p className="text-xs text-quip-orange-deep uppercase tracking-wide">Finalized</p>
-                  <p className="text-2xl font-display font-bold text-quip-orange-deep">
+                <div className="bg-ccl-orange bg-opacity-10 border-2 border-ccl-orange rounded-tile p-3 text-center">
+                  <p className="text-xs text-ccl-orange-deep uppercase tracking-wide">Finalized</p>
+                  <p className="text-2xl font-display font-bold text-ccl-orange-deep">
                     {(phrasesetSummary?.finalized?.prompts ?? 0) + (phrasesetSummary?.finalized?.copies ?? 0)}
                   </p>
                 </div>
@@ -311,11 +311,11 @@ export const GameHistory: React.FC = () => {
 
               <div className="space-y-3">
                 <div>
-                  <label className="block text-xs font-semibold text-quip-teal mb-2">Role</label>
+                  <label className="block text-xs font-semibold text-ccl-teal mb-2">Role</label>
                   <select
                     value={roleFilter}
                     onChange={(event) => handleRoleFilterChange(event.target.value as RoleFilter)}
-                    className="w-full rounded-tile border-2 border-quip-teal bg-white p-2 text-sm"
+                    className="w-full rounded-tile border-2 border-ccl-teal bg-white p-2 text-sm"
                   >
                     {roleOptions.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -325,11 +325,11 @@ export const GameHistory: React.FC = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-quip-teal mb-2">Status</label>
+                  <label className="block text-xs font-semibold text-ccl-teal mb-2">Status</label>
                   <select
                     value={statusFilter}
                     onChange={(event) => handleStatusFilterChange(event.target.value as StatusFilter)}
-                    className="w-full rounded-tile border-2 border-quip-teal bg-white p-2 text-sm"
+                    className="w-full rounded-tile border-2 border-ccl-teal bg-white p-2 text-sm"
                   >
                     {statusOptions.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -352,7 +352,7 @@ export const GameHistory: React.FC = () => {
                   summary={selectedSummary}
                 />
               ) : (
-                <div className="p-6 text-center text-quip-teal">
+                <div className="p-6 text-center text-ccl-teal">
                   Select a round to see more information.
                 </div>
               )}

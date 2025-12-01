@@ -116,7 +116,7 @@ export const Completed: React.FC = () => {
     if (sortField !== field) {
       return <span className="text-gray-400">↕</span>;
     }
-    return sortDirection === 'asc' ? <span className="text-quip-turquoise">↑</span> : <span className="text-quip-turquoise">↓</span>;
+    return sortDirection === 'asc' ? <span className="text-ccl-turquoise">↑</span> : <span className="text-ccl-turquoise">↓</span>;
   };
 
   const getAriaSort = (field: SortField): 'ascending' | 'descending' | 'none' => {
@@ -129,13 +129,13 @@ export const Completed: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-quip-cream bg-pattern">
+    <div className="min-h-screen bg-ccl-cream bg-pattern">
       <Header />
 
       <div className="max-w-6xl mx-auto px-4 py-8">
         <div className="mb-6">
-          <h1 className="text-3xl font-display font-bold text-quip-navy">Completed Rounds</h1>
-          <p className="text-quip-teal mt-2">
+          <h1 className="text-3xl font-display font-bold text-ccl-navy">Completed Rounds</h1>
+          <p className="text-ccl-teal mt-2">
             View all finalized quipsets and their results.
           </p>
         </div>
@@ -153,22 +153,22 @@ export const Completed: React.FC = () => {
         ) : (
           <div className="tile-card p-0 overflow-hidden">
             {/* Stats summary */}
-            <div className="p-4 bg-quip-navy bg-opacity-5 border-b-2 border-quip-navy border-opacity-10">
-              <p className="text-sm text-quip-teal">
-                Showing <span className="font-semibold text-quip-navy">{phrasesets.length}</span> completed rounds
+            <div className="p-4 bg-ccl-navy bg-opacity-5 border-b-2 border-ccl-navy border-opacity-10">
+              <p className="text-sm text-ccl-teal">
+                Showing <span className="font-semibold text-ccl-navy">{phrasesets.length}</span> completed rounds
               </p>
             </div>
 
             {/* Table */}
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-quip-turquoise bg-opacity-10">
+                <thead className="bg-ccl-turquoise bg-opacity-10">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-quip-teal uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-ccl-teal uppercase tracking-wider">
                       Prompt
                     </th>
                     <th
-                      className="px-4 py-3 text-left text-xs font-semibold text-quip-teal uppercase tracking-wider cursor-pointer hover:bg-quip-turquoise hover:bg-opacity-20"
+                      className="px-4 py-3 text-left text-xs font-semibold text-ccl-teal uppercase tracking-wider cursor-pointer hover:bg-ccl-turquoise hover:bg-opacity-20"
                       onClick={() => handleSort('vote_count')}
                       aria-sort={getAriaSort('vote_count')}
                     >
@@ -177,7 +177,7 @@ export const Completed: React.FC = () => {
                       </div>
                     </th>
                     <th
-                      className="px-4 py-3 text-left text-xs font-semibold text-quip-teal uppercase tracking-wider cursor-pointer hover:bg-quip-turquoise hover:bg-opacity-20"
+                      className="px-4 py-3 text-left text-xs font-semibold text-ccl-teal uppercase tracking-wider cursor-pointer hover:bg-ccl-turquoise hover:bg-opacity-20"
                       onClick={() => handleSort('total_pool')}
                       aria-sort={getAriaSort('total_pool')}
                     >
@@ -186,7 +186,7 @@ export const Completed: React.FC = () => {
                       </div>
                     </th>
                     <th
-                      className="px-4 py-3 text-left text-xs font-semibold text-quip-teal uppercase tracking-wider cursor-pointer hover:bg-quip-turquoise hover:bg-opacity-20"
+                      className="px-4 py-3 text-left text-xs font-semibold text-ccl-teal uppercase tracking-wider cursor-pointer hover:bg-ccl-turquoise hover:bg-opacity-20"
                       onClick={() => handleSort('created_at')}
                       aria-sort={getAriaSort('created_at')}
                     >
@@ -195,7 +195,7 @@ export const Completed: React.FC = () => {
                       </div>
                     </th>
                     <th
-                      className="px-4 py-3 text-left text-xs font-semibold text-quip-teal uppercase tracking-wider cursor-pointer hover:bg-quip-turquoise hover:bg-opacity-20"
+                      className="px-4 py-3 text-left text-xs font-semibold text-ccl-teal uppercase tracking-wider cursor-pointer hover:bg-ccl-turquoise hover:bg-opacity-20"
                       onClick={() => handleSort('finalized_at')}
                       aria-sort={getAriaSort('finalized_at')}
                     >
@@ -208,7 +208,7 @@ export const Completed: React.FC = () => {
                 <tbody className="divide-y divide-gray-200">
                   {paginatedPhrasesets.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="px-4 py-8 text-center text-quip-teal">
+                      <td colSpan={5} className="px-4 py-8 text-center text-ccl-teal">
                         No completed rounds yet.
                       </td>
                     </tr>
@@ -217,25 +217,25 @@ export const Completed: React.FC = () => {
                       <tr
                         key={phraseset.phraseset_id}
                         onClick={() => handleRowClick(phraseset.phraseset_id)}
-                        className="hover:bg-quip-teal-light transition-colors cursor-pointer"
+                        className="hover:bg-ccl-teal-light transition-colors cursor-pointer"
                         title="Click to review this phraseset"
                       >
-                        <td className="px-4 py-3 text-sm text-quip-navy">
+                        <td className="px-4 py-3 text-sm text-ccl-navy">
                           <div className="max-w-md flex items-center gap-2">
                             <ReviewIcon className="h-4 w-4 flex-shrink-0" />
                             <span>{phraseset.prompt_text}</span>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-sm text-quip-navy font-semibold">
+                        <td className="px-4 py-3 text-sm text-ccl-navy font-semibold">
                           {phraseset.vote_count}
                         </td>
-                        <td className="px-4 py-3 text-sm text-quip-orange font-semibold">
+                        <td className="px-4 py-3 text-sm text-ccl-orange font-semibold">
                           {phraseset.total_pool}
                         </td>
-                        <td className="px-4 py-3 text-sm text-quip-teal">
+                        <td className="px-4 py-3 text-sm text-ccl-teal">
                           {formatDate(phraseset.created_at)}
                         </td>
-                        <td className="px-4 py-3 text-sm text-quip-teal">
+                        <td className="px-4 py-3 text-sm text-ccl-teal">
                           {formatDateTime(phraseset.finalized_at)}
                         </td>
                       </tr>
@@ -247,7 +247,7 @@ export const Completed: React.FC = () => {
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="p-4 bg-quip-navy bg-opacity-5 border-t-2 border-quip-navy border-opacity-10 flex items-center justify-between">
+              <div className="p-4 bg-ccl-navy bg-opacity-5 border-t-2 border-ccl-navy border-opacity-10 flex items-center justify-between">
                 <button
                   onClick={() => setPage(page - 1)}
                   disabled={page === 0}
@@ -256,7 +256,7 @@ export const Completed: React.FC = () => {
                 >
                   <ArrowLeftIcon className="w-4 h-6" aria-hidden="true" />
                 </button>
-                <div className="text-sm text-quip-teal">
+                <div className="text-sm text-ccl-teal">
                   Page {page + 1} of {totalPages}
                 </div>
                 <button

@@ -8,14 +8,14 @@ export default {
     extend: {
       colors: {
         // Quipflip Brand Colors
-        'quip-turquoise': '#10B4A4',
-        'quip-teal': '#0A5852', // Darkened from #0E6F6A for better contrast
-        'quip-teal-light': '#E8F5F4', // Very light teal for tile backgrounds
-        'quip-orange': '#FF9A3D',
-        'quip-orange-deep': '#E26A00',
-        'quip-cream': '#FFF6EE',
-        'quip-warm-ivory': '#FFF9F2',
-        'quip-navy': '#0B2137',
+        'ccl-turquoise': '#10B4A4',
+        'ccl-teal': '#0A5852', // Darkened from #0E6F6A for better contrast
+        'ccl-teal-light': '#E8F5F4', // Very light teal for tile backgrounds
+        'ccl-orange': '#FF9A3D',
+        'ccl-orange-deep': '#E26A00',
+        'ccl-cream': '#FFF6EE',
+        'ccl-warm-ivory': '#FFF9F2',
+        'ccl-navy': '#0B2137',
         // Quest category palette
         'quest-streak': '#FF9A3D',
         'quest-quality': '#FF6B6B',

@@ -121,19 +121,19 @@ export const VoteRound: React.FC = () => {
 
   if (!round) {
     return (
-      <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center">
+      <div className="min-h-screen bg-ccl-cream bg-pattern flex items-center justify-center">
         <LoadingSpinner isLoading message="Loading your meme..." />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center p-4">
+    <div className="min-h-screen bg-ccl-cream bg-pattern flex items-center justify-center p-4">
       <div className="max-w-5xl w-full tile-card p-6 md:p-10 relative">
         <button
           type="button"
           onClick={handleAbandonRound}
-          className="absolute top-4 right-4 text-quip-navy hover:opacity-80 transition transform hover:scale-105"
+          className="absolute top-4 right-4 text-ccl-navy hover:opacity-80 transition transform hover:scale-105"
           aria-label="Return to dashboard"
         >
           <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -146,12 +146,12 @@ export const VoteRound: React.FC = () => {
             <img
               src={round.image_url}
               alt={round.attribution_text || 'Meme image'}
-              className="w-full rounded-tile border-2 border-quip-navy max-h-96 object-contain bg-white"
+              className="w-full rounded-tile border-2 border-ccl-navy max-h-96 object-contain bg-white"
             />
             {hasVoted && result && (
               <div className="mt-4 text-center">
-                <p className="text-sm text-quip-teal uppercase tracking-wide">{payoutLabel}</p>
-                <div className="text-2xl font-bold text-quip-navy flex items-center justify-center gap-2">
+                <p className="text-sm text-ccl-teal uppercase tracking-wide">{payoutLabel}</p>
+                <div className="text-2xl font-bold text-ccl-navy flex items-center justify-center gap-2">
                   <CurrencyDisplay amount={payoutAmount} iconClassName="w-6 h-6" textClassName="text-2xl" />
                 </div>
               </div>
@@ -161,7 +161,7 @@ export const VoteRound: React.FC = () => {
           {/* Voting Interface */}
           <div className="flex-1 space-y-6">
             <div>
-              <h1 className="text-3xl font-display font-bold text-quip-navy">Choose your favorite caption</h1>
+              <h1 className="text-3xl font-display font-bold text-ccl-navy">Choose your favorite caption</h1>
             </div>
 
             {error && (
@@ -177,24 +177,24 @@ export const VoteRound: React.FC = () => {
                   key={caption.caption_id}
                   onClick={() => handleVote(caption)}
                   disabled={isSubmitting || hasVoted}
-                  className={`w-full text-left p-4 rounded-tile border-2 border-quip-navy hover:border-quip-teal hover:bg-quip-teal hover:bg-opacity-5 disabled:opacity-60 disabled:cursor-not-allowed transition-colors ${
+                  className={`w-full text-left p-4 rounded-tile border-2 border-ccl-navy hover:border-ccl-teal hover:bg-ccl-teal hover:bg-opacity-5 disabled:opacity-60 disabled:cursor-not-allowed transition-colors ${
                     hasVoted && result?.chosen_caption_id === caption.caption_id
-                      ? 'border-quip-orange bg-quip-orange bg-opacity-10 shadow-lg shadow-quip-orange/20'
+                      ? 'border-ccl-orange bg-ccl-orange bg-opacity-10 shadow-lg shadow-ccl-orange/20'
                       : hasVoted
                       ? 'opacity-70'
                       : ''
                   }`}
                 >
                   <div className="flex items-start gap-3">
-                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-quip-navy text-white text-sm flex items-center justify-center font-semibold">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-ccl-navy text-white text-sm flex items-center justify-center font-semibold">
                       {String.fromCharCode(65 + index)}
                     </span>
                     <div className="flex-1 space-y-2">
-                      <p className="text-quip-navy font-medium">{caption.text}</p>
+                      <p className="text-ccl-navy font-medium">{caption.text}</p>
                       {hasVoted && (
-                        <div className="flex items-center gap-2 text-sm text-quip-navy/80">
+                        <div className="flex items-center gap-2 text-sm text-ccl-navy/80">
                           <span className="font-semibold">{caption.author_username ?? 'Mint Mixer'}</span>
-                          <div className="flex items-center gap-1 text-quip-navy">
+                          <div className="flex items-center gap-1 text-ccl-navy">
                             {isBotAuthor(caption) && <BotIcon className="h-4 w-4" />}
                             {isCircleAuthor(caption) && <PartyIcon className="h-4 w-4" />}
                           </div>
@@ -207,7 +207,7 @@ export const VoteRound: React.FC = () => {
             </div>
 
             {hasVoted && (
-                <p className="text-sm font-semibold text-quip-navy">Add your own caption or play again below.</p>
+                <p className="text-sm font-semibold text-ccl-navy">Add your own caption or play again below.</p>
             )}
 
             {hasVoted && result && (
@@ -215,14 +215,14 @@ export const VoteRound: React.FC = () => {
                 <div className="flex flex-wrap gap-3">
                   <button
                     onClick={goToCaption}
-                    className="bg-quip-teal hover:bg-quip-turquoise text-white font-semibold px-4 py-2 rounded-tile flex items-center gap-2"
+                    className="bg-ccl-teal hover:bg-ccl-turquoise text-white font-semibold px-4 py-2 rounded-tile flex items-center gap-2"
                   >
                     <span>Add your caption</span>
                     <CurrencyDisplay amount={captionCost} iconClassName="w-4 h-4" textClassName="font-semibold" />
                   </button>
                   <button
                     onClick={handlePlayAgain}
-                    className="border-2 border-quip-navy text-quip-navy font-semibold px-4 py-2 rounded-tile hover:bg-quip-navy hover:text-white transition-colors flex items-center gap-2"
+                    className="border-2 border-ccl-navy text-ccl-navy font-semibold px-4 py-2 rounded-tile hover:bg-ccl-navy hover:text-white transition-colors flex items-center gap-2"
                   >
                     <span>Play again</span>
                     <CurrencyDisplay amount={voteCost} iconClassName="w-4 h-4" textClassName="font-semibold" />

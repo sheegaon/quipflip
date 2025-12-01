@@ -85,7 +85,7 @@ export const PhrasesetReview: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center">
+      <div className="min-h-screen bg-ccl-cream bg-pattern flex items-center justify-center">
         <LoadingSpinner isLoading={true} message="Loading phraseset..." />
       </div>
     );
@@ -93,18 +93,18 @@ export const PhrasesetReview: React.FC = () => {
 
   if (error || !phrasesetData) {
     return (
-      <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center p-4">
+      <div className="min-h-screen bg-ccl-cream bg-pattern flex items-center justify-center p-4">
         <div className="tile-card max-w-md w-full p-8 text-center">
           <div className="text-red-600 mb-4">
             <svg className="w-16 h-16 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <h2 className="text-xl font-display font-bold text-quip-navy mb-2">Error Loading Phraseset</h2>
-            <p className="text-quip-teal">{error || 'Failed to load phraseset details'}</p>
+            <h2 className="text-xl font-display font-bold text-ccl-navy mb-2">Error Loading Phraseset</h2>
+            <p className="text-ccl-teal">{error || 'Failed to load phraseset details'}</p>
           </div>
           <button
             onClick={handleBackToCompleted}
-            className="bg-quip-navy hover:bg-quip-teal text-white font-bold py-3 px-6 rounded-tile transition-all"
+            className="bg-ccl-navy hover:bg-ccl-teal text-white font-bold py-3 px-6 rounded-tile transition-all"
           >
             Completed Rounds
           </button>

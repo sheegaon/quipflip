@@ -118,7 +118,7 @@ export default function HistoricalTrendsChart({ trends }: HistoricalTrendsChartP
   if (chartData.length === 0) {
     return (
       <div
-        className="w-full flex items-center justify-center text-quip-teal text-center"
+        className="w-full flex items-center justify-center text-ccl-teal text-center"
         style={historicalChartPlaceholderStyle}
       >
         Historical trend data will appear once you start playing more rounds.

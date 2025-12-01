@@ -46,12 +46,12 @@ const GuestLogoutWarning: React.FC<GuestLogoutWarningProps> = ({
 
         <div className="guest-welcome-content">
           <div className="space-y-2 mb-6">
-            <h2 id="guest-logout-title" className="text-2xl font-bold text-quip-navy text-center">
+            <h2 id="guest-logout-title" className="text-2xl font-bold text-ccl-navy text-center">
               Save Your Guest Login
             </h2>
           </div>
 
-          <div className="guest-credentials bg-gradient-to-r from-quip-orange to-quip-turquoise text-white md:p-6 px-3 py-6 rounded-tile mb-6 shadow-lg">
+          <div className="guest-credentials bg-gradient-to-r from-ccl-orange to-ccl-turquoise text-white md:p-6 px-3 py-6 rounded-tile mb-6 shadow-lg">
             <p className="font-bold md:mb-3 mb-2 text-lg">Guest Credentials</p>
             <p className="text-sm opacity-90 mb-3">
               You&apos;ll need this username/email and password to sign back in after logging out. Keep a copy before you continue.
@@ -88,7 +88,7 @@ const GuestLogoutWarning: React.FC<GuestLogoutWarningProps> = ({
           <button
             type="button"
             onClick={onConfirmLogout}
-            className="guest-welcome-btn bg-quip-cream text-quip-navy hover:bg-quip-orange/20 hover:shadow-tile-sm transition-all"
+            className="guest-welcome-btn bg-ccl-cream text-ccl-navy hover:bg-ccl-orange/20 hover:shadow-tile-sm transition-all"
           >
             Log Out Now
           </button>

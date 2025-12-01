@@ -32,7 +32,7 @@ export const Pagination: React.FC<PaginationProps> = ({
     return `p-2 rounded-full transition-all ${
       disabled
         ? 'opacity-30 cursor-not-allowed'
-        : 'hover:bg-quip-turquoise hover:bg-opacity-10'
+        : 'hover:bg-ccl-turquoise hover:bg-opacity-10'
     }`;
   };
 
@@ -47,7 +47,7 @@ export const Pagination: React.FC<PaginationProps> = ({
         <ArrowLeftIcon className="w-4 h-6" aria-hidden="true" />
       </button>
 
-      <div className="text-sm font-medium text-quip-navy">
+      <div className="text-sm font-medium text-ccl-navy">
         Page {currentPage} of {totalPages}
       </div>
 

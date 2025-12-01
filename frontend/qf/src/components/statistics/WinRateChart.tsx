@@ -86,7 +86,7 @@ export default function WinRateChart({ promptStats, copyStats, voterStats }: Win
         </ResponsiveContainer>
       ) : (
         <div className="w-full h-full flex items-center justify-center">
-          <div className="text-quip-teal">Loading chart...</div>
+          <div className="text-ccl-teal">Loading chart...</div>
         </div>
       )}
     </div>

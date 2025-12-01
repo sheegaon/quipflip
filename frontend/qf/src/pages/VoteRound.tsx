@@ -177,7 +177,7 @@ export const VoteRound: React.FC = () => {
     return (
       <>
         {partyOverlay}
-        <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center p-4">
+        <div className="min-h-screen bg-ccl-cream bg-pattern flex items-center justify-center p-4">
           <div className="max-w-3xl w-full tile-card p-8 flip-enter">
           {/* Header with icon and result */}
           <div className="text-center mb-8">
@@ -190,7 +190,7 @@ export const VoteRound: React.FC = () => {
 
             {/* Large Check/X-mark indicator */}
             <div className="flex justify-center mb-4">
-              <div className={`inline-flex items-center justify-center w-24 h-24 rounded-full border-4 ${voteResult.correct ? 'bg-quip-turquoise border-quip-turquoise text-white' : 'bg-quip-orange border-quip-orange text-white'} shadow-tile`}>
+              <div className={`inline-flex items-center justify-center w-24 h-24 rounded-full border-4 ${voteResult.correct ? 'bg-ccl-turquoise border-ccl-turquoise text-white' : 'bg-ccl-orange border-ccl-orange text-white'} shadow-tile`}>
                 <span className="text-7xl font-bold leading-none" style={{ marginTop: '-4px' }}>
                   {voteResult.correct ? '✓' : '✗'}
                 </span>
@@ -198,26 +198,26 @@ export const VoteRound: React.FC = () => {
             </div>
 
             {/* Main result message */}
-            <h2 className={`text-5xl font-display font-bold mb-6 success-message ${voteResult.correct ? 'text-quip-turquoise' : 'text-quip-orange'}`}>
+            <h2 className={`text-5xl font-display font-bold mb-6 success-message ${voteResult.correct ? 'text-ccl-turquoise' : 'text-ccl-orange'}`}>
               {headingMessage}
             </h2>
 
             {/* Payout/Cost info - PROMINENT */}
-            <div className={`inline-flex items-center gap-2 px-6 py-4 rounded-tile mb-8 ${voteResult.payout > 0 ? 'bg-quip-turquoise bg-opacity-20 border-2 border-quip-turquoise' : 'bg-quip-orange bg-opacity-10 border-2 border-quip-orange'}`}>
+            <div className={`inline-flex items-center gap-2 px-6 py-4 rounded-tile mb-8 ${voteResult.payout > 0 ? 'bg-ccl-turquoise bg-opacity-20 border-2 border-ccl-turquoise' : 'bg-ccl-orange bg-opacity-10 border-2 border-ccl-orange'}`}>
               {voteResult.payout > 0 ? (
                 <>
-                  <span className="text-quip-navy font-display font-bold text-xl">You earned:</span>
-                  <CurrencyDisplay amount={voteResult.payout} iconClassName="w-7 h-7" textClassName="text-2xl font-bold text-quip-turquoise" />
+                  <span className="text-ccl-navy font-display font-bold text-xl">You earned:</span>
+                  <CurrencyDisplay amount={voteResult.payout} iconClassName="w-7 h-7" textClassName="text-2xl font-bold text-ccl-turquoise" />
                 </>
               ) : (
                 <>
-                  <span className="text-quip-navy font-display font-bold text-xl">No flipcoins earned</span>
+                  <span className="text-ccl-navy font-display font-bold text-xl">No flipcoins earned</span>
                 </>
               )}
             </div>
 
             {/* Simple feedback message */}
-            <p className="text-lg text-quip-teal mb-6">
+            <p className="text-lg text-ccl-teal mb-6">
               {feedbackMessage}
             </p>
           </div>
@@ -226,14 +226,14 @@ export const VoteRound: React.FC = () => {
           <div className="mb-6">
             <button
               onClick={() => setShowDetails(!showDetails)}
-              className="w-full flex items-center justify-between p-4 bg-quip-navy bg-opacity-5 hover:bg-opacity-10 border-2 border-quip-navy rounded-tile transition-all mb-2"
+              className="w-full flex items-center justify-between p-4 bg-ccl-navy bg-opacity-5 hover:bg-opacity-10 border-2 border-ccl-navy rounded-tile transition-all mb-2"
             >
-              <span className="font-display font-bold text-lg text-quip-navy">
+              <span className="font-display font-bold text-lg text-ccl-navy">
                 View Details
               </span>
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                className={`h-6 w-6 text-quip-navy transition-transform ${showDetails ? 'rotate-180' : ''}`}
+                className={`h-6 w-6 text-ccl-navy transition-transform ${showDetails ? 'rotate-180' : ''}`}
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -246,8 +246,8 @@ export const VoteRound: React.FC = () => {
             {showDetails && (
               <div className="space-y-4 slide-up-enter">
                 {/* The Reveal - Show all phrases with attributions */}
-                <div className="bg-quip-navy bg-opacity-5 border-2 border-quip-navy rounded-tile p-6">
-                  <h3 className="font-display font-bold text-xl text-quip-navy mb-4 text-center">
+                <div className="bg-ccl-navy bg-opacity-5 border-2 border-ccl-navy rounded-tile p-6">
+                  <h3 className="font-display font-bold text-xl text-ccl-navy mb-4 text-center">
                     The Reveal
                   </h3>
 
@@ -282,11 +282,11 @@ export const VoteRound: React.FC = () => {
                   ) : (
                     // Fallback if phrasesetDetails isn't loaded yet
                     <div className="space-y-2">
-                      <p className="text-lg text-quip-navy mb-2">
-                        The original phrase was: <strong className="text-quip-turquoise">{voteResult.original_phrase}</strong>
+                      <p className="text-lg text-ccl-navy mb-2">
+                        The original phrase was: <strong className="text-ccl-turquoise">{voteResult.original_phrase}</strong>
                       </p>
-                      <p className="text-lg text-quip-teal">
-                        You chose: <strong className={voteResult.correct ? 'text-quip-turquoise' : 'text-quip-orange'}>{voteResult.your_choice}</strong>
+                      <p className="text-lg text-ccl-teal">
+                        You chose: <strong className={voteResult.correct ? 'text-ccl-turquoise' : 'text-ccl-orange'}>{voteResult.your_choice}</strong>
                       </p>
                     </div>
                   )}
@@ -297,11 +297,11 @@ export const VoteRound: React.FC = () => {
                   <>
                     {/* First voter encouragement */}
                     {isFirstVoter && (
-                      <div className="bg-quip-orange bg-opacity-10 border-2 border-quip-orange rounded-tile p-4 text-center">
-                        <p className="text-quip-navy font-display font-semibold mb-2">
+                      <div className="bg-ccl-orange bg-opacity-10 border-2 border-ccl-orange rounded-tile p-4 text-center">
+                        <p className="text-ccl-navy font-display font-semibold mb-2">
                           You're the first to vote on this one!
                         </p>
-                        <p className="text-quip-teal text-sm mb-3">
+                        <p className="text-ccl-teal text-sm mb-3">
                           Come back later to see how others voted. You can check in on this round anytime from Round Tracking.
                         </p>
                       </div>
@@ -309,25 +309,25 @@ export const VoteRound: React.FC = () => {
 
                     {/* Vote details for multiple voters */}
                     {!isFirstVoter && votes.length > 0 && (
-                      <div className="bg-quip-navy bg-opacity-5 border-2 border-quip-navy rounded-tile p-4">
-                        <h3 className="font-display font-bold text-lg text-quip-navy mb-3 text-center">
+                      <div className="bg-ccl-navy bg-opacity-5 border-2 border-ccl-navy rounded-tile p-4">
+                        <h3 className="font-display font-bold text-lg text-ccl-navy mb-3 text-center">
                           Voting Results ({voteCount} vote{voteCount !== 1 ? 's' : ''} so far)
                         </h3>
                         <div className="space-y-2">
                           {votes.map((vote) => (
                             <div
                               key={vote.vote_id}
-                              className={`flex items-center justify-between p-3 rounded-tile ${vote.correct ? 'bg-quip-turquoise bg-opacity-10 border border-quip-turquoise' : 'bg-quip-orange bg-opacity-10 border border-quip-orange'}`}
+                              className={`flex items-center justify-between p-3 rounded-tile ${vote.correct ? 'bg-ccl-turquoise bg-opacity-10 border border-ccl-turquoise' : 'bg-ccl-orange bg-opacity-10 border border-ccl-orange'}`}
                             >
                               <div className="flex items-center gap-3">
-                                <span className="font-semibold text-quip-navy">
+                                <span className="font-semibold text-ccl-navy">
                                   {vote.voter_username}
                                 </span>
-                                <span className="text-sm text-quip-teal">
+                                <span className="text-sm text-ccl-teal">
                                   voted for: <strong>{vote.voted_phrase}</strong>
                                 </span>
                               </div>
-                              <span className={`text-sm font-semibold ${vote.correct ? 'text-quip-turquoise' : 'text-quip-orange'}`}>
+                              <span className={`text-sm font-semibold ${vote.correct ? 'text-ccl-turquoise' : 'text-ccl-orange'}`}>
                                 {vote.correct ? '✓ Correct' : '✗ Incorrect'}
                               </span>
                             </div>
@@ -340,7 +340,7 @@ export const VoteRound: React.FC = () => {
                     <div className="text-center pt-2">
                       <Link
                         to="/tracking"
-                        className="inline-block bg-quip-orange hover:bg-quip-orange-deep text-white font-semibold py-3 px-6 rounded-tile transition-colors"
+                        className="inline-block bg-ccl-orange hover:bg-ccl-orange-deep text-white font-semibold py-3 px-6 rounded-tile transition-colors"
                       >
                         Go to Round Tracking →
                       </Link>
@@ -355,7 +355,7 @@ export const VoteRound: React.FC = () => {
           <div className="flex justify-center">
             <button
               onClick={handleDismiss}
-              className="bg-quip-turquoise hover:bg-quip-teal text-white font-bold py-3 px-8 rounded-tile transition-all hover:shadow-tile-sm flex items-center gap-2"
+              className="bg-ccl-turquoise hover:bg-ccl-teal text-white font-bold py-3 px-8 rounded-tile transition-all hover:shadow-tile-sm flex items-center gap-2"
             >
               <HomeIcon className="h-5 w-5" />
               <span>{isInPartyMode ? 'View Party Summary' : 'Back to Dashboard'}</span>
@@ -372,7 +372,7 @@ export const VoteRound: React.FC = () => {
     return (
       <>
         {partyOverlay}
-        <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center">
+        <div className="min-h-screen bg-ccl-cream bg-pattern flex items-center justify-center">
           <LoadingSpinner isLoading={true} message={loadingMessages.starting} />
         </div>
       </>
@@ -382,14 +382,14 @@ export const VoteRound: React.FC = () => {
   return (
     <>
       {partyOverlay}
-      <div className="min-h-screen bg-gradient-to-br from-quip-orange to-quip-orange-deep flex items-center justify-center p-4 bg-pattern">
+      <div className="min-h-screen bg-gradient-to-br from-ccl-orange to-ccl-orange-deep flex items-center justify-center p-4 bg-pattern">
         <div className="max-w-2xl w-full tile-card p-8 slide-up-enter">
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-2 mb-2">
             <VoteRoundIcon className="w-8 h-8" aria-hidden="true" />
-            <h1 className="text-3xl font-display font-bold text-quip-navy">Guess the Original</h1>
+            <h1 className="text-3xl font-display font-bold text-ccl-navy">Guess the Original</h1>
           </div>
-          <p className="text-quip-teal">One is the original answer. Two are fakes. Tap the one you think came first.</p>
+          <p className="text-ccl-teal">One is the original answer. Two are fakes. Tap the one you think came first.</p>
         </div>
 
         {/* Timer */}
@@ -398,9 +398,9 @@ export const VoteRound: React.FC = () => {
         </div>
 
         {/* Prompt */}
-        <div className="bg-quip-orange bg-opacity-5 border-2 border-quip-orange rounded-tile p-6 mb-6">
-          <p className="text-sm text-quip-teal mb-2 text-center font-medium">Prompt:</p>
-          <p className="text-2xl text-center font-display font-semibold text-quip-orange-deep">
+        <div className="bg-ccl-orange bg-opacity-5 border-2 border-ccl-orange rounded-tile p-6 mb-6">
+          <p className="text-sm text-ccl-teal mb-2 text-center font-medium">Prompt:</p>
+          <p className="text-2xl text-center font-display font-semibold text-ccl-orange-deep">
             {roundData.prompt_text}
           </p>
         </div>
@@ -414,7 +414,7 @@ export const VoteRound: React.FC = () => {
 
         {/* Phrase Choices */}
         <div className="tutorial-vote-options space-y-4 mb-6">
-          <p className="text-center text-quip-navy font-display font-semibold mb-4 text-lg">
+          <p className="text-center text-ccl-navy font-display font-semibold mb-4 text-lg">
             Which phrase was written first?
           </p>
           {roundData.phrases.map((phrase, idx) => (
@@ -422,7 +422,7 @@ export const VoteRound: React.FC = () => {
               key={phrase}
               onClick={() => handleVote(phrase)}
               disabled={isExpired || isSubmitting}
-              className="w-full bg-quip-orange hover:bg-quip-orange-deep disabled:bg-gray-400 text-white font-bold py-4 px-6 rounded-tile transition-all hover:shadow-tile-sm text-xl shuffle-enter"
+              className="w-full bg-ccl-orange hover:bg-ccl-orange-deep disabled:bg-gray-400 text-white font-bold py-4 px-6 rounded-tile transition-all hover:shadow-tile-sm text-xl shuffle-enter"
               style={{ animationDelay: `${idx * 0.1}s` }}
             >
               {phrase}
@@ -431,7 +431,7 @@ export const VoteRound: React.FC = () => {
         </div>
 
         {isExpired && (
-          <div className="text-center text-quip-orange-deep font-semibold">
+          <div className="text-center text-ccl-orange-deep font-semibold">
             Time's up! Refund of <CurrencyDisplay amount={voteCost - (roundAvailability?.abandoned_penalty || 5)} iconClassName="w-4 h-4" textClassName="font-semibold" /> applied ({roundAvailability?.abandoned_penalty || 5} FC penalty)
           </div>
         )}
@@ -440,7 +440,7 @@ export const VoteRound: React.FC = () => {
         <button
           onClick={navigateHome}
           disabled={isSubmitting}
-          className="w-full mt-4 flex items-center justify-center gap-2 text-quip-teal hover:text-quip-turquoise disabled:opacity-50 disabled:cursor-not-allowed py-2 font-medium transition-colors"
+          className="w-full mt-4 flex items-center justify-center gap-2 text-ccl-teal hover:text-ccl-turquoise disabled:opacity-50 disabled:cursor-not-allowed py-2 font-medium transition-colors"
           title={isSubmitting ? "Please wait for submission to complete" : isInPartyMode ? "Leave Party Mode" : "Back to Dashboard"}
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -450,9 +450,9 @@ export const VoteRound: React.FC = () => {
         </button>
 
         {/* Info */}
-        <div className="mt-6 p-4 bg-quip-orange bg-opacity-5 rounded-tile">
-          <p className="text-sm text-quip-teal inline-flex items-center flex-wrap gap-1">
-            <strong className="text-quip-navy">Cost:</strong> <CurrencyDisplay amount={voteCost} iconClassName="w-3 h-3" textClassName="text-sm" /> • <strong className="text-quip-navy">Correct answer:</strong> +<CurrencyDisplay amount={votePayoutCorrect} iconClassName="w-3 h-3" textClassName="text-sm" /> (+<CurrencyDisplay amount={netGain} iconClassName="w-3 h-3" textClassName="text-sm" /> net)
+        <div className="mt-6 p-4 bg-ccl-orange bg-opacity-5 rounded-tile">
+          <p className="text-sm text-ccl-teal inline-flex items-center flex-wrap gap-1">
+            <strong className="text-ccl-navy">Cost:</strong> <CurrencyDisplay amount={voteCost} iconClassName="w-3 h-3" textClassName="text-sm" /> • <strong className="text-ccl-navy">Correct answer:</strong> +<CurrencyDisplay amount={votePayoutCorrect} iconClassName="w-3 h-3" textClassName="text-sm" /> (+<CurrencyDisplay amount={netGain} iconClassName="w-3 h-3" textClassName="text-sm" /> net)
           </p>
         </div>
       </div>

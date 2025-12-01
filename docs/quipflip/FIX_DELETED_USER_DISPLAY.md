@@ -43,14 +43,14 @@ import { formatUsername } from '../utils/usernameGenerator';
 #### Update voting results display (line ~282):
 Replace:
 ```typescript
-<span className="font-semibold text-quip-navy">
+<span className="font-semibold text-ccl-navy">
   {vote.voter_username}
 </span>
 ```
 
 With:
 ```typescript
-<span className="font-semibold text-quip-navy">
+<span className="font-semibold text-ccl-navy">
   {formatUsername(vote.voter_username, vote.voter_id)}
 </span>
 ```
@@ -62,7 +62,7 @@ If contributors in the "The Reveal" section also show "Deleted User #...", updat
 
 Replace:
 ```typescript
-<span className={`text-sm font-semibold ${contributor?.is_you ? 'text-quip-orange' : 'text-quip-navy'}`}>
+<span className={`text-sm font-semibold ${contributor?.is_you ? 'text-ccl-orange' : 'text-ccl-navy'}`}>
   {contributor?.username || 'Unknown'}
   {contributor?.is_you && ' (you)'}
 </span>
@@ -70,7 +70,7 @@ Replace:
 
 With:
 ```typescript
-<span className={`text-sm font-semibold ${contributor?.is_you ? 'text-quip-orange' : 'text-quip-navy'}`}>
+<span className={`text-sm font-semibold ${contributor?.is_you ? 'text-ccl-orange' : 'text-ccl-navy'}`}>
   {contributor?.username ? formatUsername(contributor.username, contributor.player_id) : 'Unknown'}
   {contributor?.is_you && ' (you)'}
 </span>

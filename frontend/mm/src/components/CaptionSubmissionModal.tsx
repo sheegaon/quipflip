@@ -67,10 +67,10 @@ export const CaptionSubmissionModal: React.FC<CaptionSubmissionModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
       <div className="tile-card w-full max-w-3xl p-6 md:p-8 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-display font-bold text-quip-navy">Add your caption</h2>
+          <h2 className="text-2xl font-display font-bold text-ccl-navy">Add your caption</h2>
           <button
             onClick={onClose}
-            className="text-quip-teal hover:text-quip-turquoise text-2xl font-bold"
+            className="text-ccl-teal hover:text-ccl-turquoise text-2xl font-bold"
           >
             ×
           </button>
@@ -82,7 +82,7 @@ export const CaptionSubmissionModal: React.FC<CaptionSubmissionModalProps> = ({
             <img
               src={round.meme.image_url}
               alt={round.meme.alt_text || 'Meme image'}
-              className="w-full rounded-tile border-2 border-quip-navy max-h-64 object-contain"
+              className="w-full rounded-tile border-2 border-ccl-navy max-h-64 object-contain"
             />
           </div>
 
@@ -91,15 +91,15 @@ export const CaptionSubmissionModal: React.FC<CaptionSubmissionModalProps> = ({
           )}
 
           {/* Info about algorithmic riff detection */}
-          <div className="p-3 bg-quip-turquoise bg-opacity-10 border-2 border-quip-turquoise rounded-tile">
-            <p className="text-sm text-quip-navy">
+          <div className="p-3 bg-ccl-turquoise bg-opacity-10 border-2 border-ccl-turquoise rounded-tile">
+            <p className="text-sm text-ccl-navy">
               ✨ Our system will automatically detect if your caption is a riff or original based on similarity to the shown captions.
             </p>
           </div>
 
           {/* Caption Input */}
           <div>
-            <label className="block text-sm text-quip-teal mb-2" htmlFor="caption-input">
+            <label className="block text-sm text-ccl-teal mb-2" htmlFor="caption-input">
               Caption (240 characters max)
             </label>
             <textarea
@@ -107,12 +107,12 @@ export const CaptionSubmissionModal: React.FC<CaptionSubmissionModalProps> = ({
               maxLength={240}
               value={captionText}
               onChange={(e) => setCaptionText(e.target.value)}
-              className="w-full border-2 border-quip-navy rounded-tile p-3 focus:outline-none focus:ring-2 focus:ring-quip-teal"
+              className="w-full border-2 border-ccl-navy rounded-tile p-3 focus:outline-none focus:ring-2 focus:ring-ccl-teal"
               rows={4}
               placeholder="Share your caption idea..."
             />
             <div className="flex justify-between items-center mt-1">
-              <span className="text-sm text-quip-teal">{captionText.length}/240</span>
+              <span className="text-sm text-ccl-teal">{captionText.length}/240</span>
               {validationError && (
                 <span className="text-sm text-red-600">{validationError}</span>
               )}
@@ -121,17 +121,17 @@ export const CaptionSubmissionModal: React.FC<CaptionSubmissionModalProps> = ({
 
           {/* Cost and Actions */}
           <div className="flex items-center justify-between pt-2">
-            <div className="text-sm text-quip-teal flex items-center gap-2">
+            <div className="text-sm text-ccl-teal flex items-center gap-2">
               <span>Cost:</span>
               <CurrencyDisplay amount={captionCost} />
               {freeCaptionAvailable && (
-                <span className="text-quip-teal font-semibold">(Free caption available)</span>
+                <span className="text-ccl-teal font-semibold">(Free caption available)</span>
               )}
             </div>
             <div className="flex gap-3">
               <button
                 onClick={onClose}
-                className="border-2 border-quip-navy text-quip-navy font-semibold px-4 py-2 rounded-tile hover:bg-quip-navy hover:text-white transition-colors"
+                className="border-2 border-ccl-navy text-ccl-navy font-semibold px-4 py-2 rounded-tile hover:bg-ccl-navy hover:text-white transition-colors"
               >
                 Cancel
               </button>
@@ -142,7 +142,7 @@ export const CaptionSubmissionModal: React.FC<CaptionSubmissionModalProps> = ({
                   !captionText.trim() ||
                   !!validationError
                 }
-                className="bg-quip-orange hover:bg-quip-orange-deep text-white font-semibold px-4 py-2 rounded-tile disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                className="bg-ccl-orange hover:bg-ccl-orange-deep text-white font-semibold px-4 py-2 rounded-tile disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
               >
                 {isSubmitting ? 'Submitting...' : 'Submit Caption'}
               </button>

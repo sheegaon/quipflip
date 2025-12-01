@@ -375,7 +375,7 @@ const Admin: React.FC = () => {
 
   if (!player) {
     return (
-      <div className="min-h-screen bg-quip-cream bg-pattern">
+      <div className="min-h-screen bg-ccl-cream bg-pattern">
         <Header />
         <div className="container mx-auto px-4 py-8">
           <div className="text-center">Loading...</div>
@@ -386,12 +386,12 @@ const Admin: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-quip-cream bg-pattern">
+      <div className="min-h-screen bg-ccl-cream bg-pattern">
         <Header />
         <div className="container mx-auto px-4 py-8">
           <div className="text-center py-12">
-            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-quip-orange border-r-transparent"></div>
-            <p className="mt-4 text-quip-navy font-display">Loading admin panel...</p>
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-ccl-orange border-r-transparent"></div>
+            <p className="mt-4 text-ccl-navy font-display">Loading admin panel...</p>
           </div>
         </div>
       </div>
@@ -400,11 +400,11 @@ const Admin: React.FC = () => {
 
   if (error || !config) {
     return (
-      <div className="min-h-screen bg-quip-cream bg-pattern">
+      <div className="min-h-screen bg-ccl-cream bg-pattern">
         <Header />
         <div className="container mx-auto px-4 py-8 max-w-4xl">
           <div className="tile-card p-8">
-            <h1 className="text-2xl font-display font-bold text-quip-navy mb-4">Admin Panel</h1>
+            <h1 className="text-2xl font-display font-bold text-ccl-navy mb-4">Admin Panel</h1>
             <div className="text-red-600">{error || 'Failed to load configuration'}</div>
           </div>
         </div>
@@ -413,15 +413,15 @@ const Admin: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-quip-cream bg-pattern">
+    <div className="min-h-screen bg-ccl-cream bg-pattern">
       <Header />
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         {/* Header */}
-        <div className="tile-card p-6 mb-6 border-2 border-quip-orange">
+        <div className="tile-card p-6 mb-6 border-2 border-ccl-orange">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-display font-bold text-quip-navy">Admin Panel</h1>
-              <p className="text-quip-teal mt-1">View and manage game configuration</p>
+              <h1 className="text-3xl font-display font-bold text-ccl-navy">Admin Panel</h1>
+              <p className="text-ccl-teal mt-1">View and manage game configuration</p>
             </div>
             <div className="flex items-center gap-3">
               <button
@@ -429,13 +429,13 @@ const Admin: React.FC = () => {
                 className={`rounded-tile border-2 px-4 py-2 text-sm font-semibold transition ${
                   pendingFlagCount > 0
                     ? 'border-red-500 text-red-600 hover:bg-red-600 hover:text-white'
-                    : 'border-quip-teal text-quip-teal hover:bg-quip-teal hover:text-white'
+                    : 'border-ccl-teal text-ccl-teal hover:bg-ccl-teal hover:text-white'
                 }`}
               >
                 Review flagged phrases
               </button>
               <label className="flex items-center gap-2 cursor-pointer">
-                <span className="text-sm font-semibold text-quip-navy">Edit Mode</span>
+                <span className="text-sm font-semibold text-ccl-navy">Edit Mode</span>
                 <div className="relative">
                   <input
                     type="checkbox"
@@ -452,29 +452,29 @@ const Admin: React.FC = () => {
         </div>
 
         <div className="tile-card p-6 mb-6 border-2 border-orange-200">
-          <h2 className="text-2xl font-display font-bold text-quip-orange mb-2">Password Reset</h2>
-          <p className="text-quip-teal mb-4">
+          <h2 className="text-2xl font-display font-bold text-ccl-orange mb-2">Password Reset</h2>
+          <p className="text-ccl-teal mb-4">
             Search for a player and generate a new password. The generated password will be displayed once and should be sent securely to the user.
           </p>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
             <div>
-              <label className="block text-sm font-semibold text-quip-teal mb-2">Search by</label>
+              <label className="block text-sm font-semibold text-ccl-teal mb-2">Search by</label>
               <select
                 value={passwordResetIdentifier}
                 onChange={(e) => setPasswordResetIdentifier(e.target.value as PasswordResetIdentifier)}
-                className="w-full border-2 border-quip-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-quip-orange"
+                className="w-full border-2 border-ccl-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-ccl-orange"
               >
                 <option value="email">Email</option>
                 <option value="username">Username</option>
               </select>
             </div>
             <div className="lg:col-span-2">
-              <label className="block text-sm font-semibold text-quip-teal mb-2">Identifier</label>
+              <label className="block text-sm font-semibold text-ccl-teal mb-2">Identifier</label>
               <input
                 type="text"
                 value={passwordResetValue}
                 onChange={(e) => setPasswordResetValue(e.target.value)}
-                className="w-full border-2 border-quip-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-quip-orange"
+                className="w-full border-2 border-ccl-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-ccl-orange"
                 placeholder={passwordResetIdentifier === 'email' ? 'player@example.com' : 'username'}
               />
             </div>
@@ -482,14 +482,14 @@ const Admin: React.FC = () => {
           <div className="flex flex-wrap gap-3 mb-4">
             <button
               onClick={handlePasswordResetSearch}
-              className="bg-quip-orange hover:bg-quip-orange-deep text-white font-bold py-2 px-4 rounded-tile transition-all hover:shadow-tile-sm"
+              className="bg-ccl-orange hover:bg-ccl-orange-deep text-white font-bold py-2 px-4 rounded-tile transition-all hover:shadow-tile-sm"
               disabled={passwordResetLoading}
             >
               {passwordResetLoading ? 'Searching...' : 'Find Player'}
             </button>
             <button
               onClick={handlePasswordResetClear}
-              className="bg-gray-200 hover:bg-gray-300 text-quip-navy font-bold py-2 px-4 rounded-tile transition-all"
+              className="bg-gray-200 hover:bg-gray-300 text-ccl-navy font-bold py-2 px-4 rounded-tile transition-all"
               disabled={passwordResetLoading || passwordResetActionLoading}
             >
               Clear
@@ -501,7 +501,7 @@ const Admin: React.FC = () => {
             <div className="bg-green-50 border-2 border-green-200 rounded-tile p-4 mb-4">
               <h3 className="text-lg font-display font-bold text-green-700 mb-2">Generated Password</h3>
               <div className="flex items-center gap-3 mb-2">
-                <code className="bg-white border-2 border-green-300 rounded px-4 py-2 font-mono text-lg font-bold text-quip-navy flex-1">
+                <code className="bg-white border-2 border-green-300 rounded px-4 py-2 font-mono text-lg font-bold text-ccl-navy flex-1">
                   {generatedPassword}
                 </code>
                 <button
@@ -511,15 +511,15 @@ const Admin: React.FC = () => {
                   Copy
                 </button>
               </div>
-              <p className="text-sm text-quip-teal">
+              <p className="text-sm text-ccl-teal">
                 This password will be cleared after 30 seconds for security. Make sure to send it to the user before then.
               </p>
             </div>
           )}
           {passwordResetLookup && (
             <div className="bg-orange-50 border-2 border-orange-200 rounded-tile p-4">
-              <h3 className="text-lg font-display font-bold text-quip-orange mb-2">Player Overview</h3>
-              <dl className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-quip-navy mb-4">
+              <h3 className="text-lg font-display font-bold text-ccl-orange mb-2">Player Overview</h3>
+              <dl className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-ccl-navy mb-4">
                 <div>
                   <dt className="font-semibold">Username</dt>
                   <dd>{passwordResetLookup.username}</dd>
@@ -543,7 +543,7 @@ const Admin: React.FC = () => {
               </dl>
               <button
                 onClick={handlePasswordResetGenerate}
-                className="bg-quip-orange hover:bg-quip-orange-deep disabled:bg-orange-300 disabled:cursor-not-allowed text-white font-bold py-2 px-4 rounded-tile transition-all hover:shadow-tile-sm"
+                className="bg-ccl-orange hover:bg-ccl-orange-deep disabled:bg-orange-300 disabled:cursor-not-allowed text-white font-bold py-2 px-4 rounded-tile transition-all hover:shadow-tile-sm"
                 disabled={passwordResetActionLoading}
               >
                 {passwordResetActionLoading ? 'Generating...' : 'Generate New Password'}
@@ -554,28 +554,28 @@ const Admin: React.FC = () => {
 
         <div className="tile-card p-6 mb-6 border-2 border-red-200">
           <h2 className="text-2xl font-display font-bold text-red-700 mb-2">Account Cleanup</h2>
-          <p className="text-quip-teal mb-4">
+          <p className="text-ccl-teal mb-4">
             Search for a player and permanently delete their account. This action cannot be undone and will remove all related gameplay data.
           </p>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
             <div>
-              <label className="block text-sm font-semibold text-quip-teal mb-2">Search by</label>
+              <label className="block text-sm font-semibold text-ccl-teal mb-2">Search by</label>
               <select
                 value={adminDeleteIdentifier}
                 onChange={(e) => setAdminDeleteIdentifier(e.target.value as AdminDeleteIdentifier)}
-                className="w-full border-2 border-quip-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-quip-orange"
+                className="w-full border-2 border-ccl-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-ccl-orange"
               >
                 <option value="email">Email</option>
                 <option value="username">Username</option>
               </select>
             </div>
             <div className="lg:col-span-2">
-              <label className="block text-sm font-semibold text-quip-teal mb-2">Identifier</label>
+              <label className="block text-sm font-semibold text-ccl-teal mb-2">Identifier</label>
               <input
                 type="text"
                 value={adminDeleteValue}
                 onChange={(e) => setAdminDeleteValue(e.target.value)}
-                className="w-full border-2 border-quip-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-quip-orange"
+                className="w-full border-2 border-ccl-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-ccl-orange"
                 placeholder={adminDeleteIdentifier === 'email' ? 'player@example.com' : 'username'}
               />
             </div>
@@ -583,14 +583,14 @@ const Admin: React.FC = () => {
           <div className="flex flex-wrap gap-3 mb-4">
             <button
               onClick={handleAdminDeleteSearch}
-              className="bg-quip-orange hover:bg-quip-orange-deep text-white font-bold py-2 px-4 rounded-tile transition-all hover:shadow-tile-sm"
+              className="bg-ccl-orange hover:bg-ccl-orange-deep text-white font-bold py-2 px-4 rounded-tile transition-all hover:shadow-tile-sm"
               disabled={adminDeleteLoading}
             >
               {adminDeleteLoading ? 'Searching...' : 'Find Player'}
             </button>
             <button
               onClick={handleAdminDeleteClear}
-              className="bg-gray-200 hover:bg-gray-300 text-quip-navy font-bold py-2 px-4 rounded-tile transition-all"
+              className="bg-gray-200 hover:bg-gray-300 text-ccl-navy font-bold py-2 px-4 rounded-tile transition-all"
               disabled={adminDeleteLoading || adminDeleteActionLoading}
             >
               Clear
@@ -601,7 +601,7 @@ const Admin: React.FC = () => {
           {adminDeleteLookup && (
             <div className="bg-red-50 border-2 border-red-200 rounded-tile p-4">
               <h3 className="text-lg font-display font-bold text-red-700 mb-2">Player Overview</h3>
-              <dl className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-quip-navy mb-4">
+              <dl className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-ccl-navy mb-4">
                 <div>
                   <dt className="font-semibold">Username</dt>
                   <dd>{adminDeleteLookup.username}</dd>
@@ -625,7 +625,7 @@ const Admin: React.FC = () => {
               </dl>
               <div className="space-y-3">
                 <div>
-                  <label className="block text-sm font-semibold text-quip-teal mb-2">Type DELETE to confirm</label>
+                  <label className="block text-sm font-semibold text-ccl-teal mb-2">Type DELETE to confirm</label>
                   <input
                     type="text"
                     value={adminDeleteConfirm}
@@ -682,8 +682,8 @@ const Admin: React.FC = () => {
               onClick={() => setActiveTab('economics')}
               className={`flex-1 min-w-[120px] py-3 px-4 rounded-tile font-bold transition-all ${
                 activeTab === 'economics'
-                  ? 'bg-quip-orange text-white shadow-tile-sm'
-                  : 'bg-white text-quip-navy hover:bg-quip-orange hover:bg-opacity-10'
+                  ? 'bg-ccl-orange text-white shadow-tile-sm'
+                  : 'bg-white text-ccl-navy hover:bg-ccl-orange hover:bg-opacity-10'
               }`}
             >
               Economics
@@ -692,8 +692,8 @@ const Admin: React.FC = () => {
               onClick={() => setActiveTab('timing')}
               className={`flex-1 min-w-[120px] py-3 px-4 rounded-tile font-bold transition-all ${
                 activeTab === 'timing'
-                  ? 'bg-quip-turquoise text-white shadow-tile-sm'
-                  : 'bg-white text-quip-navy hover:bg-quip-turquoise hover:bg-opacity-10'
+                  ? 'bg-ccl-turquoise text-white shadow-tile-sm'
+                  : 'bg-white text-ccl-navy hover:bg-ccl-turquoise hover:bg-opacity-10'
               }`}
             >
               Timing
@@ -702,8 +702,8 @@ const Admin: React.FC = () => {
               onClick={() => setActiveTab('validation')}
               className={`flex-1 min-w-[120px] py-3 px-4 rounded-tile font-bold transition-all ${
                 activeTab === 'validation'
-                  ? 'bg-quip-navy text-white shadow-tile-sm'
-                  : 'bg-white text-quip-navy hover:bg-quip-navy hover:bg-opacity-10'
+                  ? 'bg-ccl-navy text-white shadow-tile-sm'
+                  : 'bg-white text-ccl-navy hover:bg-ccl-navy hover:bg-opacity-10'
               }`}
             >
               Validation
@@ -713,7 +713,7 @@ const Admin: React.FC = () => {
               className={`flex-1 min-w-[100px] py-3 px-4 rounded-tile font-bold transition-all ${
                 activeTab === 'phrase_validator'
                   ? 'bg-green-600 text-white shadow-tile-sm'
-                  : 'bg-white text-quip-navy hover:bg-green-600 hover:bg-opacity-10'
+                  : 'bg-white text-ccl-navy hover:bg-green-600 hover:bg-opacity-10'
               }`}
             >
               Phrase Tester
@@ -723,7 +723,7 @@ const Admin: React.FC = () => {
               className={`flex-1 min-w-[120px] py-3 px-4 rounded-tile font-bold transition-all ${
                 activeTab === 'ai'
                   ? 'bg-purple-600 text-white shadow-tile-sm'
-                  : 'bg-white text-quip-navy hover:bg-purple-600 hover:bg-opacity-10'
+                  : 'bg-white text-ccl-navy hover:bg-purple-600 hover:bg-opacity-10'
               }`}
             >
               AI Service
@@ -735,7 +735,7 @@ const Admin: React.FC = () => {
         {activeTab === 'economics' && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="tile-card p-6">
-              <h2 className="text-xl font-display font-bold text-quip-navy mb-4 flex items-center gap-2">
+              <h2 className="text-xl font-display font-bold text-ccl-navy mb-4 flex items-center gap-2">
                 <img src="/flipcoin.png" alt="" className="w-6 h-6" />
                 Player Balances
               </h2>
@@ -768,7 +768,7 @@ const Admin: React.FC = () => {
             </div>
 
             <div className="tile-card p-6">
-              <h2 className="text-xl font-display font-bold text-quip-navy mb-4 flex items-center gap-2">
+              <h2 className="text-xl font-display font-bold text-ccl-navy mb-4 flex items-center gap-2">
                 <TrackingIcon className="w-6 h-6" />
                 Round Costs
               </h2>
@@ -840,7 +840,7 @@ const Admin: React.FC = () => {
             </div>
 
             <div className="tile-card p-6">
-              <h2 className="text-xl font-display font-bold text-quip-navy mb-4 flex items-center gap-2">
+              <h2 className="text-xl font-display font-bold text-ccl-navy mb-4 flex items-center gap-2">
                 <VoteRoundIcon className="w-6 h-6" aria-hidden="true" />
                 Payouts & Penalties
               </h2>
@@ -888,7 +888,7 @@ const Admin: React.FC = () => {
             </div>
 
             <div className="tile-card p-6">
-              <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Game Limits</h2>
+              <h2 className="text-xl font-display font-bold text-ccl-navy mb-4">Game Limits</h2>
               <div className="space-y-2">
                 <EditableConfigField
                   label="Max Outstanding Prompts"
@@ -912,7 +912,7 @@ const Admin: React.FC = () => {
         {activeTab === 'timing' && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="tile-card p-6">
-              <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Round Durations</h2>
+              <h2 className="text-xl font-display font-bold text-ccl-navy mb-4">Round Durations</h2>
               <div className="space-y-2">
                 <EditableConfigField
                   label="Prompt Round Duration"
@@ -970,7 +970,7 @@ const Admin: React.FC = () => {
             </div>
 
             <div className="tile-card p-6">
-              <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Vote Finalization</h2>
+              <h2 className="text-xl font-display font-bold text-ccl-navy mb-4">Vote Finalization</h2>
               <div className="space-y-2">
                 <EditableConfigField
                   label="Maximum Votes"
@@ -1046,7 +1046,7 @@ const Admin: React.FC = () => {
         {activeTab === 'validation' && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="tile-card p-6">
-              <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Word Limits</h2>
+              <h2 className="text-xl font-display font-bold text-ccl-navy mb-4">Word Limits</h2>
               <div className="space-y-2">
                 <EditableConfigField
                   label="Minimum Words"
@@ -1091,7 +1091,7 @@ const Admin: React.FC = () => {
             </div>
 
             <div className="tile-card p-6">
-              <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Character Limits</h2>
+              <h2 className="text-xl font-display font-bold text-ccl-navy mb-4">Character Limits</h2>
               <div className="space-y-2">
                 <EditableConfigField
                   label="Max Phrase Length"
@@ -1141,20 +1141,20 @@ const Admin: React.FC = () => {
         {activeTab === 'phrase_validator' && (
           <div className="space-y-6">
             <div className="tile-card p-6">
-              <h2 className="text-2xl font-display font-bold text-quip-navy mb-4">Phrase Validation Tester</h2>
-              <p className="text-quip-teal mb-6">
+              <h2 className="text-2xl font-display font-bold text-ccl-navy mb-4">Phrase Validation Tester</h2>
+              <p className="text-ccl-teal mb-6">
                 Test phrase validation as if submitting to a prompt or copy round. See similarity scores and validation details.
               </p>
 
               {/* Validation Type Selector */}
               <div className="mb-6">
-                <label className="block text-sm font-semibold text-quip-navy mb-2">Validation Type</label>
+                <label className="block text-sm font-semibold text-ccl-navy mb-2">Validation Type</label>
                 <div className="flex gap-3">
                   <button
                     onClick={() => setValidationType('basic')}
                     className={`px-4 py-2 rounded-tile font-bold transition-all ${
                       validationType === 'basic'
-                        ? 'bg-quip-navy text-white'
+                        ? 'bg-ccl-navy text-white'
                         : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                     }`}
                   >
@@ -1164,7 +1164,7 @@ const Admin: React.FC = () => {
                     onClick={() => setValidationType('prompt')}
                     className={`px-4 py-2 rounded-tile font-bold transition-all ${
                       validationType === 'prompt'
-                        ? 'bg-quip-navy text-white'
+                        ? 'bg-ccl-navy text-white'
                         : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                     }`}
                   >
@@ -1174,7 +1174,7 @@ const Admin: React.FC = () => {
                     onClick={() => setValidationType('copy')}
                     className={`px-4 py-2 rounded-tile font-bold transition-all ${
                       validationType === 'copy'
-                        ? 'bg-quip-turquoise text-white'
+                        ? 'bg-ccl-turquoise text-white'
                         : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                     }`}
                   >
@@ -1185,12 +1185,12 @@ const Admin: React.FC = () => {
 
               {/* Test Phrase Input */}
               <div className="mb-4">
-                <label className="block text-sm font-semibold text-quip-navy mb-2">Test Phrase</label>
+                <label className="block text-sm font-semibold text-ccl-navy mb-2">Test Phrase</label>
                 <input
                   type="text"
                   value={testPhrase}
                   onChange={(e) => setTestPhrase(e.target.value)}
-                  className="w-full border-2 border-quip-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-quip-orange"
+                  className="w-full border-2 border-ccl-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-ccl-orange"
                   placeholder="Enter phrase to validate..."
                 />
               </div>
@@ -1198,12 +1198,12 @@ const Admin: React.FC = () => {
               {/* Prompt Text (for prompt and copy validation) */}
               {validationType !== 'basic' && (
                 <div className="mb-4">
-                  <label className="block text-sm font-semibold text-quip-navy mb-2">Prompt Text</label>
+                  <label className="block text-sm font-semibold text-ccl-navy mb-2">Prompt Text</label>
                   <input
                     type="text"
                     value={promptText}
                     onChange={(e) => setPromptText(e.target.value)}
-                    className="w-full border-2 border-quip-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-quip-orange"
+                    className="w-full border-2 border-ccl-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-ccl-orange"
                     placeholder="Enter the original prompt..."
                   />
                 </div>
@@ -1213,22 +1213,22 @@ const Admin: React.FC = () => {
               {validationType === 'copy' && (
                 <>
                   <div className="mb-4">
-                    <label className="block text-sm font-semibold text-quip-navy mb-2">Original Phrase (Required for Copy)</label>
+                    <label className="block text-sm font-semibold text-ccl-navy mb-2">Original Phrase (Required for Copy)</label>
                     <input
                       type="text"
                       value={originalPhrase}
                       onChange={(e) => setOriginalPhrase(e.target.value)}
-                      className="w-full border-2 border-quip-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-quip-orange"
+                      className="w-full border-2 border-ccl-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-ccl-orange"
                       placeholder="Enter the original prompt phrase..."
                     />
                   </div>
                   <div className="mb-4">
-                    <label className="block text-sm font-semibold text-quip-navy mb-2">Other Fake Phrase (Optional)</label>
+                    <label className="block text-sm font-semibold text-ccl-navy mb-2">Other Fake Phrase (Optional)</label>
                     <input
                       type="text"
                       value={otherCopyPhrase}
                       onChange={(e) => setOtherCopyPhrase(e.target.value)}
-                      className="w-full border-2 border-quip-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-quip-orange"
+                      className="w-full border-2 border-ccl-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-ccl-orange"
                       placeholder="Enter the other fake phrase if it exists..."
                     />
                   </div>
@@ -1248,7 +1248,7 @@ const Admin: React.FC = () => {
             {/* Validation Results */}
             {validationResult && (
               <div className="tile-card p-6">
-                <h3 className="text-xl font-display font-bold text-quip-navy mb-4">Validation Results</h3>
+                <h3 className="text-xl font-display font-bold text-ccl-navy mb-4">Validation Results</h3>
 
                 {/* Overall Status */}
                 <div className={`p-4 rounded-tile mb-6 ${validationResult.is_valid ? 'bg-green-100 border-2 border-green-500' : 'bg-red-100 border-2 border-red-500'}`}>
@@ -1276,23 +1276,23 @@ const Admin: React.FC = () => {
                 {/* Basic Details */}
                 <div className="grid grid-cols-2 gap-4 mb-6">
                   <div className="bg-gray-50 border-2 border-gray-200 rounded-tile p-4">
-                    <p className="text-sm text-quip-teal mb-1">Word Count</p>
-                    <p className="text-2xl font-bold text-quip-navy">{validationResult.word_count}</p>
-                    <p className="text-xs text-quip-teal mt-1">Limit: {(config.phrase_min_words ?? PHRASE_VALIDATION_LIMITS.minWordsDefault)}-{(config.phrase_max_words ?? PHRASE_VALIDATION_LIMITS.maxWordsDefault)}</p>
+                    <p className="text-sm text-ccl-teal mb-1">Word Count</p>
+                    <p className="text-2xl font-bold text-ccl-navy">{validationResult.word_count}</p>
+                    <p className="text-xs text-ccl-teal mt-1">Limit: {(config.phrase_min_words ?? PHRASE_VALIDATION_LIMITS.minWordsDefault)}-{(config.phrase_max_words ?? PHRASE_VALIDATION_LIMITS.maxWordsDefault)}</p>
                   </div>
                   <div className="bg-gray-50 border-2 border-gray-200 rounded-tile p-4">
-                    <p className="text-sm text-quip-teal mb-1">Character Count</p>
-                    <p className="text-2xl font-bold text-quip-navy">{validationResult.phrase_length}</p>
-                    <p className="text-xs text-quip-teal mt-1">Max: {config.phrase_max_length ?? PHRASE_VALIDATION_LIMITS.maxLengthDefault}</p>
+                    <p className="text-sm text-ccl-teal mb-1">Character Count</p>
+                    <p className="text-2xl font-bold text-ccl-navy">{validationResult.phrase_length}</p>
+                    <p className="text-xs text-ccl-teal mt-1">Max: {config.phrase_max_length ?? PHRASE_VALIDATION_LIMITS.maxLengthDefault}</p>
                   </div>
                 </div>
 
                 {/* Words */}
                 <div className="mb-6">
-                  <p className="text-sm font-semibold text-quip-navy mb-2">Words Detected</p>
+                  <p className="text-sm font-semibold text-ccl-navy mb-2">Words Detected</p>
                   <div className="flex flex-wrap gap-2">
                     {validationResult.words.map((word, idx) => (
-                      <span key={idx} className="bg-quip-navy bg-opacity-10 text-quip-navy px-3 py-1 rounded-full text-sm font-semibold">
+                      <span key={idx} className="bg-ccl-navy bg-opacity-10 text-ccl-navy px-3 py-1 rounded-full text-sm font-semibold">
                         {word}
                       </span>
                     ))}
@@ -1304,13 +1304,13 @@ const Admin: React.FC = () => {
                   validationResult.similarity_to_original !== null ||
                   validationResult.similarity_to_other_copy !== null) && (
                   <div className="space-y-4 mb-6">
-                    <h4 className="text-lg font-display font-bold text-quip-navy">Similarity Scores</h4>
+                    <h4 className="text-lg font-display font-bold text-ccl-navy">Similarity Scores</h4>
 
                     {validationResult.prompt_relevance_score !== null && (
                       <div>
                         <div className="flex justify-between text-sm mb-1">
-                          <span className="text-quip-teal">Prompt Relevance</span>
-                          <span className="font-bold text-quip-navy">{validationResult.prompt_relevance_score.toFixed(4)}</span>
+                          <span className="text-ccl-teal">Prompt Relevance</span>
+                          <span className="font-bold text-ccl-navy">{validationResult.prompt_relevance_score.toFixed(4)}</span>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-4">
                           <div
@@ -1322,7 +1322,7 @@ const Admin: React.FC = () => {
                             style={{ width: `${Math.min(validationResult.prompt_relevance_score * 100, 100)}%` }}
                           ></div>
                         </div>
-                        <p className="text-xs text-quip-teal mt-1">
+                        <p className="text-xs text-ccl-teal mt-1">
                           Threshold: {validationResult.prompt_relevance_threshold?.toFixed(2)} (minimum required)
                         </p>
                       </div>
@@ -1331,8 +1331,8 @@ const Admin: React.FC = () => {
                     {validationResult.similarity_to_original !== null && (
                       <div>
                         <div className="flex justify-between text-sm mb-1">
-                          <span className="text-quip-teal">Similarity to Original</span>
-                          <span className="font-bold text-quip-navy">{validationResult.similarity_to_original.toFixed(4)}</span>
+                          <span className="text-ccl-teal">Similarity to Original</span>
+                          <span className="font-bold text-ccl-navy">{validationResult.similarity_to_original.toFixed(4)}</span>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-4">
                           <div
@@ -1344,7 +1344,7 @@ const Admin: React.FC = () => {
                             style={{ width: `${validationResult.similarity_to_original * 100}%` }}
                           ></div>
                         </div>
-                        <p className="text-xs text-quip-teal mt-1">
+                        <p className="text-xs text-ccl-teal mt-1">
                           Threshold: {validationResult.similarity_threshold?.toFixed(2)} (maximum allowed)
                         </p>
                       </div>
@@ -1353,8 +1353,8 @@ const Admin: React.FC = () => {
                     {validationResult.similarity_to_other_copy !== null && (
                       <div>
                         <div className="flex justify-between text-sm mb-1">
-                          <span className="text-quip-teal">Similarity to Other Fake</span>
-                          <span className="font-bold text-quip-navy">{validationResult.similarity_to_other_copy.toFixed(4)}</span>
+                          <span className="text-ccl-teal">Similarity to Other Fake</span>
+                          <span className="font-bold text-ccl-navy">{validationResult.similarity_to_other_copy.toFixed(4)}</span>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-4">
                           <div
@@ -1366,7 +1366,7 @@ const Admin: React.FC = () => {
                             style={{ width: `${validationResult.similarity_to_other_copy * 100}%` }}
                           ></div>
                         </div>
-                        <p className="text-xs text-quip-teal mt-1">
+                        <p className="text-xs text-ccl-teal mt-1">
                           Threshold: {validationResult.similarity_threshold?.toFixed(2)} (maximum allowed)
                         </p>
                       </div>
@@ -1377,7 +1377,7 @@ const Admin: React.FC = () => {
                 {/* Word Conflicts */}
                 {validationResult.word_conflicts.length > 0 && (
                   <div className="mb-6">
-                    <p className="text-sm font-semibold text-quip-navy mb-2">Word Conflicts</p>
+                    <p className="text-sm font-semibold text-ccl-navy mb-2">Word Conflicts</p>
                     <div className="flex flex-wrap gap-2">
                       {validationResult.word_conflicts.map((word, idx) => (
                         <span key={idx} className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm font-semibold border-2 border-red-300">
@@ -1424,7 +1424,7 @@ const Admin: React.FC = () => {
         {activeTab === 'ai' && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="tile-card p-6">
-              <h2 className="text-xl font-display font-bold text-quip-navy mb-4">AI Provider Settings</h2>
+              <h2 className="text-xl font-display font-bold text-ccl-navy mb-4">AI Provider Settings</h2>
               <div className="space-y-2">
                 <EditableConfigField
                   label="Active Provider"
@@ -1458,7 +1458,7 @@ const Admin: React.FC = () => {
             </div>
 
             <div className="tile-card p-6">
-              <h2 className="text-xl font-display font-bold text-quip-navy mb-4">AI Backup System</h2>
+              <h2 className="text-xl font-display font-bold text-ccl-navy mb-4">AI Backup System</h2>
               <div className="space-y-2">
                 <EditableConfigField
                   label="Backup Delay"
@@ -1516,7 +1516,7 @@ const Admin: React.FC = () => {
             </div>
 
             <div className="tile-card p-6">
-              <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Stale AI Handler</h2>
+              <h2 className="text-xl font-display font-bold text-ccl-navy mb-4">Stale AI Handler</h2>
               <p className="text-sm text-gray-600 mb-4">
                 Handles abandoned content (3+ days old). Processes all stale content every 12 hours by default.
               </p>

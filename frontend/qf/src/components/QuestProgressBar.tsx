@@ -32,7 +32,7 @@ export const QuestProgressBar: React.FC<QuestProgressBarProps> = ({
       case 'milestone':
         return 'bg-gradient-to-r from-yellow-500 to-amber-500';
       default:
-        return 'bg-gradient-to-r from-quip-turquoise to-teal-500';
+        return 'bg-gradient-to-r from-ccl-turquoise to-teal-500';
     }
   };
 

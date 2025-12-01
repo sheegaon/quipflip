@@ -81,18 +81,18 @@ export const PartyGame: React.FC = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-quip-orange to-quip-turquoise flex items-center justify-center p-4 bg-pattern">
+      <div className="min-h-screen bg-gradient-to-br from-ccl-orange to-ccl-turquoise flex items-center justify-center p-4 bg-pattern">
         <div className="max-w-md w-full tile-card p-8 slide-up-enter text-center space-y-4">
           <div className="flex justify-center mb-4">
             <PartyIcon className="w-16 h-16" />
           </div>
-          <h2 className="text-2xl font-display font-bold text-quip-navy mb-2">Session Not Found</h2>
+          <h2 className="text-2xl font-display font-bold text-ccl-navy mb-2">Session Not Found</h2>
           <div className="tile-card bg-red-100 border-2 border-red-400 p-4">
             <p className="text-sm text-red-800">{error}</p>
           </div>
           <button
             onClick={() => navigate('/party')}
-            className="w-full bg-quip-navy hover:bg-quip-teal text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm text-lg"
+            className="w-full bg-ccl-navy hover:bg-ccl-teal text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm text-lg"
           >
             Back to Party Mode
           </button>
@@ -102,7 +102,7 @@ export const PartyGame: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center">
+    <div className="min-h-screen bg-ccl-cream bg-pattern flex items-center justify-center">
       <LoadingSpinner
         isLoading={true}
         message={isStarting ? 'Starting your first quip round...' : loadingMessages.starting}

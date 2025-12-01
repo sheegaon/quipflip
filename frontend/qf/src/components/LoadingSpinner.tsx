@@ -91,7 +91,7 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
     if (isOffline) return 'text-orange-500';
     if (queuedAction) return 'text-yellow-500';
     if (type === 'retry') return 'text-blue-500';
-    return 'text-quip-teal';
+    return 'text-ccl-teal';
   };
 
   const getStatusIcon = () => {
@@ -148,7 +148,7 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
         <div className="w-full max-w-xs mb-2">
           <div className="bg-gray-200 rounded-full h-2">
             <div
-              className="bg-quip-teal h-2 rounded-full transition-all duration-300"
+              className="bg-ccl-teal h-2 rounded-full transition-all duration-300"
               style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
             />
           </div>
@@ -231,7 +231,7 @@ export const SubmitLoadingSpinner: React.FC<{ message?: string; isOffline?: bool
 );
 
 export const PageLoadingSpinner: React.FC<{ message?: string }> = ({ message }) => (
-  <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center">
+  <div className="min-h-screen bg-ccl-cream bg-pattern flex items-center justify-center">
     <LoadingSpinner
       isLoading={true}
       type="initial"

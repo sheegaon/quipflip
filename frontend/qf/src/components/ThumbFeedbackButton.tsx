@@ -39,10 +39,10 @@ export const ThumbFeedbackButton: React.FC<ThumbFeedbackButtonProps> = ({
   disabled = false,
 }) => {
   const isLike = type === 'like';
-  const activeBackground = isLike ? 'bg-quip-turquoise text-white shadow-tile-sm' : 'bg-quip-orange text-quip-navy shadow-tile-sm';
+  const activeBackground = isLike ? 'bg-ccl-turquoise text-white shadow-tile-sm' : 'bg-ccl-orange text-ccl-navy shadow-tile-sm';
   const inactiveStyles = isLike
-    ? 'text-quip-turquoise/80 border-quip-turquoise/30 hover:text-quip-turquoise hover:border-quip-turquoise/60 hover:bg-quip-turquoise/10'
-    : 'text-quip-orange/80 border-quip-orange/30 hover:text-quip-orange hover:border-quip-orange/60 hover:bg-quip-orange/10';
+    ? 'text-ccl-turquoise/80 border-ccl-turquoise/30 hover:text-ccl-turquoise hover:border-ccl-turquoise/60 hover:bg-ccl-turquoise/10'
+    : 'text-ccl-orange/80 border-ccl-orange/30 hover:text-ccl-orange hover:border-ccl-orange/60 hover:bg-ccl-orange/10';
 
   return (
     <button
@@ -50,7 +50,7 @@ export const ThumbFeedbackButton: React.FC<ThumbFeedbackButtonProps> = ({
       onClick={onClick}
       disabled={disabled}
       aria-pressed={isActive}
-      className={`relative inline-flex h-9 w-9 md:h-11 md:w-11 items-center justify-center rounded-full border-2 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-quip-cream ${
+      className={`relative inline-flex h-9 w-9 md:h-11 md:w-11 items-center justify-center rounded-full border-2 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-ccl-cream ${
         isActive ? activeBackground : `bg-white/90 ${inactiveStyles}`
       } ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
       title={isLike ? 'I like this prompt' : 'I dislike this prompt'}

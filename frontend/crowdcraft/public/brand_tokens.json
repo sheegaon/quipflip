@@ -1,6 +1,6 @@
 {
   "meta": {
-    "name": "Crowdcraft Brand Tokens",
+    "name": "Crowdcraft Labs Brand Tokens",
     "version": "1.2.0",
     "updated": "2025-12-01",
     "notes": "Colors synced 1:1 with tailwind.config.js."
@@ -8,14 +8,14 @@
 
   "aliases": {
     "tailwind": {
-      "quip-turquoise": "#10B4A4",
-      "quip-teal": "#0A5852",
-      "quip-teal-light": "#E8F5F4",
-      "quip-orange": "#FF9A3D",
-      "quip-orange-deep": "#E26A00",
-      "quip-cream": "#FFF6EE",
-      "quip-warm-ivory": "#FFF9F2",
-      "quip-navy": "#0B2137"
+      "ccl-turquoise": "#10B4A4",
+      "ccl-teal": "#0A5852",
+      "ccl-teal-light": "#E8F5F4",
+      "ccl-orange": "#FF9A3D",
+      "ccl-orange-deep": "#E26A00",
+      "ccl-cream": "#FFF6EE",
+      "ccl-warm-ivory": "#FFF9F2",
+      "ccl-navy": "#0B2137"
     }
   },
 

@@ -139,7 +139,7 @@ export const UpgradeGuestAccount: React.FC<UpgradeGuestAccountProps> = ({ classN
   };
 
   return (
-    <div className={`bg-gradient-to-br from-orange-50 to-cyan-50 border-2 border-quip-orange rounded-tile mb-4 ${className}`}>
+    <div className={`bg-gradient-to-br from-orange-50 to-cyan-50 border-2 border-ccl-orange rounded-tile mb-4 ${className}`}>
       <button
         onClick={toggleExpanded}
         className="w-full px-4 py-3 text-left focus:outline-none rounded-tile"
@@ -147,11 +147,11 @@ export const UpgradeGuestAccount: React.FC<UpgradeGuestAccountProps> = ({ classN
         aria-controls="upgrade-content"
       >
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-display font-bold text-quip-navy">
+          <h2 className="text-lg font-display font-bold text-ccl-navy">
             Upgrade Your Guest Account
           </h2>
           <svg
-            className={`w-5 h-5 text-quip-navy transition-transform duration-200 ${
+            className={`w-5 h-5 text-ccl-navy transition-transform duration-200 ${
               isExpanded ? 'transform rotate-180' : ''
             }`}
             fill="none"
@@ -176,10 +176,10 @@ export const UpgradeGuestAccount: React.FC<UpgradeGuestAccountProps> = ({ classN
         }`}
       >
         <div className="px-4 pb-4">
-          <p className="text-quip-navy mb-4">
+          <p className="text-ccl-navy mb-4">
             You're currently using a guest account with limited access. Upgrade to a full account to:
           </p>
-          <ul className="list-disc list-inside text-quip-navy mb-4 space-y-1">
+          <ul className="list-disc list-inside text-ccl-navy mb-4 space-y-1">
             <li>Save your progress permanently</li>
             <li>Access your account from any device</li>
             <li>Never lose your Flipcoins and stats</li>
@@ -190,24 +190,24 @@ export const UpgradeGuestAccount: React.FC<UpgradeGuestAccountProps> = ({ classN
           <form onSubmit={handleUpgradeSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="flex flex-col">
-                <label className="text-sm font-semibold text-quip-teal mb-2">Email Address</label>
+                <label className="text-sm font-semibold text-ccl-teal mb-2">Email Address</label>
                 <input
                   type="email"
                   value={upgradeForm.email}
                   onChange={(e) => setUpgradeForm((prev) => ({ ...prev, email: e.target.value }))}
-                  className="border-2 border-quip-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-quip-orange bg-white"
+                  className="border-2 border-ccl-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-ccl-orange bg-white"
                   placeholder="your@email.com"
                   disabled={upgradeLoading}
                   required
                 />
               </div>
               <div className="flex flex-col">
-                <label className="text-sm font-semibold text-quip-teal mb-2">Password</label>
+                <label className="text-sm font-semibold text-ccl-teal mb-2">Password</label>
                 <input
                   type="password"
                   value={upgradeForm.password}
                   onChange={(e) => setUpgradeForm((prev) => ({ ...prev, password: e.target.value }))}
-                  className="border-2 border-quip-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-quip-orange bg-white"
+                  className="border-2 border-ccl-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-ccl-orange bg-white"
                   placeholder="Min 8 characters"
                   disabled={upgradeLoading}
                   minLength={8}
@@ -215,12 +215,12 @@ export const UpgradeGuestAccount: React.FC<UpgradeGuestAccountProps> = ({ classN
                 />
               </div>
               <div className="flex flex-col">
-                <label className="text-sm font-semibold text-quip-teal mb-2">Confirm Password</label>
+                <label className="text-sm font-semibold text-ccl-teal mb-2">Confirm Password</label>
                 <input
                   type="password"
                   value={upgradeForm.confirmPassword}
                   onChange={(e) => setUpgradeForm((prev) => ({ ...prev, confirmPassword: e.target.value }))}
-                  className="border-2 border-quip-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-quip-orange bg-white"
+                  className="border-2 border-ccl-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-ccl-orange bg-white"
                   placeholder="Re-enter password"
                   disabled={upgradeLoading}
                   minLength={8}
@@ -232,14 +232,14 @@ export const UpgradeGuestAccount: React.FC<UpgradeGuestAccountProps> = ({ classN
                 type="button"
                 onClick={handleLoginSubmit}
                 disabled={upgradeLoading}
-                className="bg-white border-2 border-quip-navy text-quip-navy hover:bg-quip-navy hover:text-white disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-300 font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm"
+                className="bg-white border-2 border-ccl-navy text-ccl-navy hover:bg-ccl-navy hover:text-white disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-300 font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm"
               >
                 {upgradeLoading ? 'Logging in...' : 'Login'}
               </button>
               <button
                 type="submit"
                 disabled={upgradeLoading}
-                className="bg-quip-orange hover:bg-quip-orange-deep disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm"
+                className="bg-ccl-orange hover:bg-ccl-orange-deep disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm"
               >
                 {upgradeLoading ? 'Upgrading...' : 'Upgrade Account'}
               </button>

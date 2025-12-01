@@ -57,7 +57,7 @@ export const SuccessNotification: React.FC<SuccessNotificationProps> = ({
     <div className={`fixed top-4 right-4 z-50 max-w-md transition-all duration-300 ${
       isExiting ? 'opacity-0 translate-x-full' : 'opacity-100 translate-x-0'
     }`}>
-      <div className="bg-gradient-to-r from-quip-turquoise to-teal-500 text-white rounded-lg shadow-lg overflow-hidden">
+      <div className="bg-gradient-to-r from-ccl-turquoise to-teal-500 text-white rounded-lg shadow-lg overflow-hidden">
         {/* Progress bar for auto-hide */}
         {autoHide && (
           <div className="h-1 bg-black bg-opacity-20">

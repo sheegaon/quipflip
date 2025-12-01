@@ -541,14 +541,14 @@ export const Dashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-quip-cream bg-pattern">
+    <div className="min-h-screen bg-ccl-cream bg-pattern">
       <Header />
       {showTutorialWelcome && <TutorialWelcome onStart={handleStartTutorial} onSkip={handleSkipTutorial} />}
 
       <div className="max-w-4xl mx-auto md:px-4 px-3 md:pt-6 pt-2 md:pb-5 pb-20">
         {/* Active Round Notification */}
         {activeRound?.round_id && !isRoundExpired && (
-          <div className="tile-card bg-quip-orange bg-opacity-10 border-2 border-quip-orange p-4 mb-6 slide-up-enter relative">
+          <div className="tile-card bg-ccl-orange bg-opacity-10 border-2 border-ccl-orange p-4 mb-6 slide-up-enter relative">
             {canAbandonRound && (
               <button
                 type="button"
@@ -563,10 +563,10 @@ export const Dashboard: React.FC = () => {
             )}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex-1">
-                <p className="font-display font-semibold text-quip-orange-deep">
+                <p className="font-display font-semibold text-ccl-orange-deep">
                   Active {activeRoundLabel || 'Current'} Round in Progress
                 </p>
-                <div className="mt-2 flex flex-col gap-2 text-sm text-quip-teal sm:flex-row sm:items-center">
+                <div className="mt-2 flex flex-col gap-2 text-sm text-ccl-teal sm:flex-row sm:items-center">
                   <span>Time remaining:</span>
                   <Timer
                     expiresAt={activeRound.expires_at}
@@ -580,7 +580,7 @@ export const Dashboard: React.FC = () => {
               </div>
               <button
                 onClick={handleContinueRound}
-                className="w-full sm:w-auto bg-quip-orange hover:bg-quip-orange-deep text-white font-bold py-2 px-6 rounded-tile transition-all hover:shadow-tile-sm"
+                className="w-full sm:w-auto bg-ccl-orange hover:bg-ccl-orange-deep text-white font-bold py-2 px-6 rounded-tile transition-all hover:shadow-tile-sm"
               >
                 Continue Round
               </button>
@@ -593,7 +593,7 @@ export const Dashboard: React.FC = () => {
 
         {/* Round Selection */}
         <div className="tutorial-dashboard tile-card md:p-6 p-3 shuffle-enter">
-          <h2 className="text-xl font-display font-bold mb-4 text-quip-navy">Start a Round</h2>
+          <h2 className="text-xl font-display font-bold mb-4 text-ccl-navy">Start a Round</h2>
 
           {/* Error Messages */}
           {(roundStartError || contextError) && (
@@ -617,23 +617,23 @@ export const Dashboard: React.FC = () => {
           <div className="space-y-4">
 
             {/* Quip Round */}
-            <div className="tutorial-prompt-round border-2 border-quip-navy rounded-tile p-4 bg-quip-navy bg-opacity-5 hover:bg-opacity-10 transition-all">
+            <div className="tutorial-prompt-round border-2 border-ccl-navy rounded-tile p-4 bg-ccl-navy bg-opacity-5 hover:bg-opacity-10 transition-all">
               <div className="flex justify-between items-center mb-2">
                 <div className="flex items-center gap-2">
                   <TrackingIcon className="w-8 h-8" />
-                  <h3 className="font-display font-semibold text-lg text-quip-navy">Quip Round</h3>
+                  <h3 className="font-display font-semibold text-lg text-ccl-navy">Quip Round</h3>
                 </div>
-                <span className="text-quip-orange-deep font-bold flex items-center gap-1">
+                <span className="text-ccl-orange-deep font-bold flex items-center gap-1">
                   <CurrencyDisplay amount={mode === 'practice' ? 0 : (roundAvailability?.prompt_cost || 100)} iconClassName="w-4 h-4" textClassName="font-bold" />
                 </span>
               </div>
-              <p className="text-sm text-quip-teal mb-3">
+              <p className="text-sm text-ccl-teal mb-3">
                 Write an original phrase for a creative prompt
               </p>
               <button
                 onClick={handleStartPrompt}
                 disabled={isPromptDisabled}
-                className="w-full bg-quip-navy hover:bg-quip-teal disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm"
+                className="w-full bg-ccl-navy hover:bg-ccl-teal disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm"
               >
                 {startingRound === 'prompt' ? 'Starting Round...' :
                  mode === 'practice' ? 'Practice Quip' :
@@ -647,13 +647,13 @@ export const Dashboard: React.FC = () => {
             </div>
 
             {/* Impostor Round */}
-            <div className="tutorial-copy-round border-2 border-quip-turquoise rounded-tile p-4 bg-quip-turquoise bg-opacity-5 hover:bg-opacity-10 transition-all">
+            <div className="tutorial-copy-round border-2 border-ccl-turquoise rounded-tile p-4 bg-ccl-turquoise bg-opacity-5 hover:bg-opacity-10 transition-all">
               <div className="flex justify-between items-center mb-2">
                 <div className="flex items-center gap-2">
                   <CopyRoundIcon className="w-8 h-8" aria-hidden="true" />
-                  <h3 className="font-display font-semibold text-lg text-quip-turquoise">Impostor Round</h3>
+                  <h3 className="font-display font-semibold text-lg text-ccl-turquoise">Impostor Round</h3>
                 </div>
-                <span className="flex items-center gap-2 text-quip-orange-deep font-bold">
+                <span className="flex items-center gap-2 text-ccl-orange-deep font-bold">
                   {mode === 'live' && roundAvailability?.copy_discount_active && roundAvailability?.prompts_waiting > 0 && (
                     <img
                       src="/badge_copy-discount.svg"
@@ -666,11 +666,11 @@ export const Dashboard: React.FC = () => {
                   </span>
                 </span>
               </div>
-              <p className="text-sm text-quip-teal mb-1">
+              <p className="text-sm text-ccl-teal mb-1">
                 Write a phrase that <em>could have been the original</em> and might trick voters.
               </p>
               {mode === 'live' && roundAvailability && roundAvailability.prompts_waiting > 0 && (
-                <p className="text-xs text-quip-turquoise mb-3 font-semibold">
+                <p className="text-xs text-ccl-turquoise mb-3 font-semibold">
                   {formatWaitingCount(roundAvailability.prompts_waiting)} quip
                   {roundAvailability.prompts_waiting > 1 ? 's' : ''} waiting
                 </p>
@@ -678,7 +678,7 @@ export const Dashboard: React.FC = () => {
               <button
                 onClick={handleStartCopy}
                 disabled={isCopyDisabled}
-                className="w-full bg-quip-turquoise hover:bg-quip-teal disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm"
+                className="w-full bg-ccl-turquoise hover:bg-ccl-teal disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm"
               >
                 {startingRound === 'copy' ? 'Starting Round...' :
                  mode === 'practice' ? 'Practice Faking It' :
@@ -692,21 +692,21 @@ export const Dashboard: React.FC = () => {
             </div>
 
             {/* Vote Round */}
-            <div className="tutorial-vote-round border-2 border-quip-orange rounded-tile p-4 bg-quip-orange bg-opacity-5 hover:bg-opacity-10 transition-all">
+            <div className="tutorial-vote-round border-2 border-ccl-orange rounded-tile p-4 bg-ccl-orange bg-opacity-5 hover:bg-opacity-10 transition-all">
               <div className="flex justify-between items-center mb-2">
                 <div className="flex items-center gap-2">
                   <VoteRoundIcon className="w-8 h-8" aria-hidden="true" />
-                  <h3 className="font-display font-semibold text-lg text-quip-orange-deep">Vote Round</h3>
+                  <h3 className="font-display font-semibold text-lg text-ccl-orange-deep">Vote Round</h3>
                 </div>
-                <span className="text-quip-orange-deep font-bold flex items-center gap-1">
+                <span className="text-ccl-orange-deep font-bold flex items-center gap-1">
                   <CurrencyDisplay amount={mode === 'practice' ? 0 : (roundAvailability?.vote_cost || 10)} iconClassName="w-4 h-4" textClassName="font-bold" />
                 </span>
               </div>
-              <p className="text-sm text-quip-teal mb-1">
+              <p className="text-sm text-ccl-teal mb-1">
                 Spot the original phrase from three options
               </p>
               {mode === 'live' && roundAvailability && roundAvailability.phrasesets_waiting > 0 && (
-                <p className="text-xs text-quip-orange-deep mb-3 font-semibold">
+                <p className="text-xs text-ccl-orange-deep mb-3 font-semibold">
                   {formatWaitingCount(roundAvailability.phrasesets_waiting)} quip set
                   {roundAvailability.phrasesets_waiting > 1 ? 's' : ''} waiting
                 </p>
@@ -714,7 +714,7 @@ export const Dashboard: React.FC = () => {
               <button
                 onClick={handleStartVote}
                 disabled={isVoteDisabled}
-                className="w-full bg-quip-orange hover:bg-quip-orange-deep disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm"
+                className="w-full bg-ccl-orange hover:bg-ccl-orange-deep disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm"
               >
                 {startingRound === 'vote' ? 'Starting Round...' :
                  mode === 'practice' ? 'Practice Guessing' :

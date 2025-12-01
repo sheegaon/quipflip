@@ -17,7 +17,7 @@ const PracticePrompt: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-quip-navy to-quip-teal flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-ccl-navy to-ccl-teal flex items-center justify-center p-4">
         <div className="text-xl text-white">Loading practice round...</div>
       </div>
     );
@@ -26,19 +26,19 @@ const PracticePrompt: React.FC = () => {
   if (error || !phraseset) {
     const isNoPhrasesets = error?.includes('No phrasesets available');
     return (
-      <div className="min-h-screen bg-gradient-to-br from-quip-navy to-quip-teal flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-ccl-navy to-ccl-teal flex items-center justify-center p-4">
         <div className="tile-card p-8 text-center max-w-md">
-          <h2 className="text-2xl font-bold text-quip-navy mb-4">
+          <h2 className="text-2xl font-bold text-ccl-navy mb-4">
             {isNoPhrasesets ? 'No Practice Rounds Available' : 'Error'}
           </h2>
-          <p className="text-quip-teal mb-6">
+          <p className="text-ccl-teal mb-6">
             {isNoPhrasesets
               ? 'There are no available practice rounds at the moment. Try playing some live rounds first, then come back to practice!'
               : error || 'Failed to load practice round'}
           </p>
           <button
             onClick={() => navigate('/dashboard')}
-            className="bg-quip-navy hover:bg-quip-teal text-white font-bold py-2 px-6 rounded-tile"
+            className="bg-ccl-navy hover:bg-ccl-teal text-white font-bold py-2 px-6 rounded-tile"
           >
             Return to Dashboard
           </button>

@@ -230,14 +230,14 @@ const handleClaim = async () => {
 **Update UI:**
 ```tsx
 {results.already_collected ? (
-  <p className="text-sm text-quip-teal mt-3 italic">
+  <p className="text-sm text-ccl-teal mt-3 italic">
     ✓ Payout claimed
   </p>
 ) : (
   <button
     onClick={handleClaim}
     disabled={claiming}
-    className="mt-4 w-full bg-quip-turquoise hover:bg-quip-teal disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm inline-flex items-center justify-center gap-2"
+    className="mt-4 w-full bg-ccl-turquoise hover:bg-ccl-teal disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm inline-flex items-center justify-center gap-2"
   >
     {claiming ? (
       <>
@@ -310,13 +310,13 @@ const handleClaim = async (phrasesetId: string) => {
 
 **Update summary card:**
 ```tsx
-<div className="tile-card p-4 bg-quip-turquoise bg-opacity-10">
-  <p className="text-xs uppercase text-quip-teal font-medium">Unclaimed</p>
-  <p className="text-lg font-display font-semibold text-quip-turquoise">
+<div className="tile-card p-4 bg-ccl-turquoise bg-opacity-10">
+  <p className="text-xs uppercase text-ccl-teal font-medium">Unclaimed</p>
+  <p className="text-lg font-display font-semibold text-ccl-turquoise">
     <CurrencyDisplay
       amount={phrasesetSummary.total_unclaimed_amount}
       iconClassName="w-5 h-5"
-      textClassName="text-lg font-display font-semibold text-quip-turquoise"
+      textClassName="text-lg font-display font-semibold text-ccl-turquoise"
     />
   </p>
 </div>

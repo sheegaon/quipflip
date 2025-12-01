@@ -7,7 +7,7 @@ export const PhrasesetDetails: React.FC<{
   summary: PhrasesetSummary;
 }> = () => {
   return (
-    <div className="p-6 text-center text-quip-teal">
+    <div className="p-6 text-center text-ccl-teal">
       Caption details coming soon
     </div>
   );
