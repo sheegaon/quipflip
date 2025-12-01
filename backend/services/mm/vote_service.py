@@ -292,7 +292,7 @@ class MMVoteService:
         if is_riff:
             # For riffs, base payout is applied to both the riff author and the parent separately
             author_gross = base_payout + author_writer_bonus
-            parent_gross = base_payout + parent_writer_bonus
+            parent_gross = (base_payout + parent_writer_bonus) if parent_caption else 0
             total_gross = author_gross + parent_gross
 
             # Apply wallet/vault split independently for author and parent
