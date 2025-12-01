@@ -3,8 +3,8 @@ import type { SurveyDefinition } from '../types/survey';
 
 export const betaSurveyDefinition: SurveyDefinition = {
   id: BETA_SURVEY_ID,
-  title: 'Quipflip Beta Tester Survey',
-  description: 'Help us polish Quipflip before launch by sharing your beta impressions.',
+  title: 'MemeMint Beta Tester Survey',
+  description: 'Help us polish MemeMint before launch by sharing your beta impressions.',
   requiredQuestionIds: ['q1', 'q2', 'q4', 'q5', 'q6', 'q11'],
   sections: [
     {
@@ -14,7 +14,7 @@ export const betaSurveyDefinition: SurveyDefinition = {
         {
           id: 'q1',
           type: 'scale',
-          title: 'Overall, how enjoyable was Quipflip?',
+          title: 'Overall, how enjoyable was MemeMint?',
           required: true,
           options: [
             { value: 1, label: '1️⃣ Not fun at all' },
@@ -38,7 +38,7 @@ export const betaSurveyDefinition: SurveyDefinition = {
         {
           id: 'q3',
           type: 'scale',
-          title: 'How enjoyable were Impostor rounds (fake the original) compared to Quip and Guess?',
+          title: 'How enjoyable were caption writing rounds compared to voting?',
           options: [
             { value: 1, label: '1️⃣ Much less enjoyable' },
             { value: 2, label: '2️⃣ Slightly less enjoyable' },
@@ -56,7 +56,7 @@ export const betaSurveyDefinition: SurveyDefinition = {
         {
           id: 'q4',
           type: 'scale',
-          title: 'How clear were the rules for Quip, Impostor (fake the original), and Guess?',
+          title: 'How clear were the rules for voting and writing captions?',
           required: true,
           options: [
             { value: 1, label: '1️⃣ Very confusing' },
@@ -69,7 +69,7 @@ export const betaSurveyDefinition: SurveyDefinition = {
         {
           id: 'q5',
           type: 'scale',
-          title: 'How clear was what you were supposed to do in Impostor rounds (fake the original)?',
+          title: 'How clear was what you were supposed to do in Circles?',
           required: true,
           options: [
             { value: 1, label: '1️⃣ Very confusing' },
@@ -145,7 +145,7 @@ export const betaSurveyDefinition: SurveyDefinition = {
         {
           id: 'q10',
           type: 'text',
-          title: 'What was the best part of Quipflip for you?',
+          title: 'What was the best part of MemeMint for you?',
         },
         {
           id: 'q11',

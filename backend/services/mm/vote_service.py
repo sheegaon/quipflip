@@ -199,6 +199,7 @@ class MMVoteService:
                 'caption_id': caption_id,
                 'payout_wallet': payout_info['total_wallet'],
                 'payout_vault': payout_info['total_vault'],
+                'payout_info': payout_info,
                 'first_vote_bonus': first_vote_bonus_awarded,
                 'local_crowd_favorite_bonus': local_crowd_favorite_awarded,
                 'new_wallet': player.wallet,
@@ -287,31 +288,53 @@ class MMVoteService:
                         f"{parent_caption.author_player_id} (Circle-mate of voter {voter_player_id})"
                     )
 
-        # Calculate total gross payout with bonuses (may be suppressed)
+        # Calculate payouts with Circle-aware bonuses
         if is_riff:
-            # For riffs: split base payout + each author gets their own writer bonus
-            gross_payout = base_payout + author_writer_bonus + parent_writer_bonus
+            # For riffs, base payout is applied to both the riff author and the parent separately
+            author_gross = base_payout + author_writer_bonus
+            parent_gross = (base_payout + parent_writer_bonus) if parent_caption else 0
+            total_gross = author_gross + parent_gross
+
+            # Apply wallet/vault split independently for author and parent
+            author_wallet, author_vault = self.scoring_service.calculate_wallet_vault_split(
+                author_gross,
+                caption.lifetime_earnings_gross
+            )
+
+            parent_wallet, parent_vault = (0, 0)
+            if parent_caption:
+                parent_wallet, parent_vault = self.scoring_service.calculate_wallet_vault_split(
+                    parent_gross,
+                    parent_caption.lifetime_earnings_gross
+                )
+
+            payout_breakdown = {
+                'total_gross': total_gross,
+                'author_gross': author_gross,
+                'parent_gross': parent_gross,
+                'author_wallet': author_wallet,
+                'author_vault': author_vault,
+                'parent_wallet': parent_wallet,
+                'parent_vault': parent_vault,
+                'total_wallet': author_wallet + parent_wallet,
+                'total_vault': author_vault + parent_vault,
+            }
         else:
+            # Originals retain existing logic (base + bonus, split via helper)
             gross_payout = base_payout + author_writer_bonus
 
-        # Get current lifetime earnings BEFORE this payout (for threshold calculation)
-        author_lifetime_earnings = caption.lifetime_earnings_gross
-        parent_lifetime_earnings = 0
+            payout_breakdown = self.scoring_service.calculate_caption_payout(
+                gross_payout,
+                caption.lifetime_earnings_gross,
+                0,
+                is_riff
+            )
 
-        # If riff, get parent lifetime earnings (parent_caption already loaded above)
-        if is_riff and parent_caption:
-            parent_lifetime_earnings = parent_caption.lifetime_earnings_gross
-
-        # Calculate split (per MM_GAME_RULES.md Section 6)
-        payout_breakdown = self.scoring_service.calculate_caption_payout(
-            gross_payout,
-            author_lifetime_earnings,
-            parent_lifetime_earnings,
-            is_riff
-        )
+            payout_breakdown['total_wallet'] = payout_breakdown['author_wallet']
+            payout_breakdown['total_vault'] = payout_breakdown['author_vault']
 
         # Update caption earnings tracking
-        caption.lifetime_earnings_gross += payout_breakdown['total_gross']
+        caption.lifetime_earnings_gross += payout_breakdown['author_gross']
         caption.lifetime_to_wallet += payout_breakdown['author_wallet']
         caption.lifetime_to_vault += payout_breakdown['author_vault']
 
@@ -374,8 +397,10 @@ class MMVoteService:
             'total_gross': payout_breakdown['total_gross'],
             'total_wallet': payout_breakdown['author_wallet'] + payout_breakdown['parent_wallet'],
             'total_vault': payout_breakdown['author_vault'] + payout_breakdown['parent_vault'],
+            'author_gross': payout_breakdown['author_gross'],
             'author_wallet': payout_breakdown['author_wallet'],
             'author_vault': payout_breakdown['author_vault'],
+            'parent_gross': payout_breakdown['parent_gross'],
             'parent_wallet': payout_breakdown['parent_wallet'],
             'parent_vault': payout_breakdown['parent_vault'],
         }
