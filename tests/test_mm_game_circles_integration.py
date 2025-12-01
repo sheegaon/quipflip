@@ -2,7 +2,7 @@
 
 import pytest
 from datetime import datetime, UTC
-from uuid import uuid4
+from uuid import UUID, uuid4
 from sqlalchemy import delete
 
 from backend.models.mm.player import MMPlayer
@@ -14,6 +14,7 @@ from backend.services.mm.game_service import MMGameService
 from backend.services.mm.vote_service import MMVoteService
 from backend.services.mm.circle_service import MMCircleService
 from backend.services.transaction_service import TransactionService
+from backend.utils.model_registry import GameType
 from backend.utils.exceptions import NoContentAvailableError
 from backend.database import AsyncSessionLocal
 
@@ -186,7 +187,7 @@ async def setup_circle_test_data(db_session):
 @pytest.mark.asyncio
 async def test_image_selection_prioritizes_circle_content(db_session, setup_circle_test_data):
     """Test that image selection prioritizes images with Circle-mate content."""
-    data = await setup_circle_test_data
+    data = setup_circle_test_data
     player1 = data["player1"]
     image_with_circle = data["image_with_circle"]
 
@@ -212,7 +213,7 @@ async def test_image_selection_prioritizes_circle_content(db_session, setup_circ
 @pytest.mark.asyncio
 async def test_caption_selection_circle_first_case_a(db_session, setup_circle_test_data):
     """Test caption selection Case A: >= 5 Circle captions available."""
-    data = await setup_circle_test_data
+    data = setup_circle_test_data
     player1 = data["player1"]
     image_with_circle = data["image_with_circle"]
     player2 = data["player2"]
@@ -224,6 +225,7 @@ async def test_caption_selection_circle_first_case_a(db_session, setup_circle_te
             image_id=image_with_circle.image_id,
             text=f"Extra circle caption {i}",
             author_player_id=player2.player_id,
+            kind="caption",
             status="active",
             quality_score=0.6,
             created_at=datetime.now(UTC)
@@ -250,7 +252,7 @@ async def test_caption_selection_circle_first_case_a(db_session, setup_circle_te
 @pytest.mark.asyncio
 async def test_caption_selection_circle_first_case_b(db_session, setup_circle_test_data):
     """Test caption selection Case B: 0 < k < 5 Circle captions."""
-    data = await setup_circle_test_data
+    data = setup_circle_test_data
     player1 = data["player1"]
     image_with_circle = data["image_with_circle"]
     player2 = data["player2"]
@@ -277,7 +279,7 @@ async def test_caption_selection_circle_first_case_b(db_session, setup_circle_te
 @pytest.mark.asyncio
 async def test_caption_selection_circle_first_case_c(db_session, setup_circle_test_data):
     """Test caption selection Case C: 0 Circle captions."""
-    data = await setup_circle_test_data
+    data = setup_circle_test_data
     player1 = data["player1"]
     image_global = data["image_global"]
     player3 = data["player3"]
@@ -301,13 +303,13 @@ async def test_caption_selection_circle_first_case_c(db_session, setup_circle_te
 @pytest.mark.asyncio
 async def test_system_bonus_suppressed_for_circle_mates(db_session, setup_circle_test_data):
     """Test that system bonus is suppressed when voting for Circle-mate's caption."""
-    data = await setup_circle_test_data
+    data = setup_circle_test_data
     player1 = data["player1"]
     player2 = data["player2"]
     circle_captions = data["circle_captions"]
 
     # Create a round for player1
-    transaction_service = TransactionService(db_session)
+    transaction_service = TransactionService(db_session, GameType.MM)
     game_service = MMGameService(db_session)
     vote_service = MMVoteService(db_session)
 
@@ -317,7 +319,7 @@ async def test_system_bonus_suppressed_for_circle_mates(db_session, setup_circle
     wallet_after_entry = player1.wallet  # Should be 1000 - 5 = 995
 
     # Get a Circle-mate's caption from the round
-    caption_ids_shown = [uuid4(c) if isinstance(c, str) else c for c in round_obj.caption_ids_shown]
+    caption_ids_shown = [UUID(c) if isinstance(c, str) else c for c in round_obj.caption_ids_shown]
 
     # Find a Circle caption that was shown (if any)
     circle_caption_id = None
@@ -332,9 +334,9 @@ async def test_system_bonus_suppressed_for_circle_mates(db_session, setup_circle
 
     # Submit vote for Circle-mate's caption
     result = await vote_service.submit_vote(
-        round_obj.round_id,
-        player1,
+        round_obj,
         circle_caption_id,
+        player1,
         transaction_service
     )
 
@@ -360,11 +362,11 @@ async def test_system_bonus_suppressed_for_circle_mates(db_session, setup_circle
 @pytest.mark.asyncio
 async def test_system_bonus_awarded_for_non_circle_mates(db_session, setup_circle_test_data):
     """Test that system bonus is awarded when voting for non-Circle-mate's caption."""
-    data = await setup_circle_test_data
+    data = setup_circle_test_data
     player1 = data["player1"]
     player3 = data["player3"]
 
-    transaction_service = TransactionService(db_session)
+    transaction_service = TransactionService(db_session, GameType.MM)
     game_service = MMGameService(db_session)
     vote_service = MMVoteService(db_session)
 
@@ -373,7 +375,7 @@ async def test_system_bonus_awarded_for_non_circle_mates(db_session, setup_circl
     await db_session.refresh(player1)
 
     # Get a non-Circle caption from the round
-    caption_ids_shown = [uuid4(c) if isinstance(c, str) else c for c in round_obj.caption_ids_shown]
+    caption_ids_shown = [UUID(c) if isinstance(c, str) else c for c in round_obj.caption_ids_shown]
 
     non_circle_caption_id = None
     for cid in caption_ids_shown:
@@ -387,9 +389,9 @@ async def test_system_bonus_awarded_for_non_circle_mates(db_session, setup_circl
 
     # Submit vote for non-Circle-mate's caption
     result = await vote_service.submit_vote(
-        round_obj.round_id,
-        player1,
+        round_obj,
         non_circle_caption_id,
+        player1,
         transaction_service
     )
 
@@ -485,7 +487,7 @@ async def test_circle_mate_relationship_is_bidirectional(db_session):
 @pytest.mark.asyncio
 async def test_riff_parent_bonus_suppression_independent(db_session, setup_circle_test_data):
     """Test that riff parent and author bonuses are evaluated independently."""
-    data = await setup_circle_test_data
+    data = setup_circle_test_data
     player1 = data["player1"]
     player2 = data["player2"]  # Circle-mate
     player3 = data["player3"]  # Non-Circle
@@ -520,7 +522,7 @@ async def test_riff_parent_bonus_suppression_independent(db_session, setup_circl
     db_session.add(riff_caption)
     await db_session.commit()
 
-    transaction_service = TransactionService(db_session)
+    transaction_service = TransactionService(db_session, GameType.MM)
     vote_service = MMVoteService(db_session)
 
     # Simulate payout distribution
