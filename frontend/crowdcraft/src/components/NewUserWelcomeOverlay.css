@@ -1,5 +1,5 @@
-/* Guest Welcome Overlay Styles */
-.guest-welcome-overlay {
+/* New User Welcome Overlay Styles */
+.new-user-welcome-overlay {
   position: fixed;
   top: 0;
   left: 0;
@@ -13,7 +13,7 @@
   animation: guestFadeIn 0.3s ease-in-out;
 }
 
-@keyframes guestFadeIn {
+@keyframes newUserFadeIn {
   from {
     opacity: 0;
   }
@@ -22,7 +22,7 @@
   }
 }
 
-.guest-welcome-modal {
+.new-user-welcome-modal {
   background: white;
   border-radius: 16px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
@@ -33,7 +33,7 @@
   position: relative;
 }
 
-@keyframes guestSlideUp {
+@keyframes newUserSlideUp {
   from {
     opacity: 0;
     transform: translateY(30px);
@@ -44,7 +44,7 @@
   }
 }
 
-.guest-welcome-close {
+.new-user-welcome-close {
   position: absolute;
   top: 16px;
   right: 16px;
@@ -59,21 +59,21 @@
   transition: transform 0.2s, opacity 0.2s;
 }
 
-.guest-welcome-close:hover {
+.new-user-welcome-close:hover {
   transform: scale(1.1);
   opacity: 0.8;
 }
 
-.guest-welcome-close:disabled {
+.new-user-welcome-close:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.guest-welcome-content {
+.new-user-welcome-content {
   margin-bottom: 0;
 }
 
-.guest-welcome-title {
+.new-user-welcome-title {
   font-size: 24px;
   font-weight: 700;
   color: #1a365d;
@@ -81,13 +81,13 @@
   text-align: center;
 }
 
-.guest-welcome-list {
+.new-user-welcome-list {
   list-style: none;
   padding: 0;
   margin: 0 0 20px 0;
 }
 
-.guest-welcome-list li {
+.new-user-welcome-list li {
   font-size: 16px;
   color: #4a4a4a;
   margin-bottom: 12px;
@@ -95,7 +95,7 @@
   position: relative;
 }
 
-.guest-welcome-list li::before {
+.new-user-welcome-list li::before {
   content: '•';
   position: absolute;
   left: 8px;
@@ -104,7 +104,7 @@
   font-weight: bold;
 }
 
-.guest-welcome-example {
+.new-user-welcome-example {
   font-size: 15px;
   color: white;
   background: linear-gradient(to right, #ff6f00, #26a69a);
@@ -115,13 +115,13 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-.guest-welcome-divider {
+.new-user-welcome-divider {
   border: none;
   border-top: 2px solid #e5e5e5;
   margin: 24px 0;
 }
 
-.guest-welcome-login-prompt {
+.new-user-welcome-login-prompt {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -129,29 +129,29 @@
   font-size: 16px;
 }
 
-.guest-welcome-login-prompt p {
+.new-user-welcome-login-prompt p {
   margin: 0;
 }
 
-.guest-welcome-login-link {
+.new-user-welcome-login-link {
   color: #2563eb;
   text-decoration: underline;
   cursor: pointer;
   transition: color 0.2s;
 }
 
-.guest-welcome-login-link:hover {
+.new-user-welcome-login-link:hover {
   color: #1d4ed8;
 }
 
 /* Button styles (used by GuestLogoutWarning) */
-.guest-welcome-actions {
+.new-user-welcome-actions {
   display: flex;
   gap: 16px;
   justify-content: center;
 }
 
-.guest-welcome-btn {
+.new-user-welcome-btn {
   padding: 14px 32px;
   border-radius: 8px;
   font-size: 16px;
@@ -169,39 +169,39 @@
 
 /* Mobile responsive */
 @media (max-width: 640px) {
-  .guest-welcome-modal {
+  .new-user-welcome-modal {
     padding: 32px 24px;
   }
 
-  .guest-welcome-content {
+  .new-user-welcome-content {
     margin-bottom: 16px;
   }
 
-  .guest-welcome-title {
+  .new-user-welcome-title {
     font-size: 20px;
     margin-bottom: 16px;
   }
 
-  .guest-welcome-list li {
+  .new-user-welcome-list li {
     font-size: 15px;
     margin-bottom: 10px;
   }
 
-  .guest-welcome-example {
+  .new-user-welcome-example {
     font-size: 14px;
     padding: 12px;
   }
 
-  .guest-welcome-login-prompt {
+  .new-user-welcome-login-prompt {
     font-size: 15px;
     gap: 10px;
   }
 
-  .guest-welcome-actions {
+  .new-user-welcome-actions {
     flex-direction: column-reverse;
   }
 
-  .guest-welcome-btn {
+  .new-user-welcome-btn {
     max-width: none;
     width: 100%;
   }

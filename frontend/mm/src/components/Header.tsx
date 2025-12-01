@@ -22,7 +22,7 @@ import { QuestionMarkIcon, ResultsIcon } from '@crowdcraft/components/icons/Enga
 import { hasCompletedSurvey } from '../utils/betaSurvey';
 import { apiClient } from '../api/client';
 import { componentLogger } from '../utils/logger';
-import GuestLogoutWarning from './GuestLogoutWarning';
+import GuestLogoutWarning from '@crowdcraft/components/GuestLogoutWarning.tsx';
 
 export const Header: React.FC = () => {
   const { state, actions } = useGame();
