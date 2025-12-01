@@ -1,6 +1,6 @@
 # Quipflip Data Models
 
-This guide documents the Quipflip-specific tables housed under `backend/models/qf`. These models build on the shared base tables described in [DATA_MODELS.md](DATA_MODELS.md) (players, tokens, transactions, notifications, quests, and system configuration) and add the game entities unique to Quipflip.
+This guide documents the Quipflip-specific tables housed under `backend/models/qf`. These models build on the shared base tables described in [DATA_MODELS.md](../DATA_MODELS.md) (players, tokens, transactions, notifications, quests, and system configuration) and add the game entities unique to Quipflip.
 
 ## Core Models
 

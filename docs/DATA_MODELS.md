@@ -4,8 +4,8 @@ Shared building blocks live in `backend/models/*_base.py`, while game-specific m
 
 ## Where to Look
 
-- [Quipflip Data Models](QF_DATA_MODELS.md) – complete reference for Quipflip tables and their relationships under `backend/models/qf`.
-- [Initial Reaction Data Models](IR_DATA_MODELS.md) – companion reference for IR tables under `backend/models/ir`.
+- [Quipflip Data Models](quipflip/QF_DATA_MODELS.md) – complete reference for Quipflip tables and their relationships under `backend/models/qf`.
+- [Initial Reaction Data Models](initialreaction/IR_DATA_MODELS.md) – companion reference for IR tables under `backend/models/ir`.
 
 ## Core Base Models
 

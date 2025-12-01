@@ -1,6 +1,6 @@
 # Meme Mint (MM) API Documentation
 
-Meme Mint endpoints live under the `/mm` prefix and are implemented in `backend/routers/mm`. Shared authentication, cookie behavior, and health/status probes are documented in [API.md](API.md); this guide focuses on Meme Mint gameplay and account endpoints.
+Meme Mint endpoints live under the `/mm` prefix and are implemented in `backend/routers/mm`. Shared authentication, cookie behavior, and health/status probes are documented in [API.md](../API.md); this guide focuses on Meme Mint gameplay and account endpoints.
 
 ## Base URL
 
@@ -14,7 +14,7 @@ Game-specific schemas are defined in [MM_DATA_MODELS.md](MM_DATA_MODELS.md). Pla
 
 ## Response Format
 
-Meme Mint uses the same success and error envelope described in [API.md](API.md). Error payloads surface via the `detail` field with appropriate HTTP status codes (400 for business rule violations such as insufficient balance, 404 when resources are missing, etc.).
+Meme Mint uses the same success and error envelope described in [API.md](../API.md). Error payloads surface via the `detail` field with appropriate HTTP status codes (400 for business rule violations such as insufficient balance, 404 when resources are missing, etc.).
 
 ---
 

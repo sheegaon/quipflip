@@ -71,11 +71,7 @@ class PhraseValidator:
         """Get set of common words allowed to be reused."""
         return self.COMMON_WORDS.copy()
 
-    async def _get_cached_embedding(
-            self,
-            phrase: str,
-            session: AsyncSession,
-    ) -> list[float] | None:
+    async def _get_cached_embedding(self, phrase: str, session: AsyncSession) -> list[float] | None:
         """Return a cached embedding for the phrase if it exists."""
 
         normalized_phrase = phrase.strip().lower()
@@ -91,12 +87,7 @@ class PhraseValidator:
 
         return None
 
-    async def _store_embedding(
-            self,
-            phrase: str,
-            embedding: list[float],
-            session: AsyncSession,
-    ) -> None:
+    async def _store_embedding(self, phrase: str, embedding: list[float], session: AsyncSession) -> None:
         """Persist a newly generated embedding for reuse."""
 
         record = PhraseEmbedding(
@@ -152,26 +143,20 @@ class PhraseValidator:
             logger.error(f"Unexpected error calculating similarity: {exc}")
             return 0.0
 
-    async def _get_or_create_embedding(
-            self,
-            phrase_normalized: str,
-    ) -> list[float]:
+    async def _get_or_create_embedding(self, phrase: str) -> list[float]:
         """Return a cached embedding or generate and store a new one."""
 
         async with AsyncSessionLocal() as session:
-            embedding = await self._get_cached_embedding(phrase_normalized, session)
+            embedding = await self._get_cached_embedding(phrase, session)
 
             if embedding is None:
-                logger.info(
-                    f"Requesting OpenAI embedding for phrase '{phrase_normalized}' "
-                    f"using model {self.settings.embedding_model}"
-                )
+                logger.info(f"Requesting OpenAI embedding for '{phrase=}' using model {self.settings.embedding_model}")
                 embedding = await generate_embedding(
-                    phrase_normalized,
+                    phrase,
                     model=self.settings.embedding_model,
                     timeout=self.settings.ai_timeout_seconds,
                 )
-                await self._store_embedding(phrase_normalized, embedding, session)
+                await self._store_embedding(phrase, embedding, session)
 
             return embedding
 
@@ -267,7 +252,8 @@ class PhraseValidator:
         while True:
             original_word = stemmed_word
             for ending in endings:
-                if stemmed_word.endswith(ending) and len(stemmed_word) > len(ending) + 2 and stemmed_word[:-len(ending)] in self.dictionary:
+                if (stemmed_word.endswith(ending) and len(stemmed_word) > len(ending) + 2 and
+                        stemmed_word[:-len(ending)] in self.dictionary):
                     stemmed_word = stemmed_word[:-len(ending)]
                     break  # Restart the inner loop with the new stem
             if stemmed_word == original_word:
@@ -405,9 +391,7 @@ class PhraseValidator:
 
         return True, ""
 
-    def validate_backronym_words(
-            self, words: list[str], target_letter_count: int
-    ) -> tuple[bool, str]:
+    def validate_backronym_words(self, words: list[str], target_letter_count: int) -> tuple[bool, str]:
         """
         Validate backronym words for Initial Reaction game.
 
@@ -453,6 +437,7 @@ class PhraseValidator:
 
         logger.info(f"Backronym validated: {' '.join(words)}")
         return True, ""
+
 
 # Singleton instance
 _phrase_validator: PhraseValidator | None = None

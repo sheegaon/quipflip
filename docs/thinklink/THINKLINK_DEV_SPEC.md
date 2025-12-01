@@ -1,4 +1,4 @@
-# **Echo Chamber — Game Rules (Developer Spec)**
+# **ThinkLink — Game Rules (Developer Spec)**
 
 *Complete & Updated*
 
@@ -8,7 +8,7 @@
 
 # **1. Overview**
 
-Echo Chamber is a semantic-matching game where players answer a prompt (e.g., *“Name something people forget at home”*).
+ThinkLink is a semantic-matching game where players answer a prompt (e.g., *“Name something people forget at home”*).
 The objective is to guess answers that **semantically match** the crowd’s prior answers.
 
 Key mechanics:
@@ -179,7 +179,7 @@ When reducing active answers to K=1000:
 
 # **6. Weighted Coverage (“Crowd Mass”)**
 
-Echo Chamber rewards matching not just many clusters, but **popular clusters**.
+ThinkLink rewards matching not just many clusters, but **popular clusters**.
 
 ## 6.1 Per-answer weights
 
@@ -297,7 +297,7 @@ This ensures a robust initial semantic landscape.
 
 # **11. Data Model (Summary)**
 
-## `echo_answer`
+## `tl_answer`
 
 * `answer_id`
 * `prompt_id`
@@ -310,7 +310,7 @@ This ensures a robust initial semantic landscape.
 * `is_active`
 * `created_at`
 
-## `echo_cluster`
+## `tl_cluster`
 
 * `cluster_id`
 * `prompt_id`
@@ -319,7 +319,7 @@ This ensures a robust initial semantic landscape.
 * `example_answer_id` (representative)
 * (`cluster_weight` is derived)
 
-## `echo_round`
+## `tl_round`
 
 * `round_id`
 * `player_id`

@@ -1,4 +1,4 @@
-# **Echo Chamber — Quick Facts (Developer Edition)**
+# **ThinkLink — Quick Facts (Developer Edition)**
 
 ### **Core Idea**
 

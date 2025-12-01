@@ -66,7 +66,7 @@ Frontend runs at **http://localhost:5173**
 
 **For Game Design:**
 - **[README.md](README.md)** - This file (complete game rules)
-- **[GAME_RULES.md](docs/QF_GAME_RULES.md)** - Detailed game mechanics and examples
+- **[GAME_RULES.md](docs/quipflip/QF_GAME_RULES.md)** - Detailed game mechanics and examples
 
 ## 🛠️ Tech Stack
 

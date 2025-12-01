@@ -1,8 +1,8 @@
-# **Echo Chamber — Game Rules**
+# **ThinkLink — Game Rules**
 
 # **1. Core Concept**
 
-Echo Chamber is a semantic-guessing game.
+ThinkLink is a semantic-guessing game.
 Players receive a **prompt** (e.g., “Name something people forget at home”) and submit short phrases.
 The goal is to submit answers that **semantically match** prior players’ answers.
 
@@ -43,7 +43,7 @@ Each prompt is initially seeded with AI-generated answers:
 
 # **3. Phrase Validation**
 
-Echo Chamber **reuses the Quipflip phrase validator**.
+ThinkLink **reuses the Quipflip phrase validator**.
 Every submission must satisfy:
 
 1. **Dictionary + Structure**
@@ -281,7 +281,7 @@ The round terminates when:
 
 # **11. Summary**
 
-Echo Chamber is a semantic-guessing game built on four pillars:
+ThinkLink is a semantic-guessing game built on four pillars:
 
 1. **Quipflip-grade phrase validation**
 2. **Semantic matching** against up to 1000 active answers

@@ -136,7 +136,7 @@ Guest accounts ("play without registration") face several restrictions designed 
 - Prompt submissions are additionally checked against the prompt text, and copy submissions must differ from both the original and any existing copy; both checks share the same validator logic.
 
 ## AI Assistance and Automation
-The [AI Service guide](AI_SERVICE.md) details how automated players stay aligned with live game rules. The system provides two complementary AI systems:
+The [AI Service guide](../AI_SERVICE.md) details how automated players stay aligned with live game rules. The system provides two complementary AI systems:
 
 ### Backup AI (Recent Content)
 - Provider selection honors `ai_provider`, `openai_api_key`, and `gemini_api_key`, choosing `ai_openai_model` or `ai_gemini_model` and enforcing `ai_timeout_seconds` for each request.
