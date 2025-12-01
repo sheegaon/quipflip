@@ -104,6 +104,18 @@ export const VoteRound: React.FC = () => {
     }
   };
 
+  const handleAbandonRound = async () => {
+    if (round) {
+      try {
+        await actions.abandonRound(round.round_id);
+      } catch (err) {
+        console.warn('Failed to abandon vote round', err);
+      }
+    }
+
+    navigate('/dashboard');
+  };
+
   if (!round) {
     return (
       <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center">
@@ -114,7 +126,18 @@ export const VoteRound: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center p-4">
-      <div className="max-w-5xl w-full tile-card p-6 md:p-10">
+      <div className="max-w-5xl w-full tile-card p-6 md:p-10 relative">
+        <button
+          type="button"
+          onClick={handleAbandonRound}
+          className="absolute top-4 right-4 text-quip-navy hover:opacity-80 transition transform hover:scale-105"
+          aria-label="Return to dashboard"
+        >
+          <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="10" fill="currentColor" opacity="0.08" />
+            <path d="M8 8L16 16M16 8L8 16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+        </button>
         <div className="flex flex-col md:flex-row gap-6 md:items-start">
           <div className="w-full md:w-1/2">
             <img
