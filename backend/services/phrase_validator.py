@@ -1,4 +1,5 @@
 """Phrase validation service with similarity checking."""
+import asyncio
 import os
 import re
 import math
@@ -136,24 +137,10 @@ class PhraseValidator:
             return 0.0
 
         try:
-            async with AsyncSessionLocal() as session:
-                embedding1 = await self._get_cached_embedding(phrase1_normalized, session)
-                if embedding1 is None:
-                    embedding1 = await generate_embedding(
-                        phrase1_normalized,
-                        model=self.settings.embedding_model,
-                        timeout=self.settings.ai_timeout_seconds,
-                    )
-                    await self._store_embedding(phrase1_normalized, embedding1, session)
-
-                embedding2 = await self._get_cached_embedding(phrase2_normalized, session)
-                if embedding2 is None:
-                    embedding2 = await generate_embedding(
-                        phrase2_normalized,
-                        model=self.settings.embedding_model,
-                        timeout=self.settings.ai_timeout_seconds,
-                    )
-                    await self._store_embedding(phrase2_normalized, embedding2, session)
+            embedding1, embedding2 = await asyncio.gather(
+                self._get_or_create_embedding(phrase1_normalized),
+                self._get_or_create_embedding(phrase2_normalized),
+            )
 
             similarity = self._cosine_similarity(embedding1, embedding2)
             logger.debug(
@@ -169,6 +156,25 @@ class PhraseValidator:
         except Exception as exc:
             logger.error("Unexpected error calculating similarity: %s", exc)
             return 0.0
+
+    async def _get_or_create_embedding(
+            self,
+            phrase_normalized: str,
+    ) -> list[float]:
+        """Return a cached embedding or generate and store a new one."""
+
+        async with AsyncSessionLocal() as session:
+            embedding = await self._get_cached_embedding(phrase_normalized, session)
+
+            if embedding is None:
+                embedding = await generate_embedding(
+                    phrase_normalized,
+                    model=self.settings.embedding_model,
+                    timeout=self.settings.ai_timeout_seconds,
+                )
+                await self._store_embedding(phrase_normalized, embedding, session)
+
+            return embedding
 
     def validate(self, phrase: str) -> tuple[bool, str]:
         """
