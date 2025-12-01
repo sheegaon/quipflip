@@ -1,6 +1,7 @@
 """Service for managing MemeMint Circles (social groups)."""
 from datetime import datetime, timezone
 from typing import Optional
+from uuid import UUID
 from sqlalchemy import select, func, and_, or_, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -165,13 +166,13 @@ class MMCircleService:
     @staticmethod
     async def get_circle_mates(
         session: AsyncSession,
-        player_id: str
-    ) -> set[str]:
+        player_id: UUID
+    ) -> set[UUID]:
         """
         Get all player IDs who share ANY Circle with the given player.
 
         This is a critical method for Circle prioritization in game logic.
-        Returns a set of player_id strings (Circle-mates) that can be used
+        Returns a set of player_id UUIDs (Circle-mates) that can be used
         for efficient membership checking.
 
         Args:
@@ -179,11 +180,11 @@ class MMCircleService:
             player_id: Player ID to find circle-mates for
 
         Returns:
-            Set of player_id strings who are circle-mates
+            Set of player_id UUIDs who are circle-mates
 
         Example:
-            >>> circle_mates = await get_circle_mates(session, "player-123")
-            >>> if "player-456" in circle_mates:
+            >>> circle_mates = await get_circle_mates(session, player_uuid)
+            >>> if other_player_uuid in circle_mates:
             >>>     print("They're circle-mates!")
         """
         # Get all circles the player belongs to
@@ -205,7 +206,7 @@ class MMCircleService:
             .distinct()
         )
         result = await session.execute(circle_mates_query)
-        return {str(row[0]) for row in result.all()}
+        return set(result.scalars().all())
 
     @staticmethod
     async def is_circle_mate(
