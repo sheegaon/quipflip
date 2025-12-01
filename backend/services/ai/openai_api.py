@@ -13,7 +13,7 @@ except ImportError:
     AsyncOpenAI = None  # type: ignore
     OpenAIError = Exception  # type: ignore
 
-__all__ = ["OpenAIError", "generate_response"]
+__all__ = ["OpenAIError", "generate_response", "generate_embedding"]
 
 settings = get_settings()
 
@@ -81,6 +81,46 @@ async def generate_response(
             raise OpenAIAPIError("OpenAI API returned only whitespace")
 
         return cleaned_phrase
+
+    except OpenAIError as exc:
+        raise OpenAIAPIError(f"OpenAI API error: {exc}") from exc
+    except Exception as exc:
+        if isinstance(exc, OpenAIAPIError):
+            raise
+        raise OpenAIAPIError(f"Failed to contact OpenAI API: {exc}") from exc
+
+
+async def generate_embedding(
+        input_text: str,
+        model: str | None = None,
+        timeout: int = 30,
+) -> list[float]:
+    """Generate a sentence embedding using the OpenAI API."""
+
+    if AsyncOpenAI is None:
+        raise OpenAIAPIError("openai package not installed. Install with: pip install openai")
+
+    model_name = model or settings.embedding_model
+
+    if not settings.openai_api_key:
+        raise OpenAIAPIError("OPENAI_API_KEY environment variable must be set")
+
+    try:
+        client = AsyncOpenAI(api_key=settings.openai_api_key, timeout=timeout)
+
+        response = await client.embeddings.create(
+            model=model_name,
+            input=[input_text],
+        )
+
+        if not response.data:
+            raise OpenAIAPIError("OpenAI API returned no embedding data")
+
+        embedding = response.data[0].embedding
+        if not embedding:
+            raise OpenAIAPIError("OpenAI API returned empty embedding vector")
+
+        return embedding
 
     except OpenAIError as exc:
         raise OpenAIAPIError(f"OpenAI API error: {exc}") from exc

@@ -1,11 +1,19 @@
 """Phrase validation service with similarity checking."""
 import os
 import re
+import math
 import logging
 from difflib import SequenceMatcher
 from typing import Set
 
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from backend.config import get_settings
+from backend.database import AsyncSessionLocal
+from backend.models.phrase_embedding import PhraseEmbedding
+from backend.services.ai.openai_api import OpenAIAPIError, generate_embedding
 
 logger = logging.getLogger(__name__)
 
@@ -56,50 +64,111 @@ class PhraseValidator:
         self.dictionary: Set[str] = _load_dictionary()
         logger.info(f"Loaded dictionary with {len(self.dictionary)} words")
 
-        logger.info(f"Loading text embedding model: {self.settings.embedding_model}")
-        self._similarity_model = None  # TODO: Use OpenAI API
-        self._similarity_calculator = None
-        logger.info("Sentence transformer model loaded successfully")
+        logger.info(f"Using OpenAI embedding model: {self.settings.embedding_model}")
 
     def common_words(self) -> Set[str]:
         """Get set of common words allowed to be reused."""
         return self.COMMON_WORDS.copy()
 
-    def calculate_similarity(self, phrase1: str, phrase2: str) -> float:
-        """
-        Calculate similarity between two phrases using configured method.
+    async def _get_cached_embedding(
+            self,
+            phrase: str,
+            session: AsyncSession,
+    ) -> list[float] | None:
+        """Return a cached embedding for the phrase if it exists."""
 
-        Args:
-            phrase1: First phrase
-            phrase2: Second phrase
+        normalized_phrase = phrase.strip().lower()
+        stmt = select(PhraseEmbedding).where(
+            PhraseEmbedding.phrase == normalized_phrase,
+            PhraseEmbedding.model == self.settings.embedding_model,
+        )
 
-        Returns:
-            Similarity score between 0.0 and 1.0
-        """
-        if self._similarity_model is not None:
-            # Use sentence transformers
-            try:
-                # Normalize phrases
-                phrase1 = phrase1.strip().lower()
-                phrase2 = phrase2.strip().lower()
+        result = await session.execute(stmt)
+        cached = result.scalar_one_or_none()
+        if cached:
+            return cached.embedding
 
-                # Get embeddings TODO: Use OpenAI API
-                embeddings = self._similarity_model.encode([phrase1, phrase2])
+        return None
 
-                # Calculate cosine similarity
-                from sklearn.metrics.pairwise import cosine_similarity
-                similarity = cosine_similarity([embeddings[0]], [embeddings[1]])[0][0]
+    async def _store_embedding(
+            self,
+            phrase: str,
+            embedding: list[float],
+            session: AsyncSession,
+    ) -> None:
+        """Persist a newly generated embedding for reuse."""
 
-                logger.debug(f"Similarity between '{phrase1}' and '{phrase2}': {similarity:.4f}")
-                return float(similarity)
-            except Exception as e:
-                logger.error(f"Error calculating similarity with sentence transformers: {e}")
-                # If similarity check fails, be conservative and allow the phrase
-                logger.warning("Sentence transformer similarity check failed, allowing phrase")
-                return 0.0
+        record = PhraseEmbedding(
+            phrase=phrase.strip().lower(),
+            model=self.settings.embedding_model,
+            provider="openai",
+            embedding=embedding,
+        )
+
+        session.add(record)
+        try:
+            await session.commit()
+        except IntegrityError:
+            await session.rollback()
         else:
-            # Use lightweight similarity calculator
-            return self._similarity_calculator.calculate_similarity(phrase1, phrase2)
+            await session.refresh(record)
+
+    @staticmethod
+    def _cosine_similarity(vector1: list[float], vector2: list[float]) -> float:
+        """Compute cosine similarity between two vectors."""
+
+        dot_product = sum(a * b for a, b in zip(vector1, vector2))
+        norm1 = math.sqrt(sum(a * a for a in vector1))
+        norm2 = math.sqrt(sum(b * b for b in vector2))
+
+        if norm1 == 0 or norm2 == 0:
+            return 0.0
+
+        return dot_product / (norm1 * norm2)
+
+    async def calculate_similarity(self, phrase1: str, phrase2: str) -> float:
+        """Calculate similarity between two phrases using OpenAI embeddings with caching."""
+
+        phrase1_normalized = phrase1.strip().lower()
+        phrase2_normalized = phrase2.strip().lower()
+
+        if not phrase1_normalized or not phrase2_normalized:
+            return 0.0
+
+        try:
+            async with AsyncSessionLocal() as session:
+                embedding1 = await self._get_cached_embedding(phrase1_normalized, session)
+                if embedding1 is None:
+                    embedding1 = await generate_embedding(
+                        phrase1_normalized,
+                        model=self.settings.embedding_model,
+                        timeout=self.settings.ai_timeout_seconds,
+                    )
+                    await self._store_embedding(phrase1_normalized, embedding1, session)
+
+                embedding2 = await self._get_cached_embedding(phrase2_normalized, session)
+                if embedding2 is None:
+                    embedding2 = await generate_embedding(
+                        phrase2_normalized,
+                        model=self.settings.embedding_model,
+                        timeout=self.settings.ai_timeout_seconds,
+                    )
+                    await self._store_embedding(phrase2_normalized, embedding2, session)
+
+            similarity = self._cosine_similarity(embedding1, embedding2)
+            logger.debug(
+                "Similarity between '%s' and '%s': %.4f",
+                phrase1_normalized,
+                phrase2_normalized,
+                similarity,
+            )
+            return float(similarity)
+        except OpenAIAPIError as exc:
+            logger.error("OpenAI similarity check failed: %s", exc)
+            return 0.0
+        except Exception as exc:
+            logger.error("Unexpected error calculating similarity: %s", exc)
+            return 0.0
 
     def validate(self, phrase: str) -> tuple[bool, str]:
         """
@@ -233,7 +302,7 @@ class PhraseValidator:
 
         return True, ""
 
-    def validate_prompt_phrase(self, phrase: str, prompt_text: str | None) -> tuple[bool, str]:
+    async def validate_prompt_phrase(self, phrase: str, prompt_text: str | None) -> tuple[bool, str]:
         """Validate a prompt submission against the originating prompt text."""
 
         is_valid, error = self.validate(phrase)
@@ -247,8 +316,8 @@ class PhraseValidator:
 
         return True, ""
 
-    def validate_copy(self, phrase: str, original: str, other_copy: str | None = None, prompt: str | None = None
-                      ) -> tuple[bool, str]:
+    async def validate_copy(self, phrase: str, original: str, other_copy: str | None = None, prompt: str | None = None
+                            ) -> tuple[bool, str]:
         """
         Validate a copy phrase (includes duplicate and similarity checks).
 
@@ -293,7 +362,7 @@ class PhraseValidator:
 
         # Check similarity to original phrase
         try:
-            similarity_to_original = self.calculate_similarity(phrase, original)
+            similarity_to_original = await self.calculate_similarity(phrase, original)
 
             if similarity_to_original >= self.settings.similarity_threshold:
                 return False, (
@@ -309,7 +378,7 @@ class PhraseValidator:
         # Check similarity to other copy if it exists
         if other_copy:
             try:
-                similarity_to_other = self.calculate_similarity(phrase, other_copy)
+                similarity_to_other = await self.calculate_similarity(phrase, other_copy)
 
                 if similarity_to_other >= self.settings.similarity_threshold:
                     return False, (
