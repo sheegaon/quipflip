@@ -68,6 +68,21 @@ interface QuestionMarkIconProps extends SimpleIconProps {
   backgroundOpacity?: number;
 }
 
+export const ShareIcon: React.FC<SimpleIconProps> = ({ className = 'h-5 w-5', ...props }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 50 50"
+    fill="currentColor"
+    className={className}
+    aria-hidden="true"
+    {...props}
+  >
+    <path d="M25 5.5c.3 0 .6.1.8.3l7 6.5a1.2 1.2 0 01-1.6 1.7L26 9.4V25a1 1 0 11-2 0V9.4l-5.2 4.6a1.2 1.2 0 01-1.6-1.8l7-6.4c.2-.2.5-.3.8-.3z" />
+    <path d="M33 18c2.8 0 5 2.2 5 5v13c0 2.8-2.2 5-5 5H17c-2.8 0-5-2.2-5-5V23c0-2.8 2.2-5 5-5h4.4a1 1 0 010 2H17a3 3 0 00-3 3v13a3 3 0 003 3h16a3 3 0 003-3V23a3 3 0 00-3-3h-4.4a1 1 0 110-2H33z" />
+    <path d="M31.5 16.5a1 1 0 10-1.9-.6l-.3 1.1a1 1 0 001.9.6l.3-1.1zM19.5 16a1 1 0 11-1.9-.6l.3-1a1 1 0 011.9.6l-.3 1z" />
+  </svg>
+);
+
 export const QuestionMarkIcon: React.FC<QuestionMarkIconProps> = ({
   className = 'h-5 w-5',
   primaryColor = '#26A69A',

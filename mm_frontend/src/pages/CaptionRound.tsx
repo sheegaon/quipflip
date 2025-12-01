@@ -7,6 +7,7 @@ import type {
   VoteResult,
 } from '../api/types';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
+import { ShareIcon } from '../components/icons/EngagementIcons';
 
 interface CaptionLocationState {
   round?: VoteRoundState;
@@ -27,6 +28,8 @@ export const CaptionRound: React.FC = () => {
   const [isStartingRound, setIsStartingRound] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [shareStatus, setShareStatus] = useState<string | null>(null);
+  const [isSharing, setIsSharing] = useState(false);
 
   // Get caption cost from round availability
   const freeCaptionAvailable = (state.roundAvailability?.free_captions_remaining ?? 0) > 0;
@@ -65,6 +68,7 @@ export const CaptionRound: React.FC = () => {
     setIsSubmitting(true);
     setError(null);
     setSuccessMessage(null);
+    setShareStatus(null);
 
     try {
       const payload = {
@@ -84,6 +88,82 @@ export const CaptionRound: React.FC = () => {
     } finally {
       setIsSubmitting(false);
       console.log('🔓 isSubmitting set to false');
+    }
+  };
+
+  const handleShare = async () => {
+    if (!round || !captionText.trim()) {
+      return;
+    }
+
+    setIsSharing(true);
+    setShareStatus(null);
+
+    try {
+      const caption = captionText.trim();
+      const homeUrl = `${window.location.origin}/`;
+
+      const response = await fetch(round.image_url);
+      if (!response.ok) {
+        throw new Error('Unable to retrieve image for sharing');
+      }
+      const blob = await response.blob();
+      const mimeType = blob.type || 'image/jpeg';
+      const extension = mimeType.split('/')[1] || 'jpeg';
+      const file = new File([blob], `mememint-caption.${extension}`, { type: mimeType });
+
+      const shareText = [
+        caption,
+        '',
+        round.attribution_text ? `Image: ${round.attribution_text}` : null,
+        `Image link: ${round.image_url}`,
+        `Play MemeMint: ${homeUrl}`,
+      ]
+        .filter(Boolean)
+        .join('\n');
+
+      const clipboardText = [
+        caption,
+        '',
+        round.attribution_text ? `Image: ${round.attribution_text}` : null,
+        `Image link: ${round.image_url}`,
+        `Play MemeMint: ${homeUrl}`,
+      ]
+        .filter(Boolean)
+        .join('\n');
+
+      const shareData: ShareData = {
+        title: 'My MemeMint caption',
+        text: shareText,
+        url: homeUrl,
+      };
+
+      const canShareFile = navigator.canShare?.({ files: [file] }) ?? false;
+      if (canShareFile) {
+        shareData.files = [file];
+      }
+
+      if (navigator.share) {
+        await navigator.share(shareData);
+        setShareStatus('Opened your sharing options.');
+      } else if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(clipboardText);
+        setShareStatus('Copied caption and image link for sharing.');
+      } else {
+        setShareStatus('Sharing not supported in this browser.');
+      }
+    } catch (err) {
+      // Avoid showing an error when the user intentionally cancels the native share dialog
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        console.info('Share cancelled by user');
+        setShareStatus(null);
+        return;
+      }
+
+      console.error('Failed to share caption', err);
+      setShareStatus('Unable to share right now. Try again in a moment.');
+    } finally {
+      setIsSharing(false);
     }
   };
 
@@ -171,14 +251,25 @@ export const CaptionRound: React.FC = () => {
               </div>
               <div className="flex gap-3">
                 {hasSubmitted ? (
-                  <button
-                    onClick={handlePlayAgain}
-                    disabled={isStartingRound}
-                    className="border-2 border-quip-navy text-quip-navy font-semibold px-4 py-2 rounded-tile hover:bg-quip-navy hover:text-white transition-colors flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
-                  >
-                    <span>Play again</span>
-                    <CurrencyDisplay amount={voteCost} iconClassName="w-4 h-4" textClassName="font-semibold" />
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleShare}
+                      disabled={isSharing}
+                      className="h-12 w-12 inline-flex items-center justify-center rounded-full bg-quip-orange text-white shadow-tile-sm transition hover:bg-quip-orange-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-quip-orange disabled:opacity-60 disabled:cursor-not-allowed"
+                      aria-label="Share caption"
+                    >
+                      <ShareIcon className="h-6 w-6" />
+                    </button>
+                    <button
+                      onClick={handlePlayAgain}
+                      disabled={isStartingRound}
+                      className="border-2 border-quip-navy text-quip-navy font-semibold px-4 py-2 rounded-tile hover:bg-quip-navy hover:text-white transition-colors flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      <span>Play again</span>
+                      <CurrencyDisplay amount={voteCost} iconClassName="w-4 h-4" textClassName="font-semibold" />
+                    </button>
+                  </>
                 ) : (
                   <button
                     onClick={handleSubmit}
@@ -191,6 +282,12 @@ export const CaptionRound: React.FC = () => {
                 )}
               </div>
             </div>
+
+            {shareStatus && (
+              <div className="text-sm text-quip-teal" role="status">
+                {shareStatus}
+              </div>
+            )}
           </div>
         </div>
       </div>
