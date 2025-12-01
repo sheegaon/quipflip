@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
-import { GUEST_CREDENTIALS_KEY } from '../utils/storageKeys';
+import { GUEST_CREDENTIALS_KEY } from '@crowdcraft/utils/storageKeys.ts';
 import { LeaderboardIcon } from '@crowdcraft/components/icons/NavigationIcons.tsx';
-import './NewUserWelcomeOverlay.css';
+import '@crowdcraft/components/NewUserWelcomeOverlay.css';
 
 const NewUserWelcomeOverlay: React.FC = () => {
   const { state, actions } = useGame();

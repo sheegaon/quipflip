@@ -6,10 +6,10 @@ import apiClient, { extractErrorMessage } from '../api/client';
 import { TrackingIcon } from '@crowdcraft/components/icons/NavigationIcons.tsx';
 import { VoteRoundIcon } from '@crowdcraft/components/icons/RoundIcons.tsx';
 import { EditableConfigField } from '../components/EditableConfigField';
-import { adminLogger } from '../utils/logger';
+import { adminLogger } from '@crowdcraft/utils/logger.ts';
 import type { AdminPlayerSummary } from '../api/types';
-import { formatDateTimeInUserZone } from '../utils/datetime';
-import { PHRASE_VALIDATION_BOUNDS, PHRASE_VALIDATION_LIMITS } from '../config/phraseValidation';
+import { formatDateTimeInUserZone } from '@crowdcraft/utils/datetime.ts';
+import { PHRASE_VALIDATION_BOUNDS, PHRASE_VALIDATION_LIMITS } from '@crowdcraft/config/phraseValidation.ts';
 
 const getErrorDetail = (error: unknown): string | undefined => {
   if (!error || typeof error !== 'object') {

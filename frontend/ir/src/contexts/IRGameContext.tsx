@@ -22,7 +22,7 @@ import {
   setStoredUsername,
   clearStoredUsername
 } from '../services/sessionDetection';
-import { createLogger } from '../utils/logger';
+import { createLogger } from '@crowdcraft/utils/logger.ts';
 
 const gameContextLogger = createLogger('IRGameContext');
 

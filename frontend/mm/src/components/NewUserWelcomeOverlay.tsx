@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
-import { GUEST_CREDENTIALS_KEY } from '../utils/storageKeys';
+import { GUEST_CREDENTIALS_KEY } from '@crowdcraft/utils/storageKeys.ts';
 import { LeaderboardIcon } from '@crowdcraft/components/icons/NavigationIcons.tsx';
-import './NewUserWelcomeOverlay.css';
+import '@crowdcraft/components/NewUserWelcomeOverlay.css';
 
 const NewUserWelcomeOverlay: React.FC = () => {
   const { state, actions } = useGame();
@@ -70,37 +70,28 @@ const NewUserWelcomeOverlay: React.FC = () => {
 
         <div className="guest-welcome-content">
           <div className="flex justify-center mb-4">
-            <img src="/mememint_logo.png" alt="MemeMint Logo" className="h-16" />
+            <img src="/quipflip_logo.png" alt="Quipflip Logo" className="h-16" />
           </div>
 
           <h2 className="guest-welcome-title">How To Play</h2>
 
-          <ol className="guest-welcome-list">
+          <ul className="guest-welcome-list">
             <li>
-              <strong>See an image + captions:</strong> We show you one image with five captions to
-              read.
+              <strong>Quip:</strong> Write the original answer to a fill-in-the-blank prompt
             </li>
             <li>
-              <strong>Vote:</strong> Pay the entry fee, view the image with five captions, and pick
-              your favorite.
+              <strong>Impostor:</strong> Fake the original answer so it blends in with the real one
             </li>
             <li>
-              <strong>Win + bonuses:</strong> The authors of the winning caption (riff + parent, or
-              original) get paid in MemeCoins. The system may also pay voter bonuses.
+              <strong>Guess:</strong> Pick which answer you think was written first
             </li>
-            <li>
-              <strong>Add your own:</strong> After voting, submit a new caption (original or riff)
-              for the image.
-            </li>
-            <li>
-              <strong>Replayable:</strong> Images and captions cycle indefinitely; weak captions are
-              retired over time.
-            </li>
-          </ol>
+          </ul>
 
           <div className="guest-welcome-example">
-            <strong>Example:</strong> You'll see a meme image along with five captions. Choose your
-            favorite, then add your own caption for that image (either an original or a riff).
+            <strong>Example:</strong> In a Quip Round, you might answer "The best pizza topping is
+            ______" with "peppers and mushrooms." In the Impostor Round (fake the original), other
+            players will try to write similar answers without seeing the prompt. Guessers then try
+            to pick which answer was the original.
           </div>
 
           <hr className="guest-welcome-divider" />

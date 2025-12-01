@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNetwork } from '../contexts/NetworkContext';
-import { networkLogger } from '../utils/logger';
+import { networkLogger } from '@crowdcraft/utils/logger.ts';
 
 /**
  * OfflineBanner Component

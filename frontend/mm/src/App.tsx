@@ -10,9 +10,9 @@ import { SubHeader } from './components/SubHeader';
 import TutorialOverlay from './components/Tutorial/TutorialOverlay';
 import NotificationDisplay from './components/NotificationDisplay';
 import PingNotificationDisplay from './components/PingNotificationDisplay';
-import { trackPageView } from './utils/googleAnalytics';
-import { ErrorBoundary } from './components/ErrorBoundary';
-import { AppErrorFallback } from './components/ErrorFallback';
+import { trackPageView } from '@crowdcraft/utils/googleAnalytics.ts';
+import { ErrorBoundary } from '@crowdcraft/components/ErrorBoundary.tsx';
+import { AppErrorFallback } from '@crowdcraft/components/ErrorFallback.tsx';
 import { OfflineBanner } from './components/OfflineBanner';
 import NewUserWelcomeOverlay from './components/NewUserWelcomeOverlay';
 
@@ -34,7 +34,7 @@ if (typeof window !== 'undefined') {
   };
 }
 
-import { PageErrorFallback } from './components/ErrorFallback';
+import { PageErrorFallback } from '@crowdcraft/components/ErrorFallback.tsx';
 
 // Lazy load pages with error boundaries
 const Landing = lazy(() => import('./pages/Landing'));

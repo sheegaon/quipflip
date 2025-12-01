@@ -1,17 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useSmartPolling, PollConfigs } from '../utils/smartPolling';
 import { useLoadingState, InlineLoadingSpinner } from '../components/LoadingSpinner';
-import type {
-  PhrasesetSummary,
-  PhrasesetDetails as PhrasesetDetailsType,
-} from '../api/types';
+import type { PhrasesetSummary, PhrasesetDetails as PhrasesetDetailsType } from '../api/types';
 import { useGame } from '../contexts/GameContext';
 import { buildPhrasesetListKey } from '../utils/gameKeys';
 import { PhrasesetList } from '../components/PhrasesetList';
 import { PhrasesetDetails } from '../components/PhrasesetDetails';
 import { Pagination } from '@crowdcraft/components/Pagination.tsx';
 import { useResults } from '../contexts/ResultsContext';
-import { trackingLogger } from '../utils/logger';
+import { trackingLogger } from '@crowdcraft/utils/logger.ts';
 import { getUniqueIdForSummary } from '../utils/phrasesetHelpers';
 import { getErrorMessage } from '../types/errors';
 

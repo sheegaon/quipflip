@@ -3,7 +3,7 @@
  */
 
 // Guest account credentials
-export const GUEST_CREDENTIALS_KEY = 'quipflip_guest_credentials';
+export const GUEST_CREDENTIALS_KEY = 'crowdcraft_guest_credentials';
 
 // Username storage
-export const USERNAME_STORAGE_KEY = 'quipflip_username';
+export const USERNAME_STORAGE_KEY = 'crowdcraft_username';

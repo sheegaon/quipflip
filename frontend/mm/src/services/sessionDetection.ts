@@ -4,9 +4,9 @@
  */
 
 import { apiClient } from '../api/client';
-import { getOrCreateVisitorId, getVisitorId } from '../utils/visitorId';
+import { getOrCreateVisitorId, getVisitorId } from '@crowdcraft/utils/visitorId.ts';
 import { SessionState, SessionDetectionResult } from '../types/session';
-import { createLogger } from '../utils/logger';
+import { createLogger } from '@crowdcraft/utils/logger.ts';
 
 interface ErrorWithStatus {
   name?: string;

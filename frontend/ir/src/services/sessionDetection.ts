@@ -4,7 +4,7 @@
  */
 
 import { playerAPI } from '../api/client';
-import { createLogger } from '../utils/logger';
+import { createLogger } from '@crowdcraft/utils/logger.ts';
 
 const logger = createLogger('SessionDetection');
 

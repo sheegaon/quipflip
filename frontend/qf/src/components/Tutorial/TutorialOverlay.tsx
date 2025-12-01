@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useTutorial } from '../../contexts/TutorialContext';
-import { getTutorialStep, getPreviousStep } from '../../config/tutorialSteps';
-import type { TutorialProgress } from '../../api/types';
+import { getTutorialStep, getPreviousStep } from '@crowdcraft/config/tutorialSteps.ts';
+import type { TutorialProgress } from '@crowdcraft/api/types.ts';
 import './TutorialOverlay.css';
 import { CopyRoundIcon, LiveModeIcon, PracticeModeIcon, VoteRoundIcon } from '@crowdcraft/components/icons/RoundIcons.tsx';
 import { ArrowLeftIcon, ArrowRightIcon } from '@crowdcraft/components/icons/ArrowIcons.tsx';

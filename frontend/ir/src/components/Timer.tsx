@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { useTimer, formatTime } from '../hooks/useTimer';
+import { useTimer, formatTime } from '@crowdcraft/hooks/useTimer.ts';
 
 interface TimerProps {
   targetTime: string | null;

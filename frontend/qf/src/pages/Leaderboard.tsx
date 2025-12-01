@@ -3,7 +3,7 @@ import apiClient, { extractErrorMessage } from '../api/client';
 import type { LeaderboardResponse } from '../api/types';
 import { Header } from '../components/Header';
 import WeeklyLeaderboard from '@crowdcraft/components/statistics/WeeklyLeaderboard.tsx';
-import { leaderboardLogger } from '../utils/logger';
+import { leaderboardLogger } from '@crowdcraft/utils/logger.ts';
 
 type LeaderboardPeriod = 'weekly' | 'alltime';
 

@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { PHRASE_VALIDATION_LIMITS } from '../config/phraseValidation';
+import { PHRASE_VALIDATION_LIMITS } from '@crowdcraft/config/phraseValidation.ts';
 
 const lettersAndSpacesPattern = /^[A-Za-z ]+$/;
 const {

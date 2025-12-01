@@ -11,10 +11,10 @@ import { ModeToggle } from '../components/ModeToggle';
 import { UpgradeGuestAccount } from '../components/UpgradeGuestAccount';
 import TutorialWelcome from '../components/Tutorial/TutorialWelcome';
 import BetaSurveyModal from '../components/BetaSurveyModal';
-import { dashboardLogger } from '../utils/logger';
+import { dashboardLogger } from '@crowdcraft/utils/logger.ts';
 import { TrackingIcon } from '@crowdcraft/components/icons/NavigationIcons.tsx';
 import { CopyRoundIcon, VoteRoundIcon } from '@crowdcraft/components/icons/RoundIcons.tsx';
-import { hasDismissedSurvey, hasCompletedSurvey } from '../utils/betaSurvey';
+import { hasDismissedSurvey, hasCompletedSurvey } from '@crowdcraft/utils/betaSurvey.ts';
 
 const formatWaitingCount = (count: number): string => (count > 10 ? 'over 10' : count.toString());
 export const Dashboard: React.FC = () => {

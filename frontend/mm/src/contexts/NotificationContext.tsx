@@ -23,7 +23,7 @@ import {
 import { useGame } from './GameContext';
 import apiClient from '../api/client';
 import { NotificationStreamMessage, OnlineUser } from '../api/types';
-import useWebSocket from '../hooks/useWebSocket';
+import useWebSocket from '@crowdcraft/hooks/useWebSocket.ts';
 
 export interface NotificationMessage {
   id: string;

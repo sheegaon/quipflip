@@ -7,7 +7,7 @@ import type {
 import { StatusBadge } from './StatusBadge';
 import { ProgressBar } from './ProgressBar';
 import { ActivityTimeline } from './PhrasesetActivityTimeline';
-import { formatDateTimeInUserZone } from '../utils/datetime';
+import { formatDateTimeInUserZone } from '@crowdcraft/utils/datetime.ts';
 import { BotIcon } from '@crowdcraft/components/icons/EngagementIcons.tsx';
 
 interface PhrasesetDetailsProps {

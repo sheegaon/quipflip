@@ -4,7 +4,7 @@ import apiClient, { extractErrorMessage } from '../api/client';
 import { Header } from '../components/Header';
 import { useGame } from '../contexts/GameContext';
 import type { SurveyQuestion, CompoundSurveyQuestion } from '../types/survey';
-import { markSurveyCompleted } from '../utils/betaSurvey';
+import { markSurveyCompleted } from '@crowdcraft/utils/betaSurvey.ts';
 import { betaSurveyDefinition } from '../surveys/betaSurveyDefinition';
 import type { BetaSurveyAnswerPayload } from '../api/types';
 

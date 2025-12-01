@@ -6,10 +6,10 @@ import { Header } from '../components/Header';
 import { Pagination } from '@crowdcraft/components/Pagination.tsx';
 import { loadingMessages } from '../utils/brandedMessages';
 import type { PhrasesetResults, PhrasesetDetails, PhrasesetVoteDetail } from '../api/types';
-import { resultsLogger } from '../utils/logger';
+import { resultsLogger } from '@crowdcraft/utils/logger.ts';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { BotIcon, QuestionMarkIcon, ResultsIcon } from '@crowdcraft/components/icons/EngagementIcons.tsx';
-import { isAiPlayer } from '../utils/ai';
+import { isAiPlayer } from '@crowdcraft/utils/ai.ts';
 
 const ITEMS_PER_PAGE = 10;
 const WALLET_VS_VAULT_TITLE = 'Wallet vs. Vault';

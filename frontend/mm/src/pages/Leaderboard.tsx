@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import apiClient, { extractErrorMessage } from '../api/client';
 import type { LeaderboardResponse } from '../api/types';
 import WeeklyLeaderboard from '@crowdcraft/components/statistics/WeeklyLeaderboard';
-import { leaderboardLogger } from '../utils/logger';
+import { leaderboardLogger } from '@crowdcraft/utils/logger.ts';
 
 type LeaderboardPeriod = 'weekly' | 'alltime';
 

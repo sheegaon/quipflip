@@ -6,9 +6,9 @@ import { ResultsProvider, useResults } from './ResultsContext';
 import { NetworkProvider } from './NetworkContext';
 import { NavigationHistoryProvider } from './NavigationHistoryContext';
 import { NotificationProvider } from './NotificationContext';
-import { gameContextLogger } from '../utils/logger';
-import { ErrorBoundary } from '../components/ErrorBoundary';
-import { PageErrorFallback } from '../components/ErrorFallback';
+import { gameContextLogger } from '@crowdcraft/utils/logger.ts';
+import { ErrorBoundary } from '@crowdcraft/components/ErrorBoundary.tsx';
+import { PageErrorFallback } from '@crowdcraft/components/ErrorFallback.tsx';
 
 // Helper component to reduce ErrorBoundary boilerplate
 const ContextErrorBoundary: React.FC<{ children: React.ReactNode; contextName: string }> = ({ children, contextName }) => (

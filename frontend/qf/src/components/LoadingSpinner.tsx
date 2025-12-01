@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import React from 'react';
-import { loadingSpinnerLogger } from '../utils/logger';
+import { loadingSpinnerLogger } from '@crowdcraft/utils/logger.ts';
 
 export interface LoadingState {
   isLoading: boolean;

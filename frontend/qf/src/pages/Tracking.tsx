@@ -12,7 +12,7 @@ import { PhrasesetDetails } from '../components/PhrasesetDetails';
 import { Pagination } from '@crowdcraft/components/Pagination.tsx';
 import { Header } from '../components/Header';
 import { useResults } from '../contexts/ResultsContext';
-import { trackingLogger } from '../utils/logger';
+import { trackingLogger } from '@crowdcraft/utils/logger.ts';
 import { getUniqueIdForSummary } from '../utils/phrasesetHelpers';
 import { getErrorMessage } from '../types/errors';
 

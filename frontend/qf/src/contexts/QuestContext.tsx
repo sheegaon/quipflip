@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import apiClient from '../api/client';
 import { getActionErrorMessage } from '../utils/errorMessages';
-import { gameContextLogger } from '../utils/logger';
+import { gameContextLogger } from '@crowdcraft/utils/logger.ts';
 import type { Quest, ClaimQuestRewardResponse } from '../api/types';
 
 interface QuestState {
