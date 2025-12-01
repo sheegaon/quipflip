@@ -95,6 +95,10 @@ class MMVoteService:
             captions_by_id = {cap.caption_id: cap for cap in captions}
             caption = captions_by_id.get(caption_id)
 
+            all_captions_are_system = all(
+                _is_system_generated_caption(cap) for cap in captions_by_id.values()
+            )
+
             if not caption:
                 raise ValueError(f"Caption {caption_id} not found")
 
@@ -168,6 +172,20 @@ class MMVoteService:
                 }
                 first_vote_bonus_awarded = False
 
+            # Refund entry if the round only showed system-generated captions
+            if all_captions_are_system:
+                await transaction_service.create_transaction(
+                    player.player_id,
+                    round_obj.entry_cost,
+                    "mm_round_entry_refund",
+                    reference_id=round_obj.round_id,
+                    auto_commit=False,
+                )
+                logger.info(
+                    "Refunded entry cost for all-system caption round",
+                    extra={"round_id": round_obj.round_id, "player_id": player.player_id}
+                )
+
             await self.db.commit()
             await self.db.refresh(player)
 
@@ -229,7 +247,7 @@ class MMVoteService:
         # Get Circle-mates of voter for bonus suppression
         circle_mates = set()
         if voter_player_id:
-            circle_mates = await MMCircleService.get_circle_mates(self.db, str(voter_player_id))
+            circle_mates = await MMCircleService.get_circle_mates(self.db, voter_player_id)
 
         # Get writer bonus multiplier from config (default 3 per game rules)
         writer_bonus_multiplier = await self.config_service.get_config_value(
@@ -237,7 +255,7 @@ class MMVoteService:
         )
 
         # Check if caption author is a Circle-mate of voter
-        author_is_circle_mate = str(caption.author_player_id) in circle_mates
+        author_is_circle_mate = caption.author_player_id in circle_mates
 
         # Calculate base payout (always given) and writer bonus (suppressed for Circle-mates)
         # Example: entry_cost=5, multiplier=3
@@ -260,7 +278,7 @@ class MMVoteService:
         if is_riff and caption.parent_caption_id:
             parent_caption = await self.db.get(MMCaption, caption.parent_caption_id)
             if parent_caption and parent_caption.author_player_id:
-                parent_is_circle_mate = str(parent_caption.author_player_id) in circle_mates
+                parent_is_circle_mate = parent_caption.author_player_id in circle_mates
                 parent_writer_bonus = 0 if parent_is_circle_mate else (entry_cost * writer_bonus_multiplier)
 
                 if parent_is_circle_mate:

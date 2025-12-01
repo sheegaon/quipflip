@@ -7,6 +7,14 @@ from backend.schemas.base import BaseSchema
 import re
 
 
+class VoteRoundCaption(BaseSchema):
+    """Caption shown during a vote round."""
+
+    caption_id: UUID
+    text: str
+    author_username: str | None = None
+
+
 class StartVoteRoundResponse(BaseSchema):
     """Start vote round response."""
     round_id: UUID
@@ -14,7 +22,7 @@ class StartVoteRoundResponse(BaseSchema):
     image_url: str
     thumbnail_url: str | None
     attribution_text: str | None
-    captions: list[dict]  # List of {caption_id, text}
+    captions: list[VoteRoundCaption]
     expires_at: datetime
     cost: int
 
@@ -99,7 +107,7 @@ class RoundDetails(BaseSchema):
     image_url: str
     cost: int
     # For vote rounds
-    captions: list[dict] | None = None
+    captions: list[VoteRoundCaption] | None = None
     chosen_caption_id: UUID | None = None
     # For caption submission rounds
     submitted_caption_id: UUID | None = None
