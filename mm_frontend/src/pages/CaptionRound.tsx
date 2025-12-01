@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { extractErrorMessage } from '../api/client';
@@ -64,6 +64,7 @@ export const CaptionRound: React.FC = () => {
 
     setIsSubmitting(true);
     setError(null);
+    setSuccessMessage(null);
 
     try {
       const payload = {
@@ -86,7 +87,7 @@ export const CaptionRound: React.FC = () => {
     }
   };
 
-  const handlePlayAgain = async () => {
+  const handlePlayAgain = useCallback(async () => {
     console.log('🔄 Play again clicked');
     setError(null);
     setIsStartingRound(true);
@@ -100,7 +101,7 @@ export const CaptionRound: React.FC = () => {
     } finally {
       setIsStartingRound(false);
     }
-  };
+  }, [actions, navigate]);
 
   return (
     <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center p-4">
