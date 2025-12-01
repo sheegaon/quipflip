@@ -4,7 +4,7 @@ import { useGame } from '../contexts/GameContext';
 import apiClient from '../api/client';
 import type { BetaSurveyStatusResponse } from '../api/types';
 import { hasDismissedSurvey, markSurveyDismissed, hasCompletedSurvey } from '@crowdcraft/utils/betaSurvey.ts';
-import { getErrorMessage } from '../types/errors';
+import { getErrorMessage } from '@crowdcraft/types/errors.ts';
 import { dashboardLogger } from '@crowdcraft/utils/logger.ts';
 
 interface BetaSurveyModalProps {

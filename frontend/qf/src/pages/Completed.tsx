@@ -6,7 +6,7 @@ import type { CompletedPhrasesetItem } from '../api/types';
 import { InlineLoadingSpinner } from '../components/LoadingSpinner';
 import { ReviewIcon } from '@crowdcraft/components/icons/EngagementIcons.tsx';
 import { ArrowLeftIcon, ArrowRightIcon } from '@crowdcraft/components/icons/ArrowIcons.tsx';
-import { getErrorMessage, isError } from '../types/errors';
+import { getErrorMessage, isError } from '@crowdcraft/types/errors.ts';
 
 type SortField = 'vote_count' | 'total_pool' | 'created_at' | 'finalized_at';
 type SortDirection = 'asc' | 'desc';

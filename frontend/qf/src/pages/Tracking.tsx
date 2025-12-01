@@ -14,7 +14,7 @@ import { Header } from '../components/Header';
 import { useResults } from '../contexts/ResultsContext';
 import { trackingLogger } from '@crowdcraft/utils/logger.ts';
 import { getUniqueIdForSummary } from '../utils/phrasesetHelpers';
-import { getErrorMessage } from '../types/errors';
+import { getErrorMessage } from '@crowdcraft/types/errors.ts';
 
 const ITEMS_PER_PAGE = 10;
 

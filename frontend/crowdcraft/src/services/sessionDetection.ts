@@ -3,10 +3,10 @@
  * Implements the user session detection flow on app load
  */
 
-import { apiClient } from '../api/client';
-import { getOrCreateVisitorId, getVisitorId } from '@crowdcraft/utils/visitorId.ts';
-import { SessionState, SessionDetectionResult } from '../types/session';
-import { createLogger } from '@crowdcraft/utils/logger.ts';
+import { apiClient } from '../api/client.ts';
+import { getOrCreateVisitorId, getVisitorId } from '../utils';
+import { SessionState, SessionDetectionResult } from '../types/session.ts';
+import { createLogger } from '../utils/logger.ts';
 
 interface ErrorWithStatus {
   name?: string;
@@ -170,7 +170,7 @@ export function getSessionMessage(sessionState: SessionState, username?: string)
     case SessionState.RETURNING_VISITOR:
       return 'Welcome back! Ready to play?';
     case SessionState.NEW:
-      return 'Welcome to QuipFlip!';
+      return 'Welcome to MemeMint!';
     case SessionState.CHECKING:
       return 'Loading...';
     default:

@@ -6,8 +6,8 @@ import axios from 'axios';
 import { useSmartPolling, PollConfigs } from '../utils/smartPolling';
 import { getActionErrorMessage } from '../utils/errorMessages';
 import { gameContextLogger } from '@crowdcraft/utils/logger.ts';
-import { detectUserSession, associateVisitorWithPlayer } from '../services/sessionDetection';
-import { SessionState } from '../types/session';
+import { detectUserSession, associateVisitorWithPlayer } from '@crowdcraft/services/sessionDetection';
+import { SessionState } from '@crowdcraft/types/session.ts';
 import { GUEST_CREDENTIALS_KEY } from '@crowdcraft/utils/storageKeys.ts';
 import type {
   Player,
