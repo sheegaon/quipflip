@@ -1,5 +1,5 @@
 import React from 'react';
-import type { PhrasesetContributor } from '../api/types';
+import type { PhrasesetContributor } from '@crowdcraft/api/types.ts';
 
 interface PhraseRecapCardProps {
   phrase: string;

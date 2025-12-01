@@ -1,5 +1,5 @@
 import React from 'react';
-import type { PhrasesetStatus } from '../api/types';
+import type { PhrasesetStatus } from '@crowdcraft/api/types.ts';
 
 interface StatusConfig {
   label: string;

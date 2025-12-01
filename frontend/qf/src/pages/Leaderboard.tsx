@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import apiClient, { extractErrorMessage } from '../api/client';
-import type { LeaderboardResponse } from '../api/types';
+import apiClient, { extractErrorMessage } from '@crowdcraft/api/client.ts';
+import type { LeaderboardResponse } from '@crowdcraft/api/types.ts';
 import { Header } from '../components/Header';
 import WeeklyLeaderboard from '@crowdcraft/components/statistics/WeeklyLeaderboard.tsx';
 import { leaderboardLogger } from '@crowdcraft/utils/logger.ts';

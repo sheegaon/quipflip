@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { extractErrorMessage } from '../api/client';
+import { extractErrorMessage } from '@crowdcraft/api/client.ts';
 
 interface EditableConfigFieldProps {
   label: string;

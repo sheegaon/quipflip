@@ -3,7 +3,7 @@ import type {
   PhrasesetDetails as PhrasesetDetailsType,
   PhrasesetStatus,
   PhrasesetSummary,
-} from '../api/types';
+} from '@crowdcraft/api/types.ts';
 import { StatusBadge } from './StatusBadge';
 import { ProgressBar } from './ProgressBar';
 import { ActivityTimeline } from './PhrasesetActivityTimeline';

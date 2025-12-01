@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIRGame } from '../contexts/IRGameContext';
 import Header from '../components/Header';
-import { settingsAPI } from '../api/client';
+import { settingsAPI } from '@crowdcraft/api/client.ts';
 import { getErrorMessage } from '../utils/errorHelpers';
 
 const getErrorDetail = (error: unknown): string | undefined => {

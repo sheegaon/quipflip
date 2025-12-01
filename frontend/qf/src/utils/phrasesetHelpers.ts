@@ -1,4 +1,4 @@
-import type { PhrasesetSummary } from '../api/types';
+import type { PhrasesetSummary } from '@crowdcraft/api/types.ts';
 
 /**
  * Get a unique ID for a phraseset summary.

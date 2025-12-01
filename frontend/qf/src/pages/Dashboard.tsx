@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { useTutorial } from '../contexts/TutorialContext';
 import { usePartyMode } from '../contexts/PartyModeContext';
-import apiClient, { extractErrorMessage } from '../api/client';
+import apiClient, { extractErrorMessage } from '@crowdcraft/api/client.ts';
 import { Timer } from '../components/Timer';
 import { Header } from '../components/Header';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';

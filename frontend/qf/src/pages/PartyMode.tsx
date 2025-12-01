@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
-import apiClient from '../api/client';
+import apiClient from '@crowdcraft/api/client.ts';
 import { CircleIcon } from '@crowdcraft/components/icons/NavigationIcons.tsx';
-import type { PartyListItem } from '../api/types';
+import type { PartyListItem } from '@crowdcraft/api/types.ts';
 
 /**
  * Party Mode entry page - Create or Join a party session

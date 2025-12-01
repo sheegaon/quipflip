@@ -1,5 +1,7 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
-import { getContextualErrorMessage, getActionErrorMessage, offlineQueue, shouldQueueAction, USERNAME_STORAGE_KEY } from '../utils';
+import { getContextualErrorMessage, getActionErrorMessage } from '../utils/errorMessages';
+import { offlineQueue, shouldQueueAction } from '../utils/offlineQueue';
+import { USERNAME_STORAGE_KEY } from '../utils/storageKeys';
 import type {
   Player,
   CreatePlayerResponse,
@@ -80,6 +82,19 @@ import type {
   AddMemberResponse,
   RemoveMemberResponse,
   LeaveCircleResponse,
+  CreatePartySessionRequest,
+  CreatePartySessionResponse,
+  JoinPartySessionResponse,
+  MarkReadyResponse,
+  StartPartySessionResponse,
+  PartySessionStatusResponse,
+  StartPartyPromptResponse,
+  StartPartyCopyResponse,
+  StartPartyVoteResponse,
+  SubmitPartyRoundResponse,
+  PartyResultsResponse,
+  PartyListResponse,
+  PartyPingResponse,
 } from './types';
 
 // Base URL - configure based on environment
@@ -130,7 +145,6 @@ const api = axios.create({
   withCredentials: true,
   timeout: 150000, // 150 seconds (2.5 minutes) timeout for hint generation
 });
-
 
 // Export axios instance for direct use (e.g., replaying queued requests)
 export const axiosInstance = api;
@@ -862,7 +876,6 @@ export const apiClient = {
     return data;
   },
 
-
   // ===== CIRCLE ENDPOINTS =====
 
   async listCircles(
@@ -972,6 +985,174 @@ export const apiClient = {
       {},
       { signal },
     );
+    return data;
+  },
+
+  // Party Mode endpoints
+  async createPartySession(
+    request: CreatePartySessionRequest = {},
+    signal?: AbortSignal,
+  ): Promise<CreatePartySessionResponse> {
+    try {
+      const { data } = await api.post<CreatePartySessionResponse>('/party/create', request, { 
+        signal,
+        timeout: 10000 // 10 second timeout for party creation
+      });
+      return data;
+    } catch (error) {
+      // Type the error as AxiosError or unknown for proper error handling
+      const axiosError = error as AxiosError<ApiError>;
+      
+      // Add more detailed error logging for party creation
+      if (axiosError?.response?.status === 500) {
+        console.error('Party creation failed with server error:', {
+          status: axiosError.response.status,
+          statusText: axiosError.response.statusText,
+          data: axiosError.response.data,
+          message: axiosError.message
+        });
+        
+        // For 500 errors, provide a user-friendly message
+        throw {
+          ...axiosError,
+          message: 'Server error creating party. Please try again in a moment.',
+          isServerError: true
+        };
+      }
+      
+      console.error('Party creation failed:', {
+        status: axiosError?.response?.status,
+        statusText: axiosError?.response?.statusText,
+        data: axiosError?.response?.data,
+        message: axiosError?.message
+      });
+      
+      throw error;
+    }
+  },
+
+  async listActiveParties(
+    signal?: AbortSignal,
+  ): Promise<PartyListResponse> {
+    const { data } = await api.get<PartyListResponse>('/party/list', { signal });
+    return data;
+  },
+
+  async joinPartySessionById(
+    sessionId: string,
+    signal?: AbortSignal,
+  ): Promise<JoinPartySessionResponse> {
+    const { data } = await api.post<JoinPartySessionResponse>(`/party/${sessionId}/join`, {}, { signal });
+    return data;
+  },
+
+  async joinPartySession(
+    partyCode: string,
+    signal?: AbortSignal,
+  ): Promise<JoinPartySessionResponse> {
+    const { data } = await api.post<JoinPartySessionResponse>('/party/join', { party_code: partyCode }, { signal });
+    return data;
+  },
+
+  async markPartyReady(
+    sessionId: string,
+    signal?: AbortSignal,
+  ): Promise<MarkReadyResponse> {
+    const { data } = await api.post<MarkReadyResponse>(`/party/${sessionId}/ready`, {}, { signal });
+    return data;
+  },
+
+  async addAIPlayerToParty(
+    sessionId: string,
+    signal?: AbortSignal,
+  ): Promise<{ participant_id: string; player_id: string; username: string; is_ai: boolean }> {
+    const { data } = await api.post<{ participant_id: string; player_id: string; username: string; is_ai: boolean }>(`/party/${sessionId}/add-ai`, {}, { signal });
+    return data;
+  },
+
+  async startPartySession(
+    sessionId: string,
+    signal?: AbortSignal,
+  ): Promise<StartPartySessionResponse> {
+    const { data } = await api.post<StartPartySessionResponse>(`/party/${sessionId}/start`, {}, { signal });
+    return data;
+  },
+
+  async getPartySessionStatus(
+    sessionId: string,
+    signal?: AbortSignal,
+  ): Promise<PartySessionStatusResponse> {
+    const { data } = await api.get<PartySessionStatusResponse>(`/party/${sessionId}/status`, { signal });
+    return data;
+  },
+
+  async leavePartySession(
+    sessionId: string,
+    signal?: AbortSignal,
+  ): Promise<{ success: boolean; message: string }> {
+    const { data } = await api.post<{ success: boolean; message: string }>(`/party/${sessionId}/leave`, {}, { signal });
+    return data;
+  },
+
+  async startPartyPromptRound(
+    sessionId: string,
+    signal?: AbortSignal,
+  ): Promise<StartPartyPromptResponse> {
+    const { data } = await api.post<StartPartyPromptResponse>(
+      `/party/${sessionId}/rounds/prompt`,
+      {},
+      { signal }
+    );
+    return data;
+  },
+
+  async startPartyCopyRound(
+    sessionId: string,
+    signal?: AbortSignal,
+  ): Promise<StartPartyCopyResponse> {
+    const { data } = await api.post<StartPartyCopyResponse>(
+      `/party/${sessionId}/rounds/copy`,
+      {},
+      { signal }
+    );
+    return data;
+  },
+
+  async startPartyVoteRound(
+    sessionId: string,
+    signal?: AbortSignal,
+  ): Promise<StartPartyVoteResponse> {
+    const { data } = await api.post<StartPartyVoteResponse>(
+      `/party/${sessionId}/rounds/vote`,
+      {},
+      { signal }
+    );
+    return data;
+  },
+
+  async submitPartyRound(
+    sessionId: string,
+    roundId: string,
+    payload: { phrase?: string; vote?: string },
+    signal?: AbortSignal,
+  ): Promise<SubmitPartyRoundResponse> {
+    const { data } = await api.post<SubmitPartyRoundResponse>(`/party/${sessionId}/rounds/${roundId}/submit`, payload, { signal });
+    return data;
+  },
+
+  async getPartyResults(
+    sessionId: string,
+    signal?: AbortSignal,
+  ): Promise<PartyResultsResponse> {
+    const { data } = await api.get<PartyResultsResponse>(`/party/${sessionId}/results`, { signal });
+    return data;
+  },
+
+  async pingParty(
+    sessionId: string,
+    signal?: AbortSignal,
+  ): Promise<PartyPingResponse> {
+    const { data } = await api.post<PartyPingResponse>(`/party/${sessionId}/ping`, {}, { signal });
     return data;
   },
 };

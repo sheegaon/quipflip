@@ -1,6 +1,6 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, PieLabelRenderProps } from 'recharts';
 import { useState, useEffect, useRef } from 'react';
-import type { EarningsBreakdown } from '../../api/types';
+import type { EarningsBreakdown } from '@crowdcraft/api/types.ts';
 import {
   statisticsChartContainerStyle,
   statisticsChartPlaceholderStyle,

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
-import apiClient, { extractErrorMessage } from '../api/client';
+import apiClient, { extractErrorMessage } from '@crowdcraft/api/client.ts';
 import { landingLogger } from '@crowdcraft/utils/logger.ts';
 import { GUEST_CREDENTIALS_KEY } from '@crowdcraft/utils/storageKeys.ts';
 

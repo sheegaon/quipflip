@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
-import apiClient from '../api/client';
-import type { BetaSurveyStatusResponse } from '../api/types';
+import apiClient from '@crowdcraft/api/client.ts';
+import type { BetaSurveyStatusResponse } from '@crowdcraft/api/types.ts';
 import { hasDismissedSurvey, markSurveyDismissed, hasCompletedSurvey } from '@crowdcraft/utils/betaSurvey.ts';
 import { getErrorMessage } from '@crowdcraft/types/errors.ts';
 import { dashboardLogger } from '@crowdcraft/utils/logger.ts';

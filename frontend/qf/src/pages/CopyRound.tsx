@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useCallback, useRef, useReducer } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
-import apiClient, { extractErrorMessage } from '../api/client';
+import apiClient, { extractErrorMessage } from '@crowdcraft/api/client.ts';
 import { Timer } from '../components/Timer';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { useTimer } from '@crowdcraft/hooks/useTimer.ts';
 import { usePhraseValidation } from '../hooks/usePhraseValidation';
 import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
-import type { CopyState, FlagCopyRoundResponse, SubmitPhraseResponse } from '../api/types';
+import type { CopyState, FlagCopyRoundResponse, SubmitPhraseResponse } from '@crowdcraft/api/types.ts';
 import { copyRoundLogger } from '@crowdcraft/utils/logger.ts';
 import { CopyRoundIcon } from '@crowdcraft/components/icons/RoundIcons.tsx';
 import { FlagIcon } from '@crowdcraft/components/icons/EngagementIcons.tsx';

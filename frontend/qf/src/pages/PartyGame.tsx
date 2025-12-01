@@ -4,7 +4,7 @@ import { usePartyMode } from '../contexts/PartyModeContext';
 import { CircleIcon } from '@crowdcraft/components/icons/NavigationIcons.tsx';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { loadingMessages } from '../utils/brandedMessages';
-import apiClient, { extractErrorMessage } from '../api/client';
+import apiClient, { extractErrorMessage } from '@crowdcraft/api/client.ts';
 import { usePartyRoundStarter } from '../hooks/usePartyRoundStarter';
 
 /**

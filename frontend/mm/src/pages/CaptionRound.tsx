@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
-import { extractErrorMessage } from '../api/client';
+import { extractErrorMessage } from '@crowdcraft/api/client.ts';
 import type {
   VoteRoundState,
   VoteResult,
-} from '../api/types';
+} from '@crowdcraft/api/types.ts';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { ShareIcon } from '@crowdcraft/components/icons/EngagementIcons.tsx';
 

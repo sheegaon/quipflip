@@ -1,4 +1,4 @@
-import type { PlayFrequency } from '../../api/types';
+import type { PlayFrequency } from '@crowdcraft/api/types.ts';
 import { formatDateInUserZone } from '../../utils/datetime.ts';
 
 interface FrequencyChartProps {

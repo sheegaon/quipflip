@@ -1,4 +1,4 @@
-import type { TutorialProgress } from '../api/types';
+import type { TutorialProgress } from '@crowdcraft/api/types.ts';
 
 export interface TutorialStep {
   id: TutorialProgress;

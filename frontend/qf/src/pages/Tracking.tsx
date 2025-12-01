@@ -4,7 +4,7 @@ import { useLoadingState, InlineLoadingSpinner } from '../components/LoadingSpin
 import type {
   PhrasesetSummary,
   PhrasesetDetails as PhrasesetDetailsType,
-} from '../api/types';
+} from '@crowdcraft/api/types.ts';
 import { useGame } from '../contexts/GameContext';
 import { buildPhrasesetListKey } from '../utils/gameKeys';
 import { PhrasesetList } from '../components/PhrasesetList';

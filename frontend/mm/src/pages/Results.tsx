@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
-import type { MemeVoteResult, MemeVoteRound } from '../api/types';
+import type { MemeVoteResult, MemeVoteRound } from '@crowdcraft/api/types.ts';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { CaptionSubmissionModal } from '../components/CaptionSubmissionModal';
 

@@ -7,10 +7,10 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import apiClient from '../api/client';
+import apiClient from '@crowdcraft/api/client.ts';
 import { getActionErrorMessage } from '../utils/errorMessages';
 import { tutorialLogger } from '@crowdcraft/utils/logger.ts';
-import type { TutorialProgress, TutorialStatus } from '../api/types';
+import type { TutorialProgress, TutorialStatus } from '@crowdcraft/api/types.ts';
 import { getNextStep } from '@crowdcraft/config/tutorialSteps.ts';
 
 const isAbortError = (error: unknown): boolean => {

@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useIRGame } from '../contexts/IRGameContext';
-import { gameAPI } from '../api/client';
+import { gameAPI } from '@crowdcraft/api/client.ts';
 import Timer from '../components/Timer';
 import InitCoinDisplay from '../components/InitCoinDisplay';
-import type { BackronymSet, BackronymEntry } from '../api/types';
+import type { BackronymSet, BackronymEntry } from '@crowdcraft/api/types.ts';
 import { getErrorMessage } from '../utils/errorHelpers';
 
 // Fisher-Yates shuffle algorithm

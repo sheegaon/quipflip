@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { extractErrorMessage } from '../api/client';
+import { extractErrorMessage } from '@crowdcraft/api/client.ts';
 import { useGame } from '../contexts/GameContext';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import type { MemeVoteResult, VoteRoundState, VoteResult, Caption } from '../api/types';
+import type { MemeVoteResult, VoteRoundState, VoteResult, Caption } from '@crowdcraft/api/types.ts';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { BotIcon } from '@crowdcraft/components/icons/EngagementIcons.tsx';
 import { CircleIcon } from '@crowdcraft/components/icons/NavigationIcons.tsx';

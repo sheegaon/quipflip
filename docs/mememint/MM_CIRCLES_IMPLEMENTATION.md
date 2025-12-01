@@ -1288,8 +1288,8 @@ export interface CircleDetails extends Circle {
 ```typescript
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { listAllCircles, getMyCircles, createCircle, requestToJoinCircle } from '../api/client';
-import { Circle } from '../api/types';
+import { listAllCircles, getMyCircles, createCircle, requestToJoinCircle } from '@crowdcraft/api/client.ts';
+import { Circle } from '@crowdcraft/api/types.ts';
 import Header from '../components/Header';
 import SubHeader from '../components/SubHeader';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -1506,8 +1506,8 @@ import {
   leaveCircle,
   approveJoinRequest,
   denyJoinRequest
-} from '../api/client';
-import { CircleDetails, CircleMember, CircleJoinRequest } from '../api/types';
+} from '@crowdcraft/api/client.ts';
+import { CircleDetails, CircleMember, CircleJoinRequest } from '@crowdcraft/api/types.ts';
 import Header from '../components/Header';
 import SubHeader from '../components/SubHeader';
 import LoadingSpinner from '../components/LoadingSpinner';

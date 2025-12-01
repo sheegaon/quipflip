@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import apiClient, { extractErrorMessage } from '../api/client';
-import type { Circle, CreateCircleRequest } from '../api/types';
+import apiClient, { extractErrorMessage } from '@crowdcraft/api/client.ts';
+import type { Circle, CreateCircleRequest } from '@crowdcraft/api/types.ts';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 
 export const Circles: React.FC = () => {

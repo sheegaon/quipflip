@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import apiClient from '../api/client';
+import apiClient from '@crowdcraft/api/client.ts';
 import axios from 'axios';
 import { useSmartPolling, PollConfigs } from '../utils/smartPolling';
 import { getActionErrorMessage } from '../utils/errorMessages';
@@ -18,7 +18,7 @@ import type {
   UnclaimedResult,
   FlagCopyRoundResponse,
   AbandonRoundResponse,
-} from '../api/types';
+} from '@crowdcraft/api/types.ts';
 
 interface GameState {
   isAuthenticated: boolean;
