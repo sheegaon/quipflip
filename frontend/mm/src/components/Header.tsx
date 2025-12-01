@@ -5,7 +5,7 @@ import { useNavigationHistory } from '../contexts/NavigationHistoryContext';
 import { useTutorial } from '../contexts/TutorialContext';
 import { useHeaderIndicators } from '../hooks/useHeaderIndicators';
 import { useNetwork } from '../contexts/NetworkContext';
-import { BalanceFlipper } from './BalanceFlipper';
+import { BalanceFlipper } from '../../../crowdcraft/src/components/BalanceFlipper.tsx';
 import { TreasureChestIcon } from './TreasureChestIcon';
 import { ArrowLeftIcon } from '../../../crowdcraft/src/components/icons/ArrowIcons.tsx';
 import {
