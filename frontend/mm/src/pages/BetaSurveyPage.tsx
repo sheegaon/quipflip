@@ -212,23 +212,23 @@ const BetaSurveyPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-quip-cream bg-pattern">
+    <div className="min-h-screen bg-ccl-cream bg-pattern">
       <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="tile-card p-8">
           <header className="mb-8">
-            <h1 className="text-3xl font-display font-bold text-quip-navy">
+            <h1 className="text-3xl font-display font-bold text-ccl-navy">
               {betaSurveyDefinition.title}
             </h1>
-            <p className="mt-2 text-quip-teal text-base">
+            <p className="mt-2 text-ccl-teal text-base">
               {betaSurveyDefinition.description}
             </p>
-            <p className="mt-1 text-sm text-quip-navy/70">
+            <p className="mt-1 text-sm text-ccl-navy/70">
               Thank you for helping us shape the future of Quipflip!
             </p>
           </header>
 
           {submitted ? (
-            <div className="rounded-tile border border-quip-teal bg-quip-teal/10 px-4 py-3 text-quip-navy">
+            <div className="rounded-tile border border-ccl-teal bg-ccl-teal/10 px-4 py-3 text-ccl-navy">
               <p className="font-semibold">Thank you for your feedback!</p>
               <p className="text-sm">We&apos;re redirecting you back to the dashboard...</p>
             </div>
@@ -247,20 +247,20 @@ const BetaSurveyPage: React.FC = () => {
 
               {betaSurveyDefinition.sections.map((section) => (
                 <section key={section.id} className="space-y-6">
-                  <h2 className="text-2xl font-display font-semibold text-quip-navy">
+                  <h2 className="text-2xl font-display font-semibold text-ccl-navy">
                     {section.title}
                   </h2>
 
                   <div className="space-y-6">
                     {section.questions.map((question) => (
-                      <div key={question.id} className="rounded-tile border border-quip-navy/10 bg-white p-4 shadow-tile-sm">
+                      <div key={question.id} className="rounded-tile border border-ccl-navy/10 bg-white p-4 shadow-tile-sm">
                         <div className="mb-3 flex flex-col gap-1">
-                          <p className="text-lg font-semibold text-quip-navy">
+                          <p className="text-lg font-semibold text-ccl-navy">
                             {question.title}
                             {question.required && <span className="ml-2 text-sm font-normal text-red-500">*</span>}
                           </p>
                           {'description' in question && question.description ? (
-                            <span className="text-sm text-quip-navy/70">{question.description}</span>
+                            <span className="text-sm text-ccl-navy/70">{question.description}</span>
                           ) : null}
                         </div>
 
@@ -269,17 +269,17 @@ const BetaSurveyPage: React.FC = () => {
                             {question.options.map((option) => (
                               <label
                                 key={option.value}
-                                className={`flex cursor-pointer items-center gap-2 rounded-tile border px-3 py-2 text-sm transition hover:border-quip-teal ${
+                                className={`flex cursor-pointer items-center gap-2 rounded-tile border px-3 py-2 text-sm transition hover:border-ccl-teal ${
                                   answers[question.id] === option.value
-                                    ? 'border-quip-teal bg-quip-teal/10 text-quip-navy'
-                                    : 'border-quip-navy/20 text-quip-navy'
+                                    ? 'border-ccl-teal bg-ccl-teal/10 text-ccl-navy'
+                                    : 'border-ccl-navy/20 text-ccl-navy'
                                 }`}
                               >
                                 <input
                                   type="radio"
                                   name={question.id}
                                   value={option.value}
-                                  className="text-quip-teal focus:ring-quip-teal"
+                                  className="text-ccl-teal focus:ring-ccl-teal"
                                   checked={answers[question.id] === option.value}
                                   onChange={() => updateAnswer(question.id, option.value)}
                                 />
@@ -294,13 +294,13 @@ const BetaSurveyPage: React.FC = () => {
                             {question.options.map((option) => (
                               <label
                                 key={option.value}
-                                className="flex cursor-pointer items-center gap-3 rounded-tile border border-quip-navy/10 px-3 py-2 text-quip-navy transition hover:border-quip-teal"
+                                className="flex cursor-pointer items-center gap-3 rounded-tile border border-ccl-navy/10 px-3 py-2 text-ccl-navy transition hover:border-ccl-teal"
                               >
                                 <input
                                   type="radio"
                                   name={question.id}
                                   value={option.value}
-                                  className="text-quip-teal focus:ring-quip-teal"
+                                  className="text-ccl-teal focus:ring-ccl-teal"
                                   checked={answers[question.id] === option.value}
                                   onChange={() => updateAnswer(question.id, option.value)}
                                 />
@@ -319,15 +319,15 @@ const BetaSurveyPage: React.FC = () => {
                               return (
                                 <label
                                   key={option.value}
-                                  className={`flex cursor-pointer items-center gap-3 rounded-tile border px-3 py-2 text-quip-navy transition hover:border-quip-teal ${
-                                    selected ? 'border-quip-teal bg-quip-teal/10' : 'border-quip-navy/10'
+                                  className={`flex cursor-pointer items-center gap-3 rounded-tile border px-3 py-2 text-ccl-navy transition hover:border-ccl-teal ${
+                                    selected ? 'border-ccl-teal bg-ccl-teal/10' : 'border-ccl-navy/10'
                                   }`}
                                 >
                                   <input
                                     type="checkbox"
                                     name={`${question.id}-${option.value}`}
                                     value={option.value}
-                                    className="text-quip-teal focus:ring-quip-teal"
+                                    className="text-ccl-teal focus:ring-ccl-teal"
                                     checked={selected}
                                     onChange={() => toggleMultiAnswer(question.id, option.value)}
                                   />
@@ -341,7 +341,7 @@ const BetaSurveyPage: React.FC = () => {
                         {question.type === 'text' && (
                           <textarea
                             name={question.id}
-                            className="min-h-[96px] w-full rounded-tile border border-quip-navy/20 bg-white px-3 py-2 text-quip-navy shadow-inner focus:border-quip-teal focus:outline-none"
+                            className="min-h-[96px] w-full rounded-tile border border-ccl-navy/20 bg-white px-3 py-2 text-ccl-navy shadow-inner focus:border-ccl-teal focus:outline-none"
                             placeholder={question.placeholder}
                             value={typeof answers[question.id] === 'string' ? (answers[question.id] as string) : ''}
                             onChange={(event) => updateAnswer(question.id, event.target.value)}
@@ -356,13 +356,13 @@ const BetaSurveyPage: React.FC = () => {
                                 return (
                                   <label
                                     key={option.value}
-                                    className="flex cursor-pointer items-center gap-3 rounded-tile border border-quip-navy/10 px-3 py-2 text-quip-navy transition hover:border-quip-teal"
+                                    className="flex cursor-pointer items-center gap-3 rounded-tile border border-ccl-navy/10 px-3 py-2 text-ccl-navy transition hover:border-ccl-teal"
                                   >
                                     <input
                                       type="radio"
                                       name={`${question.id}-primary`}
                                       value={option.value}
-                                      className="text-quip-teal focus:ring-quip-teal"
+                                      className="text-ccl-teal focus:ring-ccl-teal"
                                       checked={value.choice === option.value}
                                       onChange={() => handleCompoundPrimaryChange(question, option.value)}
                                     />
@@ -375,7 +375,7 @@ const BetaSurveyPage: React.FC = () => {
                             {ensureCompoundValue(answers[question.id]).choice === 'yes' && (
                               <textarea
                                 name={`${question.id}-detail`}
-                                className="min-h-[96px] w-full rounded-tile border border-quip-navy/20 bg-white px-3 py-2 text-quip-navy shadow-inner focus:border-quip-teal focus:outline-none"
+                                className="min-h-[96px] w-full rounded-tile border border-ccl-navy/20 bg-white px-3 py-2 text-ccl-navy shadow-inner focus:border-ccl-teal focus:outline-none"
                                 placeholder={question.followUp.placeholder}
                                 value={ensureCompoundValue(answers[question.id]).detail ?? ''}
                                 onChange={(event) => handleCompoundDetailChange(question, event.target.value)}
@@ -393,14 +393,14 @@ const BetaSurveyPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => navigate(-1)}
-                  className="rounded-tile border border-quip-navy/20 px-5 py-2 font-semibold text-quip-navy transition hover:border-quip-teal hover:text-quip-teal"
+                  className="rounded-tile border border-ccl-navy/20 px-5 py-2 font-semibold text-ccl-navy transition hover:border-ccl-teal hover:text-ccl-teal"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="rounded-tile bg-quip-navy px-6 py-2 font-semibold text-white shadow-tile-sm transition hover:bg-quip-teal disabled:cursor-not-allowed disabled:bg-quip-navy/70"
+                  className="rounded-tile bg-ccl-navy px-6 py-2 font-semibold text-white shadow-tile-sm transition hover:bg-ccl-teal disabled:cursor-not-allowed disabled:bg-ccl-navy/70"
                 >
                   {submitting ? 'Submitting…' : 'Submit feedback'}
                 </button>

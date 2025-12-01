@@ -1722,7 +1722,7 @@ ws.onmessage = (event) => {
 
 #### PartyContext
 
-**Location:** `qf_frontend/src/contexts/PartyContext.tsx`
+**Location:** `frontend/qf/src/contexts/PartyContext.tsx`
 
 **State:**
 ```typescript
@@ -1981,7 +1981,7 @@ async def test_full_party_flow():
 
 #### PartyContext Tests
 
-**File:** `qf_frontend/src/contexts/__tests__/PartyContext.test.tsx`
+**File:** `frontend/qf/src/contexts/__tests__/PartyContext.test.tsx`
 
 ```typescript
 describe('PartyContext', () => {
@@ -2015,7 +2015,7 @@ describe('PartyContext', () => {
 
 #### E2E Tests
 
-**File:** `qf_frontend/e2e/party-mode.spec.ts`
+**File:** `frontend/qf/e2e/party-mode.spec.ts`
 
 ```typescript
 test('complete party flow', async ({ page, context }) => {
@@ -2219,7 +2219,7 @@ def downgrade():
 
 1. **Build frontend:**
    ```bash
-   cd qf_frontend
+   cd frontend/qf
    npm run build
    ```
 

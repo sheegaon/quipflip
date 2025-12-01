@@ -27,7 +27,7 @@
 
   /* Tile card styling */
   .tile-card {
-    @apply rounded-tile shadow-tile bg-quip-teal-light transition-all duration-300;
+    @apply rounded-tile shadow-tile bg-ccl-teal-light transition-all duration-300;
     transform-style: preserve-3d;
   }
 
@@ -80,12 +80,12 @@
 @layer utilities {
   /* Text gradient for special headings */
   .text-gradient-quip {
-    @apply bg-gradient-to-r from-quip-turquoise to-quip-orange bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-ccl-turquoise to-ccl-orange bg-clip-text text-transparent;
   }
 
   /* Success message styling */
   .success-message {
-    @apply text-quip-turquoise font-semibold animate-slide-up;
+    @apply text-ccl-turquoise font-semibold animate-slide-up;
   }
 }
 

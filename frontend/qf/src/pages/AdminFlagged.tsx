@@ -17,10 +17,10 @@ const statusLabels: Record<FlagStatusFilter, string> = {
 };
 
 const statusStyles: Record<FlagStatusFilter, string> = {
-  pending: 'bg-quip-orange/15 text-quip-orange',
-  confirmed: 'bg-quip-turquoise/15 text-quip-turquoise',
-  dismissed: 'bg-gray-200 text-quip-navy',
-  all: 'bg-quip-navy/10 text-quip-navy',
+  pending: 'bg-ccl-orange/15 text-ccl-orange',
+  confirmed: 'bg-ccl-turquoise/15 text-ccl-turquoise',
+  dismissed: 'bg-gray-200 text-ccl-navy',
+  all: 'bg-ccl-navy/10 text-ccl-navy',
 };
 
 const AdminFlagged: React.FC = () => {
@@ -85,20 +85,20 @@ const AdminFlagged: React.FC = () => {
 
   if (!player) {
     return (
-      <div className="min-h-screen bg-quip-cream bg-pattern">
+      <div className="min-h-screen bg-ccl-cream bg-pattern">
         <Header />
-        <div className="flex items-center justify-center py-16 text-quip-teal">Loading...</div>
+        <div className="flex items-center justify-center py-16 text-ccl-teal">Loading...</div>
       </div>
     );
   }
 
   if (!player.is_admin) {
     return (
-      <div className="min-h-screen bg-quip-cream bg-pattern">
+      <div className="min-h-screen bg-ccl-cream bg-pattern">
         <Header />
         <div className="flex items-center justify-center py-16">
-          <div className="rounded-tile border border-quip-orange/40 bg-white/80 p-6 text-center text-quip-teal">
-            <p className="text-lg font-semibold text-quip-navy">Admin access required</p>
+          <div className="rounded-tile border border-ccl-orange/40 bg-white/80 p-6 text-center text-ccl-teal">
+            <p className="text-lg font-semibold text-ccl-navy">Admin access required</p>
             <p className="mt-2 text-sm">You do not have permission to view flagged phrases.</p>
           </div>
         </div>
@@ -107,25 +107,25 @@ const AdminFlagged: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-quip-cream bg-pattern">
+    <div className="min-h-screen bg-ccl-cream bg-pattern">
       <Header />
       <div className="container mx-auto max-w-5xl px-4 py-8">
-        <div className="tile-card mb-6 flex flex-col gap-4 border-2 border-quip-orange p-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="tile-card mb-6 flex flex-col gap-4 border-2 border-ccl-orange p-6 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-display font-bold text-quip-navy">Flagged Phrases</h1>
-            <p className="text-quip-teal">Review community reports for offensive or nonsensical phrases.</p>
+            <h1 className="text-3xl font-display font-bold text-ccl-navy">Flagged Phrases</h1>
+            <p className="text-ccl-teal">Review community reports for offensive or nonsensical phrases.</p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <button
               onClick={() => navigate('/admin')}
-              className="rounded-tile border-2 border-quip-navy px-4 py-2 text-sm font-semibold text-quip-navy transition hover:bg-quip-navy hover:text-white"
+              className="rounded-tile border-2 border-ccl-navy px-4 py-2 text-sm font-semibold text-ccl-navy transition hover:bg-ccl-navy hover:text-white"
             >
               Back to Admin Panel
             </button>
             <select
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value as FlagStatusFilter)}
-              className="rounded-tile border-2 border-quip-teal px-4 py-2 text-sm font-semibold text-quip-teal focus:outline-none focus:ring-2 focus:ring-quip-turquoise"
+              className="rounded-tile border-2 border-ccl-teal px-4 py-2 text-sm font-semibold text-ccl-teal focus:outline-none focus:ring-2 focus:ring-ccl-turquoise"
             >
               {(Object.keys(statusLabels) as FlagStatusFilter[]).map((status) => (
                 <option key={status} value={status}>
@@ -141,20 +141,20 @@ const AdminFlagged: React.FC = () => {
         )}
 
         {successMessage && (
-          <div className="mb-4 rounded border border-quip-turquoise bg-quip-turquoise/10 px-4 py-3 text-quip-teal">{successMessage}</div>
+          <div className="mb-4 rounded border border-ccl-turquoise bg-ccl-turquoise/10 px-4 py-3 text-ccl-teal">{successMessage}</div>
         )}
 
-        <div className="mb-4 text-sm text-quip-teal">Showing: <span className="font-semibold text-quip-navy">{filteredLabel}</span></div>
+        <div className="mb-4 text-sm text-ccl-teal">Showing: <span className="font-semibold text-ccl-navy">{filteredLabel}</span></div>
 
         {loading ? (
           <div className="flex items-center justify-center py-16">
-            <div className="inline-flex items-center gap-3 text-quip-teal">
-              <span className="h-4 w-4 animate-spin rounded-full border-2 border-quip-orange border-r-transparent"></span>
+            <div className="inline-flex items-center gap-3 text-ccl-teal">
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-ccl-orange border-r-transparent"></span>
               Loading flagged phrases...
             </div>
           </div>
         ) : flags.length === 0 ? (
-          <div className="rounded-tile border border-dashed border-quip-teal/40 bg-white/80 p-8 text-center text-quip-teal">
+          <div className="rounded-tile border border-dashed border-ccl-teal/40 bg-white/80 p-8 text-center text-ccl-teal">
             <p className="text-lg font-semibold">No flagged phrases in this view.</p>
             <p className="text-sm">Great job keeping things clean!</p>
           </div>
@@ -166,14 +166,14 @@ const AdminFlagged: React.FC = () => {
               const statusKey = flag.status as FlagStatusFilter;
 
               return (
-                <div key={flag.flag_id} className="tile-card space-y-4 border border-quip-turquoise/30 p-6">
+                <div key={flag.flag_id} className="tile-card space-y-4 border border-ccl-turquoise/30 p-6">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
-                      <p className="text-xs uppercase tracking-wide text-quip-teal">Original Phrase</p>
-                      <p className="text-2xl font-display font-bold text-quip-navy">{flag.original_phrase}</p>
+                      <p className="text-xs uppercase tracking-wide text-ccl-teal">Original Phrase</p>
+                      <p className="text-2xl font-display font-bold text-ccl-navy">{flag.original_phrase}</p>
                       {flag.prompt_text && (
-                        <p className="mt-2 text-sm text-quip-teal">
-                          Prompt context: <span className="font-medium text-quip-navy">{flag.prompt_text}</span>
+                        <p className="mt-2 text-sm text-ccl-teal">
+                          Prompt context: <span className="font-medium text-ccl-navy">{flag.prompt_text}</span>
                         </p>
                       )}
                     </div>
@@ -182,21 +182,21 @@ const AdminFlagged: React.FC = () => {
                     </span>
                   </div>
 
-                  <div className="grid gap-4 text-sm text-quip-teal sm:grid-cols-2">
+                  <div className="grid gap-4 text-sm text-ccl-teal sm:grid-cols-2">
                     <div>
-                      <span className="font-semibold text-quip-navy">Reported by:</span> {flag.reporter_username}
+                      <span className="font-semibold text-ccl-navy">Reported by:</span> {flag.reporter_username}
                       <div className="text-xs">{createdLabel}</div>
                     </div>
                     <div>
-                      <span className="font-semibold text-quip-navy">Prompt author:</span> {flag.prompt_username}
+                      <span className="font-semibold text-ccl-navy">Prompt author:</span> {flag.prompt_username}
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-quip-navy">Partial refund:</span>
-                      <CurrencyDisplay amount={flag.partial_refund_amount} iconClassName="w-3 h-3" textClassName="text-sm text-quip-navy" />
+                      <span className="font-semibold text-ccl-navy">Partial refund:</span>
+                      <CurrencyDisplay amount={flag.partial_refund_amount} iconClassName="w-3 h-3" textClassName="text-sm text-ccl-navy" />
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-quip-navy">Penalty held:</span>
-                      <CurrencyDisplay amount={flag.penalty_kept} iconClassName="w-3 h-3" textClassName="text-sm text-quip-navy" />
+                      <span className="font-semibold text-ccl-navy">Penalty held:</span>
+                      <CurrencyDisplay amount={flag.penalty_kept} iconClassName="w-3 h-3" textClassName="text-sm text-ccl-navy" />
                     </div>
                   </div>
 
@@ -206,7 +206,7 @@ const AdminFlagged: React.FC = () => {
                         type="button"
                         onClick={() => handleResolve(flag.flag_id, 'dismiss')}
                         disabled={resolvingId === flag.flag_id}
-                        className="rounded-tile border-2 border-quip-navy px-4 py-2 text-sm font-semibold text-quip-navy transition hover:bg-quip-navy hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                        className="rounded-tile border-2 border-ccl-navy px-4 py-2 text-sm font-semibold text-ccl-navy transition hover:bg-ccl-navy hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {resolvingId === flag.flag_id ? 'Processing...' : 'Dismiss flag'}
                       </button>
@@ -214,14 +214,14 @@ const AdminFlagged: React.FC = () => {
                         type="button"
                         onClick={() => handleResolve(flag.flag_id, 'confirm')}
                         disabled={resolvingId === flag.flag_id}
-                        className="rounded-tile bg-quip-orange px-4 py-2 text-sm font-semibold text-white shadow-tile-sm transition hover:bg-quip-orange/90 disabled:cursor-not-allowed disabled:opacity-60"
+                        className="rounded-tile bg-ccl-orange px-4 py-2 text-sm font-semibold text-white shadow-tile-sm transition hover:bg-ccl-orange/90 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {resolvingId === flag.flag_id ? 'Processing...' : 'Confirm & refund'}
                       </button>
                     </div>
                   ) : (
-                    <div className="text-sm text-quip-teal">
-                      <span className="font-semibold text-quip-navy">Reviewed</span>{' '}
+                    <div className="text-sm text-ccl-teal">
+                      <span className="font-semibold text-ccl-navy">Reviewed</span>{' '}
                       {reviewedLabel ? reviewedLabel : '—'}
                       {flag.reviewer_username && (
                         <span className="ml-1">by {flag.reviewer_username}</span>

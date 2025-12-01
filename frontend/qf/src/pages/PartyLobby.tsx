@@ -4,8 +4,8 @@ import { useGame } from '../contexts/GameContext';
 import { usePartyWebSocket } from '../hooks/usePartyWebSocket';
 import apiClient from '../api/client';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import { PartyIcon } from '../components/icons/NavigationIcons';
-import { BotIcon } from '../components/icons/EngagementIcons';
+import { CircleIcon } from '@crowdcraft/components/icons/NavigationIcons.tsx';
+import { BotIcon } from '@crowdcraft/components/icons/EngagementIcons.tsx';
 import { loadingMessages } from '../utils/brandedMessages';
 import type { PartySessionStatusResponse, PartyParticipant } from '../api/types';
 
@@ -204,7 +204,7 @@ export const PartyLobby: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center">
+      <div className="min-h-screen bg-ccl-cream bg-pattern flex items-center justify-center">
         <LoadingSpinner isLoading={true} message={loadingMessages.starting} />
       </div>
     );
@@ -212,18 +212,18 @@ export const PartyLobby: React.FC = () => {
 
   if (error || !sessionStatus) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-quip-orange to-quip-turquoise flex items-center justify-center p-4 bg-pattern">
+      <div className="min-h-screen bg-gradient-to-br from-ccl-orange to-ccl-turquoise flex items-center justify-center p-4 bg-pattern">
         <div className="max-w-md w-full tile-card p-8 slide-up-enter text-center space-y-4">
           <div className="flex justify-center mb-4">
-            <PartyIcon className="w-16 h-16" />
+            <CircleIcon className="w-16 h-16" />
           </div>
-          <h2 className="text-2xl font-display font-bold text-quip-navy mb-2">Session Not Found</h2>
+          <h2 className="text-2xl font-display font-bold text-ccl-navy mb-2">Session Not Found</h2>
           <div className="tile-card bg-red-100 border-2 border-red-400 p-4">
             <p className="text-sm text-red-800">{error || 'Session not found'}</p>
           </div>
           <button
             onClick={() => navigate('/party')}
-            className="w-full bg-quip-navy hover:bg-quip-teal text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm text-lg"
+            className="w-full bg-ccl-navy hover:bg-ccl-teal text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm text-lg"
           >
             Back to Party Mode
           </button>
@@ -233,60 +233,60 @@ export const PartyLobby: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-quip-orange to-quip-turquoise flex items-center justify-center p-4 bg-pattern">
+    <div className="min-h-screen bg-gradient-to-br from-ccl-orange to-ccl-turquoise flex items-center justify-center p-4 bg-pattern">
       <div className="max-w-2xl w-full tile-card p-8 slide-up-enter">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-2 mb-2">
-            <PartyIcon className="w-8 h-8" />
-            <h1 className="text-3xl font-display font-bold text-quip-navy">Party Lobby</h1>
+            <CircleIcon className="w-8 h-8" />
+            <h1 className="text-3xl font-display font-bold text-ccl-navy">Party Lobby</h1>
           </div>
-          <p className="text-quip-teal">Players are marked ready whenever they're in this lobby.</p>
+          <p className="text-ccl-teal">Players are marked ready whenever they're in this lobby.</p>
         </div>
 
         <div className="space-y-6">
           {/* Notification Display */}
           {notification && (
             <div className="space-y-3">
-              <div className="bg-quip-turquoise bg-opacity-10 border-2 border-quip-turquoise rounded-tile p-4 text-center">
-                <p className="text-quip-navy font-semibold">{notification}</p>
+              <div className="bg-ccl-turquoise bg-opacity-10 border-2 border-ccl-turquoise rounded-tile p-4 text-center">
+                <p className="text-ccl-navy font-semibold">{notification}</p>
               </div>
             </div>
           )}
 
           {/* Party Code Display */}
-          <div className="tile-card shadow-tile p-6 text-center bg-quip-orange bg-opacity-5 border-2 border-quip-orange">
-            <h2 className="text-sm font-semibold text-quip-teal uppercase mb-2">Party Code</h2>
+          <div className="tile-card shadow-tile p-6 text-center bg-ccl-orange bg-opacity-5 border-2 border-ccl-orange">
+            <h2 className="text-sm font-semibold text-ccl-teal uppercase mb-2">Party Code</h2>
             <div
-              className="text-5xl font-bold font-mono text-quip-orange-deep tracking-widest"
+              className="text-5xl font-bold font-mono text-ccl-orange-deep tracking-widest"
             >
               {sessionStatus.party_code}
             </div>
-            <p className="text-sm text-quip-teal mt-2">Share this code with friends to join.</p>
+            <p className="text-sm text-ccl-teal mt-2">Share this code with friends to join.</p>
           </div>
 
           {/* Session Info */}
           <div className="tile-card shadow-tile-sm p-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <p className="text-sm text-quip-teal">Humans Ready</p>
-                <p className="text-2xl font-display font-bold text-quip-navy">
+                <p className="text-sm text-ccl-teal">Humans Ready</p>
+                <p className="text-2xl font-display font-bold text-ccl-navy">
                   {humanReadyCount} / {humanParticipants.length}
                 </p>
               </div>
               <div>
-                <p className="text-sm text-quip-teal">Total Players</p>
-                <p className="text-2xl font-display font-bold text-quip-navy">
+                <p className="text-sm text-ccl-teal">Total Players</p>
+                <p className="text-2xl font-display font-bold text-ccl-navy">
                   {totalCount} / {maxPlayers}
                 </p>
               </div>
               <div>
-                <p className="text-sm text-quip-teal">Minimum to Start</p>
-                <p className="text-2xl font-display font-bold text-quip-navy">{minPlayers}</p>
+                <p className="text-sm text-ccl-teal">Minimum to Start</p>
+                <p className="text-2xl font-display font-bold text-ccl-navy">{minPlayers}</p>
               </div>
             </div>
             {!hasEnoughPlayers && (
-              <p className="text-xs text-quip-teal mt-2">
+              <p className="text-xs text-ccl-teal mt-2">
                 Need {neededAi} more player{neededAi === 1 ? '' : 's'} before starting.
               </p>
             )}
@@ -294,39 +294,39 @@ export const PartyLobby: React.FC = () => {
 
           {/* Player List */}
           <div className="tile-card shadow-tile p-4">
-            <h3 className="text-lg font-display font-bold text-quip-navy mb-4">Players</h3>
+            <h3 className="text-lg font-display font-bold text-ccl-navy mb-4">Players</h3>
             <div className="space-y-2">
               {participants.map((participant: PartyParticipant) => (
                 <div
                   key={participant.participant_id}
-                  className="flex items-center justify-between p-3 bg-quip-cream rounded-tile"
+                  className="flex items-center justify-between p-3 bg-ccl-cream rounded-tile"
                 >
                   <div className="flex items-center gap-3">
                     <div
                       className={`w-3 h-3 rounded-full ${
                         participant.status === 'READY'
-                          ? 'bg-quip-turquoise'
+                          ? 'bg-ccl-turquoise'
                           : 'bg-gray-300'
                       }`}
                       title={participant.status === 'READY' ? 'Ready' : 'Not ready'}
                     />
-                    <span className="font-semibold text-quip-navy flex items-center gap-2">
+                    <span className="font-semibold text-ccl-navy flex items-center gap-2">
                       {participant.username}
                       {participant.is_ai && <BotIcon className="w-4 h-4" />}
                     </span>
                     {participant.is_host && (
-                      <span className="px-2 py-1 text-xs font-semibold text-quip-orange-deep bg-quip-orange bg-opacity-20 rounded-tile">
+                      <span className="px-2 py-1 text-xs font-semibold text-ccl-orange-deep bg-ccl-orange bg-opacity-20 rounded-tile">
                         HOST
                       </span>
                     )}
                     {participant.player_id === player?.player_id && (
-                      <span className="px-2 py-1 text-xs font-semibold text-quip-turquoise bg-quip-turquoise bg-opacity-20 rounded-tile">
+                      <span className="px-2 py-1 text-xs font-semibold text-ccl-turquoise bg-ccl-turquoise bg-opacity-20 rounded-tile">
                         YOU
                       </span>
                     )}
                   </div>
                   <span className={`text-sm font-semibold ${
-                    participant.status === 'READY' ? 'text-quip-turquoise' : 'text-gray-500'
+                    participant.status === 'READY' ? 'text-ccl-turquoise' : 'text-gray-500'
                   }`}>
                     {participant.status === 'READY' ? 'Ready' : 'Waiting...'}
                   </span>
@@ -342,7 +342,7 @@ export const PartyLobby: React.FC = () => {
               <button
                 onClick={handlePingPlayers}
                 disabled={isPinging}
-                className="w-full border-2 border-quip-navy text-quip-navy bg-white hover:bg-quip-navy hover:text-white font-semibold py-3 px-4 rounded-tile transition-all disabled:opacity-60"
+                className="w-full border-2 border-ccl-navy text-ccl-navy bg-white hover:bg-ccl-navy hover:text-white font-semibold py-3 px-4 rounded-tile transition-all disabled:opacity-60"
               >
                 {isPinging ? 'Pinging players...' : 'Ping Everyone'}
               </button>
@@ -353,7 +353,7 @@ export const PartyLobby: React.FC = () => {
               <button
                 onClick={handleAddAI}
                 disabled={isAddingAI}
-                className="w-full bg-quip-teal hover:bg-quip-turquoise text-white font-semibold py-3 px-4 rounded-tile transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-ccl-teal hover:bg-ccl-turquoise text-white font-semibold py-3 px-4 rounded-tile transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isAddingAI ? 'Adding AI Player...' : '+ Add AI Player'}
               </button>
@@ -366,7 +366,7 @@ export const PartyLobby: React.FC = () => {
                 disabled={!allHumansReady || isStarting}
                 className={`w-full font-bold py-3 px-4 rounded-tile transition-all text-lg ${
                   allHumansReady && !isStarting
-                    ? 'bg-quip-orange hover:bg-quip-orange-deep text-white hover:shadow-tile-sm'
+                    ? 'bg-ccl-orange hover:bg-ccl-orange-deep text-white hover:shadow-tile-sm'
                     : 'bg-gray-400 text-white cursor-not-allowed'
                 }`}
               >
@@ -383,17 +383,17 @@ export const PartyLobby: React.FC = () => {
             )}
 
             {isHost && !allHumansReady && (
-              <p className="text-sm text-center text-quip-teal">
+              <p className="text-sm text-center text-ccl-teal">
                 Waiting for {humanNotReady.length} human player{humanNotReady.length === 1 ? '' : 's'} to return to the lobby.
               </p>
             )}
             {isHost && needsAutoAiStart && (
-              <p className="text-sm text-center text-quip-teal">
+              <p className="text-sm text-center text-ccl-teal">
                 All humans are ready! We'll add {neededAi} AI teammate{neededAi === 1 ? '' : 's'} and start immediately.
               </p>
             )}
             {isHost && !hasEnoughPlayers && !needsAutoAiStart && allHumansReady && (
-              <p className="text-sm text-center text-quip-teal">
+              <p className="text-sm text-center text-ccl-teal">
                 Need at least {minPlayers} total players to start.
               </p>
             )}
@@ -401,7 +401,7 @@ export const PartyLobby: React.FC = () => {
             {/* Leave Button */}
             <button
               onClick={handleLeave}
-              className="w-full border-2 border-quip-navy bg-white hover:bg-quip-navy hover:text-white text-quip-navy font-semibold py-3 px-4 rounded-tile transition-all"
+              className="w-full border-2 border-ccl-navy bg-white hover:bg-ccl-navy hover:text-white text-ccl-navy font-semibold py-3 px-4 rounded-tile transition-all"
             >
               Leave Party
             </button>
@@ -410,7 +410,7 @@ export const PartyLobby: React.FC = () => {
           {/* Back to Dashboard Button */}
           <button
             onClick={() => navigate('/dashboard')}
-            className="w-full mt-4 flex items-center justify-center gap-2 text-quip-teal hover:text-quip-turquoise py-2 font-medium transition-colors"
+            className="w-full mt-4 flex items-center justify-center gap-2 text-ccl-teal hover:text-ccl-turquoise py-2 font-medium transition-colors"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
@@ -419,8 +419,8 @@ export const PartyLobby: React.FC = () => {
           </button>
 
           {/* Connection Status */}
-          <div className="mt-6 p-4 bg-quip-navy bg-opacity-5 rounded-tile">
-            <p className="text-sm text-center text-quip-teal">
+          <div className="mt-6 p-4 bg-ccl-navy bg-opacity-5 rounded-tile">
+            <p className="text-sm text-center text-ccl-teal">
               {wsConnecting && '🔄 Connecting to live updates...'}
               {wsConnected && '✅ Connected to live updates'}
               {!wsConnecting && !wsConnected && '⚠️ Not connected - updates may be delayed'}

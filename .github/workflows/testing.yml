@@ -82,18 +82,18 @@ jobs:
       with:
         node-version: '18'
         cache: 'npm'
-        cache-dependency-path: qf_frontend/package-lock.json
+        cache-dependency-path: frontend/qf/package-lock.json
 
     - name: Install dependencies
-      working-directory: ./qf_frontend
+      working-directory: ./frontend/qf
       run: npm install
 
     - name: Run linter
-      working-directory: ./qf_frontend
+      working-directory: ./frontend/qf
       run: npm run lint
 
     - name: Build frontend
-      working-directory: ./qf_frontend
+      working-directory: ./frontend/qf
       run: npm run build
 
   mm-frontend-lint:
@@ -108,18 +108,18 @@ jobs:
       with:
         node-version: '18'
         cache: 'npm'
-        cache-dependency-path: mm_frontend/package-lock.json
+        cache-dependency-path: frontend/mm/package-lock.json
 
     - name: Install dependencies
-      working-directory: ./mm_frontend
+      working-directory: ./frontend/mm
       run: npm install
 
     - name: Run linter
-      working-directory: ./mm_frontend
+      working-directory: ./frontend/mm
       run: npm run lint
 
     - name: Build frontend
-      working-directory: ./mm_frontend
+      working-directory: ./frontend/mm
       run: npm run build
 
   notify-success:

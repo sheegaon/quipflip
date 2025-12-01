@@ -79,7 +79,7 @@ const Settings: React.FC = () => {
 
   if (!player) {
     return (
-      <div className="min-h-screen bg-quip-cream bg-pattern">
+      <div className="min-h-screen bg-ccl-cream bg-pattern">
         <div className="container mx-auto px-4 py-8">
           <div className="text-center">Loading...</div>
         </div>
@@ -269,12 +269,12 @@ const Settings: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-quip-cream bg-pattern">
+    <div className="min-h-screen bg-ccl-cream bg-pattern">
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         {/* Header */}
         <div className="tile-card p-6 mb-6">
-          <h1 className="text-3xl font-display font-bold text-quip-navy">Settings</h1>
-          <p className="text-quip-teal mt-1">Manage your account and preferences</p>
+          <h1 className="text-3xl font-display font-bold text-ccl-navy">Settings</h1>
+          <p className="text-ccl-teal mt-1">Manage your account and preferences</p>
         </div>
 
         {/* Error/Success Messages */}
@@ -310,29 +310,29 @@ const Settings: React.FC = () => {
 
         {/* Account Information */}
         <div className="tile-card p-6 mb-6">
-          <h2 className="text-2xl font-display font-bold text-quip-navy mb-4">Account Information</h2>
+          <h2 className="text-2xl font-display font-bold text-ccl-navy mb-4">Account Information</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-quip-teal mb-1">Username</label>
-              <div className="bg-white border-2 border-quip-navy border-opacity-20 rounded-tile p-3 text-quip-navy">
+              <label className="block text-sm font-semibold text-ccl-teal mb-1">Username</label>
+              <div className="bg-white border-2 border-ccl-navy border-opacity-20 rounded-tile p-3 text-ccl-navy">
                 {player.username}
               </div>
             </div>
             <div>
-              <label className="block text-sm font-semibold text-quip-teal mb-1">Email</label>
-              <div className="bg-white border-2 border-quip-navy border-opacity-20 rounded-tile p-3 text-quip-navy">
+              <label className="block text-sm font-semibold text-ccl-teal mb-1">Email</label>
+              <div className="bg-white border-2 border-ccl-navy border-opacity-20 rounded-tile p-3 text-ccl-navy">
                 {player.email || 'Not available'}
               </div>
             </div>
             <div>
-              <label className="block text-sm font-semibold text-quip-teal mb-1">Account Created</label>
-              <div className="bg-white border-2 border-quip-navy border-opacity-20 rounded-tile p-3 text-quip-navy">
+              <label className="block text-sm font-semibold text-ccl-teal mb-1">Account Created</label>
+              <div className="bg-white border-2 border-ccl-navy border-opacity-20 rounded-tile p-3 text-ccl-navy">
                 {formatDate(player.created_at)}
               </div>
             </div>
             <div>
-              <label className="block text-sm font-semibold text-quip-teal mb-1">Last Login</label>
-              <div className="bg-white border-2 border-quip-navy border-opacity-20 rounded-tile p-3 text-quip-navy">
+              <label className="block text-sm font-semibold text-ccl-teal mb-1">Last Login</label>
+              <div className="bg-white border-2 border-ccl-navy border-opacity-20 rounded-tile p-3 text-ccl-navy">
                 {formatDateTime(player.last_login_date)}
               </div>
             </div>
@@ -341,40 +341,40 @@ const Settings: React.FC = () => {
 
         {/* Change Password */}
         <div className="tile-card p-6 mb-6">
-          <h2 className="text-2xl font-display font-bold text-quip-navy mb-4">Change Password</h2>
-          <p className="text-quip-teal mb-4">
+          <h2 className="text-2xl font-display font-bold text-ccl-navy mb-4">Change Password</h2>
+          <p className="text-ccl-teal mb-4">
             Update your password to keep your account secure.
           </p>
           {passwordError && <p className="text-red-600 mb-3">{passwordError}</p>}
           {passwordSuccess && <p className="text-green-600 mb-3">{passwordSuccess}</p>}
           <form onSubmit={handlePasswordSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="flex flex-col">
-              <label className="text-sm font-semibold text-quip-teal mb-2">Current Password</label>
+              <label className="text-sm font-semibold text-ccl-teal mb-2">Current Password</label>
               <input
                 type="password"
                 value={passwordForm.currentPassword}
                 onChange={(e) => setPasswordForm((prev) => ({ ...prev, currentPassword: e.target.value }))}
-                className="border-2 border-quip-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-quip-orange"
+                className="border-2 border-ccl-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-ccl-orange"
                 placeholder="Enter current password"
               />
             </div>
             <div className="flex flex-col">
-              <label className="text-sm font-semibold text-quip-teal mb-2">New Password</label>
+              <label className="text-sm font-semibold text-ccl-teal mb-2">New Password</label>
               <input
                 type="password"
                 value={passwordForm.newPassword}
                 onChange={(e) => setPasswordForm((prev) => ({ ...prev, newPassword: e.target.value }))}
-                className="border-2 border-quip-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-quip-orange"
+                className="border-2 border-ccl-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-ccl-orange"
                 placeholder="Enter new password"
               />
             </div>
             <div className="flex flex-col">
-              <label className="text-sm font-semibold text-quip-teal mb-2">Confirm New Password</label>
+              <label className="text-sm font-semibold text-ccl-teal mb-2">Confirm New Password</label>
               <input
                 type="password"
                 value={passwordForm.confirmPassword}
                 onChange={(e) => setPasswordForm((prev) => ({ ...prev, confirmPassword: e.target.value }))}
-                className="border-2 border-quip-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-quip-orange"
+                className="border-2 border-ccl-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-ccl-orange"
                 placeholder="Re-enter new password"
               />
             </div>
@@ -382,7 +382,7 @@ const Settings: React.FC = () => {
               <button
                 type="submit"
                 disabled={passwordLoading}
-                className="bg-quip-turquoise hover:bg-quip-teal disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm"
+                className="bg-ccl-turquoise hover:bg-ccl-teal disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm"
               >
                 {passwordLoading ? 'Updating...' : 'Update Password'}
               </button>
@@ -392,28 +392,28 @@ const Settings: React.FC = () => {
 
         {/* Change Email */}
         <div className="tile-card p-6 mb-6">
-          <h2 className="text-2xl font-display font-bold text-quip-navy mb-4">Change Email</h2>
-          <p className="text-quip-teal mb-4">Enter a new email address and confirm with your current password.</p>
+          <h2 className="text-2xl font-display font-bold text-ccl-navy mb-4">Change Email</h2>
+          <p className="text-ccl-teal mb-4">Enter a new email address and confirm with your current password.</p>
           {emailError && <p className="text-red-600 mb-3">{emailError}</p>}
           {emailSuccess && <p className="text-green-600 mb-3">{emailSuccess}</p>}
           <form onSubmit={handleEmailSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex flex-col">
-              <label className="text-sm font-semibold text-quip-teal mb-2">New Email</label>
+              <label className="text-sm font-semibold text-ccl-teal mb-2">New Email</label>
               <input
                 type="email"
                 value={emailForm.newEmail}
                 onChange={(e) => setEmailForm((prev) => ({ ...prev, newEmail: e.target.value }))}
-                className="border-2 border-quip-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-quip-orange"
+                className="border-2 border-ccl-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-ccl-orange"
                 placeholder="you@example.com"
               />
             </div>
             <div className="flex flex-col">
-              <label className="text-sm font-semibold text-quip-teal mb-2">Password</label>
+              <label className="text-sm font-semibold text-ccl-teal mb-2">Password</label>
               <input
                 type="password"
                 value={emailForm.password}
                 onChange={(e) => setEmailForm((prev) => ({ ...prev, password: e.target.value }))}
-                className="border-2 border-quip-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-quip-orange"
+                className="border-2 border-ccl-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-ccl-orange"
                 placeholder="Enter password"
               />
             </div>
@@ -421,7 +421,7 @@ const Settings: React.FC = () => {
               <button
                 type="submit"
                 disabled={emailLoading}
-                className="bg-quip-turquoise hover:bg-quip-teal disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm"
+                className="bg-ccl-turquoise hover:bg-ccl-teal disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm"
               >
                 {emailLoading ? 'Updating...' : 'Update Email'}
               </button>
@@ -431,30 +431,30 @@ const Settings: React.FC = () => {
 
         {/* Change Username */}
         <div className="tile-card p-6 mb-6">
-          <h2 className="text-2xl font-display font-bold text-quip-navy mb-4">Change Username</h2>
-          <p className="text-quip-teal mb-4">Update your display name and confirm with your current password.</p>
+          <h2 className="text-2xl font-display font-bold text-ccl-navy mb-4">Change Username</h2>
+          <p className="text-ccl-teal mb-4">Update your display name and confirm with your current password.</p>
           {usernameError && <p className="text-red-600 mb-3">{usernameError}</p>}
           {usernameSuccess && <p className="text-green-600 mb-3">{usernameSuccess}</p>}
           <form onSubmit={handleUsernameSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex flex-col">
-              <label className="text-sm font-semibold text-quip-teal mb-2">New Username</label>
+              <label className="text-sm font-semibold text-ccl-teal mb-2">New Username</label>
               <input
                 type="text"
                 value={usernameForm.newUsername}
                 onChange={(e) => setUsernameForm((prev) => ({ ...prev, newUsername: e.target.value }))}
-                className="border-2 border-quip-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-quip-orange"
+                className="border-2 border-ccl-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-ccl-orange"
                 placeholder="Enter new username"
                 minLength={3}
                 maxLength={80}
               />
             </div>
             <div className="flex flex-col">
-              <label className="text-sm font-semibold text-quip-teal mb-2">Password</label>
+              <label className="text-sm font-semibold text-ccl-teal mb-2">Password</label>
               <input
                 type="password"
                 value={usernameForm.password}
                 onChange={(e) => setUsernameForm((prev) => ({ ...prev, password: e.target.value }))}
-                className="border-2 border-quip-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-quip-orange"
+                className="border-2 border-ccl-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-ccl-orange"
                 placeholder="Enter password"
               />
             </div>
@@ -462,7 +462,7 @@ const Settings: React.FC = () => {
               <button
                 type="submit"
                 disabled={usernameLoading}
-                className="bg-quip-turquoise hover:bg-quip-teal disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm"
+                className="bg-ccl-turquoise hover:bg-ccl-teal disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm"
               >
                 {usernameLoading ? 'Updating...' : 'Update Username'}
               </button>
@@ -472,12 +472,12 @@ const Settings: React.FC = () => {
 
         {/* Tutorial Management */}
         <div className="tile-card p-6 mb-6">
-          <h2 className="text-2xl font-display font-bold text-quip-navy mb-4">Tutorial</h2>
-          <p className="text-quip-teal mb-4">Reset the tutorial to see the introduction and walkthrough again.</p>
+          <h2 className="text-2xl font-display font-bold text-ccl-navy mb-4">Tutorial</h2>
+          <p className="text-ccl-teal mb-4">Reset the tutorial to see the introduction and walkthrough again.</p>
           <button
             onClick={handleResetTutorial}
             disabled={resettingTutorial}
-            className="bg-quip-turquoise hover:bg-quip-teal disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm"
+            className="bg-ccl-turquoise hover:bg-ccl-teal disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm"
           >
             {resettingTutorial ? 'Resetting...' : 'Reset Tutorial'}
           </button>
@@ -499,15 +499,15 @@ const Settings: React.FC = () => {
 
         {/* Admin Access */}
         {player.is_admin && (
-          <div className="tile-card p-6 mb-6 border-2 border-quip-orange border-opacity-30">
-            <h2 className="text-2xl font-display font-bold text-quip-navy mb-4">Admin Access</h2>
-            <p className="text-quip-teal mb-4">
+          <div className="tile-card p-6 mb-6 border-2 border-ccl-orange border-opacity-30">
+            <h2 className="text-2xl font-display font-bold text-ccl-navy mb-4">Admin Access</h2>
+            <p className="text-ccl-teal mb-4">
               Access administrative settings and configuration. Only available to users with admin email addresses.
             </p>
 
             <button
               onClick={handleAdminAccess}
-              className="bg-quip-orange hover:bg-quip-orange-deep text-white font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm"
+              className="bg-ccl-orange hover:bg-ccl-orange-deep text-white font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm"
             >
               Access Admin Panel
             </button>
@@ -519,13 +519,13 @@ const Settings: React.FC = () => {
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 px-4">
           <div className="tile-card max-w-lg w-full p-6">
             <h3 className="text-2xl font-display font-bold text-red-700 mb-4">Confirm Account Deletion</h3>
-            <p className="text-quip-teal mb-4">
+            <p className="text-ccl-teal mb-4">
               This will permanently delete your account, wallet, vault, quests, and all associated gameplay history. This action cannot be undone.
             </p>
             {deleteError && <p className="text-red-600 mb-3">{deleteError}</p>}
             <form onSubmit={handleDeleteAccount} className="space-y-4">
               <div>
-                <label className="block text-sm font-semibold text-quip-teal mb-2">Password</label>
+                <label className="block text-sm font-semibold text-ccl-teal mb-2">Password</label>
                 <input
                   type="password"
                   value={deletePassword}
@@ -536,7 +536,7 @@ const Settings: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-quip-teal mb-2">Type DELETE to confirm</label>
+                <label className="block text-sm font-semibold text-ccl-teal mb-2">Type DELETE to confirm</label>
                 <input
                   type="text"
                   value={deleteConfirmation}

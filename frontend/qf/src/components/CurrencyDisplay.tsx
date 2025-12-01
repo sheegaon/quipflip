@@ -27,7 +27,7 @@ export const CurrencyDisplay: React.FC<CurrencyDisplayProps> = ({
       {showIcon && (
         <img
           src="/flipcoin.png"
-          alt="Flipcoins"
+          alt="FlipCoins"
           className={iconClassName}
         />
       )}

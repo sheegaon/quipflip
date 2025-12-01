@@ -1,5 +1,5 @@
 import React from 'react';
-import { HomeIcon } from '../icons/NavigationIcons';
+import { HomeIcon } from '@crowdcraft/components/icons/NavigationIcons.tsx';
 
 interface ReviewBackButtonProps {
   onClick: () => void;
@@ -11,7 +11,7 @@ export const ReviewBackButton: React.FC<ReviewBackButtonProps> = ({ onClick, dis
     <button
       onClick={onClick}
       disabled={disabled}
-      className="w-full mt-4 flex items-center justify-center gap-2 text-quip-teal hover:text-quip-turquoise disabled:opacity-50 disabled:cursor-not-allowed py-2 font-medium transition-colors"
+      className="w-full mt-4 flex items-center justify-center gap-2 text-ccl-teal hover:text-ccl-turquoise disabled:opacity-50 disabled:cursor-not-allowed py-2 font-medium transition-colors"
       title="Dashboard"
     >
       <HomeIcon />

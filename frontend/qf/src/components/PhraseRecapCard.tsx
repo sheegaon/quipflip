@@ -28,25 +28,25 @@ export const PhraseRecapCard: React.FC<PhraseRecapCardProps> = ({
   contributor,
 }) => {
   // Determine styling based on whether it's original
-  const borderColor = isOriginal ? 'border-quip-turquoise' : 'border-quip-teal';
-  const bgColor = isOriginal ? 'bg-quip-turquoise bg-opacity-5' : 'bg-white';
+  const borderColor = isOriginal ? 'border-ccl-turquoise' : 'border-ccl-teal';
+  const bgColor = isOriginal ? 'bg-ccl-turquoise bg-opacity-5' : 'bg-white';
 
   return (
     <div
       className={`relative ${bgColor} border-2 ${borderColor} rounded-tile p-4 transition-all`}
     >
       {/* Phrase text */}
-      <p className="text-lg font-semibold text-quip-navy mb-2">
+      <p className="text-lg font-semibold text-ccl-navy mb-2">
         "{phrase}"
       </p>
 
       {/* Author and badges */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
-          <span className="text-sm text-quip-teal">
+          <span className="text-sm text-ccl-teal">
             Written by:
           </span>
-          <span className={`text-sm font-semibold ${contributor?.is_you ? 'text-quip-orange' : 'text-quip-navy'}`}>
+          <span className={`text-sm font-semibold ${contributor?.is_you ? 'text-ccl-orange' : 'text-ccl-navy'}`}>
             {contributor?.username || 'Unknown'}
             {contributor?.is_you && ' (you)'}
           </span>
@@ -55,12 +55,12 @@ export const PhraseRecapCard: React.FC<PhraseRecapCardProps> = ({
         {/* Badges */}
         <div className="flex items-center gap-2">
           {isOriginal && (
-            <span className="inline-flex items-center gap-1 px-3 py-1 bg-quip-turquoise text-white text-sm font-bold rounded-tile">
+            <span className="inline-flex items-center gap-1 px-3 py-1 bg-ccl-turquoise text-white text-sm font-bold rounded-tile">
               ⭐ Original
             </span>
           )}
           {isYourChoice && (
-            <span className={`inline-flex items-center gap-1 px-3 py-1 ${isCorrectChoice ? 'bg-quip-turquoise' : 'bg-quip-orange'} text-white text-sm font-bold rounded-tile`}>
+            <span className={`inline-flex items-center gap-1 px-3 py-1 ${isCorrectChoice ? 'bg-ccl-turquoise' : 'bg-ccl-orange'} text-white text-sm font-bold rounded-tile`}>
               {isCorrectChoice ? '✓' : '✗'} Your Choice
             </span>
           )}

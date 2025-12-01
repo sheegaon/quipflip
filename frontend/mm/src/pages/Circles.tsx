@@ -100,16 +100,16 @@ export const Circles: React.FC = () => {
     <div className="max-w-4xl mx-auto px-4 pb-12 pt-4">
       <div className="tile-card p-6 md:p-8">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-display font-bold text-quip-navy">Circles</h1>
+          <h1 className="text-3xl font-display font-bold text-ccl-navy">Circles</h1>
           <button
             onClick={() => setShowCreateModal(true)}
-            className="bg-quip-orange text-white font-bold py-2 px-6 rounded-tile shadow-tile hover:shadow-tile-sm transition-all"
+            className="bg-ccl-orange text-white font-bold py-2 px-6 rounded-tile shadow-tile hover:shadow-tile-sm transition-all"
           >
             Create Circle
           </button>
         </div>
 
-        <p className="text-quip-navy mb-6">
+        <p className="text-ccl-navy mb-6">
           Join or create Circles to play with friends. Circle members see each other's captions more often.
         </p>
 
@@ -125,28 +125,28 @@ export const Circles: React.FC = () => {
           </div>
         ) : circles.length === 0 ? (
           <div className="text-center py-10">
-            <p className="text-quip-navy/70 mb-4">No Circles found. Create one to get started!</p>
+            <p className="text-ccl-navy/70 mb-4">No Circles found. Create one to get started!</p>
           </div>
         ) : (
           <div className="space-y-4">
             {circles.map((circle) => (
               <div
                 key={circle.circle_id}
-                className="border-2 border-quip-navy rounded-tile p-4 bg-white hover:shadow-tile-sm transition-shadow"
+                className="border-2 border-ccl-navy rounded-tile p-4 bg-white hover:shadow-tile-sm transition-shadow"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <h3 className="text-xl font-display font-bold text-quip-navy mb-1">
+                    <h3 className="text-xl font-display font-bold text-ccl-navy mb-1">
                       {circle.name}
                     </h3>
                     {circle.description && (
-                      <p className="text-quip-navy/70 mb-2">{circle.description}</p>
+                      <p className="text-ccl-navy/70 mb-2">{circle.description}</p>
                     )}
-                    <div className="flex items-center gap-4 text-sm text-quip-navy/60">
+                    <div className="flex items-center gap-4 text-sm text-ccl-navy/60">
                       <span>{circle.member_count} {circle.member_count === 1 ? 'member' : 'members'}</span>
                       <span>{circle.is_public ? 'Public' : 'Private'}</span>
                       {circle.is_admin && (
-                        <span className="text-quip-orange font-bold">Admin</span>
+                        <span className="text-ccl-orange font-bold">Admin</span>
                       )}
                     </div>
                   </div>
@@ -155,14 +155,14 @@ export const Circles: React.FC = () => {
                       <>
                         <button
                           onClick={() => navigate(`/circles/${circle.circle_id}`)}
-                          className="bg-quip-teal text-white font-bold py-2 px-4 rounded-tile shadow-tile hover:shadow-tile-sm transition-all whitespace-nowrap"
+                          className="bg-ccl-teal text-white font-bold py-2 px-4 rounded-tile shadow-tile hover:shadow-tile-sm transition-all whitespace-nowrap"
                         >
                           View
                         </button>
                         <button
                           onClick={() => handleLeaveCircle(circle.circle_id)}
                           disabled={actionLoading === circle.circle_id}
-                          className="bg-quip-navy/10 text-quip-navy font-bold py-2 px-4 rounded-tile hover:bg-quip-navy/20 transition-all whitespace-nowrap disabled:opacity-50"
+                          className="bg-ccl-navy/10 text-ccl-navy font-bold py-2 px-4 rounded-tile hover:bg-ccl-navy/20 transition-all whitespace-nowrap disabled:opacity-50"
                         >
                           {actionLoading === circle.circle_id ? 'Leaving...' : 'Leave'}
                         </button>
@@ -170,7 +170,7 @@ export const Circles: React.FC = () => {
                     ) : circle.has_pending_request ? (
                       <button
                         disabled
-                        className="bg-quip-navy/20 text-quip-navy/60 font-bold py-2 px-4 rounded-tile whitespace-nowrap"
+                        className="bg-ccl-navy/20 text-ccl-navy/60 font-bold py-2 px-4 rounded-tile whitespace-nowrap"
                       >
                         Request Pending
                       </button>
@@ -178,7 +178,7 @@ export const Circles: React.FC = () => {
                       <button
                         onClick={() => handleJoinCircle(circle.circle_id)}
                         disabled={actionLoading === circle.circle_id}
-                        className="bg-quip-orange text-white font-bold py-2 px-4 rounded-tile shadow-tile hover:shadow-tile-sm transition-all whitespace-nowrap disabled:opacity-50"
+                        className="bg-ccl-orange text-white font-bold py-2 px-4 rounded-tile shadow-tile hover:shadow-tile-sm transition-all whitespace-nowrap disabled:opacity-50"
                       >
                         {actionLoading === circle.circle_id ? 'Joining...' : 'Request to Join'}
                       </button>
@@ -195,7 +195,7 @@ export const Circles: React.FC = () => {
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-tile p-6 max-w-md w-full shadow-tile">
-            <h2 className="text-2xl font-display font-bold text-quip-navy mb-4">Create a Circle</h2>
+            <h2 className="text-2xl font-display font-bold text-ccl-navy mb-4">Create a Circle</h2>
 
             {createError && (
               <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded text-sm">
@@ -205,7 +205,7 @@ export const Circles: React.FC = () => {
 
             <form onSubmit={handleCreateCircle}>
               <div className="mb-4">
-                <label className="block text-quip-navy font-bold mb-2">
+                <label className="block text-ccl-navy font-bold mb-2">
                   Circle Name <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -213,14 +213,14 @@ export const Circles: React.FC = () => {
                   value={createForm.name}
                   onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
                   maxLength={100}
-                  className="w-full px-3 py-2 border-2 border-quip-navy rounded focus:outline-none focus:ring-2 focus:ring-quip-orange"
+                  className="w-full px-3 py-2 border-2 border-ccl-navy rounded focus:outline-none focus:ring-2 focus:ring-ccl-orange"
                   placeholder="My Awesome Circle"
                   disabled={createLoading}
                 />
               </div>
 
               <div className="mb-4">
-                <label className="block text-quip-navy font-bold mb-2">
+                <label className="block text-ccl-navy font-bold mb-2">
                   Description (Optional)
                 </label>
                 <textarea
@@ -228,7 +228,7 @@ export const Circles: React.FC = () => {
                   onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
                   maxLength={500}
                   rows={3}
-                  className="w-full px-3 py-2 border-2 border-quip-navy rounded focus:outline-none focus:ring-2 focus:ring-quip-orange"
+                  className="w-full px-3 py-2 border-2 border-ccl-navy rounded focus:outline-none focus:ring-2 focus:ring-ccl-orange"
                   placeholder="A brief description of your Circle..."
                   disabled={createLoading}
                 />
@@ -243,7 +243,7 @@ export const Circles: React.FC = () => {
                     className="w-4 h-4"
                     disabled={createLoading}
                   />
-                  <span className="text-quip-navy">Public (anyone can request to join)</span>
+                  <span className="text-ccl-navy">Public (anyone can request to join)</span>
                 </label>
               </div>
 
@@ -252,14 +252,14 @@ export const Circles: React.FC = () => {
                   type="button"
                   onClick={handleCloseCreateModal}
                   disabled={createLoading}
-                  className="flex-1 bg-quip-navy/10 text-quip-navy font-bold py-2 px-4 rounded-tile hover:bg-quip-navy/20 transition-all disabled:opacity-50"
+                  className="flex-1 bg-ccl-navy/10 text-ccl-navy font-bold py-2 px-4 rounded-tile hover:bg-ccl-navy/20 transition-all disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={createLoading}
-                  className="flex-1 bg-quip-orange text-white font-bold py-2 px-4 rounded-tile shadow-tile hover:shadow-tile-sm transition-all disabled:opacity-50"
+                  className="flex-1 bg-ccl-orange text-white font-bold py-2 px-4 rounded-tile shadow-tile hover:shadow-tile-sm transition-all disabled:opacity-50"
                 >
                   {createLoading ? 'Creating...' : 'Create'}
                 </button>

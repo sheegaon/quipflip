@@ -66,8 +66,8 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 };
 
 const suspenseFallback = (
-  <div className="flex min-h-screen items-center justify-center bg-quip-navy/5">
-    <span className="text-lg font-semibold text-quip-navy">Loading...</span>
+  <div className="flex min-h-screen items-center justify-center bg-ccl-navy/5">
+    <span className="text-lg font-semibold text-ccl-navy">Loading...</span>
   </div>
 );
 
@@ -91,7 +91,7 @@ const GameLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     <>
       <Header />
       <SubHeader />
-      <div className="min-h-screen bg-quip-cream bg-pattern">
+      <div className="min-h-screen bg-ccl-cream bg-pattern">
         {children}
       </div>
     </>
@@ -112,8 +112,8 @@ const AppRoutes: React.FC = () => {
 
   if (isInitializing) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-quip-navy/5">
-        <span className="text-lg font-semibold text-quip-navy">Loading...</span>
+      <div className="flex min-h-screen items-center justify-center bg-ccl-navy/5">
+        <span className="text-lg font-semibold text-ccl-navy">Loading...</span>
       </div>
     );
   }

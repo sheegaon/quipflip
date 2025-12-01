@@ -9,7 +9,7 @@ import {
   QuestOverviewIcon,
   QuestQualityIcon,
   QuestStreakIcon,
-} from './icons/QuestIcons';
+} from '@crowdcraft/components/icons/QuestIcons.tsx';
 
 interface QuestCardProps {
   quest: Quest;
@@ -52,7 +52,7 @@ export const QuestCard: React.FC<QuestCardProps> = ({
           Icon: QuestStreakIcon,
           iconAlt: 'Streak quest icon',
           iconWrapper: 'bg-quest-streak/10',
-          badgeClass: 'bg-quest-streak/10 text-quip-orange-deep'
+          badgeClass: 'bg-quest-streak/10 text-ccl-orange-deep'
         };
       case 'quality':
         return {
@@ -65,8 +65,8 @@ export const QuestCard: React.FC<QuestCardProps> = ({
         return {
           Icon: QuestActivityIcon,
           iconAlt: 'Activity quest icon',
-          iconWrapper: 'bg-quip-turquoise/10',
-          badgeClass: 'bg-quip-turquoise/10 text-quip-teal'
+          iconWrapper: 'bg-ccl-turquoise/10',
+          badgeClass: 'bg-ccl-turquoise/10 text-ccl-teal'
         };
       case 'milestone':
         return {
@@ -151,7 +151,7 @@ export const QuestCard: React.FC<QuestCardProps> = ({
           <CurrencyDisplay 
             amount={quest.reward_amount} 
             iconClassName="w-4 h-4" 
-            textClassName="font-bold text-lg text-quip-turquoise whitespace-nowrap" 
+            textClassName="font-bold text-lg text-ccl-turquoise whitespace-nowrap" 
           />
           {getStatusBadge(quest.status)}
         </div>
@@ -183,7 +183,7 @@ export const QuestCard: React.FC<QuestCardProps> = ({
           <button
             onClick={handleClaim}
             disabled={isClaiming}
-            className="px-4 py-2 bg-gradient-to-r from-quip-turquoise to-teal-500 text-white font-semibold text-sm rounded-lg hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 bg-gradient-to-r from-ccl-turquoise to-teal-500 text-white font-semibold text-sm rounded-lg hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isClaiming ? 'Claiming...' : 'Claim Reward'}
           </button>

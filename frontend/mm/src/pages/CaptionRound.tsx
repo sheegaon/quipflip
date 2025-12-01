@@ -7,7 +7,7 @@ import type {
   VoteResult,
 } from '../api/types';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
-import { ShareIcon } from '../components/icons/EngagementIcons';
+import { ShareIcon } from '@crowdcraft/components/icons/EngagementIcons.tsx';
 
 interface CaptionLocationState {
   round?: VoteRoundState;
@@ -38,12 +38,12 @@ export const CaptionRound: React.FC = () => {
 
   if (!round) {
     return (
-      <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center p-4">
+      <div className="min-h-screen bg-ccl-cream bg-pattern flex items-center justify-center p-4">
         <div className="tile-card p-6 max-w-lg text-center">
-          <p className="text-lg text-quip-navy font-display mb-4">No active caption round.</p>
+          <p className="text-lg text-ccl-navy font-display mb-4">No active caption round.</p>
           <button
             onClick={() => navigate('/dashboard')}
-            className="bg-quip-orange hover:bg-quip-orange-deep text-white font-semibold px-4 py-2 rounded-tile"
+            className="bg-ccl-orange hover:bg-ccl-orange-deep text-white font-semibold px-4 py-2 rounded-tile"
           >
             Return to dashboard
           </button>
@@ -196,12 +196,12 @@ export const CaptionRound: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center p-4">
+    <div className="min-h-screen bg-ccl-cream bg-pattern flex items-center justify-center p-4">
       <div className="max-w-5xl w-full tile-card p-6 md:p-10 relative">
         <button
           type="button"
           onClick={handleAbandonRound}
-          className="absolute top-4 right-4 text-quip-navy hover:opacity-80 transition transform hover:scale-105"
+          className="absolute top-4 right-4 text-ccl-navy hover:opacity-80 transition transform hover:scale-105"
           aria-label="Return to dashboard"
         >
           <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -213,12 +213,12 @@ export const CaptionRound: React.FC = () => {
           <img
             src={round.image_url}
             alt={round.attribution_text || 'Meme image'}
-            className="w-full md:w-1/2 rounded-tile border-2 border-quip-navy max-h-96 object-contain bg-white"
+            className="w-full md:w-1/2 rounded-tile border-2 border-ccl-navy max-h-96 object-contain bg-white"
           />
           <div className="flex-1 space-y-4">
             <div>
-              <p className="text-sm text-quip-teal uppercase tracking-wide">Create a caption</p>
-              <h1 className="text-3xl font-display font-bold text-quip-navy">Add your own spin</h1>
+              <p className="text-sm text-ccl-teal uppercase tracking-wide">Create a caption</p>
+              <h1 className="text-3xl font-display font-bold text-ccl-navy">Add your own spin</h1>
             </div>
 
             {error && (
@@ -229,7 +229,7 @@ export const CaptionRound: React.FC = () => {
             )}
 
             <div>
-              <label className="block text-sm text-quip-teal mb-2" htmlFor="caption-input">
+              <label className="block text-sm text-ccl-teal mb-2" htmlFor="caption-input">
                 Caption (240 characters max)
               </label>
               <textarea
@@ -238,16 +238,16 @@ export const CaptionRound: React.FC = () => {
                 value={captionText}
                 onChange={(e) => setCaptionText(e.target.value)}
                 disabled={hasSubmitted || isSubmitting}
-                className="tutorial-prompt-input tutorial-copy-input w-full border-2 border-quip-navy rounded-tile p-3 focus:outline-none focus:ring-2 focus:ring-quip-teal"
+                className="tutorial-prompt-input tutorial-copy-input w-full border-2 border-ccl-navy rounded-tile p-3 focus:outline-none focus:ring-2 focus:ring-ccl-teal"
                 rows={4}
                 placeholder="Write your caption for this image"
               />
-              <div className="text-right text-sm text-quip-teal mt-1">{captionText.length}/240</div>
+              <div className="text-right text-sm text-ccl-teal mt-1">{captionText.length}/240</div>
             </div>
 
             <div className="flex items-center justify-between">
-              <div className="text-sm text-quip-teal flex items-center gap-2">
-                {freeCaptionAvailable && <span className="text-quip-teal font-semibold">Free caption available</span>}
+              <div className="text-sm text-ccl-teal flex items-center gap-2">
+                {freeCaptionAvailable && <span className="text-ccl-teal font-semibold">Free caption available</span>}
               </div>
               <div className="flex gap-3">
                 {hasSubmitted ? (
@@ -256,7 +256,7 @@ export const CaptionRound: React.FC = () => {
                       type="button"
                       onClick={handleShare}
                       disabled={isSharing}
-                      className="h-12 w-12 inline-flex items-center justify-center rounded-full bg-quip-orange text-white shadow-tile-sm transition hover:bg-quip-orange-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-quip-orange disabled:opacity-60 disabled:cursor-not-allowed"
+                      className="h-12 w-12 inline-flex items-center justify-center rounded-full bg-ccl-orange text-white shadow-tile-sm transition hover:bg-ccl-orange-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ccl-orange disabled:opacity-60 disabled:cursor-not-allowed"
                       aria-label="Share caption"
                     >
                       <ShareIcon className="h-6 w-6" />
@@ -264,7 +264,7 @@ export const CaptionRound: React.FC = () => {
                     <button
                       onClick={handlePlayAgain}
                       disabled={isStartingRound}
-                      className="border-2 border-quip-navy text-quip-navy font-semibold px-4 py-2 rounded-tile hover:bg-quip-navy hover:text-white transition-colors flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                      className="border-2 border-ccl-navy text-ccl-navy font-semibold px-4 py-2 rounded-tile hover:bg-ccl-navy hover:text-white transition-colors flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                       <span>Play again</span>
                       <CurrencyDisplay amount={voteCost} iconClassName="w-4 h-4" textClassName="font-semibold" />
@@ -274,7 +274,7 @@ export const CaptionRound: React.FC = () => {
                   <button
                     onClick={handleSubmit}
                     disabled={isSubmitting || !captionText.trim()}
-                    className="bg-quip-orange hover:bg-quip-orange-deep text-white font-semibold px-4 py-2 rounded-tile disabled:opacity-60 flex items-center gap-2"
+                    className="bg-ccl-orange hover:bg-ccl-orange-deep text-white font-semibold px-4 py-2 rounded-tile disabled:opacity-60 flex items-center gap-2"
                   >
                     <span>{isSubmitting ? 'Submitting...' : 'Submit Caption'}</span>
                     <CurrencyDisplay amount={captionCost} iconClassName="w-4 h-4" textClassName="font-semibold" />
@@ -284,7 +284,7 @@ export const CaptionRound: React.FC = () => {
             </div>
 
             {shareStatus && (
-              <div className="text-sm text-quip-teal" role="status">
+              <div className="text-sm text-ccl-teal" role="status">
                 {shareStatus}
               </div>
             )}

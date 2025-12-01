@@ -189,7 +189,7 @@ export const Landing: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-quip-orange to-quip-orange-deep flex items-center justify-center p-4 bg-pattern">
+    <div className="min-h-screen bg-gradient-to-br from-ccl-orange to-ccl-orange-deep flex items-center justify-center p-4 bg-pattern">
       <div className="max-w-md w-full tile-card p-8 animate-slide-up">
         {/* Logo */}
         <div className="flex justify-center mb-4">
@@ -200,7 +200,7 @@ export const Landing: React.FC = () => {
           />
         </div>
 
-        <p className="text-center text-quip-navy text-lg font-medium mb-4">
+        <p className="text-center text-ccl-navy text-lg font-medium mb-4">
           Explore funny memes and write new ones!
         </p>
 
@@ -211,11 +211,11 @@ export const Landing: React.FC = () => {
           <button
             onClick={handlePlayAsGuest}
             disabled={isLoading}
-            className="w-full bg-gradient-to-r from-quip-orange to-quip-turquoise hover:from-quip-orange-deep hover:to-quip-teal disabled:bg-gray-400 text-white font-bold py-4 px-4 rounded-tile transition-all hover:shadow-tile-sm transform hover:-translate-y-0.5 text-lg"
+            className="w-full bg-gradient-to-r from-ccl-orange to-ccl-turquoise hover:from-ccl-orange-deep hover:to-ccl-teal disabled:bg-gray-400 text-white font-bold py-4 px-4 rounded-tile transition-all hover:shadow-tile-sm transform hover:-translate-y-0.5 text-lg"
           >
             {isLoading ? 'Creating Guest Account...' : 'Play Now'}
           </button>
-          <p className="text-center text-sm text-quip-navy mt-2">
+          <p className="text-center text-sm text-ccl-navy mt-2">
             We’ll create a guest account so you can try the game with no signup.
           </p>
         </div>
@@ -246,15 +246,15 @@ export const Landing: React.FC = () => {
 
         <div className="space-y-6">
           {/* New Player */}
-          <div className="border-b border-quip-teal pb-6">
-            <h2 className="text-xl font-semibold mb-4 text-quip-navy">Create an Account</h2>
+          <div className="border-b border-ccl-teal pb-6">
+            <h2 className="text-xl font-semibold mb-4 text-ccl-navy">Create an Account</h2>
             <form onSubmit={handleCreatePlayer} className="space-y-3">
               <input
                 type="email"
                 value={registerEmail}
                 onChange={(e) => setRegisterEmail(e.target.value)}
                 placeholder="Your email (no validation required)"
-                className="w-full px-4 py-2 border border-gray-300 rounded-tile focus:outline-none focus:ring-2 focus:ring-quip-turquoise"
+                className="w-full px-4 py-2 border border-gray-300 rounded-tile focus:outline-none focus:ring-2 focus:ring-ccl-turquoise"
                 disabled={isLoading}
                 autoComplete="email"
               />
@@ -263,7 +263,7 @@ export const Landing: React.FC = () => {
                 value={registerPassword}
                 onChange={(e) => setRegisterPassword(e.target.value)}
                 placeholder="Password (min 8 characters)"
-                className="w-full px-4 py-2 border border-gray-300 rounded-tile focus:outline-none focus:ring-2 focus:ring-quip-turquoise"
+                className="w-full px-4 py-2 border border-gray-300 rounded-tile focus:outline-none focus:ring-2 focus:ring-ccl-turquoise"
                 disabled={isLoading}
                 autoComplete="new-password"
                 minLength={8}
@@ -272,7 +272,7 @@ export const Landing: React.FC = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-quip-turquoise hover:bg-quip-teal disabled:bg-gray-400 text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm transform hover:-translate-y-0.5"
+                className="w-full bg-ccl-turquoise hover:bg-ccl-teal disabled:bg-gray-400 text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm transform hover:-translate-y-0.5"
               >
                 {isLoading ? 'Creating Account...' : 'Create New Account'}
               </button>
@@ -281,14 +281,14 @@ export const Landing: React.FC = () => {
 
           {/* Returning Player */}
           <div>
-            <h2 className="text-xl font-semibold mb-4 text-quip-navy">Returning Player</h2>
+            <h2 className="text-xl font-semibold mb-4 text-ccl-navy">Returning Player</h2>
             <form onSubmit={handleExistingPlayer} className="space-y-3">
               <input
                 type="text"
                 value={loginIdentifier}
                 onChange={(e) => setLoginIdentifier(e.target.value)}
                 placeholder="Email or Username"
-                className="w-full px-4 py-2 border border-gray-300 rounded-tile focus:outline-none focus:ring-2 focus:ring-quip-turquoise"
+                className="w-full px-4 py-2 border border-gray-300 rounded-tile focus:outline-none focus:ring-2 focus:ring-ccl-turquoise"
                 disabled={isLoading}
                 autoComplete="username"
               />
@@ -297,14 +297,14 @@ export const Landing: React.FC = () => {
                 value={loginPassword}
                 onChange={(e) => setLoginPassword(e.target.value)}
                 placeholder="Password"
-                className="w-full px-4 py-2 border border-gray-300 rounded-tile focus:outline-none focus:ring-2 focus:ring-quip-turquoise"
+                className="w-full px-4 py-2 border border-gray-300 rounded-tile focus:outline-none focus:ring-2 focus:ring-ccl-turquoise"
                 disabled={isLoading}
                 autoComplete="current-password"
               />
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-quip-orange hover:bg-quip-orange-deep disabled:bg-gray-400 text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm transform hover:-translate-y-0.5"
+                className="w-full bg-ccl-orange hover:bg-ccl-orange-deep disabled:bg-gray-400 text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm transform hover:-translate-y-0.5"
               >
                 {isLoading ? 'Logging in...' : 'Login'}
               </button>
@@ -315,11 +315,11 @@ export const Landing: React.FC = () => {
           </div>
         </div>
 
-        <div className="mt-8 text-center text-sm text-quip-navy">
+        <div className="mt-8 text-center text-sm text-ccl-navy">
           <p className="font-display font-semibold mb-2">How to Play:</p>
-          <p className="text-quip-teal">1. Pay the entry fee and see 1 image with 5 captions</p>
-          <p className="text-quip-teal">2. Vote for your favorite caption to pick a winner</p>
-          <p className="text-quip-teal">3. Winning authors get paid, then submit your own caption</p>
+          <p className="text-ccl-teal">1. Pay the entry fee and see 1 image with 5 captions</p>
+          <p className="text-ccl-teal">2. Vote for your favorite caption to pick a winner</p>
+          <p className="text-ccl-teal">3. Winning authors get paid, then submit your own caption</p>
         </div>
       </div>
     </div>

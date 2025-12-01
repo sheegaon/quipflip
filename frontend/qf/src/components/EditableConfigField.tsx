@@ -94,8 +94,8 @@ export const EditableConfigField: React.FC<EditableConfigFieldProps> = ({
     <div className="border-b border-gray-200 last:border-b-0 py-3">
       <div className="flex justify-between items-start">
         <div className="flex-1">
-          <label className="block text-sm font-semibold text-quip-navy mb-1">{label}</label>
-          {description && <p className="text-xs text-quip-teal">{description}</p>}
+          <label className="block text-sm font-semibold text-ccl-navy mb-1">{label}</label>
+          {description && <p className="text-xs text-ccl-teal">{description}</p>}
           {min !== undefined && max !== undefined && (
             <p className="text-xs text-gray-500 mt-1">Valid range: {min} - {max}</p>
           )}
@@ -108,7 +108,7 @@ export const EditableConfigField: React.FC<EditableConfigFieldProps> = ({
                 <select
                   value={editValue}
                   onChange={(e) => setEditValue(e.target.value)}
-                  className="border-2 border-quip-orange rounded px-3 py-1 font-bold text-quip-navy focus:outline-none focus:ring-2 focus:ring-quip-orange"
+                  className="border-2 border-ccl-orange rounded px-3 py-1 font-bold text-ccl-navy focus:outline-none focus:ring-2 focus:ring-ccl-orange"
                   autoFocus
                 >
                   {options.map((option) => (
@@ -123,7 +123,7 @@ export const EditableConfigField: React.FC<EditableConfigFieldProps> = ({
                   value={editValue}
                   onChange={(e) => setEditValue(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  className="border-2 border-quip-orange rounded px-3 py-1 min-w-[100px] text-right font-bold text-quip-navy focus:outline-none focus:ring-2 focus:ring-quip-orange"
+                  className="border-2 border-ccl-orange rounded px-3 py-1 min-w-[100px] text-right font-bold text-ccl-navy focus:outline-none focus:ring-2 focus:ring-ccl-orange"
                   min={min}
                   max={max}
                   autoFocus
@@ -158,16 +158,16 @@ export const EditableConfigField: React.FC<EditableConfigFieldProps> = ({
           ) : (
             <>
               <div
-                className={`bg-white border-2 border-quip-navy border-opacity-20 rounded px-3 py-1 min-w-[100px] text-right ${!disabled && 'cursor-pointer hover:border-quip-orange hover:border-opacity-50 transition-colors'}`}
+                className={`bg-white border-2 border-ccl-navy border-opacity-20 rounded px-3 py-1 min-w-[100px] text-right ${!disabled && 'cursor-pointer hover:border-ccl-orange hover:border-opacity-50 transition-colors'}`}
                 onClick={handleEdit}
               >
-                <span className="font-bold text-quip-navy">{value}</span>
-                {unit && <span className="text-sm text-quip-teal ml-1">{unit}</span>}
+                <span className="font-bold text-ccl-navy">{value}</span>
+                {unit && <span className="text-sm text-ccl-teal ml-1">{unit}</span>}
               </div>
               {!disabled && (
                 <button
                   onClick={handleEdit}
-                  className="text-quip-navy hover:text-quip-orange transition-colors p-1"
+                  className="text-ccl-navy hover:text-ccl-orange transition-colors p-1"
                   title="Edit"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">

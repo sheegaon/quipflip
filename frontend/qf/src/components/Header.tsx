@@ -5,22 +5,22 @@ import { useNavigationHistory } from '../contexts/NavigationHistoryContext';
 import { useTutorial } from '../contexts/TutorialContext';
 import { useHeaderIndicators } from '../hooks/useHeaderIndicators';
 import { useNetwork } from '../contexts/NetworkContext';
-import { BalanceFlipper } from './BalanceFlipper';
+import { BalanceFlipper } from '@crowdcraft/components/BalanceFlipper.tsx';
 import { SubHeader } from './SubHeader';
-import { TreasureChestIcon } from './TreasureChestIcon';
-import { ArrowLeftIcon } from './icons/ArrowIcons';
+import { TreasureChestIcon } from '@crowdcraft/components/icons/TreasureChestIcon.tsx';
+import { ArrowLeftIcon } from '@crowdcraft/components/icons/ArrowIcons';
 import {
   AdminIcon,
   HomeIcon,
   LeaderboardIcon,
   LobbyIcon,
-  PartyIcon,
+  CircleIcon,
   SettingsIcon,
   StatisticsIcon,
   SurveyIcon,
   TrackingIcon,
-} from './icons/NavigationIcons';
-import { QuestionMarkIcon, ResultsIcon, ReviewIcon } from './icons/EngagementIcons';
+} from '@crowdcraft/components/icons/NavigationIcons.tsx';
+import { QuestionMarkIcon, ResultsIcon, ReviewIcon } from '@crowdcraft/components/icons/EngagementIcons.tsx';
 import { hasCompletedSurvey } from '../utils/betaSurvey';
 import { apiClient } from '../api/client';
 import { componentLogger } from '../utils/logger';
@@ -204,7 +204,7 @@ export const Header: React.FC = () => {
         onConfirmLogout={handleConfirmGuestLogout}
         onDismiss={handleDismissGuestLogout}
       />
-      <div className="bg-quip-warm-ivory shadow-tile-sm relative z-50">
+      <div className="bg-ccl-warm-ivory shadow-tile-sm relative z-50">
         <div className="max-w-6xl mx-auto px-1 py-0 md:px-4 md:py-1.5">
         <div className="flex justify-between items-center">
           {/* Left: Logo + Back Arrow (on certain pages) */}
@@ -235,40 +235,40 @@ export const Header: React.FC = () => {
             {showDropdown && (
               <div
                 ref={dropdownRef}
-                className="absolute top-full left-0 mt-2 w-48 bg-white rounded-tile shadow-tile-lg border-2 border-quip-navy border-opacity-10 z-[100] slide-up-enter"
+                className="absolute top-full left-0 mt-2 w-48 bg-white rounded-tile shadow-tile-lg border-2 border-ccl-navy border-opacity-10 z-[100] slide-up-enter"
               >
                 <div className="py-2">
                   <button
                     onClick={() => handleNavigate('/dashboard')}
-                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-quip-teal hover:bg-quip-cream transition-colors"
+                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-ccl-teal hover:bg-ccl-cream transition-colors"
                   >
                     <HomeIcon className="h-5 w-5" />
                     <span className="font-semibold">Dashboard</span>
                   </button>
                   <button
                     onClick={() => handleNavigate('/party')}
-                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
+                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-ccl-navy hover:bg-ccl-cream transition-colors"
                   >
-                    <PartyIcon className="h-5 w-5" />
+                    <CircleIcon className="h-5 w-5" />
                     <span className="font-semibold">Party Mode</span>
                   </button>
                   <button
                     onClick={() => handleNavigate('/statistics')}
-                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
+                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-ccl-navy hover:bg-ccl-cream transition-colors"
                   >
                     <StatisticsIcon className="h-5 w-5" />
                     <span className="font-semibold">Statistics</span>
                   </button>
                   <button
                     onClick={() => handleNavigate('/leaderboard')}
-                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
+                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-ccl-navy hover:bg-ccl-cream transition-colors"
                   >
                     <LeaderboardIcon className="h-5 w-5" />
                     <span className="font-semibold">Leaderboard</span>
                   </button>
                   <button
                     onClick={() => handleNavigate('/results')}
-                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
+                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-ccl-navy hover:bg-ccl-cream transition-colors"
                   >
                     <ResultsIcon
                       className="h-5 w-5"
@@ -278,28 +278,28 @@ export const Header: React.FC = () => {
                   </button>
                   <button
                     onClick={() => handleNavigate('/tracking')}
-                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
+                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-ccl-navy hover:bg-ccl-cream transition-colors"
                   >
                     <TrackingIcon className="h-5 w-5" />
                     <span className="font-semibold">Tracking</span>
                   </button>
                   <button
                     onClick={() => handleNavigate('/completed')}
-                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
+                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-ccl-navy hover:bg-ccl-cream transition-colors"
                   >
                     <ReviewIcon className="h-5 w-5" />
                     <span className="font-semibold">Review</span>
                   </button>
                   <button
                     onClick={() => handleNavigate('/quests')}
-                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
+                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-ccl-navy hover:bg-ccl-cream transition-colors"
                   >
                     <TreasureChestIcon className="h-5 w-5" isAvailable={true} />
                     <span className="font-semibold">Quests</span>
                   </button>
                   <button
                     onClick={() => handleNavigate('/online-users')}
-                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
+                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-ccl-navy hover:bg-ccl-cream transition-colors"
                   >
                     <LobbyIcon className="h-5 w-5" />
                     <span className="font-semibold">Lobby</span>
@@ -307,7 +307,7 @@ export const Header: React.FC = () => {
                   {showTutorialInMenu && (
                     <button
                       onClick={() => handleNavigate('/dashboard?startTutorial=true')}
-                      className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
+                      className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-ccl-navy hover:bg-ccl-cream transition-colors"
                     >
                       <QuestionMarkIcon className="h-5 w-5" />
                       <span className="font-semibold">Tutorial</span>
@@ -316,7 +316,7 @@ export const Header: React.FC = () => {
                   {!surveyCompleted && (
                     <button
                       onClick={() => handleNavigate('/survey/beta')}
-                      className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
+                      className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-ccl-navy hover:bg-ccl-cream transition-colors"
                     >
                       <SurveyIcon className="h-5 w-5" />
                       <span className="font-semibold">Survey</span>
@@ -324,7 +324,7 @@ export const Header: React.FC = () => {
                   )}
                   <button
                     onClick={() => handleNavigate('/settings')}
-                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
+                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-ccl-navy hover:bg-ccl-cream transition-colors"
                   >
                     <SettingsIcon className="h-5 w-5" />
                     <span className="font-semibold">Settings</span>
@@ -332,19 +332,19 @@ export const Header: React.FC = () => {
                   {player?.is_admin && (
                     <button
                       onClick={() => handleNavigate('/admin')}
-                      className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-quip-navy hover:bg-quip-cream transition-colors"
+                      className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-ccl-navy hover:bg-ccl-cream transition-colors"
                     >
                       <AdminIcon className="h-5 w-5" />
                       <span className="font-semibold">Admin</span>
                     </button>
                   )}
-                  <div className="border-t border-quip-navy border-opacity-10 my-2"></div>
+                  <div className="border-t border-ccl-navy border-opacity-10 my-2"></div>
                   <button
                     onClick={() => {
                       setShowDropdown(false);
                       handleLogoutClick();
                     }}
-                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-quip-teal hover:bg-quip-cream transition-colors"
+                    className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-ccl-teal hover:bg-ccl-cream transition-colors"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -360,7 +360,7 @@ export const Header: React.FC = () => {
           <div className="flex-1 text-center">
             <button
               onClick={goToStatistics}
-              className="text-md md:text-2xl text-quip-turquoise font-semibold hover:text-quip-teal transition-colors"
+              className="text-md md:text-2xl text-ccl-turquoise font-semibold hover:text-ccl-teal transition-colors"
               title="View your statistics"
             >
               <div className="flex items-center justify-center gap-0.5 md:gap-3">
@@ -384,33 +384,33 @@ export const Header: React.FC = () => {
             <button
               type="button"
               onClick={goToStatistics}
-              className="flex items-center gap-0.5 tutorial-balance border border-white/10 rounded-xl px-0.5 md:px-3 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-quip-teal"
+              className="flex items-center gap-0.5 tutorial-balance border border-white/10 rounded-xl px-0.5 md:px-3 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ccl-teal"
               title="Wallet balance"
               aria-label="Wallet balance"
             >
               <img src="/flipcoin.png" alt="Wallet" className="w-5 h-5 md:w-7 md:h-7" />
               <BalanceFlipper
                 value={player.wallet}
-                className="text-xl md:text-2xl font-display font-bold text-quip-turquoise"
+                className="text-xl md:text-2xl font-display font-bold text-ccl-turquoise"
               />
             </button>
             {/* Vault Balance */}
             <button
               type="button"
               onClick={goToStatistics}
-              className="flex items-center gap-0.5 border border-white/10 rounded-xl px-0.5 md:px-3 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-quip-teal"
+              className="flex items-center gap-0.5 border border-white/10 rounded-xl px-0.5 md:px-3 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ccl-teal"
               title="Vault balance"
               aria-label="Vault balance"
             >
               <img src="/vault.png" alt="Vault" className="w-5 h-5 md:w-7 md:h-7" />
               <BalanceFlipper
                 value={player.vault}
-                className="text-xl md:text-2xl font-display font-bold text-quip-turquoise"
+                className="text-xl md:text-2xl font-display font-bold text-ccl-turquoise"
               />
             </button>
             {/* Logout Button - Only visible for guests */}
             {player.is_guest && (
-              <button onClick={handleLogoutClick} className="text-quip-teal hover:text-quip-turquoise" title="Logout">
+              <button onClick={handleLogoutClick} className="text-ccl-teal hover:text-ccl-turquoise" title="Logout">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7 md:h-9 md:w-9" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                 </svg>

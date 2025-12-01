@@ -3,10 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { useHeaderIndicators } from '../hooks/useHeaderIndicators';
 import { useTutorial } from '../contexts/TutorialContext';
-import { TreasureChestIcon } from './TreasureChestIcon';
-import { CopyRoundIcon } from './icons/RoundIcons';
-import { LeaderboardIcon, LobbyIcon, TrackingIcon } from './icons/NavigationIcons';
-import { QuestionMarkIcon, ResultsIcon } from './icons/EngagementIcons';
+import { TreasureChestIcon } from '@crowdcraft/components/icons/TreasureChestIcon.tsx';
+import { CopyRoundIcon } from '@crowdcraft/components/icons/RoundIcons.tsx';
+import { LeaderboardIcon, LobbyIcon, TrackingIcon } from '@crowdcraft/components/icons/NavigationIcons.tsx';
+import { QuestionMarkIcon, ResultsIcon } from '@crowdcraft/components/icons/EngagementIcons.tsx';
 
 export const SubHeader: React.FC = () => {
   const { actions } = useGame();
@@ -54,7 +54,7 @@ export const SubHeader: React.FC = () => {
   const showQuestionMarkIcon = player.is_guest || tutorialStatus?.completed === false || isFirstDay;
 
   return (
-    <div className="bg-quip-warm-ivory shadow-tile-sm relative z-40">
+    <div className="bg-ccl-warm-ivory shadow-tile-sm relative z-40">
       <div className="max-w-6xl mx-auto px-1 py-0 md:px-4 md:py-1.5">
         <div className="flex justify-evenly items-center">
           {/* In-progress indicator */}
@@ -62,7 +62,7 @@ export const SubHeader: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate('/game/history')}
-              className="flex items-center gap-2 rounded-full bg-quip-cream px-1 md:px-3 py-1 text-xs font-semibold text-quip-navy transition-colors hover:bg-quip-teal-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-quip-teal"
+              className="flex items-center gap-2 rounded-full bg-ccl-cream px-1 md:px-3 py-1 text-xs font-semibold text-ccl-navy transition-colors hover:bg-ccl-teal-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ccl-teal"
               title={inProgressLabel}
               aria-label={inProgressLabel}
             >
@@ -88,7 +88,7 @@ export const SubHeader: React.FC = () => {
               onClick={handleResultsClick}
               className={`flex items-center gap-1 rounded-full px-1 md:px-3 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 ${
                 unviewedCount > 0
-                  ? 'bg-quip-orange bg-opacity-10 text-quip-orange hover:bg-quip-orange hover:bg-opacity-20 focus-visible:ring-quip-orange'
+                  ? 'bg-ccl-orange bg-opacity-10 text-ccl-orange hover:bg-ccl-orange hover:bg-opacity-20 focus-visible:ring-ccl-orange'
                   : 'bg-gray-200 text-black hover:bg-gray-300 focus-visible:ring-gray-400'
               }`}
               title={resultsLabel}

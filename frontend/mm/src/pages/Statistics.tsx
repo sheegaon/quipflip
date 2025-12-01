@@ -4,11 +4,11 @@ import { useResults } from '../contexts/ResultsContext';
 import { useGame } from '../contexts/GameContext';
 import apiClient, { extractErrorMessage } from '../api/client';
 import type { GameStatus, HistoricalTrendPoint, PlayerStatistics } from '../api/types';
-import WinRateChart from '../components/statistics/WinRateChart';
-import EarningsChart from '../components/statistics/EarningsChart';
-import SpendingChart from '../components/statistics/SpendingChart';
-import FrequencyChart from '../components/statistics/FrequencyChart';
-import HistoricalTrendsChart from '../components/statistics/HistoricalTrendsChart';
+import WinRateChart from '@crowdcraft/components/statistics/WinRateChart';
+import EarningsChart from '@crowdcraft/components/statistics/EarningsChart';
+import SpendingChart from '@crowdcraft/components/statistics/SpendingChart';
+import FrequencyChart from '@crowdcraft/components/statistics/FrequencyChart';
+import HistoricalTrendsChart from '@crowdcraft/components/statistics/HistoricalTrendsChart';
 import { statisticsLogger } from '../utils/logger';
 import { hasCompletedSurvey } from '../utils/betaSurvey';
 import type { BetaSurveyStatusResponse } from '../api/types';
@@ -252,14 +252,14 @@ const Statistics: React.FC = () => {
   if (loading) {
     content = (
       <div className="text-center py-12">
-        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-quip-orange border-r-transparent"></div>
-        <p className="mt-4 text-quip-navy font-display">Loading your statistics...</p>
+        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-ccl-orange border-r-transparent"></div>
+        <p className="mt-4 text-ccl-navy font-display">Loading your statistics...</p>
       </div>
     );
   } else if (error || !data) {
     content = (
       <div className="tile-card p-8">
-        <h1 className="text-2xl font-display font-bold text-quip-navy mb-4">Statistics</h1>
+        <h1 className="text-2xl font-display font-bold text-ccl-navy mb-4">Statistics</h1>
         <div className="text-red-600">{error || 'Failed to load statistics'}</div>
       </div>
     );
@@ -269,17 +269,17 @@ const Statistics: React.FC = () => {
     content = (
       <>
         {surveyStatus?.eligible && !surveyStatus.has_submitted && !surveyCompleted && (
-          <div className="tile-card mb-6 border-2 border-quip-teal bg-quip-teal/10 p-6">
+          <div className="tile-card mb-6 border-2 border-ccl-teal bg-ccl-teal/10 p-6">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
-                <h2 className="text-2xl font-display font-bold text-quip-navy">Beta survey now available</h2>
-                <p className="mt-1 text-quip-navy/80">
+                <h2 className="text-2xl font-display font-bold text-ccl-navy">Beta survey now available</h2>
+                <p className="mt-1 text-ccl-navy/80">
                   You&apos;ve played {surveyStatus.total_rounds} rounds. Share your thoughts and help us level up Quipflip!
                 </p>
               </div>
               <button
                 onClick={() => navigate('/survey/beta')}
-                className="rounded-tile bg-quip-navy px-6 py-2 font-semibold text-white shadow-tile-sm transition hover:bg-quip-teal"
+                className="rounded-tile bg-ccl-navy px-6 py-2 font-semibold text-white shadow-tile-sm transition hover:bg-ccl-teal"
               >
                 Start survey
               </button>
@@ -290,24 +290,24 @@ const Statistics: React.FC = () => {
         <div className="tile-card p-6 mb-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex-1">
-              <h1 className="text-3xl font-display font-bold text-quip-navy">{data.username}</h1>
-              <p className="text-quip-teal mt-1">{data.email}</p>
+              <h1 className="text-3xl font-display font-bold text-ccl-navy">{data.username}</h1>
+              <p className="text-ccl-teal mt-1">{data.email}</p>
             </div>
           </div>
         </div>
 
         {/* Guest Upgrade Card */}
         {player?.is_guest && (
-          <div className="tile-card p-6 mb-6 bg-gradient-to-br from-orange-50 to-cyan-50 border-2 border-quip-orange">
+          <div className="tile-card p-6 mb-6 bg-gradient-to-br from-orange-50 to-cyan-50 border-2 border-ccl-orange">
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
               <div className="flex-1">
-                <h2 className="text-2xl font-display font-bold text-quip-navy mb-2">
+                <h2 className="text-2xl font-display font-bold text-ccl-navy mb-2">
                   Upgrade Your Account
                 </h2>
-                <p className="text-quip-navy mb-3">
+                <p className="text-ccl-navy mb-3">
                   You're using a guest account. Upgrade to a full account to:
                 </p>
-                <ul className="list-disc list-inside text-quip-navy text-sm space-y-1 mb-3">
+                <ul className="list-disc list-inside text-ccl-navy text-sm space-y-1 mb-3">
                   <li>Save your progress permanently</li>
                   <li>Access your account from any device</li>
                   <li>Never lose your memecoins and stats</li>
@@ -317,7 +317,7 @@ const Statistics: React.FC = () => {
               <div className="flex flex-col gap-3">
                 <button
                   onClick={() => navigate('/settings')}
-                  className="bg-gradient-to-r from-quip-orange to-quip-turquoise hover:from-quip-orange-deep hover:to-quip-teal text-white font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm whitespace-nowrap"
+                  className="bg-gradient-to-r from-ccl-orange to-ccl-turquoise hover:from-ccl-orange-deep hover:to-ccl-teal text-white font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm whitespace-nowrap"
                 >
                   Upgrade Now
                 </button>
@@ -332,7 +332,7 @@ const Statistics: React.FC = () => {
 
           {/* Win Rate Chart */}
           <div className="tile-card p-6">
-            <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Win Rates by Role</h2>
+            <h2 className="text-xl font-display font-bold text-ccl-navy mb-4">Win Rates by Role</h2>
             {chartsReady ? (
               <WinRateChart
                 promptStats={data.prompt_stats}
@@ -341,36 +341,36 @@ const Statistics: React.FC = () => {
               />
             ) : (
               <div className="w-full h-80 flex items-center justify-center">
-                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-quip-orange border-r-transparent"></div>
+                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-ccl-orange border-r-transparent"></div>
               </div>
             )}
           </div>
 
           {/* Historical Trends */}
           <div className="tile-card p-6">
-            <h2 className="text-xl font-display font-bold text-quip-navy mb-2">Historical Trends &amp; Performance Over Time</h2>
-            <p className="text-sm text-quip-teal mb-4">
+            <h2 className="text-xl font-display font-bold text-ccl-navy mb-2">Historical Trends &amp; Performance Over Time</h2>
+            <p className="text-sm text-ccl-teal mb-4">
               Track how your win rate, earnings, and activity have evolved across the past week.
             </p>
             {chartsReady ? (
               <>
                 {historicalTrends.length > 0 && (
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4 text-sm">
-                    <div className="bg-quip-orange bg-opacity-10 border border-quip-orange rounded-tile p-3">
-                      <div className="text-quip-teal">Latest Win Rate</div>
-                      <div className="text-2xl font-bold text-quip-orange">
+                    <div className="bg-ccl-orange bg-opacity-10 border border-ccl-orange rounded-tile p-3">
+                      <div className="text-ccl-teal">Latest Win Rate</div>
+                      <div className="text-2xl font-bold text-ccl-orange">
                         {latestWinRate.toFixed(1)}%
                       </div>
                     </div>
-                    <div className="bg-quip-teal bg-opacity-10 border border-quip-teal rounded-tile p-3">
-                      <div className="text-quip-teal">Weekly Earnings</div>
-                      <div className="text-2xl font-bold text-quip-teal">
+                    <div className="bg-ccl-teal bg-opacity-10 border border-ccl-teal rounded-tile p-3">
+                      <div className="text-ccl-teal">Weekly Earnings</div>
+                      <div className="text-2xl font-bold text-ccl-teal">
                         {Math.round(weeklyEarnings).toLocaleString()}
                       </div>
                     </div>
-                    <div className="bg-quip-turquoise bg-opacity-10 border border-quip-turquoise rounded-tile p-3">
-                      <div className="text-quip-teal">Weekly Rounds Played</div>
-                      <div className="text-2xl font-bold text-quip-turquoise">
+                    <div className="bg-ccl-turquoise bg-opacity-10 border border-ccl-turquoise rounded-tile p-3">
+                      <div className="text-ccl-teal">Weekly Rounds Played</div>
+                      <div className="text-2xl font-bold text-ccl-turquoise">
                         {Math.round(weeklyRounds).toLocaleString()}
                       </div>
                     </div>
@@ -380,50 +380,50 @@ const Statistics: React.FC = () => {
               </>
             ) : (
               <div className="w-full h-80 flex items-center justify-center">
-                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-quip-orange border-r-transparent"></div>
+                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-ccl-orange border-r-transparent"></div>
               </div>
             )}
           </div>
 
           {/* Earnings Chart */}
           <div className="tile-card p-6">
-            <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Earnings Breakdown</h2>
+            <h2 className="text-xl font-display font-bold text-ccl-navy mb-4">Earnings Breakdown</h2>
             {chartsReady ? (
               <EarningsChart earnings={data.earnings} />
             ) : (
               <div className="w-full h-80 flex items-center justify-center">
-                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-quip-orange border-r-transparent"></div>
+                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-ccl-orange border-r-transparent"></div>
               </div>
             )}
           </div>
 
           {/* Spending Chart */}
           <div className="tile-card p-6">
-            <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Spending Breakdown</h2>
+            <h2 className="text-xl font-display font-bold text-ccl-navy mb-4">Spending Breakdown</h2>
             {chartsReady ? (
               <SpendingChart earnings={data.earnings} />
             ) : (
               <div className="w-full h-80 flex items-center justify-center">
-                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-quip-orange border-r-transparent"></div>
+                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-ccl-orange border-r-transparent"></div>
               </div>
             )}
           </div>
 
           {/* Play Frequency */}
           <div className="tile-card p-6">
-            <h2 className="text-xl font-display font-bold text-quip-navy mb-4">Activity Metrics</h2>
+            <h2 className="text-xl font-display font-bold text-ccl-navy mb-4">Activity Metrics</h2>
             {chartsReady ? (
               <FrequencyChart frequency={data.frequency} />
             ) : (
               <div className="w-full h-80 flex items-center justify-center">
-                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-quip-orange border-r-transparent"></div>
+                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-ccl-orange border-r-transparent"></div>
               </div>
             )}
           </div>
 
         </div>
 
-        <div className="mt-10 text-center text-xs text-quip-navy/60" aria-live="polite">
+        <div className="mt-10 text-center text-xs text-ccl-navy/60" aria-live="polite">
           Quipflip version {gameStatus?.version || APP_VERSION}
         </div>
       </>
@@ -431,7 +431,7 @@ const Statistics: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-quip-cream bg-pattern">
+    <div className="min-h-screen bg-ccl-cream bg-pattern">
       <div className="container mx-auto px-4 py-8">{content}</div>
     </div>
   );

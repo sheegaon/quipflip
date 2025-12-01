@@ -7,8 +7,8 @@ import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import type { Quest } from '../api/types';
 import { questsLogger } from '../utils/logger';
 import { isSameDay } from '../utils/date';
-import { QuestClaimableIcon, QuestOverviewIcon } from '../components/icons/QuestIcons';
-import { StateEmptyIcon, StateErrorIcon, StateFilterEmptyIcon, StateLoadingIcon } from '../components/icons/StateIcons';
+import { QuestClaimableIcon, QuestOverviewIcon } from '@crowdcraft/components/icons/QuestIcons.tsx';
+import { StateEmptyIcon, StateErrorIcon, StateFilterEmptyIcon, StateLoadingIcon } from '@crowdcraft/components/icons/StateIcons.tsx';
 
 // Quest categories for filtering
 const QUEST_CATEGORIES = ['all', 'streak', 'quality', 'activity', 'milestone'] as const;
@@ -138,36 +138,36 @@ export const Quests: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-quip-cream bg-pattern">
+    <div className="min-h-screen bg-ccl-cream bg-pattern">
       <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="mb-6">
-          <h1 className="text-3xl font-display font-bold text-quip-navy">Rewards & Quests</h1>
+          <h1 className="text-3xl font-display font-bold text-ccl-navy">Rewards & Quests</h1>
         </div>
 
         <div className="tile-card p-6 mb-6">
           <div className="flex items-center gap-3 mb-4">
             <img src="/memecoin.png" alt="Daily Bonus" className="w-12 h-12" />
             <div>
-              <h2 className="text-2xl font-display font-bold text-quip-turquoise">Daily Bonus</h2>
-              <p className="text-quip-teal">Claim your daily reward!</p>
+              <h2 className="text-2xl font-display font-bold text-ccl-turquoise">Daily Bonus</h2>
+              <p className="text-ccl-teal">Claim your daily reward!</p>
             </div>
           </div>
 
           {player.daily_bonus_available ? (
-            <div className="bg-quip-turquoise bg-opacity-10 border-2 border-quip-turquoise rounded-tile p-4">
+            <div className="bg-ccl-turquoise bg-opacity-10 border-2 border-ccl-turquoise rounded-tile p-4">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                  <p className="text-lg font-semibold text-quip-turquoise mb-1">
+                  <p className="text-lg font-semibold text-ccl-turquoise mb-1">
                     Your daily bonus is ready!
                   </p>
-                  <p className="text-quip-teal">
+                  <p className="text-ccl-teal">
                     Claim <CurrencyDisplay amount={player?.daily_bonus_amount ?? 0} iconClassName="w-4 h-4" textClassName="text-base" /> memecoins
                   </p>
                 </div>
                 <button
                   onClick={handleClaimBonus}
                   disabled={isClaiming}
-                  className="bg-quip-turquoise hover:bg-quip-teal disabled:bg-gray-400 text-white font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm"
+                  className="bg-ccl-turquoise hover:bg-ccl-teal disabled:bg-gray-400 text-white font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm"
                 >
                   {isClaiming ? 'Claiming...' : 'Claim Bonus'}
                 </button>
@@ -206,12 +206,12 @@ export const Quests: React.FC = () => {
 
         <div className="tile-card p-6">
           <div className="flex items-center gap-3 mb-6">
-            <div className="flex h-12 w-12 items-center justify-center rounded-tile border border-white/60 bg-quip-orange bg-opacity-10">
+            <div className="flex h-12 w-12 items-center justify-center rounded-tile border border-white/60 bg-ccl-orange bg-opacity-10">
               <QuestOverviewIcon className="h-8 w-8" aria-hidden="true" />
             </div>
             <div>
-              <h2 className="text-2xl font-display font-bold text-quip-orange-deep">Quests</h2>
-              <p className="text-quip-teal">Complete challenges to earn extra rewards</p>
+              <h2 className="text-2xl font-display font-bold text-ccl-orange-deep">Quests</h2>
+              <p className="text-ccl-teal">Complete challenges to earn extra rewards</p>
             </div>
           </div>
 
@@ -239,7 +239,7 @@ export const Quests: React.FC = () => {
                 onClick={() => handleCategoryChange(category)}
                 className={`px-4 py-2 rounded-lg font-medium transition-all ${
                   selectedCategory === category
-                    ? 'bg-quip-turquoise text-white'
+                    ? 'bg-ccl-turquoise text-white'
                     : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
                 }`}
               >
@@ -255,7 +255,7 @@ export const Quests: React.FC = () => {
               <p className="text-gray-600 dark:text-gray-400 mb-4">{questError}</p>
               <button
                 onClick={() => refreshQuests()}
-                className="bg-quip-turquoise hover:bg-quip-teal text-white font-bold py-2 px-6 rounded-lg transition-all"
+                className="bg-ccl-turquoise hover:bg-ccl-teal text-white font-bold py-2 px-6 rounded-lg transition-all"
               >
                 Retry
               </button>
@@ -272,8 +272,8 @@ export const Quests: React.FC = () => {
           {!questError && !questsLoading && quests.length === 0 && (
             <div className="text-center py-12">
               <StateEmptyIcon className="mx-auto mb-4 h-20 w-20" aria-hidden="true" />
-              <h3 className="text-xl font-display font-bold text-quip-navy mb-2">No Quests Available</h3>
-              <p className="text-quip-teal">
+              <h3 className="text-xl font-display font-bold text-ccl-navy mb-2">No Quests Available</h3>
+              <p className="text-ccl-teal">
                 Complete some rounds to unlock quest challenges!
               </p>
             </div>

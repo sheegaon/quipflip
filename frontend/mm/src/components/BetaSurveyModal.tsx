@@ -126,14 +126,14 @@ export const BetaSurveyModal: React.FC<BetaSurveyModalProps> = ({ isVisible, onD
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
       <div className="tile-card w-full max-w-lg space-y-4 p-6">
-        <h2 className="text-2xl font-display font-bold text-quip-navy">
+        <h2 className="text-2xl font-display font-bold text-ccl-navy">
           Share your beta feedback
         </h2>
-        <p className="text-quip-navy">
+        <p className="text-ccl-navy">
           We&apos;d love to hear how MemeMint feels after ten rounds. Take a short survey to help us tune the beta experience.
         </p>
         {surveyStatus && (
-          <p className="text-sm text-quip-teal">
+          <p className="text-sm text-ccl-teal">
             You&apos;ve completed <span className="font-semibold">{surveyStatus.total_rounds}</span> rounds so far — perfect!
           </p>
         )}
@@ -141,14 +141,14 @@ export const BetaSurveyModal: React.FC<BetaSurveyModalProps> = ({ isVisible, onD
           <button
             type="button"
             onClick={handleSurveyDismiss}
-            className="rounded-tile border border-quip-navy/20 px-5 py-2 font-semibold text-quip-navy transition hover:border-quip-teal hover:text-quip-teal"
+            className="rounded-tile border border-ccl-navy/20 px-5 py-2 font-semibold text-ccl-navy transition hover:border-ccl-teal hover:text-ccl-teal"
           >
             Maybe later
           </button>
           <button
             type="button"
             onClick={handleSurveyStart}
-            className="rounded-tile bg-quip-navy px-6 py-2 font-semibold text-white shadow-tile-sm transition hover:bg-quip-teal"
+            className="rounded-tile bg-ccl-navy px-6 py-2 font-semibold text-white shadow-tile-sm transition hover:bg-ccl-teal"
           >
             Take the survey
           </button>

@@ -10,8 +10,8 @@ import { usePhraseValidation } from '../hooks/usePhraseValidation';
 import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
 import type { CopyState, FlagCopyRoundResponse, SubmitPhraseResponse } from '../api/types';
 import { copyRoundLogger } from '../utils/logger';
-import { CopyRoundIcon } from '../components/icons/RoundIcons';
-import { FlagIcon } from '../components/icons/EngagementIcons';
+import { CopyRoundIcon } from '@crowdcraft/components/icons/RoundIcons.tsx';
+import { FlagIcon } from '@crowdcraft/components/icons/EngagementIcons.tsx';
 import { usePartyMode } from '../contexts/PartyModeContext';
 import PartyRoundModal from '../components/party/PartyRoundModal';
 import { usePartyRoundCoordinator } from '../hooks/usePartyRoundCoordinator';
@@ -572,15 +572,15 @@ export const CopyRound: React.FC = () => {
   };
 
   const secondCopyModal = awaitingSecondCopyDecision && secondCopyEligibility ? (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-quip-navy/60 p-4">
-      <div className="w-full max-w-lg rounded-tile bg-quip-warm-ivory p-6 shadow-tile-lg text-center space-y-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ccl-navy/60 p-4">
+      <div className="w-full max-w-lg rounded-tile bg-ccl-warm-ivory p-6 shadow-tile-lg text-center space-y-4">
         <div className="flex justify-center">
-          <CopyRoundIcon className="w-14 h-14 text-quip-turquoise" aria-hidden="true" />
+          <CopyRoundIcon className="w-14 h-14 text-ccl-turquoise" aria-hidden="true" />
         </div>
-        <h3 className="text-2xl font-display font-bold text-quip-navy">
+        <h3 className="text-2xl font-display font-bold text-ccl-navy">
           {successMessage || 'Copy submitted!'}
         </h3>
-        {feedbackMessage && <p className="text-quip-teal">{feedbackMessage}</p>}
+        {feedbackMessage && <p className="text-ccl-teal">{feedbackMessage}</p>}
 
         <button
           type="button"
@@ -600,13 +600,13 @@ export const CopyRound: React.FC = () => {
         </button>
 
         {showSecondCopyDetails && (
-          <div className="bg-quip-turquoise bg-opacity-10 border-2 border-quip-turquoise rounded-tile p-4 text-left space-y-2">
-            <p className="text-quip-teal">
+          <div className="bg-ccl-turquoise bg-opacity-10 border-2 border-ccl-turquoise rounded-tile p-4 text-left space-y-2">
+            <p className="text-ccl-teal">
               You can submit a second fake for <strong>"{secondCopyEligibility.originalPhrase}"</strong> for{' '}
               <CurrencyDisplay
                 amount={secondCopyEligibility.cost}
                 iconClassName="w-4 h-4"
-                textClassName="font-semibold text-quip-turquoise"
+                textClassName="font-semibold text-ccl-turquoise"
               />
               . This gives you two chances to fool voters.
             </p>
@@ -623,7 +623,7 @@ export const CopyRound: React.FC = () => {
           <button
             onClick={handleStartSecondCopy}
             disabled={isStartingSecondCopy}
-            className="flex-1 bg-quip-teal hover:bg-quip-navy disabled:bg-gray-400 text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm"
+            className="flex-1 bg-ccl-teal hover:bg-ccl-navy disabled:bg-gray-400 text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm"
           >
             {isStartingSecondCopy ? (
               'Starting...'
@@ -644,7 +644,7 @@ export const CopyRound: React.FC = () => {
           <button
             onClick={handleDeclineSecondCopy}
             disabled={isStartingSecondCopy}
-            className="flex-1 bg-quip-teal-light hover:bg-quip-turquoise border-2 border-quip-navy text-quip-navy font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm disabled:opacity-50"
+            className="flex-1 bg-ccl-teal-light hover:bg-ccl-turquoise border-2 border-ccl-navy text-ccl-navy font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm disabled:opacity-50"
           >
             No
           </button>
@@ -658,22 +658,22 @@ export const CopyRound: React.FC = () => {
     return (
       <>
         {partyOverlay}
-        <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center p-4">
+        <div className="min-h-screen bg-ccl-cream bg-pattern flex items-center justify-center p-4">
           <div className="tile-card max-w-2xl w-full p-8 text-center flip-enter">
             <div className="flex justify-center mb-4">
               <CopyRoundIcon className="w-24 h-24" aria-hidden="true" />
             </div>
-            <h2 className="text-2xl font-display font-bold text-quip-turquoise mb-2 success-message">
+            <h2 className="text-2xl font-display font-bold text-ccl-turquoise mb-2 success-message">
               {successMessage}
             </h2>
             {flagResult ? (
-              <div className="text-quip-teal space-y-2">
+              <div className="text-ccl-teal space-y-2">
                 <p>
                   We refunded{' '}
                   <CurrencyDisplay
                     amount={flagResult.refund_amount}
                     iconClassName="w-4 h-4"
-                    textClassName="font-semibold text-quip-turquoise"
+                    textClassName="font-semibold text-ccl-turquoise"
                   />
                   . Our team will review this phrase shortly.
                 </p>
@@ -682,30 +682,30 @@ export const CopyRound: React.FC = () => {
             ) : (
               <>
                 {feedbackMessage && (
-                  <p className="text-lg text-quip-teal mb-4">{feedbackMessage}</p>
+                  <p className="text-lg text-ccl-teal mb-4">{feedbackMessage}</p>
                 )}
-                <p className="text-sm text-quip-teal">
+                <p className="text-sm text-ccl-teal">
                   {isInPartyMode ? 'Starting the vote round...' : 'Returning to dashboard...'}
                 </p>
 
                 {hasRequestedPromptReveal && (
-                  <div className="mt-6 text-left bg-quip-warm-ivory border-2 border-quip-turquoise rounded-tile p-5">
-                    <p className="text-xs uppercase tracking-widest text-quip-teal mb-2">
+                  <div className="mt-6 text-left bg-ccl-warm-ivory border-2 border-ccl-turquoise rounded-tile p-5">
+                    <p className="text-xs uppercase tracking-widest text-ccl-teal mb-2">
                       Original prompt reveal
                     </p>
                     {isPromptRevealLoading ? (
-                      <p className="text-quip-teal">Revealing the original prompt...</p>
+                      <p className="text-ccl-teal">Revealing the original prompt...</p>
                     ) : promptRevealError ? (
-                      <p className="text-quip-orange">{promptRevealError}</p>
+                      <p className="text-ccl-orange">{promptRevealError}</p>
                     ) : originalPromptText ? (
-                      <p className="text-2xl font-display font-semibold text-quip-navy">{originalPromptText}</p>
+                      <p className="text-2xl font-display font-semibold text-ccl-navy">{originalPromptText}</p>
                     ) : (
-                      <p className="text-quip-teal">We'll reveal the prompt shortly.</p>
+                      <p className="text-ccl-teal">We'll reveal the prompt shortly.</p>
                     )}
                   </div>
                 )}
                 {isInPartyMode && isStartingNextRound && (
-                  <p className="text-xs text-quip-teal mt-2">Loading the vote round now...</p>
+                  <p className="text-xs text-ccl-teal mt-2">Loading the vote round now...</p>
                 )}
                 {nextRoundError && (
                   <div className="mt-2 text-sm text-red-600">
@@ -713,7 +713,7 @@ export const CopyRound: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => transitionToNextRound('copy')}
-                      className="ml-2 underline text-quip-orange hover:text-quip-orange-deep"
+                      className="ml-2 underline text-ccl-orange hover:text-ccl-orange-deep"
                     >
                       Retry
                     </button>
@@ -730,7 +730,7 @@ export const CopyRound: React.FC = () => {
   if (!roundData) {
     if (secondCopyModal) {
       return (
-        <div className="min-h-screen bg-quip-cream bg-pattern">
+        <div className="min-h-screen bg-ccl-cream bg-pattern">
           {partyOverlay}
           {secondCopyModal}
         </div>
@@ -740,7 +740,7 @@ export const CopyRound: React.FC = () => {
     return (
       <>
         {partyOverlay}
-        <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center">
+        <div className="min-h-screen bg-ccl-cream bg-pattern flex items-center justify-center">
           <LoadingSpinner isLoading={true} message={loadingMessages.starting} />
         </div>
       </>
@@ -750,14 +750,14 @@ export const CopyRound: React.FC = () => {
   return (
     <>
       {partyOverlay}
-      <div className="min-h-screen bg-gradient-to-br from-quip-turquoise to-quip-teal flex items-center justify-center p-4 bg-pattern">
+      <div className="min-h-screen bg-gradient-to-br from-ccl-turquoise to-ccl-teal flex items-center justify-center p-4 bg-pattern">
         <div className="max-w-2xl w-full tile-card p-8 slide-up-enter">
           <div className="text-center mb-8">
             <div className="flex items-center justify-center gap-2 mb-2">
               <CopyRoundIcon className="w-8 h-8" aria-hidden="true" />
-              <h1 className="text-3xl font-display font-bold text-quip-navy">Impostor Round</h1>
+              <h1 className="text-3xl font-display font-bold text-ccl-navy">Impostor Round</h1>
             </div>
-            <p className="text-quip-teal">Submit a similar phrase</p>
+            <p className="text-ccl-teal">Submit a similar phrase</p>
           </div>
 
           {/* Timer */}
@@ -766,8 +766,8 @@ export const CopyRound: React.FC = () => {
           </div>
 
           {/* Instructions */}
-          <div className="bg-quip-orange bg-opacity-10 border-2 border-quip-orange rounded-tile p-4 mb-6">
-            <p className="text-sm text-quip-navy">
+          <div className="bg-ccl-orange bg-opacity-10 border-2 border-ccl-orange rounded-tile p-4 mb-6">
+            <p className="text-sm text-ccl-navy">
               <strong>💡 Your goal:</strong> You don't know the prompt!
               <br />
               Write a phrase that <em>could have been the original</em> and might trick voters.
@@ -779,20 +779,20 @@ export const CopyRound: React.FC = () => {
           </div>
 
           {/* Original Phrase */}
-          <div className="bg-quip-turquoise bg-opacity-5 border-2 border-quip-turquoise rounded-tile p-6 mb-6 relative">
+          <div className="bg-ccl-turquoise bg-opacity-5 border-2 border-ccl-turquoise rounded-tile p-6 mb-6 relative">
             <button
               type="button"
               onClick={handleOpenFlagConfirm}
               disabled={isSubmitting || isFlagging}
-              className="absolute top-3 right-3 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-quip-orange shadow-tile-sm transition hover:scale-105 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-quip-orange disabled:cursor-not-allowed disabled:opacity-50"
+              className="absolute top-3 right-3 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-ccl-orange shadow-tile-sm transition hover:scale-105 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ccl-orange disabled:cursor-not-allowed disabled:opacity-50"
               title="Flag this phrase"
               aria-label="Flag this phrase"
             >
               <span className="sr-only">Flag this phrase</span>
               <FlagIcon className="h-5 w-5 pointer-events-none" aria-hidden="true" />
             </button>
-            <p className="text-sm text-quip-teal mb-2 text-center font-medium">The original answer was:</p>
-            <p className="text-3xl text-center font-display font-bold text-quip-turquoise">
+            <p className="text-sm text-ccl-teal mb-2 text-center font-medium">The original answer was:</p>
+            <p className="text-3xl text-center font-display font-bold text-ccl-turquoise">
               {roundData.original_phrase}
             </p>
           </div>
@@ -807,20 +807,20 @@ export const CopyRound: React.FC = () => {
 
           {/* AI Hints */}
           {roundData && (
-            <div className="mb-4 rounded-tile border border-quip-turquoise/30 bg-white/80 p-4 shadow-tile-xs">
+            <div className="mb-4 rounded-tile border border-ccl-turquoise/30 bg-white/80 p-4 shadow-tile-xs">
               {copyRoundHints && copyRoundHints.length > 0 ? (
                 <>
                   <button
                     type="button"
                     onClick={() => setShowHints((prev) => !prev)}
-                    className="flex w-full items-center justify-between rounded-tile border border-quip-turquoise/40 bg-quip-turquoise/10 px-3 py-2 font-semibold text-quip-teal transition hover:bg-quip-turquoise/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-quip-turquoise"
+                    className="flex w-full items-center justify-between rounded-tile border border-ccl-turquoise/40 bg-ccl-turquoise/10 px-3 py-2 font-semibold text-ccl-teal transition hover:bg-ccl-turquoise/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ccl-turquoise"
                   >
                     <span>{showHints ? 'Hide AI Hints' : 'Show AI Hints'}</span>
-                    <span className="text-sm text-quip-navy">{copyRoundHints.length} suggestions</span>
+                    <span className="text-sm text-ccl-navy">{copyRoundHints.length} suggestions</span>
                   </button>
                   {showHints && (
                     <div className="mt-3 space-y-3">
-                      <p className="text-xs uppercase tracking-wide text-quip-teal/80">
+                      <p className="text-xs uppercase tracking-wide text-ccl-teal/80">
                         Mix and modify - make it your own!
                       </p>
                       <ul className="space-y-2">
@@ -830,9 +830,9 @@ export const CopyRound: React.FC = () => {
                               type="button"
                               onClick={() => handleHintClick(hint)}
                               disabled={isSubmitting || isFlagging || isExpired}
-                              className="w-full text-left flex items-start gap-2 rounded-tile border border-quip-turquoise/30 bg-white px-3 py-2 text-quip-navy shadow-inner transition hover:bg-quip-turquoise/10 hover:border-quip-turquoise/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-quip-turquoise disabled:cursor-not-allowed disabled:opacity-60"
+                              className="w-full text-left flex items-start gap-2 rounded-tile border border-ccl-turquoise/30 bg-white px-3 py-2 text-ccl-navy shadow-inner transition hover:bg-ccl-turquoise/10 hover:border-ccl-turquoise/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ccl-turquoise disabled:cursor-not-allowed disabled:opacity-60"
                             >
-                              <span className="font-semibold text-quip-turquoise shrink-0">Hint {index + 1}:</span>
+                              <span className="font-semibold text-ccl-turquoise shrink-0">Hint {index + 1}:</span>
                               <span className="break-words">{hint}</span>
                             </button>
                           </li>
@@ -847,12 +847,12 @@ export const CopyRound: React.FC = () => {
                     type="button"
                     onClick={handleFetchHints}
                     disabled={isFetchingHints || isSubmitting || isFlagging || isExpired}
-                    className="w-full rounded-tile border border-quip-turquoise bg-white px-4 py-2 font-semibold text-quip-turquoise transition hover:bg-quip-turquoise hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                    className="w-full rounded-tile border border-ccl-turquoise bg-white px-4 py-2 font-semibold text-ccl-turquoise transition hover:bg-ccl-turquoise hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {isFetchingHints ? 'Contacting AI...' : 'Get AI Hints'}
                   </button>
                   {hintError && <p className="mt-2 text-sm text-red-600">{hintError}</p>}
-                  <p className="mt-2 text-xs text-quip-teal">
+                  <p className="mt-2 text-xs text-ccl-teal">
                     You will get three ideas that passed quick AI checks. Use them as inspiration and tweak them to match your style. Hints may take up to one minute to generate.
                   </p>
                 </>
@@ -868,11 +868,11 @@ export const CopyRound: React.FC = () => {
                 value={phrase}
                 onChange={(e) => setPhrase(e.target.value)}
                 placeholder="Enter your phrase"
-                className="tutorial-copy-input w-full px-4 py-3 text-lg border-2 border-quip-teal rounded-tile focus:outline-none focus:ring-2 focus:ring-quip-turquoise"
+                className="tutorial-copy-input w-full px-4 py-3 text-lg border-2 border-ccl-teal rounded-tile focus:outline-none focus:ring-2 focus:ring-ccl-turquoise"
                 disabled={isExpired || isSubmitting || isFlagging}
                 maxLength={100}
               />
-              <p className="text-sm text-quip-teal mt-1">
+              <p className="text-sm text-ccl-teal mt-1">
                 2-5 words (4-100 characters), A-Z and spaces only, no proper nouns
               </p>
             </div>
@@ -880,17 +880,17 @@ export const CopyRound: React.FC = () => {
             <button
               type="submit"
               disabled={isExpired || isSubmitting || isFlagging || !isPhraseValid}
-              className="w-full bg-quip-turquoise hover:bg-quip-teal disabled:bg-gray-400 text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm text-lg"
+              className="w-full bg-ccl-turquoise hover:bg-ccl-teal disabled:bg-gray-400 text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm text-lg"
             >
               {isExpired ? "Time's Up" : isSubmitting ? loadingMessages.submitting : 'Submit Phrase'}
             </button>
           </form>
 
           {showFlagConfirm && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-quip-navy/60 p-4">
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-ccl-navy/60 p-4">
               <div className="w-full max-w-md rounded-tile bg-white p-6 shadow-tile-lg">
-                <h3 className="text-xl font-display font-bold text-quip-navy mb-2">Flag this phrase?</h3>
-                <p className="text-quip-teal">
+                <h3 className="text-xl font-display font-bold text-ccl-navy mb-2">Flag this phrase?</h3>
+                <p className="text-ccl-teal">
                   Are you sure you want to mark this phrase as “offensive, inappropriate, or nonsensical”? This will abandon the round
                   and we'll review the phrase.
                 </p>
@@ -898,7 +898,7 @@ export const CopyRound: React.FC = () => {
                   <button
                     type="button"
                     onClick={handleCancelFlag}
-                    className="rounded-tile border-2 border-quip-navy px-4 py-2 font-semibold text-quip-navy transition hover:bg-quip-navy hover:text-white"
+                    className="rounded-tile border-2 border-ccl-navy px-4 py-2 font-semibold text-ccl-navy transition hover:bg-ccl-navy hover:text-white"
                     disabled={isFlagging}
                   >
                     Cancel
@@ -907,7 +907,7 @@ export const CopyRound: React.FC = () => {
                     type="button"
                     onClick={handleConfirmFlag}
                     disabled={isFlagging}
-                    className="rounded-tile bg-quip-orange px-4 py-2 font-semibold text-white shadow-tile-sm transition hover:bg-quip-orange/90 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="rounded-tile bg-ccl-orange px-4 py-2 font-semibold text-white shadow-tile-sm transition hover:bg-ccl-orange/90 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {isFlagging ? 'Flagging...' : 'Yes, flag it'}
                   </button>
@@ -920,7 +920,7 @@ export const CopyRound: React.FC = () => {
           <button
             onClick={navigateHome}
             disabled={isSubmitting}
-            className="w-full mt-4 flex items-center justify-center gap-2 text-quip-teal hover:text-quip-turquoise disabled:opacity-50 disabled:cursor-not-allowed py-2 font-medium transition-colors"
+            className="w-full mt-4 flex items-center justify-center gap-2 text-ccl-teal hover:text-ccl-turquoise disabled:opacity-50 disabled:cursor-not-allowed py-2 font-medium transition-colors"
             title={isSubmitting ? "Please wait for submission to complete" : isInPartyMode ? "Leave Party Mode" : "Back to Dashboard"}
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -930,14 +930,14 @@ export const CopyRound: React.FC = () => {
           </button>
 
           {/* Info */}
-          <div className="mt-6 p-4 bg-quip-turquoise bg-opacity-5 rounded-tile">
-            <p className="text-sm text-quip-teal">
-              <strong className="text-quip-navy">Cost:</strong> <CurrencyDisplay amount={roundData.cost} iconClassName="w-3 h-3" textClassName="text-sm" />
+          <div className="mt-6 p-4 bg-ccl-turquoise bg-opacity-5 rounded-tile">
+            <p className="text-sm text-ccl-teal">
+              <strong className="text-ccl-navy">Cost:</strong> <CurrencyDisplay amount={roundData.cost} iconClassName="w-3 h-3" textClassName="text-sm" />
               {roundData.discount_active && (
-                <span className="text-quip-turquoise font-semibold"> (10% discount!)</span>
+                <span className="text-ccl-turquoise font-semibold"> (10% discount!)</span>
               )}
             </p>
-            <p className="text-sm text-quip-teal mt-1">
+            <p className="text-sm text-ccl-teal mt-1">
               If you don't submit, <CurrencyDisplay amount={roundData.cost - abandonedPenalty} iconClassName="w-3 h-3" textClassName="text-sm" /> will be refunded (<CurrencyDisplay amount={abandonedPenalty} iconClassName="w-3 h-3" textClassName="text-sm" /> penalty)
             </p>
           </div>

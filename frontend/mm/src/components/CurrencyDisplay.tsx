@@ -27,7 +27,7 @@ export const CurrencyDisplay: React.FC<CurrencyDisplayProps> = ({
       {showIcon && (
         <img
           src="/memecoin.png"
-          alt="memecoins"
+          alt="MemeCoins"
           className={iconClassName}
         />
       )}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LiveModeIcon, PracticeModeIcon } from './icons/RoundIcons';
+import { LiveModeIcon, PracticeModeIcon } from '@crowdcraft/components/icons/RoundIcons.tsx';
 
 interface ModeToggleProps {
   mode: 'live' | 'practice';
@@ -37,7 +37,7 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({ mode, onChange }) => {
           }`}
           aria-label="Switch to live mode"
         >
-          <span className="font-bold text-quip-orange-deep">Live</span>
+          <span className="font-bold text-ccl-orange-deep">Live</span>
           <LiveModeIcon className="w-11 h-11" aria-hidden="true" />
         </button>
 
@@ -47,7 +47,7 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({ mode, onChange }) => {
           aria-checked={mode === 'practice'}
           aria-label={`Switch to ${mode === 'live' ? 'practice' : 'live'} mode`}
           onClick={() => onChange(mode === 'live' ? 'practice' : 'live')}
-          className="relative w-20 sm:w-20 h-10 bg-white rounded-full shadow-tile-sm border-2 border-quip-navy border-opacity-10 focus:outline-none focus:ring-2 focus:ring-quip-teal focus:ring-offset-2"
+          className="relative w-20 sm:w-20 h-10 bg-white rounded-full shadow-tile-sm border-2 border-ccl-navy border-opacity-10 focus:outline-none focus:ring-2 focus:ring-ccl-teal focus:ring-offset-2"
           style={{
             width: '5rem',
           }}
@@ -56,7 +56,7 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({ mode, onChange }) => {
           <div className="absolute inset-0 rounded-full overflow-hidden pointer-events-none">
             <div
               className={`absolute inset-y-0 w-1/2 transition-all duration-300 ease-in-out ${
-                mode === 'live' ? 'bg-quip-orange bg-opacity-20 left-0' : 'bg-quip-turquoise bg-opacity-20 right-0'
+                mode === 'live' ? 'bg-ccl-orange bg-opacity-20 left-0' : 'bg-ccl-turquoise bg-opacity-20 right-0'
               }`}
             />
           </div>
@@ -68,7 +68,7 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({ mode, onChange }) => {
               willChange: 'transform'
             }}
             className={`absolute top-1 left-1 w-7 h-7 rounded-full shadow-md transition-all duration-300 ease-in-out ${
-              mode === 'live' ? 'bg-quip-orange' : 'bg-quip-turquoise'
+              mode === 'live' ? 'bg-ccl-orange' : 'bg-ccl-turquoise'
             }`}
           />
         </button>
@@ -82,7 +82,7 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({ mode, onChange }) => {
           aria-label="Switch to practice mode"
         >
           <PracticeModeIcon className="w-11 h-11" aria-hidden="true" />
-          <span className="font-bold text-quip-turquoise">Practice</span>
+          <span className="font-bold text-ccl-turquoise">Practice</span>
         </button>
       </div>
     </div>

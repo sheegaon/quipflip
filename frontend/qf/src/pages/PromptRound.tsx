@@ -11,7 +11,7 @@ import { usePhraseValidation } from '../hooks/usePhraseValidation';
 import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
 import type { PromptState, SubmitPhraseResponse } from '../api/types';
 import { promptRoundLogger } from '../utils/logger';
-import { TrackingIcon } from '../components/icons/NavigationIcons';
+import { TrackingIcon } from '@crowdcraft/components/icons/NavigationIcons.tsx';
 import { usePartyMode } from '../contexts/PartyModeContext';
 import PartyRoundModal from '../components/party/PartyRoundModal';
 import { usePartyRoundCoordinator } from '../hooks/usePartyRoundCoordinator';
@@ -242,20 +242,20 @@ export const PromptRound: React.FC = () => {
     return (
       <>
         {partyOverlay}
-        <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center p-4">
+        <div className="min-h-screen bg-ccl-cream bg-pattern flex items-center justify-center p-4">
           <div className="tile-card max-w-md w-full p-8 text-center flip-enter space-y-2">
             <div className="flex justify-center mb-4">
               <TrackingIcon className="w-24 h-24" />
             </div>
-            <h2 className="text-2xl font-display font-bold text-quip-turquoise mb-2 success-message">
+            <h2 className="text-2xl font-display font-bold text-ccl-turquoise mb-2 success-message">
               {successMessage}
             </h2>
-            <p className="text-lg text-quip-teal mb-4">{feedbackMessage}</p>
-            <p className="text-sm text-quip-teal">
+            <p className="text-lg text-ccl-teal mb-4">{feedbackMessage}</p>
+            <p className="text-sm text-ccl-teal">
               {isInPartyMode ? 'Starting the impostor round...' : 'Returning to dashboard...'}
             </p>
             {isStartingNextRound && isInPartyMode && (
-              <p className="text-xs text-quip-teal">Loading the next round now...</p>
+              <p className="text-xs text-ccl-teal">Loading the next round now...</p>
             )}
             {nextRoundError && (
               <div className="mt-2 text-sm text-red-600">
@@ -263,7 +263,7 @@ export const PromptRound: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => transitionToNextRound('prompt')}
-                  className="ml-2 underline text-quip-orange hover:text-quip-orange-deep"
+                  className="ml-2 underline text-ccl-orange hover:text-ccl-orange-deep"
                 >
                   Retry
                 </button>
@@ -279,7 +279,7 @@ export const PromptRound: React.FC = () => {
     return (
       <>
         {partyOverlay}
-        <div className="min-h-screen bg-quip-cream bg-pattern flex items-center justify-center">
+        <div className="min-h-screen bg-ccl-cream bg-pattern flex items-center justify-center">
           <LoadingSpinner isLoading={true} message={loadingMessages.starting} />
         </div>
       </>
@@ -289,14 +289,14 @@ export const PromptRound: React.FC = () => {
   return (
     <>
       {partyOverlay}
-      <div className="min-h-screen bg-gradient-to-br from-quip-navy to-quip-teal flex items-center justify-center p-4 bg-pattern">
+      <div className="min-h-screen bg-gradient-to-br from-ccl-navy to-ccl-teal flex items-center justify-center p-4 bg-pattern">
         <div className="max-w-2xl w-full tile-card p-8 slide-up-enter">
           <div className="text-center mb-8">
             <div className="flex items-center justify-center gap-2 mb-2">
               <TrackingIcon className="w-8 h-8" />
-              <h1 className="text-3xl font-display font-bold text-quip-navy">Quip Round</h1>
+              <h1 className="text-3xl font-display font-bold text-ccl-navy">Quip Round</h1>
             </div>
-            <p className="text-quip-teal">Write an original quip for the prompt</p>
+            <p className="text-ccl-teal">Write an original quip for the prompt</p>
           </div>
 
           {/* Timer */}
@@ -305,15 +305,15 @@ export const PromptRound: React.FC = () => {
           </div>
 
           {/* Instructions */}
-          <div className="bg-quip-orange bg-opacity-10 border-2 border-quip-orange rounded-tile p-4 mb-6">
-            <p className="text-sm text-quip-navy">
+          <div className="bg-ccl-orange bg-opacity-10 border-2 border-ccl-orange rounded-tile p-4 mb-6">
+            <p className="text-sm text-ccl-navy">
               <strong>💡 Tip:</strong> Type a short phrase that completes the sentence.
             </p>
           </div>
 
           {/* Prompt */}
-          <div className="bg-quip-navy bg-opacity-5 border-2 border-quip-navy rounded-tile p-6 py-8 mb-6 relative min-h-[120px] flex items-center">
-            <p className="text-xl md:text-2xl text-center font-display font-semibold text-quip-navy flex-1 pr-12">
+          <div className="bg-ccl-navy bg-opacity-5 border-2 border-ccl-navy rounded-tile p-6 py-8 mb-6 relative min-h-[120px] flex items-center">
+            <p className="text-xl md:text-2xl text-center font-display font-semibold text-ccl-navy flex-1 pr-12">
               {roundData.prompt_text}
             </p>
 
@@ -349,11 +349,11 @@ export const PromptRound: React.FC = () => {
                 value={phrase}
                 onChange={(e) => setPhrase(e.target.value)}
                 placeholder="Enter your phrase"
-                className="tutorial-prompt-input w-full px-4 py-3 text-lg border-2 border-quip-teal rounded-tile focus:outline-none focus:ring-2 focus:ring-quip-turquoise"
+                className="tutorial-prompt-input w-full px-4 py-3 text-lg border-2 border-ccl-teal rounded-tile focus:outline-none focus:ring-2 focus:ring-ccl-turquoise"
                 disabled={isExpired || isSubmitting}
                 maxLength={100}
               />
-              <p className="text-sm text-quip-teal mt-1">
+              <p className="text-sm text-ccl-teal mt-1">
                 2-5 words (4-100 characters), A-Z and spaces only, must not repeat prompt, no proper nouns
               </p>
             </div>
@@ -361,7 +361,7 @@ export const PromptRound: React.FC = () => {
             <button
               type="submit"
               disabled={isExpired || isSubmitting || !isPhraseValid}
-              className="w-full bg-quip-navy hover:bg-quip-teal disabled:bg-gray-400 text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm text-lg"
+              className="w-full bg-ccl-navy hover:bg-ccl-teal disabled:bg-gray-400 text-white font-bold py-3 px-4 rounded-tile transition-all hover:shadow-tile-sm text-lg"
             >
               {isExpired ? "Time's Up" : isSubmitting ? loadingMessages.submitting : 'Submit Phrase'}
             </button>
@@ -371,7 +371,7 @@ export const PromptRound: React.FC = () => {
           <button
             onClick={navigateHome}
             disabled={isSubmitting}
-            className="w-full mt-4 flex items-center justify-center gap-2 text-quip-teal hover:text-quip-turquoise disabled:opacity-50 disabled:cursor-not-allowed py-2 font-medium transition-colors"
+            className="w-full mt-4 flex items-center justify-center gap-2 text-ccl-teal hover:text-ccl-turquoise disabled:opacity-50 disabled:cursor-not-allowed py-2 font-medium transition-colors"
             title={isSubmitting ? "Please wait for submission to complete" : isInPartyMode ? "Leave Party Mode" : "Back to Dashboard"}
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -381,9 +381,9 @@ export const PromptRound: React.FC = () => {
           </button>
 
           {/* Info */}
-          <div className="mt-6 p-4 bg-quip-navy bg-opacity-5 rounded-tile">
-            <p className="text-sm text-quip-teal">
-              <strong className="text-quip-navy">Cost:</strong> <CurrencyDisplay amount={roundData.cost} iconClassName="w-3 h-3" textClassName="text-sm" /> (<CurrencyDisplay amount={roundData.cost - abandonedPenalty} iconClassName="w-3 h-3" textClassName="text-sm" /> refunded if you don't submit in time)
+          <div className="mt-6 p-4 bg-ccl-navy bg-opacity-5 rounded-tile">
+            <p className="text-sm text-ccl-teal">
+              <strong className="text-ccl-navy">Cost:</strong> <CurrencyDisplay amount={roundData.cost} iconClassName="w-3 h-3" textClassName="text-sm" /> (<CurrencyDisplay amount={roundData.cost - abandonedPenalty} iconClassName="w-3 h-3" textClassName="text-sm" /> refunded if you don't submit in time)
             </p>
           </div>
         </div>

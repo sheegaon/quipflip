@@ -47,11 +47,11 @@ const OnlineUsers: React.FC = () => {
   // Get action color based on action category (centralized from backend)
   const getActionColor = (category: string): string => {
     const categoryColorMap: Record<string, string> = {
-      'round_prompt': 'bg-quip-orange',
+      'round_prompt': 'bg-ccl-orange',
       'round_copy': 'bg-quip-coral',
-      'round_vote': 'bg-quip-teal',
+      'round_vote': 'bg-ccl-teal',
       'round_navigation': 'bg-indigo-500',
-      'round_other': 'bg-quip-navy',
+      'round_other': 'bg-ccl-navy',
       'stats': 'bg-blue-500',
       'review': 'bg-green-500',
       'navigation': 'bg-yellow-500',
@@ -71,12 +71,12 @@ const OnlineUsers: React.FC = () => {
 
   if (loadingOnlineUsers) {
     return (
-      <div className="min-h-screen bg-quip-cream bg-pattern">
+      <div className="min-h-screen bg-ccl-cream bg-pattern">
         <Header />
         <div className="container mx-auto px-4 py-8">
           <div className="text-center py-12">
-            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-quip-orange border-r-transparent"></div>
-            <p className="mt-4 text-quip-navy font-display">Connecting to online users...</p>
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-ccl-orange border-r-transparent"></div>
+            <p className="mt-4 text-ccl-navy font-display">Connecting to online users...</p>
           </div>
         </div>
       </div>
@@ -84,15 +84,15 @@ const OnlineUsers: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-quip-cream bg-pattern">
+    <div className="min-h-screen bg-ccl-cream bg-pattern">
       <Header />
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="tile-card p-6 mb-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex-1">
-              <h1 className="text-3xl font-display font-bold text-quip-navy">Online Users</h1>
-              <p className="text-quip-teal mt-1">
+              <h1 className="text-3xl font-display font-bold text-ccl-navy">Online Users</h1>
+              <p className="text-ccl-teal mt-1">
                 See who's currently playing ({totalCount} {totalCount === 1 ? 'user' : 'users'} online)
               </p>
             </div>
@@ -102,7 +102,7 @@ const OnlineUsers: React.FC = () => {
                 <div
                   className={`w-2 h-2 rounded-full ${onlineUsersConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}
                 ></div>
-                <span className="text-sm text-quip-navy">
+                <span className="text-sm text-ccl-navy">
                   {onlineUsersConnected ? 'Live' : 'Reconnecting...'}
                 </span>
               </div>
@@ -121,8 +121,8 @@ const OnlineUsers: React.FC = () => {
         <div className="tile-card p-6">
           {onlineUsers.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-quip-navy font-display text-lg">No users online right now</p>
-              <p className="text-quip-teal mt-2">Be the first to make a move!</p>
+              <p className="text-ccl-navy font-display text-lg">No users online right now</p>
+              <p className="text-ccl-teal mt-2">Be the first to make a move!</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -133,26 +133,26 @@ const OnlineUsers: React.FC = () => {
                 return (
                   <div
                     key={user.username}
-                    className="flex items-center justify-between p-4 bg-quip-cream rounded-lg border border-quip-orange/20 hover:border-quip-orange/40 transition-colors"
+                    className="flex items-center justify-between p-4 bg-ccl-cream rounded-lg border border-ccl-orange/20 hover:border-ccl-orange/40 transition-colors"
                   >
                     <div className="flex items-center gap-4 flex-1">
                       {/* User avatar placeholder */}
-                      <div className="w-10 h-10 rounded-full bg-quip-navy flex items-center justify-center text-white font-bold text-sm">
+                      <div className="w-10 h-10 rounded-full bg-ccl-navy flex items-center justify-center text-white font-bold text-sm">
                         {getUserInitials(user.username)}
                       </div>
 
                       {/* User info */}
                       <div className="flex-1">
-                        <p className="font-bold text-quip-navy">{user.username}</p>
+                        <p className="font-bold text-ccl-navy">{user.username}</p>
                         <div className="flex items-center gap-2 mt-1">
                           <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold text-white ${getActionColor(user.last_action_category)}`}>
                             {user.last_action}
                           </span>
-                          <span className="text-sm text-quip-teal">{user.time_ago}</span>
+                          <span className="text-sm text-ccl-teal">{user.time_ago}</span>
                         </div>
                         <div className="flex items-center gap-3 mt-2">
                           <div className="flex items-center gap-1">
-                            <CurrencyDisplay amount={user.wallet} iconClassName="w-3 h-3" textClassName="text-sm text-quip-navy" />
+                            <CurrencyDisplay amount={user.wallet} iconClassName="w-3 h-3" textClassName="text-sm text-ccl-navy" />
                           </div>
                           <span className="text-sm text-gray-500">•</span>
                           <span className="text-sm text-gray-600">{accountAgeDays} {accountAgeDays === 1 ? 'day' : 'days'} old</span>
@@ -170,7 +170,7 @@ const OnlineUsers: React.FC = () => {
                         <button
                           onClick={() => handlePingUser(user.username)}
                           disabled={isSelf || status === 'sending' || status === 'sent'}
-                          className="text-sm bg-quip-turquoise text-white px-3 py-2 rounded-lg hover:bg-quip-teal transition-colors disabled:bg-gray-300 disabled:text-gray-600 disabled:cursor-not-allowed"
+                          className="text-sm bg-ccl-turquoise text-white px-3 py-2 rounded-lg hover:bg-ccl-teal transition-colors disabled:bg-gray-300 disabled:text-gray-600 disabled:cursor-not-allowed"
                         >
                           {status === 'sending'
                             ? 'Pinging...'

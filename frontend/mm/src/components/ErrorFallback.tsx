@@ -25,7 +25,7 @@ export const ErrorFallback: React.FC<ErrorFallbackProps> = ({
   const isDevelopment = import.meta.env.DEV;
 
   return (
-    <div className={`${isAppLevel ? 'min-h-screen' : 'min-h-[400px]'} flex items-center justify-center bg-quip-navy/5 p-4`}>
+    <div className={`${isAppLevel ? 'min-h-screen' : 'min-h-[400px]'} flex items-center justify-center bg-ccl-navy/5 p-4`}>
       <div className="max-w-2xl w-full bg-white rounded-lg shadow-xl overflow-hidden">
         {/* Header */}
         <div className="bg-red-500 text-white p-6">
@@ -61,13 +61,13 @@ export const ErrorFallback: React.FC<ErrorFallbackProps> = ({
           <div className="flex flex-wrap gap-3">
             <button
               onClick={onRetry}
-              className="flex-1 min-w-[140px] bg-quip-turquoise hover:bg-quip-turquoise/90 text-white font-semibold py-3 px-6 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-quip-turquoise focus:ring-offset-2"
+              className="flex-1 min-w-[140px] bg-ccl-turquoise hover:bg-ccl-turquoise/90 text-white font-semibold py-3 px-6 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-ccl-turquoise focus:ring-offset-2"
             >
               Try Again
             </button>
             <button
               onClick={onReload}
-              className="flex-1 min-w-[140px] bg-quip-navy hover:bg-quip-navy/90 text-white font-semibold py-3 px-6 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-quip-navy focus:ring-offset-2"
+              className="flex-1 min-w-[140px] bg-ccl-navy hover:bg-ccl-navy/90 text-white font-semibold py-3 px-6 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-ccl-navy focus:ring-offset-2"
             >
               Reload Page
             </button>
@@ -77,7 +77,7 @@ export const ErrorFallback: React.FC<ErrorFallbackProps> = ({
           <div className="text-center">
             <a
               href={`mailto:support@quipflip.com?subject=Error%20Report%20${errorId}&body=Error%20ID:%20${errorId}%0A%0APlease%20describe%20what%20you%20were%20doing%20when%20the%20error%20occurred:`}
-              className="text-sm text-quip-turquoise hover:text-quip-turquoise/80 underline"
+              className="text-sm text-ccl-turquoise hover:text-ccl-turquoise/80 underline"
             >
               Report this issue to support
             </a>

@@ -128,7 +128,7 @@ export const CircleDetails: React.FC = () => {
           <p className="text-red-600">Circle not found</p>
           <button
             onClick={() => navigate('/circles')}
-            className="mt-4 bg-quip-navy text-white font-bold py-2 px-4 rounded-tile"
+            className="mt-4 bg-ccl-navy text-white font-bold py-2 px-4 rounded-tile"
           >
             Back to Circles
           </button>
@@ -144,23 +144,23 @@ export const CircleDetails: React.FC = () => {
         <div className="mb-6">
           <button
             onClick={() => navigate('/circles')}
-            className="text-quip-teal hover:text-quip-teal/80 mb-4 inline-flex items-center gap-2"
+            className="text-ccl-teal hover:text-ccl-teal/80 mb-4 inline-flex items-center gap-2"
           >
             ← Back to Circles
           </button>
           <div className="flex items-start justify-between">
             <div>
-              <h1 className="text-3xl font-display font-bold text-quip-navy mb-2">
+              <h1 className="text-3xl font-display font-bold text-ccl-navy mb-2">
                 {circle.name}
               </h1>
               {circle.description && (
-                <p className="text-quip-navy/70 mb-2">{circle.description}</p>
+                <p className="text-ccl-navy/70 mb-2">{circle.description}</p>
               )}
-              <div className="flex items-center gap-4 text-sm text-quip-navy/60">
+              <div className="flex items-center gap-4 text-sm text-ccl-navy/60">
                 <span>{circle.member_count} {circle.member_count === 1 ? 'member' : 'members'}</span>
                 <span>{circle.is_public ? 'Public' : 'Private'}</span>
                 {circle.is_admin && (
-                  <span className="text-quip-orange font-bold">You are an Admin</span>
+                  <span className="text-ccl-orange font-bold">You are an Admin</span>
                 )}
               </div>
             </div>
@@ -168,7 +168,7 @@ export const CircleDetails: React.FC = () => {
               <button
                 onClick={handleLeaveCircle}
                 disabled={actionLoading === 'leave'}
-                className="bg-quip-navy/10 text-quip-navy font-bold py-2 px-4 rounded-tile hover:bg-quip-navy/20 transition-all disabled:opacity-50"
+                className="bg-ccl-navy/10 text-ccl-navy font-bold py-2 px-4 rounded-tile hover:bg-ccl-navy/20 transition-all disabled:opacity-50"
               >
                 {actionLoading === 'leave' ? 'Leaving...' : 'Leave Circle'}
               </button>
@@ -185,19 +185,19 @@ export const CircleDetails: React.FC = () => {
         {/* Join Requests (Admin Only) */}
         {circle.is_admin && joinRequests.length > 0 && (
           <div className="mb-6">
-            <h2 className="text-xl font-display font-bold text-quip-navy mb-4">
+            <h2 className="text-xl font-display font-bold text-ccl-navy mb-4">
               Pending Join Requests ({joinRequests.length})
             </h2>
             <div className="space-y-3">
               {joinRequests.map((request) => (
                 <div
                   key={request.request_id}
-                  className="border-2 border-quip-orange rounded-tile p-4 bg-quip-orange/5"
+                  className="border-2 border-ccl-orange rounded-tile p-4 bg-ccl-orange/5"
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-bold text-quip-navy">{request.username}</p>
-                      <p className="text-sm text-quip-navy/60">
+                      <p className="font-bold text-ccl-navy">{request.username}</p>
+                      <p className="text-sm text-ccl-navy/60">
                         Requested {formatDateTimeInUserZone(request.requested_at, { fallback: 'recently' })}
                       </p>
                     </div>
@@ -205,14 +205,14 @@ export const CircleDetails: React.FC = () => {
                       <button
                         onClick={() => handleApproveRequest(request.request_id)}
                         disabled={actionLoading === `approve-${request.request_id}`}
-                        className="bg-quip-teal text-white font-bold py-2 px-4 rounded-tile shadow-tile hover:shadow-tile-sm transition-all disabled:opacity-50"
+                        className="bg-ccl-teal text-white font-bold py-2 px-4 rounded-tile shadow-tile hover:shadow-tile-sm transition-all disabled:opacity-50"
                       >
                         {actionLoading === `approve-${request.request_id}` ? 'Approving...' : 'Approve'}
                       </button>
                       <button
                         onClick={() => handleDenyRequest(request.request_id)}
                         disabled={actionLoading === `deny-${request.request_id}`}
-                        className="bg-quip-navy/10 text-quip-navy font-bold py-2 px-4 rounded-tile hover:bg-quip-navy/20 transition-all disabled:opacity-50"
+                        className="bg-ccl-navy/10 text-ccl-navy font-bold py-2 px-4 rounded-tile hover:bg-ccl-navy/20 transition-all disabled:opacity-50"
                       >
                         {actionLoading === `deny-${request.request_id}` ? 'Denying...' : 'Deny'}
                       </button>
@@ -226,28 +226,28 @@ export const CircleDetails: React.FC = () => {
 
         {/* Members */}
         <div>
-          <h2 className="text-xl font-display font-bold text-quip-navy mb-4">
+          <h2 className="text-xl font-display font-bold text-ccl-navy mb-4">
             Members ({members.length})
           </h2>
           {members.length === 0 ? (
-            <p className="text-quip-navy/70">No members yet</p>
+            <p className="text-ccl-navy/70">No members yet</p>
           ) : (
             <div className="space-y-2">
               {members.map((member) => (
                 <div
                   key={member.player_id}
-                  className="border-2 border-quip-navy/20 rounded-tile p-3 bg-white flex items-center justify-between"
+                  className="border-2 border-ccl-navy/20 rounded-tile p-3 bg-white flex items-center justify-between"
                 >
                   <div>
-                    <p className="font-bold text-quip-navy">
+                    <p className="font-bold text-ccl-navy">
                       {member.username}
                       {member.role === 'admin' && (
-                        <span className="ml-2 text-xs bg-quip-orange text-white px-2 py-1 rounded">
+                        <span className="ml-2 text-xs bg-ccl-orange text-white px-2 py-1 rounded">
                           Admin
                         </span>
                       )}
                     </p>
-                    <p className="text-sm text-quip-navy/60">
+                    <p className="text-sm text-ccl-navy/60">
                       Joined {formatDateTimeInUserZone(member.joined_at, { fallback: 'recently' })}
                     </p>
                   </div>
@@ -255,7 +255,7 @@ export const CircleDetails: React.FC = () => {
                     <button
                       onClick={() => handleRemoveMember(member.player_id, member.username)}
                       disabled={actionLoading === `remove-${member.player_id}`}
-                      className="bg-quip-navy/10 text-quip-navy text-sm font-bold py-1 px-3 rounded hover:bg-quip-navy/20 transition-all disabled:opacity-50"
+                      className="bg-ccl-navy/10 text-ccl-navy text-sm font-bold py-1 px-3 rounded hover:bg-ccl-navy/20 transition-all disabled:opacity-50"
                     >
                       {actionLoading === `remove-${member.player_id}` ? 'Removing...' : 'Remove'}
                     </button>

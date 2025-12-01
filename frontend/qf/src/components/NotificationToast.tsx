@@ -9,7 +9,7 @@
 import { FC, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { NotificationMessage } from '../contexts/NotificationContext';
-import { TrackingIcon } from './icons/NavigationIcons';
+import { TrackingIcon } from '@crowdcraft/components/icons/NavigationIcons.tsx';
 
 interface NotificationToastProps {
   notification: NotificationMessage;
@@ -52,7 +52,7 @@ const NotificationToast: FC<NotificationToastProps> = ({
     <div
       className={`
         tile-card p-4 max-w-sm
-        bg-gradient-to-r from-quip-turquoise to-teal-500
+        bg-gradient-to-r from-ccl-turquoise to-teal-500
         shadow-lg
         transition-all duration-300
         ${isExiting ? 'opacity-0 translate-x-full' : 'opacity-100 translate-x-0'}

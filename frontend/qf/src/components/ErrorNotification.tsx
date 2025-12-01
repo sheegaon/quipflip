@@ -76,13 +76,13 @@ export const ErrorNotification: React.FC<ErrorNotificationProps> = ({
         };
       case 'game':
         return {
-          bgColor: 'bg-quip-orange',
+          bgColor: 'bg-ccl-orange',
           icon: '🎮',
           title: 'Game Issue'
         };
       case 'account':
         return {
-          bgColor: 'bg-quip-turquoise',
+          bgColor: 'bg-ccl-turquoise',
           icon: '👤',
           title: 'Account Issue'
         };

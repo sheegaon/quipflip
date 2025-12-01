@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import apiClient, { extractErrorMessage } from '../api/client';
 import type { LeaderboardResponse } from '../api/types';
 import { Header } from '../components/Header';
-import WeeklyLeaderboard from '../components/statistics/WeeklyLeaderboard';
+import WeeklyLeaderboard from '@crowdcraft/components/statistics/WeeklyLeaderboard.tsx';
 import { leaderboardLogger } from '../utils/logger';
 
 type LeaderboardPeriod = 'weekly' | 'alltime';
@@ -54,12 +54,12 @@ const Leaderboard: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-quip-cream bg-pattern">
+      <div className="min-h-screen bg-ccl-cream bg-pattern">
         <Header />
         <div className="container mx-auto px-4 py-8">
           <div className="text-center py-12">
-            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-quip-orange border-r-transparent"></div>
-            <p className="mt-4 text-quip-navy font-display">Loading leaderboard...</p>
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-ccl-orange border-r-transparent"></div>
+            <p className="mt-4 text-ccl-navy font-display">Loading leaderboard...</p>
           </div>
         </div>
       </div>
@@ -68,11 +68,11 @@ const Leaderboard: React.FC = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-quip-cream bg-pattern">
+      <div className="min-h-screen bg-ccl-cream bg-pattern">
         <Header />
         <div className="container mx-auto px-4 py-8">
           <div className="tile-card p-8">
-            <h1 className="text-2xl font-display font-bold text-quip-navy mb-4">Leaderboard</h1>
+            <h1 className="text-2xl font-display font-bold text-ccl-navy mb-4">Leaderboard</h1>
             <div className="text-red-600">{error}</div>
           </div>
         </div>
@@ -103,30 +103,30 @@ const Leaderboard: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-quip-cream bg-pattern">
+    <div className="min-h-screen bg-ccl-cream bg-pattern">
       <Header />
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="tile-card p-6 mb-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex-1">
-              <h1 className="text-3xl font-display font-bold text-quip-navy">Leaderboard</h1>
-              <p className="text-quip-teal mt-1">See how you rank among all players</p>
+              <h1 className="text-3xl font-display font-bold text-ccl-navy">Leaderboard</h1>
+              <p className="text-ccl-teal mt-1">See how you rank among all players</p>
             </div>
           </div>
         </div>
 
         {/* Period Tabs */}
         <div className="tile-card p-6" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
-          <div className="flex border-b border-quip-navy/10 mb-6" role="tablist">
+          <div className="flex border-b border-ccl-navy/10 mb-6" role="tablist">
             <button
               role="tab"
               aria-selected={activePeriod === 'weekly'}
               onClick={() => setActivePeriod('weekly')}
               className={`px-6 py-3 font-semibold transition-colors duration-200 border-b-2 ${
                 activePeriod === 'weekly'
-                  ? 'border-quip-orange text-quip-orange'
-                  : 'border-transparent text-quip-navy/60 hover:text-quip-navy hover:border-quip-navy/30'
+                  ? 'border-ccl-orange text-ccl-orange'
+                  : 'border-transparent text-ccl-navy/60 hover:text-ccl-navy hover:border-ccl-navy/30'
               }`}
             >
               Weekly Leaders
@@ -137,8 +137,8 @@ const Leaderboard: React.FC = () => {
               onClick={() => setActivePeriod('alltime')}
               className={`px-6 py-3 font-semibold transition-colors duration-200 border-b-2 ${
                 activePeriod === 'alltime'
-                  ? 'border-quip-orange text-quip-orange'
-                  : 'border-transparent text-quip-navy/60 hover:text-quip-navy hover:border-quip-navy/30'
+                  ? 'border-ccl-orange text-ccl-orange'
+                  : 'border-transparent text-ccl-navy/60 hover:text-ccl-navy hover:border-ccl-navy/30'
               }`}
             >
               All-Time Leaders
@@ -146,7 +146,7 @@ const Leaderboard: React.FC = () => {
           </div>
 
           {/* Description */}
-          <p className="text-sm text-quip-teal mb-4">
+          <p className="text-sm text-ccl-teal mb-4">
             {activePeriod === 'weekly'
               ? 'Ranking players by vault gains over the past seven days.'
               : 'All-time rankings by vault balance since the beginning.'}
