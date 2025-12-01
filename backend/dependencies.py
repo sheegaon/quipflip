@@ -164,6 +164,7 @@ async def enforce_vote_rate_limit(
 
 
 async def enforce_guest_creation_rate_limit(
+    request: Request,
     x_forwarded_for: str | None = Header(default=None, alias="X-Forwarded-For"),
     x_real_ip: str | None = Header(default=None, alias="X-Real-IP"),
 ) -> None:
@@ -180,6 +181,9 @@ async def enforce_guest_creation_rate_limit(
         client_ip = x_forwarded_for.split(",")[0].strip()
     elif x_real_ip:
         client_ip = x_real_ip.strip()
+    elif request.client:
+        # Fall back to the connected client address when proxy headers are missing
+        client_ip = request.client.host
 
     if not client_ip:
         if settings.environment == "production":
