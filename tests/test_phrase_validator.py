@@ -1,4 +1,7 @@
 """Tests for phrase validator with similarity checking."""
+import hashlib
+import random
+
 import pytest
 pytest.importorskip("sklearn")
 from backend.services import get_phrase_validator, _parse_phrase
@@ -8,6 +11,22 @@ from backend.services import get_phrase_validator, _parse_phrase
 def validator():
     """Get phrase validator instance."""
     return get_phrase_validator()
+
+
+@pytest.fixture(autouse=True)
+def mock_embeddings(monkeypatch):
+    """Stub OpenAI embedding generation for deterministic tests."""
+
+    async def _fake_generate_embedding(text: str, model: str | None = None, timeout: int = 30):
+        normalized = text.strip().lower()
+        seed = int(hashlib.sha256(normalized.encode("utf-8")).hexdigest(), 16)
+        rng = random.Random(seed)
+        return [rng.uniform(-1, 1) for _ in range(32)]
+
+    monkeypatch.setattr(
+        "backend.services.phrase_validator.generate_embedding",
+        _fake_generate_embedding,
+    )
 
 
 class TestBasicPhraseValidation:
@@ -277,13 +296,13 @@ class TestSimilarityChecking:
     @pytest.mark.asyncio
     async def test_calculate_similarity_identical(self, validator):
         """Test similarity of identical phrases is 1.0."""
-        similarity = validator.calculate_similarity("freedom", "freedom")
+        similarity = await validator.calculate_similarity("freedom", "freedom")
         assert similarity > 0.95  # Should be very close to 1.0
 
     @pytest.mark.asyncio
     async def test_calculate_similarity_synonyms(self, validator):
         """Test similarity of synonyms is high."""
-        similarity = validator.calculate_similarity("happy", "joyful")
+        similarity = await validator.calculate_similarity("happy", "joyful")
         # With lightweight TF-IDF, synonyms don't score as high as with embeddings
         # Just check it's a valid similarity score
         assert 0.0 <= similarity <= 1.0
@@ -291,7 +310,7 @@ class TestSimilarityChecking:
     @pytest.mark.asyncio
     async def test_calculate_similarity_unrelated(self, validator):
         """Test similarity of unrelated phrases is low."""
-        similarity = validator.calculate_similarity("freedom", "banana")
+        similarity = await validator.calculate_similarity("freedom", "banana")
         # Unrelated words should have low similarity
         assert similarity < 0.5
 
