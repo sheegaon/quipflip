@@ -261,7 +261,7 @@ class MMGameService:
         from backend.services.mm.circle_service import MMCircleService
 
         # Get Circle-mates for this player
-        circle_mates = await MMCircleService.get_circle_mates(self.db, str(player_id))
+        circle_mates = await MMCircleService.get_circle_mates(self.db, player_id)
 
         # Get candidate captions
         stmt = (

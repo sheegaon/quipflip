@@ -166,7 +166,7 @@ class MMCircleService:
     @staticmethod
     async def get_circle_mates(
         session: AsyncSession,
-        player_id: str
+        player_id: UUID
     ) -> set[UUID]:
         """
         Get all player IDs who share ANY Circle with the given player.
@@ -183,8 +183,8 @@ class MMCircleService:
             Set of player_id UUIDs who are circle-mates
 
         Example:
-            >>> circle_mates = await get_circle_mates(session, "player-123")
-            >>> if "player-456" in circle_mates:
+            >>> circle_mates = await get_circle_mates(session, player_uuid)
+            >>> if other_player_uuid in circle_mates:
             >>>     print("They're circle-mates!")
         """
         # Get all circles the player belongs to
