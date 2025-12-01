@@ -71,41 +71,15 @@ interface QuestionMarkIconProps extends SimpleIconProps {
 export const ShareIcon: React.FC<SimpleIconProps> = ({ className = 'h-5 w-5', ...props }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 24 24"
-    fill="none"
+    viewBox="0 0 50 50"
+    fill="currentColor"
     className={className}
     aria-hidden="true"
     {...props}
   >
-    <circle cx={12} cy={12} r={10} fill="#26A69A" opacity={0.12} />
-    <path
-      d="M16 8.5C17.1046 8.5 18 9.39543 18 10.5C18 11.6046 17.1046 12.5 16 12.5C14.8954 12.5 14 11.6046 14 10.5C14 9.39543 14.8954 8.5 16 8.5Z"
-      fill="#FF7A45"
-    />
-    <path
-      d="M8 11.5C9.10457 11.5 10 12.3954 10 13.5C10 14.6046 9.10457 15.5 8 15.5C6.89543 15.5 6 14.6046 6 13.5C6 12.3954 6.89543 11.5 8 11.5Z"
-      fill="#26A69A"
-    />
-    <path
-      d="M15.2 12.6L9.2 14.4"
-      stroke="#0B2137"
-      strokeWidth={1.6}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      opacity={0.9}
-    />
-    <path
-      d="M9.2 9.6L15.2 11.4"
-      stroke="#0B2137"
-      strokeWidth={1.6}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      opacity={0.9}
-    />
-    <path
-      d="M8 6.5C9.10457 6.5 10 7.39543 10 8.5C10 9.60457 9.10457 10.5 8 10.5C6.89543 10.5 6 9.60457 6 8.5C6 7.39543 6.89543 6.5 8 6.5Z"
-      fill="#FFB266"
-    />
+    <path d="M30.3 13.7L25 8.4l-5.3 5.3-1.4-1.4L25 5.6l6.7 6.7z" />
+    <path d="M24 7h2v21h-2z" />
+    <path d="M35 40H15c-1.7 0-3-1.3-3-3V19c0-1.7 1.3-3 3-3h7v2h-7c-.6 0-1 .4-1 1v18c0 .6.4 1 1 1h20c.6 0 1-.4 1-1V19c0-.6-.4-1-1-1h-7v-2h7c1.7 0 3 1.3 3 3v18c0 1.7-1.3 3-3 3z" />
   </svg>
 );
 

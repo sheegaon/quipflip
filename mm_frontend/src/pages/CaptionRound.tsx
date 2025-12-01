@@ -100,28 +100,43 @@ export const CaptionRound: React.FC = () => {
     setShareStatus(null);
 
     try {
+      const caption = captionText.trim();
+      const homeUrl = `${window.location.origin}/`;
+
       const response = await fetch(round.image_url);
+      if (!response.ok) {
+        throw new Error('Unable to retrieve image for sharing');
+      }
       const blob = await response.blob();
       const extension = blob.type.split('/')[1] || 'jpeg';
       const file = new File([blob], `quipflip-caption.${extension}`, { type: blob.type || 'image/jpeg' });
 
-      const caption = captionText.trim();
-      const textParts = [
+      const shareText = [
         caption,
         '',
         round.attribution_text ? `Image: ${round.attribution_text}` : null,
-        'Created with QuipFlip',
-        round.image_url,
-      ].filter(Boolean);
-      const shareText = textParts.join('\n');
+        `Play QuipFlip: ${homeUrl}`,
+      ]
+        .filter(Boolean)
+        .join('\n');
+
+      const clipboardText = [
+        caption,
+        '',
+        round.attribution_text ? `Image: ${round.attribution_text}` : null,
+        `Image link: ${round.image_url}`,
+        `Play QuipFlip: ${homeUrl}`,
+      ]
+        .filter(Boolean)
+        .join('\n');
 
       const shareData: ShareData = {
         title: 'My QuipFlip caption',
         text: shareText,
-        url: round.image_url,
+        url: homeUrl,
       };
 
-      if (navigator.canShare?.({ files: [file] })) {
+      if (navigator.canShare?.({ files: [file], text: shareText, url: homeUrl, title: 'My QuipFlip caption' })) {
         shareData.files = [file];
       }
 
@@ -129,7 +144,7 @@ export const CaptionRound: React.FC = () => {
         await navigator.share(shareData);
         setShareStatus('Opened your sharing options.');
       } else if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(shareText);
+        await navigator.clipboard.writeText(clipboardText);
         setShareStatus('Copied caption and image link for sharing.');
       } else {
         setShareStatus('Sharing not supported in this browser.');
