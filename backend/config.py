@@ -90,11 +90,12 @@ class Settings(BaseSettings):
     vote_minimum_threshold: int = 3  # Minimum votes to start timeout window
     vote_minimum_window_minutes: int = 60  # Minimum vote window duration
     vote_closing_threshold: int = 5  # Votes needed to enter closing window
-    vote_closing_window_minutes: int = 5  # Closing window duration
+    vote_closing_window_minutes: int = 10  # Closing window duration
     vote_finalization_refresh_interval_seconds: int = 30  # Throttle for in-request finalization checks
 
     # Phrase Validation
     use_phrase_validator_api: bool = False
+    phrase_validator_url: str = "http://localhost:8001"  # Remote phrase validator base URL
     phrase_min_words: int = 2
     phrase_max_words: int = 5
     phrase_max_length: int = 100
