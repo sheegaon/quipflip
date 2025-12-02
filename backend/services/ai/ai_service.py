@@ -24,10 +24,11 @@ from backend.models.qf.phraseset import Phraseset
 from backend.models.qf.ai_phrase_cache import QFAIPhraseCache
 from backend.models.qf.ai_quip_cache import QFAIQuipCache, QFAIQuipPhrase, QFAIQuipPhraseUsage
 from backend.services.ai.metrics_service import AIMetricsService, MetricsTracker
+from backend.services.ai.prompt_builder import build_impostor_prompt
 from backend.utils.model_registry import GameType, AIPlayerType
-from .prompt_builder import build_impostor_prompt
 from backend.utils.passwords import hash_password
 from backend.services.username_service import UsernameService
+from backend.services import get_phrase_validator
 
 logger = logging.getLogger(__name__)
 
@@ -65,12 +66,7 @@ class AIService:
         """
         self.db = db
         self.settings = get_settings()
-        if self.settings.use_phrase_validator_api:
-            from backend.services import get_phrase_validation_client
-            self.phrase_validator = get_phrase_validation_client()
-        else:
-            from backend.services import get_phrase_validator
-            self.phrase_validator = get_phrase_validator()
+        self.phrase_validator = get_phrase_validator()
         self.common_words = None
         self.metrics_service = AIMetricsService(db)
         self._prompt_completions_cache = None  # Lazy-loaded CSV cache for quip responses

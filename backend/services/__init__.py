@@ -9,10 +9,6 @@ from backend.services.username_service import (
 )
 from backend.services.player_service_base import PlayerServiceBase, PlayerError
 from backend.services.transaction_service import TransactionService
-from backend.services.phrase_validation_client import (
-    get_phrase_validation_client,
-    PhraseValidationClient
-)
 from backend.services.phrase_validator import PhraseValidator, get_phrase_validator
 from backend.services.tutorial_service import TutorialService
 
@@ -73,8 +69,6 @@ __all__ = [
     'TutorialService',
 
     # Phrase validation
-    'get_phrase_validation_client',
-    'PhraseValidationClient',
     'PhraseValidator',
     'get_phrase_validator',
 

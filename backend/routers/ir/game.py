@@ -29,7 +29,7 @@ from backend.services.ir.result_view_service import IRResultViewService
 from backend.services.ir.scoring_service import IRScoringService
 from backend.services.transaction_service import TransactionService
 from backend.services.ir.vote_service import IRVoteError, IRVoteService
-from backend.services.phrase_validation_client import PhraseValidationClient
+from backend.services.phrase_validator import PhraseValidator
 from backend.utils.datetime_helpers import ensure_utc
 
 router = APIRouter()
@@ -193,7 +193,7 @@ async def validate_backronym(
 
         normalized_words = [word.strip().upper() for word in request.words]
 
-        async with PhraseValidationClient() as validator:
+        async with PhraseValidator() as validator:
             is_valid, error = await validator.validate_backronym_words(
                 normalized_words,
                 len(set_obj.word),
