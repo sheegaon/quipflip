@@ -67,6 +67,11 @@ class CreatePlayerResponse(AuthTokenResponse):
     vault: int
     message: str
 
+    @property
+    def balance(self) -> int:
+        """Return combined wallet and vault balance."""
+        return self.wallet + self.vault
+
 
 class RoleStatistics(BaseModel):
     """Statistics for a specific role."""
@@ -234,6 +239,11 @@ class CreateGuestResponse(AuthTokenResponse):
     email: str
     password: str  # Auto-generated password to show user
     message: str
+
+    @property
+    def balance(self) -> int:
+        """Return combined wallet and vault balance."""
+        return self.wallet + self.vault
 
 
 class UpgradeGuestRequest(BaseModel):
