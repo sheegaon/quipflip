@@ -36,6 +36,7 @@ from backend.utils.cookies import (
     set_access_token_cookie,
     set_refresh_cookie,
 )
+from backend.routers.player_router_base import fetch_game_player_data
 from backend.utils.passwords import (
     validate_password_strength,
     PasswordValidationError,
@@ -53,9 +54,6 @@ async def create_player(
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new IR player account and return credentials."""
-    from sqlalchemy import select
-    from backend.models.ir.player_data import IRPlayerData
-
     auth_service = AuthService(db, GameType.IR)
     try:
         player = await auth_service.register_player(
@@ -79,11 +77,7 @@ async def create_player(
             raise HTTPException(status_code=422, detail="invalid_username") from exc
         raise
 
-    # Load IR player data to get wallet/vault
-    result = await db.execute(
-        select(IRPlayerData).where(IRPlayerData.player_id == player.player_id)
-    )
-    player_data = result.scalar_one_or_none()
+    player_data = await fetch_game_player_data(db, GameType.IR, player.player_id)
 
     wallet = player_data.wallet if player_data else settings.ir_initial_balance
     vault = player_data.vault if player_data else 0
@@ -115,9 +109,6 @@ async def create_guest_player(
     _rate_limit: None = Depends(enforce_guest_creation_rate_limit),
 ):
     """Create an IR guest account with auto-generated credentials."""
-    from sqlalchemy import select
-    from backend.models.ir.player_data import IRPlayerData
-
     auth_service = AuthService(db, GameType.IR)
     try:
         player, guest_password = await auth_service.register_guest()
@@ -129,11 +120,7 @@ async def create_guest_player(
             raise HTTPException(status_code=500, detail="guest_email_generation_failed") from exc
         raise
 
-    # Load IR player data to get wallet/vault
-    result = await db.execute(
-        select(IRPlayerData).where(IRPlayerData.player_id == player.player_id)
-    )
-    player_data = result.scalar_one_or_none()
+    player_data = await fetch_game_player_data(db, GameType.IR, player.player_id)
 
     wallet = player_data.wallet if player_data else settings.ir_initial_balance
     vault = player_data.vault if player_data else 0
@@ -304,14 +291,7 @@ async def get_current_player_info(
     db: AsyncSession = Depends(get_db),
 ) -> PlayerBalance:
     """Get current authenticated IR player information using shared schema."""
-    from sqlalchemy import select
-    from backend.models.ir.player_data import IRPlayerData
-
-    # Load IR player data to get wallet/vault
-    result = await db.execute(
-        select(IRPlayerData).where(IRPlayerData.player_id == player.player_id)
-    )
-    player_data = result.scalar_one_or_none()
+    player_data = await fetch_game_player_data(db, GameType.IR, player.player_id)
 
     wallet = player_data.wallet if player_data else settings.ir_initial_balance
     vault = player_data.vault if player_data else 0
@@ -360,14 +340,7 @@ async def get_player_dashboard(
     db: AsyncSession = Depends(get_db),
 ):
     """Return a lightweight dashboard summary for IR players."""
-    from sqlalchemy import select
-    from backend.models.ir.player_data import IRPlayerData
-
-    # Load IR player data to get wallet/vault
-    result = await db.execute(
-        select(IRPlayerData).where(IRPlayerData.player_id == player.player_id)
-    )
-    player_data = result.scalar_one_or_none()
+    player_data = await fetch_game_player_data(db, GameType.IR, player.player_id)
 
     wallet = player_data.wallet if player_data else settings.ir_initial_balance
     vault = player_data.vault if player_data else 0
@@ -412,19 +385,12 @@ async def get_player(
     _: IRPlayer = Depends(get_current_player),
 ) -> PlayerBalance:
     """Get IR player information by ID using shared schema."""
-    from sqlalchemy import select
-    from backend.models.ir.player_data import IRPlayerData
-
     player_service = IRPlayerService(db)
     player = await player_service.get_player_by_id(player_id)
     if not player:
         raise HTTPException(status_code=404, detail="Player not found")
 
-    # Load IR player data to get wallet/vault
-    result = await db.execute(
-        select(IRPlayerData).where(IRPlayerData.player_id == player.player_id)
-    )
-    player_data = result.scalar_one_or_none()
+    player_data = await fetch_game_player_data(db, GameType.IR, player.player_id)
 
     wallet = player_data.wallet if player_data else settings.ir_initial_balance
     vault = player_data.vault if player_data else 0

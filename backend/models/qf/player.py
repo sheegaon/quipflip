@@ -40,6 +40,5 @@ class QFPlayer(PlayerBase):
     daily_bonuses = relationship("QFDailyBonus", back_populates="player")
     result_views = relationship("QFResultView", back_populates="player")
     abandoned_prompts = relationship("PlayerAbandonedPrompt", back_populates="player")
-    phraseset_activities = relationship("PhrasesetActivity", back_populates="player")
     refresh_tokens = relationship("QFRefreshToken", back_populates="player", cascade="all, delete-orphan")
     quests = relationship("QFQuest", back_populates="player")

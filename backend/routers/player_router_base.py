@@ -54,6 +54,28 @@ from backend.utils.exceptions import (
 logger = logging.getLogger(__name__)
 
 
+async def fetch_game_player_data(
+    db: AsyncSession, game_type: GameType, player_id
+):
+    """Fetch game-specific player data for the provided player."""
+
+    from sqlalchemy import select
+
+    if game_type == GameType.QF:
+        from backend.models.qf.player_data import QFPlayerData as PlayerDataModel
+    elif game_type == GameType.MM:
+        from backend.models.mm.player_data import MMPlayerData as PlayerDataModel
+    elif game_type == GameType.IR:
+        from backend.models.ir.player_data import IRPlayerData as PlayerDataModel
+    else:
+        return None
+
+    result = await db.execute(
+        select(PlayerDataModel).where(PlayerDataModel.player_id == player_id)
+    )
+    return result.scalar_one_or_none()
+
+
 def _get_guest_message(email: str, password: str) -> str:
     """Get the guest account creation success message."""
     return (

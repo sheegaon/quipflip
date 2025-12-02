@@ -5,6 +5,7 @@ from sqlalchemy import (
     DateTime,
     Boolean,
 )
+from sqlalchemy.orm import relationship
 import uuid
 from datetime import datetime, UTC
 from backend.database import Base
@@ -33,6 +34,11 @@ class Player(Base):
     is_guest = Column(Boolean, default=False, nullable=False)
     is_admin = Column(Boolean, default=False, nullable=False)
     locked_until = Column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    phraseset_activities = relationship(
+        "PhrasesetActivity", back_populates="player", cascade="all, delete-orphan"
+    )
 
     def __repr__(self):
         return (f"<Player(player_id={self.player_id}, username={self.username}, "
