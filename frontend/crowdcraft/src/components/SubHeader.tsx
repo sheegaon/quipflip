@@ -47,7 +47,7 @@ export const SubHeader: React.FC<SubHeaderProps> = ({
 }) => (
   <div className="bg-ccl-warm-ivory shadow-tile-sm relative z-40">
     <div className="max-w-6xl mx-auto px-1 py-0 md:px-4 md:py-1.5">
-      <div className="flex w-full justify-evenly items-center">
+      <div className="flex justify-evenly items-center">
         {/* In-progress indicator */}
         {showInProgressIndicator && (
           <button

@@ -14,6 +14,8 @@ import type {
   StartPartySessionResponse,
   StartPartyVoteResponse,
   SubmitPartyRoundResponse,
+  OnlineUsersResponse,
+  PingUserResponse,
 } from '@crowdcraft/api/types.ts';
 
 const baseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
@@ -161,6 +163,20 @@ class QuipFlipApiClient extends BaseApiClient {
 
   async pingParty(sessionId: string, signal?: AbortSignal): Promise<PartyPingResponse> {
     const { data } = await this.api.post<PartyPingResponse>(`/party/${sessionId}/ping`, {}, { signal });
+    return data;
+  }
+
+  async getOnlineUsers(signal?: AbortSignal): Promise<OnlineUsersResponse> {
+    const { data } = await this.api.get<OnlineUsersResponse>('/users/online', { signal });
+    return data;
+  }
+
+  async pingOnlineUser(username: string, signal?: AbortSignal): Promise<PingUserResponse> {
+    const { data } = await this.api.post<PingUserResponse>(
+      '/users/online/ping',
+      { username },
+      { signal },
+    );
     return data;
   }
 }
