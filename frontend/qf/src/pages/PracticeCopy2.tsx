@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CopyRoundReview } from '../components/PhrasesetReview/CopyRoundReview';
-import { usePracticePhrasesetSession } from '../hooks/usePracticePhrasesetSession';
+import { usePracticePhrasesetSession } from '@crowdcraft/hooks/usePracticePhrasesetSession.ts';
 
 const PracticeCopy2: React.FC = () => {
   const navigate = useNavigate();

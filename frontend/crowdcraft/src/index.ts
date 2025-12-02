@@ -6,16 +6,14 @@ export { Timer } from './components/Timer';
 export { ProgressBar } from './components/ProgressBar';
 export { StatusBadge } from './components/StatusBadge';
 export { default as CurrencyDisplay } from './components/CurrencyDisplay';
-export { default as ErrorNotification } from './components/ErrorNotification';
+export { ErrorBoundary } from './components/ErrorBoundary';
+export { AppErrorFallback, PageErrorFallback } from './components/ErrorFallback';
 export { default as SuccessNotification } from './components/SuccessNotification';
 export { default as NotificationDisplay } from './components/NotificationDisplay';
 export { default as NotificationToast } from './components/NotificationToast';
 export { default as PingNotificationDisplay } from './components/PingNotificationDisplay';
-export { default as OfflineBanner } from './components/OfflineBanner';
 export { default as ThumbFeedbackButton } from './components/ThumbFeedbackButton';
 export { default as EditableConfigField } from './components/EditableConfigField';
-export { default as Header, Header as SharedHeader, type HeaderMenuItem } from './components/Header';
-export { default as SubHeader } from './components/SubHeader';
 
 // Icons
 export * from './components/icons/ArrowIcons';
@@ -35,6 +33,8 @@ export * from './hooks/useExponentialBackoff'
 export * from './hooks/useNetworkStatus'
 export * from './hooks/useOfflineCache'
 export * from './hooks/usePhraseValidation'
+export * from './hooks/usePracticePhraseset'
+export * from './hooks/usePracticePhrasesetSession'
 export * from './hooks/useTimer'
 export * from './hooks/useWebSocket'
 export * from './utils'

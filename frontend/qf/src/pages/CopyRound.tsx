@@ -6,7 +6,7 @@ import { Timer } from '../components/Timer';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { useTimer } from '@crowdcraft/hooks/useTimer.ts';
-import { usePhraseValidation } from '../hooks/usePhraseValidation';
+import { usePhraseValidation } from '@crowdcraft/hooks/usePhraseValidation.ts';
 import { quipflipBranding } from '@crowdcraft/utils/brandedMessages.ts';
 import type { CopyState, FlagCopyRoundResponse, SubmitPhraseResponse } from '@crowdcraft/api/types.ts';
 import { copyRoundLogger } from '@crowdcraft/utils/logger.ts';
