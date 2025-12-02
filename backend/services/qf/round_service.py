@@ -17,6 +17,7 @@ from backend.models.qf.player_abandoned_prompt import PlayerAbandonedPrompt
 from backend.services.transaction_service import TransactionService
 from backend.services.qf.queue_service import QFQueueService
 from backend.services.qf.phraseset_activity_service import ActivityService
+from backend.services.phrase_validator import get_phrase_validator
 from backend.config import get_settings
 from backend.utils import ensure_utc
 from backend.utils.exceptions import (
@@ -51,12 +52,7 @@ class QFRoundService:
         self.db = db
         self.settings = get_settings()
         self._available_prompts_cache: dict[UUID, tuple[int, datetime]] = {}
-        if self.settings.use_phrase_validator_api:
-            from backend.services.phrase_validation_client import get_phrase_validation_client
-            self.phrase_validator = get_phrase_validation_client()
-        else:
-            from backend.services.phrase_validator import get_phrase_validator
-            self.phrase_validator = get_phrase_validator()
+        self.phrase_validator = get_phrase_validator()
         self.activity_service = ActivityService(db)
         from backend.services import AIService
         try:

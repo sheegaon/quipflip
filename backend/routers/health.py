@@ -49,36 +49,20 @@ async def game_status():
     # Determine phrase validation mode and health
     validation_mode = "remote" if settings.use_phrase_validator_api else "local"
 
-    if settings.use_phrase_validator_api:
-        # Check remote phrase validation API health
-        try:
-            from backend.services import get_phrase_validation_client
-            client = get_phrase_validation_client()
-            validation_healthy = await client.health_check()
-        except ImportError as e:
-            logger.error(f"Failed to import phrase validation client module: {e}")
-            validation_healthy = False
-        except (ConnectionError, TimeoutError) as e:
-            logger.warning(f"Network error checking phrase validation API health: {e}")
-            validation_healthy = False
-        except Exception as e:
-            logger.warning(f"Unexpected error checking phrase validation API health: {e}")
-            validation_healthy = False
-    else:
-        # Check local phrase validator
-        try:
-            from backend.services import get_phrase_validator
-            validator = get_phrase_validator()
-            validation_healthy = validator.dictionary is not None and len(validator.dictionary) > 0
-        except ImportError as e:
-            logger.error(f"Failed to import phrase validator module: {e}")
-            validation_healthy = False
-        except (FileNotFoundError, OSError) as e:
-            logger.error(f"Dictionary file not found or inaccessible: {e}")
-            validation_healthy = False
-        except Exception as e:
-            logger.warning(f"Unexpected error checking local phrase validator: {e}")
-            validation_healthy = False
+    # Check local phrase validator
+    try:
+        from backend.services import get_phrase_validator
+        validator = get_phrase_validator()
+        validation_healthy = validator.dictionary is not None and len(validator.dictionary) > 0
+    except ImportError as e:
+        logger.error(f"Failed to import phrase validator module: {e}")
+        validation_healthy = False
+    except (FileNotFoundError, OSError) as e:
+        logger.error(f"Dictionary file not found or inaccessible: {e}")
+        validation_healthy = False
+    except Exception as e:
+        logger.warning(f"Unexpected error checking local phrase validator: {e}")
+        validation_healthy = False
 
     return {
         "version": APP_VERSION,
