@@ -1,7 +1,7 @@
 import React from 'react';
 import type { PhrasesetSummary } from '@crowdcraft/api/types.ts';
 import { StatusBadge } from './StatusBadge';
-import { getUniqueIdForSummary } from '../utils/phrasesetHelpers';
+import { getUniqueIdForSummary } from '@crowdcraft/utils/phrasesetHelpers.ts';
 
 interface PhrasesetListProps {
   phrasesets: PhrasesetSummary[];

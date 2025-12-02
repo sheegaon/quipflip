@@ -8,7 +8,7 @@ import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { ThumbFeedbackButton } from '../components/ThumbFeedbackButton';
 import { useTimer } from '@crowdcraft/hooks/useTimer.ts';
 import { usePhraseValidation } from '../hooks/usePhraseValidation';
-import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
+import { getRandomMessage, loadingMessages } from '@crowdcraft/utils/brandedMessages.ts';
 import type { PromptState, SubmitPhraseResponse } from '@crowdcraft/api/types.ts';
 import { promptRoundLogger } from '@crowdcraft/utils/logger.ts';
 import { TrackingIcon } from '@crowdcraft/components/icons/NavigationIcons.tsx';

@@ -27,36 +27,43 @@ This plan consolidates duplicate code between QuipFlip (QF) and MemeMint (MM) fr
 
 ### Phase 1: Low-Risk Utilities (Week 1)
 
+**Status: ✅ Completed.** Utilities are centralized in `frontend/crowdcraft/src/utils/` with QF/MM importing from crowdcraft exports. Legacy per-game copies for these helpers were removed.
+
 **Move to crowdcraft as-is:**
 
-1. **smartPolling.ts** - Merge both versions (add MM's ROUND_AVAILABILITY config)
+1. **smartPolling.ts** - Merge both versions (add MM's ROUND_AVAILABILITY config) ✅
    - Source: `frontend/qf/src/utils/smartPolling.ts` + `frontend/mm/src/utils/smartPolling.ts`
    - Target: `frontend/crowdcraft/src/utils/smartPolling.ts`
-   - Action: Add ROUND_AVAILABILITY from MM to PollConfigs
+   - Action: Added ROUND_AVAILABILITY from MM to PollConfigs and updated QF/MM imports to consume the shared version
 
-2. **errorMessages.ts** - Identical implementation
+2. **errorMessages.ts** - Identical implementation ✅
    - Source: `frontend/qf/src/utils/errorMessages.ts`
    - Target: `frontend/crowdcraft/src/utils/errorMessages.ts`
+   - Action: QF/MM now import from crowdcraft; per-game duplicates removed
 
-3. **errorReporting.ts** - Identical implementation
+3. **errorReporting.ts** - Identical implementation ✅
    - Source: `frontend/qf/src/utils/errorReporting.ts`
    - Target: `frontend/crowdcraft/src/utils/errorReporting.ts`
+   - Action: Consolidated into crowdcraft and removed per-game copies
 
-4. **gameKeys.ts** - Likely identical (needs verification)
+4. **gameKeys.ts** - Likely identical (needs verification) ✅
    - Source: `frontend/qf/src/utils/gameKeys.ts`
    - Target: `frontend/crowdcraft/src/utils/gameKeys.ts`
+   - Action: Verified identical, centralized, and updated QF/MM imports
 
-5. **phrasesetHelpers.ts** - Likely identical (needs verification)
+5. **phrasesetHelpers.ts** - Likely identical (needs verification) ✅
    - Source: `frontend/qf/src/utils/phrasesetHelpers.ts`
    - Target: `frontend/crowdcraft/src/utils/phrasesetHelpers.ts`
+   - Action: Verified identical, centralized, and updated QF/MM imports
 
-6. **reviewHelpers.ts** - Likely identical (needs verification)
+6. **reviewHelpers.ts** - Likely identical (needs verification) ✅
    - Source: `frontend/qf/src/utils/reviewHelpers.ts`
    - Target: `frontend/crowdcraft/src/utils/reviewHelpers.ts`
+   - Action: Verified identical, centralized, and removed per-game copies
 
 **Parameterize for game-specific branding:**
 
-7. **brandedMessages.ts** - Factory pattern for game-specific strings
+7. **brandedMessages.ts** - Factory pattern for game-specific strings ✅
    ```typescript
    export const createBrandedMessages = (config: {
      gameName: string;
@@ -64,6 +71,7 @@ This plan consolidates duplicate code between QuipFlip (QF) and MemeMint (MM) fr
      coinImagePath: string;
    }) => ({ /* messages using config */ });
    ```
+   - Added factory + default brand configs in `frontend/crowdcraft/src/utils/brandedMessages.ts`; QF now consumes the shared module
 
 ### Phase 2: Simple Contexts (Week 2)
 

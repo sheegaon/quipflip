@@ -8,7 +8,7 @@ import React, {
   useState,
 } from 'react';
 import apiClient from '@/api/client';
-import { getActionErrorMessage } from '../utils/errorMessages';
+import { getActionErrorMessage } from '@crowdcraft/utils/errorMessages.ts';
 import { tutorialLogger } from '@crowdcraft/utils/logger.ts';
 import type { TutorialProgress, TutorialStatus } from '@crowdcraft/api/types.ts';
 import { getNextStep } from '@crowdcraft/config/tutorialSteps.ts';

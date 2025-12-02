@@ -4,7 +4,7 @@ import { useResults } from '../contexts/ResultsContext';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Header } from '../components/Header';
 import { Pagination } from '@crowdcraft/components/Pagination.tsx';
-import { loadingMessages } from '../utils/brandedMessages';
+import { loadingMessages } from '@crowdcraft/utils/brandedMessages.ts';
 import type { PhrasesetResults, PhrasesetDetails, PhrasesetVoteDetail } from '@crowdcraft/api/types.ts';
 import { resultsLogger } from '@crowdcraft/utils/logger.ts';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';

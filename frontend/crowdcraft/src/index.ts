@@ -22,6 +22,7 @@ export * from './hooks/useOfflineCache'
 export * from './hooks/usePhraseValidation'
 export * from './hooks/useTimer'
 export * from './hooks/useWebSocket'
+export * from './utils'
 
 // Types
 export * from './types/errors'

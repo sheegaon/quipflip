@@ -1,15 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useSmartPolling, PollConfigs } from '../utils/smartPolling';
+import { useSmartPolling, PollConfigs } from '@crowdcraft/utils/smartPolling.ts';
 import { useLoadingState, InlineLoadingSpinner } from '../components/LoadingSpinner';
 import type { PhrasesetSummary, PhrasesetDetails as PhrasesetDetailsType } from '@crowdcraft/api/types.ts';
 import { useGame } from '../contexts/GameContext';
-import { buildPhrasesetListKey } from '../utils/gameKeys';
+import { buildPhrasesetListKey } from '@crowdcraft/utils/gameKeys.ts';
 import { PhrasesetList } from '../components/PhrasesetList';
 import { PhrasesetDetails } from '../components/PhrasesetDetails';
 import { Pagination } from '@crowdcraft/components/Pagination.tsx';
 import { useResults } from '../contexts/ResultsContext';
 import { trackingLogger } from '@crowdcraft/utils/logger.ts';
-import { getUniqueIdForSummary } from '../utils/phrasesetHelpers';
+import { getUniqueIdForSummary } from '@crowdcraft/utils/phrasesetHelpers.ts';
 import { getErrorMessage } from '@crowdcraft/types/errors.ts';
 
 const ITEMS_PER_PAGE = 10;
