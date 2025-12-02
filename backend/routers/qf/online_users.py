@@ -28,6 +28,7 @@ from backend.database import get_db, AsyncSessionLocal
 from backend.dependencies import get_current_player
 from backend.models.qf.user_activity import QFUserActivity
 from backend.models.qf.player import QFPlayer
+from backend.models.qf.player_data import QFPlayerData
 from backend.models.qf.round import Round
 from backend.models.qf.phraseset_activity import PhrasesetActivity
 from backend.models.qf.transaction import QFTransaction
@@ -225,8 +226,15 @@ async def get_online_users(db: AsyncSession) -> List[OnlineUser]:
     cutoff_time = datetime.now(UTC) - timedelta(minutes=30)
 
     result = await db.execute(
-        select(QFUserActivity, QFPlayer.wallet, QFPlayer.created_at, QFPlayer.is_guest, QFPlayer.player_id)
+        select(
+            QFUserActivity,
+            QFPlayerData.wallet,
+            QFPlayer.created_at,
+            QFPlayer.is_guest,
+            QFPlayer.player_id,
+        )
         .join(QFPlayer, QFUserActivity.player_id == QFPlayer.player_id)
+        .outerjoin(QFPlayerData, QFPlayerData.player_id == QFPlayer.player_id)
         .where(QFUserActivity.last_activity >= cutoff_time)
         .order_by(QFUserActivity.last_activity.desc())
     )
@@ -316,7 +324,7 @@ async def get_online_users(db: AsyncSession) -> List[OnlineUser]:
                 last_action_category=activity.last_action_category,
                 last_activity=activity.last_activity,
                 time_ago=time_ago,
-                wallet=wallet,
+                wallet=wallet or 0,
                 created_at=created_at,
             )
         )
