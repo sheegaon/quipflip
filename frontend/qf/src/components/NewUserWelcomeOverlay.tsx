@@ -4,6 +4,7 @@ import { useGame } from '../contexts/GameContext';
 import { GUEST_CREDENTIALS_KEY } from '@crowdcraft/utils/storageKeys.ts';
 import { LeaderboardIcon } from '@crowdcraft/components/icons/NavigationIcons.tsx';
 import '@crowdcraft/components/NewUserWelcomeOverlay.css';
+import QFWelcomeInstructions from './QFWelcomeInstructions';
 
 const NewUserWelcomeOverlay: React.FC = () => {
   const { state, actions } = useGame();
@@ -73,26 +74,7 @@ const NewUserWelcomeOverlay: React.FC = () => {
             <img src="/quipflip_logo.png" alt="Quipflip Logo" className="h-16" />
           </div>
 
-          <h2 className="guest-welcome-title">How To Play</h2>
-
-          <ul className="guest-welcome-list">
-            <li>
-              <strong>Quip:</strong> Write the original answer to a fill-in-the-blank prompt
-            </li>
-            <li>
-              <strong>Impostor:</strong> Fake the original answer so it blends in with the real one
-            </li>
-            <li>
-              <strong>Guess:</strong> Pick which answer you think was written first
-            </li>
-          </ul>
-
-          <div className="guest-welcome-example">
-            <strong>Example:</strong> In a Quip Round, you might answer "The best pizza topping is
-            ______" with "peppers and mushrooms." In the Impostor Round (fake the original), other
-            players will try to write similar answers without seeing the prompt. Guessers then try
-            to pick which answer was the original.
-          </div>
+          <QFWelcomeInstructions />
 
           <hr className="guest-welcome-divider" />
 
