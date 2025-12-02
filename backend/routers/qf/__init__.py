@@ -4,8 +4,6 @@ from fastapi import APIRouter
 from backend.routers.qf import (
     admin,
     feedback,
-    notifications,
-    online_users,
     party,
     phrasesets,
     player,
@@ -29,6 +27,4 @@ router.include_router(phrasesets.router, prefix="/phrasesets", tags=["phrasesets
 router.include_router(quests.router, prefix="/quests", tags=["quests"])
 router.include_router(admin.router, tags=["admin"])
 router.include_router(feedback.router, tags=["feedback"])
-router.include_router(online_users.router, prefix="/users", tags=["online_users"])
-router.include_router(notifications.router, tags=["notifications"])
 router.include_router(party.router, prefix="/party", tags=["party"])
