@@ -40,14 +40,6 @@ class IRPlayerData(Base):
     consecutive_incorrect_votes = Column(Integer, default=0, nullable=False)
     vote_lockout_until = Column(DateTime(timezone=True), nullable=True)
 
-    # Relationships
-    backronym_entries = relationship("BackronymEntry", back_populates="player", cascade="all, delete-orphan")
-    backronym_votes = relationship("BackronymVote", back_populates="player", cascade="all, delete-orphan")
-    transactions = relationship("IRTransaction", back_populates="player", cascade="all, delete-orphan")
-    result_views = relationship("IRResultView", back_populates="player", cascade="all, delete-orphan")
-    refresh_tokens = relationship("IRRefreshToken", back_populates="player", cascade="all, delete-orphan")
-    daily_bonuses = relationship("IRDailyBonus", back_populates="player", cascade="all, delete-orphan")
-
     def __repr__(self):
         return (f"<IRPlayerData(player_id={self.player_id}, "
                 f"wallet={self.wallet}, vault={self.vault})>")

@@ -7,7 +7,6 @@ from sqlalchemy import (
     Boolean,
     String,
 )
-from sqlalchemy.orm import relationship
 from datetime import datetime, UTC
 from backend.database import Base
 from backend.models.base import get_uuid_column
@@ -46,17 +45,6 @@ class QFPlayerData(Base):
         nullable=True
     )
     flag_dismissal_streak = Column(Integer, default=0, nullable=False)
-
-    # Relationships
-    active_round = relationship("Round", foreign_keys=[active_round_id], post_update=True)
-    rounds = relationship("Round", back_populates="player", foreign_keys="Round.player_id")
-    transactions = relationship("QFTransaction", back_populates="player")
-    votes = relationship("Vote", back_populates="player")
-    daily_bonuses = relationship("QFDailyBonus", back_populates="player")
-    result_views = relationship("QFResultView", back_populates="player")
-    abandoned_prompts = relationship("PlayerAbandonedPrompt", back_populates="player")
-    phraseset_activities = relationship("PhrasesetActivity", back_populates="player")
-    quests = relationship("QFQuest", back_populates="player")
 
     @property
     def balance(self) -> int:
