@@ -1,5 +1,15 @@
 // API Response Types based on backend documentation
 
+export type {
+  ApiError,
+  ApiInfo,
+  AuthTokenResponse,
+  GameStatus,
+  HealthResponse,
+  SuggestUsernameResponse,
+  WsAuthTokenResponse,
+} from '../../crowdcraft/src/api/types';
+
 // Notification types
 export type NotificationType = 'copy_submitted' | 'vote_submitted';
 export interface PingWebSocketMessage {
@@ -80,21 +90,6 @@ export interface AdminResetPasswordResponse {
   message: string;
 }
 
-export interface AuthTokenResponse {
-  access_token: string;
-  refresh_token: string;
-  token_type: 'bearer';
-  expires_in: number;
-  player_id: string;
-  username: string;
-}
-
-export interface WsAuthTokenResponse {
-  token: string;
-  expires_in: number;
-  token_type: 'bearer';
-}
-
 export interface CreatePlayerResponse extends AuthTokenResponse {
   wallet: number;
   vault: number;
@@ -111,10 +106,6 @@ export interface CreateGuestResponse extends AuthTokenResponse {
 
 export interface UpgradeGuestResponse extends AuthTokenResponse {
   message: string;
-}
-
-export interface SuggestUsernameResponse {
-  suggested_username: string;
 }
 
 export interface PromptState {
@@ -722,32 +713,6 @@ export interface DashboardData {
   round_availability: RoundAvailability;
   current_vote_round?: VoteRoundState | null;
   current_caption_round?: CaptionSubmissionResult | null;
-}
-
-export interface ApiError {
-  detail: string;
-}
-
-export interface HealthResponse {
-  status: string;
-  database: string;
-  redis: string;
-}
-
-export interface ApiInfo {
-  message: string;
-  version: string;
-  environment: string;
-  docs: string;
-}
-
-export interface GameStatus {
-  version: string;
-  environment: string;
-  phrase_validation: {
-    mode: 'local' | 'remote';
-    healthy: boolean | null;
-  };
 }
 
 export interface SubmitPromptFeedbackRequest {
