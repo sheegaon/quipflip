@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { FrozenTimer } from './FrozenTimer';
-import { ThumbFeedbackButton } from '../ThumbFeedbackButton';
+import ThumbFeedbackButton from '../ThumbFeedbackButton';
 import { ReviewBackButton } from './ReviewBackButton';
 import { BotIcon } from '@crowdcraft/components/icons/EngagementIcons.tsx';
 import { TrackingIcon } from '@crowdcraft/components/icons/NavigationIcons.tsx';

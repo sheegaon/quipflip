@@ -60,8 +60,8 @@ export const QuestProvider: React.FC<{
       gameContextLogger.debug('📋 Fetching quests');
       const data = await apiClient.getQuests();
 
-      const activeQuests = data.quests.filter(quest => quest.status === 'active');
-      const claimableQuests = data.quests.filter(quest => quest.status === 'completed');
+      const activeQuests = data.quests.filter((quest: Quest) => quest.status === 'active');
+      const claimableQuests = data.quests.filter((quest: Quest) => quest.status === 'completed');
 
       setQuestState(prev => ({
         ...prev,

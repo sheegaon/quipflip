@@ -3,7 +3,7 @@ import { useGame } from '../contexts/GameContext';
 import { useQuests } from '@crowdcraft/contexts/QuestContext';
 import { Header } from '../components/Header';
 import { QuestCard } from '../components/QuestCard';
-import { SuccessNotification } from '../components/SuccessNotification';
+import SuccessNotification from '../components/SuccessNotification';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import type { Quest } from '@crowdcraft/api/types.ts';
 import { questsLogger } from '@crowdcraft/utils/logger.ts';
