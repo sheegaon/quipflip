@@ -1,5 +1,5 @@
 """Player-related Pydantic schemas."""
-from pydantic import BaseModel, constr
+from pydantic import BaseModel, constr, computed_field
 from datetime import datetime
 from typing import Optional, Literal
 from uuid import UUID
@@ -67,6 +67,7 @@ class CreatePlayerResponse(AuthTokenResponse):
     vault: int
     message: str
 
+    @computed_field  # type: ignore[misc]
     @property
     def balance(self) -> int:
         """Return combined wallet and vault balance."""
@@ -240,6 +241,7 @@ class CreateGuestResponse(AuthTokenResponse):
     password: str  # Auto-generated password to show user
     message: str
 
+    @computed_field  # type: ignore[misc]
     @property
     def balance(self) -> int:
         """Return combined wallet and vault balance."""
