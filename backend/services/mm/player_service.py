@@ -50,39 +50,20 @@ class MMPlayerService(PlayerServiceBase):
         """Get the initial balance for new QF players."""
         return settings.mm_starting_wallet
 
-    async def create_player(self, *, username: str, email: str, password_hash: str) -> MMPlayer:
+    async def create_player(self, *, username: str, email: str, password_hash: str) -> Player:
         """Create new Meme Mint player with configured starting balance."""
-        normalized_username = normalize_username(username)
-        canonical_username = canonicalize_username(normalized_username)
-        if not canonical_username:
-            raise ValueError("invalid_username")
-
-        player = MMPlayer(
-            player_id=uuid.uuid4(),
-            username=normalized_username,
-            username_canonical=canonical_username,
-            email=email.strip().lower(),
+        return await super().create_player(
+            username=username,
+            email=email,
             password_hash=password_hash,
-            wallet=settings.mm_starting_wallet,
-            vault=0,
-            last_login_date=datetime.now(UTC),
-            is_admin=self._should_be_admin(email),
         )
-        self.db.add(player)
-        try:
-            await self.db.commit()
-            await self.db.refresh(player)
-            logger.info(f"Created player: {player.player_id} {player.username=} {player.wallet=} {player.vault=}")
-            return player
-        except IntegrityError as exc:
-            await self._handle_integrity_error(exc, "create")
 
-    async def get_player_by_username(self, username: str) -> MMPlayer | None:
+    async def get_player_by_username(self, username: str) -> Player | None:
         username_service = UsernameService(self.db, game_type=GameType.MM)
         player = await username_service.find_player_by_username(username)
         return self.apply_admin_status(player)
 
-    async def get_player_by_id(self, player_id: uuid.UUID) -> MMPlayer | None:
-        result = await self.db.execute(select(MMPlayer).where(MMPlayer.player_id == player_id))
+    async def get_player_by_id(self, player_id: uuid.UUID) -> Player | None:
+        result = await self.db.execute(select(Player).where(Player.player_id == player_id))
         player = result.scalar_one_or_none()
         return self.apply_admin_status(player)

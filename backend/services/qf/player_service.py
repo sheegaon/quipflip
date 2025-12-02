@@ -58,15 +58,15 @@ class QFPlayerService(PlayerServiceBase):
         """Get the initial balance for new QF players."""
         return settings.qf_starting_wallet
 
-    async def get_player_by_id(self, player_id: UUID) -> QFPlayer | None:
+    async def get_player_by_id(self, player_id: UUID) -> Player | None:
         """Get player by ID."""
         result = await self.db.execute(
-            select(QFPlayer).where(QFPlayer.player_id == player_id)
+            select(Player).where(Player.player_id == player_id)
         )
         player = result.scalar_one_or_none()
         return self.apply_admin_status(player)
 
-    async def get_player_by_username(self, username: str) -> QFPlayer | None:
+    async def get_player_by_username(self, username: str) -> Player | None:
         """Get player by username lookup."""
         if not is_username_input_valid(username):
             return None
@@ -74,35 +74,15 @@ class QFPlayerService(PlayerServiceBase):
         player = await username_service.find_player_by_username(username)
         return self.apply_admin_status(player)
 
-    async def create_player(self, *, username: str, email: str, password_hash: str) -> QFPlayer:
+    async def create_player(self, *, username: str, email: str, password_hash: str) -> Player:
         """Create new Quipflip player using explicit credentials."""
-
-        normalized_username = normalize_username(username)
-        canonical_username = canonicalize_username(normalized_username)
-        if not canonical_username:
-            raise ValueError("invalid_username")
-
-        player = QFPlayer(
-            player_id=uuid.uuid4(),
-            username=normalized_username,
-            username_canonical=canonical_username,
-            email=email.strip().lower(),
+        return await super().create_player(
+            username=username,
+            email=email,
             password_hash=password_hash,
-            wallet=settings.qf_starting_wallet,
-            vault=0,
-            last_login_date=datetime.now(UTC),  # Track creation login time with precision
-            is_admin=self._should_be_admin(email),
         )
-        self.db.add(player)
-        try:
-            await self.db.commit()
-            await self.db.refresh(player)
-            logger.info(f"Created player: {player.player_id} {player.username=} {player.wallet=} {player.vault=}")
-            return player
-        except IntegrityError as exc:
-            await self._handle_integrity_error(exc, "create")
 
-    async def update_username(self, player: QFPlayer, new_username: str) -> QFPlayer:
+    async def update_username(self, player: Player, new_username: str) -> Player:
         """Update a player's username with QF-specific error handling."""
         try:
             return await super().update_username(player, new_username)
@@ -116,7 +96,7 @@ class QFPlayerService(PlayerServiceBase):
                 raise UsernameTakenError("Username is already in use by another player")
             raise
 
-    async def is_daily_bonus_available(self, player: QFPlayer) -> bool:
+    async def is_daily_bonus_available(self, player: Player) -> bool:
         """Check if daily bonus can be claimed."""
         # Use UTC for "today" to match how timestamps are stored.
         # ``date.today()`` relies on the server's local timezone, which
@@ -144,7 +124,7 @@ class QFPlayerService(PlayerServiceBase):
         # Bonus available if NOT claimed today
         return bonus_today is None
 
-    async def claim_daily_bonus(self, player: QFPlayer, transaction_service) -> int:
+    async def claim_daily_bonus(self, player: Player, transaction_service) -> int:
         """
         Claim daily bonus, returns amount.
 
@@ -207,7 +187,7 @@ class QFPlayerService(PlayerServiceBase):
         logger.debug(f"Player {player_id} has {count} outstanding prompts")
         return count
 
-    async def can_start_prompt_round(self, player: QFPlayer) -> tuple[bool, str]:
+    async def can_start_prompt_round(self, player: Player) -> tuple[bool, str]:
         """
         Check if player can start prompt round.
 
@@ -237,7 +217,7 @@ class QFPlayerService(PlayerServiceBase):
 
         return True, ""
 
-    async def can_start_copy_round(self, player: QFPlayer) -> tuple[bool, str]:
+    async def can_start_copy_round(self, player: Player) -> tuple[bool, str]:
         """Check if player can start copy round."""
         from backend.services.qf.queue_service import QFQueueService
         from backend.services.qf.round_service import QFRoundService
@@ -262,7 +242,7 @@ class QFPlayerService(PlayerServiceBase):
 
         return True, ""
 
-    async def can_start_second_copy_round(self, player: QFPlayer) -> tuple[bool, str]:
+    async def can_start_second_copy_round(self, player: Player) -> tuple[bool, str]:
         """Check if player can start a second copy round (2x cost, no queue check)."""
         if player.locked_until and player.locked_until > datetime.now(UTC):
             return False, "player_locked"
@@ -279,7 +259,7 @@ class QFPlayerService(PlayerServiceBase):
 
     async def can_start_vote_round(
         self,
-        player: QFPlayer,
+        player: Player,
         vote_service=None,
         available_count: int | None = None,
     ) -> tuple[bool, str]:
