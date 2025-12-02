@@ -7,7 +7,7 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { useTimer } from '@crowdcraft/hooks/useTimer.ts';
 import { usePhraseValidation } from '../hooks/usePhraseValidation';
-import { getRandomMessage, loadingMessages } from '@crowdcraft/utils/brandedMessages.ts';
+import { quipflipBranding } from '@crowdcraft/utils/brandedMessages.ts';
 import type { CopyState, FlagCopyRoundResponse, SubmitPhraseResponse } from '@crowdcraft/api/types.ts';
 import { copyRoundLogger } from '@crowdcraft/utils/logger.ts';
 import { CopyRoundIcon } from '@crowdcraft/components/icons/RoundIcons.tsx';
@@ -16,6 +16,8 @@ import { usePartyMode } from '../contexts/PartyModeContext';
 import PartyRoundModal from '../components/party/PartyRoundModal';
 import { usePartyRoundCoordinator } from '../hooks/usePartyRoundCoordinator';
 import { usePartyNavigation } from '../hooks/usePartyNavigation';
+
+const { getRandomMessage, loadingMessages } = quipflipBranding;
 
 const AUTO_HINT_ROUND_LIMIT = 10;
 const hintProgressKey = (playerId: string) => `impostorHintProgress:${playerId}`;

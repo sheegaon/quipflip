@@ -143,8 +143,3 @@ export const mememintBranding = createBrandedMessages({
   currencyName: 'coins',
 });
 
-// Default exports to maintain backward compatibility for Quipflip imports
-export const successMessages = quipflipBranding.successMessages;
-export const getRandomMessage = quipflipBranding.getRandomMessage;
-export const loadingMessages = quipflipBranding.loadingMessages;
-

@@ -4,12 +4,14 @@ import { useResults } from '../contexts/ResultsContext';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Header } from '../components/Header';
 import { Pagination } from '@crowdcraft/components/Pagination.tsx';
-import { loadingMessages } from '@crowdcraft/utils/brandedMessages.ts';
+import { quipflipBranding } from '@crowdcraft/utils/brandedMessages.ts';
 import type { PhrasesetResults, PhrasesetDetails, PhrasesetVoteDetail } from '@crowdcraft/api/types.ts';
 import { resultsLogger } from '@crowdcraft/utils/logger.ts';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { BotIcon, QuestionMarkIcon, ResultsIcon } from '@crowdcraft/components/icons/EngagementIcons.tsx';
 import { isAiPlayer } from '@crowdcraft/utils/ai.ts';
+
+const { loadingMessages } = quipflipBranding;
 
 const ITEMS_PER_PAGE = 10;
 const WALLET_VS_VAULT_TITLE = 'Wallet vs. Vault';

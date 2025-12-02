@@ -6,8 +6,10 @@ import apiClient from '@/api/client';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { CircleIcon } from '@crowdcraft/components/icons/NavigationIcons.tsx';
 import { BotIcon } from '@crowdcraft/components/icons/EngagementIcons.tsx';
-import { loadingMessages } from '@crowdcraft/utils/brandedMessages.ts';
+import { quipflipBranding } from '@crowdcraft/utils/brandedMessages.ts';
 import type { PartySessionStatusResponse, PartyParticipant } from '@crowdcraft/api/types.ts';
+
+const { loadingMessages } = quipflipBranding;
 
 /**
  * Party Lobby page - Players wait here until host starts the game

@@ -7,7 +7,7 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { PhraseRecapCard } from '../components/PhraseRecapCard';
 import { useTimer } from '@crowdcraft/hooks/useTimer.ts';
-import { getRandomMessage, loadingMessages } from '@crowdcraft/utils/brandedMessages.ts';
+import { quipflipBranding } from '@crowdcraft/utils/brandedMessages.ts';
 import type { VoteResponse, VoteState, PhrasesetDetails } from '@crowdcraft/api/types.ts';
 import { voteRoundLogger } from '@crowdcraft/utils/logger.ts';
 import { VoteRoundIcon } from '@crowdcraft/components/icons/RoundIcons.tsx';
@@ -15,6 +15,8 @@ import { HomeIcon } from '@crowdcraft/components/icons/NavigationIcons.tsx';
 import { usePartyMode } from '../contexts/PartyModeContext';
 import PartyRoundModal from '../components/party/PartyRoundModal';
 import { usePartyNavigation } from '../hooks/usePartyNavigation';
+
+const { getRandomMessage, loadingMessages } = quipflipBranding;
 
 export const VoteRound: React.FC = () => {
   const { state, actions } = useGame();

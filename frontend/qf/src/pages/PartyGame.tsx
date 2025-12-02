@@ -3,9 +3,11 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { usePartyMode } from '../contexts/PartyModeContext';
 import { CircleIcon } from '@crowdcraft/components/icons/NavigationIcons.tsx';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import { loadingMessages } from '@crowdcraft/utils/brandedMessages.ts';
+import { quipflipBranding } from '@crowdcraft/utils/brandedMessages.ts';
 import apiClient, { extractErrorMessage } from '@/api/client';
 import { usePartyRoundStarter } from '../hooks/usePartyRoundStarter';
+
+const { loadingMessages } = quipflipBranding;
 
 /**
  * Party Game controller - kicks off party mode using the standard round flows.
