@@ -45,7 +45,7 @@ class Player(Base):
     daily_bonuses = relationship("QFDailyBonus", back_populates="player")
     result_views = relationship("QFResultView", back_populates="player")
     abandoned_prompts = relationship("PlayerAbandonedPrompt", back_populates="player")
-    refresh_tokens = relationship("QFRefreshToken", back_populates="player", cascade="all, delete-orphan")
+    refresh_tokens = relationship("RefreshToken", back_populates="player", cascade="all, delete-orphan")
     quests = relationship("QFQuest", back_populates="player")
     qf_player_data = relationship(
         "QFPlayerData",
