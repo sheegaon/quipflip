@@ -3,7 +3,7 @@
  * Implements the user session detection flow on app load
  */
 
-import { playerAPI } from '../api/client';
+import { playerAPI } from '@crowdcraft/api/client.ts';
 import { createLogger } from '@crowdcraft/utils/logger.ts';
 
 const logger = createLogger('SessionDetection');

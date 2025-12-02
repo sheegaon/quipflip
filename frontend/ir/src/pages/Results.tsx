@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useIRGame } from '../contexts/IRGameContext';
-import { gameAPI } from '../api/client';
+import { gameAPI } from '@crowdcraft/api/client.ts';
 import InitCoinDisplay from '../components/InitCoinDisplay';
-import type { ResultsResponse } from '../api/types';
+import type { ResultsResponse } from '@crowdcraft/api/types.ts';
 import { HomeIcon } from '../components/icons/NavigationIcons';
 
 const Results: React.FC = () => {

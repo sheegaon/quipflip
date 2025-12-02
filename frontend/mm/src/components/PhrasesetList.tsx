@@ -1,5 +1,5 @@
 import React from 'react';
-import type { PhrasesetSummary } from '../api/types';
+import type { PhrasesetSummary } from '@crowdcraft/api/types.ts';
 
 // Placeholder component - will be replaced with MM caption tracking list
 export const PhrasesetList: React.FC<{

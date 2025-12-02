@@ -22,8 +22,8 @@ import {
 } from 'react';
 import { useGame } from './GameContext';
 import { usePartyMode } from './PartyModeContext';
-import apiClient from '../api/client';
-import { NotificationStreamMessage, OnlineUser } from '../api/types';
+import apiClient from '@/api/client';
+import { NotificationStreamMessage, OnlineUser } from '@crowdcraft/api/types.ts';
 import useWebSocket from '@crowdcraft/hooks/useWebSocket.ts';
 import { usePartyWebSocket } from '../hooks/usePartyWebSocket';
 

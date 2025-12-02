@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { apiClient } from '../api/client';
+import { apiClient } from '@/api/client';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { PromptRoundReview } from '../components/PhrasesetReview/PromptRoundReview';
 import { CopyRoundReview } from '../components/PhrasesetReview/CopyRoundReview';
 import { VoteRoundReview } from '../components/PhrasesetReview/VoteRoundReview';
-import type { PhrasesetDetails } from '../api/types';
+import type { PhrasesetDetails } from '@crowdcraft/api/types.ts';
 
 const isCanceledRequest = (error: unknown): boolean => {
   if (!error || typeof error !== 'object') {

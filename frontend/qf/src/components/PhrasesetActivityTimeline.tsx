@@ -8,7 +8,7 @@
  * real-time user activity.
  */
 import React from 'react';
-import type { PhrasesetActivityEntry } from '../api/types';
+import type { PhrasesetActivityEntry } from '@crowdcraft/api/types.ts';
 import { formatDateTimeInUserZone } from '@crowdcraft/utils/datetime.ts';
 
 interface ActivityTimelineProps {

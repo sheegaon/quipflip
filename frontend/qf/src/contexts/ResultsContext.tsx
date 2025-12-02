@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import apiClient from '../api/client';
+import apiClient from '@/api/client';
 import { getActionErrorMessage } from '../utils/errorMessages';
 import { gameContextLogger } from '@crowdcraft/utils/logger.ts';
 import { buildPhrasesetListKey, type PhrasesetListKeyParams } from '../utils/gameKeys';
@@ -10,7 +10,7 @@ import type {
   PhrasesetDetails as PhrasesetDetailsType,
   PhrasesetResults,
   PlayerStatistics,
-} from '../api/types';
+} from '@crowdcraft/api/types.ts';
 
 type PlayerPhrasesetParams = PhrasesetListKeyParams;
 

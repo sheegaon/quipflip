@@ -12,7 +12,7 @@ import type {
   SessionCompletedPayload,
   SessionStartedPayload,
   SessionUpdatePayload,
-} from '../api/types';
+} from '@crowdcraft/api/types.ts';
 
 export interface UsePartyWebSocketOptions {
   sessionId: string;

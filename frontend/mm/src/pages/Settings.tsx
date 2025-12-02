@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { useTutorial } from '../contexts/TutorialContext';
-import apiClient, { extractErrorMessage } from '../api/client';
+import apiClient, { extractErrorMessage } from '@/api/client';
 import { settingsLogger } from '@crowdcraft/utils/logger.ts';
 import { formatDateInUserZone, formatDateTimeInUserZone } from '@crowdcraft/utils/datetime.ts';
 

@@ -1,5 +1,5 @@
 import { BETA_SURVEY_ID } from '@crowdcraft/utils/betaSurvey.ts';
-import type { SurveyDefinition } from '../types/survey';
+import type { SurveyDefinition } from '@crowdcraft/types/survey.ts';
 
 export const betaSurveyDefinition: SurveyDefinition = {
   id: BETA_SURVEY_ID,

@@ -3,7 +3,7 @@
  * Defines the different user session states and detection results
  */
 
-import type { Player } from '../api/types';
+import type { Player } from '@crowdcraft/api/types.ts';
 
 /**
  * Time window for determining first-time users (5 minutes in milliseconds)

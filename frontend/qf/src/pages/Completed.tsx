@@ -1,12 +1,12 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '../components/Header';
-import { apiClient } from '../api/client';
-import type { CompletedPhrasesetItem } from '../api/types';
+import { apiClient } from '@/api/client';
+import type { CompletedPhrasesetItem } from '@crowdcraft/api/types.ts';
 import { InlineLoadingSpinner } from '../components/LoadingSpinner';
 import { ReviewIcon } from '@crowdcraft/components/icons/EngagementIcons.tsx';
 import { ArrowLeftIcon, ArrowRightIcon } from '@crowdcraft/components/icons/ArrowIcons.tsx';
-import { getErrorMessage, isError } from '../types/errors';
+import { getErrorMessage, isError } from '@crowdcraft/types/errors.ts';
 
 type SortField = 'vote_count' | 'total_pool' | 'created_at' | 'finalized_at';
 type SortDirection = 'asc' | 'desc';

@@ -1,12 +1,12 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import apiClient, { extractErrorMessage } from '../api/client';
+import apiClient, { extractErrorMessage } from '@/api/client';
 import { Header } from '../components/Header';
 import { useGame } from '../contexts/GameContext';
-import type { SurveyQuestion, CompoundSurveyQuestion } from '../types/survey';
+import type { SurveyQuestion, CompoundSurveyQuestion } from '@crowdcraft/types/survey.ts';
 import { markSurveyCompleted } from '@crowdcraft/utils/betaSurvey.ts';
 import { betaSurveyDefinition } from '../surveys/betaSurveyDefinition';
-import type { BetaSurveyAnswerPayload } from '../api/types';
+import type { BetaSurveyAnswerPayload } from '@crowdcraft/api/types.ts';
 
 type AnswerMap = Record<string, unknown>;
 

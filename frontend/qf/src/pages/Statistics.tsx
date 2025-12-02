@@ -2,8 +2,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useResults } from '../contexts/ResultsContext';
 import { useGame } from '../contexts/GameContext';
-import apiClient, { extractErrorMessage } from '../api/client';
-import type { GameStatus, HistoricalTrendPoint, PlayerStatistics } from '../api/types';
+import apiClient, { extractErrorMessage } from '@/api/client';
+import type { GameStatus, HistoricalTrendPoint, PlayerStatistics } from '@crowdcraft/api/types.ts';
 import { Header } from '../components/Header';
 import WinRateChart from '@crowdcraft/components/statistics/WinRateChart.tsx';
 import EarningsChart from '@crowdcraft/components/statistics/EarningsChart.tsx';
@@ -12,7 +12,7 @@ import FrequencyChart from '@crowdcraft/components/statistics/FrequencyChart.tsx
 import HistoricalTrendsChart from '@crowdcraft/components/statistics/HistoricalTrendsChart.tsx';
 import { statisticsLogger } from '@crowdcraft/utils/logger.ts';
 import { hasCompletedSurvey } from '@crowdcraft/utils/betaSurvey.ts';
-import type { BetaSurveyStatusResponse } from '../api/types';
+import type { BetaSurveyStatusResponse } from '@crowdcraft/api/types.ts';
 import { APP_VERSION } from '../version';
 
 const Statistics: React.FC = () => {

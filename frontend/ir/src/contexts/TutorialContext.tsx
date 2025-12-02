@@ -6,8 +6,8 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { tutorialAPI } from '../api/client';
-import type { TutorialProgress, TutorialStatus } from '../api/types';
+import { tutorialAPI } from '@crowdcraft/api/client.ts';
+import type { TutorialProgress, TutorialStatus } from '@crowdcraft/api/types.ts';
 import { tutorialLogger } from '@crowdcraft/utils/logger.ts';
 import { getNextStep } from '@crowdcraft/config/tutorialSteps.ts';
 import { getErrorMessage } from '../utils/errorHelpers';

@@ -23,6 +23,9 @@ export * from './hooks/usePhraseValidation'
 export * from './hooks/useTimer'
 export * from './hooks/useWebSocket'
 
+// Types
+export * from './types/errors'
+
 // Statistics Components - using default exports
 export { default as EarningsChart } from './components/statistics/EarningsChart';
 export { default as FrequencyChart } from './components/statistics/FrequencyChart';

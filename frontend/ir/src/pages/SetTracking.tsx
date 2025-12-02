@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useIRGame } from '../contexts/IRGameContext';
-import { gameAPI } from '../api/client';
+import { gameAPI } from '@crowdcraft/api/client.ts';
 import Timer from '../components/Timer';
-import type { BackronymSet } from '../api/types';
+import type { BackronymSet } from '@crowdcraft/api/types.ts';
 import { getErrorMessage } from '../utils/errorHelpers';
 
 const SetTracking: React.FC = () => {

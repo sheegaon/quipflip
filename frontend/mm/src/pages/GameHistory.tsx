@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useSmartPolling, PollConfigs } from '../utils/smartPolling';
 import { useLoadingState, InlineLoadingSpinner } from '../components/LoadingSpinner';
-import type { PhrasesetSummary, PhrasesetDetails as PhrasesetDetailsType } from '../api/types';
+import type { PhrasesetSummary, PhrasesetDetails as PhrasesetDetailsType } from '@crowdcraft/api/types.ts';
 import { useGame } from '../contexts/GameContext';
 import { buildPhrasesetListKey } from '../utils/gameKeys';
 import { PhrasesetList } from '../components/PhrasesetList';
@@ -10,7 +10,7 @@ import { Pagination } from '@crowdcraft/components/Pagination.tsx';
 import { useResults } from '../contexts/ResultsContext';
 import { trackingLogger } from '@crowdcraft/utils/logger.ts';
 import { getUniqueIdForSummary } from '../utils/phrasesetHelpers';
-import { getErrorMessage } from '../types/errors';
+import { getErrorMessage } from '@crowdcraft/types/errors.ts';
 
 const ITEMS_PER_PAGE = 10;
 

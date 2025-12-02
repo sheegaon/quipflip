@@ -1,8 +1,8 @@
 import { useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePartyMode } from '../contexts/PartyModeContext';
-import apiClient, { extractErrorMessage } from '../api/client';
-import type { StartPartyCopyResponse, StartPartyVoteResponse } from '../api/types';
+import apiClient, { extractErrorMessage } from '@/api/client';
+import type { StartPartyCopyResponse, StartPartyVoteResponse } from '@crowdcraft/api/types.ts';
 
 type RoundType = 'prompt' | 'copy' | 'vote';
 

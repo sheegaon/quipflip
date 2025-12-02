@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { Header } from '../components/Header';
-import apiClient, { extractErrorMessage } from '../api/client';
+import apiClient, { extractErrorMessage } from '@/api/client';
 import { TrackingIcon } from '@crowdcraft/components/icons/NavigationIcons.tsx';
 import { VoteRoundIcon } from '@crowdcraft/components/icons/RoundIcons.tsx';
 import { EditableConfigField } from '../components/EditableConfigField';
 import { adminLogger } from '@crowdcraft/utils/logger.ts';
-import type { AdminPlayerSummary } from '../api/types';
+import type { AdminPlayerSummary } from '@crowdcraft/api/types.ts';
 import { formatDateTimeInUserZone } from '@crowdcraft/utils/datetime.ts';
 import { PHRASE_VALIDATION_BOUNDS, PHRASE_VALIDATION_LIMITS } from '@crowdcraft/config/phraseValidation.ts';
 

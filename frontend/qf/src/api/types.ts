@@ -1,4 +1,25 @@
 // API Response Types based on backend documentation
+// Import common types from crowdcraft, extend them with game-specific fields
+import type {
+  ApiError,
+  ApiInfo,
+  AuthTokenResponse,
+  GameStatus,
+  HealthResponse,
+  SuggestUsernameResponse,
+  WsAuthTokenResponse,
+} from '../../../crowdcraft/src/api/types.ts';
+
+// Re-export common types for convenience
+export type {
+  ApiError,
+  ApiInfo,
+  AuthTokenResponse,
+  GameStatus,
+  HealthResponse,
+  SuggestUsernameResponse,
+  WsAuthTokenResponse,
+};
 
 // Notification types
 export type NotificationType = 'copy_submitted' | 'vote_submitted';
@@ -80,21 +101,6 @@ export interface AdminResetPasswordResponse {
   message: string;
 }
 
-export interface AuthTokenResponse {
-  access_token: string;
-  refresh_token: string;
-  token_type: 'bearer';
-  expires_in: number;
-  player_id: string;
-  username: string;
-}
-
-export interface WsAuthTokenResponse {
-  token: string;
-  expires_in: number;
-  token_type: 'bearer';
-}
-
 export interface CreatePlayerResponse extends AuthTokenResponse {
   wallet: number;
   vault: number;
@@ -111,10 +117,6 @@ export interface CreateGuestResponse extends AuthTokenResponse {
 
 export interface UpgradeGuestResponse extends AuthTokenResponse {
   message: string;
-}
-
-export interface SuggestUsernameResponse {
-  suggested_username: string;
 }
 
 export interface PromptState {
@@ -603,32 +605,6 @@ export interface DashboardData {
   phraseset_summary: PhrasesetDashboardSummary;
   unclaimed_results: UnclaimedResult[];
   round_availability: RoundAvailability;
-}
-
-export interface ApiError {
-  detail: string;
-}
-
-export interface HealthResponse {
-  status: string;
-  database: string;
-  redis: string;
-}
-
-export interface ApiInfo {
-  message: string;
-  version: string;
-  environment: string;
-  docs: string;
-}
-
-export interface GameStatus {
-  version: string;
-  environment: string;
-  phrase_validation: {
-    mode: 'local' | 'remote';
-    healthy: boolean | null;
-  };
 }
 
 export interface SubmitPromptFeedbackRequest {

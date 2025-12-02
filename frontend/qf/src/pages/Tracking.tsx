@@ -4,7 +4,7 @@ import { useLoadingState, InlineLoadingSpinner } from '../components/LoadingSpin
 import type {
   PhrasesetSummary,
   PhrasesetDetails as PhrasesetDetailsType,
-} from '../api/types';
+} from '@crowdcraft/api/types.ts';
 import { useGame } from '../contexts/GameContext';
 import { buildPhrasesetListKey } from '../utils/gameKeys';
 import { PhrasesetList } from '../components/PhrasesetList';
@@ -14,7 +14,7 @@ import { Header } from '../components/Header';
 import { useResults } from '../contexts/ResultsContext';
 import { trackingLogger } from '@crowdcraft/utils/logger.ts';
 import { getUniqueIdForSummary } from '../utils/phrasesetHelpers';
-import { getErrorMessage } from '../types/errors';
+import { getErrorMessage } from '@crowdcraft/types/errors.ts';
 
 const ITEMS_PER_PAGE = 10;
 

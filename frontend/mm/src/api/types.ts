@@ -1,4 +1,25 @@
 // API Response Types based on backend documentation
+// Import common types from crowdcraft, extend them with game-specific fields
+import type {
+  ApiError,
+  ApiInfo,
+  AuthTokenResponse,
+  GameStatus,
+  HealthResponse,
+  SuggestUsernameResponse,
+  WsAuthTokenResponse,
+} from '../../../crowdcraft/src/api/types.ts';
+
+// Re-export common types for convenience
+export type {
+  ApiError,
+  ApiInfo,
+  AuthTokenResponse,
+  GameStatus,
+  HealthResponse,
+  SuggestUsernameResponse,
+  WsAuthTokenResponse,
+};
 
 // Notification types
 export type NotificationType = 'copy_submitted' | 'vote_submitted';
@@ -80,21 +101,6 @@ export interface AdminResetPasswordResponse {
   message: string;
 }
 
-export interface AuthTokenResponse {
-  access_token: string;
-  refresh_token: string;
-  token_type: 'bearer';
-  expires_in: number;
-  player_id: string;
-  username: string;
-}
-
-export interface WsAuthTokenResponse {
-  token: string;
-  expires_in: number;
-  token_type: 'bearer';
-}
-
 export interface CreatePlayerResponse extends AuthTokenResponse {
   wallet: number;
   vault: number;
@@ -111,10 +117,6 @@ export interface CreateGuestResponse extends AuthTokenResponse {
 
 export interface UpgradeGuestResponse extends AuthTokenResponse {
   message: string;
-}
-
-export interface SuggestUsernameResponse {
-  suggested_username: string;
 }
 
 export interface PromptState {
@@ -369,27 +371,6 @@ export interface StartVoteResponse {
   expires_at: string;
 }
 
-/**
- * Party context included in round responses when in party mode.
- * Contains player progress and session progress information.
- */
-export interface PartyContext {
-  session_id: string;
-  current_phase: string;
-  your_progress: {
-    prompts_submitted: number;
-    prompts_required: number;
-    copies_submitted: number;
-    copies_required: number;
-    votes_submitted: number;
-    votes_required: number;
-  };
-  session_progress: {
-    players_ready_for_next_phase: number;
-    total_players: number;
-  };
-}
-
 export interface SubmitPhraseResponse {
   success: boolean;
   phrase: string;
@@ -399,10 +380,6 @@ export interface SubmitPhraseResponse {
   second_copy_cost?: number;
   prompt_round_id?: string;
   original_phrase?: string;
-  // Party-specific fields (present when in party mode)
-  party_session_id?: string;
-  party_round_id?: string;
-  party_context?: PartyContext;
 }
 
 export interface HintResponse {
@@ -414,9 +391,6 @@ export interface VoteResponse {
   payout: number;
   original_phrase: string;
   your_choice: string;
-  // Party-specific fields
-  party_session_id?: string;
-  party_context?: PartyContext;
 }
 
 export interface PhrasesetVoteResult {
@@ -724,32 +698,6 @@ export interface DashboardData {
   current_caption_round?: CaptionSubmissionResult | null;
 }
 
-export interface ApiError {
-  detail: string;
-}
-
-export interface HealthResponse {
-  status: string;
-  database: string;
-  redis: string;
-}
-
-export interface ApiInfo {
-  message: string;
-  version: string;
-  environment: string;
-  docs: string;
-}
-
-export interface GameStatus {
-  version: string;
-  environment: string;
-  phrase_validation: {
-    mode: 'local' | 'remote';
-    healthy: boolean | null;
-  };
-}
-
 export interface SubmitPromptFeedbackRequest {
   feedback_type: 'like' | 'dislike';
 }
@@ -956,343 +904,6 @@ export interface UpdateAdminConfigResponse {
   value: number | string;
   message?: string;
 }
-
-// Party Mode types
-export interface PartyParticipant {
-  participant_id: string;
-  player_id: string;
-  username: string;
-  is_ai: boolean;
-  is_host: boolean;
-  status: 'JOINED' | 'READY' | 'ACTIVE' | 'COMPLETED';
-  prompts_submitted: number;
-  copies_submitted: number;
-  votes_submitted: number;
-  prompts_required: number;
-  copies_required: number;
-  votes_required: number;
-  joined_at: string | null;
-  ready_at: string | null;
-}
-
-export interface PartySessionProgress {
-  total_prompts: number;
-  total_copies: number;
-  total_votes: number;
-  required_prompts: number;
-  required_copies: number;
-  required_votes: number;
-  players_ready_for_next_phase: number;
-  total_players: number;
-}
-
-export interface PartySession {
-  session_id: string;
-  party_code: string;
-  host_player_id: string;
-  status: 'OPEN' | 'IN_PROGRESS' | 'COMPLETED' | 'ABANDONED';
-  current_phase: 'LOBBY' | 'PROMPT' | 'COPY' | 'VOTE' | 'RESULTS';
-  min_players: number;
-  max_players: number;
-  phase_started_at: string | null;
-  created_at: string;
-  started_at: string | null;
-  completed_at: string | null;
-  participants: PartyParticipant[];
-  progress: PartySessionProgress;
-}
-
-export interface CreatePartySessionRequest {
-  min_players?: number;
-  max_players?: number;
-  prompts_per_player?: number;
-  copies_per_player?: number;
-  votes_per_player?: number;
-}
-
-export interface CreatePartySessionResponse {
-  session_id: string;
-  party_code: string;
-  host_player_id: string;
-  status: string;
-  current_phase: string;
-  created_at: string;
-  participants: PartyParticipant[];
-  min_players: number;
-  max_players: number;
-}
-
-export interface JoinPartySessionRequest {
-  party_code: string;
-}
-
-export interface JoinPartySessionResponse {
-  session_id: string;
-  party_code: string;
-  status: string;
-  current_phase: string;
-  participants: PartyParticipant[];
-  participant_count: number;
-  min_players: number;
-  max_players: number;
-}
-
-export interface PartyListItem {
-  session_id: string;
-  host_username: string;
-  participant_count: number;
-  min_players: number;
-  max_players: number;
-  created_at: string;
-  is_full: boolean;
-}
-
-export interface PartyListResponse {
-  parties: PartyListItem[];
-  total_count: number;
-}
-
-export interface MarkReadyResponse {
-  participant_id: string;
-  status: string;
-  session: {
-    ready_count: number;
-    total_count: number;
-    can_start: boolean;
-  };
-}
-
-export interface StartPartySessionResponse {
-  session_id: string;
-  status: string;
-  current_phase: string;
-  phase_started_at: string;
-  locked_at: string;
-  participants: PartyParticipant[];
-}
-
-export type PartySessionStatusResponse = PartySession;
-
-// Party Round Response - Discriminated Union based on round_type
-export interface StartPartyPromptResponse {
-  round_type: 'prompt';
-  round_id: string;
-  party_round_id: string;
-  prompt_text: string;
-  expires_at: string;
-  cost: number;
-  status?: string;
-  session_progress: {
-    your_prompts_submitted: number;
-    prompts_required: number;
-    players_done: number;
-    total_players: number;
-  };
-  party_context?: PartyContext;
-}
-
-export interface StartPartyCopyResponse {
-  round_type: 'copy';
-  round_id: string;
-  party_round_id: string;
-  original_phrase: string;
-  prompt_round_id: string;
-  expires_at: string;
-  cost: number;
-  discount_active: boolean;
-  is_second_copy: boolean;
-  from_party: boolean;
-  session_progress: {
-    your_copies_submitted: number;
-    copies_required: number;
-    players_done: number;
-    total_players: number;
-  };
-  party_context?: PartyContext;
-}
-
-export interface StartPartyVoteResponse {
-  round_type: 'vote';
-  round_id: string;
-  party_round_id: string;
-  phraseset_id: string;
-  prompt_text: string;
-  phrases: string[];
-  expires_at: string;
-  cost?: number;
-  from_party: boolean;
-  session_progress: {
-    your_votes_submitted: number;
-    votes_required: number;
-    players_done: number;
-    total_players: number;
-  };
-  party_context?: PartyContext;
-}
-
-export type StartPartyRoundResponse =
-  | StartPartyPromptResponse
-  | StartPartyCopyResponse
-  | StartPartyVoteResponse;
-
-export interface SubmitPartyRoundRequest {
-  phrase: string;
-}
-
-export interface SubmitPartyRoundResponse {
-  success: boolean;
-  phrase: string;
-  round_type: string;
-  session_progress: Record<string, number>;
-  phase_transition?: Record<string, unknown> | null;
-}
-
-export interface PartyPlayerStats {
-  player_id: string;
-  username: string;
-  rank: number;
-  spent: number;
-  earned: number;
-  net: number;
-  votes_on_originals: number;
-  votes_fooled: number;
-  correct_votes: number;
-  total_votes: number;
-  vote_accuracy: number;
-  prompts_submitted: number;
-  copies_submitted: number;
-  votes_submitted: number;
-}
-
-export interface PartyAward {
-  player_id: string;
-  username: string;
-  metric_value: number;
-}
-
-export interface PartyPhrasesetSummary {
-  phraseset_id: string;
-  prompt_text: string;
-  original_phrase: string;
-  vote_count: number;
-  original_player: string;
-  most_votes: string;
-  votes_breakdown: Record<string, number>;
-}
-
-export interface PartyResultsResponse {
-  session_id: string;
-  party_code: string;
-  completed_at: string | null;
-  rankings: PartyPlayerStats[];
-  awards: Record<string, PartyAward>;
-  phrasesets_summary: PartyPhrasesetSummary[];
-}
-
-export interface PartyPingResponse {
-  success: boolean;
-  message: string;
-}
-
-// Party Mode WebSocket message types - Discriminated Union
-export type PlayerJoinedPayload = {
-  player_id: string;
-  username: string;
-  participant_count: number;
-};
-
-export type PlayerLeftPayload = PlayerJoinedPayload;
-
-export type PlayerReadyPayload = {
-  player_id: string;
-  username: string;
-  ready_count: number;
-  total_count: number;
-};
-
-export type PhaseTransitionPayload = {
-  old_phase: string;
-  new_phase: string;
-  message: string;
-};
-
-export type ProgressUpdatePayload = {
-  player_id: string;
-  username: string;
-  action: string;
-  progress: {
-    prompts_submitted: number;
-    copies_submitted: number;
-    votes_submitted: number;
-  };
-  session_progress: {
-    players_done_with_phase: number;
-    total_players: number;
-  };
-};
-
-export type SessionStartedPayload = {
-  current_phase: string;
-  participant_count: number;
-  message: string;
-};
-
-export type SessionCompletedPayload = {
-  completed_at: string | null;
-  message: string;
-};
-
-export type SessionUpdatePayload = Record<string, unknown> & {
-  reason?: string;
-  message?: string;
-};
-
-export type HostPingPayload = {
-  host_player_id: string;
-  host_username: string;
-  join_url: string;
-};
-
-type WebsocketPayload<TBase, TPayload> =
-  TBase & ({ data: TPayload } | ({ data?: undefined } & TPayload));
-
-export type PartyWebSocketMessage =
-  | WebsocketPayload<
-    { type: 'player_joined'; session_id: string; timestamp: string },
-    PlayerJoinedPayload
-  >
-  | WebsocketPayload<
-    { type: 'player_left'; session_id: string; timestamp: string },
-    PlayerLeftPayload
-  >
-  | WebsocketPayload<
-    { type: 'player_ready'; session_id: string; timestamp: string },
-    PlayerReadyPayload
-  >
-  | WebsocketPayload<
-    { type: 'session_started'; session_id: string; timestamp: string },
-    SessionStartedPayload
-  >
-  | WebsocketPayload<
-    { type: 'phase_transition'; session_id: string; timestamp: string },
-    PhaseTransitionPayload
-  >
-  | WebsocketPayload<
-    { type: 'progress_update'; session_id: string; timestamp: string },
-    ProgressUpdatePayload
-  >
-  | WebsocketPayload<
-    { type: 'session_completed'; session_id: string; timestamp: string },
-    SessionCompletedPayload
-  >
-  | WebsocketPayload<
-    { type: 'session_update'; session_id: string; timestamp: string },
-    SessionUpdatePayload
-  >
-  | WebsocketPayload<
-    { type: 'host_ping'; session_id: string; timestamp: string },
-    HostPingPayload
-  >;
 
 // ===== CIRCLE TYPES =====
 

@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import apiClient, { extractErrorMessage } from '../api/client';
+import apiClient, { extractErrorMessage } from '@/api/client';
 import type {
   MemeCaptionSubmission,
   MemeVoteRound,
-} from '../api/types';
+} from '@crowdcraft/api/types.ts';
 import { CurrencyDisplay } from './CurrencyDisplay';
 
 interface CaptionSubmissionModalProps {

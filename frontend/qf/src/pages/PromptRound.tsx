@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
-import apiClient, { extractErrorMessage } from '../api/client';
+import apiClient, { extractErrorMessage } from '@/api/client';
 import { Timer } from '../components/Timer';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
@@ -9,7 +9,7 @@ import { ThumbFeedbackButton } from '../components/ThumbFeedbackButton';
 import { useTimer } from '@crowdcraft/hooks/useTimer.ts';
 import { usePhraseValidation } from '../hooks/usePhraseValidation';
 import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
-import type { PromptState, SubmitPhraseResponse } from '../api/types';
+import type { PromptState, SubmitPhraseResponse } from '@crowdcraft/api/types.ts';
 import { promptRoundLogger } from '@crowdcraft/utils/logger.ts';
 import { TrackingIcon } from '@crowdcraft/components/icons/NavigationIcons.tsx';
 import { usePartyMode } from '../contexts/PartyModeContext';

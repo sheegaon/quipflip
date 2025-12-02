@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
-import apiClient, { extractErrorMessage } from '../api/client';
+import apiClient, { extractErrorMessage } from '@/api/client';
 import { dashboardLogger } from '@crowdcraft/utils/logger.ts';
 
 const getErrorDetail = (error: unknown): string | undefined => {

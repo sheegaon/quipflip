@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
-import type { PartyContext } from '../api/types';
+import type { PartyContext } from '@crowdcraft/api/types.ts';
 
 export type PartyStep = 'prompt' | 'copy' | 'vote';
 

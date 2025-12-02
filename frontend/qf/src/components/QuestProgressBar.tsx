@@ -1,5 +1,5 @@
 import React from 'react';
-import { QuestCategory } from '../api/types';
+import { QuestCategory } from '@crowdcraft/api/types.ts';
 
 interface QuestProgressBarProps {
   current: number;

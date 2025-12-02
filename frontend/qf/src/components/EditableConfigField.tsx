@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { extractErrorMessage } from '../api/client';
+import { extractErrorMessage } from '@/api/client';
 
 interface EditableConfigFieldProps {
   label: string;

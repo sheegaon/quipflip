@@ -1,13 +1,13 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import apiClient from '../api/client';
+import apiClient from '@/api/client';
 import axios from 'axios';
 import { useSmartPolling, PollConfigs } from '../utils/smartPolling';
 import { getActionErrorMessage } from '../utils/errorMessages';
 import { gameContextLogger } from '@crowdcraft/utils/logger.ts';
-import { detectUserSession, associateVisitorWithPlayer } from '../services/sessionDetection';
-import { SessionState } from '../types/session';
+import { detectUserSession, associateVisitorWithPlayer } from '@crowdcraft/services/sessionDetection';
+import { SessionState } from '@crowdcraft/types/session.ts';
 import { GUEST_CREDENTIALS_KEY } from '@crowdcraft/utils/storageKeys.ts';
 import type {
   Player,
@@ -21,7 +21,7 @@ import type {
   FlagCopyRoundResponse,
   AbandonRoundResponse,
   CaptionSubmissionResult,
-} from '../api/types';
+} from '@crowdcraft/api/types.ts';
 
 interface GameState {
   isAuthenticated: boolean;

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import apiClient from '../api/client';
-import type { PracticePhraseset } from '../api/types';
+import apiClient from '@/api/client';
+import type { PracticePhraseset } from '@crowdcraft/api/types.ts';
 
 interface UsePracticePhrasesetResult {
   phraseset: PracticePhraseset | null;

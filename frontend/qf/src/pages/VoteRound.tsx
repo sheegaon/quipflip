@@ -1,14 +1,14 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
-import apiClient, { extractErrorMessage } from '../api/client';
+import apiClient, { extractErrorMessage } from '@/api/client';
 import { Timer } from '../components/Timer';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { PhraseRecapCard } from '../components/PhraseRecapCard';
 import { useTimer } from '@crowdcraft/hooks/useTimer.ts';
 import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
-import type { VoteResponse, VoteState, PhrasesetDetails } from '../api/types';
+import type { VoteResponse, VoteState, PhrasesetDetails } from '@crowdcraft/api/types.ts';
 import { voteRoundLogger } from '@crowdcraft/utils/logger.ts';
 import { VoteRoundIcon } from '@crowdcraft/components/icons/RoundIcons.tsx';
 import { HomeIcon } from '@crowdcraft/components/icons/NavigationIcons.tsx';
