@@ -75,45 +75,43 @@ This plan consolidates duplicate code between QuipFlip (QF) and MemeMint (MM) fr
 
 ### Phase 2: Simple Contexts (Week 2)
 
-**Move to crowdcraft after verification:**
+**Status: ✅ Completed.** All shared contexts now live in `frontend/crowdcraft/src/contexts/` with factory helpers that accept per-game configuration hooks. QF/MM wrap these factories to plug in game-specific tutorial data, notification settings, and quest/result fetching logic.
 
-1. **NavigationHistoryContext** - Use MM version (more complete)
+**Moved to crowdcraft with per-game wrappers:**
+
+1. **NavigationHistoryContext** - MM version adopted as the base (tracks pathname/search/hash/state)
    - Source: `frontend/mm/src/contexts/NavigationHistoryContext.tsx`
    - Target: `frontend/crowdcraft/src/contexts/NavigationHistoryContext.tsx`
-   - Reason: MM version tracks full location state (pathname, search, hash, state)
+   - Wrappers: `frontend/qf/src/contexts/NavigationHistoryContext.tsx`, `frontend/mm/src/contexts/NavigationHistoryContext.tsx`
 
-2. **NotificationContext** - Compare and merge
-   - Verify QF/MM versions are identical
-   - Move to crowdcraft
+2. **NotificationContext** - Unified and parameterized via `createNotificationContext`
+   - Wrappers inject WebSocket paths, party session hooks, and enablement flags per game
 
-3. **TutorialContext** - Compare tutorial steps
-   - If steps differ: accept tutorial config as parameter
-   - Move framework to crowdcraft
+3. **TutorialContext** - Shared `createTutorialContext` with injected tutorial steps/status typing
+   - Wrappers: `frontend/qf/src/contexts/TutorialContext.tsx`, `frontend/mm/src/contexts/TutorialContext.tsx`
 
-4. **QuestContext** - Compare implementations
-   - Likely identical API structure
-   - Move to crowdcraft
+4. **QuestContext** - Shared state/actions consumed through wrappers in each game
 
-5. **ResultsContext** - Compare implementations
-   - Verify caching patterns are same
-   - Move to crowdcraft
+5. **ResultsContext** - Shared cache/selector logic with wrappers delegating to game-specific providers
 
 ### Phase 3: Pure UI Components (Week 2-3)
 
 **Already shared:**
 - ✅ LoadingSpinner (both import from crowdcraft)
 
-**Move to crowdcraft:**
+**Status: ✅ Completed.** All pure UI components now live in `frontend/crowdcraft/src/components/` with game wrappers delegating to the shared implementations.
+
+**Moved to crowdcraft:**
 
 1. Timer.tsx
 2. ProgressBar.tsx
 3. StatusBadge.tsx
-4. CurrencyDisplay.tsx
+4. CurrencyDisplay.tsx (configurable icon alt/src to support game branding)
 5. ErrorNotification.tsx
 6. SuccessNotification.tsx
-7. NotificationDisplay.tsx
-8. NotificationToast.tsx
-9. PingNotificationDisplay.tsx
+7. NotificationDisplay.tsx (accepts notification/action props; game wrappers supply routing)
+8. NotificationToast.tsx (action label/callback configurable)
+9. PingNotificationDisplay.tsx (action callback configurable)
 10. OfflineBanner.tsx
 11. ThumbFeedbackButton.tsx
 12. EditableConfigField.tsx
@@ -131,81 +129,27 @@ This plan consolidates duplicate code between QuipFlip (QF) and MemeMint (MM) fr
 
 ### Phase 4: Parameterized Components (Week 3)
 
-**Header & SubHeader** - Accept menu configuration
+**Status: ✅ Completed.** `Header` and `SubHeader` are centralized under `frontend/crowdcraft/src/components/` with configurable menu items, icon props, and callbacks. QF/MM wrappers pass their route handlers, tutorial flags, survey gating, and quest indicator data while reusing the shared layout and accessibility behaviors.
 
-```typescript
-// In crowdcraft
-export interface HeaderMenuItem {
-  path: string;
-  label: string;
-  icon: React.ComponentType;
-  badge?: number | boolean;
-}
-
-export interface HeaderProps {
-  menuItems: HeaderMenuItem[];
-  logoSrc: string;
-  logoAlt: string;
-}
-```
-
-**Usage in QF:**
-```typescript
-const qfMenuItems = [
-  { path: '/dashboard', label: 'Dashboard', icon: HomeIcon },
-  { path: '/party', label: 'Party Mode', icon: PartyIcon },
-  // ... QF-specific items
-];
-
-<Header menuItems={qfMenuItems} logoSrc="/qf-logo.png" logoAlt="QuipFlip" />
-```
+**Implementation notes:**
+- Shared `Header` renders brand logo/back arrow, wallet/vault balances, dropdown menus (sections + footer items), and guest logout handling via callbacks.
+- Shared `SubHeader` renders the in-progress/results/quest indicators with optional callbacks for leaderboard, tutorial, and quests; buttons are hidden automatically when handlers are not provided.
+- QF renders `SubHeader` on the dashboard; MM composes it in `App` to mirror previous layout.
 
 ### Phase 5: API Client Consolidation (Week 4)
 
-**Create BaseApiClient class:**
+**Status: ✅ Completed.** Shared API logic now lives in `frontend/crowdcraft/src/api/BaseApiClient.ts`, centralizing axios configu
+ration, interceptors (logging, token refresh, offline queueing), credential helpers, and ~70% of the endpoints used by both ga
+mes. QF/MM clients extend the base class to add only their game-specific endpoints.
 
-```typescript
-// frontend/crowdcraft/src/api/BaseApiClient.ts
-export class BaseApiClient {
-  protected api: AxiosInstance;
-
-  constructor(baseURL: string) {
-    this.api = axios.create({
-      baseURL,
-      withCredentials: true
-    });
-    this.setupInterceptors();
-  }
-
-  // Shared methods (~70% of endpoints)
-  async login(email: string, password: string) { /* ... */ }
-  async getBalance(signal?: AbortSignal) { /* ... */ }
-  async getQuests(signal?: AbortSignal) { /* ... */ }
-  async getStatistics(signal?: AbortSignal) { /* ... */ }
-  // ... ~60 more common methods
-}
-```
-
-**Game-specific clients extend:**
-
-```typescript
-// frontend/qf/src/api/client.ts
-import { BaseApiClient } from '@crowdcraft/api/BaseApiClient';
-
-class QuipFlipApiClient extends BaseApiClient {
-  constructor() {
-    super(import.meta.env.VITE_API_URL);
-  }
-
-  // QF-specific methods (~30% of endpoints)
-  async startPromptRound() { /* ... */ }
-  async startCopyRound() { /* ... */ }
-  async getDashboardData(signal?: AbortSignal) { /* ... */ }
-  // ... QF-only methods
-}
-
-export const apiClient = new QuipFlipApiClient();
-```
+**Implementation notes:**
+- `BaseApiClient` exposes common auth, player, tutorial, quest, leaderboard, phraseset, admin, and notification-adjacent endpo
+ints plus helpers (`extractErrorMessage`, `clearStoredCredentials`).
+- QuipFlip now subclasses the base client and only implements Party Mode endpoints; the shared interceptors handle retries/log
+ging for those calls.
+- MemeMint subclasses the base client, reuses the shared endpoints, and layers on MemeMint-specific vote/caption aliases, QF o
+nline-user lookups (with absolute URLs), and circle management endpoints.
+- Both clients export their axios instances via the base class to keep NetworkContext hooks working unchanged.
 
 **Benefits:**
 - Eliminates ~30KB duplication per game
