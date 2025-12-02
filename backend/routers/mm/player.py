@@ -42,6 +42,21 @@ settings = get_settings()
 
 async def _get_player_balance(player, db: AsyncSession) -> PlayerBalance:
     """Build a PlayerBalance response for Meme Mint."""
+    from sqlalchemy import select
+    from backend.models.mm.player_data import MMPlayerData
+
+    # Load game-specific player data for wallet/vault
+    result = await db.execute(
+        select(MMPlayerData).where(MMPlayerData.player_id == player.player_id)
+    )
+    player_data = result.scalar_one_or_none()
+
+    if not player_data:
+        wallet = settings.mm_starting_wallet
+        vault = 0
+    else:
+        wallet = player_data.wallet
+        vault = player_data.vault
 
     config_service = MMSystemConfigService(db)
     daily_bonus_service = MMDailyBonusService(db, config_service)
@@ -57,8 +72,8 @@ async def _get_player_balance(player, db: AsyncSession) -> PlayerBalance:
         player_id=player.player_id,
         username=player.username,
         email=player.email,
-        wallet=player.wallet,
-        vault=player.vault,
+        wallet=wallet,
+        vault=vault,
         starting_balance=starting_balance,
         daily_bonus_available=daily_bonus_available,
         daily_bonus_amount=daily_bonus_amount,
@@ -68,7 +83,7 @@ async def _get_player_balance(player, db: AsyncSession) -> PlayerBalance:
         is_guest=player.is_guest,
         is_admin=getattr(player, "is_admin", False),
         locked_until=getattr(player, "locked_until", None),
-        flag_dismissal_streak=getattr(player, "flag_dismissal_streak", 0),
+        flag_dismissal_streak=getattr(player_data, "flag_dismissal_streak", 0) if player_data else 0,
     )
 
 
@@ -94,16 +109,27 @@ class MMPlayerRouter(PlayerRouterBase):
         self, player, db: AsyncSession
     ) -> ClaimDailyBonusResponse:
         """Use Meme Mint's bonus service to claim and record the reward."""
+        from sqlalchemy import select
+        from backend.models.mm.player_data import MMPlayerData
 
         bonus_service = MMDailyBonusService(db)
         try:
             result = await bonus_service.claim_bonus(player.player_id)
-            await db.refresh(player)
+
+            # Load updated player data to get new wallet/vault balances
+            player_data_result = await db.execute(
+                select(MMPlayerData).where(MMPlayerData.player_id == player.player_id)
+            )
+            player_data = player_data_result.scalar_one_or_none()
+
+            new_wallet = player_data.wallet if player_data else settings.mm_starting_wallet
+            new_vault = player_data.vault if player_data else 0
+
             return ClaimDailyBonusResponse(
                 success=True,
                 amount=result["amount"],
-                new_wallet=player.wallet,
-                new_vault=player.vault,
+                new_wallet=new_wallet,
+                new_vault=new_vault,
             )
         except MMDailyBonusError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -245,10 +271,10 @@ async def _get_dashboard_data(player, db: AsyncSession) -> MMDashboardDataRespon
         free_captions_remaining = await daily_state_service.get_remaining_free_captions(player.player_id)
         daily_bonus_available = await daily_bonus_service.is_bonus_available(player.player_id)
 
-        # Check if player can start rounds
-        can_vote = player.wallet >= round_entry_cost
+        # Check if player can start rounds (use wallet from player_balance response)
+        can_vote = player_balance.wallet >= round_entry_cost
         can_submit_caption = (
-            free_captions_remaining > 0 or player.wallet >= caption_submission_cost
+            free_captions_remaining > 0 or player_balance.wallet >= caption_submission_cost
         )
 
         round_availability = RoundAvailability(
