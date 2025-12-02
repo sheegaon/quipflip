@@ -197,12 +197,21 @@ class QFPlayerService(PlayerServiceBase):
         if player.locked_until and player.locked_until > datetime.now(UTC):
             return False, "player_locked"
 
+        # Load game-specific player data for wallet and active_round_id
+        result = await self.db.execute(
+            select(QFPlayerData).where(QFPlayerData.player_id == player.player_id)
+        )
+        player_data = result.scalar_one_or_none()
+
+        wallet = player_data.wallet if player_data else settings.qf_starting_wallet
+        active_round_id = player_data.active_round_id if player_data else None
+
         # Check wallet (spendable balance)
-        if player.wallet < settings.prompt_cost:
+        if wallet < settings.prompt_cost:
             return False, "insufficient_balance"
 
         # Check active round
-        if player.active_round_id is not None:
+        if active_round_id is not None:
             return False, "already_in_round"
 
         # Check outstanding prompts (guests have a lower limit)
@@ -225,13 +234,22 @@ class QFPlayerService(PlayerServiceBase):
         if player.locked_until and player.locked_until > datetime.now(UTC):
             return False, "player_locked"
 
+        # Load game-specific player data for wallet and active_round_id
+        result = await self.db.execute(
+            select(QFPlayerData).where(QFPlayerData.player_id == player.player_id)
+        )
+        player_data = result.scalar_one_or_none()
+
+        wallet = player_data.wallet if player_data else settings.qf_starting_wallet
+        active_round_id = player_data.active_round_id if player_data else None
+
         # Check wallet (spendable balance) against current copy cost
         copy_cost = QFQueueService.get_copy_cost()
-        if player.wallet < copy_cost:
+        if wallet < copy_cost:
             return False, "insufficient_balance"
 
         # Check active round
-        if player.active_round_id is not None:
+        if active_round_id is not None:
             return False, "already_in_round"
 
         # Check prompts available for this player specifically (not just queue length)
@@ -247,12 +265,21 @@ class QFPlayerService(PlayerServiceBase):
         if player.locked_until and player.locked_until > datetime.now(UTC):
             return False, "player_locked"
 
-        if player.active_round_id is not None:
+        # Load game-specific player data for wallet and active_round_id
+        result = await self.db.execute(
+            select(QFPlayerData).where(QFPlayerData.player_id == player.player_id)
+        )
+        player_data = result.scalar_one_or_none()
+
+        wallet = player_data.wallet if player_data else settings.qf_starting_wallet
+        active_round_id = player_data.active_round_id if player_data else None
+
+        if active_round_id is not None:
             return False, "already_in_round"
 
         # Second copy costs 2x the normal cost
         second_copy_cost = settings.copy_cost_normal * 2
-        if player.wallet < second_copy_cost:
+        if wallet < second_copy_cost:
             return False, "insufficient_balance"
 
         return True, ""
@@ -267,20 +294,30 @@ class QFPlayerService(PlayerServiceBase):
         from backend.services.qf.queue_service import QFQueueService
         from datetime import datetime, UTC
 
+        # Load game-specific player data for wallet, active_round_id, and vote_lockout_until
+        result = await self.db.execute(
+            select(QFPlayerData).where(QFPlayerData.player_id == player.player_id)
+        )
+        player_data = result.scalar_one_or_none()
+
+        wallet = player_data.wallet if player_data else settings.qf_starting_wallet
+        active_round_id = player_data.active_round_id if player_data else None
+        vote_lockout_until = player_data.vote_lockout_until if player_data else None
+
         # Check if guest is locked out from voting
-        if player.is_guest and player.vote_lockout_until:
-            if datetime.now(UTC) < player.vote_lockout_until:
+        if player.is_guest and vote_lockout_until:
+            if datetime.now(UTC) < vote_lockout_until:
                 return False, "vote_lockout_active"
 
         if player.locked_until and player.locked_until > datetime.now(UTC):
             return False, "player_locked"
 
         # Check wallet (spendable balance)
-        if player.wallet < settings.vote_cost:
+        if wallet < settings.vote_cost:
             return False, "insufficient_balance"
 
         # Check active round
-        if player.active_round_id is not None:
+        if active_round_id is not None:
             return False, "already_in_round"
 
         # Check phrasesets available
