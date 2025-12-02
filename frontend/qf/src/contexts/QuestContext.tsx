@@ -1,1 +1,1 @@
-export { QuestProvider, useQuest } from '@crowdcraft/contexts/QuestContext';
+export { QuestProvider, useQuest, useQuests } from '@crowdcraft/contexts/QuestContext';

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import apiClient, { extractErrorMessage } from '@/api/client';
 import type { Circle, CircleMember, CircleJoinRequest } from '@crowdcraft/api/types.ts';
@@ -16,13 +16,7 @@ export const CircleDetails: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (circleId) {
-      loadCircleData();
-    }
-  }, [circleId]);
-
-  const loadCircleData = async () => {
+  const loadCircleData = useCallback(async () => {
     if (!circleId) return;
 
     try {
@@ -52,7 +46,13 @@ export const CircleDetails: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [circleId]);
+
+  useEffect(() => {
+    if (circleId) {
+      loadCircleData();
+    }
+  }, [circleId, loadCircleData]);
 
   const handleApproveRequest = async (requestId: string) => {
     if (!circleId) return;
