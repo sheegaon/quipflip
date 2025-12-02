@@ -297,7 +297,7 @@ def upgrade() -> None:
     logger.info("FK constraint updates are deferred to a follow-up migration")
 
     # Step 7: Drop old tables and refresh tokens (if they exist)
-    # Note: Using DROP CASCADE to handle all dependent constraints
+    # Note: Handle SQLite compatibility - SQLite doesn't support CASCADE in DROP TABLE
     if 'qf_refresh_tokens' in table_names:
         op.drop_table('qf_refresh_tokens')
     if 'mm_refresh_tokens' in table_names:
@@ -305,19 +305,19 @@ def upgrade() -> None:
     if 'ir_refresh_tokens' in table_names:
         op.drop_table('ir_refresh_tokens')
     if 'qf_players' in table_names:
-        # Drop old qf_players table - use raw SQL with CASCADE to handle all dependencies
+        # Drop old qf_players table - use Alembic's drop_table for cross-database compatibility
         try:
-            op.execute(sa.text("DROP TABLE IF EXISTS qf_players CASCADE"))
+            op.drop_table('qf_players')
         except Exception as e:
             logger.warning(f"Could not drop qf_players: {e}")
     if 'mm_players' in table_names:
         try:
-            op.execute(sa.text("DROP TABLE IF EXISTS mm_players CASCADE"))
+            op.drop_table('mm_players')
         except Exception as e:
             logger.warning(f"Could not drop mm_players: {e}")
     if 'ir_players' in table_names:
         try:
-            op.execute(sa.text("DROP TABLE IF EXISTS ir_players CASCADE"))
+            op.drop_table('ir_players')
         except Exception as e:
             logger.warning(f"Could not drop ir_players: {e}")
 
