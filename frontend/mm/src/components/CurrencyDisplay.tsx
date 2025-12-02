@@ -26,7 +26,7 @@ export const CurrencyDisplay: React.FC<CurrencyDisplayProps> = ({
     <span className="inline-flex items-center gap-1">
       {showIcon && (
         <img
-          src="/memecoin.png"
+          src="/wallet.png"
           alt="MemeCoins"
           className={iconClassName}
         />

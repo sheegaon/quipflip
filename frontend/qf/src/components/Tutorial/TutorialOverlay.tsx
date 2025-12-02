@@ -105,7 +105,10 @@ const parseMarkdown = (text: string): React.ReactNode[] => {
 };
 
 const TutorialOverlay: React.FC<TutorialOverlayProps> = ({ onComplete }) => {
-  const { isActive, currentStep, advanceStep, skipTutorial, completeTutorial } = useTutorial();
+  const {
+    state: { isActive, currentStep },
+    actions: { advanceStep, skipTutorial, completeTutorial },
+  } = useTutorial();
   const [highlightRect, setHighlightRect] = useState<DOMRect | null>(null);
   const [isVisible, setIsVisible] = useState(false);
   const [cardDimensions, setCardDimensions] = useState({ width: CARD_DEFAULT_WIDTH, height: CARD_DEFAULT_HEIGHT });

@@ -35,7 +35,9 @@ const ContextBridge: React.FC<{
     actions: { refreshDashboard, refreshBalance },
   } = useGame();
   const { actions: resultsActions } = useResults();
-  const { refreshStatus } = useTutorial();
+  const {
+    actions: { refreshStatus },
+  } = useTutorial();
 
   // Sync pending results to ResultsContext when they change
   React.useEffect(() => {

@@ -736,7 +736,7 @@ const Admin: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="tile-card p-6">
               <h2 className="text-xl font-display font-bold text-ccl-navy mb-4 flex items-center gap-2">
-                <img src="/flipcoin.png" alt="" className="w-6 h-6" />
+                <img src="/wallet.png" alt="" className="w-6 h-6" />
                 Player Balances
               </h2>
               <div className="space-y-2">

@@ -194,7 +194,7 @@ export const Landing: React.FC = () => {
         {/* Logo */}
         <div className="flex justify-center mb-4">
           <img
-            src="/mememint_logo.png"
+            src="/landing_logo.png"
             alt="MemeMint"
             className="h-auto w-auto"
           />
