@@ -11,7 +11,7 @@ from uuid import UUID
 
 from backend.config import get_settings
 from backend.models.player import Player
-from backend.models.ir.player_data import PlayerData
+from backend.models.ir.player_data import IRPlayerData
 from backend.utils.passwords import hash_password
 from backend.services.player_service_base import PlayerServiceBase, PlayerServiceError
 from backend.services.username_service import UsernameService, canonicalize_username
@@ -23,7 +23,7 @@ class PlayerError(PlayerServiceError):
     """Raised when IR player service fails."""
 
 
-class PlayerService(PlayerServiceBase):
+class IRPlayerService(PlayerServiceBase):
     """Service for managing IR player accounts and wallets."""
 
     @property
@@ -34,7 +34,7 @@ class PlayerService(PlayerServiceBase):
     @property
     def player_data_model(self):
         """Return the IR player data model class."""
-        return PlayerData
+        return IRPlayerData
 
     @property
     def error_class(self):
