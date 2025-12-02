@@ -1,5 +1,5 @@
 import React from 'react';
-import { ThumbsDownIcon, ThumbsUpIcon } from './icons/EngagementIcons';
+import { ThumbsDownIcon, ThumbsUpIcon } from './EngagementIcons.tsx';
 
 export type ThumbFeedbackButtonProps =
   | {

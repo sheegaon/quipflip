@@ -12,7 +12,7 @@ export { default as SuccessNotification } from './components/SuccessNotification
 export { default as NotificationDisplay } from './components/NotificationDisplay';
 export { default as NotificationToast } from './components/NotificationToast';
 export { default as PingNotificationDisplay } from './components/PingNotificationDisplay';
-export { default as ThumbFeedbackButton } from './components/ThumbFeedbackButton';
+export { default as ThumbFeedbackButton } from './components/icons/ThumbFeedbackButton.tsx';
 export { default as EditableConfigField } from './components/EditableConfigField';
 
 // Icons

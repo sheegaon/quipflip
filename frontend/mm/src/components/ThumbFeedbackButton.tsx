@@ -1,2 +1,2 @@
-export type { ThumbFeedbackButtonProps } from '@crowdcraft/components/ThumbFeedbackButton.tsx';
-export { default } from '@crowdcraft/components/ThumbFeedbackButton.tsx';
+export type { ThumbFeedbackButtonProps } from '@crowdcraft/components/icons/ThumbFeedbackButton.tsx';
+export { default } from '@crowdcraft/components/icons/ThumbFeedbackButton.tsx';
