@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PromptRoundReview } from '../components/PhrasesetReview/PromptRoundReview';
-import { usePracticePhraseset } from '../hooks/usePracticePhraseset';
+import { usePracticePhraseset } from '@crowdcraft/hooks/usePracticePhraseset.ts';
 
 const PracticePrompt: React.FC = () => {
   const navigate = useNavigate();

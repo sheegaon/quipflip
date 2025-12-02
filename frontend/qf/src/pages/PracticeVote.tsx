@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { VoteRoundReview } from '../components/PhrasesetReview/VoteRoundReview';
-import { usePracticePhraseset } from '../hooks/usePracticePhraseset';
+import { usePracticePhraseset } from '@crowdcraft/hooks/usePracticePhraseset.ts';
 
 const PracticeVote: React.FC = () => {
   const navigate = useNavigate();

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useGame } from '../contexts/GameContext';
-import useWebSocket from './useWebSocket';
+import useWebSocket from '@crowdcraft/hooks/useWebSocket';
 import type {
   HostPingPayload,
   PartyWebSocketMessage,
