@@ -52,7 +52,7 @@ const NewUserWelcomeOverlay: React.FC = () => {
   return (
     <NewUserWelcomeOverlayShell
       isVisible={isVisible}
-      logoSrc="/quipflip_logo.png"
+      logoSrc="/landing_logo.png"
       logoAlt="Quipflip Logo"
       onDismiss={handleDismiss}
       isCloseDisabled={isLoggingOut}

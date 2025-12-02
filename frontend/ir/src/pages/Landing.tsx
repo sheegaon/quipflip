@@ -129,7 +129,7 @@ export const Landing: React.FC = () => {
         {/* Logo */}
         <div className="flex justify-center mb-4">
           <img
-            src="/initial_reaction_logo.png"
+            src="/landing_logo.png"
             alt="Initial Reaction"
             className="h-auto w-auto"
           />
