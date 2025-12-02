@@ -1,0 +1,47 @@
+"""Unified refresh token model for cross-game authentication."""
+from sqlalchemy import (
+    Column,
+    String,
+    DateTime,
+    ForeignKey,
+)
+import uuid
+from datetime import datetime, UTC
+from backend.database import Base
+from backend.models.base import get_uuid_column
+
+
+class RefreshToken(Base):
+    """Unified refresh token model for all games.
+
+    Used for JWT authentication across all games. A single refresh token
+    grants access to all games for a player (true SSO).
+    """
+
+    __tablename__ = "refresh_tokens"
+
+    token_id = get_uuid_column(primary_key=True, default=uuid.uuid4)
+    player_id = get_uuid_column(
+        ForeignKey("players.player_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    token_hash = Column(String(255), nullable=False, index=True)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+    revoked_at = Column(DateTime(timezone=True), nullable=True)
+
+    def is_active(self, now: datetime | None = None) -> bool:
+        """Return True if token has not expired or been revoked."""
+        current_time = now or datetime.now(UTC)
+        expires_at = self.expires_at
+
+        # SQLite stores timestamps without timezone info; normalize to UTC so comparisons work.
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=UTC)
+
+        return self.revoked_at is None and expires_at > current_time
+
+    def __repr__(self):
+        return (f"<RefreshToken(token_id={self.token_id}, player_id={self.player_id}, "
+                f"expires_at={self.expires_at})>")

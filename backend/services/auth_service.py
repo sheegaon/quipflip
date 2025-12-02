@@ -11,8 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.config import get_settings
 from backend.utils.model_registry import GameType
-from backend.models.player_base import PlayerBase
-from backend.models.refresh_token_base import RefreshTokenBase
+from backend.models.player import Player
+from backend.models.refresh_token import RefreshToken
 from backend.services.username_service import canonicalize_username
 from backend.utils.simple_jwt import (
     encode_jwt,
@@ -35,25 +35,30 @@ class AuthError(RuntimeError):
 
 
 class AuthService:
-    """Service responsible for credential management and JWT issuance."""
+    """Service responsible for credential management and JWT issuance.
+
+    Now unified across all games - uses shared Player and RefreshToken models.
+    Game-specific logic is handled through player_service parameter.
+    """
 
     def __init__(self, db: AsyncSession, game_type: GameType = GameType.QF):
         self.db = db
         self.game_type = game_type
         self.settings = get_settings()
 
-        # Instantiate the correct player service and refresh token model based on game type
+        # Instantiate the correct player service based on game type
+        # Player service is still game-specific for creating game-specific player_data
         if game_type == GameType.QF:
             from backend.services.qf.player_service import QFPlayerService as PlayerService
-            from backend.models.qf.refresh_token import QFRefreshToken as RefreshToken
         elif game_type == GameType.IR:
             from backend.services.ir.player_service import IRPlayerService as PlayerService
-            from backend.models.ir.refresh_token import IRRefreshToken as RefreshToken
         elif game_type == GameType.MM:
             from backend.services.mm.player_service import MMPlayerService as PlayerService
-            from backend.models.mm.refresh_token import MMRefreshToken as RefreshToken
         else:
             raise ValueError(f"Unsupported game type: {game_type}")
+
+        # Unified models for all games
+        self.player_model = Player
         self.refresh_token_model = RefreshToken
         self.player_service = PlayerService(db)
 
@@ -166,7 +171,7 @@ class AuthService:
                 raise AuthError("invalid_username") from exc
             raise
 
-    async def upgrade_guest(self, player: PlayerBase, email: str, password: str) -> PlayerBase:
+    async def upgrade_guest(self, player: Player, email: str, password: str) -> Player:
         """Upgrade a guest account to a full account.
 
         Args:
@@ -175,7 +180,7 @@ class AuthService:
             password: New password for the account
 
         Returns:
-            PlayerBase: The upgraded player
+            Player: The upgraded player
 
         Raises:
             AuthError: If player is not a guest, email is taken, or password is invalid
@@ -191,9 +196,12 @@ class AuthService:
         except PasswordValidationError as exc:
             raise AuthError(str(exc)) from exc
 
-        # Check if email is already taken
-        existing = await self.player_service.get_player_by_email(email_normalized)
-        if existing and existing.player_id != player.player_id:
+        # Check if email is already taken in unified players table
+        existing = await self.db.execute(
+            select(Player).where(Player.email == email_normalized)
+        )
+        existing_player = existing.scalar_one_or_none()
+        if existing_player and existing_player.player_id != player.player_id:
             raise AuthError("email_taken")
 
         # Update player credentials
@@ -215,16 +223,18 @@ class AuthService:
     # ------------------------------------------------------------------
     # Authentication
     # ------------------------------------------------------------------
-    async def authenticate_player(self, email: str, password: str) -> PlayerBase:
-        """Authenticate a player using email and password."""
+    async def authenticate_player(self, email: str, password: str) -> Player:
+        """Authenticate a player using email and password.
+
+        Now uses unified Player model instead of game-specific models.
+        """
         email_normalized = email.strip().lower()
         if not email_normalized:
             raise AuthError("Email/password combination is invalid")
 
-        # Use the game-specific player model for authentication
-        player_model = self.player_service.player_model
+        # Use unified Player model for authentication
         result = await self.db.execute(
-            select(player_model).where(player_model.email == email_normalized)
+            select(Player).where(Player.email == email_normalized)
         )
         player = result.scalar_one_or_none()
         if not player or not verify_password(password, player.password_hash):
@@ -234,8 +244,11 @@ class AuthService:
 
         return player
 
-    async def authenticate_player_by_username(self, username: str, password: str) -> PlayerBase:
-        """Authenticate a player using username and password."""
+    async def authenticate_player_by_username(self, username: str, password: str) -> Player:
+        """Authenticate a player using username and password.
+
+        Now uses unified Player model instead of game-specific models.
+        """
         username_stripped = username.strip()
         if not username_stripped:
             raise AuthError("Username/password combination is invalid")
@@ -245,10 +258,9 @@ class AuthService:
         if not username_canonical:
             raise AuthError("Username/password combination is invalid")
 
-        # Use the game-specific player model for authentication
-        player_model = self.player_service.player_model
+        # Use unified Player model for authentication
         result = await self.db.execute(
-            select(player_model).where(player_model.username_canonical == username_canonical)
+            select(Player).where(Player.username_canonical == username_canonical)
         )
         player = result.scalar_one_or_none()
         if not player or not verify_password(password, player.password_hash):
@@ -261,7 +273,7 @@ class AuthService:
     # ------------------------------------------------------------------
     # Token helpers
     # ------------------------------------------------------------------
-    def _access_token_payload(self, player: PlayerBase) -> dict[str, str]:
+    def _access_token_payload(self, player: Player) -> dict[str, str]:
         expire = datetime.now(UTC) + timedelta(minutes=self.settings.access_token_exp_minutes)
         return {
             "sub": str(player.player_id),
@@ -269,13 +281,13 @@ class AuthService:
             "exp": int(expire.timestamp()),
         }
 
-    def create_access_token(self, player: PlayerBase) -> tuple[str, int]:
+    def create_access_token(self, player: Player) -> tuple[str, int]:
         payload = self._access_token_payload(player)
         token = encode_jwt(payload, self.settings.secret_key, algorithm=self.settings.jwt_algorithm)
         expires_in = self.settings.access_token_exp_minutes * 60
         return token, expires_in
 
-    def create_short_lived_token(self, player: PlayerBase, expires_seconds: int) -> tuple[str, int]:
+    def create_short_lived_token(self, player: Player, expires_seconds: int) -> tuple[str, int]:
         """Create a short-lived access token with custom expiration (for WebSocket auth).
 
         Args:
@@ -294,7 +306,7 @@ class AuthService:
         token = encode_jwt(payload, self.settings.secret_key, algorithm=self.settings.jwt_algorithm)
         return token, expires_seconds
 
-    async def _store_refresh_token(self, player: PlayerBase, raw_token: str, expires_at: datetime) -> RefreshTokenBase:
+    async def _store_refresh_token(self, player: Player, raw_token: str, expires_at: datetime) -> RefreshToken:
         token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
         refresh_token = self.refresh_token_model(
             token_id=uuid.uuid4(),
@@ -324,8 +336,8 @@ class AuthService:
         )
         await self.db.commit()
 
-    async def get_player_from_refresh_token(self, raw_token: str) -> PlayerBase | None:
-        """Return the player linked to the given refresh token without rotating it."""
+    async def get_player_from_refresh_token(self, raw_token: str) -> Player | None:
+        """Return the unified player linked to the given refresh token without rotating it."""
         if not raw_token:
             return None
 
@@ -337,9 +349,13 @@ class AuthService:
         if not refresh_token or not refresh_token.is_active():
             return None
 
-        return await self.player_service.get_player_by_id(refresh_token.player_id)
+        # Query unified Player model
+        result = await self.db.execute(
+            select(Player).where(Player.player_id == refresh_token.player_id)
+        )
+        return result.scalar_one_or_none()
 
-    async def issue_tokens(self, player: PlayerBase, *, rotate_existing: bool = True) -> tuple[str, str, int]:
+    async def issue_tokens(self, player: Player, *, rotate_existing: bool = True) -> tuple[str, str, int]:
         if rotate_existing:
             await self.revoke_all_refresh_tokens(player.player_id)
 
@@ -363,7 +379,7 @@ class AuthService:
         except InvalidTokenError as exc:
             raise AuthError("Invalid token error, please try again") from exc
 
-    async def exchange_refresh_token(self, raw_token: str) -> tuple[PlayerBase, str, str, int]:
+    async def exchange_refresh_token(self, raw_token: str) -> tuple[Player, str, str, int]:
         try:
             token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
             result = await self.db.execute(
@@ -373,7 +389,11 @@ class AuthService:
             if not refresh_token or not refresh_token.is_active():
                 raise AuthError("Token could not be refreshed, please log in again")
 
-            player = await self.player_service.get_player_by_id(refresh_token.player_id)
+            # Query unified Player model
+            result = await self.db.execute(
+                select(Player).where(Player.player_id == refresh_token.player_id)
+            )
+            player = result.scalar_one_or_none()
             if not player:
                 raise AuthError("Token could not be refreshed, please log in again")
 
