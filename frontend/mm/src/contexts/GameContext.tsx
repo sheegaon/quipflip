@@ -3,8 +3,8 @@ import React, { createContext, useContext, useState, useEffect, useRef, useCallb
 import { useNavigate } from 'react-router-dom';
 import apiClient from '@/api/client';
 import axios from 'axios';
-import { useSmartPolling, PollConfigs } from '../utils/smartPolling';
-import { getActionErrorMessage } from '../utils/errorMessages';
+import { useSmartPolling, PollConfigs } from '@crowdcraft/utils/smartPolling.ts';
+import { getActionErrorMessage } from '@crowdcraft/utils/errorMessages.ts';
 import { gameContextLogger } from '@crowdcraft/utils/logger.ts';
 import { detectUserSession, associateVisitorWithPlayer } from '@crowdcraft/services/sessionDetection';
 import { SessionState } from '@crowdcraft/types/session.ts';

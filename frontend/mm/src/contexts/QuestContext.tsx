@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import apiClient from '@/api/client';
-import { getActionErrorMessage } from '../utils/errorMessages';
+import { getActionErrorMessage } from '@crowdcraft/utils/errorMessages.ts';
 import { gameContextLogger } from '@crowdcraft/utils/logger.ts';
 import type { Quest, ClaimQuestRewardResponse } from '@crowdcraft/api/types.ts';
 

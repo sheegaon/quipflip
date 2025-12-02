@@ -8,7 +8,7 @@ import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { ThumbFeedbackButton } from '../components/ThumbFeedbackButton';
 import { useTimer } from '@crowdcraft/hooks/useTimer.ts';
 import { usePhraseValidation } from '../hooks/usePhraseValidation';
-import { getRandomMessage, loadingMessages } from '../utils/brandedMessages';
+import { quipflipBranding } from '@crowdcraft/utils/brandedMessages.ts';
 import type { PromptState, SubmitPhraseResponse } from '@crowdcraft/api/types.ts';
 import { promptRoundLogger } from '@crowdcraft/utils/logger.ts';
 import { TrackingIcon } from '@crowdcraft/components/icons/NavigationIcons.tsx';
@@ -16,6 +16,8 @@ import { usePartyMode } from '../contexts/PartyModeContext';
 import PartyRoundModal from '../components/party/PartyRoundModal';
 import { usePartyRoundCoordinator } from '../hooks/usePartyRoundCoordinator';
 import { usePartyNavigation } from '../hooks/usePartyNavigation';
+
+const { getRandomMessage, loadingMessages } = quipflipBranding;
 
 const isCanceledRequest = (error: unknown): boolean => {
   if (!error || typeof error !== 'object') {

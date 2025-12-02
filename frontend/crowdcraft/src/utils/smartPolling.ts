@@ -448,4 +448,14 @@ export const PollConfigs = {
     retryOnError: true,
     maxRetries: 2,
   },
+  ROUND_AVAILABILITY: {
+    key: 'round-availability',
+    interval: 45000,        // Poll every 45 seconds for updated availability
+    maxInterval: 180000,    // Cap at 3 minutes during backoff
+    backoffMultiplier: 1.5,
+    immediateOnFocus: true,
+    pauseWhenInactive: true,
+    retryOnError: true,
+    maxRetries: 3,
+  },
 } as const;
