@@ -5,7 +5,7 @@ import { Header } from '../components/Header';
 import apiClient, { extractErrorMessage } from '@/api/client';
 import { TrackingIcon } from '@crowdcraft/components/icons/NavigationIcons.tsx';
 import { VoteRoundIcon } from '@crowdcraft/components/icons/RoundIcons.tsx';
-import { EditableConfigField } from '../components/EditableConfigField';
+import EditableConfigField from '../components/EditableConfigField';
 import { adminLogger } from '@crowdcraft/utils/logger.ts';
 import type { AdminPlayerSummary } from '@crowdcraft/api/types.ts';
 import { formatDateTimeInUserZone } from '@crowdcraft/utils/datetime.ts';

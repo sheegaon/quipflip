@@ -356,8 +356,9 @@ export const GameProvider: React.FC<{
         return `${result.phraseset_id}-${result.role}`;
       };
 
-      const deduplicatedResults = data.pending_results.filter((result, index, self) =>
-        index === self.findIndex((r) => getResultKey(r) === getResultKey(result))
+      const deduplicatedResults = data.pending_results.filter(
+        (result: PendingResult, index: number, self: PendingResult[]) =>
+          index === self.findIndex((r: PendingResult) => getResultKey(r) === getResultKey(result))
       );
 
       if (deduplicatedResults.length !== data.pending_results.length) {

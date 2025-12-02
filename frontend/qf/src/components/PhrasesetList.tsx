@@ -1,6 +1,6 @@
 import React from 'react';
 import type { PhrasesetSummary } from '@crowdcraft/api/types.ts';
-import { StatusBadge } from './StatusBadge';
+import { StatusBadge, type StatusType } from './StatusBadge';
 import { getUniqueIdForSummary } from '@crowdcraft/utils/phrasesetHelpers.ts';
 
 interface PhrasesetListProps {
@@ -21,6 +21,21 @@ export const PhrasesetList: React.FC<PhrasesetListProps> = ({
   onSelect,
   isLoading,
 }) => {
+  const statusToBadgeType = (status: PhrasesetSummary['status']): StatusType => {
+    switch (status) {
+      case 'finalized':
+        return 'success';
+      case 'abandoned':
+        return 'warning';
+      case 'active':
+      case 'voting':
+      case 'closing':
+        return 'info';
+      default:
+        return 'neutral';
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="p-6 text-center text-sm text-gray-500">Loading phrasesets…</div>
@@ -65,7 +80,7 @@ export const PhrasesetList: React.FC<PhrasesetListProps> = ({
                   </p>
                 )}
               </div>
-              <StatusBadge status={phraseset.status} />
+              <StatusBadge status={statusToBadgeType(phraseset.status)} text={phraseset.status.replace('_', ' ')} />
             </div>
           </button>
         );

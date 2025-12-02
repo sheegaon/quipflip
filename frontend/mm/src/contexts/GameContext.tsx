@@ -313,7 +313,7 @@ export const GameProvider: React.FC<{
 
     try {
       const availability = await apiClient.getMemeMintRoundAvailability(signal);
-      setRoundAvailability(availability);
+      setRoundAvailability(availability as RoundAvailability);
     } catch (err) {
       if (axios.isCancel(err) || signal?.aborted) {
         return;
@@ -350,11 +350,11 @@ export const GameProvider: React.FC<{
         setUsername(data.player.username);
       }
 
-      setCurrentVoteRound(data.current_vote_round ?? null);
-      setCurrentCaptionRound(data.current_caption_round ?? null);
+      setCurrentVoteRound((data.current_vote_round as unknown as VoteRoundState | null) ?? null);
+      setCurrentCaptionRound((data.current_caption_round as unknown as CaptionSubmissionResult | null) ?? null);
 
       if (data.round_availability) {
-        setRoundAvailability(data.round_availability);
+        setRoundAvailability(data.round_availability as RoundAvailability);
       } else {
         refreshRoundAvailability(signal);
       }

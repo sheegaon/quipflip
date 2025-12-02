@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useGame } from '../contexts/GameContext';
 import { useQuests } from '../contexts/QuestContext';
 import { QuestCard } from '../components/QuestCard';
-import { SuccessNotification } from '../components/SuccessNotification';
+import SuccessNotification from '../components/SuccessNotification';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import type { Quest } from '@crowdcraft/api/types.ts';
 import { questsLogger } from '@crowdcraft/utils/logger.ts';

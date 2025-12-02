@@ -5,7 +5,7 @@ import apiClient, { extractErrorMessage } from '@/api/client';
 import { Timer } from '../components/Timer';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
-import { ThumbFeedbackButton } from '../components/ThumbFeedbackButton';
+import ThumbFeedbackButton from '../components/ThumbFeedbackButton';
 import { useTimer } from '@crowdcraft/hooks/useTimer.ts';
 import { usePhraseValidation } from '../hooks/usePhraseValidation';
 import { quipflipBranding } from '@crowdcraft/utils/brandedMessages.ts';

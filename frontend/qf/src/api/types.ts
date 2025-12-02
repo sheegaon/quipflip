@@ -1,35 +1,105 @@
 // API Response Types based on backend documentation
-// Import common types from crowdcraft, extend them with game-specific fields
-import type {
-  ApiError,
-  ApiInfo,
-  AuthTokenResponse,
-  Caption,
-  GameStatus,
-  HealthResponse,
-  MemeCaptionOption,
-  MemeDetails,
-  MemeVoteResult,
-  SuggestUsernameResponse,
-  VoteRoundState,
-  WsAuthTokenResponse,
-} from '../../../crowdcraft/src/api/types.ts';
+// Common types shared across games
+export interface AuthTokenResponse {
+  access_token: string;
+  refresh_token: string;
+  token_type: 'bearer';
+  expires_in: number;
+  player_id: string;
+  username: string;
+}
 
-// Re-export common types for convenience
-export type {
-  ApiError,
-  ApiInfo,
-  AuthTokenResponse,
-  Caption,
-  GameStatus,
-  HealthResponse,
-  MemeCaptionOption,
-  MemeDetails,
-  MemeVoteResult,
-  SuggestUsernameResponse,
-  VoteRoundState,
-  WsAuthTokenResponse,
-};
+export interface WsAuthTokenResponse {
+  token: string;
+  expires_in: number;
+  token_type: 'bearer';
+}
+
+export interface SuggestUsernameResponse {
+  suggested_username: string;
+}
+
+export interface ApiError {
+  detail: string;
+  message?: string;
+  response?: {
+    status?: number;
+    statusText?: string;
+    data?: unknown;
+  };
+}
+
+export interface HealthResponse {
+  status: string;
+  database: string;
+  redis: string;
+}
+
+export interface ApiInfo {
+  message: string;
+  version: string;
+  environment: string;
+  docs: string;
+}
+
+export interface GameStatus {
+  version: string;
+  environment: string;
+  phrase_validation: {
+    mode: 'local' | 'remote';
+    healthy: boolean | null;
+  };
+}
+
+export interface Caption {
+  caption_id: string;
+  text: string;
+  author_username?: string | null;
+  is_ai?: boolean;
+  is_bot?: boolean;
+  is_system?: boolean;
+  is_seed_caption?: boolean;
+  is_circle_member?: boolean;
+  in_circle?: boolean;
+}
+
+export interface MemeDetails {
+  meme_id: string;
+  image_url: string;
+  title?: string;
+  alt_text?: string;
+}
+
+export interface MemeCaptionOption {
+  caption_id: string;
+  text: string;
+  author?: string;
+  is_original?: boolean;
+  riff_on_caption_id?: string | null;
+}
+
+export interface MemeVoteResult {
+  round_id: string;
+  selected_caption_id: string;
+  payout: number;
+  wallet?: number;
+  vault?: number;
+  meme?: MemeDetails;
+  captions?: MemeCaptionOption[];
+  winning_caption_id?: string | null;
+  has_submitted_caption?: boolean;
+}
+
+export interface VoteRoundState {
+  round_id: string;
+  image_id: string;
+  image_url: string;
+  thumbnail_url?: string | null;
+  attribution_text?: string | null;
+  captions: Caption[];
+  expires_at: string;
+  cost: number;
+}
 
 // Notification types
 export type NotificationType = 'copy_submitted' | 'vote_submitted';
