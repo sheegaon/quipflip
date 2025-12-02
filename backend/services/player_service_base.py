@@ -24,6 +24,7 @@ from backend.services.username_service import (
 
 if TYPE_CHECKING:
     from backend.models.player_base import PlayerBase
+    from backend.models.player import Player
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +65,12 @@ class PlayerServiceBase(ABC):
     @abstractmethod
     def game_type(self) -> GameType:
         """Return the game type for this service."""
+        pass
+
+    @property
+    @abstractmethod
+    def player_data_model(self) -> Type[Any]:
+        """Return the game-specific player data model class for this service."""
         pass
 
     def apply_admin_status(self, player: "PlayerBase | None") -> "PlayerBase | None":
@@ -322,6 +329,8 @@ class PlayerServiceBase(ABC):
 
         # Try to create guest account, retry with new email if collision
         max_retries = 10
+        initial_balance = self._get_initial_balance()
+
         for attempt in range(max_retries):
             try:
                 player_id = str(uuid.uuid4())
@@ -331,13 +340,22 @@ class PlayerServiceBase(ABC):
                     username_canonical=username_canonical,
                     email=guest_email,
                     password_hash=password_hash,
-                    wallet=self._get_initial_balance(),
+                    wallet=initial_balance,
                     vault=0,
                     created_at=datetime.now(UTC),
                     is_guest=True,
                     is_admin=False,
                 )
                 self.db.add(player)
+
+                # Also create game-specific player data record
+                player_data = self.player_data_model(
+                    player_id=player_id,
+                    wallet=initial_balance,
+                    vault=0,
+                )
+                self.db.add(player_data)
+
                 await self.db.commit()
                 await self.db.refresh(player)
 
@@ -403,7 +421,7 @@ class PlayerServiceBase(ABC):
         normalized_email = email.strip().lower()
         normalized_username = normalize_username(username)
         username_canonical = canonicalize_username(normalized_username)
-        
+
         if not username_canonical:
             raise ValueError("invalid_username")
 
@@ -422,19 +440,30 @@ class PlayerServiceBase(ABC):
 
             # Create new player
             player_id = str(uuid.uuid4())
+            initial_balance = self._get_initial_balance()
+
             player = self.player_model(
                 player_id=player_id,
                 username=normalized_username,
                 username_canonical=username_canonical,
                 email=normalized_email,
                 password_hash=password_hash,
-                wallet=self._get_initial_balance(),
+                wallet=initial_balance,
                 vault=0,
                 created_at=datetime.now(UTC),
                 is_guest=is_guest,
                 is_admin=self._should_be_admin(normalized_email) if not is_guest else False,
             )
             self.db.add(player)
+
+            # Also create game-specific player data record
+            player_data = self.player_data_model(
+                player_id=player_id,
+                wallet=initial_balance,
+                vault=0,
+            )
+            self.db.add(player_data)
+
             await self.db.commit()
             await self.db.refresh(player)
 

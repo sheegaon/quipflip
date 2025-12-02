@@ -8,6 +8,7 @@ import uuid
 import logging
 
 from backend.models.qf.player import QFPlayer
+from backend.models.qf.player_data import QFPlayerData
 from backend.models.qf.daily_bonus import QFDailyBonus
 from backend.models.qf.phraseset import Phraseset
 from backend.models.qf.round import Round
@@ -36,6 +37,11 @@ class QFPlayerService(PlayerServiceBase):
     def player_model(self):
         """Return the QF player model class."""
         return QFPlayer
+
+    @property
+    def player_data_model(self):
+        """Return the QF player data model class."""
+        return QFPlayerData
 
     @property
     def error_class(self):

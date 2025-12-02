@@ -11,6 +11,7 @@ from uuid import UUID
 
 from backend.config import get_settings
 from backend.models.ir.player import IRPlayer
+from backend.models.ir.player_data import IRPlayerData
 from backend.utils.passwords import hash_password
 from backend.services.player_service_base import PlayerServiceBase, PlayerServiceError
 from backend.services.username_service import UsernameService, canonicalize_username
@@ -29,6 +30,11 @@ class IRPlayerService(PlayerServiceBase):
     def player_model(self):
         """Return the IR player model class."""
         return IRPlayer
+
+    @property
+    def player_data_model(self):
+        """Return the IR player data model class."""
+        return IRPlayerData
 
     @property
     def error_class(self):
