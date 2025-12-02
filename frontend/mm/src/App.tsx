@@ -4,7 +4,7 @@ import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import { useGame } from './contexts/GameContext';
 import { AppProviders } from './contexts/AppProviders';
-import { ErrorNotification } from './components/ErrorNotification';
+import ErrorNotification from './components/ErrorNotification';
 import { Header } from './components/Header';
 import { SubHeader } from './components/SubHeader';
 import TutorialOverlay from './components/Tutorial/TutorialOverlay';
