@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import datetime, UTC
 from uuid import UUID
+from typing import Optional
 import logging
 
 from backend.models.player_base import PlayerBase
@@ -31,14 +32,21 @@ class TutorialService:
         else:
             raise ValueError(f"Unsupported game type: {game_type}")
 
-    async def _get_player(self, player_id: UUID) -> PlayerBase:
-        """Fetch player data by ID or raise ValueError if not found."""
+    async def _get_player(
+        self, player_id: UUID, allow_missing: bool = False
+    ) -> Optional[PlayerBase]:
+        """Fetch player data by ID.
+
+        When ``allow_missing`` is True, return ``None`` instead of raising when the
+        player record does not exist. This helps endpoints gracefully handle users
+        who have not yet created game-specific player data.
+        """
         result = await self.db.execute(
             select(self.player_data_model).where(self.player_data_model.player_id == player_id)
         )
         player = result.scalar_one_or_none()
 
-        if not player:
+        if not player and not allow_missing:
             raise ValueError("Player not found")
 
         return player
@@ -53,9 +61,24 @@ class TutorialService:
             tutorial_completed_at=player.tutorial_completed_at,
         )
 
+    @staticmethod
+    def _create_default_tutorial_status() -> TutorialStatus:
+        """Return a default tutorial status for players without stored data."""
+        return TutorialStatus(
+            tutorial_completed=False,
+            tutorial_progress="not_started",
+            tutorial_started_at=None,
+            tutorial_completed_at=None,
+        )
+
     async def get_tutorial_status(self, player_id: UUID) -> TutorialStatus:
         """Get the tutorial status for a player."""
-        player = await self._get_player(player_id)
+        player = await self._get_player(player_id, allow_missing=True)
+
+        if not player:
+            logger.info("Player not found when fetching tutorial status; returning default")
+            return self._create_default_tutorial_status()
+
         return self._create_tutorial_status(player)
 
     async def update_tutorial_progress(
