@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { GUEST_CREDENTIALS_KEY } from '@crowdcraft/utils/storageKeys.ts';
 import { LeaderboardIcon } from '@crowdcraft/components/icons/NavigationIcons.tsx';
-import '@crowdcraft/components/NewUserWelcomeOverlay.css';
+import NewUserWelcomeOverlayShell from '@crowdcraft/components/NewUserWelcomeOverlay.tsx';
+import QFWelcomeInstructions from './QFWelcomeInstructions';
 
 const NewUserWelcomeOverlay: React.FC = () => {
   const { state, actions } = useGame();
@@ -49,78 +50,36 @@ const NewUserWelcomeOverlay: React.FC = () => {
   }
 
   return (
-    <div className="guest-welcome-overlay">
-      <div className="guest-welcome-modal">
-        <button
-          onClick={handleDismiss}
-          disabled={isLoggingOut}
-          className="guest-welcome-close"
-          aria-label="Close"
-        >
-          <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="12" cy="12" r="10" fill="currentColor" opacity="0.1" />
-            <path
-              d="M8 8L16 16M16 8L8 16"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-          </svg>
-        </button>
+    <NewUserWelcomeOverlayShell
+      isVisible={isVisible}
+      logoSrc="/quipflip_logo.png"
+      logoAlt="Quipflip Logo"
+      onDismiss={handleDismiss}
+      isCloseDisabled={isLoggingOut}
+    >
+      <QFWelcomeInstructions />
 
-        <div className="guest-welcome-content">
-          <div className="flex justify-center mb-4">
-            <img src="/quipflip_logo.png" alt="Quipflip Logo" className="h-16" />
-          </div>
+      <hr className="guest-welcome-divider" />
 
-          <h2 className="guest-welcome-title">How To Play</h2>
-
-          <ul className="guest-welcome-list">
-            <li>
-              <strong>Quip:</strong> Write the original answer to a fill-in-the-blank prompt
-            </li>
-            <li>
-              <strong>Impostor:</strong> Fake the original answer so it blends in with the real one
-            </li>
-            <li>
-              <strong>Guess:</strong> Pick which answer you think was written first
-            </li>
-          </ul>
-
-          <div className="guest-welcome-example">
-            <strong>Example:</strong> In a Quip Round, you might answer "The best pizza topping is
-            ______" with "peppers and mushrooms." In the Impostor Round (fake the original), other
-            players will try to write similar answers without seeing the prompt. Guessers then try
-            to pick which answer was the original.
-          </div>
-
-          <hr className="guest-welcome-divider" />
-
-          {player.is_guest ? (
-            <div className="guest-welcome-login-prompt">
-              <LeaderboardIcon className="h-14 w-14" />
-              <p>
-                <a
-                  href="#"
-                  onClick={handleLoginClick}
-                  className="guest-welcome-login-link"
-                >
-                  {isLoggingOut ? 'Logging out...' : 'Log in or create a free account'}
-                </a>{' '}
-                to link your stats.
-              </p>
-            </div>
-          ) : (
-            <div className="guest-welcome-login-prompt">
-              <LeaderboardIcon className="h-14 w-14" />
-              <p className="text-center">
-                You&apos;re all set! Head to your dashboard to start playing and track your stats.
-              </p>
-            </div>
-          )}
+      {player.is_guest ? (
+        <div className="guest-welcome-login-prompt">
+          <LeaderboardIcon className="h-14 w-14" />
+          <p>
+            <a href="#" onClick={handleLoginClick} className="guest-welcome-login-link">
+              {isLoggingOut ? 'Logging out...' : 'Log in or create a free account'}
+            </a>{' '}
+            to link your stats.
+          </p>
         </div>
-      </div>
-    </div>
+      ) : (
+        <div className="guest-welcome-login-prompt">
+          <LeaderboardIcon className="h-14 w-14" />
+          <p className="text-center">
+            You&apos;re all set! Head to your dashboard to start playing and track your stats.
+          </p>
+        </div>
+      )}
+    </NewUserWelcomeOverlayShell>
   );
 };
 

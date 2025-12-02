@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useGame } from '../contexts/GameContext';
-import { getContextualErrorMessage } from '../utils/errorMessages';
+import { getContextualErrorMessage } from '@crowdcraft/utils/errorMessages.ts';
 
 interface ErrorNotificationProps {
   error?: string;

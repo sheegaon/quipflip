@@ -1,5 +1,5 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
-import { getContextualErrorMessage, getActionErrorMessage } from '../utils/errorMessages';
+import { getContextualErrorMessage, getActionErrorMessage } from '@crowdcraft/utils/errorMessages.ts';
 import { offlineQueue, shouldQueueAction } from '@crowdcraft/utils/offlineQueue.ts';
 import { USERNAME_STORAGE_KEY } from '@crowdcraft/utils/storageKeys.ts';
 import type {

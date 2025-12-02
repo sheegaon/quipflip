@@ -1,9 +1,9 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import apiClient from '@/api/client';
-import { getActionErrorMessage } from '../utils/errorMessages';
+import { getActionErrorMessage } from '@crowdcraft/utils/errorMessages.ts';
 import { gameContextLogger } from '@crowdcraft/utils/logger.ts';
-import { buildPhrasesetListKey, type PhrasesetListKeyParams } from '../utils/gameKeys';
+import { buildPhrasesetListKey, type PhrasesetListKeyParams } from '@crowdcraft/utils/gameKeys.ts';
 import type {
   PendingResult,
   PhrasesetListResponse,

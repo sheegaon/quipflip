@@ -1,6 +1,7 @@
 // Components
 export { BalanceFlipper } from './components/BalanceFlipper';
 export { Pagination } from './components/Pagination';
+export { default as NewUserWelcomeOverlay } from './components/NewUserWelcomeOverlay';
 
 // Icons
 export * from './components/icons/ArrowIcons';
@@ -22,6 +23,7 @@ export * from './hooks/useOfflineCache'
 export * from './hooks/usePhraseValidation'
 export * from './hooks/useTimer'
 export * from './hooks/useWebSocket'
+export * from './utils'
 
 // Types
 export * from './types/errors'
