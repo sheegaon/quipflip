@@ -22,7 +22,7 @@ class Round(Base):
     __tablename__ = "qf_rounds"
 
     round_id = get_uuid_column(primary_key=True, default=uuid.uuid4)
-    player_id = get_uuid_column(ForeignKey("qf_players.player_id", ondelete="CASCADE"), nullable=False, index=True)
+    player_id = get_uuid_column(ForeignKey("players.player_id", ondelete="CASCADE"), nullable=False, index=True)
     round_type = Column(String(20), nullable=False)  # quip/prompt, impostor/copy, vote
     status = Column(String(20), nullable=False)  # active, submitted, expired, abandoned
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False, index=True)
@@ -35,8 +35,8 @@ class Round(Base):
     prompt_text = Column(String(500), nullable=True)  # Denormalized
     submitted_phrase = Column(String(100), nullable=True)  # Prompt player's phrase
     phraseset_status = Column(String(20), nullable=True)  # waiting_copies, waiting_copy1, active, finalized, abandoned
-    copy1_player_id = get_uuid_column(ForeignKey("qf_players.player_id", ondelete="CASCADE"), nullable=True, index=True)
-    copy2_player_id = get_uuid_column(ForeignKey("qf_players.player_id", ondelete="CASCADE"), nullable=True, index=True)
+    copy1_player_id = get_uuid_column(ForeignKey("players.player_id", ondelete="CASCADE"), nullable=True, index=True)
+    copy2_player_id = get_uuid_column(ForeignKey("players.player_id", ondelete="CASCADE"), nullable=True, index=True)
 
     # Impostor/copy-specific fields (nullable for non-copy rounds)
     prompt_round_id = get_uuid_column(ForeignKey("qf_rounds.round_id"), nullable=True, index=True)
@@ -49,11 +49,11 @@ class Round(Base):
     vote_submitted_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
-    player = relationship("QFPlayer", back_populates="rounds", foreign_keys=[player_id])
+    player = relationship("Player", back_populates="rounds", foreign_keys=[player_id])
     prompt = relationship("Prompt", back_populates="rounds")
     phraseset = relationship("Phraseset", back_populates="vote_rounds", foreign_keys=[phraseset_id])
-    copy1_player = relationship("QFPlayer", foreign_keys=[copy1_player_id])
-    copy2_player = relationship("QFPlayer", foreign_keys=[copy2_player_id])
+    copy1_player = relationship("Player", foreign_keys=[copy1_player_id])
+    copy2_player = relationship("Player", foreign_keys=[copy2_player_id])
 
     # Self-referential for copy rounds
     prompt_round = relationship("Round", remote_side=[round_id], foreign_keys=[prompt_round_id])

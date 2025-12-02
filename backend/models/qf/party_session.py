@@ -30,7 +30,7 @@ class PartySession(Base):
 
     # Host player reference
     host_player_id = get_uuid_column(
-        ForeignKey("qf_players.player_id", ondelete="CASCADE"),
+        ForeignKey("players.player_id", ondelete="CASCADE"),
         nullable=False
     )
 
@@ -66,7 +66,7 @@ class PartySession(Base):
     completed_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
-    host_player = relationship("QFPlayer", foreign_keys=[host_player_id])
+    host_player = relationship("Player", foreign_keys=[host_player_id])
     participants = relationship(
         "PartyParticipant",
         back_populates="session",

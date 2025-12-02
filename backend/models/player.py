@@ -39,6 +39,120 @@ class Player(Base):
     phraseset_activities = relationship(
         "PhrasesetActivity", back_populates="player", cascade="all, delete-orphan"
     )
+    rounds = relationship("Round", back_populates="player", foreign_keys="Round.player_id")
+    votes = relationship("Vote", back_populates="player")
+    transactions = relationship("QFTransaction", back_populates="player")
+    daily_bonuses = relationship("QFDailyBonus", back_populates="player")
+    result_views = relationship("QFResultView", back_populates="player")
+    abandoned_prompts = relationship("PlayerAbandonedPrompt", back_populates="player")
+    refresh_tokens = relationship("QFRefreshToken", back_populates="player", cascade="all, delete-orphan")
+    quests = relationship("QFQuest", back_populates="player")
+    qf_player_data = relationship(
+        "QFPlayerData",
+        uselist=False,
+        back_populates="player",
+        cascade="all, delete-orphan",
+        lazy="joined",
+    )
+
+    def _ensure_qf_data(self):
+        """Ensure a QFPlayerData record exists for delegated properties."""
+
+        if self.qf_player_data is None:
+            from backend.models.qf.player_data import QFPlayerData
+
+            self.qf_player_data = QFPlayerData(player_id=self.player_id)
+        return self.qf_player_data
+
+    @property
+    def wallet(self) -> int:
+        data = self.qf_player_data
+        return data.wallet if data else 0
+
+    @wallet.setter
+    def wallet(self, value: int) -> None:
+        self._ensure_qf_data().wallet = value
+
+    @property
+    def vault(self) -> int:
+        data = self.qf_player_data
+        return data.vault if data else 0
+
+    @vault.setter
+    def vault(self, value: int) -> None:
+        self._ensure_qf_data().vault = value
+
+    @property
+    def active_round_id(self):
+        data = self.qf_player_data
+        return data.active_round_id if data else None
+
+    @active_round_id.setter
+    def active_round_id(self, value):
+        self._ensure_qf_data().active_round_id = value
+
+    @property
+    def tutorial_completed(self):
+        data = self.qf_player_data
+        return data.tutorial_completed if data else False
+
+    @tutorial_completed.setter
+    def tutorial_completed(self, value):
+        self._ensure_qf_data().tutorial_completed = value
+
+    @property
+    def tutorial_progress(self):
+        data = self.qf_player_data
+        return data.tutorial_progress if data else "not_started"
+
+    @tutorial_progress.setter
+    def tutorial_progress(self, value):
+        self._ensure_qf_data().tutorial_progress = value
+
+    @property
+    def tutorial_started_at(self):
+        data = self.qf_player_data
+        return data.tutorial_started_at if data else None
+
+    @tutorial_started_at.setter
+    def tutorial_started_at(self, value):
+        self._ensure_qf_data().tutorial_started_at = value
+
+    @property
+    def tutorial_completed_at(self):
+        data = self.qf_player_data
+        return data.tutorial_completed_at if data else None
+
+    @tutorial_completed_at.setter
+    def tutorial_completed_at(self, value):
+        self._ensure_qf_data().tutorial_completed_at = value
+
+    @property
+    def consecutive_incorrect_votes(self) -> int:
+        data = self.qf_player_data
+        return data.consecutive_incorrect_votes if data else 0
+
+    @consecutive_incorrect_votes.setter
+    def consecutive_incorrect_votes(self, value: int):
+        self._ensure_qf_data().consecutive_incorrect_votes = value
+
+    @property
+    def vote_lockout_until(self):
+        data = self.qf_player_data
+        return data.vote_lockout_until if data else None
+
+    @vote_lockout_until.setter
+    def vote_lockout_until(self, value):
+        self._ensure_qf_data().vote_lockout_until = value
+
+    @property
+    def flag_dismissal_streak(self) -> int:
+        data = self.qf_player_data
+        return data.flag_dismissal_streak if data else 0
+
+    @flag_dismissal_streak.setter
+    def flag_dismissal_streak(self, value: int):
+        self._ensure_qf_data().flag_dismissal_streak = value
 
     def __repr__(self):
         return (f"<Player(player_id={self.player_id}, username={self.username}, "

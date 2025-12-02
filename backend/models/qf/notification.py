@@ -23,7 +23,7 @@ class QFNotification(NotificationBase):
 
     # Override player_id to add QF-specific foreign key constraint
     player_id = get_uuid_column(
-        ForeignKey("qf_players.player_id", ondelete="CASCADE"),
+        ForeignKey("players.player_id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
@@ -33,12 +33,12 @@ class QFNotification(NotificationBase):
         ForeignKey("qf_phrasesets.phraseset_id", ondelete="CASCADE"), nullable=False
     )
     actor_player_id = get_uuid_column(
-        ForeignKey("qf_players.player_id", ondelete="CASCADE"), nullable=True
+        ForeignKey("players.player_id", ondelete="CASCADE"), nullable=True
     )
 
     # Relationships
-    player = relationship("QFPlayer", foreign_keys=[player_id])
-    actor_player = relationship("QFPlayer", foreign_keys=[actor_player_id])
+    player = relationship("Player", foreign_keys=[player_id])
+    actor_player = relationship("Player", foreign_keys=[actor_player_id])
     phraseset = relationship("Phraseset")
 
     # Indexes for efficient querying

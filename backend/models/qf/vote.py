@@ -13,7 +13,7 @@ class Vote(Base):
 
     vote_id = get_uuid_column(primary_key=True, default=uuid.uuid4)
     phraseset_id = get_uuid_column(ForeignKey("qf_phrasesets.phraseset_id"), nullable=False, index=True)
-    player_id = get_uuid_column(ForeignKey("qf_players.player_id", ondelete="CASCADE"), nullable=False, index=True)
+    player_id = get_uuid_column(ForeignKey("players.player_id", ondelete="CASCADE"), nullable=False, index=True)
     voted_phrase = Column(String(100), nullable=False)
     correct = Column(Boolean, nullable=False)
     payout = Column(Integer, nullable=False)  # 5 or 0
@@ -21,7 +21,7 @@ class Vote(Base):
 
     # Relationships
     phraseset = relationship("Phraseset", back_populates="votes")
-    player = relationship("QFPlayer", back_populates="votes")
+    player = relationship("Player", back_populates="votes")
 
     # Constraints
     __table_args__ = (
