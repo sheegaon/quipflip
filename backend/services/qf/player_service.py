@@ -104,7 +104,7 @@ class QFPlayerService(PlayerServiceBase):
             error_msg = str(e)
             if "invalid characters" in error_msg:
                 raise InvalidUsernameError("Username contains invalid characters or does not meet requirements")
-            elif "inappropriate language" in error_msg:
+            elif "inappropriate language" in error_msg or "safety checks" in error_msg:
                 raise InvalidUsernameError("Username contains inappropriate language")
             elif "already in use" in error_msg:
                 raise UsernameTakenError("Username is already in use by another player")

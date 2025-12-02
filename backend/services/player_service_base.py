@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from backend.config import get_settings
+from backend.services.ai.openai_api import OpenAIAPIError
 from backend.utils.model_registry import GameType
 from backend.utils.passwords import hash_password
 from backend.services.username_service import (
@@ -18,7 +19,7 @@ from backend.services.username_service import (
     canonicalize_username,
     normalize_username,
     is_username_input_valid,
-    is_username_profanity_free,
+    is_username_allowed,
 )
 
 if TYPE_CHECKING:
@@ -172,9 +173,14 @@ class PlayerServiceBase(ABC):
         if not is_username_input_valid(new_username):
             raise ValueError("Username contains invalid characters or does not meet requirements")
 
-        # Check for profanity
-        if not is_username_profanity_free(new_username):
-            raise ValueError("Username contains inappropriate language")
+        # Check for moderation issues via OpenAI
+        try:
+            is_allowed = await is_username_allowed(new_username)
+        except OpenAIAPIError as exc:
+            logger.error("Username moderation failed: %s", exc)
+            raise ValueError("Username failed safety checks") from exc
+        if not is_allowed:
+            raise ValueError("Username failed safety checks")
 
         # Normalize and canonicalize
         normalized_username = normalize_username(new_username)
