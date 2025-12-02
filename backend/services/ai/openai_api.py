@@ -13,7 +13,13 @@ except ImportError:
     AsyncOpenAI = None  # type: ignore
     OpenAIError = Exception  # type: ignore
 
-__all__ = ["OpenAIError", "OpenAIAPIError", "generate_response", "generate_embedding"]
+__all__ = [
+    "OpenAIError",
+    "OpenAIAPIError",
+    "generate_response",
+    "generate_embedding",
+    "moderate_text",
+]
 
 settings = get_settings()
 
@@ -121,6 +127,47 @@ async def generate_embedding(
             raise OpenAIAPIError("OpenAI API returned empty embedding vector")
 
         return embedding
+
+    except OpenAIError as exc:
+        raise OpenAIAPIError(f"OpenAI API error: {exc}") from exc
+    except Exception as exc:
+        if isinstance(exc, OpenAIAPIError):
+            raise
+        raise OpenAIAPIError(f"Failed to contact OpenAI API: {exc}") from exc
+
+
+async def moderate_text(input_text: str, timeout: int = 10) -> bool:
+    """Run OpenAI's moderation endpoint against the provided text.
+
+    Args:
+        input_text: Text to moderate.
+        timeout: Request timeout in seconds.
+
+    Returns:
+        True if the text is not flagged by the moderation endpoint; False otherwise.
+
+    Raises:
+        OpenAIAPIError: If the moderation request cannot be completed.
+    """
+
+    if AsyncOpenAI is None:
+        raise OpenAIAPIError("openai package not installed. Install with: pip install openai")
+
+    if not settings.openai_api_key:
+        raise OpenAIAPIError("OPENAI_API_KEY environment variable must be set")
+
+    try:
+        client = AsyncOpenAI(api_key=settings.openai_api_key, timeout=timeout)
+        response = await client.moderations.create(
+            model="omni-moderation-latest",
+            input=input_text,
+        )
+
+        if not response.results:
+            raise OpenAIAPIError("OpenAI API returned no moderation results")
+
+        result = response.results[0]
+        return not getattr(result, "flagged", False)
 
     except OpenAIError as exc:
         raise OpenAIAPIError(f"OpenAI API error: {exc}") from exc

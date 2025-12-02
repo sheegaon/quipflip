@@ -3,7 +3,7 @@ from backend.services.system_config_service import SystemConfigService
 from backend.services.username_service import (
     UsernameService,
     canonicalize_username,
-    is_username_profanity_free,
+    is_username_allowed,
     normalize_username,
     is_username_input_valid
 )
@@ -65,7 +65,7 @@ __all__ = [
     'SystemConfigService',
     'UsernameService',
     'canonicalize_username',
-    'is_username_profanity_free',
+    'is_username_allowed',
     'normalize_username',
     'is_username_input_valid',
     'PlayerServiceBase',

@@ -1,7 +1,10 @@
 """Tests for profanity checking in usernames."""
 
+import pytest
+
 from backend.data.profanity_list import contains_profanity
-from backend.services import is_username_profanity_free
+from backend.services import is_username_allowed
+from backend.services.ai.openai_api import OpenAIAPIError
 
 
 class TestProfanityDetection:
@@ -64,53 +67,45 @@ class TestProfanityDetection:
         assert contains_profanity("shit456") is True
 
 
-class TestUsernameProfanityValidation:
-    """Test username profanity validation."""
+class TestUsernameModeration:
+    """Test moderation-aware username validation."""
 
-    def test_rejects_profane_usernames(self):
-        """Should reject usernames with profanity."""
-        assert is_username_profanity_free("fuck") is False
-        assert is_username_profanity_free("shit") is False
-        assert is_username_profanity_free("damn") is False
+    @pytest.mark.asyncio
+    async def test_allows_when_moderation_passes(self, monkeypatch):
+        """Should allow usernames when moderation approves."""
 
-    def test_rejects_profanity_in_username(self):
-        """Should reject usernames containing profanity at end or with digits."""
-        assert is_username_profanity_free("badass") is False
-        assert is_username_profanity_free("dumbass") is False
-        assert is_username_profanity_free("fuck123") is False
+        async def passing_moderation(_: str, timeout: int = 10) -> bool:  # noqa: ARG001
+            return True
 
-    def test_rejects_profanity_with_spaces(self):
-        """Should reject profanity even with spaces."""
-        assert is_username_profanity_free("fu ck") is False
-        assert is_username_profanity_free("da mn") is False
-        assert is_username_profanity_free("bad ass") is False
+        monkeypatch.setattr(
+            "backend.services.username_service.moderate_text", passing_moderation
+        )
 
-    def test_accepts_clean_usernames(self):
-        """Should accept clean usernames."""
-        assert is_username_profanity_free("player123") is True
-        assert is_username_profanity_free("cool user") is True
-        assert is_username_profanity_free("word master") is True
-        assert is_username_profanity_free("quip flipper") is True
+        assert await is_username_allowed("friendly user") is True
 
-    def test_avoids_false_positives_in_usernames(self):
-        """Should not reject legitimate usernames with incidental substrings."""
-        assert is_username_profanity_free("classic gamer") is True
-        assert is_username_profanity_free("assistant") is True
-        assert is_username_profanity_free("hello world") is True
+    @pytest.mark.asyncio
+    async def test_rejects_when_moderation_flags(self, monkeypatch):
+        """Should reject usernames that moderation marks as flagged."""
 
-    def test_case_insensitive_rejection(self):
-        """Should reject profanity regardless of case."""
-        assert is_username_profanity_free("FUCK") is False
-        assert is_username_profanity_free("Shit") is False
-        assert is_username_profanity_free("DaMn") is False
+        async def fake_moderation(_: str, timeout: int = 10) -> bool:  # noqa: ARG001
+            return False
 
-    def test_empty_username(self):
-        """Should return False for empty username."""
-        assert is_username_profanity_free("") is True
-        assert is_username_profanity_free("   ") is True
+        monkeypatch.setattr(
+            "backend.services.username_service.moderate_text", fake_moderation
+        )
 
-    def test_rejects_leetspeak_profanity(self):
-        """Should reject leetspeak variations."""
-        assert is_username_profanity_free("fuk") is False
-        assert is_username_profanity_free("sh1t") is False
-        assert is_username_profanity_free("a55") is False
+        assert await is_username_allowed("harmless") is False
+
+    @pytest.mark.asyncio
+    async def test_errors_when_moderation_unavailable(self, monkeypatch):
+        """Should surface moderation failures when moderation cannot run."""
+
+        async def broken_moderation(_: str, timeout: int = 10) -> bool:  # noqa: ARG001
+            raise OpenAIAPIError("network down")
+
+        monkeypatch.setattr(
+            "backend.services.username_service.moderate_text", broken_moderation
+        )
+
+        with pytest.raises(OpenAIAPIError):
+            await is_username_allowed("friendly user")

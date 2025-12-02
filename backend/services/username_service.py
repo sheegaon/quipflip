@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import random
 from itertools import count
 from typing import Tuple, TYPE_CHECKING
@@ -10,12 +11,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.data.username_pool import USERNAME_POOL
-from backend.data.profanity_list import contains_profanity
 from backend.models.player_base import PlayerBase
+from backend.services.ai.openai_api import moderate_text
 
 if TYPE_CHECKING:
     from backend.utils.model_registry import GameType
 
+
+logger = logging.getLogger(__name__)
 
 def canonicalize_username(username: str) -> str:
     """Convert a username into its canonical lowercase alphanumeric form."""
@@ -35,11 +38,14 @@ def is_username_input_valid(username: str) -> bool:
     return all(ch.isalnum() or ch.isspace() for ch in stripped)
 
 
-def is_username_profanity_free(username: str) -> bool:
-    """Validate that the username does not contain profanity."""
-    if not username.strip():
-        return True
-    return not contains_profanity(username)
+async def is_username_allowed(username: str) -> bool:
+    """Validate a username using OpenAI moderation only."""
+
+    stripped = username.strip()
+    if not stripped:
+        return False
+
+    return await moderate_text(stripped)
 
 
 class UsernameService:
