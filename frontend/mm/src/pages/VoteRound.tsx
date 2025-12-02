@@ -52,7 +52,7 @@ export const VoteRound: React.FC = () => {
       controller.abort();
       setIsLoadingRound(false);
     };
-  }, [actions, round]);
+  }, [actions, isLoadingRound, round]);
 
   const isBotAuthor = (caption: Caption) => {
     return Boolean(
