@@ -5,6 +5,7 @@ import type {
   AuthTokenResponse,
   GameStatus,
   HealthResponse,
+  Player,
   SuggestUsernameResponse,
   WsAuthTokenResponse,
 } from './types';
@@ -68,6 +69,27 @@ export const fetchStatus = async () => {
 export const fetchApiInfo = async () => {
   const response = await api.get<ApiInfo>('/');
   return response.data;
+};
+
+// Export apiClient stub for compatibility with shared services (e.g., sessionDetection)
+// Project-specific clients (qf, mm) override this with their full implementations
+// This stub exists only to satisfy TypeScript; it should never be called in practice
+export const apiClient = {
+  getBalance: async (_signal?: AbortSignal): Promise<Player> => {
+    throw new Error('getBalance must be implemented by game-specific client (qf/mm)');
+  },
+  setSession: (_username: string | null): void => {
+    throw new Error('setSession must be implemented by game-specific client (qf/mm)');
+  },
+  clearSession: (): void => {
+    throw new Error('clearSession must be implemented by game-specific client (qf/mm)');
+  },
+  getStoredUsername: (): string | null => {
+    throw new Error('getStoredUsername must be implemented by game-specific client (qf/mm)');
+  },
+  refreshToken: async (_signal?: AbortSignal): Promise<AuthTokenResponse> => {
+    throw new Error('refreshToken must be implemented by game-specific client (qf/mm)');
+  },
 };
 
 export type { ApiError };

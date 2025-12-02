@@ -1,5 +1,16 @@
 // API Response Types based on backend documentation
+// Import common types from crowdcraft, extend them with game-specific fields
+import type {
+  ApiError,
+  ApiInfo,
+  AuthTokenResponse,
+  GameStatus,
+  HealthResponse,
+  SuggestUsernameResponse,
+  WsAuthTokenResponse,
+} from '../../../crowdcraft/src/api/types.ts';
 
+// Re-export common types for convenience
 export type {
   ApiError,
   ApiInfo,
@@ -8,7 +19,7 @@ export type {
   HealthResponse,
   SuggestUsernameResponse,
   WsAuthTokenResponse,
-} from '../../crowdcraft/src/api/types';
+};
 
 // Notification types
 export type NotificationType = 'copy_submitted' | 'vote_submitted';

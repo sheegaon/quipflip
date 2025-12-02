@@ -4,7 +4,7 @@ import { usePartyMode } from '../../contexts/PartyModeContext';
 import { usePartyWebSocket } from '@/hooks/usePartyWebSocket.ts';
 import { CircleIcon } from '@crowdcraft/components/icons/NavigationIcons.tsx';
 import { PartyStep } from '../../contexts/PartyModeContext';
-import apiClient, { extractErrorMessage } from '@crowdcraft/api/client.ts';
+import apiClient, { extractErrorMessage } from '@/api/client';
 import { usePartyRoundStarter } from '@/hooks/usePartyRoundStarter.ts';
 import { useGame } from '../../contexts/GameContext';
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
-import apiClient, { extractErrorMessage } from '@crowdcraft/api/client.ts';
+import apiClient, { extractErrorMessage } from '@/api/client';
 import { Timer } from '../components/Timer';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';

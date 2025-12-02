@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import apiClient from '@crowdcraft/api/client.ts';
+import apiClient from '@/api/client';
 import type { StartPartyCopyResponse, StartPartyPromptResponse, StartPartyVoteResponse } from '@crowdcraft/api/types.ts';
 import { useGame } from '../contexts/GameContext';
 import type { PartyStep, SessionConfig } from '../contexts/PartyModeContext';

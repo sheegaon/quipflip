@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import apiClient, { extractErrorMessage } from '@crowdcraft/api/client.ts';
+import apiClient, { extractErrorMessage } from '@/api/client';
 import type { LeaderboardResponse } from '@crowdcraft/api/types.ts';
 import WeeklyLeaderboard from '@crowdcraft/components/statistics/WeeklyLeaderboard';
 import { leaderboardLogger } from '@crowdcraft/utils/logger.ts';

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import apiClient, { extractErrorMessage } from '@crowdcraft/api/client.ts';
+import apiClient, { extractErrorMessage } from '@/api/client';
 import type { Circle, CircleMember, CircleJoinRequest } from '@crowdcraft/api/types.ts';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { formatDateTimeInUserZone } from '@crowdcraft/utils/datetime.ts';

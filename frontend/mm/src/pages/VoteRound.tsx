@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { extractErrorMessage } from '@crowdcraft/api/client.ts';
+import { extractErrorMessage } from '@/api/client';
 import { useGame } from '../contexts/GameContext';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import type { MemeVoteResult, VoteRoundState, VoteResult, Caption } from '@crowdcraft/api/types.ts';
