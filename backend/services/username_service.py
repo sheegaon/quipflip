@@ -45,11 +45,7 @@ async def is_username_allowed(username: str) -> bool:
     if not stripped:
         return False
 
-    moderation_passed = await moderate_text(stripped)
-    if not moderation_passed:
-        return False
-
-    return True
+    return await moderate_text(stripped)
 
 
 class UsernameService:
