@@ -76,6 +76,7 @@ async def _get_player_balance(player, db: AsyncSession) -> PlayerBalance:
         is_guest=player.is_guest,
         is_admin=getattr(player, "is_admin", False),
         locked_until=getattr(player, "locked_until", None),
+        flag_dismissal_streak=getattr(player, "flag_dismissal_streak", 0),
     )
 
 
