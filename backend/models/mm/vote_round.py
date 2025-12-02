@@ -16,7 +16,7 @@ class MMVoteRound(Base):
 
     round_id = get_uuid_column(primary_key=True, default=uuid.uuid4)
     player_id = get_uuid_column(
-        ForeignKey("mm_players.player_id", ondelete="CASCADE"), nullable=False
+        ForeignKey("players.player_id", ondelete="CASCADE"), nullable=False
     )
     image_id = get_uuid_column(
         ForeignKey("mm_images.image_id", ondelete="CASCADE"), nullable=False

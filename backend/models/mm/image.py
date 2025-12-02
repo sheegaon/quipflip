@@ -22,7 +22,7 @@ class MMImage(Base):
     status = Column(String(20), default="active", nullable=False, index=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     created_by_player_id = get_uuid_column(
-        ForeignKey("mm_players.player_id", ondelete="SET NULL"), nullable=True
+        ForeignKey("players.player_id", ondelete="SET NULL"), nullable=True
     )
 
     # Relationships

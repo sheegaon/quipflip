@@ -28,7 +28,7 @@ class MMCaption(Base):
         ForeignKey("mm_images.image_id", ondelete="CASCADE"), nullable=False
     )
     author_player_id = get_uuid_column(
-        ForeignKey("mm_players.player_id", ondelete="SET NULL"), nullable=True
+        ForeignKey("players.player_id", ondelete="SET NULL"), nullable=True
     )
     kind = Column(String(20), nullable=False)
     parent_caption_id = get_uuid_column(

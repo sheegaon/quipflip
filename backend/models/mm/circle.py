@@ -20,7 +20,7 @@ class MMCircle(Base):
     name: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_by_player_id: Mapped[str] = get_uuid_column(
-        ForeignKey("mm_players.player_id", ondelete="CASCADE"),
+        ForeignKey("players.player_id", ondelete="CASCADE"),
         nullable=False,
         index=True
     )
