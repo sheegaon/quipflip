@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.config import get_settings
-from backend.models.mm.player import MMPlayer
+from backend.models.player import Player
 from backend.models.mm.player_data import MMPlayerData
 from backend.services.mm.system_config_service import MMSystemConfigService
 from backend.services.player_service_base import PlayerServiceBase, PlayerError
@@ -32,7 +32,7 @@ class MMPlayerService(PlayerServiceBase):
 
     @property
     def player_model(self):
-        return MMPlayer
+        return Player
 
     @property
     def player_data_model(self):

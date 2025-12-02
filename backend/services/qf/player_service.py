@@ -7,7 +7,7 @@ from uuid import UUID
 import uuid
 import logging
 
-from backend.models.qf.player import QFPlayer
+from backend.models.player import Player
 from backend.models.qf.player_data import QFPlayerData
 from backend.models.qf.daily_bonus import QFDailyBonus
 from backend.models.qf.phraseset import Phraseset
@@ -35,8 +35,8 @@ class QFPlayerService(PlayerServiceBase):
 
     @property
     def player_model(self):
-        """Return the QF player model class."""
-        return QFPlayer
+        """Return the unified player model class."""
+        return Player
 
     @property
     def player_data_model(self):
