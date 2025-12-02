@@ -4,7 +4,7 @@ import logging
 from sqlalchemy import select
 
 from backend.database import AsyncSessionLocal
-from backend.models.qf.player import QFPlayer
+from backend.models.player import Player
 from backend.models.qf.quest import QFQuest
 from backend.services.qf import QuestService
 
@@ -20,8 +20,9 @@ async def initialize_quests_for_all_players():
             starter_quest_types = QuestService.STARTER_QUEST_TYPES
             starter_quest_values = {quest_type.value for quest_type in starter_quest_types}
 
+            # Query unified Player model instead of game-specific models
             players_result = await db.execute(
-                select(QFPlayer.player_id, QFPlayer.username)
+                select(Player.player_id, Player.username)
             )
             players = players_result.all()
             logger.info(f"Found {len(players)} total players")
