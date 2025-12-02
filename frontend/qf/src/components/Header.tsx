@@ -33,7 +33,8 @@ export const Header: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { goBack } = useNavigationHistory();
-  const { status: tutorialStatus } = useTutorial();
+  const { state: tutorialState } = useTutorial();
+  const { status: tutorialStatus } = tutorialState;
   const { unviewedCount } = useHeaderIndicators();
   const { isOffline } = useNetwork();
 

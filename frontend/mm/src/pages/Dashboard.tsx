@@ -11,7 +11,9 @@ import { CircleIcon } from '@crowdcraft/components/icons/NavigationIcons.tsx';
 
 export const Dashboard: React.FC = () => {
   const { state, actions } = useGame();
-  const { startTutorial, skipTutorial } = useTutorial();
+  const {
+    actions: { startTutorial, skipTutorial },
+  } = useTutorial();
   const navigate = useNavigate();
   const location = useLocation();
 

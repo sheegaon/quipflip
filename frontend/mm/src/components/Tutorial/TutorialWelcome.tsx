@@ -9,7 +9,9 @@ interface TutorialWelcomeProps {
 }
 
 const TutorialWelcome: React.FC<TutorialWelcomeProps> = ({ onStart, onSkip }) => {
-  const { tutorialStatus } = useTutorial();
+  const {
+    state: { tutorialStatus },
+  } = useTutorial();
   const { state } = useGame();
   const { player } = state;
   const [isSkipping, setIsSkipping] = useState(false);

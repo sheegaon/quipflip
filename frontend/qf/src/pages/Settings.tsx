@@ -27,7 +27,9 @@ const Settings: React.FC = () => {
   const { state, actions } = useGame();
   const { player } = state;
   const { refreshBalance, logout } = actions;
-  const { resetTutorial } = useTutorial();
+  const {
+    actions: { resetTutorial },
+  } = useTutorial();
   const navigate = useNavigate();
 
   const [resettingTutorial, setResettingTutorial] = useState(false);

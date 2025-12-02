@@ -36,7 +36,9 @@ export const Dashboard: React.FC = () => {
     isAuthenticated,
   } = state;
   const { refreshDashboard, clearError, abandonRound } = actions;
-  const { startTutorial, skipTutorial } = useTutorial();
+  const {
+    actions: { startTutorial, skipTutorial },
+  } = useTutorial();
   const { actions: partyActions } = usePartyMode();
   const { endPartyMode } = partyActions;
   const navigate = useNavigate();

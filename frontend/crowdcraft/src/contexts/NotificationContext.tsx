@@ -57,6 +57,8 @@ export interface PingToastMessage {
 export interface NotificationContextConfig {
   notificationsEnabled: () => boolean;
   onlineUsersEnabled: () => boolean;
+  notificationsWsPath: string;
+  onlineUsersWsPath: string;
   partyPageContext?: string;
   usePartySessionId?: () => string | null;
   usePartyWebSocket?: (config: { sessionId: string; pageContext: string }) => void;
@@ -175,7 +177,7 @@ export const createNotificationContext = () => {
     }, []);
 
     useWebSocket({
-      path: '/qf/notifications/ws',
+      path: config.notificationsWsPath,
       enabled: isAuthenticated && notificationsEnabled,
       onMessage: handleNotificationMessage,
       onError: () => {
@@ -243,7 +245,7 @@ export const createNotificationContext = () => {
     }, [startPollingOnlineUsers]);
 
     useWebSocket({
-      path: '/qf/users/online/ws',
+      path: config.onlineUsersWsPath,
       enabled: isAuthenticated && onlineUsersEnabled,
       onOpen: handleOnlineUsersOpen,
       onMessage: handleOnlineUsersMessage,

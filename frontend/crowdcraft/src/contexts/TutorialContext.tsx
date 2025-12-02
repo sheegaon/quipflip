@@ -47,15 +47,9 @@ interface TutorialActions<Status extends TutorialStatus> {
   refreshStatus: (options?: RefreshOptions) => Promise<void>;
 }
 
-interface TutorialContextType<Status extends TutorialStatus> extends TutorialContextState<Status> {
+interface TutorialContextType<Status extends TutorialStatus> {
   state: TutorialContextState<Status>;
   actions: TutorialActions<Status>;
-  startTutorial: () => Promise<void>;
-  advanceStep: (stepId?: TutorialProgress) => Promise<void>;
-  skipTutorial: () => Promise<void>;
-  completeTutorial: () => Promise<void>;
-  resetTutorial: () => Promise<void>;
-  refreshStatus: (options?: RefreshOptions) => Promise<void>;
 }
 
 export interface TutorialContextConfig<Status extends TutorialStatus> {
@@ -271,17 +265,10 @@ export const createTutorialContext = <Status extends TutorialStatus>() => {
 
     const value = useMemo<TutorialContextType<Status>>(
       () => ({
-        ...state,
         state,
         actions,
-        startTutorial,
-        advanceStep,
-        skipTutorial,
-        completeTutorial,
-        resetTutorial,
-        refreshStatus,
       }),
-      [state, actions, startTutorial, advanceStep, skipTutorial, completeTutorial, resetTutorial, refreshStatus],
+      [state, actions],
     );
 
     return <TutorialContext.Provider value={value}>{children}</TutorialContext.Provider>;
