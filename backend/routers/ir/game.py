@@ -80,10 +80,21 @@ async def start_game(
     db: AsyncSession = Depends(get_db),
 ) -> StartGameResponse:
     """Start a new backronym battle or join an existing one."""
+    from sqlalchemy import select
+    from backend.models.ir.player_data import IRPlayerData
+
     logger = logging.getLogger(__name__)
 
     try:
-        if player.wallet < settings.ir_backronym_entry_cost:
+        # Load IR player data to check wallet
+        result = await db.execute(
+            select(IRPlayerData).where(IRPlayerData.player_id == player.player_id)
+        )
+        player_data = result.scalar_one_or_none()
+
+        wallet = player_data.wallet if player_data else settings.ir_initial_balance
+
+        if wallet < settings.ir_backronym_entry_cost:
             raise HTTPException(
                 status_code=400,
                 detail=f"Insufficient balance (need {settings.ir_backronym_entry_cost} IC)",
