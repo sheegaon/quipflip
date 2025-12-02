@@ -154,6 +154,20 @@ class Player(Base):
     def flag_dismissal_streak(self, value: int):
         self._ensure_qf_data().flag_dismissal_streak = value
 
+    @property
+    def balance(self) -> int:
+        """Return the player's total Quipflip balance (wallet + vault).
+
+        This mirrors the convenience property previously available on the
+        game-specific QFPlayer model so existing code and tests can continue
+        to read a player's combined spendable funds from the unified model.
+        """
+
+        data = self.qf_player_data
+        if data is None:
+            return 0
+        return data.balance
+
     def __repr__(self):
         return (f"<Player(player_id={self.player_id}, username={self.username}, "
                 f"email={self.email})>")
