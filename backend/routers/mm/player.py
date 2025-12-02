@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.config import get_settings
 from backend.database import get_db
-from backend.routers.player_router_base import PlayerRouterBase
+from backend.routers.player_router_base import PlayerRouterBase, fetch_game_player_data
 from backend.schemas.player import (
     ClaimDailyBonusResponse,
     PlayerBalance,
@@ -42,14 +42,7 @@ settings = get_settings()
 
 async def _get_player_balance(player, db: AsyncSession) -> PlayerBalance:
     """Build a PlayerBalance response for Meme Mint."""
-    from sqlalchemy import select
-    from backend.models.mm.player_data import MMPlayerData
-
-    # Load game-specific player data for wallet/vault
-    result = await db.execute(
-        select(MMPlayerData).where(MMPlayerData.player_id == player.player_id)
-    )
-    player_data = result.scalar_one_or_none()
+    player_data = await fetch_game_player_data(db, GameType.MM, player.player_id)
 
     if not player_data:
         wallet = settings.mm_starting_wallet
@@ -83,7 +76,6 @@ async def _get_player_balance(player, db: AsyncSession) -> PlayerBalance:
         is_guest=player.is_guest,
         is_admin=getattr(player, "is_admin", False),
         locked_until=getattr(player, "locked_until", None),
-        flag_dismissal_streak=getattr(player_data, "flag_dismissal_streak", 0) if player_data else 0,
     )
 
 
@@ -109,18 +101,12 @@ class MMPlayerRouter(PlayerRouterBase):
         self, player, db: AsyncSession
     ) -> ClaimDailyBonusResponse:
         """Use Meme Mint's bonus service to claim and record the reward."""
-        from sqlalchemy import select
-        from backend.models.mm.player_data import MMPlayerData
-
         bonus_service = MMDailyBonusService(db)
         try:
             result = await bonus_service.claim_bonus(player.player_id)
 
             # Load updated player data to get new wallet/vault balances
-            player_data_result = await db.execute(
-                select(MMPlayerData).where(MMPlayerData.player_id == player.player_id)
-            )
-            player_data = player_data_result.scalar_one_or_none()
+            player_data = await fetch_game_player_data(db, GameType.MM, player.player_id)
 
             new_wallet = player_data.wallet if player_data else settings.mm_starting_wallet
             new_vault = player_data.vault if player_data else 0

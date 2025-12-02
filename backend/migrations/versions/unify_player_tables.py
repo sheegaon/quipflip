@@ -23,6 +23,7 @@ import logging
 from alembic import op
 import sqlalchemy as sa
 from backend.migrations.util import get_uuid_type
+from backend.services.username_service import canonicalize_username
 
 logger = logging.getLogger(__name__)
 
@@ -181,14 +182,68 @@ def upgrade() -> None:
 
             # Migrate MM players (handling username and email conflicts)
             # First, migrate MM players whose emails don't exist in unified players (new accounts)
-            op.execute("""
-                INSERT INTO players (player_id, username, username_canonical, email, password_hash,
-                                    created_at, last_login_date, is_guest, is_admin, locked_until)
-                SELECT mm.player_id, mm.username, mm.username_canonical, mm.email, mm.password_hash,
-                       mm.created_at, mm.last_login_date, mm.is_guest, mm.is_admin, mm.locked_until
-                FROM mm_players mm
-                WHERE mm.email NOT IN (SELECT email FROM players)
-            """)
+            existing_usernames = {
+                row[0]
+                for row in bind.execute(sa.text("SELECT username_canonical FROM players"))
+                if row[0]
+            }
+
+            mm_new_accounts = bind.execute(
+                sa.text(
+                    """
+                    SELECT mm.player_id, mm.username, mm.username_canonical, mm.email, mm.password_hash,
+                           mm.created_at, mm.last_login_date, mm.is_guest, mm.is_admin, mm.locked_until
+                    FROM mm_players mm
+                    WHERE mm.email NOT IN (SELECT email FROM players)
+                    """
+                )
+            ).fetchall()
+
+            def _resolve_username(username: str, taken: set[str]) -> tuple[str, str]:
+                canonical = canonicalize_username(username)
+                if canonical and canonical not in taken:
+                    taken.add(canonical)
+                    return username, canonical
+
+                base = username or "mm_player"
+                base_canonical = canonicalize_username(base) or "mmplayer"
+                suffix = 2
+                while True:
+                    candidate = f"{base}_{suffix}"
+                    candidate_canonical = canonicalize_username(candidate)
+                    if candidate_canonical not in taken:
+                        taken.add(candidate_canonical)
+                        return candidate, candidate_canonical
+                    suffix += 1
+
+            for row in mm_new_accounts:
+                resolved_username, resolved_canonical = _resolve_username(
+                    row.username, existing_usernames
+                )
+                op.execute(
+                    sa.text(
+                        """
+                        INSERT INTO players (
+                            player_id, username, username_canonical, email, password_hash,
+                            created_at, last_login_date, is_guest, is_admin, locked_until
+                        )
+                        VALUES (:player_id, :username, :username_canonical, :email, :password_hash,
+                                :created_at, :last_login_date, :is_guest, :is_admin, :locked_until)
+                        """
+                    ),
+                    {
+                        "player_id": row.player_id,
+                        "username": resolved_username,
+                        "username_canonical": resolved_canonical,
+                        "email": row.email,
+                        "password_hash": row.password_hash,
+                        "created_at": row.created_at,
+                        "last_login_date": row.last_login_date,
+                        "is_guest": row.is_guest,
+                        "is_admin": row.is_admin,
+                        "locked_until": row.locked_until,
+                    },
+                )
 
             # Now insert MM player data for ALL MM players (both new and existing)
             # For new MM players (not in unified table yet), use their original player_id
@@ -205,14 +260,45 @@ def upgrade() -> None:
             """)
 
             # Same for IR players
-            op.execute("""
-                INSERT INTO players (player_id, username, username_canonical, email, password_hash,
-                                    created_at, last_login_date, is_guest, is_admin, locked_until)
-                SELECT ir.player_id, ir.username, ir.username_canonical, ir.email, ir.password_hash,
-                       ir.created_at, ir.last_login_date, ir.is_guest, ir.is_admin, ir.locked_until
-                FROM ir_players ir
-                WHERE ir.email NOT IN (SELECT email FROM players)
-            """)
+            ir_new_accounts = bind.execute(
+                sa.text(
+                    """
+                    SELECT ir.player_id, ir.username, ir.username_canonical, ir.email, ir.password_hash,
+                           ir.created_at, ir.last_login_date, ir.is_guest, ir.is_admin, ir.locked_until
+                    FROM ir_players ir
+                    WHERE ir.email NOT IN (SELECT email FROM players)
+                    """
+                )
+            ).fetchall()
+
+            for row in ir_new_accounts:
+                resolved_username, resolved_canonical = _resolve_username(
+                    row.username, existing_usernames
+                )
+                op.execute(
+                    sa.text(
+                        """
+                        INSERT INTO players (
+                            player_id, username, username_canonical, email, password_hash,
+                            created_at, last_login_date, is_guest, is_admin, locked_until
+                        )
+                        VALUES (:player_id, :username, :username_canonical, :email, :password_hash,
+                                :created_at, :last_login_date, :is_guest, :is_admin, :locked_until)
+                        """
+                    ),
+                    {
+                        "player_id": row.player_id,
+                        "username": resolved_username,
+                        "username_canonical": resolved_canonical,
+                        "email": row.email,
+                        "password_hash": row.password_hash,
+                        "created_at": row.created_at,
+                        "last_login_date": row.last_login_date,
+                        "is_guest": row.is_guest,
+                        "is_admin": row.is_admin,
+                        "locked_until": row.locked_until,
+                    },
+                )
 
             # Now insert IR player data for ALL IR players (both new and existing)
             # For new IR players (not in unified table yet), use their original player_id
@@ -256,47 +342,166 @@ def upgrade() -> None:
                     WHERE irt.player_id IN (SELECT player_id FROM players)
                 """)
 
-    # Step 6: Clean up orphaned records before updating foreign keys
+            # Step 6: Remap foreign keys for merged accounts so related rows follow the unified player IDs
+            merged_mm_accounts = bind.execute(
+                sa.text(
+                    """
+                    SELECT mm.player_id AS old_id, p.player_id AS new_id
+                    FROM mm_players mm
+                    JOIN players p ON p.email = mm.email
+                    WHERE p.player_id != mm.player_id
+                    """
+                )
+            ).fetchall()
+
+            merged_ir_accounts = bind.execute(
+                sa.text(
+                    """
+                    SELECT ir.player_id AS old_id, p.player_id AS new_id
+                    FROM ir_players ir
+                    JOIN players p ON p.email = ir.email
+                    WHERE p.player_id != ir.player_id
+                    """
+                )
+            ).fetchall()
+
+            def _remap_foreign_keys(table: str, column: str, mappings: list[tuple]):
+                for old_id, new_id in mappings:
+                    op.execute(
+                        sa.text(
+                            f"UPDATE {table} SET {column} = :new_id WHERE {column} = :old_id"
+                        ),
+                        {"new_id": new_id, "old_id": old_id},
+                    )
+
+            mm_fk_targets = [
+                ("mm_transactions", "player_id"),
+                ("mm_daily_bonuses", "player_id"),
+                ("mm_vote_rounds", "player_id"),
+                ("mm_captions", "author_player_id"),
+                ("mm_caption_submissions", "player_id"),
+                ("mm_caption_seen", "player_id"),
+                ("mm_player_daily_states", "player_id"),
+                ("mm_circle_members", "player_id"),
+                ("mm_circle_join_requests", "player_id"),
+                ("mm_circles", "created_by_player_id"),
+            ]
+
+            for table, column in mm_fk_targets:
+                if table in table_names:
+                    _remap_foreign_keys(table, column, merged_mm_accounts)
+
+            ir_fk_targets = [
+                ("ir_transactions", "player_id"),
+                ("ir_daily_bonuses", "player_id"),
+                ("ir_backronym_entries", "player_id"),
+                ("ir_backronym_votes", "player_id"),
+                ("ir_result_views", "player_id"),
+            ]
+
+            for table, column in ir_fk_targets:
+                if table in table_names:
+                    _remap_foreign_keys(table, column, merged_ir_accounts)
+
+    # Step 7: Clean up orphaned records before updating foreign keys
     # This ensures that we can successfully create new constraints
-    # MM cleanup
-    if 'mm_transactions' in table_names and 'mm_player_data' in table_names:
-        op.execute("""DELETE FROM mm_transactions WHERE player_id NOT IN (SELECT player_id FROM mm_player_data)""")
-    if 'mm_daily_bonuses' in table_names and 'mm_player_data' in table_names:
-        op.execute("""DELETE FROM mm_daily_bonuses WHERE player_id NOT IN (SELECT player_id FROM mm_player_data)""")
-    if 'mm_vote_rounds' in table_names and 'mm_player_data' in table_names:
-        op.execute("""DELETE FROM mm_vote_rounds WHERE player_id NOT IN (SELECT player_id FROM mm_player_data)""")
-    if 'mm_captions' in table_names and 'mm_player_data' in table_names:
-        op.execute("""DELETE FROM mm_captions WHERE author_id NOT IN (SELECT player_id FROM mm_player_data)""")
-    if 'mm_caption_submissions' in table_names and 'mm_player_data' in table_names:
-        op.execute("""DELETE FROM mm_caption_submissions WHERE player_id NOT IN (SELECT player_id FROM mm_player_data)""")
-    if 'mm_caption_seen' in table_names and 'mm_player_data' in table_names:
-        op.execute("""DELETE FROM mm_caption_seen WHERE player_id NOT IN (SELECT player_id FROM mm_player_data)""")
-    if 'mm_player_daily_states' in table_names and 'mm_player_data' in table_names:
-        op.execute("""DELETE FROM mm_player_daily_states WHERE player_id NOT IN (SELECT player_id FROM mm_player_data)""")
-    if 'mm_circle_members' in table_names and 'mm_player_data' in table_names:
-        op.execute("""DELETE FROM mm_circle_members WHERE player_id NOT IN (SELECT player_id FROM mm_player_data)""")
-    if 'mm_circle_join_requests' in table_names and 'mm_player_data' in table_names:
-        op.execute("""DELETE FROM mm_circle_join_requests WHERE player_id NOT IN (SELECT player_id FROM mm_player_data)""")
-    if 'mm_circles' in table_names and 'mm_player_data' in table_names:
-        op.execute("""DELETE FROM mm_circles WHERE created_by_player_id NOT IN (SELECT player_id FROM mm_player_data) AND created_by_player_id IS NOT NULL""")
+    if 'mm_transactions' in table_names:
+        op.execute("""DELETE FROM mm_transactions WHERE player_id NOT IN (SELECT player_id FROM players)""")
+    if 'mm_daily_bonuses' in table_names:
+        op.execute("""DELETE FROM mm_daily_bonuses WHERE player_id NOT IN (SELECT player_id FROM players)""")
+    if 'mm_vote_rounds' in table_names:
+        op.execute("""DELETE FROM mm_vote_rounds WHERE player_id NOT IN (SELECT player_id FROM players)""")
+    if 'mm_captions' in table_names:
+        op.execute("""DELETE FROM mm_captions WHERE author_player_id NOT IN (SELECT player_id FROM players) AND author_player_id IS NOT NULL""")
+    if 'mm_caption_submissions' in table_names:
+        op.execute("""DELETE FROM mm_caption_submissions WHERE player_id NOT IN (SELECT player_id FROM players)""")
+    if 'mm_caption_seen' in table_names:
+        op.execute("""DELETE FROM mm_caption_seen WHERE player_id NOT IN (SELECT player_id FROM players)""")
+    if 'mm_player_daily_states' in table_names:
+        op.execute("""DELETE FROM mm_player_daily_states WHERE player_id NOT IN (SELECT player_id FROM players)""")
+    if 'mm_circle_members' in table_names:
+        op.execute("""DELETE FROM mm_circle_members WHERE player_id NOT IN (SELECT player_id FROM players)""")
+    if 'mm_circle_join_requests' in table_names:
+        op.execute("""DELETE FROM mm_circle_join_requests WHERE player_id NOT IN (SELECT player_id FROM players)""")
+    if 'mm_circles' in table_names:
+        op.execute("""DELETE FROM mm_circles WHERE created_by_player_id NOT IN (SELECT player_id FROM players) AND created_by_player_id IS NOT NULL""")
 
-    # IR cleanup
-    if 'ir_transactions' in table_names and 'ir_player_data' in table_names:
-        op.execute("""DELETE FROM ir_transactions WHERE player_id NOT IN (SELECT player_id FROM ir_player_data)""")
-    if 'ir_daily_bonuses' in table_names and 'ir_player_data' in table_names:
-        op.execute("""DELETE FROM ir_daily_bonuses WHERE player_id NOT IN (SELECT player_id FROM ir_player_data)""")
-    if 'ir_backronym_entries' in table_names and 'ir_player_data' in table_names:
-        op.execute("""DELETE FROM ir_backronym_entries WHERE player_id NOT IN (SELECT player_id FROM ir_player_data)""")
-    if 'ir_backronym_votes' in table_names and 'ir_player_data' in table_names:
-        op.execute("""DELETE FROM ir_backronym_votes WHERE player_id NOT IN (SELECT player_id FROM ir_player_data)""")
-    if 'ir_result_views' in table_names and 'ir_player_data' in table_names:
-        op.execute("""DELETE FROM ir_result_views WHERE player_id NOT IN (SELECT player_id FROM ir_player_data)""")
+    if 'ir_transactions' in table_names:
+        op.execute("""DELETE FROM ir_transactions WHERE player_id NOT IN (SELECT player_id FROM players)""")
+    if 'ir_daily_bonuses' in table_names:
+        op.execute("""DELETE FROM ir_daily_bonuses WHERE player_id NOT IN (SELECT player_id FROM players)""")
+    if 'ir_backronym_entries' in table_names:
+        op.execute("""DELETE FROM ir_backronym_entries WHERE player_id NOT IN (SELECT player_id FROM players)""")
+    if 'ir_backronym_votes' in table_names:
+        op.execute("""DELETE FROM ir_backronym_votes WHERE player_id NOT IN (SELECT player_id FROM players)""")
+    if 'ir_result_views' in table_names:
+        op.execute("""DELETE FROM ir_result_views WHERE player_id NOT IN (SELECT player_id FROM players)""")
 
-    # FK updates are skipped in this migration due to data integrity issues with orphaned records
-    # A follow-up migration will update foreign keys after manual data cleanup if needed
-    logger.info("FK constraint updates are deferred to a follow-up migration")
+    # Step 8: Recreate foreign key constraints to point at unified player IDs
+    inspector = sa.inspect(bind)
 
-    # Step 7: Drop old tables and refresh tokens (if they exist)
+    def _recreate_fk(table: str, columns: list[str]):
+        existing_fks = inspector.get_foreign_keys(table)
+
+        if dialect_name == "sqlite":
+            # SQLite cannot drop constraints directly; use batch operations which recreate the table
+            with op.batch_alter_table(table, recreate="always") as batch_op:
+                for fk in existing_fks:
+                    if set(columns).issubset(set(fk.get("constrained_columns", []))):
+                        batch_op.drop_constraint(fk["name"], type_="foreignkey")
+
+                batch_op.create_foreign_key(
+                    f"fk_{table}_{'_'.join(columns)}_players",
+                    'players',
+                    local_cols=columns,
+                    remote_cols=['player_id'],
+                    ondelete='CASCADE',
+                )
+            return
+
+        for fk in existing_fks:
+            if set(columns).issubset(set(fk.get("constrained_columns", []))):
+                op.drop_constraint(fk["name"], table, type_="foreignkey")
+
+        op.create_foreign_key(
+            f"fk_{table}_{'_'.join(columns)}_players",
+            table,
+            'players',
+            local_cols=columns,
+            remote_cols=['player_id'],
+            ondelete='CASCADE',
+        )
+
+    mm_fk_targets = {
+        'mm_transactions': ['player_id'],
+        'mm_daily_bonuses': ['player_id'],
+        'mm_vote_rounds': ['player_id'],
+        'mm_captions': ['author_player_id'],
+        'mm_caption_submissions': ['player_id'],
+        'mm_caption_seen': ['player_id'],
+        'mm_player_daily_states': ['player_id'],
+        'mm_circle_members': ['player_id'],
+        'mm_circle_join_requests': ['player_id'],
+        'mm_circles': ['created_by_player_id'],
+    }
+
+    for table, columns in mm_fk_targets.items():
+        if table in table_names:
+            _recreate_fk(table, columns)
+
+    ir_fk_targets = {
+        'ir_transactions': ['player_id'],
+        'ir_daily_bonuses': ['player_id'],
+        'ir_backronym_entries': ['player_id'],
+        'ir_backronym_votes': ['player_id'],
+        'ir_result_views': ['player_id'],
+    }
+
+    for table, columns in ir_fk_targets.items():
+        if table in table_names:
+            _recreate_fk(table, columns)
+
+    # Step 9: Drop old tables and refresh tokens (if they exist)
     # Note: Handle SQLite compatibility - SQLite doesn't support CASCADE in DROP TABLE
     if 'qf_refresh_tokens' in table_names:
         op.drop_table('qf_refresh_tokens')
