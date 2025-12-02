@@ -7,7 +7,6 @@ import logging
 
 from backend.models.player_base import PlayerBase
 from backend.utils.model_registry import GameType
-from backend.utils.model_registry import get_player_model
 from backend.schemas.player import TutorialStatus
 
 logger = logging.getLogger(__name__)
@@ -19,12 +18,23 @@ class TutorialService:
     def __init__(self, db: AsyncSession, game_type: GameType = GameType.QF):
         self.db = db
         self.game_type = game_type
-        self.player_model = get_player_model(game_type)
+        # Get game-specific PlayerData model
+        if game_type == GameType.QF:
+            from backend.models.qf.player_data import QFPlayerData
+            self.player_data_model = QFPlayerData
+        elif game_type == GameType.MM:
+            from backend.models.mm.player_data import MMPlayerData
+            self.player_data_model = MMPlayerData
+        elif game_type == GameType.IR:
+            from backend.models.ir.player_data import IRPlayerData
+            self.player_data_model = IRPlayerData
+        else:
+            raise ValueError(f"Unsupported game type: {game_type}")
 
     async def _get_player(self, player_id: UUID) -> PlayerBase:
-        """Fetch a player by ID or raise ValueError if not found."""
+        """Fetch player data by ID or raise ValueError if not found."""
         result = await self.db.execute(
-            select(self.player_model).where(self.player_model.player_id == player_id)
+            select(self.player_data_model).where(self.player_data_model.player_id == player_id)
         )
         player = result.scalar_one_or_none()
 
