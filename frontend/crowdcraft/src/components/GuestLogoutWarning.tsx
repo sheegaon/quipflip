@@ -21,16 +21,16 @@ const GuestLogoutWarning: React.FC<GuestLogoutWarningProps> = ({
   }
 
   return (
-    <div className="new-user-welcome-overlay">
+    <div className="guest-welcome-overlay">
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="guest-logout-title"
-        className="new-user-welcome-modal"
+        className="guest-welcome-modal"
       >
         <button
           onClick={onDismiss}
-          className="new-user-welcome-close"
+          className="guest-welcome-close"
           aria-label="Close"
         >
           <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -44,7 +44,7 @@ const GuestLogoutWarning: React.FC<GuestLogoutWarningProps> = ({
           </svg>
         </button>
 
-        <div className="new-user-welcome-content">
+        <div className="guest-welcome-content">
           <div className="space-y-2 mb-6">
             <h2 id="guest-logout-title" className="text-2xl font-bold text-ccl-navy text-center">
               Save Your Guest Login
@@ -84,11 +84,11 @@ const GuestLogoutWarning: React.FC<GuestLogoutWarningProps> = ({
           </div>
         </div>
 
-        <div className="new-user-welcome-actions">
+        <div className="guest-welcome-actions">
           <button
             type="button"
             onClick={onConfirmLogout}
-            className="new-user-welcome-btn bg-ccl-cream text-ccl-navy hover:bg-ccl-orange/20 hover:shadow-tile-sm transition-all"
+            className="guest-welcome-btn bg-ccl-cream text-ccl-navy hover:bg-ccl-orange/20 hover:shadow-tile-sm transition-all"
           >
             Log Out Now
           </button>
