@@ -11,7 +11,8 @@ from datetime import datetime, timedelta, UTC
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy import select
 
-from backend.models.qf.player import QFPlayer
+from backend.models.player import Player
+from backend.models.qf.player_data import QFPlayerData
 from backend.models.qf.round import Round
 from backend.models.qf.phraseset import Phraseset
 from backend.config import get_settings
@@ -53,35 +54,37 @@ async def create_complete_phraseset(db_session):
     await db_session.flush()
 
     # Create three players
-    prompter = QFPlayer(
+    prompter = Player(
         player_id=uuid4(),
         username=f"prompter_{test_id}",
         username_canonical=f"prompter_{test_id}",
         email=f"prompter_{test_id}@test.com",
         password_hash="hash",
-        wallet=settings.qf_starting_wallet,
-        vault=0,
     )
-    copier1 = QFPlayer(
+    copier1 = Player(
         player_id=uuid4(),
         username=f"copier1_{test_id}",
         username_canonical=f"copier1_{test_id}",
         email=f"copier1_{test_id}@test.com",
         password_hash="hash",
-        wallet=settings.qf_starting_wallet,
-        vault=0,
     )
-    copier2 = QFPlayer(
+    copier2 = Player(
         player_id=uuid4(),
         username=f"copier2_{test_id}",
         username_canonical=f"copier2_{test_id}",
         email=f"copier2_{test_id}@test.com",
         password_hash="hash",
-        wallet=settings.qf_starting_wallet,
-        vault=0,
     )
-
     db_session.add_all([prompter, copier1, copier2])
+    await db_session.flush()
+
+    db_session.add_all(
+        [
+            QFPlayerData(player_id=prompter.player_id, wallet=settings.qf_starting_wallet),
+            QFPlayerData(player_id=copier1.player_id, wallet=settings.qf_starting_wallet),
+            QFPlayerData(player_id=copier2.player_id, wallet=settings.qf_starting_wallet),
+        ]
+    )
     await db_session.flush()
 
     # Create rounds
@@ -168,7 +171,7 @@ async def test_vote_submission_no_validation_error(test_app, db_session):
 
     # Get voter from database
     result = await db_session.execute(
-        select(QFPlayer).where(QFPlayer.player_id == voter_id)
+        select(Player).where(Player.player_id == voter_id)
     )
     voter = result.scalar_one()
 
@@ -228,7 +231,7 @@ async def test_vote_submission_validates_phrase(test_app, db_session):
 
     # Get voter from database
     result = await db_session.execute(
-        select(QFPlayer).where(QFPlayer.player_id == voter_id)
+        select(Player).where(Player.player_id == voter_id)
     )
     voter = result.scalar_one()
 

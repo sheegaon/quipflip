@@ -32,7 +32,7 @@ class PartyParticipant(Base):
         nullable=False
     )
     player_id = get_uuid_column(
-        ForeignKey("qf_players.player_id", ondelete="CASCADE"),
+        ForeignKey("players.player_id", ondelete="CASCADE"),
         nullable=False
     )
 
@@ -63,7 +63,7 @@ class PartyParticipant(Base):
 
     # Relationships
     session = relationship("PartySession", back_populates="participants")
-    player = relationship("QFPlayer")
+    player = relationship("Player")
     party_rounds = relationship(
         "PartyRound",
         back_populates="participant",

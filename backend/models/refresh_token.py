@@ -5,6 +5,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
 )
+from sqlalchemy.orm import relationship
 import uuid
 from datetime import datetime, UTC
 from backend.database import Base
@@ -30,6 +31,8 @@ class RefreshToken(Base):
     expires_at = Column(DateTime(timezone=True), nullable=False)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     revoked_at = Column(DateTime(timezone=True), nullable=True)
+
+    player = relationship("Player", back_populates="refresh_tokens")
 
     def is_active(self, now: datetime | None = None) -> bool:
         """Return True if token has not expired or been revoked."""

@@ -10,10 +10,10 @@ class QFTransaction(TransactionBase):
     __tablename__ = "qf_transactions"
 
     # Override player_id to add QF-specific foreign key constraint
-    player_id = get_uuid_column(ForeignKey("qf_players.player_id", ondelete="CASCADE"), nullable=False, index=True)
+    player_id = get_uuid_column(ForeignKey("players.player_id", ondelete="CASCADE"), nullable=False, index=True)
     
     # Relationships
-    player = relationship("QFPlayer", back_populates="transactions")
+    player = relationship("Player", back_populates="transactions")
 
     # Indexes
     __table_args__ = (

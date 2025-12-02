@@ -14,7 +14,7 @@ class MMCaptionSeen(Base):
     __tablename__ = "mm_captions_seen"
 
     player_id = get_uuid_column(
-        ForeignKey("mm_players.player_id", ondelete="CASCADE"), primary_key=True
+        ForeignKey("players.player_id", ondelete="CASCADE"), primary_key=True
     )
     caption_id = get_uuid_column(
         ForeignKey("mm_captions.caption_id", ondelete="CASCADE"), primary_key=True

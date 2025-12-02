@@ -22,7 +22,7 @@ class MMCircleMember(Base):
         primary_key=True
     )
     player_id: Mapped[str] = get_uuid_column(
-        ForeignKey("mm_players.player_id", ondelete="CASCADE"),
+        ForeignKey("players.player_id", ondelete="CASCADE"),
         primary_key=True,
         index=True
     )

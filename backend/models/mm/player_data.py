@@ -8,6 +8,7 @@ from sqlalchemy import (
     String,
 )
 from datetime import datetime, UTC
+from sqlalchemy.orm import relationship
 from backend.database import Base
 from backend.models.base import get_uuid_column
 
@@ -38,6 +39,8 @@ class MMPlayerData(Base):
     # Guest vote lockout tracking (per-game)
     consecutive_incorrect_votes = Column(Integer, default=0, nullable=False)
     vote_lockout_until = Column(DateTime(timezone=True), nullable=True)
+
+    player = relationship("MMPlayer", back_populates="mm_player_data")
 
     def __repr__(self):
         return (f"<MMPlayerData(player_id={self.player_id}, "

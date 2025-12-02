@@ -29,9 +29,9 @@ from backend.models.qf import (
     PlayerAbandonedPrompt,
     PromptFeedback,
     PhrasesetActivity,
-    QFRefreshToken,
     QFQuest,
 )
+from backend.models.refresh_token import RefreshToken
 from backend.services.username_service import canonicalize_username
 from backend.services.qf.queue_service import QFQueueService
 from backend.services.qf.party_session_service import PartySessionService
@@ -136,19 +136,19 @@ class QFCleanupService:
         # The query normalizes both sides to handle UUID format mismatches (with/without hyphens)
         # Using token_id (the actual primary key column name)
         player_id_normalized = self._normalized_uuid(QFPlayer.player_id)
-        token_player_normalized = self._normalized_uuid(QFRefreshToken.player_id)
+        token_player_normalized = self._normalized_uuid(RefreshToken.player_id)
 
         orphaned_tokens = (
-            select(QFRefreshToken.token_id)
+            select(RefreshToken.token_id)
             .where(
                 ~exists()
                 .where(player_id_normalized == token_player_normalized)
-                .correlate(QFRefreshToken)
+                .correlate(RefreshToken)
             )
         )
 
         result = await self.db.execute(
-            delete(QFRefreshToken).where(QFRefreshToken.token_id.in_(orphaned_tokens))
+            delete(RefreshToken).where(RefreshToken.token_id.in_(orphaned_tokens))
         )
         await self.db.commit()
 
@@ -170,11 +170,9 @@ class QFCleanupService:
         now = datetime.now(UTC)
 
         result = await self.db.execute(
-            text("""
-                DELETE FROM qf_refresh_tokens
-                WHERE expires_at < :now OR revoked_at IS NOT NULL
-            """),
-            {"now": now}
+            delete(RefreshToken).where(
+                (RefreshToken.expires_at < now) | (RefreshToken.revoked_at.is_not(None))
+            )
         )
         await self.db.commit()
 
@@ -199,11 +197,9 @@ class QFCleanupService:
         cutoff_date = datetime.now(UTC) - timedelta(days=days_old)
 
         result = await self.db.execute(
-            text("""
-                DELETE FROM qf_refresh_tokens
-                WHERE revoked_at IS NOT NULL AND revoked_at < :cutoff_date
-            """),
-            {"cutoff_date": cutoff_date}
+            delete(RefreshToken).where(
+                (RefreshToken.revoked_at.is_not(None)) & (RefreshToken.revoked_at < cutoff_date)
+            )
         )
         await self.db.commit()
 
@@ -221,7 +217,7 @@ class QFCleanupService:
         result = await self.db.execute(text("""
             SELECT COUNT(*)
             FROM qf_rounds
-            WHERE player_id NOT IN (SELECT player_id FROM qf_players)
+            WHERE player_id NOT IN (SELECT player_id FROM players)
         """))
         orphaned_count = result.scalar() or 0
 
@@ -229,7 +225,7 @@ class QFCleanupService:
         result = await self.db.execute(text("""
             SELECT round_type, COUNT(*) as count
             FROM qf_rounds
-            WHERE player_id NOT IN (SELECT player_id FROM qf_players)
+            WHERE player_id NOT IN (SELECT player_id FROM players)
             GROUP BY round_type
         """))
         by_type = {row.round_type: row.count for row in result}
@@ -256,7 +252,7 @@ class QFCleanupService:
         # Get IDs of orphaned prompt rounds before deleting them
         prompt_result = await self.db.execute(text("""
             SELECT round_id FROM qf_rounds
-            WHERE player_id NOT IN (SELECT player_id FROM qf_players)
+            WHERE player_id NOT IN (SELECT player_id FROM players)
             AND round_type = 'prompt'
         """))
         orphaned_prompt_ids = [row[0] for row in prompt_result]
@@ -264,7 +260,7 @@ class QFCleanupService:
         # Delete orphaned rounds
         result = await self.db.execute(text("""
             DELETE FROM qf_rounds
-            WHERE player_id NOT IN (SELECT player_id FROM qf_players)
+            WHERE player_id NOT IN (SELECT player_id FROM players)
         """))
         await self.db.commit()
 
@@ -372,7 +368,7 @@ class QFCleanupService:
 
         # 8. Refresh tokens (references player_id)
         result = await self.db.execute(
-            delete(QFRefreshToken).where(QFRefreshToken.player_id.in_(player_ids))
+            delete(RefreshToken).where(RefreshToken.player_id.in_(player_ids))
         )
         deletion_counts['refresh_tokens'] = self._normalize_rowcount(result.rowcount)
 
