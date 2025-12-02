@@ -27,6 +27,12 @@ class PlayerBalance(BaseSchema):
     locked_until: Optional[datetime] = None
     flag_dismissal_streak: int
 
+    @computed_field  # type: ignore[misc]
+    @property
+    def balance(self) -> int:
+        """Return combined wallet and vault balance."""
+        return self.wallet + self.vault
+
 
 class ClaimDailyBonusResponse(BaseModel):
     """Daily bonus claim response."""
