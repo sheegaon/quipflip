@@ -51,7 +51,7 @@ const NewUserWelcomeOverlay: React.FC = () => {
   return (
     <NewUserWelcomeOverlayShell
       isVisible={isVisible}
-      logoSrc="/mememint_logo.png"
+      logoSrc="/landing_logo.png"
       logoAlt="MemeMint Logo"
       onDismiss={handleDismiss}
       isCloseDisabled={isLoggingOut}

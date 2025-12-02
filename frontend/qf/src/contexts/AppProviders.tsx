@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { GameProvider, useGame } from './GameContext';
-import { QuestProvider } from './QuestContext';
+import { QuestProvider } from '@crowdcraft/contexts/QuestContext';
 import { TutorialProvider, useTutorial } from './TutorialContext';
 import { ResultsProvider, useResults } from './ResultsContext';
 import { NetworkProvider } from './NetworkContext';
-import { NavigationHistoryProvider } from './NavigationHistoryContext';
+import { NavigationHistoryProvider } from '@crowdcraft/contexts/NavigationHistoryContext';
 import { NotificationProvider } from './NotificationContext';
 import { gameContextLogger } from '@crowdcraft/utils/logger.ts';
 import { ErrorBoundary } from '@crowdcraft/components/ErrorBoundary.tsx';

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useGame } from '../contexts/GameContext';
-import { useQuests } from '../contexts/QuestContext';
+import { useQuests } from '@crowdcraft/contexts/QuestContext';
 import { Header } from '../components/Header';
 import { QuestCard } from '../components/QuestCard';
 import { SuccessNotification } from '../components/SuccessNotification';

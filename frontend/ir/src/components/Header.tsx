@@ -177,7 +177,7 @@ const Header: React.FC = () => {
                 title={logoTitle}
                 aria-label={logoTitle}
               >
-                <img src="/initial_reaction_logo.png" alt="Initial Reaction" className="md:h-11 h-9 w-auto" />
+                <img src="/landing_logo.png" alt="Initial Reaction" className="md:h-11 h-9 w-auto" />
               </button>
 
               {/* Dropdown Menu */}
@@ -278,7 +278,7 @@ const Header: React.FC = () => {
                 title="Wallet balance"
                 aria-label="Wallet balance"
               >
-                <img src="/initcoin.png" alt="Wallet" className="w-5 h-5 md:w-7 md:h-7" />
+                <img src="/wallet.png" alt="Wallet" className="w-5 h-5 md:w-7 md:h-7" />
                 <BalanceFlipper
                   value={player.wallet}
                   className="text-xl md:text-2xl font-display font-bold text-ir-turquoise"

@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
-import { useNavigationHistory } from '../contexts/NavigationHistoryContext';
+import { useNavigationHistory } from '@crowdcraft/contexts/NavigationHistoryContext';
 import { useTutorial } from '../contexts/TutorialContext';
 import { useHeaderIndicators } from '../hooks/useHeaderIndicators';
 import { useNetwork } from '../contexts/NetworkContext';
