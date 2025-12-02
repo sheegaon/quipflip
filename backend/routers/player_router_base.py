@@ -297,7 +297,7 @@ class PlayerRouterBase(ABC):
         result = await db.execute(select(PlayerDataModel).where(PlayerDataModel.player_id == player.player_id))
         player_data = result.scalar_one_or_none()
 
-        wallet = player_data.wallet if player_data else 5000  # Default balance
+        wallet = player_data.wallet if player_data else self.player_service_class(db)._get_initial_balance()
         vault = player_data.vault if player_data else 0
 
         return CreatePlayerResponse(
