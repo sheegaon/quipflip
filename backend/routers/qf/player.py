@@ -7,6 +7,7 @@ import logging
 
 from backend.database import get_db
 from backend.dependencies import get_current_player
+from backend.models.player import Player
 from backend.models.qf.player import QFPlayer
 from backend.models.qf.phraseset import Phraseset
 from backend.models.qf.round import Round
