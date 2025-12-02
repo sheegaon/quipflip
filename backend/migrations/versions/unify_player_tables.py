@@ -444,12 +444,13 @@ def upgrade() -> None:
         existing_fks = inspector.get_foreign_keys(table)
 
         if dialect_name == "sqlite":
-            # SQLite cannot drop constraints directly; use batch operations which recreate the table
-            with op.batch_alter_table(table, recreate="always") as batch_op:
-                for fk in existing_fks:
-                    if set(columns).issubset(set(fk.get("constrained_columns", []))):
-                        batch_op.drop_constraint(fk["name"], type_="foreignkey")
-
+            # SQLite cannot drop unnamed constraints directly; rebuild the table while excluding
+            # existing foreign keys, then add the unified constraint.
+            with op.batch_alter_table(
+                table,
+                recreate="always",
+                reflect_kwargs={"include_foreign_key": False},
+            ) as batch_op:
                 batch_op.create_foreign_key(
                     f"fk_{table}_{'_'.join(columns)}_players",
                     'players',
@@ -461,7 +462,8 @@ def upgrade() -> None:
 
         for fk in existing_fks:
             if set(columns).issubset(set(fk.get("constrained_columns", []))):
-                op.drop_constraint(fk["name"], table, type_="foreignkey")
+                if fk.get("name"):
+                    op.drop_constraint(fk["name"], table, type_="foreignkey")
 
         op.create_foreign_key(
             f"fk_{table}_{'_'.join(columns)}_players",
