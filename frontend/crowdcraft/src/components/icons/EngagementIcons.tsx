@@ -157,3 +157,81 @@ export const ReviewIcon: React.FC<ReviewIconProps> = ({
     <circle cx={17} cy={15} r={0.8} fill={detailColor} />
   </svg>
 );
+
+interface ThumbIconProps extends SimpleIconProps {
+  primaryColor?: string;
+  accentColor?: string;
+  backgroundOpacity?: number;
+}
+
+export const ThumbsUpIcon: React.FC<ThumbIconProps> = ({
+  className = 'h-5 w-5',
+  primaryColor = '#10B4A4',
+  accentColor = '#0B2137',
+  backgroundOpacity = 0.12,
+  ...props
+}) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    className={className}
+    aria-hidden="true"
+    {...props}
+  >
+    <circle cx={12} cy={12} r={11} fill={primaryColor} opacity={backgroundOpacity} />
+    <path
+      d="M12.25 5.5L11 10.5H7.8c-.9 0-1.7.6-1.9 1.5l-1.2 5c-.3 1.2.6 2.3 1.8 2.3H15c.9 0 1.7-.6 1.9-1.5l1.8-6a2 2 0 00-1.9-2.5h-3.1l.5-2.7a1.7 1.7 0 00-1.6-2.1H11c-.35 0-.66.23-.75.55Z"
+      fill={primaryColor}
+      stroke={accentColor}
+      strokeWidth={1.4}
+      strokeLinejoin="round"
+    />
+    <rect
+      x={4.5}
+      y={10}
+      width={2.6}
+      height={9}
+      rx={1.2}
+      fill={accentColor}
+      opacity={0.9}
+    />
+  </svg>
+);
+
+export const ThumbsDownIcon: React.FC<ThumbIconProps> = ({
+  className = 'h-5 w-5',
+  primaryColor = '#FF9A3D',
+  accentColor = '#0B2137',
+  backgroundOpacity = 0.12,
+  ...props
+}) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    className={className}
+    aria-hidden="true"
+    {...props}
+  >
+    <circle cx={12} cy={12} r={11} fill={primaryColor} opacity={backgroundOpacity} />
+    <g transform="translate(24 24) rotate(180)">
+      <path
+        d="M12.25 5.5L11 10.5H7.8c-.9 0-1.7.6-1.9 1.5l-1.2 5c-.3 1.2.6 2.3 1.8 2.3H15c.9 0 1.7-.6 1.9-1.5l1.8-6a2 2 0 00-1.9-2.5h-3.1l.5-2.7a1.7 1.7 0 00-1.6-2.1H11c-.35 0-.66.23-.75.55Z"
+        fill={primaryColor}
+        stroke={accentColor}
+        strokeWidth={1.4}
+        strokeLinejoin="round"
+      />
+      <rect
+        x={4.5}
+        y={10}
+        width={2.6}
+        height={9}
+        rx={1.2}
+        fill={accentColor}
+        opacity={0.9}
+      />
+    </g>
+  </svg>
+);
