@@ -231,6 +231,18 @@ async def get_round_availability(
         db: AsyncSession = Depends(get_db),
 ):
     """Get current round availability and game constants."""
+    from sqlalchemy import select
+    from backend.models.mm.player_data import MMPlayerData
+    from backend.config import get_settings
+
+    # Load game-specific player data for wallet balance
+    result = await db.execute(
+        select(MMPlayerData).where(MMPlayerData.player_id == player.player_id)
+    )
+    player_data = result.scalar_one_or_none()
+
+    wallet = player_data.wallet if player_data else get_settings().mm_starting_wallet
+
     config_service = MMSystemConfigService(db)
     daily_state_service = MMPlayerDailyStateService(db, config_service)
 
@@ -249,9 +261,9 @@ async def get_round_availability(
     daily_bonus_available = await daily_bonus_service.is_bonus_available(player.player_id)
 
     # Simple checks for now
-    can_vote = player.wallet >= round_entry_cost
+    can_vote = wallet >= round_entry_cost
     can_submit_caption = (
-            free_captions_remaining > 0 or player.wallet >= caption_submission_cost
+            free_captions_remaining > 0 or wallet >= caption_submission_cost
     )
 
     return RoundAvailability(
