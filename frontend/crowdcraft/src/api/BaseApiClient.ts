@@ -48,6 +48,8 @@ import type {
   AbandonRoundResponse,
   FlaggedPromptListResponse,
   FlaggedPromptItem,
+  CreateGuestResponse,
+  UpgradeGuestResponse,
   BetaSurveySubmissionRequest,
   BetaSurveySubmissionResponse,
   BetaSurveyStatusResponse,

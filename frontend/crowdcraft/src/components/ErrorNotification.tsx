@@ -1,14 +1,14 @@
 import React from 'react';
 
 export interface ErrorNotificationProps {
-  message: string;
+  message?: string;
   onDismiss?: () => void;
   className?: string;
   icon?: string;
 }
 
 export const ErrorNotification: React.FC<ErrorNotificationProps> = ({
-  message,
+  message = 'Something went wrong. Please try again.',
   onDismiss,
   className = '',
   icon = '⚠️',

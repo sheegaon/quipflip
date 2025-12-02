@@ -3,9 +3,16 @@ import React, { useState } from 'react';
 export interface EditableConfigFieldProps {
   label: string;
   value: string | number;
-  onSave: (value: string) => Promise<void>;
+  onSave: (key: string, value: string | number) => Promise<void>;
   inputType?: 'text' | 'number';
   description?: string;
+  configKey?: string;
+  unit?: string;
+  type?: string;
+  options?: string[];
+  min?: number;
+  max?: number;
+  disabled?: boolean;
 }
 
 const EditableConfigField: React.FC<EditableConfigFieldProps> = ({
@@ -14,6 +21,10 @@ const EditableConfigField: React.FC<EditableConfigFieldProps> = ({
   onSave,
   inputType = 'text',
   description,
+  configKey,
+  min,
+  max,
+  disabled,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [inputValue, setInputValue] = useState(value.toString());
@@ -23,7 +34,8 @@ const EditableConfigField: React.FC<EditableConfigFieldProps> = ({
   const handleSave = async () => {
     try {
       setIsSaving(true);
-      await onSave(inputValue);
+      const parsedValue = inputType === 'number' ? Number(inputValue) : inputValue;
+      await onSave(configKey ?? label, parsedValue);
       setIsEditing(false);
       setError(null);
     } catch (err) {
@@ -56,6 +68,7 @@ const EditableConfigField: React.FC<EditableConfigFieldProps> = ({
           <button
             className="btn btn-secondary btn-sm"
             onClick={() => setIsEditing(true)}
+            disabled={disabled}
           >
             Edit
           </button>
@@ -70,13 +83,16 @@ const EditableConfigField: React.FC<EditableConfigFieldProps> = ({
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
             className="input input-bordered w-full"
+            min={min}
+            max={max}
+            disabled={disabled}
           />
 
           <div className="flex gap-2">
             <button
               className="btn btn-primary"
               onClick={() => void handleSave()}
-              disabled={isSaving}
+              disabled={isSaving || disabled}
             >
               {isSaving ? 'Saving...' : 'Save'}
             </button>
@@ -87,7 +103,7 @@ const EditableConfigField: React.FC<EditableConfigFieldProps> = ({
                 setInputValue(value.toString());
                 setError(null);
               }}
-              disabled={isSaving}
+              disabled={isSaving || disabled}
             >
               Cancel
             </button>

@@ -202,10 +202,10 @@ export const Header: React.FC = () => {
     <SharedHeader
       logoSrc="/menu.png"
       logoAlt="MemeMint"
-      playerName={player.username || username}
+      playerName={player.username || username || ''}
       wallet={player.wallet}
       vault={player.vault}
-      isGuest={player.is_guest}
+      isGuest={Boolean(player.is_guest)}
       isOffline={isOffline}
       showBackArrow={showBackArrow}
       onBackClick={handleBackArrowClick}

@@ -13,7 +13,7 @@ import PingNotificationDisplay from './components/PingNotificationDisplay';
 import { trackPageView } from '@crowdcraft/utils/googleAnalytics.ts';
 import { ErrorBoundary } from '@crowdcraft/components/ErrorBoundary.tsx';
 import { AppErrorFallback } from '@crowdcraft/components/ErrorFallback.tsx';
-import { OfflineBanner } from './components/OfflineBanner';
+import OfflineBanner from './components/OfflineBanner';
 import NewUserWelcomeOverlay from './components/NewUserWelcomeOverlay';
 
 // Suppress some logging messages

@@ -4,7 +4,7 @@ import type {
   PhrasesetStatus,
   PhrasesetSummary,
 } from '@crowdcraft/api/types.ts';
-import { StatusBadge } from './StatusBadge';
+import { StatusBadge, type StatusType } from './StatusBadge';
 import { ProgressBar } from './ProgressBar';
 import { ActivityTimeline } from './PhrasesetActivityTimeline';
 import { formatDateTimeInUserZone } from '@crowdcraft/utils/datetime.ts';
@@ -28,6 +28,21 @@ const STATUS_LABELS: Record<PhrasesetStatus, string> = {
 
 const formatStatusLabel = (status: PhrasesetStatus) => STATUS_LABELS[status] ?? status.replace('_', ' ');
 
+const statusToBadgeType = (status: PhrasesetStatus): StatusType => {
+  switch (status) {
+    case 'finalized':
+      return 'success';
+    case 'abandoned':
+      return 'warning';
+    case 'closing':
+    case 'voting':
+    case 'active':
+      return 'info';
+    default:
+      return 'neutral';
+  }
+};
+
 export const PhrasesetDetails: React.FC<PhrasesetDetailsProps> = ({
   phraseset,
   summary,
@@ -48,7 +63,7 @@ export const PhrasesetDetails: React.FC<PhrasesetDetailsProps> = ({
         <header className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-2xl font-semibold text-gray-800">{summary.prompt_text}</h2>
-            <StatusBadge status={summary.status} />
+            <StatusBadge status={statusToBadgeType(summary.status)} text={formatStatusLabel(summary.status)} />
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -119,7 +134,7 @@ export const PhrasesetDetails: React.FC<PhrasesetDetailsProps> = ({
       <header className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-2xl font-semibold text-gray-800">{phraseset.prompt_text}</h2>
-          <StatusBadge status={phraseset.status} />
+          <StatusBadge status={statusToBadgeType(phraseset.status)} text={formatStatusLabel(phraseset.status)} />
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -156,7 +171,7 @@ export const PhrasesetDetails: React.FC<PhrasesetDetailsProps> = ({
       </header>
 
       <section>
-        <ProgressBar current={phraseset.vote_count} max={20} />
+        <ProgressBar current={phraseset.vote_count} total={20} />
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-gray-600 mt-4">
           <div>
             <span className="font-semibold text-gray-700">Created:</span>{' '}
