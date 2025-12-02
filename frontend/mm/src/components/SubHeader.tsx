@@ -40,7 +40,7 @@ export const SubHeader: React.FC = () => {
     return null;
   }
 
-  const showQuestionMarkIcon = player.is_guest || tutorialStatus?.completed === false || isFirstDay;
+  const showQuestionMarkIcon = player.is_guest || !tutorialStatus?.completed || isFirstDay;
 
   return (
     <SharedSubHeader
@@ -57,6 +57,7 @@ export const SubHeader: React.FC = () => {
       showQuestionMark={showQuestionMarkIcon}
       onTrackingClick={() => navigate('/game/history')}
       onResultsClick={handleResultsClick}
+      onCompletedClick={() => navigate('/completed')}
       onLeaderboardClick={() => navigate('/leaderboard')}
       onOnlineUsersClick={() => navigate('/online-users')}
       onTutorialClick={() => navigate('/dashboard?startTutorial=true')}

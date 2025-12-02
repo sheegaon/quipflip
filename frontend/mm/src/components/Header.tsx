@@ -6,7 +6,6 @@ import { useTutorial } from '../contexts/TutorialContext';
 import { useHeaderIndicators } from '../hooks/useHeaderIndicators';
 import { useNetwork } from '../contexts/NetworkContext';
 import { BalanceFlipper } from '@crowdcraft/components/BalanceFlipper.tsx';
-import { SubHeader } from './SubHeader';
 import { TreasureChestIcon } from '@crowdcraft/components/icons/TreasureChestIcon.tsx';
 import { ArrowLeftIcon } from '@crowdcraft/components/icons/ArrowIcons';
 import {
@@ -412,8 +411,6 @@ export const Header: React.FC = () => {
           </div>
         </div>
       </div>
-      {/* Conditionally render SubHeader on dashboard */}
-      {location.pathname === '/dashboard' && <SubHeader />}
     </>
   );
 };
