@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
-import apiClient from '@crowdcraft/api/client.ts';
+import apiClient from '@/api/client';
 import { Header } from '../components/Header';
 import type { PartyResultsResponse, PartyPlayerStats, PartyAward } from '@crowdcraft/api/types.ts';
 

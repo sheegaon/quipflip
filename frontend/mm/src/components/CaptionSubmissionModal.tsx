@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import apiClient, { extractErrorMessage } from '@crowdcraft/api/client.ts';
+import apiClient, { extractErrorMessage } from '@/api/client';
 import type {
   MemeCaptionSubmission,
   MemeVoteRound,

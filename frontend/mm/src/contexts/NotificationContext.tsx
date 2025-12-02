@@ -21,7 +21,7 @@ import {
   useEffect,
 } from 'react';
 import { useGame } from './GameContext';
-import apiClient from '@crowdcraft/api/client.ts';
+import apiClient from '@/api/client';
 import { NotificationStreamMessage, OnlineUser } from '@crowdcraft/api/types.ts';
 import useWebSocket from '@crowdcraft/hooks/useWebSocket.ts';
 

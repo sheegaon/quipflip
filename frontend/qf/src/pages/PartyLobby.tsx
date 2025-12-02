@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { usePartyWebSocket } from '../hooks/usePartyWebSocket';
-import apiClient from '@crowdcraft/api/client.ts';
+import apiClient from '@/api/client';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { CircleIcon } from '@crowdcraft/components/icons/NavigationIcons.tsx';
 import { BotIcon } from '@crowdcraft/components/icons/EngagementIcons.tsx';
