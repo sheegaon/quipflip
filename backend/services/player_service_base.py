@@ -252,9 +252,21 @@ class PlayerServiceBase(ABC):
         if not player:
             raise self.error_class("player_not_found")
 
-        player.wallet = max(0, player.wallet + amount)
+        # Load game-specific player data for wallet update
+        result = await self.db.execute(
+            select(self.player_data_model).where(
+                self.player_data_model.player_id == player_id
+            )
+        )
+        player_data = result.scalar_one_or_none()
+
+        if not player_data:
+            raise self.error_class("player_data_not_found")
+
+        # Update wallet in PlayerData
+        player_data.wallet = max(0, player_data.wallet + amount)
         await self.db.commit()
-        await self.db.refresh(player)
+        await self.db.refresh(player_data)
         return player
 
     async def update_vault(self, player_id: str, amount: int) -> "PlayerBase":
@@ -274,9 +286,21 @@ class PlayerServiceBase(ABC):
         if not player:
             raise self.error_class("player_not_found")
 
-        player.vault = max(0, player.vault + amount)
+        # Load game-specific player data for vault update
+        result = await self.db.execute(
+            select(self.player_data_model).where(
+                self.player_data_model.player_id == player_id
+            )
+        )
+        player_data = result.scalar_one_or_none()
+
+        if not player_data:
+            raise self.error_class("player_data_not_found")
+
+        # Update vault in PlayerData
+        player_data.vault = max(0, player_data.vault + amount)
         await self.db.commit()
-        await self.db.refresh(player)
+        await self.db.refresh(player_data)
         return player
 
     async def transfer_wallet_to_vault(self, player_id: str, amount: int) -> "PlayerBase":
@@ -296,13 +320,25 @@ class PlayerServiceBase(ABC):
         if not player:
             raise self.error_class("player_not_found")
 
-        if player.wallet < amount:
+        # Load game-specific player data for wallet/vault transfer
+        result = await self.db.execute(
+            select(self.player_data_model).where(
+                self.player_data_model.player_id == player_id
+            )
+        )
+        player_data = result.scalar_one_or_none()
+
+        if not player_data:
+            raise self.error_class("player_data_not_found")
+
+        if player_data.wallet < amount:
             raise self.error_class("insufficient_wallet_balance")
 
-        player.wallet -= amount
-        player.vault += amount
+        # Transfer from wallet to vault in PlayerData
+        player_data.wallet -= amount
+        player_data.vault += amount
         await self.db.commit()
-        await self.db.refresh(player)
+        await self.db.refresh(player_data)
         return player
 
     async def register_guest(self) -> tuple["PlayerBase", str]:
