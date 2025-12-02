@@ -727,24 +727,44 @@ export const GameProvider: React.FC<{
     };
   }, [isAuthenticated, refreshDashboard]);
 
-  const state: GameState = {
-    isAuthenticated,
-    username,
-    player,
-    showNewUserWelcome,
-    activeRound,
-    currentVoteRound,
-    currentCaptionRound,
-    pendingResults,
-    phrasesetSummary,
-    unclaimedResults,
-    roundAvailability,
-    copyRoundHints,
-    loading,
-    error,
-    sessionState,
-    visitorId,
-  };
+  const state: GameState = React.useMemo(
+    () => ({
+      isAuthenticated,
+      username,
+      player,
+      showNewUserWelcome,
+      activeRound,
+      currentVoteRound,
+      currentCaptionRound,
+      pendingResults,
+      phrasesetSummary,
+      unclaimedResults,
+      roundAvailability,
+      copyRoundHints,
+      loading,
+      error,
+      sessionState,
+      visitorId,
+    }),
+    [
+      activeRound,
+      copyRoundHints,
+      currentCaptionRound,
+      currentVoteRound,
+      error,
+      isAuthenticated,
+      loading,
+      pendingResults,
+      phrasesetSummary,
+      roundAvailability,
+      sessionState,
+      showNewUserWelcome,
+      unclaimedResults,
+      username,
+      visitorId,
+      player,
+    ],
+  );
 
   const actions: GameActions = React.useMemo(
     () => ({

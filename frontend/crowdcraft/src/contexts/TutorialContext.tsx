@@ -38,7 +38,7 @@ interface RefreshOptions {
   showLoading?: boolean;
 }
 
-interface TutorialActions<Status extends TutorialStatus> {
+interface TutorialActions {
   startTutorial: () => Promise<void>;
   advanceStep: (stepId?: TutorialProgress) => Promise<void>;
   skipTutorial: () => Promise<void>;
@@ -49,7 +49,7 @@ interface TutorialActions<Status extends TutorialStatus> {
 
 interface TutorialContextType<Status extends TutorialStatus> {
   state: TutorialContextState<Status>;
-  actions: TutorialActions<Status>;
+  actions: TutorialActions;
 }
 
 export interface TutorialContextConfig<Status extends TutorialStatus> {
@@ -251,7 +251,7 @@ export const createTutorialContext = <Status extends TutorialStatus>() => {
       [status, lifecycleStatus, isActive, currentStep, loading, error],
     );
 
-    const actions: TutorialActions<Status> = useMemo(
+    const actions: TutorialActions = useMemo(
       () => ({
         startTutorial,
         advanceStep,

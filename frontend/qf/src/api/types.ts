@@ -4,9 +4,14 @@ import type {
   ApiError,
   ApiInfo,
   AuthTokenResponse,
+  Caption,
   GameStatus,
   HealthResponse,
+  MemeCaptionOption,
+  MemeDetails,
+  MemeVoteResult,
   SuggestUsernameResponse,
+  VoteRoundState,
   WsAuthTokenResponse,
 } from '../../../crowdcraft/src/api/types.ts';
 
@@ -15,9 +20,14 @@ export type {
   ApiError,
   ApiInfo,
   AuthTokenResponse,
+  Caption,
   GameStatus,
   HealthResponse,
+  MemeCaptionOption,
+  MemeDetails,
+  MemeVoteResult,
   SuggestUsernameResponse,
+  VoteRoundState,
   WsAuthTokenResponse,
 };
 
