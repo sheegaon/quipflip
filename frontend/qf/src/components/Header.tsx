@@ -389,7 +389,7 @@ export const Header: React.FC = () => {
               title="Wallet balance"
               aria-label="Wallet balance"
             >
-              <img src="/flipcoin.png" alt="Wallet" className="w-5 h-5 md:w-7 md:h-7" />
+              <img src="/wallet.png" alt="Wallet" className="w-5 h-5 md:w-7 md:h-7" />
               <BalanceFlipper
                 value={player.wallet}
                 className="text-xl md:text-2xl font-display font-bold text-ccl-turquoise"

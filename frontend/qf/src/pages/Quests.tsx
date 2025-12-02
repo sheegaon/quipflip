@@ -149,7 +149,7 @@ export const Quests: React.FC = () => {
 
         <div className="tile-card p-6 mb-6">
           <div className="flex items-center gap-3 mb-4">
-            <img src="/flipcoin.png" alt="Daily Bonus" className="w-12 h-12" />
+            <img src="/wallet.png" alt="Daily Bonus" className="w-12 h-12" />
             <div>
               <h2 className="text-2xl font-display font-bold text-ccl-turquoise">Daily Bonus</h2>
               <p className="text-ccl-teal">Claim your daily reward!</p>
