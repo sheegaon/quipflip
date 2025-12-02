@@ -736,6 +736,57 @@ export interface ClaimQuestRewardResponse {
   new_vault: number;
 }
 
+// MemeMint caption/vote types shared with crowdcraft contexts
+export interface Caption {
+  caption_id: string;
+  text: string;
+  author_username?: string | null;
+  is_ai?: boolean;
+  is_bot?: boolean;
+  is_system?: boolean;
+  is_seed_caption?: boolean;
+  is_circle_member?: boolean;
+  in_circle?: boolean;
+}
+
+export interface VoteRoundState {
+  round_id: string;
+  image_id: string;
+  image_url: string;
+  thumbnail_url?: string | null;
+  attribution_text?: string | null;
+  captions: Caption[];
+  expires_at: string;
+  cost: number;
+}
+
+export interface MemeDetails {
+  meme_id: string;
+  image_url: string;
+  title?: string;
+  alt_text?: string;
+}
+
+export interface MemeCaptionOption {
+  caption_id: string;
+  text: string;
+  author?: string;
+  is_original?: boolean;
+  riff_on_caption_id?: string | null;
+}
+
+export interface MemeVoteResult {
+  round_id: string;
+  selected_caption_id: string;
+  payout: number;
+  wallet?: number;
+  vault?: number;
+  meme?: MemeDetails;
+  captions?: MemeCaptionOption[];
+  winning_caption_id?: string | null;
+  has_submitted_caption?: boolean;
+}
+
 // Online Users feature types
 export interface OnlineUser {
   username: string;

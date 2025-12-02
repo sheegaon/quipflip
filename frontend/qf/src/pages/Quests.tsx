@@ -55,7 +55,7 @@ export const Quests: React.FC = () => {
 
     hasRequestedQuestsRef.current = true;
     questsLogger.debug('Forcing quest refresh on navigation');
-    refreshQuests().catch((err) => {
+    refreshQuests().catch((err: unknown) => {
       questsLogger.error('Failed to refresh quests on navigation', err);
     });
   }, [questsLoading, refreshQuests]);

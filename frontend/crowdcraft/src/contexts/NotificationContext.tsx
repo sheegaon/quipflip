@@ -59,9 +59,13 @@ export interface NotificationContextConfig {
   onlineUsersEnabled: () => boolean;
   notificationsWsPath: string;
   onlineUsersWsPath: string;
-  partyPageContext?: string;
+  partyPageContext?: 'game' | 'other' | 'lobby';
   usePartySessionId?: () => string | null;
-  usePartyWebSocket?: (config: { sessionId: string; pageContext: string }) => void;
+  usePartyWebSocket?: (config: {
+    sessionId: string;
+    pageContext?: 'game' | 'other' | 'lobby';
+    onHostPing?: (data: { host_player_id: string; host_username: string; join_url: string }) => void;
+  }) => { connected: boolean; connecting: boolean; error: string | null; reconnect: () => void } | void;
 }
 
 interface NotificationProviderProps {
@@ -291,8 +295,8 @@ export const createNotificationContext = () => {
       setPingStatus((prev) => ({ ...prev, [username]: 'sending' }));
 
       try {
-        const response = await apiClient.pingUser(username);
-        if (!response.ok) {
+        const response = await apiClient.pingOnlineUser(username);
+        if (!response.success) {
           throw new Error('Failed to send ping');
         }
 
