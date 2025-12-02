@@ -1,274 +1,98 @@
 # Technical Architecture and Overview
 
 ## System Overview
-
-Quipflip is a FastAPI-based backend service with a stateless REST API architecture. The backend maintains all game state while the frontend is a presentation layer.
+- Crowdcraft platform runs three games—QuipFlip (phrases), MemeMint (memes/captions), and Initial Reaction (backronyms)—behind a single FastAPI backend.
+- Backend exposes stateless REST endpoints plus a few WebSocket channels; it owns persistence, queueing, wallets, quests, AI backups, and finalization logic. Frontends are thin clients.
+- React + TypeScript frontends are Vite apps that reuse a shared `frontend/crowdcraft` component/util/API layer via `@crowdcraft/*` path aliases.
+- Phrase validation and AI generation can run locally or through external services but plug into the same service layer and metrics.
 
 ## Project Structure
-
 ```
 repo/
-├── backend/                # FastAPI application, SQLAlchemy models, and services
-│   ├── main.py             # ASGI entrypoint
-│   ├── routers/            # Shared auth/health plus game-specific routers
-│   │   ├── qf/             # Quipflip routes mounted at /qf/*
-│   │   └── ir/             # Initial Reaction routes mounted at /ir/*
-│   ├── services/           # Shared utilities plus game-specific service layers (qf/ and ir/)
-│   ├── models/             # Shared base tables + game packages (qf/ and ir/)
-│   ├── schemas/            # Pydantic request/response schemas
-│   ├── utils/              # Queue/lock abstractions, JSON encoders, helpers
+├── backend/                # FastAPI app, routers, services, models, utils, middleware
+│   ├── routers/            # auth/health + game routers (qf/mm/ir) and WebSocket endpoints
+│   ├── services/           # shared infrastructure + game-specific domains (rounds, party, AI, notifications)
+│   ├── models/             # SQLAlchemy models (shared bases + game packages)
+│   ├── schemas/            # Pydantic request/response models
+│   ├── middleware/         # deduplication + online user tracking
+│   ├── tasks/              # periodic maintenance helpers
 │   └── migrations/         # Alembic migrations
-├── frontend/               # React + TypeScript client (Vite powered)
-├── docs/                   # Architecture, API, data model, and planning docs
-├── scripts/                # Utilities (e.g., dictionary download)
-├── tests/                  # Pytest suites (integration coverage)
-└── requirements.txt        # Backend dependencies
+├── frontend/
+│   ├── crowdcraft/         # shared component/util/API library exported as @crowdcraft/*
+│   ├── qf/                 # QuipFlip SPA
+│   ├── mm/                 # MemeMint SPA
+│   └── ir/                 # Initial Reaction SPA
+├── docs/                   # Architecture, API, data models, websocket, AI docs
+├── scripts/                # Ops/data helpers (dictionary download, cleanup)
+├── tests/                  # Pytest suites (integration focus)
+├── package.json            # npm workspaces for all frontend packages
+├── requirements.txt        # Backend dependencies
+└── docker-compose.yml      # Local Postgres/Redis helpers
 ```
 
-The backend is designed around a clear service layer (`backend/services`) that encapsulates database access and business rules. Routers perform authentication and validation before delegating to services. Shared infrastructure concerns (queues, distributed locks, JSON encoding) live in `backend/utils`. Game-specific logic is isolated to `backend/routers/{qf,ir}`, `backend/services/{qf,ir}`, and `backend/models/{qf,ir}` while the shared bases in `backend/models/*_base.py` keep authentication, tokens, transactions, and configuration consistent across both games. The React frontend consumes the documented API but remains optional for backend development.
+## Backend Architecture
 
-### Technology Stack
-- **Framework**: FastAPI (async Python web framework)
-- **Database**: PostgreSQL (production) / SQLite (development)
-- **ORM**: SQLAlchemy (async)
-- **Authentication**: JWT access tokens with refresh token rotation
-- **Validation**: Pydantic schemas + NASPA word dictionary + sentence-transformers similarity
-- **Queueing & Locks**: Redis-backed when available with in-memory/threaded fallback
+### Entrypoint & runtime lifecycle
+- `backend/main.py` sets UTC before imports, configures rotating logs (general, SQL, API access), mounts CORS, and applies middleware for request deduplication and online-user tracking.
+- Lifespan startup initializes the phrase validator (local or remote API), syncs prompt seeds, backfills quests, imports MemeMint images/captions, and starts background tasks (AI backup cycle, stale-content sweep, cleanup cycle, party maintenance). Shutdown closes the validator client and cancels tasks cleanly.
 
-### Authentication
+### Routers & dependencies
+- Game routers live under `backend/routers/{qf,mm,ir}` and are mounted at `/qf`, `/mm`, `/ir`. Shared router bases (admin/player/quest) handle authentication and common dependency wiring.
+- Auth router issues JWT access/refresh tokens, maintains HttpOnly cookies, and exposes `/auth/ws-token` for short-lived WebSocket tokens. Health router serves readiness probes.
+- QF-only real-time endpoints: notifications (`/qf/notifications/ws`), online users (`/qf/users/online/ws`), and party updates (`/qf/party/{sessionId}/ws`).
 
-JWT authentication using HTTP-only cookies for enhanced security:
-- **Access tokens** (2-hour lifetime): Stored in HTTP-only cookie, automatically sent with requests
-- **Refresh tokens** (30-day lifetime): Stored in HTTP-only cookie, used for automatic token rotation
-- **Cookie security**: HttpOnly, Secure (production), SameSite=Lax
-- **REST API**: Proxied through Vercel for same-origin (HttpOnly cookies work)
-- **WebSocket**: Token exchange pattern (Vercel doesn't support WebSocket proxying)
-- **iOS compatibility**: Same-origin REST requests work reliably on iOS Safari
-- **Automatic refresh**: Frontend intercepts 401 errors and silently refreshes tokens
-- **Backward compatibility**: Authorization header still supported for API clients
+### Service layer
+- Routers validate/authenticate then delegate to services; services encapsulate database work, locking, and business rules.
+- Core services: queue and round orchestration, voting/finalization, transaction logging, quests, statistics, notification delivery, and phrase validation (local validator or remote client).
+- QF-specific services cover party mode (`PartySessionService`, `PartyCoordinationService`, `PartyScoringService`, `PartyWebSocketManager`) and rich notification fan-out.
+- AI orchestration in `services/ai/*` generates backup copies/votes/hints for QF and backronyms/votes for IR using OpenAI or Gemini. Results and costs are recorded in `ai_metrics` and cached phrase tables to avoid duplicate work.
 
-**Production Setup:**
-- Frontend: Vercel hosting at `quipflip.xyz`
-- Backend: Heroku at `quipflip-c196034288cd.herokuapp.com`
-- REST API: Vercel proxy (`/api/*` → Heroku) for same-origin
-- WebSocket: Token exchange via `/auth/ws-token` + direct connection to Heroku
+### Data & infrastructure
+- Async SQLAlchemy with Postgres in production and SQLite locally (`backend/database.py`); migrations in `backend/migrations/`.
+- Models are split into shared bases (`*_base.py` for auth/tokens/transactions) and per-game packages (`models/qf`, `models/mm`, `models/ir`). Pydantic schemas mirror API shapes in `backend/schemas`.
+- Locking and queue helpers prefer Redis when configured (`utils/lock_client.py`, `utils/queue_client.py`) and fall back to in-memory/thread locks. Rate limiting, cookie helpers, and JSON encoding live in `backend/utils`.
+- Logging writes to `logs/` via rotating handlers; API request logging middleware emits structured entries.
 
-**WebSocket Token Exchange Pattern:**
-1. Frontend calls `/api/auth/ws-token` (REST via Vercel proxy with HttpOnly cookie)
-2. Backend validates cookie and returns short-lived token (60 seconds)
-3. Frontend uses token for direct WebSocket connection to Heroku
-4. Short lifetime limits security risk if token is exposed
+### Background jobs
+- `ai_backup_cycle` periodically fills stalled prompts/phrasesets with AI copies and votes.
+- `ai_stale_handler_cycle` sweeps older content to keep games fresh.
+- `cleanup_cycle` removes stale tokens and related auth artifacts.
+- `party_maintenance_cycle` prunes stale party sessions/participants.
+- `ir_backup_cycle` is available for Initial Reaction but currently disabled by default in the lifespan loop.
 
-See [API.md](API.md) for complete authentication documentation including:
-- Cookie-based authentication (preferred)
-- Authorization header format (`Authorization: Bearer <token>`) - fallback for API clients
-- Credential-based login (`POST /auth/login`)
-- Refresh token endpoint (`POST /auth/refresh`)
-- Automatic token refresh on expiration
+## Frontend Architecture
 
-### WebSocket Architecture
+### Shared library: `frontend/crowdcraft`
+- Vite-built library exporting UI components, contexts, utilities, and API/base client helpers via `@crowdcraft/*`.
+- Consumed directly via path aliases in each game `tsconfig`; `frontend/crowdcraft` is included in the TypeScript `include` list so types remain in sync during local dev.
 
-**Online Users Feature** (`/online/ws` endpoint):
+### Game apps
+- `frontend/{qf,mm,ir}` are Vite + React + TypeScript SPAs with Tailwind for styling and per-game branding/routes.
+- Each app imports shared pieces from `@crowdcraft` plus game-specific pages, assets, and API extensions. Axios clients are configured with `withCredentials` and derive the base URL from Vite env (`VITE_API_URL`) so HttpOnly cookies flow to the backend proxy.
+- Vercel hosts the production frontends; Vercel proxies REST under `/api/*` to the Heroku backend to keep same-origin cookie semantics.
 
-The WebSocket implementation provides real-time updates for the "Who's Online" feature, showing players which users are currently active.
+## Authentication & Session Model
+- JWT access tokens (~2h) and refresh tokens (~30d) are stored in HttpOnly cookies (`access_token_cookie_name` / `refresh_token_cookie_name` for QF, IR-specific names for IR). Authorization headers remain supported for API clients.
+- Token refresh is automatic on 401 via frontend interceptors; logout clears cookies. SameSite is lax in dev and secure in production.
+- WebSocket access uses `/qf/auth/ws-token` to mint 60-second tokens passed via query param; sockets are closed and do not retry on auth failures.
 
-**Key Components:**
-- **Connection Manager**: Centralized manager tracks all active WebSocket connections
-- **Background Broadcast Task**: Automatically broadcasts online users updates every 5 seconds
-- **User Activity Tracking**: `UserActivity` model tracks last action and timestamp for each player
+## Real-Time Channels (QF)
+- Notifications: `/qf/notifications/ws` pushes pings and notification payloads via `WebSocketNotificationService`.
+- Online users: `/qf/users/online/ws` broadcasts presence snapshots; REST polling fallback exists when the socket drops.
+- Party mode: `/qf/party/{sessionId}/ws` emits lobby/progress updates while REST endpoints drive actions (create/join/start/submit).
+See `docs/WEBSOCKET.md` for connection details and error handling.
 
-**Connection Lifecycle:**
-1. Client requests WebSocket connection with token (query param or cookie)
-2. Server authenticates token before accepting connection
-3. Unauthenticated connections rejected with WebSocket code 1008
-4. First connection starts background broadcast task
-5. Last disconnection stops background broadcast task
+## QuipFlip Game Flow (high level)
+- **Quip → Impostor → Vote** rounds share a common queue managed by `QueueService`: prompt players submit quips, two impostor copies are collected, then phrasesets enter the voting queue.
+- Round limits: single active round per player, outstanding prompt limits, copy discount when the prompt queue is deep, timers with grace periods, and distributed locks to prevent double-claiming.
+- Voting closes at configurable thresholds (min 3 votes to start closing, 5-vote short window, max 20). Finalization distributes prizes, writes transactions, and caches result views.
+- MemeMint and Initial Reaction reuse the same service patterns with game-specific models and settings (caption/vote for MM, backronym sets for IR).
 
-**Efficiency Optimizations:**
-- Background task only runs when clients are connected
-- Single broadcast sent to all connected clients (no per-client queries)
-- Automatic cleanup of disconnected clients
-- Database query executed once per 5-second interval, results broadcast to all
+## Phrase Validation & AI
+- Phrase validation can run locally (`services/phrase_validator.py` + NASPA dictionary + similarity thresholds) or through a remote Phrase Validation API client; both enforce word lists, length limits, and semantic-distance checks.
+- AI service (`docs/AI_SERVICE.md`) integrates with the same validators, caches generated phrases/backronyms, and records latency/cost/accuracy metrics. Backup cycles run as background tasks; hints reuse the same cached phrases.
 
-**Authentication Options:**
-- Query parameter: `wss://backend.com/online/ws?token=<access_token>`
-- Cookie: HttpOnly cookie automatically sent with WebSocket handshake (browser-dependent)
-- Token exchange: `/auth/ws-token` endpoint provides short-lived token (60s) for WebSocket connections
-
-**Data Flow:**
-1. Player makes API call → UserActivity record updated with timestamp and action
-2. Background task queries UserActivity for records from last 30 minutes
-3. Results formatted with relative timestamps ("2m ago", "5s ago")
-4. Broadcast JSON message to all connected WebSocket clients
-5. Repeat every 5 seconds
-
-**Distinction from PhrasesetActivity:**
-- `UserActivity`: Real-time presence tracking (last 30 minutes), used for "Who's Online"
-- `PhrasesetActivity`: Historical event log for phraseset lifecycle tracking and review
-
-See [online_users.py router](../backend/routers/online_users.py) for implementation details.
-
----
-
-## Results & UI
-
-### Results Display
-- **Status Area**: Shows all active and completed rounds, split by type (prompt, copy, vote)
-- **Visual Cue**: Small notification when results are ready
-- **Deferred Collection**: Prizes are claimed the first time contributors view results (tracked via `result_views`)
-- **Results Content**:
-  - For contributors: All votes shown, reveal which phrase was original, points earned, payout amount
-  - For voters: Correct answer revealed immediately after vote submission, payout equals the configured `vote_payout_correct` amount if correct. Show voters vote tally thus far and add to status area so players can check back to see final vote tally.
-
-### Result Timing
-- **For Voters**: Immediate feedback after vote submission (correct/incorrect, original phrase revealed, payout if correct equal to configured `vote_payout_correct`)
-- **For Contributors**: Results available immediately after voting period closes
-- **Prize Collection**: Requires viewing results screen to credit account
-
-### Currency
-- **Flipcoins (f)**: In-game currency shown with flipcoin icon in UI
-- **Display format**: Flipcoin icon + number (no dollar sign)
-- **Documentation format**: "100f" or "100 Flipcoins"
-
----
-
-## Responsibility Division
-
-### Frontend Responsibilities
-- UI presentation for all round types
-- Countdown timer display (client-side calculation from `expires_at`)
-- Player dashboard (balance, active rounds, pending results)
-- Quest progress display and reward claiming
-- Round type selection with availability indicators
-- Queue depth display and copy discount notifications
-- Input validation (basic format checks before API call)
-- Polling for round availability and results during idle state
-- Tutorial system with interactive overlay and guided tours
-- State management (see [API.md](API.md#frontend-integration) for details)
-
-### Backend Responsibilities
-- Player accounts, username recovery, and wallet management
-- Guest account creation and upgrade flow
-- Daily login bonus tracking and distribution
-- Tutorial progress tracking and persistence
-- Quest system (16 achievement types with automatic progress tracking)
-- Quest reward distribution and tier progression
-- Phrase validation against NASPA dictionary and semantic similarity
-- Duplicate and similarity detection (copy vs. original, cosine similarity threshold)
-- Queue management (prompt, copy, vote queues)
-- Copy discount activation (when prompts_waiting > 10)
-- Matchmaking logic
-- Round lifecycle state machine
-- Timer enforcement with grace period
-- Vote counting and finalization triggers with automatic payout calculation
-- Voting timeline management (3-vote 10-min, 5-vote 60-sec windows)
-- Scoring calculations and payout distribution
-- Transaction logging and audit trail (including quest rewards)
-- Anti-cheat enforcement (self-voting prevention, duplicate vote checks)
-- Rate limiting (guest-specific: 50 req/min general, 10 req/min voting, 5 guest creations/min per IP)
-- Results preparation and storage
-- One-round-at-a-time constraint enforcement
-
----
-
-## API Endpoints
-
-See [API.md](API.md) for complete REST API documentation including:
-- All endpoint specifications with request/response formats
-- Error codes and HTTP status codes
-- Frontend integration guide
-- Example workflows
-- TypeScript type definitions
-- Polling recommendations
-
----
-
-## Core Game Logic
-
-### Phrase Validation
-- Dictionary: NASPA word list (~191,000 words) for individual word validation
-- Phrase length: 2-5 words (4-100 characters total including spaces)
-- Format: Letters A-Z and spaces only (case-insensitive, stored uppercase)
-- Connecting words: A, I always allowed (count toward 5-word limit)
-- Copy validation: Must differ from original and be semantically distinct (cosine similarity < 0.85)
-- Similarity model: all-mpnet-base-v2 (sentence-transformers)
-- See [API.md](API.md#game-configuration) for complete validation rules
-
-### Phrase Randomization
-For voting displays, phrase order is randomized per-voter (not stored in database) to prevent pattern recognition if players share results.
-
----
-
-## Code Quality Patterns
-
-### Denormalized Data Pattern
-Phraseset uses denormalized fields for performance while maintaining referential integrity:
-
-```python
-# Denormalized fields (copied from source rounds)
-prompt_text = Column(String(500), nullable=False)
-original_phrase = Column(String(100), nullable=False)
-copy_phrase_1 = Column(String(100), nullable=False)
-copy_phrase_2 = Column(String(100), nullable=False)
-
-# Relationships to source data
-prompt_round = relationship("Round", foreign_keys=[prompt_round_id])
-copy_round_1 = relationship("Round", foreign_keys=[copy_round_1_id])
-copy_round_2 = relationship("Round", foreign_keys=[copy_round_2_id])
-```
-
-**Validation**: RoundService validates all denormalized fields exist before creating phrasesets to prevent data corruption.
-
-### Timezone Handling Pattern
-Use `ensure_utc()` utility for consistent timezone handling:
-
-```python
-from backend.utils.datetime_helpers import ensure_utc
-
-# Convert timezone-naive datetime from database
-elapsed = (current_time - ensure_utc(phraseset.fifth_vote_at)).total_seconds()
-```
-
-**Benefits**: Eliminates 6+ blocks of duplicated timezone normalization code across services.
-
-### System/Programmatic Operations
-VoteService provides separate methods for human vs system operations:
-
-```python
-# Human voting (requires active round, checks grace period)
-async def submit_vote(round, phraseset, phrase, player, transaction_service) -> Vote
-
-# System/AI voting (no round required, skips grace period)
-async def submit_system_vote(phraseset, player, chosen_phrase, transaction_service) -> Vote
-```
-
-**Single Source of Truth**: Both AI and human votes use identical business logic for consistency.
-
-### Resource Management Pattern
-HTTP clients use async context managers for proper lifecycle:
-
-```python
-async with PhraseValidationClient() as client:
-    result = await client.validate("phrase")
-# Session automatically closed on exit
-```
-
-**Cleanup**: Application lifespan manager ensures all resources are properly closed on shutdown.
-
-### Game Balance Configuration
-All game balance constants centralized in settings for easy tuning:
-
-```python
-# In config.py
-vote_max_votes: int = 20
-vote_closing_threshold: int = 5
-vote_closing_window_minutes: int = 1
-vote_minimum_threshold: int = 3
-vote_minimum_window_minutes: int = 10
-
-# Usage in services
-if phraseset.vote_count >= settings.vote_max_votes:
-    should_finalize = True
-```
-
-**Benefits**: Single place to adjust game balance, no magic numbers scattered across code.
+## Deployment Notes
+- Production setup: Vercel frontends (e.g., `quipflip.xyz`) proxy REST calls to the Heroku backend (`quipflip-c196034288cd.herokuapp.com`) at `/api/*` for same-origin cookies; WebSockets connect directly to the backend using short-lived tokens.
+- Local dev uses SQLite by default, optional Redis for locks/queues, and the same FastAPI app with `uvicorn backend.main:app --reload`.
+- Config is environment-driven via `backend.config.Settings`; set env vars as needed (see `docs/API.md` for endpoint specifics).

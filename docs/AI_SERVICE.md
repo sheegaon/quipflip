@@ -98,6 +98,16 @@ backend/services/ir/player_service.py  # IR AI player management
 * `AIService.generate_backronym_vote(word, backronyms)` ranks backronym submissions and returns the selected index.
 * `AIService.run_ir_backup_cycle()` delegates to `IRBackupOrchestrator` which fills stalled IR sets by generating backronym entries until each set has five entries and then casting votes until five votes exist, using the IR-specific AI player.
 
+### AI Players vs. Guest Players
+
+It is important to distinguish between two types of non-registered player accounts in the system: AI players and guest players.
+
+*   **AI Players**: These are system-controlled accounts created and managed by the `AIService` via the `get_or_create_ai_player` method. Their purpose is to fill in for missing human activity, such as generating backup copy phrases or casting votes in stalled games. They are not intended for human use and have distinct roles and behaviors defined within the AI service.
+
+*   **Guest Players**: These are temporary accounts for human users who want to play the game without completing a full registration. They are created through the standard player registration flow (e.g., via `/api/v1/players/guest`) and are marked with an `is_guest` flag in the database. Guest players have limitations, such as stricter rate limits and restrictions on certain game features. They can be upgraded to full accounts.
+
+These two player types are technically separate and managed by different parts of the application. The AI service exclusively uses its own pool of AI players and does not interact with guest player accounts.
+
 ## Configuration
 
 The AI service reads its configuration from `backend.config.Settings` (environment variables of the same name override defaults):
