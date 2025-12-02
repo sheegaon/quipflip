@@ -1,1 +1,2 @@
-export { QuestProvider, useQuest } from '@crowdcraft/contexts/QuestContext';
+/* eslint-disable react-refresh/only-export-components */
+export { QuestProvider, useQuest, useQuests } from '@crowdcraft/contexts/QuestContext';
