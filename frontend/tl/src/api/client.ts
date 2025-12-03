@@ -1,4 +1,4 @@
-import axios, { AxiosInstance } from 'axios';
+import axios, { AxiosInstance, AxiosError } from 'axios';
 import type {
   DashboardResponse,
   BalanceResponse,
@@ -14,6 +14,33 @@ import type {
   CorpusStats,
   PruneCorpusResponse,
 } from './types';
+
+// ========================================================================
+// Error Types & Utilities
+// ========================================================================
+
+export interface ApiError {
+  code: string;
+  message: string;
+  statusCode: number;
+  details?: any;
+}
+
+export const extractErrorMessage = (error: any): string => {
+  if (error instanceof AxiosError) {
+    if (error.response?.data?.detail) {
+      return error.response.data.detail;
+    }
+    if (error.response?.data?.message) {
+      return error.response.data.message;
+    }
+    return error.message;
+  }
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return 'An unknown error occurred';
+};
 
 const baseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
 const API_BASE_URL = /\/tl($|\/)/.test(baseUrl) ? baseUrl : `${baseUrl}/tl`;
@@ -96,7 +123,7 @@ class ThinkLinkApiClient {
       const { data } = await this.api.post<StartRoundResponse>('/rounds/start', {}, { signal, timeout: 10000 });
       return data;
     } catch (error) {
-      const axiosError = error as ApiError;
+      const axiosError = error as any;
 
       if (axiosError?.response?.status === 500) {
         console.error('Round creation failed with server error:', {
@@ -106,11 +133,7 @@ class ThinkLinkApiClient {
           message: axiosError.message,
         });
 
-        throw {
-          ...axiosError,
-          message: 'Server error starting round. Please try again in a moment.',
-          isServerError: true,
-        } as ApiError;
+        throw new Error('Server error starting round. Please try again in a moment.');
       }
 
       console.error('Round creation failed:', {
@@ -140,7 +163,7 @@ class ThinkLinkApiClient {
       });
       return data;
     } catch (error) {
-      const axiosError = error as ApiError;
+      const axiosError = error as any;
 
       // Log validation errors for debugging
       if (axiosError?.response?.status === 400) {
@@ -290,8 +313,249 @@ class ThinkLinkApiClient {
       return { success: false };
     }
   }
+  // ========================================================================
+  // Stub Methods for QF/MM Compatibility
+  // ========================================================================
+
+  /**
+   * Get quests (stub - QF feature)
+   */
+  async getQuests(): Promise<any[]> {
+    return [];
+  }
+
+  /**
+   * Claim quest reward (stub - QF feature)
+   */
+  async claimQuestReward(): Promise<any> {
+    return {};
+  }
+
+  /**
+   * Get player phrasesets (stub - QF feature)
+   */
+  async getPlayerPhrasesets(): Promise<any[]> {
+    return [];
+  }
+
+  /**
+   * Get phraseset details (stub - QF feature)
+   */
+  async getPhrasesetDetails(): Promise<any> {
+    return {};
+  }
+
+  /**
+   * Get phraseset results (stub - QF feature)
+   */
+  async getPhrasesetResults(): Promise<any> {
+    return {};
+  }
+
+  /**
+   * Get player statistics (stub - TL feature, but not implemented)
+   */
+  async getStatistics(): Promise<any> {
+    return {};
+  }
+
+  /**
+   * Get stored username from localStorage (stub)
+   */
+  async getStoredUsername(): Promise<string | null> {
+    return localStorage.getItem('username');
+  }
+
+  /**
+   * Get tutorial status (stub)
+   */
+  async getTutorialStatus(): Promise<any> {
+    return { tutorial_completed: false };
+  }
+
+  /**
+   * Update tutorial progress (stub)
+   */
+  async updateTutorialProgress(): Promise<any> {
+    return {};
+  }
+
+  /**
+   * Reset tutorial (stub)
+   */
+  async resetTutorial(): Promise<any> {
+    return {};
+  }
+
+  /**
+   * Get random practice phraseset (stub - QF feature)
+   */
+  async getRandomPracticePhraseset(): Promise<any> {
+    return {};
+  }
+
+  /**
+   * Get websocket token (stub - QF/MM feature)
+   */
+  async getWebsocketToken(): Promise<string> {
+    return '';
+  }
+
+  /**
+   * Create player (stub)
+   */
+  async createPlayer(_username: string, _email?: string): Promise<any> {
+    return { player_id: '', username: '', email: '' };
+  }
+
+  /**
+   * Login with credentials (stub)
+   */
+  async login(_username: string, _password: string): Promise<DashboardResponse> {
+    return {} as DashboardResponse;
+  }
+
+  /**
+   * Login with username only (stub)
+   */
+  async loginWithUsername(_username: string): Promise<DashboardResponse> {
+    return {} as DashboardResponse;
+  }
+
+  /**
+   * Upgrade guest account (stub)
+   */
+  async upgradeGuest(_username: string, _password: string): Promise<DashboardResponse> {
+    return {} as DashboardResponse;
+  }
+
+  /**
+   * Start session (stub - QF/MM feature)
+   */
+  async startSession(): Promise<any> {
+    return {};
+  }
+
+  /**
+   * Submit beta survey (stub)
+   */
+  async submitBetaSurvey(_answers: any): Promise<any> {
+    return {};
+  }
+
+  /**
+   * Get admin config (stub)
+   */
+  async getAdminConfig(): Promise<any> {
+    return {};
+  }
+
+  /**
+   * Get flagged prompts (stub - QF feature)
+   */
+  async getFlaggedPrompts(): Promise<any[]> {
+    return [];
+  }
+
+  /**
+   * Update admin config (stub)
+   */
+  async updateAdminConfig(_config: any): Promise<any> {
+    return {};
+  }
+
+  /**
+   * Test phrase validation (stub)
+   */
+  async testPhraseValidation(_phrase: string): Promise<any> {
+    return { valid: true };
+  }
+
+  /**
+   * Admin search player (stub)
+   */
+  async adminSearchPlayer(_query: string): Promise<any[]> {
+    return [];
+  }
+
+  /**
+   * Admin reset password (stub)
+   */
+  async adminResetPassword(_playerId: string): Promise<any> {
+    return {};
+  }
+
+  /**
+   * Admin delete player (stub)
+   */
+  async adminDeletePlayer(_playerId: string): Promise<any> {
+    return {};
+  }
+
+  /**
+   * Create guest account (stub)
+   */
+  async createGuest(): Promise<DashboardResponse> {
+    return {} as DashboardResponse;
+  }
+
+  /**
+   * Change password (stub - QF/MM feature)
+   */
+  async changePassword(_currentPassword: string, _newPassword: string): Promise<any> {
+    return {};
+  }
+
+  /**
+   * Update email (stub - QF/MM feature)
+   */
+  async updateEmail(_newEmail: string, _password: string): Promise<any> {
+    return {};
+  }
+
+  /**
+   * Change username (stub - QF/MM feature)
+   */
+  async changeUsername(_newUsername: string, _password: string): Promise<any> {
+    return {};
+  }
+
+  /**
+   * Delete account (stub - QF/MM feature)
+   */
+  async deleteAccount(_password: string): Promise<any> {
+    return {};
+  }
+
+  /**
+   * Get weekly leaderboard (stub)
+   */
+  async getWeeklyLeaderboard(): Promise<any[]> {
+    return [];
+  }
+
+  /**
+   * Get all-time leaderboard (stub)
+   */
+  async getAllTimeLeaderboard(): Promise<any[]> {
+    return [];
+  }
+
+  /**
+   * Get game status (stub)
+   */
+  async getGameStatus(): Promise<any> {
+    return {};
+  }
 }
 
 export const apiClient = new ThinkLinkApiClient();
+
+// Export axios instance for direct access
+export const axiosInstance = axios.create({
+  baseURL: API_BASE_URL,
+  withCredentials: true,
+  timeout: 30000,
+});
 
 export default apiClient;

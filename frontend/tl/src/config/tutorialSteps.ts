@@ -1,18 +1,18 @@
-import type { TutorialProgress } from '@/api/types';
+import type { TLTutorialProgress } from '@/api/types';
 
 export interface TutorialStep {
-  id: TutorialProgress;
+  id: TLTutorialProgress;
   title: string;
   message: string;
   target?: string; // CSS selector for element to highlight
   position?: 'top' | 'bottom' | 'left' | 'right';
   action?: 'click' | 'wait';
-  nextStep?: TutorialProgress;
+  nextStep?: TLTutorialProgress;
   showSkip?: boolean;
   showBack?: boolean;
 }
 
-export const TUTORIAL_STEPS: Record<TutorialProgress, TutorialStep | null> = {
+export const TUTORIAL_STEPS: Record<TLTutorialProgress, TutorialStep | null> = {
   not_started: null,
 
   welcome: {
@@ -103,17 +103,17 @@ You're all set! Go make your best guesses.`,
   completed: null,
 };
 
-export const getTutorialStep = (progress: TutorialProgress): TutorialStep | null => {
+export const getTutorialStep = (progress: TLTutorialProgress): TutorialStep | null => {
   return TUTORIAL_STEPS[progress];
 };
 
-export const getNextStep = (currentStep: TutorialProgress): TutorialProgress | null => {
+export const getNextStep = (currentStep: TLTutorialProgress): TLTutorialProgress | null => {
   const step = TUTORIAL_STEPS[currentStep];
   return step?.nextStep || null;
 };
 
-export const getPreviousStep = (currentStep: TutorialProgress): TutorialProgress | null => {
-  const steps: TutorialProgress[] = ['welcome', 'dashboard', 'gameplay', 'scoring', 'strategy'];
+export const getPreviousStep = (currentStep: TLTutorialProgress): TLTutorialProgress | null => {
+  const steps: TLTutorialProgress[] = ['welcome', 'dashboard', 'gameplay', 'scoring', 'strategy'];
   const currentIndex = steps.indexOf(currentStep);
   if (currentIndex > 0) {
     return steps[currentIndex - 1];

@@ -31,7 +31,7 @@ export const Header: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { goBack } = useNavigationHistory();
-  const { state: { status: tutorialStatus } } = useTutorial();
+  const { state: { status: _tutorialStatus } } = useTutorial();
   const { unviewedCount } = useHeaderIndicators();
   const { isOffline } = useNetwork();
 
@@ -204,7 +204,7 @@ export const Header: React.FC = () => {
 
   // Determine if tutorial should be shown in menu
   // Always show for guests, show for logged-in users only if not completed
-  const showTutorialInMenu = player.is_guest || !tutorialStatus?.completed === false;
+  const showTutorialInMenu = player.is_guest || !player.tl_tutorial_completed;
 
   return (
     <>
@@ -394,7 +394,7 @@ export const Header: React.FC = () => {
               >
                 <img src="/wallet.png" alt="Wallet" className="w-5 h-5 md:w-7 md:h-7" />
                 <BalanceFlipper
-                  value={player.wallet}
+                  value={player.wallet ?? player.tl_wallet ?? 0}
                   className="text-xl md:text-2xl font-display font-bold text-ccl-turquoise"
                 />
               </button>
@@ -408,7 +408,7 @@ export const Header: React.FC = () => {
               >
                 <img src="/vault.png" alt="Vault" className="w-5 h-5 md:w-7 md:h-7" />
                 <BalanceFlipper
-                  value={player.vault}
+                  value={player.vault ?? player.tl_vault ?? 0}
                   className="text-xl md:text-2xl font-display font-bold text-ccl-turquoise"
                 />
               </button>

@@ -3,11 +3,10 @@
  * Simplified for TL's single game type (semantic matching rounds)
  */
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import apiClient from '@/api/client';
 import { detectUserSession } from '@crowdcraft/services/sessionDetection';
 import { SessionState } from '@crowdcraft/types/session.ts';
-import type { DashboardResponse, BalanceResponse, RoundAvailability } from '@/api/types';
+import type { BalanceResponse, RoundAvailability } from '@/api/types';
 
 interface TLPlayer {
   player_id: string;
@@ -22,6 +21,9 @@ interface TLPlayer {
   tl_tutorial_completed: boolean;
   tl_tutorial_progress: string;
   created_at: string;
+  daily_bonus_available?: boolean;
+  daily_bonus_amount?: number;
+  last_login_date?: string;
 }
 
 interface GameState {
@@ -35,6 +37,8 @@ interface GameState {
   error: string | null;
   sessionState: SessionState;
   visitorId: string | null;
+  phrasesetSummary?: any;
+  pendingResults?: any[];
 }
 
 interface GameActions {
@@ -43,6 +47,9 @@ interface GameActions {
   refreshBalance: (signal?: AbortSignal) => Promise<void>;
   clearError: () => void;
   abandonRound: (roundId: string) => Promise<any>;
+  claimBonus?: () => Promise<void>;
+  dismissNewUserWelcome?: () => void;
+  startSession?: () => Promise<void>;
 }
 
 interface GameContextType {
@@ -56,10 +63,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [username, setUsername] = useState<string | null>(null);
   const [player, setPlayer] = useState<TLPlayer | null>(null);
-  const [showNewUserWelcome, setShowNewUserWelcome] = useState(false);
+  const [showNewUserWelcome] = useState(false);
   const [balance, setBalance] = useState<BalanceResponse | null>(null);
-  const [roundAvailability, setRoundAvailability] = useState<RoundAvailability | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [roundAvailability] = useState<RoundAvailability | null>(null);
+  const [loading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sessionState, setSessionState] = useState<SessionState>(SessionState.CHECKING);
   const [visitorId, setVisitorId] = useState<string | null>(null);
@@ -77,7 +84,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       } catch (err) {
         console.error('Session detection failed:', err);
-        setSessionState(SessionState.NOT_AUTHENTICATED);
+        setSessionState(SessionState.RETURNING_VISITOR);
       }
     };
 

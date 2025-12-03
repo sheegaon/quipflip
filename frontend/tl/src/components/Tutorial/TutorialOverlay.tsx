@@ -115,7 +115,7 @@ const TutorialOverlay: React.FC<TutorialOverlayProps> = ({ onComplete }) => {
   const [isNavigating, setIsNavigating] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
-  const step = currentStep ? getTutorialStep(currentStep as TutorialProgress) : null;
+  const step = currentStep ? getTutorialStep(currentStep as any) : null;
 
   // Measure card dimensions dynamically
   useEffect(() => {
@@ -156,7 +156,7 @@ const TutorialOverlay: React.FC<TutorialOverlayProps> = ({ onComplete }) => {
     try {
       // Regular tutorial progression
       if (step?.nextStep) {
-        advanceStep(step.nextStep);
+        advanceStep(step.nextStep as any);
       } else {
         completeTutorial();
       }
@@ -170,9 +170,9 @@ const TutorialOverlay: React.FC<TutorialOverlayProps> = ({ onComplete }) => {
     setIsNavigating(true);
     try {
       if (currentStep) {
-        const prevStep = getPreviousStep(currentStep as TutorialProgress);
+        const prevStep = getPreviousStep(currentStep as any);
         if (prevStep) {
-          advanceStep(prevStep);
+          advanceStep(prevStep as any);
         }
       }
     } finally {

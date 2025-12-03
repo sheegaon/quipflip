@@ -41,6 +41,7 @@ const Landing = lazy(() => import('./pages/Landing'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const RoundPlay = lazy(() => import('./pages/RoundPlay'));
 const RoundResults = lazy(() => import('./pages/RoundResults'));
+const GameHistory = lazy(() => import('./pages/GameHistory'));
 const Quests = lazy(() => import('./pages/Quests'));
 const Statistics = lazy(() => import('./pages/Statistics'));
 const Leaderboard = lazy(() => import('./pages/Leaderboard'));
@@ -153,6 +154,14 @@ const AppRoutes: React.FC = () => {
           element={renderProtectedRoute(
             <GameLayout>
               <RoundResults />
+            </GameLayout>
+          )}
+        />
+        <Route
+          path="/game-history"
+          element={renderProtectedRoute(
+            <GameLayout>
+              <GameHistory />
             </GameLayout>
           )}
         />
