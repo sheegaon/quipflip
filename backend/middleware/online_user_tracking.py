@@ -145,17 +145,18 @@ async def update_user_activity_task(
 def _infer_game_type_from_path(path: str) -> GameType | None:
     """Best-effort inference of game type based on request path prefixes."""
 
-    if path.startswith("/mm"):
-        return GameType.MM
-    if path.startswith("/ir"):
-        return GameType.IR
-    if path.startswith("/tl"):
-        return GameType.TL
-    if path.startswith("/qf"):
-        return GameType.QF
+    prefix_map = {
+        "/mm": GameType.MM,
+        "/ir": GameType.IR,
+        "/tl": GameType.TL,
+        "/qf": GameType.QF,
+    }
+    for prefix, game_type in prefix_map.items():
+        if path.startswith(prefix):
+            return game_type
 
     # Legacy QF routes generally do not include a prefix
-    if path.startswith("/player") or path.startswith("/round") or path.startswith("/quests"):
+    if path.startswith(("/player", "/round", "/quests")):
         return GameType.QF
 
     return None
