@@ -99,11 +99,8 @@ class RoundService:
             snapshot_answer_ids = [str(a.answer_id) for a in answers]
             snapshot_cluster_ids = list(set([str(a.cluster_id) for a in answers if a.cluster_id]))
 
-            # Calculate total snapshot weight
-            total_weight = 0.0
-            for cluster_id in snapshot_cluster_ids:
-                weight = await self.scoring._get_cluster_weight(db, cluster_id)
-                total_weight += weight
+            # Calculate total snapshot weight (sum of all cluster weights)
+            total_weight = await self.scoring._calculate_total_weight(db, snapshot_cluster_ids)
 
             # Create round
             round = TLRound(
