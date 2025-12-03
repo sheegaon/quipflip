@@ -1,4 +1,4 @@
-import type { TutorialProgress } from '@crowdcraft/api/types.ts';
+import type { TutorialProgress } from '@/api/types';
 
 export interface TutorialStep {
   id: TutorialProgress;
@@ -20,11 +20,11 @@ export const TUTORIAL_STEPS: Record<TutorialProgress, TutorialStep | null> = {
     title: 'Welcome to MemeMint!',
     message: `MemeMint is an asynchronous meme-caption battler:
 
-• Pay an entry fee, see one image and five captions, and vote for your favorite
-• Winning caption authors get paid in MemeCoins, and voters may earn bonuses
-• After voting, you can add your own caption (original or riff) for future rounds
+• Pay 5 MC to see one image with five captions and vote for your favorite
+• The winning caption pays its author (and the parent author if it is a riff); voters can also earn bonuses
+• After voting, you can post an original caption or riff that joins future rounds
 
-We will take a quick tour so you know how to play and earn MemeCoins.`,
+Here is a quick tour so you know how to play and earn MemeCoins.`,
     position: 'bottom',
     nextStep: 'dashboard',
     showSkip: true,
@@ -36,9 +36,9 @@ We will take a quick tour so you know how to play and earn MemeCoins.`,
     title: 'Your Dashboard',
     message: `This is your main hub. From here you can:
 
-• See your wallet balance and claim the 100 MC daily bonus (after day one)
-• Join a round for 5 MC to vote on five captions for a single image
-• Review finished rounds and track your MemeCoin earnings
+• Check your wallet and claim the 100 MC daily bonus starting day two
+• Join a round for 5 MC to vote on five captions for one image; your entry funds the winning caption payout
+• Review finished rounds, track your earnings, and remember your first caption each UTC day is free
 
 Next we will look at how you add a caption after you vote.`,
     target: '.tutorial-dashboard',
@@ -50,17 +50,17 @@ Next we will look at how you add a caption after you vote.`,
 
   prompt_round: {
     id: 'prompt_round',
-    title: 'Write Your Caption',
+    title: 'Add Your Caption',
     message: `After you vote, you can submit a caption for the meme.
 
 • Keep it short and natural — a quick 2–5 word idea that fits the image
 • Avoid private info or proper names
-• You can post an original caption or riff on one you saw
+• Share an original caption or riff on one you saw; your first caption each UTC day is free
 
 Your caption will appear in future rounds for other players to vote on.`,
     target: '.tutorial-prompt-input',
     position: 'top',
-    // The tutorial will pause while you complete your first Quip Round.
+    // The tutorial pauses while you write your first caption.
     nextStep: 'copy_round',
     showSkip: false,
     showBack: true,
@@ -75,10 +75,10 @@ Your caption will appear in future rounds for other players to vote on.`,
 • Keep it brief and readable — just a few words that fit the image
 • Do not copy the caption exactly or go off-topic
 
-If your riff wins a round, both you and the parent caption's author earn MemeCoins.`,
+If your riff wins, the base payout is shared between you and the parent caption's author.`,
     target: '.tutorial-copy-input',
     position: 'top',
-    // The tutorial will resume after you submit your first impostor phrase.
+    // The tutorial resumes after you submit your first riff.
     nextStep: 'vote_round',
     showSkip: false,
     showBack: true,
@@ -87,11 +87,11 @@ If your riff wins a round, both you and the parent caption's author earn MemeCoi
   vote_round: {
     id: 'vote_round',
     title: 'Vote and Earn',
-    message: `Each round shows you one image and five captions from other players.
+    message: `Each round shows you one image and five captions you have not seen yet.
 
 • Pay the 5 MC entry fee, then pick your favorite caption
-• The winning caption earns MemeCoins for its author (and parent if it is a riff)
-• The system can also award voter bonuses
+• The entry fee becomes the base payout for the chosen caption's author (and parent if it is a riff)
+• The system can also award voter bonuses, so choose carefully
 
 After you vote, you can see the results and decide whether to submit your own caption.`,
     target: '.tutorial-vote-options',
@@ -108,10 +108,11 @@ After you vote, you can see the results and decide whether to submit your own ca
     message: `You are ready to play on your own.
 
 • Claim your daily bonus to keep your wallet stocked
-• Enter rounds to vote on captions and keep earning
+• Use your free daily caption, then keep entering rounds to vote and earn
 • Submit originals or riffs so your captions can win future rounds
 
-Images and captions are replayable, so you can refine your ideas and climb the leaderboard over time.`,
+Images and captions stay active (low performers get retired), so you can refine ideas over time without seeing the same caption
+twice.`,
     target: 'div.fixed.bottom-5',
     position: 'top',
     // No nextStep - this is the final tutorial screen, shows "End Tutorial" button

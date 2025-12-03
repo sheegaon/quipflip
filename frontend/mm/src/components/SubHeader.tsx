@@ -59,7 +59,7 @@ export const SubHeader: React.FC = () => {
     return null;
   }
 
-  const showQuestionMarkIcon = player.is_guest || !tutorialStatus?.completed || isFirstDay;
+  const showQuestionMarkIcon = player.is_guest || tutorialStatus?.tutorial_completed !== true || isFirstDay;
 
   return (
     <div className="bg-ccl-warm-ivory shadow-tile-sm relative z-40">
