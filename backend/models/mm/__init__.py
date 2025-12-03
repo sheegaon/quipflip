@@ -1,3 +1,4 @@
+"""Meme Mint data models."""
 from .player import MMPlayer
 from .player_data import MMPlayerData
 from .transaction import MMTransaction
