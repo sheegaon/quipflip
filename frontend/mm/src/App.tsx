@@ -51,7 +51,6 @@ const Circles = lazy(() => import('./pages/Circles'));
 const CircleDetails = lazy(() => import('./pages/CircleDetails'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Admin = lazy(() => import('./pages/Admin'));
-const AdminFlagged = lazy(() => import('./pages/AdminFlagged'));
 const BetaSurveyPage = lazy(() => import('./pages/BetaSurveyPage'));
 
 // Protected Route wrapper
@@ -246,14 +245,6 @@ const AppRoutes: React.FC = () => {
           element={renderProtectedRoute(
             <GameLayout>
               <Admin />
-            </GameLayout>
-          )}
-        />
-        <Route
-          path="/admin/flags"
-          element={renderProtectedRoute(
-            <GameLayout>
-              <AdminFlagged />
             </GameLayout>
           )}
         />
