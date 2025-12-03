@@ -58,6 +58,9 @@ export interface TutorialContextConfig<Status extends QFTutorialStatus> {
   getProgress: (status: Status) => QFTutorialProgress;
   isCompleted: (status: Status) => boolean;
   getNextStep?: (progress: QFTutorialProgress) => QFTutorialProgress | null;
+  loadStatus?: (signal?: AbortSignal) => Promise<unknown>;
+  updateProgress?: (progress: QFTutorialProgress) => Promise<unknown>;
+  resetTutorial?: () => Promise<unknown>;
 }
 
 interface TutorialProviderProps<Status extends QFTutorialStatus> {
@@ -132,7 +135,9 @@ export const createTutorialContext = <Status extends QFTutorialStatus>() => {
           }
 
           tutorialLogger.debug('Fetching tutorial status from backend');
-          const data = await apiClient.getTutorialStatus(signal);
+          const data = config.loadStatus
+            ? await config.loadStatus(signal)
+            : await apiClient.getTutorialStatus(signal);
           setStatus(config.mapLoadStatus(data));
           setError(null);
         } catch (err: unknown) {
@@ -162,7 +167,9 @@ export const createTutorialContext = <Status extends QFTutorialStatus>() => {
         setLoading(true);
         try {
           tutorialLogger.debug('Updating tutorial progress', { progress });
-          const response = await apiClient.updateTutorialProgress(progress);
+          const response = config.updateProgress
+            ? await config.updateProgress(progress)
+            : await apiClient.updateTutorialProgress(progress);
           setStatus(config.mapUpdateStatus(response));
           setError(null);
         } catch (err: unknown) {
@@ -222,7 +229,7 @@ export const createTutorialContext = <Status extends QFTutorialStatus>() => {
       setLoading(true);
       try {
         tutorialLogger.debug('Resetting tutorial via backend');
-        const data = await apiClient.resetTutorial();
+        const data = config.resetTutorial ? await config.resetTutorial() : await apiClient.resetTutorial();
         setStatus(config.mapResetStatus(data));
         setError(null);
       } catch (err: unknown) {

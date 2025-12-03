@@ -1,6 +1,7 @@
 import { TutorialContextConfig } from '@crowdcraft/contexts/TutorialContext';
 import type { MMTutorialStatus } from '@crowdcraft/api/types.ts';
 import { getNextStep } from '../tutorialSteps';
+import apiClient from '@crowdcraft/api/client.ts';
 
 export const tutorialConfig: TutorialContextConfig<MMTutorialStatus> = {
   mapLoadStatus: (response: unknown) => {
@@ -15,4 +16,7 @@ export const tutorialConfig: TutorialContextConfig<MMTutorialStatus> = {
   getProgress: (status: MMTutorialStatus) => status.tutorial_progress,
   isCompleted: (status: MMTutorialStatus) => status.tutorial_completed,
   getNextStep,
+  loadStatus: (signal?: AbortSignal) => apiClient.mmGetTutorialStatus(signal),
+  updateProgress: (progress) => apiClient.mmUpdateTutorialProgress(progress),
+  resetTutorial: () => apiClient.mmResetTutorial(),
 };

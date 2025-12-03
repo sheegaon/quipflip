@@ -32,6 +32,8 @@ import type {
   MMQuestListResponse,
   MMVoteResult,
   MMVoteRoundState,
+  MMTutorialProgress,
+  MMUpdateTutorialProgressResponse,
   QFCreatePartySessionRequest,
   QFCreatePartySessionResponse,
   QFJoinPartySessionResponse,
@@ -268,19 +270,12 @@ class CrowdcraftApiClient extends BaseApiClient {
   }
 
   async mmGetOnlineUsers(signal?: AbortSignal): Promise<MMOnlineUsersResponse> {
-    const { data } = await this.api.get<MMOnlineUsersResponse>('/users/online', {
-      baseURL: QF_API_BASE_URL,
-      signal,
-    });
+    const { data } = await this.api.get<MMOnlineUsersResponse>('/users/online', { signal });
     return data;
   }
 
   async mmPingOnlineUser(username: string, signal?: AbortSignal): Promise<MMPingUserResponse> {
-    const { data } = await this.api.post<MMPingUserResponse>(
-      '/users/online/ping',
-      { username },
-      { baseURL: QF_API_BASE_URL, signal },
-    );
+    const { data } = await this.api.post<MMPingUserResponse>('/users/online/ping', { username }, { signal });
     return data;
   }
 
@@ -288,55 +283,42 @@ class CrowdcraftApiClient extends BaseApiClient {
     payload: MMBetaSurveySubmissionRequest,
     signal?: AbortSignal,
   ): Promise<MMBetaSurveySubmissionResponse> {
-    const { data } = await this.api.post<MMBetaSurveySubmissionResponse>('/feedback/beta-survey', payload, {
-      baseURL: QF_API_BASE_URL,
-      signal,
-    });
+    const { data } = await this.api.post<MMBetaSurveySubmissionResponse>('/feedback/beta-survey', payload, { signal });
     return data;
   }
 
   async mmGetBetaSurveyStatus(signal?: AbortSignal): Promise<MMBetaSurveyStatusResponse> {
-    const { data } = await this.api.get<MMBetaSurveyStatusResponse>('/feedback/beta-survey/status', {
-      baseURL: QF_API_BASE_URL,
-      signal,
-    });
+    const { data } = await this.api.get<MMBetaSurveyStatusResponse>('/feedback/beta-survey/status', { signal });
     return data;
   }
 
   async mmListBetaSurveyResponses(signal?: AbortSignal): Promise<MMBetaSurveyListResponse> {
-    const { data } = await this.api.get<MMBetaSurveyListResponse>('/feedback/beta-survey', {
-      baseURL: QF_API_BASE_URL,
-      signal,
-    });
+    const { data } = await this.api.get<MMBetaSurveyListResponse>('/feedback/beta-survey', { signal });
     return data;
   }
 
   async mmGetQuests(signal?: AbortSignal): Promise<MMQuestListResponse> {
-    const { data } = await this.api.get<MMQuestListResponse>('/quests', { baseURL: QF_API_BASE_URL, signal });
+    const { data } = await this.api.get<MMQuestListResponse>('/quests', { signal });
     return data;
   }
 
   async mmGetActiveQuests(signal?: AbortSignal): Promise<MMQuest[]> {
-    const { data } = await this.api.get<MMQuest[]>('/quests/active', { baseURL: QF_API_BASE_URL, signal });
+    const { data } = await this.api.get<MMQuest[]>('/quests/active', { signal });
     return data;
   }
 
   async mmGetClaimableQuests(signal?: AbortSignal): Promise<MMQuest[]> {
-    const { data } = await this.api.get<MMQuest[]>('/quests/claimable', { baseURL: QF_API_BASE_URL, signal });
+    const { data } = await this.api.get<MMQuest[]>('/quests/claimable', { signal });
     return data;
   }
 
   async mmGetQuest(questId: string, signal?: AbortSignal): Promise<MMQuest> {
-    const { data } = await this.api.get<MMQuest>(`/quests/${questId}`, { baseURL: QF_API_BASE_URL, signal });
+    const { data } = await this.api.get<MMQuest>(`/quests/${questId}`, { signal });
     return data;
   }
 
   async mmClaimQuestReward(questId: string, signal?: AbortSignal): Promise<MMClaimQuestRewardResponse> {
-    const { data } = await this.api.post<MMClaimQuestRewardResponse>(
-      `/quests/${questId}/claim`,
-      {},
-      { baseURL: QF_API_BASE_URL, signal },
-    );
+    const { data } = await this.api.post<MMClaimQuestRewardResponse>(`/quests/${questId}/claim`, {}, { signal });
     return data;
   }
 
@@ -485,20 +467,12 @@ class CrowdcraftApiClient extends BaseApiClient {
     return this.mmApi.claimPhrasesetPrize(phrasesetId, signal);
   }
 
-  async mmSubmitBetaSurveyForm(payload: MMBetaSurveySubmissionRequest, signal?: AbortSignal) {
-    return this.mmApi.submitBetaSurvey(payload, signal);
-  }
-
   async mmGetWeeklyLeaderboard(signal?: AbortSignal) {
     return this.mmApi.getWeeklyLeaderboard(signal);
   }
 
   async mmGetAllTimeLeaderboard(signal?: AbortSignal) {
     return this.mmApi.getAllTimeLeaderboard(signal);
-  }
-
-  async mmGetBetaSurveyStatusDirect(signal?: AbortSignal) {
-    return this.mmApi.getBetaSurveyStatus(signal);
   }
 
   async mmChangePassword(payload: { current_password: string; new_password: string }, signal?: AbortSignal) {
@@ -537,16 +511,20 @@ class CrowdcraftApiClient extends BaseApiClient {
     return this.mmApi.getTutorialStatus(signal);
   }
 
-  async mmUpdateTutorialProgress(progress: unknown, signal?: AbortSignal) {
-    return this.mmApi.updateTutorialProgress(progress as never, signal);
+  async mmUpdateTutorialProgress(
+    progress: MMTutorialProgress,
+    signal?: AbortSignal,
+  ): Promise<MMUpdateTutorialProgressResponse> {
+    const { data } = await this.mmApi.axiosInstance.post<MMUpdateTutorialProgressResponse>(
+      '/player/tutorial/progress',
+      { progress },
+      { signal },
+    );
+    return data;
   }
 
   async mmResetTutorial(signal?: AbortSignal) {
     return this.mmApi.resetTutorial(signal);
-  }
-
-  async mmListBetaSurveyResponsesDirect(signal?: AbortSignal) {
-    return this.mmApi.listBetaSurveyResponses(signal);
   }
 
   async mmAdminConfig(signal?: AbortSignal) {
