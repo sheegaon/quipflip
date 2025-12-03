@@ -11,25 +11,25 @@ from backend.models.tl import (
     TLRound, TLGuess, TLAnswer, TLCluster, TLTransaction, TLPrompt
 )
 from backend.models.player import Player
-from backend.services.tl.matching_service import MatchingService
-from backend.services.tl.clustering_service import ClusteringService
-from backend.services.tl.scoring_service import ScoringService
-from backend.services.tl.prompt_service import PromptService
+from backend.services.tl.matching_service import TLMatchingService
+from backend.services.tl.clustering_service import TLClusteringService
+from backend.services.tl.scoring_service import TLScoringService
+from backend.services.tl.prompt_service import TLPromptService
 from backend.services.phrase_validator import get_phrase_validator
 from backend.config import get_settings
 
 logger = logging.getLogger(__name__)
 
 
-class RoundService:
+class TLRoundService:
     """Service for ThinkLink round orchestration."""
 
     def __init__(
         self,
-        matching_service: MatchingService,
-        clustering_service: ClusteringService,
-        scoring_service: ScoringService,
-        prompt_service: PromptService,
+        matching_service: TLMatchingService,
+        clustering_service: TLClusteringService,
+        scoring_service: TLScoringService,
+        prompt_service: TLPromptService,
     ):
         """Initialize round service.
 

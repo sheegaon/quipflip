@@ -12,10 +12,10 @@ from backend.dependencies import get_current_player
 from backend.models.player import Player
 from backend.schemas.base import BaseSchema
 from backend.services import GameType
-from backend.services.tl.prompt_service import PromptService
-from backend.services.tl.clustering_service import ClusteringService
-from backend.services.tl.matching_service import MatchingService
-from backend.services.tl.scoring_service import ScoringService
+from backend.services.tl.prompt_service import TLPromptService
+from backend.services.tl.clustering_service import TLClusteringService
+from backend.services.tl.matching_service import TLMatchingService
+from backend.services.tl.scoring_service import TLScoringService
 from backend.models.tl import TLPrompt, TLAnswer, TLCluster
 from backend.config import get_settings
 
@@ -90,8 +90,8 @@ async def seed_prompts(
         logger.debug(f"🌱 Seeding {len(request_body.prompts)} prompts...")
 
         # Initialize services
-        matching_service = MatchingService()
-        prompt_service = PromptService(matching_service)
+        matching_service = TLMatchingService()
+        prompt_service = TLPromptService(matching_service)
 
         # Seed prompts
         created, skipped = await prompt_service.seed_prompts_from_list(
@@ -158,7 +158,7 @@ async def get_corpus_stats(
 
         # Calculate total weight (single efficient query instead of N+1)
         cluster_ids = [str(c.cluster_id) for c in clusters]
-        scoring_service = ScoringService()
+        scoring_service = TLScoringService()
         total_weight = await scoring_service._calculate_total_weight(db, cluster_ids)
 
         logger.debug(
@@ -201,8 +201,8 @@ async def prune_corpus(
         logger.debug(f"🔪 Pruning corpus for {prompt_id}...")
 
         # Initialize services
-        matching_service = MatchingService()
-        clustering_service = ClusteringService(matching_service)
+        matching_service = TLMatchingService()
+        clustering_service = TLClusteringService(matching_service)
 
         # Prune corpus
         removed_count, current_count = await clustering_service.prune_corpus(
