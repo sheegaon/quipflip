@@ -11,8 +11,11 @@ from backend.dependencies import get_current_player, enforce_guest_creation_rate
 from backend.config import get_settings
 from backend.utils.model_registry import GameType
 from backend.services import AuthService, AuthError
+from backend.services.player_service import PlayerService
 from backend.schemas.auth import (
     AuthTokenResponse,
+    GamePlayerSnapshot,
+    GlobalPlayerInfo,
     LoginRequest,
     LogoutRequest,
     RefreshRequest,
@@ -84,6 +87,58 @@ def _get_guest_message(email: str, password: str) -> str:
         f"Password: {password}\n\n"
         f"You can upgrade to a full account anytime to choose your own email and password."
     )
+
+
+async def _build_common_auth_response(
+    *,
+    player,
+    game_type: GameType,
+    access_token: str,
+    refresh_token: str,
+    expires_in: int,
+    db: AsyncSession,
+    emit_legacy: bool,
+) -> tuple[AuthTokenResponse, GamePlayerSnapshot | None]:
+    """Construct an AuthTokenResponse with global player envelope and optional snapshot."""
+
+    player_service = PlayerService(db)
+    game_snapshot = await player_service.snapshot_player_data(player, game_type)
+    snapshot_model = GamePlayerSnapshot(**game_snapshot) if game_snapshot else None
+
+    legacy_wallet = (
+        snapshot_model.wallet if snapshot_model and emit_legacy else None
+    )
+    legacy_vault = snapshot_model.vault if snapshot_model and emit_legacy else None
+    legacy_tutorial_completed = (
+        snapshot_model.tutorial_completed if snapshot_model and emit_legacy else None
+    )
+
+    player_payload = GlobalPlayerInfo(
+        player_id=player.player_id,
+        username=player.username,
+        email=player.email,
+        is_guest=player.is_guest,
+        is_admin=player.is_admin,
+        created_at=player.created_at,
+        last_login_date=player.last_login_date,
+    )
+
+    response = AuthTokenResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        token_type="bearer",
+        expires_in=expires_in,
+        player_id=player.player_id,
+        username=player.username,
+        player=player_payload,
+        game_type=game_type,
+        game_data=snapshot_model,
+        legacy_wallet=legacy_wallet,
+        legacy_vault=legacy_vault,
+        legacy_tutorial_completed=legacy_tutorial_completed,
+    )
+
+    return response, snapshot_model
 
 
 class PlayerRouterBase(ABC):
@@ -307,32 +362,21 @@ class PlayerRouterBase(ABC):
         set_access_token_cookie(response, access_token)
         set_refresh_cookie(response, refresh_token, expires_days=self.settings.refresh_token_exp_days)
 
-        # Get game-specific player data for wallet/vault values
-        from sqlalchemy import select
-        if self.game_type == GameType.QF:
-            from backend.models.qf.player_data import QFPlayerData as PlayerDataModel
-        elif self.game_type == GameType.MM:
-            from backend.models.mm.player_data import MMPlayerData as PlayerDataModel
-        elif self.game_type == GameType.IR:
-            from backend.models.ir.player_data import IRPlayerData as PlayerDataModel
-        elif self.game_type == GameType.TL:
-            from backend.models.tl.player_data import TLPlayerData as PlayerDataModel
-        else:
-            raise ValueError(f"Unsupported game type: {self.game_type}")
-
-        result = await db.execute(select(PlayerDataModel).where(PlayerDataModel.player_id == player.player_id))
-        player_data = result.scalar_one_or_none()
-
-        wallet = player_data.wallet if player_data else self.player_service_class(db)._get_initial_balance()
-        vault = player_data.vault if player_data else 0
-
-        return CreatePlayerResponse(
+        auth_response, snapshot_model = await _build_common_auth_response(
+            player=player,
+            game_type=self.game_type,
             access_token=access_token,
             refresh_token=refresh_token,
             expires_in=expires_in,
-            token_type="bearer",
-            player_id=player.player_id,
-            username=player.username,
+            db=db,
+            emit_legacy=self.settings.auth_emit_legacy_fields,
+        )
+
+        wallet = snapshot_model.wallet if snapshot_model else self.player_service_class(db)._get_initial_balance()
+        vault = snapshot_model.vault if snapshot_model else 0
+
+        return CreatePlayerResponse(
+            **auth_response.model_dump(),
             wallet=wallet,
             vault=vault,
             message=self._get_create_message(),
@@ -359,32 +403,21 @@ class PlayerRouterBase(ABC):
         set_access_token_cookie(response, access_token)
         set_refresh_cookie(response, refresh_token, expires_days=self.settings.refresh_token_exp_days)
 
-        # Get game-specific player data for wallet/vault values
-        from sqlalchemy import select
-        if self.game_type == GameType.QF:
-            from backend.models.qf.player_data import QFPlayerData as PlayerDataModel
-        elif self.game_type == GameType.MM:
-            from backend.models.mm.player_data import MMPlayerData as PlayerDataModel
-        elif self.game_type == GameType.IR:
-            from backend.models.ir.player_data import IRPlayerData as PlayerDataModel
-        elif self.game_type == GameType.TL:
-            from backend.models.tl.player_data import TLPlayerData as PlayerDataModel
-        else:
-            raise ValueError(f"Unsupported game type: {self.game_type}")
-
-        result = await db.execute(select(PlayerDataModel).where(PlayerDataModel.player_id == player.player_id))
-        player_data = result.scalar_one_or_none()
-
-        wallet = player_data.wallet if player_data else 5000  # Default balance
-        vault = player_data.vault if player_data else 0
-
-        return CreateGuestResponse(
+        auth_response, snapshot_model = await _build_common_auth_response(
+            player=player,
+            game_type=self.game_type,
             access_token=access_token,
             refresh_token=refresh_token,
             expires_in=expires_in,
-            token_type="bearer",
-            player_id=player.player_id,
-            username=player.username,
+            db=db,
+            emit_legacy=self.settings.auth_emit_legacy_fields,
+        )
+
+        wallet = snapshot_model.wallet if snapshot_model else 5000  # Default balance
+        vault = snapshot_model.vault if snapshot_model else 0
+
+        return CreateGuestResponse(
+            **auth_response.model_dump(),
             wallet=wallet,
             vault=vault,
             email=player.email,
@@ -425,13 +458,18 @@ class PlayerRouterBase(ABC):
         set_access_token_cookie(response, access_token)
         set_refresh_cookie(response, refresh_token, expires_days=self.settings.refresh_token_exp_days)
 
-        return UpgradeGuestResponse(
+        auth_response, _ = await _build_common_auth_response(
+            player=upgraded_player,
+            game_type=self.game_type,
             access_token=access_token,
             refresh_token=refresh_token,
             expires_in=expires_in,
-            token_type="bearer",
-            player_id=upgraded_player.player_id,
-            username=upgraded_player.username,
+            db=db,
+            emit_legacy=self.settings.auth_emit_legacy_fields,
+        )
+
+        return UpgradeGuestResponse(
+            **auth_response.model_dump(),
             message="Account upgraded successfully! You can now log in with your new credentials.",
         )
 
@@ -457,14 +495,17 @@ class PlayerRouterBase(ABC):
         set_access_token_cookie(response, access_token)
         set_refresh_cookie(response, refresh_token, expires_days=self.settings.refresh_token_exp_days)
 
-        return AuthTokenResponse(
+        auth_response, _ = await _build_common_auth_response(
+            player=player,
+            game_type=self.game_type,
             access_token=access_token,
             refresh_token=refresh_token,
-            token_type="bearer",
             expires_in=expires_in,
-            player_id=player.player_id,
-            username=player.username,
+            db=db,
+            emit_legacy=self.settings.auth_emit_legacy_fields,
         )
+
+        return auth_response
 
     async def _refresh_tokens(
         self,
@@ -489,14 +530,17 @@ class PlayerRouterBase(ABC):
         set_access_token_cookie(response, access_token)
         set_refresh_cookie(response, new_refresh_token, expires_days=self.settings.refresh_token_exp_days)
 
-        return AuthTokenResponse(
+        auth_response, _ = await _build_common_auth_response(
+            player=player,
+            game_type=self.game_type,
             access_token=access_token,
             refresh_token=new_refresh_token,
-            token_type="bearer",
             expires_in=expires_in,
-            player_id=player.player_id,
-            username=player.username,
+            db=db,
+            emit_legacy=self.settings.auth_emit_legacy_fields,
         )
+
+        return auth_response
 
     async def _logout_player(
         self,
