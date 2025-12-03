@@ -154,7 +154,7 @@ class QuestRouterBase(ABC):
     async def _claim_quest_reward(self, quest_id: UUID, player: Any, db: AsyncSession) -> ClaimQuestRewardResponse:
         """Claim a completed quest reward."""
         quest_service = self.quest_service_class(db)
-        transaction_service = TransactionService(db)
+        transaction_service = TransactionService(db, self.game_type)
 
         try:
             result = await quest_service.claim_quest_reward(
