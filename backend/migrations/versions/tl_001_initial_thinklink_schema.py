@@ -127,6 +127,33 @@ def upgrade() -> None:
     op.create_index('idx_tl_answer_cluster', 'tl_answer', ['cluster_id'], unique=False)
     op.create_index('idx_tl_answer_prompt', 'tl_answer', ['prompt_id'], unique=False)
 
+    # Create tl_challenge table (v2 - no logic in v1)
+    op.create_table(
+        'tl_challenge',
+        sa.Column('challenge_id', uuid, nullable=False),
+        sa.Column('prompt_id', uuid, nullable=False),
+        sa.Column('initiator_player_id', uuid, nullable=False),
+        sa.Column('opponent_player_id', uuid, nullable=False),
+        sa.Column('initiator_round_id', uuid, nullable=True),
+        sa.Column('opponent_round_id', uuid, nullable=True),
+        sa.Column('status', sa.String(length=20), nullable=False, server_default='pending'),
+        sa.Column('time_limit_seconds', sa.Integer(), nullable=False, server_default='300'),
+        sa.Column('started_at', sa.DateTime(timezone=True), nullable=True),
+        sa.Column('ends_at', sa.DateTime(timezone=True), nullable=True),
+        sa.Column('completed_at', sa.DateTime(timezone=True), nullable=True),
+        sa.Column('winner_player_id', uuid, nullable=True),
+        sa.Column('initiator_final_coverage', sa.Float(), nullable=True),
+        sa.Column('opponent_final_coverage', sa.Float(), nullable=True),
+        sa.Column('initiator_gross_payout', sa.Integer(), nullable=True),
+        sa.Column('opponent_gross_payout', sa.Integer(), nullable=True),
+        sa.Column('created_at', sa.DateTime(timezone=True), nullable=False, server_default=get_timestamp_default()),
+        sa.CheckConstraint("status IN ('pending', 'active', 'completed', 'cancelled', 'expired')", name='valid_challenge_status'),
+        sa.ForeignKeyConstraint(['initiator_player_id'], ['players.player_id'], ondelete='CASCADE'),
+        sa.ForeignKeyConstraint(['opponent_player_id'], ['players.player_id'], ondelete='CASCADE'),
+        sa.ForeignKeyConstraint(['prompt_id'], ['tl_prompt.prompt_id'], ondelete='CASCADE'),
+        sa.PrimaryKeyConstraint('challenge_id'),
+    )
+
     # Create tl_round table
     op.create_table(
         'tl_round',
@@ -187,44 +214,16 @@ def upgrade() -> None:
     )
     op.create_index('idx_tl_transaction_player', 'tl_transaction', ['player_id'], unique=False)
 
-    # Create tl_challenge table (v2 - no logic in v1)
-    op.create_table(
-        'tl_challenge',
-        sa.Column('challenge_id', uuid, nullable=False),
-        sa.Column('prompt_id', uuid, nullable=False),
-        sa.Column('initiator_player_id', uuid, nullable=False),
-        sa.Column('opponent_player_id', uuid, nullable=False),
-        sa.Column('initiator_round_id', uuid, nullable=True),
-        sa.Column('opponent_round_id', uuid, nullable=True),
-        sa.Column('status', sa.String(length=20), nullable=False, server_default='pending'),
-        sa.Column('time_limit_seconds', sa.Integer(), nullable=False, server_default='300'),
-        sa.Column('started_at', sa.DateTime(timezone=True), nullable=True),
-        sa.Column('ends_at', sa.DateTime(timezone=True), nullable=True),
-        sa.Column('completed_at', sa.DateTime(timezone=True), nullable=True),
-        sa.Column('winner_player_id', uuid, nullable=True),
-        sa.Column('initiator_final_coverage', sa.Float(), nullable=True),
-        sa.Column('opponent_final_coverage', sa.Float(), nullable=True),
-        sa.Column('initiator_gross_payout', sa.Integer(), nullable=True),
-        sa.Column('opponent_gross_payout', sa.Integer(), nullable=True),
-        sa.Column('created_at', sa.DateTime(timezone=True), nullable=False, server_default=get_timestamp_default()),
-        sa.CheckConstraint("status IN ('pending', 'active', 'completed', 'cancelled', 'expired')", name='valid_challenge_status'),
-        sa.ForeignKeyConstraint(['initiator_player_id'], ['players.player_id'], ondelete='CASCADE'),
-        sa.ForeignKeyConstraint(['initiator_round_id'], ['tl_round.round_id'], ondelete='SET NULL'),
-        sa.ForeignKeyConstraint(['opponent_player_id'], ['players.player_id'], ondelete='CASCADE'),
-        sa.ForeignKeyConstraint(['opponent_round_id'], ['tl_round.round_id'], ondelete='SET NULL'),
-        sa.ForeignKeyConstraint(['prompt_id'], ['tl_prompt.prompt_id'], ondelete='CASCADE'),
-        sa.PrimaryKeyConstraint('challenge_id'),
-    )
-
 
 def downgrade() -> None:
-    op.drop_table('tl_challenge')
+    op.drop_index('idx_tl_transaction_player', table_name='tl_transaction')
     op.drop_table('tl_transaction')
     op.drop_index('idx_tl_guess_round', table_name='tl_guess')
     op.drop_table('tl_guess')
     op.drop_index('idx_tl_round_status', table_name='tl_round')
     op.drop_index('idx_tl_round_player', table_name='tl_round')
     op.drop_table('tl_round')
+    op.drop_table('tl_challenge')
     op.drop_index('idx_tl_answer_prompt', table_name='tl_answer')
     op.drop_index('idx_tl_answer_cluster', table_name='tl_answer')
     op.drop_index('idx_tl_answer_active', table_name='tl_answer')

@@ -13,6 +13,7 @@ sqlalchemy[asyncio]==2.0.25
 asyncpg==0.29.0
 aiosqlite==0.21.0
 alembic==1.13.1
+pgvector==0.4.1
 
 # Redis (optional, for production)
 redis==6.4.0
