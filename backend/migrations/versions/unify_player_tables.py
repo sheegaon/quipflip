@@ -363,11 +363,31 @@ def upgrade() -> None:
                 )
             ).fetchall()
 
-            def _remap_foreign_keys(table: str, column: str, mappings: list[tuple]):
-                # Temporarily disable FK constraints during remapping
-                if dialect_name == 'postgresql':
-                    op.execute(sa.text("ALTER TABLE {} DISABLE TRIGGER ALL".format(table)))
+            def _drop_fk_constraints(table: str, column: str):
+                """Drop existing FK constraints on a column before remapping."""
+                existing_fks = inspector.get_foreign_keys(table)
 
+                if dialect_name == 'sqlite':
+                    # SQLite requires table recreation to drop constraints
+                    # We'll handle this differently - just skip dropping for now
+                    return
+
+                # PostgreSQL: drop FK constraints by name
+                for fk in existing_fks:
+                    if column in fk.get("constrained_columns", []):
+                        fk_name = fk.get("name")
+                        if fk_name:
+                            try:
+                                op.drop_constraint(fk_name, table, type_="foreignkey")
+                                logger.info(f"Dropped FK constraint {fk_name} on {table}.{column}")
+                            except Exception as e:
+                                logger.warning(f"Could not drop FK constraint {fk_name}: {e}")
+
+            def _remap_foreign_keys(table: str, column: str, mappings: list[tuple]):
+                # Drop FK constraints first to avoid violations during remapping
+                _drop_fk_constraints(table, column)
+
+                # Now safely remap the foreign key values
                 for old_id, new_id in mappings:
                     op.execute(
                         sa.text(
@@ -377,10 +397,6 @@ def upgrade() -> None:
                             old_id=old_id,
                         )
                     )
-
-                # Re-enable FK constraints
-                if dialect_name == 'postgresql':
-                    op.execute(sa.text("ALTER TABLE {} ENABLE TRIGGER ALL".format(table)))
 
             mm_fk_targets = [
                 ("mm_transactions", "player_id"),
