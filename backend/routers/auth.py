@@ -191,7 +191,7 @@ async def get_websocket_token(
     detected_player: PlayerBase | None = None
     detected_game: GameType | None = None
 
-    for game_type in (GameType.QF, GameType.IR, GameType.MM):
+    for game_type in GameType:
         try:
             detected_player = await get_current_player(
                 request=request,

@@ -9,7 +9,7 @@ from backend.services.username_service import (
 )
 from backend.services.player_service_base import PlayerServiceBase, PlayerError
 from backend.services.transaction_service import TransactionService
-from backend.services.phrase_validator import PhraseValidator, get_phrase_validator
+from backend.services.phrase_validator import PhraseValidator, get_phrase_validator, _parse_phrase
 from backend.services.tutorial_service import TutorialService
 
 # AI services
@@ -53,6 +53,10 @@ from backend.services.mm.daily_state_service import MMPlayerDailyStateService
 from backend.services.mm.system_config_service import MMSystemConfigService
 from backend.services.mm.cleanup_service import MMCleanupService
 
+# TL (ThinkLink) services
+from backend.services.tl.player_service import TLPlayerService
+from backend.services.tl.cleanup_service import TLCleanupService
+
 __all__ = [
     # Core services
     'AuthService',
@@ -72,6 +76,7 @@ __all__ = [
     # Phrase validation
     'PhraseValidator',
     'get_phrase_validator',
+    '_parse_phrase',
 
     # AI services
     'AIService',
@@ -117,4 +122,8 @@ __all__ = [
     'MMPlayerDailyStateService',
     'MMSystemConfigService',
     'MMCleanupService',
+
+    # TL services
+    'TLPlayerService',
+    'TLCleanupService',
 ]

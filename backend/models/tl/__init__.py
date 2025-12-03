@@ -1,15 +1,25 @@
 """ThinkLink data models."""
-from backend.models.tl.player_data import TLPlayerData
-from backend.models.tl.prompt import TLPrompt
-from backend.models.tl.answer import TLAnswer
-from backend.models.tl.cluster import TLCluster
-from backend.models.tl.round import TLRound
-from backend.models.tl.guess import TLGuess
-from backend.models.tl.transaction import TLTransaction
-from backend.models.tl.challenge import TLChallenge
+from .player import TLPlayer
+from .player_data import TLPlayerData
+from .refresh_token import TLRefreshToken
+from .daily_bonus import TLDailyBonus
+from .prompt import TLPrompt
+from .answer import TLAnswer
+from .cluster import TLCluster
+from .round import TLRound
+from .guess import TLGuess
+from .transaction import TLTransaction
+from .challenge import TLChallenge
+from .system_config import TLSystemConfig
+from .player_daily_state import TLPlayerDailyState
 
 __all__ = [
+    "TLPlayer",
     "TLPlayerData",
+    "TLRefreshToken",
+    "TLDailyBonus",
+    "TLSystemConfig",
+    "TLPlayerDailyState",
     "TLPrompt",
     "TLAnswer",
     "TLCluster",

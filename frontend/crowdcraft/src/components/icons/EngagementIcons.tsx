@@ -10,7 +10,7 @@ interface FlagIconProps extends React.SVGProps<SVGSVGElement> {
   strokeWidth?: number | string;
 }
 
-interface ResultsIconProps extends SimpleIconProps {
+interface TrophyIconProps extends SimpleIconProps {
   variant?: 'orange' | 'teal';
   primaryColor?: string;
   accentColor?: string;
@@ -104,7 +104,7 @@ export const QuestionMarkIcon: React.FC<QuestionMarkIconProps> = ({
   </svg>
 );
 
-export const ResultsIcon: React.FC<ResultsIconProps> = ({
+export const TrophyIcon: React.FC<TrophyIconProps> = ({
   className = 'h-5 w-5',
   variant = 'orange',
   primaryColor,
