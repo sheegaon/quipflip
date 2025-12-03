@@ -660,13 +660,13 @@ class CrowdcraftApiClient extends BaseApiClient {
     return data;
   }
 
-  async tlGetOnlineUsers(signal?: AbortSignal) {
-    const { data } = await this.tlApi.axiosInstance.get('/users/online', { signal });
+  async tlGetOnlineUsers(signal?: AbortSignal): Promise<MMOnlineUsersResponse> {
+    const { data } = await this.tlApi.axiosInstance.get<MMOnlineUsersResponse>('/users/online', { signal });
     return data;
   }
 
-  async tlPingOnlineUser(username: string, signal?: AbortSignal) {
-    const { data } = await this.tlApi.axiosInstance.post('/users/online/ping', { username }, { signal });
+  async tlPingOnlineUser(username: string, signal?: AbortSignal): Promise<MMPingUserResponse> {
+    const { data } = await this.tlApi.axiosInstance.post<MMPingUserResponse>('/users/online/ping', { username }, { signal });
     return data;
   }
 
