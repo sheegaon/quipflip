@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState , useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import apiClient, { extractErrorMessage } from '@/api/client';
@@ -119,7 +119,7 @@ export const RoundPlay: React.FC = () => {
     }
   };
 
-  const finalizeRound = async () => {
+  const finalizeRound = useCallback(async () => {
     if (!round) return;
 
     try {
@@ -136,7 +136,7 @@ export const RoundPlay: React.FC = () => {
         totalClusters: 0, // Would need snapshot data
       };
 
-      // Calculate payout (would come from backend in production)
+      // Calculate payout (TODO would come from backend in production)
       const coveragePercent = details.final_coverage || 0;
       const grossPayout = Math.round(300 * Math.pow(coveragePercent, 1.5));
       const walletAward = coveragePercent <= 0.33
@@ -152,7 +152,13 @@ export const RoundPlay: React.FC = () => {
     } catch (err) {
       setError(extractErrorMessage(err) || 'Failed to finalize round');
     }
-  };
+  }, [round, strikes, navigate]);
+
+  useEffect(() => {
+  if (strikes >= 3 && !roundEnded) {
+    finalizeRound();
+  }
+}, [strikes, roundEnded, finalizeRound]);
 
   const handleAbandonRound = async () => {
     if (!round || !confirm('Are you sure? You\'ll get a 95 coin refund and lose this round.')) {
