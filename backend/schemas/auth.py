@@ -1,8 +1,11 @@
 """Authentication schema definitions."""
+from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, constr
+
+from backend.utils.model_registry import GameType
 
 
 UsernameStr = constr(min_length=3, max_length=80)
@@ -26,6 +29,42 @@ class AuthTokenResponse(BaseModel):
     expires_in: int
     player_id: UUID
     username: str
+    player: "GlobalPlayerInfo"
+    game_type: Optional[GameType] = None
+    game_data: Optional["GamePlayerSnapshot"] = None
+    legacy_wallet: Optional[int] = None
+    legacy_vault: Optional[int] = None
+    legacy_tutorial_completed: Optional[bool] = None
+
+
+class GamePlayerSnapshot(BaseModel):
+    game_type: GameType
+    wallet: Optional[int] = None
+    vault: Optional[int] = None
+    tutorial_completed: Optional[bool] = None
+
+
+class GlobalPlayerInfo(BaseModel):
+    player_id: UUID
+    username: str
+    email: Optional[str] = None
+    is_guest: bool
+    is_admin: bool
+    created_at: datetime
+    last_login_date: Optional[datetime] = None
+
+
+class AuthSessionResponse(BaseModel):
+    """Session lookup response for cookie/header-based auth checks."""
+
+    player_id: UUID
+    username: str
+    player: GlobalPlayerInfo
+    game_type: Optional[GameType] = None
+    game_data: Optional[GamePlayerSnapshot] = None
+    legacy_wallet: Optional[int] = None
+    legacy_vault: Optional[int] = None
+    legacy_tutorial_completed: Optional[bool] = None
 
 
 class LoginRequest(BaseModel):

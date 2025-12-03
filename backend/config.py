@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     refresh_token_exp_days: int = 30  # Longer-lived refresh tokens
     access_token_cookie_name: str = "quipflip_access_token"
     refresh_token_cookie_name: str = "quipflip_refresh_token"
+    auth_emit_legacy_fields: bool = True
 
     # Admin access
     admin_emails: set[str] = {"tfishman@gmail.com", "x9@x.com"}

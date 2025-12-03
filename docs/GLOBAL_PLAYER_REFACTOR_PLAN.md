@@ -57,6 +57,13 @@
 3. **Documentation**
    - Update DATA_MODELS docs to describe the fully game-agnostic Player model and the new service/endpoint behavior.
 
+# Global Player Refactor – Phase 4 Completion Notes
+
+## What changed in Phase 4
+- **Global auth payloads separated:** Login and refresh responses now return a `player` envelope with global identity fields plus optional per-game snapshots. Legacy `wallet`/`vault` mirrors remain available behind the `auth_emit_legacy_fields` flag for backward compatibility.
+- **Session probing endpoint:** Added `/auth/session` to surface global authentication state (cookie or header) with optional game-scoped snapshots, enabling clients to bootstrap without assuming a Quipflip default.
+- **Frontend session detection:** All game contexts now call the shared `/auth/session` flow with an explicit `gameType`, relying on the per-game snapshot rather than implicit QF balance checks when entering a title.
+
 ## Phase 5: Testing and Rollout
 1. **Test coverage**
    - Add unit tests for `player_service` global login flows, per-game data provisioning, and lockout edge cases.
@@ -208,3 +215,11 @@ Reduce remaining implicit `GameType.QF` coupling in authentication/token handlin
 - Run `alembic upgrade head` before deploying Phase 3. If the migration chain reports multiple heads, resolve them or run `tests/test_migration_chain.py` locally to ensure a single head following Heroku migration guidance.
 - After applying the migration, verify that `players` no longer contains wallet/tutorial/lockout columns and that `qf_player_data` has a row for every player.
 - Services must access per-game data explicitly (`player.get_game_data(game_type)` or service-level fetchers); do not assume `GameType.QF` defaults anywhere.
+
+# Global Player Refactor – Phase 3 Delivery (Service Layer)
+
+## What was implemented
+- Added a global `backend/services/player_service.py` to centralize authentication helpers, guest upgrades, and on-demand per-game data provisioning without assuming a default game type. The service exposes `login_player` and `snapshot_player_data` to simplify cross-game logins.
+- Refactored `backend/services/auth_service.py` to delegate credential validation and guest/registration flows to the global service while keeping token handling game-agnostic.
+- Updated `backend/routers/auth.py` to accept optional `game_type` selectors, return per-game player snapshots alongside global token fields, and drop hard-coded `GameType.QF` defaults across login, refresh, logout, and WebSocket token endpoints.
+- Extended auth schemas to carry optional game metadata in responses so clients can request per-game context while using global tokens.

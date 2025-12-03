@@ -12,6 +12,8 @@ from backend.dependencies import get_current_player, enforce_guest_creation_rate
 from backend.models.ir.player import IRPlayer
 from backend.schemas.auth import (
     AuthTokenResponse,
+    GamePlayerSnapshot,
+    GlobalPlayerInfo,
     LoginRequest,
     LogoutRequest,
     RefreshRequest,
@@ -28,6 +30,7 @@ from backend.schemas.player import (
 )
 from backend.routers.ir.schemas import IRDashboardResponse, IRDashboardPlayerSummary
 from backend.services import AuthService, AuthError
+from backend.services.player_service import PlayerService
 from backend.utils.model_registry import GameType
 from backend.services.ir import IRPlayerService
 from backend.utils.cookies import (
@@ -45,6 +48,54 @@ from backend.utils.passwords import (
 router = APIRouter()
 settings = get_settings()
 logger = logging.getLogger(__name__)
+
+
+async def _build_auth_response(
+    *,
+    player: IRPlayer,
+    access_token: str,
+    refresh_token: str,
+    expires_in: int,
+    db: AsyncSession,
+) -> AuthTokenResponse:
+    player_service = PlayerService(db)
+    game_snapshot = await player_service.snapshot_player_data(player, GameType.IR)
+    snapshot_model = GamePlayerSnapshot(**game_snapshot) if game_snapshot else None
+
+    legacy_wallet = (
+        snapshot_model.wallet if snapshot_model and settings.auth_emit_legacy_fields else None
+    )
+    legacy_vault = snapshot_model.vault if snapshot_model and settings.auth_emit_legacy_fields else None
+    legacy_tutorial_completed = (
+        snapshot_model.tutorial_completed
+        if snapshot_model and settings.auth_emit_legacy_fields
+        else None
+    )
+
+    player_payload = GlobalPlayerInfo(
+        player_id=player.player_id,
+        username=player.username,
+        email=player.email,
+        is_guest=player.is_guest,
+        is_admin=player.is_admin,
+        created_at=player.created_at,
+        last_login_date=player.last_login_date,
+    )
+
+    return AuthTokenResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        token_type="bearer",
+        expires_in=expires_in,
+        player_id=player.player_id,
+        username=player.username,
+        player=player_payload,
+        game_type=GameType.IR,
+        game_data=snapshot_model,
+        legacy_wallet=legacy_wallet,
+        legacy_vault=legacy_vault,
+        legacy_tutorial_completed=legacy_tutorial_completed,
+    )
 
 
 @router.post("", response_model=CreatePlayerResponse, status_code=201)
@@ -183,13 +234,16 @@ async def upgrade_guest_account(
     set_access_token_cookie(response, access_token)
     set_refresh_cookie(response, refresh_token, expires_days=settings.refresh_token_exp_days)
 
-    return UpgradeGuestResponse(
+    auth_response = await _build_auth_response(
+        player=upgraded_player,
         access_token=access_token,
         refresh_token=refresh_token,
         expires_in=expires_in,
-        token_type="bearer",
-        player_id=upgraded_player.player_id,
-        username=upgraded_player.username,
+        db=db,
+    )
+
+    return UpgradeGuestResponse(
+        **auth_response.model_dump(),
         message="IR Account upgraded successfully! You can now log in with your new credentials.",
     )
 
@@ -217,13 +271,12 @@ async def login_player(
     set_access_token_cookie(response, access_token)
     set_refresh_cookie(response, refresh_token, expires_days=settings.refresh_token_exp_days)
 
-    return AuthTokenResponse(
+    return await _build_auth_response(
+        player=player,
         access_token=access_token,
         refresh_token=refresh_token,
-        token_type="bearer",
         expires_in=expires_in,
-        player_id=player.player_id,
-        username=player.username,
+        db=db,
     )
 
 
@@ -253,13 +306,12 @@ async def refresh_tokens(
     set_access_token_cookie(response, access_token)
     set_refresh_cookie(response, new_refresh_token, expires_days=settings.refresh_token_exp_days)
 
-    return AuthTokenResponse(
+    return await _build_auth_response(
+        player=player,
         access_token=access_token,
         refresh_token=new_refresh_token,
-        token_type="bearer",
         expires_in=expires_in,
-        player_id=player.player_id,
-        username=player.username,
+        db=db,
     )
 
 
