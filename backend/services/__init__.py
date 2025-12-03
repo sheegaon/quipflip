@@ -53,6 +53,10 @@ from backend.services.mm.daily_state_service import MMPlayerDailyStateService
 from backend.services.mm.system_config_service import MMSystemConfigService
 from backend.services.mm.cleanup_service import MMCleanupService
 
+# TL (ThinkLink) services
+from backend.services.tl.player_service import TLPlayerService
+from backend.services.tl.cleanup_service import TLCleanupService
+
 __all__ = [
     # Core services
     'AuthService',
@@ -117,4 +121,8 @@ __all__ = [
     'MMPlayerDailyStateService',
     'MMSystemConfigService',
     'MMCleanupService',
+
+    # TL services
+    'TLPlayerService',
+    'TLCleanupService',
 ]
