@@ -38,11 +38,18 @@ def _json_column():
     return sa.JSON().with_variant(sa.Text(), "sqlite")
 
 
-def _vector_column():
+def _vector_column(dim: int = 1536):
     """Return vector column for embeddings.
 
-    Currently stores embeddings as JSON. Can be migrated to pgvector.Vector
-    once the pgvector PostgreSQL extension is installed in production.
+    Stores embeddings as JSON for now. When pgvector extension is installed
+    in the database, these columns can be migrated to pgvector.Vector(1536)
+    for efficient vector similarity search.
+
+    TODO: Create migration to use Vector type once pgvector is deployed:
+        ALTER TABLE tl_prompt ALTER COLUMN embedding TYPE vector(1536);
+        ALTER TABLE tl_cluster ALTER COLUMN centroid_embedding TYPE vector(1536);
+        ALTER TABLE tl_answer ALTER COLUMN embedding TYPE vector(1536);
+        ALTER TABLE tl_guess ALTER COLUMN embedding TYPE vector(1536);
     """
     return _json_column()
 
