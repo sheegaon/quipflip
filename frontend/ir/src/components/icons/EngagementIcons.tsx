@@ -30,7 +30,7 @@ export const BotIcon: React.FC<BotIconProps> = ({
   detailColor = '#0B2137',
   ...props
 }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" aria-label="AI Player" {...props}>
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" aria-label="AI IRPlayer" {...props}>
     <rect x={5} y={6} width={14} height={13} rx={2} fill={primaryColor} stroke={strokeColor} strokeWidth={1} />
     <line x1={12} y1={3.5} x2={12} y2={6} stroke={primaryColor} strokeWidth={1.5} strokeLinecap="round" />
     <circle cx={12} cy={2.5} r={1.2} fill={primaryColor} stroke={strokeColor} strokeWidth={0.5} />

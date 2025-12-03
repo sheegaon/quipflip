@@ -5,62 +5,62 @@ import { USERNAME_STORAGE_KEY } from '../utils/storageKeys.ts';
 import type {
   Player,
   CreatePlayerResponse,
-  ActiveRound,
-  PendingResultsResponse,
-  DailyBonusResponse,
-  RoundAvailability,
-  RoundDetails,
-  StartPromptResponse,
-  StartCopyResponse,
-  StartVoteResponse,
-  SubmitPhraseResponse,
-  HintResponse,
-  VoteResponse,
-  PhrasesetResults,
+  QFActiveRound,
+  QFPendingResultsResponse,
+  QFDailyBonusResponse,
+  QFRoundAvailability,
+  QFRoundDetails,
+  QFStartPromptResponse,
+  QFStartCopyResponse,
+  QFStartVoteResponse,
+  QFSubmitPhraseResponse,
+  QFHintResponse,
+  QFVoteResponse,
+  QFPhrasesetResults,
   HealthResponse,
   ApiInfo,
   GameStatus,
   ApiError,
   AuthTokenResponse,
   SuggestUsernameResponse,
-  PromptFeedbackResponse,
-  GetPromptFeedbackResponse,
-  PhrasesetListResponse,
-  PhrasesetDashboardSummary,
-  PhrasesetDetails,
-  ClaimPrizeResponse,
-  UnclaimedResultsResponse,
-  PlayerStatistics,
-  TutorialStatus,
-  TutorialProgress,
-  UpdateTutorialProgressResponse,
-  Quest,
-  QuestListResponse,
-  ClaimQuestRewardResponse,
-  DashboardData,
+  QFPromptFeedbackResponse,
+  QFGetPromptFeedbackResponse,
+  QFPhrasesetListResponse,
+  QFPhrasesetDashboardSummary,
+  QFPhrasesetDetails,
+  QFClaimPrizeResponse,
+  QFUnclaimedResultsResponse,
+  QFPlayerStatistics,
+  QFTutorialStatus,
+  QFTutorialProgress,
+  QFUpdateTutorialProgressResponse,
+  QFQuest,
+  QFQuestListResponse,
+  QFClaimQuestRewardResponse,
+  QFDashboardData,
   ChangePasswordResponse,
   UpdateEmailResponse,
   ChangeUsernameResponse,
   AdminPlayerSummary,
   AdminDeletePlayerResponse,
   AdminResetPasswordResponse,
-  FlagCopyRoundResponse,
-  AbandonRoundResponse,
-  FlaggedPromptListResponse,
-  FlaggedPromptItem,
+  QFFlagCopyRoundResponse,
+  QFAbandonRoundResponse,
+  QFFlaggedPromptListResponse,
+  QFFlaggedPromptItem,
   CreateGuestResponse,
   UpgradeGuestResponse,
-  BetaSurveySubmissionRequest,
-  BetaSurveySubmissionResponse,
-  BetaSurveyStatusResponse,
-  BetaSurveyListResponse,
-  LeaderboardResponse,
-  CompletedPhrasesetsResponse,
-  PracticePhraseset,
-  AdminConfig,
-  UpdateAdminConfigResponse,
-  OnlineUsersResponse,
-  PingUserResponse,
+  QFBetaSurveySubmissionRequest,
+  QFBetaSurveySubmissionResponse,
+  QFBetaSurveyStatusResponse,
+  QFBetaSurveyListResponse,
+  QFLeaderboardResponse,
+  QFCompletedPhrasesetsResponse,
+  QFPracticePhraseset,
+  QFAdminConfig,
+  QFUpdateAdminConfigResponse,
+  QFOnlineUsersResponse,
+  QFPingUserResponse,
   WsAuthTokenResponse,
 } from './types.ts';
 
@@ -391,17 +391,17 @@ export class BaseApiClient {
     return data;
   }
 
-  async claimDailyBonus(signal?: AbortSignal): Promise<DailyBonusResponse> {
+  async claimDailyBonus(signal?: AbortSignal): Promise<QFDailyBonusResponse> {
     const { data } = await this.api.post('/player/claim-daily-bonus', {}, { signal });
     return data;
   }
 
-  async getCurrentRound(signal?: AbortSignal): Promise<ActiveRound> {
+  async getCurrentRound(signal?: AbortSignal): Promise<QFActiveRound> {
     const { data } = await this.api.get('/player/current-round', { signal });
     return data;
   }
 
-  async getPendingResults(signal?: AbortSignal): Promise<PendingResultsResponse> {
+  async getPendingResults(signal?: AbortSignal): Promise<QFPendingResultsResponse> {
     const { data } = await this.api.get('/player/pending-results', { signal });
     return data;
   }
@@ -409,7 +409,7 @@ export class BaseApiClient {
   async getPlayerPhrasesets(
     params: { role?: string; status?: string; limit?: number; offset?: number } = {},
     signal?: AbortSignal,
-  ): Promise<PhrasesetListResponse> {
+  ): Promise<QFPhrasesetListResponse> {
     const { data } = await this.api.get('/player/phrasesets', {
       params,
       signal,
@@ -417,88 +417,88 @@ export class BaseApiClient {
     return data;
   }
 
-  async getPhrasesetsSummary(signal?: AbortSignal): Promise<PhrasesetDashboardSummary> {
+  async getPhrasesetsSummary(signal?: AbortSignal): Promise<QFPhrasesetDashboardSummary> {
     const { data } = await this.api.get('/player/phrasesets/summary', { signal });
     return data;
   }
 
-  async getUnclaimedResults(signal?: AbortSignal): Promise<UnclaimedResultsResponse> {
+  async getUnclaimedResults(signal?: AbortSignal): Promise<QFUnclaimedResultsResponse> {
     const { data } = await this.api.get('/player/unclaimed-results', { signal });
     return data;
   }
 
-  async getDashboardData(signal?: AbortSignal): Promise<DashboardData> {
+  async getDashboardData(signal?: AbortSignal): Promise<QFDashboardData> {
     const { data } = await this.api.get('/player/dashboard', { signal });
     return data;
   }
 
-  async getRoundAvailability(signal?: AbortSignal): Promise<RoundAvailability> {
+  async getRoundAvailability(signal?: AbortSignal): Promise<QFRoundAvailability> {
     const { data } = await this.api.get('/rounds/available', { signal });
     return data;
   }
 
-  async getRoundDetails(roundId: string, signal?: AbortSignal): Promise<RoundDetails> {
+  async getRoundDetails(roundId: string, signal?: AbortSignal): Promise<QFRoundDetails> {
     const { data } = await this.api.get(`/rounds/${roundId}`, { signal });
     return data;
   }
 
-  async startPromptRound(signal?: AbortSignal): Promise<StartPromptResponse> {
+  async startPromptRound(signal?: AbortSignal): Promise<QFStartPromptResponse> {
     const { data } = await this.api.post('/rounds/prompt', {}, { signal });
     return data;
   }
 
-  async startCopyRound(promptRoundId?: string, signal?: AbortSignal): Promise<StartCopyResponse> {
+  async startCopyRound(promptRoundId?: string, signal?: AbortSignal): Promise<QFStartCopyResponse> {
     const params = promptRoundId ? { prompt_round_id: promptRoundId } : {};
     const { data } = await this.api.post('/rounds/copy', {}, { signal, params });
     return data;
   }
 
-  async startVoteRound(signal?: AbortSignal): Promise<StartVoteResponse> {
+  async startVoteRound(signal?: AbortSignal): Promise<QFStartVoteResponse> {
     const { data } = await this.api.post('/rounds/vote', {}, { signal });
     return data;
   }
 
-  async submitPhrase(roundId: string, phrase: string, signal?: AbortSignal): Promise<SubmitPhraseResponse> {
+  async submitPhrase(roundId: string, phrase: string, signal?: AbortSignal): Promise<QFSubmitPhraseResponse> {
     const { data } = await this.api.post(`/rounds/${roundId}/submit`, { phrase }, { signal });
     return data;
   }
 
-  async getCopyHints(roundId: string, signal?: AbortSignal): Promise<HintResponse> {
+  async getCopyHints(roundId: string, signal?: AbortSignal): Promise<QFHintResponse> {
     const { data } = await this.api.get(`/rounds/${roundId}/hints`, { signal });
     return data;
   }
 
-  async flagCopyRound(roundId: string, signal?: AbortSignal): Promise<FlagCopyRoundResponse> {
+  async flagCopyRound(roundId: string, signal?: AbortSignal): Promise<QFFlagCopyRoundResponse> {
     const { data } = await this.api.post(`/rounds/${roundId}/flag`, {}, { signal });
     return data;
   }
 
-  async abandonRound(roundId: string, signal?: AbortSignal): Promise<AbandonRoundResponse> {
+  async abandonRound(roundId: string, signal?: AbortSignal): Promise<QFAbandonRoundResponse> {
     const { data } = await this.api.post(`/rounds/${roundId}/abandon`, {}, { signal });
     return data;
   }
 
-  async submitVote(phrasesetId: string, phrase: string, signal?: AbortSignal): Promise<VoteResponse> {
+  async submitVote(phrasesetId: string, phrase: string, signal?: AbortSignal): Promise<QFVoteResponse> {
     const { data } = await this.api.post(`/phrasesets/${phrasesetId}/vote`, { phrase }, { signal });
     return data;
   }
 
-  async getPhrasesetResults(phrasesetId: string, signal?: AbortSignal): Promise<PhrasesetResults> {
+  async getPhrasesetResults(phrasesetId: string, signal?: AbortSignal): Promise<QFPhrasesetResults> {
     const { data } = await this.api.get(`/phrasesets/${phrasesetId}/results`, { signal });
     return data;
   }
 
-  async getPhrasesetDetails(phrasesetId: string, signal?: AbortSignal): Promise<PhrasesetDetails> {
+  async getPhrasesetDetails(phrasesetId: string, signal?: AbortSignal): Promise<QFPhrasesetDetails> {
     const { data } = await this.api.get(`/phrasesets/${phrasesetId}/details`, { signal });
     return data;
   }
 
-  async getPublicPhrasesetDetails(phrasesetId: string, signal?: AbortSignal): Promise<PhrasesetDetails> {
+  async getPublicPhrasesetDetails(phrasesetId: string, signal?: AbortSignal): Promise<QFPhrasesetDetails> {
     const { data } = await this.api.get(`/phrasesets/${phrasesetId}/public-details`, { signal });
     return data;
   }
 
-  async claimPhrasesetPrize(phrasesetId: string, signal?: AbortSignal): Promise<ClaimPrizeResponse> {
+  async claimPhrasesetPrize(phrasesetId: string, signal?: AbortSignal): Promise<QFClaimPrizeResponse> {
     const { data } = await this.api.post(`/phrasesets/${phrasesetId}/claim`, {}, { signal });
     return data;
   }
@@ -506,7 +506,7 @@ export class BaseApiClient {
   async getCompletedPhrasesets(
     params: { limit?: number; offset?: number } = {},
     signal?: AbortSignal,
-  ): Promise<CompletedPhrasesetsResponse> {
+  ): Promise<QFCompletedPhrasesetsResponse> {
     const { data } = await this.api.get('/phrasesets/completed', {
       params,
       signal,
@@ -514,7 +514,7 @@ export class BaseApiClient {
     return data;
   }
 
-  async getRandomPracticePhraseset(signal?: AbortSignal): Promise<PracticePhraseset> {
+  async getRandomPracticePhraseset(signal?: AbortSignal): Promise<QFPracticePhraseset> {
     const { data } = await this.api.get('/phrasesets/practice/random', { signal });
     return data;
   }
@@ -523,7 +523,7 @@ export class BaseApiClient {
     roundId: string,
     feedbackType: 'like' | 'dislike',
     signal?: AbortSignal,
-  ): Promise<PromptFeedbackResponse> {
+  ): Promise<QFPromptFeedbackResponse> {
     const { data } = await this.api.post(
       `/rounds/${roundId}/feedback`,
       { feedback_type: feedbackType },
@@ -532,53 +532,53 @@ export class BaseApiClient {
     return data;
   }
 
-  async getPromptFeedback(roundId: string, signal?: AbortSignal): Promise<GetPromptFeedbackResponse> {
+  async getPromptFeedback(roundId: string, signal?: AbortSignal): Promise<QFGetPromptFeedbackResponse> {
     const { data } = await this.api.get(`/rounds/${roundId}/feedback`, { signal });
     return data;
   }
 
-  async getStatistics(signal?: AbortSignal): Promise<PlayerStatistics> {
+  async getStatistics(signal?: AbortSignal): Promise<QFPlayerStatistics> {
     const { data } = await this.api.get('/player/statistics', { signal });
     return data;
   }
 
-  async getWeeklyLeaderboard(signal?: AbortSignal): Promise<LeaderboardResponse> {
+  async getWeeklyLeaderboard(signal?: AbortSignal): Promise<QFLeaderboardResponse> {
     const { data } = await this.api.get('/player/statistics/weekly-leaderboard', { signal });
     return data;
   }
 
-  async getAllTimeLeaderboard(signal?: AbortSignal): Promise<LeaderboardResponse> {
+  async getAllTimeLeaderboard(signal?: AbortSignal): Promise<QFLeaderboardResponse> {
     const { data } = await this.api.get('/player/statistics/alltime-leaderboard', { signal });
     return data;
   }
 
-  async getTutorialStatus(signal?: AbortSignal): Promise<TutorialStatus> {
+  async getTutorialStatus(signal?: AbortSignal): Promise<QFTutorialStatus> {
     const { data } = await this.api.get('/player/tutorial/status', { signal });
     return data;
   }
 
-  async updateTutorialProgress(progress: TutorialProgress, signal?: AbortSignal): Promise<UpdateTutorialProgressResponse> {
+  async updateTutorialProgress(progress: QFTutorialProgress, signal?: AbortSignal): Promise<QFUpdateTutorialProgressResponse> {
     const { data } = await this.api.post('/player/tutorial/progress', { progress }, { signal });
     return data;
   }
 
-  async resetTutorial(signal?: AbortSignal): Promise<TutorialStatus> {
+  async resetTutorial(signal?: AbortSignal): Promise<QFTutorialStatus> {
     const { data } = await this.api.post('/player/tutorial/reset', {}, { signal });
     return data;
   }
 
   async submitBetaSurvey(
-    payload: BetaSurveySubmissionRequest,
+    payload: QFBetaSurveySubmissionRequest,
     signal?: AbortSignal,
-  ): Promise<BetaSurveySubmissionResponse> {
-    const { data } = await this.api.post<BetaSurveySubmissionResponse>('/feedback/beta-survey', payload, { signal });
+  ): Promise<QFBetaSurveySubmissionResponse> {
+    const { data } = await this.api.post<QFBetaSurveySubmissionResponse>('/feedback/beta-survey', payload, { signal });
     return data;
   }
 
-  async getBetaSurveyStatus(signal?: AbortSignal): Promise<BetaSurveyStatusResponse> {
+  async getBetaSurveyStatus(signal?: AbortSignal): Promise<QFBetaSurveyStatusResponse> {
     this.logApi('get', '/feedback/beta-survey/status', 'start');
     try {
-      const { data } = await this.api.get<BetaSurveyStatusResponse>('/feedback/beta-survey/status', { signal });
+      const { data } = await this.api.get<QFBetaSurveyStatusResponse>('/feedback/beta-survey/status', { signal });
       this.logApi('get', '/feedback/beta-survey/status', 'success', data);
       return data;
     } catch (error) {
@@ -587,43 +587,43 @@ export class BaseApiClient {
     }
   }
 
-  async listBetaSurveyResponses(signal?: AbortSignal): Promise<BetaSurveyListResponse> {
-    const { data } = await this.api.get<BetaSurveyListResponse>('/feedback/beta-survey', { signal });
+  async listBetaSurveyResponses(signal?: AbortSignal): Promise<QFBetaSurveyListResponse> {
+    const { data } = await this.api.get<QFBetaSurveyListResponse>('/feedback/beta-survey', { signal });
     return data;
   }
 
-  async getQuests(signal?: AbortSignal): Promise<QuestListResponse> {
+  async getQuests(signal?: AbortSignal): Promise<QFQuestListResponse> {
     const { data } = await this.api.get('/quests', { signal });
     return data;
   }
 
-  async getActiveQuests(signal?: AbortSignal): Promise<Quest[]> {
+  async getActiveQuests(signal?: AbortSignal): Promise<QFQuest[]> {
     const { data } = await this.api.get('/quests/active', { signal });
     return data;
   }
 
-  async getClaimableQuests(signal?: AbortSignal): Promise<Quest[]> {
+  async getClaimableQuests(signal?: AbortSignal): Promise<QFQuest[]> {
     const { data } = await this.api.get('/quests/claimable', { signal });
     return data;
   }
 
-  async getQuest(questId: string, signal?: AbortSignal): Promise<Quest> {
+  async getQuest(questId: string, signal?: AbortSignal): Promise<QFQuest> {
     const { data } = await this.api.get(`/quests/${questId}`, { signal });
     return data;
   }
 
-  async claimQuestReward(questId: string, signal?: AbortSignal): Promise<ClaimQuestRewardResponse> {
+  async claimQuestReward(questId: string, signal?: AbortSignal): Promise<QFClaimQuestRewardResponse> {
     const { data } = await this.api.post(`/quests/${questId}/claim`, {}, { signal });
     return data;
   }
 
-  async getOnlineUsers(signal?: AbortSignal): Promise<OnlineUsersResponse> {
-    const { data } = await this.api.get<OnlineUsersResponse>('/users/online', { signal });
+  async getOnlineUsers(signal?: AbortSignal): Promise<QFOnlineUsersResponse> {
+    const { data } = await this.api.get<QFOnlineUsersResponse>('/users/online', { signal });
     return data;
   }
 
-  async pingOnlineUser(username: string, signal?: AbortSignal): Promise<PingUserResponse> {
-    const { data } = await this.api.post<PingUserResponse>(
+  async pingOnlineUser(username: string, signal?: AbortSignal): Promise<QFPingUserResponse> {
+    const { data } = await this.api.post<QFPingUserResponse>(
       '/users/online/ping',
       { username },
       { signal },
@@ -631,13 +631,13 @@ export class BaseApiClient {
     return data;
   }
 
-  async getAdminConfig(signal?: AbortSignal): Promise<AdminConfig> {
-    const { data } = await this.api.get<AdminConfig>('/admin/config', { signal });
+  async getAdminConfig(signal?: AbortSignal): Promise<QFAdminConfig> {
+    const { data } = await this.api.get<QFAdminConfig>('/admin/config', { signal });
     return data;
   }
 
-  async updateAdminConfig(key: string, value: number | string, signal?: AbortSignal): Promise<UpdateAdminConfigResponse> {
-    const { data } = await this.api.patch<UpdateAdminConfigResponse>('/admin/config', { key, value }, { signal });
+  async updateAdminConfig(key: string, value: number | string, signal?: AbortSignal): Promise<QFUpdateAdminConfigResponse> {
+    const { data } = await this.api.patch<QFUpdateAdminConfigResponse>('/admin/config', { key, value }, { signal });
     return data;
   }
 
@@ -671,7 +671,7 @@ export class BaseApiClient {
   async getFlaggedPrompts(
     status: 'pending' | 'confirmed' | 'dismissed' | 'all' = 'pending',
     signal?: AbortSignal,
-  ): Promise<FlaggedPromptListResponse> {
+  ): Promise<QFFlaggedPromptListResponse> {
     const queryStatus = status === 'all' ? undefined : status;
     const { data } = await this.api.get('/admin/flags', {
       params: queryStatus ? { status: queryStatus } : undefined,
@@ -684,7 +684,7 @@ export class BaseApiClient {
     flagId: string,
     action: 'confirm' | 'dismiss',
     signal?: AbortSignal,
-  ): Promise<FlaggedPromptItem> {
+  ): Promise<QFFlaggedPromptItem> {
     const { data } = await this.api.post(`/admin/flags/${flagId}/resolve`, { action }, { signal });
     return data;
   }

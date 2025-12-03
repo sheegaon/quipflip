@@ -1,12 +1,12 @@
 import React from 'react';
-import type { PhrasesetSummary } from '@crowdcraft/api/types.ts';
+import type { QFPhrasesetSummary } from '@crowdcraft/api/types.ts';
 import { StatusBadge, type StatusType } from './StatusBadge';
 import { getUniqueIdForSummary } from '@crowdcraft/utils/phrasesetHelpers.ts';
 
 interface PhrasesetListProps {
-  phrasesets: PhrasesetSummary[];
+  phrasesets: QFPhrasesetSummary[];
   selectedId?: string | null;
-  onSelect: (phraseset: PhrasesetSummary) => void;
+  onSelect: (phraseset: QFPhrasesetSummary) => void;
   isLoading?: boolean;
 }
 
@@ -21,7 +21,7 @@ export const PhrasesetList: React.FC<PhrasesetListProps> = ({
   onSelect,
   isLoading,
 }) => {
-  const statusToBadgeType = (status: PhrasesetSummary['status']): StatusType => {
+  const statusToBadgeType = (status: QFPhrasesetSummary['status']): StatusType => {
     switch (status) {
       case 'finalized':
         return 'success';

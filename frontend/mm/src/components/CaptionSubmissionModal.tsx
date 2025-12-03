@@ -1,15 +1,15 @@
 import React, { useMemo, useState } from 'react';
 import apiClient, { extractErrorMessage } from '@/api/client';
 import type {
-  MemeCaptionSubmission,
-  MemeVoteRound,
+  MMMemeCaptionSubmission,
+  MMMemeVoteRound,
 } from '@crowdcraft/api/types.ts';
 import { CurrencyDisplay } from './CurrencyDisplay';
 
 interface CaptionSubmissionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  round: MemeVoteRound;
+  round: MMMemeVoteRound;
   freeCaptionsRemaining?: number;
 }
 
@@ -45,7 +45,7 @@ export const CaptionSubmissionModal: React.FC<CaptionSubmissionModalProps> = ({
 
     setIsSubmitting(true);
     try {
-      const request: MemeCaptionSubmission = {
+      const request: MMMemeCaptionSubmission = {
         round_id: round.round_id,
         text: captionText.trim(),
       };

@@ -17,7 +17,7 @@ import {
   useEffect,
 } from 'react';
 import apiClient from '@/api/client';
-import { NotificationStreamMessage, OnlineUser } from '@crowdcraft/api/types.ts';
+import { NotificationStreamMessage, QFOnlineUser } from '@crowdcraft/api/types.ts';
 import useWebSocket from '@crowdcraft/hooks/useWebSocket.ts';
 
 export interface NotificationMessage {
@@ -36,7 +36,7 @@ interface NotificationContextType {
   clearAll: () => void;
   pingMessages: PingToastMessage[];
   removePingMessage: (id: string) => void;
-  onlineUsers: OnlineUser[];
+  onlineUsers: QFOnlineUser[];
   totalCount: number;
   loadingOnlineUsers: boolean;
   onlineUsersError: string | null;
@@ -97,7 +97,7 @@ export const createNotificationContext = () => {
     const pingIdRef = useRef(0);
     const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-    const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
+    const [onlineUsers, setOnlineUsers] = useState<QFOnlineUser[]>([]);
     const [totalCount, setTotalCount] = useState(0);
     const [loadingOnlineUsers, setLoadingOnlineUsers] = useState(true);
     const [onlineUsersError, setOnlineUsersError] = useState<string | null>(null);
@@ -203,7 +203,7 @@ export const createNotificationContext = () => {
       try {
         const data: {
           type: string;
-          users: OnlineUser[];
+          users: QFOnlineUser[];
           total_count: number;
           timestamp: string;
         } = JSON.parse(event.data);

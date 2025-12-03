@@ -1,10 +1,10 @@
 import React from 'react';
-import { QuestCategory } from '@crowdcraft/api/types.ts';
+import { MMQuestCategory } from '@crowdcraft/api/types.ts';
 
 interface QuestProgressBarProps {
   current: number;
   target: number;
-  category: QuestCategory;
+  category: MMQuestCategory;
   showLabel?: boolean;
   className?: string;
 }
@@ -21,7 +21,7 @@ export const QuestProgressBar: React.FC<QuestProgressBarProps> = ({
   const isNearComplete = percentage >= 80;
 
   // Get color gradient based on category
-  const getCategoryGradient = (cat: QuestCategory): string => {
+  const getCategoryGradient = (cat: MMQuestCategory): string => {
     switch (cat) {
       case 'streak':
         return 'bg-gradient-to-r from-orange-500 to-red-500';

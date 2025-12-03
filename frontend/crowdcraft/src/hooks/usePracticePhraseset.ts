@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react';
 import apiClient from '@/api/client';
-import type { PracticePhraseset } from '@crowdcraft/api/types.ts';
+import type { QFPracticePhraseset } from '@crowdcraft/api/types.ts';
 
 interface UsePracticePhrasesetResult {
-  phraseset: PracticePhraseset | null;
+  phraseset: QFPracticePhraseset | null;
   loading: boolean;
   error: string | null;
 }
 
 export const usePracticePhraseset = (): UsePracticePhrasesetResult => {
-  const [phraseset, setPhraseset] = useState<PracticePhraseset | null>(null);
+  const [phraseset, setPhraseset] = useState<QFPracticePhraseset | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

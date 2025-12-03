@@ -3,15 +3,15 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { extractErrorMessage } from '@/api/client';
 import type {
-  VoteRoundState,
-  VoteResult,
+  MMVoteRoundState,
+  MMVoteResult,
 } from '@crowdcraft/api/types.ts';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { ShareIcon } from '@crowdcraft/components/icons/EngagementIcons.tsx';
 
 interface CaptionLocationState {
-  round?: VoteRoundState;
-  voteResult?: VoteResult | null;
+  round?: MMVoteRoundState;
+  voteResult?: MMVoteResult | null;
 }
 
 export const CaptionRound: React.FC = () => {

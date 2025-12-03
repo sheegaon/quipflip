@@ -2,13 +2,13 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useSmartPolling, PollConfigs } from '@crowdcraft/utils/smartPolling.ts';
 import { useLoadingState, InlineLoadingSpinner } from '../components/LoadingSpinner';
 import type {
-  PhrasesetSummary,
-  PhrasesetDetails as PhrasesetDetailsType,
+  QFPhrasesetSummary,
+  QFPhrasesetDetails as PhrasesetDetailsType,
 } from '@crowdcraft/api/types.ts';
 import { useGame } from '../contexts/GameContext';
 import { buildPhrasesetListKey } from '@crowdcraft/utils/gameKeys.ts';
 import { PhrasesetList } from '../components/PhrasesetList';
-import { PhrasesetDetails } from '../components/PhrasesetDetails';
+import { QFPhrasesetDetails } from '../components/PhrasesetDetails';
 import { Pagination } from '@crowdcraft/components/Pagination.tsx';
 import { Header } from '../components/Header';
 import { useResults } from '../contexts/ResultsContext';
@@ -84,7 +84,7 @@ export const Tracking: React.FC = () => {
   const paramsKey = useMemo(() => buildPhrasesetListKey(params), [params]);
   const listEntry = playerPhrasesets[paramsKey];
   const rawPhrasesets = listEntry?.data?.phrasesets;
-  const phrasesets = useMemo<PhrasesetSummary[]>(
+  const phrasesets = useMemo<QFPhrasesetSummary[]>(
     () => rawPhrasesets ?? [],
     [rawPhrasesets],
   );
@@ -231,7 +231,7 @@ export const Tracking: React.FC = () => {
     }
     }, [clearLoading, detailsLoading, setLoading]);
 
-  const handleSelect = (summary: PhrasesetSummary) => {
+  const handleSelect = (summary: QFPhrasesetSummary) => {
     const id = getUniqueIdForSummary(summary);
     trackingLogger.debug('Phraseset selected from list', {
       summaryId: id,
@@ -350,7 +350,7 @@ export const Tracking: React.FC = () => {
                   <InlineLoadingSpinner message={detailsLoadingState.message} />
                 </div>
               ) : selectedSummary ? (
-                <PhrasesetDetails
+                <QFPhrasesetDetails
                   phraseset={details as PhrasesetDetailsType | null}
                   summary={selectedSummary}
                 />

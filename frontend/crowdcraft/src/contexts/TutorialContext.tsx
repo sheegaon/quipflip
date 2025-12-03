@@ -10,7 +10,7 @@ import React, {
 import apiClient from '@/api/client';
 import { getActionErrorMessage } from '@crowdcraft/utils/errorMessages.ts';
 import { tutorialLogger } from '@crowdcraft/utils/logger.ts';
-import type { TutorialProgress, TutorialStatus } from '@crowdcraft/api/types.ts';
+import type { QFTutorialProgress, QFTutorialStatus } from '@crowdcraft/api/types.ts';
 
 const isAbortError = (error: unknown): boolean => {
   if (!error || typeof error !== 'object') {
@@ -23,11 +23,11 @@ const isAbortError = (error: unknown): boolean => {
 
 export type TutorialLifecycleStatus = 'loading' | 'inactive' | 'active' | 'completed' | 'error';
 
-interface TutorialContextState<Status extends TutorialStatus> {
+interface TutorialContextState<Status extends QFTutorialStatus> {
   status: Status | null;
   tutorialStatus: TutorialLifecycleStatus;
   isActive: boolean;
-  currentStep: TutorialProgress | null;
+  currentStep: QFTutorialProgress | null;
   loading: boolean;
   error: string | null;
 }
@@ -39,33 +39,33 @@ interface RefreshOptions {
 
 interface TutorialActions {
   startTutorial: () => Promise<void>;
-  advanceStep: (stepId?: TutorialProgress) => Promise<void>;
+  advanceStep: (stepId?: QFTutorialProgress) => Promise<void>;
   skipTutorial: () => Promise<void>;
   completeTutorial: () => Promise<void>;
   resetTutorial: () => Promise<void>;
   refreshStatus: (options?: RefreshOptions) => Promise<void>;
 }
 
-interface TutorialContextType<Status extends TutorialStatus> {
+interface TutorialContextType<Status extends QFTutorialStatus> {
   state: TutorialContextState<Status>;
   actions: TutorialActions;
 }
 
-export interface TutorialContextConfig<Status extends TutorialStatus> {
+export interface TutorialContextConfig<Status extends QFTutorialStatus> {
   mapLoadStatus: (response: unknown) => Status | null;
   mapUpdateStatus: (response: unknown) => Status;
   mapResetStatus: (response: unknown) => Status;
-  getProgress: (status: Status) => TutorialProgress;
+  getProgress: (status: Status) => QFTutorialProgress;
   isCompleted: (status: Status) => boolean;
-  getNextStep?: (progress: TutorialProgress) => TutorialProgress | null;
+  getNextStep?: (progress: QFTutorialProgress) => QFTutorialProgress | null;
 }
 
-interface TutorialProviderProps<Status extends TutorialStatus> {
+interface TutorialProviderProps<Status extends QFTutorialStatus> {
   children: React.ReactNode;
   config: TutorialContextConfig<Status>;
 }
 
-export const createTutorialContext = <Status extends TutorialStatus>() => {
+export const createTutorialContext = <Status extends QFTutorialStatus>() => {
   const TutorialContext = createContext<TutorialContextType<Status> | undefined>(undefined);
 
   const TutorialProvider: React.FC<TutorialProviderProps<Status>> = ({ children, config }) => {
@@ -73,7 +73,7 @@ export const createTutorialContext = <Status extends TutorialStatus>() => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const currentStep = useMemo<TutorialProgress | null>(() => {
+    const currentStep = useMemo<QFTutorialProgress | null>(() => {
       if (!status) return null;
       const progress = config.getProgress(status);
       if (progress === 'not_started' || progress === 'completed') {
@@ -153,7 +153,7 @@ export const createTutorialContext = <Status extends TutorialStatus>() => {
     );
 
     const updateProgress = useCallback(
-      async (progress: TutorialProgress) => {
+      async (progress: QFTutorialProgress) => {
         const token = await ensureToken();
         if (!token) {
           return;
@@ -187,7 +187,7 @@ export const createTutorialContext = <Status extends TutorialStatus>() => {
     }, [updateProgress]);
 
     const advanceStep = useCallback(
-      async (stepId?: TutorialProgress) => {
+      async (stepId?: QFTutorialProgress) => {
         const nextStep =
           stepId ?? (status ? config.getNextStep?.(config.getProgress(status)) ?? undefined : undefined);
 

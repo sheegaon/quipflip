@@ -1,8 +1,8 @@
 import React from 'react';
 import type {
-  PhrasesetDetails as PhrasesetDetailsType,
-  PhrasesetStatus,
-  PhrasesetSummary,
+  QFPhrasesetDetails as PhrasesetDetailsType,
+  QFPhrasesetStatus,
+  QFPhrasesetSummary,
 } from '@crowdcraft/api/types.ts';
 import { StatusBadge, type StatusType } from './StatusBadge';
 import { ProgressBar } from './ProgressBar';
@@ -12,11 +12,11 @@ import { BotIcon } from '@crowdcraft/components/icons/EngagementIcons.tsx';
 
 interface PhrasesetDetailsProps {
   phraseset: PhrasesetDetailsType | null;
-  summary?: PhrasesetSummary | null;
+  summary?: QFPhrasesetSummary | null;
   loading?: boolean;
 }
 
-const STATUS_LABELS: Record<PhrasesetStatus, string> = {
+const STATUS_LABELS: Record<QFPhrasesetStatus, string> = {
   waiting_copies: 'Waiting for Copies',
   waiting_copy1: 'Waiting for Final Copy',
   active: 'Voting Active',
@@ -26,9 +26,9 @@ const STATUS_LABELS: Record<PhrasesetStatus, string> = {
   abandoned: 'Abandoned',
 };
 
-const formatStatusLabel = (status: PhrasesetStatus) => STATUS_LABELS[status] ?? status.replace('_', ' ');
+const formatStatusLabel = (status: QFPhrasesetStatus) => STATUS_LABELS[status] ?? status.replace('_', ' ');
 
-const statusToBadgeType = (status: PhrasesetStatus): StatusType => {
+const statusToBadgeType = (status: QFPhrasesetStatus): StatusType => {
   switch (status) {
     case 'finalized':
       return 'success';
@@ -43,7 +43,7 @@ const statusToBadgeType = (status: PhrasesetStatus): StatusType => {
   }
 };
 
-export const PhrasesetDetails: React.FC<PhrasesetDetailsProps> = ({
+export const QFPhrasesetDetails: React.FC<PhrasesetDetailsProps> = ({
   phraseset,
   summary,
   loading,
