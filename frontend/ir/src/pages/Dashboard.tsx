@@ -66,6 +66,8 @@ const Dashboard: React.FC = () => {
   const handleClaimBonus = async () => {
     try {
       await claimDailyBonus();
+      // Refresh dashboard to update treasure chest icon and player balance
+      await refreshDashboard();
     } catch (err) {
       console.error('Failed to claim bonus:', err);
     }

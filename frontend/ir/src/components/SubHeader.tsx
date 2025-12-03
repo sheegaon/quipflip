@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useIRGame } from '../contexts/IRGameContext';
 import { ResultsIcon } from './icons/EngagementIcons';
 import { SettingsIcon } from './icons/NavigationIcons';
@@ -7,11 +7,27 @@ import { TreasureChestIcon } from './TreasureChestIcon';
 
 const SubHeader: React.FC = () => {
   const navigate = useNavigate();
-  const { player, pendingResults } = useIRGame();
+  const location = useLocation();
+  const { player, pendingResults, refreshDashboard } = useIRGame();
 
   if (!player) {
     return null;
   }
+
+  // Refresh dashboard data when returning to dashboard
+  React.useEffect(() => {
+    if (location.pathname === '/dashboard') {
+      const refreshSubHeaderData = async () => {
+        try {
+          await refreshDashboard();
+        } catch (err) {
+          console.debug('Failed to refresh dashboard on SubHeader mount:', err);
+        }
+      };
+
+      refreshSubHeaderData();
+    }
+  }, [location.pathname, refreshDashboard]);
 
   const hasPendingResults = pendingResults && pendingResults.length > 0;
   const pendingCount = pendingResults?.length || 0;

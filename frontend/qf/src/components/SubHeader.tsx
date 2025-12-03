@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { useHeaderIndicators } from '../hooks/useHeaderIndicators';
 import { useTutorial } from '../contexts/TutorialContext';
@@ -12,6 +12,7 @@ export const SubHeader: React.FC = () => {
   const { actions } = useGame();
   const { refreshDashboard } = actions;
   const navigate = useNavigate();
+  const location = useLocation();
   const {
     state: { status: tutorialStatus },
   } = useTutorial();
@@ -28,6 +29,21 @@ export const SubHeader: React.FC = () => {
     isFirstDay,
     hasClaimableQuests,
   } = useHeaderIndicators();
+
+  // Refresh dashboard data when returning to dashboard
+  React.useEffect(() => {
+    if (location.pathname === '/dashboard') {
+      const refreshSubHeaderData = async () => {
+        try {
+          await refreshDashboard();
+        } catch (err) {
+          console.debug('Failed to refresh dashboard on SubHeader mount:', err);
+        }
+      };
+
+      refreshSubHeaderData();
+    }
+  }, [location.pathname, refreshDashboard]);
 
   const handleResultsClick = async () => {
     try {

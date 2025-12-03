@@ -19,6 +19,7 @@ except Exception:  # pragma: no cover - handled at runtime when Redis unavailabl
 from backend.models.qf.phraseset import Phraseset
 from backend.models.qf.phraseset_activity import PhrasesetActivity
 from backend.models.qf.player import QFPlayer
+from backend.models.qf.player_data import QFPlayerData
 from backend.models.qf.transaction import QFTransaction
 from backend.models.qf.vote import Vote
 from backend.models.qf.round import Round
@@ -940,15 +941,16 @@ class QFScoringService:
                 select(
                     QFPlayer.player_id,
                     QFPlayer.username,
-                    QFPlayer.vault.label("gross_earnings"),
+                    QFPlayerData.vault.label("gross_earnings"),
                     func.coalesce(rounds_stmt.c.total_rounds, 0).label("total_rounds"),
                 )
+                .join(QFPlayerData, QFPlayerData.player_id == QFPlayer.player_id)
                 .join(rounds_stmt, rounds_stmt.c.player_id == QFPlayer.player_id, isouter=True)
                 .where(
                     ~QFPlayer.email.like(f"%{AI_PLAYER_EMAIL_DOMAIN}"),
-                    QFPlayer.vault > 0,  # Only show players with non-zero vault
+                    QFPlayerData.vault > 0,  # Only show players with non-zero vault
                 )
-                .order_by(QFPlayer.vault.desc(), QFPlayer.username.asc())
+                .order_by(QFPlayerData.vault.desc(), QFPlayer.username.asc())
             )
 
         result = await self.db.execute(leaderboard_stmt)

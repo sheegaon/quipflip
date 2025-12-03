@@ -7,7 +7,7 @@ import { ArrowLeftIcon } from './icons/ArrowIcons';
 import { HomeIcon, SettingsIcon } from './icons/NavigationIcons';
 
 const Header: React.FC = () => {
-  const { player, logout, isAuthenticated } = useIRGame();
+  const { player, logout, isAuthenticated, refreshDashboard } = useIRGame();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -19,6 +19,19 @@ const Header: React.FC = () => {
 
   // Show back arrow on all pages except dashboard and landing
   const showBackArrow = location.pathname !== '/dashboard' && location.pathname !== '/';
+
+  // Refresh header data when user navigates to a different page
+  React.useEffect(() => {
+    const refreshHeaderData = async () => {
+      try {
+        await refreshDashboard();
+      } catch (err) {
+        console.debug('Failed to refresh header data on navigation:', err);
+      }
+    };
+
+    refreshHeaderData();
+  }, [location.pathname, refreshDashboard]);
 
   // Close dropdown when clicking outside
   React.useEffect(() => {
