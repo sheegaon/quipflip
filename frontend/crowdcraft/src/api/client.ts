@@ -34,6 +34,17 @@ import type {
   MMVoteRoundState,
   MMTutorialProgress,
   MMUpdateTutorialProgressResponse,
+  TLDashboardResponse,
+  TLBalanceResponse,
+  TLRoundAvailability,
+  TLStartRoundResponse,
+  TLSubmitGuessResponse,
+  TLRoundDetails,
+  TLAbandonRoundResponse,
+  TLPromptPreviewResponse,
+  TLSeedPromptsResponse,
+  TLCorpusStats,
+  TLPruneCorpusResponse,
   QFCreatePartySessionRequest,
   QFCreatePartySessionResponse,
   QFJoinPartySessionResponse,
@@ -52,18 +63,49 @@ import type {
 const rawBaseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
 const QF_API_BASE_URL = /\/qf($|\/)/.test(rawBaseUrl) ? rawBaseUrl : `${rawBaseUrl}/qf`;
 const MM_API_BASE_URL = /\/mm($|\/)/.test(rawBaseUrl) ? rawBaseUrl : `${rawBaseUrl}/mm`;
+const TL_API_BASE_URL = /\/tl($|\/)/.test(rawBaseUrl) ? rawBaseUrl : `${rawBaseUrl}/tl`;
 
 class CrowdcraftApiClient extends BaseApiClient {
   private readonly mmApi: BaseApiClient;
+  private readonly tlApi: BaseApiClient;
   private readonly rootApi = axios.create({
     baseURL: rawBaseUrl,
     headers: { 'Content-Type': 'application/json' },
     withCredentials: true,
   });
 
+  private _handleApiError(error: unknown, context: string, customMessage: string): never {
+    const axiosError = error as ApiError;
+
+    if (axiosError?.response?.status === 500) {
+      console.error(`${context} failed with server error:`, {
+        status: axiosError.response.status,
+        statusText: axiosError.response.statusText,
+        data: axiosError.response.data,
+        message: axiosError.message,
+      });
+
+      throw {
+        ...axiosError,
+        message: customMessage,
+        isServerError: true,
+      } as ApiError;
+    }
+
+    console.error(`${context} failed:`, {
+      status: axiosError?.response?.status,
+      statusText: axiosError?.response?.statusText,
+      data: axiosError?.response?.data,
+      message: axiosError?.message,
+    });
+
+    throw error;
+  }
+
   constructor() {
     super(QF_API_BASE_URL);
     this.mmApi = new BaseApiClient(MM_API_BASE_URL);
+    this.tlApi = new BaseApiClient(TL_API_BASE_URL);
   }
 
   get axiosInstance() {
@@ -72,6 +114,10 @@ class CrowdcraftApiClient extends BaseApiClient {
 
   get mmAxiosInstance() {
     return this.mmApi.axiosInstance;
+  }
+
+  get tlAxiosInstance() {
+    return this.tlApi.axiosInstance;
   }
 
   // QF Party Mode APIs
@@ -86,31 +132,7 @@ class CrowdcraftApiClient extends BaseApiClient {
       });
       return data;
     } catch (error) {
-      const axiosError = error as ApiError;
-
-      if (axiosError?.response?.status === 500) {
-        console.error('Party creation failed with server error:', {
-          status: axiosError.response.status,
-          statusText: axiosError.response.statusText,
-          data: axiosError.response.data,
-          message: axiosError.message,
-        });
-
-        throw {
-          ...axiosError,
-          message: 'Server error creating party. Please try again in a moment.',
-          isServerError: true,
-        } as ApiError;
-      }
-
-      console.error('Party creation failed:', {
-        status: axiosError?.response?.status,
-        statusText: axiosError?.response?.statusText,
-        data: axiosError?.response?.data,
-        message: axiosError?.message,
-      });
-
-      throw error;
+      this._handleApiError(error, 'Party creation', 'Server error creating party. Please try again in a moment.');
     }
   }
 
@@ -569,6 +591,85 @@ class CrowdcraftApiClient extends BaseApiClient {
     return this.mmApi.adminResetPassword(payload, signal);
   }
 
+  // TL gameplay helpers
+  async tlGetDashboard(signal?: AbortSignal): Promise<TLDashboardResponse> {
+    const { data } = await this.tlApi.axiosInstance.get<TLDashboardResponse>('/player/dashboard', { signal });
+    return data;
+  }
+
+  async tlGetBalance(signal?: AbortSignal): Promise<TLBalanceResponse> {
+    const { data } = await this.tlApi.axiosInstance.get<TLBalanceResponse>('/player/balance', { signal });
+    return data;
+  }
+
+  async tlCheckRoundAvailability(signal?: AbortSignal): Promise<TLRoundAvailability> {
+    const { data } = await this.tlApi.axiosInstance.get<TLRoundAvailability>('/rounds/available', { signal });
+    return data;
+  }
+
+  async tlStartRound(signal?: AbortSignal): Promise<TLStartRoundResponse> {
+    try {
+      const { data } = await this.tlApi.axiosInstance.post<TLStartRoundResponse>('/rounds/start', {}, { signal, timeout: 10000 });
+      return data;
+    } catch (error) {
+      this._handleApiError(error, 'Round creation', 'Server error starting round. Please try again in a moment.');
+    }
+  }
+
+  async tlSubmitGuess(roundId: string, guessText: string, signal?: AbortSignal): Promise<TLSubmitGuessResponse> {
+    const request = { guess_text: guessText };
+    const { data } = await this.tlApi.axiosInstance.post<TLSubmitGuessResponse>(`/rounds/${roundId}/guess`, request, {
+      signal,
+    });
+    return data;
+  }
+
+  async tlGetRoundDetails(roundId: string, signal?: AbortSignal): Promise<TLRoundDetails> {
+    const { data } = await this.tlApi.axiosInstance.get<TLRoundDetails>(`/rounds/${roundId}`, { signal });
+    return data;
+  }
+
+  async tlAbandonRound(roundId: string, signal?: AbortSignal): Promise<TLAbandonRoundResponse> {
+    const { data } = await this.tlApi.axiosInstance.post<TLAbandonRoundResponse>(`/rounds/${roundId}/abandon`, {}, { signal });
+    return data;
+  }
+
+  async tlPreviewPrompt(signal?: AbortSignal): Promise<TLPromptPreviewResponse> {
+    const { data } = await this.tlApi.axiosInstance.get<TLPromptPreviewResponse>('/game/prompts/preview', { signal });
+    return data;
+  }
+
+  async tlSeedPrompts(prompts: string[], signal?: AbortSignal): Promise<TLSeedPromptsResponse> {
+    const requestPayload = { prompts };
+    const { data } = await this.tlApi.axiosInstance.post<TLSeedPromptsResponse>('/admin/prompts/seed', requestPayload, {
+      signal,
+      timeout: 30000,
+    });
+    return data;
+  }
+
+  async tlGetCorpusStats(promptId: string, signal?: AbortSignal): Promise<TLCorpusStats> {
+    const { data } = await this.tlApi.axiosInstance.get<TLCorpusStats>(`/admin/corpus/${promptId}`, { signal });
+    return data;
+  }
+
+  async tlPruneCorpus(promptId: string, signal?: AbortSignal): Promise<TLPruneCorpusResponse> {
+    const { data } = await this.tlApi.axiosInstance.post<TLPruneCorpusResponse>(`/admin/corpus/${promptId}/prune`, {}, {
+      signal,
+    });
+    return data;
+  }
+
+  async tlGetOnlineUsers(signal?: AbortSignal): Promise<MMOnlineUsersResponse> {
+    const { data } = await this.tlApi.axiosInstance.get<MMOnlineUsersResponse>('/users/online', { signal });
+    return data;
+  }
+
+  async tlPingOnlineUser(username: string, signal?: AbortSignal): Promise<MMPingUserResponse> {
+    const { data } = await this.tlApi.axiosInstance.post<MMPingUserResponse>('/users/online/ping', { username }, { signal });
+    return data;
+  }
+
   // Root level helpers
   async logoutEverywhere(refreshTokenValue?: string) {
     const payload = refreshTokenValue ? { refresh_token: refreshTokenValue } : {};
@@ -579,6 +680,7 @@ class CrowdcraftApiClient extends BaseApiClient {
 export const apiClient = new CrowdcraftApiClient();
 export const axiosInstance = apiClient.axiosInstance;
 export const mmAxiosInstance = apiClient.mmAxiosInstance;
+export const tlAxiosInstance = apiClient.tlAxiosInstance;
 
 export default apiClient;
 export { extractErrorMessage, clearStoredCredentials };
