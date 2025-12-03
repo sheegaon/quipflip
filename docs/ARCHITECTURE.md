@@ -32,20 +32,31 @@ repo/
 
 ## Backend Architecture
 
+### Authentication & Player Model
+- **Unified Player Account**: Single `players` table stores authentication and cross-game identity for all three games (QF, IR, MM).
+- **Game-Specific Data Delegation**: Each game has a `{Game}PlayerData` table (qf_player_data, ir_player_data, mm_player_data) that stores game-specific state like wallet, vault, and tutorial progress.
+- The `Player` model provides transparent access to game-specific fields via property accessors, allowing frontend code to use `player.wallet` regardless of which game's PlayerData stores the actual value.
+- See [DATA_MODELS.md](DATA_MODELS.md#architecture-overview) for detailed architecture.
+
 ### Entrypoint & runtime lifecycle
 - `backend/main.py` sets UTC before imports, configures rotating logs (general, SQL, API access), mounts CORS, and applies middleware for request deduplication and online-user tracking.
 - Lifespan startup initializes the phrase validator (local or remote API), syncs prompt seeds, backfills quests, imports MemeMint images/captions, and starts background tasks (AI backup cycle, stale-content sweep, cleanup cycle, party maintenance). Shutdown closes the validator client and cancels tasks cleanly.
 
 ### Routers & dependencies
 - Game routers live under `backend/routers/{qf,mm,ir}` and are mounted at `/qf`, `/mm`, `/ir`. Shared router bases (admin/player/quest) handle authentication and common dependency wiring.
-- Auth router issues JWT access/refresh tokens, maintains HttpOnly cookies, and exposes `/auth/ws-token` for short-lived WebSocket tokens. Health router serves readiness probes.
+- Auth router issues JWT access/refresh tokens (stored in game-specific HttpOnly cookies), maintains refresh token tables, and exposes `/auth/ws-token` for short-lived WebSocket tokens. Health router serves readiness probes.
 - QF-only real-time endpoints: notifications (`/qf/notifications/ws`), online users (`/qf/users/online/ws`), and party updates (`/qf/party/{sessionId}/ws`).
+- MM includes social features: circles endpoint (`/mm/circles`) for player-created groups with membership management.
 
 ### Service layer
 - Routers validate/authenticate then delegate to services; services encapsulate database work, locking, and business rules.
 - Core services: queue and round orchestration, voting/finalization, transaction logging, quests, statistics, notification delivery, and phrase validation (local validator or remote client).
-- QF-specific services cover party mode (`PartySessionService`, `PartyCoordinationService`, `PartyScoringService`, `PartyWebSocketManager`) and rich notification fan-out.
-- AI orchestration in `services/ai/*` generates backup copies/votes/hints for QF and backronyms/votes for IR using OpenAI or Gemini. Results and costs are recorded in `ai_metrics` and cached phrase tables to avoid duplicate work.
+- **QF Services**:
+  - Party mode (`PartySessionService`, `PartyCoordinationService`, `PartyScoringService`, `PartyWebSocketManager`) enables multiplayer synchronized gameplay with AI player support.
+  - Rich notification fan-out (`WebSocketNotificationService`) delivers copy/vote alerts and pings to prompt creators.
+  - Statistics and leaderboard services compute weekly/all-time rankings split by role (prompt, copy, voter).
+- **MM Services**: Circles/social group management (`CircleService`) with membership requests and approval workflows.
+- **AI Orchestration** in `services/ai/*`: Generates backup copies/votes/hints for QF and backronyms/votes for IR using OpenAI or Gemini. Results, latency, and costs are recorded in `ai_metrics` table and cached in phrase/quip tables to avoid duplicate API calls. Stale content handler (`StaleAIService`) ensures permanently abandoned content receives AI help after configurable threshold.
 
 ### Data & infrastructure
 - Async SQLAlchemy with Postgres in production and SQLite locally (`backend/database.py`); migrations in `backend/migrations/`.
@@ -82,11 +93,24 @@ repo/
 - Party mode: `/qf/party/{sessionId}/ws` emits lobby/progress updates while REST endpoints drive actions (create/join/start/submit).
 See `docs/WEBSOCKET.md` for connection details and error handling.
 
-## QuipFlip Game Flow (high level)
-- **Quip → Impostor → Vote** rounds share a common queue managed by `QueueService`: prompt players submit quips, two impostor copies are collected, then phrasesets enter the voting queue.
+## Game Flows
+
+### QuipFlip (QF)
+- **Solo Mode - Quip → Impostor → Vote** rounds share a common queue managed by `QueueService`: prompt players submit quips, two impostor copies are collected, then phrasesets enter the voting queue.
 - Round limits: single active round per player, outstanding prompt limits, copy discount when the prompt queue is deep, timers with grace periods, and distributed locks to prevent double-claiming.
 - Voting closes at configurable thresholds (min 3 votes to start closing, 5-vote short window, max 20). Finalization distributes prizes, writes transactions, and caches result views.
-- MemeMint and Initial Reaction reuse the same service patterns with game-specific models and settings (caption/vote for MM, backronym sets for IR).
+- **Party Mode** - Multiplayer synchronized rounds where players play together in real-time, with optional AI players to fill seats. Party sessions manage member readiness, round progression, and shared scoring.
+- AI assists both solo and party modes by generating backup copies when prompts stall and voting when phrasesets need participation.
+
+### MemeMint (MM)
+- **Vote → Caption** flow: players vote on image captions (entry fee), then submit their own captions for the same images.
+- Caption quality is tracked via performance stats (shows, picks, quality_score) and used for weighted selection in future rounds.
+- **Social Groups (Circles)**: Players can create circles to organize, collaborate, and manage shared meme activities with membership requests and approval workflows.
+
+### Initial Reaction (IR)
+- **Backronym Sets**: Players create backronym entries (one letter = one word) for random 3–5 letter words, then vote on submissions.
+- Set lifecycle: collecting entries (0–5), voting phase, finalization with prize distribution.
+- AI generates backronyms and votes when sets stall, ensuring games progress even with low human participation.
 
 ## Phrase Validation & AI
 - Phrase validation can run locally (`services/phrase_validator.py` + NASPA dictionary + similarity thresholds) or through a remote Phrase Validation API client; both enforce word lists, length limits, and semantic-distance checks.

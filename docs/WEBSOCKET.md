@@ -34,17 +34,44 @@ This document captures the current WebSocket architecture across the Quipflip ba
   - Ping actions use the REST helper `pingOnlineUser(username)` to send a lightweight ping via the backend connection manager.
 
 ### Party Mode
-- **Endpoint:** `GET /qf/party/{sessionId}/ws?context={lobby|game|other}&token=...`
-- **Messages:** read-only notifications such as `player_joined`, `player_left`, `player_ready`, `progress_update`, `session_started`, `session_completed`, `session_update`, and `host_ping`.
+- **Endpoint:** `GET /qf/party/{sessionId}/ws?token=...`
+- **Messages:** read-only notifications such as `player_joined`, `player_left`, `player_ready`, `round_started`, `round_completed`, `submission`, `session_status`, and `error`.
 - **Frontend:**
-  - `usePartyWebSocket` wraps `useWebSocket` for presence and progress notifications only; the actual party flow (starting rounds, switching phases) is driven by REST endpoints and status polling (e.g., `GET /party/{id}/status` followed by `POST /party/{id}/rounds/{phase}`).
+  - `usePartyWebSocket` wraps `useWebSocket` for presence and progress notifications only; the actual party flow (starting rounds, submitting, switching phases) is driven by REST endpoints and status polling (e.g., `GET /party/{id}/status` followed by `POST /party/{id}/rounds/prompt`).
   - Connection state (`connected`, `connecting`, `error`) is exposed to party screens for UX feedback.
-  - Auth-related close codes (`4000`–`4003`, `4401`, `4403`) stop reconnect attempts and surface a clear error; other failures rely on backoff reconnects from the shared hook.
+  - Auth-related close codes (`1008`, `1011`) stop reconnect attempts and surface a clear error; other failures rely on backoff reconnects from the shared hook.
+  - Session updates are broadcast every ~5 seconds while connections are active, keeping all party members synchronized on game progress.
 
 ## Backend WebSocket Endpoints
-- `/qf/auth/ws-token` — short-lived token issuance (60s) used by all channels.
-- `/qf/notifications/ws` — per-player notification delivery managed by `WebSocketNotificationService`.
-- `/qf/users/online/ws` — broadcasts online-user snapshots and ping messages via `OnlineUsersConnectionManager`.
-- `/qf/party/{sessionId}/ws` — party session updates managed by `PartyWebSocketManager`.
 
-All endpoints rely on the token exchange (query param or cookie) for authentication and keep connections open for real-time updates while the user remains logged in.
+All three QF channels use the same authentication pattern and rely on short-lived tokens:
+
+- **`/qf/auth/ws-token`** — short-lived token issuance (60 seconds) used by all channels
+  - Called via REST before establishing WebSocket connections
+  - Token passed as query parameter: `?token=...`
+  - Provides secure cross-domain WebSocket auth when HttpOnly cookies cannot be used
+
+- **`/qf/notifications/ws`** — per-player notification delivery managed by `WebSocketNotificationService`
+  - Pushes copy submissions, vote notifications, and ping messages
+  - One connection per authenticated player
+  - No fallback; errors are logged but silent (no REST fallback)
+
+- **`/qf/users/online/ws`** — broadcasts online-user snapshots managed by `OnlineUsersConnectionManager`
+  - Updates every 5 seconds while any client is connected
+  - Includes user presence, last action, and balance data
+  - Falls back to REST polling (`GET /qf/users/online`) on connection loss with automatic reconnection
+
+- **`/qf/party/{sessionId}/ws`** — party session updates managed by `PartyWebSocketManager`
+  - Read-only updates for lobby presence and game progress
+  - Updates every ~5 seconds or on significant state changes
+  - Requires both valid token AND membership in the party session
+
+## Connection Lifecycle
+
+1. **Authentication**: Client calls `GET /qf/auth/ws-token` to get a 60-second token
+2. **Connection**: Client initiates WebSocket with token in query param: `wss://.../{channel}?token=<token>`
+3. **Validation**: Backend validates token signature and player identity
+4. **Messaging**: Server pushes updates; client maintains connection with periodic heartbeats
+5. **Disconnection**: Client closes socket on logout; server auto-closes on token expiration or validation failure
+
+All endpoints reject missing/invalid tokens with WebSocket close code `1008` (POLICY_VIOLATION).
