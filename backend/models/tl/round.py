@@ -1,5 +1,6 @@
 """ThinkLink round model."""
 from sqlalchemy import Column, ForeignKey, String, Integer, DateTime, Float, JSON, CheckConstraint, Index
+from sqlalchemy.orm import relationship
 from datetime import datetime, UTC
 from backend.database import Base
 from backend.models.base import get_uuid_column
@@ -47,6 +48,10 @@ class TLRound(Base):
         ForeignKey("tl_challenge.challenge_id", ondelete="SET NULL"),
         nullable=True
     )
+
+    # Relationships
+    prompt = relationship("TLPrompt", back_populates="rounds")
+    player = relationship("Player", back_populates="tl_rounds")
 
     __table_args__ = (
         CheckConstraint('strikes >= 0 AND strikes <= 3', name='valid_strikes'),

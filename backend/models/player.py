@@ -61,6 +61,11 @@ class Player(Base):
         cascade="all, delete-orphan",
         lazy="joined",
     )
+    tl_rounds = relationship(
+        "TLRound",
+        back_populates="player",
+        foreign_keys="TLRound.player_id",
+    )
 
     def _ensure_qf_data(self):
         """Ensure a QFPlayerData record exists for delegated properties."""

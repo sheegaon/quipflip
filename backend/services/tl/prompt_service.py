@@ -57,8 +57,10 @@ class PromptService:
             # Extract prompts and answer counts
             prompts_with_counts = [(row[0], row[1]) for row in rows]
 
-            # Simple random selection (could add weighted selection if needed)
-            selected_prompt = random.choice(prompts_with_counts)[0]
+            # Weighted selection by answer count (prefer fuller corpuses)
+            prompts = [p for p, _ in prompts_with_counts]
+            weights = [count for _, count in prompts_with_counts]
+            selected_prompt = random.choices(prompts, weights=weights, k=1)[0]
             logger.debug(
                 f"✅ Selected prompt: '{selected_prompt.text[:50]}...' "
                 f"(id={selected_prompt.prompt_id})"
@@ -204,7 +206,3 @@ class PromptService:
         except Exception as e:
             logger.error(f"❌ Get active answers failed: {e}")
             return []
-
-
-# Import at end to avoid circular imports
-from typing import Tuple

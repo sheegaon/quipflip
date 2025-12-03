@@ -7,6 +7,7 @@ import math
 from typing import List, Tuple, Optional, Dict
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.sql import func
 from backend.models.tl import TLRound, TLAnswer, TLCluster
 from backend.config import get_settings
 
@@ -78,6 +79,8 @@ class ScoringService:
     ) -> float:
         """Calculate total weight for a set of clusters.
 
+        Fetches all answers for all clusters in a single query to avoid N+1.
+
         Args:
             db: Database session
             cluster_ids: List of cluster IDs
@@ -89,43 +92,16 @@ class ScoringService:
             if not cluster_ids:
                 return 0.0
 
-            total = 0.0
-            for cluster_id in cluster_ids:
-                weight = await self._get_cluster_weight(db, cluster_id)
-                total += weight
-
-            return total
-        except Exception as e:
-            logger.error(f"❌ Total weight calculation failed: {e}")
-            return 0.0
-
-    async def _get_cluster_weight(
-        self,
-        db: AsyncSession,
-        cluster_id: str,
-    ) -> float:
-        """Get weight of a single cluster.
-
-        Weight = sum of answer weights in cluster
-        Answer weight = 1 + log(1 + min(answer_players_count, 20))
-
-        Args:
-            db: Database session
-            cluster_id: Cluster ID
-
-        Returns:
-            Cluster weight
-        """
-        try:
-            # Get all active answers in cluster
+            # Single query: fetch all active answers in any of the clusters
             result = await db.execute(
                 select(TLAnswer).where(
-                    TLAnswer.cluster_id == cluster_id,
+                    TLAnswer.cluster_id.in_(cluster_ids),
                     TLAnswer.is_active == True
                 )
             )
             answers = result.scalars().all()
 
+            # Calculate weights in Python
             total_weight = 0.0
             for answer in answers:
                 # Cap player count at 20, apply log scaling
@@ -135,7 +111,7 @@ class ScoringService:
 
             return total_weight
         except Exception as e:
-            logger.error(f"❌ Cluster weight lookup failed: {e}")
+            logger.error(f"❌ Total weight calculation failed: {e}")
             return 0.0
 
     def calculate_payout(
@@ -269,7 +245,3 @@ class ScoringService:
         except Exception as e:
             logger.error(f"❌ Round finalization failed: {e}")
             raise
-
-
-# Import at end to avoid circular imports
-from sqlalchemy.sql import func

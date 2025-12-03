@@ -54,6 +54,8 @@ class AuthService:
             from backend.services.ir.player_service import IRPlayerService as PlayerService
         elif game_type == GameType.MM:
             from backend.services.mm.player_service import MMPlayerService as PlayerService
+        elif game_type == GameType.TL:
+            from backend.services.tl.player_service import TLPlayerService as PlayerService
         else:
             raise ValueError(f"Unsupported game type: {game_type}")
 

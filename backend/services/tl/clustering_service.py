@@ -258,22 +258,47 @@ class ClusteringService:
                 logger.debug(f"✅ Corpus within cap ({len(active_answers)} <= {keep_count})")
                 return 0, len(active_answers)
 
+            # Group answers by cluster to preserve diversity
+            clusters_map = {}
+            unclustered = []
+            for answer in active_answers:
+                if answer.cluster_id:
+                    if answer.cluster_id not in clusters_map:
+                        clusters_map[answer.cluster_id] = []
+                    clusters_map[answer.cluster_id].append(answer)
+                else:
+                    unclustered.append(answer)
+
             # Score each answer by usefulness (lower = better candidate for removal)
             scored_answers = []
             for answer in active_answers:
                 usefulness = await self.calculate_usefulness(answer)
-                score = usefulness  # Simple score: lower usefulness = remove first
-                scored_answers.append((answer, score))
+                scored_answers.append((answer, usefulness))
 
             # Sort by score (ascending - remove lowest usefulness first)
             scored_answers.sort(key=lambda x: x[1])
 
-            # Mark lowest-scoring answers as inactive
+            # Mark lowest-scoring answers as inactive, preserving cluster diversity
             to_remove_count = len(active_answers) - keep_count
             removed = 0
+            marked_for_removal = set()
 
-            for answer, score in scored_answers[:to_remove_count]:
+            for answer, score in scored_answers:
+                if removed >= to_remove_count:
+                    break
+
+                # Check if this is the last answer in its cluster
+                if answer.cluster_id and answer.cluster_id in clusters_map:
+                    cluster_answers = clusters_map[answer.cluster_id]
+                    active_count = sum(1 for a in cluster_answers if a.answer_id not in marked_for_removal)
+
+                    # Preserve at least one answer per cluster
+                    if active_count <= 1:
+                        continue
+
+                # Safe to remove
                 answer.is_active = False
+                marked_for_removal.add(answer.answer_id)
                 removed += 1
                 logger.debug(
                     f"🗑️  Marked answer {answer.answer_id} inactive "
@@ -281,8 +306,8 @@ class ClusteringService:
                 )
 
             await db.flush()
-            logger.debug(f"✅ Pruned {removed} answers, remaining={keep_count}")
-            return removed, keep_count
+            logger.debug(f"✅ Pruned {removed} answers, remaining={len(active_answers) - removed}")
+            return removed, len(active_answers) - removed
         except Exception as e:
             logger.error(f"❌ Corpus pruning failed: {e}")
             return 0, 0

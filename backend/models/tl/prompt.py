@@ -1,6 +1,7 @@
 """ThinkLink prompt model."""
 import uuid
 from sqlalchemy import Column, String, DateTime, Boolean, Index
+from sqlalchemy.orm import relationship
 from datetime import datetime, UTC
 from pgvector.sqlalchemy import Vector
 from backend.database import Base
@@ -22,6 +23,9 @@ class TLPrompt(Base):
     is_active = Column(Boolean, default=True, nullable=False)
     ai_seeded = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+
+    # Relationships
+    rounds = relationship("TLRound", back_populates="prompt")
 
     __table_args__ = (
         Index('idx_tl_prompt_active', 'is_active'),
