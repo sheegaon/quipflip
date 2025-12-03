@@ -1,6 +1,8 @@
 """Unit tests for ThinkLink MatchingService."""
 import pytest
+import os
 from backend.services.tl.matching_service import MatchingService
+from unittest.mock import Mock, AsyncMock
 
 
 class TestMatchingService:
@@ -8,8 +10,20 @@ class TestMatchingService:
 
     @pytest.fixture
     def matching_service(self):
-        """Create a MatchingService instance."""
+        """Create a MatchingService instance.
+
+        Skips tests if OPENAI_API_KEY is not configured.
+        """
+        if not os.getenv('OPENAI_API_KEY'):
+            pytest.skip("OPENAI_API_KEY not configured - skipping live API tests")
         return MatchingService()
+
+    @pytest.fixture
+    def matching_service_mock(self):
+        """Create a mock MatchingService for tests that don't need real API calls."""
+        service = Mock(spec=MatchingService)
+        service.embedding_cache = {}
+        return service
 
     @pytest.mark.asyncio
     async def test_generate_embedding_returns_vector(self, matching_service):
@@ -40,14 +54,14 @@ class TestMatchingService:
         # Different texts should produce different embeddings
         assert embedding1 != embedding2
 
-    def test_cosine_similarity_identical_vectors(self, matching_service):
+    def test_cosine_similarity_identical_vectors(self, matching_service_mock):
         """Test cosine similarity of identical vectors is 1.0."""
         vec = [1.0, 0.0, 0.0]
         similarity = MatchingService.cosine_similarity(vec, vec)
 
         assert similarity == pytest.approx(1.0, abs=0.001)
 
-    def test_cosine_similarity_orthogonal_vectors(self, matching_service):
+    def test_cosine_similarity_orthogonal_vectors(self, matching_service_mock):
         """Test cosine similarity of orthogonal vectors is ~0."""
         vec1 = [1.0, 0.0, 0.0]
         vec2 = [0.0, 1.0, 0.0]
@@ -55,7 +69,7 @@ class TestMatchingService:
 
         assert similarity == pytest.approx(0.0, abs=0.001)
 
-    def test_cosine_similarity_opposite_vectors(self, matching_service):
+    def test_cosine_similarity_opposite_vectors(self, matching_service_mock):
         """Test cosine similarity of opposite vectors is clamped to 0.0.
 
         The implementation clamps to [0, 1] to avoid penalizing opposite meanings
@@ -68,7 +82,7 @@ class TestMatchingService:
         # Opposite vectors have dot product of -1, clamped to 0
         assert similarity == pytest.approx(0.0, abs=0.001)
 
-    def test_batch_cosine_similarity_single_candidate(self, matching_service):
+    def test_batch_cosine_similarity_single_candidate(self, matching_service_mock):
         """Test batch similarity with one candidate."""
         query_vec = [1.0, 0.0, 0.0]
         candidate_vecs = [[1.0, 0.0, 0.0]]
@@ -79,7 +93,7 @@ class TestMatchingService:
         assert len(similarities) == 1
         assert similarities[0] == pytest.approx(1.0, abs=0.001)
 
-    def test_batch_cosine_similarity_multiple_candidates(self, matching_service):
+    def test_batch_cosine_similarity_multiple_candidates(self, matching_service_mock):
         """Test batch similarity with multiple candidates.
 
         Note: Values are clamped to [0, 1], so opposite vectors return 0.
