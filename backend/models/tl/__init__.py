@@ -10,9 +10,6 @@ from .round import TLRound
 from .guess import TLGuess
 from .transaction import TLTransaction
 from .challenge import TLChallenge
-from .player import TLPlayer
-from .player_data import TLPlayerData
-from .transaction import TLTransaction
 from .system_config import TLSystemConfig
 from .player_daily_state import TLPlayerDailyState
 
