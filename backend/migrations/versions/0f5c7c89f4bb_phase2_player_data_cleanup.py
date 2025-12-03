@@ -70,13 +70,14 @@ def _build_players_select(bind) -> str:
             bind_text += f", {expr} AS {column}"
         else:
             # Use safe defaults when the column is absent to keep the insert valid
-            default_expr = "NULL"
-            if column in {"wallet", "consecutive_incorrect_votes", "flag_dismissal_streak", "vault"}:
-                default_expr = "0" if column != "wallet" else "1000"
-            elif column == "tutorial_completed":
-                default_expr = "false"
-            elif column == "tutorial_progress":
-                default_expr = "'not_started'"
+            default_expr = {
+                "wallet": "1000",
+                "vault": "0",
+                "consecutive_incorrect_votes": "0",
+                "flag_dismissal_streak": "0",
+                "tutorial_completed": "false",
+                "tutorial_progress": "'not_started'",
+            }.get(column, "NULL")
             bind_text += f", {default_expr} AS {column}"
 
     bind_text += " FROM players p"
