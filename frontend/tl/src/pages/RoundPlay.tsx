@@ -9,6 +9,7 @@ import { GuessInput } from '../components/GuessInput';
 import { CoverageBar } from '../components/CoverageBar';
 import { StrikeIndicator } from '../components/StrikeIndicator';
 import { MatchFeedback } from '../components/MatchFeedback';
+import { Tooltip } from '../components/Tooltip';
 
 interface RoundPlayLocationState {
   round?: StartRoundResponse;
@@ -206,25 +207,33 @@ export const RoundPlay: React.FC = () => {
   return (
     <div className="min-h-screen bg-ccl-cream bg-pattern flex flex-col">
       {/* Header */}
-      <div className="bg-gradient-to-r from-ccl-navy to-ccl-navy-deep text-white p-6 md:p-8">
+      <header className="bg-gradient-to-r from-ccl-navy to-ccl-navy-deep text-white p-6 md:p-8">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-3xl md:text-4xl font-display font-bold mb-4 text-center">
+          <h1 className="text-3xl md:text-4xl font-display font-bold mb-4 text-center" role="heading" aria-level={1}>
             {round.prompt_text}
           </h1>
-          <p className="text-center text-ccl-cream text-sm">
+          <p className="text-center text-ccl-cream text-sm" aria-label={`Round has ${round.snapshot_answer_count} answers with ${round.snapshot_total_weight.toFixed(0)} total weight`}>
             {round.snapshot_answer_count} answers · {round.snapshot_total_weight.toFixed(0)} total weight
           </p>
         </div>
-      </div>
+      </header>
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col items-center justify-center p-4 md:p-8">
         <div className="max-w-2xl w-full space-y-8">
           {/* Coverage Bar */}
-          <CoverageBar coverage={coverage * 100} />
+          <Tooltip content="Coverage % shows how many of the crowd's answers you've matched. Higher coverage = bigger payout!">
+            <div>
+              <CoverageBar coverage={coverage * 100} />
+            </div>
+          </Tooltip>
 
           {/* Strike Indicator */}
-          <StrikeIndicator strikes={strikes} />
+          <Tooltip content="Get 3 strikes and your round ends. Try common, obvious answers to avoid wrong guesses.">
+            <div>
+              <StrikeIndicator strikes={strikes} />
+            </div>
+          </Tooltip>
 
           {/* Recent Guesses */}
           <MatchFeedback guesses={guesses} />
@@ -240,30 +249,34 @@ export const RoundPlay: React.FC = () => {
           />
 
           {/* Stats Footer */}
-          <div className="grid grid-cols-3 gap-4 text-center text-sm">
+          <section className="grid grid-cols-3 gap-4 text-center text-sm" aria-label="Game statistics">
             <div className="tile-card p-4">
-              <p className="text-ccl-teal">Guesses</p>
-              <p className="text-2xl font-display font-bold text-ccl-navy">{guesses.length}</p>
+              <p className="text-ccl-teal" id="guess-count-label">Guesses</p>
+              <p className="text-2xl font-display font-bold text-ccl-navy" aria-labelledby="guess-count-label">
+                {guesses.length}
+              </p>
             </div>
             <div className="tile-card p-4">
-              <p className="text-ccl-teal">Wallet</p>
-              <p className="text-xl font-display font-bold text-ccl-navy">
+              <p className="text-ccl-teal" id="wallet-label">Wallet</p>
+              <p className="text-xl font-display font-bold text-ccl-navy" aria-labelledby="wallet-label">
                 <CurrencyDisplay amount={player?.tl_wallet || 0} />
               </p>
             </div>
             <div className="tile-card p-4">
-              <p className="text-ccl-teal">Vault</p>
-              <p className="text-xl font-display font-bold text-ccl-navy">
+              <p className="text-ccl-teal" id="vault-label">Vault</p>
+              <p className="text-xl font-display font-bold text-ccl-navy" aria-labelledby="vault-label">
                 <CurrencyDisplay amount={player?.tl_vault || 0} />
               </p>
             </div>
-          </div>
+          </section>
 
           {/* Abandon Button */}
           <button
             onClick={handleAbandonRound}
             disabled={isAbandoning}
             className="w-full py-2 text-red-600 border-2 border-red-400 rounded-tile hover:bg-red-50 disabled:opacity-50 font-semibold text-sm"
+            aria-label="Abandon round - forfeit this round and get 95 coins refunded"
+            title="Abandon this round and receive a 95 coin refund"
           >
             {isAbandoning ? 'Abandoning...' : 'Abandon Round (95 coins refund)'}
           </button>
