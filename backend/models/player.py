@@ -66,6 +66,8 @@ class Player(Base):
         back_populates="player",
         foreign_keys="TLRound.player_id",
     )
+    tl_daily_bonuses = relationship("TLDailyBonus", back_populates="player")
+    tl_daily_states = relationship("TLPlayerDailyState", back_populates="player")
 
     def _ensure_qf_data(self):
         """Ensure a QFPlayerData record exists for delegated properties."""
