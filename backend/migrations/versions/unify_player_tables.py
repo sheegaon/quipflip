@@ -364,6 +364,10 @@ def upgrade() -> None:
             ).fetchall()
 
             def _remap_foreign_keys(table: str, column: str, mappings: list[tuple]):
+                # Temporarily disable FK constraints during remapping
+                if dialect_name == 'postgresql':
+                    op.execute(sa.text("ALTER TABLE {} DISABLE TRIGGER ALL".format(table)))
+
                 for old_id, new_id in mappings:
                     op.execute(
                         sa.text(
@@ -373,6 +377,10 @@ def upgrade() -> None:
                             old_id=old_id,
                         )
                     )
+
+                # Re-enable FK constraints
+                if dialect_name == 'postgresql':
+                    op.execute(sa.text("ALTER TABLE {} ENABLE TRIGGER ALL".format(table)))
 
             mm_fk_targets = [
                 ("mm_transactions", "player_id"),

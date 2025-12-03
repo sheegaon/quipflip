@@ -137,3 +137,26 @@ aborted during deploy.
   This applies to all parameterized queries (INSERT, UPDATE, SELECT) in migration code. Failure to use
   `.bindparams()` results in `TypeError: execute() takes 2 positional arguments but 3 were given` when
   running migrations on Heroku or any PostgreSQL deployment.
+- **Disable foreign key constraints when remapping references during large migrations.** When a migration
+  remaps foreign key values (e.g., changing player_id references from one table to another), PostgreSQL's
+  FK constraints will prevent the UPDATE if the new value doesn't exist in the referenced table. This is
+  especially problematic when migrating data between related tables or consolidating schemas. Disable
+  triggers/constraints before the remapping:
+  ```python
+  # For PostgreSQL, disable FK checks temporarily
+  if dialect_name == 'postgresql':
+      op.execute(sa.text("ALTER TABLE mm_transactions DISABLE TRIGGER ALL"))
+
+  # Do the remapping
+  for old_id, new_id in mappings:
+      op.execute(sa.text("UPDATE mm_transactions SET player_id = :new_id WHERE player_id = :old_id")
+                 .bindparams(new_id=new_id, old_id=old_id))
+
+  # Re-enable FK checks
+  if dialect_name == 'postgresql':
+      op.execute(sa.text("ALTER TABLE mm_transactions ENABLE TRIGGER ALL"))
+  ```
+  Failure to disable constraints results in `IntegrityError: foreign key constraint violated` when the
+  new reference value doesn't yet exist in the referenced table. This commonly occurs during schema
+  consolidation migrations (e.g., unifying player tables) where old FK definitions point to tables
+  being repurposed or dropped.
