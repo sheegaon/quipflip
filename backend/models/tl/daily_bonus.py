@@ -15,7 +15,7 @@ class TLDailyBonus(DailyBonusBase):
         ForeignKey("players.player_id", ondelete="CASCADE"), nullable=False
     )
 
-    player = relationship("TLPlayer", back_populates="daily_bonuses")
+    player = relationship("TLPlayer", back_populates="tl_daily_bonuses")
 
     __table_args__ = (
         UniqueConstraint("player_id", "date", name="uq_tl_player_daily_bonus"),
