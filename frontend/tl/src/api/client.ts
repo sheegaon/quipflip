@@ -59,6 +59,18 @@ class ThinkLinkApiClient {
     }
   }
 
+  /**
+   * Logout the current player
+   */
+  async logout(): Promise<void> {
+    try {
+      await this.api.post('/player/logout', {});
+    } catch (error) {
+      console.error('Failed to logout:', error);
+      throw error;
+    }
+  }
+
   // ========================================================================
   // Round Endpoints
   // ========================================================================
