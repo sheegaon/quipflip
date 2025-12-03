@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useResults } from '../contexts/ResultsContext';
+import { useResults } from '@crowdcraft';
 import { useGame } from '../contexts/GameContext';
 import apiClient, { extractErrorMessage } from '@crowdcraft/api/client.ts';
 import type { GameStatus, QFHistoricalTrendPoint, QFPlayerStatistics } from '@crowdcraft/api/types.ts';

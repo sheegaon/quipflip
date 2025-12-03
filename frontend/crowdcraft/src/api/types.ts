@@ -91,6 +91,15 @@ export interface MemeVoteResult {
 }
 
 // ThinkLink (TL) game types
+export type TLTutorialProgress =
+  | 'welcome'
+  | 'dashboard'
+  | 'gameplay'
+  | 'scoring'
+  | 'strategy'
+  | 'completed'
+  | 'not_started';
+
 export interface TLDashboardResponse {
   player_id: string;
   username: string;

@@ -137,7 +137,7 @@ test.describe('Quipflip Frontend E2E Tests', () => {
     await page.waitForLoadState('networkidle');
 
     // Check if Tailwind classes are present
-    const bodyClasses = await page.locator('body').getAttribute('class');
+    const bodyClasses = page.locator('body').getAttribute('class');
     const hasElements = await page.locator('[class*="bg-"], [class*="text-"], [class*="p-"], [class*="m-"]').count();
 
     console.log('\n=== Styling Check ===');

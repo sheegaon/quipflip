@@ -251,7 +251,8 @@ def upgrade() -> None:
                 INSERT INTO mm_player_data (player_id, wallet, vault, tutorial_completed, tutorial_progress,
                                            tutorial_started_at, tutorial_completed_at, consecutive_incorrect_votes,
                                            vote_lockout_until)
-                SELECT COALESCE(p.player_id, mm.player_id), mm.wallet, mm.vault, mm.tutorial_completed, mm.tutorial_progress,
+                SELECT COALESCE(p.player_id, mm.player_id), mm.wallet, mm.vault, mm.tutorial_completed, 
+                mm.tutorial_progress,
                        mm.tutorial_started_at, mm.tutorial_completed_at, mm.consecutive_incorrect_votes,
                        mm.vote_lockout_until
                 FROM mm_players mm
@@ -305,7 +306,8 @@ def upgrade() -> None:
                 INSERT INTO ir_player_data (player_id, wallet, vault, tutorial_completed, tutorial_progress,
                                            tutorial_started_at, tutorial_completed_at, consecutive_incorrect_votes,
                                            vote_lockout_until)
-                SELECT COALESCE(p.player_id, ir.player_id), ir.wallet, ir.vault, ir.tutorial_completed, ir.tutorial_progress,
+                SELECT COALESCE(p.player_id, ir.player_id), ir.wallet, ir.vault, ir.tutorial_completed,
+                 ir.tutorial_progress,
                        ir.tutorial_started_at, ir.tutorial_completed_at, ir.consecutive_incorrect_votes,
                        ir.vote_lockout_until
                 FROM ir_players ir
@@ -436,7 +438,8 @@ def upgrade() -> None:
     if 'mm_vote_rounds' in table_names:
         op.execute("""DELETE FROM mm_vote_rounds WHERE player_id NOT IN (SELECT player_id FROM players)""")
     if 'mm_captions' in table_names:
-        op.execute("""DELETE FROM mm_captions WHERE author_player_id NOT IN (SELECT player_id FROM players) AND author_player_id IS NOT NULL""")
+        op.execute("""DELETE FROM mm_captions WHERE author_player_id NOT IN (SELECT player_id FROM players) AND 
+        author_player_id IS NOT NULL""")
     if 'mm_caption_submissions' in table_names:
         op.execute("""DELETE FROM mm_caption_submissions WHERE player_id NOT IN (SELECT player_id FROM players)""")
     if 'mm_caption_seen' in table_names:
@@ -448,7 +451,8 @@ def upgrade() -> None:
     if 'mm_circle_join_requests' in table_names:
         op.execute("""DELETE FROM mm_circle_join_requests WHERE player_id NOT IN (SELECT player_id FROM players)""")
     if 'mm_circles' in table_names:
-        op.execute("""DELETE FROM mm_circles WHERE created_by_player_id NOT IN (SELECT player_id FROM players) AND created_by_player_id IS NOT NULL""")
+        op.execute("""DELETE FROM mm_circles WHERE created_by_player_id NOT IN (SELECT player_id FROM players) AND 
+        created_by_player_id IS NOT NULL""")
 
     if 'ir_transactions' in table_names:
         op.execute("""DELETE FROM ir_transactions WHERE player_id NOT IN (SELECT player_id FROM players)""")

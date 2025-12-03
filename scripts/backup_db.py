@@ -18,7 +18,6 @@ import logging
 import os
 import subprocess
 import sys
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List
 from uuid import UUID
@@ -30,12 +29,6 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 # Import all models to ensure they're registered with SQLAlchemy
-from backend.models import (
-    Player, Prompt, Round, Phraseset, Vote,
-    Transaction, DailyBonus, ResultView, PlayerAbandonedPrompt,
-    PromptFeedback, PhrasesetActivity, RefreshToken,
-    Quest, QuestTemplate, SystemConfig, FlaggedPrompt, SurveyResponse
-)
 from backend.config import get_settings
 from backend.database import Base
 

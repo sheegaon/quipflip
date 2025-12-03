@@ -1,7 +1,7 @@
 import axios, { AxiosError, type AxiosInstance, type InternalAxiosRequestConfig } from 'axios';
-import { getContextualErrorMessage, getActionErrorMessage } from '../utils/errorMessages.ts';
-import { offlineQueue, shouldQueueAction } from '../utils/offlineQueue.ts';
-import { USERNAME_STORAGE_KEY } from '../utils/storageKeys.ts';
+import { getContextualErrorMessage, getActionErrorMessage } from '../utils';
+import { offlineQueue, shouldQueueAction } from '../utils';
+import { USERNAME_STORAGE_KEY } from '../utils';
 import type {
   Player,
   CreatePlayerResponse,

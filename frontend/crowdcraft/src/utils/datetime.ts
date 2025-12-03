@@ -40,9 +40,7 @@ export const parseDateLike = (value: DateLike): Date | null => {
     return Number.isNaN(date.getTime()) ? null : date;
   }
 
-  if (typeof value !== 'string') {
-    return null;
-  }
+
 
   const trimmed = value.trim();
 

@@ -60,30 +60,24 @@ const NewUserWelcomeOverlay: React.FC = () => {
 
       <ol className="guest-welcome-list">
         <li>
-          <strong>See an image + captions:</strong> We show you one image with five captions to
-          read.
+          <strong>Get a prompt:</strong> You'll receive a question like "Name something people forget at home" that needs short phrase answers.
         </li>
         <li>
-          <strong>Vote:</strong> Pay the entry fee, view the image with five captions, and pick
-          your favorite.
+          <strong>Submit answers:</strong> Pay the entry fee (100 coins) and start guessing with 2-5 word phrases that match what others have said.
         </li>
         <li>
-          <strong>Win + bonuses:</strong> The authors of the winning caption (riff + parent, or
-          original) get paid in MemeCoins. The system may also pay voter bonuses.
+          <strong>Match the crowd:</strong> Your goal is to think like previous players - the more popular ideas you match, the more you win.
         </li>
         <li>
-          <strong>Add your own:</strong> After voting, submit a new caption (original or riff) for
-          the image.
+          <strong>Avoid strikes:</strong> If your answer doesn't match anyone else's, you get a strike. Three strikes and the round ends.
         </li>
         <li>
-          <strong>Replayable:</strong> Images and captions cycle indefinitely; weak captions are
-          retired over time.
+          <strong>Score big:</strong> Cover more of the crowd's semantic space to earn up to 300 coins per round, with bonuses going to your vault.
         </li>
       </ol>
 
       <div className="guest-welcome-example">
-        <strong>Example:</strong> You'll see a meme image along with five captions. Choose your
-        favorite, then add your own caption for that image (either an original or a riff).
+        <strong>Example:</strong> For "Things people forget at home," you might guess "keys," "wallet," or "phone" - common answers that match what others have submitted before.
       </div>
 
       <hr className="guest-welcome-divider" />

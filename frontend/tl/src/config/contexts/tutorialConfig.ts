@@ -1,7 +1,7 @@
-import { TutorialContextConfig } from '@crowdcraft/contexts/TutorialContext';
+import { QFTutorialContextConfig } from '@crowdcraft/contexts/TutorialContext';
 import type { TutorialStatus } from '@crowdcraft/api/types.ts';
 
-export const tutorialConfig: TutorialContextConfig<TutorialStatus> = {
+export const tutorialConfig: QFTutorialContextConfig<TutorialStatus> = {
   mapLoadStatus: (response: unknown) => {
     const typed = response as { tutorial_status?: TutorialStatus } | null;
     return typed?.tutorial_status ?? null;

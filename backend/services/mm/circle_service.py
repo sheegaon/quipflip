@@ -181,11 +181,6 @@ class MMCircleService:
 
         Returns:
             Set of player_id UUIDs who are circle-mates
-
-        Example:
-            >>> circle_mates = await get_circle_mates(session, player_uuid)
-            >>> if other_player_uuid in circle_mates:
-            >>>     print("They're circle-mates!")
         """
         # Get all circles the player belongs to
         player_circles_query = (

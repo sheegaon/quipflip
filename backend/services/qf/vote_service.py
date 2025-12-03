@@ -298,7 +298,8 @@ class QFVoteService:
                     if "Cannot calculate payouts: missing" in str(e):
                         orphaned_count += 1
                         logger.warning(
-                            f"Marking orphaned phraseset {phraseset.phraseset_id} as closed due to missing relationships: {e}"
+                            f"Marking orphaned phraseset {phraseset.phraseset_id} "
+                            f"as closed due to missing relationships: {e}"
                         )
                         await self._handle_orphaned_phraseset(phraseset)
                         continue

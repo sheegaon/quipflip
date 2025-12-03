@@ -32,4 +32,5 @@ class TLTransaction(Base):
     )
 
     def __repr__(self):
-        return f"<TLTransaction(transaction_id={self.transaction_id}, player_id={self.player_id}, amount={self.amount})>"
+        return (f"<TLTransaction(transaction_id={self.transaction_id}, player_id={self.player_id}, "
+        f"amount={self.amount})>")

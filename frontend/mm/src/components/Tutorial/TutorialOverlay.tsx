@@ -156,9 +156,9 @@ const TutorialOverlay: React.FC<TutorialOverlayProps> = ({ onComplete }) => {
     try {
       // Regular tutorial progression
       if (step?.nextStep) {
-        advanceStep(step.nextStep);
+        await advanceStep(step.nextStep);
       } else {
-        completeTutorial();
+        await completeTutorial();
       }
     } finally {
       setIsNavigating(false);
@@ -172,7 +172,7 @@ const TutorialOverlay: React.FC<TutorialOverlayProps> = ({ onComplete }) => {
       if (currentStep) {
         const prevStep = getPreviousStep(currentStep as MMTutorialProgress);
         if (prevStep) {
-          advanceStep(prevStep);
+          await advanceStep(prevStep);
         }
       }
     } finally {
