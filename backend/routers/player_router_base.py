@@ -132,6 +132,8 @@ class PlayerRouterBase(ABC):
             return "Initial Reaction"
         elif self.game_type == GameType.MM:
             return "MemeMint"
+        elif self.game_type == GameType.TL:
+            return "ThinkLink"
         return str(self.game_type)
 
     def _get_create_message(self) -> str:
@@ -313,6 +315,8 @@ class PlayerRouterBase(ABC):
             from backend.models.mm.player_data import MMPlayerData as PlayerDataModel
         elif self.game_type == GameType.IR:
             from backend.models.ir.player_data import IRPlayerData as PlayerDataModel
+        elif self.game_type == GameType.TL:
+            from backend.models.tl.player_data import TLPlayerData as PlayerDataModel
         else:
             raise ValueError(f"Unsupported game type: {self.game_type}")
 
@@ -363,6 +367,8 @@ class PlayerRouterBase(ABC):
             from backend.models.mm.player_data import MMPlayerData as PlayerDataModel
         elif self.game_type == GameType.IR:
             from backend.models.ir.player_data import IRPlayerData as PlayerDataModel
+        elif self.game_type == GameType.TL:
+            from backend.models.tl.player_data import TLPlayerData as PlayerDataModel
         else:
             raise ValueError(f"Unsupported game type: {self.game_type}")
 
