@@ -18,7 +18,7 @@ import {
   StatisticsIcon,
   SurveyIcon,
 } from '@crowdcraft/components/icons/NavigationIcons.tsx';
-import { QuestionMarkIcon, ResultsIcon } from '@crowdcraft/components/icons/EngagementIcons.tsx';
+import { QuestionMarkIcon, TrophyIcon } from '@crowdcraft/components/icons/EngagementIcons.tsx';
 import { hasCompletedSurvey } from '@crowdcraft/utils/betaSurvey.ts';
 import { apiClient } from '@/api/client';
 import { componentLogger } from '@crowdcraft/utils/logger.ts';
@@ -281,7 +281,7 @@ export const Header: React.FC = () => {
                       onClick={() => handleNavigate('/game/results')}
                       className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-ccl-navy hover:bg-ccl-cream transition-colors"
                     >
-                      <ResultsIcon
+                      <TrophyIcon
                         className="h-5 w-5"
                         variant={unviewedCount > 0 ? 'orange' : 'teal'}
                       />

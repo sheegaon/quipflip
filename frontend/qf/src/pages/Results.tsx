@@ -8,7 +8,7 @@ import { quipflipBranding } from '@crowdcraft/utils/brandedMessages.ts';
 import type { PhrasesetResults, PhrasesetDetails, PhrasesetVoteDetail } from '@crowdcraft/api/types.ts';
 import { resultsLogger } from '@crowdcraft/utils/logger.ts';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
-import { BotIcon, QuestionMarkIcon, ResultsIcon } from '@crowdcraft/components/icons/EngagementIcons.tsx';
+import { BotIcon, QuestionMarkIcon, TrophyIcon } from '@crowdcraft/components/icons/EngagementIcons.tsx';
 import { isAiPlayer } from '@crowdcraft/utils/ai.ts';
 
 const { loadingMessages } = quipflipBranding;
@@ -354,7 +354,7 @@ export const Results: React.FC = () => {
         <div className="max-w-4xl mx-auto px-4 py-8">
           <div className="tile-card p-8 text-center">
             <div className="flex justify-center mb-4">
-              <ResultsIcon className="h-20 w-20 text-6xl"/>
+              <TrophyIcon className="h-20 w-20 text-6xl"/>
             </div>
             <h1 className="text-2xl font-display font-bold text-ccl-navy mb-4">No Results Available</h1>
             <p className="text-ccl-teal mb-6">
