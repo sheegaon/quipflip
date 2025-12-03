@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useTutorial } from '../../contexts/TutorialContext';
-import { getTutorialStep, getPreviousStep } from '@crowdcraft/config/tutorialSteps.ts';
+import { getTutorialStep, getPreviousStep } from '@/config/tutorialSteps';
 import type { TutorialProgress } from '@crowdcraft/api/types.ts';
 import './TutorialOverlay.css';
 import { ArrowLeftIcon, ArrowRightIcon } from '../icons/ArrowIcons';

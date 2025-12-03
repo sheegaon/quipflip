@@ -1,5 +1,6 @@
 import { TutorialContextConfig } from '@crowdcraft/contexts/TutorialContext';
 import type { TutorialStatus } from '@crowdcraft/api/types.ts';
+import { getNextStep } from '../tutorialSteps';
 
 export const tutorialConfig: TutorialContextConfig<TutorialStatus> = {
   mapLoadStatus: (response: unknown) => {
@@ -13,4 +14,5 @@ export const tutorialConfig: TutorialContextConfig<TutorialStatus> = {
   mapResetStatus: (response: unknown) => response as TutorialStatus,
   getProgress: (status: TutorialStatus) => status.tutorial_progress,
   isCompleted: (status: TutorialStatus) => status.tutorial_completed,
+  getNextStep,
 };

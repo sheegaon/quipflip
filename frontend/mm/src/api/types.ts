@@ -778,15 +778,15 @@ export type TutorialProgress =
   | 'completed';
 
 export interface TutorialStatus {
-  progress: TutorialProgress;
-  completed: boolean;
-  last_updated: string | null;
+  tutorial_completed: boolean;
+  tutorial_progress: TutorialProgress;
+  tutorial_started_at: string | null;
+  tutorial_completed_at: string | null;
 }
 
 export interface UpdateTutorialProgressResponse {
-  progress: TutorialProgress;
-  completed: boolean;
-  message: string;
+  success: boolean;
+  tutorial_status: TutorialStatus;
 }
 
 // Quest system types
