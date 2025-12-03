@@ -187,20 +187,21 @@ def downgrade() -> None:
         op.execute(
             sa.text(
                 """
-                UPDATE players p
+                UPDATE players
                 SET
-                    wallet = COALESCE(p.wallet, q.wallet),
-                    vault = COALESCE(p.vault, q.vault),
-                    tutorial_completed = COALESCE(p.tutorial_completed, q.tutorial_completed),
-                    tutorial_progress = COALESCE(p.tutorial_progress, q.tutorial_progress),
-                    tutorial_started_at = COALESCE(p.tutorial_started_at, q.tutorial_started_at),
-                    tutorial_completed_at = COALESCE(p.tutorial_completed_at, q.tutorial_completed_at),
-                    consecutive_incorrect_votes = COALESCE(p.consecutive_incorrect_votes, q.consecutive_incorrect_votes),
-                    vote_lockout_until = COALESCE(p.vote_lockout_until, q.vote_lockout_until),
-                    active_round_id = COALESCE(p.active_round_id, q.active_round_id),
-                    flag_dismissal_streak = COALESCE(p.flag_dismissal_streak, q.flag_dismissal_streak)
-                FROM qf_player_data q
-                WHERE q.player_id = p.player_id
+                    wallet = (SELECT q.wallet FROM qf_player_data q WHERE q.player_id = players.player_id),
+                    vault = (SELECT q.vault FROM qf_player_data q WHERE q.player_id = players.player_id),
+                    tutorial_completed = (SELECT q.tutorial_completed FROM qf_player_data q WHERE q.player_id = players.player_id),
+                    tutorial_progress = (SELECT q.tutorial_progress FROM qf_player_data q WHERE q.player_id = players.player_id),
+                    tutorial_started_at = (SELECT q.tutorial_started_at FROM qf_player_data q WHERE q.player_id = players.player_id),
+                    tutorial_completed_at = (SELECT q.tutorial_completed_at FROM qf_player_data q WHERE q.player_id = players.player_id),
+                    consecutive_incorrect_votes = (SELECT q.consecutive_incorrect_votes FROM qf_player_data q WHERE q.player_id = players.player_id),
+                    vote_lockout_until = (SELECT q.vote_lockout_until FROM qf_player_data q WHERE q.player_id = players.player_id),
+                    active_round_id = (SELECT q.active_round_id FROM qf_player_data q WHERE q.player_id = players.player_id),
+                    flag_dismissal_streak = (SELECT q.flag_dismissal_streak FROM qf_player_data q WHERE q.player_id = players.player_id)
+                WHERE EXISTS (
+                    SELECT 1 FROM qf_player_data q WHERE q.player_id = players.player_id
+                )
                 """
             )
         )
