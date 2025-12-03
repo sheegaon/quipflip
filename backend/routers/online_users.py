@@ -7,7 +7,7 @@ This is distinct from phraseset_activity tracking, which logs historical phrases
 review events.
 """
 from datetime import datetime, UTC, timedelta
-from typing import List, Optional
+from typing import Dict, List, Optional, Tuple
 from fastapi import (
     APIRouter,
     Depends,
@@ -26,12 +26,7 @@ from uuid import UUID
 
 from backend.database import get_db, AsyncSessionLocal
 from backend.dependencies import get_current_player
-from backend.models.qf.user_activity import QFUserActivity
-from backend.models.qf.player import QFPlayer
-from backend.models.qf.player_data import QFPlayerData
-from backend.models.qf.round import Round
-from backend.models.qf.phraseset_activity import PhrasesetActivity
-from backend.models.qf.transaction import QFTransaction
+from backend.models.player import Player
 from backend.schemas.online_users import (
     OnlineUser,
     OnlineUsersResponse,
@@ -40,12 +35,16 @@ from backend.schemas.online_users import (
 )
 from backend.schemas.notification import PingWebSocketMessage
 from backend.services import AuthService
-from backend.utils.model_registry import GameType
-from backend.services.qf import (
-    NotificationConnectionManager,
-    QFPlayerService,
-    get_notification_manager,
+from backend.utils.model_registry import (
+    GameType,
+    get_player_data_model,
+    get_transaction_model,
+    get_user_activity_model,
 )
+from backend.services.qf import NotificationConnectionManager, get_notification_manager
+from backend.services.qf.player_service import QFPlayerService
+from backend.services.ir.player_service import IRPlayerService
+from backend.services.mm.player_service import MMPlayerService
 from backend.config import get_settings
 from backend.utils.datetime_helpers import ensure_utc
 
@@ -56,30 +55,45 @@ router = APIRouter()
 settings = get_settings()
 
 
-# QF-specific wrapper for get_current_player
-async def get_qf_player(
+async def detect_player_and_game(
     request: Request,
-    authorization: str | None = Header(default=None, alias="Authorization"),
-    db: AsyncSession = Depends(get_db),
-) -> QFPlayer:
-    """Get current QF player."""
-    return await get_current_player(
-        request=request,
-        game_type=GameType.QF,
-        authorization=authorization,
-        db=db
-    )
+    authorization: str | None,
+    db: AsyncSession,
+) -> Tuple[Player, GameType]:
+    """Detect the authenticated player and their game type from the request."""
+    for game_type in (GameType.QF, GameType.IR, GameType.MM):
+        try:
+            player = await get_current_player(
+                request=request,
+                game_type=game_type,
+                authorization=authorization,
+                db=db,
+            )
+            return player, game_type
+        except HTTPException:
+            continue
+
+    raise HTTPException(status_code=401, detail="invalid_token")
 
 
-async def authenticate_websocket(websocket: WebSocket) -> Optional[QFPlayer]:
+def get_player_service(game_type: GameType, db: AsyncSession):
+    """Return the appropriate player service for a game type."""
+    if game_type == GameType.QF:
+        return QFPlayerService(db)
+    if game_type == GameType.IR:
+        return IRPlayerService(db)
+    if game_type == GameType.MM:
+        return MMPlayerService(db)
+    raise ValueError(f"Unsupported game type: {game_type}")
+
+
+async def authenticate_websocket(websocket: WebSocket) -> Optional[Tuple[Player, GameType]]:
     """Authenticate a WebSocket connection using token from query params or cookies.
 
-    Returns the authenticated Player or None if authentication fails.
+    Returns the authenticated Player and associated GameType or None if authentication fails.
     """
-    # Try to get token from query parameters first (for client flexibility)
     token = websocket.query_params.get("token")
 
-    # Fall back to cookie if no query param token
     if not token:
         token = websocket.cookies.get(settings.access_token_cookie_name)
 
@@ -87,30 +101,30 @@ async def authenticate_websocket(websocket: WebSocket) -> Optional[QFPlayer]:
         logger.warning("WebSocket connection attempted without token")
         return None
 
-    # Validate token
     try:
         async with AsyncSessionLocal() as db:
-            auth_service = AuthService(db, game_type=GameType.QF)
-            payload = auth_service.decode_access_token(token)
+            for game_type in (GameType.QF, GameType.IR, GameType.MM):
+                try:
+                    auth_service = AuthService(db, game_type=game_type)
+                    payload = auth_service.decode_access_token(token)
+                except Exception:
+                    continue
 
-            player_id_str = payload.get("sub")
-            if not player_id_str:
-                logger.warning("WebSocket token missing player_id")
-                return None
+                player_id_str = payload.get("sub") if payload else None
+                if not player_id_str:
+                    continue
 
-            player_id = UUID(player_id_str)
+                player_id = UUID(player_id_str)
+                player_service = get_player_service(game_type, db)
+                player = await player_service.get_player_by_id(player_id)
 
-            # Use QF player service since this is a QF endpoint
-            from backend.services.qf.player_service import QFPlayerService
-            player_service = QFPlayerService(db)
-            
-            player = await player_service.get_player_by_id(player_id)
+                if not player:
+                    continue
 
-            if not player:
-                logger.warning(f"WebSocket token references non-existent player: {player_id}")
-                return None
+                return player, game_type
 
-            return player
+            logger.warning("WebSocket token did not match any supported game type")
+            return None
 
     except Exception as e:
         logger.warning(f"WebSocket authentication failed: {e}")
@@ -118,93 +132,107 @@ async def authenticate_websocket(websocket: WebSocket) -> Optional[QFPlayer]:
 
 
 class ConnectionManager:
-    """Manages WebSocket connections for online users updates."""
+    """Manages WebSocket connections for online users updates by game."""
 
     def __init__(self):
-        self.active_connections: List[WebSocket] = []
+        self.active_connections: Dict[GameType, List[WebSocket]] = {
+            game_type: [] for game_type in GameType
+        }
         self._background_task: Optional[asyncio.Task] = None
         self._running = False
 
-    async def connect(self, websocket: WebSocket):
+    async def connect(self, websocket: WebSocket, game_type: GameType):
         """Accept and store a new WebSocket connection."""
         await websocket.accept()
-        self.active_connections.append(websocket)
-        logger.info(f"New WebSocket connection. Total connections: {len(self.active_connections)}")
-        
-        # Start background task if this is the first connection
-        if len(self.active_connections) == 1 and not self._running:
+        self.active_connections[game_type].append(websocket)
+        logger.info(
+            "New WebSocket connection. Game=%s Total=%s",
+            game_type.value,
+            len(self.active_connections[game_type]),
+        )
+
+        if not self._running:
             self._start_background_task()
 
     def disconnect(self, websocket: WebSocket):
         """Remove a WebSocket connection."""
-        if websocket in self.active_connections:
-            self.active_connections.remove(websocket)
-        logger.info(f"WebSocket disconnected. Total connections: {len(self.active_connections)}")
-        
-        # Stop background task if no connections remain
-        if len(self.active_connections) == 0 and self._running:
+        for game_type, connections in self.active_connections.items():
+            if websocket in connections:
+                connections.remove(websocket)
+                logger.info(
+                    "WebSocket disconnected. Game=%s Total=%s",
+                    game_type.value,
+                    len(connections),
+                )
+                break
+
+        if self._running and not any(self.active_connections.values()):
             self._stop_background_task()
 
-    async def broadcast(self, message: dict):
-        """Broadcast a message to all connected clients."""
-        if not self.active_connections:
+    async def broadcast(self, game_type: GameType, message: dict):
+        """Broadcast a message to all connected clients for a game."""
+        connections = self.active_connections.get(game_type, [])
+        if not connections:
             return
-            
+
         disconnected = []
-        for connection in self.active_connections:
+        for connection in connections:
             try:
                 await connection.send_json(message)
             except Exception as e:
                 logger.error(f"Error sending to WebSocket: {e}")
                 disconnected.append(connection)
 
-        # Clean up disconnected clients
         for connection in disconnected:
             self.disconnect(connection)
 
     def _start_background_task(self):
-        """Start the background task for broadcasting online users updates."""
         if self._running:
             return
-            
+
         self._running = True
         self._background_task = asyncio.create_task(self._broadcast_loop())
         logger.info("Started online users broadcast task")
 
     def _stop_background_task(self):
-        """Stop the background task for broadcasting online users updates."""
         if not self._running:
             return
-            
+
         self._running = False
         if self._background_task and not self._background_task.done():
             self._background_task.cancel()
         logger.info("Stopped online users broadcast task")
 
     async def _broadcast_loop(self):
-        """Background task that fetches online users and broadcasts to all clients."""
         try:
             while self._running:
-                # Only fetch data if we have connected clients
-                if self.active_connections:
-                    try:
-                        async with AsyncSessionLocal() as db:
-                            online_users = await get_online_users(db)
-                            
+                async with AsyncSessionLocal() as db:
+                    for game_type, connections in self.active_connections.items():
+                        if not connections:
+                            continue
+
+                        try:
+                            online_users = await get_online_users(db, game_type)
+
                             message = {
                                 "type": "online_users_update",
-                                "users": [user.model_dump(mode="json") for user in online_users],
+                                "users": [
+                                    user.model_dump(mode="json") for user in online_users
+                                ],
                                 "total_count": len(online_users),
                                 "timestamp": datetime.now(UTC).isoformat(),
                             }
-                            
-                            await self.broadcast(message)
-                    except Exception as e:
-                        logger.error(f"Error in online users broadcast loop: {e}")
-                
-                # Wait 5 seconds before next update
+
+                            await self.broadcast(game_type, message)
+                        except Exception as e:
+                            logger.error(
+                                "Error in online users broadcast loop for %s: %s",
+                                game_type.value,
+                                e,
+                            )
+
                 await asyncio.sleep(5)
-                
+
         except asyncio.CancelledError:
             logger.info("Online users broadcast task cancelled")
         except Exception as e:
@@ -217,7 +245,7 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 
-async def get_online_users(db: AsyncSession) -> List[OnlineUser]:
+async def get_online_users(db: AsyncSession, game_type: GameType) -> List[OnlineUser]:
     """Get list of users who were active in the last 30 minutes.
 
     Excludes guest users who have taken no actions (no submitted rounds,
@@ -225,18 +253,25 @@ async def get_online_users(db: AsyncSession) -> List[OnlineUser]:
     """
     cutoff_time = datetime.now(UTC) - timedelta(minutes=30)
 
+    try:
+        UserActivityModel = get_user_activity_model(game_type)
+        PlayerDataModel = get_player_data_model(game_type)
+        TransactionModel = get_transaction_model(game_type)
+    except ValueError as exc:
+        raise HTTPException(status_code=501, detail=str(exc)) from exc
+
     result = await db.execute(
         select(
-            QFUserActivity,
-            QFPlayerData.wallet,
-            QFPlayer.created_at,
-            QFPlayer.is_guest,
-            QFPlayer.player_id,
+            UserActivityModel,
+            PlayerDataModel.wallet,
+            Player.created_at,
+            Player.is_guest,
+            Player.player_id,
         )
-        .join(QFPlayer, QFUserActivity.player_id == QFPlayer.player_id)
-        .outerjoin(QFPlayerData, QFPlayerData.player_id == QFPlayer.player_id)
-        .where(QFUserActivity.last_activity >= cutoff_time)
-        .order_by(QFUserActivity.last_activity.desc())
+        .join(Player, UserActivityModel.player_id == Player.player_id)
+        .outerjoin(PlayerDataModel, PlayerDataModel.player_id == Player.player_id)
+        .where(UserActivityModel.last_activity >= cutoff_time)
+        .order_by(UserActivityModel.last_activity.desc())
     )
     rows = result.all()
 
@@ -249,58 +284,17 @@ async def get_online_users(db: AsyncSession) -> List[OnlineUser]:
     # If there are guests, check which ones have activity
     guests_with_activity = set()
     if guest_ids:
-        # Check for rounds
-        rounds_result = await db.execute(
-            select(Round.player_id)
-            .where(Round.player_id.in_(guest_ids))
-            .distinct()
-        )
-        guests_with_activity.update(row[0] for row in rounds_result)
-
-        # Check for phraseset activities
-        phraseset_result = await db.execute(
-            select(PhrasesetActivity.player_id)
-            .where(PhrasesetActivity.player_id.in_(guest_ids))
-            .distinct()
-        )
-        guests_with_activity.update(row[0] for row in phraseset_result)
-
-        # Check for transactions
         transactions_result = await db.execute(
-            select(QFTransaction.player_id)
-            .where(QFTransaction.player_id.in_(guest_ids))
+            select(TransactionModel.player_id)
+            .where(TransactionModel.player_id.in_(guest_ids))
             .distinct()
         )
         guests_with_activity.update(row[0] for row in transactions_result)
 
     online_users = []
     for activity, wallet, created_at, is_guest, player_id in rows:
-        # Skip guests with no meaningful activity
         if is_guest and player_id not in guests_with_activity:
-            # Check if guest has navigated to meaningful pages beyond dashboard
-            meaningful_actions = {
-                'Online Users',
-                'Statistics', 
-                'Leaderboard',
-                'Weekly Leaderboard',
-                'All-Time Leaderboard',
-                'Account Settings',
-                'Beta Survey',
-                'Browsing Rounds',
-                'Round Review',
-                'Completed Rounds',
-                'Active Quests',
-                'Quests',
-                'Phraseset Review',
-                'Practice Mode',
-                'Current Round',
-                'Pending Results',
-                'Notifications'
-            }
-            
-            # If guest has performed meaningful navigation, include them
-            if activity.last_action not in meaningful_actions:
-                continue
+            continue
 
         # Calculate time ago
         # Ensure last_activity is timezone-aware (handle naive datetimes from DB)
@@ -334,11 +328,14 @@ async def get_online_users(db: AsyncSession) -> List[OnlineUser]:
 
 @router.get("/online", response_model=OnlineUsersResponse)
 async def get_online_users_endpoint(
-    player: QFPlayer = Depends(get_qf_player),
+    request: Request,
+    authorization: str | None = Header(default=None, alias="Authorization"),
     db: AsyncSession = Depends(get_db),
 ):
     """Get list of currently online users (last 30 minutes)."""
-    online_users = await get_online_users(db)
+    _, game_type = await detect_player_and_game(request, authorization, db)
+
+    online_users = await get_online_users(db, game_type)
 
     return OnlineUsersResponse(
         users=online_users,
@@ -348,8 +345,9 @@ async def get_online_users_endpoint(
 
 @router.post("/online/ping", response_model=PingUserResponse)
 async def ping_online_user(
-    request: PingUserRequest,
-    player: QFPlayer = Depends(get_qf_player),
+    ping_request: PingUserRequest,
+    request: Request,
+    authorization: str | None = Header(default=None, alias="Authorization"),
     db: AsyncSession = Depends(get_db),
     connection_manager: NotificationConnectionManager = Depends(
         get_notification_manager
@@ -357,11 +355,13 @@ async def ping_online_user(
 ):
     """Send a ping notification to another online user."""
 
-    if request.username == player.username:
+    player, game_type = await detect_player_and_game(request, authorization, db)
+
+    if ping_request.username == player.username:
         raise HTTPException(status_code=400, detail="Cannot ping yourself")
 
-    player_service = QFPlayerService(db)
-    target_player = await player_service.get_player_by_username(request.username)
+    player_service = get_player_service(game_type, db)
+    target_player = await player_service.get_player_by_username(ping_request.username)
 
     if not target_player:
         raise HTTPException(status_code=404, detail="User not found")
@@ -385,17 +385,19 @@ async def websocket_endpoint(websocket: WebSocket):
     Requires authentication via token in query params (?token=...) or cookies.
     """
     # Authenticate before accepting connection
-    player = await authenticate_websocket(websocket)
+    auth_result = await authenticate_websocket(websocket)
 
-    if not player:
+    if not auth_result:
         # Reject unauthenticated connection
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Authentication required")
         logger.info("WebSocket connection rejected: authentication failed")
         return
 
+    player, game_type = auth_result
+
     # Accept authenticated connection
-    await manager.connect(websocket)
-    logger.info(f"WebSocket authenticated for player: {player.username}")
+    await manager.connect(websocket, game_type)
+    logger.info("WebSocket authenticated for player: %s (game=%s)", player.username, game_type.value)
 
     try:
         # Keep connection alive and listen for client disconnects
@@ -414,4 +416,4 @@ async def websocket_endpoint(websocket: WebSocket):
         logger.error(f"WebSocket error for player {player.username}: {e}")
     finally:
         manager.disconnect(websocket)
-        logger.info(f"WebSocket disconnected for player: {player.username}")
+        logger.info("WebSocket disconnected for player: %s (game=%s)", player.username, game_type.value)
