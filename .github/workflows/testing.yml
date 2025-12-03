@@ -69,6 +69,9 @@ jobs:
         python -m pytest tests/test_username_service.py -v
         python -m pytest tests/test_variable_prize_pool.py -v
         python -m pytest tests/test_vote_service.py -v
+        python -m pytest tests/test_tl_matching_service.py -v
+        python -m pytest tests/test_tl_clustering_service.py -v
+        python -m pytest tests/test_tl_scoring_service.py -v
 
   qf-frontend-lint:
     name: Quipflip Frontend Lint Check
