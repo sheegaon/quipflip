@@ -13,11 +13,11 @@ import type {
   Player,
   ActiveRound,
   PendingResult,
-  RoundAvailability,
+  TLRoundAvailability,
   PhrasesetDashboardSummary,
   UnclaimedResult,
   FlagCopyRoundResponse,
-  AbandonRoundResponse,
+  TLAbandonRoundResponse,
 } from '@crowdcraft/api/types.ts';
 
 interface GameState {
@@ -29,7 +29,7 @@ interface GameState {
   pendingResults: PendingResult[];
   phrasesetSummary: PhrasesetDashboardSummary | null;
   unclaimedResults: UnclaimedResult[];
-  roundAvailability: RoundAvailability | null;
+  roundAvailability: TLRoundAvailability | null;
   copyRoundHints: string[] | null;
   loading: boolean;
   error: string | null;
@@ -51,7 +51,7 @@ interface GameActions {
   startVoteRound: () => Promise<void>;
   claimPhrasesetPrize: (phrasesetId: string) => Promise<void>;
   flagCopyRound: (roundId: string) => Promise<FlagCopyRoundResponse>;
-  abandonRound: (roundId: string) => Promise<AbandonRoundResponse>;
+  abandonRound: (roundId: string) => Promise<TLAbandonRoundResponse>;
   fetchCopyHints: (roundId: string, signal?: AbortSignal) => Promise<string[]>;
   updateActiveRound: (roundData: ActiveRound) => void;
   setGlobalError: (message: string) => void;
@@ -84,7 +84,7 @@ export const GameProvider: React.FC<{
   const [pendingResults, setPendingResults] = useState<PendingResult[]>([]);
   const [phrasesetSummary, setPhrasesetSummary] = useState<PhrasesetDashboardSummary | null>(null);
   const [unclaimedResults, setUnclaimedResults] = useState<UnclaimedResult[]>([]);
-  const [roundAvailability, setRoundAvailability] = useState<RoundAvailability | null>(null);
+  const [roundAvailability, setRoundAvailability] = useState<TLRoundAvailability | null>(null);
   const [copyRoundHints, setCopyRoundHints] = useState<string[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -660,7 +660,7 @@ export const GameProvider: React.FC<{
     }
   }, [refreshDashboard]);
 
-  const abandonRound = useCallback(async (roundId: string): Promise<AbandonRoundResponse> => {
+  const abandonRound = useCallback(async (roundId: string): Promise<TLAbandonRoundResponse> => {
     gameContextLogger.debug('🛑 GameContext abandonRound called', { roundId }); try {
       gameContextLogger.debug('📞 Calling apiClient.abandonRound()...', { roundId });
       const response = await apiClient.abandonRound(roundId);

@@ -34,17 +34,17 @@ import type {
   MMVoteRoundState,
   MMTutorialProgress,
   MMUpdateTutorialProgressResponse,
-  DashboardResponse,
-  BalanceResponse,
-  RoundAvailability,
-  StartRoundResponse,
-  SubmitGuessResponse,
-  RoundDetails,
-  AbandonRoundResponse,
-  PromptPreviewResponse,
-  SeedPromptsResponse,
-  CorpusStats,
-  PruneCorpusResponse,
+  TLDashboardResponse,
+  TLBalanceResponse,
+  TLRoundAvailability,
+  TLStartRoundResponse,
+  TLSubmitGuessResponse,
+  TLRoundDetails,
+  TLAbandonRoundResponse,
+  TLPromptPreviewResponse,
+  TLSeedPromptsResponse,
+  TLCorpusStats,
+  TLPruneCorpusResponse,
   QFCreatePartySessionRequest,
   QFCreatePartySessionResponse,
   QFJoinPartySessionResponse,
@@ -588,24 +588,24 @@ class CrowdcraftApiClient extends BaseApiClient {
   }
 
   // TL gameplay helpers
-  async tlGetDashboard(signal?: AbortSignal): Promise<DashboardResponse> {
-    const { data } = await this.tlApi.axiosInstance.get<DashboardResponse>('/player/dashboard', { signal });
+  async tlGetDashboard(signal?: AbortSignal): Promise<TLDashboardResponse> {
+    const { data } = await this.tlApi.axiosInstance.get<TLDashboardResponse>('/player/dashboard', { signal });
     return data;
   }
 
-  async tlGetBalance(signal?: AbortSignal): Promise<BalanceResponse> {
-    const { data } = await this.tlApi.axiosInstance.get<BalanceResponse>('/player/balance', { signal });
+  async tlGetBalance(signal?: AbortSignal): Promise<TLBalanceResponse> {
+    const { data } = await this.tlApi.axiosInstance.get<TLBalanceResponse>('/player/balance', { signal });
     return data;
   }
 
-  async tlCheckRoundAvailability(signal?: AbortSignal): Promise<RoundAvailability> {
-    const { data } = await this.tlApi.axiosInstance.get<RoundAvailability>('/rounds/available', { signal });
+  async tlCheckRoundAvailability(signal?: AbortSignal): Promise<TLRoundAvailability> {
+    const { data } = await this.tlApi.axiosInstance.get<TLRoundAvailability>('/rounds/available', { signal });
     return data;
   }
 
-  async tlStartRound(signal?: AbortSignal): Promise<StartRoundResponse> {
+  async tlStartRound(signal?: AbortSignal): Promise<TLStartRoundResponse> {
     try {
-      const { data } = await this.tlApi.axiosInstance.post<StartRoundResponse>('/rounds/start', {}, { signal, timeout: 10000 });
+      const { data } = await this.tlApi.axiosInstance.post<TLStartRoundResponse>('/rounds/start', {}, { signal, timeout: 10000 });
       return data;
     } catch (error) {
       const axiosError = error as ApiError;
@@ -636,45 +636,45 @@ class CrowdcraftApiClient extends BaseApiClient {
     }
   }
 
-  async tlSubmitGuess(roundId: string, guessText: string, signal?: AbortSignal): Promise<SubmitGuessResponse> {
+  async tlSubmitGuess(roundId: string, guessText: string, signal?: AbortSignal): Promise<TLSubmitGuessResponse> {
     const request = { guess_text: guessText };
-    const { data } = await this.tlApi.axiosInstance.post<SubmitGuessResponse>(`/rounds/${roundId}/guess`, request, {
+    const { data } = await this.tlApi.axiosInstance.post<TLSubmitGuessResponse>(`/rounds/${roundId}/guess`, request, {
       signal,
     });
     return data;
   }
 
-  async tlGetRoundDetails(roundId: string, signal?: AbortSignal): Promise<RoundDetails> {
-    const { data } = await this.tlApi.axiosInstance.get<RoundDetails>(`/rounds/${roundId}`, { signal });
+  async tlGetRoundDetails(roundId: string, signal?: AbortSignal): Promise<TLRoundDetails> {
+    const { data } = await this.tlApi.axiosInstance.get<TLRoundDetails>(`/rounds/${roundId}`, { signal });
     return data;
   }
 
-  async tlAbandonRound(roundId: string, signal?: AbortSignal): Promise<AbandonRoundResponse> {
-    const { data } = await this.tlApi.axiosInstance.post<AbandonRoundResponse>(`/rounds/${roundId}/abandon`, {}, { signal });
+  async tlAbandonRound(roundId: string, signal?: AbortSignal): Promise<TLAbandonRoundResponse> {
+    const { data } = await this.tlApi.axiosInstance.post<TLAbandonRoundResponse>(`/rounds/${roundId}/abandon`, {}, { signal });
     return data;
   }
 
-  async tlPreviewPrompt(signal?: AbortSignal): Promise<PromptPreviewResponse> {
-    const { data } = await this.tlApi.axiosInstance.get<PromptPreviewResponse>('/game/prompts/preview', { signal });
+  async tlPreviewPrompt(signal?: AbortSignal): Promise<TLPromptPreviewResponse> {
+    const { data } = await this.tlApi.axiosInstance.get<TLPromptPreviewResponse>('/game/prompts/preview', { signal });
     return data;
   }
 
-  async tlSeedPrompts(prompts: string[], signal?: AbortSignal): Promise<SeedPromptsResponse> {
+  async tlSeedPrompts(prompts: string[], signal?: AbortSignal): Promise<TLSeedPromptsResponse> {
     const requestPayload = { prompts };
-    const { data } = await this.tlApi.axiosInstance.post<SeedPromptsResponse>('/admin/prompts/seed', requestPayload, {
+    const { data } = await this.tlApi.axiosInstance.post<TLSeedPromptsResponse>('/admin/prompts/seed', requestPayload, {
       signal,
       timeout: 30000,
     });
     return data;
   }
 
-  async tlGetCorpusStats(promptId: string, signal?: AbortSignal): Promise<CorpusStats> {
-    const { data } = await this.tlApi.axiosInstance.get<CorpusStats>(`/admin/corpus/${promptId}`, { signal });
+  async tlGetCorpusStats(promptId: string, signal?: AbortSignal): Promise<TLCorpusStats> {
+    const { data } = await this.tlApi.axiosInstance.get<TLCorpusStats>(`/admin/corpus/${promptId}`, { signal });
     return data;
   }
 
-  async tlPruneCorpus(promptId: string, signal?: AbortSignal): Promise<PruneCorpusResponse> {
-    const { data } = await this.tlApi.axiosInstance.post<PruneCorpusResponse>(`/admin/corpus/${promptId}/prune`, {}, {
+  async tlPruneCorpus(promptId: string, signal?: AbortSignal): Promise<TLPruneCorpusResponse> {
+    const { data } = await this.tlApi.axiosInstance.post<TLPruneCorpusResponse>(`/admin/corpus/${promptId}/prune`, {}, {
       signal,
     });
     return data;

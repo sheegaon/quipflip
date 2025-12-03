@@ -91,7 +91,7 @@ export interface MemeVoteResult {
 }
 
 // ThinkLink (TL) game types
-export interface DashboardResponse {
+export interface TLDashboardResponse {
   player_id: string;
   username: string;
   tl_wallet: number;
@@ -101,13 +101,13 @@ export interface DashboardResponse {
   created_at: string;
 }
 
-export interface BalanceResponse {
+export interface TLBalanceResponse {
   tl_wallet: number;
   tl_vault: number;
   total_balance: number;
 }
 
-export interface RoundAvailability {
+export interface TLRoundAvailability {
   can_start_round: boolean;
   error_message?: string | null;
   tl_wallet: number;
@@ -117,7 +117,7 @@ export interface RoundAvailability {
   starting_balance: number;
 }
 
-export interface StartRoundResponse {
+export interface TLStartRoundResponse {
   round_id: string;
   prompt_text: string;
   snapshot_answer_count: number;
@@ -125,11 +125,11 @@ export interface StartRoundResponse {
   created_at: string;
 }
 
-export interface SubmitGuessRequest {
+export interface TLSubmitGuessRequest {
   guess_text: string;
 }
 
-export interface SubmitGuessResponse {
+export interface TLSubmitGuessResponse {
   was_match: boolean;
   matched_answer_count: number;
   matched_cluster_ids: string[];
@@ -139,7 +139,7 @@ export interface SubmitGuessResponse {
   round_id: string;
 }
 
-export interface RoundDetails {
+export interface TLRoundDetails {
   round_id: string;
   prompt_id: string;
   prompt_text: string;
@@ -156,34 +156,34 @@ export interface RoundDetails {
   ended_at?: string | null;
 }
 
-export interface AbandonRoundResponse {
+export interface TLAbandonRoundResponse {
   round_id: string;
   status: string;
   refund_amount: number;
 }
 
-export interface PromptPreviewResponse {
+export interface TLPromptPreviewResponse {
   prompt_id: string;
   prompt_text: string;
 }
 
-export interface SeedPromptsRequest {
+export interface TLSeedPromptsRequest {
   prompts: string[];
 }
 
-export interface SeedPromptsResponse {
+export interface TLSeedPromptsResponse {
   created_count: number;
   skipped_duplicates: number;
 }
 
-export interface CorpusStats {
+export interface TLCorpusStats {
   prompt_id: string;
   prompt_text: string;
   active_answers: number;
   total_answers: number;
 }
 
-export interface PruneCorpusResponse {
+export interface TLPruneCorpusResponse {
   removed_answers: number;
   removed_clusters: number;
 }

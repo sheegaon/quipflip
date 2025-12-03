@@ -2,7 +2,7 @@ import React, { useEffect, useState , useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import apiClient, { extractErrorMessage } from '@crowdcraft/api/client.ts';
-import type { StartRoundResponse } from '@crowdcraft/api/types.ts';
+import type { TLStartRoundResponse } from '@crowdcraft/api/types.ts';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { GuessInput } from '../components/GuessInput';
@@ -12,7 +12,7 @@ import { MatchFeedback } from '../components/MatchFeedback';
 import { Tooltip } from '../components/Tooltip';
 
 interface RoundPlayLocationState {
-  round?: StartRoundResponse;
+  round?: TLStartRoundResponse;
 }
 
 interface FinalResult {
@@ -42,7 +42,7 @@ export const RoundPlay: React.FC = () => {
   const initialRound = locationState.round;
 
   // State
-  const [round] = useState<StartRoundResponse | null>(initialRound || null);
+  const [round] = useState<TLStartRoundResponse | null>(initialRound || null);
   const [guessText, setGuessText] = useState('');
   const [guesses, setGuesses] = useState<Guess[]>([]);
   const [strikes, setStrikes] = useState(0);
