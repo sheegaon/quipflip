@@ -24,7 +24,7 @@ class TLPlayerDailyState(Base):
     )
 
     # Relationships
-    player = relationship("TLPlayer", back_populates="tl_daily_states")
+    player = relationship("Player", back_populates="tl_daily_states")
 
     __table_args__ = (
         Index("ix_tl_player_daily_state_date", "date"),
