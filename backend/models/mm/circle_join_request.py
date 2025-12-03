@@ -25,7 +25,7 @@ class MMCircleJoinRequest(Base):
         index=True
     )
     player_id: Mapped[str] = get_uuid_column(
-        ForeignKey("mm_players.player_id", ondelete="CASCADE"),
+        ForeignKey("players.player_id", ondelete="CASCADE"),
         nullable=False,
         index=True
     )
@@ -45,7 +45,7 @@ class MMCircleJoinRequest(Base):
         nullable=True
     )
     resolved_by_player_id: Mapped[str | None] = get_uuid_column(
-        ForeignKey("mm_players.player_id", ondelete="SET NULL"),
+        ForeignKey("players.player_id", ondelete="SET NULL"),
         nullable=True
     )
 

@@ -14,10 +14,8 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
-
 from backend.models.qf.phraseset_activity import PhrasesetActivity
-from backend.models.qf.player import QFPlayer
+from backend.models.player import Player
 
 
 class ActivityService:
@@ -77,8 +75,8 @@ class ActivityService:
     ) -> list[dict]:
         """Load ordered activity timeline for a phraseset with player usernames."""
         result = await self.db.execute(
-            select(PhrasesetActivity, QFPlayer.username)
-            .outerjoin(QFPlayer, PhrasesetActivity.player_id == QFPlayer.player_id)
+            select(PhrasesetActivity, Player.username)
+            .outerjoin(Player, PhrasesetActivity.player_id == Player.player_id)
             .where(PhrasesetActivity.phraseset_id == phraseset_id)
             .order_by(PhrasesetActivity.created_at.asc())
         )

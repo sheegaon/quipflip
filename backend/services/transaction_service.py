@@ -10,7 +10,7 @@ from backend.models.transaction_base import TransactionBase
 from backend.utils.model_registry import GameType
 from backend.utils import lock_client
 from backend.utils.exceptions import InsufficientBalanceError
-from backend.utils.model_registry import get_player_model, get_transaction_model
+from backend.utils.model_registry import get_transaction_model
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +21,18 @@ class TransactionService:
     def __init__(self, db: AsyncSession, game_type: GameType = GameType.QF):
         self.db = db
         self.game_type = game_type
-        self.player_model = get_player_model(game_type)
+        # Get game-specific PlayerData model
+        if game_type == GameType.QF:
+            from backend.models.qf.player_data import QFPlayerData
+            self.player_data_model = QFPlayerData
+        elif game_type == GameType.MM:
+            from backend.models.mm.player_data import MMPlayerData
+            self.player_data_model = MMPlayerData
+        elif game_type == GameType.IR:
+            from backend.models.ir.player_data import IRPlayerData
+            self.player_data_model = IRPlayerData
+        else:
+            raise ValueError(f"Unsupported game type: {game_type}")
         self.transaction_model = get_transaction_model(game_type)
 
     async def create_transaction(
@@ -55,9 +66,9 @@ class TransactionService:
             InsufficientBalanceError: If balance would go negative
         """
         async def _create_transaction_impl():
-            # Get current player with row lock
+            # Get current player data with row lock
             result = await self.db.execute(
-                select(self.player_model).where(self.player_model.player_id == player_id).with_for_update()
+                select(self.player_data_model).where(self.player_data_model.player_id == player_id).with_for_update()
             )
             player = result.scalar_one_or_none()
 

@@ -156,6 +156,19 @@ export const Header: React.FC = () => {
     logout();
   }, [logout]);
 
+  // Refresh header data when user navigates to a different page
+  React.useEffect(() => {
+    const refreshHeaderData = async () => {
+      try {
+        await Promise.all([refreshDashboard(), refreshBalance()]);
+      } catch (err) {
+        componentLogger.debug('Failed to refresh header data on navigation:', err);
+      }
+    };
+
+    refreshHeaderData();
+  }, [location.pathname, refreshDashboard, refreshBalance]);
+
   // Close dropdown when clicking outside
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

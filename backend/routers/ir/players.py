@@ -36,6 +36,7 @@ from backend.utils.cookies import (
     set_access_token_cookie,
     set_refresh_cookie,
 )
+from backend.routers.player_router_base import fetch_game_player_data
 from backend.utils.passwords import (
     validate_password_strength,
     PasswordValidationError,
@@ -53,7 +54,6 @@ async def create_player(
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new IR player account and return credentials."""
-
     auth_service = AuthService(db, GameType.IR)
     try:
         player = await auth_service.register_player(
@@ -77,6 +77,11 @@ async def create_player(
             raise HTTPException(status_code=422, detail="invalid_username") from exc
         raise
 
+    player_data = await fetch_game_player_data(db, GameType.IR, player.player_id)
+
+    wallet = player_data.wallet if player_data else settings.ir_initial_balance
+    vault = player_data.vault if player_data else 0
+
     access_token, refresh_token, expires_in = await auth_service.issue_tokens(player)
     set_access_token_cookie(response, access_token)
     set_refresh_cookie(response, refresh_token, expires_days=settings.refresh_token_exp_days)
@@ -88,8 +93,8 @@ async def create_player(
         token_type="bearer",
         player_id=player.player_id,
         username=player.username,
-        wallet=player.wallet,
-        vault=player.vault,
+        wallet=wallet,
+        vault=vault,
         message=(
             "IR Player created! Your account is ready to play Initial Reaction. "
             "An access token and refresh token have been issued for authentication."
@@ -104,7 +109,6 @@ async def create_guest_player(
     _rate_limit: None = Depends(enforce_guest_creation_rate_limit),
 ):
     """Create an IR guest account with auto-generated credentials."""
-
     auth_service = AuthService(db, GameType.IR)
     try:
         player, guest_password = await auth_service.register_guest()
@@ -115,6 +119,11 @@ async def create_guest_player(
         if message == "guest_email_generation_failed":
             raise HTTPException(status_code=500, detail="guest_email_generation_failed") from exc
         raise
+
+    player_data = await fetch_game_player_data(db, GameType.IR, player.player_id)
+
+    wallet = player_data.wallet if player_data else settings.ir_initial_balance
+    vault = player_data.vault if player_data else 0
 
     access_token, refresh_token, expires_in = await auth_service.issue_tokens(player)
     set_access_token_cookie(response, access_token)
@@ -127,8 +136,8 @@ async def create_guest_player(
         token_type="bearer",
         player_id=player.player_id,
         username=player.username,
-        wallet=player.wallet,
-        vault=player.vault,
+        wallet=wallet,
+        vault=vault,
         email=player.email,
         password=guest_password,
         message=(
@@ -282,8 +291,11 @@ async def get_current_player_info(
     db: AsyncSession = Depends(get_db),
 ) -> PlayerBalance:
     """Get current authenticated IR player information using shared schema."""
-    player_service = IRPlayerService(db)
-    
+    player_data = await fetch_game_player_data(db, GameType.IR, player.player_id)
+
+    wallet = player_data.wallet if player_data else settings.ir_initial_balance
+    vault = player_data.vault if player_data else 0
+
     # Check if daily bonus is available (IR may not have this feature, but keeping consistent)
     # For now, we'll assume IR doesn't have daily bonus - services can override this
     bonus_available = False
@@ -297,8 +309,8 @@ async def get_current_player_info(
         player_id=player.player_id,
         username=player.username,
         email=player.email,
-        wallet=player.wallet,
-        vault=player.vault,
+        wallet=wallet,
+        vault=vault,
         starting_balance=settings.ir_initial_balance,
         daily_bonus_available=bonus_available,
         daily_bonus_amount=0,  # IR may not have daily bonus
@@ -325,14 +337,19 @@ async def get_player_balance(
 @router.get("/dashboard", response_model=IRDashboardResponse)
 async def get_player_dashboard(
     player: IRPlayer = Depends(get_current_player),
+    db: AsyncSession = Depends(get_db),
 ):
     """Return a lightweight dashboard summary for IR players."""
+    player_data = await fetch_game_player_data(db, GameType.IR, player.player_id)
+
+    wallet = player_data.wallet if player_data else settings.ir_initial_balance
+    vault = player_data.vault if player_data else 0
 
     player_summary = IRDashboardPlayerSummary(
         player_id=str(player.player_id),
         username=player.username,
-        wallet=player.wallet,
-        vault=player.vault,
+        wallet=wallet,
+        vault=vault,
         daily_bonus_available=False,
         created_at=ensure_utc(player.created_at),
     )
@@ -341,8 +358,8 @@ async def get_player_dashboard(
         player=player_summary,
         active_session=None,
         pending_results=[],
-        wallet=player.wallet,
-        vault=player.vault,
+        wallet=wallet,
+        vault=vault,
         daily_bonus_available=False,
     )
 
@@ -368,18 +385,22 @@ async def get_player(
     _: IRPlayer = Depends(get_current_player),
 ) -> PlayerBalance:
     """Get IR player information by ID using shared schema."""
-
     player_service = IRPlayerService(db)
     player = await player_service.get_player_by_id(player_id)
     if not player:
         raise HTTPException(status_code=404, detail="Player not found")
 
+    player_data = await fetch_game_player_data(db, GameType.IR, player.player_id)
+
+    wallet = player_data.wallet if player_data else settings.ir_initial_balance
+    vault = player_data.vault if player_data else 0
+
     return PlayerBalance(
         player_id=player.player_id,
         username=player.username,
         email=player.email,
-        wallet=player.wallet,
-        vault=player.vault,
+        wallet=wallet,
+        vault=vault,
         starting_balance=settings.ir_initial_balance,
         daily_bonus_available=False,
         daily_bonus_amount=0,

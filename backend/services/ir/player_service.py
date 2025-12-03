@@ -10,7 +10,8 @@ from sqlalchemy import select
 from uuid import UUID
 
 from backend.config import get_settings
-from backend.models.ir.player import IRPlayer
+from backend.models.player import Player
+from backend.models.ir.player_data import IRPlayerData
 from backend.utils.passwords import hash_password
 from backend.services.player_service_base import PlayerServiceBase, PlayerServiceError
 from backend.services.username_service import UsernameService, canonicalize_username
@@ -27,8 +28,13 @@ class IRPlayerService(PlayerServiceBase):
 
     @property
     def player_model(self):
-        """Return the IR player model class."""
-        return IRPlayer
+        """Return the unified player model class."""
+        return Player
+
+    @property
+    def player_data_model(self):
+        """Return the IR player data model class."""
+        return IRPlayerData
 
     @property
     def error_class(self):
@@ -49,7 +55,7 @@ class IRPlayerService(PlayerServiceBase):
         """Get the initial balance for new IR players."""
         return self.settings.ir_initial_balance
 
-    async def get_player_by_id(self, player_id: Union[str, UUID]) -> IRPlayer | None:
+    async def get_player_by_id(self, player_id: Union[str, UUID]) -> Player | None:
         """Get IR player by ID with UUID/string compatibility.
 
         Args:
@@ -66,8 +72,8 @@ class IRPlayerService(PlayerServiceBase):
                 search_id = player_id
         else:
             search_id = player_id
-        
-        stmt = select(IRPlayer).where(IRPlayer.player_id == search_id)
+
+        stmt = select(Player).where(Player.player_id == search_id)
         result = await self.db.execute(stmt)
         player = result.scalars().first()
         return self.apply_admin_status(player)
@@ -77,7 +83,7 @@ class IRPlayerService(PlayerServiceBase):
         username: str,
         email: str,
         password_hash: str,
-    ) -> IRPlayer:
+    ) -> Player:
         """Create a new IR player account.
 
         Args:
@@ -86,55 +92,18 @@ class IRPlayerService(PlayerServiceBase):
             password_hash: Hashed password
 
         Returns:
-            IRPlayer: Created player
+            Player: Created player
 
         Raises:
             PlayerError: If player creation fails
         """
-        normalized_email = email.strip().lower()
+        return await super().create_player(
+            username=username,
+            email=email,
+            password_hash=password_hash,
+        )
 
-        try:
-            # Check if email is taken (case-insensitive storage)
-            stmt = select(IRPlayer).where(IRPlayer.email == normalized_email)
-            result = await self.db.execute(stmt)
-            if result.scalars().first():
-                raise PlayerError("email_taken")
-
-            # Normalize and check username
-            username_canonical = canonicalize_username(username)
-            stmt = select(IRPlayer).where(IRPlayer.username_canonical == username_canonical)
-            result = await self.db.execute(stmt)
-            if result.scalars().first():
-                raise PlayerError("username_taken")
-
-            # Create new player
-            player_id = str(uuid.uuid4())
-            player = IRPlayer(
-                player_id=player_id,
-                username=username,
-                username_canonical=username_canonical,
-                email=normalized_email,
-                password_hash=password_hash,
-                wallet=self.settings.ir_initial_balance,
-                vault=0,
-                created_at=datetime.now(UTC),
-                is_guest=False,
-                is_admin=False,
-            )
-            self.db.add(player)
-            await self.db.commit()
-            await self.db.refresh(player)
-
-            logger.info(f"Created IR {player_id=} with username {username}")
-            return player
-        except PlayerError:
-            raise
-        except Exception as e:
-            await self.db.rollback()
-            logger.error(f"Error creating IR player: {e}", exc_info=True)
-            raise PlayerError(f"player_creation_failed: {str(e)}") from e
-
-    async def set_vote_lockout(self, player_id: str, until: datetime) -> IRPlayer:
+    async def set_vote_lockout(self, player_id: str, until: datetime) -> Player:
         """Set vote lockout for guest player (vote spam prevention).
 
         Args:
@@ -142,7 +111,7 @@ class IRPlayerService(PlayerServiceBase):
             until: Lockout expiration time
 
         Returns:
-            IRPlayer: Updated player
+            Player: Updated player
 
         Raises:
             PlayerError: If player not found
@@ -157,14 +126,14 @@ class IRPlayerService(PlayerServiceBase):
         await self.db.refresh(player)
         return player
 
-    async def increment_incorrect_votes(self, player_id: str) -> IRPlayer:
+    async def increment_incorrect_votes(self, player_id: str) -> Player:
         """Increment incorrect vote count for guest player.
 
         Args:
             player_id: Player UUID
 
         Returns:
-            IRPlayer: Updated player
+            Player: Updated player
 
         Raises:
             PlayerError: If player not found
@@ -178,14 +147,14 @@ class IRPlayerService(PlayerServiceBase):
         await self.db.refresh(player)
         return player
 
-    async def clear_incorrect_votes(self, player_id: str) -> IRPlayer:
+    async def clear_incorrect_votes(self, player_id: str) -> Player:
         """Clear incorrect vote count for guest player.
 
         Args:
             player_id: Player UUID
 
         Returns:
-            IRPlayer: Updated player
+            Player: Updated player
 
         Raises:
             PlayerError: If player not found

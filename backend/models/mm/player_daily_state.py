@@ -14,7 +14,7 @@ class MMPlayerDailyState(Base):
     __tablename__ = "mm_player_daily_states"
 
     player_id = get_uuid_column(
-        ForeignKey("mm_players.player_id", ondelete="CASCADE"), primary_key=True
+        ForeignKey("players.player_id", ondelete="CASCADE"), primary_key=True
     )
     date = Column(Date, primary_key=True, default=lambda: datetime.now(UTC).date())
     free_captions_used = Column(Integer, default=0, nullable=False)

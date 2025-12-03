@@ -1,6 +1,7 @@
 """Initial Reaction database models."""
 from backend.models.ir.enums import SetStatus, Mode
 from backend.models.ir.player import IRPlayer
+from backend.models.ir.player_data import IRPlayerData
 from backend.models.ir.backronym_set import BackronymSet
 from backend.models.ir.backronym_entry import BackronymEntry
 from backend.models.ir.backronym_vote import BackronymVote
@@ -16,6 +17,7 @@ __all__ = [
     "SetStatus",
     "Mode",
     "IRPlayer",
+    "IRPlayerData",
     "BackronymSet",
     "BackronymEntry",
     "BackronymVote",

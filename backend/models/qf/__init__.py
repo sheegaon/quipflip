@@ -1,5 +1,6 @@
 """Database models."""
-from backend.models.qf.player import QFPlayer
+from backend.models.qf.player import QFPlayer  # Deprecated: use QFPlayerData instead
+from backend.models.qf.player_data import QFPlayerData
 from backend.models.qf.prompt import Prompt
 from backend.models.qf.round import Round
 from backend.models.qf.phraseset import Phraseset
@@ -10,7 +11,7 @@ from backend.models.qf.result_view import QFResultView
 from backend.models.qf.player_abandoned_prompt import PlayerAbandonedPrompt
 from backend.models.qf.prompt_feedback import PromptFeedback
 from backend.models.qf.phraseset_activity import PhrasesetActivity
-from backend.models.qf.refresh_token import QFRefreshToken
+from backend.models.qf.refresh_token import QFRefreshToken  # Deprecated: use unified RefreshToken
 from backend.models.qf.quest import QFQuest, QuestTemplate
 from backend.models.qf.system_config import QFSystemConfig
 from backend.models.qf.flagged_prompt import FlaggedPrompt
@@ -32,9 +33,11 @@ RefreshToken = QFRefreshToken
 Quest = QFQuest
 AIMetric = QFAIMetric
 AIPhraseCache = QFAIPhraseCache
+PlayerData = QFPlayerData  # New alias for game-specific player data
 
 __all__ = [
     "QFPlayer",
+    "QFPlayerData",
     "Prompt",
     "Round",
     "Phraseset",
@@ -60,6 +63,7 @@ __all__ = [
     "PartyPhraseset",
     # Aliases
     "Player",
+    "PlayerData",
     "Transaction",
     "DailyBonus",
     "ResultView",

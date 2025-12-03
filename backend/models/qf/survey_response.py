@@ -19,10 +19,10 @@ class QFSurveyResponse(SurveyResponseBase):
 
     # Override player_id to add QF-specific foreign key constraint
     player_id = get_uuid_column(
-        ForeignKey("qf_players.player_id", ondelete="CASCADE"), index=True, nullable=False
+        ForeignKey("players.player_id", ondelete="CASCADE"), index=True, nullable=False
     )
 
-    player = relationship("QFPlayer", backref="survey_responses")
+    player = relationship("Player", backref="survey_responses")
 
     __table_args__ = (
         Index("ix_survey_responses_player_survey", "player_id", "survey_id", unique=True),

@@ -28,6 +28,7 @@ from backend.services.qf.phraseset_service import PhrasesetService
 from backend.services.qf.phraseset_activity_service import ActivityService
 from backend.services.qf.statistics_service import QFStatisticsService
 from backend.services.qf.flagged_prompt_service import FlaggedPromptService
+from backend.services.qf.quest_service import QuestService
 from backend.services.qf.prompt_seeder import (
     get_current_season,
     load_prompts_from_csv,
@@ -92,6 +93,7 @@ __all__ = [
     'ActivityService',
     'QFStatisticsService',
     'FlaggedPromptService',
+    'QuestService',
     'get_current_season',
     'load_prompts_from_csv',
     'sync_prompts_with_database',

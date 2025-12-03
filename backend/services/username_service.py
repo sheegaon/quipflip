@@ -52,12 +52,11 @@ class UsernameService:
     """Encapsulates username generation and lookup helpers."""
 
     def __init__(self, db: AsyncSession, game_type: "GameType | None" = None):
-        from backend.utils.model_registry import GameType
-        from backend.utils.model_registry import get_player_model
+        from backend.models.player import Player
 
         self.db = db
-        self.game_type = game_type or GameType.QF
-        self.player_model = get_player_model(self.game_type)
+        self.game_type = game_type  # Keep for backwards compatibility if needed
+        self.player_model = Player
 
     async def _existing_canonicals(self) -> set[str]:
         result = await self.db.execute(select(self.player_model.username_canonical))

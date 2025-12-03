@@ -7,6 +7,7 @@ import logging
 
 from backend.database import get_db
 from backend.dependencies import get_current_player
+from backend.models.player import Player
 from backend.models.qf.player import QFPlayer
 from backend.models.qf.phraseset import Phraseset
 from backend.models.qf.round import Round
@@ -213,9 +214,28 @@ class QFPlayerRouter(PlayerRouterBase):
 
 
 # Helper functions for QF-specific endpoints
-async def _get_player_balance(player: QFPlayer, db: AsyncSession) -> PlayerBalance:
+async def _get_player_balance(player: Player, db: AsyncSession) -> PlayerBalance:
     """Get player balance and status - shared helper function."""
+    from backend.models.qf.player_data import QFPlayerData
+    from sqlalchemy import select
+
     player_service = QFPlayerService(db)
+
+    # Load game-specific player data for wallet/vault and other QF-specific fields
+    result = await db.execute(
+        select(QFPlayerData).where(QFPlayerData.player_id == player.player_id)
+    )
+    player_data = result.scalar_one_or_none()
+
+    if not player_data:
+        # Fallback defaults if player data not found
+        wallet = settings.qf_starting_wallet
+        vault = 0
+        flag_dismissal_streak = 0
+    else:
+        wallet = player_data.wallet
+        vault = player_data.vault
+        flag_dismissal_streak = player_data.flag_dismissal_streak
 
     # Get daily bonus status
     bonus_available = await player_service.is_daily_bonus_available(player)
@@ -227,8 +247,8 @@ async def _get_player_balance(player: QFPlayer, db: AsyncSession) -> PlayerBalan
         player_id=player.player_id,
         username=player.username,
         email=player.email,
-        wallet=player.wallet,
-        vault=player.vault,
+        wallet=wallet,
+        vault=vault,
         starting_balance=settings.qf_starting_wallet,
         daily_bonus_available=bonus_available,
         daily_bonus_amount=settings.daily_bonus_amount,
@@ -238,13 +258,22 @@ async def _get_player_balance(player: QFPlayer, db: AsyncSession) -> PlayerBalan
         is_guest=player.is_guest,
         is_admin=player.is_admin,
         locked_until=ensure_utc(player.locked_until),
-        flag_dismissal_streak=player.flag_dismissal_streak,
+        flag_dismissal_streak=flag_dismissal_streak,
     )
 
 
-async def _get_current_round(player: QFPlayer, db: AsyncSession) -> CurrentRoundResponse:
+async def _get_current_round(player: Player, db: AsyncSession) -> CurrentRoundResponse:
     """Get player's current active round if any."""
-    if not player.active_round_id:
+    from backend.models.qf.player_data import QFPlayerData
+    from sqlalchemy import select
+
+    # Load game-specific player data to get active_round_id
+    result = await db.execute(
+        select(QFPlayerData).where(QFPlayerData.player_id == player.player_id)
+    )
+    player_data = result.scalar_one_or_none()
+
+    if not player_data or not player_data.active_round_id:
         return CurrentRoundResponse(
             round_id=None,
             round_type=None,
@@ -253,7 +282,7 @@ async def _get_current_round(player: QFPlayer, db: AsyncSession) -> CurrentRound
         )
 
     # Get round details
-    round = await db.get(Round, player.active_round_id)
+    round = await db.get(Round, player_data.active_round_id)
     if not round:
         return CurrentRoundResponse(
             round_id=None,
@@ -264,10 +293,10 @@ async def _get_current_round(player: QFPlayer, db: AsyncSession) -> CurrentRound
 
     # If round already resolved, clear pointer and return empty response
     if round.status != "active":
-        if player.active_round_id == round.round_id:
-            player.active_round_id = None
+        if player_data.active_round_id == round.round_id:
+            player_data.active_round_id = None
             await db.commit()
-            await db.refresh(player)
+            await db.refresh(player_data)
         return CurrentRoundResponse(
             round_id=None,
             round_type=None,

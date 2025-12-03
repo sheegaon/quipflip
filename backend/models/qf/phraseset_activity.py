@@ -12,6 +12,7 @@ from datetime import datetime, UTC
 import uuid
 
 from backend.database import Base
+from backend.models.player import Player
 from backend.models.base import get_uuid_column
 
 
@@ -27,13 +28,13 @@ class PhrasesetActivity(Base):
     phraseset_id = get_uuid_column(ForeignKey("qf_phrasesets.phraseset_id"), nullable=True, index=True)
     prompt_round_id = get_uuid_column(ForeignKey("qf_rounds.round_id"), nullable=True, index=True)
     activity_type = Column(String(50), nullable=False)
-    player_id = get_uuid_column(ForeignKey("qf_players.player_id", ondelete="CASCADE"), nullable=True, index=True)
+    player_id = get_uuid_column(ForeignKey("players.player_id", ondelete="CASCADE"), nullable=True, index=True)
     payload = Column("metadata", JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
 
     phraseset = relationship("Phraseset", back_populates="activities")
     prompt_round = relationship("Round", foreign_keys=[prompt_round_id])
-    player = relationship("QFPlayer", back_populates="phraseset_activities")
+    player = relationship(Player, back_populates="phraseset_activities")
 
     __table_args__ = (
         Index("ix_phraseset_activity_phraseset_id_created", "phraseset_id", "created_at"),

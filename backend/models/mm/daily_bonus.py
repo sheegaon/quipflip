@@ -12,7 +12,7 @@ class MMDailyBonus(DailyBonusBase):
     __tablename__ = "mm_daily_bonuses"
 
     player_id = get_uuid_column(
-        ForeignKey("mm_players.player_id", ondelete="CASCADE"), nullable=False
+        ForeignKey("players.player_id", ondelete="CASCADE"), nullable=False
     )
 
     player = relationship("MMPlayer", back_populates="daily_bonuses")

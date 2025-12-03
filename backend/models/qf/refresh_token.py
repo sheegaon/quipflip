@@ -1,16 +1,5 @@
-"""Refresh token persistence model."""
-from sqlalchemy import ForeignKey
-from sqlalchemy.orm import relationship
-from backend.models.refresh_token_base import RefreshTokenBase
-from backend.models.base import get_uuid_column
+"""Compatibility alias to the unified refresh token model."""
 
+from backend.models.refresh_token import RefreshToken as QFRefreshToken
 
-class QFRefreshToken(RefreshTokenBase):
-    """Stored refresh tokens for JWT authentication."""
-
-    __tablename__ = "qf_refresh_tokens"
-
-    # Override player_id to add QF-specific foreign key constraint
-    player_id = get_uuid_column(ForeignKey("qf_players.player_id", ondelete="CASCADE"), nullable=False, index=True)
-
-    player = relationship("QFPlayer", back_populates="refresh_tokens")
+__all__ = ["QFRefreshToken"]

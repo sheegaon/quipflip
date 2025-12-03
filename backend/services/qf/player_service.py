@@ -7,7 +7,8 @@ from uuid import UUID
 import uuid
 import logging
 
-from backend.models.qf.player import QFPlayer
+from backend.models.player import Player
+from backend.models.qf.player_data import QFPlayerData
 from backend.models.qf.daily_bonus import QFDailyBonus
 from backend.models.qf.phraseset import Phraseset
 from backend.models.qf.round import Round
@@ -34,8 +35,13 @@ class QFPlayerService(PlayerServiceBase):
 
     @property
     def player_model(self):
-        """Return the QF player model class."""
-        return QFPlayer
+        """Return the unified player model class."""
+        return Player
+
+    @property
+    def player_data_model(self):
+        """Return the QF player data model class."""
+        return QFPlayerData
 
     @property
     def error_class(self):
@@ -52,15 +58,15 @@ class QFPlayerService(PlayerServiceBase):
         """Get the initial balance for new QF players."""
         return settings.qf_starting_wallet
 
-    async def get_player_by_id(self, player_id: UUID) -> QFPlayer | None:
+    async def get_player_by_id(self, player_id: UUID) -> Player | None:
         """Get player by ID."""
         result = await self.db.execute(
-            select(QFPlayer).where(QFPlayer.player_id == player_id)
+            select(Player).where(Player.player_id == player_id)
         )
         player = result.scalar_one_or_none()
         return self.apply_admin_status(player)
 
-    async def get_player_by_username(self, username: str) -> QFPlayer | None:
+    async def get_player_by_username(self, username: str) -> Player | None:
         """Get player by username lookup."""
         if not is_username_input_valid(username):
             return None
@@ -68,35 +74,15 @@ class QFPlayerService(PlayerServiceBase):
         player = await username_service.find_player_by_username(username)
         return self.apply_admin_status(player)
 
-    async def create_player(self, *, username: str, email: str, password_hash: str) -> QFPlayer:
+    async def create_player(self, *, username: str, email: str, password_hash: str) -> Player:
         """Create new Quipflip player using explicit credentials."""
-
-        normalized_username = normalize_username(username)
-        canonical_username = canonicalize_username(normalized_username)
-        if not canonical_username:
-            raise ValueError("invalid_username")
-
-        player = QFPlayer(
-            player_id=uuid.uuid4(),
-            username=normalized_username,
-            username_canonical=canonical_username,
-            email=email.strip().lower(),
+        return await super().create_player(
+            username=username,
+            email=email,
             password_hash=password_hash,
-            wallet=settings.qf_starting_wallet,
-            vault=0,
-            last_login_date=datetime.now(UTC),  # Track creation login time with precision
-            is_admin=self._should_be_admin(email),
         )
-        self.db.add(player)
-        try:
-            await self.db.commit()
-            await self.db.refresh(player)
-            logger.info(f"Created player: {player.player_id} {player.username=} {player.wallet=} {player.vault=}")
-            return player
-        except IntegrityError as exc:
-            await self._handle_integrity_error(exc, "create")
 
-    async def update_username(self, player: QFPlayer, new_username: str) -> QFPlayer:
+    async def update_username(self, player: Player, new_username: str) -> Player:
         """Update a player's username with QF-specific error handling."""
         try:
             return await super().update_username(player, new_username)
@@ -110,7 +96,7 @@ class QFPlayerService(PlayerServiceBase):
                 raise UsernameTakenError("Username is already in use by another player")
             raise
 
-    async def is_daily_bonus_available(self, player: QFPlayer) -> bool:
+    async def is_daily_bonus_available(self, player: Player) -> bool:
         """Check if daily bonus can be claimed."""
         # Use UTC for "today" to match how timestamps are stored.
         # ``date.today()`` relies on the server's local timezone, which
@@ -138,7 +124,7 @@ class QFPlayerService(PlayerServiceBase):
         # Bonus available if NOT claimed today
         return bonus_today is None
 
-    async def claim_daily_bonus(self, player: QFPlayer, transaction_service) -> int:
+    async def claim_daily_bonus(self, player: Player, transaction_service) -> int:
         """
         Claim daily bonus, returns amount.
 
@@ -201,7 +187,7 @@ class QFPlayerService(PlayerServiceBase):
         logger.debug(f"Player {player_id} has {count} outstanding prompts")
         return count
 
-    async def can_start_prompt_round(self, player: QFPlayer) -> tuple[bool, str]:
+    async def can_start_prompt_round(self, player: Player) -> tuple[bool, str]:
         """
         Check if player can start prompt round.
 
@@ -211,12 +197,21 @@ class QFPlayerService(PlayerServiceBase):
         if player.locked_until and player.locked_until > datetime.now(UTC):
             return False, "player_locked"
 
+        # Load game-specific player data for wallet and active_round_id
+        result = await self.db.execute(
+            select(QFPlayerData).where(QFPlayerData.player_id == player.player_id)
+        )
+        player_data = result.scalar_one_or_none()
+
+        wallet = player_data.wallet if player_data else settings.qf_starting_wallet
+        active_round_id = player_data.active_round_id if player_data else None
+
         # Check wallet (spendable balance)
-        if player.wallet < settings.prompt_cost:
+        if wallet < settings.prompt_cost:
             return False, "insufficient_balance"
 
         # Check active round
-        if player.active_round_id is not None:
+        if active_round_id is not None:
             return False, "already_in_round"
 
         # Check outstanding prompts (guests have a lower limit)
@@ -231,7 +226,7 @@ class QFPlayerService(PlayerServiceBase):
 
         return True, ""
 
-    async def can_start_copy_round(self, player: QFPlayer) -> tuple[bool, str]:
+    async def can_start_copy_round(self, player: Player) -> tuple[bool, str]:
         """Check if player can start copy round."""
         from backend.services.qf.queue_service import QFQueueService
         from backend.services.qf.round_service import QFRoundService
@@ -239,13 +234,22 @@ class QFPlayerService(PlayerServiceBase):
         if player.locked_until and player.locked_until > datetime.now(UTC):
             return False, "player_locked"
 
+        # Load game-specific player data for wallet and active_round_id
+        result = await self.db.execute(
+            select(QFPlayerData).where(QFPlayerData.player_id == player.player_id)
+        )
+        player_data = result.scalar_one_or_none()
+
+        wallet = player_data.wallet if player_data else settings.qf_starting_wallet
+        active_round_id = player_data.active_round_id if player_data else None
+
         # Check wallet (spendable balance) against current copy cost
         copy_cost = QFQueueService.get_copy_cost()
-        if player.wallet < copy_cost:
+        if wallet < copy_cost:
             return False, "insufficient_balance"
 
         # Check active round
-        if player.active_round_id is not None:
+        if active_round_id is not None:
             return False, "already_in_round"
 
         # Check prompts available for this player specifically (not just queue length)
@@ -256,24 +260,33 @@ class QFPlayerService(PlayerServiceBase):
 
         return True, ""
 
-    async def can_start_second_copy_round(self, player: QFPlayer) -> tuple[bool, str]:
+    async def can_start_second_copy_round(self, player: Player) -> tuple[bool, str]:
         """Check if player can start a second copy round (2x cost, no queue check)."""
         if player.locked_until and player.locked_until > datetime.now(UTC):
             return False, "player_locked"
 
-        if player.active_round_id is not None:
+        # Load game-specific player data for wallet and active_round_id
+        result = await self.db.execute(
+            select(QFPlayerData).where(QFPlayerData.player_id == player.player_id)
+        )
+        player_data = result.scalar_one_or_none()
+
+        wallet = player_data.wallet if player_data else settings.qf_starting_wallet
+        active_round_id = player_data.active_round_id if player_data else None
+
+        if active_round_id is not None:
             return False, "already_in_round"
 
         # Second copy costs 2x the normal cost
         second_copy_cost = settings.copy_cost_normal * 2
-        if player.wallet < second_copy_cost:
+        if wallet < second_copy_cost:
             return False, "insufficient_balance"
 
         return True, ""
 
     async def can_start_vote_round(
         self,
-        player: QFPlayer,
+        player: Player,
         vote_service=None,
         available_count: int | None = None,
     ) -> tuple[bool, str]:
@@ -281,20 +294,30 @@ class QFPlayerService(PlayerServiceBase):
         from backend.services.qf.queue_service import QFQueueService
         from datetime import datetime, UTC
 
+        # Load game-specific player data for wallet, active_round_id, and vote_lockout_until
+        result = await self.db.execute(
+            select(QFPlayerData).where(QFPlayerData.player_id == player.player_id)
+        )
+        player_data = result.scalar_one_or_none()
+
+        wallet = player_data.wallet if player_data else settings.qf_starting_wallet
+        active_round_id = player_data.active_round_id if player_data else None
+        vote_lockout_until = player_data.vote_lockout_until if player_data else None
+
         # Check if guest is locked out from voting
-        if player.is_guest and player.vote_lockout_until:
-            if datetime.now(UTC) < player.vote_lockout_until:
+        if player.is_guest and vote_lockout_until:
+            if datetime.now(UTC) < vote_lockout_until:
                 return False, "vote_lockout_active"
 
         if player.locked_until and player.locked_until > datetime.now(UTC):
             return False, "player_locked"
 
         # Check wallet (spendable balance)
-        if player.wallet < settings.vote_cost:
+        if wallet < settings.vote_cost:
             return False, "insufficient_balance"
 
         # Check active round
-        if player.active_round_id is not None:
+        if active_round_id is not None:
             return False, "already_in_round"
 
         # Check phrasesets available

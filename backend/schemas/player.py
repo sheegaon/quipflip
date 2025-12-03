@@ -1,5 +1,5 @@
 """Player-related Pydantic schemas."""
-from pydantic import BaseModel, constr
+from pydantic import BaseModel, constr, computed_field
 from datetime import datetime
 from typing import Optional, Literal
 from uuid import UUID
@@ -26,6 +26,12 @@ class PlayerBalance(BaseSchema):
     is_admin: bool = False
     locked_until: Optional[datetime] = None
     flag_dismissal_streak: int
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def balance(self) -> int:
+        """Return combined wallet and vault balance."""
+        return self.wallet + self.vault
 
 
 class ClaimDailyBonusResponse(BaseModel):
@@ -66,6 +72,12 @@ class CreatePlayerResponse(AuthTokenResponse):
     wallet: int
     vault: int
     message: str
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def balance(self) -> int:
+        """Return combined wallet and vault balance."""
+        return self.wallet + self.vault
 
 
 class RoleStatistics(BaseModel):
@@ -234,6 +246,12 @@ class CreateGuestResponse(AuthTokenResponse):
     email: str
     password: str  # Auto-generated password to show user
     message: str
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def balance(self) -> int:
+        """Return combined wallet and vault balance."""
+        return self.wallet + self.vault
 
 
 class UpgradeGuestRequest(BaseModel):
