@@ -33,7 +33,7 @@ const OFFLINE_STATE_KEY = 'quipflip_was_offline';
 export const useNetworkStatus = (): NetworkStatus => {
   // Initialize online state from navigator
   const [isOnline, setIsOnline] = useState<boolean>(() => {
-    if (typeof navigator !== 'undefined' && typeof navigator.onLine === 'boolean') {
+    if (typeof navigator !== 'undefined') {
       return navigator.onLine;
     }
     return true; // Default to online

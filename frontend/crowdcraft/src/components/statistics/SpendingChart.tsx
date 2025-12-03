@@ -42,11 +42,7 @@ export default function SpendingChart({ earnings }: SpendingChartProps) {
 
     // Type guards to ensure we have the required numeric values
     if (
-      typeof cx !== 'number' ||
-      typeof cy !== 'number' ||
       typeof midAngle !== 'number' ||
-      typeof innerRadius !== 'number' ||
-      typeof outerRadius !== 'number' ||
       typeof percent !== 'number'
     ) {
       return null;

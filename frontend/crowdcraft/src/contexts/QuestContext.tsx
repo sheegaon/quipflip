@@ -1,9 +1,9 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import apiClient from '@crowdcraft/api/client.ts';
-import { getActionErrorMessage } from '@crowdcraft/utils/errorMessages.ts';
-import { gameContextLogger } from '@crowdcraft/utils/logger.ts';
-import type { QFQuest, QFClaimQuestRewardResponse } from '@crowdcraft/api/types.ts';
+import apiClient from '../api/client.ts';
+import { getActionErrorMessage } from '../utils';
+import { gameContextLogger } from '../utils';
+import type { QFQuest, QFClaimQuestRewardResponse } from '../api/types.ts';
 
 interface QuestState {
   quests: QFQuest[];

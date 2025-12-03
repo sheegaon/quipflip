@@ -1,7 +1,7 @@
 import React from 'react';
 import { useGame } from '../contexts/GameContext';
-import { useResults } from '../contexts/ResultsContext';
-import { useQuests } from '../contexts/QuestContext';
+import { useResults } from '@crowdcraft';
+import { useQuests } from '@crowdcraft';
 
 /**
  * Custom hook that calculates visibility and labels for header/sub-header indicators

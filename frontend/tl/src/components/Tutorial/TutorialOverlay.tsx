@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useTutorial } from '../../contexts/TutorialContext';
 import { getTutorialStep, getPreviousStep } from '@/config/tutorialSteps';
-import type { TutorialProgress } from '@crowdcraft/api/types.ts';
+import type { TLTutorialProgress } from '@crowdcraft/api/types.ts';
 import './TutorialOverlay.css';
 import { CopyRoundIcon, LiveModeIcon, PracticeModeIcon, VoteRoundIcon } from '@crowdcraft/components/icons/RoundIcons.tsx';
 import { ArrowLeftIcon, ArrowRightIcon } from '@crowdcraft/components/icons/ArrowIcons.tsx';
@@ -115,7 +115,7 @@ const TutorialOverlay: React.FC<TutorialOverlayProps> = ({ onComplete }) => {
   const [isNavigating, setIsNavigating] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
-  const step = currentStep ? getTutorialStep(currentStep as any) : null;
+  const step = currentStep ? getTutorialStep(currentStep as TLTutorialProgress) : null;
 
   // Measure card dimensions dynamically
   useEffect(() => {
@@ -156,9 +156,9 @@ const TutorialOverlay: React.FC<TutorialOverlayProps> = ({ onComplete }) => {
     try {
       // Regular tutorial progression
       if (step?.nextStep) {
-        advanceStep(step.nextStep as any);
+        await advanceStep(step.nextStep);
       } else {
-        completeTutorial();
+        await completeTutorial();
       }
     } finally {
       setIsNavigating(false);
@@ -170,9 +170,9 @@ const TutorialOverlay: React.FC<TutorialOverlayProps> = ({ onComplete }) => {
     setIsNavigating(true);
     try {
       if (currentStep) {
-        const prevStep = getPreviousStep(currentStep as any);
+        const prevStep = getPreviousStep(currentStep as TLTutorialProgress);
         if (prevStep) {
-          advanceStep(prevStep as any);
+          await advanceStep(prevStep);
         }
       }
     } finally {

@@ -20,6 +20,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+
 def canonicalize_username(username: str) -> str:
     """Convert a username into its canonical lowercase alphanumeric form."""
     return "".join(ch for ch in username.lower() if ch.isalnum())

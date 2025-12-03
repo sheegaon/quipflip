@@ -111,8 +111,8 @@ test.describe('Quipflip Interactive Tests', () => {
     console.log(`Found ${images.length} image(s)`);
 
     for (let i = 0; i < images.length; i++) {
-      const src = await images[i].getAttribute('src');
-      const alt = await images[i].getAttribute('alt');
+      const src = images[i].getAttribute('src');
+      const alt = images[i].getAttribute('alt');
       console.log(`  Image ${i + 1}: ${alt || 'no alt'} - ${src}`);
     }
 

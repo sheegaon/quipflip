@@ -356,7 +356,7 @@ export const GameProvider: React.FC<{
       if (data.round_availability) {
         setRoundAvailability(data.round_availability as MMRoundAvailability);
       } else {
-        refreshRoundAvailability(signal);
+        await refreshRoundAvailability(signal);
       }
       setError(null);
 
@@ -372,7 +372,7 @@ export const GameProvider: React.FC<{
       // Handle auth errors
       if (errorMessage.toLowerCase().includes('session') || errorMessage.toLowerCase().includes('login')) {
         gameContextLogger.warn('🚪 Auth error detected, logging out');
-        logout();
+        await logout();
       }
     }
   }, [username, logout, refreshRoundAvailability]);
@@ -417,7 +417,7 @@ export const GameProvider: React.FC<{
       // Only show player data refresh errors if they're auth-related
       if (errorMessage.toLowerCase().includes('session') || errorMessage.toLowerCase().includes('login')) {
         setError(errorMessage);
-        logout();
+        await logout();
       }
     }
   }, [username, logout]);
@@ -458,7 +458,7 @@ export const GameProvider: React.FC<{
       // Handle auth errors
       if (message.toLowerCase().includes('session') || message.toLowerCase().includes('login')) {
         gameContextLogger.warn('🚪 Auth error in claim bonus, logging out');
-        logout();
+        await logout();
       }
 
       throw err;

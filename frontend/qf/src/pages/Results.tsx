@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useGame } from '../contexts/GameContext';
-import { useResults } from '../contexts/ResultsContext';
+import { useResults } from '@crowdcraft';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Header } from '../components/Header';
 import { Pagination } from '@crowdcraft/components/Pagination.tsx';

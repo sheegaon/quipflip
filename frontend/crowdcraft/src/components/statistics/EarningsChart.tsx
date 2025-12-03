@@ -1,6 +1,6 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, PieLabelRenderProps } from 'recharts';
 import { useState, useEffect, useRef } from 'react';
-import type { QFEarningsBreakdown } from '@crowdcraft/api/types.ts';
+import type { QFEarningsBreakdown } from '../../api/types';
 import {
   statisticsChartContainerStyle,
   statisticsChartPlaceholderStyle,
@@ -76,11 +76,7 @@ export default function EarningsChart({ earnings }: EarningsChartProps) {
 
     // Type guards to ensure we have the required numeric values
     if (
-      typeof cx !== 'number' ||
-      typeof cy !== 'number' ||
       typeof midAngle !== 'number' ||
-      typeof innerRadius !== 'number' ||
-      typeof outerRadius !== 'number' ||
       typeof percent !== 'number'
     ) {
       return null;

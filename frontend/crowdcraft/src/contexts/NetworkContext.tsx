@@ -1,8 +1,8 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { useNetworkStatus, getConnectionQuality } from '@crowdcraft/hooks/useNetworkStatus.ts';
+import { useNetworkStatus, getConnectionQuality } from '../hooks/useNetworkStatus.ts';
 import { offlineQueue, type OfflineAction } from '../utils';
-import { axiosInstance } from '@crowdcraft/api/client.ts';
+import { axiosInstance } from '../api/client.ts';
 import { networkLogger } from '../utils';
 
 interface AxiosLikeError {
