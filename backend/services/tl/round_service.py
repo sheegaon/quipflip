@@ -26,10 +26,10 @@ class RoundService:
 
     def __init__(
         self,
-        matching_service: MatchingService | None = None,
-        clustering_service: ClusteringService | None = None,
-        scoring_service: ScoringService | None = None,
-        prompt_service: PromptService | None = None,
+        matching_service: MatchingService,
+        clustering_service: ClusteringService,
+        scoring_service: ScoringService,
+        prompt_service: PromptService,
     ):
         """Initialize round service.
 
@@ -39,10 +39,10 @@ class RoundService:
             scoring_service: For scoring calculations
             prompt_service: For prompt management
         """
-        self.matching = matching_service or MatchingService()
-        self.clustering = clustering_service or ClusteringService(self.matching)
-        self.scoring = scoring_service or ScoringService()
-        self.prompt = prompt_service or PromptService(self.matching)
+        self.matching = matching_service
+        self.clustering = clustering_service
+        self.scoring = scoring_service
+        self.prompt = prompt_service
 
         settings = get_settings()
         self.entry_cost = settings.tl_entry_cost
