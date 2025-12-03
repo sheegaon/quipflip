@@ -2,8 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { useTutorial } from '../contexts/TutorialContext';
-import { extractErrorMessage } from '@/api/client';
-import apiClient from '@/api/client';
+import apiClient, { extractErrorMessage } from '@crowdcraft/api/client.ts';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { UpgradeGuestAccount } from '../components/UpgradeGuestAccount';
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -34,7 +33,7 @@ export const Dashboard: React.FC = () => {
 
     Promise.all([
       refreshDashboard(controller.signal),
-      apiClient.checkRoundAvailability(controller.signal).then(av => setRoundAvailability(av)).catch(() => ({}))
+      apiClient.tlCheckRoundAvailability(controller.signal).then(av => setRoundAvailability(av)).catch(() => ({}))
     ]).finally(() => setLoading(false));
 
     return () => controller.abort();
@@ -57,7 +56,7 @@ export const Dashboard: React.FC = () => {
     setError(null);
 
     try {
-      const round = await apiClient.startRound();
+      const round = await apiClient.tlStartRound();
       navigate('/play', { state: { round } });
     } catch (err) {
       setError(extractErrorMessage(err) || 'Unable to start a round right now.');
