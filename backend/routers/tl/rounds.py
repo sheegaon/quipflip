@@ -307,7 +307,8 @@ async def get_round(
             wallet_award, vault_award, payout_total = scoring_service.calculate_payout(
                 round_obj.final_coverage
             )
-            gross_payout = gross_payout or payout_total
+            if gross_payout is None:
+                gross_payout = payout_total
 
         return RoundDetails(
             round_id=round_obj.round_id,
