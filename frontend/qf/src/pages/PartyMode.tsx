@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
-import apiClient from '@/api/client';
+import apiClient from '@crowdcraft/api/client.ts';
 import { CircleIcon } from '@crowdcraft/components/icons/NavigationIcons.tsx';
 import type { QFPartyListItem } from '@crowdcraft/api/types.ts';
 
@@ -27,7 +27,7 @@ export const PartyMode: React.FC = () => {
     setError(null);
 
     try {
-      const response = await apiClient.createPartySession({
+      const response = await apiClient.qfCreatePartySession({
         min_players: 6,
         max_players: 9,
         prompts_per_player: 1,
@@ -61,7 +61,7 @@ export const PartyMode: React.FC = () => {
     setError(null);
 
     try {
-      const response = await apiClient.listActiveParties();
+      const response = await apiClient.qfListActiveParties();
       setParties(response.parties);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load parties');
@@ -77,7 +77,7 @@ export const PartyMode: React.FC = () => {
     setError(null);
 
     try {
-      const response = await apiClient.joinPartySessionById(sessionId);
+      const response = await apiClient.qfJoinPartySessionById(sessionId);
 
       // Navigate to party lobby
       navigate(`/party/${response.session_id}`);

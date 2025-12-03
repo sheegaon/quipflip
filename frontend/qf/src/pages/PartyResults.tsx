@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
-import apiClient from '@/api/client';
+import apiClient from '@crowdcraft/api/client.ts';
 import { Header } from '../components/Header';
 import type { QFPartyResultsResponse, QFPartyPlayerStats, QFPartyAward } from '@crowdcraft/api/types.ts';
 
@@ -23,7 +23,7 @@ export const PartyResults: React.FC = () => {
       if (!sessionId) return;
 
       try {
-        const data = await apiClient.getPartyResults(sessionId);
+        const data = await apiClient.qfGetPartyResults(sessionId);
         setResults(data);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load results');

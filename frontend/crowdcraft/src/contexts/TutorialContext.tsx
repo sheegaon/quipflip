@@ -7,7 +7,7 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import apiClient from '@/api/client';
+import apiClient from '@crowdcraft/api/client.ts';
 import { getActionErrorMessage } from '@crowdcraft/utils/errorMessages.ts';
 import { tutorialLogger } from '@crowdcraft/utils/logger.ts';
 import type { QFTutorialProgress, QFTutorialStatus } from '@crowdcraft/api/types.ts';

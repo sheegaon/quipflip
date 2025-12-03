@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import apiClient, { extractErrorMessage } from '@/api/client';
+import apiClient, { extractErrorMessage } from '@crowdcraft/api/client.ts';
 import type { QFLeaderboardResponse } from '@crowdcraft/api/types.ts';
 import { Header } from '../components/Header';
 import WeeklyLeaderboard from '@crowdcraft/components/statistics/WeeklyLeaderboard.tsx';
