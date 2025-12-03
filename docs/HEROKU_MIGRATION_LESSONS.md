@@ -124,3 +124,16 @@ aborted during deploy.
   these mismatches at compile time: ensure all request/response types are fully typed and match the backend
   API specification. This is especially important for authentication endpoints where contract mismatches can
   prevent users from signing up or logging in.
+- **Use `.bindparams()` for parameterized queries in migrations.** Modern SQLAlchemy (1.4+) in Alembic requires
+  using `.bindparams()` on text objects instead of passing parameters as a second argument to `op.execute()`.
+  The old syntax:
+  ```python
+  op.execute(sa.text("INSERT INTO ... VALUES (:id, :name)"), {"id": val1, "name": val2})  # WRONG
+  ```
+  Should be:
+  ```python
+  op.execute(sa.text("INSERT INTO ... VALUES (:id, :name)").bindparams(id=val1, name=val2))  # CORRECT
+  ```
+  This applies to all parameterized queries (INSERT, UPDATE, SELECT) in migration code. Failure to use
+  `.bindparams()` results in `TypeError: execute() takes 2 positional arguments but 3 were given` when
+  running migrations on Heroku or any PostgreSQL deployment.
