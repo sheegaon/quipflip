@@ -107,7 +107,7 @@ async def authenticate_websocket(websocket: WebSocket) -> Optional[Tuple[Player,
                 try:
                     auth_service = AuthService(db, game_type=game_type)
                     payload = auth_service.decode_access_token(token)
-                except Exception:
+                except AuthError:
                     continue
 
                 player_id_str = payload.get("sub") if payload else None
