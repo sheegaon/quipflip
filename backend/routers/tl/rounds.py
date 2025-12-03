@@ -298,6 +298,17 @@ async def get_round(
         if round_obj.player_id != player.player_id:
             raise HTTPException(status_code=403, detail="unauthorized")
 
+        scoring_service = ScoringService()
+        wallet_award = None
+        vault_award = None
+        gross_payout = round_obj.gross_payout
+
+        if round_obj.final_coverage is not None:
+            wallet_award, vault_award, payout_total = scoring_service.calculate_payout(
+                round_obj.final_coverage
+            )
+            gross_payout = gross_payout or payout_total
+
         return RoundDetails(
             round_id=round_obj.round_id,
             prompt_id=round_obj.prompt_id,
@@ -308,7 +319,9 @@ async def get_round(
             strikes=round_obj.strikes,
             status=round_obj.status,
             final_coverage=round_obj.final_coverage,
-            gross_payout=round_obj.gross_payout,
+            gross_payout=gross_payout,
+            wallet_award=wallet_award,
+            vault_award=vault_award,
             created_at=round_obj.created_at,
             ended_at=round_obj.ended_at,
         )
