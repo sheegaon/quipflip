@@ -67,6 +67,12 @@ class AuthSessionResponse(BaseModel):
     legacy_tutorial_completed: Optional[bool] = None
 
 
+# Resolve forward references for models that reference types defined later in the
+# file to avoid runtime PydanticUserError issues during validation.
+AuthTokenResponse.model_rebuild()
+AuthSessionResponse.model_rebuild()
+
+
 class LoginRequest(BaseModel):
     """Login payload."""
 
