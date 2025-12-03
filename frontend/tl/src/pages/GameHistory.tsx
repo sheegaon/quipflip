@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 import { useGame } from '../contexts/GameContext';
-import { PhrasesetList } from '../components/PhrasesetList';
-import { PhrasesetDetails } from '../components/PhrasesetDetails';
 
 interface RoundSummary {
   round_id: string;
@@ -54,20 +52,7 @@ const GameHistory: React.FC = () => {
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="text-lg font-semibold text-gray-800 mb-4">Your Rounds</h2>
-              <PhrasesetList
-                phrasesets={rounds}
-                selectedId={selectedRoundId}
-                onSelect={(round) => setSelectedRoundId(round.round_id)}
-                isLoading={loading}
-              />
             </div>
-          </div>
-
-          <div className="lg:col-span-2">
-            <PhrasesetDetails
-              phraseset={selectedRound}
-              loading={loading}
-            />
           </div>
         </div>
       </div>
