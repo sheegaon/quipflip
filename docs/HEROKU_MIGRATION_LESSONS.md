@@ -86,10 +86,22 @@ aborted during deploy.
   in dependency functions (e.g., `authorization: str | None = Header(None, alias="Authorization")`).
   Plain optional parameters default to query parameters, breaking HTTP header/cookie-based authentication.
 - **Avoid exception handling for DDL statements in async migrations.** When using SQLAlchemy with asyncpg,
-  failed DDL statements (like `ALTER TABLE`) leave the transaction in a failed state. Using try-except around
-  DDL can corrupt the transaction, causing all subsequent database operations to fail with "current transaction
-  is aborted, commands ignored until end of transaction block" errors. Instead, check preconditions BEFORE
-  executing DDL using dialect-aware schema inspection.
+  failed DDL statements (like `ALTER TABLE` or `DROP TABLE`) leave the transaction in a failed state. Using
+  try-except around DDL can corrupt the transaction, causing all subsequent database operations to fail with
+  "current transaction is aborted, commands ignored until end of transaction block" errors. Instead, check
+  preconditions BEFORE executing DDL using dialect-aware schema inspection, or use IF EXISTS/CASCADE clauses.
+- **Use CASCADE when dropping tables with foreign key dependencies.** When dropping a table that other tables
+  reference via foreign keys, PostgreSQL will block the DROP with "cannot drop table X because other objects
+  depend on it". Use `DROP TABLE ... CASCADE` to drop the table and its dependent constraints:
+  ```python
+  if dialect_name == 'postgresql':
+      op.execute(sa.text("DROP TABLE IF EXISTS old_table CASCADE"))
+  else:
+      # SQLite doesn't support CASCADE
+      op.drop_table('old_table')
+  ```
+  The CASCADE will drop all dependent FK constraints, allowing the table to be removed. This is especially
+  important during schema consolidation migrations where you're replacing old tables with new ones.
 - **Use dialect-aware schema inspection in migrations.** PostgreSQL and SQLite have different ways to check
   if a table or column exists. PostgreSQL uses `information_schema.columns`, while SQLite uses `PRAGMA table_info()`.
   When writing migrations that should work on both databases, detect the database dialect and use the appropriate
@@ -124,3 +136,48 @@ aborted during deploy.
   these mismatches at compile time: ensure all request/response types are fully typed and match the backend
   API specification. This is especially important for authentication endpoints where contract mismatches can
   prevent users from signing up or logging in.
+- **Use `.bindparams()` for parameterized queries in migrations.** Modern SQLAlchemy (1.4+) in Alembic requires
+  using `.bindparams()` on text objects instead of passing parameters as a second argument to `op.execute()`.
+  The old syntax:
+  ```python
+  op.execute(sa.text("INSERT INTO ... VALUES (:id, :name)"), {"id": val1, "name": val2})  # WRONG
+  ```
+  Should be:
+  ```python
+  op.execute(sa.text("INSERT INTO ... VALUES (:id, :name)").bindparams(id=val1, name=val2))  # CORRECT
+  ```
+  This applies to all parameterized queries (INSERT, UPDATE, SELECT) in migration code. Failure to use
+  `.bindparams()` results in `TypeError: execute() takes 2 positional arguments but 3 were given` when
+  running migrations on Heroku or any PostgreSQL deployment.
+- **Drop and recreate foreign key constraints when remapping references during large migrations.** When a
+  migration remaps foreign key values (e.g., changing player_id references from one table to another),
+  PostgreSQL's FK constraints will prevent the UPDATE if the new value doesn't exist in the referenced
+  table. On Heroku, you cannot use `DISABLE TRIGGER ALL` (requires superuser). Instead, drop the FK
+  constraints before remapping, then recreate them afterward:
+  ```python
+  def _drop_fk_constraints(table: str, column: str):
+      """Drop existing FK constraints on a column before remapping."""
+      inspector = sa.inspect(bind)
+      existing_fks = inspector.get_foreign_keys(table)
+
+      for fk in existing_fks:
+          if column in fk.get("constrained_columns", []):
+              fk_name = fk.get("name")
+              if fk_name:
+                  op.drop_constraint(fk_name, table, type_="foreignkey")
+
+  def _remap_foreign_keys(table: str, column: str, mappings: list[tuple]):
+      # Drop FK constraints first
+      _drop_fk_constraints(table, column)
+
+      # Remap the values
+      for old_id, new_id in mappings:
+          op.execute(sa.text(f"UPDATE {table} SET {column} = :new_id WHERE {column} = :old_id")
+                     .bindparams(new_id=new_id, old_id=old_id))
+
+  # Later in migration: recreate FK pointing to new table
+  op.create_foreign_key(f"fk_{table}_{column}_players", table, 'players',
+                        local_cols=[column], remote_cols=['player_id'])
+  ```
+  Failure to drop constraints results in `IntegrityError: foreign key constraint violated`. Using
+  `DISABLE TRIGGER ALL` on Heroku results in `InsufficientPrivilegeError: permission denied: system trigger`.
