@@ -270,13 +270,13 @@ export const RoundPlay: React.FC = () => {
             <div className="tile-card p-4">
               <p className="text-ccl-teal" id="wallet-label">Wallet</p>
               <p className="text-xl font-display font-bold text-ccl-navy" aria-labelledby="wallet-label">
-                <CurrencyDisplay amount={player?.tl_wallet || 0} />
+                <CurrencyDisplay amount={player?.wallet || 0} />
               </p>
             </div>
             <div className="tile-card p-4">
               <p className="text-ccl-teal" id="vault-label">Vault</p>
               <p className="text-xl font-display font-bold text-ccl-navy" aria-labelledby="vault-label">
-                <CurrencyDisplay amount={player?.tl_vault || 0} />
+                <CurrencyDisplay amount={player?.vault || 0} />
               </p>
             </div>
           </section>

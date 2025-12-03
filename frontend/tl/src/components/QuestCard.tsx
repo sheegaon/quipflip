@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Quest, QuestCategory, QuestStatus } from '@crowdcraft/api/types.ts';
+import { QFQuest, QFQuestCategory, QFQuestStatus } from '@crowdcraft/api/types.ts';
 import { QuestProgressBar } from './QuestProgressBar';
 import { CurrencyDisplay } from './CurrencyDisplay';
 import { formatDateInUserZone } from '@crowdcraft/utils/datetime.ts';
@@ -12,7 +12,7 @@ import {
 } from '@crowdcraft/components/icons/QuestIcons.tsx';
 
 interface QuestCardProps {
-  quest: Quest;
+  quest: QFQuest;
   onClaim?: (questId: string) => Promise<void>;
   className?: string;
 }
@@ -45,7 +45,7 @@ export const QuestCard: React.FC<QuestCardProps> = ({
   };
 
   // Get category icon and color
-  const getCategoryInfo = (category: QuestCategory): CategoryInfo => {
+  const getCategoryInfo = (category: QFQuestCategory): CategoryInfo => {
     switch (category) {
       case 'streak':
         return {
@@ -78,7 +78,7 @@ export const QuestCard: React.FC<QuestCardProps> = ({
       default:
         return {
           Icon: QuestOverviewIcon,
-          iconAlt: 'Quest icon',
+          iconAlt: 'QFQuest icon',
           iconWrapper: 'bg-gray-100 dark:bg-gray-800',
           badgeClass: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'
         };
@@ -86,7 +86,7 @@ export const QuestCard: React.FC<QuestCardProps> = ({
   };
 
   // Get status badge
-  const getStatusBadge = (status: QuestStatus) => {
+  const getStatusBadge = (status: QFQuestStatus) => {
     switch (status) {
       case 'active':
         return (
