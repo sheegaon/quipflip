@@ -149,8 +149,14 @@ class PlayerService:
         if not player:
             raise PlayerServiceError("invalid_credentials")
 
-        if player.locked_until and player.locked_until > datetime.now(UTC):
-            raise PlayerServiceError("account_locked")
+        if player.locked_until:
+            locked_until = (
+                player.locked_until.replace(tzinfo=UTC)
+                if player.locked_until.tzinfo is None
+                else player.locked_until
+            )
+            if locked_until > datetime.now(UTC):
+                raise PlayerServiceError("account_locked")
 
         if not verify_password(password, player.password_hash):
             raise PlayerServiceError("invalid_credentials")
