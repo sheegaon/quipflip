@@ -31,6 +31,10 @@ from backend.models import (
     QFTransaction, QFDailyBonus, QFResultView, PlayerAbandonedPrompt,
     IRPlayer, IRTransaction, IRDailyBonus, IRResultView
 )
+# Import ThinkLink models for schema generation
+from backend.models.tl import (
+    TLPlayerData, TLPrompt, TLAnswer, TLCluster, TLRound, TLGuess, TLTransaction, TLChallenge
+)
 # Set database URL from config
 settings = get_settings()
 config.set_main_option("sqlalchemy.url", settings.database_url)

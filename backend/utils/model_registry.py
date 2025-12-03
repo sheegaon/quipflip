@@ -15,6 +15,7 @@ class GameType(Enum):
     QF = "qf"
     IR = "ir"
     MM = "mm"
+    TL = "tl"
 
 
 class AIPlayerType(Enum):
@@ -67,6 +68,9 @@ def get_transaction_model(game_type: GameType) -> Type:
     elif game_type == GameType.MM:
         from backend.models.mm.transaction import MMTransaction
         return MMTransaction
+    elif game_type == GameType.TL:
+        from backend.models.tl.transaction import TLTransaction
+        return TLTransaction
     else:
         raise ValueError(f"Unsupported game type: {game_type}")
 
@@ -82,6 +86,9 @@ def get_player_data_model(game_type: GameType) -> Type:
     elif game_type == GameType.MM:
         from backend.models.mm.player_data import MMPlayerData
         return MMPlayerData
+    elif game_type == GameType.TL:
+        from backend.models.tl.player_data import TLPlayerData
+        return TLPlayerData
     else:
         raise ValueError(f"Unsupported game type: {game_type}")
 
