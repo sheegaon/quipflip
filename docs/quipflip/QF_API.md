@@ -1490,6 +1490,79 @@ Explicitly mark a phraseset payout as claimed (idempotent).
 - `Phraseset not found` - Invalid phraseset ID
 - `Not a contributor to this phraseset` - Player did not submit the prompt or copies
 
+#### `GET /phrasesets/{phraseset_id}/history`
+Get the activity history and audit trail for a phraseset. Shows when phrases were submitted, votes recorded, and when results were finalized.
+
+**Access Control:** Restricted to contributors (prompt/copy submitters) only.
+
+**Response:**
+```json
+{
+  "phraseset_id": "uuid",
+  "prompt_text": "my deepest desire is to be (a/an)",
+  "activity": [
+    {
+      "activity_id": "uuid",
+      "activity_type": "prompt_submitted",
+      "created_at": "2025-01-06T12:00:00Z",
+      "player_id": "uuid",
+      "player_username": "Prompt Pirate",
+      "metadata": {
+        "phrase": "FAMOUS"
+      }
+    },
+    {
+      "activity_id": "uuid",
+      "activity_type": "copy1_submitted",
+      "created_at": "2025-01-06T12:05:00Z",
+      "player_id": "uuid",
+      "player_username": "Copy Cat",
+      "metadata": {
+        "phrase": "POPULAR"
+      }
+    },
+    {
+      "activity_id": "uuid",
+      "activity_type": "vote_recorded",
+      "created_at": "2025-01-06T12:10:30Z",
+      "player_id": "uuid",
+      "player_username": "Voter 1",
+      "metadata": {
+        "phrase": "FAMOUS"
+      }
+    },
+    {
+      "activity_id": "uuid",
+      "activity_type": "phraseset_finalized",
+      "created_at": "2025-01-06T12:12:05Z",
+      "player_id": null,
+      "player_username": null,
+      "metadata": {
+        "total_votes": 10,
+        "winning_phrase": "FAMOUS"
+      }
+    }
+  ],
+  "total_activities": 14
+}
+```
+
+**Activity Types:**
+- `prompt_submitted` - Player submitted the original prompt phrase
+- `copy1_submitted` - First copy was submitted
+- `copy2_submitted` - Second copy was submitted
+- `vote_recorded` - Player voted for a phrase
+- `phraseset_finalized` - Voting concluded and results calculated
+
+**Errors:**
+- `404 Phraseset not found` - Invalid phraseset ID
+- `403 Not a contributor` - Player did not participate in this phraseset
+
+**Notes:**
+- Shows complete audit trail from submission through finalization
+- Useful for debugging and understanding how a round progressed
+- Only contributors (not voters) can view history
+
 #### `GET /phrasesets/completed`
 Get a list of finalized phrasesets with summary metadata.
 
@@ -1766,6 +1839,397 @@ Claim a completed quest reward.
 - Claiming a quest adds the reward amount to player balance
 - Quest status changes from "completed" to "claimed"
 - Operation is idempotent - claiming an already claimed quest returns success
+
+---
+
+## Party Mode Endpoints (`/qf/party` prefix)
+
+Party Mode allows players to play together in real-time synchronized groups. Players can create or join party sessions, play rounds collaboratively, and view shared results.
+
+### `GET /party/list`
+List all available public party sessions that the current player can join.
+
+**Response:**
+```json
+{
+  "sessions": [
+    {
+      "session_id": "uuid",
+      "creator_username": "Party Host",
+      "member_count": 2,
+      "status": "waiting",
+      "created_at": "2025-01-06T12:00:00Z"
+    }
+  ]
+}
+```
+
+### `POST /party/create`
+Create a new party session for multiplayer gameplay.
+
+**Request:**
+```json
+{
+  "public": true
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "session_id": "uuid",
+  "creator_id": "uuid",
+  "creator_username": "Party Host",
+  "status": "waiting",
+  "member_count": 1,
+  "members": [
+    {
+      "player_id": "uuid",
+      "username": "Party Host",
+      "ready": false,
+      "is_creator": true
+    }
+  ],
+  "created_at": "2025-01-06T12:00:00Z"
+}
+```
+
+### `POST /party/join`
+Join an existing party session.
+
+**Request:**
+```json
+{
+  "session_id": "uuid"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "session_id": "uuid",
+  "member_count": 3
+}
+```
+
+**Errors:**
+- `404 Session not found`
+- `400 Session full` - Maximum members reached
+- `409 Already in session` - Player already in this session
+
+### `POST /party/{session_id}/join`
+Alternative endpoint to join a party session by session ID in the path.
+
+### `POST /party/{session_id}/ready`
+Mark the current player as ready to start the party round.
+
+**Response:**
+```json
+{
+  "success": true,
+  "ready": true,
+  "all_ready": false,
+  "ready_count": 2,
+  "total_members": 3
+}
+```
+
+**Notes:**
+- Only works when session status is `waiting`
+- Once all members are ready, the session automatically transitions to `playing`
+
+### `POST /party/{session_id}/add-ai`
+Add an AI player to the party session (creator only).
+
+**Request:**
+```json
+{
+  "ai_level": "intermediate"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "ai_player_id": "uuid",
+  "ai_username": "AI Player",
+  "member_count": 4
+}
+```
+
+**Errors:**
+- `403 Forbidden` - Only session creator can add AI players
+
+**Notes:**
+- AI levels: "easy", "intermediate", "hard"
+- AI players fill seats to allow smaller groups to play
+
+### `POST /party/{session_id}/ping`
+Send a notification to all session members (typically used before starting).
+
+**Response:**
+```json
+{
+  "success": true,
+  "notified": 3
+}
+```
+
+### `POST /party/{session_id}/process-ai`
+Manually trigger AI players to submit their moves (internal/testing endpoint).
+
+**Response:**
+```json
+{
+  "success": true,
+  "processed": 1
+}
+```
+
+### `POST /party/{session_id}/start`
+Start the party gameplay (creator only, all members must be ready).
+
+**Response:**
+```json
+{
+  "success": true,
+  "session_id": "uuid",
+  "status": "playing",
+  "round_id": "uuid",
+  "round_type": "prompt"
+}
+```
+
+**Errors:**
+- `403 Forbidden` - Only creator can start
+- `400 Not all members ready` - Wait for all players to mark ready
+- `400 Already started` - Session already in progress
+
+### `GET /party/{session_id}/status`
+Get the current status of a party session.
+
+**Response:**
+```json
+{
+  "session_id": "uuid",
+  "status": "playing",
+  "creator_id": "uuid",
+  "member_count": 3,
+  "members": [
+    {
+      "player_id": "uuid",
+      "username": "Player Name",
+      "ready": true,
+      "is_creator": true,
+      "is_ai": false,
+      "current_round_status": "submitted"
+    }
+  ],
+  "current_round_id": "uuid",
+  "current_round_type": "prompt",
+  "created_at": "2025-01-06T12:00:00Z"
+}
+```
+
+**Errors:**
+- `404 Session not found`
+
+### `GET /party/{session_id}/results`
+Get results from a completed party session.
+
+**Response:**
+```json
+{
+  "session_id": "uuid",
+  "status": "completed",
+  "creator_username": "Party Host",
+  "member_count": 3,
+  "phrasesets_completed": 5,
+  "results": [
+    {
+      "round_number": 1,
+      "phraseset_id": "uuid",
+      "prompt_text": "my deepest desire is to be (a/an)",
+      "scores": [
+        {
+          "player_id": "uuid",
+          "username": "Player 1",
+          "earnings": 150
+        }
+      ]
+    }
+  ],
+  "total_earnings": [
+    {
+      "player_id": "uuid",
+      "username": "Player 1",
+      "total_earned": 450
+    }
+  ]
+}
+```
+
+**Errors:**
+- `404 Session not found`
+- `400 Session not completed` - Gameplay still in progress
+
+### `POST /party/{session_id}/rounds/prompt`
+Start a prompt round within the party session.
+
+**Request:** _None_
+
+**Response:**
+```json
+{
+  "round_id": "uuid",
+  "prompt_text": "my deepest desire is to be (a/an)",
+  "expires_at": "2025-01-06T12:35:56",
+  "cost": 100
+}
+```
+
+**Notes:**
+- Charge applies to session, not individual players
+- All members see the same prompt
+
+### `POST /party/{session_id}/rounds/copy`
+Start a copy round within the party session.
+
+**Request (Optional):**
+```json
+{
+  "prompt_round_id": "uuid"
+}
+```
+
+**Response:**
+```json
+{
+  "round_id": "uuid",
+  "original_phrase": "FAMOUS",
+  "expires_at": "2025-01-06T12:36:00",
+  "cost": 40,
+  "discount_active": true,
+  "is_second_copy": false
+}
+```
+
+### `POST /party/{session_id}/rounds/vote`
+Start a vote round within the party session.
+
+**Response:**
+```json
+{
+  "round_id": "uuid",
+  "phraseset_id": "uuid",
+  "prompt_text": "the secret to happiness is (a/an)",
+  "phrases": ["LOVE", "MONEY", "CONTENTMENT"],
+  "expires_at": "2025-01-06T12:30:15"
+}
+```
+
+### `POST /party/{session_id}/rounds/{round_id}/submit`
+Submit a phrase or vote for a party round.
+
+**Request:**
+```json
+{
+  "phrase": "famous"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "phrase": "FAMOUS"
+}
+```
+
+**Notes:**
+- Same validation rules as solo rounds apply
+- Submission is recorded for the party session
+
+### `POST /party/{session_id}/leave`
+Leave a party session.
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Left session"
+}
+```
+
+**Errors:**
+- `404 Session not found`
+- `400 Creator cannot leave` - Creator must delete the session
+- `400 Gameplay in progress` - Cannot leave mid-round (optional restriction)
+
+### `WebSocket /party/{session_id}/ws`
+WebSocket connection for real-time party gameplay synchronization.
+
+**Authentication:** Requires valid access token (cookie or query parameter)
+
+**Connection:**
+```javascript
+const ws = new WebSocket(`wss://api.example.com/qf/party/${sessionId}/ws?token=${accessToken}`);
+```
+
+**Messages Received:**
+```json
+{
+  "type": "member_joined",
+  "username": "New Player",
+  "member_count": 4,
+  "timestamp": "2025-01-06T12:00:00Z"
+}
+```
+
+```json
+{
+  "type": "round_started",
+  "round_id": "uuid",
+  "round_type": "prompt",
+  "round_data": {...},
+  "timestamp": "2025-01-06T12:01:00Z"
+}
+```
+
+```json
+{
+  "type": "submission",
+  "player_username": "Player Name",
+  "round_id": "uuid",
+  "timestamp": "2025-01-06T12:02:00Z"
+}
+```
+
+```json
+{
+  "type": "session_status",
+  "status": "playing",
+  "members": [...],
+  "timestamp": "2025-01-06T12:00:30Z"
+}
+```
+
+**Message Types:**
+- `member_joined` - A player joined the session
+- `member_left` - A player left the session
+- `member_ready` - A player marked themselves ready
+- `round_started` - New round begins
+- `submission` - Player submitted for current round
+- `round_completed` - Current round finished
+- `session_status` - Periodic status update (every 5 seconds)
+- `error` - Error occurred in session
+
+**Error Handling:**
+- `1008 POLICY_VIOLATION` - Authentication failed
+- `1011 SERVER_ERROR` - Unexpected server error
+- Connection closes on session deletion or fatal error
 
 ---
 
