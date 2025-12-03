@@ -8,7 +8,7 @@ from typing import List, Tuple, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from backend.models.tl import TLCluster, TLAnswer
-from backend.services.tl.matching_service import MatchingService
+from backend.services.tl.matching_service import TLMatchingService
 
 logger = logging.getLogger(__name__)
 
@@ -17,10 +17,10 @@ CLUSTER_JOIN_THRESHOLD = 0.75
 CLUSTER_DUPLICATE_THRESHOLD = 0.90
 
 
-class ClusteringService:
+class TLClusteringService:
     """Service for semantic clustering of answers."""
 
-    def __init__(self, matching_service: MatchingService):
+    def __init__(self, matching_service: TLMatchingService):
         """Initialize clustering service.
 
         Args:

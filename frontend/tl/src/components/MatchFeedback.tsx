@@ -60,7 +60,7 @@ export const MatchFeedback: React.FC<MatchFeedbackProps> = ({
           const style = getGuessStyle(guess);
           return (
             <div
-              key={guesses.length - 1 - index}
+              key={guess.timestamp}
               className={`
                 p-3 rounded-lg text-sm font-mono
                 ${style.container} ${style.text}

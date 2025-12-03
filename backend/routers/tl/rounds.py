@@ -16,11 +16,11 @@ from backend.schemas.tl_round import (
     AbandonRoundResponse,
 )
 from backend.services import GameType
-from backend.services.tl.round_service import RoundService
-from backend.services.tl.matching_service import MatchingService
-from backend.services.tl.clustering_service import ClusteringService
-from backend.services.tl.scoring_service import ScoringService
-from backend.services.tl.prompt_service import PromptService
+from backend.services.tl.round_service import TLRoundService
+from backend.services.tl.matching_service import TLMatchingService
+from backend.services.tl.clustering_service import TLClusteringService
+from backend.services.tl.scoring_service import TLScoringService
+from backend.services.tl.prompt_service import TLPromptService
 from backend.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -83,11 +83,11 @@ async def start_round(
 
         # Initialize services
         settings = get_settings()
-        matching_service = MatchingService()
-        clustering_service = ClusteringService(matching_service)
-        scoring_service = ScoringService()
-        prompt_service = PromptService(matching_service)
-        round_service = RoundService(
+        matching_service = TLMatchingService()
+        clustering_service = TLClusteringService(matching_service)
+        scoring_service = TLScoringService()
+        prompt_service = TLPromptService(matching_service)
+        round_service = TLRoundService(
             matching_service,
             clustering_service,
             scoring_service,
@@ -156,11 +156,11 @@ async def submit_guess(
         logger.debug(f"💭 Player {player.player_id} submitting guess: '{guess_text}'")
 
         # Initialize services
-        matching_service = MatchingService()
-        clustering_service = ClusteringService(matching_service)
-        scoring_service = ScoringService()
-        prompt_service = PromptService(matching_service)
-        round_service = RoundService(
+        matching_service = TLMatchingService()
+        clustering_service = TLClusteringService(matching_service)
+        scoring_service = TLScoringService()
+        prompt_service = TLPromptService(matching_service)
+        round_service = TLRoundService(
             matching_service,
             clustering_service,
             scoring_service,
@@ -228,11 +228,11 @@ async def abandon_round(
         logger.debug(f"🚪 Player {player.player_id} abandoning round {round_id}...")
 
         # Initialize services
-        matching_service = MatchingService()
-        clustering_service = ClusteringService(matching_service)
-        scoring_service = ScoringService()
-        prompt_service = PromptService(matching_service)
-        round_service = RoundService(
+        matching_service = TLMatchingService()
+        clustering_service = TLClusteringService(matching_service)
+        scoring_service = TLScoringService()
+        prompt_service = TLPromptService(matching_service)
+        round_service = TLRoundService(
             matching_service,
             clustering_service,
             scoring_service,
@@ -298,6 +298,18 @@ async def get_round(
         if round_obj.player_id != player.player_id:
             raise HTTPException(status_code=403, detail="unauthorized")
 
+        scoring_service = TLScoringService()
+        wallet_award = None
+        vault_award = None
+        gross_payout = round_obj.gross_payout
+
+        if round_obj.final_coverage is not None:
+            wallet_award, vault_award, payout_total = scoring_service.calculate_payout(
+                round_obj.final_coverage
+            )
+            if gross_payout is None:
+                gross_payout = payout_total
+
         return RoundDetails(
             round_id=round_obj.round_id,
             prompt_id=round_obj.prompt_id,
@@ -308,7 +320,9 @@ async def get_round(
             strikes=round_obj.strikes,
             status=round_obj.status,
             final_coverage=round_obj.final_coverage,
-            gross_payout=round_obj.gross_payout,
+            gross_payout=gross_payout,
+            wallet_award=wallet_award,
+            vault_award=vault_award,
             created_at=round_obj.created_at,
             ended_at=round_obj.ended_at,
         )

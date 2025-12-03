@@ -51,6 +51,8 @@ class RoundDetails(BaseSchema):
     status: str
     final_coverage: Optional[float]
     gross_payout: Optional[int]
+    wallet_award: Optional[int] = None
+    vault_award: Optional[int] = None
     created_at: datetime
     ended_at: Optional[datetime]
 

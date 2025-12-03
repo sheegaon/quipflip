@@ -8,15 +8,15 @@ from typing import List, Optional, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from backend.models.tl import TLPrompt, TLAnswer
-from backend.services.tl.matching_service import MatchingService
+from backend.services.tl.matching_service import TLMatchingService
 
 logger = logging.getLogger(__name__)
 
 
-class PromptService:
+class TLPromptService:
     """Service for prompt management and selection."""
 
-    def __init__(self, matching_service: MatchingService):
+    def __init__(self, matching_service: TLMatchingService):
         """Initialize prompt service.
 
         Args:

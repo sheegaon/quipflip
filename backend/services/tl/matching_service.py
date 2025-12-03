@@ -11,7 +11,7 @@ from backend.config import get_settings
 logger = logging.getLogger(__name__)
 
 
-class MatchingService:
+class TLMatchingService:
     """Service for semantic matching using OpenAI embeddings."""
 
     def __init__(self):

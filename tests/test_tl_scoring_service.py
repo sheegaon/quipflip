@@ -1,7 +1,7 @@
 """Unit tests for ThinkLink ScoringService."""
 import pytest
 import math
-from backend.services.tl.scoring_service import ScoringService
+from backend.services.tl.scoring_service import TLScoringService
 
 
 class TestScoringService:
@@ -10,7 +10,7 @@ class TestScoringService:
     @pytest.fixture
     def scoring_service(self):
         """Create a ScoringService instance."""
-        return ScoringService()
+        return TLScoringService()
 
     def test_calculate_payout_zero_coverage(self, scoring_service):
         """Test payout with 0% coverage."""
