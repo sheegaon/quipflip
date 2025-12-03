@@ -15,6 +15,7 @@ from backend.services import GameType
 from backend.services.tl.prompt_service import PromptService
 from backend.services.tl.clustering_service import ClusteringService
 from backend.services.tl.matching_service import MatchingService
+from backend.services.tl.scoring_service import ScoringService
 from backend.models.tl import TLPrompt, TLAnswer, TLCluster
 from backend.config import get_settings
 
@@ -155,13 +156,10 @@ async def get_corpus_stats(
         largest_cluster_size = max(cluster_sizes) if cluster_sizes else 0
         smallest_cluster_size = min(cluster_sizes) if cluster_sizes else 0
 
-        # Calculate total weight
-        total_weight = 0.0
-        matching_service = MatchingService()
-        clustering_service = ClusteringService(matching_service)
-        for cluster in clusters:
-            weight = await clustering_service.calculate_cluster_weight(db, str(cluster.cluster_id))
-            total_weight += weight
+        # Calculate total weight (single efficient query instead of N+1)
+        cluster_ids = [str(c.cluster_id) for c in clusters]
+        scoring_service = ScoringService()
+        total_weight = await scoring_service._calculate_total_weight(db, cluster_ids)
 
         logger.debug(
             f"📊 Corpus stats for {prompt_id}: "
