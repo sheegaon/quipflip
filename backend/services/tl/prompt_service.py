@@ -16,13 +16,13 @@ logger = logging.getLogger(__name__)
 class TLPromptService:
     """Service for prompt management and selection."""
 
-    def __init__(self, matching_service: TLMatchingService):
+    def __init__(self, matching_service: TLMatchingService | None = None):
         """Initialize prompt service.
 
         Args:
             matching_service: MatchingService for embedding generation
         """
-        self.matching = matching_service
+        self.matching = matching_service or TLMatchingService()
 
     async def get_random_active_prompt(
         self,
