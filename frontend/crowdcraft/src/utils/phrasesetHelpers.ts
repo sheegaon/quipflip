@@ -1,11 +1,11 @@
-import type { PhrasesetSummary } from '@crowdcraft/api/types.ts';
+import type { QFPhrasesetSummary } from '@crowdcraft/api/types.ts';
 
 /**
  * Get a unique ID for a phraseset summary.
  * For copy rounds, uses copy_round_id to ensure uniqueness when a player has multiple copies.
  * For prompts or fallback, uses phraseset_id or prompt_round_id.
  */
-export const getUniqueIdForSummary = (summary: PhrasesetSummary): string => {
+export const getUniqueIdForSummary = (summary: QFPhrasesetSummary): string => {
   // For copy rounds, use copy_round_id if available (ensures uniqueness for multiple copies)
   if (summary.your_role === 'copy' && summary.copy_round_id) {
     return summary.copy_round_id;

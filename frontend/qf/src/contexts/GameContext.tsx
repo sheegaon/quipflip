@@ -11,13 +11,13 @@ import { SessionState } from '@crowdcraft/types/session.ts';
 import { GUEST_CREDENTIALS_KEY } from '@crowdcraft/utils/storageKeys.ts';
 import type {
   Player,
-  ActiveRound,
-  PendingResult,
-  RoundAvailability,
-  PhrasesetDashboardSummary,
-  UnclaimedResult,
-  FlagCopyRoundResponse,
-  AbandonRoundResponse,
+  QFActiveRound,
+  QFPendingResult,
+  QFRoundAvailability,
+  QFPhrasesetDashboardSummary,
+  QFUnclaimedResult,
+  QFFlagCopyRoundResponse,
+  QFAbandonRoundResponse,
 } from '@crowdcraft/api/types.ts';
 
 interface GameState {
@@ -25,11 +25,11 @@ interface GameState {
   username: string | null;
   player: Player | null;
   showNewUserWelcome: boolean;
-  activeRound: ActiveRound | null;
-  pendingResults: PendingResult[];
-  phrasesetSummary: PhrasesetDashboardSummary | null;
-  unclaimedResults: UnclaimedResult[];
-  roundAvailability: RoundAvailability | null;
+  activeRound: QFActiveRound | null;
+  pendingResults: QFPendingResult[];
+  phrasesetSummary: QFPhrasesetDashboardSummary | null;
+  unclaimedResults: QFUnclaimedResult[];
+  roundAvailability: QFRoundAvailability | null;
   copyRoundHints: string[] | null;
   loading: boolean;
   error: string | null;
@@ -50,10 +50,10 @@ interface GameActions {
   startCopyRound: () => Promise<void>;
   startVoteRound: () => Promise<void>;
   claimPhrasesetPrize: (phrasesetId: string) => Promise<void>;
-  flagCopyRound: (roundId: string) => Promise<FlagCopyRoundResponse>;
-  abandonRound: (roundId: string) => Promise<AbandonRoundResponse>;
+  flagCopyRound: (roundId: string) => Promise<QFFlagCopyRoundResponse>;
+  abandonRound: (roundId: string) => Promise<QFAbandonRoundResponse>;
   fetchCopyHints: (roundId: string, signal?: AbortSignal) => Promise<string[]>;
-  updateActiveRound: (roundData: ActiveRound) => void;
+  updateActiveRound: (roundData: QFActiveRound) => void;
   setGlobalError: (message: string) => void;
 }
 
@@ -66,7 +66,7 @@ const GameContext = createContext<GameContextType | undefined>(undefined);
 
 export const GameProvider: React.FC<{
   children: React.ReactNode;
-  onPendingResultsChange?: (results: PendingResult[]) => void;
+  onPendingResultsChange?: (results: QFPendingResult[]) => void;
   onDashboardTrigger?: () => void;
 }> = ({ children, onPendingResultsChange, onDashboardTrigger }) => {
   // Navigation hook - use directly since we're inside Router
@@ -80,11 +80,11 @@ export const GameProvider: React.FC<{
   const [username, setUsername] = useState<string | null>(null);
   const [player, setPlayer] = useState<Player | null>(null);
   const [showNewUserWelcome, setShowNewUserWelcome] = useState(false);
-  const [activeRound, setActiveRound] = useState<ActiveRound | null>(null);
-  const [pendingResults, setPendingResults] = useState<PendingResult[]>([]);
-  const [phrasesetSummary, setPhrasesetSummary] = useState<PhrasesetDashboardSummary | null>(null);
-  const [unclaimedResults, setUnclaimedResults] = useState<UnclaimedResult[]>([]);
-  const [roundAvailability, setRoundAvailability] = useState<RoundAvailability | null>(null);
+  const [activeRound, setActiveRound] = useState<QFActiveRound | null>(null);
+  const [pendingResults, setPendingResults] = useState<QFPendingResult[]>([]);
+  const [phrasesetSummary, setPhrasesetSummary] = useState<QFPhrasesetDashboardSummary | null>(null);
+  const [unclaimedResults, setUnclaimedResults] = useState<QFUnclaimedResult[]>([]);
+  const [roundAvailability, setRoundAvailability] = useState<QFRoundAvailability | null>(null);
   const [copyRoundHints, setCopyRoundHints] = useState<string[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -346,7 +346,7 @@ export const GameProvider: React.FC<{
 
       // De-duplicate pending results using a composite unique key
       // For each result, create a unique key based on phraseset_id + round_id
-      const getResultKey = (result: PendingResult) => {
+      const getResultKey = (result: QFPendingResult) => {
         if (result.role === 'prompt' && result.prompt_round_id) {
           return `${result.phraseset_id}-prompt-${result.prompt_round_id}`;
         } else if (result.role === 'copy' && result.copy_round_id) {
@@ -357,8 +357,8 @@ export const GameProvider: React.FC<{
       };
 
       const deduplicatedResults = data.pending_results.filter(
-        (result: PendingResult, index: number, self: PendingResult[]) =>
-          index === self.findIndex((r: PendingResult) => getResultKey(r) === getResultKey(result))
+        (result: QFPendingResult, index: number, self: QFPendingResult[]) =>
+          index === self.findIndex((r: QFPendingResult) => getResultKey(r) === getResultKey(result))
       );
 
       if (deduplicatedResults.length !== data.pending_results.length) {
@@ -647,7 +647,7 @@ export const GameProvider: React.FC<{
     }
   }, [copyRoundHints, setError]);
 
-  const flagCopyRound = useCallback(async (roundId: string): Promise<FlagCopyRoundResponse> => {
+  const flagCopyRound = useCallback(async (roundId: string): Promise<QFFlagCopyRoundResponse> => {
     gameContextLogger.debug('🚩 GameContext flagCopyRound called', { roundId }); try {
       gameContextLogger.debug('📞 Calling apiClient.flagCopyRound()...', { roundId });
       const response = await apiClient.flagCopyRound(roundId);
@@ -660,7 +660,7 @@ export const GameProvider: React.FC<{
     }
   }, [refreshDashboard]);
 
-  const abandonRound = useCallback(async (roundId: string): Promise<AbandonRoundResponse> => {
+  const abandonRound = useCallback(async (roundId: string): Promise<QFAbandonRoundResponse> => {
     gameContextLogger.debug('🛑 GameContext abandonRound called', { roundId }); try {
       gameContextLogger.debug('📞 Calling apiClient.abandonRound()...', { roundId });
       const response = await apiClient.abandonRound(roundId);
@@ -765,7 +765,7 @@ export const GameProvider: React.FC<{
     }
   }, [isAuthenticated, triggerPoll, onDashboardTrigger]);
 
-  const updateActiveRound = useCallback((roundData: ActiveRound) => {
+  const updateActiveRound = useCallback((roundData: QFActiveRound) => {
     gameContextLogger.debug('🔄 Updating active round manually:', roundData);
     setActiveRound(roundData);
   }, []);

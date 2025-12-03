@@ -1,11 +1,11 @@
 import React from 'react';
-import type { GrossEarningsLeaderboard, GrossEarningsLeaderboardEntry } from '../../api/types.ts';
+import type { QFGrossEarningsLeaderboard, QFGrossEarningsLeaderboardEntry } from '../../api/types.ts';
 
 interface WeeklyLeaderboardProps {
   promptLeaderboard?: null;
   copyLeaderboard?: null;
   voterLeaderboard?: null;
-  grossEarningsLeaderboard: GrossEarningsLeaderboard | null;
+  grossEarningsLeaderboard: QFGrossEarningsLeaderboard | null;
   loading?: boolean;
   error?: string | null;
 }
@@ -14,14 +14,14 @@ const MIN_BAR_PERCENTAGE = 8;
 
 interface LeaderboardEntryDisplayConfig {
   metricLabel: string;
-  metricFormatter: (entry: GrossEarningsLeaderboardEntry) => string | React.ReactNode;
-  metricAccessor: (entry: GrossEarningsLeaderboardEntry) => number;
-  detailFormatter: (entry: GrossEarningsLeaderboardEntry) => string;
+  metricFormatter: (entry: QFGrossEarningsLeaderboardEntry) => string | React.ReactNode;
+  metricAccessor: (entry: QFGrossEarningsLeaderboardEntry) => number;
+  detailFormatter: (entry: QFGrossEarningsLeaderboardEntry) => string;
   emptyMessage: string;
 }
 
 interface GenericLeaderboardListProps {
-  leaders: GrossEarningsLeaderboardEntry[];
+  leaders: QFGrossEarningsLeaderboardEntry[];
   config: LeaderboardEntryDisplayConfig;
 }
 
@@ -81,7 +81,7 @@ const GenericLeaderboardList: React.FC<GenericLeaderboardListProps> = ({ leaders
   );
 };
 
-const GrossEarningsLeaderboardList: React.FC<{ leaders: GrossEarningsLeaderboardEntry[] }> = ({ leaders }) => {
+const GrossEarningsLeaderboardList: React.FC<{ leaders: QFGrossEarningsLeaderboardEntry[] }> = ({ leaders }) => {
   return (
     <GenericLeaderboardList
       leaders={leaders}

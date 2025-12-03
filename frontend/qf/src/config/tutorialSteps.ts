@@ -1,18 +1,18 @@
-import type { TutorialProgress } from '@/api/types';
+import type { QFTutorialProgress } from '@crowdcraft/api/types.ts';
 
 export interface TutorialStep {
-  id: TutorialProgress;
+  id: QFTutorialProgress;
   title: string;
   message: string;
   target?: string; // CSS selector for element to highlight
   position?: 'top' | 'bottom' | 'left' | 'right';
   action?: 'click' | 'wait';
-  nextStep?: TutorialProgress;
+  nextStep?: QFTutorialProgress;
   showSkip?: boolean;
   showBack?: boolean;
 }
 
-export const TUTORIAL_STEPS: Record<TutorialProgress, TutorialStep | null> = {
+export const TUTORIAL_STEPS: Record<QFTutorialProgress, TutorialStep | null> = {
   not_started: null,
 
   welcome: {
@@ -121,17 +121,17 @@ Check your history, refine your style, and keep climbing.`,
   completed: null,
 };
 
-export const getTutorialStep = (progress: TutorialProgress): TutorialStep | null => {
+export const getTutorialStep = (progress: QFTutorialProgress): TutorialStep | null => {
   return TUTORIAL_STEPS[progress];
 };
 
-export const getNextStep = (currentStep: TutorialProgress): TutorialProgress | null => {
+export const getNextStep = (currentStep: QFTutorialProgress): QFTutorialProgress | null => {
   const step = TUTORIAL_STEPS[currentStep];
   return step?.nextStep || null;
 };
 
-export const getPreviousStep = (currentStep: TutorialProgress): TutorialProgress | null => {
-  const steps: TutorialProgress[] = ['welcome', 'dashboard', 'prompt_round', 'copy_round', 'vote_round', 'rounds_guide'];
+export const getPreviousStep = (currentStep: QFTutorialProgress): QFTutorialProgress | null => {
+  const steps: QFTutorialProgress[] = ['welcome', 'dashboard', 'prompt_round', 'copy_round', 'vote_round', 'rounds_guide'];
   const currentIndex = steps.indexOf(currentStep);
   if (currentIndex > 0) {
     return steps[currentIndex - 1];

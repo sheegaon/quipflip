@@ -1,18 +1,18 @@
-import type { TutorialProgress } from '@/api/types';
+import type { MMTutorialProgress } from '@crowdcraft/api/types.ts';
 
 export interface TutorialStep {
-  id: TutorialProgress;
+  id: MMTutorialProgress;
   title: string;
   message: string;
   target?: string; // CSS selector for element to highlight
   position?: 'top' | 'bottom' | 'left' | 'right';
   action?: 'click' | 'wait';
-  nextStep?: TutorialProgress;
+  nextStep?: MMTutorialProgress;
   showSkip?: boolean;
   showBack?: boolean;
 }
 
-export const TUTORIAL_STEPS: Record<TutorialProgress, TutorialStep | null> = {
+export const TUTORIAL_STEPS: Record<MMTutorialProgress, TutorialStep | null> = {
   not_started: null,
 
   welcome: {
@@ -123,17 +123,17 @@ twice.`,
   completed: null,
 };
 
-export const getTutorialStep = (progress: TutorialProgress): TutorialStep | null => {
+export const getTutorialStep = (progress: MMTutorialProgress): TutorialStep | null => {
   return TUTORIAL_STEPS[progress];
 };
 
-export const getNextStep = (currentStep: TutorialProgress): TutorialProgress | null => {
+export const getNextStep = (currentStep: MMTutorialProgress): MMTutorialProgress | null => {
   const step = TUTORIAL_STEPS[currentStep];
   return step?.nextStep || null;
 };
 
-export const getPreviousStep = (currentStep: TutorialProgress): TutorialProgress | null => {
-  const steps: TutorialProgress[] = ['welcome', 'dashboard', 'prompt_round', 'copy_round', 'vote_round', 'rounds_guide'];
+export const getPreviousStep = (currentStep: MMTutorialProgress): MMTutorialProgress | null => {
+  const steps: MMTutorialProgress[] = ['welcome', 'dashboard', 'prompt_round', 'copy_round', 'vote_round', 'rounds_guide'];
   const currentIndex = steps.indexOf(currentStep);
   if (currentIndex > 0) {
     return steps[currentIndex - 1];

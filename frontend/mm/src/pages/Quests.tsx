@@ -4,15 +4,15 @@ import { useQuests } from '../contexts/QuestContext';
 import { QuestCard } from '../components/QuestCard';
 import SuccessNotification from '../components/SuccessNotification';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
-import type { Quest } from '@crowdcraft/api/types.ts';
+import type { MMQuest } from '@crowdcraft/api/types.ts';
 import { questsLogger } from '@crowdcraft/utils/logger.ts';
 import { isSameDay } from '@crowdcraft/utils/date.ts';
 import { QuestClaimableIcon, QuestOverviewIcon } from '@crowdcraft/components/icons/QuestIcons.tsx';
 import { StateEmptyIcon, StateErrorIcon, StateFilterEmptyIcon, StateLoadingIcon } from '@crowdcraft/components/icons/StateIcons.tsx';
 
-// Quest categories for filtering
+// MMQuest categories for filtering
 const QUEST_CATEGORIES = ['all', 'streak', 'quality', 'activity', 'milestone'] as const;
-type QuestCategory = typeof QUEST_CATEGORIES[number];
+type MMQuestCategory = typeof QUEST_CATEGORIES[number];
 
 export const Quests: React.FC = () => {
   const { state: gameState, actions: gameActions } = useGame();
@@ -30,7 +30,7 @@ export const Quests: React.FC = () => {
   } = questState;
   const { refreshQuests, claimQuest } = questActions;
 
-  const [selectedCategory, setSelectedCategory] = useState<QuestCategory>('all');
+  const [selectedCategory, setSelectedCategory] = useState<MMQuestCategory>('all');
   const [successMessage, setSuccessMessage] = useState<string>('');
   const hasRequestedQuestsRef = useRef(false);
 
@@ -93,8 +93,8 @@ export const Quests: React.FC = () => {
     try {
       questsLogger.info('Claiming quest reward', { questId });
       const result = await claimQuest(questId);
-      setSuccessMessage(`Quest reward claimed! +${result.reward_amount}f`);
-      questsLogger.info('Quest reward claimed successfully', {
+      setSuccessMessage(`MMQuest reward claimed! +${result.reward_amount}f`);
+      questsLogger.info('MMQuest reward claimed successfully', {
         questId,
         reward: result.reward_amount,
       });
@@ -103,31 +103,31 @@ export const Quests: React.FC = () => {
     }
   };
 
-  const handleCategoryChange = (category: QuestCategory) => {
-    questsLogger.debug('Quest category changed', { category });
+  const handleCategoryChange = (category: MMQuestCategory) => {
+    questsLogger.debug('MMQuest category changed', { category });
     setSelectedCategory(category);
   };
 
   const filteredQuests = selectedCategory === 'all'
     ? quests
-    : quests.filter((q: Quest) => q.category === selectedCategory);
+    : quests.filter((q: MMQuest) => q.category === selectedCategory);
 
   const filteredActiveQuests = selectedCategory === 'all'
     ? activeQuests
-    : activeQuests.filter((q: Quest) => q.category === selectedCategory);
+    : activeQuests.filter((q: MMQuest) => q.category === selectedCategory);
 
   const filteredClaimableQuests = selectedCategory === 'all'
     ? claimableQuests
-    : claimableQuests.filter((q: Quest) => q.category === selectedCategory);
+    : claimableQuests.filter((q: MMQuest) => q.category === selectedCategory);
 
-  const claimedQuests = filteredQuests.filter((q: Quest) => q.status === 'claimed');
+  const claimedQuests = filteredQuests.filter((q: MMQuest) => q.status === 'claimed');
 
   const categoryStats = {
     all: quests.length,
-    streak: quests.filter((q: Quest) => q.category === 'streak').length,
-    quality: quests.filter((q: Quest) => q.category === 'quality').length,
-    activity: quests.filter((q: Quest) => q.category === 'activity').length,
-    milestone: quests.filter((q: Quest) => q.category === 'milestone').length,
+    streak: quests.filter((q: MMQuest) => q.category === 'streak').length,
+    quality: quests.filter((q: MMQuest) => q.category === 'quality').length,
+    activity: quests.filter((q: MMQuest) => q.category === 'activity').length,
+    milestone: quests.filter((q: MMQuest) => q.category === 'milestone').length,
   };
 
   if (!player) {
@@ -287,7 +287,7 @@ export const Quests: React.FC = () => {
                 Claimable Quests ({filteredClaimableQuests.length})
               </h3>
               <div className="space-y-4">
-                {filteredClaimableQuests.map((quest: Quest) => (
+                {filteredClaimableQuests.map((quest: MMQuest) => (
                   <QuestCard
                     key={quest.quest_id}
                     quest={quest}
@@ -304,7 +304,7 @@ export const Quests: React.FC = () => {
                 Active Quests ({filteredActiveQuests.length})
               </h3>
               <div className="space-y-4">
-                {filteredActiveQuests.map((quest: Quest) => (
+                {filteredActiveQuests.map((quest: MMQuest) => (
                   <QuestCard
                     key={quest.quest_id}
                     quest={quest}
@@ -320,7 +320,7 @@ export const Quests: React.FC = () => {
                 Claimed Quests ({claimedQuests.length})
               </h3>
               <div className="space-y-4">
-                {claimedQuests.map((quest: Quest) => (
+                {claimedQuests.map((quest: MMQuest) => (
                   <QuestCard
                     key={quest.quest_id}
                     quest={quest}

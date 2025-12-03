@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useTutorial } from '../../contexts/TutorialContext';
 import { getTutorialStep, getPreviousStep } from '@/config/tutorialSteps';
-import type { TutorialProgress } from '@crowdcraft/api/types.ts';
+import type { IRTutorialProgress } from '@crowdcraft/api/types.ts';
 import './TutorialOverlay.css';
 import { ArrowLeftIcon, ArrowRightIcon } from '../icons/ArrowIcons';
 import { FlagIcon } from '../icons/EngagementIcons';
@@ -77,7 +77,7 @@ const TutorialOverlay: React.FC<TutorialOverlayProps> = ({ onComplete }) => {
   const [isNavigating, setIsNavigating] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
-  const step = currentStep ? getTutorialStep(currentStep as TutorialProgress) : null;
+  const step = currentStep ? getTutorialStep(currentStep as IRTutorialProgress) : null;
 
   useEffect(() => {
     if (cardRef.current) {
@@ -127,7 +127,7 @@ const TutorialOverlay: React.FC<TutorialOverlayProps> = ({ onComplete }) => {
     if (isNavigating || !currentStep) return;
     setIsNavigating(true);
     try {
-      const prevStep = getPreviousStep(currentStep as TutorialProgress);
+      const prevStep = getPreviousStep(currentStep as IRTutorialProgress);
       if (prevStep) {
         await advanceStep(prevStep);
       }

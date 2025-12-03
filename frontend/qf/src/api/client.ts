@@ -1,21 +1,21 @@
 import { BaseApiClient, extractErrorMessage, clearStoredCredentials } from '@crowdcraft/api/BaseApiClient.ts';
 import type {
   ApiError,
-  CreatePartySessionRequest,
-  CreatePartySessionResponse,
-  JoinPartySessionResponse,
-  MarkReadyResponse,
-  PartyListResponse,
-  PartyPingResponse,
-  PartyResultsResponse,
-  PartySessionStatusResponse,
-  StartPartyCopyResponse,
-  StartPartyPromptResponse,
-  StartPartySessionResponse,
-  StartPartyVoteResponse,
-  SubmitPartyRoundResponse,
-  OnlineUsersResponse,
-  PingUserResponse,
+  QFCreatePartySessionRequest,
+  QFCreatePartySessionResponse,
+  QFJoinPartySessionResponse,
+  QFMarkReadyResponse,
+  QFPartyListResponse,
+  QFPartyPingResponse,
+  QFPartyResultsResponse,
+  QFPartySessionStatusResponse,
+  QFStartPartyCopyResponse,
+  QFStartPartyPromptResponse,
+  QFStartPartySessionResponse,
+  QFStartPartyVoteResponse,
+  QFSubmitPartyRoundResponse,
+  QFOnlineUsersResponse,
+  QFPingUserResponse,
 } from '@crowdcraft/api/types.ts';
 
 const baseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
@@ -27,11 +27,11 @@ class QuipFlipApiClient extends BaseApiClient {
   }
 
   async createPartySession(
-    request: CreatePartySessionRequest = {},
+    request: QFCreatePartySessionRequest = {},
     signal?: AbortSignal,
-  ): Promise<CreatePartySessionResponse> {
+  ): Promise<QFCreatePartySessionResponse> {
     try {
-      const { data } = await this.api.post<CreatePartySessionResponse>('/party/create', request, {
+      const { data } = await this.api.post<QFCreatePartySessionResponse>('/party/create', request, {
         signal,
         timeout: 10000,
       });
@@ -65,23 +65,23 @@ class QuipFlipApiClient extends BaseApiClient {
     }
   }
 
-  async listActiveParties(signal?: AbortSignal): Promise<PartyListResponse> {
-    const { data } = await this.api.get<PartyListResponse>('/party/list', { signal });
+  async listActiveParties(signal?: AbortSignal): Promise<QFPartyListResponse> {
+    const { data } = await this.api.get<QFPartyListResponse>('/party/list', { signal });
     return data;
   }
 
-  async joinPartySessionById(sessionId: string, signal?: AbortSignal): Promise<JoinPartySessionResponse> {
-    const { data } = await this.api.post<JoinPartySessionResponse>(`/party/${sessionId}/join`, {}, { signal });
+  async joinPartySessionById(sessionId: string, signal?: AbortSignal): Promise<QFJoinPartySessionResponse> {
+    const { data } = await this.api.post<QFJoinPartySessionResponse>(`/party/${sessionId}/join`, {}, { signal });
     return data;
   }
 
-  async joinPartySession(partyCode: string, signal?: AbortSignal): Promise<JoinPartySessionResponse> {
-    const { data } = await this.api.post<JoinPartySessionResponse>('/party/join', { party_code: partyCode }, { signal });
+  async joinPartySession(partyCode: string, signal?: AbortSignal): Promise<QFJoinPartySessionResponse> {
+    const { data } = await this.api.post<QFJoinPartySessionResponse>('/party/join', { party_code: partyCode }, { signal });
     return data;
   }
 
-  async markPartyReady(sessionId: string, signal?: AbortSignal): Promise<MarkReadyResponse> {
-    const { data } = await this.api.post<MarkReadyResponse>(`/party/${sessionId}/ready`, {}, { signal });
+  async markPartyReady(sessionId: string, signal?: AbortSignal): Promise<QFMarkReadyResponse> {
+    const { data } = await this.api.post<QFMarkReadyResponse>(`/party/${sessionId}/ready`, {}, { signal });
     return data;
   }
 
@@ -97,13 +97,13 @@ class QuipFlipApiClient extends BaseApiClient {
     return data;
   }
 
-  async startPartySession(sessionId: string, signal?: AbortSignal): Promise<StartPartySessionResponse> {
-    const { data } = await this.api.post<StartPartySessionResponse>(`/party/${sessionId}/start`, {}, { signal });
+  async startPartySession(sessionId: string, signal?: AbortSignal): Promise<QFStartPartySessionResponse> {
+    const { data } = await this.api.post<QFStartPartySessionResponse>(`/party/${sessionId}/start`, {}, { signal });
     return data;
   }
 
-  async getPartySessionStatus(sessionId: string, signal?: AbortSignal): Promise<PartySessionStatusResponse> {
-    const { data } = await this.api.get<PartySessionStatusResponse>(`/party/${sessionId}/status`, { signal });
+  async getPartySessionStatus(sessionId: string, signal?: AbortSignal): Promise<QFPartySessionStatusResponse> {
+    const { data } = await this.api.get<QFPartySessionStatusResponse>(`/party/${sessionId}/status`, { signal });
     return data;
   }
 
@@ -115,8 +115,8 @@ class QuipFlipApiClient extends BaseApiClient {
     return data;
   }
 
-  async startPartyPromptRound(sessionId: string, signal?: AbortSignal): Promise<StartPartyPromptResponse> {
-    const { data } = await this.api.post<StartPartyPromptResponse>(
+  async startPartyPromptRound(sessionId: string, signal?: AbortSignal): Promise<QFStartPartyPromptResponse> {
+    const { data } = await this.api.post<QFStartPartyPromptResponse>(
       `/party/${sessionId}/rounds/prompt`,
       {},
       { signal },
@@ -124,8 +124,8 @@ class QuipFlipApiClient extends BaseApiClient {
     return data;
   }
 
-  async startPartyCopyRound(sessionId: string, signal?: AbortSignal): Promise<StartPartyCopyResponse> {
-    const { data } = await this.api.post<StartPartyCopyResponse>(
+  async startPartyCopyRound(sessionId: string, signal?: AbortSignal): Promise<QFStartPartyCopyResponse> {
+    const { data } = await this.api.post<QFStartPartyCopyResponse>(
       `/party/${sessionId}/rounds/copy`,
       {},
       { signal },
@@ -133,8 +133,8 @@ class QuipFlipApiClient extends BaseApiClient {
     return data;
   }
 
-  async startPartyVoteRound(sessionId: string, signal?: AbortSignal): Promise<StartPartyVoteResponse> {
-    const { data } = await this.api.post<StartPartyVoteResponse>(
+  async startPartyVoteRound(sessionId: string, signal?: AbortSignal): Promise<QFStartPartyVoteResponse> {
+    const { data } = await this.api.post<QFStartPartyVoteResponse>(
       `/party/${sessionId}/rounds/vote`,
       {},
       { signal },
@@ -147,8 +147,8 @@ class QuipFlipApiClient extends BaseApiClient {
     roundId: string,
     payload: { phrase?: string; vote?: string },
     signal?: AbortSignal,
-  ): Promise<SubmitPartyRoundResponse> {
-    const { data } = await this.api.post<SubmitPartyRoundResponse>(
+  ): Promise<QFSubmitPartyRoundResponse> {
+    const { data } = await this.api.post<QFSubmitPartyRoundResponse>(
       `/party/${sessionId}/rounds/${roundId}/submit`,
       payload,
       { signal },
@@ -156,23 +156,23 @@ class QuipFlipApiClient extends BaseApiClient {
     return data;
   }
 
-  async getPartyResults(sessionId: string, signal?: AbortSignal): Promise<PartyResultsResponse> {
-    const { data } = await this.api.get<PartyResultsResponse>(`/party/${sessionId}/results`, { signal });
+  async getPartyResults(sessionId: string, signal?: AbortSignal): Promise<QFPartyResultsResponse> {
+    const { data } = await this.api.get<QFPartyResultsResponse>(`/party/${sessionId}/results`, { signal });
     return data;
   }
 
-  async pingParty(sessionId: string, signal?: AbortSignal): Promise<PartyPingResponse> {
-    const { data } = await this.api.post<PartyPingResponse>(`/party/${sessionId}/ping`, {}, { signal });
+  async pingParty(sessionId: string, signal?: AbortSignal): Promise<QFPartyPingResponse> {
+    const { data } = await this.api.post<QFPartyPingResponse>(`/party/${sessionId}/ping`, {}, { signal });
     return data;
   }
 
-  async getOnlineUsers(signal?: AbortSignal): Promise<OnlineUsersResponse> {
-    const { data } = await this.api.get<OnlineUsersResponse>('/users/online', { signal });
+  async getOnlineUsers(signal?: AbortSignal): Promise<QFOnlineUsersResponse> {
+    const { data } = await this.api.get<QFOnlineUsersResponse>('/users/online', { signal });
     return data;
   }
 
-  async pingOnlineUser(username: string, signal?: AbortSignal): Promise<PingUserResponse> {
-    const { data } = await this.api.post<PingUserResponse>(
+  async pingOnlineUser(username: string, signal?: AbortSignal): Promise<QFPingUserResponse> {
+    const { data } = await this.api.post<QFPingUserResponse>(
       '/users/online/ping',
       { username },
       { signal },

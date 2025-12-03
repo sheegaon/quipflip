@@ -9,7 +9,7 @@ import ThumbFeedbackButton from '../components/ThumbFeedbackButton';
 import { useTimer } from '@crowdcraft/hooks/useTimer.ts';
 import { usePhraseValidation } from '@crowdcraft/hooks/usePhraseValidation.ts';
 import { quipflipBranding } from '@crowdcraft/utils/brandedMessages.ts';
-import type { PromptState, SubmitPhraseResponse } from '@crowdcraft/api/types.ts';
+import type { QFPromptState, QFSubmitPhraseResponse } from '@crowdcraft/api/types.ts';
 import { promptRoundLogger } from '@crowdcraft/utils/logger.ts';
 import { TrackingIcon } from '@crowdcraft/components/icons/NavigationIcons.tsx';
 import { usePartyMode } from '../contexts/PartyModeContext';
@@ -48,7 +48,7 @@ export const PromptRound: React.FC = () => {
 
   const { isPhraseValid, trimmedPhrase } = usePhraseValidation(phrase);
 
-  const roundData = activeRound?.round_type === 'prompt' ? activeRound.state as PromptState : null;
+  const roundData = activeRound?.round_type === 'prompt' ? activeRound.state as QFPromptState : null;
 
   // Get dynamic penalty from config or use default
   const abandonedPenalty = roundAvailability?.abandoned_penalty || 5;
@@ -192,7 +192,7 @@ export const PromptRound: React.FC = () => {
       promptRoundLogger.debug('Submitting prompt round phrase', {
         roundId: roundData.round_id,
       });
-      const response: SubmitPhraseResponse = await apiClient.submitPhrase(roundData.round_id, trimmedPhrase);
+      const response: QFSubmitPhraseResponse = await apiClient.submitPhrase(roundData.round_id, trimmedPhrase);
 
       // Update party context if present
       if (response.party_context && partyState.isPartyMode) {

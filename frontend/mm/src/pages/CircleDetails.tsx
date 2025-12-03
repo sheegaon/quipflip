@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import apiClient, { extractErrorMessage } from '@/api/client';
-import type { Circle, CircleMember, CircleJoinRequest } from '@crowdcraft/api/types.ts';
+import type { MMCircle, MMCircleMember, MMCircleJoinRequest } from '@crowdcraft/api/types.ts';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { formatDateTimeInUserZone } from '@crowdcraft/utils/datetime.ts';
 
@@ -9,9 +9,9 @@ export const CircleDetails: React.FC = () => {
   const { circleId } = useParams<{ circleId: string }>();
   const navigate = useNavigate();
 
-  const [circle, setCircle] = useState<Circle | null>(null);
-  const [members, setMembers] = useState<CircleMember[]>([]);
-  const [joinRequests, setJoinRequests] = useState<CircleJoinRequest[]>([]);
+  const [circle, setCircle] = useState<MMCircle | null>(null);
+  const [members, setMembers] = useState<MMCircleMember[]>([]);
+  const [joinRequests, setJoinRequests] = useState<MMCircleJoinRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -42,7 +42,7 @@ export const CircleDetails: React.FC = () => {
         }
       }
     } catch (err) {
-      setError(extractErrorMessage(err) || 'Failed to load Circle details');
+      setError(extractErrorMessage(err) || 'Failed to load MMCircle details');
     } finally {
       setLoading(false);
     }
@@ -84,7 +84,7 @@ export const CircleDetails: React.FC = () => {
 
   const handleRemoveMember = async (playerId: string, username: string) => {
     if (!circleId) return;
-    if (!confirm(`Remove ${username} from this Circle?`)) return;
+    if (!confirm(`Remove ${username} from this MMCircle?`)) return;
 
     try {
       setActionLoading(`remove-${playerId}`);
@@ -99,14 +99,14 @@ export const CircleDetails: React.FC = () => {
 
   const handleLeaveCircle = async () => {
     if (!circleId) return;
-    if (!confirm('Are you sure you want to leave this Circle?')) return;
+    if (!confirm('Are you sure you want to leave this MMCircle?')) return;
 
     try {
       setActionLoading('leave');
       await apiClient.leaveCircle(circleId);
       navigate('/circles');
     } catch (err) {
-      setError(extractErrorMessage(err) || 'Failed to leave Circle');
+      setError(extractErrorMessage(err) || 'Failed to leave MMCircle');
       setActionLoading(null);
     }
   };
@@ -115,7 +115,7 @@ export const CircleDetails: React.FC = () => {
     return (
       <div className="max-w-4xl mx-auto px-4 pb-12 pt-4">
         <div className="tile-card p-6 md:p-8">
-          <LoadingSpinner isLoading message="Loading Circle details..." />
+          <LoadingSpinner isLoading message="Loading MMCircle details..." />
         </div>
       </div>
     );
@@ -125,7 +125,7 @@ export const CircleDetails: React.FC = () => {
     return (
       <div className="max-w-4xl mx-auto px-4 pb-12 pt-4">
         <div className="tile-card p-6 md:p-8">
-          <p className="text-red-600">Circle not found</p>
+          <p className="text-red-600">MMCircle not found</p>
           <button
             onClick={() => navigate('/circles')}
             className="mt-4 bg-ccl-navy text-white font-bold py-2 px-4 rounded-tile"
@@ -170,7 +170,7 @@ export const CircleDetails: React.FC = () => {
                 disabled={actionLoading === 'leave'}
                 className="bg-ccl-navy/10 text-ccl-navy font-bold py-2 px-4 rounded-tile hover:bg-ccl-navy/20 transition-all disabled:opacity-50"
               >
-                {actionLoading === 'leave' ? 'Leaving...' : 'Leave Circle'}
+                {actionLoading === 'leave' ? 'Leaving...' : 'Leave MMCircle'}
               </button>
             )}
           </div>

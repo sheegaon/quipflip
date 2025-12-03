@@ -1,34 +1,34 @@
 import { BaseApiClient, extractErrorMessage, clearStoredCredentials } from '@crowdcraft/api/BaseApiClient.ts';
 import type {
-  CaptionSubmissionResult,
-  Circle,
-  CircleJoinRequestsResponse,
-  CircleListResponse,
-  CircleMembersResponse,
-  MemeCaptionResponse,
-  MemeCaptionSubmission,
-  MemeVoteResult,
-  MemeVoteRound,
-  VoteResult,
-  VoteRoundState,
-  AddMemberRequest,
-  AddMemberResponse,
-  ApproveJoinRequestResponse,
-  CreateCircleRequest,
-  CreateCircleResponse,
-  DenyJoinRequestResponse,
-  JoinCircleResponse,
-  LeaveCircleResponse,
-  RemoveMemberResponse,
-  OnlineUsersResponse,
-  PingUserResponse,
-  BetaSurveyListResponse,
-  BetaSurveyStatusResponse,
-  BetaSurveySubmissionRequest,
-  BetaSurveySubmissionResponse,
-  Quest,
-  QuestListResponse,
-  ClaimQuestRewardResponse,
+  MMCaptionSubmissionResult,
+  MMCircle,
+  MMCircleJoinRequestsResponse,
+  MMCircleListResponse,
+  MMCircleMembersResponse,
+  MMMemeCaptionResponse,
+  MMMemeCaptionSubmission,
+  MMMemeVoteResult,
+  MMMemeVoteRound,
+  MMVoteResult,
+  MMVoteRoundState,
+  MMAddMemberRequest,
+  MMAddMemberResponse,
+  MMApproveJoinRequestResponse,
+  MMCreateCircleRequest,
+  MMCreateCircleResponse,
+  MMDenyJoinRequestResponse,
+  MMJoinCircleResponse,
+  MMLeaveCircleResponse,
+  MMRemoveMemberResponse,
+  MMOnlineUsersResponse,
+  MMPingUserResponse,
+  MMBetaSurveyListResponse,
+  MMBetaSurveyStatusResponse,
+  MMBetaSurveySubmissionRequest,
+  MMBetaSurveySubmissionResponse,
+  MMQuest,
+  MMQuestListResponse,
+  MMClaimQuestRewardResponse,
 } from '@crowdcraft/api/types.ts';
 
 const baseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
@@ -44,40 +44,40 @@ class MemeMintApiClient extends BaseApiClient {
     super(API_BASE_URL);
   }
 
-  override async getQuests(signal?: AbortSignal): Promise<QuestListResponse> {
-    const { data } = await this.api.get<QuestListResponse>('/quests', {
+  override async getQuests(signal?: AbortSignal): Promise<MMQuestListResponse> {
+    const { data } = await this.api.get<MMQuestListResponse>('/quests', {
       baseURL: QF_API_BASE_URL,
       signal,
     });
     return data;
   }
 
-  override async getActiveQuests(signal?: AbortSignal): Promise<Quest[]> {
-    const { data } = await this.api.get<Quest[]>('/quests/active', {
+  override async getActiveQuests(signal?: AbortSignal): Promise<MMQuest[]> {
+    const { data } = await this.api.get<MMQuest[]>('/quests/active', {
       baseURL: QF_API_BASE_URL,
       signal,
     });
     return data;
   }
 
-  override async getClaimableQuests(signal?: AbortSignal): Promise<Quest[]> {
-    const { data } = await this.api.get<Quest[]>('/quests/claimable', {
+  override async getClaimableQuests(signal?: AbortSignal): Promise<MMQuest[]> {
+    const { data } = await this.api.get<MMQuest[]>('/quests/claimable', {
       baseURL: QF_API_BASE_URL,
       signal,
     });
     return data;
   }
 
-  override async getQuest(questId: string, signal?: AbortSignal): Promise<Quest> {
-    const { data } = await this.api.get<Quest>(`/quests/${questId}`, {
+  override async getQuest(questId: string, signal?: AbortSignal): Promise<MMQuest> {
+    const { data } = await this.api.get<MMQuest>(`/quests/${questId}`, {
       baseURL: QF_API_BASE_URL,
       signal,
     });
     return data;
   }
 
-  override async claimQuestReward(questId: string, signal?: AbortSignal): Promise<ClaimQuestRewardResponse> {
-    const { data } = await this.api.post<ClaimQuestRewardResponse>(
+  override async claimQuestReward(questId: string, signal?: AbortSignal): Promise<MMClaimQuestRewardResponse> {
+    const { data } = await this.api.post<MMClaimQuestRewardResponse>(
       `/quests/${questId}/claim`,
       {},
       {
@@ -88,7 +88,7 @@ class MemeMintApiClient extends BaseApiClient {
     return data;
   }
 
-  async startMemeVoteRound(signal?: AbortSignal): Promise<MemeVoteRound> {
+  async startMemeVoteRound(signal?: AbortSignal): Promise<MMMemeVoteRound> {
     const data = await this.startMemeMintVoteRound(signal);
     return {
       round_id: data.round_id,
@@ -107,7 +107,7 @@ class MemeMintApiClient extends BaseApiClient {
     };
   }
 
-  async submitMemeVote(roundId: string, captionId: string, signal?: AbortSignal): Promise<MemeVoteResult> {
+  async submitMemeVote(roundId: string, captionId: string, signal?: AbortSignal): Promise<MMMemeVoteResult> {
     const data = await this.submitMemeMintVote(roundId, captionId, signal);
     return {
       round_id: roundId,
@@ -118,7 +118,7 @@ class MemeMintApiClient extends BaseApiClient {
     };
   }
 
-  async submitMemeCaption(request: MemeCaptionSubmission, signal?: AbortSignal): Promise<MemeCaptionResponse> {
+  async submitMemeCaption(request: MMMemeCaptionSubmission, signal?: AbortSignal): Promise<MMMemeCaptionResponse> {
     const { data } = await this.api.post('/rounds/caption', request, { signal });
     return data;
   }
@@ -131,12 +131,12 @@ class MemeMintApiClient extends BaseApiClient {
     return this.getRoundDetails(roundId, signal);
   }
 
-  async startMemeMintVoteRound(signal?: AbortSignal): Promise<VoteRoundState> {
+  async startMemeMintVoteRound(signal?: AbortSignal): Promise<MMVoteRoundState> {
     const { data } = await this.api.post('/rounds/vote', {}, { signal });
     return data;
   }
 
-  async submitMemeMintVote(roundId: string, captionId: string, signal?: AbortSignal): Promise<VoteResult> {
+  async submitMemeMintVote(roundId: string, captionId: string, signal?: AbortSignal): Promise<MMVoteResult> {
     const { data } = await this.api.post(`/rounds/vote/${roundId}/submit`, { caption_id: captionId }, { signal });
     return data;
   }
@@ -144,7 +144,7 @@ class MemeMintApiClient extends BaseApiClient {
   async submitMemeMintCaption(
     payload: { round_id: string; text: string; kind?: 'original' | 'riff'; parent_caption_id?: string | null },
     signal?: AbortSignal,
-  ): Promise<CaptionSubmissionResult> {
+  ): Promise<MMCaptionSubmissionResult> {
     const backendPayload = {
       round_id: payload.round_id,
       text: payload.text,
@@ -153,16 +153,16 @@ class MemeMintApiClient extends BaseApiClient {
     return data;
   }
 
-  async getOnlineUsers(signal?: AbortSignal): Promise<OnlineUsersResponse> {
-    const { data } = await this.api.get<OnlineUsersResponse>('/users/online', {
+  async getOnlineUsers(signal?: AbortSignal): Promise<MMOnlineUsersResponse> {
+    const { data } = await this.api.get<MMOnlineUsersResponse>('/users/online', {
       baseURL: QF_API_BASE_URL,
       signal,
     });
     return data;
   }
 
-  async pingOnlineUser(username: string, signal?: AbortSignal): Promise<PingUserResponse> {
-    const { data } = await this.api.post<PingUserResponse>(
+  async pingOnlineUser(username: string, signal?: AbortSignal): Promise<MMPingUserResponse> {
+    const { data } = await this.api.post<MMPingUserResponse>(
       '/users/online/ping',
       { username },
       { baseURL: QF_API_BASE_URL, signal },
@@ -171,62 +171,62 @@ class MemeMintApiClient extends BaseApiClient {
   }
 
   override async submitBetaSurvey(
-    payload: BetaSurveySubmissionRequest,
+    payload: MMBetaSurveySubmissionRequest,
     signal?: AbortSignal,
-  ): Promise<BetaSurveySubmissionResponse> {
-    const { data } = await this.api.post<BetaSurveySubmissionResponse>('/feedback/beta-survey', payload, {
+  ): Promise<MMBetaSurveySubmissionResponse> {
+    const { data } = await this.api.post<MMBetaSurveySubmissionResponse>('/feedback/beta-survey', payload, {
       baseURL: QF_API_BASE_URL,
       signal,
     });
     return data;
   }
 
-  override async getBetaSurveyStatus(signal?: AbortSignal): Promise<BetaSurveyStatusResponse> {
-    const { data } = await this.api.get<BetaSurveyStatusResponse>('/feedback/beta-survey/status', {
+  override async getBetaSurveyStatus(signal?: AbortSignal): Promise<MMBetaSurveyStatusResponse> {
+    const { data } = await this.api.get<MMBetaSurveyStatusResponse>('/feedback/beta-survey/status', {
       baseURL: QF_API_BASE_URL,
       signal,
     });
     return data;
   }
 
-  override async listBetaSurveyResponses(signal?: AbortSignal): Promise<BetaSurveyListResponse> {
-    const { data } = await this.api.get<BetaSurveyListResponse>('/feedback/beta-survey', {
+  override async listBetaSurveyResponses(signal?: AbortSignal): Promise<MMBetaSurveyListResponse> {
+    const { data } = await this.api.get<MMBetaSurveyListResponse>('/feedback/beta-survey', {
       baseURL: QF_API_BASE_URL,
       signal,
     });
     return data;
   }
 
-  async listCircles(params: { limit?: number; offset?: number } = {}, signal?: AbortSignal): Promise<CircleListResponse> {
-    const { data } = await this.api.get<CircleListResponse>('/circles', {
+  async listCircles(params: { limit?: number; offset?: number } = {}, signal?: AbortSignal): Promise<MMCircleListResponse> {
+    const { data } = await this.api.get<MMCircleListResponse>('/circles', {
       params,
       signal,
     });
     return data;
   }
 
-  async getCircle(circleId: string, signal?: AbortSignal): Promise<Circle> {
-    const { data } = await this.api.get<Circle>(`/circles/${circleId}`, { signal });
+  async getCircle(circleId: string, signal?: AbortSignal): Promise<MMCircle> {
+    const { data } = await this.api.get<MMCircle>(`/circles/${circleId}`, { signal });
     return data;
   }
 
-  async createCircle(payload: CreateCircleRequest, signal?: AbortSignal): Promise<CreateCircleResponse> {
-    const { data } = await this.api.post<CreateCircleResponse>('/circles', payload, { signal });
+  async createCircle(payload: MMCreateCircleRequest, signal?: AbortSignal): Promise<MMCreateCircleResponse> {
+    const { data } = await this.api.post<MMCreateCircleResponse>('/circles', payload, { signal });
     return data;
   }
 
-  async joinCircle(circleId: string, signal?: AbortSignal): Promise<JoinCircleResponse> {
-    const { data } = await this.api.post<JoinCircleResponse>(`/circles/${circleId}/join`, {}, { signal });
+  async joinCircle(circleId: string, signal?: AbortSignal): Promise<MMJoinCircleResponse> {
+    const { data } = await this.api.post<MMJoinCircleResponse>(`/circles/${circleId}/join`, {}, { signal });
     return data;
   }
 
-  async leaveCircle(circleId: string, signal?: AbortSignal): Promise<LeaveCircleResponse> {
-    const { data } = await this.api.delete<LeaveCircleResponse>(`/circles/${circleId}/leave`, { signal });
+  async leaveCircle(circleId: string, signal?: AbortSignal): Promise<MMLeaveCircleResponse> {
+    const { data } = await this.api.delete<MMLeaveCircleResponse>(`/circles/${circleId}/leave`, { signal });
     return data;
   }
 
-  async getCircleMembers(circleId: string, signal?: AbortSignal): Promise<CircleMembersResponse> {
-    const { data } = await this.api.get<CircleMembersResponse>(`/circles/${circleId}/members`, {
+  async getCircleMembers(circleId: string, signal?: AbortSignal): Promise<MMCircleMembersResponse> {
+    const { data } = await this.api.get<MMCircleMembersResponse>(`/circles/${circleId}/members`, {
       signal,
     });
     return data;
@@ -234,22 +234,22 @@ class MemeMintApiClient extends BaseApiClient {
 
   async addCircleMember(
     circleId: string,
-    payload: AddMemberRequest,
+    payload: MMAddMemberRequest,
     signal?: AbortSignal,
-  ): Promise<AddMemberResponse> {
-    const { data } = await this.api.post<AddMemberResponse>(`/circles/${circleId}/members`, payload, { signal });
+  ): Promise<MMAddMemberResponse> {
+    const { data } = await this.api.post<MMAddMemberResponse>(`/circles/${circleId}/members`, payload, { signal });
     return data;
   }
 
-  async removeCircleMember(circleId: string, playerId: string, signal?: AbortSignal): Promise<RemoveMemberResponse> {
-    const { data } = await this.api.delete<RemoveMemberResponse>(`/circles/${circleId}/members/${playerId}`, {
+  async removeCircleMember(circleId: string, playerId: string, signal?: AbortSignal): Promise<MMRemoveMemberResponse> {
+    const { data } = await this.api.delete<MMRemoveMemberResponse>(`/circles/${circleId}/members/${playerId}`, {
       signal,
     });
     return data;
   }
 
-  async getCircleJoinRequests(circleId: string, signal?: AbortSignal): Promise<CircleJoinRequestsResponse> {
-    const { data } = await this.api.get<CircleJoinRequestsResponse>(`/circles/${circleId}/join-requests`, {
+  async getCircleJoinRequests(circleId: string, signal?: AbortSignal): Promise<MMCircleJoinRequestsResponse> {
+    const { data } = await this.api.get<MMCircleJoinRequestsResponse>(`/circles/${circleId}/join-requests`, {
       signal,
     });
     return data;
@@ -259,8 +259,8 @@ class MemeMintApiClient extends BaseApiClient {
     circleId: string,
     requestId: string,
     signal?: AbortSignal,
-  ): Promise<ApproveJoinRequestResponse> {
-    const { data } = await this.api.post<ApproveJoinRequestResponse>(
+  ): Promise<MMApproveJoinRequestResponse> {
+    const { data } = await this.api.post<MMApproveJoinRequestResponse>(
       `/circles/${circleId}/join-requests/${requestId}/approve`,
       {},
       { signal },
@@ -268,8 +268,8 @@ class MemeMintApiClient extends BaseApiClient {
     return data;
   }
 
-  async denyJoinRequest(circleId: string, requestId: string, signal?: AbortSignal): Promise<DenyJoinRequestResponse> {
-    const { data } = await this.api.post<DenyJoinRequestResponse>(
+  async denyJoinRequest(circleId: string, requestId: string, signal?: AbortSignal): Promise<MMDenyJoinRequestResponse> {
+    const { data } = await this.api.post<MMDenyJoinRequestResponse>(
       `/circles/${circleId}/join-requests/${requestId}/deny`,
       {},
       { signal },

@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import apiClient from '@/api/client';
-import type { PracticePhraseset } from '@crowdcraft/api/types.ts';
+import type { QFPracticePhraseset } from '@crowdcraft/api/types.ts';
 
 interface UsePracticePhrasesetSessionResult {
-  phraseset: PracticePhraseset | null;
+  phraseset: QFPracticePhraseset | null;
   loading: boolean;
   error: string | null;
   clearSession: () => void;
@@ -19,7 +19,7 @@ const STORAGE_KEY = 'quipflip_practice_copy_phraseset';
  * - Call clearSession() when the copy flow is complete to fetch a new one next time
  */
 export const usePracticePhrasesetSession = (): UsePracticePhrasesetSessionResult => {
-  const [phraseset, setPhraseset] = useState<PracticePhraseset | null>(null);
+  const [phraseset, setPhraseset] = useState<QFPracticePhraseset | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,7 +35,7 @@ export const usePracticePhrasesetSession = (): UsePracticePhrasesetSessionResult
         const stored = sessionStorage.getItem(STORAGE_KEY);
         if (stored) {
           try {
-            const parsed = JSON.parse(stored) as PracticePhraseset;
+            const parsed = JSON.parse(stored) as QFPracticePhraseset;
             if (!controller.signal.aborted) {
               setPhraseset(parsed);
               setLoading(false);

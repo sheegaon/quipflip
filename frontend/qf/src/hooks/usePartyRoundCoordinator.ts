@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePartyMode } from '../contexts/PartyModeContext';
 import apiClient, { extractErrorMessage } from '@/api/client';
-import type { StartPartyCopyResponse, StartPartyVoteResponse } from '@crowdcraft/api/types.ts';
+import type { QFStartPartyCopyResponse, QFStartPartyVoteResponse } from '@crowdcraft/api/types.ts';
 
 type RoundType = 'prompt' | 'copy' | 'vote';
 
@@ -67,12 +67,12 @@ export function usePartyRoundCoordinator() {
             type TransitionConfig =
                 | {
                       next: 'copy';
-                      endpoint: (sessionId: string) => Promise<StartPartyCopyResponse>;
+                      endpoint: (sessionId: string) => Promise<QFStartPartyCopyResponse>;
                       path: string;
                   }
                 | {
                       next: 'vote';
-                      endpoint: (sessionId: string) => Promise<StartPartyVoteResponse>;
+                      endpoint: (sessionId: string) => Promise<QFStartPartyVoteResponse>;
                       path: string;
                   }
                 | {

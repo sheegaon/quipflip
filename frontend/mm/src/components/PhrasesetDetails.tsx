@@ -1,10 +1,10 @@
 import React from 'react';
-import type { PhrasesetDetails as PhrasesetDetailsType, PhrasesetSummary } from '@crowdcraft/api/types.ts';
+import type { MMPhrasesetDetails as PhrasesetDetailsType, MMPhrasesetSummary } from '@crowdcraft/api/types.ts';
 
 // Placeholder component - will be replaced with MM caption details view
-export const PhrasesetDetails: React.FC<{
+export const MMPhrasesetDetails: React.FC<{
   phraseset: PhrasesetDetailsType | null;
-  summary: PhrasesetSummary;
+  summary: MMPhrasesetSummary;
 }> = () => {
   return (
     <div className="p-6 text-center text-ccl-teal">
@@ -13,4 +13,4 @@ export const PhrasesetDetails: React.FC<{
   );
 };
 
-export default PhrasesetDetails;
+export default MMPhrasesetDetails;

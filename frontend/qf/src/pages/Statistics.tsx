@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useResults } from '../contexts/ResultsContext';
 import { useGame } from '../contexts/GameContext';
 import apiClient, { extractErrorMessage } from '@/api/client';
-import type { GameStatus, HistoricalTrendPoint, PlayerStatistics } from '@crowdcraft/api/types.ts';
+import type { GameStatus, QFHistoricalTrendPoint, QFPlayerStatistics } from '@crowdcraft/api/types.ts';
 import { Header } from '../components/Header';
 import WinRateChart from '@crowdcraft/components/statistics/WinRateChart.tsx';
 import EarningsChart from '@crowdcraft/components/statistics/EarningsChart.tsx';
@@ -12,7 +12,7 @@ import FrequencyChart from '@crowdcraft/components/statistics/FrequencyChart.tsx
 import HistoricalTrendsChart from '@crowdcraft/components/statistics/HistoricalTrendsChart.tsx';
 import { statisticsLogger } from '@crowdcraft/utils/logger.ts';
 import { hasCompletedSurvey } from '@crowdcraft/utils/betaSurvey.ts';
-import type { BetaSurveyStatusResponse } from '@crowdcraft/api/types.ts';
+import type { QFBetaSurveyStatusResponse } from '@crowdcraft/api/types.ts';
 import { APP_VERSION } from '../version';
 
 const Statistics: React.FC = () => {
@@ -21,14 +21,14 @@ const Statistics: React.FC = () => {
   const { getStatistics } = actions;
   const { state } = useGame();
   const { player } = state;
-  const [data, setData] = useState<PlayerStatistics | null>(null);
+  const [data, setData] = useState<QFPlayerStatistics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [chartsReady, setChartsReady] = useState(false);
-  const [surveyStatus, setSurveyStatus] = useState<BetaSurveyStatusResponse | null>(null);
+  const [surveyStatus, setSurveyStatus] = useState<QFBetaSurveyStatusResponse | null>(null);
   const [gameStatus, setGameStatus] = useState<GameStatus | null>(null);
 
-  const historicalTrends = useMemo<HistoricalTrendPoint[]>(() => {
+  const historicalTrends = useMemo<QFHistoricalTrendPoint[]>(() => {
     if (!data) return [];
 
     const DAYS_IN_WEEK = 7;
@@ -51,7 +51,7 @@ const Statistics: React.FC = () => {
           dayKey: date.toISOString().slice(0, 10),
         };
       })
-      .filter((point): point is HistoricalTrendPoint & { timestamp: number; dayKey: string } => point !== null);
+      .filter((point): point is QFHistoricalTrendPoint & { timestamp: number; dayKey: string } => point !== null);
 
     if (parsedPoints.length === 0) {
       const today = data.frequency?.last_active ? new Date(data.frequency.last_active) : new Date();

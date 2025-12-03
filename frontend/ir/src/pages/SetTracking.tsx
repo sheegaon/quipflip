@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useIRGame } from '../contexts/IRGameContext';
 import { gameAPI } from '@crowdcraft/api/client.ts';
 import Timer from '../components/Timer';
-import type { BackronymSet } from '@crowdcraft/api/types.ts';
+import type { IRBackronymSet } from '@crowdcraft/api/types.ts';
 import { getErrorMessage } from '../utils/errorHelpers';
 
 const SetTracking: React.FC = () => {
@@ -11,7 +11,7 @@ const SetTracking: React.FC = () => {
   const { setId } = useParams<{ setId: string }>();
   const { player, activeSet, isAuthenticated } = useIRGame();
 
-  const [set, setSet] = useState<BackronymSet | null>(activeSet);
+  const [set, setSet] = useState<IRBackronymSet | null>(activeSet);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pollingIntervalRef = useRef<number | null>(null);

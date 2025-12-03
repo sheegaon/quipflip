@@ -2,16 +2,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useGame } from '../contexts/GameContext';
 import useWebSocket from '@crowdcraft/hooks/useWebSocket';
 import type {
-  HostPingPayload,
-  PartyWebSocketMessage,
-  PhaseTransitionPayload,
-  PlayerJoinedPayload,
-  PlayerLeftPayload,
-  PlayerReadyPayload,
-  ProgressUpdatePayload,
-  SessionCompletedPayload,
-  SessionStartedPayload,
-  SessionUpdatePayload,
+  QFHostPingPayload,
+  QFPartyWebSocketMessage,
+  QFPhaseTransitionPayload,
+  QFPlayerJoinedPayload,
+  QFPlayerLeftPayload,
+  QFPlayerReadyPayload,
+  QFProgressUpdatePayload,
+  QFSessionCompletedPayload,
+  QFSessionStartedPayload,
+  QFSessionUpdatePayload,
 } from '@crowdcraft/api/types.ts';
 
 export interface UsePartyWebSocketOptions {
@@ -41,7 +41,7 @@ export interface UsePartyWebSocketReturn {
   reconnect: () => void;
 }
 
-const parsePayload = <T extends PartyWebSocketMessage>(message: T) =>
+const parsePayload = <T extends QFPartyWebSocketMessage>(message: T) =>
   (message as { data?: unknown }).data ?? message;
 
 export function usePartyWebSocket(
@@ -67,35 +67,35 @@ export function usePartyWebSocket(
 
   const handleMessage = useCallback((event: MessageEvent) => {
     try {
-      const message = JSON.parse(event.data) as PartyWebSocketMessage;
+      const message = JSON.parse(event.data) as QFPartyWebSocketMessage;
 
       switch (message.type) {
         case 'phase_transition':
-          handlersRef.current.onPhaseTransition?.(parsePayload<PartyWebSocketMessage>(message) as PhaseTransitionPayload);
+          handlersRef.current.onPhaseTransition?.(parsePayload<QFPartyWebSocketMessage>(message) as QFPhaseTransitionPayload);
           break;
         case 'player_joined':
-          handlersRef.current.onPlayerJoined?.(parsePayload<PartyWebSocketMessage>(message) as PlayerJoinedPayload);
+          handlersRef.current.onPlayerJoined?.(parsePayload<QFPartyWebSocketMessage>(message) as QFPlayerJoinedPayload);
           break;
         case 'player_left':
-          handlersRef.current.onPlayerLeft?.(parsePayload<PartyWebSocketMessage>(message) as PlayerLeftPayload);
+          handlersRef.current.onPlayerLeft?.(parsePayload<QFPartyWebSocketMessage>(message) as QFPlayerLeftPayload);
           break;
         case 'player_ready':
-          handlersRef.current.onPlayerReady?.(parsePayload<PartyWebSocketMessage>(message) as PlayerReadyPayload);
+          handlersRef.current.onPlayerReady?.(parsePayload<QFPartyWebSocketMessage>(message) as QFPlayerReadyPayload);
           break;
         case 'progress_update':
-          handlersRef.current.onProgressUpdate?.(parsePayload<PartyWebSocketMessage>(message) as ProgressUpdatePayload);
+          handlersRef.current.onProgressUpdate?.(parsePayload<QFPartyWebSocketMessage>(message) as QFProgressUpdatePayload);
           break;
         case 'session_started':
-          handlersRef.current.onSessionStarted?.(parsePayload<PartyWebSocketMessage>(message) as SessionStartedPayload);
+          handlersRef.current.onSessionStarted?.(parsePayload<QFPartyWebSocketMessage>(message) as QFSessionStartedPayload);
           break;
         case 'session_completed':
-          handlersRef.current.onSessionCompleted?.(parsePayload<PartyWebSocketMessage>(message) as SessionCompletedPayload);
+          handlersRef.current.onSessionCompleted?.(parsePayload<QFPartyWebSocketMessage>(message) as QFSessionCompletedPayload);
           break;
         case 'session_update':
-          handlersRef.current.onSessionUpdate?.(parsePayload<PartyWebSocketMessage>(message) as SessionUpdatePayload);
+          handlersRef.current.onSessionUpdate?.(parsePayload<QFPartyWebSocketMessage>(message) as QFSessionUpdatePayload);
           break;
         case 'host_ping':
-          handlersRef.current.onHostPing?.(parsePayload<PartyWebSocketMessage>(message) as HostPingPayload);
+          handlersRef.current.onHostPing?.(parsePayload<QFPartyWebSocketMessage>(message) as QFHostPingPayload);
           break;
         default:
           console.warn('Unknown Party WebSocket message type:', message);

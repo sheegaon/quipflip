@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useIRGame } from '../contexts/IRGameContext';
 import { gameAPI } from '@crowdcraft/api/client.ts';
 import InitCoinDisplay from '../components/InitCoinDisplay';
-import type { ResultsResponse } from '@crowdcraft/api/types.ts';
+import type { IRResultsResponse } from '@crowdcraft/api/types.ts';
 import { HomeIcon } from '../components/icons/NavigationIcons';
 
 const Results: React.FC = () => {
@@ -11,7 +11,7 @@ const Results: React.FC = () => {
   const { setId } = useParams<{ setId: string }>();
   const { player } = useIRGame();
 
-  const [results, setResults] = useState<ResultsResponse | null>(null);
+  const [results, setResults] = useState<IRResultsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

@@ -8,7 +8,7 @@ import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { PhraseRecapCard } from '../components/PhraseRecapCard';
 import { useTimer } from '@crowdcraft/hooks/useTimer.ts';
 import { quipflipBranding } from '@crowdcraft/utils/brandedMessages.ts';
-import type { VoteResponse, VoteState, PhrasesetDetails } from '@crowdcraft/api/types.ts';
+import type { QFVoteResponse, QFVoteState, QFPhrasesetDetails } from '@crowdcraft/api/types.ts';
 import { voteRoundLogger } from '@crowdcraft/utils/logger.ts';
 import { VoteRoundIcon } from '@crowdcraft/components/icons/RoundIcons.tsx';
 import { HomeIcon } from '@crowdcraft/components/icons/NavigationIcons.tsx';
@@ -27,14 +27,14 @@ export const VoteRound: React.FC = () => {
   const { navigateHome, navigateToResults, isInPartyMode } = usePartyNavigation();
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [voteResult, setVoteResult] = useState<VoteResponse | null>(null);
+  const [voteResult, setVoteResult] = useState<QFVoteResponse | null>(null);
   const [headingMessage, setHeadingMessage] = useState<string | null>(null);
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
-  const [phrasesetDetails, setPhrasesetDetails] = useState<PhrasesetDetails | null>(null);
+  const [phrasesetDetails, setPhrasesetDetails] = useState<QFPhrasesetDetails | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
 
-  const roundData = activeRound?.round_type === 'vote' ? activeRound.state as VoteState : null;
+  const roundData = activeRound?.round_type === 'vote' ? activeRound.state as QFVoteState : null;
   const { isExpired } = useTimer(roundData?.expires_at || null);
 
   useEffect(() => {
