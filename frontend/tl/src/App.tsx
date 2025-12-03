@@ -37,6 +37,8 @@ import { PageErrorFallback } from '@crowdcraft/components/ErrorFallback.tsx';
 // Lazy load pages with error boundaries
 const Landing = lazy(() => import('./pages/Landing'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
+const RoundPlay = lazy(() => import('./pages/RoundPlay'));
+const RoundResults = lazy(() => import('./pages/RoundResults'));
 const Quests = lazy(() => import('./pages/Quests'));
 const Statistics = lazy(() => import('./pages/Statistics'));
 const Leaderboard = lazy(() => import('./pages/Leaderboard'));
@@ -118,6 +120,14 @@ const AppRoutes: React.FC = () => {
         <Route
           path="/dashboard"
           element={renderProtectedRoute(<Dashboard />)}
+        />
+        <Route
+          path="/play"
+          element={renderProtectedRoute(<RoundPlay />)}
+        />
+        <Route
+          path="/results"
+          element={renderProtectedRoute(<RoundResults />)}
         />
         <Route
           path="/quests"
