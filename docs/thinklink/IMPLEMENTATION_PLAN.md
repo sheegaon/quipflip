@@ -77,8 +77,8 @@ frontend/
 └── tl/                      # ThinkLink SPA
     ├── src/
     │   ├── contexts/
-    │   │   ├── TLGameContext.tsx      # Auth, balance, dashboard
-    │   │   ├── TLRoundContext.tsx     # Round state management
+    │   │   ├── GameContext.tsx        # Auth, balance, dashboard
+    │   │   ├── RoundContext.tsx       # Round state management
     │   │   └── AppProviders.tsx       # Context orchestration
     │   ├── pages/
     │   │   ├── Dashboard.tsx          # Main landing page
@@ -91,13 +91,13 @@ frontend/
     │   │   ├── StrikeIndicator.tsx    # Visual strike counter
     │   │   └── MatchFeedback.tsx      # Matched cluster feedback
     │   └── api/
-    │       └── tlApi.ts               # TL-specific API client
+    │       └── client.ts               # TL-specific API client
     └── package.json
 ```
 
 **Context Architecture (Adapted from QF):**
-- **TLGameContext**: Auth, balance, dashboard polling
-- **TLRoundContext**: Round-specific state (snapshot, guesses, strikes, coverage)
+- **GameContext**: Auth, balance, dashboard polling
+- **RoundContext**: Round-specific state (snapshot, guesses, strikes, coverage)
 - **NetworkContext**: Reuse existing offline queue
 - **NavigationHistoryContext**: Reuse existing
 - **TutorialContext**: Simple TL tutorial (welcome → first round → done)
@@ -485,19 +485,20 @@ CREATE INDEX idx_tl_transaction_player ON tl_transaction(player_id, created_at D
 - [ ] Configure TypeScript with `@crowdcraft/*` imports
 - [ ] Set up Tailwind CSS
 - [ ] Configure routing (React Router)
-- [ ] Create `frontend/tl/src/api/tlApi.ts`:
+- [ ] Create `frontend/tl/src/api/client.ts` and `types.ts`:
   - Axios instance with base URL `/tl`
   - withCredentials: true
   - Same interceptors as QF (auth, error handling)
 
 **4.2 Core Contexts**
-- [ ] Create `frontend/tl/src/contexts/TLGameContext.tsx`:
+- [ ] Create `frontend/tl/src/contexts/GameContext.tsx`:
   - State: { isAuthenticated, username, player, loading, error }
   - Actions: startSession, logout, refreshBalance, claimBonus
   - Polling: dashboard every 30s when authenticated
   - Reuse QF GameContext structure
+  - Copy QF `NetworkContext.tsx`, `ResultsContext.tsx`, `TutorialContext.tsx` and modify for TL
 
-- [ ] Create `frontend/tl/src/contexts/TLRoundContext.tsx`:
+- [ ] Create `frontend/tl/src/contexts/RoundContext.tsx`:
   - State: {
       currentRound: {round_id, prompt_text, strikes, coverage, status},
       guesses: [{text, was_match, caused_strike}],
@@ -507,7 +508,7 @@ CREATE INDEX idx_tl_transaction_player ON tl_transaction(player_id, created_at D
   - Clear state on round end
 
 - [ ] Create `frontend/tl/src/contexts/AppProviders.tsx`:
-  - Nest: NetworkProvider → TLGameContext → TLRoundContext → app
+  - Nest: NetworkProvider → GameContext → RoundContext → app
   - Reuse QF AppProviders pattern
 
 **4.3 Shared Component Reuse**
@@ -515,12 +516,14 @@ CREATE INDEX idx_tl_transaction_player ON tl_transaction(player_id, created_at D
 - [ ] Import SubHeader from `@crowdcraft/components`
 - [ ] Import modals (ErrorModal, ConfirmModal) from `@crowdcraft/components`
 - [ ] Import BalanceFlipper from `@crowdcraft/components`
-- [ ] Adapt styling/branding for TL (color scheme, logos)
+- [ ] Adapt styling/branding for TL (color scheme from QF, logos already exist)
+- [ ] Copy and adapt components/hooks from QF/MM as needed
 
 ### Phase 5: Frontend - Gameplay UI (Week 4-5)
 
 **5.1 Dashboard Page**
 - [ ] Create `frontend/tl/src/pages/Dashboard.tsx`:
+  - Adapt MM dashboard layout
   - Balance display (wallet, vault)
   - "Start Round" button (disabled if in active round)
   - Active round preview card (if round in progress)
@@ -558,11 +561,20 @@ CREATE INDEX idx_tl_transaction_player ON tl_transaction(player_id, created_at D
 
 **5.4 Round History Page**
 - [ ] Create `frontend/tl/src/pages/RoundHistory.tsx`:
+  - Based on `Tracking.tsx` page from QF
   - Paginated list of past rounds
   - Each row: prompt (truncated), coverage %, payout, date
   - Click to view detailed results
 
-**5.5 Key Components**
+**5.5 Seconday Pages**
+- [ ] Copy QF/MM pages for Admin, BetaSurveyPage, GameHistory, Landing, Leaderboard, OnlineUsers, Quests, Settings, Statistics
+- [ ] Modify navigation links in Header/SubHeader to include TL pages
+- [ ] Update page titles and metadata for TL branding
+- [ ] Ensure all pages use TL API client
+- [ ] Add routing paths in main App component
+- [ ] Leave core logic for v2
+
+**5.6 Key Components**
 - [ ] Create `frontend/tl/src/components/GuessInput.tsx`:
   - Text input field
   - Real-time validation feedback (word count, length)
@@ -576,7 +588,7 @@ CREATE INDEX idx_tl_transaction_player ON tl_transaction(player_id, created_at D
   - Percentage label
 
 - [ ] Create `frontend/tl/src/components/StrikeIndicator.tsx`:
-  - 3 circles/icons
+  - 3 circles/icons (on brand color)
   - Empty/filled states
   - Flash red animation on new strike
 
@@ -671,6 +683,11 @@ CREATE INDEX idx_tl_transaction_player ON tl_transaction(player_id, created_at D
   - Verify smooth animations
   - No UI freezing during API calls
 
+** 7.5 Linting & Code Quality**
+- [ ] Run linters (npm run lint, npm run build)
+- [ ] Fix all warnings/errors
+- [ ] Start backend with `uvicorn` and verify no runtime warnings
+
 ### Phase 8: Deployment Prep (Week 7)
 
 **8.1 Database Setup**
@@ -682,13 +699,13 @@ CREATE INDEX idx_tl_transaction_player ON tl_transaction(player_id, created_at D
 - [ ] Verify indexes created
 
 **8.2 Prompt Seeding**
-- [ ] Create CSV with ~300 curated prompts
-- [ ] Upload to production
+- [ ] Use `backend/data/prompts.csv` CSV with ~300 curated prompts and `backend/data/prompt_completions.csv` for AI answers
+- [ ] Upload to DB
 - [ ] Run seed script: `POST /tl/admin/prompts/seed`
-- [ ] Generate AI answers for all prompts:
+- [ ] Optional script to generate additional AI answers for all prompts:
   - Batch script to call `POST /tl/admin/prompts/{id}/seed-answers`
   - 40-60 answers per prompt
-  - Monitor OpenAI API usage/costs
+  - Save AI answers to CSV for record-keeping
 - [ ] Verify corpus quality:
   - Check cluster distribution
   - Test a few prompts manually
@@ -706,7 +723,7 @@ CREATE INDEX idx_tl_transaction_player ON tl_transaction(player_id, created_at D
 
 **8.4 Frontend Deployment**
 - [ ] Build production bundle: `npm run build`
-- [ ] Deploy to Vercel (new subdomain: `thinklink.crowdcraft.xyz`)
+- [ ] Deploy to Vercel (new subdomain: `thinklink.vercel.app`)
 - [ ] Configure Vercel proxy: `/api/tl/*` → Heroku backend `/tl/*`
 - [ ] Set environment variables:
   - `VITE_API_URL` (backend URL)

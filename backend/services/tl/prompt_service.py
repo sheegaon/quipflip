@@ -4,7 +4,7 @@ Manages prompt corpus, seeding, and selection for rounds.
 """
 import logging
 import random
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from backend.models.tl import TLPrompt, TLAnswer

@@ -15,6 +15,7 @@ from backend.services.tl.matching_service import MatchingService
 from backend.services.tl.clustering_service import ClusteringService
 from backend.services.tl.scoring_service import ScoringService
 from backend.services.tl.prompt_service import PromptService
+from backend.services.phrase_validator import get_phrase_validator
 from backend.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -151,15 +152,18 @@ class RoundService:
 
         Steps:
         1. Validate round exists and is active
-        2. Validate phrase (word count, dictionary, etc.) - delegated
-        3. Generate embedding
-        4. Check on-topic
-        5. Check self-similarity to prior guesses
-        6. Find matches in snapshot answers
-        7. Update matched_clusters if new match
-        8. Add strike if no matches
-        9. End round if 3 strikes
-        10. Log guess
+        2. Validate phrase format and dictionary compliance
+        3. Validate phrase doesn't reuse significant words from prompt
+        4. Generate embedding
+        5. Check on-topic
+        6. Check self-similarity to prior guesses
+        7. Find matches in snapshot answers
+        8. Update matched_clusters if new match
+        9. Add strike if no matches
+        10. End round if 3 strikes
+        11. Log guess
+
+        Validation errors (invalid_phrase, off_topic, too_similar) do NOT consume strikes.
 
         Args:
             db: Database session
@@ -195,6 +199,20 @@ class RoundService:
 
             if round.strikes >= self.max_strike_count:
                 return {}, "round_already_ended"
+
+            # Validate phrase format and dictionary compliance
+            validator = get_phrase_validator()
+            is_valid, error_msg = validator.validate(guess_text)
+            if not is_valid:
+                logger.debug(f"⏭️  Guess rejected: invalid format ({error_msg})")
+                return {}, "invalid_phrase"
+
+            # Validate phrase doesn't reuse significant words from prompt
+            prompt_text = round.prompt.text if hasattr(round, 'prompt') else await self._get_prompt_text(db, round.prompt_id)
+            is_valid, error_msg = await validator.validate_prompt_phrase(guess_text, prompt_text)
+            if not is_valid:
+                logger.debug(f"⏭️  Guess rejected: conflicts with prompt ({error_msg})")
+                return {}, "invalid_phrase"
 
             # Generate embedding for guess
             guess_embedding = await self.matching.generate_embedding(guess_text)

@@ -1,4 +1,5 @@
 """ThinkLink prompt model."""
+import uuid
 from sqlalchemy import Column, String, DateTime, Boolean, Index
 from datetime import datetime, UTC
 from pgvector.sqlalchemy import Vector
@@ -15,7 +16,7 @@ class TLPrompt(Base):
 
     __tablename__ = "tl_prompt"
 
-    prompt_id = get_uuid_column(primary_key=True)
+    prompt_id = get_uuid_column(primary_key=True, default=uuid.uuid4)
     text = Column(String(500), nullable=False, index=True)
     embedding = Column(Vector(1536), nullable=True)  # For on-topic checks
     is_active = Column(Boolean, default=True, nullable=False)
