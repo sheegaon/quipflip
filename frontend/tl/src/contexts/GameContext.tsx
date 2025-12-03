@@ -10,27 +10,30 @@ import { detectUserSession, associateVisitorWithPlayer } from '@crowdcraft/servi
 import { SessionState } from '@crowdcraft/types/session.ts';
 import { GUEST_CREDENTIALS_KEY } from '@crowdcraft/utils/storageKeys.ts';
 import type {
-  Player,
-  ActiveRound,
-  PendingResult,
+  DashboardResponse,
+  BalanceResponse,
   RoundAvailability,
-  PhrasesetDashboardSummary,
-  UnclaimedResult,
-  FlagCopyRoundResponse,
   AbandonRoundResponse,
-} from '@crowdcraft/api/types.ts';
+  RoundDetails,
+} from '@/api/types';
+
+interface TLPlayer {
+  player_id: string;
+  username: string;
+  tl_wallet: number;
+  tl_vault: number;
+  tl_tutorial_completed: boolean;
+  tl_tutorial_progress: string;
+  created_at: string;
+}
 
 interface GameState {
   isAuthenticated: boolean;
   username: string | null;
-  player: Player | null;
+  player: TLPlayer | null;
   showNewUserWelcome: boolean;
-  activeRound: ActiveRound | null;
-  pendingResults: PendingResult[];
-  phrasesetSummary: PhrasesetDashboardSummary | null;
-  unclaimedResults: UnclaimedResult[];
+  balance: BalanceResponse | null;
   roundAvailability: RoundAvailability | null;
-  copyRoundHints: string[] | null;
   loading: boolean;
   error: string | null;
   sessionState: SessionState;
@@ -43,17 +46,9 @@ interface GameActions {
   logout: () => Promise<void>;
   refreshDashboard: (signal?: AbortSignal) => Promise<void>;
   refreshBalance: (signal?: AbortSignal) => Promise<void>;
-  claimBonus: () => Promise<void>;
   clearError: () => void;
   navigateAfterDelay: (path: string, delay?: number) => void;
-  startPromptRound: () => Promise<void>;
-  startCopyRound: () => Promise<void>;
-  startVoteRound: () => Promise<void>;
-  claimPhrasesetPrize: (phrasesetId: string) => Promise<void>;
-  flagCopyRound: (roundId: string) => Promise<FlagCopyRoundResponse>;
   abandonRound: (roundId: string) => Promise<AbandonRoundResponse>;
-  fetchCopyHints: (roundId: string, signal?: AbortSignal) => Promise<string[]>;
-  updateActiveRound: (roundData: ActiveRound) => void;
   setGlobalError: (message: string) => void;
 }
 
@@ -66,9 +61,7 @@ const GameContext = createContext<GameContextType | undefined>(undefined);
 
 export const GameProvider: React.FC<{
   children: React.ReactNode;
-  onPendingResultsChange?: (results: PendingResult[]) => void;
-  onDashboardTrigger?: () => void;
-}> = ({ children, onPendingResultsChange, onDashboardTrigger }) => {
+}> = ({ children }) => {
   // Navigation hook - use directly since we're inside Router
   const navigate = useNavigate();
 
@@ -78,27 +71,14 @@ export const GameProvider: React.FC<{
   // State
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [username, setUsername] = useState<string | null>(null);
-  const [player, setPlayer] = useState<Player | null>(null);
+  const [player, setPlayer] = useState<TLPlayer | null>(null);
   const [showNewUserWelcome, setShowNewUserWelcome] = useState(false);
-  const [activeRound, setActiveRound] = useState<ActiveRound | null>(null);
-  const [pendingResults, setPendingResults] = useState<PendingResult[]>([]);
-  const [phrasesetSummary, setPhrasesetSummary] = useState<PhrasesetDashboardSummary | null>(null);
-  const [unclaimedResults, setUnclaimedResults] = useState<UnclaimedResult[]>([]);
+  const [balance, setBalance] = useState<BalanceResponse | null>(null);
   const [roundAvailability, setRoundAvailability] = useState<RoundAvailability | null>(null);
-  const [copyRoundHints, setCopyRoundHints] = useState<string[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sessionState, setSessionState] = useState<SessionState>(SessionState.CHECKING);
   const [visitorId, setVisitorId] = useState<string | null>(null);
-
-  const copyHintsRoundRef = useRef<string | null>(null);
-
-  // Notify other contexts when pending results change
-  useEffect(() => {
-    if (onPendingResultsChange) {
-      onPendingResultsChange(pendingResults);
-    }
-  }, [pendingResults, onPendingResultsChange]);
 
   // Initialize session on mount using session detection
   // NOTE: In development, React StrictMode will call this effect twice,
