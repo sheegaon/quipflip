@@ -230,19 +230,18 @@ def upgrade() -> None:
                         VALUES (:player_id, :username, :username_canonical, :email, :password_hash,
                                 :created_at, :last_login_date, :is_guest, :is_admin, :locked_until)
                         """
-                    ),
-                    {
-                        "player_id": row.player_id,
-                        "username": resolved_username,
-                        "username_canonical": resolved_canonical,
-                        "email": row.email,
-                        "password_hash": row.password_hash,
-                        "created_at": row.created_at,
-                        "last_login_date": row.last_login_date,
-                        "is_guest": row.is_guest,
-                        "is_admin": row.is_admin,
-                        "locked_until": row.locked_until,
-                    },
+                    ).bindparams(
+                        player_id=row.player_id,
+                        username=resolved_username,
+                        username_canonical=resolved_canonical,
+                        email=row.email,
+                        password_hash=row.password_hash,
+                        created_at=row.created_at,
+                        last_login_date=row.last_login_date,
+                        is_guest=row.is_guest,
+                        is_admin=row.is_admin,
+                        locked_until=row.locked_until,
+                    )
                 )
 
             # Now insert MM player data for ALL MM players (both new and existing)
@@ -285,19 +284,18 @@ def upgrade() -> None:
                         VALUES (:player_id, :username, :username_canonical, :email, :password_hash,
                                 :created_at, :last_login_date, :is_guest, :is_admin, :locked_until)
                         """
-                    ),
-                    {
-                        "player_id": row.player_id,
-                        "username": resolved_username,
-                        "username_canonical": resolved_canonical,
-                        "email": row.email,
-                        "password_hash": row.password_hash,
-                        "created_at": row.created_at,
-                        "last_login_date": row.last_login_date,
-                        "is_guest": row.is_guest,
-                        "is_admin": row.is_admin,
-                        "locked_until": row.locked_until,
-                    },
+                    ).bindparams(
+                        player_id=row.player_id,
+                        username=resolved_username,
+                        username_canonical=resolved_canonical,
+                        email=row.email,
+                        password_hash=row.password_hash,
+                        created_at=row.created_at,
+                        last_login_date=row.last_login_date,
+                        is_guest=row.is_guest,
+                        is_admin=row.is_admin,
+                        locked_until=row.locked_until,
+                    )
                 )
 
             # Now insert IR player data for ALL IR players (both new and existing)
@@ -370,8 +368,10 @@ def upgrade() -> None:
                     op.execute(
                         sa.text(
                             f"UPDATE {table} SET {column} = :new_id WHERE {column} = :old_id"
-                        ),
-                        {"new_id": new_id, "old_id": old_id},
+                        ).bindparams(
+                            new_id=new_id,
+                            old_id=old_id,
+                        )
                     )
 
             mm_fk_targets = [
