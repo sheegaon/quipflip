@@ -1,7 +1,8 @@
 """ThinkLink (TL) player API router."""
 import logging
-from fastapi import APIRouter, Depends, Header, Request
+from fastapi import APIRouter, Depends, Header, Request, Body
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import update
 
 from backend.database import get_db
 from backend.dependencies import get_current_player
@@ -76,4 +77,78 @@ async def get_balance(
         tl_wallet=player.tl_wallet,
         tl_vault=player.tl_vault,
         total_balance=player.tl_wallet + player.tl_vault,
+    )
+
+
+# ========================================================================
+# Tutorial Endpoints
+# ========================================================================
+
+class TutorialStatusResponse(BaseSchema):
+    """Tutorial status response."""
+    tutorial_completed: bool
+    tutorial_progress: str
+
+
+class TutorialProgressRequest(BaseSchema):
+    """Tutorial progress update request."""
+    progress: str
+
+
+@router.get("/tutorial/status", response_model=TutorialStatusResponse)
+async def get_tutorial_status(
+    player: Player = Depends(get_tl_player),
+):
+    """Get player tutorial status."""
+    return TutorialStatusResponse(
+        tutorial_completed=player.tl_tutorial_completed,
+        tutorial_progress=player.tl_tutorial_progress,
+    )
+
+
+@router.post("/tutorial/progress", response_model=TutorialStatusResponse)
+async def update_tutorial_progress(
+    request_body: TutorialProgressRequest = Body(...),
+    player: Player = Depends(get_tl_player),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update player tutorial progress."""
+    # Update player tutorial progress
+    stmt = (
+        update(Player)
+        .where(Player.player_id == player.player_id)
+        .values(
+            tl_tutorial_progress=request_body.progress,
+            tl_tutorial_completed=(request_body.progress == 'completed'),
+        )
+    )
+    await db.execute(stmt)
+    await db.commit()
+
+    return TutorialStatusResponse(
+        tutorial_completed=(request_body.progress == 'completed'),
+        tutorial_progress=request_body.progress,
+    )
+
+
+@router.post("/tutorial/reset", response_model=TutorialStatusResponse)
+async def reset_tutorial(
+    player: Player = Depends(get_tl_player),
+    db: AsyncSession = Depends(get_db),
+):
+    """Reset tutorial progress to allow replaying."""
+    stmt = (
+        update(Player)
+        .where(Player.player_id == player.player_id)
+        .values(
+            tl_tutorial_progress='not_started',
+            tl_tutorial_completed=False,
+        )
+    )
+    await db.execute(stmt)
+    await db.commit()
+
+    return TutorialStatusResponse(
+        tutorial_completed=False,
+        tutorial_progress='not_started',
     )

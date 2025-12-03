@@ -17,14 +17,14 @@ export const TUTORIAL_STEPS: Record<TutorialProgress, TutorialStep | null> = {
 
   welcome: {
     id: 'welcome',
-    title: 'Welcome to Quipflip!',
-    message: `Quipflip is a three-phase bluffing game played with Flipcoins (FC):
+    title: 'Welcome to ThinkLink!',
+    message: `ThinkLink is a word-matching game where you guess answers that others have given.
 
-• Create an original prompt
-• Write clever copies that feel like the original
-• Vote to spot the real one and earn rewards
+• Guess words and phrases that match what the crowd is thinking
+• Higher coverage (more matches) = bigger payouts
+• But watch out: 3 wrong guesses and your round ends
 
-Take this quick tour to see how rounds work and where to earn.`,
+Ready to see how it works? Let's play!`,
     position: 'bottom',
     nextStep: 'dashboard',
     showSkip: true,
@@ -36,84 +36,66 @@ Take this quick tour to see how rounds work and where to earn.`,
     title: 'Your Dashboard',
     message: `This is your home base. From here you can:
 
-• Check your wallet and vault balances and claim the 100 FC daily bonus (starting day two)
-• Start a prompt round to write a fresh idea or hop into copy and vote rounds already in progress
-• Review finished rounds, collect prizes, and track earnings
+• Check your wallet (earnings) and vault (long-term savings)
+• Start a new round (costs 100 coins)
+• View your round history and statistics
 
-Next up: writing a prompt that copycats will chase.`,
+Let's start your first round by clicking the "Start Round" button.`,
     target: '.tutorial-dashboard',
     position: 'top',
-    nextStep: 'prompt_round',
+    nextStep: 'gameplay',
     showSkip: false,
     showBack: true,
   },
 
-  prompt_round: {
-    id: 'prompt_round',
-    title: 'Write the Original Prompt',
-    message: `Spend Flipcoins to submit a short, punchy prompt other players will try to imitate.
+  gameplay: {
+    id: 'gameplay',
+    title: 'How to Play',
+    message: `In each round:
 
-• Keep it concise (a short sentence or phrase)
-• Avoid private info or offensive language
-• Clear, vivid prompts attract better copies and votes
+• You're shown a prompt (like "Things you keep in your pocket")
+• You have unlimited guesses—type your answers and submit
+• Green = match! You found an answer the crowd gave
+• Red = no match and a strike. Get 3 strikes and your round ends
+• Higher coverage % = bigger rewards at the end
 
-When two copies arrive, your prompt enters a voting round.`,
-    target: '.tutorial-prompt-input',
+Try typing some guesses now!`,
+    target: '.tutorial-guess-input',
     position: 'top',
-    // The tutorial will pause while you complete your first prompt round.
-    nextStep: 'copy_round',
+    nextStep: 'scoring',
     showSkip: false,
     showBack: true,
   },
 
-  copy_round: {
-    id: 'copy_round',
-    title: 'Craft a Convincing Copy',
-    message: `Copy rounds challenge you to mimic someone else's prompt without matching it exactly.
+  scoring: {
+    id: 'scoring',
+    title: 'Earning Your Payout',
+    message: `After your round ends (or you click abandon), you'll see your results:
 
-• Stay on-topic and mirror the style of the original
-• Keep it tight and readable—brief phrasing wins
-• Avoid exact duplicates or obviously off-topic jokes
+• Coverage % = how many of the crowd's answers you matched
+• Higher coverage % = higher payout (up to 300 coins)
+• 30% coverage or less? You keep the full gross payout
+• More than 30%? The house takes 30% for the vault
 
-If your copy fools voters, you share the prize pool with the original author.`,
-    target: '.tutorial-copy-input',
+Keep playing and improving your coverage to earn more!`,
     position: 'top',
-    // The tutorial will resume after you submit your first copy.
-    nextStep: 'vote_round',
+    nextStep: 'strategy',
     showSkip: false,
     showBack: true,
   },
 
-  vote_round: {
-    id: 'vote_round',
-    title: 'Vote to Find the Original',
-    message: `Voting rounds show one prompt plus two copies. Your job is to spot the original.
+  strategy: {
+    id: 'strategy',
+    title: 'Pro Tips',
+    message: `• Think about common, everyday answers—not obscure ones
+• Pay attention to the prompt's context and wording
+• If you're getting strikes, try broader or more obvious answers
+• Watch your coverage bar to see how you're doing in real time
+• Check the statistics page to track your best and worst prompts
 
-• Pay the vote entry fee, then choose the prompt you think is real
-• Correct votes pay a reward and shrink the prize pool shared by creators
-• Results appear after you vote so you can learn what fooled the crowd
-
-After voting, keep playing or check your rewards.`,
-    target: '.tutorial-vote-options',
+You're all set! Go make your best guesses.`,
+    target: '.tutorial-dashboard',
     position: 'top',
-    nextStep: 'rounds_guide',
-    showSkip: false,
-    showBack: true,
-  },
-
-  rounds_guide: {
-    id: 'rounds_guide',
-    title: 'Keep the Streak Going',
-    message: `You now know the loop:
-
-• Claim daily bonuses to stay funded
-• Rotate between prompt, copy, and vote rounds to grow your wallet
-• Vault skims a share of profits automatically so leaderboard gains stick
-
-Check your history, refine your style, and keep climbing.`,
-    target: 'div.fixed.bottom-5',
-    position: 'top',
-    // Final tutorial screen
     showSkip: false,
     showBack: true,
   },
@@ -131,7 +113,7 @@ export const getNextStep = (currentStep: TutorialProgress): TutorialProgress | n
 };
 
 export const getPreviousStep = (currentStep: TutorialProgress): TutorialProgress | null => {
-  const steps: TutorialProgress[] = ['welcome', 'dashboard', 'prompt_round', 'copy_round', 'vote_round', 'rounds_guide'];
+  const steps: TutorialProgress[] = ['welcome', 'dashboard', 'gameplay', 'scoring', 'strategy'];
   const currentIndex = steps.indexOf(currentStep);
   if (currentIndex > 0) {
     return steps[currentIndex - 1];
