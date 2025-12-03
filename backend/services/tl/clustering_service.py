@@ -20,13 +20,13 @@ CLUSTER_DUPLICATE_THRESHOLD = 0.90
 class ClusteringService:
     """Service for semantic clustering of answers."""
 
-    def __init__(self, matching_service: MatchingService):
+    def __init__(self, matching_service: MatchingService | None = None):
         """Initialize clustering service.
 
         Args:
             matching_service: MatchingService instance for similarity calculations
         """
-        self.matching = matching_service
+        self.matching = matching_service or MatchingService()
 
     async def assign_cluster(
         self,

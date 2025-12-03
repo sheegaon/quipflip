@@ -17,10 +17,6 @@ from backend.schemas.tl_round import (
 )
 from backend.services import GameType
 from backend.services.tl.round_service import RoundService
-from backend.services.tl.matching_service import MatchingService
-from backend.services.tl.clustering_service import ClusteringService
-from backend.services.tl.scoring_service import ScoringService
-from backend.services.tl.prompt_service import PromptService
 from backend.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -83,16 +79,7 @@ async def start_round(
 
         # Initialize services
         settings = get_settings()
-        matching_service = MatchingService()
-        clustering_service = ClusteringService(matching_service)
-        scoring_service = ScoringService()
-        prompt_service = PromptService(matching_service)
-        round_service = RoundService(
-            matching_service,
-            clustering_service,
-            scoring_service,
-            prompt_service,
-        )
+        round_service = RoundService()
 
         # Start round
         round_obj, error = await round_service.start_round(
@@ -156,16 +143,7 @@ async def submit_guess(
         logger.debug(f"💭 Player {player.player_id} submitting guess: '{guess_text}'")
 
         # Initialize services
-        matching_service = MatchingService()
-        clustering_service = ClusteringService(matching_service)
-        scoring_service = ScoringService()
-        prompt_service = PromptService(matching_service)
-        round_service = RoundService(
-            matching_service,
-            clustering_service,
-            scoring_service,
-            prompt_service,
-        )
+        round_service = RoundService()
 
         # Submit guess
         result, error = await round_service.submit_guess(
@@ -228,16 +206,7 @@ async def abandon_round(
         logger.debug(f"🚪 Player {player.player_id} abandoning round {round_id}...")
 
         # Initialize services
-        matching_service = MatchingService()
-        clustering_service = ClusteringService(matching_service)
-        scoring_service = ScoringService()
-        prompt_service = PromptService(matching_service)
-        round_service = RoundService(
-            matching_service,
-            clustering_service,
-            scoring_service,
-            prompt_service,
-        )
+        round_service = RoundService()
 
         # Abandon round
         result, error = await round_service.abandon_round(
@@ -286,6 +255,8 @@ async def get_round(
         from sqlalchemy import select
         from backend.models.tl import TLRound
 
+        round_service = RoundService()
+
         # Fetch round
         result = await db.execute(
             select(TLRound).where(TLRound.round_id == round_id)
@@ -298,7 +269,7 @@ async def get_round(
         if round_obj.player_id != player.player_id:
             raise HTTPException(status_code=403, detail="unauthorized")
 
-        scoring_service = ScoringService()
+        scoring_service = round_service.scoring
         wallet_award = None
         vault_award = None
         gross_payout = round_obj.gross_payout
