@@ -86,10 +86,22 @@ aborted during deploy.
   in dependency functions (e.g., `authorization: str | None = Header(None, alias="Authorization")`).
   Plain optional parameters default to query parameters, breaking HTTP header/cookie-based authentication.
 - **Avoid exception handling for DDL statements in async migrations.** When using SQLAlchemy with asyncpg,
-  failed DDL statements (like `ALTER TABLE`) leave the transaction in a failed state. Using try-except around
-  DDL can corrupt the transaction, causing all subsequent database operations to fail with "current transaction
-  is aborted, commands ignored until end of transaction block" errors. Instead, check preconditions BEFORE
-  executing DDL using dialect-aware schema inspection.
+  failed DDL statements (like `ALTER TABLE` or `DROP TABLE`) leave the transaction in a failed state. Using
+  try-except around DDL can corrupt the transaction, causing all subsequent database operations to fail with
+  "current transaction is aborted, commands ignored until end of transaction block" errors. Instead, check
+  preconditions BEFORE executing DDL using dialect-aware schema inspection, or use IF EXISTS/CASCADE clauses.
+- **Use CASCADE when dropping tables with foreign key dependencies.** When dropping a table that other tables
+  reference via foreign keys, PostgreSQL will block the DROP with "cannot drop table X because other objects
+  depend on it". Use `DROP TABLE ... CASCADE` to drop the table and its dependent constraints:
+  ```python
+  if dialect_name == 'postgresql':
+      op.execute(sa.text("DROP TABLE IF EXISTS old_table CASCADE"))
+  else:
+      # SQLite doesn't support CASCADE
+      op.drop_table('old_table')
+  ```
+  The CASCADE will drop all dependent FK constraints, allowing the table to be removed. This is especially
+  important during schema consolidation migrations where you're replacing old tables with new ones.
 - **Use dialect-aware schema inspection in migrations.** PostgreSQL and SQLite have different ways to check
   if a table or column exists. PostgreSQL uses `information_schema.columns`, while SQLite uses `PRAGMA table_info()`.
   When writing migrations that should work on both databases, detect the database dialect and use the appropriate
