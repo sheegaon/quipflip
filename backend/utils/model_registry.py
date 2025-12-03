@@ -71,6 +71,21 @@ def get_transaction_model(game_type: GameType) -> Type:
         raise ValueError(f"Unsupported game type: {game_type}")
 
 
+def get_player_data_model(game_type: GameType) -> Type:
+    """Get the concrete PlayerData model for a game type."""
+    if game_type == GameType.QF:
+        from backend.models.qf.player_data import QFPlayerData
+        return QFPlayerData
+    elif game_type == GameType.IR:
+        from backend.models.ir.player_data import IRPlayerData
+        return IRPlayerData
+    elif game_type == GameType.MM:
+        from backend.models.mm.player_data import MMPlayerData
+        return MMPlayerData
+    else:
+        raise ValueError(f"Unsupported game type: {game_type}")
+
+
 def get_user_activity_model(game_type: GameType) -> Type:
     """Get the concrete UserActivity model for a game type."""
     if game_type == GameType.QF:
