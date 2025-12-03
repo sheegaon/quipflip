@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { Header } from '../components/Header';
-import apiClient, { extractErrorMessage } from '@/api/client';
+import apiClient, { extractErrorMessage } from '@crowdcraft/api/client.ts';
 import { TrackingIcon } from '@crowdcraft/components/icons/NavigationIcons.tsx';
 import { VoteRoundIcon } from '@crowdcraft/components/icons/RoundIcons.tsx';
 import EditableConfigField from '../components/EditableConfigField';

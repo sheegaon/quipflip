@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import apiClient, { extractErrorMessage } from '@/api/client';
+import apiClient, { extractErrorMessage } from '@crowdcraft/api/client.ts';
 import type { MMCircle, MMCreateCircleRequest } from '@crowdcraft/api/types.ts';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 
@@ -29,7 +29,7 @@ export const Circles: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await apiClient.listCircles({ limit: 100 });
+      const response = await apiClient.mmListCircles({ limit: 100 });
       setCircles(response.circles);
     } catch (err) {
       setError(extractErrorMessage(err) || 'Failed to load Circles');
@@ -41,7 +41,7 @@ export const Circles: React.FC = () => {
   const handleJoinCircle = async (circleId: string) => {
     try {
       setActionLoading(circleId);
-      await apiClient.joinCircle(circleId);
+      await apiClient.mmJoinCircle(circleId);
       await loadCircles(); // Refresh to show updated state
     } catch (err) {
       setError(extractErrorMessage(err) || 'Failed to join MMCircle');
@@ -55,7 +55,7 @@ export const Circles: React.FC = () => {
 
     try {
       setActionLoading(circleId);
-      await apiClient.leaveCircle(circleId);
+      await apiClient.mmLeaveCircle(circleId);
       await loadCircles();
     } catch (err) {
       setError(extractErrorMessage(err) || 'Failed to leave MMCircle');
@@ -75,7 +75,7 @@ export const Circles: React.FC = () => {
 
     try {
       setCreateLoading(true);
-      const response = await apiClient.createCircle({
+      const response = await apiClient.mmCreateCircle({
         name: createForm.name.trim(),
         description: createForm.description?.trim() || undefined,
         is_public: createForm.is_public,

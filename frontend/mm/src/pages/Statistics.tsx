@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useResults } from '../contexts/ResultsContext';
 import { useGame } from '../contexts/GameContext';
-import apiClient, { extractErrorMessage } from '@/api/client';
+import apiClient, { extractErrorMessage } from '@crowdcraft/api/client.ts';
 import type { GameStatus, MMHistoricalTrendPoint, MMPlayerStatistics } from '@crowdcraft/api/types.ts';
 import WinRateChart from '@crowdcraft/components/statistics/WinRateChart';
 import EarningsChart from '@crowdcraft/components/statistics/EarningsChart';
@@ -171,7 +171,7 @@ const Statistics: React.FC = () => {
 
     const fetchStatus = async () => {
       try {
-        const status = await apiClient.getBetaSurveyStatus(controller.signal);
+        const status = await apiClient.mmGetBetaSurveyStatus(controller.signal);
         if (!cancelled) {
           setSurveyStatus(status);
         }
@@ -231,7 +231,7 @@ const Statistics: React.FC = () => {
 
     const fetchGameStatus = async () => {
       try {
-        const status = await apiClient.getGameStatus(controller.signal);
+        const status = await apiClient.mmGetGameStatus(controller.signal);
         setGameStatus(status);
       } catch (err) {
         if (err instanceof Error && err.name === 'CanceledError') return;

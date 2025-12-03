@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { useTutorial } from '../contexts/TutorialContext';
-import apiClient, { extractErrorMessage } from '@/api/client';
+import apiClient, { extractErrorMessage } from '@crowdcraft/api/client.ts';
 import { settingsLogger } from '@crowdcraft/utils/logger.ts';
 import { formatDateInUserZone, formatDateTimeInUserZone } from '@crowdcraft/utils/datetime.ts';
 
@@ -132,7 +132,7 @@ const Settings: React.FC = () => {
 
     try {
       setPasswordLoading(true);
-      const response = await apiClient.changePassword({
+      const response = await apiClient.mmChangePassword({
         current_password: passwordForm.currentPassword,
         new_password: passwordForm.newPassword,
       });
@@ -163,7 +163,7 @@ const Settings: React.FC = () => {
 
     try {
       setEmailLoading(true);
-      const response = await apiClient.updateEmail({
+      const response = await apiClient.mmUpdateEmail({
         new_email: emailForm.newEmail,
         password: emailForm.password,
       });
@@ -208,7 +208,7 @@ const Settings: React.FC = () => {
 
     try {
       setUsernameLoading(true);
-      const response = await apiClient.changeUsername({
+      const response = await apiClient.mmChangeUsername({
         new_username: usernameForm.newUsername,
         password: usernameForm.password,
       });
@@ -259,7 +259,7 @@ const Settings: React.FC = () => {
 
     try {
       setDeleteLoading(true);
-      await apiClient.deleteAccount({ password: deletePassword, confirmation: 'DELETE' });
+      await apiClient.mmDeleteAccount({ password: deletePassword, confirmation: 'DELETE' });
       closeDeleteModal();
       await logout();
       navigate('/', { replace: true });
