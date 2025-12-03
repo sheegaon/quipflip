@@ -1,39 +1,83 @@
 # Data Model Documentation Index
 
-Shared building blocks live in `backend/models/*_base.py`, while game-specific models live in `backend/models/qf` (Quipflip) and `backend/models/ir` (Initial Reaction). Use the dedicated game guides alongside this index when exploring schemas or planning migrations.
+The application uses a unified **cross-game Player model** with game-specific data delegation. Shared building blocks live in `backend/models/`, while game-specific models and player data live in `backend/models/qf` (Quipflip), `backend/models/ir` (Initial Reaction), and `backend/models/mm` (Meme Mint). Use the dedicated game guides alongside this index when exploring schemas or planning migrations.
+
+## Architecture Overview
+
+### Unified Player Model with Game-Specific Delegation
+
+The application implements a **multi-game authentication system** with a single unified `Player` table for all games:
+
+```
+players table (unified authentication across all games)
+├── qf_player_data (Quipflip-specific wallet, vault, tutorial state)
+├── ir_player_data (Initial Reaction-specific wallet, vault, player state)
+└── mm_player_data (Meme Mint-specific wallet, vault, player state)
+```
+
+Each player account is linked to at most one record in each game's player data table. The `Player` model includes property accessors that delegate game-specific fields to the appropriate `{Game}PlayerData` table, allowing transparent access via `player.wallet`, `player.vault`, etc.
+
+**Benefits of this architecture**:
+- Single authentication system across all games
+- Player can switch between games using same credentials
+- Game-specific state remains isolated
+- Consistent player identity across platform
 
 ## Where to Look
 
-- [Quipflip Data Models](quipflip/QF_DATA_MODELS.md) – complete reference for Quipflip tables and their relationships under `backend/models/qf`.
+- [Quipflip Data Models](quipflip/QF_DATA_MODELS.md) – complete reference for Quipflip tables including QFPlayerData, Rounds, Phrasesets, and Party Mode models under `backend/models/qf`.
 - [Initial Reaction Data Models](initialreaction/IR_DATA_MODELS.md) – companion reference for IR tables under `backend/models/ir`.
+- [Meme Mint Data Models](mememint/MM_DATA_MODELS.md) – companion reference for MM tables including Circles and caption models under `backend/models/mm`.
 
-## Core Base Models
+## Core Shared Models
 
-Each game-specific package imports these bases and adds its own entities (e.g., `Round`, `Phraseset`, and `Vote` for Quipflip; `BackronymSet`, `BackronymEntry`, and `BackronymVote` for Initial Reaction). Consult the game guides for full field-level definitions.
-
-### PlayerBase
+### Player (Unified Authentication)
 - `player_id` (UUID, primary key)
-- `username` (string, unique) - display name for the player
-- `username_canonical` (string, unique) - lowercase form for lookups and uniqueness checking
-- `email` (string, unique) - player email for authentication
-- `password_hash` (string) - bcrypt hashed password
-- `wallet` (integer, default 1000) - current spendable currency balance for entering rounds and transactions
-- `vault` (integer, default 0) - accumulated long-term currency balance from net earnings, used for leaderboard rankings
+- `username` (string(80), unique) - display name for the player
+- `username_canonical` (string(80), unique) - lowercase form for lookups and uniqueness checking
+- `email` (string(255), unique) - player email for authentication
+- `password_hash` (string(255)) - bcrypt hashed password
 - `created_at` (timestamp with timezone) - UTC timestamp of account creation
 - `last_login_date` (timestamp with timezone, nullable) - UTC timestamp for last login tracking
 - `is_guest` (boolean, default false) - whether this is a guest account with auto-generated credentials
 - `is_admin` (boolean, default false) - admin privileges flag for administrative access
 - `locked_until` (timestamp with timezone, nullable) - account lock expiration time for temporary bans/suspensions
-- `consecutive_incorrect_votes` (integer, default 0) - tracks incorrect votes for guest accounts
-- `vote_lockout_until` (timestamp with timezone, nullable) - guest vote lockout expiration when too many incorrect votes
-- `tutorial_completed` (boolean, default false) - whether player has finished tutorial
-- `tutorial_progress` (string, default 'not_started') - current tutorial step
-- `tutorial_started_at` (timestamp with timezone, nullable) - when tutorial was started
-- `tutorial_completed_at` (timestamp with timezone, nullable) - when tutorial was completed
 
-**Properties**: `balance` - computed total liquid balance (wallet + vault)
-**Authentication**: JWT access/refresh tokens with separate refresh token table
+**Delegated Properties** (via {Game}PlayerData):
+- `wallet` - current spendable currency balance (game-specific)
+- `vault` - accumulated long-term currency balance (game-specific)
+- `tutorial_completed`, `tutorial_progress`, `tutorial_started_at`, `tutorial_completed_at` - game-specific
+- `consecutive_incorrect_votes`, `vote_lockout_until` - game-specific (QF only)
+- `flag_dismissal_streak` - game-specific (QF only)
+
+**Authentication**: JWT access/refresh tokens with separate per-game refresh token tables
 **Guest Accounts**: Auto-generated credentials with vote lockout protection for incorrect votes
+
+### Game-Specific Player Data Tables
+
+Each game has a companion table for game-specific player state:
+
+**QFPlayerData** (`backend/models/qf/player_data.py`)
+- `player_id` (UUID, FK to players.player_id, PK)
+- `wallet` (integer, default 1000)
+- `vault` (integer, default 0)
+- `active_round_id` (UUID, FK to qf_rounds.round_id, nullable)
+- `tutorial_completed`, `tutorial_progress`, `tutorial_started_at`, `tutorial_completed_at`
+- `consecutive_incorrect_votes` (integer, default 0)
+- `vote_lockout_until` (timestamp with timezone, nullable)
+- `flag_dismissal_streak` (integer, default 0)
+
+**IRPlayerData** (`backend/models/ir/player_data.py`)
+- `player_id` (UUID, FK to players.player_id, PK)
+- `wallet` (integer, default 1000)
+- `vault` (integer, default 0)
+- Game-specific state fields (consult IR_DATA_MODELS.md)
+
+**MMPlayerData** (`backend/models/mm/player_data.py`)
+- `player_id` (UUID, FK to players.player_id, PK)
+- `wallet` (integer, default 1000)
+- `vault` (integer, default 0)
+- Game-specific state fields (consult MM_DATA_MODELS.md)
 
 ### TransactionBase
 - `transaction_id` (UUID, primary key)
