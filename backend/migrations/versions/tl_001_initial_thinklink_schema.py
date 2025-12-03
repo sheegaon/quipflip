@@ -38,23 +38,13 @@ def _json_column():
     return sa.JSON().with_variant(sa.Text(), "sqlite")
 
 
-def _vector_column(dim: int = 1536):
-    """Return vector column, using TEXT for SQLite compatibility."""
-    bind = op.get_bind()
-    dialect_name = bind.dialect.name if bind else "postgresql"
+def _vector_column():
+    """Return vector column for embeddings.
 
-    if dialect_name == "postgresql":
-        # Use pgvector extension
-        try:
-            # Enable pgvector extension
-            op.execute("CREATE EXTENSION IF NOT EXISTS vector")
-        except Exception:
-            pass  # Extension might already exist or not available
-
-        return sa.JSON()  # pgvector will be handled by native type
-
-    # SQLite: store embeddings as JSON
-    return sa.JSON()
+    Currently stores embeddings as JSON. Can be migrated to pgvector.Vector
+    once the pgvector PostgreSQL extension is installed in production.
+    """
+    return _json_column()
 
 
 def upgrade() -> None:
@@ -82,7 +72,7 @@ def upgrade() -> None:
         'tl_prompt',
         sa.Column('prompt_id', uuid, nullable=False),
         sa.Column('text', sa.String(length=500), nullable=False),
-        sa.Column('embedding', json_type, nullable=True),  # Vector stored as JSON
+        sa.Column('embedding', _vector_column(), nullable=True),
         sa.Column('is_active', sa.Boolean(), nullable=False, server_default='true'),
         sa.Column('ai_seeded', sa.Boolean(), nullable=False, server_default='false'),
         sa.Column('created_at', sa.DateTime(timezone=True), nullable=False, server_default=get_timestamp_default()),
@@ -96,7 +86,7 @@ def upgrade() -> None:
         'tl_cluster',
         sa.Column('cluster_id', uuid, nullable=False),
         sa.Column('prompt_id', uuid, nullable=False),
-        sa.Column('centroid_embedding', json_type, nullable=False),
+        sa.Column('centroid_embedding', _vector_column(), nullable=False),
         sa.Column('size', sa.Integer(), nullable=False, server_default='1'),
         sa.Column('example_answer_id', uuid, nullable=True),
         sa.Column('created_at', sa.DateTime(timezone=True), nullable=False, server_default=get_timestamp_default()),
@@ -112,7 +102,7 @@ def upgrade() -> None:
         sa.Column('answer_id', uuid, nullable=False),
         sa.Column('prompt_id', uuid, nullable=False),
         sa.Column('text', sa.String(length=200), nullable=False),
-        sa.Column('embedding', json_type, nullable=False),
+        sa.Column('embedding', _vector_column(), nullable=False),
         sa.Column('cluster_id', uuid, nullable=True),
         sa.Column('answer_players_count', sa.Integer(), nullable=False, server_default='0'),
         sa.Column('shows', sa.Integer(), nullable=False, server_default='0'),
@@ -187,7 +177,7 @@ def upgrade() -> None:
         sa.Column('guess_id', uuid, nullable=False),
         sa.Column('round_id', uuid, nullable=False),
         sa.Column('text', sa.String(length=200), nullable=False),
-        sa.Column('embedding', json_type, nullable=False),
+        sa.Column('embedding', _vector_column(), nullable=False),
         sa.Column('was_match', sa.Boolean(), nullable=False),
         sa.Column('matched_answer_ids', json_type, nullable=False, server_default='[]'),
         sa.Column('matched_cluster_ids', json_type, nullable=False, server_default='[]'),
