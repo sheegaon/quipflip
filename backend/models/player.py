@@ -111,9 +111,9 @@ class Player(Base):
         if game_type == GameType.TL:
             return self.tl_player_data
         if game_type == GameType.MM:
-            return getattr(self, "mm_player_data", None)
+            return self.mm_player_data
         if game_type == GameType.IR:
-            return getattr(self, "ir_player_data", None)
+            return self.ir_player_data
         raise ValueError(f"Unsupported game type: {game_type}")
 
     def __repr__(self):
