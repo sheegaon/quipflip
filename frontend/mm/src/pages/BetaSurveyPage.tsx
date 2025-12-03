@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import apiClient, { extractErrorMessage } from '@/api/client';
+import apiClient, { extractErrorMessage } from '@crowdcraft/api/client.ts';
 import { useGame } from '../contexts/GameContext';
 import type { SurveyQuestion, CompoundSurveyQuestion } from '@crowdcraft/types/survey.ts';
 import { markSurveyCompleted } from '@crowdcraft/utils/betaSurvey.ts';
@@ -194,7 +194,7 @@ const BetaSurveyPage: React.FC = () => {
         .flatMap((section) => section.questions)
         .map(prepareAnswerPayload);
 
-      await apiClient.submitBetaSurvey({
+      await apiClient.mmSubmitBetaSurvey({
         survey_id: betaSurveyDefinition.id,
         answers: payload,
       });

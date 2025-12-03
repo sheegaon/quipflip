@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
-import apiClient, { extractErrorMessage } from '@/api/client';
+import apiClient, { extractErrorMessage } from '@crowdcraft/api/client.ts';
 import { TrackingIcon } from '@crowdcraft/components/icons/NavigationIcons.tsx';
 import { VoteRoundIcon } from '@crowdcraft/components/icons/RoundIcons.tsx';
 import EditableConfigField from '../components/EditableConfigField';
@@ -132,7 +132,7 @@ const Admin: React.FC = () => {
         adminLogger.debug('Loading admin configuration');
 
         // Fetch actual configuration from backend
-        const configData = await apiClient.getAdminConfig();
+        const configData = await apiClient.mmAdminConfig();
         setConfig(configData);
         adminLogger.info('Admin configuration loaded');
       } catch (err) {
@@ -151,7 +151,7 @@ const Admin: React.FC = () => {
   useEffect(() => {
     const loadPendingFlags = async () => {
       try {
-        const response = await apiClient.getFlaggedPrompts('pending');
+        const response = await apiClient.mmGetFlaggedPrompts('pending');
         setPendingFlagCount(response.flags.length);
       } catch (err) {
         adminLogger.error('Failed to load pending flagged prompts', err);
@@ -165,7 +165,7 @@ const Admin: React.FC = () => {
     try {
       setSaveMessage(null);
       adminLogger.debug('Updating admin config value', { key, value });
-      const result = await apiClient.updateAdminConfig(key, value);
+      const result = await apiClient.mmUpdateAdminConfig(key, value);
 
       // Update local config state
       if (config) {
@@ -198,7 +198,7 @@ const Admin: React.FC = () => {
         hasOriginal: Boolean(originalPhrase),
         hasOtherCopy: Boolean(otherCopyPhrase),
       });
-      const data = await apiClient.testPhraseValidation(
+      const data = await apiClient.mmTestPhraseValidation(
         testPhrase,
         validationType,
         validationType !== 'basic' ? promptText || null : null,
@@ -236,7 +236,7 @@ const Admin: React.FC = () => {
       setPasswordResetLookup(null);
       setGeneratedPassword(null);
       const params = passwordResetIdentifier === 'email' ? { email: trimmed } : { username: trimmed };
-      const result = await apiClient.adminSearchPlayer(params);
+      const result = await apiClient.mmAdminSearchPlayer(params);
       setPasswordResetLookup(result);
     } catch (err: unknown) {
       if (getErrorDetail(err) === 'player_not_found') {
@@ -268,7 +268,7 @@ const Admin: React.FC = () => {
       setPasswordResetError(null);
       setPasswordResetSuccess(null);
       setGeneratedPassword(null);
-      const result = await apiClient.adminResetPassword({
+      const result = await apiClient.mmAdminResetPassword({
         player_id: passwordResetLookup.player_id,
       });
       setGeneratedPassword(result.generated_password);
@@ -314,7 +314,7 @@ const Admin: React.FC = () => {
       setAdminDeleteSuccess(null);
       setAdminDeleteLookup(null);
       const params = adminDeleteIdentifier === 'email' ? { email: trimmed } : { username: trimmed };
-      const result = await apiClient.adminSearchPlayer(params);
+      const result = await apiClient.mmAdminSearchPlayer(params);
       setAdminDeleteLookup(result);
       setAdminDeleteConfirm('');
     } catch (err: unknown) {
@@ -358,7 +358,7 @@ const Admin: React.FC = () => {
     try {
       setAdminDeleteActionLoading(true);
       setAdminDeleteError(null);
-      const result = await apiClient.adminDeletePlayer({
+      const result = await apiClient.mmAdminDeletePlayer({
         player_id: adminDeleteLookup.player_id,
         confirmation: 'DELETE',
       });

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import apiClient, { extractErrorMessage } from '@/api/client';
+import apiClient, { extractErrorMessage } from '@crowdcraft/api/client.ts';
 import type { MMLeaderboardResponse } from '@crowdcraft/api/types.ts';
 import WeeklyLeaderboard from '@crowdcraft/components/statistics/WeeklyLeaderboard';
 import { leaderboardLogger } from '@crowdcraft/utils/logger.ts';
@@ -24,8 +24,8 @@ const Leaderboard: React.FC = () => {
 
         leaderboardLogger.debug('Fetching leaderboard data');
         const [weekly, alltime] = await Promise.all([
-          apiClient.getWeeklyLeaderboard(controller.signal),
-          apiClient.getAllTimeLeaderboard(controller.signal),
+          apiClient.mmGetWeeklyLeaderboard(controller.signal),
+          apiClient.mmGetAllTimeLeaderboard(controller.signal),
         ]);
 
         setWeeklyData(weekly);

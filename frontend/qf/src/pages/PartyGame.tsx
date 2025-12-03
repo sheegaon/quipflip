@@ -4,7 +4,7 @@ import { usePartyMode } from '../contexts/PartyModeContext';
 import { CircleIcon } from '@crowdcraft/components/icons/NavigationIcons.tsx';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { quipflipBranding } from '@crowdcraft/utils/brandedMessages.ts';
-import apiClient, { extractErrorMessage } from '@/api/client';
+import apiClient, { extractErrorMessage } from '@crowdcraft/api/client.ts';
 import { usePartyRoundStarter } from '../hooks/usePartyRoundStarter';
 
 const { loadingMessages } = quipflipBranding;
@@ -35,7 +35,7 @@ export const PartyGame: React.FC = () => {
       setError(null);
 
       try {
-        const status = await apiClient.getPartySessionStatus(sessionId);
+        const status = await apiClient.qfGetPartySessionStatus(sessionId);
         const phase = status.current_phase.toLowerCase();
 
         if (phase === 'results' || status.status === 'COMPLETED') {

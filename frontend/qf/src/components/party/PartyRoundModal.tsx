@@ -4,7 +4,8 @@ import { usePartyMode } from '../../contexts/PartyModeContext';
 import { usePartyWebSocket } from '@/hooks/usePartyWebSocket.ts';
 import { CircleIcon } from '@crowdcraft/components/icons/NavigationIcons.tsx';
 import { PartyStep } from '../../contexts/PartyModeContext';
-import apiClient, { extractErrorMessage } from '@/api/client';
+import apiClient, { extractErrorMessage } from '@crowdcraft/api/client.ts';
+import type { QFPartyParticipant } from '@crowdcraft/api/types.ts';
 import { usePartyRoundStarter } from '@/hooks/usePartyRoundStarter.ts';
 import { useGame } from '../../contexts/GameContext';
 
@@ -37,11 +38,11 @@ export const PartyRoundModal: React.FC<PartyRoundModalProps> = ({ sessionId, cur
     syncInFlightRef.current = true;
 
     try {
-      const status = await apiClient.getPartySessionStatus(sessionId);
+      const status = await apiClient.qfGetPartySessionStatus(sessionId);
       const normalizedPhase = status.current_phase.toLowerCase();
 
       const selfParticipant = gameState.player
-        ? status.participants.find((participant) => participant.player_id === gameState.player?.player_id)
+        ? status.participants.find((participant: QFPartyParticipant) => participant.player_id === gameState.player?.player_id)
         : null;
 
       if (selfParticipant) {
@@ -133,7 +134,7 @@ export const PartyRoundModal: React.FC<PartyRoundModalProps> = ({ sessionId, cur
     try {
       // Try to leave via API (only works before session starts)
       try {
-        await apiClient.leavePartySession(sessionId);
+        await apiClient.qfLeavePartySession(sessionId);
       } catch (apiErr) {
         // If leave fails (e.g., session already started), just navigate away
         // The WebSocket will disconnect and the player will be removed from the session

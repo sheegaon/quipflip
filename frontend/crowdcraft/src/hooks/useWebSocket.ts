@@ -1,5 +1,5 @@
 import { MutableRefObject, useCallback, useEffect, useMemo, useRef } from 'react';
-import apiClient from '@/api/client';
+import apiClient from '@crowdcraft/api/client.ts';
 
 type ListenerRef = MutableRefObject<UseWebSocketOptions>;
 

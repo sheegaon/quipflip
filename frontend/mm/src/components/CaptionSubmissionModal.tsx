@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import apiClient, { extractErrorMessage } from '@/api/client';
+import apiClient, { extractErrorMessage } from '@crowdcraft/api/client.ts';
 import type {
   MMMemeCaptionSubmission,
   MMMemeVoteRound,
@@ -50,7 +50,7 @@ export const CaptionSubmissionModal: React.FC<CaptionSubmissionModalProps> = ({
         text: captionText.trim(),
       };
 
-      await apiClient.submitMemeCaption(request);
+      await apiClient.mmSubmitCaption(request);
       // Close modal and reset form
       setCaptionText('');
       onClose();

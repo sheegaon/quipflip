@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import apiClient, { extractErrorMessage } from '@/api/client';
+import apiClient, { extractErrorMessage } from '@crowdcraft/api/client.ts';
 import type { MMCircle, MMCircleMember, MMCircleJoinRequest } from '@crowdcraft/api/types.ts';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { formatDateTimeInUserZone } from '@crowdcraft/utils/datetime.ts';
@@ -24,8 +24,8 @@ export const CircleDetails: React.FC = () => {
       setError(null);
 
       const [circleData, membersData] = await Promise.all([
-        apiClient.getCircle(circleId),
-        apiClient.getCircleMembers(circleId),
+        apiClient.mmGetCircle(circleId),
+        apiClient.mmGetCircleMembers(circleId),
       ]);
 
       setCircle(circleData);
@@ -34,7 +34,7 @@ export const CircleDetails: React.FC = () => {
       // Load join requests if user is admin
       if (circleData.is_admin) {
         try {
-          const requestsData = await apiClient.getCircleJoinRequests(circleId);
+          const requestsData = await apiClient.mmGetCircleJoinRequests(circleId);
           setJoinRequests(requestsData.join_requests);
         } catch (err) {
           // Ignore 403 errors (non-admins can't see join requests)
@@ -59,7 +59,7 @@ export const CircleDetails: React.FC = () => {
 
     try {
       setActionLoading(`approve-${requestId}`);
-      await apiClient.approveJoinRequest(circleId, requestId);
+      await apiClient.mmApproveJoinRequest(circleId, requestId);
       await loadCircleData(); // Refresh data
     } catch (err) {
       setError(extractErrorMessage(err) || 'Failed to approve request');
@@ -73,7 +73,7 @@ export const CircleDetails: React.FC = () => {
 
     try {
       setActionLoading(`deny-${requestId}`);
-      await apiClient.denyJoinRequest(circleId, requestId);
+      await apiClient.mmDenyJoinRequest(circleId, requestId);
       await loadCircleData();
     } catch (err) {
       setError(extractErrorMessage(err) || 'Failed to deny request');
@@ -88,7 +88,7 @@ export const CircleDetails: React.FC = () => {
 
     try {
       setActionLoading(`remove-${playerId}`);
-      await apiClient.removeCircleMember(circleId, playerId);
+      await apiClient.mmRemoveCircleMember(circleId, playerId);
       await loadCircleData();
     } catch (err) {
       setError(extractErrorMessage(err) || 'Failed to remove member');
@@ -103,7 +103,7 @@ export const CircleDetails: React.FC = () => {
 
     try {
       setActionLoading('leave');
-      await apiClient.leaveCircle(circleId);
+      await apiClient.mmLeaveCircle(circleId);
       navigate('/circles');
     } catch (err) {
       setError(extractErrorMessage(err) || 'Failed to leave MMCircle');

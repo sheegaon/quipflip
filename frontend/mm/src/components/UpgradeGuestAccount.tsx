@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
-import apiClient, { extractErrorMessage } from '@/api/client';
+import apiClient, { extractErrorMessage } from '@crowdcraft/api/client.ts';
 import { dashboardLogger } from '@crowdcraft/utils/logger.ts';
 
 const getErrorDetail = (error: unknown): string | undefined => {
@@ -73,7 +73,7 @@ export const UpgradeGuestAccount: React.FC<UpgradeGuestAccountProps> = ({ classN
       setUpgradeLoading(true);
       dashboardLogger.info('Upgrading guest account');
 
-      await apiClient.upgradeGuest({
+      await apiClient.mmUpgradeGuest({
         email: upgradeForm.email.trim(),
         password: upgradeForm.password,
       });
@@ -115,7 +115,7 @@ export const UpgradeGuestAccount: React.FC<UpgradeGuestAccountProps> = ({ classN
       setUpgradeLoading(true);
       dashboardLogger.info('Logging into existing account');
 
-      const response = await apiClient.login({
+      const response = await apiClient.mmLogin({
         email: upgradeForm.email.trim(),
         password: upgradeForm.password,
       });
