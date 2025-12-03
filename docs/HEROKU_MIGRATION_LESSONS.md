@@ -136,4 +136,4 @@ aborted during deploy.
   ```
   This applies to all parameterized queries (INSERT, UPDATE, SELECT) in migration code. Failure to use
   `.bindparams()` results in `TypeError: execute() takes 2 positional arguments but 3 were given` when
-  running migrations on Heroku or any PostgreSQL deployment.
+  running migrations with SQLAlchemy 1.4+.
