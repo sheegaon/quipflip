@@ -58,6 +58,27 @@ class Settings(BaseSettings):
     ir_rapid_voting_timer_minutes: int = 2  # Rapid mode: minutes for voting phase before AI fills votes
     ir_standard_voting_timer_minutes: int = 30  # Standard mode: minutes for voting phase before AI fills votes
 
+    # ThinkLink (TL) Game Settings
+    tl_starting_balance: int = 1000  # Starting ThinkCoins for TL players
+    tl_entry_cost: int = 100  # Cost to enter a ThinkLink round
+    tl_max_payout: int = 300  # Maximum gross payout per round
+    tl_daily_bonus_amount: int = 100  # Daily login bonus
+    tl_vault_rake_percent: int = 30  # Percentage of earnings going to vault
+
+    # ThinkLink Semantic Matching
+    tl_match_threshold: float = 0.55  # Cosine similarity threshold for answer matching
+    tl_cluster_join_threshold: float = 0.75  # Threshold to join existing cluster
+    tl_cluster_duplicate_threshold: float = 0.90  # Threshold for near-duplicate detection
+    tl_topic_threshold: float = 0.40  # Threshold for on-topic validation
+    tl_self_similarity_threshold: float = 0.80  # Threshold for rejecting self-similar guesses
+
+    # ThinkLink Corpus Management
+    tl_active_corpus_cap: int = 1000  # Maximum active answers per prompt
+
+    # ThinkLink Scoring
+    tl_payout_exponent: float = 1.5  # Exponent for convex payout curve
+    tl_round_grace_period_seconds: int = 5  # Grace period for late submissions
+
     # Game Constants (all values in whole flipcoins/memecoins)
     qf_starting_wallet: int = 5000
     mm_starting_wallet: int = 500

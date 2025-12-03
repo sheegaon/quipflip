@@ -54,6 +54,18 @@ class Player(Base):
         cascade="all, delete-orphan",
         lazy="joined",
     )
+    tl_player_data = relationship(
+        "TLPlayerData",
+        uselist=False,
+        back_populates="player",
+        cascade="all, delete-orphan",
+        lazy="joined",
+    )
+    tl_rounds = relationship(
+        "TLRound",
+        back_populates="player",
+        foreign_keys="TLRound.player_id",
+    )
 
     def _ensure_qf_data(self):
         """Ensure a QFPlayerData record exists for delegated properties."""
@@ -167,6 +179,70 @@ class Player(Base):
         if data is None:
             return 0
         return data.balance
+
+    def _ensure_tl_data(self):
+        """Ensure a TLPlayerData record exists for delegated properties."""
+
+        if self.tl_player_data is None:
+            from backend.models.tl.player_data import TLPlayerData
+
+            self.tl_player_data = TLPlayerData(player_id=self.player_id)
+        return self.tl_player_data
+
+    # ThinkLink (TL) game-specific properties
+    @property
+    def tl_wallet(self) -> int:
+        data = self.tl_player_data
+        return data.wallet if data else 0
+
+    @tl_wallet.setter
+    def tl_wallet(self, value: int) -> None:
+        self._ensure_tl_data().wallet = value
+
+    @property
+    def tl_vault(self) -> int:
+        data = self.tl_player_data
+        return data.vault if data else 0
+
+    @tl_vault.setter
+    def tl_vault(self, value: int) -> None:
+        self._ensure_tl_data().vault = value
+
+    @property
+    def tl_tutorial_completed(self) -> bool:
+        data = self.tl_player_data
+        return data.tutorial_completed if data else False
+
+    @tl_tutorial_completed.setter
+    def tl_tutorial_completed(self, value: bool) -> None:
+        self._ensure_tl_data().tutorial_completed = value
+
+    @property
+    def tl_tutorial_progress(self) -> str:
+        data = self.tl_player_data
+        return data.tutorial_progress if data else "not_started"
+
+    @tl_tutorial_progress.setter
+    def tl_tutorial_progress(self, value: str) -> None:
+        self._ensure_tl_data().tutorial_progress = value
+
+    @property
+    def tl_tutorial_started_at(self):
+        data = self.tl_player_data
+        return data.tutorial_started_at if data else None
+
+    @tl_tutorial_started_at.setter
+    def tl_tutorial_started_at(self, value):
+        self._ensure_tl_data().tutorial_started_at = value
+
+    @property
+    def tl_tutorial_completed_at(self):
+        data = self.tl_player_data
+        return data.tutorial_completed_at if data else None
+
+    @tl_tutorial_completed_at.setter
+    def tl_tutorial_completed_at(self, value):
+        self._ensure_tl_data().tutorial_completed_at = value
 
     def __repr__(self):
         return (f"<Player(player_id={self.player_id}, username={self.username}, "
