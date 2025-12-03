@@ -74,6 +74,34 @@ class CrowdcraftApiClient extends BaseApiClient {
     withCredentials: true,
   });
 
+  private _handleApiError(error: unknown, context: string, customMessage: string): never {
+    const axiosError = error as ApiError;
+
+    if (axiosError?.response?.status === 500) {
+      console.error(`${context} failed with server error:`, {
+        status: axiosError.response.status,
+        statusText: axiosError.response.statusText,
+        data: axiosError.response.data,
+        message: axiosError.message,
+      });
+
+      throw {
+        ...axiosError,
+        message: customMessage,
+        isServerError: true,
+      } as ApiError;
+    }
+
+    console.error(`${context} failed:`, {
+      status: axiosError?.response?.status,
+      statusText: axiosError?.response?.statusText,
+      data: axiosError?.response?.data,
+      message: axiosError?.message,
+    });
+
+    throw error;
+  }
+
   constructor() {
     super(QF_API_BASE_URL);
     this.mmApi = new BaseApiClient(MM_API_BASE_URL);
@@ -104,31 +132,7 @@ class CrowdcraftApiClient extends BaseApiClient {
       });
       return data;
     } catch (error) {
-      const axiosError = error as ApiError;
-
-      if (axiosError?.response?.status === 500) {
-        console.error('Party creation failed with server error:', {
-          status: axiosError.response.status,
-          statusText: axiosError.response.statusText,
-          data: axiosError.response.data,
-          message: axiosError.message,
-        });
-
-        throw {
-          ...axiosError,
-          message: 'Server error creating party. Please try again in a moment.',
-          isServerError: true,
-        } as ApiError;
-      }
-
-      console.error('Party creation failed:', {
-        status: axiosError?.response?.status,
-        statusText: axiosError?.response?.statusText,
-        data: axiosError?.response?.data,
-        message: axiosError?.message,
-      });
-
-      throw error;
+      this._handleApiError(error, 'Party creation', 'Server error creating party. Please try again in a moment.');
     }
   }
 
@@ -608,31 +612,7 @@ class CrowdcraftApiClient extends BaseApiClient {
       const { data } = await this.tlApi.axiosInstance.post<TLStartRoundResponse>('/rounds/start', {}, { signal, timeout: 10000 });
       return data;
     } catch (error) {
-      const axiosError = error as ApiError;
-
-      if (axiosError?.response?.status === 500) {
-        console.error('Round creation failed with server error:', {
-          status: axiosError.response.status,
-          statusText: axiosError.response.statusText,
-          data: axiosError.response.data,
-          message: axiosError.message,
-        });
-
-        throw {
-          ...axiosError,
-          message: 'Server error starting round. Please try again in a moment.',
-          isServerError: true,
-        } as ApiError;
-      }
-
-      console.error('Round creation failed:', {
-        status: axiosError?.response?.status,
-        statusText: axiosError?.response?.statusText,
-        data: axiosError?.response?.data,
-        message: axiosError?.message,
-      });
-
-      throw error;
+      this._handleApiError(error, 'Round creation', 'Server error starting round. Please try again in a moment.');
     }
   }
 
