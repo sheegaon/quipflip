@@ -26,7 +26,6 @@ export * from './components/icons/TreasureChestIcon';
 
 // Config
 export * from './config/phraseValidation'
-export * from './config/tutorialSteps'
 
 // Hooks
 export * from './hooks/useExponentialBackoff'

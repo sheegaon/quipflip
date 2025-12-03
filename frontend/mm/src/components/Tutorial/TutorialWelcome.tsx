@@ -73,22 +73,23 @@ const TutorialWelcome: React.FC<TutorialWelcomeProps> = ({ onStart, onSkip }) =>
             </p>
           )}
 
-          <p className="tutorial-welcome-description">
-            MemeMint is an asynchronous meme-caption battler where you:
-          </p>
+          <p className="tutorial-welcome-description">MemeMint is a caption battler built for MemeCoins.</p>
 
           <ul className="tutorial-welcome-features">
             <li>
-              <strong>Vote:</strong> Pay an entry fee to choose the best caption out of five for each meme image
+              <strong>Vote:</strong> Pay 5 MC to see one meme image with five captions and pick your favorite
             </li>
             <li>
-              <strong>Caption:</strong> Add your own original caption or riff on someone else's after you vote
+              <strong>Caption:</strong> After voting, submit an original caption or a riff on one you saw (your first caption
+              each UTC day is free)
             </li>
             <li>
-              <strong>Earn MemeCoins:</strong> Winning captions get paid, and voters can earn bonuses
+              <strong>Earn MemeCoins:</strong> Winning captions pay their authors, riffs share winnings with their parent, and
+              voters can earn bonuses
             </li>
             <li>
-              <strong>Replay:</strong> Images and captions stay in circulation so you can refine and compete again
+              <strong>Replay:</strong> Images and captions stay in circulation, so you can keep refining ideas without seeing the
+              same caption twice
             </li>
           </ul>
 

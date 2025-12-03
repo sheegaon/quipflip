@@ -11,7 +11,6 @@ import apiClient from '@/api/client';
 import { getActionErrorMessage } from '@crowdcraft/utils/errorMessages.ts';
 import { tutorialLogger } from '@crowdcraft/utils/logger.ts';
 import type { TutorialProgress, TutorialStatus } from '@crowdcraft/api/types.ts';
-import { getNextStep } from '@crowdcraft/config/tutorialSteps.ts';
 
 const isAbortError = (error: unknown): boolean => {
   if (!error || typeof error !== 'object') {
@@ -58,6 +57,7 @@ export interface TutorialContextConfig<Status extends TutorialStatus> {
   mapResetStatus: (response: unknown) => Status;
   getProgress: (status: Status) => TutorialProgress;
   isCompleted: (status: Status) => boolean;
+  getNextStep?: (progress: TutorialProgress) => TutorialProgress | null;
 }
 
 interface TutorialProviderProps<Status extends TutorialStatus> {
@@ -188,7 +188,8 @@ export const createTutorialContext = <Status extends TutorialStatus>() => {
 
     const advanceStep = useCallback(
       async (stepId?: TutorialProgress) => {
-        const nextStep = stepId ?? (status ? getNextStep(config.getProgress(status)) ?? undefined : undefined);
+        const nextStep =
+          stepId ?? (status ? config.getNextStep?.(config.getProgress(status)) ?? undefined : undefined);
 
         if (!nextStep) {
           tutorialLogger.debug('No next tutorial step available', {
