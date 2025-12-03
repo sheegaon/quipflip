@@ -8,7 +8,7 @@ import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { UpgradeGuestAccount } from '../components/UpgradeGuestAccount';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import TutorialWelcome from '../components/Tutorial/TutorialWelcome';
-import { TrophyIcon } from '@crowdcraft/components/icons/GameIcons.tsx';
+import { TrophyIcon } from '@crowdcraft/components/icons/GameIcons';
 
 export const Dashboard: React.FC = () => {
   const { state, actions } = useGame();

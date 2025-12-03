@@ -38,7 +38,7 @@ interface GameState {
   sessionState: SessionState;
   visitorId: string | null;
   phrasesetSummary?: any;
-  pendingResults?: any[];
+  pendingResults: any[];
 }
 
 interface GameActions {
@@ -47,9 +47,9 @@ interface GameActions {
   refreshBalance: (signal?: AbortSignal) => Promise<void>;
   clearError: () => void;
   abandonRound: (roundId: string) => Promise<any>;
+  startSession: (username?: string, options?: any) => Promise<void>;
   claimBonus?: () => Promise<void>;
   dismissNewUserWelcome?: () => void;
-  startSession?: () => Promise<void>;
 }
 
 interface GameContextType {
@@ -149,6 +149,19 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const startSession = async (username?: string, options?: any) => {
+    // TL doesn't have party/social features like MM/QF
+    // Mark session as started and authenticate user
+    if (username) {
+      apiClient.setSession(username);
+      setUsername(username);
+      setIsAuthenticated(true);
+      setSessionState(SessionState.RETURNING_USER);
+
+      console.log('Session started', { username, options, authenticated: true });
+    }
+  };
+
   const state: GameState = {
     isAuthenticated,
     username,
@@ -160,6 +173,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     error,
     sessionState,
     visitorId,
+    pendingResults: [],
   };
 
   const actions: GameActions = {
@@ -168,6 +182,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     refreshBalance,
     clearError,
     abandonRound,
+    startSession,
   };
 
   return (

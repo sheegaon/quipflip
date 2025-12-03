@@ -1,4 +1,4 @@
-import axios, { AxiosInstance, AxiosError } from 'axios';
+import { BaseApiClient, extractErrorMessage, clearStoredCredentials } from '@crowdcraft/api/BaseApiClient.ts';
 import type {
   DashboardResponse,
   BalanceResponse,
@@ -15,45 +15,15 @@ import type {
   PruneCorpusResponse,
 } from './types';
 
-// ========================================================================
-// Error Types & Utilities
-// ========================================================================
-
-export interface ApiError {
-  code: string;
-  message: string;
-  statusCode: number;
-  details?: any;
-}
-
-export const extractErrorMessage = (error: any): string => {
-  if (error instanceof AxiosError) {
-    if (error.response?.data?.detail) {
-      return error.response.data.detail;
-    }
-    if (error.response?.data?.message) {
-      return error.response.data.message;
-    }
-    return error.message;
-  }
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return 'An unknown error occurred';
-};
+// Re-export for use by pages
+export { extractErrorMessage };
 
 const baseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
 const API_BASE_URL = /\/tl($|\/)/.test(baseUrl) ? baseUrl : `${baseUrl}/tl`;
 
-class ThinkLinkApiClient {
-  private api: AxiosInstance;
-
+class ThinkLinkApiClient extends BaseApiClient {
   constructor() {
-    this.api = axios.create({
-      baseURL: API_BASE_URL,
-      withCredentials: true,
-      timeout: 30000,
-    });
+    super(API_BASE_URL);
   }
 
   // ========================================================================
@@ -73,18 +43,6 @@ class ThinkLinkApiClient {
     }
   }
 
-  /**
-   * Get player balance (wallet + vault)
-   */
-  async getBalance(signal?: AbortSignal): Promise<BalanceResponse> {
-    try {
-      const { data } = await this.api.get<BalanceResponse>('/player/balance', { signal });
-      return data;
-    } catch (error) {
-      console.error('Failed to fetch balance:', error);
-      throw error;
-    }
-  }
 
   /**
    * Logout the current player
@@ -360,9 +318,29 @@ class ThinkLinkApiClient {
   }
 
   /**
-   * Get stored username from localStorage (stub)
+   * Store session username
+   * Override parent to use TL-specific storage key
    */
-  async getStoredUsername(): Promise<string | null> {
+  setSession(username: string | null) {
+    if (username) {
+      localStorage.setItem('username', username);
+    }
+  }
+
+  /**
+   * Clear session data
+   * Override parent to use TL-specific storage key
+   */
+  clearSession() {
+    localStorage.removeItem('username');
+    clearStoredCredentials();
+  }
+
+  /**
+   * Get stored username from localStorage
+   * Override parent to use TL-specific storage key
+   */
+  getStoredUsername(): string | null {
     return localStorage.getItem('username');
   }
 
@@ -401,33 +379,6 @@ class ThinkLinkApiClient {
     return '';
   }
 
-  /**
-   * Create player (stub)
-   */
-  async createPlayer(_username: string, _email?: string): Promise<any> {
-    return { player_id: '', username: '', email: '' };
-  }
-
-  /**
-   * Login with credentials (stub)
-   */
-  async login(_username: string, _password: string): Promise<DashboardResponse> {
-    return {} as DashboardResponse;
-  }
-
-  /**
-   * Login with username only (stub)
-   */
-  async loginWithUsername(_username: string): Promise<DashboardResponse> {
-    return {} as DashboardResponse;
-  }
-
-  /**
-   * Upgrade guest account (stub)
-   */
-  async upgradeGuest(_username: string, _password: string): Promise<DashboardResponse> {
-    return {} as DashboardResponse;
-  }
 
   /**
    * Start session (stub - QF/MM feature)
@@ -492,40 +443,6 @@ class ThinkLinkApiClient {
     return {};
   }
 
-  /**
-   * Create guest account (stub)
-   */
-  async createGuest(): Promise<DashboardResponse> {
-    return {} as DashboardResponse;
-  }
-
-  /**
-   * Change password (stub - QF/MM feature)
-   */
-  async changePassword(_currentPassword: string, _newPassword: string): Promise<any> {
-    return {};
-  }
-
-  /**
-   * Update email (stub - QF/MM feature)
-   */
-  async updateEmail(_newEmail: string, _password: string): Promise<any> {
-    return {};
-  }
-
-  /**
-   * Change username (stub - QF/MM feature)
-   */
-  async changeUsername(_newUsername: string, _password: string): Promise<any> {
-    return {};
-  }
-
-  /**
-   * Delete account (stub - QF/MM feature)
-   */
-  async deleteAccount(_password: string): Promise<any> {
-    return {};
-  }
 
   /**
    * Get weekly leaderboard (stub)
@@ -551,11 +468,7 @@ class ThinkLinkApiClient {
 
 export const apiClient = new ThinkLinkApiClient();
 
-// Export axios instance for direct access
-export const axiosInstance = axios.create({
-  baseURL: API_BASE_URL,
-  withCredentials: true,
-  timeout: 30000,
-});
+// Export axios instance from client for direct access
+export const axiosInstance = apiClient.axiosInstance;
 
 export default apiClient;
