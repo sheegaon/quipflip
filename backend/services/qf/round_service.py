@@ -9,6 +9,7 @@ import uuid
 import logging
 
 from backend.models.qf.player import QFPlayer
+from backend.models.qf.player_data import QFPlayerData
 from backend.models.qf.prompt import Prompt
 from backend.models.qf.round import Round
 from backend.models.qf.flagged_prompt import FlaggedPrompt
@@ -62,6 +63,17 @@ class QFRoundService:
                 "AI service unavailable during RoundService initialization; disabling AI-dependent features",
             )
             self.ai_service = None
+
+    async def _get_player_data(self, player: QFPlayer) -> QFPlayerData:
+        """Fetch the player's Quipflip-specific data, raising if missing."""
+
+        if player.qf_player_data:
+            return player.qf_player_data
+
+        player_data = await self.db.get(QFPlayerData, player.player_id)
+        if not player_data:
+            raise RuntimeError(f"Missing QF player data for player {player.player_id}")
+        return player_data
 
     async def start_prompt_round(self, player: QFPlayer, transaction_service: TransactionService) -> Optional[Round]:
         """
@@ -119,11 +131,12 @@ class QFRoundService:
         # Only flush the Round object, not the entire session (to minimize lock contention)
         await self.db.flush([round_object])
 
-        player.active_round_id = round_object.round_id
+        player_data = await self._get_player_data(player)
+        player_data.active_round_id = round_object.round_id
 
-        # Flush Player separately to reduce commit contention
+        # Flush player data separately to reduce commit contention
         # This way only Transaction and Prompt updates remain for final commit
-        await self.db.flush([player])
+        await self.db.flush([player_data])
 
         await self._increment_prompt_usage(prompt.prompt_id)
         await self.db.commit()
@@ -198,7 +211,8 @@ class QFRoundService:
         round_object.phraseset_status = "waiting_copies"
 
         # Clear player's active round
-        player.active_round_id = None
+        player_data = await self._get_player_data(player)
+        player_data.active_round_id = None
 
         # Add to queue
         QFQueueService.add_prompt_round_to_queue(round_object.round_id)
@@ -383,7 +397,9 @@ class QFRoundService:
             self.db.add(round_object)
             await self.db.flush()
 
-            player.active_round_id = round_object.round_id
+            player_data = await self._get_player_data(player)
+            player_data.active_round_id = round_object.round_id
+            await self.db.flush([player_data])
 
             await self.db.commit()
             await self.db.refresh(round_object)
@@ -664,7 +680,8 @@ class QFRoundService:
         round_object.status = "submitted"
 
         # Clear player's active round
-        player.active_round_id = None
+        player_data = await self._get_player_data(player)
+        player_data.active_round_id = None
 
         if prompt_round:
             is_first_copy = prompt_round.copy1_player_id is None
@@ -870,8 +887,9 @@ class QFRoundService:
             round_object.status = "abandoned"
             round_object.expires_at = datetime.now(UTC)
 
-            if player.active_round_id == round_id:
-                player.active_round_id = None
+            player_data = await self._get_player_data(player)
+            if player_data.active_round_id == round_id:
+                player_data.active_round_id = None
 
             if round_object.round_type == "prompt":
                 round_object.phraseset_status = "abandoned"
@@ -942,8 +960,9 @@ class QFRoundService:
         round_object.expires_at = datetime.now(UTC)
 
         # Clear player's active round
-        if player.active_round_id == round_object.round_id:
-            player.active_round_id = None
+        player_data = await self._get_player_data(player)
+        if player_data.active_round_id == round_object.round_id:
+            player_data.active_round_id = None
 
         # Partial refund following abandoned round rules
         refund_amount = max(round_object.cost - self.settings.abandoned_penalty, 0)
@@ -1056,9 +1075,9 @@ class QFRoundService:
 
         # If round already resolved, ensure active flag cleared and stop
         if round_object.status != "active":
-            player = await self.db.get(QFPlayer, round_object.player_id)
-            if player and player.active_round_id == round_id:
-                player.active_round_id = None
+            player_data = await self.db.get(QFPlayerData, round_object.player_id)
+            if player_data and player_data.active_round_id == round_id:
+                player_data.active_round_id = None
                 await self.db.commit()
             return
 
@@ -1077,9 +1096,9 @@ class QFRoundService:
             round_object.status = "expired"
 
         # Clear player's active round if still set
-        player = await self.db.get(QFPlayer, round_object.player_id)
-        if player and player.active_round_id == round_id:
-            player.active_round_id = None
+        player_data = await self.db.get(QFPlayerData, round_object.player_id)
+        if player_data and player_data.active_round_id == round_id:
+            player_data.active_round_id = None
 
         await self.db.commit()
 

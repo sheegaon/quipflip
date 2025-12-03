@@ -116,6 +116,20 @@ class Player(Base):
             return game_data_map[game_type]
         raise ValueError(f"Unsupported game type: {game_type}")
 
+    @property
+    def active_round_id(self):
+        """Proxy active_round_id to the Quipflip-specific player data."""
+
+        if self.qf_player_data:
+            return self.qf_player_data.active_round_id
+        return None
+
+    @active_round_id.setter
+    def active_round_id(self, value):
+        if not self.qf_player_data:
+            raise AttributeError("QF player data is not loaded; cannot set active_round_id")
+        self.qf_player_data.active_round_id = value
+
     def __repr__(self):
         return (f"<Player(player_id={self.player_id}, username={self.username}, "
                 f"email={self.email})>")
