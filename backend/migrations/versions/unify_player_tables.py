@@ -553,6 +553,8 @@ def upgrade() -> None:
         ],
         'qf_party_participants': [['player_id']],
         'qf_party_sessions': [['host_player_id']],
+        'party_participants': [['player_id']],  # Table name without qf_ prefix
+        'party_sessions': [['host_player_id']],  # Table name without qf_ prefix
         'qf_phraseset_activity': [['player_id']],
         'qf_quests': [['player_id']],
         'qf_refresh_tokens': [['player_id']],
@@ -564,29 +566,35 @@ def upgrade() -> None:
                 _recreate_fk(table, columns)
 
     # Step 9: Drop old tables and refresh tokens (if they exist)
-    # Note: Handle SQLite compatibility - SQLite doesn't support CASCADE in DROP TABLE
+    # Drop refresh token tables first (no dependencies)
     if 'qf_refresh_tokens' in table_names:
         op.drop_table('qf_refresh_tokens')
     if 'mm_refresh_tokens' in table_names:
         op.drop_table('mm_refresh_tokens')
     if 'ir_refresh_tokens' in table_names:
         op.drop_table('ir_refresh_tokens')
+
+    # Drop old player tables with CASCADE to handle any remaining FK constraints
+    # By this point, we should have already recreated all FK constraints to point to
+    # the new unified 'players' table, so CASCADE should only affect the old constraints
     if 'qf_players' in table_names:
-        # Drop old qf_players table - use Alembic's drop_table for cross-database compatibility
-        try:
+        if dialect_name == 'postgresql':
+            op.execute(sa.text("DROP TABLE IF EXISTS qf_players CASCADE"))
+        else:
+            # SQLite doesn't support CASCADE, but we handle FK updates via batch operations
             op.drop_table('qf_players')
-        except Exception as e:
-            logger.warning(f"Could not drop qf_players: {e}")
+
     if 'mm_players' in table_names:
-        try:
+        if dialect_name == 'postgresql':
+            op.execute(sa.text("DROP TABLE IF EXISTS mm_players CASCADE"))
+        else:
             op.drop_table('mm_players')
-        except Exception as e:
-            logger.warning(f"Could not drop mm_players: {e}")
+
     if 'ir_players' in table_names:
-        try:
+        if dialect_name == 'postgresql':
+            op.execute(sa.text("DROP TABLE IF EXISTS ir_players CASCADE"))
+        else:
             op.drop_table('ir_players')
-        except Exception as e:
-            logger.warning(f"Could not drop ir_players: {e}")
 
 
 def downgrade() -> None:
