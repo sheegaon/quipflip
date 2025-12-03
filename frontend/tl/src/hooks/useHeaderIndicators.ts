@@ -13,12 +13,13 @@ export const useHeaderIndicators = () => {
     player,
 
     // TL doesn't have the same complex indicators as MM
-    // but we provide a consistent interface
+    // but we provide a consistent interface for Header compatibility
     showInProgressIndicator: false,
     inProgressLabel: 'Play',
     showResultsIndicator: false,
     resultsLabel: 'Results',
     isFirstDay: false,
     hasClaimableQuests: false,
+    unviewedCount: 0,
   };
 };

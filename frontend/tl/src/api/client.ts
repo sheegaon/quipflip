@@ -1,9 +1,4 @@
-import { BaseApiClient, extractErrorMessage, clearStoredCredentials } from '@crowdcraft/api/BaseApiClient.ts';
-import type {
-  ApiError,
-  OnlineUsersResponse,
-  PingUserResponse,
-} from '@crowdcraft/api/types.ts';
+import axios, { AxiosInstance } from 'axios';
 import type {
   DashboardResponse,
   BalanceResponse,
@@ -23,9 +18,15 @@ import type {
 const baseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
 const API_BASE_URL = /\/tl($|\/)/.test(baseUrl) ? baseUrl : `${baseUrl}/tl`;
 
-class ThinkLinkApiClient extends BaseApiClient {
+class ThinkLinkApiClient {
+  private api: AxiosInstance;
+
   constructor() {
-    super(API_BASE_URL);
+    this.api = axios.create({
+      baseURL: API_BASE_URL,
+      withCredentials: true,
+      timeout: 30000,
+    });
   }
 
   // ========================================================================

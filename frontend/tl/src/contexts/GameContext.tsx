@@ -20,6 +20,8 @@ import type {
 interface TLPlayer {
   player_id: string;
   username: string;
+  email?: string;
+  is_guest?: boolean;
   tl_wallet: number;
   tl_vault: number;
   tl_tutorial_completed: boolean;
