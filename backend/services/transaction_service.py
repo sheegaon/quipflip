@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 class TransactionService:
     """Service for managing player transactions."""
 
-    def __init__(self, db: AsyncSession, game_type: GameType = GameType.QF):
+    def __init__(self, db: AsyncSession, game_type: GameType):
         self.db = db
         self.game_type = game_type
         # Get game-specific PlayerData model

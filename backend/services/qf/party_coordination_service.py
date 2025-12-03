@@ -17,6 +17,7 @@ from backend.models.qf.round import Round
 from backend.models.qf.phraseset import Phraseset
 from backend.models.qf.prompt import Prompt
 from backend.services.transaction_service import TransactionService
+from backend.utils.model_registry import GameType
 from backend.services.qf.round_service import QFRoundService
 from backend.services.qf.vote_service import QFVoteService
 from backend.services.qf.party_session_service import (
@@ -1148,7 +1149,7 @@ class PartyCoordinationService:
             task_round_service = QFRoundService(task_db)
             task_vote_service = QFVoteService(task_db)
             task_party_session_service = PartySessionService(task_db)
-            task_transaction_service = TransactionService(task_db)
+            task_transaction_service = TransactionService(task_db, game_type=GameType.QF)
             ai_service = AIService(task_db)
 
             # Create a temporary coordination service with isolated services

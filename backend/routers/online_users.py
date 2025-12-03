@@ -34,7 +34,7 @@ from backend.schemas.online_users import (
     PingUserResponse,
 )
 from backend.schemas.notification import PingWebSocketMessage
-from backend.services import AuthService, AuthError
+from backend.services import AuthService
 from backend.utils.model_registry import (
     GameType,
     get_player_data_model,
@@ -106,25 +106,22 @@ async def authenticate_websocket(websocket: WebSocket) -> Optional[Tuple[Player,
 
     try:
         async with AsyncSessionLocal() as db:
+            auth_service = AuthService(db)
+            payload = auth_service.decode_access_token(token)
+
+            player_id_str = payload.get("sub") if payload else None
+            if not player_id_str:
+                logger.warning("WebSocket token missing player subject")
+                return None
+
+            player_id = UUID(player_id_str)
+
             for game_type in GameType:
-                try:
-                    auth_service = AuthService(db, game_type=game_type)
-                    payload = auth_service.decode_access_token(token)
-                except AuthError:
-                    continue
-
-                player_id_str = payload.get("sub") if payload else None
-                if not player_id_str:
-                    continue
-
-                player_id = UUID(player_id_str)
                 player_service = get_player_service(game_type, db)
                 player = await player_service.get_player_by_id(player_id)
 
-                if not player:
-                    continue
-
-                return player, game_type
+                if player:
+                    return player, game_type
 
             logger.warning("WebSocket token did not match any supported game type")
             return None

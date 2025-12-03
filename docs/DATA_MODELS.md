@@ -1,10 +1,10 @@
 # Data Model Documentation Index
 
-The application uses a unified **cross-game Player model** with game-specific data delegation. Shared building blocks live in `backend/models/`, while game-specific models and player data live in `backend/models/qf` (Quipflip), `backend/models/ir` (Initial Reaction), and `backend/models/mm` (Meme Mint). Use the dedicated game guides alongside this index when exploring schemas or planning migrations.
+The application uses a unified **cross-game Player model** with explicit per-game data tables. Shared building blocks live in `backend/models/`, while game-specific models and player data live in `backend/models/qf` (Quipflip), `backend/models/ir` (Initial Reaction), `backend/models/mm` (Meme Mint), and `backend/models/tl` (ThinkLink). Use the dedicated game guides alongside this index when exploring schemas or planning migrations.
 
 ## Architecture Overview
 
-### Unified Player Model with Game-Specific Delegation
+### Unified Player Model with Explicit Per-Game Data
 
 The application implements a **multi-game authentication system** with a single unified `Player` table for all games:
 
@@ -15,7 +15,7 @@ players table (unified authentication across all games)
 └── mm_player_data (Meme Mint-specific wallet, vault, player state)
 ```
 
-Each player account is linked to at most one record in each game's player data table. The `Player` model includes property accessors that delegate game-specific fields to the appropriate `{Game}PlayerData` table, allowing transparent access via `player.wallet`, `player.vault`, etc.
+Each player account is linked to at most one record in each game's player data table. The `Player` model no longer delegates game-specific fields; services and routers must explicitly access per-game records (e.g., via `player.get_game_data(game_type)` or direct queries). This prevents implicit game defaults and keeps the global player identity game-agnostic.
 
 **Benefits of this architecture**:
 - Single authentication system across all games
@@ -32,6 +32,7 @@ Each player account is linked to at most one record in each game's player data t
 ## Core Shared Models
 
 ### Player (Unified Authentication)
+**Global Fields (Player):**
 - `player_id` (UUID, primary key)
 - `username` (string(80), unique) - display name for the player
 - `username_canonical` (string(80), unique) - lowercase form for lookups and uniqueness checking
@@ -42,13 +43,7 @@ Each player account is linked to at most one record in each game's player data t
 - `is_guest` (boolean, default false) - whether this is a guest account with auto-generated credentials
 - `is_admin` (boolean, default false) - admin privileges flag for administrative access
 - `locked_until` (timestamp with timezone, nullable) - account lock expiration time for temporary bans/suspensions
-
-**Delegated Properties** (via {Game}PlayerData):
-- `wallet` - current spendable currency balance (game-specific)
-- `vault` - accumulated long-term currency balance (game-specific)
-- `tutorial_completed`, `tutorial_progress`, `tutorial_started_at`, `tutorial_completed_at` - game-specific
-- `consecutive_incorrect_votes`, `vote_lockout_until` - game-specific (QF only)
-- `flag_dismissal_streak` - game-specific (QF only)
+- Explicit relationships to each `{Game}PlayerData` table (no property delegation)
 
 **Authentication**: JWT access/refresh tokens with separate per-game refresh token tables
 **Guest Accounts**: Auto-generated credentials with vote lockout protection for incorrect votes

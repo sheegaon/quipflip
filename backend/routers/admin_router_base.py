@@ -74,7 +74,7 @@ class UpdateConfigResponse(BaseModel):
 async def _update_config(request: UpdateConfigRequest, player: Any, session: AsyncSession) -> UpdateConfigResponse:
     """Update a configuration value."""
     try:
-        service = SystemConfigService(session)
+        service = SystemConfigService(session, game_type=GameType.QF)
 
         # Update the configuration
         config_entry = await service.set_config_value(request.key, request.value, updated_by=str(player.player_id))

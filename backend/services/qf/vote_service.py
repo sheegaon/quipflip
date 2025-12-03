@@ -28,6 +28,7 @@ from backend.services.transaction_service import TransactionService
 from backend.services.qf.phraseset_activity_service import ActivityService
 from backend.services.qf.helpers import upsert_result_view
 from backend.config import get_settings
+from backend.utils.model_registry import GameType
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -273,7 +274,7 @@ class QFVoteService:
             
             # Import here to avoid circular imports
             from backend.services.transaction_service import TransactionService
-            transaction_service = TransactionService(self.db)
+            transaction_service = TransactionService(self.db, game_type=GameType.QF)
             
             finalized_count = 0
             orphaned_count = 0

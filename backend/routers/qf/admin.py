@@ -232,7 +232,7 @@ class QFAdminRouter(AdminRouterBase):
 
     async def get_game_config(self, player: QFPlayer, session: AsyncSession) -> GameConfigResponse:
         """Get QuipFlip-specific configuration."""
-        service = SystemConfigService(session)
+        service = SystemConfigService(session, game_type=GameType.QF)
         config = await service.get_all_config()
 
         return GameConfigResponse(

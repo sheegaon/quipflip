@@ -41,28 +41,39 @@ class AuthService:
     Game-specific logic is handled through player_service parameter.
     """
 
-    def __init__(self, db: AsyncSession, game_type: GameType = GameType.QF):
+    def __init__(self, db: AsyncSession, game_type: GameType | None = None):
         self.db = db
         self.game_type = game_type
         self.settings = get_settings()
 
-        # Instantiate the correct player service based on game type
-        # Player service is still game-specific for creating game-specific player_data
-        if game_type == GameType.QF:
-            from backend.services.qf.player_service import QFPlayerService as PlayerService
-        elif game_type == GameType.IR:
-            from backend.services.ir.player_service import IRPlayerService as PlayerService
-        elif game_type == GameType.MM:
-            from backend.services.mm.player_service import MMPlayerService as PlayerService
-        elif game_type == GameType.TL:
-            from backend.services.tl.player_service import TLPlayerService as PlayerService
-        else:
-            raise ValueError(f"Unsupported game type: {game_type}")
-
         # Unified models for all games
         self.player_model = Player
         self.refresh_token_model = RefreshToken
-        self.player_service = PlayerService(db)
+        self.player_service = None
+
+        # Instantiate the correct player service based on game type when provided
+        # Player service is still game-specific for creating game-specific player_data
+        if game_type is not None:
+            if game_type == GameType.QF:
+                from backend.services.qf.player_service import QFPlayerService as PlayerService
+            elif game_type == GameType.IR:
+                from backend.services.ir.player_service import IRPlayerService as PlayerService
+            elif game_type == GameType.MM:
+                from backend.services.mm.player_service import MMPlayerService as PlayerService
+            elif game_type == GameType.TL:
+                from backend.services.tl.player_service import TLPlayerService as PlayerService
+            else:
+                raise ValueError(f"Unsupported game type: {game_type}")
+
+            self.player_service = PlayerService(db)
+
+    def _require_player_service(self) -> None:
+        if self.player_service is None or self.game_type is None:
+            raise AuthError("game_type_required")
+
+    def _apply_admin_status(self, player: Player) -> None:
+        if self.player_service:
+            self.player_service.apply_admin_status(player)
 
     # ------------------------------------------------------------------
     # Registration
@@ -73,6 +84,7 @@ class AuthService:
         Returns:
             tuple[PlayerBase, str]: The created player and the auto-generated password
         """
+        self._require_player_service()
         from backend.services.username_service import UsernameService
         import random
 
@@ -124,6 +136,7 @@ class AuthService:
 
     async def register_player(self, email: str, password: str) -> PlayerBase:
         """Create a new player with provided credentials."""
+        self._require_player_service()
         from backend.services.username_service import UsernameService
 
         email_normalized = email.strip().lower()
@@ -187,6 +200,7 @@ class AuthService:
         Raises:
             AuthError: If player is not a guest, email is taken, or password is invalid
         """
+        self._require_player_service()
         if not player.is_guest:
             raise AuthError("not_a_guest")
 
@@ -242,7 +256,7 @@ class AuthService:
         if not player or not verify_password(password, player.password_hash):
             raise AuthError("Email/password combination is invalid")
 
-        self.player_service.apply_admin_status(player)
+        self._apply_admin_status(player)
 
         return player
 
@@ -268,7 +282,7 @@ class AuthService:
         if not player or not verify_password(password, player.password_hash):
             raise AuthError("Username/password combination is invalid")
 
-        self.player_service.apply_admin_status(player)
+        self._apply_admin_status(player)
 
         return player
 
