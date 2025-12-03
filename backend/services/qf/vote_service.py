@@ -20,6 +20,7 @@ from backend.utils.exceptions import (
 from backend.utils.datetime_helpers import ensure_utc
 
 from backend.models.qf.player import QFPlayer
+from backend.models.qf.player_data import QFPlayerData
 from backend.models.qf.round import Round
 from backend.models.qf.phraseset import Phraseset
 from backend.models.qf.vote import Vote
@@ -43,6 +44,17 @@ class QFVoteService:
     def __init__(self, db: AsyncSession):
         self.db = db
         self.activity_service = ActivityService(db)
+
+    async def _get_player_data(self, player: QFPlayer) -> QFPlayerData:
+        """Return the player's QF data, loading from the database if needed."""
+
+        if player.qf_player_data:
+            return player.qf_player_data
+
+        player_data = await self.db.get(QFPlayerData, player.player_id)
+        if not player_data:
+            raise RuntimeError(f"Missing QF player data for player {player.player_id}")
+        return player_data
 
     @classmethod
     def _get_finalization_lock(cls) -> asyncio.Lock:
@@ -442,7 +454,9 @@ class QFVoteService:
             await self.db.flush()
 
             # Set player's active round (after adding round to session)
-            player.active_round_id = round.round_id
+            player_data = await self._get_player_data(player)
+            player_data.active_round_id = round.round_id
+            await self.db.flush([player_data])
 
             # Commit all changes atomically INSIDE the lock
             await self.db.commit()
@@ -703,7 +717,8 @@ class QFVoteService:
         round.vote_submitted_at = datetime.now(UTC)
 
         # Clear player's active round
-        player.active_round_id = None
+        player_data = await self._get_player_data(player)
+        player_data.active_round_id = None
 
         # Update phraseset vote count and prize pool
         phraseset.vote_count += 1

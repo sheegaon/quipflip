@@ -78,15 +78,6 @@ async def test_one_round_at_a_time_enforcement(db_session, player_factory):
     # Start first round
     prompt_round = await round_service.start_prompt_round(player, transaction_service)
 
-    # Persist active round on the player's game data so subsequent checks respect it
-    qf_player_data = (
-        await db_session.execute(
-            select(QFPlayerData).where(QFPlayerData.player_id == player.player_id)
-        )
-    ).scalar_one()
-    qf_player_data.active_round_id = prompt_round.round_id
-    await db_session.commit()
-
     # Try to start second round
     can_start, reason = await player_service.can_start_prompt_round(player)
     assert can_start is False
