@@ -82,7 +82,7 @@ async def start_prompt_round(
 ):
     """Start a prompt round."""
     player_service = QFPlayerService(db)
-    transaction_service = TransactionService(db)
+    transaction_service = TransactionService(db, GameType.QF)
     round_service = QFRoundService(db)
 
     # Check if can start
@@ -120,7 +120,7 @@ async def start_copy_round(
     logger.info(f"[API /rounds/copy] Request from player {player.player_id}, second_copy={prompt_round_id is not None}")
 
     player_service = QFPlayerService(db)
-    transaction_service = TransactionService(db)
+    transaction_service = TransactionService(db, GameType.QF)
     round_service = QFRoundService(db)
 
     # Ensure prompt queue is populated from database before checking availability (for first copy)
@@ -171,7 +171,7 @@ async def start_vote_round(
 ):
     """Start a vote round."""
     player_service = QFPlayerService(db)
-    transaction_service = TransactionService(db)
+    transaction_service = TransactionService(db, GameType.QF)
     vote_service = QFVoteService(db)
 
     # Check if can start
@@ -243,7 +243,7 @@ async def submit_phrase(
 
             # Route to party coordination service based on round type
             coordination_service = PartyCoordinationService(db)
-            transaction_service = TransactionService(db)
+            transaction_service = TransactionService(db, GameType.QF)
 
             if round_obj.round_type == 'prompt':
                 result = await coordination_service.submit_party_prompt(
@@ -310,7 +310,7 @@ async def submit_phrase(
             if round_obj.player_id != player.player_id:
                 raise HTTPException(status_code=404, detail="Round not found")
 
-            transaction_service = TransactionService(db)
+            transaction_service = TransactionService(db, GameType.QF)
             round_service = QFRoundService(db)
 
             second_copy_info = {}
@@ -352,7 +352,7 @@ async def flag_copy_round(
 ):
     """Flag an active copy round and trigger administrative review."""
 
-    transaction_service = TransactionService(db)
+    transaction_service = TransactionService(db, GameType.QF)
     round_service = QFRoundService(db)
 
     try:
@@ -385,7 +385,7 @@ async def abandon_round(
 ):
     """Abandon an active prompt, copy, or vote round."""
 
-    transaction_service = TransactionService(db)
+    transaction_service = TransactionService(db, GameType.QF)
     round_service = QFRoundService(db)
 
     try:
@@ -483,7 +483,7 @@ async def get_copy_round_hints(
         raise HTTPException(status_code=400, detail="Hints are only available for active copy rounds")
 
     round_service = QFRoundService(db)
-    transaction_service = TransactionService(db)
+    transaction_service = TransactionService(db, GameType.QF)
 
     try:
         hints = await round_service.get_or_generate_hints(round_id, player, transaction_service)

@@ -318,7 +318,7 @@ async def _get_current_round(player: Player, db: AsyncSession) -> CurrentRoundRe
 
     if datetime.now(UTC) > grace_cutoff:
         round_service = QFRoundService(db)
-        transaction_service = TransactionService(db)
+        transaction_service = TransactionService(db, GameType.QF)
         await round_service.handle_timeout(round.round_id, transaction_service)
         await db.refresh(player)
         return CurrentRoundResponse(

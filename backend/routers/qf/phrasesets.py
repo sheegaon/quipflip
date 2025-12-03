@@ -99,7 +99,7 @@ async def submit_vote(
 
         # Use party coordination service
         coordination_service = PartyCoordinationService(db)
-        transaction_service = TransactionService(db)
+        transaction_service = TransactionService(db, GameType.QF)
         result = await coordination_service.submit_party_vote(
             session_id=party_phraseset.session_id,
             player=player,
@@ -116,7 +116,7 @@ async def submit_vote(
 
     else:
         # NORMAL MODE: Use regular service
-        transaction_service = TransactionService(db)
+        transaction_service = TransactionService(db, GameType.QF)
         vote_service = QFVoteService(db)
 
         # Get player's active vote round
@@ -184,7 +184,7 @@ async def get_phraseset_results(
     db: AsyncSession = Depends(get_db),
 ):
     """Get voting results for a phraseset (triggers prize collection on first view)."""
-    transaction_service = TransactionService(db)
+    transaction_service = TransactionService(db, GameType.QF)
     vote_service = QFVoteService(db)
 
     try:
