@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { useTutorial } from '../contexts/TutorialContext';
 import { extractErrorMessage } from '@/api/client';
@@ -8,6 +8,7 @@ import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { UpgradeGuestAccount } from '../components/UpgradeGuestAccount';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import TutorialWelcome from '../components/Tutorial/TutorialWelcome';
+import { TrophyIcon } from '@crowdcraft/components/icons/GameIcons.tsx';
 
 export const Dashboard: React.FC = () => {
   const { state, actions } = useGame();
@@ -15,6 +16,7 @@ export const Dashboard: React.FC = () => {
     actions: { startTutorial, skipTutorial },
   } = useTutorial();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const { player } = state;
   const { refreshDashboard } = actions;
@@ -37,6 +39,17 @@ export const Dashboard: React.FC = () => {
 
     return () => controller.abort();
   }, [refreshDashboard]);
+
+  // Check for tutorial start query param
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    if (searchParams.get('startTutorial') === 'true') {
+      setShowTutorialWelcome(true);
+      searchParams.delete('startTutorial');
+      const newSearch = searchParams.toString();
+      navigate(`/dashboard${newSearch ? `?${newSearch}` : ''}`, { replace: true });
+    }
+  }, [location.search, navigate]);
 
   const handleStartRound = async () => {
     if (isStartingRound) return;
@@ -113,7 +126,7 @@ export const Dashboard: React.FC = () => {
               <h2 className="text-2xl font-display font-bold mb-2">Start Playing</h2>
               <p className="text-lg mb-4">Match the crowd&rsquo;s answers and earn coins based on your coverage.</p>
               <div className="flex items-center justify-center gap-2 mb-6 text-lg font-bold">
-                Entry Cost: <CurrencyDisplay amount={entryCost} iconClassName="w-5 h-5" />
+                <CurrencyDisplay amount={entryCost} iconClassName="w-5 h-5" textClassName="font-bold text-lg" />
               </div>
               {!canStartRound && errorReason && (
                 <p className="mb-4 text-white text-sm">
@@ -127,22 +140,22 @@ export const Dashboard: React.FC = () => {
                 disabled={isStartingRound || !canStartRound}
                 className="bg-white text-ccl-orange font-bold py-3 px-8 rounded-tile shadow-tile hover:shadow-tile-sm transition-colors disabled:opacity-70"
               >
-                {isStartingRound ? 'Starting round...' : 'Start Round'}
+                {isStartingRound ? 'Starting round...' : 'Start'}
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="rounded-tile border-2 border-ccl-teal bg-gradient-to-r from-ccl-teal to-ccl-teal-deep text-white p-6 text-center">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <TrophyIcon className="w-8 h-8" />
+                <h2 className="text-xl font-display font-bold">Challenges</h2>
+              </div>
+              <p className="mb-4">Compete in special challenges for exclusive rewards!</p>
               <button
-                onClick={() => navigate('/history')}
-                className="rounded-tile border-2 border-ccl-navy bg-white text-ccl-navy p-6 text-center font-bold hover:bg-ccl-navy hover:text-white transition-colors"
+                disabled
+                className="bg-white text-ccl-teal font-bold py-2 px-6 rounded-tile shadow-tile opacity-50 cursor-not-allowed"
+                title="Coming soon"
               >
-                View History
-              </button>
-              <button
-                onClick={() => navigate('/statistics')}
-                className="rounded-tile border-2 border-ccl-navy bg-white text-ccl-navy p-6 text-center font-bold hover:bg-ccl-navy hover:text-white transition-colors"
-              >
-                View Statistics
+                Coming Soon
               </button>
             </div>
           </>
