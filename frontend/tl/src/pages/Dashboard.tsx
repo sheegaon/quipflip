@@ -104,13 +104,13 @@ export const Dashboard: React.FC = () => {
               <div className="border-2 border-ccl-navy rounded-tile p-4 bg-white">
                 <p className="text-sm text-ccl-teal uppercase tracking-wide">Wallet</p>
                 <div className="text-2xl font-display font-bold text-ccl-navy flex items-center gap-2">
-                  <CurrencyDisplay amount={player?.tl_wallet || 0} />
+                  <CurrencyDisplay amount={player?.wallet || 0} />
                 </div>
               </div>
               <div className="border-2 border-ccl-teal rounded-tile p-4 bg-white">
                 <p className="text-sm text-ccl-teal uppercase tracking-wide">Vault</p>
                 <p className="text-2xl font-display font-bold text-ccl-navy">
-                  <CurrencyDisplay amount={player?.tl_vault || 0} />
+                  <CurrencyDisplay amount={player?.vault || 0} />
                 </p>
               </div>
             </div>
