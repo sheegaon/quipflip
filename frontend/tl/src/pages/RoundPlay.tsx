@@ -15,6 +15,18 @@ interface RoundPlayLocationState {
   round?: StartRoundResponse;
 }
 
+interface FinalResult {
+  roundId: string;
+  promptText: string;
+  finalCoverage: number;
+  grossPayout: number;
+  strikeCount: number;
+  matchedClusters: number;
+  totalClusters: number;
+  walletAward: number;
+  vaultAward: number;
+}
+
 interface Guess {
   text: string;
   wasMatch: boolean;
@@ -39,12 +51,12 @@ export const RoundPlay: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isAbandoning, setIsAbandoning] = useState(false);
   const [roundEnded, setRoundEnded] = useState(false);
-  const [finalResult, setFinalResult] = useState<any>(null);
+  const [finalResult, setFinalResult] = useState<FinalResult | null>(null);
 
   // Check if round should end (3 strikes)
   useEffect(() => {
     if (strikes >= 3 && !roundEnded) {
-      finalizRound();
+      finalizeRound();
     }
   }, [strikes, roundEnded]);
 
@@ -79,7 +91,7 @@ export const RoundPlay: React.FC = () => {
 
       // Check if round ended
       if (response.round_status === 'completed') {
-        await finalizRound();
+        await finalizeRound();
       }
     } catch (err) {
       const msg = extractErrorMessage(err);
@@ -107,7 +119,7 @@ export const RoundPlay: React.FC = () => {
     }
   };
 
-  const finalizRound = async () => {
+  const finalizeRound = async () => {
     if (!round) return;
 
     try {
