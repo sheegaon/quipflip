@@ -20,7 +20,7 @@
 @layer components {
   /* Pattern background utility */
   .bg-pattern {
-    background-image: url('/pattern_light.svg');
+    background-image: url('/pattern_light.png');
     background-size: 80px 80px;
     background-repeat: repeat;
   }
