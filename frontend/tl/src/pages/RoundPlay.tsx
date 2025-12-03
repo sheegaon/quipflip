@@ -133,21 +133,14 @@ export const RoundPlay: React.FC = () => {
         grossPayout: details.gross_payout || 0,
         strikeCount: strikes,
         matchedClusters: details.matched_clusters?.length || 0,
-        totalClusters: 0, // Would need snapshot data
+        totalClusters: details.snapshot_answer_count || 0,
       };
-
-      // Calculate payout (TODO would come from backend in production)
-      const coveragePercent = details.final_coverage || 0;
-      const grossPayout = Math.round(300 * Math.pow(coveragePercent, 1.5));
-      const walletAward = coveragePercent <= 0.33
-        ? grossPayout
-        : Math.max(100, grossPayout - Math.floor((grossPayout - 100) * 0.3));
 
       setFinalResult({
         ...result,
-        grossPayout,
-        walletAward,
-        vaultAward: grossPayout - walletAward,
+        grossPayout: result.grossPayout,
+        walletAward: details.wallet_award ?? result.grossPayout,
+        vaultAward: details.vault_award ?? 0,
       });
     } catch (err) {
       setError(extractErrorMessage(err) || 'Failed to finalize round');

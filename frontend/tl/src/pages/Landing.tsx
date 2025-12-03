@@ -201,7 +201,7 @@ export const Landing: React.FC = () => {
         </div>
 
         <p className="text-center text-ccl-navy text-lg font-medium mb-4">
-          Explore funny memes and write new ones!
+          Guess what the crowd said and earn coins!
         </p>
 
         <div className="mb-6 border-t border-gray-200" aria-hidden="true"></div>
@@ -317,9 +317,9 @@ export const Landing: React.FC = () => {
 
         <div className="mt-8 text-center text-sm text-ccl-navy">
           <p className="font-display font-semibold mb-2">How to Play:</p>
-          <p className="text-ccl-teal">1. Pay the entry fee and see 1 image with 5 captions</p>
-          <p className="text-ccl-teal">2. Vote for your favorite caption to pick a winner</p>
-          <p className="text-ccl-teal">3. Winning authors get paid, then submit your own caption</p>
+          <p className="text-ccl-teal">1. Pay the entry fee and receive a prompt</p>
+          <p className="text-ccl-teal">2. Submit answers matching what the crowd said</p>
+          <p className="text-ccl-teal">3. Match more of the crowd, earn bigger payouts</p>
         </div>
       </div>
     </div>
