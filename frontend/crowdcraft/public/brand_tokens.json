@@ -123,7 +123,7 @@
       "info":    { "bg": "{palette.teal.50}",   "text": "{palette.teal.700}" },
       "warning": { "bg": "{palette.gold.50}",   "text": "{palette.ink.900}" },
       "error":   { "bg": "{palette.orange.50}", "text": "{palette.orange.700}" }
-    },
+    }
   },
 
   "usage": {

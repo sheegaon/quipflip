@@ -1,6 +1,6 @@
 import React from 'react';
 import { useGame } from '../contexts/GameContext';
-import { useResults } from '../contexts/ResultsContext';
+import { useResults } from '@crowdcraft';
 import { useQuests } from '@crowdcraft/contexts/QuestContext';
 
 /**

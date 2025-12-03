@@ -1,5 +1,5 @@
-import type { QFPlayFrequency } from '@crowdcraft/api/types.ts';
-import { formatDateInUserZone } from '../../utils/datetime.ts';
+import type { QFPlayFrequency } from '../../api/types.ts';
+import { formatDateInUserZone } from '../../utils';
 
 interface FrequencyChartProps {
   frequency: QFPlayFrequency;

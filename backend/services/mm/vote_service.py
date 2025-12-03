@@ -76,7 +76,8 @@ class MMVoteService:
 
         # Ensure the round belongs to the voting player
         if round_obj.player_id != player.player_id:
-            logger.error(f"Player {player.player_id} trying to vote on round {round_obj.round_id} owned by {round_obj.player_id}")
+            logger.error(f"Player {player.player_id} trying to vote on round {round_obj.round_id} owned by "
+            f"{round_obj.player_id}")
             raise ValueError("Cannot vote on another player's round")
 
         lock_name = f"submit_vote:{round_obj.round_id}"

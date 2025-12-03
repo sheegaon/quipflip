@@ -7,10 +7,9 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import apiClient from '@crowdcraft/api/client.ts';
-import { getActionErrorMessage } from '@crowdcraft/utils/errorMessages.ts';
-import { tutorialLogger } from '@crowdcraft/utils/logger.ts';
-import type { QFTutorialProgress, QFTutorialStatus } from '@crowdcraft/api/types.ts';
+import apiClient from '../api/client.ts';
+import { getActionErrorMessage , tutorialLogger } from '../utils';
+import type { QFTutorialProgress, QFTutorialStatus } from '../api/types.ts';
 
 const isAbortError = (error: unknown): boolean => {
   if (!error || typeof error !== 'object') {
@@ -23,7 +22,7 @@ const isAbortError = (error: unknown): boolean => {
 
 export type TutorialLifecycleStatus = 'loading' | 'inactive' | 'active' | 'completed' | 'error';
 
-interface TutorialContextState<Status extends QFTutorialStatus> {
+interface QFTutorialContextState<Status extends QFTutorialStatus> {
   status: Status | null;
   tutorialStatus: TutorialLifecycleStatus;
   isActive: boolean;
@@ -37,7 +36,7 @@ interface RefreshOptions {
   showLoading?: boolean;
 }
 
-interface TutorialActions {
+interface QFTutorialActions {
   startTutorial: () => Promise<void>;
   advanceStep: (stepId?: QFTutorialProgress) => Promise<void>;
   skipTutorial: () => Promise<void>;
@@ -46,12 +45,12 @@ interface TutorialActions {
   refreshStatus: (options?: RefreshOptions) => Promise<void>;
 }
 
-interface TutorialContextType<Status extends QFTutorialStatus> {
-  state: TutorialContextState<Status>;
-  actions: TutorialActions;
+interface QFTutorialContextType<Status extends QFTutorialStatus> {
+  state: QFTutorialContextState<Status>;
+  actions: QFTutorialActions;
 }
 
-export interface TutorialContextConfig<Status extends QFTutorialStatus> {
+export interface QFTutorialContextConfig<Status extends QFTutorialStatus> {
   mapLoadStatus: (response: unknown) => Status | null;
   mapUpdateStatus: (response: unknown) => Status;
   mapResetStatus: (response: unknown) => Status;
@@ -63,15 +62,15 @@ export interface TutorialContextConfig<Status extends QFTutorialStatus> {
   resetTutorial?: () => Promise<unknown>;
 }
 
-interface TutorialProviderProps<Status extends QFTutorialStatus> {
+interface QFTutorialProviderProps<Status extends QFTutorialStatus> {
   children: React.ReactNode;
-  config: TutorialContextConfig<Status>;
+  config: QFTutorialContextConfig<Status>;
 }
 
-export const createTutorialContext = <Status extends QFTutorialStatus>() => {
-  const TutorialContext = createContext<TutorialContextType<Status> | undefined>(undefined);
+export const qfCreateTutorialContext = <Status extends QFTutorialStatus>() => {
+  const TutorialContext = createContext<QFTutorialContextType<Status> | undefined>(undefined);
 
-  const TutorialProvider: React.FC<TutorialProviderProps<Status>> = ({ children, config }) => {
+  const QFTutorialProvider: React.FC<QFTutorialProviderProps<Status>> = ({ children, config }) => {
     const [status, setStatus] = useState<Status | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -247,7 +246,7 @@ export const createTutorialContext = <Status extends QFTutorialStatus>() => {
       return () => controller.abort();
     }, [refreshStatus]);
 
-    const state: TutorialContextState<Status> = useMemo(
+    const state: QFTutorialContextState<Status> = useMemo(
       () => ({
         status,
         tutorialStatus: lifecycleStatus,
@@ -259,7 +258,7 @@ export const createTutorialContext = <Status extends QFTutorialStatus>() => {
       [status, lifecycleStatus, isActive, currentStep, loading, error],
     );
 
-    const actions: TutorialActions = useMemo(
+    const actions: QFTutorialActions = useMemo(
       () => ({
         startTutorial,
         advanceStep,
@@ -271,7 +270,7 @@ export const createTutorialContext = <Status extends QFTutorialStatus>() => {
       [startTutorial, advanceStep, skipTutorial, completeTutorial, resetTutorial, refreshStatus],
     );
 
-    const value = useMemo<TutorialContextType<Status>>(
+    const value = useMemo<QFTutorialContextType<Status>>(
       () => ({
         state,
         actions,
@@ -282,7 +281,7 @@ export const createTutorialContext = <Status extends QFTutorialStatus>() => {
     return <TutorialContext.Provider value={value}>{children}</TutorialContext.Provider>;
   };
 
-  const useTutorial = (): TutorialContextType<Status> => {
+  const useTutorial = (): QFTutorialContextType<Status> => {
     const context = useContext(TutorialContext);
     if (!context) {
       throw new Error('useTutorial must be used within TutorialProvider');
@@ -290,5 +289,5 @@ export const createTutorialContext = <Status extends QFTutorialStatus>() => {
     return context;
   };
 
-  return { TutorialProvider, useTutorial };
+  return { TutorialProvider: QFTutorialProvider, useTutorial };
 };

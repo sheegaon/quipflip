@@ -7,7 +7,7 @@ import { buildPhrasesetListKey } from '@crowdcraft/utils/gameKeys.ts';
 import { PhrasesetList } from '../components/PhrasesetList';
 import { MMPhrasesetDetails } from '../components/PhrasesetDetails';
 import { Pagination } from '@crowdcraft/components/Pagination.tsx';
-import { useResults } from '../contexts/ResultsContext';
+import { useResults } from '@crowdcraft';
 import { trackingLogger } from '@crowdcraft/utils/logger.ts';
 import { getUniqueIdForSummary } from '@crowdcraft/utils/phrasesetHelpers.ts';
 import { getErrorMessage } from '@crowdcraft/types/errors.ts';

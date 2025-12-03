@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import apiClient from '@crowdcraft/api/client.ts';
-import type { QFPracticePhraseset } from '@crowdcraft/api/types.ts';
+import apiClient from '../api/client.ts';
+import type { QFPracticePhraseset } from '../api/types.ts';
 
 interface UsePracticePhrasesetSessionResult {
   phraseset: QFPracticePhraseset | null;

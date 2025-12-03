@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.config import get_settings
 from backend.utils.model_registry import GameType
 from backend.models.player import Player
+from backend.models.player_base import PlayerBase
 from backend.models.refresh_token import RefreshToken
 from backend.services.username_service import canonicalize_username
 from backend.utils.simple_jwt import (

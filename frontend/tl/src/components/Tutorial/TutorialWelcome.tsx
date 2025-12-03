@@ -65,30 +65,30 @@ const TutorialWelcome: React.FC<TutorialWelcomeProps> = ({ onStart, onSkip }) =>
         </button>
 
         <div className="tutorial-welcome-content">
-          <h1 className="tutorial-welcome-title">Welcome to Quipflip!</h1>
+          <h1 className="tutorial-welcome-title">Welcome to ThinkLink!</h1>
 
           {player?.username && (
             <p className="tutorial-welcome-username">
-              You've been assigned the username <strong>{player?.username}</strong> — this is how other players in the game will see you.
+              You're <strong>{player?.username}</strong> — earn coins by matching what others are thinking.
             </p>
           )}
 
           <p className="tutorial-welcome-description">
-            Quipflip is a creative word game where you:
+            ThinkLink is a word-guessing game where you:
           </p>
 
           <ul className="tutorial-welcome-features">
             <li>
-              <strong>Quip:</strong> Write the original answer to a fill-in-the-blank prompt
+              <strong>Guess:</strong> Match answers that others gave to a prompt
             </li>
             <li>
-              <strong>Impostor:</strong> Fake the original answer so it blends in with the real one
+              <strong>Think Alike:</strong> Higher coverage (more matches) = bigger payouts
             </li>
             <li>
-              <strong>Guess:</strong> Pick which answer you think was written first
+              <strong>Stay Sharp:</strong> 3 wrong guesses and your round ends
             </li>
             <li>
-              <strong>Earn Flipcoins:</strong> Clever quips and convincing fakes earn you more!
+              <strong>Earn Coins:</strong> Coverage of 30% or less? Keep your full payout!
             </li>
           </ul>
 

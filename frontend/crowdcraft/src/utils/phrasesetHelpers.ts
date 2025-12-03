@@ -1,4 +1,4 @@
-import type { QFPhrasesetSummary } from '@crowdcraft/api/types.ts';
+import type { QFPhrasesetSummary } from '../api/types.ts';
 
 /**
  * Get a unique ID for a phraseset summary.
