@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import apiClient from '@/api/client';
+import apiClient from '@crowdcraft/api/client.ts';
 import type { QFPracticePhraseset } from '@crowdcraft/api/types.ts';
 
 interface UsePracticePhrasesetResult {

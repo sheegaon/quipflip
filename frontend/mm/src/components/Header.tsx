@@ -20,7 +20,7 @@ import {
 } from '@crowdcraft/components/icons/NavigationIcons.tsx';
 import { QuestionMarkIcon, TrophyIcon } from '@crowdcraft/components/icons/EngagementIcons.tsx';
 import { hasCompletedSurvey } from '@crowdcraft/utils/betaSurvey.ts';
-import { apiClient } from '@/api/client';
+import { apiClient } from '@crowdcraft/api/client.ts';
 import { componentLogger } from '@crowdcraft/utils/logger.ts';
 import GuestLogoutWarning from '@crowdcraft/components/GuestLogoutWarning.tsx';
 
@@ -76,7 +76,7 @@ export const Header: React.FC = () => {
           return;
         }
 
-        const status = await apiClient.getBetaSurveyStatus();
+        const status = await apiClient.mmGetBetaSurveyStatus();
 
         // Cache the result for 5 minutes
         localStorage.setItem(cacheKey, JSON.stringify({

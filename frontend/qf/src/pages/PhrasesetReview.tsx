@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { apiClient } from '@/api/client';
+import { apiClient } from '@crowdcraft/api/client.ts';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { PromptRoundReview } from '../components/PhrasesetReview/PromptRoundReview';
 import { CopyRoundReview } from '../components/PhrasesetReview/CopyRoundReview';

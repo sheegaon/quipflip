@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
-import apiClient, { extractErrorMessage } from '@/api/client';
+import apiClient, { extractErrorMessage } from '@crowdcraft/api/client.ts';
 import { landingLogger } from '@crowdcraft/utils/logger.ts';
 import { GUEST_CREDENTIALS_KEY } from '@crowdcraft/utils/storageKeys.ts';
 
@@ -65,7 +65,7 @@ export const Landing: React.FC = () => {
       landingLogger.info('Creating player account');
 
       // Backend auto-generates the username, so send only credentials
-      const response = await apiClient.createPlayer({
+      const response = await apiClient.mmCreatePlayer({
         email: registerEmail.trim(),
         password: registerPassword,
       });
@@ -109,7 +109,7 @@ export const Landing: React.FC = () => {
       let response;
       if (isEmail) {
         // Use email login endpoint
-        response = await apiClient.login({
+        response = await apiClient.mmLogin({
           email: identifier,
           password: loginPassword,
         });
@@ -123,7 +123,7 @@ export const Landing: React.FC = () => {
         }
 
         // Use username login endpoint
-        response = await apiClient.loginWithUsername({
+        response = await apiClient.mmLoginWithUsername({
           username: identifier,
           password: loginPassword,
         });
@@ -154,7 +154,7 @@ export const Landing: React.FC = () => {
       setError(null);
       landingLogger.info('Creating guest account');
 
-      const response = await apiClient.createGuest();
+      const response = await apiClient.mmCreateGuest();
 
       landingLogger.info('Guest created successfully, starting session', { username: response.username });
 

@@ -12,6 +12,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': resolve(projectRoot, 'src'),
+      '@crowdcraft/api': resolve(projectRoot, '../crowdcraft/src/api'),
       '@crowdcraft/utils': resolve(projectRoot, '../crowdcraft/src/utils'),
       '@crowdcraft': resolve(projectRoot, '../crowdcraft/src'),
     },

@@ -17,10 +17,11 @@ from backend.schemas.tl_round import (
 )
 from backend.services import GameType
 from backend.services.tl.round_service import TLRoundService
-from backend.services.tl.matching_service import TLMatchingService
-from backend.services.tl.clustering_service import TLClusteringService
 from backend.services.tl.scoring_service import TLScoringService
-from backend.services.tl.prompt_service import TLPromptService
+from backend.services.tl.dependencies import (
+    get_round_service,
+    get_scoring_service,
+)
 from backend.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -68,6 +69,7 @@ async def check_round_availability(
 async def start_round(
     player: Player = Depends(get_tl_player),
     db: AsyncSession = Depends(get_db),
+    round_service: TLRoundService = Depends(get_round_service),
 ):
     """Start a new ThinkLink round.
 
@@ -81,18 +83,7 @@ async def start_round(
     try:
         logger.debug(f"🎮 Starting TL round for player {player.player_id}...")
 
-        # Initialize services
         settings = get_settings()
-        matching_service = TLMatchingService()
-        clustering_service = TLClusteringService(matching_service)
-        scoring_service = TLScoringService()
-        prompt_service = TLPromptService(matching_service)
-        round_service = TLRoundService(
-            matching_service,
-            clustering_service,
-            scoring_service,
-            prompt_service,
-        )
 
         # Start round
         round_obj, error = await round_service.start_round(
@@ -136,6 +127,7 @@ async def submit_guess(
     request_body: SubmitGuessRequest = Body(...),
     player: Player = Depends(get_tl_player),
     db: AsyncSession = Depends(get_db),
+    round_service: TLRoundService = Depends(get_round_service),
 ):
     """Submit a guess for an active round.
 
@@ -154,18 +146,6 @@ async def submit_guess(
         guess_text = request_body.guess_text
 
         logger.debug(f"💭 Player {player.player_id} submitting guess: '{guess_text}'")
-
-        # Initialize services
-        matching_service = TLMatchingService()
-        clustering_service = TLClusteringService(matching_service)
-        scoring_service = TLScoringService()
-        prompt_service = TLPromptService(matching_service)
-        round_service = TLRoundService(
-            matching_service,
-            clustering_service,
-            scoring_service,
-            prompt_service,
-        )
 
         # Submit guess
         result, error = await round_service.submit_guess(
@@ -219,6 +199,7 @@ async def abandon_round(
     round_id: UUID = Path(..., description="Round ID"),
     player: Player = Depends(get_tl_player),
     db: AsyncSession = Depends(get_db),
+    round_service: TLRoundService = Depends(get_round_service),
 ):
     """Abandon an active round with partial refund.
 
@@ -226,18 +207,6 @@ async def abandon_round(
     """
     try:
         logger.debug(f"🚪 Player {player.player_id} abandoning round {round_id}...")
-
-        # Initialize services
-        matching_service = TLMatchingService()
-        clustering_service = TLClusteringService(matching_service)
-        scoring_service = TLScoringService()
-        prompt_service = TLPromptService(matching_service)
-        round_service = TLRoundService(
-            matching_service,
-            clustering_service,
-            scoring_service,
-            prompt_service,
-        )
 
         # Abandon round
         result, error = await round_service.abandon_round(
@@ -280,6 +249,7 @@ async def get_round(
     round_id: UUID = Path(..., description="Round ID"),
     player: Player = Depends(get_tl_player),
     db: AsyncSession = Depends(get_db),
+    scoring_service: TLScoringService = Depends(get_scoring_service),
 ):
     """Get details of a specific round."""
     try:
@@ -298,7 +268,6 @@ async def get_round(
         if round_obj.player_id != player.player_id:
             raise HTTPException(status_code=403, detail="unauthorized")
 
-        scoring_service = TLScoringService()
         wallet_award = None
         vault_award = None
         gross_payout = round_obj.gross_payout

@@ -16,7 +16,7 @@ import {
   useCallback,
   useEffect,
 } from 'react';
-import apiClient from '@/api/client';
+import apiClient from '@crowdcraft/api/client.ts';
 import { NotificationStreamMessage, QFOnlineUser } from '@crowdcraft/api/types.ts';
 import useWebSocket from '@crowdcraft/hooks/useWebSocket.ts';
 

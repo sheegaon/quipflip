@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import apiClient from '@/api/client';
+import apiClient from '@crowdcraft/api/client.ts';
 import axios from 'axios';
 import { useSmartPolling, PollConfigs } from '@crowdcraft/utils/smartPolling.ts';
 import { getActionErrorMessage } from '@crowdcraft/utils/errorMessages.ts';
@@ -150,7 +150,7 @@ export const GameProvider: React.FC<{
           gameContextLogger.debug('🎭 New visitor detected, creating guest account');
 
           try {
-            const guestResponse = await apiClient.createGuest();
+            const guestResponse = await apiClient.mmCreateGuest();
 
             if (!isMounted) return;
 
@@ -176,7 +176,7 @@ export const GameProvider: React.FC<{
             }
 
             // Fetch player data
-            const playerData = await apiClient.getBalance(controller.signal);
+            const playerData = await apiClient.mmGetBalance(controller.signal);
             if (isMounted) {
               setPlayer(playerData);
             }
@@ -266,7 +266,7 @@ export const GameProvider: React.FC<{
     gameContextLogger.debug('🚪 GameContext logout called');
 
     try {
-      await apiClient.logout();
+      await apiClient.mmLogout();
     } catch (err) {
       gameContextLogger.warn('⚠️ Failed to logout cleanly:', err);
     } finally {
@@ -312,7 +312,7 @@ export const GameProvider: React.FC<{
     }
 
     try {
-      const availability = await apiClient.getMemeMintRoundAvailability(signal);
+      const availability = await apiClient.mmGetRoundAvailability(signal);
       setRoundAvailability(availability as MMRoundAvailability);
     } catch (err) {
       if (axios.isCancel(err) || signal?.aborted) {
@@ -331,7 +331,7 @@ export const GameProvider: React.FC<{
     }
 
     try {
-      const data = await apiClient.getDashboardData(signal);
+      const data = await apiClient.mmGetDashboardData(signal);
       gameContextLogger.debug('✅ Dashboard data received successfully:', {
         playerWallet: data.player?.wallet,
         playerVault: data.player?.vault,
@@ -387,8 +387,8 @@ export const GameProvider: React.FC<{
     gameContextLogger.debug('💰 GameContext refreshBalance called');
 
     try {
-      gameContextLogger.debug('📞 Calling apiClient.getBalance...');
-      const data = await apiClient.getBalance(signal);
+      gameContextLogger.debug('📞 Calling apiClient.mmGetBalance...');
+      const data = await apiClient.mmGetBalance(signal);
       gameContextLogger.debug('✅ Wallet and vault data received:', {
         wallet: data.wallet,
         vault: data.vault,
@@ -434,8 +434,8 @@ export const GameProvider: React.FC<{
     try {
       gameContextLogger.debug('🔄 Setting loading to true');
       setLoading(true);
-      gameContextLogger.debug('📞 Calling apiClient.claimDailyBonus()...');
-      await apiClient.claimDailyBonus();
+      gameContextLogger.debug('📞 Calling apiClient.mmClaimDailyBonus()...');
+      await apiClient.mmClaimDailyBonus();
       gameContextLogger.debug('✅ Claim bonus API call successful');
 
       // Trigger immediate dashboard refresh
@@ -499,7 +499,7 @@ export const GameProvider: React.FC<{
     gameContextLogger.debug('?? Fetching AI copy hints for round', { roundId });
 
     try {
-      const response = await apiClient.getCopyHints(roundId, signal);
+      const response = await apiClient.mmGetCopyHints(roundId, signal);
       copyHintsRoundRef.current = roundId;
       setCopyRoundHints(response.hints);
       setError(null);
@@ -520,8 +520,8 @@ export const GameProvider: React.FC<{
 
   const flagCopyRound = useCallback(async (roundId: string): Promise<MMFlagCopyRoundResponse> => {
     gameContextLogger.debug('🚩 GameContext flagCopyRound called', { roundId }); try {
-      gameContextLogger.debug('📞 Calling apiClient.flagCopyRound()...', { roundId });
-      const response = await apiClient.flagCopyRound(roundId);
+      gameContextLogger.debug('📞 Calling apiClient.mmFlagCopyRound()...', { roundId });
+      const response = await apiClient.mmFlagCopyRound(roundId);
       gameContextLogger.info('✅ Copy round flagged successfully', { roundId, flagId: response.flag_id });
       await refreshDashboard();
       return response;
@@ -533,8 +533,8 @@ export const GameProvider: React.FC<{
 
   const abandonRound = useCallback(async (roundId: string): Promise<MMAbandonRoundResponse> => {
     gameContextLogger.debug('🛑 GameContext abandonRound called', { roundId }); try {
-      gameContextLogger.debug('📞 Calling apiClient.abandonRound()...', { roundId });
-      const response = await apiClient.abandonRound(roundId);
+      gameContextLogger.debug('📞 Calling apiClient.mmAbandonRound()...', { roundId });
+      const response = await apiClient.mmAbandonRound(roundId);
       gameContextLogger.info('✅ Round abandoned successfully', {
         roundId,
         refundAmount: response.refund_amount,
@@ -555,7 +555,7 @@ export const GameProvider: React.FC<{
       try {
         setLoading(true);
         setError(null);
-        const response = await apiClient.startMemeMintVoteRound(signal);
+        const response = await apiClient.mmStartVoteRoundRaw(signal);
         setCurrentVoteRound(response);
         // Refresh balance to show updated wallet after entry cost deduction
         await refreshBalance(signal);
@@ -585,8 +585,8 @@ export const GameProvider: React.FC<{
     }
 
     try {
-      gameContextLogger.debug('📞 Calling apiClient.claimPhrasesetPrize...');
-      await apiClient.claimPhrasesetPrize(phrasesetId);
+      gameContextLogger.debug('📞 Calling apiClient.mmClaimPhrasesetPrize...');
+      await apiClient.mmClaimPhrasesetPrize(phrasesetId);
       gameContextLogger.debug('✅ Claim phraseset prize API call successful');
 
       gameContextLogger.debug('🔄 Triggering dashboard refresh after claiming phraseset prize');
@@ -610,7 +610,7 @@ export const GameProvider: React.FC<{
 
   const submitVote = useCallback(
     async (roundId: string, captionId: string, signal?: AbortSignal): Promise<MMVoteResult> => {
-      const voteResult = await apiClient.submitMemeMintVote(roundId, captionId, signal);
+      const voteResult = await apiClient.mmSubmitVoteRaw(roundId, captionId, signal);
       // Refresh balance immediately to update header, then refresh other data
       await refreshBalance(signal);
       await refreshRoundAvailability(signal);
@@ -632,7 +632,7 @@ export const GameProvider: React.FC<{
         // No need to send kind or parent_caption_id
       };
 
-      const captionResult = await apiClient.submitMemeMintCaption(captionPayload, signal);
+      const captionResult = await apiClient.mmSubmitCaptionRaw(captionPayload, signal);
       // Refresh balance immediately to update header, then refresh other data
       await refreshBalance(signal);
       await refreshRoundAvailability(signal);

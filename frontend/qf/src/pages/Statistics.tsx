@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useResults } from '../contexts/ResultsContext';
 import { useGame } from '../contexts/GameContext';
-import apiClient, { extractErrorMessage } from '@/api/client';
+import apiClient, { extractErrorMessage } from '@crowdcraft/api/client.ts';
 import type { GameStatus, QFHistoricalTrendPoint, QFPlayerStatistics } from '@crowdcraft/api/types.ts';
 import { Header } from '../components/Header';
 import WinRateChart from '@crowdcraft/components/statistics/WinRateChart.tsx';

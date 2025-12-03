@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { usePartyWebSocket } from '../hooks/usePartyWebSocket';
-import apiClient from '@/api/client';
+import apiClient from '@crowdcraft/api/client.ts';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { CircleIcon } from '@crowdcraft/components/icons/NavigationIcons.tsx';
 import { BotIcon } from '@crowdcraft/components/icons/EngagementIcons.tsx';
@@ -50,7 +50,7 @@ export const PartyLobby: React.FC = () => {
     if (!sessionId) return;
 
     try {
-      const status = await apiClient.getPartySessionStatus(sessionId);
+      const status = await apiClient.qfGetPartySessionStatus(sessionId);
       setSessionStatus(status);
 
       // If the session has progressed past the lobby, navigate to the correct screen via REST status
@@ -143,12 +143,12 @@ export const PartyLobby: React.FC = () => {
         }
 
         for (let i = 0; i < neededAi; i += 1) {
-          await apiClient.addAIPlayerToParty(sessionId);
+          await apiClient.qfAddAIPlayerToParty(sessionId);
         }
         await loadSessionStatus();
       }
 
-      await apiClient.startPartySession(sessionId);
+      await apiClient.qfStartPartySession(sessionId);
       await loadSessionStatus();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to start party');
@@ -162,7 +162,7 @@ export const PartyLobby: React.FC = () => {
     if (!sessionId) return;
 
     try {
-      await apiClient.leavePartySession(sessionId);
+      await apiClient.qfLeavePartySession(sessionId);
       navigate('/party');
     } catch (err) {
       console.error('Failed to leave party:', err);
@@ -175,7 +175,7 @@ export const PartyLobby: React.FC = () => {
 
     setIsAddingAI(true);
     try {
-      await apiClient.addAIPlayerToParty(sessionId);
+      await apiClient.qfAddAIPlayerToParty(sessionId);
       // Reload session status to show new AI player
       await loadSessionStatus();
       setNotification('AI player added to the party!');
@@ -193,7 +193,7 @@ export const PartyLobby: React.FC = () => {
 
     setIsPinging(true);
     try {
-      await apiClient.pingParty(sessionId);
+      await apiClient.qfPingParty(sessionId);
       setNotification('Ping sent to everyone in your party.');
       setTimeout(() => setNotification(null), 4000);
     } catch (err) {
