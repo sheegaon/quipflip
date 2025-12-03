@@ -1,7 +1,7 @@
 """Unit tests for ThinkLink ClusteringService."""
 import pytest
-from backend.services.tl.clustering_service import ClusteringService
-from backend.services.tl.matching_service import MatchingService
+from backend.services.tl.clustering_service import TLClusteringService
+from backend.services.tl.matching_service import TLMatchingService
 
 
 class TestClusteringService:
@@ -10,8 +10,8 @@ class TestClusteringService:
     @pytest.fixture
     def clustering_service(self):
         """Create a ClusteringService instance."""
-        matching_service = MatchingService()
-        return ClusteringService(matching_service)
+        matching_service = TLMatchingService()
+        return TLClusteringService(matching_service)
 
     def test_cosine_similarity_threshold_join(self):
         """Test that vectors >= 0.75 similarity join a cluster."""
@@ -19,7 +19,7 @@ class TestClusteringService:
         vec1 = [1.0, 0.0, 0.0]
         vec2 = [0.95, 0.31, 0.0]  # Similarity ~0.95
 
-        similarity = MatchingService.cosine_similarity(vec1, vec2)
+        similarity = TLMatchingService.cosine_similarity(vec1, vec2)
 
         # Should be high similarity (> 0.75 join threshold)
         assert similarity > 0.75
@@ -30,7 +30,7 @@ class TestClusteringService:
         vec1 = [1.0, 0.0, 0.0]
         vec2 = [0.6, 0.8, 0.0]  # Similarity ~0.6
 
-        similarity = MatchingService.cosine_similarity(vec1, vec2)
+        similarity = TLMatchingService.cosine_similarity(vec1, vec2)
 
         # Should be lower similarity (< 0.75 join threshold)
         assert similarity < 0.75
@@ -41,7 +41,7 @@ class TestClusteringService:
         vec1 = [1.0, 0.0, 0.0]
         vec2 = [0.998, 0.063, 0.0]  # Similarity ~0.998
 
-        similarity = MatchingService.cosine_similarity(vec1, vec2)
+        similarity = TLMatchingService.cosine_similarity(vec1, vec2)
 
         # Should exceed duplicate threshold of 0.90
         assert similarity > 0.90
@@ -127,7 +127,7 @@ class TestClusteringService:
         vec1 = [1.0, 0.0, 0.0]
         vec2 = [0.54, 0.84, 0.0]  # Approximate similarity 0.54
 
-        similarity = MatchingService.cosine_similarity(vec1, vec2)
+        similarity = TLMatchingService.cosine_similarity(vec1, vec2)
         match_threshold = 0.55
 
         # Close to threshold, verify behavior
@@ -137,6 +137,6 @@ class TestClusteringService:
         # Vectors with similarity = 0.56 SHOULD match
         vec3 = [0.56, 0.83, 0.0]  # Approximate similarity 0.56
 
-        similarity2 = MatchingService.cosine_similarity(vec1, vec3)
+        similarity2 = TLMatchingService.cosine_similarity(vec1, vec3)
         if similarity2 >= match_threshold:
             assert similarity2 >= match_threshold

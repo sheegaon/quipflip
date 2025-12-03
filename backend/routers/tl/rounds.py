@@ -16,8 +16,8 @@ from backend.schemas.tl_round import (
     AbandonRoundResponse,
 )
 from backend.services import GameType
-from backend.services.tl.round_service import RoundService
-from backend.services.tl.scoring_service import ScoringService
+from backend.services.tl.round_service import TLRoundService
+from backend.services.tl.scoring_service import TLScoringService
 from backend.services.tl.dependencies import (
     get_round_service,
     get_scoring_service,
@@ -69,7 +69,7 @@ async def check_round_availability(
 async def start_round(
     player: Player = Depends(get_tl_player),
     db: AsyncSession = Depends(get_db),
-    round_service: RoundService = Depends(get_round_service),
+    round_service: TLRoundService = Depends(get_round_service),
 ):
     """Start a new ThinkLink round.
 
@@ -127,7 +127,7 @@ async def submit_guess(
     request_body: SubmitGuessRequest = Body(...),
     player: Player = Depends(get_tl_player),
     db: AsyncSession = Depends(get_db),
-    round_service: RoundService = Depends(get_round_service),
+    round_service: TLRoundService = Depends(get_round_service),
 ):
     """Submit a guess for an active round.
 
@@ -199,7 +199,7 @@ async def abandon_round(
     round_id: UUID = Path(..., description="Round ID"),
     player: Player = Depends(get_tl_player),
     db: AsyncSession = Depends(get_db),
-    round_service: RoundService = Depends(get_round_service),
+    round_service: TLRoundService = Depends(get_round_service),
 ):
     """Abandon an active round with partial refund.
 
@@ -249,7 +249,7 @@ async def get_round(
     round_id: UUID = Path(..., description="Round ID"),
     player: Player = Depends(get_tl_player),
     db: AsyncSession = Depends(get_db),
-    scoring_service: ScoringService = Depends(get_scoring_service),
+    scoring_service: TLScoringService = Depends(get_scoring_service),
 ):
     """Get details of a specific round."""
     try:
