@@ -5,10 +5,10 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Header } from '../components/Header';
 import { Pagination } from '@crowdcraft/components/Pagination.tsx';
 import { quipflipBranding } from '@crowdcraft/utils/brandedMessages.ts';
-import type { PhrasesetResults, PhrasesetDetails, PhrasesetVoteDetail } from '@crowdcraft/api/types.ts';
+import type { QFPhrasesetResults, QFPhrasesetDetails, QFPhrasesetVoteDetail } from '@crowdcraft/api/types.ts';
 import { resultsLogger } from '@crowdcraft/utils/logger.ts';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
-import { BotIcon, QuestionMarkIcon, ResultsIcon } from '@crowdcraft/components/icons/EngagementIcons.tsx';
+import { BotIcon, QuestionMarkIcon, TrophyIcon } from '@crowdcraft/components/icons/EngagementIcons.tsx';
 import { isAiPlayer } from '@crowdcraft/utils/ai.ts';
 
 const { loadingMessages } = quipflipBranding;
@@ -91,10 +91,10 @@ export const Results: React.FC = () => {
 
   const currentEntry = selectedPhrasesetId ? phrasesetResults[selectedPhrasesetId] : undefined;
   const currentDetailsEntry = selectedPhrasesetId ? phrasesetDetails[selectedPhrasesetId] : undefined;
-  const results: PhrasesetResults | null = currentEntry?.data ?? null;
+  const results: QFPhrasesetResults | null = currentEntry?.data ?? null;
   const loading = currentEntry?.loading ?? false;
   const error = currentEntry?.error ?? null;
-  const selectedDetails: PhrasesetDetails | null = currentDetailsEntry?.data ?? null;
+  const selectedDetails: QFPhrasesetDetails | null = currentDetailsEntry?.data ?? null;
   const detailsLoading = currentDetailsEntry?.loading ?? false;
   const detailsError = currentDetailsEntry?.error ?? null;
 
@@ -299,10 +299,10 @@ export const Results: React.FC = () => {
 
   const votesByPhrase = useMemo(() => {
     if (!selectedDetails) {
-      return {} as Record<string, PhrasesetVoteDetail[]>;
+      return {} as Record<string, QFPhrasesetVoteDetail[]>;
     }
 
-    return selectedDetails.votes.reduce<Record<string, PhrasesetVoteDetail[]>>((acc, voteDetail) => {
+    return selectedDetails.votes.reduce<Record<string, QFPhrasesetVoteDetail[]>>((acc, voteDetail) => {
       if (!acc[voteDetail.voted_phrase]) {
         acc[voteDetail.voted_phrase] = [];
       }
@@ -354,7 +354,7 @@ export const Results: React.FC = () => {
         <div className="max-w-4xl mx-auto px-4 py-8">
           <div className="tile-card p-8 text-center">
             <div className="flex justify-center mb-4">
-              <ResultsIcon className="h-20 w-20 text-6xl"/>
+              <TrophyIcon className="h-20 w-20 text-6xl"/>
             </div>
             <h1 className="text-2xl font-display font-bold text-ccl-navy mb-4">No Results Available</h1>
             <p className="text-ccl-teal mb-6">
@@ -664,7 +664,7 @@ export const Results: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Removed Final Rankings section since rankings property doesn't exist in PhrasesetResults */}
+                {/* Removed Final Rankings section since rankings property doesn't exist in QFPhrasesetResults */}
               </div>
             )}
           </div>

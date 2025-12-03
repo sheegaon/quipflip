@@ -8,7 +8,7 @@ import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { useTimer } from '@crowdcraft/hooks/useTimer.ts';
 import { usePhraseValidation } from '@crowdcraft/hooks/usePhraseValidation.ts';
 import { quipflipBranding } from '@crowdcraft/utils/brandedMessages.ts';
-import type { CopyState, FlagCopyRoundResponse, SubmitPhraseResponse } from '@crowdcraft/api/types.ts';
+import type { QFCopyState, QFFlagCopyRoundResponse, QFSubmitPhraseResponse } from '@crowdcraft/api/types.ts';
 import { copyRoundLogger } from '@crowdcraft/utils/logger.ts';
 import { CopyRoundIcon } from '@crowdcraft/components/icons/RoundIcons.tsx';
 import { FlagIcon } from '@crowdcraft/components/icons/EngagementIcons.tsx';
@@ -172,7 +172,7 @@ export const CopyRound: React.FC = () => {
   const [showFlagConfirm, setShowFlagConfirm] = useState(false);
   const [isFlagging, setIsFlagging] = useState(false);
   const [flagError, setFlagError] = useState<string | null>(null);
-  const [flagResult, setFlagResult] = useState<FlagCopyRoundResponse | null>(null);
+  const [flagResult, setFlagResult] = useState<QFFlagCopyRoundResponse | null>(null);
   const [isFetchingHints, setIsFetchingHints] = useState(false);
   const [hintError, setHintError] = useState<string | null>(null);
   const [showHints, setShowHints] = useState(false);
@@ -200,7 +200,7 @@ export const CopyRound: React.FC = () => {
 
   const { isPhraseValid, trimmedPhrase } = usePhraseValidation(phrase);
 
-  const roundData = activeRound?.round_type === 'copy' ? activeRound.state as CopyState : null;
+  const roundData = activeRound?.round_type === 'copy' ? activeRound.state as QFCopyState : null;
   const { isExpired } = useTimer(roundData?.expires_at || null);
 
   // Get dynamic penalty from config or use default
@@ -402,7 +402,7 @@ export const CopyRound: React.FC = () => {
       copyRoundLogger.debug('Submitting impostor round phrase', {
         roundId: roundData.round_id,
       });
-      const response: SubmitPhraseResponse = await apiClient.submitPhrase(roundData.round_id, trimmedPhrase);
+      const response: QFSubmitPhraseResponse = await apiClient.submitPhrase(roundData.round_id, trimmedPhrase);
 
       // Update party context if present
       if (response.party_context && partyState.isPartyMode) {

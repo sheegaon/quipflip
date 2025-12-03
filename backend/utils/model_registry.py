@@ -7,8 +7,6 @@ in database operations.
 from typing import Type, TypeVar
 from enum import Enum
 
-T = TypeVar('T')
-
 
 class GameType(Enum):
     """Enum for different game types."""
@@ -25,6 +23,7 @@ class AIPlayerType(Enum):
     QF_VOTER = "qf_voter"
     QF_PARTY = "qf_party"
     IR_PLAYER = "ir_player"
+    TL_PLAYER = "tl_player"
 
 
 def get_player_model(game_type: GameType) -> Type:
@@ -38,6 +37,9 @@ def get_player_model(game_type: GameType) -> Type:
     elif game_type == GameType.MM:
         from backend.models.mm.player import MMPlayer
         return MMPlayer
+    elif game_type == GameType.TL:
+        from backend.models.tl.player import TLPlayer
+        return TLPlayer
     else:
         raise ValueError(f"Unsupported game type: {game_type}")
 

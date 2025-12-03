@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState , useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import apiClient, { extractErrorMessage } from '@/api/client';
@@ -13,6 +13,18 @@ import { Tooltip } from '../components/Tooltip';
 
 interface RoundPlayLocationState {
   round?: StartRoundResponse;
+}
+
+interface FinalResult {
+  roundId: string;
+  promptText: string;
+  finalCoverage: number;
+  grossPayout: number;
+  strikeCount: number;
+  matchedClusters: number;
+  totalClusters: number;
+  walletAward: number;
+  vaultAward: number;
 }
 
 interface Guess {
@@ -39,12 +51,12 @@ export const RoundPlay: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isAbandoning, setIsAbandoning] = useState(false);
   const [roundEnded, setRoundEnded] = useState(false);
-  const [finalResult, setFinalResult] = useState<any>(null);
+  const [finalResult, setFinalResult] = useState<FinalResult | null>(null);
 
   // Check if round should end (3 strikes)
   useEffect(() => {
     if (strikes >= 3 && !roundEnded) {
-      finalizRound();
+      finalizeRound();
     }
   }, [strikes, roundEnded]);
 
@@ -79,7 +91,7 @@ export const RoundPlay: React.FC = () => {
 
       // Check if round ended
       if (response.round_status === 'completed') {
-        await finalizRound();
+        await finalizeRound();
       }
     } catch (err) {
       const msg = extractErrorMessage(err);
@@ -107,7 +119,7 @@ export const RoundPlay: React.FC = () => {
     }
   };
 
-  const finalizRound = async () => {
+  const finalizeRound = useCallback(async () => {
     if (!round) return;
 
     try {
@@ -124,7 +136,7 @@ export const RoundPlay: React.FC = () => {
         totalClusters: 0, // Would need snapshot data
       };
 
-      // Calculate payout (would come from backend in production)
+      // Calculate payout (TODO would come from backend in production)
       const coveragePercent = details.final_coverage || 0;
       const grossPayout = Math.round(300 * Math.pow(coveragePercent, 1.5));
       const walletAward = coveragePercent <= 0.33
@@ -140,7 +152,13 @@ export const RoundPlay: React.FC = () => {
     } catch (err) {
       setError(extractErrorMessage(err) || 'Failed to finalize round');
     }
-  };
+  }, [round, strikes, navigate]);
+
+  useEffect(() => {
+  if (strikes >= 3 && !roundEnded) {
+    finalizeRound();
+  }
+}, [strikes, roundEnded, finalizeRound]);
 
   const handleAbandonRound = async () => {
     if (!round || !confirm('Are you sure? You\'ll get a 95 coin refund and lose this round.')) {

@@ -1,18 +1,18 @@
-import type { TutorialProgress } from '@crowdcraft/api/types.ts';
+import type { IRTutorialProgress } from '@crowdcraft/api/types.ts';
 
 export interface TutorialStep {
-  id: TutorialProgress;
+  id: IRTutorialProgress;
   title: string;
   message: string;
   target?: string; // CSS selector for element to highlight
   position?: 'top' | 'bottom' | 'left' | 'right';
   action?: 'click' | 'wait';
-  nextStep?: TutorialProgress;
+  nextStep?: IRTutorialProgress;
   showSkip?: boolean;
   showBack?: boolean;
 }
 
-export const TUTORIAL_STEPS: Record<TutorialProgress, TutorialStep | null> = {
+export const TUTORIAL_STEPS: Record<IRTutorialProgress, TutorialStep | null> = {
   not_started: null,
 
   welcome: {
@@ -87,17 +87,17 @@ From here you can review entries, check your earnings, and start another battle.
   completed: null,
 };
 
-export const getTutorialStep = (progress: TutorialProgress): TutorialStep | null => {
+export const getTutorialStep = (progress: IRTutorialProgress): TutorialStep | null => {
   return TUTORIAL_STEPS[progress];
 };
 
-export const getNextStep = (currentStep: TutorialProgress): TutorialProgress | null => {
+export const getNextStep = (currentStep: IRTutorialProgress): IRTutorialProgress | null => {
   const step = TUTORIAL_STEPS[currentStep];
   return step?.nextStep || null;
 };
 
-export const getPreviousStep = (currentStep: TutorialProgress): TutorialProgress | null => {
-  const steps: TutorialProgress[] = ['welcome', 'dashboard', 'backronym_entry', 'backronym_voting', 'rounds_guide'];
+export const getPreviousStep = (currentStep: IRTutorialProgress): IRTutorialProgress | null => {
+  const steps: IRTutorialProgress[] = ['welcome', 'dashboard', 'backronym_entry', 'backronym_voting', 'rounds_guide'];
   const currentIndex = steps.indexOf(currentStep);
   if (currentIndex > 0) {
     return steps[currentIndex - 1];

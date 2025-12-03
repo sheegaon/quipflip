@@ -1,5 +1,5 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, PieLabelRenderProps } from 'recharts';
-import type { EarningsBreakdown } from '../../api/types.ts';
+import type { QFEarningsBreakdown } from '../../api/types.ts';
 import {
   statisticsChartContainerStyle,
   statisticsChartPlaceholderStyle,
@@ -7,7 +7,7 @@ import {
 } from './chartSizing.ts';
 
 interface SpendingChartProps {
-  earnings: EarningsBreakdown;
+  earnings: QFEarningsBreakdown;
 }
 
 const COLORS = {

@@ -3,12 +3,12 @@ import React, { createContext, useContext, useState, useCallback, useEffect } fr
 import apiClient from '@/api/client';
 import { getActionErrorMessage } from '@crowdcraft/utils/errorMessages.ts';
 import { gameContextLogger } from '@crowdcraft/utils/logger.ts';
-import type { Quest, ClaimQuestRewardResponse } from '@crowdcraft/api/types.ts';
+import type { QFQuest, QFClaimQuestRewardResponse } from '@crowdcraft/api/types.ts';
 
 interface QuestState {
-  quests: Quest[];
-  activeQuests: Quest[];
-  claimableQuests: Quest[];
+  quests: QFQuest[];
+  activeQuests: QFQuest[];
+  claimableQuests: QFQuest[];
   loading: boolean;
   error: string | null;
   lastUpdated: number | null;
@@ -18,7 +18,7 @@ interface QuestState {
 interface QuestActions {
   refreshQuests: () => Promise<void>;
   clearQuestError: () => void;
-  claimQuest: (questId: string) => Promise<ClaimQuestRewardResponse>;
+  claimQuest: (questId: string) => Promise<QFClaimQuestRewardResponse>;
 }
 
 interface QuestContextType {
@@ -60,8 +60,8 @@ export const QuestProvider: React.FC<{
       gameContextLogger.debug('📋 Fetching quests');
       const data = await apiClient.getQuests();
 
-      const activeQuests = data.quests.filter((quest: Quest) => quest.status === 'active');
-      const claimableQuests = data.quests.filter((quest: Quest) => quest.status === 'completed');
+      const activeQuests = data.quests.filter((quest: QFQuest) => quest.status === 'active');
+      const claimableQuests = data.quests.filter((quest: QFQuest) => quest.status === 'completed');
 
       setQuestState(prev => ({
         ...prev,

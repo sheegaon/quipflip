@@ -5,11 +5,11 @@ import { getActionErrorMessage } from '@crowdcraft/utils/errorMessages.ts';
 import { gameContextLogger } from '@crowdcraft/utils/logger.ts';
 import { buildPhrasesetListKey, type PhrasesetListKeyParams } from '@crowdcraft/utils/gameKeys.ts';
 import type {
-  PendingResult,
-  PhrasesetListResponse,
-  PhrasesetDetails as PhrasesetDetailsType,
-  PhrasesetResults,
-  PlayerStatistics,
+  QFPendingResult,
+  QFPhrasesetListResponse,
+  QFPhrasesetDetails as PhrasesetDetailsType,
+  QFPhrasesetResults,
+  QFPlayerStatistics,
   VoteRoundState,
   MemeVoteResult,
 } from '@crowdcraft/api/types.ts';
@@ -18,7 +18,7 @@ type PlayerPhrasesetParams = PhrasesetListKeyParams;
 
 interface PhrasesetListCacheEntry {
   params: PlayerPhrasesetParams;
-  data: PhrasesetListResponse | null;
+  data: QFPhrasesetListResponse | null;
   loading: boolean;
   error: string | null;
   lastFetched: number | null;
@@ -32,7 +32,7 @@ interface PhrasesetDetailsCacheEntry {
 }
 
 interface PhrasesetResultsCacheEntry {
-  data: PhrasesetResults | null;
+  data: QFPhrasesetResults | null;
   loading: boolean;
   error: string | null;
   lastFetched: number | null;
@@ -46,7 +46,7 @@ interface StatisticsData {
 }
 
 interface ResultsState {
-  pendingResults: PendingResult[];
+  pendingResults: QFPendingResult[];
   viewedResultIds: Set<string>;
   memeRounds: Record<string, VoteRoundState>;
   memeVoteResults: Record<string, MemeVoteResult>;
@@ -63,7 +63,7 @@ interface ResultsActions {
   refreshPlayerPhrasesets: (
     params?: PlayerPhrasesetParams,
     options?: { force?: boolean }
-  ) => Promise<PhrasesetListResponse | null>;
+  ) => Promise<QFPhrasesetListResponse | null>;
   refreshPhrasesetDetails: (
     phrasesetId: string,
     options?: { force?: boolean }
@@ -71,11 +71,11 @@ interface ResultsActions {
   refreshPhrasesetResults: (
     phrasesetId: string,
     options?: { force?: boolean }
-  ) => Promise<PhrasesetResults | null>;
-  getStatistics: (signal?: AbortSignal) => Promise<PlayerStatistics>;
+  ) => Promise<QFPhrasesetResults | null>;
+  getStatistics: (signal?: AbortSignal) => Promise<QFPlayerStatistics>;
   markResultsViewed: (phrasesetIds: string[]) => void;
   clearResultsCache: () => void;
-  setPendingResults: (results: PendingResult[]) => void;
+  setPendingResults: (results: QFPendingResult[]) => void;
   cacheMemeRound: (round: VoteRoundState) => void;
   cacheMemeVoteResult: (roundId: string, result: MemeVoteResult) => void;
   getCachedMemeRound: (roundId: string) => VoteRoundState | null;
@@ -185,7 +185,7 @@ export const ResultsProvider: React.FC<ResultsProviderProps> = ({ children, isAu
   const refreshPlayerPhrasesets = useCallback(async (
     params: PlayerPhrasesetParams = {},
     options: { force?: boolean } = {},
-  ): Promise<PhrasesetListResponse | null> => {
+  ): Promise<QFPhrasesetListResponse | null> => {
     gameContextLogger.debug('📊 ResultsContext refreshPlayerPhrasesets called:', { params, options });
     
     const key = buildPhrasesetListKey(params);
@@ -321,7 +321,7 @@ export const ResultsProvider: React.FC<ResultsProviderProps> = ({ children, isAu
   const refreshPhrasesetResults = useCallback(async (
     phrasesetId: string,
     options: { force?: boolean } = {},
-  ): Promise<PhrasesetResults | null> => {
+  ): Promise<QFPhrasesetResults | null> => {
     gameContextLogger.debug('📊 ResultsContext refreshPhrasesetResults called:', { phrasesetId, options });
     
     const cached = resultsState.phrasesetResults[phrasesetId];
@@ -511,7 +511,7 @@ export const ResultsProvider: React.FC<ResultsProviderProps> = ({ children, isAu
     }));
   }, []);
 
-  const setPendingResults = useCallback((results: PendingResult[]) => {
+  const setPendingResults = useCallback((results: QFPendingResult[]) => {
     setResultsState(prev => ({
       ...prev,
       pendingResults: results

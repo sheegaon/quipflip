@@ -3,14 +3,14 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { extractErrorMessage } from '@/api/client';
 import { useGame } from '../contexts/GameContext';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import type { MemeVoteResult, VoteRoundState, VoteResult, Caption } from '@crowdcraft/api/types.ts';
+import type { MMMemeVoteResult, MMVoteRoundState, MMVoteResult, Caption } from '@crowdcraft/api/types.ts';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { BotIcon } from '@crowdcraft/components/icons/EngagementIcons.tsx';
 import { CircleIcon } from '@crowdcraft/components/icons/NavigationIcons.tsx';
 
 interface VoteLocationState {
-  round?: VoteRoundState;
-  voteResult?: MemeVoteResult | null;
+  round?: MMVoteRoundState;
+  voteResult?: MMMemeVoteResult | null;
 }
 
 export const VoteRound: React.FC = () => {
@@ -21,8 +21,8 @@ export const VoteRound: React.FC = () => {
     actions,
   } = useGame();
 
-  const [round, setRound] = useState<VoteRoundState | null>(locationState.round ?? currentVoteRound ?? null);
-  const [result, setResult] = useState<VoteResult | null>(null);
+  const [round, setRound] = useState<MMVoteRoundState | null>(locationState.round ?? currentVoteRound ?? null);
+  const [result, setResult] = useState<MMVoteResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingRound, setIsLoadingRound] = useState(false);

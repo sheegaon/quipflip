@@ -6,7 +6,7 @@ import { useTutorial } from '../contexts/TutorialContext';
 import { TreasureChestIcon } from '@crowdcraft/components/icons/TreasureChestIcon';
 import { CopyRoundIcon } from '@crowdcraft/components/icons/RoundIcons';
 import { LeaderboardIcon, LobbyIcon, TrackingIcon } from '@crowdcraft/components/icons/NavigationIcons';
-import { QuestionMarkIcon, ResultsIcon, ReviewIcon } from '@crowdcraft/components/icons/EngagementIcons';
+import { QuestionMarkIcon, TrophyIcon, ReviewIcon } from '@crowdcraft/components/icons/EngagementIcons';
 
 export const SubHeader: React.FC = () => {
   const { actions } = useGame();
@@ -103,7 +103,7 @@ export const SubHeader: React.FC = () => {
               aria-label={resultsLabel}
             >
               <span>{unviewedCount}</span>
-              <ResultsIcon
+              <TrophyIcon
                 className={`h-5 w-5 md:h-7 md:w-7 ${unviewedCount > 0 ? 'trophy-pulse' : ''}`}
                 variant={unviewedCount > 0 ? 'orange' : 'teal'}
               />

@@ -1,16 +1,16 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
 import type {
   IRPlayer,
-  BackronymSet,
-  PendingResult,
-  DashboardData,
-  StartSessionResponse,
-  SubmitBackronymRequest,
-  SubmitVoteRequest,
-  ValidateBackronymRequest,
-  ValidateBackronymResponse,
-  AuthResponse,
-  DashboardPlayerSummary,
+  IRBackronymSet,
+  IRPendingResult,
+  IRDashboardData,
+  IRStartSessionResponse,
+  IRSubmitBackronymRequest,
+  IRSubmitVoteRequest,
+  IRValidateBackronymRequest,
+  IRValidateBackronymResponse,
+  IRAuthResponse,
+  IRDashboardPlayerSummary,
 } from '@crowdcraft/api/types.ts';
 import { authAPI, playerAPI, gameAPI } from '@crowdcraft/api/client.ts';
 import { setActiveSetId, setPlayerId, clearGameStorage } from '../utils/gameKeys';
@@ -26,7 +26,7 @@ import { createLogger } from '@crowdcraft/utils/logger.ts';
 
 const gameContextLogger = createLogger('IRGameContext');
 
-const mapAuthResponseToPlayer = (auth: AuthResponse): IRPlayer => ({
+const mapAuthResponseToPlayer = (auth: IRAuthResponse): IRPlayer => ({
   player_id: auth.player_id,
   username: auth.username,
   email: auth.email ?? null,
@@ -38,7 +38,7 @@ const mapAuthResponseToPlayer = (auth: AuthResponse): IRPlayer => ({
   last_login_date: null,
 });
 
-const mapDashboardPlayer = (summary: DashboardPlayerSummary): IRPlayer => ({
+const mapDashboardPlayer = (summary: IRDashboardPlayerSummary): IRPlayer => ({
   player_id: summary.player_id,
   username: summary.username,
   email: null,
@@ -53,8 +53,8 @@ const mapDashboardPlayer = (summary: DashboardPlayerSummary): IRPlayer => ({
 interface IRGameState {
   isAuthenticated: boolean;
   player: IRPlayer | null;
-  activeSet: BackronymSet | null;
-  pendingResults: PendingResult[];
+  activeSet: IRBackronymSet | null;
+  pendingResults: IRPendingResult[];
   loading: boolean;
   error: string | null;
   hasSubmittedEntry: boolean;
@@ -72,9 +72,9 @@ interface IRGameContextType extends IRGameState {
   upgradeGuest: (username: string, email: string, password: string) => Promise<void>;
 
   // Game actions
-  startBackronymBattle: () => Promise<StartSessionResponse>;
+  startBackronymBattle: () => Promise<IRStartSessionResponse>;
   submitBackronym: (setId: string, words: string[]) => Promise<void>;
-  validateBackronym: (setId: string, words: string[]) => Promise<ValidateBackronymResponse>;
+  validateBackronym: (setId: string, words: string[]) => Promise<IRValidateBackronymResponse>;
   submitVote: (setId: string, entryId: string) => Promise<void>;
   claimDailyBonus: () => Promise<void>;
 
@@ -316,14 +316,14 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
   }, []);
 
   // Game methods
-  const startBackronymBattle = useCallback(async (): Promise<StartSessionResponse> => {
+  const startBackronymBattle = useCallback(async (): Promise<IRStartSessionResponse> => {
     try {
       setLoading(true);
       setError(null);
       const response = await gameAPI.startSession();
 
       // Fetch complete set details to ensure we have accurate, server-authoritative data
-      let activeSet: BackronymSet | null = null;
+      let activeSet: IRBackronymSet | null = null;
       try {
         const setStatus = await gameAPI.getSetStatus(response.set_id);
         activeSet = setStatus.set;
@@ -353,7 +353,7 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
     try {
       setLoading(true);
       setError(null);
-      const data: SubmitBackronymRequest = { words };
+      const data: IRSubmitBackronymRequest = { words };
       await gameAPI.submitBackronym(setId, data);
       setState((prev) => ({
         ...prev,
@@ -370,7 +370,7 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
 
   const validateBackronym = useCallback(async (setId: string, words: string[]) => {
     try {
-      const data: ValidateBackronymRequest = { words };
+      const data: IRValidateBackronymRequest = { words };
       return await gameAPI.validateBackronym(setId, data);
     } catch (err: unknown) {
       const errorMessage = getActionErrorMessage('validate-backronym', err);
@@ -383,7 +383,7 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
     try {
       setLoading(true);
       setError(null);
-      const data: SubmitVoteRequest = { entry_id: entryId };
+      const data: IRSubmitVoteRequest = { entry_id: entryId };
       await gameAPI.submitVote(setId, data);
       setState((prev) => ({
         ...prev,
@@ -426,10 +426,10 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
     try {
       setLoading(true);
       setError(null);
-      const dashboard: DashboardData = await playerAPI.getDashboard();
+      const dashboard: IRDashboardData = await playerAPI.getDashboard();
 
       // If there's an active session, fetch complete set details to get accurate data
-      let activeSet: BackronymSet | null = null;
+      let activeSet: IRBackronymSet | null = null;
       if (dashboard.active_session) {
         try {
           const setStatus = await gameAPI.getSetStatus(dashboard.active_session.set_id);

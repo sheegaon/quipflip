@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import apiClient from '@/api/client';
 import { Header } from '../components/Header';
-import type { PartyResultsResponse, PartyPlayerStats, PartyAward } from '@crowdcraft/api/types.ts';
+import type { QFPartyResultsResponse, QFPartyPlayerStats, QFPartyAward } from '@crowdcraft/api/types.ts';
 
 /**
  * Party Results page - Displays match results, rankings, and awards
@@ -14,7 +14,7 @@ export const PartyResults: React.FC = () => {
   const { player } = state;
   const navigate = useNavigate();
 
-  const [results, setResults] = useState<PartyResultsResponse | null>(null);
+  const [results, setResults] = useState<QFPartyResultsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -138,7 +138,7 @@ export const PartyResults: React.FC = () => {
             <div className="tile-card shadow-tile p-6">
               <h2 className="text-2xl font-display font-bold text-ccl-navy mb-4">🏆 Awards</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {Object.entries(results.awards).map(([awardType, award]: [string, PartyAward]) => (
+                {Object.entries(results.awards).map(([awardType, award]: [string, QFPartyAward]) => (
                   <div
                     key={awardType}
                     className="tile-card bg-ccl-orange bg-opacity-10 border-2 border-ccl-orange p-4 text-center"
@@ -196,7 +196,7 @@ export const PartyResults: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {results.rankings.map((playerStat: PartyPlayerStats) => {
+                  {results.rankings.map((playerStat: QFPartyPlayerStats) => {
                     const isCurrentPlayer = playerStat.player_id === player?.player_id;
                     return (
                       <tr

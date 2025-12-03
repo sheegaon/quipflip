@@ -72,7 +72,7 @@ export const useHeaderIndicators = () => {
     showResultsIndicator,
     resultsLabel,
 
-    // Quest indicators
+    // MMQuest indicators
     isFirstDay,
     hasClaimableQuests,
 

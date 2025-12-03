@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useResults } from '../contexts/ResultsContext';
 import { useGame } from '../contexts/GameContext';
 import apiClient, { extractErrorMessage } from '@/api/client';
-import type { GameStatus, HistoricalTrendPoint, PlayerStatistics } from '@crowdcraft/api/types.ts';
+import type { GameStatus, MMHistoricalTrendPoint, MMPlayerStatistics } from '@crowdcraft/api/types.ts';
 import WinRateChart from '@crowdcraft/components/statistics/WinRateChart';
 import EarningsChart from '@crowdcraft/components/statistics/EarningsChart';
 import SpendingChart from '@crowdcraft/components/statistics/SpendingChart';
@@ -11,7 +11,7 @@ import FrequencyChart from '@crowdcraft/components/statistics/FrequencyChart';
 import HistoricalTrendsChart from '@crowdcraft/components/statistics/HistoricalTrendsChart';
 import { statisticsLogger } from '@crowdcraft/utils/logger.ts';
 import { hasCompletedSurvey } from '@crowdcraft/utils/betaSurvey.ts';
-import type { BetaSurveyStatusResponse } from '@crowdcraft/api/types.ts';
+import type { MMBetaSurveyStatusResponse } from '@crowdcraft/api/types.ts';
 import { APP_VERSION } from '../version';
 
 const Statistics: React.FC = () => {
@@ -20,14 +20,14 @@ const Statistics: React.FC = () => {
   const { getStatistics } = actions;
   const { state } = useGame();
   const { player } = state;
-  const [data, setData] = useState<PlayerStatistics | null>(null);
+  const [data, setData] = useState<MMPlayerStatistics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [chartsReady, setChartsReady] = useState(false);
-  const [surveyStatus, setSurveyStatus] = useState<BetaSurveyStatusResponse | null>(null);
+  const [surveyStatus, setSurveyStatus] = useState<MMBetaSurveyStatusResponse | null>(null);
   const [gameStatus, setGameStatus] = useState<GameStatus | null>(null);
 
-  const historicalTrends = useMemo<HistoricalTrendPoint[]>(() => {
+  const historicalTrends = useMemo<MMHistoricalTrendPoint[]>(() => {
     if (!data) return [];
 
     const DAYS_IN_WEEK = 7;
@@ -50,7 +50,7 @@ const Statistics: React.FC = () => {
           dayKey: date.toISOString().slice(0, 10),
         };
       })
-      .filter((point): point is HistoricalTrendPoint & { timestamp: number; dayKey: string } => point !== null);
+      .filter((point): point is MMHistoricalTrendPoint & { timestamp: number; dayKey: string } => point !== null);
 
     if (parsedPoints.length === 0) {
       const today = data.frequency?.last_active ? new Date(data.frequency.last_active) : new Date();

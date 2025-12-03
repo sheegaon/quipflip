@@ -1,10 +1,10 @@
 /* eslint-disable react-refresh/only-export-components */
 import React from 'react';
 import { createTutorialContext, TutorialLifecycleStatus } from '@crowdcraft/contexts/TutorialContext';
-import type { TutorialStatus } from '@crowdcraft/api/types.ts';
+import type { QFTutorialStatus } from '@crowdcraft/api/types.ts';
 import { tutorialConfig } from '../config/contexts/tutorialConfig';
 
-const { TutorialProvider: SharedTutorialProvider, useTutorial } = createTutorialContext<TutorialStatus>();
+const { TutorialProvider: SharedTutorialProvider, useTutorial } = createTutorialContext<QFTutorialStatus>();
 
 export { useTutorial };
 export type { TutorialLifecycleStatus };

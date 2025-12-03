@@ -1,25 +1,25 @@
 import axios, { AxiosError } from 'axios';
 import type {
-  AuthResponse,
-  RegisterRequest,
-  LoginRequest,
-  UpgradeGuestRequest,
-  StartSessionResponse,
-  BalanceResponse,
-  DashboardData,
-  ClaimBonusResponse,
-  SubmitBackronymRequest,
-  SetStatusResponse,
-  SubmitVoteRequest,
-  ResultsResponse,
-  PlayerStats,
-  LeaderboardEntry,
-  ValidateBackronymRequest,
-  ValidateBackronymResponse,
-  TutorialStatus,
-  TutorialProgress,
-  UpdateTutorialProgressResponse,
-} from './types';
+  IRAuthResponse,
+  IRRegisterRequest,
+  IRLoginRequest,
+  IRUpgradeGuestRequest,
+  IRStartSessionResponse,
+  IRBalanceResponse,
+  IRDashboardData,
+  IRClaimBonusResponse,
+  IRSubmitBackronymRequest,
+  IRSetStatusResponse,
+  IRSubmitVoteRequest,
+  IRResultsResponse,
+  IRPlayerStats,
+  IRLeaderboardEntry,
+  IRValidateBackronymRequest,
+  IRValidateBackronymResponse,
+  IRTutorialStatus,
+  IRTutorialProgress,
+  IRUpdateTutorialProgressResponse,
+} from '@crowdcraft/api/types.ts';
 import { clearStoredUsername } from '../services/sessionDetection';
 
 // Base URL - configure based on environment
@@ -61,18 +61,18 @@ irClient.interceptors.response.use(
 
 // Authentication API
 export const authAPI = {
-  register: async (data: RegisterRequest): Promise<AuthResponse> => {
-    const response = await irClient.post<AuthResponse>('/players', data);
+  register: async (data: IRRegisterRequest): Promise<IRAuthResponse> => {
+    const response = await irClient.post<IRAuthResponse>('/players', data);
     return response.data;
   },
 
-  login: async (data: LoginRequest): Promise<AuthResponse> => {
-    const response = await irClient.post<AuthResponse>('/players/login', data);
+  login: async (data: IRLoginRequest): Promise<IRAuthResponse> => {
+    const response = await irClient.post<IRAuthResponse>('/players/login', data);
     return response.data;
   },
 
-  createGuest: async (): Promise<AuthResponse> => {
-    const response = await irClient.post<AuthResponse>('/players/guest');
+  createGuest: async (): Promise<IRAuthResponse> => {
+    const response = await irClient.post<IRAuthResponse>('/players/guest');
     return response.data;
   },
 
@@ -84,77 +84,77 @@ export const authAPI = {
     await irClient.post('/players/refresh');
   },
 
-  upgradeGuest: async (data: UpgradeGuestRequest): Promise<AuthResponse> => {
-    const response = await irClient.post<AuthResponse>('/players/upgrade', data);
+  upgradeGuest: async (data: IRUpgradeGuestRequest): Promise<IRAuthResponse> => {
+    const response = await irClient.post<IRAuthResponse>('/players/upgrade', data);
     return response.data;
   },
 };
 
-// Player API
+// IRPlayer API
 export const playerAPI = {
-  getBalance: async (): Promise<BalanceResponse> => {
-    const response = await irClient.get<BalanceResponse>('/players/balance');
+  getBalance: async (): Promise<IRBalanceResponse> => {
+    const response = await irClient.get<IRBalanceResponse>('/players/balance');
     return response.data;
   },
 
-  getDashboard: async (): Promise<DashboardData> => {
-    const response = await irClient.get<DashboardData>('/players/dashboard');
+  getDashboard: async (): Promise<IRDashboardData> => {
+    const response = await irClient.get<IRDashboardData>('/players/dashboard');
     return response.data;
   },
 
-  claimDailyBonus: async (): Promise<ClaimBonusResponse> => {
-    const response = await irClient.post<ClaimBonusResponse>('/players/claim-daily-bonus');
+  claimDailyBonus: async (): Promise<IRClaimBonusResponse> => {
+    const response = await irClient.post<IRClaimBonusResponse>('/players/claim-daily-bonus');
     return response.data;
   },
 
-  getStatistics: async (): Promise<PlayerStats> => {
-    const response = await irClient.get<PlayerStats>('/stats/player/statistics');
+  getStatistics: async (): Promise<IRPlayerStats> => {
+    const response = await irClient.get<IRPlayerStats>('/stats/player/statistics');
     return response.data;
   },
 };
 
 // Game API
 export const gameAPI = {
-  startSession: async (): Promise<StartSessionResponse> => {
-    const response = await irClient.post<StartSessionResponse>('/game/start');
+  startSession: async (): Promise<IRStartSessionResponse> => {
+    const response = await irClient.post<IRStartSessionResponse>('/game/start');
     return response.data;
   },
 
-  submitBackronym: async (setId: string, data: SubmitBackronymRequest): Promise<void> => {
+  submitBackronym: async (setId: string, data: IRSubmitBackronymRequest): Promise<void> => {
     await irClient.post(`/game/sets/${setId}/submit`, data);
   },
 
-  validateBackronym: async (setId: string, data: ValidateBackronymRequest): Promise<ValidateBackronymResponse> => {
-    const response = await irClient.post<ValidateBackronymResponse>(`/game/sets/${setId}/validate`, data);
+  validateBackronym: async (setId: string, data: IRValidateBackronymRequest): Promise<IRValidateBackronymResponse> => {
+    const response = await irClient.post<IRValidateBackronymResponse>(`/game/sets/${setId}/validate`, data);
     return response.data;
   },
 
-  getSetStatus: async (setId: string): Promise<SetStatusResponse> => {
-    const response = await irClient.get<SetStatusResponse>(`/game/sets/${setId}/status`);
+  getSetStatus: async (setId: string): Promise<IRSetStatusResponse> => {
+    const response = await irClient.get<IRSetStatusResponse>(`/game/sets/${setId}/status`);
     return response.data;
   },
 
-  submitVote: async (setId: string, data: SubmitVoteRequest): Promise<void> => {
+  submitVote: async (setId: string, data: IRSubmitVoteRequest): Promise<void> => {
     await irClient.post(`/game/sets/${setId}/vote`, data);
   },
 
-  getResults: async (setId: string): Promise<ResultsResponse> => {
-    const response = await irClient.get<ResultsResponse>(`/game/sets/${setId}/results`);
+  getResults: async (setId: string): Promise<IRResultsResponse> => {
+    const response = await irClient.get<IRResultsResponse>(`/game/sets/${setId}/results`);
     return response.data;
   },
 };
 
 export const tutorialAPI = {
-  getTutorialStatus: async (signal?: AbortSignal): Promise<TutorialStatus> => {
-    const response = await irClient.get<TutorialStatus>('/player/tutorial/status', { signal });
+  getTutorialStatus: async (signal?: AbortSignal): Promise<IRTutorialStatus> => {
+    const response = await irClient.get<IRTutorialStatus>('/player/tutorial/status', { signal });
     return response.data;
   },
 
   updateTutorialProgress: async (
-    progress: TutorialProgress,
+    progress: IRTutorialProgress,
     signal?: AbortSignal,
-  ): Promise<UpdateTutorialProgressResponse> => {
-    const response = await irClient.post<UpdateTutorialProgressResponse>(
+  ): Promise<IRUpdateTutorialProgressResponse> => {
+    const response = await irClient.post<IRUpdateTutorialProgressResponse>(
       '/player/tutorial/progress',
       { progress },
       { signal },
@@ -162,21 +162,21 @@ export const tutorialAPI = {
     return response.data;
   },
 
-  resetTutorial: async (signal?: AbortSignal): Promise<TutorialStatus> => {
-    const response = await irClient.post<TutorialStatus>('/player/tutorial/reset', {}, { signal });
+  resetTutorial: async (signal?: AbortSignal): Promise<IRTutorialStatus> => {
+    const response = await irClient.post<IRTutorialStatus>('/player/tutorial/reset', {}, { signal });
     return response.data;
   },
 };
 
 // Leaderboard API
 export const leaderboardAPI = {
-  getCreatorLeaderboard: async (): Promise<LeaderboardEntry[]> => {
-    const response = await irClient.get<LeaderboardEntry[]>('/leaderboard/leaderboards/creators');
+  getCreatorLeaderboard: async (): Promise<IRLeaderboardEntry[]> => {
+    const response = await irClient.get<IRLeaderboardEntry[]>('/leaderboard/leaderboards/creators');
     return response.data;
   },
 
-  getVoterLeaderboard: async (): Promise<LeaderboardEntry[]> => {
-    const response = await irClient.get<LeaderboardEntry[]>('/leaderboard/leaderboards/voters');
+  getVoterLeaderboard: async (): Promise<IRLeaderboardEntry[]> => {
+    const response = await irClient.get<IRLeaderboardEntry[]>('/leaderboard/leaderboards/voters');
     return response.data;
   },
 };

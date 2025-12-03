@@ -1,12 +1,12 @@
 import React from 'react';
-import type { PhrasesetContributor } from '@crowdcraft/api/types.ts';
+import type { QFPhrasesetContributor } from '@crowdcraft/api/types.ts';
 
 interface PhraseRecapCardProps {
   phrase: string;
   isOriginal: boolean;
   isYourChoice: boolean;
   isCorrectChoice: boolean;
-  contributor?: PhrasesetContributor;
+  contributor?: QFPhrasesetContributor;
 }
 
 /**

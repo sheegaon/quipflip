@@ -7,7 +7,7 @@ import React, {
   useState,
 } from 'react';
 import { tutorialAPI } from '@crowdcraft/api/client.ts';
-import type { TutorialProgress, TutorialStatus } from '@crowdcraft/api/types.ts';
+import type { IRTutorialProgress, IRTutorialStatus } from '@crowdcraft/api/types.ts';
 import { tutorialLogger } from '@crowdcraft/utils/logger.ts';
 import { getNextStep } from '@/config/tutorialSteps';
 import { getErrorMessage } from '../utils/errorHelpers';
@@ -28,10 +28,10 @@ const getActionErrorMessage = (action: string, error: unknown) =>
 export type TutorialLifecycleStatus = 'loading' | 'inactive' | 'active' | 'completed' | 'error';
 
 interface TutorialContextState {
-  status: TutorialStatus | null;
+  status: IRTutorialStatus | null;
   tutorialStatus: TutorialLifecycleStatus;
   isActive: boolean;
-  currentStep: TutorialProgress | null;
+  currentStep: IRTutorialProgress | null;
   loading: boolean;
   error: string | null;
 }
@@ -43,7 +43,7 @@ interface RefreshOptions {
 
 interface TutorialActions {
   startTutorial: () => Promise<void>;
-  advanceStep: (stepId?: TutorialProgress) => Promise<void>;
+  advanceStep: (stepId?: IRTutorialProgress) => Promise<void>;
   skipTutorial: () => Promise<void>;
   completeTutorial: () => Promise<void>;
   resetTutorial: () => Promise<void>;
@@ -54,7 +54,7 @@ interface TutorialContextType extends TutorialContextState {
   state: TutorialContextState;
   actions: TutorialActions;
   startTutorial: () => Promise<void>;
-  advanceStep: (stepId?: TutorialProgress) => Promise<void>;
+  advanceStep: (stepId?: IRTutorialProgress) => Promise<void>;
   skipTutorial: () => Promise<void>;
   completeTutorial: () => Promise<void>;
   resetTutorial: () => Promise<void>;
@@ -64,11 +64,11 @@ interface TutorialContextType extends TutorialContextState {
 const TutorialContext = createContext<TutorialContextType | undefined>(undefined);
 
 export const TutorialProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [status, setStatus] = useState<TutorialStatus | null>(null);
+  const [status, setStatus] = useState<IRTutorialStatus | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const currentStep = useMemo<TutorialProgress | null>(() => {
+  const currentStep = useMemo<IRTutorialProgress | null>(() => {
     if (!status) return null;
     const progress = status.tutorial_progress;
     if (progress === 'not_started' || progress === 'completed') {
@@ -148,7 +148,7 @@ export const TutorialProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   );
 
   const updateProgress = useCallback(
-    async (progress: TutorialProgress) => {
+    async (progress: IRTutorialProgress) => {
       const token = await ensureToken();
       if (!token) {
         return;
@@ -182,7 +182,7 @@ export const TutorialProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [updateProgress]);
 
   const advanceStep = useCallback(
-    async (stepId?: TutorialProgress) => {
+    async (stepId?: IRTutorialProgress) => {
       const nextStep = stepId ?? (status ? getNextStep(status.tutorial_progress) ?? undefined : undefined);
 
       if (!nextStep) {

@@ -1,11 +1,11 @@
 import React from 'react';
-import type { PhrasesetSummary } from '@crowdcraft/api/types.ts';
+import type { MMPhrasesetSummary } from '@crowdcraft/api/types.ts';
 
 // Placeholder component - will be replaced with MM caption tracking list
 export const PhrasesetList: React.FC<{
-  phrasesets: PhrasesetSummary[];
+  phrasesets: MMPhrasesetSummary[];
   selectedId: string | null;
-  onSelect: (item: PhrasesetSummary) => void;
+  onSelect: (item: MMPhrasesetSummary) => void;
 }> = () => {
   return (
     <div className="p-6 text-center text-ccl-teal">

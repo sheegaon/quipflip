@@ -5,7 +5,7 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { PromptRoundReview } from '../components/PhrasesetReview/PromptRoundReview';
 import { CopyRoundReview } from '../components/PhrasesetReview/CopyRoundReview';
 import { VoteRoundReview } from '../components/PhrasesetReview/VoteRoundReview';
-import type { PhrasesetDetails } from '@crowdcraft/api/types.ts';
+import type { QFPhrasesetDetails } from '@crowdcraft/api/types.ts';
 
 const isCanceledRequest = (error: unknown): boolean => {
   if (!error || typeof error !== 'object') {
@@ -30,7 +30,7 @@ type ReviewStage = 'prompt' | 'copy1' | 'copy2' | 'vote';
 export const PhrasesetReview: React.FC = () => {
   const { phrasesetId } = useParams<{ phrasesetId: string }>();
   const navigate = useNavigate();
-  const [phrasesetData, setPhrasesetData] = useState<PhrasesetDetails | null>(null);
+  const [phrasesetData, setPhrasesetData] = useState<QFPhrasesetDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reviewStage, setReviewStage] = useState<ReviewStage>('prompt');

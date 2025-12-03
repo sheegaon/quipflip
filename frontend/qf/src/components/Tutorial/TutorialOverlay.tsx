@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useTutorial } from '../../contexts/TutorialContext';
 import { getTutorialStep, getPreviousStep } from '@/config/tutorialSteps';
-import type { TutorialProgress } from '@/api/types';
+import type { QFTutorialProgress } from '@crowdcraft/api/types.ts';
 import './TutorialOverlay.css';
 import { CopyRoundIcon, LiveModeIcon, PracticeModeIcon, VoteRoundIcon } from '@crowdcraft/components/icons/RoundIcons.tsx';
 import { ArrowLeftIcon, ArrowRightIcon } from '@crowdcraft/components/icons/ArrowIcons.tsx';
@@ -115,7 +115,7 @@ const TutorialOverlay: React.FC<TutorialOverlayProps> = ({ onComplete }) => {
   const [isNavigating, setIsNavigating] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
-  const step = currentStep ? getTutorialStep(currentStep as TutorialProgress) : null;
+  const step = currentStep ? getTutorialStep(currentStep as QFTutorialProgress) : null;
 
   // Measure card dimensions dynamically
   useEffect(() => {
@@ -170,7 +170,7 @@ const TutorialOverlay: React.FC<TutorialOverlayProps> = ({ onComplete }) => {
     setIsNavigating(true);
     try {
       if (currentStep) {
-        const prevStep = getPreviousStep(currentStep as TutorialProgress);
+        const prevStep = getPreviousStep(currentStep as QFTutorialProgress);
         if (prevStep) {
           advanceStep(prevStep);
         }
