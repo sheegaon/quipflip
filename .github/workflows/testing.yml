@@ -66,6 +66,7 @@ jobs:
         python -m pytest tests/test_statistics_service.py -v
         python -m pytest tests/test_timezone_awareness.py -v
         python -m pytest tests/test_tutorial_service.py -v
+        python -m pytest tests/test_player_service_phase5.py -v
         python -m pytest tests/test_username_service.py -v
         python -m pytest tests/test_variable_prize_pool.py -v
         python -m pytest tests/test_vote_service.py -v

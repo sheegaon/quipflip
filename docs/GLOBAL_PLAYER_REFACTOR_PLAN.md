@@ -76,6 +76,12 @@
    - Deploy behind a feature flag for global auth; enable per-environment and monitor error rates.
    - Provide rollback plan: retain old delegated properties temporarily or keep dual-write until confidence is high.
 
+### Phase 5.1: Test Coverage Deliverables
+- Added focused unit tests for the global `PlayerService` to validate:
+  - Login with explicit `game_type` provisions per-game player data with the configured initial wallet/vault defaults.
+  - Locked-out accounts are blocked from login attempts and surface `account_locked` errors.
+  - Admin email checks are applied during username-based login so global admin flags stay in sync with configuration.
+
 ## Phase 6: Cleanup and Hardening
 1. **Remove deprecated paths**
    - Delete legacy delegation properties from `Player` and any compatibility shims once clients are migrated.
