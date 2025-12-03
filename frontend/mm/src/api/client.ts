@@ -22,6 +22,13 @@ import type {
   RemoveMemberResponse,
   OnlineUsersResponse,
   PingUserResponse,
+  BetaSurveyListResponse,
+  BetaSurveyStatusResponse,
+  BetaSurveySubmissionRequest,
+  BetaSurveySubmissionResponse,
+  Quest,
+  QuestListResponse,
+  ClaimQuestRewardResponse,
 } from '@crowdcraft/api/types.ts';
 
 const baseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
@@ -35,6 +42,50 @@ const QF_API_BASE_URL = `${ROOT_API_URL}/qf`;
 class MemeMintApiClient extends BaseApiClient {
   constructor() {
     super(API_BASE_URL);
+  }
+
+  override async getQuests(signal?: AbortSignal): Promise<QuestListResponse> {
+    const { data } = await this.api.get<QuestListResponse>('/quests', {
+      baseURL: QF_API_BASE_URL,
+      signal,
+    });
+    return data;
+  }
+
+  override async getActiveQuests(signal?: AbortSignal): Promise<Quest[]> {
+    const { data } = await this.api.get<Quest[]>('/quests/active', {
+      baseURL: QF_API_BASE_URL,
+      signal,
+    });
+    return data;
+  }
+
+  override async getClaimableQuests(signal?: AbortSignal): Promise<Quest[]> {
+    const { data } = await this.api.get<Quest[]>('/quests/claimable', {
+      baseURL: QF_API_BASE_URL,
+      signal,
+    });
+    return data;
+  }
+
+  override async getQuest(questId: string, signal?: AbortSignal): Promise<Quest> {
+    const { data } = await this.api.get<Quest>(`/quests/${questId}`, {
+      baseURL: QF_API_BASE_URL,
+      signal,
+    });
+    return data;
+  }
+
+  override async claimQuestReward(questId: string, signal?: AbortSignal): Promise<ClaimQuestRewardResponse> {
+    const { data } = await this.api.post<ClaimQuestRewardResponse>(
+      `/quests/${questId}/claim`,
+      {},
+      {
+        baseURL: QF_API_BASE_URL,
+        signal,
+      },
+    );
+    return data;
   }
 
   async startMemeVoteRound(signal?: AbortSignal): Promise<MemeVoteRound> {
@@ -103,7 +154,8 @@ class MemeMintApiClient extends BaseApiClient {
   }
 
   async getOnlineUsers(signal?: AbortSignal): Promise<OnlineUsersResponse> {
-    const { data } = await this.api.get<OnlineUsersResponse>(`${QF_API_BASE_URL}/users/online`, {
+    const { data } = await this.api.get<OnlineUsersResponse>('/users/online', {
+      baseURL: QF_API_BASE_URL,
       signal,
     });
     return data;
@@ -111,10 +163,37 @@ class MemeMintApiClient extends BaseApiClient {
 
   async pingOnlineUser(username: string, signal?: AbortSignal): Promise<PingUserResponse> {
     const { data } = await this.api.post<PingUserResponse>(
-      `${QF_API_BASE_URL}/users/online/ping`,
+      '/users/online/ping',
       { username },
-      { signal },
+      { baseURL: QF_API_BASE_URL, signal },
     );
+    return data;
+  }
+
+  override async submitBetaSurvey(
+    payload: BetaSurveySubmissionRequest,
+    signal?: AbortSignal,
+  ): Promise<BetaSurveySubmissionResponse> {
+    const { data } = await this.api.post<BetaSurveySubmissionResponse>('/feedback/beta-survey', payload, {
+      baseURL: QF_API_BASE_URL,
+      signal,
+    });
+    return data;
+  }
+
+  override async getBetaSurveyStatus(signal?: AbortSignal): Promise<BetaSurveyStatusResponse> {
+    const { data } = await this.api.get<BetaSurveyStatusResponse>('/feedback/beta-survey/status', {
+      baseURL: QF_API_BASE_URL,
+      signal,
+    });
+    return data;
+  }
+
+  override async listBetaSurveyResponses(signal?: AbortSignal): Promise<BetaSurveyListResponse> {
+    const { data } = await this.api.get<BetaSurveyListResponse>('/feedback/beta-survey', {
+      baseURL: QF_API_BASE_URL,
+      signal,
+    });
     return data;
   }
 
