@@ -245,11 +245,65 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 
+def _get_guest_activity_queries(game_type: GameType, guest_ids: List[UUID], transaction_model):
+    """Build queries used to detect guest activity for each game type."""
+    queries = [
+        select(transaction_model.player_id)
+        .where(transaction_model.player_id.in_(guest_ids))
+        .distinct()
+    ]
+
+    if game_type == GameType.QF:
+        from backend.models.qf.phraseset_activity import PhrasesetActivity
+        from backend.models.qf.round import Round
+
+        queries.extend(
+            [
+                select(Round.player_id)
+                .where(Round.player_id.in_(guest_ids))
+                .distinct(),
+                select(PhrasesetActivity.player_id)
+                .where(PhrasesetActivity.player_id.in_(guest_ids))
+                .distinct(),
+            ]
+        )
+    elif game_type == GameType.IR:
+        from backend.models.ir.backronym_entry import BackronymEntry
+        from backend.models.ir.backronym_vote import BackronymVote
+
+        queries.extend(
+            [
+                select(BackronymEntry.player_id)
+                .where(BackronymEntry.player_id.in_(guest_ids))
+                .distinct(),
+                select(BackronymVote.player_id)
+                .where(BackronymVote.player_id.in_(guest_ids))
+                .distinct(),
+            ]
+        )
+    elif game_type == GameType.MM:
+        from backend.models.mm.caption_submission import MMCaptionSubmission
+        from backend.models.mm.vote_round import MMVoteRound
+
+        queries.extend(
+            [
+                select(MMCaptionSubmission.player_id)
+                .where(MMCaptionSubmission.player_id.in_(guest_ids))
+                .distinct(),
+                select(MMVoteRound.player_id)
+                .where(MMVoteRound.player_id.in_(guest_ids))
+                .distinct(),
+            ]
+        )
+
+    return queries
+
+
 async def get_online_users(db: AsyncSession, game_type: GameType) -> List[OnlineUser]:
     """Get list of users who were active in the last 30 minutes.
 
-    Excludes guest users who have taken no actions (no submitted rounds,
-    no phraseset activities, no transactions, and haven't navigated beyond dashboard).
+    Excludes guest users who have taken no actions (no game activity and no
+    transactions, and haven't navigated beyond dashboard).
     """
     cutoff_time = datetime.now(UTC) - timedelta(minutes=30)
 
@@ -284,12 +338,11 @@ async def get_online_users(db: AsyncSession, game_type: GameType) -> List[Online
     # If there are guests, check which ones have activity
     guests_with_activity = set()
     if guest_ids:
-        transactions_result = await db.execute(
-            select(TransactionModel.player_id)
-            .where(TransactionModel.player_id.in_(guest_ids))
-            .distinct()
-        )
-        guests_with_activity.update(row[0] for row in transactions_result)
+        activity_queries = _get_guest_activity_queries(game_type, guest_ids, TransactionModel)
+
+        for query in activity_queries:
+            result = await db.execute(query)
+            guests_with_activity.update(row[0] for row in result)
 
     online_users = []
     for activity, wallet, created_at, is_guest, player_id in rows:
