@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 interface TooltipProps {
   content: string;
@@ -14,22 +14,31 @@ export const Tooltip: React.FC<TooltipProps> = ({
   delayMs = 300,
 }) => {
   const [isVisible, setIsVisible] = useState(false);
-  const [timeoutId, setTimeoutId] = useState<NodeJS.Timeout | null>(null);
+  const timeoutIdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleMouseEnter = () => {
     const id = setTimeout(() => {
       setIsVisible(true);
     }, delayMs);
-    setTimeoutId(id);
+    timeoutIdRef.current = id;
   };
 
   const handleMouseLeave = () => {
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-      setTimeoutId(null);
+    if (timeoutIdRef.current) {
+      clearTimeout(timeoutIdRef.current);
+      timeoutIdRef.current = null;
     }
     setIsVisible(false);
   };
+
+  useEffect(() => {
+    return () => {
+      if (timeoutIdRef.current) {
+        clearTimeout(timeoutIdRef.current);
+        timeoutIdRef.current = null;
+      }
+    };
+  }, []);
 
   const positionClasses: Record<string, string> = {
     top: 'bottom-full mb-2 -translate-x-1/2 left-1/2',
