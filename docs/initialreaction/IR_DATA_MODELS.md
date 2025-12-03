@@ -2,6 +2,16 @@
 
 This guide covers the Initial Reaction models inside `backend/models/ir`, which extend the shared foundations documented in [DATA_MODELS.md](../DATA_MODELS.md). Wallets, tokens, quests, notifications, and other shared primitives come from the base modules and are not repeated here.
 
+## Architecture Note
+
+Initial Reaction uses the **unified Player model with game-specific data delegation** pattern. See [DATA_MODELS.md Architecture Overview](../DATA_MODELS.md#architecture-overview) for details on how `Player` delegates game-specific fields to `IRPlayerData`.
+
+**IRPlayerData** contains Initial Reaction-specific player state:
+- `player_id` (UUID, PK, FK to players.player_id)
+- `wallet` (integer, default 1000)
+- `vault` (integer, default 0)
+- Game-specific state fields for IR
+
 ---
 
 ## Overview

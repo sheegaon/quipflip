@@ -98,11 +98,30 @@ backend/services/ir/player_service.py  # IR AI player management
 * `AIService.generate_backronym_vote(word, backronyms)` ranks backronym submissions and returns the selected index.
 * `AIService.run_ir_backup_cycle()` delegates to `IRBackupOrchestrator` which fills stalled IR sets by generating backronym entries until each set has five entries and then casting votes until five votes exist, using the IR-specific AI player.
 
+### AI Player Types and Email Patterns
+
+The system maintains distinct pools of AI players for different roles within the game. Each player type follows a predictable email pattern for easy identification:
+
+| Player Type | Email Pattern | Purpose | Game |
+| --- | --- | --- | --- |
+| `QF_QUIP` | `ai_quip_****@quipflip.internal` | Generates creative quip responses in the quip round | QuipFlip |
+| `QF_IMPOSTOR` | `ai_impostor_****@quipflip.internal` | Creates backup copy phrases when prompts stall | QuipFlip |
+| `QF_VOTER` | `ai_voter_****@quipflip.internal` | Casts votes when phrasesets lack engagement | QuipFlip |
+| `QF_PARTY` | `ai_party_****@quipflip.internal` | Fills empty seats in party mode sessions | QuipFlip |
+| `IR_PLAYER` | `ai_backronym_001@initialreaction.internal` | Generates backronym entries and votes | Initial Reaction |
+
+Notes:
+- The `****` in email patterns is a 4-character hex suffix (e.g., `ai_impostor_a1b2@quipflip.internal`) generated when the player is created
+- `get_or_create_ai_player(ai_player_type, excluded)` creates a new player if none exists, or reuses an existing one from the pool
+- The `excluded` parameter prevents the same AI player from being used twice in a single operation (e.g., submitting copy1 and copy2)
+- QF AI players must have at least 100 Flipcoins in their wallet to be reused; new players are created with sufficient starting balance
+- IR AI players are singleton (one permanent account per player type)
+
 ### AI Players vs. Guest Players
 
 It is important to distinguish between two types of non-registered player accounts in the system: AI players and guest players.
 
-*   **AI Players**: These are system-controlled accounts created and managed by the `AIService` via the `get_or_create_ai_player` method. Their purpose is to fill in for missing human activity, such as generating backup copy phrases or casting votes in stalled games. They are not intended for human use and have distinct roles and behaviors defined within the AI service.
+*   **AI Players**: These are system-controlled accounts created and managed by the `AIService` via the `get_or_create_ai_player` method. Their purpose is to fill in for missing human activity, such as generating backup copy phrases or casting votes in stalled games. They are not intended for human use and have distinct roles and behaviors defined within the AI service. AI players are identified by their email domain (`@quipflip.internal` or `@initialreaction.internal`).
 
 *   **Guest Players**: These are temporary accounts for human users who want to play the game without completing a full registration. They are created through the standard player registration flow (e.g., via `/api/v1/players/guest`) and are marked with an `is_guest` flag in the database. Guest players have limitations, such as stricter rate limits and restrictions on certain game features. They can be upgraded to full accounts.
 
@@ -465,10 +484,10 @@ The stale AI handler (`StaleAIService`) provides a complementary safety net for 
 
 | Feature | Backup AI | Stale AI |
 |---------|-----------|----------|
-| **Email** | `ai_*@quipflip.internal` (multiple types) | `ai_stale_handler@quipflip.internal` (copies)<br>`ai_stale_voter@quipflip.internal` (votes) |
+| **AI Players** | Dedicated backup AI players (`ai_impostor_*`, `ai_voter_*`, etc. at `@quipflip.internal`) | Reuses same backup AI player pool |
 | **Trigger Time** | `ai_backup_delay_minutes` (default: 30 min) | `ai_stale_threshold_days` (default: 2 days) |
 | **Human Activity Required** | Yes - requires human vote before voting | No - can act independently |
-| **Batch Size** | Limited to `ai_backup_batch_size` (default: 10) | Processes ALL stale content |
+| **Batch Size** | Limited to `ai_backup_batch_size` (default: 10) | Processes ALL stale content (no batch limit) |
 | **Frequency** | Every `ai_backup_sleep_minutes` (default: 30 min) | Every `ai_stale_check_interval_hours` (default: 6 hours) |
 | **Purpose** | Handle temporary gaps in activity | Handle permanently abandoned content |
 | **Operation Types** | `"copy_generation"`, `"vote_generation"` | `"stale_copy"`, `"stale_vote"` |

@@ -1,22 +1,34 @@
 # Meme Mint Data Models
 
-This guide documents the Meme Mint–specific tables housed under `backend/models/mm` and explains how they extend the shared base models defined in `DATA_MODELS.md`. Meme Mint reuses the existing `PlayerBase`, `TransactionBase`, `SystemConfigBase`, and daily bonus machinery; this file only describes the additional tables and how they interact with those bases.
+This guide documents the Meme Mint–specific tables housed under `backend/models/mm` and explains how they extend the shared base models defined in `DATA_MODELS.md`. Meme Mint uses the unified `Player` model with game-specific data delegation, and adds additional tables for images, captions, rounds, player state, and social features.
+
+## Architecture Note
+
+Meme Mint uses the **unified Player model with game-specific data delegation** pattern. See [DATA_MODELS.md Architecture Overview](../DATA_MODELS.md#architecture-overview) for details on how `Player` delegates game-specific fields to `MMPlayerData`.
+
+**MMPlayerData** contains Meme Mint-specific player state:
+- `player_id` (UUID, PK, FK to players.player_id)
+- `wallet` (integer, default 1000)
+- `vault` (integer, default 0)
+- Game-specific state fields for MM
 
 ---
 
 ## 1. Relationship to Shared Models
 
-Meme Mint **does not** introduce a new player or transaction base. Instead it:
+Meme Mint uses the unified `Player` authentication model and adds game-specific state:
 
 * Reuses:
 
-  * `PlayerBase` for accounts, wallet, and vault balances.
+  * `Player` for unified cross-game accounts, credentials, and admin status.
+  * `MMPlayerData` for MM-specific wallet, vault, and player state.
   * `TransactionBase` as the global ledger.
   * `SystemConfigBase` for tunable parameters.
 * Adds:
 
-  * A small set of `mm_*` tables for images, captions, rounds, and per-player state.
+  * A small set of `mm_*` tables for images, captions, rounds, player state, and social groups.
   * New **transaction `type` values** and **system config keys** (documented in Section 3).
+  * Social features with `mm_circle`, `mm_circle_member`, and `mm_circle_join_request` tables for player groups.
 
 All balance changes (entry fees, payouts, bonuses) must still flow through `TransactionBase`.
 
@@ -361,6 +373,157 @@ This table is **optional** but recommended for debugging, moderation, and analyt
 
   * For MVP, you can skip this table and rely solely on `mm_caption`.
   * If you later add async moderation or automated filters, this table becomes more useful.
+
+---
+
+### 2.7 `mm_circle` — Player Groups / Circles
+
+Represents a social group or "circle" in Meme Mint where players can organize, collaborate, and share content.
+
+* `circle_id` (UUID, primary key)
+
+* `name` (string(100), not null, unique)
+
+  * Display name for the circle.
+
+* `description` (text, nullable)
+
+  * Optional longer description of the circle's purpose.
+
+* `created_by_player_id` (UUID, references `players.player_id`, indexed, not null)
+
+  * The player who created the circle (the circle creator/owner).
+
+* `created_at` (timestamp with timezone, default now(), not null)
+
+* `updated_at` (timestamp with timezone, default now(), not null)
+
+  * Last modification timestamp.
+
+* `member_count` (integer, default 1, not null)
+
+  * Cached count of active members in the circle (including creator).
+
+* `is_public` (boolean, default true, not null)
+
+  * Whether circle is discoverable or invite-only.
+
+* `status` (string, default 'active', not null)
+
+  * `'active'` — circle is operating normally.
+  * `'archived'` — circle has been deactivated.
+  * `'deleted'` — circle was deleted (soft-delete).
+
+* **Indexes:**
+
+  * `circle_id` (PK)
+  * `created_by_player_id`
+  * `(status, created_at DESC)` for listing active circles
+  * `name` (unique)
+
+* **Relationships:**
+
+  * `creator` → `players` (created_by_player_id)
+  * `members` ← `mm_circle_member` (circle_id)
+  * `join_requests` ← `mm_circle_join_request` (circle_id)
+
+---
+
+### 2.8 `mm_circle_member` — Circle Membership
+
+Tracks membership of a player in a circle.
+
+* `member_id` (UUID, primary key)
+
+* `circle_id` (UUID, references `mm_circle.circle_id`, indexed, not null)
+
+  * The circle this membership belongs to.
+
+* `player_id` (UUID, references `players.player_id`, indexed, not null)
+
+  * The player who is a member.
+
+* `joined_at` (timestamp with timezone, default now(), not null)
+
+  * When this player joined the circle.
+
+* `role` (string, default 'member', not null)
+
+  * `'creator'` — the circle creator (one per circle).
+  * `'admin'` — designated administrator (optional).
+  * `'member'` — regular member.
+
+* **Indexes:**
+
+  * `member_id` (PK)
+  * `(circle_id, player_id)` unique constraint
+  * `player_id`
+  * `joined_at`
+
+* **Constraints:**
+
+  * Unique constraint on `(circle_id, player_id)` to prevent duplicate memberships.
+
+* **Relationships:**
+
+  * `circle` → `mm_circle`
+  * `player` → `players`
+
+---
+
+### 2.9 `mm_circle_join_request` — Pending Circle Join Requests
+
+Tracks pending requests from players who want to join a circle.
+
+* `request_id` (UUID, primary key)
+
+* `circle_id` (UUID, references `mm_circle.circle_id`, indexed, not null)
+
+  * The circle being requested to join.
+
+* `player_id` (UUID, references `players.player_id`, indexed, not null)
+
+  * The player requesting to join.
+
+* `status` (string, default 'pending', not null)
+
+  * `'pending'` — awaiting circle creator/admin approval.
+  * `'approved'` — approved and member added to `mm_circle_member`.
+  * `'denied'` — rejected by circle creator/admin.
+
+* `requested_at` (timestamp with timezone, default now(), not null)
+
+  * When the join request was created.
+
+* `reviewed_at` (timestamp with timezone, nullable)
+
+  * When the circle creator/admin reviewed the request (approved or denied).
+
+* `reviewed_by_player_id` (UUID, references `players.player_id`, nullable)
+
+  * The admin/creator who approved or denied the request.
+
+* **Indexes:**
+
+  * `request_id` (PK)
+  * `(circle_id, status)` for listing pending requests
+  * `player_id`
+  * `requested_at`
+
+* **Constraints:**
+
+  * Unique constraint on `(circle_id, player_id)` to prevent duplicate join requests.
+
+* **Relationships:**
+
+  * `circle` → `mm_circle`
+  * `player` → `players`
+  * `reviewed_by` → `players` (nullable)
+
+* **Notes:**
+
+  * Upon approval, circle creator should create a corresponding `mm_circle_member` record and delete/archive the request.
+  * Upon denial, request is marked as denied and may be deleted or archived for audit purposes.
 
 ---
 

@@ -1,12 +1,22 @@
 # Meme Mint (MM) API Documentation
 
-Meme Mint endpoints live under the `/mm` prefix and are implemented in `backend/routers/mm`. Shared authentication, cookie behavior, and health/status probes are documented in [API.md](../API.md); this guide focuses on Meme Mint gameplay and account endpoints.
+Meme Mint endpoints live under the `/mm` prefix and are implemented in `backend/routers/mm`. Shared authentication and health/status probes are documented in [API.md](../API.md); this guide focuses on Meme Mint gameplay and account endpoints.
 
 ## Base URL
 
 ```
 Development: http://localhost:8000/mm
 ```
+
+## Authentication
+
+Meme Mint uses the shared authentication contract from [API.md](../API.md):
+
+- HTTP-only cookies are set on login/registration/guest/upgrade/refresh using `quipflip_access_token` (2 hours) and `quipflip_refresh_token` (30 days).
+- Authorization headers (`Bearer <token>`) are also accepted by the MM auth dependency.
+- Most endpoints require authentication; unauthenticated access is only allowed where noted (e.g., registration and guest creation).
+
+**Note:** Unlike Initial Reaction which uses game-specific cookies (`ir_access_token`, `ir_refresh_token`), Meme Mint uses the shared `quipflip_*` cookies.
 
 ## Data Model Reference
 
@@ -188,6 +198,217 @@ Retrieve details for a previously started round owned by the requesting player. 
   "chosen_caption_id": null
 }
 ```
+
+---
+
+## Circles Endpoints (`/mm/circles` prefix)
+
+Circles (groups) allow players to organize, share memes, and collaborate within the Meme Mint community. Players can create circles, invite members, and participate in shared meme activities.
+
+### `POST /circles`
+Create a new circle (group).
+
+**Request:**
+```json
+{
+  "name": "Meme Squad",
+  "description": "Our circle for sharing the best memes"
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "circle_id": "uuid",
+  "name": "Meme Squad",
+  "description": "Our circle for sharing the best memes",
+  "creator_id": "uuid",
+  "created_at": "2024-01-06T12:00:00Z",
+  "member_count": 1,
+  "is_member": true,
+  "is_creator": true
+}
+```
+
+### `GET /circles`
+List all circles the current player belongs to or has created.
+
+**Response:**
+```json
+{
+  "circles": [
+    {
+      "circle_id": "uuid",
+      "name": "Meme Squad",
+      "description": "Our circle for sharing the best memes",
+      "creator_id": "uuid",
+      "created_at": "2024-01-06T12:00:00Z",
+      "member_count": 5,
+      "is_member": true,
+      "is_creator": true
+    }
+  ]
+}
+```
+
+### `GET /circles/{circle_id}`
+Get detailed information about a specific circle.
+
+**Response:**
+```json
+{
+  "circle_id": "uuid",
+  "name": "Meme Squad",
+  "description": "Our circle for sharing the best memes",
+  "creator_id": "uuid",
+  "created_at": "2024-01-06T12:00:00Z",
+  "member_count": 5,
+  "is_member": true,
+  "is_creator": false
+}
+```
+
+**Errors:**
+- `404 Circle not found` - Invalid circle ID
+
+### `POST /circles/{circle_id}/join`
+Request to join a circle. Requires approval from a circle admin/creator.
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Join request sent"
+}
+```
+
+**Errors:**
+- `404 Circle not found` - Invalid circle ID
+- `409 Already a member` - Player is already in the circle
+- `409 Request pending` - Join request already submitted
+
+### `GET /circles/{circle_id}/members`
+List all members in a circle. Requires membership.
+
+**Response:**
+```json
+{
+  "members": [
+    {
+      "player_id": "uuid",
+      "username": "Meme Master",
+      "joined_at": "2024-01-01T10:00:00Z",
+      "is_creator": true
+    }
+  ]
+}
+```
+
+**Errors:**
+- `403 Forbidden` - Not a member of this circle
+
+### `POST /circles/{circle_id}/members`
+Add a member to the circle (creator/admin only).
+
+**Request:**
+```json
+{
+  "player_id": "uuid"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Member added"
+}
+```
+
+**Errors:**
+- `403 Forbidden` - Only circle creator can add members
+- `404 Player not found` - Invalid player ID
+
+### `DELETE /circles/{circle_id}/members/{player_id}`
+Remove a member from the circle (creator/admin only).
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Member removed"
+}
+```
+
+**Errors:**
+- `403 Forbidden` - Only circle creator can remove members
+- `404 Member not found` - Player not in circle
+
+### `DELETE /circles/{circle_id}/leave`
+Leave a circle. The creator cannot leave their own circle.
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Left circle"
+}
+```
+
+**Errors:**
+- `400 Creator cannot leave` - Circle creator must delete the circle instead
+- `404 Not a member` - Player is not in the circle
+
+### `GET /circles/{circle_id}/join-requests`
+List pending join requests for a circle (creator/admin only).
+
+**Response:**
+```json
+{
+  "requests": [
+    {
+      "request_id": "uuid",
+      "player_id": "uuid",
+      "player_username": "Meme Lover",
+      "requested_at": "2024-01-06T11:00:00Z"
+    }
+  ]
+}
+```
+
+**Errors:**
+- `403 Forbidden` - Only circle creator can view join requests
+
+### `POST /circles/{circle_id}/join-requests/{request_id}/approve`
+Approve a pending join request (creator/admin only).
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Join request approved",
+  "player_username": "Meme Lover"
+}
+```
+
+**Errors:**
+- `403 Forbidden` - Only circle creator can approve requests
+- `404 Request not found` - Invalid request ID
+
+### `POST /circles/{circle_id}/join-requests/{request_id}/deny`
+Deny a pending join request (creator/admin only).
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Join request denied"
+}
+```
+
+**Errors:**
+- `403 Forbidden` - Only circle creator can deny requests
+- `404 Request not found` - Invalid request ID
 
 ---
 

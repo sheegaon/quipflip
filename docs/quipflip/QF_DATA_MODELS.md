@@ -2,34 +2,38 @@
 
 This guide documents the Quipflip-specific tables housed under `backend/models/qf`. These models build on the shared base tables described in [DATA_MODELS.md](../DATA_MODELS.md) (players, tokens, transactions, notifications, quests, and system configuration) and add the game entities unique to Quipflip.
 
+## Architecture Note
+
+Quipflip uses the **unified Player model with game-specific data delegation** pattern. See [DATA_MODELS.md Architecture Overview](../DATA_MODELS.md#architecture-overview) for details on how `Player` delegates game-specific fields to `QFPlayerData`.
+
 ## Core Models
 
-### Player
-- `player_id` (UUID, primary key)
-- `username` (string, unique) - **automatically generated** random display name (player cannot choose or change)
-- `username_canonical` (string, unique) - lowercase form for lookups
-- `email` (string, unique) - player email for authentication
-- `password_hash` (string) - bcrypt hashed password
-- `wallet` (integer, database default 1000) - current spendable Flipcoin balance for entering rounds and transactions. New accounts are seeded from `settings.starting_balance` (5000f by default) when created via the service layer.
-- `vault` (integer, database default 0) - accumulated long-term Flipcoin balance from net earnings (30% rake). Used for leaderboard rankings.
-- `created_at` (timestamp)
-- `last_login_date` (timestamp with timezone, nullable) - UTC timestamp for last login tracking
+### QFPlayerData (Game-Specific Player State)
+- `player_id` (UUID, PK, FK to players.player_id) - unified player account reference
+- `wallet` (integer, default 1000) - current spendable Flipcoin balance for entering rounds and transactions. New accounts are seeded from `settings.starting_balance` (5000f by default) when created via the service layer.
+- `vault` (integer, default 0) - accumulated long-term Flipcoin balance from net earnings (30% rake). Used for leaderboard rankings.
 - `active_round_id` (UUID, nullable, references rounds.round_id) - enforces one-round-at-a-time
-- `is_guest` (boolean, default false) - whether this is a guest account with auto-generated credentials
 - `tutorial_completed` (boolean, default false) - whether player has finished tutorial
 - `tutorial_progress` (string, default 'not_started') - current tutorial step (`not_started`, `welcome`, `dashboard`, `prompt_round`, `copy_round`, `vote_round`, `completed_rounds_guide`, `completed`)
 - `tutorial_started_at` (timestamp, nullable) - when tutorial was started
 - `tutorial_completed_at` (timestamp, nullable) - when tutorial was completed
-- `is_admin` (boolean, default false) - admin privileges flag for administrative access
-- `locked_until` (timestamp with timezone, nullable) - account lock expiration time (for temporary bans/suspensions)
 - `flag_dismissal_streak` (integer, default 0) - tracks consecutive flags submitted by this player that were dismissed by an admin. Higher number indicates poor flagging history. Player is locked for 24 hours when streak reaches 5, then streak resets to 0. Streak resets to 0 when a flag is confirmed.
 - `consecutive_incorrect_votes` (integer, default 0) - tracks incorrect votes for guest accounts
 - `vote_lockout_until` (timestamp with timezone, nullable) - guest vote lockout expiration when too many incorrect votes
-- Indexes: `player_id`, `active_round_id`
-- Constraints: Unique `username_canonical`
-- Relationships: `active_round`, `rounds`, `transactions`, `votes`, `daily_bonuses`, `result_views`, `abandoned_prompts`, `phraseset_activities`, `refresh_tokens`, `quests`, `survey_responses`
+- Indexes: `player_id`
+- Constraints: PK on player_id (one-to-one relationship)
+- Relationships: `player` (back-reference to unified Player)
 
-**Authentication**: JWT access/refresh tokens (stored in `refresh_tokens` table)
+**Note**: While these fields live in `QFPlayerData`, the `Player` model provides transparent access via property accessors, so frontend code can still use `player.wallet`, `player.vault`, etc.
+
+### Player (Unified Authentication - See DATA_MODELS.md)
+The shared `Player` table contains unified authentication and account information:
+- `player_id`, `username`, `email`, `password_hash`, `created_at`, `last_login_date`
+- `is_guest`, `is_admin`, `locked_until`
+- Delegated properties: `wallet`, `vault`, `tutorial_*`, etc. → see `QFPlayerData`
+- Relationships: All game-specific relationships go through the appropriate player data table
+
+**Authentication**: JWT access/refresh tokens (stored in `qf_refresh_tokens` table)
 **Registration**:
 - Guest accounts: Created via `POST /player/guest` with auto-generated credentials (email: `guest####@quipflip.xyz`, password: `QuipGuest`)
 - Full accounts: Created via `POST /player` with email and password; username is randomly generated and cannot be changed
