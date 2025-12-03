@@ -133,7 +133,7 @@ async def start_round(
 @router.post("/{round_id}/guess", response_model=SubmitGuessResponse)
 async def submit_guess(
     round_id: UUID = Path(..., description="Round ID"),
-    request_body: SubmitGuessRequest = None,
+    request_body: SubmitGuessRequest = Body(...),
     player: Player = Depends(get_tl_player),
     db: AsyncSession = Depends(get_db),
 ):
