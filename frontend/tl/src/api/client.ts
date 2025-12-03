@@ -240,32 +240,46 @@ class ThinkLinkApiClient {
   }
 
   // ========================================================================
-  // Online Users Endpoints (Shared)
+  // Compatibility Stubs for MM/QF Header Component
   // ========================================================================
 
   /**
-   * Get list of online users (shared endpoint)
+   * Get beta survey status (stub for TL compatibility)
    */
-  async getOnlineUsers(signal?: AbortSignal): Promise<OnlineUsersResponse> {
-    const { data } = await this.api.get<OnlineUsersResponse>('/users/online', { signal });
-    return data;
+  async getBetaSurveyStatus(): Promise<{ has_submitted: boolean }> {
+    // TL doesn't have survey endpoints - return false by default
+    return { has_submitted: false };
   }
 
   /**
-   * Ping an online user (shared endpoint)
+   * Get online users (stub endpoint)
    */
-  async pingOnlineUser(username: string, signal?: AbortSignal): Promise<PingUserResponse> {
-    const { data } = await this.api.post<PingUserResponse>(
-      '/users/online/ping',
-      { username },
-      { signal },
-    );
-    return data;
+  async getOnlineUsers(signal?: AbortSignal): Promise<any> {
+    try {
+      const { data } = await this.api.get('/users/online', { signal });
+      return data;
+    } catch {
+      return { online_users: [] };
+    }
+  }
+
+  /**
+   * Ping an online user (stub endpoint)
+   */
+  async pingOnlineUser(username: string, signal?: AbortSignal): Promise<any> {
+    try {
+      const { data } = await this.api.post(
+        '/users/online/ping',
+        { username },
+        { signal },
+      );
+      return data;
+    } catch {
+      return { success: false };
+    }
   }
 }
 
 export const apiClient = new ThinkLinkApiClient();
-export const axiosInstance = apiClient.axiosInstance;
 
 export default apiClient;
-export { extractErrorMessage, clearStoredCredentials };

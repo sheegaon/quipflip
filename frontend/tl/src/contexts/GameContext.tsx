@@ -22,8 +22,11 @@ interface TLPlayer {
   username: string;
   email?: string;
   is_guest?: boolean;
+  is_admin?: boolean;
   tl_wallet: number;
   tl_vault: number;
+  wallet?: number;  // Alias for tl_wallet for header compatibility
+  vault?: number;   // Alias for tl_vault for header compatibility
   tl_tutorial_completed: boolean;
   tl_tutorial_progress: string;
   created_at: string;
