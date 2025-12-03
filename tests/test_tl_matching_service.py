@@ -1,7 +1,7 @@
 """Unit tests for ThinkLink MatchingService."""
 import pytest
 import os
-from backend.services.tl.matching_service import MatchingService
+from backend.services.tl.matching_service import TLMatchingService
 from unittest.mock import Mock, AsyncMock
 
 
@@ -16,12 +16,12 @@ class TestMatchingService:
         """
         if not os.getenv('OPENAI_API_KEY'):
             pytest.skip("OPENAI_API_KEY not configured - skipping live API tests")
-        return MatchingService()
+        return TLMatchingService()
 
     @pytest.fixture
     def matching_service_mock(self):
         """Create a mock MatchingService for tests that don't need real API calls."""
-        service = Mock(spec=MatchingService)
+        service = Mock(spec=TLMatchingService)
         service.embedding_cache = {}
         return service
 
@@ -57,7 +57,7 @@ class TestMatchingService:
     def test_cosine_similarity_identical_vectors(self, matching_service_mock):
         """Test cosine similarity of identical vectors is 1.0."""
         vec = [1.0, 0.0, 0.0]
-        similarity = MatchingService.cosine_similarity(vec, vec)
+        similarity = TLMatchingService.cosine_similarity(vec, vec)
 
         assert similarity == pytest.approx(1.0, abs=0.001)
 
@@ -65,7 +65,7 @@ class TestMatchingService:
         """Test cosine similarity of orthogonal vectors is ~0."""
         vec1 = [1.0, 0.0, 0.0]
         vec2 = [0.0, 1.0, 0.0]
-        similarity = MatchingService.cosine_similarity(vec1, vec2)
+        similarity = TLMatchingService.cosine_similarity(vec1, vec2)
 
         assert similarity == pytest.approx(0.0, abs=0.001)
 
@@ -77,7 +77,7 @@ class TestMatchingService:
         """
         vec1 = [1.0, 0.0, 0.0]
         vec2 = [-1.0, 0.0, 0.0]
-        similarity = MatchingService.cosine_similarity(vec1, vec2)
+        similarity = TLMatchingService.cosine_similarity(vec1, vec2)
 
         # Opposite vectors have dot product of -1, clamped to 0
         assert similarity == pytest.approx(0.0, abs=0.001)
@@ -86,7 +86,7 @@ class TestMatchingService:
         """Test batch similarity with one candidate."""
         query_vec = [1.0, 0.0, 0.0]
         candidate_vecs = [[1.0, 0.0, 0.0]]
-        similarities = MatchingService.batch_cosine_similarity(
+        similarities = TLMatchingService.batch_cosine_similarity(
             query_vec, candidate_vecs
         )
 
@@ -104,7 +104,7 @@ class TestMatchingService:
             [0.0, 1.0, 0.0],   # orthogonal
             [-1.0, 0.0, 0.0],  # opposite (clamped to 0)
         ]
-        similarities = MatchingService.batch_cosine_similarity(
+        similarities = TLMatchingService.batch_cosine_similarity(
             query_vec, candidate_vecs
         )
 

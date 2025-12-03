@@ -14,7 +14,7 @@ from backend.config import get_settings
 logger = logging.getLogger(__name__)
 
 
-class ScoringService:
+class TLScoringService:
     """Service for ThinkLink scoring and payouts."""
 
     def __init__(self):

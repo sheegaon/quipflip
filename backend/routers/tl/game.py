@@ -9,8 +9,8 @@ from backend.dependencies import get_current_player
 from backend.models.player import Player
 from backend.schemas.base import BaseSchema
 from backend.services import GameType
-from backend.services.tl.prompt_service import PromptService
-from backend.services.tl.matching_service import MatchingService
+from backend.services.tl.prompt_service import TLPromptService
+from backend.services.tl.matching_service import TLMatchingService
 from backend.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -47,8 +47,8 @@ async def preview_prompt(
     """
     try:
         # Initialize services
-        matching_service = MatchingService()
-        prompt_service = PromptService(matching_service)
+        matching_service = TLMatchingService()
+        prompt_service = TLPromptService(matching_service)
 
         # Get random prompt
         prompt = await prompt_service.get_random_active_prompt(db)
