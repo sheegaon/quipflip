@@ -61,7 +61,7 @@ async def detect_player_and_game(
     db: AsyncSession,
 ) -> Tuple[Player, GameType]:
     """Detect the authenticated player and their game type from the request."""
-    for game_type in (GameType.QF, GameType.IR, GameType.MM):
+    for game_type in GameType:
         try:
             player = await get_current_player(
                 request=request,
