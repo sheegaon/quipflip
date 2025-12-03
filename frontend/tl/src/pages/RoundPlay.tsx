@@ -1,8 +1,8 @@
 import React, { useEffect, useState , useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
-import apiClient, { extractErrorMessage } from '@/api/client';
-import type { StartRoundResponse } from '@/api/types';
+import apiClient, { extractErrorMessage } from '@crowdcraft/api/client.ts';
+import type { StartRoundResponse } from '@crowdcraft/api/types.ts';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { GuessInput } from '../components/GuessInput';
@@ -71,7 +71,7 @@ export const RoundPlay: React.FC = () => {
     setError(null);
 
     try {
-      const response = await apiClient.submitGuess(round.round_id, guessText.trim());
+      const response = await apiClient.tlSubmitGuess(round.round_id, guessText.trim());
 
       // Add guess to history
       const newGuess: Guess = {
@@ -124,7 +124,7 @@ export const RoundPlay: React.FC = () => {
 
     try {
       setRoundEnded(true);
-      const details = await apiClient.getRoundDetails(round.round_id);
+      const details = await apiClient.tlGetRoundDetails(round.round_id);
 
       const result = {
         roundId: round.round_id,
@@ -162,7 +162,7 @@ export const RoundPlay: React.FC = () => {
     setError(null);
 
     try {
-      await apiClient.abandonRound(round.round_id);
+      await apiClient.tlAbandonRound(round.round_id);
       navigate('/dashboard');
     } catch (err) {
       setError(extractErrorMessage(err) || 'Failed to abandon round');

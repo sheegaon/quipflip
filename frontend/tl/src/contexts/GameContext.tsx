@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import apiClient from '@/api/client';
+import apiClient from '@crowdcraft/api/client.ts';
 import axios from 'axios';
 import { useSmartPolling, PollConfigs } from '@crowdcraft/utils/smartPolling.ts';
 import { getActionErrorMessage } from '@crowdcraft/utils/errorMessages.ts';
