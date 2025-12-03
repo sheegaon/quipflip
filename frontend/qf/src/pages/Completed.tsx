@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '../components/Header';
 import { apiClient } from '@/api/client';
-import type { CompletedPhrasesetItem } from '@crowdcraft/api/types.ts';
+import type { QFCompletedPhrasesetItem } from '@crowdcraft/api/types.ts';
 import { InlineLoadingSpinner } from '../components/LoadingSpinner';
 import { ReviewIcon } from '@crowdcraft/components/icons/EngagementIcons.tsx';
 import { ArrowLeftIcon, ArrowRightIcon } from '@crowdcraft/components/icons/ArrowIcons.tsx';
@@ -13,7 +13,7 @@ type SortDirection = 'asc' | 'desc';
 
 export const Completed: React.FC = () => {
   const navigate = useNavigate();
-  const [phrasesets, setPhrasesets] = useState<CompletedPhrasesetItem[]>([]);
+  const [phrasesets, setPhrasesets] = useState<QFCompletedPhrasesetItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(0);

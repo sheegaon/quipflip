@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import apiClient, { extractErrorMessage } from '@/api/client';
-import type { LeaderboardResponse } from '@crowdcraft/api/types.ts';
+import type { MMLeaderboardResponse } from '@crowdcraft/api/types.ts';
 import WeeklyLeaderboard from '@crowdcraft/components/statistics/WeeklyLeaderboard';
 import { leaderboardLogger } from '@crowdcraft/utils/logger.ts';
 
@@ -8,8 +8,8 @@ type LeaderboardPeriod = 'weekly' | 'alltime';
 
 const Leaderboard: React.FC = () => {
   const [activePeriod, setActivePeriod] = useState<LeaderboardPeriod>('weekly');
-  const [weeklyData, setWeeklyData] = useState<LeaderboardResponse | null>(null);
-  const [alltimeData, setAlltimeData] = useState<LeaderboardResponse | null>(null);
+  const [weeklyData, setWeeklyData] = useState<MMLeaderboardResponse | null>(null);
+  const [alltimeData, setAlltimeData] = useState<MMLeaderboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const touchStartX = useRef<number | null>(null);

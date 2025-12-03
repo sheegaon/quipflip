@@ -168,7 +168,7 @@ export const Landing: React.FC = () => {
         </div>
 
         <div className="space-y-6">
-          {/* New Player */}
+          {/* New IRPlayer */}
           <div className="border-b border-ir-teal pb-6">
             <h2 className="text-xl font-semibold mb-4 text-ir-navy">Create an Account</h2>
             <form onSubmit={handleCreatePlayer} className="space-y-3">
@@ -202,9 +202,9 @@ export const Landing: React.FC = () => {
             </form>
           </div>
 
-          {/* Returning Player */}
+          {/* Returning IRPlayer */}
           <div>
-            <h2 className="text-xl font-semibold mb-4 text-ir-navy">Returning Player</h2>
+            <h2 className="text-xl font-semibold mb-4 text-ir-navy">Returning IRPlayer</h2>
             <form onSubmit={handleExistingPlayer} className="space-y-3">
               <input
                 type="text"

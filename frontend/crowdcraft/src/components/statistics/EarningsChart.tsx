@@ -1,6 +1,6 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, PieLabelRenderProps } from 'recharts';
 import { useState, useEffect, useRef } from 'react';
-import type { EarningsBreakdown } from '@crowdcraft/api/types.ts';
+import type { QFEarningsBreakdown } from '@crowdcraft/api/types.ts';
 import {
   statisticsChartContainerStyle,
   statisticsChartPlaceholderStyle,
@@ -8,7 +8,7 @@ import {
 } from './chartSizing.ts';
 
 interface EarningsChartProps {
-  earnings: EarningsBreakdown;
+  earnings: QFEarningsBreakdown;
 }
 
 const COLORS = {

@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import apiClient from '@/api/client';
 import { CircleIcon } from '@crowdcraft/components/icons/NavigationIcons.tsx';
-import type { PartyListItem } from '@crowdcraft/api/types.ts';
+import type { QFPartyListItem } from '@crowdcraft/api/types.ts';
 
 /**
  * Party Mode entry page - Create or Join a party session
@@ -14,7 +14,7 @@ export const PartyMode: React.FC = () => {
   const { setGlobalError } = actions;
   const { player } = state;
   const navigate = useNavigate();
-  const [parties, setParties] = useState<PartyListItem[]>([]);
+  const [parties, setParties] = useState<QFPartyListItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [joiningSessionId, setJoiningSessionId] = useState<string | null>(null);

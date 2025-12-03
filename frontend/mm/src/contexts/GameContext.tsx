@@ -11,16 +11,16 @@ import { SessionState } from '@crowdcraft/types/session.ts';
 import { GUEST_CREDENTIALS_KEY } from '@crowdcraft/utils/storageKeys.ts';
 import type {
   Player,
-  ActiveRound,
-  PendingResult,
-  RoundAvailability,
-  VoteRoundState,
-  VoteResult,
-  PhrasesetDashboardSummary,
-  UnclaimedResult,
-  FlagCopyRoundResponse,
-  AbandonRoundResponse,
-  CaptionSubmissionResult,
+  MMActiveRound,
+  MMPendingResult,
+  MMRoundAvailability,
+  MMVoteRoundState,
+  MMVoteResult,
+  MMPhrasesetDashboardSummary,
+  MMUnclaimedResult,
+  MMFlagCopyRoundResponse,
+  MMAbandonRoundResponse,
+  MMCaptionSubmissionResult,
 } from '@crowdcraft/api/types.ts';
 
 interface GameState {
@@ -28,13 +28,13 @@ interface GameState {
   username: string | null;
   player: Player | null;
   showNewUserWelcome: boolean;
-  activeRound: ActiveRound | null;
-  currentVoteRound: VoteRoundState | null;
-  currentCaptionRound: CaptionSubmissionResult | null;
-  pendingResults: PendingResult[];
-  phrasesetSummary: PhrasesetDashboardSummary | null;
-  unclaimedResults: UnclaimedResult[];
-  roundAvailability: RoundAvailability | null;
+  activeRound: MMActiveRound | null;
+  currentVoteRound: MMVoteRoundState | null;
+  currentCaptionRound: MMCaptionSubmissionResult | null;
+  pendingResults: MMPendingResult[];
+  phrasesetSummary: MMPhrasesetDashboardSummary | null;
+  unclaimedResults: MMUnclaimedResult[];
+  roundAvailability: MMRoundAvailability | null;
   copyRoundHints: string[] | null;
   loading: boolean;
   error: string | null;
@@ -52,17 +52,17 @@ interface GameActions {
   claimBonus: () => Promise<void>;
   clearError: () => void;
   navigateAfterDelay: (path: string, delay?: number) => void;
-  startVoteRound: (signal?: AbortSignal) => Promise<VoteRoundState>;
-  submitVote: (roundId: string, captionId: string, signal?: AbortSignal) => Promise<VoteResult>;
+  startVoteRound: (signal?: AbortSignal) => Promise<MMVoteRoundState>;
+  submitVote: (roundId: string, captionId: string, signal?: AbortSignal) => Promise<MMVoteResult>;
   submitCaption: (
     payload: { round_id: string; text: string; parent_caption_id?: string },
     signal?: AbortSignal,
-  ) => Promise<CaptionSubmissionResult>;
+  ) => Promise<MMCaptionSubmissionResult>;
   claimPhrasesetPrize: (phrasesetId: string) => Promise<void>;
-  flagCopyRound: (roundId: string) => Promise<FlagCopyRoundResponse>;
-  abandonRound: (roundId: string) => Promise<AbandonRoundResponse>;
+  flagCopyRound: (roundId: string) => Promise<MMFlagCopyRoundResponse>;
+  abandonRound: (roundId: string) => Promise<MMAbandonRoundResponse>;
   fetchCopyHints: (roundId: string, signal?: AbortSignal) => Promise<string[]>;
-  updateActiveRound: (roundData: ActiveRound) => void;
+  updateActiveRound: (roundData: MMActiveRound) => void;
   setGlobalError: (message: string) => void;
 }
 
@@ -75,7 +75,7 @@ const GameContext = createContext<GameContextType | undefined>(undefined);
 
 export const GameProvider: React.FC<{
   children: React.ReactNode;
-  onPendingResultsChange?: (results: PendingResult[]) => void;
+  onPendingResultsChange?: (results: MMPendingResult[]) => void;
   onDashboardTrigger?: () => void;
 }> = ({ children, onPendingResultsChange, onDashboardTrigger }) => {
   // Navigation hook - use directly since we're inside Router
@@ -89,13 +89,13 @@ export const GameProvider: React.FC<{
   const [username, setUsername] = useState<string | null>(null);
   const [player, setPlayer] = useState<Player | null>(null);
   const [showNewUserWelcome, setShowNewUserWelcome] = useState(false);
-  const [activeRound, setActiveRound] = useState<ActiveRound | null>(null);
-  const [currentVoteRound, setCurrentVoteRound] = useState<VoteRoundState | null>(null);
-  const [currentCaptionRound, setCurrentCaptionRound] = useState<CaptionSubmissionResult | null>(null);
-  const [pendingResults, setPendingResults] = useState<PendingResult[]>([]);
-  const [phrasesetSummary, setPhrasesetSummary] = useState<PhrasesetDashboardSummary | null>(null);
-  const [unclaimedResults, setUnclaimedResults] = useState<UnclaimedResult[]>([]);
-  const [roundAvailability, setRoundAvailability] = useState<RoundAvailability | null>(null);
+  const [activeRound, setActiveRound] = useState<MMActiveRound | null>(null);
+  const [currentVoteRound, setCurrentVoteRound] = useState<MMVoteRoundState | null>(null);
+  const [currentCaptionRound, setCurrentCaptionRound] = useState<MMCaptionSubmissionResult | null>(null);
+  const [pendingResults, setPendingResults] = useState<MMPendingResult[]>([]);
+  const [phrasesetSummary, setPhrasesetSummary] = useState<MMPhrasesetDashboardSummary | null>(null);
+  const [unclaimedResults, setUnclaimedResults] = useState<MMUnclaimedResult[]>([]);
+  const [roundAvailability, setRoundAvailability] = useState<MMRoundAvailability | null>(null);
   const [copyRoundHints, setCopyRoundHints] = useState<string[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -313,7 +313,7 @@ export const GameProvider: React.FC<{
 
     try {
       const availability = await apiClient.getMemeMintRoundAvailability(signal);
-      setRoundAvailability(availability as RoundAvailability);
+      setRoundAvailability(availability as MMRoundAvailability);
     } catch (err) {
       if (axios.isCancel(err) || signal?.aborted) {
         return;
@@ -350,11 +350,11 @@ export const GameProvider: React.FC<{
         setUsername(data.player.username);
       }
 
-      setCurrentVoteRound((data.current_vote_round as unknown as VoteRoundState | null) ?? null);
-      setCurrentCaptionRound((data.current_caption_round as unknown as CaptionSubmissionResult | null) ?? null);
+      setCurrentVoteRound((data.current_vote_round as unknown as MMVoteRoundState | null) ?? null);
+      setCurrentCaptionRound((data.current_caption_round as unknown as MMCaptionSubmissionResult | null) ?? null);
 
       if (data.round_availability) {
-        setRoundAvailability(data.round_availability as RoundAvailability);
+        setRoundAvailability(data.round_availability as MMRoundAvailability);
       } else {
         refreshRoundAvailability(signal);
       }
@@ -518,7 +518,7 @@ export const GameProvider: React.FC<{
     }
   }, [copyRoundHints, setError]);
 
-  const flagCopyRound = useCallback(async (roundId: string): Promise<FlagCopyRoundResponse> => {
+  const flagCopyRound = useCallback(async (roundId: string): Promise<MMFlagCopyRoundResponse> => {
     gameContextLogger.debug('🚩 GameContext flagCopyRound called', { roundId }); try {
       gameContextLogger.debug('📞 Calling apiClient.flagCopyRound()...', { roundId });
       const response = await apiClient.flagCopyRound(roundId);
@@ -531,7 +531,7 @@ export const GameProvider: React.FC<{
     }
   }, [refreshDashboard]);
 
-  const abandonRound = useCallback(async (roundId: string): Promise<AbandonRoundResponse> => {
+  const abandonRound = useCallback(async (roundId: string): Promise<MMAbandonRoundResponse> => {
     gameContextLogger.debug('🛑 GameContext abandonRound called', { roundId }); try {
       gameContextLogger.debug('📞 Calling apiClient.abandonRound()...', { roundId });
       const response = await apiClient.abandonRound(roundId);
@@ -549,7 +549,7 @@ export const GameProvider: React.FC<{
   }, [refreshDashboard]);
 
   const startVoteRound = useCallback(
-    async (signal?: AbortSignal): Promise<VoteRoundState> => {
+    async (signal?: AbortSignal): Promise<MMVoteRoundState> => {
       gameContextLogger.debug('🎯 GameContext startVoteRound called');
 
       try {
@@ -609,7 +609,7 @@ export const GameProvider: React.FC<{
   }, [isAuthenticated, triggerPoll, onDashboardTrigger]);
 
   const submitVote = useCallback(
-    async (roundId: string, captionId: string, signal?: AbortSignal): Promise<VoteResult> => {
+    async (roundId: string, captionId: string, signal?: AbortSignal): Promise<MMVoteResult> => {
       const voteResult = await apiClient.submitMemeMintVote(roundId, captionId, signal);
       // Refresh balance immediately to update header, then refresh other data
       await refreshBalance(signal);
@@ -624,7 +624,7 @@ export const GameProvider: React.FC<{
     async (
       payload: { round_id: string; text: string; parent_caption_id?: string },
       signal?: AbortSignal,
-    ): Promise<CaptionSubmissionResult> => {
+    ): Promise<MMCaptionSubmissionResult> => {
       const captionPayload = {
         round_id: payload.round_id,
         text: payload.text,
@@ -642,7 +642,7 @@ export const GameProvider: React.FC<{
     [refreshBalance, refreshDashboard, refreshRoundAvailability],
   );
 
-  const updateActiveRound = useCallback((roundData: ActiveRound) => {
+  const updateActiveRound = useCallback((roundData: MMActiveRound) => {
     gameContextLogger.debug('🔄 Updating active round manually:', roundData);
     setActiveRound(roundData);
   }, []);

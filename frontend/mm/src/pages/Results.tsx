@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
-import type { MemeVoteResult, MemeVoteRound } from '@crowdcraft/api/types.ts';
+import type { MMMemeVoteResult, MMMemeVoteRound } from '@crowdcraft/api/types.ts';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { CaptionSubmissionModal } from '../components/CaptionSubmissionModal';
 
 interface ResultsLocationState {
-  round?: MemeVoteRound;
-  voteResult?: MemeVoteResult | null;
+  round?: MMMemeVoteRound;
+  voteResult?: MMMemeVoteResult | null;
 }
 
 export const Results: React.FC = () => {

@@ -4,14 +4,14 @@ import { ReviewBackButton } from './ReviewBackButton';
 import { BotIcon } from '@crowdcraft/components/icons/EngagementIcons.tsx';
 import { isAiPlayer } from '@crowdcraft/utils/ai.ts';
 import { VoteRoundIcon } from '@crowdcraft/components/icons/RoundIcons.tsx';
-import type { PhrasesetVoteDetail } from '@crowdcraft/api/types.ts';
+import type { QFPhrasesetVoteDetail } from '@crowdcraft/api/types.ts';
 
 interface VoteRoundReviewProps {
   promptText: string;
   originalPhrase: string;
   copyPhrase1: string;
   copyPhrase2: string;
-  votes: PhrasesetVoteDetail[];
+  votes: QFPhrasesetVoteDetail[];
   onBack: () => void;
   promptPlayer?: string;
   copy1Player?: string;

@@ -10,7 +10,7 @@ import {
   Area,
   Line,
 } from 'recharts';
-import type { HistoricalTrendPoint } from '../../api/types.ts';
+import type { QFHistoricalTrendPoint } from '../../api/types.ts';
 import {
   STATISTICS_CHART_MIN_WIDTH,
   statisticsChartContainerStyle,
@@ -43,7 +43,7 @@ const historicalResponsiveContainerProps = {
 };
 
 interface HistoricalTrendsChartProps {
-  trends: HistoricalTrendPoint[];
+  trends: QFHistoricalTrendPoint[];
 }
 
 const LABELS = {

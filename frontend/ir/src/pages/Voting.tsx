@@ -4,7 +4,7 @@ import { useIRGame } from '../contexts/IRGameContext';
 import { gameAPI } from '@crowdcraft/api/client.ts';
 import Timer from '../components/Timer';
 import InitCoinDisplay from '../components/InitCoinDisplay';
-import type { BackronymSet, BackronymEntry } from '@crowdcraft/api/types.ts';
+import type { IRBackronymSet, IRBackronymEntry } from '@crowdcraft/api/types.ts';
 import { getErrorMessage } from '../utils/errorHelpers';
 
 // Fisher-Yates shuffle algorithm
@@ -22,9 +22,9 @@ const Voting: React.FC = () => {
   const { setId } = useParams<{ setId: string }>();
   const { player, submitVote, hasVoted, isAuthenticated } = useIRGame();
 
-  const [set, setSet] = useState<BackronymSet | null>(null);
-  const [shuffledEntries, setShuffledEntries] = useState<BackronymEntry[]>([]);
-  const [playerEntry, setPlayerEntry] = useState<BackronymEntry | null>(null);
+  const [set, setSet] = useState<IRBackronymSet | null>(null);
+  const [shuffledEntries, setShuffledEntries] = useState<IRBackronymEntry[]>([]);
+  const [playerEntry, setPlayerEntry] = useState<IRBackronymEntry | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);

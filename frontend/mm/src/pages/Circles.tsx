@@ -1,19 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient, { extractErrorMessage } from '@/api/client';
-import type { Circle, CreateCircleRequest } from '@crowdcraft/api/types.ts';
+import type { MMCircle, MMCreateCircleRequest } from '@crowdcraft/api/types.ts';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 
 export const Circles: React.FC = () => {
   const navigate = useNavigate();
-  const [circles, setCircles] = useState<Circle[]>([]);
+  const [circles, setCircles] = useState<MMCircle[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  // Create Circle modal state
+  // Create MMCircle modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [createForm, setCreateForm] = useState<CreateCircleRequest>({
+  const [createForm, setCreateForm] = useState<MMCreateCircleRequest>({
     name: '',
     description: '',
     is_public: true,
@@ -44,21 +44,21 @@ export const Circles: React.FC = () => {
       await apiClient.joinCircle(circleId);
       await loadCircles(); // Refresh to show updated state
     } catch (err) {
-      setError(extractErrorMessage(err) || 'Failed to join Circle');
+      setError(extractErrorMessage(err) || 'Failed to join MMCircle');
     } finally {
       setActionLoading(null);
     }
   };
 
   const handleLeaveCircle = async (circleId: string) => {
-    if (!confirm('Are you sure you want to leave this Circle?')) return;
+    if (!confirm('Are you sure you want to leave this MMCircle?')) return;
 
     try {
       setActionLoading(circleId);
       await apiClient.leaveCircle(circleId);
       await loadCircles();
     } catch (err) {
-      setError(extractErrorMessage(err) || 'Failed to leave Circle');
+      setError(extractErrorMessage(err) || 'Failed to leave MMCircle');
     } finally {
       setActionLoading(null);
     }
@@ -69,7 +69,7 @@ export const Circles: React.FC = () => {
     setCreateError(null);
 
     if (!createForm.name.trim()) {
-      setCreateError('Circle name is required');
+      setCreateError('MMCircle name is required');
       return;
     }
 
@@ -81,10 +81,10 @@ export const Circles: React.FC = () => {
         is_public: createForm.is_public,
       });
 
-      // Navigate to the new Circle details page
+      // Navigate to the new MMCircle details page
       navigate(`/circles/${response.circle.circle_id}`);
     } catch (err) {
-      setCreateError(extractErrorMessage(err) || 'Failed to create Circle');
+      setCreateError(extractErrorMessage(err) || 'Failed to create MMCircle');
     } finally {
       setCreateLoading(false);
     }
@@ -105,12 +105,12 @@ export const Circles: React.FC = () => {
             onClick={() => setShowCreateModal(true)}
             className="bg-ccl-orange text-white font-bold py-2 px-6 rounded-tile shadow-tile hover:shadow-tile-sm transition-all"
           >
-            Create Circle
+            Create MMCircle
           </button>
         </div>
 
         <p className="text-ccl-navy mb-6">
-          Join or create Circles to play with friends. Circle members see each other's captions more often.
+          Join or create Circles to play with friends. MMCircle members see each other's captions more often.
         </p>
 
         {error && (
@@ -191,11 +191,11 @@ export const Circles: React.FC = () => {
         )}
       </div>
 
-      {/* Create Circle Modal */}
+      {/* Create MMCircle Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-tile p-6 max-w-md w-full shadow-tile">
-            <h2 className="text-2xl font-display font-bold text-ccl-navy mb-4">Create a Circle</h2>
+            <h2 className="text-2xl font-display font-bold text-ccl-navy mb-4">Create a MMCircle</h2>
 
             {createError && (
               <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded text-sm">
@@ -206,7 +206,7 @@ export const Circles: React.FC = () => {
             <form onSubmit={handleCreateCircle}>
               <div className="mb-4">
                 <label className="block text-ccl-navy font-bold mb-2">
-                  Circle Name <span className="text-red-500">*</span>
+                  MMCircle Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -214,7 +214,7 @@ export const Circles: React.FC = () => {
                   onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
                   maxLength={100}
                   className="w-full px-3 py-2 border-2 border-ccl-navy rounded focus:outline-none focus:ring-2 focus:ring-ccl-orange"
-                  placeholder="My Awesome Circle"
+                  placeholder="My Awesome MMCircle"
                   disabled={createLoading}
                 />
               </div>
@@ -229,7 +229,7 @@ export const Circles: React.FC = () => {
                   maxLength={500}
                   rows={3}
                   className="w-full px-3 py-2 border-2 border-ccl-navy rounded focus:outline-none focus:ring-2 focus:ring-ccl-orange"
-                  placeholder="A brief description of your Circle..."
+                  placeholder="A brief description of your MMCircle..."
                   disabled={createLoading}
                 />
               </div>

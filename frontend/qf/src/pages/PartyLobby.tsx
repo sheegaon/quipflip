@@ -7,7 +7,7 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { CircleIcon } from '@crowdcraft/components/icons/NavigationIcons.tsx';
 import { BotIcon } from '@crowdcraft/components/icons/EngagementIcons.tsx';
 import { quipflipBranding } from '@crowdcraft/utils/brandedMessages.ts';
-import type { PartySessionStatusResponse, PartyParticipant } from '@crowdcraft/api/types.ts';
+import type { QFPartySessionStatusResponse, QFPartyParticipant } from '@crowdcraft/api/types.ts';
 
 const { loadingMessages } = quipflipBranding;
 
@@ -20,7 +20,7 @@ export const PartyLobby: React.FC = () => {
   const { player } = state;
   const navigate = useNavigate();
 
-  const [sessionStatus, setSessionStatus] = useState<PartySessionStatusResponse | null>(null);
+  const [sessionStatus, setSessionStatus] = useState<QFPartySessionStatusResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
@@ -298,7 +298,7 @@ export const PartyLobby: React.FC = () => {
           <div className="tile-card shadow-tile p-4">
             <h3 className="text-lg font-display font-bold text-ccl-navy mb-4">Players</h3>
             <div className="space-y-2">
-              {participants.map((participant: PartyParticipant) => (
+              {participants.map((participant: QFPartyParticipant) => (
                 <div
                   key={participant.participant_id}
                   className="flex items-center justify-between p-3 bg-ccl-cream rounded-tile"

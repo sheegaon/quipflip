@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
-import type { PartyContext } from '@crowdcraft/api/types.ts';
+import type { QFPartyContext } from '@crowdcraft/api/types.ts';
 
 export type PartyStep = 'prompt' | 'copy' | 'vote';
 
@@ -40,7 +40,7 @@ interface PartyModeActions {
   // Update progress from API responses
   updateYourProgress: (progress: PartyModeState['yourProgress']) => void;
   updateSessionProgress: (progress: PartyModeState['sessionProgress']) => void;
-  updateFromPartyContext: (context: PartyContext) => void;
+  updateFromPartyContext: (context: QFPartyContext) => void;
 }
 
 interface PartyModeContextValue {
@@ -138,7 +138,7 @@ export const PartyModeProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     });
   }, []);
 
-  const updateFromPartyContext = useCallback((context: PartyContext) => {
+  const updateFromPartyContext = useCallback((context: QFPartyContext) => {
     setState((prev) => {
       const nextSessionConfig: SessionConfig = prev.sessionConfig
         ? {

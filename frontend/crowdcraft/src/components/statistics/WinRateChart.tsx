@@ -1,12 +1,12 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useState, useEffect, useRef } from 'react';
-import type { RoleStatistics } from '../../api/types.ts';
+import type { QFRoleStatistics } from '../../api/types.ts';
 import { statisticsChartContainerStyle, statisticsResponsiveContainerProps } from './chartSizing.ts';
 
 interface WinRateChartProps {
-  promptStats: RoleStatistics;
-  copyStats: RoleStatistics;
-  voterStats: RoleStatistics;
+  promptStats: QFRoleStatistics;
+  copyStats: QFRoleStatistics;
+  voterStats: QFRoleStatistics;
 }
 
 const LABELS = {

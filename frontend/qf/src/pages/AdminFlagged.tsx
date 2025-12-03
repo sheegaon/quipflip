@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { Header } from '../components/Header';
 import apiClient, { extractErrorMessage } from '@/api/client';
-import type { FlaggedPromptItem } from '@crowdcraft/api/types.ts';
+import type { QFFlaggedPromptItem } from '@crowdcraft/api/types.ts';
 import { formatDateTimeInUserZone } from '@crowdcraft/utils/datetime.ts';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 
@@ -27,7 +27,7 @@ const AdminFlagged: React.FC = () => {
   const { state } = useGame();
   const { player } = state;
   const navigate = useNavigate();
-  const [flags, setFlags] = useState<FlaggedPromptItem[]>([]);
+  const [flags, setFlags] = useState<QFFlaggedPromptItem[]>([]);
   const [statusFilter, setStatusFilter] = useState<FlagStatusFilter>('pending');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

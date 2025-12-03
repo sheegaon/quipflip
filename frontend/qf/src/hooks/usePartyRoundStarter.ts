@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '@/api/client';
-import type { StartPartyCopyResponse, StartPartyPromptResponse, StartPartyVoteResponse } from '@crowdcraft/api/types.ts';
+import type { QFStartPartyCopyResponse, QFStartPartyPromptResponse, QFStartPartyVoteResponse } from '@crowdcraft/api/types.ts';
 import { useGame } from '../contexts/GameContext';
 import type { PartyStep, SessionConfig } from '../contexts/PartyModeContext';
 import { usePartyMode } from '../contexts/PartyModeContext';
@@ -41,7 +41,7 @@ export function usePartyRoundStarter() {
       }
 
       if (phase === 'prompt') {
-        const roundData = await apiClient.startPartyPromptRound(sessionId) as StartPartyPromptResponse;
+        const roundData = await apiClient.startPartyPromptRound(sessionId) as QFStartPartyPromptResponse;
 
         if (roundData.party_context) {
           partyActions.updateFromPartyContext(roundData.party_context);
@@ -65,7 +65,7 @@ export function usePartyRoundStarter() {
       }
 
       if (phase === 'copy') {
-        const roundData = await apiClient.startPartyCopyRound(sessionId) as StartPartyCopyResponse;
+        const roundData = await apiClient.startPartyCopyRound(sessionId) as QFStartPartyCopyResponse;
 
         if (roundData.party_context) {
           partyActions.updateFromPartyContext(roundData.party_context);
@@ -90,7 +90,7 @@ export function usePartyRoundStarter() {
         return;
       }
 
-      const roundData = await apiClient.startPartyVoteRound(sessionId) as StartPartyVoteResponse;
+      const roundData = await apiClient.startPartyVoteRound(sessionId) as QFStartPartyVoteResponse;
 
       if (roundData.party_context) {
         partyActions.updateFromPartyContext(roundData.party_context);
