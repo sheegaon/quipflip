@@ -39,6 +39,16 @@ class TLPlayerRouter(PlayerRouterBase):
         """Return the TL cleanup service class."""
         return TLCleanupService
 
+    async def get_balance(self, player: Player, db: AsyncSession) -> "PlayerBalance":
+        """Get player balance (wallet + vault)."""
+        from backend.schemas.player import PlayerBalance
+
+        return PlayerBalance(
+            wallet=player.tl_wallet,
+            vault=player.tl_vault,
+            total_balance=player.tl_wallet + player.tl_vault,
+        )
+
     def _add_tl_specific_routes(self):
         """Add ThinkLink-specific routes beyond the common auth routes."""
 
@@ -94,18 +104,6 @@ class TLPlayerRouter(PlayerRouterBase):
                 tl_tutorial_completed=player.tl_tutorial_completed,
                 tl_tutorial_progress=player.tl_tutorial_progress,
                 created_at=player.created_at,
-            )
-
-        @self.router.get("/balance", response_model=BalanceResponse)
-        async def get_balance(
-            player: Player = Depends(get_tl_player),
-            db: AsyncSession = Depends(get_db),
-        ):
-            """Get player balance (wallet + vault)."""
-            return BalanceResponse(
-                tl_wallet=player.tl_wallet,
-                tl_vault=player.tl_vault,
-                total_balance=player.tl_wallet + player.tl_vault,
             )
 
         @self.router.get("/tutorial/status", response_model=TutorialStatusResponse)
