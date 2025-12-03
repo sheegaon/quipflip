@@ -106,14 +106,14 @@ class Player(Base):
         callers to handle missing records explicitly.
         """
 
-        if game_type == GameType.QF:
-            return self.qf_player_data
-        if game_type == GameType.TL:
-            return self.tl_player_data
-        if game_type == GameType.MM:
-            return self.mm_player_data
-        if game_type == GameType.IR:
-            return self.ir_player_data
+        game_data_map = {
+            GameType.QF: self.qf_player_data,
+            GameType.TL: self.tl_player_data,
+            GameType.MM: self.mm_player_data,
+            GameType.IR: self.ir_player_data,
+        }
+        if game_type in game_data_map:
+            return game_data_map[game_type]
         raise ValueError(f"Unsupported game type: {game_type}")
 
     def __repr__(self):
