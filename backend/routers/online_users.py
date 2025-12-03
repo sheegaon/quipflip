@@ -34,7 +34,7 @@ from backend.schemas.online_users import (
     PingUserResponse,
 )
 from backend.schemas.notification import PingWebSocketMessage
-from backend.services import AuthService
+from backend.services import AuthService, AuthError
 from backend.utils.model_registry import (
     GameType,
     get_player_data_model,
@@ -45,6 +45,7 @@ from backend.services.qf import NotificationConnectionManager, get_notification_
 from backend.services.qf.player_service import QFPlayerService
 from backend.services.ir.player_service import IRPlayerService
 from backend.services.mm.player_service import MMPlayerService
+from backend.services.tl.player_service import TLPlayerService
 from backend.config import get_settings
 from backend.utils.datetime_helpers import ensure_utc
 
@@ -84,6 +85,8 @@ def get_player_service(game_type: GameType, db: AsyncSession):
         return IRPlayerService(db)
     if game_type == GameType.MM:
         return MMPlayerService(db)
+    if game_type == GameType.TL:
+        return TLPlayerService(db)
     raise ValueError(f"Unsupported game type: {game_type}")
 
 
@@ -103,7 +106,7 @@ async def authenticate_websocket(websocket: WebSocket) -> Optional[Tuple[Player,
 
     try:
         async with AsyncSessionLocal() as db:
-            for game_type in (GameType.QF, GameType.IR, GameType.MM):
+            for game_type in GameType:
                 try:
                     auth_service = AuthService(db, game_type=game_type)
                     payload = auth_service.decode_access_token(token)
@@ -292,6 +295,16 @@ def _get_guest_activity_queries(game_type: GameType, guest_ids: List[UUID], tran
                 .distinct(),
                 select(MMVoteRound.player_id)
                 .where(MMVoteRound.player_id.in_(guest_ids))
+                .distinct(),
+            ]
+        )
+    elif game_type == GameType.TL:
+        from backend.models.tl.round import TLRound
+
+        queries.extend(
+            [
+                select(TLRound.player_id)
+                .where(TLRound.player_id.in_(guest_ids))
                 .distinct(),
             ]
         )
