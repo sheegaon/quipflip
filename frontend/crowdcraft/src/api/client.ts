@@ -65,6 +65,10 @@ import type {
   QFStartPartySessionResponse,
   QFStartPartyVoteResponse,
   QFSubmitPartyRoundResponse,
+  WsAuthTokenResponse,
+  QFBetaSurveyStatusResponse,
+  QFBetaSurveySubmissionRequest,
+  QFBetaSurveySubmissionResponse,
 } from './types.ts';
 
 const rawBaseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
@@ -132,6 +136,38 @@ class CrowdcraftApiClient extends BaseApiClient {
       params: { game_type: gameType },
       signal,
     });
+    return data;
+  }
+
+  override async getWebsocketToken(signal?: AbortSignal): Promise<WsAuthTokenResponse> {
+    this.logApi('get', '/auth/ws-token', 'start');
+    try {
+      const { data } = await this.rootApi.get<WsAuthTokenResponse>('/auth/ws-token', { signal });
+      this.logApi('get', '/auth/ws-token', 'success', data);
+      return data;
+    } catch (error) {
+      this.logApi('get', '/auth/ws-token', 'error', error);
+      throw error;
+    }
+  }
+
+  override async getBetaSurveyStatus(signal?: AbortSignal): Promise<QFBetaSurveyStatusResponse> {
+    this.logApi('get', '/feedback/beta-survey/status', 'start');
+    try {
+      const { data } = await this.rootApi.get<QFBetaSurveyStatusResponse>('/feedback/beta-survey/status', { signal });
+      this.logApi('get', '/feedback/beta-survey/status', 'success', data);
+      return data;
+    } catch (error) {
+      this.logApi('get', '/feedback/beta-survey/status', 'error', error);
+      throw error;
+    }
+  }
+
+  override async submitBetaSurvey(
+    payload: QFBetaSurveySubmissionRequest,
+    signal?: AbortSignal,
+  ): Promise<QFBetaSurveySubmissionResponse> {
+    const { data } = await this.rootApi.post<QFBetaSurveySubmissionResponse>('/feedback/beta-survey', payload, { signal });
     return data;
   }
 

@@ -152,6 +152,7 @@ export interface TLDashboardResponse {
   tl_tutorial_completed: boolean;
   tl_tutorial_progress: string;
   created_at: string;
+  is_guest: boolean;
 }
 
 export interface TLBalanceResponse {

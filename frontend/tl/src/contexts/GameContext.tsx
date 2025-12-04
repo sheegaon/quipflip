@@ -247,7 +247,7 @@ export const GameProvider: React.FC<{
             tl_tutorial_completed: data.tl_tutorial_completed,
             tl_tutorial_progress: data.tl_tutorial_progress,
             created_at: data.created_at,
-            is_guest: existingPlayer.is_guest ?? false,
+            is_guest: data.is_guest,
             is_admin: existingPlayer.is_admin ?? false,
           };
 

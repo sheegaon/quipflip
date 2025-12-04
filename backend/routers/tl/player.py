@@ -42,9 +42,14 @@ class TLPlayerRouter(PlayerRouterBase):
     async def get_balance(self, player: Player, db: AsyncSession) -> "PlayerBalance":
         """Get player balance (wallet + vault)."""
         from backend.schemas.player import PlayerBalance
+        from backend.services.player_service import PlayerService
 
-        tl_wallet = player.tl_player_data.wallet if player.tl_player_data else 0
-        tl_vault = player.tl_player_data.vault if player.tl_player_data else 0
+        # Ensure player has TL-specific data, creating it if needed
+        player_service = PlayerService(db)
+        player_data = await player_service.ensure_player_data(player, GameType.TL)
+
+        tl_wallet = player_data.wallet if player_data else 0
+        tl_vault = player_data.vault if player_data else 0
 
         return PlayerBalance(
             player_id=player.player_id,
@@ -89,6 +94,7 @@ class TLPlayerRouter(PlayerRouterBase):
             tl_tutorial_completed: bool
             tl_tutorial_progress: str
             created_at: datetime
+            is_guest: bool
 
         class BalanceResponse(BaseSchema):
             """Player balance response."""
@@ -111,10 +117,16 @@ class TLPlayerRouter(PlayerRouterBase):
             db: AsyncSession = Depends(get_db),
         ):
             """Get player dashboard with current balance and progress."""
-            tl_wallet = player.tl_player_data.wallet if player.tl_player_data else 0
-            tl_vault = player.tl_player_data.vault if player.tl_player_data else 0
-            tl_tutorial_completed = player.tl_player_data.tutorial_completed if player.tl_player_data else False
-            tl_tutorial_progress = player.tl_player_data.tutorial_progress if player.tl_player_data else 'not_started'
+            from backend.services.player_service import PlayerService
+
+            # Ensure player has TL-specific data, creating it if needed
+            player_service = PlayerService(db)
+            player_data = await player_service.ensure_player_data(player, GameType.TL)
+
+            tl_wallet = player_data.wallet if player_data else 0
+            tl_vault = player_data.vault if player_data else 0
+            tl_tutorial_completed = player_data.tutorial_completed if player_data else False
+            tl_tutorial_progress = player_data.tutorial_progress if player_data else 'not_started'
             return DashboardResponse(
                 player_id=player.player_id,
                 username=player.username,
@@ -123,6 +135,7 @@ class TLPlayerRouter(PlayerRouterBase):
                 tl_tutorial_completed=tl_tutorial_completed,
                 tl_tutorial_progress=tl_tutorial_progress,
                 created_at=player.created_at,
+                is_guest=player.is_guest,
             )
 
         @self.router.get("/tutorial/status", response_model=TutorialStatusResponse)
