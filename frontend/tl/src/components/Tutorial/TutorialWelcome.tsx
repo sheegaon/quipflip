@@ -79,16 +79,16 @@ const TutorialWelcome: React.FC<TutorialWelcomeProps> = ({ onStart, onSkip }) =>
 
           <ul className="tutorial-welcome-features">
             <li>
-              <strong>Guess:</strong> Match answers that others gave to a prompt
+              <strong>Guess:</strong> Match answers that others gave to the same prompt
             </li>
             <li>
-              <strong>Think Alike:</strong> Higher coverage (more matches) = bigger payouts
+              <strong>Think Alike:</strong> Each round ends after 3 strikes with unmatched guesses
             </li>
             <li>
-              <strong>Stay Sharp:</strong> 3 wrong guesses and your round ends
+              <strong>Cover the Crowd:</strong> Matching popular clusters boosts your coverage faster
             </li>
             <li>
-              <strong>Earn Coins:</strong> Coverage of 30% or less? Keep your full payout!
+              <strong>Earn Coins:</strong> Payouts scale with weighted coverage of the snapshot answers
             </li>
           </ul>
 

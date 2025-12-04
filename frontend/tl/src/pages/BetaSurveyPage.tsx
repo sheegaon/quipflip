@@ -5,7 +5,7 @@ import { useGame } from '../contexts/GameContext';
 import type { SurveyQuestion, CompoundSurveyQuestion } from '@crowdcraft/types/survey.ts';
 import { markSurveyCompleted } from '@crowdcraft/utils/betaSurvey.ts';
 import { betaSurveyDefinition } from '../surveys/betaSurveyDefinition';
-import type { BetaSurveyAnswerPayload } from '@crowdcraft/api/types.ts';
+import type { QFBetaSurveyAnswerPayload } from '@crowdcraft/api/types.ts';
 
 type AnswerMap = Record<string, unknown>;
 
@@ -140,7 +140,7 @@ const BetaSurveyPage: React.FC = () => {
     return true;
   };
 
-  const prepareAnswerPayload = (question: SurveyQuestion): BetaSurveyAnswerPayload => {
+  const prepareAnswerPayload = (question: SurveyQuestion): QFBetaSurveyAnswerPayload => {
     const storedValue = answers[question.id];
     switch (question.type) {
       case 'scale':

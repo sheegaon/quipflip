@@ -1,49 +1,36 @@
 import React from 'react';
 import { useGame } from '../contexts/GameContext';
-import { useResults } from '@crowdcraft';
 import { useQuests } from '@crowdcraft/contexts/QuestContext';
 
 /**
  * Custom hook that calculates visibility and labels for header/sub-header indicators
- * including in-progress rounds, results, and quest status.
+ * for ThinkLink: active round status, unclaimed results, and quest availability.
+ *
+ * ThinkLink differences from Quipflip:
+ * - No phrasesets; uses single active round at a time
+ * - Tracks strikes (0-3) in active round
+ * - Results are viewed/unclaimed individually
+ * - No pending rounds concept (only active or finished)
  */
 export const useHeaderIndicators = () => {
   const { state } = useGame();
-  const { player, phrasesetSummary } = state;
-  const { state: resultsState } = useResults();
-  const { pendingResults, viewedResultIds } = resultsState;
+  const { player, activeRound, unclaimedResults } = state;
   const { state: questState } = useQuests();
   const { hasClaimableQuests } = questState;
 
-  // In-progress rounds indicators
-  const inProgressPrompts = phrasesetSummary?.in_progress.prompts ?? 0;
-  const inProgressCopies = phrasesetSummary?.in_progress.copies ?? 0;
-  const showInProgressIndicator = inProgressPrompts + inProgressCopies > 0;
+  // Active round indicator (ThinkLink tracks one active round at a time)
+  const showActiveRoundIndicator = activeRound !== null;
+  const strikesDisplay = activeRound ? `${activeRound.strikes}/3 strikes` : '';
+  const activeRoundLabel = activeRound
+    ? `Active round: ${strikesDisplay}`
+    : 'No active round';
 
-  const inProgressLabelParts: string[] = [];
-  if (inProgressPrompts > 0) {
-    inProgressLabelParts.push(`${inProgressPrompts} prompt${inProgressPrompts === 1 ? '' : 's'}`);
-  }
-  if (inProgressCopies > 0) {
-    inProgressLabelParts.push(`${inProgressCopies} ${inProgressCopies === 1 ? 'copy' : 'copies'}`);
-  }
-  const inProgressLabel = inProgressLabelParts.length
-    ? `In-progress rounds: ${inProgressLabelParts.join(' and ')}`
-    : 'View your in-progress rounds';
+  // Unclaimed results indicators
+  const unclaimedCount = unclaimedResults?.length ?? 0;
+  const showResultsIndicator = unclaimedCount > 0;
 
-  // Results indicators
-  const unviewedResults = pendingResults.filter(result =>
-    !result.result_viewed && !viewedResultIds.has(result.phraseset_id)
-  );
-  const unviewedCount = unviewedResults.length;
-
-  // Show trophy after user has ever had finalized results
-  const finalizedPrompts = phrasesetSummary?.finalized.prompts ?? 0;
-  const finalizedCopies = phrasesetSummary?.finalized.copies ?? 0;
-  const showResultsIndicator = (finalizedPrompts + finalizedCopies) > 0;
-
-  const resultsLabel = unviewedCount > 0
-    ? `${unviewedCount} result${unviewedCount === 1 ? '' : 's'} ready to view`
+  const resultsLabel = unclaimedCount > 0
+    ? `${unclaimedCount} result${unclaimedCount === 1 ? '' : 's'} ready to view`
     : 'View your results';
 
   // Check if today is the player's first day (hide treasure chest on first day)
@@ -61,14 +48,14 @@ export const useHeaderIndicators = () => {
   }, [player?.created_at]);
 
   return {
-    // In-progress indicators
-    inProgressPrompts,
-    inProgressCopies,
-    showInProgressIndicator,
-    inProgressLabel,
+    // Active round indicators (ThinkLink-specific)
+    showActiveRoundIndicator,
+    activeRoundLabel,
+    strikesDisplay,
+    activeRound,
 
     // Results indicators
-    unviewedCount,
+    unclaimedCount,
     showResultsIndicator,
     resultsLabel,
 

@@ -43,10 +43,12 @@ class TLPlayerRouter(PlayerRouterBase):
         """Get player balance (wallet + vault)."""
         from backend.schemas.player import PlayerBalance
 
+        tl_wallet = player.tl_player_data.wallet if player.tl_player_data else 0
+        tl_vault = player.tl_player_data.vault if player.tl_player_data else 0
         return PlayerBalance(
-            wallet=player.tl_wallet,
-            vault=player.tl_vault,
-            total_balance=player.tl_wallet + player.tl_vault,
+            wallet=tl_wallet,
+            vault=tl_vault,
+            total_balance=tl_wallet + tl_vault,
         )
 
     def _add_tl_specific_routes(self):
@@ -96,13 +98,17 @@ class TLPlayerRouter(PlayerRouterBase):
             db: AsyncSession = Depends(get_db),
         ):
             """Get player dashboard with current balance and progress."""
+            tl_wallet = player.tl_player_data.wallet if player.tl_player_data else 0
+            tl_vault = player.tl_player_data.vault if player.tl_player_data else 0
+            tl_tutorial_completed = player.tl_player_data.tutorial_completed if player.tl_player_data else False
+            tl_tutorial_progress = player.tl_player_data.tutorial_progress if player.tl_player_data else 'not_started'
             return DashboardResponse(
                 player_id=player.player_id,
                 username=player.username,
-                tl_wallet=player.tl_wallet,
-                tl_vault=player.tl_vault,
-                tl_tutorial_completed=player.tl_tutorial_completed,
-                tl_tutorial_progress=player.tl_tutorial_progress,
+                tl_wallet=tl_wallet,
+                tl_vault=tl_vault,
+                tl_tutorial_completed=tl_tutorial_completed,
+                tl_tutorial_progress=tl_tutorial_progress,
                 created_at=player.created_at,
             )
 
@@ -111,9 +117,11 @@ class TLPlayerRouter(PlayerRouterBase):
             player: Player = Depends(get_tl_player),
         ):
             """Get player tutorial status."""
+            tl_tutorial_completed = player.tl_player_data.tutorial_completed if player.tl_player_data else False
+            tl_tutorial_progress = player.tl_player_data.tutorial_progress if player.tl_player_data else 'not_started'
             return TutorialStatusResponse(
-                tutorial_completed=player.tl_tutorial_completed,
-                tutorial_progress=player.tl_tutorial_progress,
+                tutorial_completed=tl_tutorial_completed,
+                tutorial_progress=tl_tutorial_progress,
             )
 
         @self.router.post("/tutorial/progress", response_model=TutorialStatusResponse)

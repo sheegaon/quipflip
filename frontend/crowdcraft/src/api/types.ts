@@ -1,5 +1,6 @@
 // API Response Types based on backend documentation
 // Common types shared across games
+import type { TutorialStatus as TutorialStatusBase } from '../types/tutorial.ts';
 export type GameType = 'qf' | 'mm' | 'ir' | 'tl';
 
 export interface GamePlayerSnapshot {
@@ -136,6 +137,13 @@ export type TLTutorialProgress =
   | 'completed'
   | 'not_started';
 
+export interface TLTutorialStatus extends TutorialStatusBase<TLTutorialProgress> {}
+
+export interface TLUpdateTutorialProgressResponse {
+  tutorial_completed: boolean;
+  tutorial_progress: TLTutorialProgress;
+}
+
 export interface TLDashboardResponse {
   player_id: string;
   username: string;
@@ -205,6 +213,35 @@ export interface TLAbandonRoundResponse {
   round_id: string;
   status: string;
   refund_amount: number;
+}
+
+export type TLRoundHistorySortBy = 'date' | 'payout' | 'coverage';
+export type TLRoundHistorySortDirection = 'asc' | 'desc';
+
+export interface TLRoundHistoryItem {
+  round_id: string;
+  prompt_text: string;
+  final_coverage?: number | null;
+  gross_payout?: number | null;
+  strikes: number;
+  status: string;
+  created_at: string;
+  ended_at?: string | null;
+}
+
+export interface TLRoundHistoryResponse {
+  rounds: TLRoundHistoryItem[];
+}
+
+export interface TLRoundHistoryQuery {
+  sort_by?: TLRoundHistorySortBy;
+  sort_direction?: TLRoundHistorySortDirection;
+  min_coverage?: number;
+  max_coverage?: number;
+  min_payout?: number;
+  max_payout?: number;
+  start_date?: string;
+  end_date?: string;
 }
 
 export interface TLPromptPreviewResponse {

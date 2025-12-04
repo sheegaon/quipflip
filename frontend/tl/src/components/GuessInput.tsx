@@ -18,7 +18,7 @@ export const GuessInput: React.FC<GuessInputProps> = ({
   onSubmit,
   isSubmitting,
   error,
-  maxLength = 200,
+  maxLength = 100,
   placeholder = 'Type an answer...',
   disabled = false,
   autoFocus = true,

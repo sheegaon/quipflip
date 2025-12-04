@@ -120,13 +120,13 @@ export const RoundResults: React.FC = () => {
             <div className="border-2 border-ccl-navy rounded-tile p-6 text-center">
               <p className="text-sm text-ccl-teal uppercase tracking-wide mb-2">Wallet</p>
               <p className="text-3xl font-display font-bold text-ccl-navy">
-                <CurrencyDisplay amount={player?.tl_wallet || 0} />
+                <CurrencyDisplay amount={player?.wallet || 0} />
               </p>
             </div>
             <div className="border-2 border-ccl-teal rounded-tile p-6 text-center">
               <p className="text-sm text-ccl-teal uppercase tracking-wide mb-2">Vault</p>
               <p className="text-3xl font-display font-bold text-ccl-navy">
-                <CurrencyDisplay amount={player?.tl_vault || 0} />
+                <CurrencyDisplay amount={player?.vault || 0} />
               </p>
             </div>
           </div>

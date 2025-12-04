@@ -4,7 +4,7 @@ import { useQuests } from '@crowdcraft';
 import { QuestCard } from '../components/QuestCard';
 import SuccessNotification from '../components/SuccessNotification';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
-import type { Quest } from '@crowdcraft/api/types.ts';
+import type { QFQuest } from '@crowdcraft/api/types.ts';
 import { questsLogger } from '@crowdcraft/utils/logger.ts';
 import { isSameDay } from '@crowdcraft/utils/date.ts';
 import { QuestClaimableIcon, QuestOverviewIcon } from '@crowdcraft/components/icons/QuestIcons.tsx';
@@ -17,7 +17,7 @@ type QuestCategory = typeof QUEST_CATEGORIES[number];
 export const Quests: React.FC = () => {
   const { state: gameState, actions: gameActions } = useGame();
   const { player } = gameState;
-  const { claimBonus, refreshDashboard } = gameActions;
+  const { refreshDashboard } = gameActions;
   const [isClaiming, setIsClaiming] = useState(false);
 
   const { state: questState, actions: questActions } = useQuests();
@@ -75,7 +75,8 @@ export const Quests: React.FC = () => {
     setIsClaiming(true);
     try {
       questsLogger.info('Claiming daily bonus');
-      await claimBonus();
+      // TODO: Implement daily bonus claim via API
+      // await apiClient.tlClaimDailyBonus();
       const claimedAmount = player?.daily_bonus_amount ?? 0;
       setSuccessMessage(`Daily bonus claimed! +${claimedAmount}f`);
       // Refresh both dashboard and quests to ensure UI updates (treasure chest icon, balance, etc.)
@@ -110,24 +111,24 @@ export const Quests: React.FC = () => {
 
   const filteredQuests = selectedCategory === 'all'
     ? quests
-    : quests.filter((q: Quest) => q.category === selectedCategory);
+    : quests.filter((q: QFQuest) => q.category === selectedCategory);
 
   const filteredActiveQuests = selectedCategory === 'all'
     ? activeQuests
-    : activeQuests.filter((q: Quest) => q.category === selectedCategory);
+    : activeQuests.filter((q: QFQuest) => q.category === selectedCategory);
 
   const filteredClaimableQuests = selectedCategory === 'all'
     ? claimableQuests
-    : claimableQuests.filter((q: Quest) => q.category === selectedCategory);
+    : claimableQuests.filter((q: QFQuest) => q.category === selectedCategory);
 
-  const claimedQuests = filteredQuests.filter((q: Quest) => q.status === 'claimed');
+  const claimedQuests = filteredQuests.filter((q: QFQuest) => q.status === 'claimed');
 
   const categoryStats = {
     all: quests.length,
-    streak: quests.filter((q: Quest) => q.category === 'streak').length,
-    quality: quests.filter((q: Quest) => q.category === 'quality').length,
-    activity: quests.filter((q: Quest) => q.category === 'activity').length,
-    milestone: quests.filter((q: Quest) => q.category === 'milestone').length,
+    streak: quests.filter((q: QFQuest) => q.category === 'streak').length,
+    quality: quests.filter((q: QFQuest) => q.category === 'quality').length,
+    activity: quests.filter((q: QFQuest) => q.category === 'activity').length,
+    milestone: quests.filter((q: QFQuest) => q.category === 'milestone').length,
   };
 
   if (!player) {
@@ -287,7 +288,7 @@ export const Quests: React.FC = () => {
                 Claimable Quests ({filteredClaimableQuests.length})
               </h3>
               <div className="space-y-4">
-                {filteredClaimableQuests.map((quest: Quest) => (
+                {filteredClaimableQuests.map((quest: QFQuest) => (
                   <QuestCard
                     key={quest.quest_id}
                     quest={quest}
@@ -304,7 +305,7 @@ export const Quests: React.FC = () => {
                 Active Quests ({filteredActiveQuests.length})
               </h3>
               <div className="space-y-4">
-                {filteredActiveQuests.map((quest: Quest) => (
+                {filteredActiveQuests.map((quest: QFQuest) => (
                   <QuestCard
                     key={quest.quest_id}
                     quest={quest}
@@ -320,7 +321,7 @@ export const Quests: React.FC = () => {
                 Claimed Quests ({claimedQuests.length})
               </h3>
               <div className="space-y-4">
-                {claimedQuests.map((quest: Quest) => (
+                {claimedQuests.map((quest: QFQuest) => (
                   <QuestCard
                     key={quest.quest_id}
                     quest={quest}

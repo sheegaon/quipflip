@@ -3,15 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import { useResults } from '@crowdcraft';
 import { useGame } from '../contexts/GameContext';
 import apiClient, { extractErrorMessage } from '@crowdcraft/api/client.ts';
-import type { GameStatus, HistoricalTrendPoint, PlayerStatistics } from '@crowdcraft/api/types.ts';
-import WinRateChart from '@crowdcraft/components/statistics/WinRateChart';
-import EarningsChart from '@crowdcraft/components/statistics/EarningsChart';
-import SpendingChart from '@crowdcraft/components/statistics/SpendingChart';
-import FrequencyChart from '@crowdcraft/components/statistics/FrequencyChart';
-import HistoricalTrendsChart from '@crowdcraft/components/statistics/HistoricalTrendsChart';
+import type { GameStatus, QFHistoricalTrendPoint, QFPlayerStatistics } from '@crowdcraft/api/types.ts';
+import { Header } from '../components/Header';
+import WinRateChart from '@crowdcraft/components/statistics/WinRateChart.tsx';
+import EarningsChart from '@crowdcraft/components/statistics/EarningsChart.tsx';
+import SpendingChart from '@crowdcraft/components/statistics/SpendingChart.tsx';
+import FrequencyChart from '@crowdcraft/components/statistics/FrequencyChart.tsx';
+import HistoricalTrendsChart from '@crowdcraft/components/statistics/HistoricalTrendsChart.tsx';
 import { statisticsLogger } from '@crowdcraft/utils/logger.ts';
 import { hasCompletedSurvey } from '@crowdcraft/utils/betaSurvey.ts';
-import type { BetaSurveyStatusResponse } from '@crowdcraft/api/types.ts';
+import type { QFBetaSurveyStatusResponse } from '@crowdcraft/api/types.ts';
 import { APP_VERSION } from '../version';
 
 const Statistics: React.FC = () => {
@@ -20,14 +21,14 @@ const Statistics: React.FC = () => {
   const { getStatistics } = actions;
   const { state } = useGame();
   const { player } = state;
-  const [data, setData] = useState<PlayerStatistics | null>(null);
+  const [data, setData] = useState<QFPlayerStatistics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [chartsReady, setChartsReady] = useState(false);
-  const [surveyStatus, setSurveyStatus] = useState<BetaSurveyStatusResponse | null>(null);
+  const [surveyStatus, setSurveyStatus] = useState<QFBetaSurveyStatusResponse | null>(null);
   const [gameStatus, setGameStatus] = useState<GameStatus | null>(null);
 
-  const historicalTrends = useMemo<HistoricalTrendPoint[]>(() => {
+  const historicalTrends = useMemo<QFHistoricalTrendPoint[]>(() => {
     if (!data) return [];
 
     const DAYS_IN_WEEK = 7;
@@ -50,7 +51,7 @@ const Statistics: React.FC = () => {
           dayKey: date.toISOString().slice(0, 10),
         };
       })
-      .filter((point): point is HistoricalTrendPoint & { timestamp: number; dayKey: string } => point !== null);
+      .filter((point): point is QFHistoricalTrendPoint & { timestamp: number; dayKey: string } => point !== null);
 
     if (parsedPoints.length === 0) {
       const today = data.frequency?.last_active ? new Date(data.frequency.last_active) : new Date();
@@ -247,27 +248,40 @@ const Statistics: React.FC = () => {
     };
   }, []);
 
-  let content: JSX.Element;
-
   if (loading) {
-    content = (
-      <div className="text-center py-12">
-        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-ccl-orange border-r-transparent"></div>
-        <p className="mt-4 text-ccl-navy font-display">Loading your statistics...</p>
+    return (
+      <div className="min-h-screen bg-ccl-cream bg-pattern">
+        <Header />
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center py-12">
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-ccl-orange border-r-transparent"></div>
+            <p className="mt-4 text-ccl-navy font-display">Loading your statistics...</p>
+          </div>
+        </div>
       </div>
     );
-  } else if (error || !data) {
-    content = (
-      <div className="tile-card p-8">
-        <h1 className="text-2xl font-display font-bold text-ccl-navy mb-4">Statistics</h1>
-        <div className="text-red-600">{error || 'Failed to load statistics'}</div>
-      </div>
-    );
-  } else {
-    const surveyCompleted = player?.player_id ? hasCompletedSurvey(player.player_id) : false;
+  }
 
-    content = (
-      <>
+  if (error || !data) {
+    return (
+      <div className="min-h-screen bg-ccl-cream bg-pattern">
+        <Header />
+        <div className="container mx-auto px-4 py-8">
+          <div className="tile-card p-8">
+            <h1 className="text-2xl font-display font-bold text-ccl-navy mb-4">Statistics</h1>
+            <div className="text-red-600">{error || 'Failed to load statistics'}</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const surveyCompleted = player?.player_id ? hasCompletedSurvey(player.player_id) : false;
+
+  return (
+    <div className="min-h-screen bg-ccl-cream bg-pattern">
+      <Header />
+      <div className="container mx-auto px-4 py-8">
         {surveyStatus?.eligible && !surveyStatus.has_submitted && !surveyCompleted && (
           <div className="tile-card mb-6 border-2 border-ccl-teal bg-ccl-teal/10 p-6">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -310,7 +324,7 @@ const Statistics: React.FC = () => {
                 <ul className="list-disc list-inside text-ccl-navy text-sm space-y-1 mb-3">
                   <li>Save your progress permanently</li>
                   <li>Access your account from any device</li>
-                  <li>Never lose your memecoins and stats</li>
+                  <li>Never lose your Flipcoins and stats</li>
                   <li>Get higher rate limits for smoother gameplay</li>
                 </ul>
               </div>
@@ -426,13 +440,8 @@ const Statistics: React.FC = () => {
         <div className="mt-10 text-center text-xs text-ccl-navy/60" aria-live="polite">
           Quipflip version {gameStatus?.version || APP_VERSION}
         </div>
-      </>
-    );
-  }
 
-  return (
-    <div className="min-h-screen bg-ccl-cream bg-pattern">
-      <div className="container mx-auto px-4 py-8">{content}</div>
+      </div>
     </div>
   );
 };
