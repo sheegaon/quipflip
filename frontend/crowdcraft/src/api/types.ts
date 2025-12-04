@@ -1,5 +1,6 @@
 // API Response Types based on backend documentation
 // Common types shared across games
+import type { TutorialStatus as TutorialStatusBase } from '../types/tutorial.ts';
 export type GameType = 'qf' | 'mm' | 'ir' | 'tl';
 
 export interface GamePlayerSnapshot {
@@ -135,6 +136,13 @@ export type TLTutorialProgress =
   | 'strategy'
   | 'completed'
   | 'not_started';
+
+export interface TLTutorialStatus extends TutorialStatusBase<TLTutorialProgress> {}
+
+export interface TLUpdateTutorialProgressResponse {
+  tutorial_completed: boolean;
+  tutorial_progress: TLTutorialProgress;
+}
 
 export interface TLDashboardResponse {
   player_id: string;

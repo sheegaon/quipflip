@@ -18,11 +18,11 @@ export const TUTORIAL_STEPS: Record<TLTutorialProgress, TutorialStep | null> = {
   welcome: {
     id: 'welcome',
     title: 'Welcome to ThinkLink!',
-    message: `ThinkLink is a word-matching game where you guess answers that others have given.
+    message: `ThinkLink is a semantic-guessing game.
 
-• Guess words and phrases that match what the crowd is thinking
-• Higher coverage (more matches) = bigger payouts
-• But watch out: 3 wrong guesses and your round ends
+• Submit short phrases that match what the crowd has already answered
+• Each round ends after 3 strikes with unmatched guesses
+• Coverage shows how much of the crowd's weighted ideas you've matched
 
 Ready to see how it works? Let's play!`,
     position: 'bottom',
@@ -36,9 +36,9 @@ Ready to see how it works? Let's play!`,
     title: 'Your Dashboard',
     message: `This is your home base. From here you can:
 
-• Check your wallet (earnings) and vault (long-term savings)
-• Start a new round (costs 100 coins)
-• View your round history and statistics
+• See your wallet and vault balances
+• Start a ThinkLink round (snapshot of up to 1000 active answers)
+• Review your recent rounds and coverage history
 
 Let's start your first round by clicking the "Start Round" button.`,
     target: '.tutorial-dashboard',
@@ -51,13 +51,12 @@ Let's start your first round by clicking the "Start Round" button.`,
   gameplay: {
     id: 'gameplay',
     title: 'How to Play',
-    message: `In each round:
+    message: `Each round uses the frozen snapshot for your prompt.
 
-• You're shown a prompt (like "Things you keep in your pocket")
-• You have unlimited guesses—type your answers and submit
-• Green = match! You found an answer the crowd gave
-• Red = no match and a strike. Get 3 strikes and your round ends
-• Higher coverage % = bigger rewards at the end
+• Submit 2–5 word phrases that stay on-topic and pass moderation
+• Every guess is compared to all snapshot answers; a match marks that cluster matched
+• No match? You take a strike. Three strikes ends the round, but guesses are unlimited
+• You can abandon the round early if you want
 
 Try typing some guesses now!`,
     target: '.tutorial-guess-input',
@@ -70,14 +69,13 @@ Try typing some guesses now!`,
   scoring: {
     id: 'scoring',
     title: 'Earning Your Payout',
-    message: `After your round ends (or you click abandon), you'll see your results:
+    message: `Your score comes from weighted coverage:
 
-• Coverage % = how many of the crowd's answers you matched
-• Higher coverage % = higher payout (up to 300 coins)
-• 30% coverage or less? You keep the full gross payout
-• More than 30%? The house takes 30% for the vault
+• Answers live in clusters; matching any answer marks that cluster as covered
+• Popular answers carry more weight, so matching common ideas boosts coverage faster
+• The snapshot stays fixed for the round, so you always score against the same set
 
-Keep playing and improving your coverage to earn more!`,
+Higher weighted coverage means a better payout.`,
     position: 'top',
     nextStep: 'strategy',
     showSkip: false,
@@ -87,13 +85,12 @@ Keep playing and improving your coverage to earn more!`,
   strategy: {
     id: 'strategy',
     title: 'Pro Tips',
-    message: `• Think about common, everyday answers—not obscure ones
-• Pay attention to the prompt's context and wording
-• If you're getting strikes, try broader or more obvious answers
-• Watch your coverage bar to see how you're doing in real time
-• Check the statistics page to track your best and worst prompts
+    message: `• Start with obvious, on-topic phrases before exploring niche ideas
+• Avoid repeating your own similar guesses—variety helps cover more clusters
+• If strikes pile up, back off to broader answers that most people would give
+• Remember: new guesses compare against every snapshot answer with a semantic threshold
 
-You're all set! Go make your best guesses.`,
+You're all set! Go make your best matches.`,
     target: '.tutorial-dashboard',
     position: 'top',
     showSkip: false,
