@@ -61,16 +61,19 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Remove TLPlayerData entries created by this migration."""
-    # Delete TLPlayerData entries that don't have associated transactions
-    # This is a safe downgrade that only removes data this migration created
+    # Only delete records that match the exact initial state created by upgrade:
+    # - wallet = 1000 (starting balance)
+    # - vault = 0
+    # - no associated transactions
+    # This prevents deleting records created through normal app flow
     delete_sql = """
         DELETE FROM tl_player_data
-        WHERE player_id IN (
-            SELECT p.player_id FROM players p
-            WHERE NOT EXISTS (
-                SELECT 1 FROM tl_transaction t WHERE t.player_id = p.player_id
-            )
-        )
+        WHERE wallet = 1000
+          AND vault = 0
+          AND NOT EXISTS (
+              SELECT 1 FROM tl_transaction t
+              WHERE t.player_id = tl_player_data.player_id
+          )
     """
 
     try:
