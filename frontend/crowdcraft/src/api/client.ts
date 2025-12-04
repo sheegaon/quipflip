@@ -38,6 +38,9 @@ import type {
   MMUpdateTutorialProgressResponse,
   TLDashboardResponse,
   TLBalanceResponse,
+  TLTutorialProgress,
+  TLTutorialStatus,
+  TLUpdateTutorialProgressResponse,
   TLRoundAvailability,
   TLStartRoundResponse,
   TLSubmitGuessResponse,
@@ -611,6 +614,28 @@ class CrowdcraftApiClient extends BaseApiClient {
 
   async tlGetBalance(signal?: AbortSignal): Promise<TLBalanceResponse> {
     const { data } = await this.tlApi.axiosInstance.get<TLBalanceResponse>('/player/balance', { signal });
+    return data;
+  }
+
+  async tlGetTutorialStatus(signal?: AbortSignal): Promise<TLTutorialStatus> {
+    const { data } = await this.tlApi.axiosInstance.get<TLTutorialStatus>('/player/tutorial/status', { signal });
+    return data;
+  }
+
+  async tlUpdateTutorialProgress(
+    progress: TLTutorialProgress,
+    signal?: AbortSignal,
+  ): Promise<TLUpdateTutorialProgressResponse> {
+    const { data } = await this.tlApi.axiosInstance.post<TLUpdateTutorialProgressResponse>(
+      '/player/tutorial/progress',
+      { progress },
+      { signal },
+    );
+    return data;
+  }
+
+  async tlResetTutorial(signal?: AbortSignal): Promise<TLTutorialStatus> {
+    const { data } = await this.tlApi.axiosInstance.post<TLTutorialStatus>('/player/tutorial/reset', {}, { signal });
     return data;
   }
 

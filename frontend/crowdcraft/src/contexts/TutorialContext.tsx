@@ -9,7 +9,8 @@ import React, {
 } from 'react';
 import apiClient from '../api/client.ts';
 import { getActionErrorMessage , tutorialLogger } from '../utils';
-import type { QFTutorialProgress, QFTutorialStatus } from '../api/types.ts';
+import type { TutorialStatus } from '../types/tutorial.ts';
+import type { QFTutorialProgress } from '../api/types.ts';
 
 const isAbortError = (error: unknown): boolean => {
   if (!error || typeof error !== 'object') {
@@ -22,11 +23,11 @@ const isAbortError = (error: unknown): boolean => {
 
 export type TutorialLifecycleStatus = 'loading' | 'inactive' | 'active' | 'completed' | 'error';
 
-interface QFTutorialContextState<Status extends QFTutorialStatus> {
+interface TutorialContextState<Status extends TutorialStatus<Progress>, Progress extends string> {
   status: Status | null;
   tutorialStatus: TutorialLifecycleStatus;
   isActive: boolean;
-  currentStep: QFTutorialProgress | null;
+  currentStep: Progress | null;
   loading: boolean;
   error: string | null;
 }
@@ -36,57 +37,67 @@ interface RefreshOptions {
   showLoading?: boolean;
 }
 
-interface QFTutorialActions {
+interface TutorialActions<Progress extends string> {
   startTutorial: () => Promise<void>;
-  advanceStep: (stepId?: QFTutorialProgress) => Promise<void>;
+  advanceStep: (stepId?: Progress) => Promise<void>;
   skipTutorial: () => Promise<void>;
   completeTutorial: () => Promise<void>;
   resetTutorial: () => Promise<void>;
   refreshStatus: (options?: RefreshOptions) => Promise<void>;
 }
 
-interface QFTutorialContextType<Status extends QFTutorialStatus> {
-  state: QFTutorialContextState<Status>;
-  actions: QFTutorialActions;
+interface TutorialContextType<Status extends TutorialStatus<Progress>, Progress extends string> {
+  state: TutorialContextState<Status, Progress>;
+  actions: TutorialActions<Progress>;
 }
 
-export interface QFTutorialContextConfig<Status extends QFTutorialStatus> {
+export interface TutorialContextConfig<Status extends TutorialStatus<Progress>, Progress extends string> {
   mapLoadStatus: (response: unknown) => Status | null;
   mapUpdateStatus: (response: unknown) => Status;
   mapResetStatus: (response: unknown) => Status;
-  getProgress: (status: Status) => QFTutorialProgress;
+  getProgress: (status: Status) => Progress;
   isCompleted: (status: Status) => boolean;
-  getNextStep?: (progress: QFTutorialProgress) => QFTutorialProgress | null;
+  getNextStep?: (progress: Progress) => Progress | null;
   loadStatus?: (signal?: AbortSignal) => Promise<unknown>;
-  updateProgress?: (progress: QFTutorialProgress) => Promise<unknown>;
+  updateProgress?: (progress: Progress) => Promise<unknown>;
   resetTutorial?: () => Promise<unknown>;
+  initialStep?: Progress;
+  completedStep?: Progress;
+  inactiveStep?: Progress;
 }
 
-interface QFTutorialProviderProps<Status extends QFTutorialStatus> {
+interface TutorialProviderProps<Status extends TutorialStatus<Progress>, Progress extends string> {
   children: React.ReactNode;
-  config: QFTutorialContextConfig<Status>;
+  config: TutorialContextConfig<Status, Progress>;
 }
 
-export const qfCreateTutorialContext = <Status extends QFTutorialStatus>() => {
-  const TutorialContext = createContext<QFTutorialContextType<Status> | undefined>(undefined);
+export const createTutorialContext = <
+  Status extends TutorialStatus<Progress>,
+  Progress extends string = Status extends TutorialStatus<infer P> ? P : string,
+>() => {
+  const TutorialContext = createContext<TutorialContextType<Status, Progress> | undefined>(undefined);
 
-  const QFTutorialProvider: React.FC<QFTutorialProviderProps<Status>> = ({ children, config }) => {
+  const TutorialProvider: React.FC<TutorialProviderProps<Status, Progress>> = ({ children, config }) => {
     const [status, setStatus] = useState<Status | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const currentStep = useMemo<QFTutorialProgress | null>(() => {
+    const inactiveStep = useMemo(() => config.inactiveStep ?? ('not_started' as Progress), [config]);
+    const completedStep = useMemo(() => config.completedStep ?? ('completed' as Progress), [config]);
+    const initialStep = useMemo(() => config.initialStep ?? ('welcome' as Progress), [config]);
+
+    const currentStep = useMemo<Progress | null>(() => {
       if (!status) return null;
       const progress = config.getProgress(status);
-      if (progress === 'not_started' || progress === 'completed') {
+      if (progress === inactiveStep || progress === completedStep) {
         return null;
       }
       return progress;
-    }, [config, status]);
+    }, [config, status, inactiveStep, completedStep]);
 
     const isActive = useMemo(
-      () => Boolean(status && !config.isCompleted(status) && config.getProgress(status) !== 'not_started'),
-      [config, status],
+      () => Boolean(status && !config.isCompleted(status) && config.getProgress(status) !== inactiveStep),
+      [config, status, inactiveStep],
     );
 
     const lifecycleStatus = useMemo<TutorialLifecycleStatus>(() => {
@@ -102,11 +113,11 @@ export const qfCreateTutorialContext = <Status extends QFTutorialStatus>() => {
       if (config.isCompleted(status)) {
         return 'completed';
       }
-      if (config.getProgress(status) === 'not_started') {
+      if (config.getProgress(status) === inactiveStep) {
         return 'inactive';
       }
       return 'active';
-    }, [status, loading, error, config]);
+    }, [status, loading, error, config, inactiveStep]);
 
     const ensureToken = useCallback(async (): Promise<string | null> => {
       // Authentication is now handled via cookies
@@ -157,7 +168,7 @@ export const qfCreateTutorialContext = <Status extends QFTutorialStatus>() => {
     );
 
     const updateProgress = useCallback(
-      async (progress: QFTutorialProgress) => {
+      async (progress: Progress) => {
         const token = await ensureToken();
         if (!token) {
           return;
@@ -168,7 +179,7 @@ export const qfCreateTutorialContext = <Status extends QFTutorialStatus>() => {
           tutorialLogger.debug('Updating tutorial progress', { progress });
           const response = config.updateProgress
             ? await config.updateProgress(progress)
-            : await apiClient.updateTutorialProgress(progress);
+            : await apiClient.updateTutorialProgress(progress as QFTutorialProgress);
           setStatus(config.mapUpdateStatus(response));
           setError(null);
         } catch (err: unknown) {
@@ -184,16 +195,16 @@ export const qfCreateTutorialContext = <Status extends QFTutorialStatus>() => {
 
     const startTutorial = useCallback(async () => {
       tutorialLogger.debug('Starting tutorial');
-      await updateProgress('welcome');
-    }, [updateProgress]);
+      await updateProgress(initialStep);
+    }, [initialStep, updateProgress]);
 
     const completeTutorial = useCallback(async () => {
       tutorialLogger.debug('Completing tutorial');
-      await updateProgress('completed');
-    }, [updateProgress]);
+      await updateProgress(completedStep);
+    }, [completedStep, updateProgress]);
 
     const advanceStep = useCallback(
-      async (stepId?: QFTutorialProgress) => {
+      async (stepId?: Progress) => {
         const nextStep =
           stepId ?? (status ? config.getNextStep?.(config.getProgress(status)) ?? undefined : undefined);
 
@@ -204,14 +215,14 @@ export const qfCreateTutorialContext = <Status extends QFTutorialStatus>() => {
           return;
         }
 
-        if (nextStep === 'completed') {
+        if (nextStep === completedStep) {
           await completeTutorial();
           return;
         }
 
         await updateProgress(nextStep);
       },
-      [status, completeTutorial, updateProgress, config],
+      [status, completeTutorial, updateProgress, config, completedStep],
     );
 
     const skipTutorial = useCallback(async () => {
@@ -246,7 +257,7 @@ export const qfCreateTutorialContext = <Status extends QFTutorialStatus>() => {
       return () => controller.abort();
     }, [refreshStatus]);
 
-    const state: QFTutorialContextState<Status> = useMemo(
+    const state: TutorialContextState<Status, Progress> = useMemo(
       () => ({
         status,
         tutorialStatus: lifecycleStatus,
@@ -258,7 +269,7 @@ export const qfCreateTutorialContext = <Status extends QFTutorialStatus>() => {
       [status, lifecycleStatus, isActive, currentStep, loading, error],
     );
 
-    const actions: QFTutorialActions = useMemo(
+    const actions: TutorialActions<Progress> = useMemo(
       () => ({
         startTutorial,
         advanceStep,
@@ -270,7 +281,7 @@ export const qfCreateTutorialContext = <Status extends QFTutorialStatus>() => {
       [startTutorial, advanceStep, skipTutorial, completeTutorial, resetTutorial, refreshStatus],
     );
 
-    const value = useMemo<QFTutorialContextType<Status>>(
+    const value = useMemo<TutorialContextType<Status, Progress>>(
       () => ({
         state,
         actions,
@@ -281,7 +292,7 @@ export const qfCreateTutorialContext = <Status extends QFTutorialStatus>() => {
     return <TutorialContext.Provider value={value}>{children}</TutorialContext.Provider>;
   };
 
-  const useTutorial = (): QFTutorialContextType<Status> => {
+  const useTutorial = (): TutorialContextType<Status, Progress> => {
     const context = useContext(TutorialContext);
     if (!context) {
       throw new Error('useTutorial must be used within TutorialProvider');
@@ -289,5 +300,9 @@ export const qfCreateTutorialContext = <Status extends QFTutorialStatus>() => {
     return context;
   };
 
-  return { TutorialProvider: QFTutorialProvider, useTutorial };
+  return { TutorialProvider, useTutorial };
 };
+
+// Backwards compatibility exports for legacy QF-named imports
+export type QFTutorialContextConfig<Status extends TutorialStatus<Progress>, Progress extends string = Status extends TutorialStatus<infer P> ? P : string> = TutorialContextConfig<Status, Progress>;
+export const qfCreateTutorialContext = createTutorialContext;
