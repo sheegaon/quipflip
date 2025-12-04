@@ -5,9 +5,6 @@ This script:
 2. Creates MMImage records for each new image
 3. Reads seed captions from mm_seed_captions.csv
 4. Creates MMCaption records for seed captions
-
-Usage:
-    PYTHONPATH=/path/to/quipflip python backend/data/import_images.py
 """
 
 import asyncio

@@ -412,7 +412,7 @@ async def lifespan(app_instance: FastAPI):
     try:
         from backend.database import AsyncSessionLocal
         async with AsyncSessionLocal() as db:
-            await seed_answers(db)
+            await seed_answers(db, force=True)
         logger.info("ThinkLink answers seeded successfully")
     except Exception as e:
         logger.error(f"Failed to seed ThinkLink answers: {e}")

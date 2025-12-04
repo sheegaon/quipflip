@@ -13,9 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.scripts.username_pool import USERNAME_POOL
 from backend.models.player_base import PlayerBase
 from backend.services.ai.openai_api import moderate_text
-
-if TYPE_CHECKING:
-    pass
+from backend.utils.model_registry import GameType
 
 
 logger = logging.getLogger(__name__)
