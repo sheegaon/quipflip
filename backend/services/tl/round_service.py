@@ -47,8 +47,8 @@ class TLRoundService:
         settings = get_settings()
         self.entry_cost = settings.tl_entry_cost
         self.max_strike_count = 3
-        self.prompt_relevance_threshold = settings.prompt_relevance_threshold or 0.40
-        self.self_similarity_threshold = settings.similarity_threshold
+        self.prompt_relevance_threshold = settings.tl_topic_threshold
+        self.self_similarity_threshold = settings.tl_self_similarity_threshold
 
     async def start_round(
         self,
