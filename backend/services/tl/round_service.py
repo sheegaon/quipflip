@@ -211,6 +211,7 @@ class TLRoundService:
         8. Add strike if no matches
         9. End round if 3 strikes
         10. Log guess
+        11. Finalize round if completion conditions are met
 
         Validation errors (invalid_phrase, too_similar) do NOT consume strikes.
 
@@ -326,10 +327,6 @@ class TLRoundService:
                 new_strikes = round.strikes
                 logger.info(f"⚠️  No matches - strike {new_strikes}/3")
 
-                if round.strikes >= self.max_strike_count:
-                    round.status = 'abandoned'  # Mark as ended due to strikes
-                    logger.debug(f"🏁 Round ended - 3 strikes reached")
-
             # Log guess
             guess = TLGuess(
                 round_id=str(round.round_id),
@@ -351,6 +348,24 @@ class TLRoundService:
                 str(round.prompt_id),
             )
 
+            # Check for round completion conditions and finalize if needed
+            should_finalize = False
+            
+            if round.strikes >= self.max_strike_count:
+                # Round ended due to strikes
+                round.status = 'completed'  # Change from 'abandoned' to 'completed'
+                should_finalize = True
+                logger.info(f"🏁 Round ended - 3 strikes reached, finalizing...")
+            elif current_coverage >= 0.95:  # 95% coverage threshold for auto-completion
+                # Round completed due to high coverage
+                round.status = 'completed'
+                should_finalize = True
+                logger.info(f"🎉 Round completed - high coverage achieved ({current_coverage:.1%}), finalizing...")
+
+            # Finalize round if completion conditions are met
+            if should_finalize:
+                await self._finalize_round(db, round, current_coverage, player_id)
+
             return {
                 "was_match": was_match,
                 "matched_answer_count": len(matches),
@@ -363,6 +378,63 @@ class TLRoundService:
         except Exception as e:
             logger.exception(f"❌ Submit guess failed: {e}")
             return {}, "submit_failed", None
+
+    async def _finalize_round(self, db: AsyncSession, round: TLRound, coverage: float, player_id: str) -> None:
+        """Finalize a completed round with payouts and statistics.
+        
+        Args:
+            db: Database session
+            round: The round to finalize
+            coverage: Final coverage percentage (0-1)
+            player_id: Player ID for transactions
+        """
+        try:
+            # Calculate payouts
+            wallet_award, vault_award, gross_payout = self.scoring.calculate_payout(coverage)
+            
+            # Get player
+            player = await db.get(Player, player_id)
+            if not player or not player.tl_player_data:
+                logger.error(f"❌ Player or TL data not found for finalization: {player_id}")
+                return
+                
+            # Apply wallet award
+            if wallet_award > 0:
+                player.tl_player_data.wallet += wallet_award
+                wallet_transaction = TLTransaction(
+                    player_id=player_id,
+                    amount=wallet_award,
+                    transaction_type='round_payout_wallet',
+                    round_id=str(round.round_id),
+                    description=f'Round payout - wallet ({coverage:.1%} coverage)',
+                )
+                db.add(wallet_transaction)
+                
+            # Apply vault award
+            if vault_award > 0:
+                player.tl_player_data.vault += vault_award
+                vault_transaction = TLTransaction(
+                    player_id=player_id,
+                    amount=vault_award,
+                    transaction_type='round_payout_vault',
+                    round_id=str(round.round_id),
+                    description=f'Round payout - vault ({coverage:.1%} coverage)',
+                )
+                db.add(vault_transaction)
+            
+            # Finalize the round using the scoring service
+            await self.scoring.finalize_round(
+                db, round, wallet_award, vault_award, gross_payout, coverage
+            )
+            
+            logger.info(
+                f"✅ Round finalized: {round.round_id} | coverage={coverage:.1%} | "
+                f"wallet_award={wallet_award} | vault_award={vault_award} | gross={gross_payout}"
+            )
+            
+        except Exception as e:
+            logger.error(f"❌ Round finalization failed: {e}")
+            raise
 
     async def abandon_round(self, db: AsyncSession, round_id: str, player_id: str) -> Tuple[Dict, Optional[str]]:
         """Abandon an active round with partial refund.
