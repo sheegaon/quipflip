@@ -13,7 +13,10 @@ from backend.models.player import Player
 from backend.schemas.base import BaseSchema
 from backend.services import GameType
 from backend.services.tl.prompt_service import TLPromptService
-from backend.services.tl.clustering_service import TLClusteringService
+from backend.services.tl.clustering_service import (
+    TLClusteringService,
+    prune_corpus as service_prune_corpus,
+)
 from backend.services.tl.matching_service import TLMatchingService
 from backend.services.tl.scoring_service import TLScoringService
 from backend.models.tl import TLPrompt, TLAnswer, TLCluster
@@ -209,7 +212,7 @@ async def prune_corpus(
         clustering_service = TLClusteringService(matching_service)
 
         # Prune corpus
-        removed_count, current_count = await prune_corpus(
+        removed_count, current_count = await service_prune_corpus(
             db, str(prompt_id), keep_count=keep_count
         )
 
