@@ -31,6 +31,7 @@ from backend.config import get_settings
 from backend.version import APP_VERSION
 from backend.services.qf.prompt_seeder import sync_prompts_with_database
 from backend.data.seed_tl_prompts import seed_prompts as seed_tl_prompts
+from backend.data.seed_tl_answers import seed_answers as seed_tl_answers
 from backend.routers import qf, ir, mm, tl, auth, health, notifications, online_users
 from backend.middleware.deduplication import deduplication_middleware
 from backend.middleware.online_user_tracking import online_user_tracking_middleware
@@ -397,7 +398,7 @@ async def lifespan(app_instance: FastAPI):
     # Import Meme Mint images and seed captions
     await import_meme_mint_images()
 
-    # Seed ThinkLink prompts from CSV
+    # Seed ThinkLink prompts and answers from CSV
     try:
         from backend.database import AsyncSessionLocal
         async with AsyncSessionLocal() as db:
@@ -405,6 +406,16 @@ async def lifespan(app_instance: FastAPI):
         logger.info("ThinkLink prompts seeded successfully")
     except Exception as e:
         logger.error(f"Failed to seed ThinkLink prompts: {e}")
+        # Don't raise - allow server to start even if seeding fails
+
+    # Seed ThinkLink answers (completions) from CSV - depends on prompts existing
+    try:
+        from backend.database import AsyncSessionLocal
+        async with AsyncSessionLocal() as db:
+            await seed_tl_answers(db)
+        logger.info("ThinkLink answers seeded successfully")
+    except Exception as e:
+        logger.error(f"Failed to seed ThinkLink answers: {e}")
         # Don't raise - allow server to start even if seeding fails
 
     # Start background tasks

@@ -467,6 +467,15 @@ class TLRoundService:
         )
         answers = result.scalars().all()
 
+        # DEBUG: Log embedding types from pgvector to diagnose conversion issues
+        if answers:
+            first_embedding = answers[0].embedding
+            logger.info(
+                f"🔬 EMBEDDING DEBUG: pgvector returned type={type(first_embedding).__name__}, "
+                f"len={len(first_embedding) if hasattr(first_embedding, '__len__') else 'N/A'}, "
+                f"sample_values={list(first_embedding)[:5] if hasattr(first_embedding, '__iter__') else 'N/A'}..."
+            )
+
         return [
             {
                 "answer_id": str(a.answer_id),
