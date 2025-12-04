@@ -19,7 +19,7 @@ from backend.models.qf.vote import Vote
 from backend.models.qf.ai_phrase_cache import QFAIPhraseCache
 from backend.models.qf.ai_metric import QFAIMetric
 from backend.services.qf import QFQueueService
-from backend.utils.model_registry import AIPlayerType
+from backend.utils.model_registry import AIPlayerType, GameType
 from backend.services.ai.ai_service import AI_PLAYER_EMAIL_DOMAIN
 
 logger = logging.getLogger(__name__)
@@ -282,7 +282,7 @@ class QFBackupOrchestrator:
             from backend.services import QFVoteService
             from backend.services import TransactionService
             vote_service = QFVoteService(self.db)
-            transaction_service = TransactionService(self.db)
+            transaction_service = TransactionService(self.db, game_type=GameType.QF)
 
             # Process each waiting phraseset
             for phraseset in filtered_phrasesets:

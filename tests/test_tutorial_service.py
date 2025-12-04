@@ -1,7 +1,7 @@
 """Tests for the tutorial service."""
 import pytest
 
-from backend.services import TutorialService
+from backend.services import GameType, TutorialService
 
 
 @pytest.mark.asyncio
@@ -10,7 +10,7 @@ async def test_get_tutorial_status_new_player(db_session, player_factory):
     # Use unique username to avoid collision with other tests
     player = await player_factory()
 
-    service = TutorialService(db_session)
+    service = TutorialService(db_session, GameType.QF)
     status = await service.get_tutorial_status(player.player_id)
 
     assert status.tutorial_completed is False
@@ -25,7 +25,7 @@ async def test_update_tutorial_progress(db_session, player_factory):
     # Use unique username to avoid collision with other tests
     player = await player_factory()
 
-    service = TutorialService(db_session)
+    service = TutorialService(db_session, GameType.QF)
     status = await service.update_tutorial_progress(player.player_id, "welcome")
 
     assert status.tutorial_progress == "welcome"
@@ -40,7 +40,7 @@ async def test_complete_tutorial(db_session, player_factory):
     # Use unique username to avoid collision with other tests
     player = await player_factory()
 
-    service = TutorialService(db_session)
+    service = TutorialService(db_session, GameType.QF)
 
     # Start tutorial
     await service.update_tutorial_progress(player.player_id, "welcome")
@@ -60,7 +60,7 @@ async def test_reset_tutorial(db_session, player_factory):
     # Use unique username to avoid collision with other tests
     player = await player_factory()
 
-    service = TutorialService(db_session)
+    service = TutorialService(db_session, GameType.QF)
 
     # Complete tutorial
     await service.update_tutorial_progress(player.player_id, "welcome")
@@ -81,7 +81,7 @@ async def test_tutorial_progress_steps(db_session, player_factory):
     # Use unique username to avoid collision with other tests
     player = await player_factory()
 
-    service = TutorialService(db_session)
+    service = TutorialService(db_session, GameType.QF)
 
     steps = ["welcome", "dashboard", "prompt_round", "copy_round", "vote_round", "completed"]
 
@@ -107,7 +107,7 @@ async def test_rounds_guide_step(db_session, player_factory):
     """Test that rounds_guide step works within VARCHAR(20) limit."""
     player = await player_factory()
 
-    service = TutorialService(db_session)
+    service = TutorialService(db_session, GameType.QF)
 
     # Renamed from 'completed_rounds_guide' (22 chars) to 'rounds_guide' (12 chars)
     status = await service.update_tutorial_progress(player.player_id, "rounds_guide")

@@ -18,8 +18,10 @@ logger = logging.getLogger(__name__)
 class TransactionService:
     """Service for managing player transactions."""
 
-    def __init__(self, db: AsyncSession, game_type: GameType = GameType.QF):
+    def __init__(self, db: AsyncSession, game_type: GameType):
         self.db = db
+        if game_type is None:
+            raise ValueError("game_type must be provided for TransactionService")
         self.game_type = game_type
         # Get game-specific PlayerData model
         if game_type == GameType.QF:

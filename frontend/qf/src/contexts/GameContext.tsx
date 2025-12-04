@@ -112,7 +112,7 @@ export const GameProvider: React.FC<{
       gameContextLogger.debug('🔍 Starting session detection on app load');
 
       try {
-        const result = await detectUserSession(controller.signal);
+        const result = await detectUserSession('qf', controller.signal);
 
         if (!isMounted) return;
 

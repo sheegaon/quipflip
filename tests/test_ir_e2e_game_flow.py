@@ -240,11 +240,11 @@ async def test_ir_insufficient_balance_blocking(db_session):
     """Test that players with insufficient balance cannot enter."""
     from sqlalchemy import update
     from backend.models.ir.player import IRPlayer
-    from backend.services import TransactionService
+    from backend.services import GameType, TransactionService
 
     auth_service = AuthService(db_session)
     set_service = IRBackronymSetService(db_session)
-    transaction_service = TransactionService(db_session)
+    transaction_service = TransactionService(db_session, GameType.IR)
 
     # 1. Create player
     player, _ = await auth_service.register(

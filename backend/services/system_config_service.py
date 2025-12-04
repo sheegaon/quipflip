@@ -297,7 +297,7 @@ class SystemConfigService:
         },
     }
 
-    def __init__(self, session: AsyncSession, game_type: GameType = GameType.QF):
+    def __init__(self, session: AsyncSession, game_type: GameType):
         """Initialize the service with a database session."""
         self.session = session
         self.game_type = game_type
@@ -503,6 +503,8 @@ class SystemConfigService:
         return value
 
 
-async def get_system_config_service(session: AsyncSession) -> SystemConfigService:
+async def get_system_config_service(
+    session: AsyncSession, game_type: GameType
+) -> SystemConfigService:
     """Dependency for getting SystemConfigService."""
-    return SystemConfigService(session)
+    return SystemConfigService(session, game_type)

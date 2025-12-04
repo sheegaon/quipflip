@@ -1,6 +1,6 @@
 """Test cache invalidation when flagging prompts to ensure dashboard shows accurate counts."""
 import pytest
-from backend.services import QFRoundService
+from backend.services import GameType, QFRoundService
 from backend.services import TransactionService
 from backend.services import QFPlayerService
 from backend.utils.cache import dashboard_cache
@@ -41,8 +41,8 @@ async def test_prompts_waiting_count_after_flagging(db_session, player_factory):
 
     # Services
     round_service = QFRoundService(db_session)
-    transaction_service_a = TransactionService(db_session)
-    transaction_service_b = TransactionService(db_session)
+    transaction_service_a = TransactionService(db_session, GameType.QF)
+    transaction_service_b = TransactionService(db_session, GameType.QF)
 
     # Clear cache to start fresh
     dashboard_cache.clear()
@@ -131,8 +131,8 @@ async def test_dashboard_endpoint_shows_correct_count_after_flagging(
 
     # Services
     round_service = QFRoundService(db_session)
-    transaction_service_a = TransactionService(db_session)
-    transaction_service_b = TransactionService(db_session)
+    transaction_service_a = TransactionService(db_session, GameType.QF)
+    transaction_service_b = TransactionService(db_session, GameType.QF)
     player_service = QFPlayerService(db_session)
 
     # Clear cache
@@ -209,8 +209,8 @@ async def test_abandoned_prompt_not_counted_in_available(db_session, player_fact
 
     # Services
     round_service = QFRoundService(db_session)
-    transaction_service_a = TransactionService(db_session)
-    transaction_service_b = TransactionService(db_session)
+    transaction_service_a = TransactionService(db_session, GameType.QF)
+    transaction_service_b = TransactionService(db_session, GameType.QF)
 
     # Player A creates a prompt
     prompt_round = await round_service.start_prompt_round(player_a, transaction_service_a)

@@ -1,15 +1,15 @@
 """Unified player model for cross-game authentication."""
-from sqlalchemy import (
-    Column,
-    String,
-    DateTime,
-    Boolean,
-)
-from sqlalchemy.orm import relationship
+from __future__ import annotations
+
 import uuid
-from datetime import datetime, UTC
+from datetime import UTC, datetime
+
+from sqlalchemy import Boolean, Column, DateTime, String
+from sqlalchemy.orm import relationship
+
 from backend.database import Base
 from backend.models.base import get_uuid_column
+from backend.utils.model_registry import GameType
 
 
 class Player(Base):
@@ -37,214 +37,151 @@ class Player(Base):
 
     # Relationships
     phraseset_activities = relationship(
-        "PhrasesetActivity", back_populates="player", cascade="all, delete-orphan"
+        "PhrasesetActivity",
+        back_populates="player",
+        cascade="all, delete-orphan",
+        lazy="selectin",
     )
-    rounds = relationship("Round", back_populates="player", foreign_keys="Round.player_id")
-    votes = relationship("Vote", back_populates="player")
-    transactions = relationship("QFTransaction", back_populates="player")
-    daily_bonuses = relationship("QFDailyBonus", back_populates="player")
-    result_views = relationship("QFResultView", back_populates="player")
-    abandoned_prompts = relationship("PlayerAbandonedPrompt", back_populates="player")
-    refresh_tokens = relationship("RefreshToken", back_populates="player", cascade="all, delete-orphan")
-    quests = relationship("QFQuest", back_populates="player")
+    rounds = relationship(
+        "Round",
+        back_populates="player",
+        foreign_keys="Round.player_id",
+        lazy="selectin",
+    )
+    votes = relationship("Vote", back_populates="player", lazy="selectin")
+    transactions = relationship("QFTransaction", back_populates="player", lazy="selectin")
+    daily_bonuses = relationship("QFDailyBonus", back_populates="player", lazy="selectin")
+    result_views = relationship("QFResultView", back_populates="player", lazy="selectin")
+    abandoned_prompts = relationship(
+        "PlayerAbandonedPrompt", back_populates="player", lazy="selectin"
+    )
+    refresh_tokens = relationship(
+        "RefreshToken",
+        back_populates="player",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    quests = relationship("QFQuest", back_populates="player", lazy="selectin")
     qf_player_data = relationship(
         "QFPlayerData",
         uselist=False,
         back_populates="player",
         cascade="all, delete-orphan",
-        lazy="joined",
+        lazy="selectin",
+    )
+    mm_player_data = relationship(
+        "MMPlayerData",
+        uselist=False,
+        back_populates="player",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    ir_player_data = relationship(
+        "IRPlayerData",
+        uselist=False,
+        back_populates="player",
+        cascade="all, delete-orphan",
+        lazy="selectin",
     )
     tl_player_data = relationship(
         "TLPlayerData",
         uselist=False,
         back_populates="player",
         cascade="all, delete-orphan",
-        lazy="joined",
+        lazy="selectin",
     )
     tl_rounds = relationship(
         "TLRound",
         back_populates="player",
         foreign_keys="TLRound.player_id",
+        lazy="selectin",
     )
-    tl_daily_bonuses = relationship("TLDailyBonus", back_populates="player")
-    tl_daily_states = relationship("TLPlayerDailyState", back_populates="player")
+    tl_daily_bonuses = relationship("TLDailyBonus", back_populates="player", lazy="selectin")
+    tl_daily_states = relationship("TLPlayerDailyState", back_populates="player", lazy="selectin")
 
-    def _ensure_qf_data(self):
-        """Ensure a QFPlayerData record exists for delegated properties."""
+    def get_game_data(self, game_type: GameType):
+        """Return the per-game data object for the requested game.
 
-        if self.qf_player_data is None:
-            from backend.models.qf.player_data import QFPlayerData
+        This helper avoids implicit creation of per-game data and requires
+        callers to handle missing records explicitly.
+        """
 
-            self.qf_player_data = QFPlayerData(player_id=self.player_id)
-        return self.qf_player_data
-
-    @property
-    def wallet(self) -> int:
-        data = self.qf_player_data
-        return data.wallet if data else 0
-
-    @wallet.setter
-    def wallet(self, value: int) -> None:
-        self._ensure_qf_data().wallet = value
-
-    @property
-    def vault(self) -> int:
-        data = self.qf_player_data
-        return data.vault if data else 0
-
-    @vault.setter
-    def vault(self, value: int) -> None:
-        self._ensure_qf_data().vault = value
-
-    @property
-    def active_round_id(self):
-        data = self.qf_player_data
-        return data.active_round_id if data else None
-
-    @active_round_id.setter
-    def active_round_id(self, value):
-        self._ensure_qf_data().active_round_id = value
-
-    @property
-    def tutorial_completed(self):
-        data = self.qf_player_data
-        return data.tutorial_completed if data else False
-
-    @tutorial_completed.setter
-    def tutorial_completed(self, value):
-        self._ensure_qf_data().tutorial_completed = value
-
-    @property
-    def tutorial_progress(self):
-        data = self.qf_player_data
-        return data.tutorial_progress if data else "not_started"
-
-    @tutorial_progress.setter
-    def tutorial_progress(self, value):
-        self._ensure_qf_data().tutorial_progress = value
-
-    @property
-    def tutorial_started_at(self):
-        data = self.qf_player_data
-        return data.tutorial_started_at if data else None
-
-    @tutorial_started_at.setter
-    def tutorial_started_at(self, value):
-        self._ensure_qf_data().tutorial_started_at = value
-
-    @property
-    def tutorial_completed_at(self):
-        data = self.qf_player_data
-        return data.tutorial_completed_at if data else None
-
-    @tutorial_completed_at.setter
-    def tutorial_completed_at(self, value):
-        self._ensure_qf_data().tutorial_completed_at = value
-
-    @property
-    def consecutive_incorrect_votes(self) -> int:
-        data = self.qf_player_data
-        return data.consecutive_incorrect_votes if data else 0
-
-    @consecutive_incorrect_votes.setter
-    def consecutive_incorrect_votes(self, value: int):
-        self._ensure_qf_data().consecutive_incorrect_votes = value
-
-    @property
-    def vote_lockout_until(self):
-        data = self.qf_player_data
-        return data.vote_lockout_until if data else None
-
-    @vote_lockout_until.setter
-    def vote_lockout_until(self, value):
-        self._ensure_qf_data().vote_lockout_until = value
-
-    @property
-    def flag_dismissal_streak(self) -> int:
-        data = self.qf_player_data
-        return data.flag_dismissal_streak if data else 0
-
-    @flag_dismissal_streak.setter
-    def flag_dismissal_streak(self, value: int):
-        self._ensure_qf_data().flag_dismissal_streak = value
+        game_data_map = {
+            GameType.QF: self.qf_player_data,
+            GameType.TL: self.tl_player_data,
+            GameType.MM: self.mm_player_data,
+            GameType.IR: self.ir_player_data,
+        }
+        if game_type in game_data_map:
+            return game_data_map[game_type]
+        raise ValueError(f"Unsupported game type: {game_type}")
 
     @property
     def balance(self) -> int:
-        """Return the player's total Quipflip balance (wallet + vault).
+        """Return combined wallet + vault for Quipflip players.
 
-        This mirrors the convenience property previously available on the
-        game-specific QFPlayer model so existing code and tests can continue
-        to read a player's combined spendable funds from the unified model.
+        This mirrors the convenience property available on per-game data
+        objects and keeps legacy balance lookups working.
         """
 
-        data = self.qf_player_data
-        if data is None:
-            return 0
-        return data.balance
+        source = self._wallet_source()
+        if source:
+            # All per-game player data objects expose wallet and vault
+            return int(source.wallet or 0) + int(source.vault or 0)
+        return 0
 
-    def _ensure_tl_data(self):
-        """Ensure a TLPlayerData record exists for delegated properties."""
+    def _wallet_source(self):
+        """Return the first per-game data object that exposes wallet/vault fields."""
 
-        if self.tl_player_data is None:
-            from backend.models.tl.player_data import TLPlayerData
-
-            self.tl_player_data = TLPlayerData(player_id=self.player_id)
-        return self.tl_player_data
-
-    # ThinkLink (TL) game-specific properties
-    @property
-    def tl_wallet(self) -> int:
-        data = self.tl_player_data
-        return data.wallet if data else 0
-
-    @tl_wallet.setter
-    def tl_wallet(self, value: int) -> None:
-        self._ensure_tl_data().wallet = value
+        for attr in ("qf_player_data", "ir_player_data", "mm_player_data", "tl_player_data"):
+            data = getattr(self, attr, None)
+            if data is not None and hasattr(data, "wallet"):
+                return data
+        return None
 
     @property
-    def tl_vault(self) -> int:
-        data = self.tl_player_data
-        return data.vault if data else 0
+    def wallet(self) -> int:
+        source = self._wallet_source()
+        return source.wallet if source else 0
 
-    @tl_vault.setter
-    def tl_vault(self, value: int) -> None:
-        self._ensure_tl_data().vault = value
+    @wallet.setter
+    def wallet(self, value: int):
+        source = self._wallet_source()
+        if not source:
+            from backend.models.qf.player_data import QFPlayerData
 
-    @property
-    def tl_tutorial_completed(self) -> bool:
-        data = self.tl_player_data
-        return data.tutorial_completed if data else False
-
-    @tl_tutorial_completed.setter
-    def tl_tutorial_completed(self, value: bool) -> None:
-        self._ensure_tl_data().tutorial_completed = value
+            self.qf_player_data = QFPlayerData(player_id=self.player_id)
+            source = self.qf_player_data
+        source.wallet = value
 
     @property
-    def tl_tutorial_progress(self) -> str:
-        data = self.tl_player_data
-        return data.tutorial_progress if data else "not_started"
+    def vault(self) -> int:
+        source = self._wallet_source()
+        return source.vault if source else 0
 
-    @tl_tutorial_progress.setter
-    def tl_tutorial_progress(self, value: str) -> None:
-        self._ensure_tl_data().tutorial_progress = value
+    @vault.setter
+    def vault(self, value: int):
+        source = self._wallet_source()
+        if not source:
+            from backend.models.qf.player_data import QFPlayerData
 
-    @property
-    def tl_tutorial_started_at(self):
-        data = self.tl_player_data
-        return data.tutorial_started_at if data else None
-
-    @tl_tutorial_started_at.setter
-    def tl_tutorial_started_at(self, value):
-        self._ensure_tl_data().tutorial_started_at = value
+            self.qf_player_data = QFPlayerData(player_id=self.player_id)
+            source = self.qf_player_data
+        source.vault = value
 
     @property
-    def tl_tutorial_completed_at(self):
-        data = self.tl_player_data
-        return data.tutorial_completed_at if data else None
+    def active_round_id(self):
+        """Proxy active_round_id to the Quipflip-specific player data."""
 
-    @tl_tutorial_completed_at.setter
-    def tl_tutorial_completed_at(self, value):
-        self._ensure_tl_data().tutorial_completed_at = value
+        if self.qf_player_data:
+            return self.qf_player_data.active_round_id
+        return None
+
+    @active_round_id.setter
+    def active_round_id(self, value):
+        if not self.qf_player_data:
+            raise AttributeError("QF player data is not loaded; cannot set active_round_id")
+        self.qf_player_data.active_round_id = value
 
     def __repr__(self):
         return (f"<Player(player_id={self.player_id}, username={self.username}, "

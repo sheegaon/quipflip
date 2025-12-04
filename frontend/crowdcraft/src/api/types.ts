@@ -1,5 +1,24 @@
 // API Response Types based on backend documentation
 // Common types shared across games
+export type GameType = 'qf' | 'mm' | 'ir' | 'tl';
+
+export interface GamePlayerSnapshot {
+  game_type: GameType;
+  wallet?: number;
+  vault?: number;
+  tutorial_completed?: boolean;
+}
+
+export interface GlobalPlayerInfo {
+  player_id: string;
+  username: string;
+  email?: string | null;
+  is_guest: boolean;
+  is_admin: boolean;
+  created_at: string;
+  last_login_date?: string | null;
+}
+
 export interface AuthTokenResponse {
   access_token: string;
   refresh_token: string;
@@ -7,6 +26,23 @@ export interface AuthTokenResponse {
   expires_in: number;
   player_id: string;
   username: string;
+  player: GlobalPlayerInfo;
+  game_type?: GameType | null;
+  game_data?: GamePlayerSnapshot | null;
+  legacy_wallet?: number | null;
+  legacy_vault?: number | null;
+  legacy_tutorial_completed?: boolean | null;
+}
+
+export interface AuthSessionResponse {
+  player_id: string;
+  username: string;
+  player: GlobalPlayerInfo;
+  game_type?: GameType | null;
+  game_data?: GamePlayerSnapshot | null;
+  legacy_wallet?: number | null;
+  legacy_vault?: number | null;
+  legacy_tutorial_completed?: boolean | null;
 }
 
 export interface WsAuthTokenResponse {
@@ -229,20 +265,14 @@ export interface NotificationWebSocketMessage {
 
 export type NotificationStreamMessage = NotificationWebSocketMessage | PingWebSocketMessage;
 
-export interface Player {
-  player_id: string;
-  username: string;
-  email: string;
-  wallet: number;
-  vault: number;
-  starting_balance: number;
-  daily_bonus_available: boolean;
-  daily_bonus_amount: number;
-  last_login_date: string | null;
-  outstanding_prompts: number;
-  created_at: string;
-  is_guest?: boolean;
-  is_admin?: boolean;
+export interface Player extends GlobalPlayerInfo {
+  email?: string | null;
+  wallet?: number;
+  vault?: number;
+  starting_balance?: number;
+  daily_bonus_available?: boolean;
+  daily_bonus_amount?: number;
+  outstanding_prompts?: number;
   locked_until?: string | null;
   flag_dismissal_streak?: number;
 }

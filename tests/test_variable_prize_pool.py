@@ -4,7 +4,7 @@ from backend.models.qf.player import QFPlayer
 from backend.models.qf.round import Round
 from backend.models.qf.phraseset import Phraseset
 from backend.models.qf.vote import Vote
-from backend.services import QFRoundService
+from backend.services import GameType, QFRoundService
 from backend.services import QFVoteService
 from backend.services import TransactionService
 from backend.services import QFScoringService
@@ -216,7 +216,7 @@ async def test_prize_pool_updates_with_votes(db_session):
     await db_session.commit()
 
     vote_service = QFVoteService(db_session)
-    transaction_service = TransactionService(db_session)
+    transaction_service = TransactionService(db_session, GameType.QF)
 
     initial_pool = phraseset.total_pool
 

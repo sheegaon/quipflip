@@ -184,7 +184,7 @@ class QFPlayerRouter(PlayerRouterBase):
             db: AsyncSession = Depends(get_db),
         ):
             """Get tutorial status for the current player."""
-            tutorial_service = TutorialService(db)
+            tutorial_service = TutorialService(db, GameType.QF)
             return await tutorial_service.get_tutorial_status(player.player_id)
 
         @self.router.post("/tutorial/progress", response_model=UpdateTutorialProgressResponse)
@@ -194,7 +194,7 @@ class QFPlayerRouter(PlayerRouterBase):
             db: AsyncSession = Depends(get_db),
         ):
             """Update tutorial progress for the current player."""
-            tutorial_service = TutorialService(db)
+            tutorial_service = TutorialService(db, GameType.QF)
             tutorial_status = await tutorial_service.update_tutorial_progress(
                 player.player_id, request.progress
             )
@@ -209,7 +209,7 @@ class QFPlayerRouter(PlayerRouterBase):
             db: AsyncSession = Depends(get_db),
         ):
             """Reset tutorial progress for the current player."""
-            tutorial_service = TutorialService(db)
+            tutorial_service = TutorialService(db, GameType.QF)
             return await tutorial_service.reset_tutorial(player.player_id)
 
 
@@ -318,7 +318,7 @@ async def _get_current_round(player: Player, db: AsyncSession) -> CurrentRoundRe
 
     if datetime.now(UTC) > grace_cutoff:
         round_service = QFRoundService(db)
-        transaction_service = TransactionService(db)
+        transaction_service = TransactionService(db, GameType.QF)
         await round_service.handle_timeout(round.round_id, transaction_service)
         await db.refresh(player)
         return CurrentRoundResponse(

@@ -48,7 +48,7 @@ class QFPlayerData(Base):
     flag_dismissal_streak = Column(Integer, default=0, nullable=False)
 
     # Relationships
-    player = relationship("Player", back_populates="qf_player_data")
+    player = relationship("Player", back_populates="qf_player_data", lazy="selectin")
 
     @property
     def balance(self) -> int:

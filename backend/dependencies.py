@@ -62,10 +62,10 @@ async def _enforce_rate_limit(scope: str, identifier: str | None, limit: int) ->
 
 
 async def get_current_player(
-        request: Request,
-        game_type: GameType = GameType.QF,
-        authorization: str | None = Header(default=None, alias="Authorization"),
-        db: AsyncSession = Depends(get_db),
+    request: Request,
+    game_type: GameType | None = None,
+    authorization: str | None = Header(default=None, alias="Authorization"),
+    db: AsyncSession = Depends(get_db),
 ) -> Player:
     """Resolve the current authenticated player via JWT access token.
 
@@ -122,10 +122,10 @@ async def get_current_player(
 
 
 async def get_optional_player(
-        request: Request,
-        game_type: GameType = GameType.QF,
-        authorization: str | None = Header(default=None, alias="Authorization"),
-        db: AsyncSession = Depends(get_db),
+    request: Request,
+    game_type: GameType | None = None,
+    authorization: str | None = Header(default=None, alias="Authorization"),
+    db: AsyncSession = Depends(get_db),
 ) -> Player | None:
     """Return the current player if available, otherwise None for auth failures."""
     try:
@@ -138,7 +138,7 @@ async def get_optional_player(
 
 async def enforce_vote_rate_limit(
     request: Request,
-    game_type: GameType = GameType.QF,
+    game_type: GameType | None = None,
     authorization: str | None = Header(default=None, alias="Authorization"),
     db: AsyncSession = Depends(get_db),
 ) -> Player:

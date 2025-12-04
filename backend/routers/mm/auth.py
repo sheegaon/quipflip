@@ -9,6 +9,8 @@ from backend.database import get_db
 from backend.dependencies import get_current_player, get_optional_player
 from backend.schemas.auth import (
     AuthTokenResponse,
+    GamePlayerSnapshot,
+    GlobalPlayerInfo,
     LoginRequest,
     LogoutRequest,
     RefreshRequest,
@@ -17,6 +19,7 @@ from backend.schemas.auth import (
 )
 from backend.services import AuthError
 from backend.services.auth_service import AuthService, GameType
+from backend.services.player_service import PlayerService
 from backend.utils.cookies import (
     clear_auth_cookies,
     clear_refresh_cookie,
@@ -28,6 +31,54 @@ from backend.models.player_base import PlayerBase
 
 router = APIRouter()
 settings = get_settings()
+
+
+async def _build_auth_response(
+    *,
+    player: PlayerBase,
+    access_token: str,
+    refresh_token: str,
+    expires_in: int,
+    db: AsyncSession,
+) -> AuthTokenResponse:
+    player_service = PlayerService(db)
+    game_snapshot = await player_service.snapshot_player_data(player, GameType.MM)
+    snapshot_model = GamePlayerSnapshot(**game_snapshot) if game_snapshot else None
+
+    legacy_wallet = (
+        snapshot_model.wallet if snapshot_model and settings.auth_emit_legacy_fields else None
+    )
+    legacy_vault = snapshot_model.vault if snapshot_model and settings.auth_emit_legacy_fields else None
+    legacy_tutorial_completed = (
+        snapshot_model.tutorial_completed
+        if snapshot_model and settings.auth_emit_legacy_fields
+        else None
+    )
+
+    player_payload = GlobalPlayerInfo(
+        player_id=player.player_id,
+        username=player.username,
+        email=player.email,
+        is_guest=player.is_guest,
+        is_admin=player.is_admin,
+        created_at=player.created_at,
+        last_login_date=player.last_login_date,
+    )
+
+    return AuthTokenResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        token_type="bearer",
+        expires_in=expires_in,
+        player_id=player.player_id,
+        username=player.username,
+        player=player_payload,
+        game_type=GameType.MM,
+        game_data=snapshot_model,
+        legacy_wallet=legacy_wallet,
+        legacy_vault=legacy_vault,
+        legacy_tutorial_completed=legacy_tutorial_completed,
+    )
 
 
 async def _complete_login(player: PlayerBase, response: Response, db: AsyncSession,) -> AuthTokenResponse:
@@ -45,13 +96,12 @@ async def _complete_login(player: PlayerBase, response: Response, db: AsyncSessi
     set_access_token_cookie(response, access_token)
     set_refresh_cookie(response, refresh_token, expires_days=settings.refresh_token_exp_days)
 
-    return AuthTokenResponse(
+    return await _build_auth_response(
+        player=player,
         access_token=access_token,
         refresh_token=refresh_token,
-        token_type="bearer",
         expires_in=expires_in,
-        player_id=player.player_id,
-        username=player.username,
+        db=db,
     )
 
 
@@ -117,13 +167,12 @@ async def refresh_tokens(request: RefreshRequest, response: Response,
     set_access_token_cookie(response, access_token)
     set_refresh_cookie(response, new_refresh_token, expires_days=settings.refresh_token_exp_days)
 
-    return AuthTokenResponse(
+    return await _build_auth_response(
+        player=player,
         access_token=access_token,
         refresh_token=new_refresh_token,
-        token_type="bearer",
         expires_in=expires_in,
-        player_id=player.player_id,
-        username=player.username,
+        db=db,
     )
 
 

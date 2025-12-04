@@ -1,7 +1,7 @@
 """Tests for IR game flow (backronym creation, voting, results)."""
 import pytest
 import uuid
-from backend.services import IRPlayerService
+from backend.services import GameType, IRPlayerService
 from backend.services import IRBackronymSetService
 from backend.services import IRVoteService
 from backend.services import TransactionService
@@ -58,7 +58,7 @@ async def test_ir_create_backronym_set(db_session, ir_player_factory):
 async def test_ir_submit_backronym_entry(db_session, ir_player_factory):
     """Test submitting a backronym entry."""
     set_service = IRBackronymSetService(db_session)
-    transaction_service = TransactionService(db_session)
+    transaction_service = TransactionService(db_session, GameType.IR)
     word_service = IRWordService(db_session)
 
     player = await ir_player_factory()
@@ -275,7 +275,7 @@ async def test_ir_player_insufficient_balance(db_session, ir_player_factory):
     from backend.services import TransactionService
 
     player = await ir_player_factory()
-    transaction_service = TransactionService(db_session)
+    transaction_service = TransactionService(db_session, GameType.IR)
 
     # Set balance to less than entry cost
     player.wallet = 50

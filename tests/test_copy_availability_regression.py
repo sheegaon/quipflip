@@ -8,7 +8,7 @@ a server restart).
 import pytest
 import uuid
 from backend.models.qf.prompt import Prompt
-from backend.services import QFRoundService
+from backend.services import GameType, QFRoundService
 from backend.services import TransactionService
 from backend.services import QFPlayerService
 
@@ -27,7 +27,7 @@ async def test_copy_available_when_prompts_in_database(db_session, player_factor
 
     # Services
     round_service = QFRoundService(db_session)
-    transaction_service = TransactionService(db_session)
+    transaction_service = TransactionService(db_session, GameType.QF)
     player_service = QFPlayerService(db_session)
 
     # Disable all existing prompts to ensure we only use our test prompt
@@ -82,7 +82,7 @@ async def test_copy_not_available_for_own_prompts(db_session, player_factory):
     player = await player_factory()
 
     round_service = QFRoundService(db_session)
-    transaction_service = TransactionService(db_session)
+    transaction_service = TransactionService(db_session, GameType.QF)
 
     # Disable all existing prompts to ensure we only use our test prompt
     from backend.models.qf.prompt import Prompt as PromptModel
@@ -131,7 +131,7 @@ async def test_copy_not_available_after_already_copied(db_session, player_factor
     player2 = await player_factory()
 
     round_service = QFRoundService(db_session)
-    transaction_service = TransactionService(db_session)
+    transaction_service = TransactionService(db_session, GameType.QF)
 
     # Disable all existing prompts to ensure we only use our test prompt
     from backend.models.qf.prompt import Prompt as PromptModel
@@ -188,7 +188,7 @@ async def test_multiple_prompts_available_count(db_session, player_factory):
     player3 = await player_factory()
 
     round_service = QFRoundService(db_session)
-    transaction_service = TransactionService(db_session)
+    transaction_service = TransactionService(db_session, GameType.QF)
 
     # Disable all existing prompts to ensure we only use our test prompts
     from backend.models.qf.prompt import Prompt as PromptModel

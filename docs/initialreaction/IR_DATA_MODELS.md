@@ -4,7 +4,7 @@ This guide covers the Initial Reaction models inside `backend/models/ir`, which 
 
 ## Architecture Note
 
-Initial Reaction uses the **unified Player model with game-specific data delegation** pattern. See [DATA_MODELS.md Architecture Overview](../DATA_MODELS.md#architecture-overview) for details on how `Player` delegates game-specific fields to `IRPlayerData`.
+Initial Reaction uses the **unified Player model with explicit per-game data** pattern. `Player` remains global and game-agnostic; all IR balances and state live in `IRPlayerData` and are loaded explicitly (e.g., via `PlayerService.snapshot_player_data(game_type="ir")`). Legacy `Player.wallet/vault` shims may mirror IR data only while `auth_emit_legacy_fields` is enabled during the migration.
 
 **IRPlayerData** contains Initial Reaction-specific player state:
 - `player_id` (UUID, PK, FK to players.player_id)

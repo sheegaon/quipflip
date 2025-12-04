@@ -1,4 +1,5 @@
 from backend.services.auth_service import AuthService, AuthError, GameType
+from backend.services.player_service import PlayerService, PlayerServiceError
 from backend.services.system_config_service import SystemConfigService
 from backend.services.username_service import (
     UsernameService,
@@ -62,6 +63,8 @@ __all__ = [
     'AuthService',
     'AuthError',
     'PlayerError',
+    'PlayerService',
+    'PlayerServiceError',
     'GameType',
     'SystemConfigService',
     'UsernameService',

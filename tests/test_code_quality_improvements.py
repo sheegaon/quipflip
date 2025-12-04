@@ -12,7 +12,7 @@ import pytest
 from datetime import datetime, UTC, timedelta
 import uuid
 
-from backend.services import QFVoteService
+from backend.services import GameType, QFVoteService
 from backend.services import QFRoundService
 from backend.services import TransactionService
 from backend.utils.datetime_helpers import ensure_utc
@@ -129,7 +129,7 @@ class TestSystemVote:
 
         # Submit correct vote
         vote_service = QFVoteService(db_session)
-        transaction_service = TransactionService(db_session)
+        transaction_service = TransactionService(db_session, GameType.QF)
 
         initial_balance = ai_player.balance
         vote = await vote_service.submit_system_vote(
@@ -210,7 +210,7 @@ class TestSystemVote:
 
         # Submit incorrect vote
         vote_service = QFVoteService(db_session)
-        transaction_service = TransactionService(db_session)
+        transaction_service = TransactionService(db_session, GameType.QF)
 
         initial_balance = ai_player.balance
         vote = await vote_service.submit_system_vote(
@@ -290,7 +290,7 @@ class TestSystemVote:
         await db_session.commit()
 
         vote_service = QFVoteService(db_session)
-        transaction_service = TransactionService(db_session)
+        transaction_service = TransactionService(db_session, GameType.QF)
 
         # First vote succeeds
         await vote_service.submit_system_vote(

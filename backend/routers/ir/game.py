@@ -101,7 +101,7 @@ async def start_game(
             )
 
         set_service = BackronymSetService(db)
-        txn_service = TransactionService(db)
+        txn_service = TransactionService(db, GameType.IR)
 
         available_set = await set_service.get_available_set_for_entry(
             exclude_player_id=str(player.player_id)
@@ -276,7 +276,7 @@ async def submit_vote(
 
     try:
         vote_service = IRVoteService(db)
-        txn_service = TransactionService(db)
+        txn_service = TransactionService(db, GameType.IR)
 
         is_eligible, error, is_participant = await vote_service.check_vote_eligibility(
             str(player.player_id), set_id

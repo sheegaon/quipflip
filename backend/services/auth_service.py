@@ -14,18 +14,12 @@ from backend.utils.model_registry import GameType
 from backend.models.player import Player
 from backend.models.player_base import PlayerBase
 from backend.models.refresh_token import RefreshToken
-from backend.services.username_service import canonicalize_username
+from backend.services.player_service import PlayerService, PlayerServiceError
 from backend.utils.simple_jwt import (
     encode_jwt,
     decode_jwt,
     ExpiredSignatureError,
     InvalidTokenError,
-)
-from backend.utils.passwords import (
-    hash_password,
-    verify_password,
-    validate_password_strength,
-    PasswordValidationError,
 )
 
 logger = logging.getLogger(__name__)
@@ -42,28 +36,20 @@ class AuthService:
     Game-specific logic is handled through player_service parameter.
     """
 
-    def __init__(self, db: AsyncSession, game_type: GameType = GameType.QF):
+    def __init__(self, db: AsyncSession, game_type: GameType | None = None, *, player_service: PlayerService | None = None):
         self.db = db
         self.game_type = game_type
         self.settings = get_settings()
 
-        # Instantiate the correct player service based on game type
-        # Player service is still game-specific for creating game-specific player_data
-        if game_type == GameType.QF:
-            from backend.services.qf.player_service import QFPlayerService as PlayerService
-        elif game_type == GameType.IR:
-            from backend.services.ir.player_service import IRPlayerService as PlayerService
-        elif game_type == GameType.MM:
-            from backend.services.mm.player_service import MMPlayerService as PlayerService
-        elif game_type == GameType.TL:
-            from backend.services.tl.player_service import TLPlayerService as PlayerService
-        else:
-            raise ValueError(f"Unsupported game type: {game_type}")
-
         # Unified models for all games
         self.player_model = Player
         self.refresh_token_model = RefreshToken
-        self.player_service = PlayerService(db)
+        self.player_service = player_service or PlayerService(db)
+
+    def _require_game_type(self) -> GameType:
+        if self.game_type is None:
+            raise AuthError("game_type_required")
+        return self.game_type
 
     # ------------------------------------------------------------------
     # Registration
@@ -74,105 +60,60 @@ class AuthService:
         Returns:
             tuple[PlayerBase, str]: The created player and the auto-generated password
         """
-        from backend.services.username_service import UsernameService
-        import random
+        game_type = self._require_game_type()
+        try:
+            player, guest_password = await self.player_service.register_guest(game_type)
+        except PlayerServiceError as exc:
+            message = str(exc)
+            if message == "username_generation_failed":
+                raise AuthError("username_generation_failed") from exc
+            if message == "guest_email_generation_failed":
+                raise AuthError("guest_email_generation_failed") from exc
+            if message == "invalid_username":
+                raise AuthError("invalid_username") from exc
+            if message == "game_type_required":
+                raise AuthError("game_type_required") from exc
+            raise
 
-        # Generate random 4-digit number for email
-        random_digits = str(random.randint(1000, 9999))
-        guest_domain = self.player_service.get_guest_domain()
-        guest_email = f"guest{random_digits}@{guest_domain}"
-        guest_password = self.player_service.get_guest_password()
-
-        password_hash = hash_password(guest_password)
-
-        # Generate unique username for this player
-        username_service = UsernameService(self.db, game_type=self.game_type)
-        username_display, username_canonical = await username_service.generate_unique_username()
-
-        # Try to create the guest account, retry with new email if collision
-        max_retries = 10
-        for attempt in range(max_retries):
-            try:
-                player = await self.player_service.create_player(
-                    username=username_display,
-                    email=guest_email,
-                    password_hash=password_hash,
-                )
-                # Mark as guest after creation
-                player.is_guest = True
-                await self.db.commit()
-                await self.db.refresh(player)
-
-                logger.info(f"Created {self.game_type.value} guest player {player.player_id} with email {guest_email}")
-
-                return player, guest_password
-            except ValueError as exc:
-                message = str(exc)
-                if message == "email_taken" and attempt < max_retries - 1:
-                    # Generate new random number and retry
-                    random_digits = str(random.randint(1000, 9999))
-                    guest_email = f"guest{random_digits}@{guest_domain}"
-                    continue
-                elif message == "username_taken":
-                    raise AuthError("username_generation_failed") from exc
-                elif message == "email_taken":
-                    raise AuthError("guest_email_generation_failed") from exc
-                elif message == "invalid_username":
-                    raise AuthError("invalid_username") from exc
-                raise
-
-        raise AuthError("guest_email_generation_failed")
+        logger.info(
+            "Created %s guest player %s", game_type.value, player.player_id
+        )
+        return player, guest_password
 
     async def register_player(self, email: str, password: str) -> PlayerBase:
         """Create a new player with provided credentials."""
-        from backend.services.username_service import UsernameService
-
-        email_normalized = email.strip().lower()
-        try:
-            validate_password_strength(password)
-        except PasswordValidationError as exc:
-            raise AuthError(str(exc)) from exc
-
-        password_hash = hash_password(password)
-
-        # Generate unique username for this player
-        username_service = UsernameService(self.db, game_type=self.game_type)
-        username_display, username_canonical = await username_service.generate_unique_username()
+        game_type = self._require_game_type()
 
         try:
-            player = await self.player_service.create_player(
-                username=username_display,
-                email=email_normalized,
-                password_hash=password_hash,
+            player = await self.player_service.register_player(
+                game_type=game_type, email=email, password=password
             )
             logger.info(
-                f"Created {self.game_type.value} player {player.player_id} via credential signup with username "
-                f"{username_display}"
+                "Created %s player %s via credential signup", game_type.value, player.player_id
             )
 
-            # Initialize game-specific content for new player
-            if self.game_type == GameType.QF:
+            if game_type == GameType.QF:
                 from backend.services.qf.quest_service import QuestService
+
                 quest_service = QuestService(self.db)
                 try:
                     await quest_service.initialize_quests_for_player(player.player_id)
-                    logger.info(f"Initialized starter quests for player {player.player_id}")
+                    logger.info("Initialized starter quests for player %s", player.player_id)
                 except Exception as e:
-                    logger.error(f"Failed to initialize quests for player {player.player_id}: {e}", exc_info=True)
-                    # Don't fail account creation if quest initialization fails
-                    # The backup script will create missing quests later if needed
+                    logger.error(
+                        "Failed to initialize quests for player %s: %s", player.player_id, e, exc_info=True
+                    )
 
             return player
-        except ValueError as exc:
+        except PlayerServiceError as exc:
             message = str(exc)
             if message == "username_taken":
-                # This should be extremely rare since we generate unique usernames
                 raise AuthError("username_generation_failed") from exc
             if message == "email_taken":
                 raise AuthError("email_taken") from exc
             if message == "invalid_username":
                 raise AuthError("invalid_username") from exc
-            raise
+            raise AuthError(message) from exc
 
     async def upgrade_guest(self, player: Player, email: str, password: str) -> Player:
         """Upgrade a guest account to a full account.
@@ -188,39 +129,16 @@ class AuthService:
         Raises:
             AuthError: If player is not a guest, email is taken, or password is invalid
         """
-        if not player.is_guest:
-            raise AuthError("not_a_guest")
-
-        email_normalized = email.strip().lower()
-
-        # Validate password strength
         try:
-            validate_password_strength(password)
-        except PasswordValidationError as exc:
-            raise AuthError(str(exc)) from exc
-
-        # Check if email is already taken in unified players table
-        existing = await self.db.execute(
-            select(Player).where(Player.email == email_normalized)
-        )
-        existing_player = existing.scalar_one_or_none()
-        if existing_player and existing_player.player_id != player.player_id:
-            raise AuthError("email_taken")
-
-        # Update player credentials
-        player.email = email_normalized
-        player.password_hash = hash_password(password)
-        player.is_guest = False
-
-        try:
-            await self.db.commit()
-            await self.db.refresh(player)
-            logger.info(f"Upgraded {self.game_type.value} guest {player.player_id} to full account with email "
-                        f"{email_normalized}")
-            return player
-        except Exception as exc:
-            await self.db.rollback()
-            logger.error(f"Failed to upgrade {self.game_type.value} guest {player.player_id}: {exc}")
+            upgraded = await self.player_service.upgrade_guest(player, email, password)
+            logger.info(
+                "Upgraded guest %s to full account with email %s", player.player_id, upgraded.email
+            )
+            return upgraded
+        except PlayerServiceError as exc:
+            message = str(exc)
+            if message in {"not_a_guest", "email_taken"}:
+                raise AuthError(message) from exc
             raise AuthError("upgrade_failed") from exc
 
     # ------------------------------------------------------------------
@@ -231,47 +149,24 @@ class AuthService:
 
         Now uses unified Player model instead of game-specific models.
         """
-        email_normalized = email.strip().lower()
-        if not email_normalized:
-            raise AuthError("Email/password combination is invalid")
-
-        # Use unified Player model for authentication
-        result = await self.db.execute(
-            select(Player).where(Player.email == email_normalized)
-        )
-        player = result.scalar_one_or_none()
-        if not player or not verify_password(password, player.password_hash):
-            raise AuthError("Email/password combination is invalid")
-
-        self.player_service.apply_admin_status(player)
-
-        return player
+        try:
+            return await self.player_service.login_player(
+                email=email, password=password, game_type=self.game_type
+            )
+        except PlayerServiceError as exc:
+            raise AuthError("Email/password combination is invalid") from exc
 
     async def authenticate_player_by_username(self, username: str, password: str) -> Player:
         """Authenticate a player using username and password.
 
         Now uses unified Player model instead of game-specific models.
         """
-        username_stripped = username.strip()
-        if not username_stripped:
-            raise AuthError("Username/password combination is invalid")
-
-        # Convert to canonical form for lookup
-        username_canonical = canonicalize_username(username_stripped)
-        if not username_canonical:
-            raise AuthError("Username/password combination is invalid")
-
-        # Use unified Player model for authentication
-        result = await self.db.execute(
-            select(Player).where(Player.username_canonical == username_canonical)
-        )
-        player = result.scalar_one_or_none()
-        if not player or not verify_password(password, player.password_hash):
-            raise AuthError("Username/password combination is invalid")
-
-        self.player_service.apply_admin_status(player)
-
-        return player
+        try:
+            return await self.player_service.login_player(
+                username=username, password=password, game_type=self.game_type
+            )
+        except PlayerServiceError as exc:
+            raise AuthError("Username/password combination is invalid") from exc
 
     # ------------------------------------------------------------------
     # Token helpers
@@ -356,7 +251,8 @@ class AuthService:
         result = await self.db.execute(
             select(Player).where(Player.player_id == refresh_token.player_id)
         )
-        return result.scalar_one_or_none()
+        player = result.scalar_one_or_none()
+        return self.player_service.apply_admin_status(player)
 
     async def issue_tokens(self, player: Player, *, rotate_existing: bool = True) -> tuple[str, str, int]:
         if rotate_existing:
@@ -396,7 +292,7 @@ class AuthService:
             result = await self.db.execute(
                 select(Player).where(Player.player_id == refresh_token.player_id)
             )
-            player = result.scalar_one_or_none()
+            player = self.player_service.apply_admin_status(result.scalar_one_or_none())
             if not player:
                 raise AuthError("Token could not be refreshed, please log in again")
 
