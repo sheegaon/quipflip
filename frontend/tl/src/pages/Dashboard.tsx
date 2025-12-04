@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { useTutorial } from '../contexts/TutorialContext';
 import apiClient, { extractErrorMessage } from '@crowdcraft/api/client.ts';
+import type { TLRoundAvailability } from '@crowdcraft/api/types.ts';
 import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { UpgradeGuestAccount } from '../components/UpgradeGuestAccount';
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -24,7 +25,7 @@ export const Dashboard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showTutorialWelcome, setShowTutorialWelcome] = useState(false);
-  const [roundAvailability, setRoundAvailability] = useState<any>(null);
+  const [roundAvailability, setRoundAvailability] = useState<TLRoundAvailability | null>(null);
 
   // Load dashboard and round availability
   useEffect(() => {
@@ -33,7 +34,10 @@ export const Dashboard: React.FC = () => {
 
     Promise.all([
       refreshDashboard(controller.signal),
-      apiClient.tlCheckRoundAvailability(controller.signal).then(av => setRoundAvailability(av)).catch(() => ({}))
+      apiClient
+        .tlCheckRoundAvailability(controller.signal)
+        .then(av => setRoundAvailability(av))
+        .catch(() => setRoundAvailability(null)),
     ]).finally(() => setLoading(false));
 
     return () => controller.abort();

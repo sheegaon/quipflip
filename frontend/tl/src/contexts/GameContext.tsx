@@ -19,7 +19,6 @@ export type TLPlayer = Player & {
 };
 
 type PendingResult = never;
-type PhrasesetDashboardSummary = null;
 type UnclaimedResult = never;
 type ActiveRound = TLRoundDetails | null;
 
@@ -30,7 +29,6 @@ type GameState = {
   showNewUserWelcome: boolean;
   activeRound: ActiveRound;
   pendingResults: PendingResult[];
-  phrasesetSummary: PhrasesetDashboardSummary;
   unclaimedResults: UnclaimedResult[];
   roundAvailability: TLRoundAvailability | null;
   loading: boolean;
@@ -74,7 +72,6 @@ export const GameProvider: React.FC<{
   const [showNewUserWelcome, setShowNewUserWelcome] = useState(false);
   const [activeRound, setActiveRound] = useState<ActiveRound>(null);
   const [pendingResults, setPendingResults] = useState<PendingResult[]>([]);
-  const [phrasesetSummary] = useState<PhrasesetDashboardSummary>(null);
   const [unclaimedResults, setUnclaimedResults] = useState<UnclaimedResult[]>([]);
   const [roundAvailability, setRoundAvailability] = useState<TLRoundAvailability | null>(null);
   const [loading, setLoading] = useState(false);
@@ -430,7 +427,6 @@ export const GameProvider: React.FC<{
         showNewUserWelcome,
         activeRound,
         pendingResults,
-        phrasesetSummary,
         unclaimedResults,
         roundAvailability,
         loading,
@@ -459,6 +455,7 @@ export const GameProvider: React.FC<{
       showNewUserWelcome,
       activeRound,
       pendingResults,
+      unclaimedResults,
       roundAvailability,
       loading,
       error,

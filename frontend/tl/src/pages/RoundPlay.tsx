@@ -105,13 +105,6 @@ export const RoundPlay: React.FC = () => {
   const [roundEnded, setRoundEnded] = useState(false);
   const [finalResult, setFinalResult] = useState<FinalResult | null>(null);
 
-  // Check if round should end (3 strikes)
-  useEffect(() => {
-    if (strikes >= 3 && !roundEnded) {
-      finalizeRound();
-    }
-  }, [strikes, roundEnded]);
-
   const handleSubmitGuess = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -214,13 +207,13 @@ export const RoundPlay: React.FC = () => {
     } catch (err) {
       setError(extractErrorMessage(err) || 'Failed to finalize round');
     }
-  }, [round, strikes, navigate]);
+  }, [round, strikes]);
 
   useEffect(() => {
-  if (strikes >= 3 && !roundEnded) {
-    finalizeRound();
-  }
-}, [strikes, roundEnded, finalizeRound]);
+    if (strikes >= 3 && !roundEnded) {
+      finalizeRound();
+    }
+  }, [strikes, roundEnded, finalizeRound]);
 
   const handleAbandonRound = async () => {
     if (!round) return;
