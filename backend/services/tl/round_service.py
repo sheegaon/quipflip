@@ -47,6 +47,8 @@ class TLRoundService:
         settings = get_settings()
         self.entry_cost = settings.tl_entry_cost
         self.max_strike_count = 3
+        self.prompt_relevance_threshold = settings.tl_topic_threshold
+        self.self_similarity_threshold = settings.tl_self_similarity_threshold
 
     async def start_round(
         self,
@@ -144,7 +146,7 @@ class TLRoundService:
         round_id: str,
         player_id: str,
         guess_text: str,
-    ) -> Tuple[Dict, Optional[str]]:
+    ) -> Tuple[Dict, Optional[str], Optional[str]]:
         """Submit a guess for an active round.
 
         Steps:
@@ -186,30 +188,30 @@ class TLRoundService:
             )
             round = result.scalars().first()
             if not round:
-                return {}, "round_not_found"
+                return {}, "round_not_found", None
 
             if round.player_id != player_id:
-                return {}, "unauthorized"
+                return {}, "unauthorized", None
 
             if round.status != 'active':
-                return {}, f"round_not_active"
+                return {}, f"round_not_active", None
 
             if round.strikes >= self.max_strike_count:
-                return {}, "round_already_ended"
+                return {}, "round_already_ended", None
 
             # Validate phrase format and dictionary compliance
             validator = get_phrase_validator()
             is_valid, error_msg = validator.validate(guess_text)
             if not is_valid:
                 logger.debug(f"⏭️  Guess rejected: invalid format ({error_msg})")
-                return {}, "invalid_phrase"
+                return {}, "invalid_phrase", error_msg
 
             # Validate phrase doesn't reuse significant words from prompt
             prompt_text = round.prompt.text if hasattr(round, 'prompt') else await self._get_prompt_text(db, round.prompt_id)
             is_valid, error_msg = await validator.validate_prompt_phrase(guess_text, prompt_text)
             if not is_valid:
                 logger.debug(f"⏭️  Guess rejected: conflicts with prompt ({error_msg})")
-                return {}, "invalid_phrase"
+                return {}, "invalid_phrase", error_msg
 
             # Generate embedding for guess
             guess_embedding = await self.matching.generate_embedding(guess_text)
@@ -219,20 +221,30 @@ class TLRoundService:
                 round.prompt.text if hasattr(round, 'prompt') else await self._get_prompt_text(db, round.prompt_id),
                 guess_text,
                 prompt_embedding=None,  # Recompute for safety
+                threshold=self.prompt_relevance_threshold,
             )
             if not is_on_topic:
                 logger.debug(f"⏭️  Guess rejected: off-topic (similarity={topic_sim:.3f})")
-                return {}, "off_topic"
+                message = (
+                    f"Not on topic (similarity {topic_sim:.2f}, "
+                    f"need ≥ {self.prompt_relevance_threshold:.2f})"
+                )
+                return {}, "off_topic", message
 
             # Check self-similarity
             prior_guesses = await self._get_prior_guesses(db, round_id)
             is_too_similar, max_sim = await self.matching.check_self_similarity(
                 guess_text,
                 prior_guesses,
+                threshold=self.self_similarity_threshold,
             )
             if is_too_similar:
                 logger.debug(f"⏭️  Guess rejected: too similar to prior (similarity={max_sim:.3f})")
-                return {}, "too_similar"
+                similarity_note = (
+                    f"Too similar to your previous guess (similarity {max_sim:.2f}, "
+                    f"max allowed {self.self_similarity_threshold:.2f})"
+                ) if max_sim is not None else "Too similar to a prior guess"
+                return {}, "too_similar", similarity_note
 
             # Find matches in snapshot
             snapshot_answers = await self._build_snapshot_answers(db, round.snapshot_answer_ids)
@@ -290,11 +302,11 @@ class TLRoundService:
                 "new_strikes": new_strikes,
                 "current_coverage": current_coverage,
                 "round_status": round.status,
-            }, None
+            }, None, None
 
         except Exception as e:
             logger.error(f"❌ Submit guess failed: {e}")
-            return {}, "submit_failed"
+            return {}, "submit_failed", None
 
     async def abandon_round(
         self,

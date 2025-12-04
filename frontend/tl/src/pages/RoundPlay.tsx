@@ -1,4 +1,4 @@
-import React, { useEffect, useState , useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import apiClient, { extractErrorMessage } from '@crowdcraft/api/client.ts';
@@ -34,6 +34,60 @@ interface Guess {
   timestamp: number;
 }
 
+const normalizeGuessText = (text: string) => text.trim().replace(/\s+/g, ' ');
+
+const validateGuessLocally = (guess: string): string | null => {
+  const normalized = normalizeGuessText(guess);
+
+  if (!normalized) {
+    return 'Enter a guess to submit';
+  }
+
+  if (normalized.length < 4 || normalized.length > 100) {
+    return 'Use 4-100 characters';
+  }
+
+  if (!/^[A-Za-z\s]+$/.test(normalized)) {
+    return 'Use letters and spaces only (A-Z)';
+  }
+
+  const words = normalized.split(' ').filter(Boolean);
+
+  if (words.length < 2 || words.length > 5) {
+    return 'Enter 2-5 words';
+  }
+
+  return null;
+};
+
+const levenshteinDistance = (a: string, b: string): number => {
+  if (a === b) return 0;
+  const matrix = Array.from({ length: a.length + 1 }, (_, i) =>
+    Array.from({ length: b.length + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0)),
+  );
+
+  for (let i = 1; i <= a.length; i += 1) {
+    for (let j = 1; j <= b.length; j += 1) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      matrix[i][j] = Math.min(
+        matrix[i - 1][j] + 1,
+        matrix[i][j - 1] + 1,
+        matrix[i - 1][j - 1] + cost,
+      );
+    }
+  }
+
+  return matrix[a.length][b.length];
+};
+
+const similarityScore = (a: string, b: string): number => {
+  if (!a || !b) return 0;
+  const distance = levenshteinDistance(a.toLowerCase(), b.toLowerCase());
+  const maxLength = Math.max(a.length, b.length);
+  if (maxLength === 0) return 1;
+  return 1 - distance / maxLength;
+};
+
 export const RoundPlay: React.FC = () => {
   const navigate = useNavigate();
   const { state: gameState } = useGame();
@@ -67,15 +121,32 @@ export const RoundPlay: React.FC = () => {
       return;
     }
 
+    const normalizedGuess = normalizeGuessText(guessText);
+    const validationError = validateGuessLocally(normalizedGuess);
+
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    const similarityHit = guesses.some((priorGuess) =>
+      similarityScore(normalizedGuess, priorGuess.text) >= 0.8,
+    );
+
+    if (similarityHit) {
+      setError('Too similar to your previous guess. Try a new idea.');
+      return;
+    }
+
     setIsSubmitting(true);
     setError(null);
 
     try {
-      const response = await apiClient.tlSubmitGuess(round.round_id, guessText.trim());
+      const response = await apiClient.tlSubmitGuess(round.round_id, normalizedGuess);
 
       // Add guess to history
       const newGuess: Guess = {
-        text: guessText.trim(),
+        text: normalizedGuess,
         wasMatch: response.was_match,
         causedStrike: response.new_strikes > strikes,
         timestamp: Date.now(),
