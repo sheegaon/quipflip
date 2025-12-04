@@ -359,11 +359,14 @@ async def get_round(
     """Get details of a specific round."""
     try:
         from sqlalchemy import select
+        from sqlalchemy.orm import selectinload
         from backend.models.tl import TLRound
 
         # Fetch round
         result = await db.execute(
-            select(TLRound).where(TLRound.round_id == round_id)
+            select(TLRound)
+            .options(selectinload(TLRound.prompt))
+            .where(TLRound.round_id == round_id)
         )
         round_obj = result.scalars().first()
 
@@ -387,7 +390,7 @@ async def get_round(
         return RoundDetails(
             round_id=round_obj.round_id,
             prompt_id=round_obj.prompt_id,
-            prompt_text=round_obj.prompt.text if hasattr(round_obj, 'prompt') else "",
+            prompt_text=round_obj.prompt.text if round_obj.prompt else "",
             snapshot_answer_count=len(round_obj.snapshot_answer_ids or []),
             snapshot_total_weight=round_obj.snapshot_total_weight,
             matched_clusters=round_obj.matched_clusters or [],

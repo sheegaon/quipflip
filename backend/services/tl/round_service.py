@@ -7,6 +7,7 @@ from typing import List, Dict, Optional, Tuple
 from datetime import datetime, UTC
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from backend.models.tl import (
     TLRound, TLGuess, TLAnswer, TLCluster, TLTransaction, TLPrompt
 )
@@ -189,7 +190,9 @@ class TLRoundService:
 
             # Get round
             result = await db.execute(
-                select(TLRound).where(TLRound.round_id == round_id)
+                select(TLRound)
+                .options(selectinload(TLRound.prompt))
+                .where(TLRound.round_id == round_id)
             )
             round = result.scalars().first()
             if not round:
@@ -203,6 +206,8 @@ class TLRoundService:
 
             if round.strikes >= self.max_strike_count:
                 return {}, "round_already_ended", None
+
+            prompt_text = round.prompt.text if round.prompt else await self._get_prompt_text(db, round.prompt_id)
 
             # Validate phrase format and dictionary compliance
             validator = get_phrase_validator()
@@ -218,7 +223,6 @@ class TLRoundService:
                 return {}, "invalid_phrase", error_msg
 
             # Validate phrase doesn't reuse significant words from prompt
-            prompt_text = round.prompt.text if hasattr(round, 'prompt') else await self._get_prompt_text(db, round.prompt_id)
             is_valid, error_msg = await validator.validate_prompt_phrase(guess_text, prompt_text)
             if not is_valid:
                 logger.debug(
@@ -235,7 +239,7 @@ class TLRoundService:
 
             # Check on-topic
             is_on_topic, topic_sim = await self.matching.check_on_topic(
-                round.prompt.text if hasattr(round, 'prompt') else await self._get_prompt_text(db, round.prompt_id),
+                prompt_text,
                 guess_text,
                 prompt_embedding=None,  # Recompute for safety
                 threshold=self.prompt_relevance_threshold,
