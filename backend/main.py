@@ -31,7 +31,7 @@ from backend.config import get_settings
 from backend.version import APP_VERSION
 from backend.services.qf.prompt_seeder import sync_prompts_with_database
 from backend.data.seed_tl_prompts import seed_prompts as seed_tl_prompts
-from backend.data.seed_tl_answers import seed_answers as seed_tl_answers
+from backend.data.seed_tl_answers import seed_answers as seed_tl_answers, cleanup_empty_prompts as cleanup_tl_prompts
 from backend.routers import qf, ir, mm, tl, auth, health, notifications, online_users
 from backend.middleware.deduplication import deduplication_middleware
 from backend.middleware.online_user_tracking import online_user_tracking_middleware
@@ -417,6 +417,16 @@ async def lifespan(app_instance: FastAPI):
     except Exception as e:
         logger.error(f"Failed to seed ThinkLink answers: {e}")
         # Don't raise - allow server to start even if seeding fails
+
+    # Clean up prompts with no answers (removes prompts not in CSV)
+    try:
+        from backend.database import AsyncSessionLocal
+        async with AsyncSessionLocal() as db:
+            await cleanup_tl_prompts(db)
+        logger.info("ThinkLink prompt cleanup completed")
+    except Exception as e:
+        logger.error(f"Failed to cleanup ThinkLink prompts: {e}")
+        # Don't raise - allow server to start even if cleanup fails
 
     # Start background tasks
     ai_backup_task = None

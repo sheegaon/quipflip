@@ -184,7 +184,7 @@ class QFPlayerService(PlayerServiceBase):
             .where(Phraseset.status.in_(["open", "closing"]))
         )
         count = result.scalar() or 0
-        logger.debug(f"Player {player_id} has {count} outstanding prompts")
+        logger.info(f"Player {player_id} has {count} outstanding prompts")
         return count
 
     async def can_start_prompt_round(self, player: Player) -> tuple[bool, str]:

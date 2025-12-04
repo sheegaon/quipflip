@@ -218,10 +218,10 @@ class MMGameService:
             circle_images = result.scalars().all()
 
             if circle_images:
-                logger.debug(f"Found {len(circle_images)} Circle-participating images for player {player_id}")
+                logger.info(f"Found {len(circle_images)} Circle-participating images for player {player_id}")
                 return random.choice(circle_images)
 
-            logger.debug(f"No Circle-participating images found, falling back to global selection")
+            logger.info(f"No Circle-participating images found, falling back to global selection")
 
         # Global fallback: Select random image from all eligible images
         stmt = (
@@ -308,7 +308,7 @@ class MMGameService:
         if circle_count >= count:
             # Case A: >= 5 Circle captions available - select all from Circle pool
             selected_captions = self._weighted_random_sample(circle_captions, count)
-            logger.debug(
+            logger.info(
                 f"Selected all {count} captions from Circle pool "
                 f"({circle_count} Circle captions available)"
             )
@@ -319,17 +319,17 @@ class MMGameService:
             selected_captions.extend(
                 self._weighted_random_sample(global_captions, remaining)
             )
-            logger.debug(
+            logger.info(
                 f"Selected {circle_count} Circle captions + {remaining} Global captions"
             )
         else:
             # Case C: 0 Circle captions - standard global selection
             selected_captions = self._weighted_random_sample(global_captions, count)
-            logger.debug(
+            logger.info(
                 f"Selected {count} captions from Global pool (no Circle captions)"
             )
 
-        logger.debug(
+        logger.info(
             f"Final selection for image {image_id}: "
             f"Quality scores: {[f'{c.quality_score:.3f}' for c in selected_captions]}"
         )

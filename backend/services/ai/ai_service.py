@@ -93,10 +93,10 @@ class AIService:
         """
         # Check if configured provider is available
         if self.settings.ai_provider == "openai" and self.settings.openai_api_key:
-            logger.debug("Using OpenAI as AI provider")
+            logger.info("Using OpenAI as AI provider")
             return "openai"
         elif self.settings.ai_provider == "gemini" and self.settings.gemini_api_key:
-            logger.debug("Using Gemini as AI provider")
+            logger.info("Using Gemini as AI provider")
             return "gemini"
         elif self.settings.ai_provider == "none":
             logger.error("No AI provider configured")

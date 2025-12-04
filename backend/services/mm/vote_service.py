@@ -482,7 +482,7 @@ class MMVoteService:
             caption.quality_score = self.scoring_service.calculate_quality_score(
                 caption.picks, caption.shows
             )
-            logger.debug(
+            logger.info(
                 f"Updated shows for caption {caption.caption_id}: "
                 f"{caption.quality_score:.3f} ({caption.picks}/{caption.shows})"
             )

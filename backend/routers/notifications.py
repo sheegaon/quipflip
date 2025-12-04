@@ -93,7 +93,7 @@ async def websocket_endpoint(
                 # Wait for message from client (shouldn't happen, but keeps connection alive)
                 data = await websocket.receive_text()
                 # Ignore client messages - this is a server-push-only endpoint
-                logger.debug(f"Ignored client message for {player_id=}: {data}")
+                logger.info(f"Ignored client message for {player_id=}: {data}")
         except WebSocketDisconnect:
             logger.info(f"WebSocket disconnected for {player_id=}")
         except Exception as e:

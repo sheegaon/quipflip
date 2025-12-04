@@ -73,7 +73,7 @@ class TLRoundService:
             (round, prompt_text, error_message) - error_message is None on success
         """
         try:
-            logger.debug(f"🎮 Starting round for player {player_id}...")
+            logger.info(f"🎮 Starting round for player {player_id}...")
 
             # Get player
             result = await db.execute(
@@ -97,7 +97,7 @@ class TLRoundService:
             answers = await self.prompt.get_active_answers_for_prompt(
                 db, str(prompt.prompt_id), limit=1000
             )
-            logger.debug(f"📊 Snapshot: {len(answers)} active answers")
+            logger.info(f"📊 Snapshot: {len(answers)} active answers")
 
             # Build snapshot data
             snapshot_answer_ids = [str(a.answer_id) for a in answers]
@@ -136,7 +136,7 @@ class TLRoundService:
             db.add(transaction)
             await db.flush()
 
-            logger.debug(
+            logger.info(
                 f"✅ Round started: {round.round_id} "
                 f"(prompt: {prompt.text[:50]}..., snapshot_weight={total_weight:.2f})"
             )
@@ -185,7 +185,7 @@ class TLRoundService:
                 - round_status: str
         """
         try:
-            logger.debug(f"💭 Submitting guess: '{guess_text}' for round {round_id}")
+            logger.info(f"💭 Submitting guess: '{guess_text}' for round {round_id}")
 
             # Get round
             result = await db.execute(
@@ -238,7 +238,7 @@ class TLRoundService:
             validator = get_phrase_validator()
             is_valid, error_msg = validator.validate(guess_text)
             if not is_valid:
-                logger.debug(
+                logger.info(
                     "⏭️  Guess rejected (validation): %s | round=%s player=%s guess='%s'",
                     error_msg,
                     round_id,
@@ -250,7 +250,7 @@ class TLRoundService:
             # Validate phrase doesn't reuse significant words from prompt
             is_valid, error_msg = await validator.validate_prompt_phrase(guess_text, prompt_text)
             if not is_valid:
-                logger.debug(
+                logger.info(
                     "⏭️  Guess rejected (prompt conflict): %s | round=%s player=%s guess='%s'",
                     error_msg,
                     round_id,
@@ -270,7 +270,7 @@ class TLRoundService:
                 threshold=self.self_similarity_threshold,
             )
             if is_too_similar:
-                logger.debug(f"⏭️  Guess rejected: too similar to prior (similarity={max_sim:.3f})")
+                logger.info(f"⏭️  Guess rejected: too similar to prior (similarity={max_sim:.3f})")
                 similarity_note = (
                     f"Too similar to your previous guess (similarity {max_sim:.2f}, "
                     f"max allowed {self.self_similarity_threshold:.2f})"
@@ -294,12 +294,12 @@ class TLRoundService:
                 # Update matched clusters
                 current_matched = round.matched_clusters or []
                 round.matched_clusters = list(set(current_matched + matched_cluster_ids))
-                logger.debug(f"✅ Matched {len(matched_cluster_ids)} new clusters")
+                logger.info(f"✅ Matched {len(matched_cluster_ids)} new clusters")
             else:
                 # Add strike
                 round.strikes += 1
                 new_strikes = round.strikes
-                logger.debug(f"⚠️  No matches - strike {new_strikes}/3")
+                logger.info(f"⚠️  No matches - strike {new_strikes}/3")
 
                 if round.strikes >= self.max_strike_count:
                     round.status = 'abandoned'  # Mark as ended due to strikes

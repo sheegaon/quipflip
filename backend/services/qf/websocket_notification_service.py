@@ -45,7 +45,7 @@ class WebSocketNotificationService:
         channel_connections[client_id] = WebSocketConnection(
             websocket=websocket, context=context
         )
-        logger.debug(
+        logger.info(
             "Registered websocket client %s in channel %s", client_id, channel_id
         )
 
@@ -61,7 +61,7 @@ class WebSocketNotificationService:
         connection = channel_connections.pop(client_id, None)
 
         if connection:
-            logger.debug(
+            logger.info(
                 "Removed websocket client %s from channel %s", client_id, channel_id
             )
 
@@ -94,7 +94,7 @@ class WebSocketNotificationService:
 
         channel_connections = self._channels.get(channel_id)
         if not channel_connections:
-            logger.debug(f"Channel {channel_id} has no connections, skipping broadcast")
+            logger.info(f"Channel {channel_id} has no connections, skipping broadcast")
             return
 
         disconnected: list[str] = []
@@ -105,7 +105,7 @@ class WebSocketNotificationService:
 
             websocket = connection.websocket
             if websocket is None:
-                logger.debug(
+                logger.info(
                     f"Missing websocket instance for client {client_id} in channel {channel_id}"
                 )
                 disconnected.append(client_id)
@@ -127,21 +127,21 @@ class WebSocketNotificationService:
 
         channel_connections = self._channels.get(channel_id)
         if not channel_connections:
-            logger.debug(
+            logger.info(
                 f"Channel {channel_id} has no connections for client {client_id}"
             )
             return
 
         connection = channel_connections.get(client_id)
         if not connection:
-            logger.debug(
+            logger.info(
                 f"Client {client_id} not connected in channel {channel_id}"
             )
             return
 
         websocket = connection.websocket
         if websocket is None:
-            logger.debug(
+            logger.info(
                 f"Missing websocket instance for client {client_id} in channel {channel_id}"
             )
             await self.disconnect(channel_id, client_id)

@@ -6,7 +6,8 @@ import logging
 import math
 from typing import List, Tuple, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, text
+from sqlalchemy.orm import load_only
 from backend.models.tl import TLCluster, TLAnswer
 from backend.services.tl.matching_service import TLMatchingService
 
@@ -53,17 +54,24 @@ class TLClusteringService:
             cluster_id of assigned cluster
         """
         try:
-            logger.debug(f"🔄 Assigning cluster for answer: {answer_id}")
+            logger.info(f"🔄 Assigning cluster for answer: {answer_id}")
 
-            # Get all clusters for this prompt
+            # Use raw SQL to get clusters with centroids (avoids pgvector deserialization bug)
+            # Cast vector to text, then parse as array
             result = await db.execute(
-                select(TLCluster).where(TLCluster.prompt_id == prompt_id)
+                text("""
+                    SELECT cluster_id::text, size,
+                           centroid_embedding::text
+                    FROM tl_cluster
+                    WHERE prompt_id = :prompt_id
+                """),
+                {"prompt_id": prompt_id}
             )
-            clusters = result.scalars().all()
+            rows = result.fetchall()
 
-            if not clusters:
+            if not rows:
                 # Create new cluster
-                logger.debug(f"📝 Creating new cluster for prompt {prompt_id}")
+                logger.info(f"📝 Creating new cluster for prompt {prompt_id}")
                 new_cluster = TLCluster(
                     prompt_id=prompt_id,
                     centroid_embedding=answer_embedding,
@@ -72,31 +80,39 @@ class TLClusteringService:
                 )
                 db.add(new_cluster)
                 await db.flush()
-                logger.debug(f"✅ Created cluster {new_cluster.cluster_id}")
+                logger.info(f"✅ Created cluster {new_cluster.cluster_id}")
                 return str(new_cluster.cluster_id)
 
             # Find best matching cluster
-            best_cluster = None
+            best_cluster_id = None
+            best_cluster_size = 0
             best_similarity = -1.0
 
-            for cluster in clusters:
+            for row in rows:
+                cluster_id, size, centroid_text = row
+                # Parse centroid from pgvector text format: "[0.1,0.2,...]"
+                centroid = self._parse_vector_text(centroid_text)
+
                 similarity = self.matching.cosine_similarity(
                     answer_embedding,
-                    cluster.centroid_embedding
+                    centroid
                 )
                 if similarity > best_similarity:
                     best_similarity = similarity
-                    best_cluster = cluster
+                    best_cluster_id = cluster_id
+                    best_cluster_size = size
 
             # Decide action based on similarity threshold
             if best_similarity >= CLUSTER_JOIN_THRESHOLD:
-                # Join existing cluster
+                # Join existing cluster - update via raw SQL to avoid pgvector issues
                 logger.debug(
-                    f"🔗 Joining cluster {best_cluster.cluster_id} "
+                    f"🔗 Joining cluster {best_cluster_id} "
                     f"(similarity={best_similarity:.3f})"
                 )
-                await self._update_centroid(db, best_cluster, answer_embedding)
-                return str(best_cluster.cluster_id)
+                await self._update_centroid_raw(
+                    db, best_cluster_id, best_cluster_size, answer_embedding
+                )
+                return best_cluster_id
             else:
                 # Create new cluster
                 logger.debug(
@@ -116,13 +132,87 @@ class TLClusteringService:
             logger.error(f"❌ Cluster assignment failed: {e}")
             raise
 
+    def _parse_vector_text(self, vector_text: str) -> List[float]:
+        """Parse pgvector text format to list of floats.
+
+        pgvector returns vectors as "[0.1,0.2,0.3,...]"
+
+        Args:
+            vector_text: Vector as text string
+
+        Returns:
+            List of floats
+        """
+        # Remove brackets and split by comma
+        cleaned = vector_text.strip("[]")
+        return [float(x) for x in cleaned.split(",")]
+
+    async def _update_centroid_raw(
+        self,
+        db: AsyncSession,
+        cluster_id: str,
+        old_size: int,
+        new_embedding: List[float]
+    ) -> None:
+        """Update cluster centroid using raw SQL (avoids pgvector deserialization).
+
+        Formula: new_centroid = (old_centroid * n + new_embedding) / (n + 1)
+
+        Args:
+            db: Database session
+            cluster_id: Cluster ID to update
+            old_size: Current cluster size
+            new_embedding: New answer embedding
+        """
+        try:
+            # First get the old centroid via raw SQL
+            result = await db.execute(
+                text("SELECT centroid_embedding::text FROM tl_cluster WHERE cluster_id = :cluster_id"),
+                {"cluster_id": cluster_id}
+            )
+            row = result.fetchone()
+            if not row:
+                logger.error(f"❌ Cluster {cluster_id} not found for centroid update")
+                return
+
+            old_centroid = self._parse_vector_text(row[0])
+
+            # Calculate new centroid using running mean
+            new_centroid = [
+                (old * old_size + new) / (old_size + 1)
+                for old, new in zip(old_centroid, new_embedding)
+            ]
+
+            # Update via raw SQL
+            centroid_str = "[" + ",".join(str(x) for x in new_centroid) + "]"
+            await db.execute(
+                text("""
+                    UPDATE tl_cluster
+                    SET centroid_embedding = :centroid::vector,
+                        size = :new_size,
+                        updated_at = NOW()
+                    WHERE cluster_id = :cluster_id
+                """),
+                {
+                    "centroid": centroid_str,
+                    "new_size": old_size + 1,
+                    "cluster_id": cluster_id
+                }
+            )
+            logger.debug(f"🔄 Updated centroid for cluster {cluster_id}, size={old_size + 1}")
+        except Exception as e:
+            logger.error(f"❌ Centroid update failed: {e}")
+            raise
+
     async def _update_centroid(
         self,
         db: AsyncSession,
         cluster: TLCluster,
         new_embedding: List[float]
     ) -> None:
-        """Update cluster centroid using running mean.
+        """Update cluster centroid using running mean (legacy ORM method).
+
+        Note: May fail with pgvector deserialization bug. Use _update_centroid_raw instead.
 
         Formula: new_centroid = (old_centroid * n + new_embedding) / (n + 1)
 

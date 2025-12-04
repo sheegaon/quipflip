@@ -167,7 +167,7 @@ class MMLeaderboardService:
                 }
             )
 
-        logger.debug(
+        logger.info(
             "Computed %s leaderboard with %d entries (start_date=%s)",
             "weekly" if start_date else "all-time",
             len(entries),

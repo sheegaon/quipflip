@@ -41,7 +41,7 @@ class MMScoringService:
         """
         caption.quality_score = self.calculate_quality_score(caption.picks, caption.shows)
         await self.db.flush()
-        logger.debug(
+        logger.info(
             f"Updated quality score for caption {caption.caption_id}: "
             f"{caption.quality_score:.3f} ({caption.picks}/{caption.shows})"
         )
@@ -232,7 +232,7 @@ class MMScoringService:
         else:
             parent_wallet, parent_vault = 0, 0
 
-        logger.debug(
+        logger.info(
             f"Calculated payout: total={gross_payout}, "
             f"author={author_wallet}w+{author_vault}v, "
             f"parent={parent_wallet}w+{parent_vault}v"
