@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import apiClient, { extractErrorMessage } from '@crowdcraft/api/client.ts';
 import type { QFLeaderboardResponse } from '@crowdcraft/api/types.ts';
-import { Header } from '../components/Header';
 import WeeklyLeaderboard from '@crowdcraft/components/statistics/WeeklyLeaderboard.tsx';
 import { leaderboardLogger } from '@crowdcraft/utils/logger.ts';
 
@@ -55,7 +54,6 @@ const Leaderboard: React.FC = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-ccl-cream bg-pattern">
-        <Header />
         <div className="container mx-auto px-4 py-8">
           <div className="text-center py-12">
             <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-ccl-orange border-r-transparent"></div>
@@ -69,7 +67,6 @@ const Leaderboard: React.FC = () => {
   if (error) {
     return (
       <div className="min-h-screen bg-ccl-cream bg-pattern">
-        <Header />
         <div className="container mx-auto px-4 py-8">
           <div className="tile-card p-8">
             <h1 className="text-2xl font-display font-bold text-ccl-navy mb-4">Leaderboard</h1>
@@ -104,7 +101,6 @@ const Leaderboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-ccl-cream bg-pattern">
-      <Header />
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="tile-card p-6 mb-6">

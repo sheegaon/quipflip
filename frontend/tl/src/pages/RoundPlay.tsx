@@ -1,10 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useGame } from '../contexts/GameContext';
 import apiClient, { extractErrorMessage } from '@crowdcraft/api/client.ts';
 import type { TLStartRoundResponse } from '@crowdcraft/api/types.ts';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { GuessInput } from '../components/GuessInput';
 import { CoverageBar } from '../components/CoverageBar';
 import { StrikeIndicator } from '../components/StrikeIndicator';
@@ -36,6 +34,8 @@ interface Guess {
 
 const normalizeGuessText = (text: string) => text.trim().replace(/\s+/g, ' ');
 
+const getWords = (phrase: string) => phrase.match(/[A-Za-z']+/g) || [];
+
 const validateGuessLocally = (guess: string): string | null => {
   const normalized = normalizeGuessText(guess);
 
@@ -47,11 +47,11 @@ const validateGuessLocally = (guess: string): string | null => {
     return 'Use 4-100 characters';
   }
 
-  if (!/^[A-Za-z\s]+$/.test(normalized)) {
-    return 'Use letters and spaces only (A-Z)';
+  if (!/^[A-Za-z\s']+$/.test(normalized)) {
+    return 'Use letters, spaces, and apostrophes only';
   }
 
-  const words = normalized.split(' ').filter(Boolean);
+  const words = getWords(normalized);
 
   if (words.length < 2 || words.length > 5) {
     return 'Enter 2-5 words';
@@ -90,8 +90,6 @@ const similarityScore = (a: string, b: string): number => {
 
 export const RoundPlay: React.FC = () => {
   const navigate = useNavigate();
-  const { state: gameState } = useGame();
-  const { player } = gameState;
   const locationState = (useLocation().state as RoundPlayLocationState) || {};
   const initialRound = locationState.round;
 
@@ -225,9 +223,7 @@ export const RoundPlay: React.FC = () => {
 }, [strikes, roundEnded, finalizeRound]);
 
   const handleAbandonRound = async () => {
-    if (!round || !confirm('Are you sure? You\'ll get a 95 coin refund and lose this round.')) {
-      return;
-    }
+    if (!round) return;
 
     setIsAbandoning(true);
     setError(null);
@@ -289,74 +285,67 @@ export const RoundPlay: React.FC = () => {
   return (
     <div className="min-h-screen bg-ccl-cream bg-pattern flex flex-col">
       {/* Header */}
-      <header className="bg-gradient-to-r from-ccl-navy to-ccl-navy-deep text-white p-6 md:p-8">
+      <header className="bg-ccl-navy text-white p-6 md:p-8 shadow-lg">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-3xl md:text-4xl font-display font-bold mb-4 text-center" role="heading" aria-level={1}>
-            {round.prompt_text}
-          </h1>
-          <p className="text-center text-ccl-cream text-sm" aria-label={`Round has ${round.snapshot_answer_count} answers with ${round.snapshot_total_weight.toFixed(0)} total weight`}>
-            {round.snapshot_answer_count} answers · {round.snapshot_total_weight.toFixed(0)} total weight
-          </p>
+          <div className="bg-ccl-teal/30 border border-ccl-teal/30 rounded-2xl p-6 md:p-8 shadow-lg backdrop-blur-sm">
+            <h1 className="text-3xl md:text-4xl font-display font-bold mb-4 text-center" role="heading" aria-level={1}>
+              {round.prompt_text}
+            </h1>
+            <p className="text-center text-ccl-cream text-sm" aria-label={`Round has ${round.snapshot_answer_count} answers with ${round.snapshot_total_weight.toFixed(0)} total weight`}>
+              {round.snapshot_answer_count} answers · {round.snapshot_total_weight.toFixed(0)} total weight
+            </p>
+          </div>
         </div>
       </header>
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col items-center justify-center p-4 md:p-8">
         <div className="max-w-2xl w-full space-y-8">
-          {/* Coverage Bar */}
-          <Tooltip content="Coverage % shows how many of the crowd's answers you've matched. Higher coverage = bigger payout!">
-            <div>
-              <CoverageBar coverage={coverage * 100} />
-            </div>
-          </Tooltip>
+          <div className="flex flex-col md:flex-row gap-4 md:items-stretch">
+            {/* Coverage Bar */}
+            <Tooltip content="Coverage % shows how many of the crowd's answers you've matched. Higher coverage = bigger payout!">
+              <div className="flex-1 md:flex-[1.25]">
+                <CoverageBar coverage={coverage * 100} />
+              </div>
+            </Tooltip>
 
-          {/* Strike Indicator */}
-          <Tooltip content="Get 3 strikes and your round ends. Try common, obvious answers to avoid wrong guesses.">
-            <div>
-              <StrikeIndicator strikes={strikes} />
+            {/* Strike Indicator */}
+            <div className="flex flex-row flex-wrap gap-2 sm:gap-3 md:gap-4 md:w-[380px] items-stretch">
+              <Tooltip content="Get 3 strikes and your round ends. Try common, obvious answers to avoid wrong guesses.">
+                <div className="flex-1 min-w-[160px]">
+                  <StrikeIndicator strikes={strikes} />
+                </div>
+              </Tooltip>
+
+              <div className="tile-card p-4 sm:p-5 flex-1 min-w-[140px] flex flex-col justify-center items-center text-center">
+                <p className="text-ccl-teal text-sm" id="guess-count-label">Guesses</p>
+                <p className="text-2xl sm:text-3xl font-display font-bold text-ccl-navy" aria-labelledby="guess-count-label">
+                  {guesses.length}
+                </p>
+              </div>
             </div>
-          </Tooltip>
+          </div>
 
           {/* Recent Guesses */}
           <MatchFeedback guesses={guesses} />
 
           {/* Guess Input */}
-          <GuessInput
-            value={guessText}
-            onChange={setGuessText}
-            onSubmit={handleSubmitGuess}
-            isSubmitting={isSubmitting}
-            error={error}
-            autoFocus={true}
-          />
-
-          {/* Stats Footer */}
-          <section className="grid grid-cols-3 gap-4 text-center text-sm" aria-label="Game statistics">
-            <div className="tile-card p-4">
-              <p className="text-ccl-teal" id="guess-count-label">Guesses</p>
-              <p className="text-2xl font-display font-bold text-ccl-navy" aria-labelledby="guess-count-label">
-                {guesses.length}
-              </p>
-            </div>
-            <div className="tile-card p-4">
-              <p className="text-ccl-teal" id="wallet-label">Wallet</p>
-              <p className="text-xl font-display font-bold text-ccl-navy" aria-labelledby="wallet-label">
-                <CurrencyDisplay amount={player?.wallet || 0} />
-              </p>
-            </div>
-            <div className="tile-card p-4">
-              <p className="text-ccl-teal" id="vault-label">Vault</p>
-              <p className="text-xl font-display font-bold text-ccl-navy" aria-labelledby="vault-label">
-                <CurrencyDisplay amount={player?.vault || 0} />
-              </p>
-            </div>
-          </section>
+          <div className="space-y-3">
+            <GuessInput
+              value={guessText}
+              onChange={setGuessText}
+              onSubmit={handleSubmitGuess}
+              isSubmitting={isSubmitting}
+              error={error}
+              autoFocus={true}
+            />
+          </div>
 
           {/* Abandon Button */}
           <button
             onClick={handleAbandonRound}
             disabled={isAbandoning}
-            className="w-full py-2 text-red-600 border-2 border-red-400 rounded-tile hover:bg-red-50 disabled:opacity-50 font-semibold text-sm"
+            className="w-full py-3 bg-ccl-orange text-white rounded-tile shadow-md hover:bg-ccl-orange-deep disabled:opacity-60 font-semibold text-sm transition-colors"
             aria-label="Abandon round - forfeit this round and get 95 coins refunded"
             title="Abandon this round and receive a 95 coin refund"
           >

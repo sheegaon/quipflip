@@ -4,7 +4,6 @@ import { useResults } from '@crowdcraft';
 import { useGame } from '../contexts/GameContext';
 import apiClient, { extractErrorMessage } from '@crowdcraft/api/client.ts';
 import type { GameStatus, QFHistoricalTrendPoint, QFPlayerStatistics } from '@crowdcraft/api/types.ts';
-import { Header } from '../components/Header';
 import WinRateChart from '@crowdcraft/components/statistics/WinRateChart.tsx';
 import EarningsChart from '@crowdcraft/components/statistics/EarningsChart.tsx';
 import SpendingChart from '@crowdcraft/components/statistics/SpendingChart.tsx';
@@ -251,7 +250,6 @@ const Statistics: React.FC = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-ccl-cream bg-pattern">
-        <Header />
         <div className="container mx-auto px-4 py-8">
           <div className="text-center py-12">
             <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-ccl-orange border-r-transparent"></div>
@@ -265,7 +263,6 @@ const Statistics: React.FC = () => {
   if (error || !data) {
     return (
       <div className="min-h-screen bg-ccl-cream bg-pattern">
-        <Header />
         <div className="container mx-auto px-4 py-8">
           <div className="tile-card p-8">
             <h1 className="text-2xl font-display font-bold text-ccl-navy mb-4">Statistics</h1>
@@ -280,7 +277,6 @@ const Statistics: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-ccl-cream bg-pattern">
-      <Header />
       <div className="container mx-auto px-4 py-8">
         {surveyStatus?.eligible && !surveyStatus.has_submitted && !surveyCompleted && (
           <div className="tile-card mb-6 border-2 border-ccl-teal bg-ccl-teal/10 p-6">
