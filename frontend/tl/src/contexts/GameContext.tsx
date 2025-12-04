@@ -64,7 +64,7 @@ export const GameProvider: React.FC<{
   children: React.ReactNode;
   onPendingResultsChange?: (results: PendingResult[]) => void;
   onDashboardTrigger?: () => void;
-}> = ({ children, onPendingResultsChange, onDashboardTrigger }) => {
+}> = ({ children, onPendingResultsChange }) => {
   const navigate = useNavigate();
   const { startPoll, stopPoll } = useSmartPolling();
 
@@ -234,7 +234,7 @@ export const GameProvider: React.FC<{
       try {
         const data = await apiClient.tlGetDashboard(signal);
         setPlayer(prev => {
-          const existingPlayer = prev ?? {};
+          const existingPlayer = (prev ?? {}) as Partial<TLPlayer>;
 
           const normalizedPlayer: TLPlayer = {
             ...existingPlayer,

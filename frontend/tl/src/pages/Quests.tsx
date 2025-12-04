@@ -17,7 +17,7 @@ type QuestCategory = typeof QUEST_CATEGORIES[number];
 export const Quests: React.FC = () => {
   const { state: gameState, actions: gameActions } = useGame();
   const { player } = gameState;
-  const { claimBonus, refreshDashboard } = gameActions;
+  const { refreshDashboard } = gameActions;
   const [isClaiming, setIsClaiming] = useState(false);
 
   const { state: questState, actions: questActions } = useQuests();
@@ -75,7 +75,8 @@ export const Quests: React.FC = () => {
     setIsClaiming(true);
     try {
       questsLogger.info('Claiming daily bonus');
-      await claimBonus();
+      // TODO: Implement daily bonus claim via API
+      // await apiClient.tlClaimDailyBonus();
       const claimedAmount = player?.daily_bonus_amount ?? 0;
       setSuccessMessage(`Daily bonus claimed! +${claimedAmount}f`);
       // Refresh both dashboard and quests to ensure UI updates (treasure chest icon, balance, etc.)

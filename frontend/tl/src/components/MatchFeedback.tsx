@@ -56,7 +56,7 @@ export const MatchFeedback: React.FC<MatchFeedbackProps> = ({
       )}
 
       <div className="space-y-2 max-h-48 overflow-y-auto">
-        {displayedGuesses.map((guess, index) => {
+        {displayedGuesses.map((guess) => {
           const style = getGuessStyle(guess);
           return (
             <div
