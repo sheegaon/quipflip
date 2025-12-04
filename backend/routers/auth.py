@@ -1,6 +1,8 @@
 """Authentication endpoints."""
 from datetime import UTC, datetime
 
+import logging
+
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -32,6 +34,7 @@ from backend.models.player_base import PlayerBase
 
 router = APIRouter()
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 
 async def _complete_login(
@@ -307,6 +310,12 @@ async def get_websocket_token(
     3. Frontend uses token for direct WebSocket connection to Heroku
     4. Short lifetime limits security risk if token is exposed
     """
+    logger.info(
+        "[ws-token] incoming request | path=%s | auth_header=%s",
+        request.url.path,
+        bool(authorization),
+    )
+
     try:
         detected_player = await get_current_player(
             request=request,
@@ -314,7 +323,17 @@ async def get_websocket_token(
             authorization=authorization,
             db=db,
         )
+        logger.info(
+            "[ws-token] authenticated player | id=%s | username=%s",
+            detected_player.player_id,
+            detected_player.username,
+        )
     except HTTPException as exc:
+        logger.warning(
+            "[ws-token] unauthorized request | path=%s | detail=%s",
+            request.url.path,
+            exc.detail,
+        )
         raise HTTPException(status_code=401, detail="invalid_token") from exc
 
     auth_service = AuthService(db)
@@ -323,6 +342,12 @@ async def get_websocket_token(
     ws_token, expires_in = auth_service.create_short_lived_token(
         player=detected_player,
         expires_seconds=60  # Short-lived: 60 seconds
+    )
+
+    logger.info(
+        "[ws-token] issued token | player_id=%s | expires_in=%s",
+        detected_player.player_id,
+        expires_in,
     )
 
     return {"token": ws_token, "expires_in": expires_in, "token_type": "bearer"}
