@@ -103,8 +103,30 @@ class TLMatchingService:
             if not candidate_vecs:
                 return []
 
+            # Debug: Log types and sample values to diagnose conversion issues
+            logger.debug(
+                f"🔬 batch_cosine_similarity: query_vec type={type(query_vec).__name__}, "
+                f"len={len(query_vec) if hasattr(query_vec, '__len__') else 'N/A'}"
+            )
+            if candidate_vecs:
+                first_candidate = candidate_vecs[0]
+                logger.debug(
+                    f"🔬 First candidate type={type(first_candidate).__name__}, "
+                    f"len={len(first_candidate) if hasattr(first_candidate, '__len__') else 'N/A'}"
+                )
+
+            # Convert to list if needed (pgvector may return numpy array or special type)
+            if hasattr(query_vec, 'tolist'):
+                query_vec = query_vec.tolist()
+            converted_candidates = []
+            for cv in candidate_vecs:
+                if hasattr(cv, 'tolist'):
+                    converted_candidates.append(cv.tolist())
+                else:
+                    converted_candidates.append(list(cv) if not isinstance(cv, list) else cv)
+
             query = np.array(query_vec, dtype=np.float32)
-            candidates = np.array(candidate_vecs, dtype=np.float32)
+            candidates = np.array(converted_candidates, dtype=np.float32)
 
             # Vectorized dot products
             dot_products = np.dot(candidates, query)
@@ -229,6 +251,23 @@ class TLMatchingService:
 
             # Batch similarity calculation
             similarities = self.batch_cosine_similarity(guess_embedding, snapshot_embeddings)
+
+            # DEBUG: Always log the highest similarity and corresponding answer
+            if similarities:
+                max_sim = max(similarities)
+                max_idx = similarities.index(max_sim)
+                best_answer = snapshot_answers[max_idx]
+                logger.info(
+                    f"🔍 SIMILARITY DEBUG for '{guess_text}': "
+                    f"highest_sim={max_sim:.4f}, threshold={threshold}, "
+                    f"best_match='{best_answer['text']}'"
+                )
+                # Log top 5 similarities for more context
+                sorted_sims = sorted(enumerate(similarities), key=lambda x: x[1], reverse=True)[:5]
+                for rank, (idx, sim) in enumerate(sorted_sims, 1):
+                    logger.info(
+                        f"   #{rank}: sim={sim:.4f} - '{snapshot_answers[idx]['text']}'"
+                    )
 
             # Find matches above threshold
             matches = []
