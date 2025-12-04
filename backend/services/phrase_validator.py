@@ -8,13 +8,12 @@ from difflib import SequenceMatcher
 from typing import Set
 
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.config import get_settings
 from backend.database import AsyncSessionLocal
 from backend.models.phrase_embedding import PhraseEmbedding
-from backend.services.ai.openai_api import OpenAIAPIError, generate_embedding
+from backend.services.tl.matching_service import TLMatchingService
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +61,9 @@ class PhraseValidator:
     def __init__(self):
         self.settings = get_settings()
 
+        # Root embedding service that always checks DB cache before hitting OpenAI
+        self.matching = TLMatchingService()
+
         self.dictionary: Set[str] = _load_dictionary()
         logger.info(f"Loaded dictionary with {len(self.dictionary)} words")
 
@@ -86,24 +88,6 @@ class PhraseValidator:
             return cached.embedding
 
         return None
-
-    async def _store_embedding(self, phrase: str, embedding: list[float], session: AsyncSession) -> None:
-        """Persist a newly generated embedding for reuse."""
-
-        record = PhraseEmbedding(
-            phrase=phrase.strip().lower(),
-            model=self.settings.embedding_model,
-            provider="openai",
-            embedding=embedding,
-        )
-
-        session.add(record)
-        try:
-            await session.commit()
-        except IntegrityError:
-            await session.rollback()
-        else:
-            await session.refresh(record)
 
     @staticmethod
     def _cosine_similarity(vector1: list[float], vector2: list[float]) -> float:
@@ -136,9 +120,6 @@ class PhraseValidator:
             similarity = self._cosine_similarity(embedding1, embedding2)
             logger.info(f"Similarity between '{phrase1_normalized}' and '{phrase2_normalized}': {similarity:.4f}")
             return float(similarity)
-        except OpenAIAPIError as exc:
-            logger.error(f"OpenAI similarity check failed: {exc}")
-            return 0.0
         except Exception as exc:
             logger.error(f"Unexpected error calculating similarity: {exc}")
             return 0.0
@@ -150,13 +131,10 @@ class PhraseValidator:
             embedding = await self._get_cached_embedding(phrase, session)
 
             if embedding is None:
-                logger.info(f"Requesting OpenAI embedding for '{phrase=}' using model {self.settings.embedding_model}")
-                embedding = await generate_embedding(
-                    phrase,
-                    model=self.settings.embedding_model,
-                    timeout=self.settings.ai_timeout_seconds,
+                logger.info(
+                    f"Requesting embedding via matching service for '{phrase=}' using model {self.settings.embedding_model}"
                 )
-                await self._store_embedding(phrase, embedding, session)
+                embedding = await self.matching.generate_embedding(phrase, db=session)
 
             return embedding
 
