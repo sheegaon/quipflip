@@ -9,8 +9,8 @@ import csv
 from pathlib import Path
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy import select, func
+from sqlalchemy.orm import sessionmaker, load_only
+from sqlalchemy import select, func, delete
 
 from backend.config import get_settings
 from backend.models.tl import TLPrompt, TLAnswer
@@ -86,9 +86,11 @@ async def seed_answers(db: AsyncSession, force: bool = False):
         skipped = 0
 
         for prompt_text, completions in completions_map.items():
-            # Find the prompt in database
+            # Find the prompt in database (use load_only to avoid pgvector deserialization issue)
             result = await db.execute(
-                select(TLPrompt).where(TLPrompt.text == prompt_text)
+                select(TLPrompt)
+                .options(load_only(TLPrompt.prompt_id, TLPrompt.text))
+                .where(TLPrompt.text == prompt_text)
             )
             prompt = result.scalars().first()
 
@@ -157,6 +159,46 @@ async def seed_answers(db: AsyncSession, force: bool = False):
         raise
 
 
+async def cleanup_empty_prompts(db: AsyncSession):
+    """Delete prompts that have no answers.
+
+    This removes prompts that were seeded from sources other than
+    prompt_completions.csv and have no answer corpus.
+    """
+    logger.info("Cleaning up prompts with no answers...")
+
+    try:
+        # Find prompts with no answers using a subquery
+        # Get all prompt_ids that have at least one answer
+        prompts_with_answers = (
+            select(TLAnswer.prompt_id)
+            .distinct()
+            .scalar_subquery()
+        )
+
+        # Delete prompts not in that list
+        result = await db.execute(
+            delete(TLPrompt)
+            .where(TLPrompt.prompt_id.notin_(prompts_with_answers))
+            .returning(TLPrompt.prompt_id)
+        )
+        deleted_ids = result.scalars().all()
+        deleted_count = len(deleted_ids)
+
+        if deleted_count > 0:
+            await db.commit()
+            logger.info(f"Deleted {deleted_count} prompts with no answers")
+        else:
+            logger.info("No empty prompts to delete")
+
+        return deleted_count
+
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Failed to cleanup empty prompts: {e}")
+        raise
+
+
 async def main():
     """Main entry point for manual seeding."""
     engine = create_async_engine(settings.database_url)
@@ -164,6 +206,10 @@ async def main():
 
     async with async_session() as session:
         await seed_answers(session, force=False)
+
+    # Run cleanup in a separate session
+    async with async_session() as session:
+        await cleanup_empty_prompts(session)
 
     await engine.dispose()
     logger.info("Done!")
