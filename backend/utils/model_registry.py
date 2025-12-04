@@ -95,8 +95,11 @@ def get_player_data_model(game_type: GameType) -> Type:
         raise ValueError(f"Unsupported game type: {game_type}")
 
 
-def get_user_activity_model(game_type: GameType) -> Type:
-    """Get the concrete UserActivity model for a game type."""
+def get_user_activity_model(game_type: GameType) -> Type | None:
+    """Get the concrete UserActivity model for a game type.
+
+    Returns None for game types that don't have user activity tracking yet (TL, MM).
+    """
     if game_type == GameType.QF:
         from backend.models.qf.user_activity import QFUserActivity
         return QFUserActivity
@@ -104,7 +107,8 @@ def get_user_activity_model(game_type: GameType) -> Type:
         from backend.models.ir.user_activity import IRUserActivity
         return IRUserActivity
     else:
-        raise ValueError(f"Unsupported game type: {game_type}")
+        # TL and MM don't have user activity models yet
+        return None
 
 
 def get_system_config_model(game_type: GameType) -> Type:
