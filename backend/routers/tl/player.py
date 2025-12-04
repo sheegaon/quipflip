@@ -46,9 +46,6 @@ class TLPlayerRouter(PlayerRouterBase):
         tl_wallet = player.tl_player_data.wallet if player.tl_player_data else 0
         tl_vault = player.tl_player_data.vault if player.tl_player_data else 0
 
-        # Check if daily bonus is available
-        daily_bonus_available = await self.player_service_class(db).is_daily_bonus_available(player)
-
         return PlayerBalance(
             player_id=player.player_id,
             username=player.username,
@@ -56,8 +53,8 @@ class TLPlayerRouter(PlayerRouterBase):
             wallet=tl_wallet,
             vault=tl_vault,
             starting_balance=settings.tl_starting_balance,
-            daily_bonus_available=daily_bonus_available,
-            daily_bonus_amount=settings.tl_daily_bonus_amount if hasattr(settings, 'tl_daily_bonus_amount') else 100,
+            daily_bonus_available=False,  # TODO: Implement daily bonuses for TL
+            daily_bonus_amount=0,
             last_login_date=player.last_login_date,
             created_at=player.created_at,
             outstanding_prompts=0,
