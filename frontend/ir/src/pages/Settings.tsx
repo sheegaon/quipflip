@@ -411,7 +411,7 @@ const Settings: React.FC = () => {
         {player.is_guest && (
           <div className="tile-card p-6 mb-6 bg-gradient-to-br from-orange-50 to-cyan-50 border-2 border-ir-orange">
             <h2 className="text-2xl font-display font-bold text-ir-navy mb-4">
-              Upgrade Your Guest Account
+              Login or Upgrade Your Guest Account
             </h2>
             <p className="text-ir-navy mb-4">
               You're currently using a guest account with limited access. Upgrade to a full account to:

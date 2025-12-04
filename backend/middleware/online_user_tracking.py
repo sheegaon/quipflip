@@ -105,11 +105,17 @@ async def update_user_activity_task(
 
     Uses atomic UPSERT to avoid race conditions when multiple concurrent requests
     from the same user try to update activity simultaneously.
+
+    Skips tracking for game types that don't have user activity models (TL, MM).
     """
     try:
         async with AsyncSessionLocal() as db:
             # Get the concrete user activity model for this game type
             user_activity_model = get_user_activity_model(game_type)
+
+            # Skip tracking for game types without user activity models
+            if user_activity_model is None:
+                return
 
             current_time = datetime.now(UTC)
 

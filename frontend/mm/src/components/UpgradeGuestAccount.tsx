@@ -148,7 +148,7 @@ export const UpgradeGuestAccount: React.FC<UpgradeGuestAccountProps> = ({ classN
       >
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-display font-bold text-ccl-navy">
-            Upgrade Your Guest Account
+            Login or Upgrade Your Guest Account
           </h2>
           <svg
             className={`w-5 h-5 text-ccl-navy transition-transform duration-200 ${
