@@ -228,9 +228,7 @@ export const RoundPlay: React.FC = () => {
 }, [strikes, roundEnded, finalizeRound]);
 
   const handleAbandonRound = async () => {
-    if (!round || !confirm('Are you sure? You\'ll get a 95 coin refund and lose this round.')) {
-      return;
-    }
+    if (!round) return;
 
     setIsAbandoning(true);
     setError(null);
