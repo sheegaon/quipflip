@@ -10,6 +10,7 @@ import React, {
 import apiClient from '../api/client.ts';
 import { getActionErrorMessage , tutorialLogger } from '../utils';
 import type { TutorialStatus } from '../types/tutorial.ts';
+import type { QFTutorialProgress } from '../api/types.ts';
 
 const isAbortError = (error: unknown): boolean => {
   if (!error || typeof error !== 'object') {
@@ -178,7 +179,7 @@ export const createTutorialContext = <
           tutorialLogger.debug('Updating tutorial progress', { progress });
           const response = config.updateProgress
             ? await config.updateProgress(progress)
-            : await apiClient.updateTutorialProgress(progress);
+            : await apiClient.updateTutorialProgress(progress as QFTutorialProgress);
           setStatus(config.mapUpdateStatus(response));
           setError(null);
         } catch (err: unknown) {
