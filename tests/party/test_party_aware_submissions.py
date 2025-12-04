@@ -5,14 +5,14 @@ from backend.models.qf.party_round import PartyRound
 from backend.services.qf.party_coordination_service import PartyCoordinationService
 from backend.services.qf.party_session_service import PartySessionService
 from backend.services.qf.round_service import QFRoundService
-from backend.services import TransactionService
+from backend.services import GameType, TransactionService
 
 @pytest.mark.asyncio
 async def test_normal_submission_without_party_context(db_session, player_factory):
     """Verify normal submissions still work when not in party mode."""
     player = await player_factory()
     round_service = QFRoundService(db_session)
-    transaction_service = TransactionService(db_session)
+    transaction_service = TransactionService(db_session, GameType.QF)
 
     # Seed prompts
     from backend.models.qf.prompt import Prompt
@@ -37,7 +37,7 @@ async def test_party_submission_increments_progress(db_session, player_factory):
     host = await player_factory()
     party_service = PartySessionService(db_session)
     coordination_service = PartyCoordinationService(db_session)
-    transaction_service = TransactionService(db_session)
+    transaction_service = TransactionService(db_session, GameType.QF)
 
     # Create party session
     session = await party_service.create_session(host_player_id=host.player_id, min_players=1)
@@ -83,7 +83,7 @@ async def test_party_phase_advancement_automatic(db_session, player_factory):
     
     party_service = PartySessionService(db_session)
     coordination_service = PartyCoordinationService(db_session)
-    transaction_service = TransactionService(db_session)
+    transaction_service = TransactionService(db_session, GameType.QF)
 
     # Create party session with 2 players, 1 prompt each
     session = await party_service.create_session(

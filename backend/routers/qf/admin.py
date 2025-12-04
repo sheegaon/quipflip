@@ -317,7 +317,7 @@ class QFAdminRouter(AdminRouterBase):
         ):
             """Resolve a flagged prompt by confirming or dismissing it."""
             service = FlaggedPromptService(session)
-            transaction_service = TransactionService(session)
+            transaction_service = TransactionService(session, GameType.QF)
 
             try:
                 record = await service.resolve_flag(flag_id, request.action, player, transaction_service)

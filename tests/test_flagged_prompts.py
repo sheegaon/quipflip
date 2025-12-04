@@ -9,7 +9,7 @@ from backend.models.qf.player import QFPlayer
 from backend.models.qf.prompt import Prompt
 from backend.models.qf.round import Round
 from backend.models.qf.flagged_prompt import FlaggedPrompt
-from backend.services import QFRoundService
+from backend.services import GameType, QFRoundService
 from backend.services import TransactionService
 from backend.services import FlaggedPromptService
 from backend.services import QFQueueService
@@ -58,7 +58,7 @@ async def test_flag_copy_round_creates_flag(db_session):
     db_session.add_all([prompt_player, copy_player])
     await db_session.commit()
 
-    transaction_service = TransactionService(db_session)
+    transaction_service = TransactionService(db_session, GameType.QF)
     round_service = QFRoundService(db_session)
 
     prompt_round, copy_round = await _start_prompt_and_copy_round(
@@ -97,7 +97,7 @@ async def test_confirm_flag_refunds_and_locks_prompt_owner(db_session):
     db_session.add_all([prompt_player, copy_player, admin_player])
     await db_session.commit()
 
-    transaction_service = TransactionService(db_session)
+    transaction_service = TransactionService(db_session, GameType.QF)
     round_service = QFRoundService(db_session)
     flag_service = FlaggedPromptService(db_session)
 
@@ -135,7 +135,7 @@ async def test_dismiss_flag_increments_reporter_streak_and_requeues(db_session):
     db_session.add_all([prompt_player, copy_player, admin_player])
     await db_session.commit()
 
-    transaction_service = TransactionService(db_session)
+    transaction_service = TransactionService(db_session, GameType.QF)
     round_service = QFRoundService(db_session)
     flag_service = FlaggedPromptService(db_session)
 
