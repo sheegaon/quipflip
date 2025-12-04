@@ -134,7 +134,7 @@ class Player(Base):
         """Return the first per-game data object that exposes wallet/vault fields."""
 
         for attr in ("qf_player_data", "ir_player_data", "mm_player_data", "tl_player_data"):
-            data = self.__dict__.get(attr)
+            data = getattr(self, attr, None)
             if data is not None and hasattr(data, "wallet"):
                 return data
         return None
