@@ -115,7 +115,7 @@ class PlayerService:
         self.db.add(player_data)
         await self.db.commit()
         await self.db.refresh(player_data)
-        logger.info("Provisioned %s player data for %s", game_type.value, player.player_id)
+        logger.info(f"Provisioned {game_type.value} player data for {player.player_id}")
         return player_data
 
     async def snapshot_player_data(self, player: Player, game_type: GameType | None) -> dict[str, Any] | None:

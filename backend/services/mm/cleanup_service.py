@@ -30,9 +30,9 @@ class MMCleanupService:
         )
         player = result.scalar_one_or_none()
         if not player:
-            logger.info("MM player %s not found during cleanup", player_id)
+            logger.info(f"MM player {player_id} not found during cleanup")
             return
 
         await self.db.delete(player)
         await self.db.commit()
-        logger.info("Deleted MM player %s and related data", player_id)
+        logger.info(f"Deleted MM player {player_id} and related data")

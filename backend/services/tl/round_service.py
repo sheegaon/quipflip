@@ -346,11 +346,9 @@ class TLRoundService:
             # log both representations to debug any session/identity drift.
             if str(round.player_id) != str(player_id):
                 logger.warning(
-                    "🔒 Abandon unauthorized: round belongs to %s (type=%s), request for %s (type=%s)",
-                    round.player_id,
-                    type(round.player_id).__name__,
-                    player_id,
-                    type(player_id).__name__,
+                    f"🔒 Abandon unauthorized: round belongs to {round.player_id} "
+                    f"(type={type(round.player_id).__name__}), request for {player_id} "
+                    f"(type={type(player_id).__name__})"
                 )
                 return {}, "unauthorized"
 

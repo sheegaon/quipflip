@@ -94,7 +94,7 @@ class WebSocketNotificationService:
 
         channel_connections = self._channels.get(channel_id)
         if not channel_connections:
-            logger.debug("Channel %s has no connections, skipping broadcast", channel_id)
+            logger.debug(f"Channel {channel_id} has no connections, skipping broadcast")
             return
 
         disconnected: list[str] = []
@@ -106,9 +106,7 @@ class WebSocketNotificationService:
             websocket = connection.websocket
             if websocket is None:
                 logger.debug(
-                    "Missing websocket instance for client %s in channel %s",
-                    client_id,
-                    channel_id,
+                    f"Missing websocket instance for client {client_id} in channel {channel_id}"
                 )
                 disconnected.append(client_id)
                 continue
@@ -117,10 +115,7 @@ class WebSocketNotificationService:
                 await websocket.send_json(message)
             except Exception as exc:  # pragma: no cover - network stack
                 logger.warning(
-                    "Failed to send websocket message to %s in channel %s: %s",
-                    client_id,
-                    channel_id,
-                    exc,
+                    f"Failed to send websocket message to {client_id} in channel {channel_id}: {exc}"
                 )
                 disconnected.append(client_id)
 
@@ -133,23 +128,21 @@ class WebSocketNotificationService:
         channel_connections = self._channels.get(channel_id)
         if not channel_connections:
             logger.debug(
-                "Channel %s has no connections for client %s", channel_id, client_id
+                f"Channel {channel_id} has no connections for client {client_id}"
             )
             return
 
         connection = channel_connections.get(client_id)
         if not connection:
             logger.debug(
-                "Client %s not connected in channel %s", client_id, channel_id
+                f"Client {client_id} not connected in channel {channel_id}"
             )
             return
 
         websocket = connection.websocket
         if websocket is None:
             logger.debug(
-                "Missing websocket instance for client %s in channel %s",
-                client_id,
-                channel_id,
+                f"Missing websocket instance for client {client_id} in channel {channel_id}"
             )
             await self.disconnect(channel_id, client_id)
             return
@@ -158,10 +151,7 @@ class WebSocketNotificationService:
             await websocket.send_json(message)
         except Exception as exc:  # pragma: no cover - network stack
             logger.warning(
-                "Failed to send websocket message to %s in channel %s: %s",
-                client_id,
-                channel_id,
-                exc,
+                f"Failed to send websocket message to {client_id} in channel {channel_id}: {exc}"
             )
             await self.disconnect(channel_id, client_id)
 

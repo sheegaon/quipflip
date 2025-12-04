@@ -184,7 +184,7 @@ class PlayerServiceBase(ABC):
         try:
             is_allowed = await is_username_allowed(new_username)
         except OpenAIAPIError as exc:
-            logger.error("Username moderation failed: %s", exc)
+            logger.error(f"Username moderation failed: {exc}")
             raise ValueError("Username failed safety checks") from exc
         if not is_allowed:
             raise ValueError("Username failed safety checks")
