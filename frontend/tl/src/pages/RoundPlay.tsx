@@ -292,7 +292,7 @@ export const RoundPlay: React.FC = () => {
       {/* Header */}
       <header className="bg-ccl-navy text-white p-6 md:p-8 shadow-lg">
         <div className="max-w-4xl mx-auto">
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 md:p-8 shadow-lg backdrop-blur-sm">
+          <div className="bg-ccl-teal/30 border border-ccl-teal/30 rounded-2xl p-6 md:p-8 shadow-lg backdrop-blur-sm">
             <h1 className="text-3xl md:text-4xl font-display font-bold mb-4 text-center" role="heading" aria-level={1}>
               {round.prompt_text}
             </h1>
@@ -366,7 +366,7 @@ export const RoundPlay: React.FC = () => {
           <button
             onClick={handleAbandonRound}
             disabled={isAbandoning}
-            className="w-full py-3 bg-red-600 text-white rounded-tile shadow-md hover:bg-red-700 disabled:opacity-60 font-semibold text-sm transition-colors"
+            className="w-full py-3 bg-ccl-orange text-white rounded-tile shadow-md hover:bg-ccl-orange-deep disabled:opacity-60 font-semibold text-sm transition-colors"
             aria-label="Abandon round - forfeit this round and get 95 coins refunded"
             title="Abandon this round and receive a 95 coin refund"
           >
