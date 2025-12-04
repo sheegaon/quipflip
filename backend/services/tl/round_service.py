@@ -7,6 +7,7 @@ from typing import List, Dict, Optional, Tuple
 from datetime import datetime, UTC
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload, load_only
 from backend.models.tl import (
     TLRound, TLGuess, TLAnswer, TLCluster, TLTransaction, TLPrompt
 )
@@ -54,7 +55,7 @@ class TLRoundService:
         self,
         db: AsyncSession,
         player_id: str,
-    ) -> Tuple[Optional[TLRound], Optional[str]]:
+    ) -> Tuple[Optional[TLRound], Optional[str], Optional[str]]:
         """Start a new round for a player.
 
         Steps:
@@ -69,7 +70,7 @@ class TLRoundService:
             player_id: Player ID
 
         Returns:
-            (TLRound, error_message) - error_message is None on success
+            (round, prompt_text, error_message) - error_message is None on success
         """
         try:
             logger.debug(f"🎮 Starting round for player {player_id}...")
@@ -119,6 +120,9 @@ class TLRoundService:
             db.add(round)
             await db.flush()
 
+            # Attach prompt to avoid lazy-loading with async sessions
+            round.prompt = prompt
+
             # Deduct entry cost
             if player.tl_player_data:
                 player.tl_player_data.wallet -= self.entry_cost
@@ -136,11 +140,11 @@ class TLRoundService:
                 f"✅ Round started: {round.round_id} "
                 f"(prompt: {prompt.text[:50]}..., snapshot_weight={total_weight:.2f})"
             )
-            return round, None
+            return round, prompt.text, None
 
         except Exception as e:
             logger.error(f"❌ Start round failed: {e}")
-            return None, "round_start_failed"
+            return None, None, "round_start_failed"
 
     async def submit_guess(
         self,
@@ -156,15 +160,14 @@ class TLRoundService:
         2. Validate phrase format and dictionary compliance
         3. Validate phrase doesn't reuse significant words from prompt
         4. Generate embedding
-        5. Check on-topic
-        6. Check self-similarity to prior guesses
-        7. Find matches in snapshot answers
-        8. Update matched_clusters if new match
-        9. Add strike if no matches
-        10. End round if 3 strikes
-        11. Log guess
+        5. Check self-similarity to prior guesses
+        6. Find matches in snapshot answers
+        7. Update matched_clusters if new match
+        8. Add strike if no matches
+        9. End round if 3 strikes
+        10. Log guess
 
-        Validation errors (invalid_phrase, off_topic, too_similar) do NOT consume strikes.
+        Validation errors (invalid_phrase, too_similar) do NOT consume strikes.
 
         Args:
             db: Database session
@@ -186,13 +189,20 @@ class TLRoundService:
 
             # Get round
             result = await db.execute(
-                select(TLRound).where(TLRound.round_id == round_id)
+                select(TLRound)
+                .options(
+                    selectinload(TLRound.prompt).load_only(
+                        TLPrompt.prompt_id,
+                        TLPrompt.text,
+                    )
+                )
+                .where(TLRound.round_id == round_id)
             )
             round = result.scalars().first()
             if not round:
                 return {}, "round_not_found", None
 
-            if round.player_id != player_id:
+            if str(round.player_id) != str(player_id):
                 return {}, "unauthorized", None
 
             if round.status != 'active':
@@ -201,37 +211,56 @@ class TLRoundService:
             if round.strikes >= self.max_strike_count:
                 return {}, "round_already_ended", None
 
+            prompt_text = round.prompt.text if round.prompt else await self._get_prompt_text(db, round.prompt_id)
+
+            # Defensive: ensure inputs are strings before validation
+            if not isinstance(guess_text, str):
+                logger.warning(
+                    "🔎 guess_text not a string; rejecting. type=%s value=%r round=%s player=%s",
+                    type(guess_text).__name__,
+                    guess_text,
+                    round_id,
+                    player_id,
+                )
+                return {}, "invalid_phrase", "Guess must be text"
+
+            if not isinstance(prompt_text, str):
+                logger.error(
+                    "⚠️ Prompt text not string; coercing. type=%s round=%s prompt_id=%s value=%r",
+                    type(prompt_text).__name__,
+                    round_id,
+                    round.prompt_id,
+                    prompt_text,
+                )
+                prompt_text = str(prompt_text) if prompt_text is not None else ""
+
             # Validate phrase format and dictionary compliance
             validator = get_phrase_validator()
             is_valid, error_msg = validator.validate(guess_text)
             if not is_valid:
-                logger.debug(f"⏭️  Guess rejected: invalid format ({error_msg})")
+                logger.debug(
+                    "⏭️  Guess rejected (validation): %s | round=%s player=%s guess='%s'",
+                    error_msg,
+                    round_id,
+                    player_id,
+                    guess_text,
+                )
                 return {}, "invalid_phrase", error_msg
 
             # Validate phrase doesn't reuse significant words from prompt
-            prompt_text = round.prompt.text if hasattr(round, 'prompt') else await self._get_prompt_text(db, round.prompt_id)
             is_valid, error_msg = await validator.validate_prompt_phrase(guess_text, prompt_text)
             if not is_valid:
-                logger.debug(f"⏭️  Guess rejected: conflicts with prompt ({error_msg})")
+                logger.debug(
+                    "⏭️  Guess rejected (prompt conflict): %s | round=%s player=%s guess='%s'",
+                    error_msg,
+                    round_id,
+                    player_id,
+                    guess_text,
+                )
                 return {}, "invalid_phrase", error_msg
 
             # Generate embedding for guess
             guess_embedding = await self.matching.generate_embedding(guess_text)
-
-            # Check on-topic
-            is_on_topic, topic_sim = await self.matching.check_on_topic(
-                round.prompt.text if hasattr(round, 'prompt') else await self._get_prompt_text(db, round.prompt_id),
-                guess_text,
-                prompt_embedding=None,  # Recompute for safety
-                threshold=self.prompt_relevance_threshold,
-            )
-            if not is_on_topic:
-                logger.debug(f"⏭️  Guess rejected: off-topic (similarity={topic_sim:.3f})")
-                message = (
-                    f"Not on topic (similarity {topic_sim:.2f}, "
-                    f"need ≥ {self.prompt_relevance_threshold:.2f})"
-                )
-                return {}, "off_topic", message
 
             # Check self-similarity
             prior_guesses = await self._get_prior_guesses(db, round_id)
@@ -307,7 +336,7 @@ class TLRoundService:
             }, None, None
 
         except Exception as e:
-            logger.error(f"❌ Submit guess failed: {e}")
+            logger.exception(f"❌ Submit guess failed: {e}")
             return {}, "submit_failed", None
 
     async def abandon_round(
@@ -339,11 +368,26 @@ class TLRoundService:
             if not round:
                 return {}, "round_not_found"
 
-            if round.player_id != player_id:
+            # Ownership check can be tripped by UUID vs string mismatches;
+            # log both representations to debug any session/identity drift.
+            if str(round.player_id) != str(player_id):
+                logger.warning(
+                    f"🔒 Abandon unauthorized: round belongs to {round.player_id} "
+                    f"(type={type(round.player_id).__name__}), request for {player_id} "
+                    f"(type={type(player_id).__name__})"
+                )
                 return {}, "unauthorized"
 
             if round.status != 'active':
                 return {}, "round_not_active"
+
+            # Disallow abandoning once any guess has been submitted
+            guess_present = await db.execute(
+                select(TLGuess.guess_id).where(TLGuess.round_id == round_id).limit(1)
+            )
+            if guess_present.first():
+                logger.debug(f"⏭️  Abandon blocked: guesses already submitted | {round_id=} {player_id=}")
+                return {}, "round_has_guesses"
 
             # Calculate refund (entry_cost - 5 penalty = 95 coins)
             penalty = 5
@@ -386,8 +430,12 @@ class TLRoundService:
         prompt_id: str,
     ) -> str:
         """Helper to get prompt text."""
+        from sqlalchemy.orm import load_only
+        # Use load_only to avoid loading embedding column (pgvector deserialization issue)
         result = await db.execute(
-            select(TLPrompt).where(TLPrompt.prompt_id == prompt_id)
+            select(TLPrompt)
+            .options(load_only(TLPrompt.prompt_id, TLPrompt.text))
+            .where(TLPrompt.prompt_id == prompt_id)
         )
         prompt = result.scalars().first()
         return prompt.text if prompt else ""
@@ -398,11 +446,12 @@ class TLRoundService:
         round_id: str,
     ) -> List[str]:
         """Get all prior guesses in a round."""
+        # Only load guess text to avoid deserializing historical embeddings that may
+        # be stored as plain lists (pgvector expects vector input and would crash).
         result = await db.execute(
-            select(TLGuess).where(TLGuess.round_id == round_id)
+            select(TLGuess.text).where(TLGuess.round_id == round_id)
         )
-        guesses = result.scalars().all()
-        return [g.text for g in guesses]
+        return [row[0] for row in result.all()]
 
     async def _build_snapshot_answers(
         self,

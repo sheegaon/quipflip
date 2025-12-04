@@ -129,14 +129,6 @@ const GameHistory: React.FC = () => {
     return () => controller.abort();
   }, [fetchRoundDetails, selectedRoundId]);
 
-  if (!state.isAuthenticated) {
-    return (
-      <div className="p-8 text-center text-gray-500">
-        Please log in to view your game history.
-      </div>
-    );
-  }
-
   const applyFilters = () => {
     const nextFilters: TLRoundHistoryQuery = {
       sort_by: historyFilters.sort_by as TLRoundHistoryQuery['sort_by'],
@@ -180,7 +172,7 @@ const GameHistory: React.FC = () => {
     [rounds, selectedRoundId],
   );
 
-  return (
+  return state.isAuthenticated ? (
     <div className="min-h-screen bg-ccl-cream p-4 md:p-8">
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="flex flex-col gap-2">
@@ -468,6 +460,10 @@ const GameHistory: React.FC = () => {
           </div>
         </div>
       </div>
+    </div>
+  ) : (
+    <div className="p-8 text-center text-gray-500">
+      Please log in to view your game history.
     </div>
   );
 };

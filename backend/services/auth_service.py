@@ -76,7 +76,7 @@ class AuthService:
             raise
 
         logger.info(
-            "Created %s guest player %s", game_type.value, player.player_id
+            f"Created {game_type.value} guest player {player.player_id}"
         )
         return player, guest_password
 
@@ -89,7 +89,7 @@ class AuthService:
                 game_type=game_type, email=email, password=password
             )
             logger.info(
-                "Created %s player %s via credential signup", game_type.value, player.player_id
+                f"Created {game_type.value} player {player.player_id} via credential signup"
             )
 
             if game_type == GameType.QF:
@@ -98,10 +98,11 @@ class AuthService:
                 quest_service = QuestService(self.db)
                 try:
                     await quest_service.initialize_quests_for_player(player.player_id)
-                    logger.info("Initialized starter quests for player %s", player.player_id)
+                    logger.info(f"Initialized starter quests for player {player.player_id}")
                 except Exception as e:
                     logger.error(
-                        "Failed to initialize quests for player %s: %s", player.player_id, e, exc_info=True
+                        f"Failed to initialize quests for player {player.player_id}: {e}",
+                        exc_info=True,
                     )
 
             return player
@@ -132,7 +133,7 @@ class AuthService:
         try:
             upgraded = await self.player_service.upgrade_guest(player, email, password)
             logger.info(
-                "Upgraded guest %s to full account with email %s", player.player_id, upgraded.email
+                f"Upgraded guest {player.player_id} to full account with email {upgraded.email}"
             )
             return upgraded
         except PlayerServiceError as exc:

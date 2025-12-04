@@ -126,10 +126,14 @@ async def get_corpus_stats(
 
     Admin only. Shows active answer count, cluster distribution, etc.
     """
+    from sqlalchemy.orm import load_only
+
     try:
-        # Get prompt
+        # Get prompt (use load_only to avoid pgvector deserialization issue)
         result = await db.execute(
-            select(TLPrompt).where(TLPrompt.prompt_id == prompt_id)
+            select(TLPrompt)
+            .options(load_only(TLPrompt.prompt_id, TLPrompt.text, TLPrompt.is_active))
+            .where(TLPrompt.prompt_id == prompt_id)
         )
         prompt = result.scalars().first()
         if not prompt:

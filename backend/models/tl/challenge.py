@@ -6,6 +6,7 @@ in ThinkLink v2. v1 implementation focuses on solo play only.
 Challenge mode: Two players compete simultaneously on the same prompt
 with a shared snapshot of answers, racing against a 5-minute timer.
 """
+import uuid
 from sqlalchemy import Column, ForeignKey, String, Integer, DateTime, Float, CheckConstraint
 from datetime import datetime, UTC
 from backend.database import Base
@@ -21,7 +22,7 @@ class TLChallenge(Base):
 
     __tablename__ = "tl_challenge"
 
-    challenge_id = get_uuid_column(primary_key=True)
+    challenge_id = get_uuid_column(primary_key=True, default=uuid.uuid4)
     prompt_id = get_uuid_column(
         ForeignKey("tl_prompt.prompt_id", ondelete="CASCADE"),
         nullable=False

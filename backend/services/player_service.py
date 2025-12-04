@@ -98,22 +98,24 @@ class PlayerService:
 
     async def ensure_player_data(self, player: Player, game_type: GameType) -> Any:
         """Ensure the player has per-game data, creating it with defaults if missing."""
-        try:
-            existing = player.get_game_data(game_type)
-        except ValueError as exc:  # pragma: no cover - defensive guard
-            raise PlayerServiceError(str(exc)) from exc
+        player_data_cls = self._player_data_model(game_type)
+
+        # Query database directly to check if data exists
+        result = await self.db.execute(
+            select(player_data_cls).where(player_data_cls.player_id == player.player_id)
+        )
+        existing = result.scalar_one_or_none()
 
         if existing:
             return existing
 
         service = self._get_player_service(game_type)
         starting_wallet = service._get_initial_balance() if service else 0  # type: ignore[attr-defined]
-        player_data_cls = self._player_data_model(game_type)
         player_data = player_data_cls(player_id=player.player_id, wallet=starting_wallet, vault=0)
         self.db.add(player_data)
         await self.db.commit()
         await self.db.refresh(player_data)
-        logger.info("Provisioned %s player data for %s", game_type.value, player.player_id)
+        logger.info(f"Provisioned {game_type.value} player data for {player.player_id}")
         return player_data
 
     async def snapshot_player_data(self, player: Player, game_type: GameType | None) -> dict[str, Any] | None:

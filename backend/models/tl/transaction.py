@@ -1,4 +1,5 @@
 """ThinkLink transaction model."""
+import uuid
 from sqlalchemy import Column, ForeignKey, String, Integer, DateTime, Text, Index
 from datetime import datetime, UTC
 from backend.database import Base
@@ -13,7 +14,7 @@ class TLTransaction(Base):
 
     __tablename__ = "tl_transaction"
 
-    transaction_id = get_uuid_column(primary_key=True)
+    transaction_id = get_uuid_column(primary_key=True, default=uuid.uuid4)
     player_id = get_uuid_column(
         ForeignKey("players.player_id", ondelete="CASCADE"),
         nullable=False

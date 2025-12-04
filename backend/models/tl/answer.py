@@ -1,4 +1,5 @@
 """ThinkLink answer model."""
+import uuid
 from sqlalchemy import Column, ForeignKey, String, Integer, DateTime, Boolean, Index
 from datetime import datetime, UTC
 from pgvector.sqlalchemy import Vector
@@ -15,7 +16,7 @@ class TLAnswer(Base):
 
     __tablename__ = "tl_answer"
 
-    answer_id = get_uuid_column(primary_key=True)
+    answer_id = get_uuid_column(primary_key=True, default=uuid.uuid4)
     prompt_id = get_uuid_column(
         ForeignKey("tl_prompt.prompt_id", ondelete="CASCADE"),
         nullable=False

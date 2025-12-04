@@ -30,6 +30,7 @@ from contextlib import asynccontextmanager
 from backend.config import get_settings
 from backend.version import APP_VERSION
 from backend.services.qf.prompt_seeder import sync_prompts_with_database
+from backend.data.seed_tl_prompts import seed_prompts as seed_tl_prompts
 from backend.routers import qf, ir, mm, tl, auth, health, notifications, online_users
 from backend.middleware.deduplication import deduplication_middleware
 from backend.middleware.online_user_tracking import online_user_tracking_middleware
@@ -396,6 +397,16 @@ async def lifespan(app_instance: FastAPI):
     # Import Meme Mint images and seed captions
     await import_meme_mint_images()
 
+    # Seed ThinkLink prompts from CSV
+    try:
+        from backend.database import AsyncSessionLocal
+        async with AsyncSessionLocal() as db:
+            await seed_tl_prompts(db)
+        logger.info("ThinkLink prompts seeded successfully")
+    except Exception as e:
+        logger.error(f"Failed to seed ThinkLink prompts: {e}")
+        # Don't raise - allow server to start even if seeding fails
+
     # Start background tasks
     ai_backup_task = None
     stale_handler_task = None
@@ -628,7 +639,16 @@ app.include_router(mm.router)
 app.include_router(tl.router)
 app.include_router(notifications.router)
 app.include_router(online_users.router, prefix="/users")
-app.include_router(auth.router)
+app.include_router(online_users.router, prefix="/qf/users")
+app.include_router(online_users.router, prefix="/mm/users")
+app.include_router(online_users.router, prefix="/tl/users")
+# Expose auth routes under the canonical /auth prefix plus each game prefix so
+# shared endpoints like /auth/ws-token resolve regardless of the configured API
+# base URL.
+app.include_router(auth.router, prefix="/auth")
+app.include_router(auth.router, prefix="/qf/auth")
+app.include_router(auth.router, prefix="/mm/auth")
+app.include_router(auth.router, prefix="/tl/auth")
 app.include_router(health.router)
 
 

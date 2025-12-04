@@ -460,7 +460,9 @@ async def websocket_endpoint(websocket: WebSocket):
 
     # Accept authenticated connection
     await manager.connect(websocket, game_type)
-    logger.info("WebSocket authenticated for player: %s (game=%s)", player.username, game_type.value)
+    logger.info(
+        f"WebSocket authenticated for player: {player.username} (game={game_type.value})"
+    )
 
     try:
         # Keep connection alive and listen for client disconnects
@@ -479,4 +481,6 @@ async def websocket_endpoint(websocket: WebSocket):
         logger.error(f"WebSocket error for player {player.username}: {e}")
     finally:
         manager.disconnect(websocket)
-        logger.info("WebSocket disconnected for player: %s (game=%s)", player.username, game_type.value)
+        logger.info(
+            f"WebSocket disconnected for player: {player.username} (game={game_type.value})"
+        )

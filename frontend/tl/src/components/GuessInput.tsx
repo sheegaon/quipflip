@@ -39,7 +39,7 @@ export const GuessInput: React.FC<GuessInputProps> = ({
     }
   }, [isSubmitting]);
 
-  const wordCount = value.trim().split(/\s+/).filter(w => w.length > 0).length;
+  const wordCount = (value.match(/[A-Za-z']+/g) || []).length;
   const characterCount = value.length;
   const isSubmitDisabled = isSubmitting || !value.trim() || disabled;
 
@@ -68,9 +68,12 @@ export const GuessInput: React.FC<GuessInputProps> = ({
             {isSubmitting ? 'Submitting...' : 'Submit'}
           </button>
         </div>
-        <div className="flex justify-between items-center mt-2">
-          <p className="text-xs text-ccl-teal">
-            {characterCount}/{maxLength} characters · {wordCount} {wordCount === 1 ? 'word' : 'words'}
+        <div className="flex justify-between items-center mt-2 text-xs text-ccl-teal">
+          <p>
+            {characterCount}/{maxLength} characters
+          </p>
+          <p aria-live="polite">
+            {`${wordCount || 0} word${wordCount === 1 ? '' : 's'} out of 2-5 words total`}
           </p>
         </div>
       </form>

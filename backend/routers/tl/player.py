@@ -9,6 +9,7 @@ from sqlalchemy import select, update
 from backend.database import get_db
 from backend.dependencies import get_current_player
 from backend.models.player import Player
+from backend.models.tl.player_data import TLPlayerData
 from backend.schemas.base import BaseSchema
 from backend.services import GameType, TLPlayerService, TLCleanupService
 from backend.config import get_settings
@@ -157,12 +158,17 @@ class TLPlayerRouter(PlayerRouterBase):
             db: AsyncSession = Depends(get_db),
         ):
             """Update player tutorial progress."""
+            from backend.services.player_service import PlayerService
+
+            player_service = PlayerService(db)
+            await player_service.ensure_player_data(player, GameType.TL)
+
             stmt = (
-                update(Player)
-                .where(Player.player_id == player.player_id)
+                update(TLPlayerData)
+                .where(TLPlayerData.player_id == player.player_id)
                 .values(
-                    tl_tutorial_progress=request_body.progress,
-                    tl_tutorial_completed=(request_body.progress == 'completed'),
+                    tutorial_progress=request_body.progress,
+                    tutorial_completed=(request_body.progress == 'completed'),
                 )
             )
             await db.execute(stmt)
@@ -179,12 +185,17 @@ class TLPlayerRouter(PlayerRouterBase):
             db: AsyncSession = Depends(get_db),
         ):
             """Reset tutorial progress to allow replaying."""
+            from backend.services.player_service import PlayerService
+
+            player_service = PlayerService(db)
+            await player_service.ensure_player_data(player, GameType.TL)
+
             stmt = (
-                update(Player)
-                .where(Player.player_id == player.player_id)
+                update(TLPlayerData)
+                .where(TLPlayerData.player_id == player.player_id)
                 .values(
-                    tl_tutorial_progress='not_started',
-                    tl_tutorial_completed=False,
+                    tutorial_progress='not_started',
+                    tutorial_completed=False,
                 )
             )
             await db.execute(stmt)

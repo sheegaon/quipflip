@@ -92,7 +92,7 @@ async def start_round(
         settings = get_settings()
 
         # Start round
-        round_obj, error = await round_service.start_round(
+        round_obj, prompt_text, error = await round_service.start_round(
             db, str(player.player_id)
         )
 
@@ -114,7 +114,7 @@ async def start_round(
 
         return StartRoundResponse(
             round_id=round_obj.round_id,
-            prompt_text=round_obj.prompt.text if hasattr(round_obj, 'prompt') else "",
+            prompt_text=prompt_text or "",
             snapshot_answer_count=len(round_obj.snapshot_answer_ids or []),
             snapshot_total_weight=round_obj.snapshot_total_weight,
             created_at=round_obj.created_at,
@@ -238,6 +238,8 @@ async def abandon_round(
                 raise HTTPException(status_code=403, detail="unauthorized")
             elif error == "round_not_active":
                 raise HTTPException(status_code=400, detail="round_not_active")
+            elif error == "round_has_guesses":
+                raise HTTPException(status_code=400, detail="round_has_guesses")
             else:
                 raise HTTPException(status_code=500, detail="abandon_failed")
 
@@ -359,11 +361,16 @@ async def get_round(
     """Get details of a specific round."""
     try:
         from sqlalchemy import select
-        from backend.models.tl import TLRound
+        from sqlalchemy.orm import selectinload, load_only
+        from backend.models.tl import TLRound, TLPrompt
 
         # Fetch round
         result = await db.execute(
-            select(TLRound).where(TLRound.round_id == round_id)
+            select(TLRound)
+            .options(
+                selectinload(TLRound.prompt).load_only(TLPrompt.prompt_id, TLPrompt.text)
+            )
+            .where(TLRound.round_id == round_id)
         )
         round_obj = result.scalars().first()
 
@@ -387,7 +394,7 @@ async def get_round(
         return RoundDetails(
             round_id=round_obj.round_id,
             prompt_id=round_obj.prompt_id,
-            prompt_text=round_obj.prompt.text if hasattr(round_obj, 'prompt') else "",
+            prompt_text=round_obj.prompt.text if round_obj.prompt else "",
             snapshot_answer_count=len(round_obj.snapshot_answer_ids or []),
             snapshot_total_weight=round_obj.snapshot_total_weight,
             matched_clusters=round_obj.matched_clusters or [],
