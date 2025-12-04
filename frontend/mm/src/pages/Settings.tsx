@@ -67,10 +67,8 @@ const Settings: React.FC = () => {
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
-    if (player?.email) {
-      setEmailForm((prev) => ({ ...prev, newEmail: player.email ?? '' }));
-    }
-  }, [player?.email]);
+    setEmailForm((prev) => ({ ...prev, newEmail: player?.email ?? '' }));
+  }, [player]);
 
   useEffect(() => {
     if (player?.username) {
