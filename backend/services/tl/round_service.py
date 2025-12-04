@@ -129,17 +129,17 @@ class TLRoundService:
             )
             player = result.scalars().first()
             if not player:
-                return None, "Player not found"
+                return None, None, "Player not found"
 
             # Check balance
             tl_wallet = player.tl_player_data.wallet if player.tl_player_data else 0
             if tl_wallet < self.entry_cost:
-                return None, "insufficient_balance"
+                return None, None, "insufficient_balance"
 
             # Select prompt
             prompt = await self.prompt.get_random_active_prompt(db)
             if not prompt:
-                return None, "no_prompts_available"
+                return None, None, "no_prompts_available"
 
             # Get active answers for snapshot
             answers = await self.prompt.get_active_answers_for_prompt(
@@ -389,6 +389,9 @@ class TLRoundService:
             player_id: Player ID for transactions
         """
         try:
+            # Import the standalone function
+            from backend.services.tl.scoring_service import finalize_round
+            
             # Calculate payouts
             wallet_award, vault_award, gross_payout = self.scoring.calculate_payout(coverage)
             
@@ -422,8 +425,8 @@ class TLRoundService:
                 )
                 db.add(vault_transaction)
             
-            # Finalize the round using the scoring service
-            await self.scoring.finalize_round(
+            # Finalize the round using the standalone function
+            await finalize_round(
                 db, round, wallet_award, vault_award, gross_payout, coverage
             )
             
