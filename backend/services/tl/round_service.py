@@ -7,7 +7,7 @@ from typing import List, Dict, Optional, Tuple
 from datetime import datetime, UTC
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, load_only
 from backend.models.tl import (
     TLRound, TLGuess, TLAnswer, TLCluster, TLTransaction, TLPrompt
 )
@@ -160,15 +160,14 @@ class TLRoundService:
         2. Validate phrase format and dictionary compliance
         3. Validate phrase doesn't reuse significant words from prompt
         4. Generate embedding
-        5. Check on-topic
-        6. Check self-similarity to prior guesses
-        7. Find matches in snapshot answers
-        8. Update matched_clusters if new match
-        9. Add strike if no matches
-        10. End round if 3 strikes
-        11. Log guess
+        5. Check self-similarity to prior guesses
+        6. Find matches in snapshot answers
+        7. Update matched_clusters if new match
+        8. Add strike if no matches
+        9. End round if 3 strikes
+        10. Log guess
 
-        Validation errors (invalid_phrase, off_topic, too_similar) do NOT consume strikes.
+        Validation errors (invalid_phrase, too_similar) do NOT consume strikes.
 
         Args:
             db: Database session
@@ -191,7 +190,12 @@ class TLRoundService:
             # Get round
             result = await db.execute(
                 select(TLRound)
-                .options(selectinload(TLRound.prompt))
+                .options(
+                    selectinload(TLRound.prompt).load_only(
+                        TLPrompt.prompt_id,
+                        TLPrompt.text,
+                    )
+                )
                 .where(TLRound.round_id == round_id)
             )
             round = result.scalars().first()
@@ -208,6 +212,27 @@ class TLRoundService:
                 return {}, "round_already_ended", None
 
             prompt_text = round.prompt.text if round.prompt else await self._get_prompt_text(db, round.prompt_id)
+
+            # Defensive: ensure inputs are strings before validation
+            if not isinstance(guess_text, str):
+                logger.warning(
+                    "🔎 guess_text not a string; rejecting. type=%s value=%r round=%s player=%s",
+                    type(guess_text).__name__,
+                    guess_text,
+                    round_id,
+                    player_id,
+                )
+                return {}, "invalid_phrase", "Guess must be text"
+
+            if not isinstance(prompt_text, str):
+                logger.error(
+                    "⚠️ Prompt text not string; coercing. type=%s round=%s prompt_id=%s value=%r",
+                    type(prompt_text).__name__,
+                    round_id,
+                    round.prompt_id,
+                    prompt_text,
+                )
+                prompt_text = str(prompt_text) if prompt_text is not None else ""
 
             # Validate phrase format and dictionary compliance
             validator = get_phrase_validator()
@@ -236,21 +261,6 @@ class TLRoundService:
 
             # Generate embedding for guess
             guess_embedding = await self.matching.generate_embedding(guess_text)
-
-            # Check on-topic
-            is_on_topic, topic_sim = await self.matching.check_on_topic(
-                prompt_text,
-                guess_text,
-                prompt_embedding=None,  # Recompute for safety
-                threshold=self.prompt_relevance_threshold,
-            )
-            if not is_on_topic:
-                logger.debug(f"⏭️  Guess rejected: off-topic (similarity={topic_sim:.3f})")
-                message = (
-                    f"Not on topic (similarity {topic_sim:.2f}, "
-                    f"need ≥ {self.prompt_relevance_threshold:.2f})"
-                )
-                return {}, "off_topic", message
 
             # Check self-similarity
             prior_guesses = await self._get_prior_guesses(db, round_id)
@@ -326,7 +336,7 @@ class TLRoundService:
             }, None, None
 
         except Exception as e:
-            logger.error(f"❌ Submit guess failed: {e}")
+            logger.exception(f"❌ Submit guess failed: {e}")
             return {}, "submit_failed", None
 
     async def abandon_round(
@@ -428,11 +438,12 @@ class TLRoundService:
         round_id: str,
     ) -> List[str]:
         """Get all prior guesses in a round."""
+        # Only load guess text to avoid deserializing historical embeddings that may
+        # be stored as plain lists (pgvector expects vector input and would crash).
         result = await db.execute(
-            select(TLGuess).where(TLGuess.round_id == round_id)
+            select(TLGuess.text).where(TLGuess.round_id == round_id)
         )
-        guesses = result.scalars().all()
-        return [g.text for g in guesses]
+        return [row[0] for row in result.all()]
 
     async def _build_snapshot_answers(
         self,
