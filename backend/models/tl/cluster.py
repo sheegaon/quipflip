@@ -1,4 +1,5 @@
 """ThinkLink cluster model."""
+import uuid
 from sqlalchemy import Column, ForeignKey, Integer, DateTime, Index
 from datetime import datetime, UTC
 from pgvector.sqlalchemy import Vector
@@ -15,7 +16,7 @@ class TLCluster(Base):
 
     __tablename__ = "tl_cluster"
 
-    cluster_id = get_uuid_column(primary_key=True)
+    cluster_id = get_uuid_column(primary_key=True, default=uuid.uuid4)
     prompt_id = get_uuid_column(
         ForeignKey("tl_prompt.prompt_id", ondelete="CASCADE"),
         nullable=False

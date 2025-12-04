@@ -1,4 +1,5 @@
 """ThinkLink guess model."""
+import uuid
 from sqlalchemy import Column, ForeignKey, String, DateTime, Boolean, JSON, Index
 from datetime import datetime, UTC
 from pgvector.sqlalchemy import Vector
@@ -15,7 +16,7 @@ class TLGuess(Base):
 
     __tablename__ = "tl_guess"
 
-    guess_id = get_uuid_column(primary_key=True)
+    guess_id = get_uuid_column(primary_key=True, default=uuid.uuid4)
     round_id = get_uuid_column(
         ForeignKey("tl_round.round_id", ondelete="CASCADE"),
         nullable=False

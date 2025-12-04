@@ -1,4 +1,5 @@
 """ThinkLink round model."""
+import uuid
 from sqlalchemy import Column, ForeignKey, String, Integer, DateTime, Float, JSON, CheckConstraint, Index
 from sqlalchemy.orm import relationship
 from datetime import datetime, UTC
@@ -15,7 +16,7 @@ class TLRound(Base):
 
     __tablename__ = "tl_round"
 
-    round_id = get_uuid_column(primary_key=True)
+    round_id = get_uuid_column(primary_key=True, default=uuid.uuid4)
     player_id = get_uuid_column(
         ForeignKey("players.player_id", ondelete="CASCADE"),
         nullable=False
