@@ -7,10 +7,8 @@ from typing import List, Dict, Optional, Tuple
 from datetime import datetime, UTC
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from sqlalchemy.orm import selectinload, load_only
-from backend.models.tl import (
-    TLRound, TLGuess, TLAnswer, TLCluster, TLTransaction, TLPrompt
-)
+from sqlalchemy.orm import selectinload
+from backend.models.tl import TLRound, TLGuess, TLAnswer, TLTransaction, TLPrompt
 from backend.models.player import Player
 from backend.services.tl.matching_service import TLMatchingService
 from backend.services.tl.clustering_service import TLClusteringService
@@ -20,6 +18,59 @@ from backend.services.phrase_validator import get_phrase_validator
 from backend.config import get_settings
 
 logger = logging.getLogger(__name__)
+
+
+async def _get_prompt_text(db: AsyncSession, prompt_id: str) -> str:
+    """Helper to get prompt text."""
+    from sqlalchemy.orm import load_only
+    # Use load_only to avoid loading embedding column (pgvector deserialization issue)
+    result = await db.execute(
+        select(TLPrompt)
+        .options(load_only(TLPrompt.prompt_id, TLPrompt.text))
+        .where(TLPrompt.prompt_id == prompt_id)
+    )
+    prompt = result.scalars().first()
+    return prompt.text if prompt else ""
+
+
+async def _get_prior_guesses(db: AsyncSession, round_id: str) -> List[str]:
+    """Get all prior guesses in a round."""
+    # Only load guess text to avoid deserializing historical embeddings that may
+    # be stored as plain lists (pgvector expects vector input and would crash).
+    result = await db.execute(
+        select(TLGuess.text).where(TLGuess.round_id == round_id)
+    )
+    return [row[0] for row in result.all()]
+
+
+async def _build_snapshot_answers(db: AsyncSession, answer_ids: List[str]) -> List[Dict]:
+    """Build answer data for matching from snapshot IDs."""
+    if not answer_ids:
+        return []
+
+    result = await db.execute(
+        select(TLAnswer).where(TLAnswer.answer_id.in_(answer_ids))
+    )
+    answers = result.scalars().all()
+
+    # DEBUG: Log embedding types from pgvector to diagnose conversion issues
+    if answers:
+        first_embedding = answers[0].embedding
+        logger.info(
+            f"🔬 EMBEDDING DEBUG: pgvector returned type={type(first_embedding).__name__}, "
+            f"len={len(first_embedding) if hasattr(first_embedding, '__len__') else 'N/A'}, "
+            f"sample_values={list(first_embedding)[:5] if hasattr(first_embedding, '__iter__') else 'N/A'}..."
+        )
+
+    return [
+        {
+            "answer_id": str(a.answer_id),
+            "text": a.text,
+            "embedding": a.embedding,
+            "cluster_id": str(a.cluster_id) if a.cluster_id else None,
+        }
+        for a in answers
+    ]
 
 
 class TLRoundService:
@@ -51,11 +102,8 @@ class TLRoundService:
         self.prompt_relevance_threshold = settings.tl_topic_threshold
         self.self_similarity_threshold = settings.tl_self_similarity_threshold
 
-    async def start_round(
-        self,
-        db: AsyncSession,
-        player_id: str,
-    ) -> Tuple[Optional[TLRound], Optional[str], Optional[str]]:
+    async def start_round(self, db: AsyncSession, player_id: str
+                          ) -> Tuple[Optional[TLRound], Optional[str], Optional[str]]:
         """Start a new round for a player.
 
         Steps:
@@ -136,10 +184,7 @@ class TLRoundService:
             db.add(transaction)
             await db.flush()
 
-            logger.info(
-                f"✅ Round started: {round.round_id} "
-                f"(prompt: {prompt.text[:50]}..., snapshot_weight={total_weight:.2f})"
-            )
+            logger.info(f"✅ Round started: {round.round_id} ({prompt.text[:50]=}..., {total_weight=:.2f})")
             return round, prompt.text, None
 
         except Exception as e:
@@ -166,6 +211,7 @@ class TLRoundService:
         8. Add strike if no matches
         9. End round if 3 strikes
         10. Log guess
+        11. Finalize round if completion conditions are met
 
         Validation errors (invalid_phrase, too_similar) do NOT consume strikes.
 
@@ -211,26 +257,18 @@ class TLRoundService:
             if round.strikes >= self.max_strike_count:
                 return {}, "round_already_ended", None
 
-            prompt_text = round.prompt.text if round.prompt else await self._get_prompt_text(db, round.prompt_id)
+            prompt_text = round.prompt.text if round.prompt else await _get_prompt_text(db, round.prompt_id)
 
             # Defensive: ensure inputs are strings before validation
             if not isinstance(guess_text, str):
-                logger.warning(
-                    "🔎 guess_text not a string; rejecting. type=%s value=%r round=%s player=%s",
-                    type(guess_text).__name__,
-                    guess_text,
-                    round_id,
-                    player_id,
-                )
+                logger.warning(f"🔎 guess_text not a string: "
+                               f"type={type(guess_text).__name__} {guess_text=} {round_id=} {player_id=}")
                 return {}, "invalid_phrase", "Guess must be text"
 
             if not isinstance(prompt_text, str):
                 logger.error(
-                    "⚠️ Prompt text not string; coercing. type=%s round=%s prompt_id=%s value=%r",
-                    type(prompt_text).__name__,
-                    round_id,
-                    round.prompt_id,
-                    prompt_text,
+                    f"⚠️ Prompt text not string; coercing. type={type(prompt_text).__name__} "
+                    f"round={round_id} prompt_id={round.prompt_id} value={prompt_text!r}"
                 )
                 prompt_text = str(prompt_text) if prompt_text is not None else ""
 
@@ -239,11 +277,7 @@ class TLRoundService:
             is_valid, error_msg = validator.validate(guess_text)
             if not is_valid:
                 logger.info(
-                    "⏭️  Guess rejected (validation): %s | round=%s player=%s guess='%s'",
-                    error_msg,
-                    round_id,
-                    player_id,
-                    guess_text,
+                    f"⏭️  Guess rejected (validation): {error_msg} | round={round_id} player={player_id} guess='{guess_text}'"
                 )
                 return {}, "invalid_phrase", error_msg
 
@@ -251,11 +285,7 @@ class TLRoundService:
             is_valid, error_msg = await validator.validate_prompt_phrase(guess_text, prompt_text)
             if not is_valid:
                 logger.info(
-                    "⏭️  Guess rejected (prompt conflict): %s | round=%s player=%s guess='%s'",
-                    error_msg,
-                    round_id,
-                    player_id,
-                    guess_text,
+                    f"⏭️  Guess rejected (prompt conflict): {error_msg} | round={round_id} player={player_id} guess='{guess_text}'"
                 )
                 return {}, "invalid_phrase", error_msg
 
@@ -263,12 +293,8 @@ class TLRoundService:
             guess_embedding = await self.matching.generate_embedding(guess_text)
 
             # Check self-similarity
-            prior_guesses = await self._get_prior_guesses(db, round_id)
-            is_too_similar, max_sim = await self.matching.check_self_similarity(
-                guess_text,
-                prior_guesses,
-                threshold=self.self_similarity_threshold,
-            )
+            prior_guesses = await _get_prior_guesses(db, round_id)
+            is_too_similar, max_sim = await self.matching.check_self_similarity(guess_text, prior_guesses)
             if is_too_similar:
                 logger.info(f"⏭️  Guess rejected: too similar to prior (similarity={max_sim:.3f})")
                 similarity_note = (
@@ -278,7 +304,7 @@ class TLRoundService:
                 return {}, "too_similar", similarity_note
 
             # Find matches in snapshot
-            snapshot_answers = await self._build_snapshot_answers(db, round.snapshot_answer_ids)
+            snapshot_answers = await _build_snapshot_answers(db, round.snapshot_answer_ids)
             matches = await self.matching.find_matches(
                 guess_text,
                 guess_embedding,
@@ -301,10 +327,6 @@ class TLRoundService:
                 new_strikes = round.strikes
                 logger.info(f"⚠️  No matches - strike {new_strikes}/3")
 
-                if round.strikes >= self.max_strike_count:
-                    round.status = 'abandoned'  # Mark as ended due to strikes
-                    logger.debug(f"🏁 Round ended - 3 strikes reached")
-
             # Log guess
             guess = TLGuess(
                 round_id=str(round.round_id),
@@ -326,6 +348,24 @@ class TLRoundService:
                 str(round.prompt_id),
             )
 
+            # Check for round completion conditions and finalize if needed
+            should_finalize = False
+            
+            if round.strikes >= self.max_strike_count:
+                # Round ended due to strikes
+                round.status = 'completed'  # Change from 'abandoned' to 'completed'
+                should_finalize = True
+                logger.info(f"🏁 Round ended - 3 strikes reached, finalizing...")
+            elif current_coverage >= 0.95:  # 95% coverage threshold for auto-completion
+                # Round completed due to high coverage
+                round.status = 'completed'
+                should_finalize = True
+                logger.info(f"🎉 Round completed - high coverage achieved ({current_coverage:.1%}), finalizing...")
+
+            # Finalize round if completion conditions are met
+            if should_finalize:
+                await self._finalize_round(db, round, current_coverage, player_id)
+
             return {
                 "was_match": was_match,
                 "matched_answer_count": len(matches),
@@ -339,12 +379,64 @@ class TLRoundService:
             logger.exception(f"❌ Submit guess failed: {e}")
             return {}, "submit_failed", None
 
-    async def abandon_round(
-        self,
-        db: AsyncSession,
-        round_id: str,
-        player_id: str,
-    ) -> Tuple[Dict, Optional[str]]:
+    async def _finalize_round(self, db: AsyncSession, round: TLRound, coverage: float, player_id: str) -> None:
+        """Finalize a completed round with payouts and statistics.
+        
+        Args:
+            db: Database session
+            round: The round to finalize
+            coverage: Final coverage percentage (0-1)
+            player_id: Player ID for transactions
+        """
+        try:
+            # Calculate payouts
+            wallet_award, vault_award, gross_payout = self.scoring.calculate_payout(coverage)
+            
+            # Get player
+            player = await db.get(Player, player_id)
+            if not player or not player.tl_player_data:
+                logger.error(f"❌ Player or TL data not found for finalization: {player_id}")
+                return
+                
+            # Apply wallet award
+            if wallet_award > 0:
+                player.tl_player_data.wallet += wallet_award
+                wallet_transaction = TLTransaction(
+                    player_id=player_id,
+                    amount=wallet_award,
+                    transaction_type='round_payout_wallet',
+                    round_id=str(round.round_id),
+                    description=f'Round payout - wallet ({coverage:.1%} coverage)',
+                )
+                db.add(wallet_transaction)
+                
+            # Apply vault award
+            if vault_award > 0:
+                player.tl_player_data.vault += vault_award
+                vault_transaction = TLTransaction(
+                    player_id=player_id,
+                    amount=vault_award,
+                    transaction_type='round_payout_vault',
+                    round_id=str(round.round_id),
+                    description=f'Round payout - vault ({coverage:.1%} coverage)',
+                )
+                db.add(vault_transaction)
+            
+            # Finalize the round using the scoring service
+            await self.scoring.finalize_round(
+                db, round, wallet_award, vault_award, gross_payout, coverage
+            )
+            
+            logger.info(
+                f"✅ Round finalized: {round.round_id} | coverage={coverage:.1%} | "
+                f"wallet_award={wallet_award} | vault_award={vault_award} | gross={gross_payout}"
+            )
+            
+        except Exception as e:
+            logger.error(f"❌ Round finalization failed: {e}")
+            raise
+
+    async def abandon_round(self, db: AsyncSession, round_id: str, player_id: str) -> Tuple[Dict, Optional[str]]:
         """Abandon an active round with partial refund.
 
         Refund: entry_cost - 5 (95 coins)
@@ -423,65 +515,3 @@ class TLRoundService:
         except Exception as e:
             logger.error(f"❌ Abandon round failed: {e}")
             return {}, "abandon_failed"
-
-    async def _get_prompt_text(
-        self,
-        db: AsyncSession,
-        prompt_id: str,
-    ) -> str:
-        """Helper to get prompt text."""
-        from sqlalchemy.orm import load_only
-        # Use load_only to avoid loading embedding column (pgvector deserialization issue)
-        result = await db.execute(
-            select(TLPrompt)
-            .options(load_only(TLPrompt.prompt_id, TLPrompt.text))
-            .where(TLPrompt.prompt_id == prompt_id)
-        )
-        prompt = result.scalars().first()
-        return prompt.text if prompt else ""
-
-    async def _get_prior_guesses(
-        self,
-        db: AsyncSession,
-        round_id: str,
-    ) -> List[str]:
-        """Get all prior guesses in a round."""
-        # Only load guess text to avoid deserializing historical embeddings that may
-        # be stored as plain lists (pgvector expects vector input and would crash).
-        result = await db.execute(
-            select(TLGuess.text).where(TLGuess.round_id == round_id)
-        )
-        return [row[0] for row in result.all()]
-
-    async def _build_snapshot_answers(
-        self,
-        db: AsyncSession,
-        answer_ids: List[str],
-    ) -> List[Dict]:
-        """Build answer data for matching from snapshot IDs."""
-        if not answer_ids:
-            return []
-
-        result = await db.execute(
-            select(TLAnswer).where(TLAnswer.answer_id.in_(answer_ids))
-        )
-        answers = result.scalars().all()
-
-        # DEBUG: Log embedding types from pgvector to diagnose conversion issues
-        if answers:
-            first_embedding = answers[0].embedding
-            logger.info(
-                f"🔬 EMBEDDING DEBUG: pgvector returned type={type(first_embedding).__name__}, "
-                f"len={len(first_embedding) if hasattr(first_embedding, '__len__') else 'N/A'}, "
-                f"sample_values={list(first_embedding)[:5] if hasattr(first_embedding, '__iter__') else 'N/A'}..."
-            )
-
-        return [
-            {
-                "answer_id": str(a.answer_id),
-                "text": a.text,
-                "embedding": a.embedding,
-                "cluster_id": str(a.cluster_id) if a.cluster_id else None,
-            }
-            for a in answers
-        ]

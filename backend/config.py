@@ -71,7 +71,7 @@ class Settings(BaseSettings):
     tl_cluster_join_threshold: float = 0.75  # Threshold to join existing cluster
     tl_cluster_duplicate_threshold: float = 0.90  # Threshold for near-duplicate detection
     tl_topic_threshold: float = 0.40  # Threshold for on-topic validation
-    tl_self_similarity_threshold: float = 0.80  # Threshold for rejecting self-similar guesses
+    tl_self_similarity_threshold: float = 0.90  # Threshold for rejecting self-similar guesses
 
     # ThinkLink Corpus Management
     tl_active_corpus_cap: int = 1000  # Maximum active answers per prompt

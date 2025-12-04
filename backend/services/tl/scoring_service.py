@@ -4,7 +4,7 @@ Calculates coverage, payouts, and manages round finalization.
 """
 import logging
 import math
-from typing import List, Tuple, Optional, Dict
+from typing import List, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.sql import func
@@ -12,6 +12,91 @@ from backend.models.tl import TLRound, TLAnswer, TLCluster
 from backend.config import get_settings
 
 logger = logging.getLogger(__name__)
+
+
+async def update_answer_stats(db: AsyncSession, round: TLRound) -> None:
+    """Update answer stats after round completion.
+
+    For all snapshot answers: increment shows
+    For matched answers: increment contributed_matches
+
+    Args:
+        db: Database session
+        round: Completed TLRound
+    """
+    try:
+        if not round.snapshot_answer_ids or not round.matched_clusters:
+            return
+
+        # Get all snapshot answers
+        result = await db.execute(
+            select(TLAnswer).where(
+                TLAnswer.answer_id.in_(round.snapshot_answer_ids)
+            )
+        )
+        all_answers = {a.answer_id: a for a in result.scalars().all()}
+
+        # Increment shows for all snapshot answers
+        for answer in all_answers.values():
+            answer.shows = (answer.shows or 0) + 1
+
+        # Increment contributed_matches for matched answers
+        if round.matched_clusters:
+            result = await db.execute(
+                select(TLAnswer).where(
+                    TLAnswer.cluster_id.in_(round.matched_clusters),
+                    TLAnswer.answer_id.in_(round.snapshot_answer_ids)
+                )
+            )
+            matched_answers = result.scalars().all()
+            for answer in matched_answers:
+                answer.contributed_matches = (answer.contributed_matches or 0) + 1
+
+        await db.flush()
+        logger.info(
+            f"✅ Updated stats: shows +1 for {len(all_answers)} answers, "
+            f"contributed_matches +1 for {len(matched_answers)} matched"
+        )
+    except Exception as e:
+        logger.error(f"❌ Answer stats update failed: {e}")
+
+
+async def finalize_round(
+        db: AsyncSession,
+        round: TLRound,
+        wallet_award: int,
+        vault_award: int,
+        gross_payout: int,
+        coverage: float,
+) -> None:
+    """Finalize round with final scores and statistics.
+
+    Args:
+        db: Database session
+        round: TLRound to finalize
+        wallet_award: Amount to add to wallet
+        vault_award: Amount to add to vault
+        gross_payout: Gross payout amount
+        coverage: Final coverage (0-1)
+    """
+    try:
+        round.status = 'completed'
+        round.final_coverage = coverage
+        round.gross_payout = gross_payout
+        round.ended_at = func.now()  # Server timestamp
+
+        # Update answer stats
+        await update_answer_stats(db, round)
+
+        await db.flush()
+        logger.info(
+            f"✅ Finalized round {round.round_id}: "
+            f"coverage={coverage:.1%}, gross={gross_payout}, "
+            f"wallet={wallet_award}, vault={vault_award}"
+        )
+    except Exception as e:
+        logger.error(f"❌ Round finalization failed: {e}")
+        raise
 
 
 class TLScoringService:
@@ -114,10 +199,7 @@ class TLScoringService:
             logger.error(f"❌ Total weight calculation failed: {e}")
             return 0.0
 
-    def calculate_payout(
-        self,
-        coverage: float,
-    ) -> Tuple[int, int, int]:
+    def calculate_payout(self, coverage: float) -> Tuple[int, int, int]:
         """Calculate payout from coverage percentage.
 
         Uses convex payout curve: gross = round(300 * (p ** 1.5))
@@ -157,91 +239,3 @@ class TLScoringService:
         except Exception as e:
             logger.error(f"❌ Payout calculation failed: {e}")
             return 0, 0, 0
-
-    async def update_answer_stats(
-        self,
-        db: AsyncSession,
-        round: TLRound,
-    ) -> None:
-        """Update answer stats after round completion.
-
-        For all snapshot answers: increment shows
-        For matched answers: increment contributed_matches
-
-        Args:
-            db: Database session
-            round: Completed TLRound
-        """
-        try:
-            if not round.snapshot_answer_ids or not round.matched_clusters:
-                return
-
-            # Get all snapshot answers
-            result = await db.execute(
-                select(TLAnswer).where(
-                    TLAnswer.answer_id.in_(round.snapshot_answer_ids)
-                )
-            )
-            all_answers = {a.answer_id: a for a in result.scalars().all()}
-
-            # Increment shows for all snapshot answers
-            for answer in all_answers.values():
-                answer.shows = (answer.shows or 0) + 1
-
-            # Increment contributed_matches for matched answers
-            if round.matched_clusters:
-                result = await db.execute(
-                    select(TLAnswer).where(
-                        TLAnswer.cluster_id.in_(round.matched_clusters),
-                        TLAnswer.answer_id.in_(round.snapshot_answer_ids)
-                    )
-                )
-                matched_answers = result.scalars().all()
-                for answer in matched_answers:
-                    answer.contributed_matches = (answer.contributed_matches or 0) + 1
-
-            await db.flush()
-            logger.info(
-                f"✅ Updated stats: shows +1 for {len(all_answers)} answers, "
-                f"contributed_matches +1 for {len(matched_answers)} matched"
-            )
-        except Exception as e:
-            logger.error(f"❌ Answer stats update failed: {e}")
-
-    async def finalize_round(
-        self,
-        db: AsyncSession,
-        round: TLRound,
-        wallet_award: int,
-        vault_award: int,
-        gross_payout: int,
-        coverage: float,
-    ) -> None:
-        """Finalize round with final scores and statistics.
-
-        Args:
-            db: Database session
-            round: TLRound to finalize
-            wallet_award: Amount to add to wallet
-            vault_award: Amount to add to vault
-            gross_payout: Gross payout amount
-            coverage: Final coverage (0-1)
-        """
-        try:
-            round.status = 'completed'
-            round.final_coverage = coverage
-            round.gross_payout = gross_payout
-            round.ended_at = func.now()  # Server timestamp
-
-            # Update answer stats
-            await self.update_answer_stats(db, round)
-
-            await db.flush()
-            logger.info(
-                f"✅ Finalized round {round.round_id}: "
-                f"coverage={coverage:.1%}, gross={gross_payout}, "
-                f"wallet={wallet_award}, vault={vault_award}"
-            )
-        except Exception as e:
-            logger.error(f"❌ Round finalization failed: {e}")
-            raise

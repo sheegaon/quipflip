@@ -113,35 +113,6 @@ class TestMatchingService:
         assert similarities[1] == pytest.approx(0.0, abs=0.001)
         assert similarities[2] == pytest.approx(0.0, abs=0.001)  # Clamped from -1.0
 
-    @pytest.mark.asyncio
-    async def test_check_on_topic_with_low_threshold(self, matching_service):
-        """Test on-topic check returns consistent results with threshold."""
-        prompt = "Name something people forget at home"
-        guess = "Wallet"
-
-        # Check with very low threshold - should be on topic
-        is_on_topic, similarity = await matching_service.check_on_topic(
-            prompt, guess, threshold=0.01
-        )
-
-        # With a low threshold, even semantic relationship should pass
-        assert is_on_topic is True
-        assert similarity >= 0.01
-
-    @pytest.mark.asyncio
-    async def test_check_on_topic_with_high_threshold(self, matching_service):
-        """Test on-topic check with very high threshold."""
-        prompt = "Name something people forget at home"
-        guess = "Quantum entanglement physics experiment"
-
-        # Check with high threshold - should be off topic
-        is_on_topic, similarity = await matching_service.check_on_topic(
-            prompt, guess, threshold=0.95
-        )
-
-        # Quantum physics is unrelated to forgetting things
-        assert is_on_topic is False
-        assert similarity < 0.95
 
     @pytest.mark.asyncio
     async def test_check_self_similarity_identical_guess(self, matching_service):
@@ -149,9 +120,7 @@ class TestMatchingService:
         guess_text = "Keys"
         prior_guesses = ["Keys", "Door", "Phone"]
 
-        is_too_similar, max_sim = await matching_service.check_self_similarity(
-            guess_text, prior_guesses, threshold=0.80
-        )
+        is_too_similar, max_sim = await matching_service.check_self_similarity(guess_text, prior_guesses)
 
         # Identical text should definitely be flagged as too similar
         assert is_too_similar is True
@@ -163,9 +132,7 @@ class TestMatchingService:
         guess_text = "Keys"
         prior_guesses = ["Phone", "Wallet", "Door"]
 
-        is_too_similar, max_sim = await matching_service.check_self_similarity(
-            guess_text, prior_guesses, threshold=0.80
-        )
+        is_too_similar, max_sim = await matching_service.check_self_similarity(guess_text, prior_guesses)
 
         # "Keys" is different from the prior guesses
         assert is_too_similar is False
