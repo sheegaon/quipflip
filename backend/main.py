@@ -643,6 +643,11 @@ app.include_router(online_users.router, prefix="/qf/users")
 app.include_router(online_users.router, prefix="/mm/users")
 app.include_router(online_users.router, prefix="/tl/users")
 app.include_router(auth.router)
+# Expose auth routes under each game prefix so proxied/game-specific base URLs can
+# still resolve shared endpoints like /auth/ws-token.
+app.include_router(auth.router, prefix="/qf")
+app.include_router(auth.router, prefix="/mm")
+app.include_router(auth.router, prefix="/tl")
 app.include_router(health.router)
 
 

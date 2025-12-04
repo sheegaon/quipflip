@@ -195,7 +195,7 @@ class TLRoundService:
             if not round:
                 return {}, "round_not_found", None
 
-            if round.player_id != player_id:
+            if str(round.player_id) != str(player_id):
                 return {}, "unauthorized", None
 
             if round.status != 'active':
