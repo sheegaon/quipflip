@@ -283,7 +283,7 @@ async def get_round_history(
 
         query = (
             select(TLRound, TLPrompt.text)
-            .join(TLPrompt, TLRound.prompt_id == TLPrompt.prompt_id)
+            .join(TLPrompt, TLRound.prompt_id == TLPrompt.prompt_id, isouter=True)
             .where(TLRound.player_id == player.player_id)
             .where(TLRound.status != "active")
         )
