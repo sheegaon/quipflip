@@ -54,7 +54,7 @@ class TLRoundService:
         self,
         db: AsyncSession,
         player_id: str,
-    ) -> Tuple[Optional[TLRound], Optional[str]]:
+    ) -> Tuple[Optional[TLRound], Optional[str], Optional[str]]:
         """Start a new round for a player.
 
         Steps:
@@ -69,7 +69,7 @@ class TLRoundService:
             player_id: Player ID
 
         Returns:
-            (TLRound, error_message) - error_message is None on success
+            (round, prompt_text, error_message) - error_message is None on success
         """
         try:
             logger.debug(f"🎮 Starting round for player {player_id}...")
@@ -119,6 +119,9 @@ class TLRoundService:
             db.add(round)
             await db.flush()
 
+            # Attach prompt to avoid lazy-loading with async sessions
+            round.prompt = prompt
+
             # Deduct entry cost
             if player.tl_player_data:
                 player.tl_player_data.wallet -= self.entry_cost
@@ -136,11 +139,11 @@ class TLRoundService:
                 f"✅ Round started: {round.round_id} "
                 f"(prompt: {prompt.text[:50]}..., snapshot_weight={total_weight:.2f})"
             )
-            return round, None
+            return round, prompt.text, None
 
         except Exception as e:
             logger.error(f"❌ Start round failed: {e}")
-            return None, "round_start_failed"
+            return None, None, "round_start_failed"
 
     async def submit_guess(
         self,

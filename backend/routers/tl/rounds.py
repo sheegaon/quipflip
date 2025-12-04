@@ -92,7 +92,7 @@ async def start_round(
         settings = get_settings()
 
         # Start round
-        round_obj, error = await round_service.start_round(
+        round_obj, prompt_text, error = await round_service.start_round(
             db, str(player.player_id)
         )
 
@@ -114,7 +114,7 @@ async def start_round(
 
         return StartRoundResponse(
             round_id=round_obj.round_id,
-            prompt_text=round_obj.prompt.text if hasattr(round_obj, 'prompt') else "",
+            prompt_text=prompt_text or "",
             snapshot_answer_count=len(round_obj.snapshot_answer_ids or []),
             snapshot_total_weight=round_obj.snapshot_total_weight,
             created_at=round_obj.created_at,
