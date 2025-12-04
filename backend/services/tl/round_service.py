@@ -81,7 +81,8 @@ class TLRoundService:
                 return None, "Player not found"
 
             # Check balance
-            if player.tl_wallet < self.entry_cost:
+            tl_wallet = player.tl_player_data.wallet if player.tl_player_data else 0
+            if tl_wallet < self.entry_cost:
                 return None, "insufficient_balance"
 
             # Select prompt
@@ -117,7 +118,8 @@ class TLRoundService:
             await db.flush()
 
             # Deduct entry cost
-            player.tl_wallet -= self.entry_cost
+            if player.tl_player_data:
+                player.tl_player_data.wallet -= self.entry_cost
             transaction = TLTransaction(
                 player_id=player_id,
                 amount=-self.entry_cost,
@@ -341,7 +343,8 @@ class TLRoundService:
 
             # Refund to player
             player = await db.get(Player, player_id)
-            player.tl_wallet += refund_amount
+            if player and player.tl_player_data:
+                player.tl_player_data.wallet += refund_amount
 
             # Log transaction
             transaction = TLTransaction(

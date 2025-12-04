@@ -51,14 +51,17 @@ async def check_round_availability(
     settings = get_settings()
 
     # Check if player has sufficient balance
-    can_start = player.tl_wallet >= settings.tl_entry_cost
+    tl_wallet = player.tl_player_data.wallet if player.tl_player_data else 0
+    can_start = tl_wallet >= settings.tl_entry_cost
     error_message = None if can_start else "insufficient_balance"
+
+    tl_vault = player.tl_player_data.vault if player.tl_player_data else 0
 
     return RoundAvailability(
         can_start_round=can_start,
         error_message=error_message,
-        tl_wallet=player.tl_wallet,
-        tl_vault=player.tl_vault,
+        tl_wallet=tl_wallet,
+        tl_vault=tl_vault,
         entry_cost=settings.tl_entry_cost,
         max_payout=settings.tl_max_payout,
         starting_balance=settings.tl_starting_balance,
