@@ -381,6 +381,14 @@ class TLRoundService:
             if round.status != 'active':
                 return {}, "round_not_active"
 
+            # Disallow abandoning once any guess has been submitted
+            guess_present = await db.execute(
+                select(TLGuess.guess_id).where(TLGuess.round_id == round_id).limit(1)
+            )
+            if guess_present.first():
+                logger.debug(f"⏭️  Abandon blocked: guesses already submitted | {round_id=} {player_id=}")
+                return {}, "round_has_guesses"
+
             # Calculate refund (entry_cost - 5 penalty = 95 coins)
             penalty = 5
             refund_amount = self.entry_cost - penalty

@@ -238,6 +238,8 @@ async def abandon_round(
                 raise HTTPException(status_code=403, detail="unauthorized")
             elif error == "round_not_active":
                 raise HTTPException(status_code=400, detail="round_not_active")
+            elif error == "round_has_guesses":
+                raise HTTPException(status_code=400, detail="round_has_guesses")
             else:
                 raise HTTPException(status_code=500, detail="abandon_failed")
 
