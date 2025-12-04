@@ -43,8 +43,8 @@ def upgrade() -> None:
             0 as vault,
             false as tutorial_completed,
             'not_started' as tutorial_progress,
-            NOW() as created_at,
-            NOW() as updated_at
+            CURRENT_TIMESTAMP as created_at,
+            CURRENT_TIMESTAMP as updated_at
         FROM players p
         WHERE NOT EXISTS (
             SELECT 1 FROM tl_player_data t WHERE t.player_id = p.player_id
