@@ -14,12 +14,12 @@ Production (API): https://quipflip.xyz/api (proxied to Heroku backend)
 
 ## Authentication
 
-All endpoints except `/health` and `/` require a valid JSON Web Token (JWT) access token.
+All endpoints except `/health` and `/` require a valid JSON Web Token (JWT) access token. Authentication is **global** and handled by the shared `/auth/*` routes; pass `game_type=qf` on login/refresh/session calls when you need Quipflip-specific snapshots in the response.
 
 **Cookie-Based Authentication (Preferred):**
 - The API uses HTTP-only cookies for secure token storage
-- Access tokens are stored in `quipflip_access_token` cookie (2-hour lifetime)
-- Refresh tokens are stored in `quipflip_refresh_token` cookie (30-day lifetime)
+- Access tokens are stored in the configured `access_token_cookie_name` (default `quipflip_access_token`, 2-hour lifetime)
+- Refresh tokens are stored in the configured `refresh_token_cookie_name` (default `quipflip_refresh_token`, 30-day lifetime)
 - Cookies are automatically sent with requests when using `withCredentials: true`
 - Provides XSS protection since JavaScript cannot access HTTP-only cookies
 - **iOS Compatible:** The Vercel proxy ensures cookies work on all iOS browsers (Safari, Chrome, etc.)
@@ -31,18 +31,16 @@ Authorization: Bearer <access_token>
 - Still supported for API clients that cannot use cookies
 - The backend checks cookies first, then falls back to the Authorization header
 
-**Token Lifecycle:**
+**Token Lifecycle & Snapshots:**
 - Login/registration endpoints automatically set both access and refresh token cookies
 - Access tokens expire after 2 hours
-- Call `POST /auth/refresh` to get new tokens (uses refresh token cookie automatically)
+- Call `POST /auth/refresh?game_type=qf` to get new tokens and the current Quipflip snapshot (wallet/vault/tutorial flags) in `game_data`
+- `GET /auth/session?game_type=qf` returns the global player plus Quipflip snapshot when cookies/headers are present
 - Logout clears both cookies from the browser
 
 **Getting Tokens:**
-- Use `POST /player/guest` to create a guest account instantly (no email/password required).
-- Use `POST /player` to register with an email and password (the backend generates a username automatically).
-- Use `POST /auth/login` with your email and password to obtain fresh tokens.
-- Use `POST /player/upgrade` to convert a guest account to a full account.
-- All authentication endpoints set HTTP-only cookies for both access and refresh tokens.
+- Use `POST /auth/login` with your email/password (or `/auth/login/username`) to obtain fresh tokens. Include `game_type=qf` when you need the Quipflip snapshot in the response.
+- Legacy QF-specific routes (`/player/guest`, `/player`, `/player/upgrade`) are still available but internally call the global auth flow and return the same `player`/`game_data` envelopes.
 
 ## Data Model Reference
 

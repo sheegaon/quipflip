@@ -68,7 +68,7 @@ const Settings: React.FC = () => {
 
   useEffect(() => {
     if (player?.email) {
-      setEmailForm((prev) => ({ ...prev, newEmail: player.email }));
+      setEmailForm((prev) => ({ ...prev, newEmail: player.email ?? '' }));
     }
   }, [player?.email]);
 

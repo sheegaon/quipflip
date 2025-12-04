@@ -10,13 +10,12 @@ Development: http://localhost:8000/mm
 
 ## Authentication
 
-Meme Mint uses the shared authentication contract from [API.md](../API.md):
+Meme Mint uses the shared authentication contract from [API.md](../API.md). Authentication is **global**; include `game_type=mm` on auth/session calls to receive Meme Mint balances/tutorial flags in the `game_data` envelope.
 
-- HTTP-only cookies are set on login/registration/guest/upgrade/refresh using `quipflip_access_token` (2 hours) and `quipflip_refresh_token` (30 days).
+- HTTP-only cookies are set on login/refresh using the configured `access_token_cookie_name` and `refresh_token_cookie_name` (defaults mirror Quipflip).
 - Authorization headers (`Bearer <token>`) are also accepted by the MM auth dependency.
 - Most endpoints require authentication; unauthenticated access is only allowed where noted (e.g., registration and guest creation).
-
-**Note:** Unlike Initial Reaction which uses game-specific cookies (`ir_access_token`, `ir_refresh_token`), Meme Mint uses the shared `quipflip_*` cookies.
+- `GET /auth/session?game_type=mm` is the preferred way to bootstrap the current player state without assuming a default game.
 
 ## Data Model Reference
 

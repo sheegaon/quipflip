@@ -105,9 +105,9 @@ class CrowdcraftApiClient extends BaseApiClient {
   }
 
   constructor() {
-    super(QF_API_BASE_URL);
-    this.mmApi = new BaseApiClient(MM_API_BASE_URL);
-    this.tlApi = new BaseApiClient(TL_API_BASE_URL);
+    super(QF_API_BASE_URL, 'qf');
+    this.mmApi = new BaseApiClient(MM_API_BASE_URL, 'mm');
+    this.tlApi = new BaseApiClient(TL_API_BASE_URL, 'tl');
   }
 
   get axiosInstance() {

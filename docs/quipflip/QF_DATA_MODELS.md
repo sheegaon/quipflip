@@ -4,7 +4,7 @@ This guide documents the Quipflip-specific tables housed under `backend/models/q
 
 ## Architecture Note
 
-Quipflip uses the **unified Player model with game-specific data delegation** pattern. See [DATA_MODELS.md Architecture Overview](../DATA_MODELS.md#architecture-overview) for details on how `Player` delegates game-specific fields to `QFPlayerData`.
+Quipflip uses the **unified Player model with explicit per-game data** pattern. `Player` remains global and game-agnostic; all Quipflip balances, tutorials, and lockouts live in `QFPlayerData` and are loaded explicitly (e.g., via `PlayerService.snapshot_player_data(game_type="qf")`). Legacy `Player.wallet/vault` shims still exist during the migration and mirror `QFPlayerData` only when `auth_emit_legacy_fields` is enabled.
 
 ## Core Models
 
@@ -24,16 +24,15 @@ Quipflip uses the **unified Player model with game-specific data delegation** pa
 - Constraints: PK on player_id (one-to-one relationship)
 - Relationships: `player` (back-reference to unified Player)
 
-**Note**: While these fields live in `QFPlayerData`, the `Player` model provides transparent access via property accessors, so frontend code can still use `player.wallet`, `player.vault`, etc.
+**Note**: Game-facing APIs return Quipflip snapshots in the `game_data` envelope of auth/session responses instead of delegating through `Player`.
 
 ### Player (Unified Authentication - See DATA_MODELS.md)
 The shared `Player` table contains unified authentication and account information:
 - `player_id`, `username`, `email`, `password_hash`, `created_at`, `last_login_date`
 - `is_guest`, `is_admin`, `locked_until`
-- Delegated properties: `wallet`, `vault`, `tutorial_*`, etc. → see `QFPlayerData`
-- Relationships: All game-specific relationships go through the appropriate player data table
+- Relationships: All game-specific relationships go through the appropriate player data table; Quipflip state is accessed via `QFPlayerData`
 
-**Authentication**: JWT access/refresh tokens (stored in `qf_refresh_tokens` table)
+**Authentication**: JWT access/refresh tokens (stored in the unified `refresh_tokens` table; legacy `qf_refresh_tokens` remains as an alias)
 **Registration**:
 - Guest accounts: Created via `POST /player/guest` with auto-generated credentials (email: `guest####@quipflip.xyz`, password: `QuipGuest`)
 - Full accounts: Created via `POST /player` with email and password; username is randomly generated and cannot be changed

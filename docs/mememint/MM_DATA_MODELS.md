@@ -1,10 +1,10 @@
 # Meme Mint Data Models
 
-This guide documents the Meme Mint–specific tables housed under `backend/models/mm` and explains how they extend the shared base models defined in `DATA_MODELS.md`. Meme Mint uses the unified `Player` model with game-specific data delegation, and adds additional tables for images, captions, rounds, player state, and social features.
+This guide documents the Meme Mint–specific tables housed under `backend/models/mm` and explains how they extend the shared base models defined in `DATA_MODELS.md`. Meme Mint uses the unified `Player` model with explicit per-game data and adds additional tables for images, captions, rounds, player state, and social features.
 
 ## Architecture Note
 
-Meme Mint uses the **unified Player model with game-specific data delegation** pattern. See [DATA_MODELS.md Architecture Overview](../DATA_MODELS.md#architecture-overview) for details on how `Player` delegates game-specific fields to `MMPlayerData`.
+Meme Mint uses the **unified Player model with explicit per-game data** pattern. `Player` remains global and game-agnostic; all MM balances and state live in `MMPlayerData` and are loaded explicitly (e.g., via `PlayerService.snapshot_player_data(game_type="mm")`). Legacy `Player.wallet/vault` shims may mirror MM data only while `auth_emit_legacy_fields` is enabled during the migration.
 
 **MMPlayerData** contains Meme Mint-specific player state:
 - `player_id` (UUID, PK, FK to players.player_id)

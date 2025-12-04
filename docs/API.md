@@ -1,6 +1,6 @@
 # API Documentation Index
 
-The backend now mirrors the code split between shared infrastructure and game-specific routers.
+The backend now mirrors the code split between shared infrastructure and game-specific routers. Authentication is **global**: auth endpoints live at the root (`/auth/*`) and issue tokens scoped to the unified player identity. Game-specific routers request per-game snapshots via an explicit `game_type` query parameter instead of relying on delegated `Player` fields.
 
 - [Quipflip (QF) API](quipflip/QF_API.md) – endpoints mounted under `/qf/*` and implemented in `backend/routers/qf`.
 - [Initial Reaction (IR) API](initialreaction/IR_API.md) – endpoints mounted under `/ir/*` and implemented in `backend/routers/ir`.
@@ -12,14 +12,14 @@ Authentication, health checks, and WebSocket token exchange are defined once in 
 
 - `GET /health` and `GET /status` for service monitoring and discovery.
 - `POST /auth/login`, `POST /auth/login/username`, `POST /auth/refresh`, `POST /auth/logout` for cookie-backed JWTs.
-- `GET /auth/suggest-username`, `GET /auth/ws-token` for username generation and WebSocket authentication.
+- `GET /auth/session`, `GET /auth/suggest-username`, `GET /auth/ws-token` for session probing, username generation, and WebSocket authentication.
 
 Refer to each game guide for gameplay-specific routes and payloads. Both games share the same authentication contract and HTTP error envelope.
 
 ## Authentication Endpoints
 
 ### POST /auth/login
-Authenticate a player via email/password and issue JWT tokens.
+Authenticate a player via email/password and issue JWT tokens. Pass an optional `game_type` query parameter (`qf`, `ir`, `mm`, `tl`) to receive a per-game snapshot in the response; omit it for a global-only login.
 
 **Request Body:**
 ```json
@@ -37,9 +37,32 @@ Authenticate a player via email/password and issue JWT tokens.
   "token_type": "bearer",
   "expires_in": 3600,
   "player_id": "550e8400-e29b-41d4-a716-446655440000",
-  "username": "CosmicPanda42"
+  "username": "CosmicPanda42",
+  "player": {
+    "player_id": "550e8400-e29b-41d4-a716-446655440000",
+    "username": "CosmicPanda42",
+    "email": "player@example.com",
+    "is_guest": false,
+    "is_admin": false,
+    "created_at": "2024-05-01T12:00:00Z",
+    "last_login_date": "2024-06-03T18:45:00Z"
+  },
+  "game_type": "qf",
+  "game_data": {
+    "game_type": "qf",
+    "wallet": 5000,
+    "vault": 0,
+    "tutorial_completed": true
+  },
+  "legacy_wallet": 5000,
+  "legacy_vault": 0,
+  "legacy_tutorial_completed": true
 }
 ```
+
+**Notes:**
+- `player` always reflects the global account. `game_data` appears only when a `game_type` is provided and the player has data for that game.
+- `legacy_*` mirrors are emitted only when `auth_emit_legacy_fields` is enabled to ease the migration away from delegated `Player` properties.
 
 **HTTP Status Codes:**
 - `200` - Login successful, tokens issued
@@ -88,7 +111,7 @@ Generate a suggested username for registration.
 - `200` - Username generated successfully
 
 ### POST /auth/refresh
-Exchange a refresh token for new JWT credentials.
+Exchange a refresh token for new JWT credentials. Accepts the refresh token from the HttpOnly cookie or request body and supports the optional `game_type` query parameter to include the relevant per-game snapshot in the response.
 
 **Request Body:**
 ```json
@@ -107,7 +130,26 @@ Exchange a refresh token for new JWT credentials.
   "token_type": "bearer",
   "expires_in": 3600,
   "player_id": "550e8400-e29b-41d4-a716-446655440000",
-  "username": "CosmicPanda42"
+  "username": "CosmicPanda42",
+  "player": {
+    "player_id": "550e8400-e29b-41d4-a716-446655440000",
+    "username": "CosmicPanda42",
+    "email": "player@example.com",
+    "is_guest": false,
+    "is_admin": false,
+    "created_at": "2024-05-01T12:00:00Z",
+    "last_login_date": "2024-06-03T18:45:00Z"
+  },
+  "game_type": "qf",
+  "game_data": {
+    "game_type": "qf",
+    "wallet": 5050,
+    "vault": 30,
+    "tutorial_completed": true
+  },
+  "legacy_wallet": 5050,
+  "legacy_vault": 30,
+  "legacy_tutorial_completed": true
 }
 ```
 
@@ -126,7 +168,7 @@ Exchange a refresh token for new JWT credentials.
 - `refresh_token` (HttpOnly, Secure) - New refresh token (rotation)
 
 ### POST /auth/logout
-Invalidate refresh token, clean up sessions, and clear cookies.
+Invalidate refresh token, clean up sessions, and clear cookies. Logs a player out globally regardless of game context.
 
 **Request Body:**
 ```json
@@ -147,6 +189,38 @@ Invalidate refresh token, clean up sessions, and clear cookies.
 - Refresh token is revoked in database
 - Player is removed from all active party sessions
 - Auth cookies are cleared from browser
+
+### GET /auth/session
+Probe the current authentication state using cookies or the `Authorization` header. Accepts an optional `game_type` query parameter to include per-game data when present.
+
+**Response (200):**
+```json
+{
+  "player_id": "550e8400-e29b-41d4-a716-446655440000",
+  "username": "CosmicPanda42",
+  "player": {
+    "player_id": "550e8400-e29b-41d4-a716-446655440000",
+    "username": "CosmicPanda42",
+    "email": "player@example.com",
+    "is_guest": false,
+    "is_admin": false,
+    "created_at": "2024-05-01T12:00:00Z",
+    "last_login_date": "2024-06-03T18:45:00Z"
+  },
+  "game_type": "qf",
+  "game_data": {
+    "game_type": "qf",
+    "wallet": 5050,
+    "vault": 30,
+    "tutorial_completed": true
+  },
+  "legacy_wallet": 5050,
+  "legacy_vault": 30,
+  "legacy_tutorial_completed": true
+}
+```
+
+Use this endpoint to bootstrap clients without assuming a default game; pass `game_type` to receive the matching snapshot or omit it for a global-only payload.
 
 **Cookies Cleared:**
 - `access_token` - Removed
