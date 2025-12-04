@@ -156,7 +156,7 @@ class CrowdcraftApiClient extends BaseApiClient {
   override async getBetaSurveyStatus(signal?: AbortSignal): Promise<QFBetaSurveyStatusResponse> {
     this.logApi('get', '/feedback/beta-survey/status', 'start');
     try {
-      const { data } = await this.rootApi.get<QFBetaSurveyStatusResponse>('/feedback/beta-survey/status', { signal });
+      const { data } = await this.api.get<QFBetaSurveyStatusResponse>('/feedback/beta-survey/status', { signal });
       this.logApi('get', '/feedback/beta-survey/status', 'success', data);
       return data;
     } catch (error) {
@@ -169,7 +169,7 @@ class CrowdcraftApiClient extends BaseApiClient {
     payload: QFBetaSurveySubmissionRequest,
     signal?: AbortSignal,
   ): Promise<QFBetaSurveySubmissionResponse> {
-    const { data } = await this.rootApi.post<QFBetaSurveySubmissionResponse>('/feedback/beta-survey', payload, { signal });
+    const { data } = await this.api.post<QFBetaSurveySubmissionResponse>('/feedback/beta-survey', payload, { signal });
     return data;
   }
 

@@ -208,14 +208,26 @@ class TLRoundService:
             validator = get_phrase_validator()
             is_valid, error_msg = validator.validate(guess_text)
             if not is_valid:
-                logger.debug(f"⏭️  Guess rejected: invalid format ({error_msg})")
+                logger.debug(
+                    "⏭️  Guess rejected (validation): %s | round=%s player=%s guess='%s'",
+                    error_msg,
+                    round_id,
+                    player_id,
+                    guess_text,
+                )
                 return {}, "invalid_phrase", error_msg
 
             # Validate phrase doesn't reuse significant words from prompt
             prompt_text = round.prompt.text if hasattr(round, 'prompt') else await self._get_prompt_text(db, round.prompt_id)
             is_valid, error_msg = await validator.validate_prompt_phrase(guess_text, prompt_text)
             if not is_valid:
-                logger.debug(f"⏭️  Guess rejected: conflicts with prompt ({error_msg})")
+                logger.debug(
+                    "⏭️  Guess rejected (prompt conflict): %s | round=%s player=%s guess='%s'",
+                    error_msg,
+                    round_id,
+                    player_id,
+                    guess_text,
+                )
                 return {}, "invalid_phrase", error_msg
 
             # Generate embedding for guess
