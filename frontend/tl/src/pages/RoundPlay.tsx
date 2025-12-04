@@ -36,6 +36,8 @@ interface Guess {
 
 const normalizeGuessText = (text: string) => text.trim().replace(/\s+/g, ' ');
 
+const getWords = (phrase: string) => phrase.match(/[A-Za-z']+/g) || [];
+
 const validateGuessLocally = (guess: string): string | null => {
   const normalized = normalizeGuessText(guess);
 
@@ -47,11 +49,11 @@ const validateGuessLocally = (guess: string): string | null => {
     return 'Use 4-100 characters';
   }
 
-  if (!/^[A-Za-z\s]+$/.test(normalized)) {
-    return 'Use letters and spaces only (A-Z)';
+  if (!/^[A-Za-z\s']+$/.test(normalized)) {
+    return 'Use letters, spaces, and apostrophes only';
   }
 
-  const words = normalized.split(' ').filter(Boolean);
+  const words = getWords(normalized);
 
   if (words.length < 2 || words.length > 5) {
     return 'Enter 2-5 words';
@@ -106,6 +108,7 @@ export const RoundPlay: React.FC = () => {
   const [isAbandoning, setIsAbandoning] = useState(false);
   const [roundEnded, setRoundEnded] = useState(false);
   const [finalResult, setFinalResult] = useState<FinalResult | null>(null);
+  const wordCount = getWords(guessText).length;
 
   // Check if round should end (3 strikes)
   useEffect(() => {
@@ -289,46 +292,55 @@ export const RoundPlay: React.FC = () => {
   return (
     <div className="min-h-screen bg-ccl-cream bg-pattern flex flex-col">
       {/* Header */}
-      <header className="bg-gradient-to-r from-ccl-navy to-ccl-navy-deep text-white p-6 md:p-8">
+      <header className="bg-ccl-navy text-white p-6 md:p-8 shadow-lg">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-3xl md:text-4xl font-display font-bold mb-4 text-center" role="heading" aria-level={1}>
-            {round.prompt_text}
-          </h1>
-          <p className="text-center text-ccl-cream text-sm" aria-label={`Round has ${round.snapshot_answer_count} answers with ${round.snapshot_total_weight.toFixed(0)} total weight`}>
-            {round.snapshot_answer_count} answers · {round.snapshot_total_weight.toFixed(0)} total weight
-          </p>
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 md:p-8 shadow-lg backdrop-blur-sm">
+            <h1 className="text-3xl md:text-4xl font-display font-bold mb-4 text-center" role="heading" aria-level={1}>
+              {round.prompt_text}
+            </h1>
+            <p className="text-center text-ccl-cream text-sm" aria-label={`Round has ${round.snapshot_answer_count} answers with ${round.snapshot_total_weight.toFixed(0)} total weight`}>
+              {round.snapshot_answer_count} answers · {round.snapshot_total_weight.toFixed(0)} total weight
+            </p>
+          </div>
         </div>
       </header>
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col items-center justify-center p-4 md:p-8">
         <div className="max-w-2xl w-full space-y-8">
-          {/* Coverage Bar */}
-          <Tooltip content="Coverage % shows how many of the crowd's answers you've matched. Higher coverage = bigger payout!">
-            <div>
-              <CoverageBar coverage={coverage * 100} />
-            </div>
-          </Tooltip>
+          <div className="flex flex-col md:flex-row gap-4 md:items-center">
+            {/* Coverage Bar */}
+            <Tooltip content="Coverage % shows how many of the crowd's answers you've matched. Higher coverage = bigger payout!">
+              <div className="flex-1">
+                <CoverageBar coverage={coverage * 100} />
+              </div>
+            </Tooltip>
 
-          {/* Strike Indicator */}
-          <Tooltip content="Get 3 strikes and your round ends. Try common, obvious answers to avoid wrong guesses.">
-            <div>
-              <StrikeIndicator strikes={strikes} />
-            </div>
-          </Tooltip>
+            {/* Strike Indicator */}
+            <Tooltip content="Get 3 strikes and your round ends. Try common, obvious answers to avoid wrong guesses.">
+              <div className="md:w-56">
+                <StrikeIndicator strikes={strikes} />
+              </div>
+            </Tooltip>
+          </div>
 
           {/* Recent Guesses */}
           <MatchFeedback guesses={guesses} />
 
           {/* Guess Input */}
-          <GuessInput
-            value={guessText}
-            onChange={setGuessText}
-            onSubmit={handleSubmitGuess}
-            isSubmitting={isSubmitting}
-            error={error}
-            autoFocus={true}
-          />
+          <div className="space-y-3">
+            <GuessInput
+              value={guessText}
+              onChange={setGuessText}
+              onSubmit={handleSubmitGuess}
+              isSubmitting={isSubmitting}
+              error={error}
+              autoFocus={true}
+            />
+            <p className="text-xs text-ccl-navy/80" aria-live="polite">
+              {`${wordCount || 0} word${wordCount === 1 ? '' : 's'} out of 2-5 words total`}
+            </p>
+          </div>
 
           {/* Stats Footer */}
           <section className="grid grid-cols-3 gap-4 text-center text-sm" aria-label="Game statistics">
@@ -356,7 +368,7 @@ export const RoundPlay: React.FC = () => {
           <button
             onClick={handleAbandonRound}
             disabled={isAbandoning}
-            className="w-full py-2 text-red-600 border-2 border-red-400 rounded-tile hover:bg-red-50 disabled:opacity-50 font-semibold text-sm"
+            className="w-full py-3 bg-red-600 text-white rounded-tile shadow-md hover:bg-red-700 disabled:opacity-60 font-semibold text-sm transition-colors"
             aria-label="Abandon round - forfeit this round and get 95 coins refunded"
             title="Abandon this round and receive a 95 coin refund"
           >

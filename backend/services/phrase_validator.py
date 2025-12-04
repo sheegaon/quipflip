@@ -185,9 +185,9 @@ class PhraseValidator:
         if len(phrase) > self.settings.phrase_max_length:
             return False, f"Phrase must be {self.settings.phrase_max_length} characters or less"
 
-        # Check for valid characters (letters and spaces only)
-        if not re.match(r'^[a-zA-Z\s]+$', phrase):
-            return False, "Phrase must contain only letters A-Z and spaces"
+        # Check for valid characters (letters, spaces, and apostrophes)
+        if not re.match(r"^[a-zA-Z\s']+$", phrase):
+            return False, "Phrase must contain only letters A-Z, spaces, and apostrophes"
 
         # Parse into words
         words = _parse_phrase(phrase)
@@ -202,6 +202,7 @@ class PhraseValidator:
         # Validate each word
         has_significant = False
         for word in words:
+            cleaned_word = word.replace("'", "")
             word_upper = word.upper()
 
             # Allow common words regardless of length or dictionary
@@ -209,15 +210,16 @@ class PhraseValidator:
                 continue
 
             # Check word length (skip for connecting words)
-            if len(word) < self.settings.phrase_min_char_per_word:
+            if len(cleaned_word) < self.settings.phrase_min_char_per_word:
                 return False, (f"Words must be at least {self.settings.phrase_min_char_per_word} characters "
                                f"(excluding 'A' and 'I')")
 
-            if len(word) > self.settings.phrase_max_char_per_word:
+            if len(cleaned_word) > self.settings.phrase_max_char_per_word:
                 return False, f"Each word must be at most {self.settings.phrase_max_char_per_word} characters"
 
-            # Check dictionary
-            if word_upper not in self.dictionary:
+            # Check dictionary (accept both contracted and stripped forms)
+            dict_candidates = {word_upper, cleaned_word.upper()}
+            if not any(candidate in self.dictionary for candidate in dict_candidates):
                 return False, f"Word '{word}' not in dictionary"
 
             has_significant = True
@@ -232,13 +234,14 @@ class PhraseValidator:
         if not phrase:
             return set()
 
-        words = re.findall(r"[a-zA-Z]+", phrase)
+        words = re.findall(r"[a-zA-Z']+", phrase)
         min_length = self.settings.significant_word_min_length
         significant_words = set()
 
         for word in words:
-            if len(word) >= min_length:
-                word_upper = word.upper()
+            cleaned_word = word.replace("'", "")
+            if len(cleaned_word) >= min_length:
+                word_upper = cleaned_word.upper()
                 # Exclude common words that are allowed to be reused
                 if word_upper not in self.COMMON_WORDS:
                     significant_words.add(word.lower())

@@ -72,15 +72,17 @@ import type {
 } from './types.ts';
 
 const rawBaseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
-const QF_API_BASE_URL = /\/qf($|\/)/.test(rawBaseUrl) ? rawBaseUrl : `${rawBaseUrl}/qf`;
-const MM_API_BASE_URL = /\/mm($|\/)/.test(rawBaseUrl) ? rawBaseUrl : `${rawBaseUrl}/mm`;
-const TL_API_BASE_URL = /\/tl($|\/)/.test(rawBaseUrl) ? rawBaseUrl : `${rawBaseUrl}/tl`;
+// Ensure the root API base never includes a game-specific prefix so shared auth endpoints resolve.
+const rootApiBaseUrl = rawBaseUrl.replace(/\/(qf|mm|tl)(\/)?$/, '');
+const QF_API_BASE_URL = /\/qf($|\/)/.test(rawBaseUrl) ? rawBaseUrl : `${rootApiBaseUrl}/qf`;
+const MM_API_BASE_URL = /\/mm($|\/)/.test(rawBaseUrl) ? rawBaseUrl : `${rootApiBaseUrl}/mm`;
+const TL_API_BASE_URL = /\/tl($|\/)/.test(rawBaseUrl) ? rawBaseUrl : `${rootApiBaseUrl}/tl`;
 
 class CrowdcraftApiClient extends BaseApiClient {
   private readonly mmApi: BaseApiClient;
   private readonly tlApi: BaseApiClient;
   private readonly rootApi = axios.create({
-    baseURL: rawBaseUrl,
+    baseURL: rootApiBaseUrl,
     headers: { 'Content-Type': 'application/json' },
     withCredentials: true,
   });
