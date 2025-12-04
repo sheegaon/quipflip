@@ -40,7 +40,12 @@ class MMPlayerData(Base):
     consecutive_incorrect_votes = Column(Integer, default=0, nullable=False)
     vote_lockout_until = Column(DateTime(timezone=True), nullable=True)
 
-    player = relationship("Player", back_populates="mm_player_data", lazy="selectin")
+    player = relationship(
+        "Player",
+        back_populates="mm_player_data",
+        lazy="selectin",
+        enable_typechecks=False,  # Allow MMPlayer subclass instances
+    )
 
     def __repr__(self):
         return (f"<MMPlayerData(player_id={self.player_id}, "

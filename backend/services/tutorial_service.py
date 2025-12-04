@@ -16,9 +16,9 @@ logger = logging.getLogger(__name__)
 class TutorialService:
     """Service for managing tutorial progress."""
 
-    def __init__(self, db: AsyncSession, game_type: GameType):
+    def __init__(self, db: AsyncSession, game_type: GameType = GameType.QF):
         self.db = db
-        self.game_type = game_type
+        self.game_type = game_type or GameType.QF
         # Get game-specific PlayerData model
         if game_type == GameType.QF:
             from backend.models.qf.player_data import QFPlayerData
