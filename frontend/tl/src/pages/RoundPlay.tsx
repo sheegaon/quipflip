@@ -148,9 +148,6 @@ export const RoundPlay: React.FC = () => {
       setCoverage(response.current_coverage);
       setGuessText('');
 
-      // Speak feedback
-      speakFeedback(newGuess);
-
       // Check if round ended
       if (response.round_status === 'completed') {
         await finalizeRound();
@@ -164,20 +161,6 @@ export const RoundPlay: React.FC = () => {
       }
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const speakFeedback = (guess: Guess) => {
-    const message = guess.wasMatch
-      ? `Match! You matched ${guess.text}`
-      : guess.causedStrike
-      ? `No match. Strike!`
-      : 'No match.';
-
-    if ('speechSynthesis' in window) {
-      const utterance = new SpeechSynthesisUtterance(message);
-      utterance.rate = 1.2;
-      speechSynthesis.speak(utterance);
     }
   };
 

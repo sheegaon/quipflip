@@ -31,12 +31,9 @@ class TLMatchingService:
         self.embedding_cache: Dict[str, List[float]] = {}
         # Track how many embeddings we've generated to checkpoint DB cache
         self._generated_count = 0
+        self.self_similarity_threshold = settings.tl_self_similarity_threshold
 
-    async def generate_embedding(
-        self,
-        text: str,
-        db: Optional[AsyncSession] = None
-    ) -> List[float]:
+    async def generate_embedding(self, text: str, db: Optional[AsyncSession] = None) -> List[float]:
         """Generate embedding for text using OpenAI with DB caching.
 
         Cache lookup order (enforced close to the API call):
@@ -109,11 +106,7 @@ class TLMatchingService:
             logger.error(f"❌ Failed to generate embedding: {e}")
             raise
 
-    async def _get_cached_embedding(
-        self,
-        text: str,
-        db: Optional[AsyncSession] = None
-    ) -> Optional[List[float]]:
+    async def _get_cached_embedding(self, text: str, db: Optional[AsyncSession] = None) -> Optional[List[float]]:
         """Check DB for cached embedding."""
         async def _query(session: AsyncSession) -> Optional[List[float]]:
             result = await session.execute(
@@ -281,52 +274,7 @@ class TLMatchingService:
             logger.error(f"❌ Failed batch cosine similarity: {e}")
             return [0.0] * len(candidate_vecs)
 
-    async def check_on_topic(
-        self,
-        prompt_text: str,
-        answer_text: str,
-        prompt_embedding: Optional[List[float]] = None,
-        threshold: float = 0.40
-    ) -> Tuple[bool, float]:
-        """Check if answer is semantically related to prompt.
-
-        Args:
-            prompt_text: Prompt text
-            answer_text: Answer text to validate
-            prompt_embedding: Pre-computed prompt embedding (optional)
-            threshold: Minimum similarity threshold
-
-        Returns:
-            (is_on_topic, similarity_score)
-        """
-        try:
-            # Get or generate prompt embedding
-            if prompt_embedding is None:
-                prompt_embedding = await self.generate_embedding(prompt_text)
-
-            # Generate answer embedding
-            answer_embedding = await self.generate_embedding(answer_text)
-
-            # Calculate similarity
-            similarity = self.cosine_similarity(prompt_embedding, answer_embedding)
-
-            is_on_topic = similarity >= threshold
-            logger.info(
-                f"🎯 On-topic check: '{answer_text[:30]}...' "
-                f"similarity={similarity:.3f}, threshold={threshold}, "
-                f"on_topic={is_on_topic}"
-            )
-            return is_on_topic, similarity
-        except Exception as e:
-            logger.error(f"❌ On-topic check failed: {e}")
-            return False, 0.0
-
-    async def check_self_similarity(
-        self,
-        guess_text: str,
-        prior_guesses: List[str],
-        threshold: float = 0.80
-    ) -> Tuple[bool, Optional[float]]:
+    async def check_self_similarity(self, guess_text: str, prior_guesses: List[str]) -> Tuple[bool, Optional[float]]:
         """Check if guess is too similar to player's prior guesses.
 
         Args:
@@ -347,11 +295,9 @@ class TLMatchingService:
             similarities = self.batch_cosine_similarity(guess_embedding, prior_embeddings)
             max_similarity = max(similarities) if similarities else 0.0
 
+            threshold = self.self_similarity_threshold
             is_too_similar = max_similarity >= threshold
-            logger.info(
-                f"🔍 Self-similarity check: max={max_similarity:.3f}, "
-                f"threshold={threshold}, too_similar={is_too_similar}"
-            )
+            logger.info(f"🔍 Self-similarity check: {max_similarity=:.3f} {threshold=}, {is_too_similar=}")
             return is_too_similar, max_similarity
         except Exception as e:
             logger.error(f"❌ Self-similarity check failed: {e}")
@@ -392,10 +338,7 @@ class TLMatchingService:
                 max_idx = similarities.index(max_sim)
                 best_answer = snapshot_answers[max_idx]
                 logger.info(
-                    f"🔍 SIMILARITY DEBUG for '{guess_text}': "
-                    f"highest_sim={max_sim:.4f}, threshold={threshold}, "
-                    f"best_match='{best_answer['text']}'"
-                )
+                    f"🔍 SIMILARITY DEBUG for '{guess_text}': {max_sim=:.4f}, {threshold=}, '{best_answer['text']=}'")
                 # Log top 5 similarities for more context
                 sorted_sims = sorted(enumerate(similarities), key=lambda x: x[1], reverse=True)[:5]
                 for rank, (idx, sim) in enumerate(sorted_sims, 1):

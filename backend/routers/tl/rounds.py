@@ -190,9 +190,7 @@ async def submit_guess(
         await db.commit()
 
         logger.info(
-            f"✅ Guess processed: was_match={result['was_match']}, "
-            f"coverage={result['current_coverage']:.2%}"
-        )
+            f"✅ Guess processed: was_match={result['was_match']}, coverage={result['current_coverage']:.2%}")
 
         return SubmitGuessResponse(
             was_match=result["was_match"],
