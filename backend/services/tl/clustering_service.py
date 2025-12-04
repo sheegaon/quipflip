@@ -151,7 +151,8 @@ async def _update_centroid_raw(db: AsyncSession, cluster_id: str, old_size: int,
         if _is_sqlite(db):
             select_query = "SELECT centroid_embedding FROM tl_cluster WHERE cluster_id = :cluster_id"
         else:
-            select_query = "SELECT centroid_embedding::text FROM tl_cluster WHERE cluster_id = :cluster_id"
+            # PostgreSQL - treat as JSON, not pgvector
+            select_query = "SELECT centroid_embedding FROM tl_cluster WHERE cluster_id = :cluster_id"
 
         result = await db.execute(
             text(select_query),
@@ -162,7 +163,21 @@ async def _update_centroid_raw(db: AsyncSession, cluster_id: str, old_size: int,
             logger.error(f"❌ Cluster {cluster_id} not found for centroid update")
             return
 
-        old_centroid = _parse_vector_text(row[0])
+        # Parse centroid - could be JSON array or pgvector text format
+        old_centroid_raw = row[0]
+        if isinstance(old_centroid_raw, str):
+            # If string, parse as pgvector text format or JSON
+            if old_centroid_raw.startswith('[') and old_centroid_raw.endswith(']'):
+                old_centroid = _parse_vector_text(old_centroid_raw)
+            else:
+                import json
+                old_centroid = json.loads(old_centroid_raw)
+        elif isinstance(old_centroid_raw, list):
+            # Already a list (JSON column)
+            old_centroid = old_centroid_raw
+        else:
+            # Could be pgvector type - convert to list
+            old_centroid = list(old_centroid_raw)
 
         # Calculate new centroid using running mean
         new_centroid = [
@@ -170,9 +185,7 @@ async def _update_centroid_raw(db: AsyncSession, cluster_id: str, old_size: int,
             for old, new in zip(old_centroid, new_embedding)
         ]
 
-        # Update via raw SQL - database-specific syntax
-        centroid_str = "[" + ",".join(str(x) for x in new_centroid) + "]"
-
+        # Update via raw SQL - store as JSON, not pgvector
         if _is_sqlite(db):
             update_query = """
                 UPDATE tl_cluster
@@ -181,19 +194,25 @@ async def _update_centroid_raw(db: AsyncSession, cluster_id: str, old_size: int,
                     updated_at = datetime('now')
                 WHERE cluster_id = :cluster_id
             """
+            # SQLite expects JSON array
+            import json
+            centroid_value = json.dumps(new_centroid)
         else:
             update_query = """
                 UPDATE tl_cluster
-                SET centroid_embedding = CAST(:centroid AS vector),
+                SET centroid_embedding = :centroid::json,
                     size = :new_size,
                     updated_at = NOW()
                 WHERE cluster_id = :cluster_id
             """
+            # PostgreSQL - store as JSON array, not pgvector
+            import json
+            centroid_value = json.dumps(new_centroid)
 
         await db.execute(
             text(update_query),
             {
-                "centroid": centroid_str,
+                "centroid": centroid_value,
                 "new_size": old_size + 1,
                 "cluster_id": cluster_id
             }
@@ -337,10 +356,9 @@ class TLClusteringService:
                     WHERE prompt_id = :prompt_id
                 """
             else:
-                # PostgreSQL - use type casting for pgvector compatibility
+                # PostgreSQL - treat as JSON, no pgvector casting
                 sql_query = """
-                    SELECT cluster_id::text, size,
-                           centroid_embedding::text
+                    SELECT cluster_id::text, size, centroid_embedding
                     FROM tl_cluster
                     WHERE prompt_id = :prompt_id
                 """
@@ -363,14 +381,27 @@ class TLClusteringService:
                 return str(new_cluster.cluster_id)
 
             # Find best matching cluster
-            best_cluster_id = None
+            best_cluster_id: str | None = None
             best_cluster_size = 0
             best_similarity = -1.0
 
             for row in rows:
-                cluster_id, size, centroid_text = row
-                # Parse centroid from pgvector text format: "[0.1,0.2,...]"
-                centroid = _parse_vector_text(centroid_text)
+                cluster_id, size, centroid_raw = row
+                
+                # Parse centroid - could be JSON array, pgvector text, or list
+                if isinstance(centroid_raw, str):
+                    # If string, parse as pgvector text format or JSON
+                    if centroid_raw.startswith('[') and centroid_raw.endswith(']'):
+                        centroid = _parse_vector_text(centroid_raw)
+                    else:
+                        import json
+                        centroid = json.loads(centroid_raw)
+                elif isinstance(centroid_raw, list):
+                    # Already a list (JSON column)
+                    centroid = centroid_raw
+                else:
+                    # Could be pgvector type - convert to list
+                    centroid = list(centroid_raw)
 
                 similarity = self.matching.cosine_similarity(
                     answer_embedding,
@@ -378,11 +409,11 @@ class TLClusteringService:
                 )
                 if similarity > best_similarity:
                     best_similarity = similarity
-                    best_cluster_id = cluster_id
+                    best_cluster_id = str(cluster_id)
                     best_cluster_size = size
 
             # Decide action based on similarity threshold
-            if best_similarity >= CLUSTER_JOIN_THRESHOLD:
+            if best_similarity >= CLUSTER_JOIN_THRESHOLD and best_cluster_id is not None:
                 # Join existing cluster - update via raw SQL to avoid pgvector issues
                 logger.debug(
                     f"🔗 Joining cluster {best_cluster_id} "

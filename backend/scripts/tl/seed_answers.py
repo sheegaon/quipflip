@@ -84,6 +84,7 @@ async def seed_answers(db: AsyncSession, force: bool = False):
 
         created = 0
         skipped = 0
+        failed = 0
 
         for prompt_text, completions in completions_map.items():
             # Find the prompt in database (use load_only to avoid pgvector deserialization issue)
@@ -102,6 +103,8 @@ async def seed_answers(db: AsyncSession, force: bool = False):
             prompt_id = str(prompt.prompt_id)
 
             for completion_text in completions:
+                # Use a savepoint to isolate each answer processing
+                savepoint = await db.begin_nested()
                 try:
                     # Check if answer already exists
                     result = await db.execute(
@@ -113,6 +116,7 @@ async def seed_answers(db: AsyncSession, force: bool = False):
                     answer_in_db = (result.scalar() or 0) > 0
                     if not force and answer_in_db:
                         skipped += 1
+                        await savepoint.rollback()
                         continue
 
                     # Drop existing answer if it exists (force mode)
@@ -145,6 +149,8 @@ async def seed_answers(db: AsyncSession, force: bool = False):
                     answer.cluster_id = cluster_id
                     await db.flush()
 
+                    # Commit this answer's savepoint
+                    await savepoint.commit()
                     created += 1
 
                     # Commit every 50 answers for safety (avoid losing progress on failure)
@@ -153,15 +159,17 @@ async def seed_answers(db: AsyncSession, force: bool = False):
                         logger.info(f"✅ Committed {created} answers (checkpoint) so far...")
 
                 except Exception as e:
+                    # Rollback just this answer's changes, continue with others
+                    await savepoint.rollback()
                     logger.warning(f"Failed to seed answer '{completion_text[:30]}...': {e}")
-                    skipped += 1
+                    failed += 1
 
         # Final commit for any remaining answers
         await db.commit()
         if created > 0:
-            logger.info(f"ThinkLink answer seeding complete: {created} new answers created, {skipped} already existed")
+            logger.info(f"ThinkLink answer seeding complete: {created} new answers created, {skipped} already existed, {failed} failed")
         else:
-            logger.info(f"ThinkLink answers already up to date ({skipped} answers exist)")
+            logger.info(f"ThinkLink answers already up to date ({skipped} answers exist, {failed} failed)")
 
     except Exception as e:
         await db.rollback()
