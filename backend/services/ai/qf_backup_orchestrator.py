@@ -302,7 +302,7 @@ class QFBackupOrchestrator:
                     # Get available AI voter
                     ai_voter_player = await self.ai_service.get_or_create_ai_player(
                         AIPlayerType.QF_VOTER,
-                        excluded=[p.player_id for p in voted_players])
+                        excluded=list(voted_players))
 
                     # Generate AI vote choice
                     seed = ai_voter_player.player_id.int
