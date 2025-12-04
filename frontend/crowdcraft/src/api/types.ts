@@ -207,6 +207,35 @@ export interface TLAbandonRoundResponse {
   refund_amount: number;
 }
 
+export type TLRoundHistorySortBy = 'date' | 'payout' | 'coverage';
+export type TLRoundHistorySortDirection = 'asc' | 'desc';
+
+export interface TLRoundHistoryItem {
+  round_id: string;
+  prompt_text: string;
+  final_coverage?: number | null;
+  gross_payout?: number | null;
+  strikes: number;
+  status: string;
+  created_at: string;
+  ended_at?: string | null;
+}
+
+export interface TLRoundHistoryResponse {
+  rounds: TLRoundHistoryItem[];
+}
+
+export interface TLRoundHistoryQuery {
+  sort_by?: TLRoundHistorySortBy;
+  sort_direction?: TLRoundHistorySortDirection;
+  min_coverage?: number;
+  max_coverage?: number;
+  min_payout?: number;
+  max_payout?: number;
+  start_date?: string;
+  end_date?: string;
+}
+
 export interface TLPromptPreviewResponse {
   prompt_id: string;
   prompt_text: string;
