@@ -38,12 +38,16 @@ class TLPromptService:
         Returns:
             TLPrompt or None if no active prompts available
         """
+        from sqlalchemy.orm import load_only
+
         try:
             logger.debug("🎲 Selecting random active prompt...")
 
             # Get all active prompts with answer counts
+            # Use load_only to avoid loading embedding column (pgvector deserialization issue)
             result = await db.execute(
                 select(TLPrompt, func.count(TLAnswer.answer_id).label('answer_count'))
+                .options(load_only(TLPrompt.prompt_id, TLPrompt.text, TLPrompt.is_active, TLPrompt.ai_seeded, TLPrompt.created_at))
                 .outerjoin(TLAnswer)
                 .where(TLPrompt.is_active == True)
                 .group_by(TLPrompt.prompt_id)
@@ -60,6 +64,8 @@ class TLPromptService:
             # Weighted selection by answer count (prefer fuller corpuses)
             prompts = [p for p, _ in prompts_with_counts]
             weights = [count for _, count in prompts_with_counts]
+            # Ensure weights are positive (use 1 as minimum to allow selection)
+            weights = [max(1, w) for w in weights]
             selected_prompt = random.choices(prompts, weights=weights, k=1)[0]
             logger.debug(
                 f"✅ Selected prompt: '{selected_prompt.text[:50]}...' "
@@ -164,9 +170,14 @@ class TLPromptService:
         Returns:
             TLPrompt or None
         """
+        from sqlalchemy.orm import load_only
+
         try:
+            # Use load_only to avoid loading embedding column (pgvector deserialization issue)
             result = await db.execute(
-                select(TLPrompt).where(TLPrompt.prompt_id == prompt_id)
+                select(TLPrompt)
+                .options(load_only(TLPrompt.prompt_id, TLPrompt.text, TLPrompt.is_active, TLPrompt.ai_seeded, TLPrompt.created_at))
+                .where(TLPrompt.prompt_id == prompt_id)
             )
             return result.scalars().first()
         except Exception as e:

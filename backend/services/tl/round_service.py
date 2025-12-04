@@ -386,8 +386,12 @@ class TLRoundService:
         prompt_id: str,
     ) -> str:
         """Helper to get prompt text."""
+        from sqlalchemy.orm import load_only
+        # Use load_only to avoid loading embedding column (pgvector deserialization issue)
         result = await db.execute(
-            select(TLPrompt).where(TLPrompt.prompt_id == prompt_id)
+            select(TLPrompt)
+            .options(load_only(TLPrompt.prompt_id, TLPrompt.text))
+            .where(TLPrompt.prompt_id == prompt_id)
         )
         prompt = result.scalars().first()
         return prompt.text if prompt else ""
