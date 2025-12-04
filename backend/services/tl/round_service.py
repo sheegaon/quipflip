@@ -342,7 +342,16 @@ class TLRoundService:
             if not round:
                 return {}, "round_not_found"
 
-            if round.player_id != player_id:
+            # Ownership check can be tripped by UUID vs string mismatches;
+            # log both representations to debug any session/identity drift.
+            if str(round.player_id) != str(player_id):
+                logger.warning(
+                    "🔒 Abandon unauthorized: round belongs to %s (type=%s), request for %s (type=%s)",
+                    round.player_id,
+                    type(round.player_id).__name__,
+                    player_id,
+                    type(player_id).__name__,
+                )
                 return {}, "unauthorized"
 
             if round.status != 'active':
