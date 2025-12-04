@@ -32,7 +32,7 @@ export const Header: React.FC = () => {
   const location = useLocation();
   const { goBack } = useNavigationHistory();
   const { state: { status: tutorialStatus } } = useTutorial();
-  const { unviewedCount } = useHeaderIndicators();
+  const { unclaimedCount } = useHeaderIndicators();
   const { isOffline } = useNetwork();
 
   const [showGuestLogoutWarning, setShowGuestLogoutWarning] = React.useState(false);
@@ -283,7 +283,7 @@ export const Header: React.FC = () => {
                     >
                       <TrophyIcon
                         className="h-5 w-5"
-                        variant={unviewedCount > 0 ? 'orange' : 'teal'}
+                        variant={unclaimedCount > 0 ? 'orange' : 'teal'}
                       />
                       <span className="font-semibold">Results</span>
                     </button>
