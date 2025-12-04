@@ -148,7 +148,7 @@ async def submit_guess(
         logger.debug(f"💭 Player {player.player_id} submitting guess: '{guess_text}'")
 
         # Submit guess
-        result, error = await round_service.submit_guess(
+        result, error, error_detail = await round_service.submit_guess(
             db, str(round_id), str(player.player_id), guess_text
         )
 
@@ -163,9 +163,20 @@ async def submit_guess(
             elif error == "round_already_ended":
                 raise HTTPException(status_code=400, detail="round_already_ended")
             elif error == "off_topic":
-                raise HTTPException(status_code=400, detail="off_topic")
+                raise HTTPException(status_code=400, detail={
+                    "error": "off_topic",
+                    "message": error_detail or "Not on topic",
+                })
             elif error == "too_similar":
-                raise HTTPException(status_code=400, detail="too_similar")
+                raise HTTPException(status_code=400, detail={
+                    "error": "too_similar",
+                    "message": error_detail or "Too similar to your previous guess",
+                })
+            elif error == "invalid_phrase":
+                raise HTTPException(status_code=400, detail={
+                    "error": "invalid_phrase",
+                    "message": error_detail or "Invalid phrase",
+                })
             else:
                 raise HTTPException(status_code=500, detail="submit_failed")
 
