@@ -10,12 +10,10 @@ from typing import Tuple, TYPE_CHECKING
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.data.username_pool import USERNAME_POOL
+from backend.scripts.username_pool import USERNAME_POOL
 from backend.models.player_base import PlayerBase
 from backend.services.ai.openai_api import moderate_text
-
-if TYPE_CHECKING:
-    from backend.utils.model_registry import GameType
+from backend.utils.model_registry import GameType
 
 
 logger = logging.getLogger(__name__)

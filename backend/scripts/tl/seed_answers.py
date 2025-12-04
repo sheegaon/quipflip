@@ -25,7 +25,7 @@ settings = get_settings()
 
 def load_completions_from_csv() -> dict[str, list[str]]:
     """Load prompt -> completions mapping from prompt_completions.csv."""
-    csv_path = Path(__file__).parent / "prompt_completions.csv"
+    csv_path = Path(__file__).parent.parent.parent / "data" / "prompt_completions.csv"
 
     if not csv_path.exists():
         raise FileNotFoundError(f"Prompt data file not found at {csv_path}")
@@ -110,9 +110,20 @@ async def seed_answers(db: AsyncSession, force: bool = False):
                             TLAnswer.text == completion_text
                         )
                     )
-                    if (result.scalar() or 0) > 0:
+                    answer_in_db = (result.scalar() or 0) > 0
+                    if not force and answer_in_db:
                         skipped += 1
                         continue
+
+                    # Drop existing answer if it exists (force mode)
+                    if answer_in_db:
+                        await db.execute(
+                            delete(TLAnswer).where(
+                                TLAnswer.prompt_id == prompt_id,
+                                TLAnswer.text == completion_text
+                            )
+                        )
+                        await db.flush()
 
                     # Generate embedding (pass db for transaction control)
                     embedding = await matching_service.generate_embedding(completion_text, db=db)
@@ -130,23 +141,16 @@ async def seed_answers(db: AsyncSession, force: bool = False):
 
                     # Assign to cluster
                     cluster_id = await clustering_service.assign_cluster(
-                        db,
-                        prompt_id,
-                        embedding,
-                        str(answer.answer_id),
-                    )
+                        db, prompt_id, embedding, str(answer.answer_id))
                     answer.cluster_id = cluster_id
                     await db.flush()
 
                     created += 1
 
-                    # Commit every 100 answers for safety (avoid losing progress on failure)
-                    if created % 100 == 0:
+                    # Commit every 50 answers for safety (avoid losing progress on failure)
+                    if created % 50 == 0:
                         await db.commit()
-                        logger.info(f"✅ Committed {created} answers (checkpoint)")
-
-                    elif created % 50 == 0:
-                        logger.info(f"Created {created} answers so far...")
+                        logger.info(f"✅ Committed {created} answers (checkpoint) so far...")
 
                 except Exception as e:
                     logger.warning(f"Failed to seed answer '{completion_text[:30]}...': {e}")
@@ -211,7 +215,7 @@ async def main():
     async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
     async with async_session() as session:
-        await seed_answers(session, force=False)
+        await seed_answers(session, force=True)
 
     # Run cleanup in a separate session
     async with async_session() as session:

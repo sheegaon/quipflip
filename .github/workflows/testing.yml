@@ -41,6 +41,7 @@ jobs:
       run: |
         python -m pytest tests/test_activity_service.py -v
         python -m pytest tests/test_api_player.py -v
+        python -m pytest tests/test_ai_player_pooling.py -v
         python -m pytest tests/test_api_vote.py -v
         python -m pytest tests/test_beta_survey.py -v
         python -m pytest tests/test_cleanup_service.py -v
@@ -50,12 +51,9 @@ jobs:
         python -m pytest tests/test_datetime_helpers.py -v
         python -m pytest tests/test_game_flow.py -v
         python -m pytest tests/test_guest_accounts.py -v
-        python -m pytest tests/test_mm_caption_retirement.py -v
-        python -m pytest tests/test_mm_circle_service.py -v
-        python -m pytest tests/test_mm_game_circles_integration.py -v
-        python -m pytest tests/test_mm_riff_validation.py -v
-        python -m pytest tests/test_mm_vote_service.py -v
+        python -m pytest tests/test_guest_limitations.py -v
         python -m pytest tests/test_party_session_service.py -v
+        python -m pytest tests/test_phrase_validator.py -v
         python -m pytest tests/test_profanity_check.py -v
         python -m pytest tests/test_prompt_seeder.py -v
         python -m pytest tests/test_quest_progress.py -v
@@ -70,6 +68,8 @@ jobs:
         python -m pytest tests/test_username_service.py -v
         python -m pytest tests/test_variable_prize_pool.py -v
         python -m pytest tests/test_vote_service.py -v
+        python -m pytest tests/test_ir_* -v
+        python -m pytest tests/test_mm_* -v
         python -m pytest tests/test_tl_* -v
 
   qf-frontend-lint:

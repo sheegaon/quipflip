@@ -30,8 +30,8 @@ from contextlib import asynccontextmanager
 from backend.config import get_settings
 from backend.version import APP_VERSION
 from backend.services.qf.prompt_seeder import sync_prompts_with_database
-from backend.data.seed_tl_prompts import seed_prompts as seed_tl_prompts
-from backend.data.seed_tl_answers import seed_answers as seed_tl_answers, cleanup_empty_prompts as cleanup_tl_prompts
+from backend.scripts.tl.seed_prompts import seed_prompts as seed_prompts
+from backend.scripts.tl.seed_answers import seed_answers as seed_answers, cleanup_empty_prompts as cleanup_tl_prompts
 from backend.routers import qf, ir, mm, tl, auth, health, notifications, online_users
 from backend.middleware.deduplication import deduplication_middleware
 from backend.middleware.online_user_tracking import online_user_tracking_middleware
@@ -185,7 +185,7 @@ async def import_meme_mint_images():
     - Create caption records from mm_seed_captions.csv
     - Update existing records if data has changed
     """
-    from backend.data.import_mm_images import import_images
+    from backend.scripts.mm.import_images import import_images
     from backend.database import AsyncSessionLocal
 
     try:
@@ -402,7 +402,7 @@ async def lifespan(app_instance: FastAPI):
     try:
         from backend.database import AsyncSessionLocal
         async with AsyncSessionLocal() as db:
-            await seed_tl_prompts(db)
+            await seed_prompts(db)
         logger.info("ThinkLink prompts seeded successfully")
     except Exception as e:
         logger.error(f"Failed to seed ThinkLink prompts: {e}")
@@ -412,7 +412,7 @@ async def lifespan(app_instance: FastAPI):
     try:
         from backend.database import AsyncSessionLocal
         async with AsyncSessionLocal() as db:
-            await seed_tl_answers(db)
+            await seed_answers(db, force=True)
         logger.info("ThinkLink answers seeded successfully")
     except Exception as e:
         logger.error(f"Failed to seed ThinkLink answers: {e}")
