@@ -21,7 +21,7 @@ settings = get_settings()
 
 def load_prompts_from_csv() -> list[str]:
     """Load unique prompts from prompt_completions.csv (first column only)."""
-    csv_path = Path(__file__).parent / "prompt_completions.csv"
+    csv_path = Path(__file__).parent.parent.parent / "data" / "prompt_completions.csv"
 
     if not csv_path.exists():
         raise FileNotFoundError(f"Prompt data file not found at {csv_path}")
