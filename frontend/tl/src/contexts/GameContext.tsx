@@ -134,7 +134,16 @@ export const GameProvider: React.FC<{
 
             const playerData = await apiClient.tlGetBalance(controller.signal);
             if (isMounted) {
-              setPlayer({ ...playerData, username: guestResponse.username });
+              const guestPlayer: TLPlayer = {
+                ...guestResponse.player,
+                username: guestResponse.username,
+                wallet: playerData.tl_wallet,
+                vault: playerData.tl_vault,
+                tl_wallet: playerData.tl_wallet,
+                tl_vault: playerData.tl_vault,
+              };
+
+              setPlayer(guestPlayer);
             }
           } catch (guestErr) {
             if (controller.signal.aborted) return;
@@ -224,18 +233,26 @@ export const GameProvider: React.FC<{
 
       try {
         const data = await apiClient.tlGetDashboard(signal);
-        const normalizedPlayer: TLPlayer = {
-          username: data.username,
-          wallet: data.tl_wallet,
-          vault: data.tl_vault,
-          tl_wallet: data.tl_wallet,
-          tl_vault: data.tl_vault,
-          tl_tutorial_completed: data.tl_tutorial_completed,
-          tl_tutorial_progress: data.tl_tutorial_progress,
-          created_at: data.created_at,
-        };
+        setPlayer(prev => {
+          const existingPlayer = prev ?? {};
 
-        setPlayer(prev => ({ ...prev, ...normalizedPlayer }));
+          const normalizedPlayer: TLPlayer = {
+            ...existingPlayer,
+            player_id: data.player_id,
+            username: data.username,
+            wallet: data.tl_wallet,
+            vault: data.tl_vault,
+            tl_wallet: data.tl_wallet,
+            tl_vault: data.tl_vault,
+            tl_tutorial_completed: data.tl_tutorial_completed,
+            tl_tutorial_progress: data.tl_tutorial_progress,
+            created_at: data.created_at,
+            is_guest: existingPlayer.is_guest ?? false,
+            is_admin: existingPlayer.is_admin ?? false,
+          };
+
+          return normalizedPlayer;
+        });
         if (data.username && data.username !== username) {
           apiClient.setSession(data.username);
           setUsername(data.username);
@@ -271,15 +288,23 @@ export const GameProvider: React.FC<{
 
       try {
         const data = await apiClient.tlGetBalance(signal);
-        const normalizedPlayer: TLPlayer = {
-          ...player,
-          wallet: data.tl_wallet,
-          vault: data.tl_vault,
-          tl_wallet: data.tl_wallet,
-          tl_vault: data.tl_vault,
-          username: player?.username ?? storedUsername,
-        };
-        setPlayer(normalizedPlayer);
+        setPlayer(prev => {
+          if (!prev) {
+            gameContextLogger.warn(
+              '⚠️ Skipping ThinkLink balance refresh: player not initialized in state',
+            );
+            return prev;
+          }
+
+          return {
+            ...prev,
+            wallet: data.tl_wallet,
+            vault: data.tl_vault,
+            tl_wallet: data.tl_wallet,
+            tl_vault: data.tl_vault,
+            username: prev.username ?? storedUsername,
+          };
+        });
         setError(null);
       } catch (err) {
         if (err instanceof Error && err.name === 'CanceledError') {
@@ -294,7 +319,7 @@ export const GameProvider: React.FC<{
         }
       }
     },
-    [logout, player],
+    [logout],
   );
 
   const refreshRoundAvailability = useCallback(
