@@ -364,6 +364,38 @@ Get round details and guess history.
 
 ---
 
+#### `GET /tl/rounds/history`
+Get a player's past TL rounds with optional filtering and sorting.
+
+**Authentication:** Required
+
+**Query Parameters:**
+- `sort_by` (string, optional) - One of `date` (default), `payout`, `coverage`
+- `sort_direction` (string, optional) - `asc` or `desc` (default: `desc`)
+- `min_coverage` / `max_coverage` (float, optional) - Inclusive coverage range (0-1)
+- `min_payout` / `max_payout` (int, optional) - Inclusive gross payout range
+- `start_date` / `end_date` (ISO datetime, optional) - Created at range filters
+
+**Response:**
+```json
+{
+  "rounds": [
+    {
+      "round_id": "uuid",
+      "prompt_text": "Name something people forget at home",
+      "final_coverage": 0.57,
+      "gross_payout": 120,
+      "strikes": 2,
+      "status": "completed",
+      "created_at": "2025-12-03T10:30:00Z",
+      "ended_at": "2025-12-03T10:34:00Z"
+    }
+  ]
+}
+```
+
+---
+
 ### Game Info Endpoints
 
 #### `GET /tl/game/prompts/preview`
