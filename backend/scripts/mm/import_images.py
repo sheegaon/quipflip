@@ -7,7 +7,7 @@ This script:
 4. Creates MMCaption records for seed captions
 
 Usage:
-    PYTHONPATH=/path/to/quipflip python backend/data/import_mm_images.py
+    PYTHONPATH=/path/to/quipflip python backend/data/import_images.py
 """
 
 import asyncio

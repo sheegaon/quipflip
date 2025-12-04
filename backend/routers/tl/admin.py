@@ -209,7 +209,7 @@ async def prune_corpus(
         clustering_service = TLClusteringService(matching_service)
 
         # Prune corpus
-        removed_count, current_count = await clustering_service.prune_corpus(
+        removed_count, current_count = await prune_corpus(
             db, str(prompt_id), keep_count=keep_count
         )
 

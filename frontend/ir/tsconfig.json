@@ -18,8 +18,11 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
+      "@crowdcraft/api": ["./src/api"],
+      "@crowdcraft/api/*": ["./src/api/*", "../crowdcraft/src/api/*"],
       "@crowdcraft/utils": ["../crowdcraft/src/utils/index.ts"],
       "@crowdcraft/utils/*": ["../crowdcraft/src/utils/*"],
+      "@crowdcraft": ["../crowdcraft/src/index.ts"],
       "@crowdcraft/*": ["../crowdcraft/src/*"]
     }
   },

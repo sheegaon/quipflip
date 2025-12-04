@@ -21,8 +21,6 @@ from backend.services.mm.scoring_service import MMScoringService
 from backend.config import get_settings
 from backend.utils import lock_client, ensure_utc
 from backend.utils.exceptions import (
-    RoundNotFoundError,
-    RoundExpiredError,
     NoContentAvailableError,
     InsufficientBalanceError,
 )
@@ -49,9 +47,9 @@ class MMGameService:
         if self._has_seeded_placeholder:
             return
 
-        from backend.data.seed_mm_data import seed_data as seed_mm_data
+        from backend.scripts.mm.seed_data import seed_data as seed_data
 
-        await seed_mm_data(self.db)
+        await seed_data(self.db)
         self._has_seeded_placeholder = True
 
     async def start_vote_round(

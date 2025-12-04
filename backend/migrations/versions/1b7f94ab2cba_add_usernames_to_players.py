@@ -12,7 +12,7 @@ from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
 
-from backend.data.username_pool import USERNAME_POOL
+from backend.scripts.username_pool import USERNAME_POOL
 
 # revision identifiers, used by Alembic.
 revision: str = "1b7f94ab2cba"
