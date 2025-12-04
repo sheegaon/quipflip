@@ -15,7 +15,7 @@ players table (unified authentication across all games)
 └── mm_player_data (Meme Mint-specific wallet, vault, player state)
 ```
 
-Each player account is linked to at most one record in each game's player data table. The `Player` model no longer delegates game-specific fields; services and routers must explicitly access per-game records (e.g., via `player.get_game_data(game_type)` or direct queries). This prevents implicit game defaults and keeps the global player identity game-agnostic.
+Each player account is linked to at most one record in each game's player data table. The `Player` model is game-agnostic and only stores identity/auth fields; services and routers explicitly access per-game records (e.g., via `player.get_game_data(game_type)` or `PlayerService.snapshot_player_data`). Auth responses include `player` (global identity) plus an optional `game_data` snapshot when a `game_type` query parameter is provided, with temporary `legacy_*` mirrors controlled by `auth_emit_legacy_fields` for backward compatibility.
 
 **Benefits of this architecture**:
 - Single authentication system across all games
@@ -45,7 +45,7 @@ Each player account is linked to at most one record in each game's player data t
 - `locked_until` (timestamp with timezone, nullable) - account lock expiration time for temporary bans/suspensions
 - Explicit relationships to each `{Game}PlayerData` table (no property delegation)
 
-**Authentication**: JWT access/refresh tokens with separate per-game refresh token tables
+**Authentication**: JWT access/refresh tokens stored in the unified `refresh_tokens` table; legacy per-game token tables remain as aliases for backward compatibility
 **Guest Accounts**: Auto-generated credentials with vote lockout protection for incorrect votes
 
 ### Game-Specific Player Data Tables

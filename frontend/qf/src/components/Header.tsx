@@ -403,7 +403,7 @@ export const Header: React.FC = () => {
               >
                 <img src="/wallet.png" alt="Wallet" className="w-5 h-5 md:w-7 md:h-7" />
                 <BalanceFlipper
-                  value={player.wallet}
+                  value={player.wallet ?? 0}
                   className="text-xl md:text-2xl font-display font-bold text-ccl-turquoise"
                 />
               </button>
@@ -417,7 +417,7 @@ export const Header: React.FC = () => {
               >
                 <img src="/vault.png" alt="Vault" className="w-5 h-5 md:w-7 md:h-7" />
                 <BalanceFlipper
-                  value={player.vault}
+                  value={player.vault ?? 0}
                   className="text-xl md:text-2xl font-display font-bold text-ccl-turquoise"
                 />
               </button>
