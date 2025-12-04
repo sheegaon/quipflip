@@ -87,7 +87,7 @@ async def start_round(
     5. Create round record
     """
     try:
-        logger.debug(f"🎮 Starting TL round for player {player.player_id}...")
+        logger.info(f"🎮 Starting TL round for player {player.player_id}...")
 
         settings = get_settings()
 
@@ -110,7 +110,7 @@ async def start_round(
         # Commit changes to database
         await db.commit()
 
-        logger.debug(f"✅ Round started: {round_obj.round_id}")
+        logger.info(f"✅ Round started: {round_obj.round_id}")
 
         return StartRoundResponse(
             round_id=round_obj.round_id,
@@ -151,7 +151,7 @@ async def submit_guess(
     try:
         guess_text = request_body.guess_text
 
-        logger.debug(f"💭 Player {player.player_id} submitting guess: '{guess_text}'")
+        logger.info(f"💭 Player {player.player_id} submitting guess: '{guess_text}'")
 
         # Submit guess
         result, error, error_detail = await round_service.submit_guess(
@@ -189,7 +189,7 @@ async def submit_guess(
         # Commit changes to database
         await db.commit()
 
-        logger.debug(
+        logger.info(
             f"✅ Guess processed: was_match={result['was_match']}, "
             f"coverage={result['current_coverage']:.2%}"
         )
@@ -223,7 +223,7 @@ async def abandon_round(
     Refund: entry_cost - 5 penalty (95 coins default with 100 entry cost)
     """
     try:
-        logger.debug(f"🚪 Player {player.player_id} abandoning round {round_id}...")
+        logger.info(f"🚪 Player {player.player_id} abandoning round {round_id}...")
 
         # Abandon round
         result, error = await round_service.abandon_round(
@@ -246,7 +246,7 @@ async def abandon_round(
         # Commit changes to database
         await db.commit()
 
-        logger.debug(
+        logger.info(
             f"✅ Round abandoned: refund={result['refund_amount']} coins"
         )
 

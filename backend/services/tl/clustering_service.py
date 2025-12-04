@@ -53,7 +53,7 @@ class TLClusteringService:
             cluster_id of assigned cluster
         """
         try:
-            logger.debug(f"🔄 Assigning cluster for answer: {answer_id}")
+            logger.info(f"🔄 Assigning cluster for answer: {answer_id}")
 
             # Get all clusters for this prompt
             result = await db.execute(
@@ -63,7 +63,7 @@ class TLClusteringService:
 
             if not clusters:
                 # Create new cluster
-                logger.debug(f"📝 Creating new cluster for prompt {prompt_id}")
+                logger.info(f"📝 Creating new cluster for prompt {prompt_id}")
                 new_cluster = TLCluster(
                     prompt_id=prompt_id,
                     centroid_embedding=answer_embedding,
@@ -72,7 +72,7 @@ class TLClusteringService:
                 )
                 db.add(new_cluster)
                 await db.flush()
-                logger.debug(f"✅ Created cluster {new_cluster.cluster_id}")
+                logger.info(f"✅ Created cluster {new_cluster.cluster_id}")
                 return str(new_cluster.cluster_id)
 
             # Find best matching cluster

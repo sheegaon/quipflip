@@ -47,14 +47,14 @@ class TLScoringService:
         """
         try:
             if not snapshot_cluster_ids:
-                logger.debug("🎯 No snapshot clusters - coverage = 0%")
+                logger.info("🎯 No snapshot clusters - coverage = 0%")
                 return 0.0
 
             # Calculate total weight of snapshot
             total_weight = await self._calculate_total_weight(db, snapshot_cluster_ids)
 
             if total_weight == 0:
-                logger.debug("🎯 Total weight = 0 - coverage = 0%")
+                logger.info("🎯 Total weight = 0 - coverage = 0%")
                 return 0.0
 
             # Calculate weight of matched clusters
@@ -63,7 +63,7 @@ class TLScoringService:
             coverage = float(matched_weight) / float(total_weight)
             coverage = max(0.0, min(1.0, coverage))  # Clamp to [0, 1]
 
-            logger.debug(
+            logger.info(
                 f"📊 Coverage: {coverage:.1%} "
                 f"(matched_weight={matched_weight:.2f} / total={total_weight:.2f})"
             )
@@ -149,7 +149,7 @@ class TLScoringService:
             # Net wallet change
             net_wallet = wallet_award - 100  # Minus entry cost
 
-            logger.debug(
+            logger.info(
                 f"💰 Payout: coverage={coverage:.1%} → "
                 f"gross={gross}, wallet={wallet_award}, vault={vault_award}, net={net_wallet}"
             )
@@ -201,7 +201,7 @@ class TLScoringService:
                     answer.contributed_matches = (answer.contributed_matches or 0) + 1
 
             await db.flush()
-            logger.debug(
+            logger.info(
                 f"✅ Updated stats: shows +1 for {len(all_answers)} answers, "
                 f"contributed_matches +1 for {len(matched_answers)} matched"
             )
@@ -237,7 +237,7 @@ class TLScoringService:
             await self.update_answer_stats(db, round)
 
             await db.flush()
-            logger.debug(
+            logger.info(
                 f"✅ Finalized round {round.round_id}: "
                 f"coverage={coverage:.1%}, gross={gross_payout}, "
                 f"wallet={wallet_award}, vault={vault_award}"

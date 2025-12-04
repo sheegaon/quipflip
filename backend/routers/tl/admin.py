@@ -87,7 +87,7 @@ async def seed_prompts(
                 status_code=400, detail="prompts list cannot be empty"
             )
 
-        logger.debug(f"🌱 Seeding {len(request_body.prompts)} prompts...")
+        logger.info(f"🌱 Seeding {len(request_body.prompts)} prompts...")
 
         # Initialize services
         matching_service = TLMatchingService()
@@ -101,7 +101,7 @@ async def seed_prompts(
         # Commit changes
         await db.commit()
 
-        logger.debug(f"✅ Prompts seeded: {created} created, {skipped} skipped")
+        logger.info(f"✅ Prompts seeded: {created} created, {skipped} skipped")
 
         return SeedPromptsResponse(
             created_count=created,
@@ -165,7 +165,7 @@ async def get_corpus_stats(
         scoring_service = TLScoringService()
         total_weight = await scoring_service._calculate_total_weight(db, cluster_ids)
 
-        logger.debug(
+        logger.info(
             f"📊 Corpus stats for {prompt_id}: "
             f"{active_answer_count} answers, {cluster_count} clusters, weight={total_weight:.2f}"
         )

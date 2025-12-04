@@ -41,7 +41,7 @@ class TLPromptService:
         from sqlalchemy.orm import load_only
 
         try:
-            logger.debug("🎲 Selecting random active prompt...")
+            logger.info("🎲 Selecting random active prompt...")
 
             # Get all active prompts with answer counts
             # Use load_only to avoid loading embedding column (pgvector deserialization issue)
@@ -67,7 +67,7 @@ class TLPromptService:
             # Ensure weights are positive (use 1 as minimum to allow selection)
             weights = [max(1, w) for w in weights]
             selected_prompt = random.choices(prompts, weights=weights, k=1)[0]
-            logger.debug(
+            logger.info(
                 f"✅ Selected prompt: '{selected_prompt.text[:50]}...' "
                 f"(id={selected_prompt.prompt_id})"
             )
@@ -91,7 +91,7 @@ class TLPromptService:
             (created_count, skipped_count)
         """
         try:
-            logger.debug(f"🌱 Seeding {len(prompt_texts)} prompts...")
+            logger.info(f"🌱 Seeding {len(prompt_texts)} prompts...")
 
             created = 0
             skipped = 0

@@ -247,7 +247,7 @@ class QFRoundService:
         from backend.utils.cache import dashboard_cache
         dashboard_cache.invalidate_player_data(player.player_id)
 
-        logger.debug(f"Submitted phrase for prompt round {round_id}: {phrase}")
+        logger.info(f"Submitted phrase for prompt round {round_id}: {phrase}")
         return round_object
 
     async def start_copy_round(
@@ -275,7 +275,7 @@ class QFRoundService:
         Returns:
             Tuple of (Round object, is_second_copy flag)
         """
-        logger.debug(
+        logger.info(
             f"{player.player_id=} attempting to start copy round (second_copy="
             f"{prompt_round_id is not None and not force_prompt_round}, forced={force_prompt_round})"
         )

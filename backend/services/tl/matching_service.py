@@ -37,11 +37,11 @@ class TLMatchingService:
         """
         # Check cache first
         if text in self.embedding_cache:
-            logger.debug(f"🔄 Using cached embedding for: {text[:50]}...")
+            logger.info(f"🔄 Using cached embedding for: {text[:50]}...")
             return self.embedding_cache[text]
 
         try:
-            logger.debug(f"📞 Generating embedding for: {text[:50]}...")
+            logger.info(f"📞 Generating embedding for: {text[:50]}...")
             response = await self.client.embeddings.create(
                 model=self.embedding_model,
                 input=text,
@@ -50,7 +50,7 @@ class TLMatchingService:
             embedding = response.data[0].embedding
             # Cache for this session
             self.embedding_cache[text] = embedding
-            logger.debug(f"✅ Embedding generated (cache size: {len(self.embedding_cache)})")
+            logger.info(f"✅ Embedding generated (cache size: {len(self.embedding_cache)})")
             return embedding
         except Exception as e:
             logger.error(f"❌ Failed to generate embedding: {e}")
@@ -104,13 +104,13 @@ class TLMatchingService:
                 return []
 
             # Debug: Log types and sample values to diagnose conversion issues
-            logger.debug(
+            logger.info(
                 f"🔬 batch_cosine_similarity: query_vec type={type(query_vec).__name__}, "
                 f"len={len(query_vec) if hasattr(query_vec, '__len__') else 'N/A'}"
             )
             if candidate_vecs:
                 first_candidate = candidate_vecs[0]
-                logger.debug(
+                logger.info(
                     f"🔬 First candidate type={type(first_candidate).__name__}, "
                     f"len={len(first_candidate) if hasattr(first_candidate, '__len__') else 'N/A'}"
                 )
@@ -177,7 +177,7 @@ class TLMatchingService:
             similarity = self.cosine_similarity(prompt_embedding, answer_embedding)
 
             is_on_topic = similarity >= threshold
-            logger.debug(
+            logger.info(
                 f"🎯 On-topic check: '{answer_text[:30]}...' "
                 f"similarity={similarity:.3f}, threshold={threshold}, "
                 f"on_topic={is_on_topic}"
@@ -214,7 +214,7 @@ class TLMatchingService:
             max_similarity = max(similarities) if similarities else 0.0
 
             is_too_similar = max_similarity >= threshold
-            logger.debug(
+            logger.info(
                 f"🔍 Self-similarity check: max={max_similarity:.3f}, "
                 f"threshold={threshold}, too_similar={is_too_similar}"
             )
@@ -243,7 +243,7 @@ class TLMatchingService:
         """
         try:
             if not snapshot_answers:
-                logger.debug("🎯 No snapshot answers to match against")
+                logger.info("🎯 No snapshot answers to match against")
                 return []
 
             # Extract embeddings from snapshot answers
@@ -265,9 +265,9 @@ class TLMatchingService:
                 # Log top 5 similarities for more context
                 sorted_sims = sorted(enumerate(similarities), key=lambda x: x[1], reverse=True)[:5]
                 for rank, (idx, sim) in enumerate(sorted_sims, 1):
-                    logger.info(
-                        f"   #{rank}: sim={sim:.4f} - '{snapshot_answers[idx]['text']}'"
-                    )
+                    logger.info(f"   #{rank}: sim={sim:.4f} - '{snapshot_answers[idx]['text']}'")
+            else:
+                logger.info(f"🔍 SIMILARITY DEBUG for '{guess_text}': No similarities computed.")
 
             # Find matches above threshold
             matches = []
@@ -282,7 +282,7 @@ class TLMatchingService:
 
             # Sort by similarity descending
             matches.sort(key=lambda x: x["similarity"], reverse=True)
-            logger.debug(
+            logger.info(
                 f"🎯 Found {len(matches)} matches for '{guess_text[:30]}...' "
                 f"(threshold={threshold})"
             )
