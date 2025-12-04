@@ -114,8 +114,8 @@ async def seed_answers(db: AsyncSession, force: bool = False):
                         skipped += 1
                         continue
 
-                    # Generate embedding
-                    embedding = await matching_service.generate_embedding(completion_text)
+                    # Generate embedding (pass db for transaction control)
+                    embedding = await matching_service.generate_embedding(completion_text, db=db)
 
                     # Create answer
                     answer = TLAnswer(
@@ -140,13 +140,19 @@ async def seed_answers(db: AsyncSession, force: bool = False):
 
                     created += 1
 
-                    if created % 50 == 0:
+                    # Commit every 100 answers for safety (avoid losing progress on failure)
+                    if created % 100 == 0:
+                        await db.commit()
+                        logger.info(f"✅ Committed {created} answers (checkpoint)")
+
+                    elif created % 50 == 0:
                         logger.info(f"Created {created} answers so far...")
 
                 except Exception as e:
                     logger.warning(f"Failed to seed answer '{completion_text[:30]}...': {e}")
                     skipped += 1
 
+        # Final commit for any remaining answers
         await db.commit()
         if created > 0:
             logger.info(f"ThinkLink answer seeding complete: {created} new answers created, {skipped} already existed")

@@ -6,7 +6,12 @@ import logging
 import numpy as np
 from typing import List, Optional, Dict, Tuple
 from openai import AsyncOpenAI
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 from backend.config import get_settings
+from backend.database import AsyncSessionLocal
+from backend.models.phrase_embedding import PhraseEmbedding
 
 logger = logging.getLogger(__name__)
 
@@ -22,24 +27,47 @@ class TLMatchingService:
 
         self.client = AsyncOpenAI(api_key=settings.openai_api_key)
         self.embedding_model = settings.embedding_model
+        # In-memory cache for session performance (supplements DB cache)
         self.embedding_cache: Dict[str, List[float]] = {}
 
-    async def generate_embedding(self, text: str) -> List[float]:
-        """Generate embedding for text using OpenAI.
+    async def generate_embedding(
+        self,
+        text: str,
+        db: Optional[AsyncSession] = None
+    ) -> List[float]:
+        """Generate embedding for text using OpenAI with DB caching.
 
-        Caches embeddings to avoid duplicate API calls for the same text.
+        Cache lookup order:
+        1. In-memory cache (session performance)
+        2. Database cache (persists across restarts)
+        3. OpenAI API (stores result in both caches)
 
         Args:
             text: Text to embed
+            db: Optional database session (for transaction control during seeding)
 
         Returns:
             1536-dimensional embedding vector
         """
-        # Check cache first
-        if text in self.embedding_cache:
-            logger.info(f"🔄 Using cached embedding for: {text[:50]}...")
-            return self.embedding_cache[text]
+        normalized_text = text.strip().lower()
 
+        # 1. Check in-memory cache first (fastest)
+        if normalized_text in self.embedding_cache:
+            logger.debug(f"🔄 In-memory cache hit: {text[:50]}...")
+            return self.embedding_cache[normalized_text]
+
+        # 2. Check DB cache
+        try:
+            embedding = await self._get_cached_embedding(normalized_text, db)
+            if embedding:
+                # Populate in-memory cache
+                self.embedding_cache[normalized_text] = embedding
+                logger.info(f"💾 DB cache hit: {text[:50]}...")
+                return embedding
+        except Exception as e:
+            logger.warning(f"⚠️ DB cache lookup failed: {e}")
+
+        # 3. Generate via OpenAI API
         try:
             logger.info(f"📞 Generating embedding for: {text[:50]}...")
             response = await self.client.embeddings.create(
@@ -48,13 +76,78 @@ class TLMatchingService:
                 dimensions=1536,
             )
             embedding = response.data[0].embedding
-            # Cache for this session
-            self.embedding_cache[text] = embedding
-            logger.info(f"✅ Embedding generated (cache size: {len(self.embedding_cache)})")
+
+            # Store in both caches
+            self.embedding_cache[normalized_text] = embedding
+            await self._store_embedding(normalized_text, embedding, db)
+
+            logger.info(f"✅ Embedding generated (memory cache: {len(self.embedding_cache)})")
             return embedding
         except Exception as e:
             logger.error(f"❌ Failed to generate embedding: {e}")
             raise
+
+    async def _get_cached_embedding(
+        self,
+        text: str,
+        db: Optional[AsyncSession] = None
+    ) -> Optional[List[float]]:
+        """Check DB for cached embedding."""
+        async def _query(session: AsyncSession) -> Optional[List[float]]:
+            result = await session.execute(
+                select(PhraseEmbedding).where(
+                    PhraseEmbedding.phrase == text,
+                    PhraseEmbedding.model == self.embedding_model,
+                )
+            )
+            cached = result.scalar_one_or_none()
+            return cached.embedding if cached else None
+
+        if db:
+            return await _query(db)
+        else:
+            async with AsyncSessionLocal() as session:
+                return await _query(session)
+
+    async def _store_embedding(
+        self,
+        text: str,
+        embedding: List[float],
+        db: Optional[AsyncSession] = None
+    ) -> None:
+        """Store embedding in DB cache."""
+        async def _store(session: AsyncSession, commit: bool = True) -> None:
+            record = PhraseEmbedding(
+                phrase=text,
+                model=self.embedding_model,
+                provider="openai",
+                embedding=embedding,
+            )
+            session.add(record)
+            if commit:
+                try:
+                    await session.commit()
+                except IntegrityError:
+                    # Already exists (race condition)
+                    await session.rollback()
+
+        if db:
+            # External session - don't commit (caller controls transaction)
+            record = PhraseEmbedding(
+                phrase=text,
+                model=self.embedding_model,
+                provider="openai",
+                embedding=embedding,
+            )
+            db.add(record)
+            try:
+                await db.flush()
+            except IntegrityError:
+                # Already exists
+                pass
+        else:
+            async with AsyncSessionLocal() as session:
+                await _store(session, commit=True)
 
     @staticmethod
     def cosine_similarity(vec_a: List[float], vec_b: List[float]) -> float:
