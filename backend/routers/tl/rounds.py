@@ -308,7 +308,7 @@ async def get_round_history(
         }
         sort_column = sort_options.get(sort_by, TLRound.created_at)
         sort_clause = sort_column.asc() if sort_direction == "asc" else sort_column.desc()
-        query = query.order_by(sort_clause, TLRound.created_at.desc())
+        query = query.order_by(sort_clause, TLRound.round_id.desc())
 
         results = await db.execute(query)
         rows = results.all()
