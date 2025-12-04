@@ -220,17 +220,27 @@ class PlayerServiceBase(ABC):
 
     async def refresh_vote_lockout_state(self, player: "PlayerBase") -> bool:
         """Clear expired vote lockouts for guest players."""
-        if not player.is_guest or not player.vote_lockout_until:
+        if not player.is_guest:
+            return False
+
+        result = await self.db.execute(
+            select(self.player_data_model).where(
+                self.player_data_model.player_id == player.player_id
+            )
+        )
+        player_data = result.scalar_one_or_none()
+
+        if not player_data or not player_data.vote_lockout_until:
             return False
 
         current_time = datetime.now(UTC)
-        if current_time < player.vote_lockout_until:
+        if current_time < player_data.vote_lockout_until:
             return False
 
-        player.vote_lockout_until = None
-        player.consecutive_incorrect_votes = 0
+        player_data.vote_lockout_until = None
+        player_data.consecutive_incorrect_votes = 0
         await self.db.commit()
-        await self.db.refresh(player)
+        await self.db.refresh(player_data)
 
         logger.info(f"Cleared expired vote lockout for guest {player.player_id}")
         return True

@@ -525,7 +525,7 @@ async def process_ai_submissions(
     try:
         party_service = PartySessionService(db)
         coordination_service = PartyCoordinationService(db)
-        transaction_service = TransactionService(db)
+        transaction_service = TransactionService(db, GameType.QF)
 
         # Verify caller is host
         participant = await party_service.get_participant(session_id, player.player_id)
@@ -592,7 +592,7 @@ async def start_party_session(
         # Trigger AI submissions for initial PROMPT phase (synchronous to avoid async context issues)
         try:
             coordination_service = PartyCoordinationService(db)
-            transaction_service = TransactionService(db)
+            transaction_service = TransactionService(db, GameType.QF)
             await coordination_service._trigger_ai_submissions_for_new_phase(
                 session_id=session_id,
                 transaction_service=transaction_service,
@@ -718,7 +718,7 @@ async def start_party_prompt_round(
         400: Wrong phase or already submitted
     """
     try:
-        transaction_service = TransactionService(db)
+        transaction_service = TransactionService(db, GameType.QF)
         coordination_service = PartyCoordinationService(db)
 
         # Start party prompt round
@@ -802,7 +802,7 @@ async def start_party_copy_round(
         400: Wrong phase, already submitted, or no prompts available
     """
     try:
-        transaction_service = TransactionService(db)
+        transaction_service = TransactionService(db, GameType.QF)
         coordination_service = PartyCoordinationService(db)
 
         # Start party copy round
@@ -888,7 +888,7 @@ async def start_party_vote_round(
         400: Wrong phase, already submitted, or no phrasesets available
     """
     try:
-        transaction_service = TransactionService(db)
+        transaction_service = TransactionService(db, GameType.QF)
         coordination_service = PartyCoordinationService(db)
 
         # Start party vote round

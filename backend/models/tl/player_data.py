@@ -40,7 +40,7 @@ class TLPlayerData(Base):
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False)
 
     # Relationships
-    player = relationship("Player", back_populates="tl_player_data")
+    player = relationship("Player", back_populates="tl_player_data", lazy="selectin")
 
     @property
     def balance(self) -> int:

@@ -62,6 +62,7 @@ import type {
   QFOnlineUsersResponse,
   QFPingUserResponse,
   WsAuthTokenResponse,
+  GameType,
 } from './types.ts';
 
 export const extractErrorMessage = (error: unknown, action?: string): string => {
@@ -82,8 +83,9 @@ export class BaseApiClient {
   protected isRefreshing = false;
   protected failedQueue: Array<{ resolve: (value?: unknown) => void; reject: (error?: unknown) => void }> = [];
   protected readonly isDev = import.meta.env.DEV;
+  protected readonly gameType?: GameType;
 
-  constructor(baseURL: string) {
+  constructor(baseURL: string, gameType?: GameType) {
     this.api = axios.create({
       baseURL,
       headers: {
@@ -92,6 +94,8 @@ export class BaseApiClient {
       withCredentials: true,
       timeout: 150000,
     });
+
+    this.gameType = gameType;
 
     this.attachInterceptors();
   }
@@ -130,7 +134,13 @@ export class BaseApiClient {
 
   protected async performTokenRefresh() {
     try {
-      await this.api.post('/auth/refresh', {});
+      await this.api.post(
+        '/auth/refresh',
+        {},
+        {
+          params: this.gameType ? { game_type: this.gameType } : undefined,
+        },
+      );
       this.logApi('POST', '/auth/refresh', 'success', 'Token refreshed via cookie');
     } catch (error) {
       this.logApi('POST', '/auth/refresh', 'error', 'Token refresh failed');
@@ -313,27 +323,42 @@ export class BaseApiClient {
   }
 
   async createPlayer(payload: { email: string; password: string }, signal?: AbortSignal): Promise<CreatePlayerResponse> {
-    const { data } = await this.api.post('/player', payload, { signal });
+    const { data } = await this.api.post('/player', payload, {
+      signal,
+      params: this.gameType ? { game_type: this.gameType } : undefined,
+    });
     return data;
   }
 
   async createGuest(signal?: AbortSignal): Promise<CreateGuestResponse> {
-    const { data } = await this.api.post<CreateGuestResponse>('/player/guest', {}, { signal });
+    const { data } = await this.api.post<CreateGuestResponse>('/player/guest', {}, {
+      signal,
+      params: this.gameType ? { game_type: this.gameType } : undefined,
+    });
     return data;
   }
 
   async upgradeGuest(payload: { email: string; password: string }, signal?: AbortSignal): Promise<UpgradeGuestResponse> {
-    const { data } = await this.api.post<UpgradeGuestResponse>('/player/upgrade', payload, { signal });
+    const { data } = await this.api.post<UpgradeGuestResponse>('/player/upgrade', payload, {
+      signal,
+      params: this.gameType ? { game_type: this.gameType } : undefined,
+    });
     return data;
   }
 
   async login(payload: { email: string; password: string }, signal?: AbortSignal): Promise<AuthTokenResponse> {
-    const { data } = await this.api.post<AuthTokenResponse>('/auth/login', payload, { signal });
+    const { data } = await this.api.post<AuthTokenResponse>('/auth/login', payload, {
+      signal,
+      params: this.gameType ? { game_type: this.gameType } : undefined,
+    });
     return data;
   }
 
   async loginWithUsername(payload: { username: string; password: string }, signal?: AbortSignal): Promise<AuthTokenResponse> {
-    const { data } = await this.api.post<AuthTokenResponse>('/auth/login/username', payload, { signal });
+    const { data } = await this.api.post<AuthTokenResponse>('/auth/login/username', payload, {
+      signal,
+      params: this.gameType ? { game_type: this.gameType } : undefined,
+    });
     return data;
   }
 
@@ -343,7 +368,14 @@ export class BaseApiClient {
   }
 
   async refreshToken(signal?: AbortSignal): Promise<AuthTokenResponse> {
-    const { data } = await this.api.post('/auth/refresh', {}, { signal });
+    const { data } = await this.api.post(
+      '/auth/refresh',
+      {},
+      {
+        signal,
+        params: this.gameType ? { game_type: this.gameType } : undefined,
+      },
+    );
     return data;
   }
 

@@ -124,7 +124,7 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
       gameContextLogger.debug('🔍 Starting session detection on app load');
 
       try {
-        const result = await detectUserSession(controller.signal);
+        const result = await detectUserSession('ir', controller.signal);
 
         if (!isMounted) return;
 

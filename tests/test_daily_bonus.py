@@ -15,7 +15,7 @@ from sqlalchemy import select, update
 
 from backend.models.qf.player import QFPlayer
 from backend.models.qf.daily_bonus import QFDailyBonus
-from backend.services import QFPlayerService
+from backend.services import GameType, QFPlayerService
 from backend.services import TransactionService
 from backend.config import get_settings
 
@@ -404,7 +404,7 @@ async def test_bonus_available_next_day_after_claiming(test_app, db_session):
     assert is_available is True
 
     # Claim today's bonus
-    transaction_service = TransactionService(db_session)
+    transaction_service = TransactionService(db_session, GameType.QF)
     amount = await player_service.claim_daily_bonus(player, transaction_service)
     assert amount == 100
 

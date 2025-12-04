@@ -2,7 +2,9 @@ import axios from 'axios';
 import { BaseApiClient, extractErrorMessage, clearStoredCredentials } from './BaseApiClient.ts';
 import type {
   ApiError,
+  AuthSessionResponse,
   AuthTokenResponse,
+  GameType,
   MMCircle,
   MMCircleJoinRequestsResponse,
   MMCircleListResponse,
@@ -103,9 +105,9 @@ class CrowdcraftApiClient extends BaseApiClient {
   }
 
   constructor() {
-    super(QF_API_BASE_URL);
-    this.mmApi = new BaseApiClient(MM_API_BASE_URL);
-    this.tlApi = new BaseApiClient(TL_API_BASE_URL);
+    super(QF_API_BASE_URL, 'qf');
+    this.mmApi = new BaseApiClient(MM_API_BASE_URL, 'mm');
+    this.tlApi = new BaseApiClient(TL_API_BASE_URL, 'tl');
   }
 
   get axiosInstance() {
@@ -118,6 +120,14 @@ class CrowdcraftApiClient extends BaseApiClient {
 
   get tlAxiosInstance() {
     return this.tlApi.axiosInstance;
+  }
+
+  async getAuthSession(gameType?: GameType, signal?: AbortSignal): Promise<AuthSessionResponse> {
+    const { data } = await this.rootApi.get<AuthSessionResponse>('/auth/session', {
+      params: { game_type: gameType },
+      signal,
+    });
+    return data;
   }
 
   // QF Party Mode APIs

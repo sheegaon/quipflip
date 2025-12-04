@@ -11,7 +11,7 @@ from backend.models.qf.player import QFPlayer
 from backend.models.qf.round import Round
 from backend.models.qf.phraseset import Phraseset
 from backend.services import QFPlayerService
-from backend.services import TransactionService
+from backend.services import GameType, TransactionService
 from backend.services import QFVoteService
 
 
@@ -341,7 +341,7 @@ class TestGuestVoteLockout:
             phraseset = await db_session.get(Phraseset, phraseset.phraseset_id)
 
             vote_service = QFVoteService(db_session)
-            transaction_service = TransactionService(db_session)
+            transaction_service = TransactionService(db_session, GameType.QF)
 
             await vote_service.submit_vote(
                 vote_round,

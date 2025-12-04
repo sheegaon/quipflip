@@ -28,7 +28,7 @@ from backend.models.qf.round import Round
 from backend.models.qf.phraseset import Phraseset
 from backend.models.qf.vote import Vote
 from backend.models.qf.transaction import QFTransaction
-from backend.services import QFRoundService
+from backend.services import GameType, QFRoundService
 from backend.services import QFVoteService
 from backend.services import TransactionService
 from sqlalchemy import select
@@ -202,7 +202,7 @@ class TestDatabaseTimezoneAwareness:
         db_session.add(player)
         await db_session.commit()
 
-        transaction_service = TransactionService(db_session)
+        transaction_service = TransactionService(db_session, GameType.QF)
         transaction = await transaction_service.create_transaction(
             player.player_id,
             100,
@@ -245,7 +245,7 @@ class TestServiceTimezoneAwareness:
         await db_session.commit()
 
         round_service = QFRoundService(db_session)
-        transaction_service = TransactionService(db_session)
+        transaction_service = TransactionService(db_session, GameType.QF)
 
         round_obj = await round_service.start_prompt_round(
             player,

@@ -142,6 +142,26 @@ async def update_user_activity_task(
         logger.error(f"Error updating user activity in background task: {e}")
 
 
+def _infer_game_type_from_path(path: str) -> GameType | None:
+    """Best-effort inference of game type based on request path prefixes."""
+
+    prefix_map = {
+        "/mm": GameType.MM,
+        "/ir": GameType.IR,
+        "/tl": GameType.TL,
+        "/qf": GameType.QF,
+    }
+    for prefix, game_type in prefix_map.items():
+        if path.startswith(prefix):
+            return game_type
+
+    # Legacy QF routes generally do not include a prefix
+    if path.startswith(("/player", "/round", "/quests")):
+        return GameType.QF
+
+    return None
+
+
 async def online_user_tracking_middleware(request: Request, call_next):
     """
     Middleware to track user activity for online users feature.
@@ -156,37 +176,21 @@ async def online_user_tracking_middleware(request: Request, call_next):
         # Extract token from cookies
         settings = get_settings()
         token = request.cookies.get(settings.access_token_cookie_name)
-        
+
         if token:
             try:
                 # Create a temporary auth service instance for token decoding only
-                # Try QF first, then IR if that fails
                 async with AsyncSessionLocal() as temp_db:
-                    payload = None
-                    detected_game_type = None
+                    auth_service = AuthService(temp_db)
+                    payload = auth_service.decode_access_token(token)
 
-                    # Try QF game type first
-                    try:
-                        qf_auth_service = AuthService(temp_db, game_type=GameType.QF)
-                        payload = qf_auth_service.decode_access_token(token)
-                        detected_game_type = GameType.QF
-                    except Exception:
-                        # If QF fails, try IR game type
-                        try:
-                            ir_auth_service = AuthService(temp_db, game_type=GameType.IR)
-                            payload = ir_auth_service.decode_access_token(token)
-                            detected_game_type = GameType.IR
-                        except Exception:
-                            # If both fail, let it raise to the outer exception handler
-                            raise
-
-                    # Decode token to get player info
                     player_id_str = payload.get("sub")
                     username = payload.get("username")
+                    action_path = str(request.url.path)
+                    detected_game_type = _infer_game_type_from_path(action_path)
 
                     if player_id_str and username and detected_game_type:
                         player_id = UUID(player_id_str)
-                        action_path = str(request.url.path)
 
                         # Use friendly action info instead of raw HTTP method + path
                         friendly_action_info = get_friendly_action_info(request.method, action_path)

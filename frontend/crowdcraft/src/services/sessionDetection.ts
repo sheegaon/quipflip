@@ -7,6 +7,7 @@ import { apiClient } from '../api/client.ts';
 import { getOrCreateVisitorId, getVisitorId } from '../utils';
 import { SessionState, SessionDetectionResult } from '../types/session.ts';
 import { createLogger } from '../utils/logger.ts';
+import type { AuthSessionResponse, GameType, Player } from '../api/types.ts';
 
 interface ErrorWithStatus {
   name?: string;
@@ -41,9 +42,9 @@ const logger = createLogger('SessionDetection');
  * Detect user session state on app load
  *
  * Flow:
- * 1. Try GET /player/balance (with withCredentials for HTTP-only cookies)
- * 2. If 200: Returning, signed-in user
- * 3. If 401: Try POST /auth/refresh, then retry balance
+ * 1. Try GET /auth/session (with withCredentials for HTTP-only cookies) for the requested game
+ * 2. If 200: Returning, signed-in user with optional per-game snapshot
+ * 3. If 401: Try POST /auth/refresh, then retry /auth/session
  * 4. If still 401: Check visitor ID
  *    - Has visitor ID: Returning visitor, not signed in
  *    - No visitor ID: New visitor
@@ -52,6 +53,7 @@ const logger = createLogger('SessionDetection');
  * @returns SessionDetectionResult with user state and data
  */
 export async function detectUserSession(
+  gameType: GameType,
   signal?: AbortSignal
 ): Promise<SessionDetectionResult> {
   // Check if visitor ID exists BEFORE creating one to distinguish new vs returning visitors
@@ -62,22 +64,15 @@ export async function detectUserSession(
   const visitorId = getOrCreateVisitorId();
 
   try {
-    // Step 1: Try to get player balance (validates auth via HTTP-only cookies)
-    const balanceResponse = await apiClient.getBalance(signal);
+    // Step 1: Try to resolve global session (validates auth via HTTP-only cookies)
+    const sessionResponse = await apiClient.getAuthSession(gameType, signal);
 
     // Success! User is authenticated
-    // Ensure username is persisted to localStorage for future session checks
-    if (balanceResponse.username) {
-      apiClient.setSession(balanceResponse.username);
+    if (sessionResponse.username) {
+      apiClient.setSession(sessionResponse.username);
     }
 
-    return {
-      state: SessionState.RETURNING_USER,
-      isAuthenticated: true,
-      username: balanceResponse.username || apiClient.getStoredUsername() || undefined,
-      visitorId,
-      player: balanceResponse,
-    };
+    return buildSessionResult(sessionResponse, visitorId);
   } catch (error: unknown) {
     // Handle request cancellation silently
     if (isCanceledRequest(error)) {
@@ -119,22 +114,16 @@ export async function detectUserSession(
         // Step 3: Try to refresh the token
         await apiClient.refreshToken();
 
-        // Step 4: Retry balance check
-        const retryBalanceResponse = await apiClient.getBalance(signal);
+        // Step 4: Retry session lookup
+        const refreshedSession = await apiClient.getAuthSession(gameType, signal);
 
         // Refresh succeeded! Use username from response if available, fallback to stored
-        const username = retryBalanceResponse.username || storedUsername;
+        const username = refreshedSession.username || storedUsername;
         if (username) {
           apiClient.setSession(username);
         }
 
-        return {
-          state: SessionState.RETURNING_USER,
-          isAuthenticated: true,
-          username,
-          visitorId,
-          player: retryBalanceResponse,
-        };
+        return buildSessionResult(refreshedSession, visitorId);
       } catch (refreshError) {
         // Refresh failed, clear stale credentials
         logger.info('Token refresh failed, clearing stale session', refreshError);
@@ -157,6 +146,48 @@ export async function detectUserSession(
       visitorId,
     };
   }
+}
+
+function buildSessionResult(
+  session: AuthSessionResponse,
+  visitorId: string
+): SessionDetectionResult {
+  const normalizedPlayer = normalizeGamePlayer(session);
+
+  return {
+    state: SessionState.RETURNING_USER,
+    isAuthenticated: true,
+    username: session.username || apiClient.getStoredUsername() || undefined,
+    visitorId,
+    player: normalizedPlayer,
+  };
+}
+
+function normalizeGamePlayer(session: AuthSessionResponse): Player | undefined {
+  const wallet = session.game_data?.wallet ?? session.legacy_wallet ?? undefined;
+  const vault = session.game_data?.vault ?? session.legacy_vault ?? undefined;
+
+  if (wallet === undefined && vault === undefined) {
+    return undefined;
+  }
+
+  return {
+    player_id: session.player.player_id,
+    username: session.player.username,
+    email: session.player.email || '',
+    wallet: wallet ?? 0,
+    vault: vault ?? 0,
+    starting_balance: (wallet ?? 0) + (vault ?? 0),
+    daily_bonus_available: true,
+    daily_bonus_amount: 0,
+    last_login_date: session.player.last_login_date || null,
+    outstanding_prompts: 0,
+    created_at: session.player.created_at,
+    is_guest: session.player.is_guest,
+    is_admin: session.player.is_admin,
+    locked_until: null,
+    flag_dismissal_streak: undefined,
+  };
 }
 
 /**

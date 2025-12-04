@@ -232,7 +232,7 @@ class QFAdminRouter(AdminRouterBase):
 
     async def get_game_config(self, player: QFPlayer, session: AsyncSession) -> GameConfigResponse:
         """Get QuipFlip-specific configuration."""
-        service = SystemConfigService(session)
+        service = SystemConfigService(session, game_type=GameType.QF)
         config = await service.get_all_config()
 
         return GameConfigResponse(
@@ -317,7 +317,7 @@ class QFAdminRouter(AdminRouterBase):
         ):
             """Resolve a flagged prompt by confirming or dismissing it."""
             service = FlaggedPromptService(session)
-            transaction_service = TransactionService(session)
+            transaction_service = TransactionService(session, GameType.QF)
 
             try:
                 record = await service.resolve_flag(flag_id, request.action, player, transaction_service)

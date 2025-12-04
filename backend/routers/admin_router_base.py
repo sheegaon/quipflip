@@ -71,10 +71,12 @@ class UpdateConfigResponse(BaseModel):
     message: Optional[str] = None
 
 
-async def _update_config(request: UpdateConfigRequest, player: Any, session: AsyncSession) -> UpdateConfigResponse:
+async def _update_config(
+    request: UpdateConfigRequest, player: Any, session: AsyncSession, game_type: GameType
+) -> UpdateConfigResponse:
     """Update a configuration value."""
     try:
-        service = SystemConfigService(session)
+        service = SystemConfigService(session, game_type=game_type)
 
         # Update the configuration
         config_entry = await service.set_config_value(request.key, request.value, updated_by=str(player.player_id))
@@ -156,7 +158,7 @@ class AdminRouterBase(ABC):
             player=Depends(self.admin_player_dependency),
         ):
             """Update a configuration value."""
-            return await _update_config(request, player, session)
+            return await _update_config(request, player, session, self.game_type)
 
     async def _search_player(
         self,
