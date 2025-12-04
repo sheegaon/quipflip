@@ -117,6 +117,59 @@ class Player(Base):
         raise ValueError(f"Unsupported game type: {game_type}")
 
     @property
+    def balance(self) -> int:
+        """Return combined wallet + vault for Quipflip players.
+
+        This mirrors the convenience property available on per-game data
+        objects and keeps legacy balance lookups working.
+        """
+
+        source = self._wallet_source()
+        if source:
+            # All per-game player data objects expose wallet and vault
+            return int(source.wallet or 0) + int(source.vault or 0)
+        return 0
+
+    def _wallet_source(self):
+        """Return the first per-game data object that exposes wallet/vault fields."""
+
+        for attr in ("qf_player_data", "ir_player_data", "mm_player_data", "tl_player_data"):
+            data = getattr(self, attr, None)
+            if data is not None and hasattr(data, "wallet"):
+                return data
+        return None
+
+    @property
+    def wallet(self) -> int:
+        source = self._wallet_source()
+        return source.wallet if source else 0
+
+    @wallet.setter
+    def wallet(self, value: int):
+        source = self._wallet_source()
+        if not source:
+            from backend.models.qf.player_data import QFPlayerData
+
+            self.qf_player_data = QFPlayerData(player_id=self.player_id)
+            source = self.qf_player_data
+        source.wallet = value
+
+    @property
+    def vault(self) -> int:
+        source = self._wallet_source()
+        return source.vault if source else 0
+
+    @vault.setter
+    def vault(self, value: int):
+        source = self._wallet_source()
+        if not source:
+            from backend.models.qf.player_data import QFPlayerData
+
+            self.qf_player_data = QFPlayerData(player_id=self.player_id)
+            source = self.qf_player_data
+        source.vault = value
+
+    @property
     def active_round_id(self):
         """Proxy active_round_id to the Quipflip-specific player data."""
 

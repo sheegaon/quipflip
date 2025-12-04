@@ -17,7 +17,7 @@ from backend.models.qf.prompt import Prompt
 from backend.models.qf.round import Round
 from backend.models.qf.phraseset import Phraseset
 from backend.models.qf.player_abandoned_prompt import PlayerAbandonedPrompt
-from backend.services import QFRoundService
+from backend.services import GameType, QFRoundService
 from backend.services import AIService
 from backend.services import TransactionService
 from backend.services import QFQueueService
@@ -78,7 +78,7 @@ class TestPromptRoundCreation:
     async def test_start_prompt_round_success(self, db_session, player_with_balance, test_prompt):
         """Should successfully create a prompt round and deduct balance."""
         round_service = QFRoundService(db_session)
-        transaction_service = TransactionService(db_session)
+        transaction_service = TransactionService(db_session, GameType.QF)
 
         initial_balance = player_with_balance.wallet
 
@@ -104,7 +104,7 @@ class TestPromptRoundCreation:
     async def test_start_prompt_round_sets_active_round(self, db_session, player_with_balance, test_prompt):
         """Should set player's active_round_id."""
         round_service = QFRoundService(db_session)
-        transaction_service = TransactionService(db_session)
+        transaction_service = TransactionService(db_session, GameType.QF)
 
         round_obj = await round_service.start_prompt_round(
             player_with_balance,
@@ -118,7 +118,7 @@ class TestPromptRoundCreation:
     async def test_start_prompt_round_creates_expiration(self, db_session, player_with_balance, test_prompt):
         """Should set correct expiration time."""
         round_service = QFRoundService(db_session)
-        transaction_service = TransactionService(db_session)
+        transaction_service = TransactionService(db_session, GameType.QF)
 
         before_time = datetime.now(UTC)
         round_obj = await round_service.start_prompt_round(
@@ -146,7 +146,7 @@ class TestPromptRoundCreation:
     ):
         """Should not repeat prompts seen in prompt, copy, or vote rounds."""
         round_service = QFRoundService(db_session)
-        transaction_service = TransactionService(db_session)
+        transaction_service = TransactionService(db_session, GameType.QF)
 
         # Disable any existing prompts to control the pool for this test
         await db_session.execute(update(Prompt).values(enabled=False))
@@ -295,7 +295,7 @@ class TestPromptRoundCreation:
     ):
         """Should raise an error when no unseen prompts remain."""
         round_service = QFRoundService(db_session)
-        transaction_service = TransactionService(db_session)
+        transaction_service = TransactionService(db_session, GameType.QF)
 
         await db_session.execute(update(Prompt).values(enabled=False))
         await db_session.commit()
@@ -341,7 +341,7 @@ class TestPromptSubmission:
     async def test_submit_prompt_phrase_success(self, db_session, player_with_balance, test_prompt):
         """Should successfully submit a valid prompt phrase."""
         round_service = QFRoundService(db_session)
-        transaction_service = TransactionService(db_session)
+        transaction_service = TransactionService(db_session, GameType.QF)
 
         # Start round
         round_obj = await round_service.start_prompt_round(
@@ -368,7 +368,7 @@ class TestPromptSubmission:
     async def test_submit_prompt_phrase_invalid_format(self, db_session, player_with_balance, test_prompt):
         """Should reject invalid phrase formats."""
         round_service = QFRoundService(db_session)
-        transaction_service = TransactionService(db_session)
+        transaction_service = TransactionService(db_session, GameType.QF)
 
         round_obj = await round_service.start_prompt_round(
             player_with_balance,
@@ -388,7 +388,7 @@ class TestPromptSubmission:
     async def test_submit_prompt_phrase_expired_round(self, db_session, player_with_balance, test_prompt):
         """Should reject submission to expired round."""
         round_service = QFRoundService(db_session)
-        transaction_service = TransactionService(db_session)
+        transaction_service = TransactionService(db_session, GameType.QF)
 
         # Create an expired round manually
         expired_round = Round(
@@ -420,7 +420,7 @@ class TestCopyRoundCreation:
     async def test_start_copy_round_success(self, db_session, player_with_balance, test_prompt):
         """Should successfully create a copy round."""
         round_service = QFRoundService(db_session)
-        transaction_service = TransactionService(db_session)
+        transaction_service = TransactionService(db_session, GameType.QF)
 
         # Create a submitted prompt round first
         prompt_round = Round(
@@ -463,7 +463,7 @@ class TestCopyRoundCreation:
     async def test_start_copy_round_forced_prompt(self, db_session, player_with_balance, test_prompt):
         """Party mode should be able to force a specific prompt without triggering second-copy logic."""
         round_service = QFRoundService(db_session)
-        transaction_service = TransactionService(db_session)
+        transaction_service = TransactionService(db_session, GameType.QF)
 
         prompt_round = Round(
             round_id=uuid.uuid4(),
@@ -498,7 +498,7 @@ class TestAbandonRound:
     async def test_abandon_prompt_round(self, db_session, player_with_balance, test_prompt):
         """Prompt players should receive a partial refund and clear active round state."""
         round_service = QFRoundService(db_session)
-        transaction_service = TransactionService(db_session)
+        transaction_service = TransactionService(db_session, GameType.QF)
 
         # Start a prompt round to set up the abandonment scenario
         prompt_round = await round_service.start_prompt_round(
@@ -527,7 +527,7 @@ class TestAbandonRound:
     async def test_abandon_copy_round_returns_prompt(self, db_session, player_with_balance, test_prompt):
         """Abandoning a copy round should refund, requeue, and track the abandonment."""
         round_service = QFRoundService(db_session)
-        transaction_service = TransactionService(db_session)
+        transaction_service = TransactionService(db_session, GameType.QF)
 
         # Create a submitted prompt round owned by a different player
         prompter = QFPlayer(
@@ -600,7 +600,7 @@ class TestAbandonRound:
         """Vote rounds should be abandonable with partial refund and cleared state."""
         round_service = QFRoundService(db_session)
         vote_service = QFVoteService(db_session)
-        transaction_service = TransactionService(db_session)
+        transaction_service = TransactionService(db_session, GameType.QF)
 
         # Create other players involved in the phraseset
         prompter = QFPlayer(

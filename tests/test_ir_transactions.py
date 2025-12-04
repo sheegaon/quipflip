@@ -3,7 +3,7 @@ import pytest
 import uuid
 from datetime import timedelta
 from backend.services import IRPlayerService
-from backend.services import TransactionService
+from backend.services import GameType, TransactionService
 from backend.services import IRDailyBonusError, IRDailyBonusService
 from backend.utils.passwords import hash_password
 
@@ -37,7 +37,7 @@ async def ir_player_factory(db_session):
 async def test_ir_debit_wallet(db_session, ir_player_factory):
     """Test debiting wallet balance."""
     player = await ir_player_factory()
-    transaction_service = TransactionService(db_session)
+    transaction_service = TransactionService(db_session, GameType.IR)
 
     initial_balance = player.wallet
     debit_amount = 100
@@ -61,7 +61,7 @@ async def test_ir_debit_wallet(db_session, ir_player_factory):
 async def test_ir_credit_wallet(db_session, ir_player_factory):
     """Test crediting wallet balance."""
     player = await ir_player_factory()
-    transaction_service = TransactionService(db_session)
+    transaction_service = TransactionService(db_session, GameType.IR)
 
     initial_balance = player.wallet
     credit_amount = 50
@@ -85,7 +85,7 @@ async def test_ir_credit_wallet(db_session, ir_player_factory):
 async def test_ir_debit_insufficient_balance(db_session, ir_player_factory):
     """Test that debit fails with insufficient balance."""
     player = await ir_player_factory()
-    transaction_service = TransactionService(db_session)
+    transaction_service = TransactionService(db_session, GameType.IR)
 
     # Set balance to 50
     player.wallet = 50
@@ -106,7 +106,7 @@ async def test_ir_debit_insufficient_balance(db_session, ir_player_factory):
 async def test_ir_vault_rake_application(db_session, ir_player_factory):
     """Test applying vault rake to earnings."""
     player = await ir_player_factory()
-    transaction_service = TransactionService(db_session)
+    transaction_service = TransactionService(db_session, GameType.IR)
 
     initial_wallet = player.wallet
     initial_vault = player.vault
@@ -135,7 +135,7 @@ async def test_ir_vault_rake_application(db_session, ir_player_factory):
 async def test_ir_transaction_ledger_tracking(db_session, ir_player_factory):
     """Test that transactions are recorded in ledger."""
     player = await ir_player_factory()
-    transaction_service = TransactionService(db_session)
+    transaction_service = TransactionService(db_session, GameType.IR)
 
     ref_id = str(uuid.uuid4())
 
@@ -237,7 +237,7 @@ async def test_ir_get_pending_payouts(db_session, ir_player_factory):
 async def test_ir_concurrent_transactions(db_session, ir_player_factory):
     """Test that concurrent transactions are handled safely."""
     player = await ir_player_factory()
-    transaction_service = TransactionService(db_session)
+    transaction_service = TransactionService(db_session, GameType.IR)
 
     initial_balance = player.wallet
 
