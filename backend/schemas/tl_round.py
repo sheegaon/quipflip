@@ -57,6 +57,23 @@ class RoundDetails(BaseSchema):
     ended_at: Optional[datetime]
 
 
+class RoundHistoryItem(BaseSchema):
+    """Summary of a completed or abandoned round."""
+    round_id: UUID
+    prompt_text: str
+    final_coverage: Optional[float]
+    gross_payout: Optional[int]
+    strikes: int
+    status: str
+    created_at: datetime
+    ended_at: Optional[datetime]
+
+
+class RoundHistoryResponse(BaseSchema):
+    """List of past rounds for a player."""
+    rounds: List[RoundHistoryItem]
+
+
 class RoundAvailability(BaseSchema):
     """Round availability and game status."""
     can_start_round: bool

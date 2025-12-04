@@ -1,7 +1,8 @@
 """ThinkLink (TL) rounds API router."""
 import logging
+from datetime import datetime
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, Path, Request, Header, Body
+from fastapi import APIRouter, Depends, HTTPException, Path, Request, Header, Body, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.database import get_db
@@ -12,6 +13,8 @@ from backend.schemas.tl_round import (
     SubmitGuessRequest,
     SubmitGuessResponse,
     RoundDetails,
+    RoundHistoryItem,
+    RoundHistoryResponse,
     RoundAvailability,
     AbandonRoundResponse,
 )
@@ -242,6 +245,94 @@ async def abandon_round(
     except Exception as e:
         logger.error(f"❌ Error abandoning round: {e}")
         raise HTTPException(status_code=500, detail="abandon_failed")
+
+
+@router.get("/history", response_model=RoundHistoryResponse)
+async def get_round_history(
+    sort_by: str = Query(
+        "date", description="Sort by one of: date, payout, coverage"
+    ),
+    sort_direction: str = Query(
+        "desc", description="Sort direction: asc or desc"
+    ),
+    min_coverage: float | None = Query(
+        None, ge=0, le=1, description="Minimum final coverage (0-1)"
+    ),
+    max_coverage: float | None = Query(
+        None, ge=0, le=1, description="Maximum final coverage (0-1)"
+    ),
+    min_payout: int | None = Query(
+        None, ge=0, description="Minimum gross payout earned"
+    ),
+    max_payout: int | None = Query(
+        None, ge=0, description="Maximum gross payout earned"
+    ),
+    start_date: datetime | None = Query(
+        None, description="Filter rounds created on or after this date"
+    ),
+    end_date: datetime | None = Query(
+        None, description="Filter rounds created on or before this date"
+    ),
+    player: Player = Depends(get_tl_player),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return historical rounds for the current player."""
+    try:
+        from sqlalchemy import select
+        from backend.models.tl import TLRound, TLPrompt
+
+        query = (
+            select(TLRound, TLPrompt.text)
+            .join(TLPrompt, TLRound.prompt_id == TLPrompt.prompt_id)
+            .where(TLRound.player_id == player.player_id)
+            .where(TLRound.status != "active")
+        )
+
+        if start_date:
+            query = query.where(TLRound.created_at >= start_date)
+        if end_date:
+            query = query.where(TLRound.created_at <= end_date)
+        if min_coverage is not None:
+            query = query.where(TLRound.final_coverage >= min_coverage)
+        if max_coverage is not None:
+            query = query.where(TLRound.final_coverage <= max_coverage)
+        if min_payout is not None:
+            query = query.where(TLRound.gross_payout >= min_payout)
+        if max_payout is not None:
+            query = query.where(TLRound.gross_payout <= max_payout)
+
+        sort_options = {
+            "date": TLRound.created_at,
+            "payout": TLRound.gross_payout,
+            "coverage": TLRound.final_coverage,
+        }
+        sort_column = sort_options.get(sort_by, TLRound.created_at)
+        sort_clause = sort_column.asc() if sort_direction == "asc" else sort_column.desc()
+        query = query.order_by(sort_clause, TLRound.created_at.desc())
+
+        results = await db.execute(query)
+        rows = results.all()
+
+        history_rounds = [
+            RoundHistoryItem(
+                round_id=round.round_id,
+                prompt_text=prompt_text or "",
+                final_coverage=round.final_coverage,
+                gross_payout=round.gross_payout,
+                strikes=round.strikes,
+                status=round.status,
+                created_at=round.created_at,
+                ended_at=round.ended_at,
+            )
+            for round, prompt_text in rows
+        ]
+
+        return RoundHistoryResponse(rounds=history_rounds)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Error fetching round history: {e}")
+        raise HTTPException(status_code=500, detail="history_fetch_failed")
 
 
 @router.get("/{round_id}", response_model=RoundDetails)

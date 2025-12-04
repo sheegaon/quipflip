@@ -42,6 +42,8 @@ import type {
   TLStartRoundResponse,
   TLSubmitGuessResponse,
   TLRoundDetails,
+  TLRoundHistoryQuery,
+  TLRoundHistoryResponse,
   TLAbandonRoundResponse,
   TLPromptPreviewResponse,
   TLSeedPromptsResponse,
@@ -636,6 +638,17 @@ class CrowdcraftApiClient extends BaseApiClient {
 
   async tlGetRoundDetails(roundId: string, signal?: AbortSignal): Promise<TLRoundDetails> {
     const { data } = await this.tlApi.axiosInstance.get<TLRoundDetails>(`/rounds/${roundId}`, { signal });
+    return data;
+  }
+
+  async tlGetRoundHistory(
+    params?: TLRoundHistoryQuery,
+    signal?: AbortSignal,
+  ): Promise<TLRoundHistoryResponse> {
+    const { data } = await this.tlApi.axiosInstance.get<TLRoundHistoryResponse>('/rounds/history', {
+      params,
+      signal,
+    });
     return data;
   }
 
