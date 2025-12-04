@@ -29,6 +29,8 @@ class TLMatchingService:
         self.embedding_model = settings.embedding_model
         # In-memory cache for session performance (supplements DB cache)
         self.embedding_cache: Dict[str, List[float]] = {}
+        # Track how many embeddings we've generated to checkpoint DB cache
+        self._generated_count = 0
 
     async def generate_embedding(
         self,
@@ -37,7 +39,7 @@ class TLMatchingService:
     ) -> List[float]:
         """Generate embedding for text using OpenAI with DB caching.
 
-        Cache lookup order:
+        Cache lookup order (enforced close to the API call):
         1. In-memory cache (session performance)
         2. Database cache (persists across restarts)
         3. OpenAI API (stores result in both caches)
@@ -56,18 +58,45 @@ class TLMatchingService:
             logger.debug(f"🔄 In-memory cache hit: {text[:50]}...")
             return self.embedding_cache[normalized_text]
 
-        # 2. Check DB cache
+        # 2. Check DB cache right before calling the API
+        embedding = await self._safe_get_cached_embedding(normalized_text, text, db)
+        if embedding is not None:
+            return embedding
+
+        # 3. Generate via OpenAI API through the single root method
+        embedding = await self._request_openai_embedding(text)
+
+        # Store in both caches
+        self.embedding_cache[normalized_text] = embedding
+        await self._store_embedding(normalized_text, embedding, db)
+
+        # Checkpoint DB cache every 100 new embeddings
+        self._generated_count += 1
+        await self._maybe_checkpoint_cache(db)
+
+        logger.info(f"✅ Embedding generated (memory cache: {len(self.embedding_cache)})")
+        return embedding
+
+    async def _safe_get_cached_embedding(
+        self,
+        normalized_text: str,
+        original_text: str,
+        db: Optional[AsyncSession]
+    ) -> Optional[List[float]]:
+        """Check DB cache before invoking OpenAI, close to the API call."""
         try:
             embedding = await self._get_cached_embedding(normalized_text, db)
-            if embedding:
-                # Populate in-memory cache
+            if embedding is not None:
                 self.embedding_cache[normalized_text] = embedding
-                logger.info(f"💾 DB cache hit: {text[:50]}...")
+                logger.info(f"💾 DB cache hit: {original_text[:50]}...")
                 return embedding
         except Exception as e:
             logger.warning(f"⚠️ DB cache lookup failed: {e}")
 
-        # 3. Generate via OpenAI API
+        return None
+
+    async def _request_openai_embedding(self, text: str) -> List[float]:
+        """Root method that contacts OpenAI for embeddings."""
         try:
             logger.info(f"📞 Generating embedding for: {text[:50]}...")
             response = await self.client.embeddings.create(
@@ -75,14 +104,7 @@ class TLMatchingService:
                 input=text,
                 dimensions=1536,
             )
-            embedding = response.data[0].embedding
-
-            # Store in both caches
-            self.embedding_cache[normalized_text] = embedding
-            await self._store_embedding(normalized_text, embedding, db)
-
-            logger.info(f"✅ Embedding generated (memory cache: {len(self.embedding_cache)})")
-            return embedding
+            return response.data[0].embedding
         except Exception as e:
             logger.error(f"❌ Failed to generate embedding: {e}")
             raise
@@ -148,6 +170,25 @@ class TLMatchingService:
         else:
             async with AsyncSessionLocal() as session:
                 await _store(session, commit=True)
+
+    async def _maybe_checkpoint_cache(self, db: Optional[AsyncSession]) -> None:
+        """Commit embedding cache progress every 100 new generations."""
+
+        if self._generated_count % 100 != 0:
+            return
+
+        logger.info(f"💾 Embedding cache checkpoint reached: {self._generated_count} generated")
+
+        if not db:
+            # Each embedding is individually committed when using internal sessions
+            return
+
+        try:
+            await db.commit()
+            logger.info("✅ Cached embeddings committed (checkpoint)")
+        except Exception as e:
+            await db.rollback()
+            logger.warning(f"⚠️ Failed to commit embedding cache checkpoint: {e}")
 
     @staticmethod
     def cosine_similarity(vec_a: List[float], vec_b: List[float]) -> float:

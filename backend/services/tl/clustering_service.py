@@ -6,7 +6,7 @@ import logging
 import math
 from typing import List, Tuple, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, text
+from sqlalchemy import select, func, text, bindparam
 from sqlalchemy.orm import load_only
 from backend.models.tl import TLCluster, TLAnswer
 from backend.services.tl.matching_service import TLMatchingService
@@ -185,14 +185,23 @@ class TLClusteringService:
 
             # Update via raw SQL
             centroid_str = "[" + ",".join(str(x) for x in new_centroid) + "]"
-            await db.execute(
-                text("""
+            update_stmt = text("""
                     UPDATE tl_cluster
-                    SET centroid_embedding = :centroid::vector,
+                    SET centroid_embedding = CAST(:centroid AS vector),
                         size = :new_size,
                         updated_at = NOW()
                     WHERE cluster_id = :cluster_id
-                """),
+                """)
+
+            # Explicitly bind params to ensure asyncpg compiles placeholders correctly
+            update_stmt = update_stmt.bindparams(
+                bindparam("centroid"),
+                bindparam("new_size"),
+                bindparam("cluster_id"),
+            )
+
+            await db.execute(
+                update_stmt,
                 {
                     "centroid": centroid_str,
                     "new_size": old_size + 1,
